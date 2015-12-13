@@ -26,7 +26,7 @@
 
 size_t File::tmp_file_index = 0;
 IMutex* File::index_mutex = NULL;
-std::wstring File::random_prefix;
+std::string File::random_prefix;
 
 File::File()
 	: hfile(INVALID_HANDLE_VALUE), is_sparse(false)
@@ -34,7 +34,7 @@ File::File()
 
 }
 
-bool File::Open(std::wstring pfn, int mode)
+bool File::Open(std::string pfn, int mode)
 {
 	fn=pfn;
 	DWORD dwCreationDisposition;
@@ -99,7 +99,7 @@ bool File::Open(std::wstring pfn, int mode)
 		flags|=FILE_FLAG_BACKUP_SEMANTICS;
 	}
 	
-	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
+	hfile=CreateFileW( Server->ConvertToWchar(fn).c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
 
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
@@ -117,9 +117,9 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 }
 
-bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
+bool File::OpenTemporaryFile(const std::string &tmpdir, bool first_try)
 {
-	std::wostringstream filename;
+	std::ostringstream filename;
 
 	if(tmpdir.empty())
 	{
@@ -127,10 +127,10 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 		DWORD l;
 		if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
 		{
-			wcscpy_s(tmpp,L"C:\\");
+			wcscpy_s(tmpp, L"C:\\");
 		}
 		
-		filename << tmpp;
+		filename << Server->ConvertFromWchar(tmpp);
 	}
 	else
 	{
@@ -138,25 +138,25 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 
 		if(tmpdir[tmpdir.size()-1]!='\\')
 		{
-			filename << L"\\";
+			filename << "\\";
 		}
 	}
 
-	filename << L"urb" << random_prefix << L"-" << std::hex;
+	filename << "urb" << random_prefix << L"-" << std::hex;
 
 	{
 		IScopedLock lock(index_mutex);
 		filename << ++tmp_file_index;
 	}
 
-	filename << L".tmp";
+	filename << ".tmp";
 
 	if(!Open(filename.str(), MODE_TEMP))
 	{
 		if(first_try)
 		{
-			Server->Log(L"Creating temporary file at \"" + filename.str()+L"\" failed. Creating directory \""+tmpdir+L"\"...", LL_WARNING);
-			BOOL b = CreateDirectoryW(tmpdir.c_str(), NULL);
+			Server->Log("Creating temporary file at \"" + filename.str()+"\" failed. Creating directory \""+tmpdir+"\"...", LL_WARNING);
+			BOOL b = CreateDirectoryW(Server->ConvertToWchar(tmpdir).c_str(), NULL);
 
 			if(b)
 			{
@@ -164,7 +164,7 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 			}
 			else
 			{
-				Server->Log(L"Creating directory \""+tmpdir+L"\" failed.", LL_WARNING);
+				Server->Log("Creating directory \""+tmpdir+"\" failed.", LL_WARNING);
 				return false;
 			}
 		}
@@ -211,7 +211,7 @@ _u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 	if(b==FALSE)
 	{
 		int err=GetLastError();
-		Server->Log("Read error: "+nconvert(err));
+		Server->Log("Read error: "+convert(err));
 		if(has_error)
 		{
 			*has_error=true;
@@ -284,7 +284,7 @@ void File::init_mutex()
 	memcpy(&rnd[0], &timesec, sizeof(timesec));
 	Server->randomFill(&rnd[4], 4);
 
-	random_prefix = widen(bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size()));
+	random_prefix = bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size());
 }
 
 void File::destroy_mutex()

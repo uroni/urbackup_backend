@@ -130,7 +130,6 @@ static void sha_def(const unsigned char *message, unsigned int len,
 #define SHA_DEF_DIGEST_SIZE ( 512 / 8)
 
 const static char* sha_def_identifier="sha512";
-const static wchar_t* sha_def_identifier_w=L"sha512";
 
 #ifdef __cplusplus
 }

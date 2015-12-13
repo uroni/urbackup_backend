@@ -59,7 +59,7 @@ ServerBackupDao::~ServerBackupDao()
 *		 :name(string),
 *		 :target(string))
 */
-void ServerBackupDao::addDirectoryLink(int clientid, const std::wstring& name, const std::wstring& target)
+void ServerBackupDao::addDirectoryLink(int clientid, const std::string& name, const std::string& target)
 {
 	if(q_addDirectoryLink==NULL)
 	{
@@ -81,7 +81,7 @@ void ServerBackupDao::addDirectoryLink(int clientid, const std::wstring& name, c
 *          WHERE clientid=:clientid(int)
 *			   AND target=:target(string)
 */
-void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& target)
+void ServerBackupDao::removeDirectoryLink(int clientid, const std::string& target)
 {
 	if(q_removeDirectoryLink==NULL)
 	{
@@ -101,7 +101,7 @@ void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& targ
 *          WHERE clientid=:clientid(int)
 *			   AND target GLOB :target(string)
 */
-void ServerBackupDao::removeDirectoryLinkGlob(int clientid, const std::wstring& target)
+void ServerBackupDao::removeDirectoryLinkGlob(int clientid, const std::string& target)
 {
 	if(q_removeDirectoryLinkGlob==NULL)
 	{
@@ -123,7 +123,7 @@ void ServerBackupDao::removeDirectoryLinkGlob(int clientid, const std::wstring& 
 *              AND name=:name(string)
 *        LIMIT 1
 */
-int ServerBackupDao::getDirectoryRefcount(int clientid, const std::wstring& name)
+int ServerBackupDao::getDirectoryRefcount(int clientid, const std::string& name)
 {
 	if(q_getDirectoryRefcount==NULL)
 	{
@@ -134,7 +134,7 @@ int ServerBackupDao::getDirectoryRefcount(int clientid, const std::wstring& name
 	db_results res=q_getDirectoryRefcount->Read();
 	q_getDirectoryRefcount->Reset();
 	assert(!res.empty());
-	return watoi(res[0][L"c"]);
+	return watoi(res[0]["c"]);
 }
 
 /**
@@ -144,7 +144,7 @@ int ServerBackupDao::getDirectoryRefcount(int clientid, const std::wstring& name
 *    INSERT INTO directory_link_journal (linkname, linktarget)
 *     VALUES (:linkname(string), :linktarget(string))
 */
-void ServerBackupDao::addDirectoryLinkJournalEntry(const std::wstring& linkname, const std::wstring& linktarget)
+void ServerBackupDao::addDirectoryLinkJournalEntry(const std::string& linkname, const std::string& linktarget)
 {
 	if(q_addDirectoryLinkJournalEntry==NULL)
 	{
@@ -192,8 +192,8 @@ std::vector<ServerBackupDao::JournalEntry> ServerBackupDao::getDirectoryLinkJour
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].linkname=res[i][L"linkname"];
-		ret[i].linktarget=res[i][L"linktarget"];
+		ret[i].linkname=res[i]["linkname"];
+		ret[i].linktarget=res[i]["linktarget"];
 	}
 	return ret;
 }
@@ -222,7 +222,7 @@ void ServerBackupDao::removeDirectoryLinkJournalEntries(void)
 *            WHERE clientid=:clientid(int) AND
 *                  target GLOB :dir(string)
 */
-std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDirectory(int clientid, const std::wstring& dir)
+std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDirectory(int clientid, const std::string& dir)
 {
 	if(q_getLinksInDirectory==NULL)
 	{
@@ -236,8 +236,8 @@ std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDire
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].name=res[i][L"name"];
-		ret[i].target=res[i][L"target"];
+		ret[i].name=res[i]["name"];
+		ret[i].target=res[i]["target"];
 	}
 	return ret;
 }
@@ -267,7 +267,7 @@ void ServerBackupDao::deleteLinkReferenceEntry(int64 id)
 *     UPDATE directory_links SET target=:new_target(string)
 *            WHERE id=:id(int64)
 */
-void ServerBackupDao::updateLinkReferenceTarget(const std::wstring& new_target, int64 id)
+void ServerBackupDao::updateLinkReferenceTarget(const std::string& new_target, int64 id)
 {
 	if(q_updateLinkReferenceTarget==NULL)
 	{
@@ -287,7 +287,7 @@ void ServerBackupDao::updateLinkReferenceTarget(const std::wstring& new_target, 
 *      INSERT OR REPLACE INTO settings_db.old_backupfolders (backupfolder)
 *          VALUES (:backupfolder(string))
 */
-void ServerBackupDao::addToOldBackupfolders(const std::wstring& backupfolder)
+void ServerBackupDao::addToOldBackupfolders(const std::string& backupfolder)
 {
 	if(q_addToOldBackupfolders==NULL)
 	{
@@ -305,18 +305,18 @@ void ServerBackupDao::addToOldBackupfolders(const std::wstring& backupfolder)
 * @sql
 *     SELECT backupfolder FROM settings_db.old_backupfolders
 */
-std::vector<std::wstring> ServerBackupDao::getOldBackupfolders(void)
+std::vector<std::string> ServerBackupDao::getOldBackupfolders(void)
 {
 	if(q_getOldBackupfolders==NULL)
 	{
 		q_getOldBackupfolders=db->Prepare("SELECT backupfolder FROM settings_db.old_backupfolders", false);
 	}
 	db_results res=q_getOldBackupfolders->Read();
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=res[i][L"backupfolder"];
+		ret[i]=res[i]["backupfolder"];
 	}
 	return ret;
 }
@@ -328,18 +328,18 @@ std::vector<std::wstring> ServerBackupDao::getOldBackupfolders(void)
 * @sql
 *      SELECT name FROM clients WHERE delete_pending=1
 */
-std::vector<std::wstring> ServerBackupDao::getDeletePendingClientNames(void)
+std::vector<std::string> ServerBackupDao::getDeletePendingClientNames(void)
 {
 	if(q_getDeletePendingClientNames==NULL)
 	{
 		q_getDeletePendingClientNames=db->Prepare("SELECT name FROM clients WHERE delete_pending=1", false);
 	}
 	db_results res=q_getDeletePendingClientNames->Read();
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=res[i][L"name"];
+		ret[i]=res[i]["name"];
 	}
 	return ret;
 }
@@ -360,11 +360,11 @@ ServerBackupDao::CondString ServerBackupDao::getVirtualMainClientname(int client
 	q_getVirtualMainClientname->Bind(clientid);
 	db_results res=q_getVirtualMainClientname->Read();
 	q_getVirtualMainClientname->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"virtualmain"];
+		ret.value=res[0]["virtualmain"];
 	}
 	return ret;
 }
@@ -461,7 +461,7 @@ bool ServerBackupDao::copyToTemporaryLastFilesTable(int backupid)
 *      SELECT fullpath, hashpath, shahash, filesize, rsize
 *       FROM files_last WHERE fullpath = :fullpath(string)
 */
-ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(const std::wstring& fullpath)
+ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(const std::string& fullpath)
 {
 	if(q_getFileEntryFromTemporaryTable==NULL)
 	{
@@ -470,17 +470,15 @@ ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(cons
 	q_getFileEntryFromTemporaryTable->Bind(fullpath);
 	db_results res=q_getFileEntryFromTemporaryTable->Read();
 	q_getFileEntryFromTemporaryTable->Reset();
-	SFileEntry ret = { false, L"", L"", "", 0, 0 };
+	SFileEntry ret = { false, "", "", "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.fullpath=res[0][L"fullpath"];
-		ret.hashpath=res[0][L"hashpath"];
-		std::wstring& val1 = res[0][L"shahash"];
-		ret.shahash.resize(val1.size()*sizeof(wchar_t));
-		memcpy(&ret.shahash[0], val1.data(), val1.size()*sizeof(wchar_t));
-		ret.filesize=watoi64(res[0][L"filesize"]);
-		ret.rsize=watoi64(res[0][L"rsize"]);
+		ret.fullpath=res[0]["fullpath"];
+		ret.hashpath=res[0]["hashpath"];
+		ret.shahash=res[0]["shahash"];
+		ret.filesize=watoi64(res[0]["filesize"]);
+		ret.rsize=watoi64(res[0]["rsize"]);
 	}
 	return ret;
 }
@@ -493,7 +491,7 @@ ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(cons
 *      SELECT fullpath, hashpath, shahash, filesize, rsize
 *       FROM files_last WHERE fullpath GLOB :fullpath_glob(string)
 */
-std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob(const std::wstring& fullpath_glob)
+std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob)
 {
 	if(q_getFileEntriesFromTemporaryTableGlob==NULL)
 	{
@@ -507,12 +505,10 @@ std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemp
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret[i].exists=true;
-		ret[i].fullpath=res[i][L"fullpath"];
-		ret[i].hashpath=res[i][L"hashpath"];
-		std::wstring& val2 = res[i][L"shahash"];
-		ret[i].shahash.resize(val2.size()*sizeof(wchar_t));
-		memcpy(&ret[i].shahash[0], val2.data(), val2.size()*sizeof(wchar_t));
-		ret[i].filesize=watoi64(res[i][L"filesize"]);
+		ret[i].fullpath=res[i]["fullpath"];
+		ret[i].hashpath=res[i]["hashpath"];
+		ret[i].shahash=res[i]["shahash"];
+		ret[i].filesize=watoi64(res[i]["filesize"]);
 	}
 	return ret;
 }
@@ -525,7 +521,7 @@ std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemp
 *      INSERT OR REPLACE INTO orig_client_settings (clientid, data)
 *          VALUES (:clientid(int), :data(std::string))
 */
-void ServerBackupDao::insertIntoOrigClientSettings(int clientid, std::string data)
+void ServerBackupDao::insertIntoOrigClientSettings(int clientid, const std::string& data)
 {
 	if(q_insertIntoOrigClientSettings==NULL)
 	{
@@ -553,11 +549,11 @@ ServerBackupDao::CondString ServerBackupDao::getOrigClientSettings(int clientid)
 	q_getOrigClientSettings->Bind(clientid);
 	db_results res=q_getOrigClientSettings->Read();
 	q_getOrigClientSettings->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"data"];
+		ret.value=res[0]["data"];
 	}
 	return ret;
 }
@@ -585,8 +581,8 @@ std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastIncrementalDurat
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].indexing_time_ms=watoi64(res[i][L"indexing_time_ms"]);
-		ret[i].duration=watoi64(res[i][L"duration"]);
+		ret[i].indexing_time_ms=watoi64(res[i]["indexing_time_ms"]);
+		ret[i].duration=watoi64(res[i]["duration"]);
 	}
 	return ret;
 }
@@ -614,8 +610,8 @@ std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastFullDurations(in
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].indexing_time_ms=watoi64(res[i][L"indexing_time_ms"]);
-		ret[i].duration=watoi64(res[i][L"duration"]);
+		ret[i].indexing_time_ms=watoi64(res[i]["indexing_time_ms"]);
+		ret[i].duration=watoi64(res[i]["duration"]);
 	}
 	return ret;
 }
@@ -682,7 +678,7 @@ void ServerBackupDao::setPointedTo(int64 pointed_to, int64 id)
 * @sql
 *      SELECT value FROM settings_db.settings WHERE key=:key(string) AND clientid=:clientid(int)
 */
-ServerBackupDao::CondString ServerBackupDao::getClientSetting(const std::wstring& key, int clientid)
+ServerBackupDao::CondString ServerBackupDao::getClientSetting(const std::string& key, int clientid)
 {
 	if(q_getClientSetting==NULL)
 	{
@@ -692,11 +688,11 @@ ServerBackupDao::CondString ServerBackupDao::getClientSetting(const std::wstring
 	q_getClientSetting->Bind(clientid);
 	db_results res=q_getClientSetting->Read();
 	q_getClientSetting->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"value"];
+		ret.value=res[0]["value"];
 	}
 	return ret;
 }
@@ -720,7 +716,7 @@ std::vector<int> ServerBackupDao::getClientIds(void)
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=watoi(res[i][L"id"]);
+		ret[i]=watoi(res[i]["id"]);
 	}
 	return ret;
 }
@@ -745,7 +741,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::getPointedTo(int64 id)
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"pointed_to"]);
+		ret.value=watoi64(res[0]["pointed_to"]);
 	}
 	return ret;
 }
@@ -758,7 +754,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::getPointedTo(int64 id)
 *      VALUES (:backupid(int), :fullpath(string), :hashpath(string), :shahash(blob),
 *				:filesize(int64), :rsize(int64), :clientid(int), :incremental(int), :next_entry(int64), :prev_entry(int64), :pointed_to(int))
 */
-void ServerBackupDao::addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to)
+void ServerBackupDao::addFileEntry(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to)
 {
 	if(q_addFileEntry==NULL)
 	{
@@ -786,7 +782,7 @@ void ServerBackupDao::addFileEntry(int backupid, const std::wstring& fullpath, c
 * @sql
 *      SELECT value FROM settings_db.settings WHERE clientid=:clientid(int) AND key=:key(string)
 */
-ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std::wstring& key)
+ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std::string& key)
 {
 	if(q_getSetting==NULL)
 	{
@@ -796,11 +792,11 @@ ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std:
 	q_getSetting->Bind(key);
 	db_results res=q_getSetting->Read();
 	q_getSetting->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"value"];
+		ret.value=res[0]["value"];
 	}
 	return ret;
 }
@@ -811,7 +807,7 @@ ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std:
 * @sql
 *      INSERT INTO settings_db.settings (key, value, clientid) VALUES ( :key(string), :value(string), :clientid(int) )
 */
-void ServerBackupDao::insertSetting(const std::wstring& key, const std::wstring& value, int clientid)
+void ServerBackupDao::insertSetting(const std::string& key, const std::string& value, int clientid)
 {
 	if(q_insertSetting==NULL)
 	{
@@ -830,7 +826,7 @@ void ServerBackupDao::insertSetting(const std::wstring& key, const std::wstring&
 * @sql
 *      UPDATE settings_db.settings SET value=:value(string) WHERE key=:key(string) AND clientid=:clientid(int)
 */
-void ServerBackupDao::updateSetting(const std::wstring& value, const std::wstring& key, int clientid)
+void ServerBackupDao::updateSetting(const std::string& value, const std::string& key, int clientid)
 {
 	if(q_updateSetting==NULL)
 	{
@@ -877,22 +873,22 @@ ServerBackupDao::SFindFileEntry ServerBackupDao::getFileEntry(int64 id)
 	q_getFileEntry->Bind(id);
 	db_results res=q_getFileEntry->Read();
 	q_getFileEntry->Reset();
-	SFindFileEntry ret = { false, 0, L"", 0, 0, L"", L"", 0, 0, 0, 0, 0, 0 };
+	SFindFileEntry ret = { false, 0, "", 0, 0, "", "", 0, 0, 0, 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.id=watoi64(res[0][L"id"]);
-		ret.shahash=res[0][L"shahash"];
-		ret.backupid=watoi(res[0][L"backupid"]);
-		ret.clientid=watoi(res[0][L"clientid"]);
-		ret.fullpath=res[0][L"fullpath"];
-		ret.hashpath=res[0][L"hashpath"];
-		ret.filesize=watoi64(res[0][L"filesize"]);
-		ret.next_entry=watoi64(res[0][L"next_entry"]);
-		ret.prev_entry=watoi64(res[0][L"prev_entry"]);
-		ret.rsize=watoi64(res[0][L"rsize"]);
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.pointed_to=watoi(res[0][L"pointed_to"]);
+		ret.id=watoi64(res[0]["id"]);
+		ret.shahash=res[0]["shahash"];
+		ret.backupid=watoi(res[0]["backupid"]);
+		ret.clientid=watoi(res[0]["clientid"]);
+		ret.fullpath=res[0]["fullpath"];
+		ret.hashpath=res[0]["hashpath"];
+		ret.filesize=watoi64(res[0]["filesize"]);
+		ret.next_entry=watoi64(res[0]["next_entry"]);
+		ret.prev_entry=watoi64(res[0]["prev_entry"]);
+		ret.rsize=watoi64(res[0]["rsize"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.pointed_to=watoi(res[0]["pointed_to"]);
 	}
 	return ret;
 }
@@ -914,18 +910,18 @@ ServerBackupDao::SStatFileEntry ServerBackupDao::getStatFileEntry(int64 id)
 	q_getStatFileEntry->Bind(id);
 	db_results res=q_getStatFileEntry->Read();
 	q_getStatFileEntry->Reset();
-	SStatFileEntry ret = { false, 0, 0, 0, 0, 0, L"", 0, 0 };
+	SStatFileEntry ret = { false, 0, 0, 0, 0, 0, "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.id=watoi64(res[0][L"id"]);
-		ret.backupid=watoi(res[0][L"backupid"]);
-		ret.clientid=watoi(res[0][L"clientid"]);
-		ret.filesize=watoi64(res[0][L"filesize"]);
-		ret.rsize=watoi64(res[0][L"rsize"]);
-		ret.shahash=res[0][L"shahash"];
-		ret.next_entry=watoi64(res[0][L"next_entry"]);
-		ret.prev_entry=watoi64(res[0][L"prev_entry"]);
+		ret.id=watoi64(res[0]["id"]);
+		ret.backupid=watoi(res[0]["backupid"]);
+		ret.clientid=watoi(res[0]["clientid"]);
+		ret.filesize=watoi64(res[0]["filesize"]);
+		ret.rsize=watoi64(res[0]["rsize"]);
+		ret.shahash=res[0]["shahash"];
+		ret.next_entry=watoi64(res[0]["next_entry"]);
+		ret.prev_entry=watoi64(res[0]["prev_entry"]);
 	}
 	return ret;
 }
@@ -937,7 +933,7 @@ ServerBackupDao::SStatFileEntry ServerBackupDao::getStatFileEntry(int64 id)
 *       INSERT INTO files_incoming_stat (filesize, clientid, backupid, existing_clients, direction, incremental)
 *       VALUES (:filesize(int64), :clientid(int), :backupid(int), :existing_clients(string), :direction(int), :incremental(int))
 */
-void ServerBackupDao::addIncomingFile(int64 filesize, int clientid, int backupid, const std::wstring& existing_clients, int direction, int incremental)
+void ServerBackupDao::addIncomingFile(int64 filesize, int clientid, int backupid, const std::string& existing_clients, int direction, int incremental)
 {
 	if(q_addIncomingFile==NULL)
 	{
@@ -972,13 +968,13 @@ std::vector<ServerBackupDao::SIncomingStat> ServerBackupDao::getIncomingStats(vo
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].id=watoi64(res[i][L"id"]);
-		ret[i].filesize=watoi64(res[i][L"filesize"]);
-		ret[i].clientid=watoi(res[i][L"clientid"]);
-		ret[i].backupid=watoi(res[i][L"backupid"]);
-		ret[i].existing_clients=res[i][L"existing_clients"];
-		ret[i].direction=watoi(res[i][L"direction"]);
-		ret[i].incremental=watoi(res[i][L"incremental"]);
+		ret[i].id=watoi64(res[i]["id"]);
+		ret[i].filesize=watoi64(res[i]["filesize"]);
+		ret[i].clientid=watoi(res[i]["clientid"]);
+		ret[i].backupid=watoi(res[i]["backupid"]);
+		ret[i].existing_clients=res[i]["existing_clients"];
+		ret[i].direction=watoi(res[i]["direction"]);
+		ret[i].incremental=watoi(res[i]["incremental"]);
 	}
 	return ret;
 }
@@ -1002,7 +998,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::getIncomingStatsCount(void)
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"c"]);
+		ret.value=watoi64(res[0]["c"]);
 	}
 	return ret;
 }
@@ -1031,7 +1027,7 @@ void ServerBackupDao::delIncomingStatEntry(int64 id)
 * @sql
 *       SELECT tvalue FROM misc WHERE tkey=:tkey(string)
 */
-ServerBackupDao::CondString ServerBackupDao::getMiscValue(const std::wstring& tkey)
+ServerBackupDao::CondString ServerBackupDao::getMiscValue(const std::string& tkey)
 {
 	if(q_getMiscValue==NULL)
 	{
@@ -1040,11 +1036,11 @@ ServerBackupDao::CondString ServerBackupDao::getMiscValue(const std::wstring& tk
 	q_getMiscValue->Bind(tkey);
 	db_results res=q_getMiscValue->Read();
 	q_getMiscValue->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"tvalue"];
+		ret.value=res[0]["tvalue"];
 	}
 	return ret;
 }
@@ -1055,7 +1051,7 @@ ServerBackupDao::CondString ServerBackupDao::getMiscValue(const std::wstring& tk
 * @sql
 *       INSERT INTO misc (tkey, tvalue) VALUES (:tkey(string), :tvalue(string))
 */
-void ServerBackupDao::addMiscValue(const std::wstring& tkey, const std::wstring& tvalue)
+void ServerBackupDao::addMiscValue(const std::string& tkey, const std::string& tvalue)
 {
 	if(q_addMiscValue==NULL)
 	{
@@ -1073,7 +1069,7 @@ void ServerBackupDao::addMiscValue(const std::wstring& tkey, const std::wstring&
 * @sql
 *       DELETE FROM misc WHERE tkey=:tkey(string)
 */
-void ServerBackupDao::delMiscValue(const std::wstring& tkey)
+void ServerBackupDao::delMiscValue(const std::string& tkey)
 {
 	if(q_delMiscValue==NULL)
 	{
@@ -1189,7 +1185,7 @@ bool ServerBackupDao::createTemporaryPathLookupIndex(void)
 * @sql
 *       SELECT entryid FROM files_cont_path_lookup WHERE fullpath=:fullpath(string)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::wstring& fullpath)
+ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::string& fullpath)
 {
 	if(q_lookupEntryIdByPath==NULL)
 	{
@@ -1202,7 +1198,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::wstri
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"entryid"]);
+		ret.value=watoi64(res[0]["entryid"]);
 	}
 	return ret;
 }
@@ -1214,7 +1210,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::wstri
 *       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
 *		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int) )
 */
-void ServerBackupDao::newFileBackup(int incremental, int clientid, const std::wstring& path, int resumed, int64 indexing_time_ms, int tgroup)
+void ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup)
 {
 	if(q_newFileBackup==NULL)
 	{
@@ -1281,15 +1277,15 @@ ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalFileBackup(
 	q_getLastIncrementalFileBackup->Bind(tgroup);
 	db_results res=q_getLastIncrementalFileBackup->Read();
 	q_getLastIncrementalFileBackup->Reset();
-	SLastIncremental ret = { false, 0, L"", 0, 0, 0 };
+	SLastIncremental ret = { false, 0, "", 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.path=res[0][L"path"];
-		ret.resumed=watoi(res[0][L"resumed"]);
-		ret.complete=watoi(res[0][L"complete"]);
-		ret.id=watoi(res[0][L"id"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.path=res[0]["path"];
+		ret.resumed=watoi(res[0]["resumed"]);
+		ret.complete=watoi(res[0]["complete"]);
+		ret.id=watoi(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1312,15 +1308,15 @@ ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalCompleteFil
 	q_getLastIncrementalCompleteFileBackup->Bind(tgroup);
 	db_results res=q_getLastIncrementalCompleteFileBackup->Read();
 	q_getLastIncrementalCompleteFileBackup->Reset();
-	SLastIncremental ret = { false, 0, L"", 0, 0, 0 };
+	SLastIncremental ret = { false, 0, "", 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.path=res[0][L"path"];
-		ret.resumed=watoi(res[0][L"resumed"]);
-		ret.complete=watoi(res[0][L"complete"]);
-		ret.id=watoi(res[0][L"id"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.path=res[0]["path"];
+		ret.resumed=watoi(res[0]["resumed"]);
+		ret.complete=watoi(res[0]["complete"]);
+		ret.id=watoi(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1374,7 +1370,7 @@ void ServerBackupDao::saveBackupLog(int clientid, int errors, int warnings, int 
 *       INSERT INTO log_data (logid, data)
 *               VALUES (:logid(int64), :data(string) )
 */
-void ServerBackupDao::saveBackupLogData(int64 logid, const std::wstring& data)
+void ServerBackupDao::saveBackupLogData(int64 logid, const std::string& data)
 {
 	if(q_saveBackupLogData==NULL)
 	{
@@ -1404,7 +1400,7 @@ std::vector<int> ServerBackupDao::getMailableUserIds(void)
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=watoi(res[i][L"id"]);
+		ret[i]=watoi(res[i]["id"]);
 	}
 	return ret;
 }
@@ -1416,7 +1412,7 @@ std::vector<int> ServerBackupDao::getMailableUserIds(void)
 * @sql
 *       SELECT t_right FROM settings_db.si_permissions WHERE clientid=:clientid(int) AND t_domain=:t_domain(string)
 */
-ServerBackupDao::CondString ServerBackupDao::getUserRight(int clientid, const std::wstring& t_domain)
+ServerBackupDao::CondString ServerBackupDao::getUserRight(int clientid, const std::string& t_domain)
 {
 	if(q_getUserRight==NULL)
 	{
@@ -1426,11 +1422,11 @@ ServerBackupDao::CondString ServerBackupDao::getUserRight(int clientid, const st
 	q_getUserRight->Bind(t_domain);
 	db_results res=q_getUserRight->Read();
 	q_getUserRight->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"t_right"];
+		ret.value=res[0]["t_right"];
 	}
 	return ret;
 }
@@ -1451,13 +1447,13 @@ ServerBackupDao::SReportSettings ServerBackupDao::getUserReportSettings(int user
 	q_getUserReportSettings->Bind(userid);
 	db_results res=q_getUserReportSettings->Read();
 	q_getUserReportSettings->Reset();
-	SReportSettings ret = { false, L"", 0, 0 };
+	SReportSettings ret = { false, "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.report_mail=res[0][L"report_mail"];
-		ret.report_loglevel=watoi(res[0][L"report_loglevel"]);
-		ret.report_sendonly=watoi(res[0][L"report_sendonly"]);
+		ret.report_mail=res[0]["report_mail"];
+		ret.report_loglevel=watoi(res[0]["report_loglevel"]);
+		ret.report_sendonly=watoi(res[0]["report_sendonly"]);
 	}
 	return ret;
 }
@@ -1478,11 +1474,11 @@ ServerBackupDao::CondString ServerBackupDao::formatUnixtime(int64 unixtime)
 	q_formatUnixtime->Bind(unixtime);
 	db_results res=q_formatUnixtime->Read();
 	q_formatUnixtime->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"time"];
+		ret.value=res[0]["time"];
 	}
 	return ret;
 }
@@ -1495,7 +1491,7 @@ ServerBackupDao::CondString ServerBackupDao::formatUnixtime(int64 unixtime)
 *       SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images
 *         WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND version=:image_version(int) AND letter=:letter(string) ORDER BY backuptime DESC LIMIT 1
 */
-ServerBackupDao::SImageBackup ServerBackupDao::getLastFullImage(int clientid, int image_version, const std::wstring& letter)
+ServerBackupDao::SImageBackup ServerBackupDao::getLastFullImage(int clientid, int image_version, const std::string& letter)
 {
 	if(q_getLastFullImage==NULL)
 	{
@@ -1506,14 +1502,14 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastFullImage(int clientid, in
 	q_getLastFullImage->Bind(letter);
 	db_results res=q_getLastFullImage->Read();
 	q_getLastFullImage->Reset();
-	SImageBackup ret = { false, 0, 0, L"", 0 };
+	SImageBackup ret = { false, 0, 0, "", 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.id=watoi64(res[0][L"id"]);
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.path=res[0][L"path"];
-		ret.duration=watoi64(res[0][L"duration"]);
+		ret.id=watoi64(res[0]["id"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.path=res[0]["path"];
+		ret.duration=watoi64(res[0]["duration"]);
 	}
 	return ret;
 }
@@ -1526,7 +1522,7 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastFullImage(int clientid, in
 *       SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images
 *         WHERE clientid=:clientid(int) AND complete=1 AND version=:image_version(int) AND letter=:letter(string) ORDER BY backuptime DESC LIMIT 1
 */
-ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int image_version, const std::wstring& letter)
+ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int image_version, const std::string& letter)
 {
 	if(q_getLastImage==NULL)
 	{
@@ -1537,14 +1533,14 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int im
 	q_getLastImage->Bind(letter);
 	db_results res=q_getLastImage->Read();
 	q_getLastImage->Reset();
-	SImageBackup ret = { false, 0, 0, L"", 0 };
+	SImageBackup ret = { false, 0, 0, "", 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.id=watoi64(res[0][L"id"]);
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.path=res[0][L"path"];
-		ret.duration=watoi64(res[0][L"duration"]);
+		ret.id=watoi64(res[0]["id"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.path=res[0]["path"];
+		ret.duration=watoi64(res[0]["duration"]);
 	}
 	return ret;
 }
@@ -1556,7 +1552,7 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int im
 *       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter)
 *			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP, 0, :image_version(int), :letter(string) )
 */
-void ServerBackupDao::newImageBackup(int clientid, const std::wstring& path, int incremental, int incremental_ref, int image_version, const std::wstring& letter)
+void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter)
 {
 	if(q_newImageBackup==NULL)
 	{
@@ -1720,7 +1716,7 @@ void ServerBackupDao::deleteAllUsersOnClient(int clientid)
 * @sql
 *       INSERT INTO users_on_client (clientid, username) VALUES (:clientid(int), :username(string))
 */
-void ServerBackupDao::addUserOnClient(int clientid, const std::wstring& username)
+void ServerBackupDao::addUserOnClient(int clientid, const std::string& username)
 {
 	if(q_addUserOnClient==NULL)
 	{
@@ -1738,7 +1734,7 @@ void ServerBackupDao::addUserOnClient(int clientid, const std::wstring& username
 * @sql
 *       INSERT OR IGNORE INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
 */
-void ServerBackupDao::addClientToken(int clientid, const std::wstring& token)
+void ServerBackupDao::addClientToken(int clientid, const std::string& token)
 {
 	if(q_addClientToken==NULL)
 	{
@@ -1756,7 +1752,7 @@ void ServerBackupDao::addClientToken(int clientid, const std::wstring& token)
 * @sql
 *       INSERT OR IGNORE INTO user_tokens (username, token) VALUES (:username(string), :token(string))
 */
-void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstring& token)
+void ServerBackupDao::addUserToken(const std::string& username, const std::string& token)
 {
 	if(q_addUserToken==NULL)
 	{
@@ -1780,7 +1776,7 @@ void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstr
 *				AND clientid=:clientid(int) AND complete=1) )
 *		  AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int tgroup)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int tgroup)
 {
 	if(q_hasRecentFullOrIncrFileBackup==NULL)
 	{
@@ -1797,7 +1793,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const 
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1811,7 +1807,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const 
 *		WHERE datetime('now', :backup_interval(string))<backuptime
 *			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid, int tgroup)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::string& backup_interval, int clientid, int tgroup)
 {
 	if(q_hasRecentIncrFileBackup==NULL)
 	{
@@ -1826,7 +1822,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::w
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1845,7 +1841,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::w
 *           ) AND clientid=:clientid(int) AND version=:image_version(int) AND letter=:letter(string)
 *
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrImageBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int image_version, const std::wstring& letter)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrImageBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int image_version, const std::string& letter)
 {
 	if(q_hasRecentFullOrIncrImageBackup==NULL)
 	{
@@ -1863,7 +1859,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrImageBackup(const
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1878,7 +1874,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrImageBackup(const
 *			AND clientid=:clientid(int) AND complete=1
 *           AND version=:image_version(int) AND letter=:letter(string)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::string& backup_interval, int clientid, int image_version, const std::string& letter)
 {
 	if(q_hasRecentIncrImageBackup==NULL)
 	{
@@ -1894,7 +1890,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -1907,7 +1903,7 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::
 *       VALUES
 *			(:clientid(int), 0, :path(string), :identity(string), 0)
 */
-void ServerBackupDao::addRestore(int clientid, const std::wstring& path, const std::wstring& identity)
+void ServerBackupDao::addRestore(int clientid, const std::string& path, const std::string& identity)
 {
 	if(q_addRestore==NULL)
 	{
@@ -1937,11 +1933,11 @@ ServerBackupDao::CondString ServerBackupDao::getRestoreIdentity(int64 restore_id
 	q_getRestoreIdentity->Bind(clientid);
 	db_results res=q_getRestoreIdentity->Read();
 	q_getRestoreIdentity->Reset();
-	CondString ret = { false, L"" };
+	CondString ret = { false, "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0][L"identity"];
+		ret.value=res[0]["identity"];
 	}
 	return ret;
 }
@@ -1981,25 +1977,25 @@ ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
 	q_getFileBackupInfo->Reset();
-	SFileBackupInfo ret = { false, 0, 0, 0, 0, L"", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	SFileBackupInfo ret = { false, 0, 0, 0, 0, "", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.id=watoi64(res[0][L"id"]);
-		ret.clientid=watoi(res[0][L"clientid"]);
-		ret.backuptime=watoi64(res[0][L"backuptime"]);
-		ret.incremental=watoi(res[0][L"incremental"]);
-		ret.path=res[0][L"path"];
-		ret.complete=watoi(res[0][L"complete"]);
-		ret.running=watoi64(res[0][L"running"]);
-		ret.size_bytes=watoi64(res[0][L"size_bytes"]);
-		ret.done=watoi(res[0][L"done"]);
-		ret.archived=watoi(res[0][L"archived"]);
-		ret.archive_timeout=watoi64(res[0][L"archive_timeout"]);
-		ret.size_calculated=watoi64(res[0][L"size_calculated"]);
-		ret.resumed=watoi(res[0][L"resumed"]);
-		ret.indexing_time_ms=watoi64(res[0][L"indexing_time_ms"]);
-		ret.tgroup=watoi(res[0][L"tgroup"]);
+		ret.id=watoi64(res[0]["id"]);
+		ret.clientid=watoi(res[0]["clientid"]);
+		ret.backuptime=watoi64(res[0]["backuptime"]);
+		ret.incremental=watoi(res[0]["incremental"]);
+		ret.path=res[0]["path"];
+		ret.complete=watoi(res[0]["complete"]);
+		ret.running=watoi64(res[0]["running"]);
+		ret.size_bytes=watoi64(res[0]["size_bytes"]);
+		ret.done=watoi(res[0]["done"]);
+		ret.archived=watoi(res[0]["archived"]);
+		ret.archive_timeout=watoi64(res[0]["archive_timeout"]);
+		ret.size_calculated=watoi64(res[0]["size_calculated"]);
+		ret.resumed=watoi(res[0]["resumed"]);
+		ret.indexing_time_ms=watoi64(res[0]["indexing_time_ms"]);
+		ret.tgroup=watoi(res[0]["tgroup"]);
 	}
 	return ret;
 }
@@ -2010,7 +2006,7 @@ ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid
 * @sql
 *       UPDATE clients SET virtualmain=:virtualmain(string) WHERE id=:clientid(int64)
 */
-void ServerBackupDao::setVirtualMainClient(const std::wstring& virtualmain, int64 clientid)
+void ServerBackupDao::setVirtualMainClient(const std::string& virtualmain, int64 clientid)
 {
 	if(q_setVirtualMainClient==NULL)
 	{
@@ -2059,7 +2055,7 @@ ServerBackupDao::CondInt ServerBackupDao::hasUsedAccessToken(const std::string& 
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0][L"clientid"]);
+		ret.value=watoi(res[0]["clientid"]);
 	}
 	return ret;
 }
@@ -2287,7 +2283,7 @@ int64 ServerBackupDao::getLastId()
 	return db->getLastInsertID();
 }
 
-void ServerBackupDao::updateOrInsertSetting( int clientid, const std::wstring& key, const std::wstring& value )
+void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value )
 {
 	if(getSetting(clientid, key).exists)
 	{
@@ -2309,7 +2305,7 @@ void ServerBackupDao::endTransaction()
 	db->EndTransaction();
 }
 
-int64 ServerBackupDao::addFileEntryExternal( int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to )
+int64 ServerBackupDao::addFileEntryExternal( int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to )
 {
 	addFileEntry(backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to);
 

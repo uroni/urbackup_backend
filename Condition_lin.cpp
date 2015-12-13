@@ -36,7 +36,7 @@ CCondition::~CCondition()
 	int rc=pthread_cond_destroy(&cond);
 	if(rc!=0)
 	{
-		Server->Log("Destroying condition failed ec="+nconvert(rc), LL_ERROR);
+		Server->Log("Destroying condition failed ec="+convert(rc), LL_ERROR);
 	}
 }
 

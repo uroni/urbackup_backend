@@ -60,7 +60,7 @@ File::File()
 
 }
 
-bool File::Open(std::wstring pfn, int mode)
+bool File::Open(std::string pfn, int mode)
 {
 	fn=pfn;
 	int flags=0;
@@ -94,14 +94,14 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 	
 	struct stat buf;
-	if(stat(Server->ConvertToUTF8(fn).c_str(), &buf)==0)
+	if(stat((fn).c_str(), &buf)==0)
 	{
 		if(S_ISDIR(buf.st_mode) )
 			return false;
 	}
 	
 	
-	fd=open64(Server->ConvertToUTF8(fn).c_str(), flags|O_LARGEFILE, imode);
+	fd=open64((fn).c_str(), flags|O_LARGEFILE, imode);
 
 #ifdef __linux__
 	if(mode==MODE_READ_SEQUENTIAL
@@ -125,7 +125,7 @@ bool File::Open(std::wstring pfn, int mode)
 		return false;
 }
 
-bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
+bool File::OpenTemporaryFile(const std::string &dir, bool first_try)
 {
 	char *tmpdir=getenv("TMPDIR");
 	std::string stmpdir;
@@ -140,7 +140,7 @@ bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
 	fd=mkstemp((char*)stmpdir.c_str());
 	umask(cur_umask);
 	
-	fn=Server->ConvertToUnicode(stmpdir);
+	fn=(stmpdir);
 	if( fd==-1 )
 		return false;
 	else
@@ -186,7 +186,7 @@ _u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 	ssize_t w=write(fd, buffer, bsize);
 	if( w<0 )
 	{
-		Server->Log("Write failed. errno="+nconvert(errno), LL_DEBUG);
+		Server->Log("Write failed. errno="+convert(errno), LL_DEBUG);
 		if(has_error) *has_error=true;
 		w=0;
 	}

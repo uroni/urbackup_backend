@@ -38,9 +38,9 @@ class File : public IFile
 public:
 	File();
 	~File();
-	bool Open(std::wstring pfn, int mode=MODE_READ);
+	bool Open(std::string pfn, int mode=MODE_READ);
 	bool Open(void *handle);
-	bool OpenTemporaryFile(const std::wstring &tmpdir=L"", bool first_try=true);
+	bool OpenTemporaryFile(const std::string &tmpdir="", bool first_try=true);
 	std::string Read(_u32 tr, bool *has_error=NULL);
 	_u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL);
 	_u32 Write(const std::string &tw, bool *has_error=NULL);
@@ -58,7 +58,6 @@ public:
 #endif
 	
 	std::string getFilename(void);
-	std::wstring getFilenameW(void);	
 
 private:
 #ifdef MODE_STL
@@ -71,18 +70,18 @@ private:
 #ifdef MODE_LIN
 	int fd;
 #endif
-	std::wstring fn;
+	std::string fn;
 
 #ifdef _WIN32
 	static size_t tmp_file_index;
 	static IMutex* index_mutex;
-	static std::wstring random_prefix;
+	static std::string random_prefix;
 #endif
 };
 
 
 bool DeleteFileInt(std::string pFilename);
-bool DeleteFileInt(std::wstring pFilename);
+bool DeleteFileInt(std::string pFilename);
 
 #endif //FILE_H
 

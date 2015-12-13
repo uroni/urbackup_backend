@@ -52,14 +52,14 @@ namespace
 
 		if(!writeRepeatFreeSpace(out, reinterpret_cast<char*>(&metadata_size), sizeof(metadata_size), cb))
 		{
-			Server->Log(L"Error writing file metadata to file \""+out->getFilenameW()+L"\" -1", LL_ERROR);
+			Server->Log("Error writing file metadata to file \""+out->getFilename()+"\" -1", LL_ERROR);
 			return false;
 		}
 		written+=sizeof(metadata_size);
 
 		if(!writeRepeatFreeSpace(out, data.getDataPtr(), data.getDataSize(), cb))
 		{
-			Server->Log(L"Error writing file metadata to file \""+out->getFilenameW()+L"\"", LL_ERROR);
+			Server->Log("Error writing file metadata to file \""+out->getFilename()+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -74,13 +74,13 @@ namespace
 		if(in->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||
 			metadata_size_and_magic[0]==0)
 		{
-			Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\" -2", LL_DEBUG);
+			Server->Log("Error reading file metadata hashfilesize from \""+in->getFilename()+"\" -2", LL_DEBUG);
 			return 0;
 		}
 
 		if(little_endian(metadata_size_and_magic[1])!=METADATA_MAGIC)
 		{
-			Server->Log(L"Metadata magic wrong in file \""+in->getFilenameW(), LL_DEBUG);
+			Server->Log("Metadata magic wrong in file \""+in->getFilename(), LL_DEBUG);
 			return 0;
 		}
 
@@ -93,13 +93,13 @@ namespace
 		if(in->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||
 			metadata_size_and_magic[0]==0)
 		{
-			Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\" -2", LL_DEBUG);
+			Server->Log("Error reading file metadata hashfilesize from \""+in->getFilename()+"\" -2", LL_DEBUG);
 			return false;
 		}
 		
 		if(little_endian(metadata_size_and_magic[1])!=METADATA_MAGIC)
 		{
-			Server->Log(L"Metadata magic wrong in file \""+in->getFilenameW(), LL_DEBUG);
+			Server->Log("Metadata magic wrong in file \""+in->getFilename(), LL_DEBUG);
 			return false;
 		}
 
@@ -110,7 +110,7 @@ namespace
 
 		if(in->Read(&buffer[0], metadata_size_and_magic[0]-sizeof(unsigned int))!=metadata_size_and_magic[0]-sizeof(unsigned int))
 		{
-			Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\" -3", LL_ERROR);
+			Server->Log("Error reading file metadata hashfilesize from \""+in->getFilename()+"\" -3", LL_ERROR);
 			return false;
 		}
 
@@ -123,13 +123,13 @@ namespace
 
 		if(version!=0)
 		{
-			Server->Log(L"Unknown metadata version at \""+in->getFilenameW()+L"\"", LL_ERROR);
+			Server->Log("Unknown metadata version at \""+in->getFilename()+"\"", LL_ERROR);
 			return false;
 		}
 
 		if(!ok)
 		{
-			Server->Log(L"Malformed metadata at \""+in->getFilenameW()+L"\"", LL_ERROR);
+			Server->Log("Malformed metadata at \""+in->getFilename()+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -152,7 +152,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 		if(!writeRepeatFreeSpace(out, reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize), cb))
 		{
-			Server->Log(L"Error writing file metadata to file \""+out->getFilenameW()+L"\"", LL_ERROR);
+			Server->Log("Error writing file metadata to file \""+out->getFilename()+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -170,14 +170,14 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 		{
 			if(!overwrite_existing)
 			{
-				Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(size_should)+L" is="+convert(out->Size())+L". Error writing metadata to file. -1", LL_WARNING);
+				Server->Log("File \""+out->getFilename()+"\" has wrong size. Should="+convert(size_should)+" is="+convert(out->Size())+". Error writing metadata to file. -1", LL_WARNING);
 				return false;
 			}
 			else
 			{
 				if(!out->Seek(hashdata_size))
 				{
-					Server->Log(L"Cannot seek to "+convert(hashdata_size)+L"in \""+out->getFilenameW()+L"\". Error writing metadata to file.", LL_WARNING);
+					Server->Log("Cannot seek to "+convert(hashdata_size)+"in \""+out->getFilename()+"\". Error writing metadata to file.", LL_WARNING);
 					return false;
 				}
 				_u32 metadata_size = get_metadata_size(out);
@@ -188,7 +188,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 				{
 					if(!out->Seek(size_should))
 					{
-						Server->Log(L"Cannot seek to "+convert(size_should)+L" (2) in \""+out->getFilenameW()+L"\". Error writing metadata to file.", LL_WARNING);
+						Server->Log("Cannot seek to "+convert(size_should)+" (2) in \""+out->getFilename()+"\". Error writing metadata to file.", LL_WARNING);
 						return false;
 					}
 
@@ -203,7 +203,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 					if(out->Size()!=size_should)
 					{
-						Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(size_should)+L" is="+convert(out->Size())+L". Error writing metadata to file. -3", LL_WARNING);
+						Server->Log("File \""+out->getFilename()+"\" has wrong size. Should="+convert(size_should)+" is="+convert(out->Size())+". Error writing metadata to file. -3", LL_WARNING);
 						return false;
 					}
 
@@ -211,7 +211,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 				}
 				else if(out->Size()!=size_should)
 				{
-					Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(size_should)+L" is="+convert(out->Size())+L". Error writing metadata to file. -2", LL_WARNING);
+					Server->Log("File \""+out->getFilename()+"\" has wrong size. Should="+convert(size_should)+" is="+convert(out->Size())+". Error writing metadata to file. -2", LL_WARNING);
 					return false;
 				}
 			}
@@ -219,7 +219,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 		if(!out->Seek(hashdata_size))
 		{
-			Server->Log(L"Cannot seek to "+convert(hashdata_size)+L"in \""+out->getFilenameW()+L"\". Error writing metadata to file. -2", LL_WARNING);
+			Server->Log("Cannot seek to "+convert(hashdata_size)+"in \""+out->getFilename()+"\". Error writing metadata to file. -2", LL_WARNING);
 			return false;
 		}
 	}
@@ -236,13 +236,13 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 	return ret;
 }
 
-bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing)
+bool write_file_metadata(const std::string& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing)
 {
 	std::auto_ptr<IFile> out(Server->openFile(os_file_prefix(out_fn), MODE_RW_CREATE));
 
 	if(!out.get())
 	{
-		Server->Log(L"Error writing file metadata to file \""+out_fn+L"\"", LL_ERROR);
+		Server->Log("Error writing file metadata to file \""+out_fn+"\"", LL_ERROR);
 		return false;
 	}
 
@@ -271,13 +271,13 @@ bool is_metadata_only(IFile* hash_file)
 	return hashfilesize==-1;
 }
 
-bool read_metadata(const std::wstring& in_fn, FileMetadata& metadata)
+bool read_metadata(const std::string& in_fn, FileMetadata& metadata)
 {
 	std::auto_ptr<IFile> in(Server->openFile(os_file_prefix(in_fn)));
 
 	if(!in.get())
 	{
-		Server->Log(L"Error reading file metadata from file \""+in_fn+L"\"", LL_DEBUG);
+		Server->Log("Error reading file metadata from file \""+in_fn+"\"", LL_DEBUG);
 		return false;
 	}
 
@@ -291,7 +291,7 @@ bool read_metadata(IFile* in, FileMetadata& metadata)
 	in->Seek(0);
 	if(in->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
 	{
-		Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\"", LL_DEBUG);
+		Server->Log("Error reading file metadata hashfilesize from \""+in->getFilename()+"\"", LL_DEBUG);
 		return false;
 	}
 
@@ -305,7 +305,7 @@ bool read_metadata(IFile* in, FileMetadata& metadata)
 	return read_metadata_values(in, metadata);
 }
 
-bool has_metadata( const std::wstring& in_fn, const FileMetadata& metadata )
+bool has_metadata( const std::string& in_fn, const FileMetadata& metadata )
 {
 	FileMetadata r_metadata;
 	if(!read_metadata(in_fn, r_metadata))
@@ -317,23 +317,23 @@ bool has_metadata( const std::wstring& in_fn, const FileMetadata& metadata )
 }
 
 
-std::wstring escape_metadata_fn( const std::wstring& fn )
+std::string escape_metadata_fn( const std::string& fn )
 {
 	if(fn.find(metadata_dir_fn)==0)
 	{
-		std::wstring num_str = fn.substr(sizeof(metadata_dir_fn)/sizeof(metadata_dir_fn[0])-1);
+		std::string num_str = fn.substr(sizeof(metadata_dir_fn)/sizeof(metadata_dir_fn[0])-1);
 		if(num_str.empty())
 		{
-			return fn+L"0";
+			return fn+"0";
 		}
 
-		size_t num_num = std::count_if(num_str.begin(), num_str.end(), static_cast<bool(*)(wchar_t)>(str_isnumber));
+		size_t num_num = std::count_if(num_str.begin(), num_str.end(), str_isnumber);
 		if(num_num!=num_str.size())
 		{
 			return fn;
 		}
 
-		return std::wstring(metadata_dir_fn)+convert(watoi64(num_str)+1);
+		return std::string(metadata_dir_fn)+convert(watoi64(num_str)+1);
 	}
 	else
 	{
@@ -341,17 +341,17 @@ std::wstring escape_metadata_fn( const std::wstring& fn )
 	}
 }
 
-std::wstring unescape_metadata_fn( const std::wstring& fn )
+std::string unescape_metadata_fn( const std::string& fn )
 {
 	if(fn.find(metadata_dir_fn)==0)
 	{
-		std::wstring num_str = fn.substr(sizeof(metadata_dir_fn)/sizeof(metadata_dir_fn[0])-1);
+		std::string num_str = fn.substr(sizeof(metadata_dir_fn)/sizeof(metadata_dir_fn[0])-1);
 		if(num_str.empty())
 		{
 			return fn;
 		}
 
-		size_t num_num = std::count_if(num_str.begin(), num_str.end(), static_cast<bool(*)(wchar_t)>(str_isnumber));
+		size_t num_num = std::count_if(num_str.begin(), num_str.end(), str_isnumber);
 		if(num_num!=num_str.size())
 		{
 			return fn;
@@ -365,7 +365,7 @@ std::wstring unescape_metadata_fn( const std::wstring& fn )
 		}
 		else
 		{
-			return std::wstring(metadata_dir_fn)+convert(c);
+			return std::string(metadata_dir_fn)+convert(c);
 		}
 	}
 	else
@@ -381,7 +381,7 @@ int64 os_metadata_offset( IFile* meta_file )
 	meta_file->Seek(0);
 	if(meta_file->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
 	{
-		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\"", LL_DEBUG);
+		Server->Log("Error reading file metadata hashfilesize from \""+meta_file->getFilename()+"\"", LL_DEBUG);
 		return -1;
 	}
 
@@ -401,7 +401,7 @@ int64 os_metadata_offset( IFile* meta_file )
 
 	if(!meta_file->Seek(meta_offset))
 	{
-		Server->Log(L"Error seeking to metadata in \""+meta_file->getFilenameW()+L"\"", LL_DEBUG);
+		Server->Log("Error seeking to metadata in \""+meta_file->getFilename()+"\"", LL_DEBUG);
 		return -1;
 	}
 
@@ -409,33 +409,33 @@ int64 os_metadata_offset( IFile* meta_file )
 	if(meta_file->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||
 		metadata_size_and_magic[0]==0)
 	{
-		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\" -2", LL_DEBUG);
+		Server->Log("Error reading file metadata hashfilesize from \""+meta_file->getFilename()+"\" -2", LL_DEBUG);
 		return -1;
 	}
 
 	if(little_endian(metadata_size_and_magic[1])!=METADATA_MAGIC)
 	{
-		Server->Log(L"Metadata magic wrong in file \""+meta_file->getFilenameW(), LL_DEBUG);
+		Server->Log("Metadata magic wrong in file \""+meta_file->getFilename(), LL_DEBUG);
 		return -1;
 	}
 
 	return meta_offset + sizeof(_u32) + little_endian(metadata_size_and_magic[0]);
 }
 
-bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb)
+bool copy_os_metadata( const std::string& in_fn, const std::string& out_fn, INotEnoughSpaceCallback *cb)
 {
 	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
     std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_RW));
 
 	if(in_f.get()==NULL)
 	{
-		Server->Log(L"Error opening metadata file \""+in_fn+L"\" (input)", LL_ERROR);
+		Server->Log("Error opening metadata file \""+in_fn+"\" (input)", LL_ERROR);
 		return false;
 	}
 
 	if(out_f.get()==NULL)
 	{
-		Server->Log(L"Error opening metadata file \""+out_fn+L"\" (output)", LL_ERROR);
+		Server->Log("Error opening metadata file \""+out_fn+"\" (output)", LL_ERROR);
 		return false;
 	}
 
@@ -448,13 +448,13 @@ bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, IN
 
 	if(!in_f->Seek(offset))
 	{
-		Server->Log(L"Error seeking to os metadata in \""+in_fn+L"\" (input)", LL_ERROR);
+		Server->Log("Error seeking to os metadata in \""+in_fn+"\" (input)", LL_ERROR);
 		return false;
 	}
 
 	if(!out_f->Seek(out_f->Size()))
 	{
-		Server->Log(L"Error seeking to os metadata in \""+out_fn+L"\" (output)", LL_ERROR);
+		Server->Log("Error seeking to os metadata in \""+out_fn+"\" (output)", LL_ERROR);
 		return false;
 	}
 
@@ -468,7 +468,7 @@ bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, IN
 
 		if(!writeRepeatFreeSpace(out_f.get(), buffer.data(), read, cb))
 		{
-			Server->Log(L"Error while writing os metadata to \""+out_fn+L"\" (output)", LL_ERROR);
+			Server->Log("Error while writing os metadata to \""+out_fn+"\" (output)", LL_ERROR);
 			return false;
 		}
 
@@ -484,7 +484,7 @@ int64 read_hashdata_size( IFile* meta_file )
 	meta_file->Seek(0);
 	if(meta_file->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
 	{
-		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\"", LL_DEBUG);
+		Server->Log("Error reading file metadata hashfilesize from \""+meta_file->getFilename()+"\"", LL_DEBUG);
 		return -1;
 	}
 
@@ -521,17 +521,17 @@ bool FileMetadata::read( CRData& data )
 
 bool FileMetadata::read( str_map& extra_params )
 {
-	str_map::iterator it_orig_path = extra_params.find(L"orig_path");
+	str_map::iterator it_orig_path = extra_params.find("orig_path");
 	if(it_orig_path!=extra_params.end())
 	{
-		orig_path = Server->ConvertToUTF8(it_orig_path->second);
+		orig_path = (it_orig_path->second);
 		has_orig_path=true;
 	}
 
-    str_map::iterator it_shahash = extra_params.find(L"sha512");
+    str_map::iterator it_shahash = extra_params.find("sha512");
     if(it_shahash!=extra_params.end())
     {
-        shahash = base64_decode_dash(wnarrow(it_shahash->second));
+        shahash = base64_decode_dash(it_shahash->second);
     }
 
 	if(has_orig_path || !shahash.empty())

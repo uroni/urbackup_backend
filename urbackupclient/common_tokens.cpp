@@ -29,9 +29,9 @@ namespace tokens
 {
 
 #ifdef _WIN32
-const wchar_t* tokens_path = L"tokens";
+const char* tokens_path = "tokens";
 #else
-const wchar_t* tokens_path = L"urbackup/tokens";
+const char* tokens_path = "urbackup/tokens";
 #endif
 
 bool write_tokens()
@@ -39,25 +39,25 @@ bool write_tokens()
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	ClientDAO dao(db);
 
-	std::wstring hostname = get_hostname();
+	std::string hostname = get_hostname();
 
 	db->BeginWriteTransaction();
 
 	bool has_new_token=false;
-	std::vector<std::wstring> users = get_users();
+	std::vector<std::string> users = get_users();
 
 	os_create_dir(tokens_path);
 
 #ifndef _WIN32
-	chmod(Server->ConvertToUTF8(tokens_path).c_str(), S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+	chmod(tokens_path, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
 #endif
 
 	std::vector<SFile> files = getFilesWin(tokens_path, NULL, false, false);
 
 	for(size_t i=0;i<users.size();++i)
 	{
-		std::wstring user_fn=L"user_"+widen(bytesToHex(Server->ConvertToUTF8(users[i])));
-		std::wstring token_fn = tokens_path + os_file_sep()+user_fn;
+		std::string user_fn="user_"+bytesToHex((users[i]));
+		std::string token_fn = tokens_path + os_file_sep()+user_fn;
 		bool file_found=false;
 		for(size_t j=0;j<files.size();++j)
 		{
@@ -76,12 +76,12 @@ bool write_tokens()
 		has_new_token |= write_token(hostname, true, users[i], token_fn, dao);
 	}
 
-	std::vector<std::wstring> groups = get_groups();
+	std::vector<std::string> groups = get_groups();
 
 	for(size_t i=0;i<groups.size();++i)
 	{
-		std::wstring group_fn=L"group_"+widen(bytesToHex(Server->ConvertToUTF8(groups[i])));
-		std::wstring token_fn = tokens_path + os_file_sep()+group_fn;
+		std::string group_fn="group_"+bytesToHex((groups[i]));
+		std::string token_fn = tokens_path + os_file_sep()+group_fn;
 		bool file_found=false;
 		for(size_t j=0;j<files.size();++j)
 		{
@@ -109,7 +109,7 @@ bool write_tokens()
 		{
 			for(size_t i=0;i<users.size();++i)
 			{
-				std::vector<std::wstring> user_groups = get_user_groups(users[i]);
+				std::vector<std::string> user_groups = get_user_groups(users[i]);
 
 				ClientDAO::CondInt64 uid = dao.getFileAccessTokenId(users[i], 1);
 				if(uid.exists)

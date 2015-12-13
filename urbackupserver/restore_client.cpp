@@ -40,7 +40,7 @@ namespace
 	class MetadataCallback : public IFileServ::IMetadataCallback
 	{
 	public:
-		MetadataCallback(const std::wstring& basedir)
+		MetadataCallback(const std::string& basedir)
 			: basedir(basedir)
 		{
 
@@ -50,7 +50,7 @@ namespace
 		{
 			if(path.empty()) return NULL;
 
-			std::wstring metadata_path = basedir;
+			std::string metadata_path = basedir;
 
 			std::vector<std::string> path_segments;
 			TokenizeMail(path.substr(1), path_segments, "/");
@@ -64,7 +64,7 @@ namespace
 					continue;
 				}
 
-				metadata_path+=os_file_sep() + escape_metadata_fn(Server->ConvertToUnicode(path_segments[i]));
+				metadata_path+=os_file_sep() + escape_metadata_fn((path_segments[i]));
 
 				if(i==path_segments.size()-1 && isdir)
 				{
@@ -95,23 +95,23 @@ namespace
 		}
 
 	private:
-		std::wstring basedir;
+		std::string basedir;
 	};
 
 	class ClientDownloadThread : public IThread
 	{
 	public:
-		ClientDownloadThread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::wstring& foldername,
-			const std::wstring& hashfoldername, const std::wstring& filter,
+		ClientDownloadThread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::string& foldername,
+			const std::string& hashfoldername, const std::string& filter,
 			bool token_authentication,
 			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
-			const std::wstring& folder_log_name)
+			const std::string& folder_log_name)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
 			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name)
 		{
-			TokenizeMail(filter, filter_fns, L"/");
+			TokenizeMail(filter, filter_fns, "/");
 		}
 
 		void operator()()
@@ -125,22 +125,22 @@ namespace
 			ServerBackupDao backup_dao(db);
 
 			std::string identity = ServerSettings::generateRandomAuthKey(25);
-			backup_dao.addRestore(restore_clientid, folder_log_name, widen(identity));
+			backup_dao.addRestore(restore_clientid, folder_log_name, identity);
 			int64 restore_id = db->getLastInsertID();
 			size_t status_id = ServerStatus::startProcess(curr_clientname, sa_restore);
 
 			logid_t log_id = ServerLogger::getLogId(restore_clientid);
 
 			fileserv->addIdentity(identity);
-			fileserv->shareDir(L"clientdl_filelist", filelist_f->getFilenameW(), identity);
+			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl_filelist", identity, true, false));
 
 			delete filelist_f;
 
 			MetadataCallback* callback = new MetadataCallback(hashfoldername);
-			fileserv->shareDir(L"clientdl", foldername, identity);
+			fileserv->shareDir("clientdl", foldername, identity);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
-			fileserv->registerMetadataCallback(L"clientdl", identity, callback);
+			fileserv->registerMetadataCallback("clientdl", identity, callback);
 
 
 			CWData data;
@@ -154,14 +154,14 @@ namespace
 			ServerStatus::sendToCommPipe(curr_clientname, msg);
 		}
 
-		bool writeFile(const std::wstring& data)
+		bool writeFile(const std::string& data)
 		{
-			std::string towrite = Server->ConvertToUTF8(data);
+			std::string towrite = (data);
 			return filelist_f->Write(towrite)==towrite.size();
 		}
 
 
-		bool createFilelist(const std::wstring& foldername, const std::wstring& hashfoldername, size_t depth, bool skip_special)
+		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, size_t depth, bool skip_special)
 		{
 			bool has_error=false;
 			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
@@ -181,13 +181,13 @@ namespace
 				}
 
 				if(skip_special
-					&& (file.name==L".hashes" || file.name==L"user_views") )
+					&& (file.name==".hashes" || file.name=="user_views") )
 				{
 					continue;
 				}
 
-				std::wstring metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
-				std::wstring filename = foldername + os_file_sep() + file.name;
+				std::string metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
+				std::string filename = foldername + os_file_sep() + file.name;
 
 				if(file.isdir)
 				{
@@ -214,7 +214,7 @@ namespace
 
 				std::string extra;
 
-				std::string fn_utf8 = Server->ConvertToUTF8(file.name);
+				std::string fn_utf8 = (file.name);
 
 				if(!metadata.orig_path.empty() &&
 					(depth==0 || metadata.orig_path.find(fn_utf8)!=metadata.orig_path.size()-fn_utf8.size()))
@@ -234,7 +234,7 @@ namespace
 					ret = ret && createFilelist(filename, hashfoldername + os_file_sep() + escape_metadata_fn(file.name), depth+1, false);
 
 					SFile cf;
-					cf.name=L"..";
+					cf.name="..";
 					cf.isdir=true;
 					writeFileItem(filelist_f, cf);
 				}
@@ -244,24 +244,24 @@ namespace
 		}
 
 	private:
-		std::wstring curr_clientname;
+		std::string curr_clientname;
 		int curr_clientid;
 		int restore_clientid;
 		IFile* filelist_f;
-		std::wstring foldername;
-		std::wstring hashfoldername;
-		std::vector<std::wstring> filter_fns;
+		std::string foldername;
+		std::string hashfoldername;
+		std::vector<std::string> filter_fns;
 		bool token_authentication;
 		std::vector<backupaccess::SToken> backup_tokens;
 		std::vector<std::string> tokens;
 		bool skip_special_root;
-		std::wstring folder_log_name;
+		std::string folder_log_name;
 	};
 }
 
-bool create_clientdl_thread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, const std::wstring& foldername, const std::wstring& hashfoldername,
-	const std::wstring& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
-	const std::wstring& folder_log_name)
+bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, const std::string& foldername, const std::string& hashfoldername,
+	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
+	const std::string& folder_log_name)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -276,7 +276,7 @@ bool create_clientdl_thread(const std::wstring& curr_clientname, int curr_client
 	return true;
 }
 
-bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, int curr_clientid)
+bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -286,7 +286,7 @@ bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, 
 
 	if(!file_backup_info.exists)
 	{
-		Server->Log("Could not get file backup info for backupid "+nconvert(backupid));
+		Server->Log("Could not get file backup info for backupid "+convert(backupid));
 		return false;
 	}
 
@@ -294,11 +294,11 @@ bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, 
 
 	if(!client_name.exists)
 	{
-		Server->Log("Could not get client name for clientid "+nconvert(file_backup_info.clientid));
+		Server->Log("Could not get client name for clientid "+convert(file_backup_info.clientid));
 		return false;
 	}
 
-	ServerBackupDao::CondString backupfolder = backup_dao.getSetting(0, L"backupfolder");
+	ServerBackupDao::CondString backupfolder = backup_dao.getSetting(0, "backupfolder");
 
 	if(!backupfolder.exists)
 	{
@@ -306,12 +306,12 @@ bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, 
 		return false;
 	}
 
-	std::wstring curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
-	std::wstring curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+L".hashes";
+	std::string curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
+	std::string curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+".hashes";
 
 	std::vector<backupaccess::SToken> backup_tokens;
 	std::vector<std::string> tokens;
-	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::wstring(), false, backup_tokens,
-		tokens, true, L"");
+	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(), false, backup_tokens,
+		tokens, true, "");
 }
 

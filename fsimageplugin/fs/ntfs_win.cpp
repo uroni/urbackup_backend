@@ -21,10 +21,10 @@
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
 
-FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev, bool read_ahead, bool background_priority)
+FSNTFSWIN::FSNTFSWIN(const std::string &pDev, bool read_ahead, bool background_priority)
 	: Filesystem(pDev, read_ahead, background_priority), bitmap(NULL)
 {
-	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
+	HANDLE hDev=CreateFileW( Server->ConvertToWchar(pDev).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Error opening device -2", LL_ERROR);
@@ -36,7 +36,7 @@ FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev, bool read_ahead, bool background_
 	DWORD bytes_per_sector;
 	DWORD NumberOfFreeClusters;
 	DWORD TotalNumberOfClusters;
-	BOOL b=GetDiskFreeSpaceW((pDev+L"\\").c_str(), &sectors_per_cluster, &bytes_per_sector, &NumberOfFreeClusters, &TotalNumberOfClusters);
+	BOOL b=GetDiskFreeSpaceW((Server->ConvertToWchar(pDev)+L"\\").c_str(), &sectors_per_cluster, &bytes_per_sector, &NumberOfFreeClusters, &TotalNumberOfClusters);
 	if(!b)
 	{
 		Server->Log("Error in GetDiskFreeSpaceW", LL_ERROR);
@@ -87,7 +87,7 @@ FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev, bool read_ahead, bool background_
 		return;
 	}
 
-	Server->Log("TotalNumberOfClusters="+nconvert((size_t)TotalNumberOfClusters)+" numberOfClusters="+nconvert(numberOfClusters)+" n_clusters="+nconvert(n_clusters)+" StartingLcn="+nconvert(vbb->StartingLcn.QuadPart)+" BitmapSize="+nconvert(vbb->BitmapSize.QuadPart)+" r_bytes="+nconvert((size_t)r_bytes), LL_DEBUG);
+	Server->Log("TotalNumberOfClusters="+convert((size_t)TotalNumberOfClusters)+" numberOfClusters="+convert(numberOfClusters)+" n_clusters="+convert(n_clusters)+" StartingLcn="+convert(vbb->StartingLcn.QuadPart)+" BitmapSize="+convert(vbb->BitmapSize.QuadPart)+" r_bytes="+convert((size_t)r_bytes), LL_DEBUG);
 
 	bitmap=new unsigned char[(unsigned int)(n_clusters)];
 	memset(bitmap, 0xFF, n_clusters);
@@ -118,30 +118,30 @@ const unsigned char * FSNTFSWIN::getBitmap(void)
 	return bitmap;
 }
 
-bool FSNTFSWIN::excludeFiles( const std::wstring& path, const std::wstring& fn_contains )
+bool FSNTFSWIN::excludeFiles( const std::string& path, const std::string& fn_contains )
 {
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
-	std::wstring tpath=path;
+	std::wstring tpath=Server->ConvertToWchar(path);
 	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
-	fHandle=FindFirstFileW((tpath+L"\\*"+fn_contains+L"*").c_str(),&wfd); 
+	fHandle=FindFirstFileW((tpath+L"\\*"+Server->ConvertToWchar(fn_contains)+L"*").c_str(),&wfd); 
 
 	if(fHandle==INVALID_HANDLE_VALUE)
 	{
-		Server->Log(L"Error opening find handle to "+tpath+L" err: "+convert((int)GetLastError()), LL_WARNING);
+		Server->Log("Error opening find handle to "+path+" err: "+convert((int)GetLastError()), LL_WARNING);
 		return false;
 	}
 
 	bool ret=true;
 	do
 	{
-		std::wstring name = wfd.cFileName;
-		if(name==L"." || name==L".." )
+		std::string name = Server->ConvertFromWchar(wfd.cFileName);
+		if(name=="." || name==".." )
 			continue;
 
 		if(!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 		{
-			if(!excludeFile(tpath+L"\\"+name))
+			if(!excludeFile(tpath+L"\\"+wfd.cFileName))
 			{
 				ret=false;
 			}
@@ -184,7 +184,7 @@ bool FSNTFSWIN::excludeBlock( int64 block )
 
 bool FSNTFSWIN::excludeFile( const std::wstring& path )
 {
-	Server->Log(L"Trying to exclude contents of file "+path+L" from backup...", LL_DEBUG);
+	Server->Log("Trying to exclude contents of file "+Server->ConvertFromWchar(path)+" from backup...", LL_DEBUG);
 
 	HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
@@ -218,7 +218,7 @@ bool FSNTFSWIN::excludeFile( const std::wstring& path )
 
 						if(!excludeSectors(ret_ptrs->Extents[i].Lcn.QuadPart, count))
 						{
-							Server->Log(L"Error excluding sectors of file "+path, LL_WARNING);
+							Server->Log("Error excluding sectors of file "+Server->ConvertFromWchar(path), LL_WARNING);
 						}
 					}							
 
@@ -234,7 +234,7 @@ bool FSNTFSWIN::excludeFile( const std::wstring& path )
 				}
 				else
 				{
-					Server->Log("Error "+nconvert((int)GetLastError())+" while accessing retrieval points", LL_WARNING);
+					Server->Log("Error "+convert((int)GetLastError())+" while accessing retrieval points", LL_WARNING);
 					CloseHandle(hFile);
 					break;
 				}
@@ -249,7 +249,7 @@ bool FSNTFSWIN::excludeFile( const std::wstring& path )
 	}
 	else
 	{
-		Server->Log(L"Error opening file handle to "+path, LL_WARNING);
+		Server->Log("Error opening file handle to "+Server->ConvertFromWchar(path), LL_WARNING);
 		return false;
 	}
 }

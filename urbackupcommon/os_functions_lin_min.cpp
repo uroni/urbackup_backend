@@ -89,12 +89,7 @@ bool os_create_hardlink(const std::string &linkname, const std::string &fname, b
 	return rc==0;
 }
 
-std::wstring os_file_sep(void)
-{
-	return L"/";
-}
-
-std::string os_file_sepn(void)
+std::string os_file_sep(void)
 {
 	return "/";
 }

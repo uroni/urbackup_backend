@@ -37,8 +37,8 @@
 #include "DirectoryWatcherThread.h"
 #else
 #include "lin_ver.h"
-std::wstring getSysVolumeCached(std::wstring &mpath){ return L""; }
-std::wstring getEspVolume(std::wstring &mpath){ return L""; }
+std::string getSysVolumeCached(std::string &mpath){ return ""; }
+std::string getEspVolume(std::string &mpath){ return ""; }
 #endif
 #include "../client_version.h"
 
@@ -114,7 +114,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
 	}
 
 	IScopedLock lock(ident_mutex);
-	std::string challenge = Server->secureRandomString(30)+"-"+nconvert(Server->getTimeSeconds())+"-"+nconvert(Server->getTimeMS());
+	std::string challenge = Server->secureRandomString(30)+"-"+convert(Server->getTimeSeconds())+"-"+convert(Server->getTimeMS());
 	challenges[identity]=challenge;
 
 	tcpstack.Send(pipe, challenge);
@@ -135,7 +135,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 		return;
 	}
 
-	str_nmap::iterator challenge_it = challenges.find(identity);
+	str_map::iterator challenge_it = challenges.find(identity);
 
 	if(challenge_it==challenges.end() || challenge_it->second.empty())
 	{
@@ -157,11 +157,11 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	str_map params;
 	ParseParamStrHttp(cmd.substr(hashpos+1), &params);
 
-	std::string pubkey = base64_decode_dash(wnarrow(params[L"pubkey"]));
-	std::string pubkey_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"]));
-	std::string signature = base64_decode_dash(wnarrow(params[L"signature"]));
-	std::string signature_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"signature_ecdsa409k1"]));
-	std::string session_identity = Server->ConvertToUTF8(params[L"session_identity"]);
+	std::string pubkey = base64_decode_dash(params["pubkey"]);
+	std::string pubkey_ecdsa409k1 = base64_decode_dash(params["pubkey_ecdsa409k1"]);
+	std::string signature = base64_decode_dash(params["signature"]);
+	std::string signature_ecdsa409k1 = base64_decode_dash(params["signature_ecdsa409k1"]);
+	std::string session_identity = params["session_identity"];
 
 	if(!ServerIdentityMgr::hasPublicKey(identity))
 	{
@@ -205,8 +205,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		ParseParamStrHttp(s_params, &params);
 	}
 
-	std::wstring resume = params[L"resume"];
-	std::wstring sha_version_str = params[L"sha"];
+	std::string resume = params["resume"];
+	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
 	if(!sha_version_str.empty())
 	{
@@ -215,7 +215,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	int group=c_group_default;
 
-	str_map::iterator it_group = params.find(L"group");
+	str_map::iterator it_group = params.find("group");
 	if(it_group!=params.end())
 	{
 		group = watoi(it_group->second);
@@ -223,30 +223,30 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	std::string clientsubname;
 
-	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	str_map::iterator it_clientsubname = params.find("clientsubname");
 	if(it_clientsubname!=params.end())
 	{
-		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
+		clientsubname = conv_filename((it_clientsubname->second));
 	}
 
 	unsigned int flags = 0;
 
-	if(params.find(L"with_scripts")!=params.end())
+	if(params.find("with_scripts")!=params.end())
 	{
 		flags |= flag_with_scripts;
 	}
 
-	if(params.find(L"with_orig_path")!=params.end())
+	if(params.find("with_orig_path")!=params.end())
 	{
 		flags |= flag_with_orig_path;
 	}
 
-	if(params.find(L"with_sequence")!=params.end())
+	if(params.find("with_sequence")!=params.end())
 	{
 		flags |= flag_with_sequence;
 	}
 
-	if(params.find(L"with_proper_symlinks")!=params.end())
+	if(params.find("with_proper_symlinks")!=params.end())
 	{
 		flags |= flag_with_proper_symlinks;
 	}
@@ -282,11 +282,11 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	{
 		backup_running=RUNNING_INCR_FILE;
 	}
-	else if(resume==L"full")
+	else if(resume=="full")
 	{
 		backup_running=RUNNING_RESUME_FULL_FILE;
 	}
-	else if(resume==L"incr")
+	else if(resume=="incr")
 	{
 		backup_running=RUNNING_RESUME_INCR_FILE;
 	}
@@ -322,43 +322,43 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	int group=c_group_default;
 
-	str_map::iterator it_group = params.find(L"group");
+	str_map::iterator it_group = params.find("group");
 	if(it_group!=params.end())
 	{
 		group = watoi(it_group->second);
 	}
 
-	std::wstring sha_version_str = params[L"sha"];
+	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
 	if(!sha_version_str.empty())
 	{
 		sha_version = watoi(sha_version_str);
 	}
 	std::string clientsubname;
-	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	str_map::iterator it_clientsubname = params.find("clientsubname");
 	if(it_clientsubname!=params.end())
 	{
-		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
+		clientsubname = conv_filename((it_clientsubname->second));
 	}
 
 	int flags = 0;
 
-	if(params.find(L"with_scripts")!=params.end())
+	if(params.find("with_scripts")!=params.end())
 	{
 		flags |= flag_with_scripts;
 	}
 
-	if(params.find(L"with_orig_path")!=params.end())
+	if(params.find("with_orig_path")!=params.end())
 	{
 		flags |= flag_with_orig_path;
 	}
 
-	if(params.find(L"with_sequence")!=params.end())
+	if(params.find("with_sequence")!=params.end())
 	{
 		flags |= flag_with_sequence;
 	}
 
-	if(params.find(L"with_proper_symlinks")!=params.end())
+	if(params.find("with_proper_symlinks")!=params.end())
 	{
 		flags |= flag_with_proper_symlinks;
 	}
@@ -470,14 +470,14 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 		JSON::Array dirs;
 		for(size_t i=0;i<res.size();++i)
 		{
-			if(res[i][L"name"]==L"*") continue;
+			if(res[i]["name"]=="*") continue;
 
 			JSON::Object cdir;
 
-			cdir.set("id", watoi(res[i][L"id"]));
-			cdir.set("name", res[i][L"name"]);
-			cdir.set("path", res[i][L"path"]);
-			cdir.set("group", watoi(res[i][L"tgroup"]));
+			cdir.set("id", watoi(res[i]["id"]));
+			cdir.set("name", res[i]["name"]);
+			cdir.set("path", res[i]["path"]);
+			cdir.set("group", watoi(res[i]["tgroup"]));
 
 			dirs.add(cdir);
 		}
@@ -514,11 +514,11 @@ void ClientConnector::CMD_GET_INCRINTERVAL(const std::string &cmd)
 {
 	if(incr_update_intervall==0 )
 	{
-		tcpstack.Send(pipe, nconvert(0));
+		tcpstack.Send(pipe, convert(0));
 	}
 	else
 	{
-		tcpstack.Send(pipe, nconvert(incr_update_intervall+10*60) );
+		tcpstack.Send(pipe, convert(incr_update_intervall+10*60) );
 	}
 	lasttime=Server->getTimeMS();
 }
@@ -565,7 +565,7 @@ std::string ClientConnector::getLastBackupTime()
 
 	if(res.size()>0)
 	{
-		return Server->ConvertToUTF8(res[0][L"last_backup"]);
+		return (res[0]["last_backup"]);
 	}
 	else
 	{
@@ -724,7 +724,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 
 	if(backup_source_token.empty() || backup_source_token==server_token )
 	{
-		std::wstring pcdone_new=params[L"pc_done"];
+		std::string pcdone_new=params["pc_done"];
 
 		int pcdone_old = pcdone;
 
@@ -738,7 +738,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 			status_updated = true;
 		}
 
-		eta_ms = watoi64(params[L"eta_ms"]);
+		eta_ms = watoi64(params["eta_ms"]);
 	}
 	last_token_times[server_token]=Server->getTimeSeconds();
 
@@ -758,8 +758,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 		std::string s_params=cmd.substr(9);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
-		int capa=watoi(params[L"capa"]);
-		token=wnarrow(params[L"token"]);
+		int capa=watoi(params["capa"]);
+		token=params["token"];
 
 		channel_capa.push_back(capa);
 
@@ -769,7 +769,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
 		lasttime=Server->getTimeMS();
-		Server->Log("New channel: Number of Channels: "+nconvert((int)channel_pipes.size()), LL_DEBUG);
+		Server->Log("New channel: Number of Channels: "+convert((int)channel_pipes.size()), LL_DEBUG);
 	}
 }
 
@@ -888,8 +888,8 @@ void ClientConnector::CMD_GET_LOGPOINTS(const std::string &cmd)
 void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
-	int logid=watoi(params[L"logid"]);
-	int loglevel=watoi(params[L"loglevel"]);
+	int logid=watoi(params["logid"]);
+	int loglevel=watoi(params["loglevel"]);
 	std::string ret;
 	getLogLevel(logid, loglevel, ret);
 	tcpstack.Send(pipe, ret);
@@ -904,35 +904,35 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
-		server_token=Server->ConvertToUTF8(params[L"token"]);
-		image_inf.image_letter=Server->ConvertToUTF8(params[L"letter"]);
-		image_inf.shadowdrive=Server->ConvertToUTF8(params[L"shadowdrive"]);
-		if(params.find(L"start")!=params.end())
+		server_token=(params["token"]);
+		image_inf.image_letter=(params["letter"]);
+		image_inf.shadowdrive=(params["shadowdrive"]);
+		if(params.find("start")!=params.end())
 		{
-			image_inf.startpos=(uint64)_atoi64(Server->ConvertToUTF8(params[L"start"]).c_str());
+			image_inf.startpos=(uint64)_atoi64((params["start"]).c_str());
 		}
 		else
 		{
 			image_inf.startpos=0;
 		}
-		if(params.find(L"shadowid")!=params.end())
+		if(params.find("shadowid")!=params.end())
 		{
-			image_inf.shadow_id=watoi(params[L"shadowid"]);
+			image_inf.shadow_id=watoi(params["shadowid"]);
 		}
 		else
 		{
 			image_inf.shadow_id=-1;
 		}
 		image_inf.with_checksum=false;
-		if(params.find(L"checksum")!=params.end())
+		if(params.find("checksum")!=params.end())
 		{
-			if(params[L"checksum"]==L"1")
+			if(params["checksum"]=="1")
 				image_inf.with_checksum=true;
 		}
 		image_inf.with_bitmap=false;
-		if(params.find(L"bitmap")!=params.end())
+		if(params.find("bitmap")!=params.end())
 		{
-			if(params[L"bitmap"]==L"1")
+			if(params["bitmap"]=="1")
 				image_inf.with_bitmap=true;
 		}
 
@@ -940,12 +940,12 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 		image_inf.no_shadowcopy=false;
 
-		if(image_inf.image_letter=="SYSVOL"
+		if(image_inf.image_letter=="SYSVO"
 			|| image_inf.image_letter=="ESP")
 		{
-			std::wstring mpath;
-			std::wstring sysvol;
-			if(image_inf.image_letter=="SYSVOL")
+			std::string mpath;
+			std::string sysvol;
+			if(image_inf.image_letter=="SYSVO")
 			{
 				sysvol=getSysVolumeCached(mpath);
 			}
@@ -956,11 +956,11 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			
 			if(!mpath.empty())
 			{
-				image_inf.image_letter=Server->ConvertToUTF8(mpath);
+				image_inf.image_letter=(mpath);
 			}
 			else
 			{
-				image_inf.image_letter=Server->ConvertToUTF8(sysvol);
+				image_inf.image_letter=(sysvol);
 				image_inf.no_shadowcopy=true;
 			}
 		}
@@ -1015,41 +1015,41 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
-		server_token=Server->ConvertToUTF8(params[L"token"]);
+		server_token=(params["token"]);
 
-		str_map::iterator f_hashsize=params.find(L"hashsize");
+		str_map::iterator f_hashsize=params.find("hashsize");
 		if(f_hashsize!=params.end())
 		{
 			hashdataok=false;
 			hashdataleft=watoi(f_hashsize->second);
-			image_inf.image_letter=Server->ConvertToUTF8(params[L"letter"]);
-			image_inf.shadowdrive=Server->ConvertToUTF8(params[L"shadowdrive"]);
-			if(params.find(L"start")!=params.end())
+			image_inf.image_letter=(params["letter"]);
+			image_inf.shadowdrive=(params["shadowdrive"]);
+			if(params.find("start")!=params.end())
 			{
-				image_inf.startpos=(uint64)_atoi64(Server->ConvertToUTF8(params[L"start"]).c_str());
+				image_inf.startpos=(uint64)_atoi64((params["start"]).c_str());
 			}
 			else
 			{
 				image_inf.startpos=0;
 			}
-			if(params.find(L"shadowid")!=params.end())
+			if(params.find("shadowid")!=params.end())
 			{
-				image_inf.shadow_id=watoi(params[L"shadowid"]);
+				image_inf.shadow_id=watoi(params["shadowid"]);
 			}
 			else
 			{
 				image_inf.shadow_id=-1;
 			}
 			image_inf.with_checksum=false;
-			if(params.find(L"checksum")!=params.end())
+			if(params.find("checksum")!=params.end())
 			{
-				if(params[L"checksum"]==L"1")
+				if(params["checksum"]=="1")
 					image_inf.with_checksum=true;
 			}
 			image_inf.with_bitmap=false;
-			if(params.find(L"bitmap")!=params.end())
+			if(params.find("bitmap")!=params.end())
 			{
-				if(params[L"bitmap"]==L"1")
+				if(params["bitmap"]=="1")
 					image_inf.with_bitmap=true;
 			}
 			
@@ -1057,9 +1057,9 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 
 
 			image_inf.with_emptyblocks=false;
-			if(params.find(L"emptyblocks")!=params.end())
+			if(params.find("emptyblocks")!=params.end())
 			{
-				if(params[L"emptyblocks"]==L"1")
+				if(params["emptyblocks"]=="1")
 					image_inf.with_emptyblocks=true;
 			}
 
@@ -1106,7 +1106,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				if(hashdataleft>=tcpstack.getBuffersize())
 				{
 					hashdataleft-=(_u32)tcpstack.getBuffersize();
-					//Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
+					//Server->Log("Hashdataleft: "+convert(hashdataleft), LL_DEBUG);
 				}
 				else
 				{
@@ -1138,21 +1138,21 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	str_map params;
 	ParseParamStrHttp(s_params, &params);
 
-	std::wstring dl=params[L"driveletter"];
+	std::string dl=params["driveletter"];
 
-	if(dl==L"SYSVOL")
+	if(dl=="SYSVO")
 	{
-		std::wstring mpath;
+		std::string mpath;
 		dl=getSysVolumeCached(mpath);
 	}
-	else if(dl==L"ESP")
+	else if(dl=="ESP")
 	{
-		std::wstring mpath;
+		std::string mpath;
 		dl=getEspVolume(mpath);
 	}
 
 	bool b=false;
-	std::wstring errmsg;
+	std::string errmsg;
 	if(!dl.empty())
 	{
 		b=sendMBR(dl, errmsg);
@@ -1161,7 +1161,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	{
 		CWData r;
 		r.addChar(0);
-		r.addString(Server->ConvertToUTF8(errmsg));
+		r.addString((errmsg));
 		tcpstack.Send(pipe, r);
 	}
 }
@@ -1187,7 +1187,7 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
 						
-			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+			Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
 					
 			if(!nc.empty())
 			{
@@ -1261,7 +1261,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 	else
 	{
 
-		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		std::string utf8_tokens = (params["tokens"]);
 		std::string filebackups;
 		std::string accessparams;
 
@@ -1280,7 +1280,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
+						std::string token_params = getAccessTokensParams(params["tokens"], true);
 
 						if(token_params.empty())
 						{
@@ -1352,18 +1352,18 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 	{
 		std::string accessparams;
 
-		str_map::iterator it_path = params.find(L"path");
+		str_map::iterator it_path = params.find("path");
 
 		if(it_path!=params.end())
 		{
-			accessparams+="&path="+EscapeParamString(Server->ConvertToUTF8(it_path->second));
+			accessparams+="&path="+EscapeParamString((it_path->second));
 		}
 
-		str_map::iterator it_backupid = params.find(L"backupid");
+		str_map::iterator it_backupid = params.find("backupid");
 
 		if(it_backupid!=params.end())
 		{
-			accessparams+="&backupid="+EscapeParamString(Server->ConvertToUTF8(it_backupid->second));
+			accessparams+="&backupid="+EscapeParamString((it_backupid->second));
 		}
 
 		if(channel_pipes.size()==1)
@@ -1378,7 +1378,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams[0]=' ';
 		}
 
-		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		std::string utf8_tokens = (params["tokens"]);
 		bool has_token_params=false;
 		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
@@ -1389,7 +1389,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
+						std::string token_params = getAccessTokensParams(params["tokens"], true);
 
 						if(token_params.empty())
 						{
@@ -1494,9 +1494,9 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map
 	{
 		IPipe *c=channel_pipes[i].pipe;
 
-		tcpstack.Send(c, "DOWNLOAD FILES backupid="+wnarrow(params[L"backupid"])+"&time="+wnarrow(params[L"time"]));
+		tcpstack.Send(c, "DOWNLOAD FILES backupid="+params["backupid"]+"&time="+params["time"]);
 
-		Server->Log("Start downloading files from channel "+nconvert((int)i), LL_DEBUG);
+		Server->Log("Start downloading files from channel "+convert((int)i), LL_DEBUG);
 
 		CTCPStack recv_stack;
 
@@ -1560,7 +1560,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 					IScopedLock lock(progress_mutex);
 					progress=pcdone;
 				}
-				if(!pipe->Write(nconvert(progress)+"\n", 10000))
+				if(!pipe->Write(convert(progress)+"\n", 10000))
 				{
 					break;
 				}
@@ -1588,14 +1588,14 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 		std::string errors;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			if(params[L"username"].empty())
+			if(params["username"].empty())
 			{
                 sendChannelPacket(channel_pipes[i], "LOGIN username=&password=");
 			}
 			else
 			{
-                sendChannelPacket(channel_pipes[i], "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
-														+"&password="+Server->ConvertToUTF8(params[L"password"+convert(i)]));
+                sendChannelPacket(channel_pipes[i], "LOGIN username="+(params["username"])
+														+"&password="+(params["password"+convert(i)]));
 			}
 
 			if(channel_pipes[i].pipe->hasError())
@@ -1606,7 +1606,7 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
 
-			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+			Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
 
 			if(nc=="ok")
 			{
@@ -1614,7 +1614,7 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 			}
 			else
 			{
-				Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
+				Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
 				if(!errors.empty())
 				{
 					errors+=" -- ";
@@ -1647,7 +1647,7 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 		std::string salts;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], "SALT username="+Server->ConvertToUTF8(params[L"username"]));
+            sendChannelPacket(channel_pipes[i], "SALT username="+(params["username"]));
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
@@ -1657,7 +1657,7 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
 
-			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+			Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
 
 			if(nc.find("ok;")==0)
 			{
@@ -1669,7 +1669,7 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 			}
 			else
 			{
-				Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
+				Server->Log("Client "+convert(i)+"/"+convert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
 				salts+="err;"+nc;
 			}
 		}
@@ -1719,8 +1719,8 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 		str_map params;
 		ParseParamStrHttp(cmd.substr(14), &params);
 
-		hashdataleft=watoi(params[L"size"]);
-		silent_update=(params[L"silent_update"]==L"true");
+		hashdataleft=watoi(params["size"]);
+		silent_update=(params["silent_update"]=="true");
 	}
 	hashdataok=false;
 	state=CCSTATE_UPDATE_DATA;
@@ -1754,9 +1754,9 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
-	std::wstring client_version_str=std::wstring(c_client_version);
+	std::string client_version_str=std::string(c_client_version);
 #ifdef _WIN32
-	std::wstring buf;
+	std::string buf;
 	buf.resize(1024);
 	std::string os_version_str = get_windows_version();
 	std::string win_volumes;
@@ -1769,20 +1769,20 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	}
 
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
+		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
+		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
 		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1");
 #endif
 }
 
 void ClientConnector::CMD_NEW_SERVER(str_map &params)
 {
-	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
+	std::string ident=(params["ident"]);
 	if(!ident.empty())
 	{
 		ServerIdentityMgr::addServerIdentity(ident, SPublicKeys());
@@ -1824,7 +1824,7 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 		return;
 	}
 
-	std::wstring tokens=params[L"tokens"];
+	std::string tokens=params["tokens"];
 
 	std::auto_ptr<ISettingsReader> settings(
 		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
@@ -1864,9 +1864,9 @@ void ClientConnector::CMD_CONTINUOUS_WATCH_START()
 
 void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 {
-	std::wstring script_cmd = Server->ConvertToUnicode(cmd.substr(14));
+	std::string script_cmd = (cmd.substr(14));
 
-	if(next(script_cmd, 0, L"SCRIPT|"))
+	if(next(script_cmd, 0, "SCRIPT|"))
 	{
 		script_cmd = script_cmd.substr(7);
 	}
@@ -1875,7 +1875,7 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 	int exit_code;
 	if(IndexThread::getFileSrv()->getExitInformation(script_cmd, stderr_out, exit_code))
 	{
-		tcpstack.Send(pipe, nconvert(exit_code)+" "+stderr_out);
+		tcpstack.Send(pipe, convert(exit_code)+" "+stderr_out);
 	}
 	else
 	{
@@ -1888,11 +1888,11 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	str_map params;
 	ParseParamStrHttp(cmd, &params);
 
-	std::string client_token = Server->ConvertToUTF8(params[L"client_token"]);
-	std::string server_token=wnarrow(params[L"server_token"]);
-	int64 restore_id=watoi64(params[L"id"]);
-	int64 status_id=watoi64(params[L"status_id"]);
-	int64 log_id=watoi64(params[L"log_id"]);
+	std::string client_token = (params["client_token"]);
+	std::string server_token=params["server_token"];
+	int64 restore_id=watoi64(params["id"]);
+	int64 status_id=watoi64(params["status_id"]);
+	int64 log_id=watoi64(params["log_id"]);
 
 	{
 		IScopedLock lock(backup_mutex);
@@ -1907,7 +1907,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 void ClientConnector::CMD_RESTORE_OK( str_map &params )
 {
 	IScopedLock lock(backup_mutex);
-	if(params[L"ok"]==L"true")
+	if(params["ok"]=="true")
 	{
 		restore_ok_status = RestoreOk_Ok;
 	}

@@ -83,7 +83,7 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 			{
 				if(wait)
 				{
-					DLOG(Server->Log("Throttler: Sleeping for " + nconvert(sleepTime)+ "ms", LL_DEBUG));
+					DLOG(Server->Log("Throttler: Sleeping for " + convert(sleepTime)+ "ms", LL_DEBUG));
 					Server->wait(sleepTime);
 
 					if(Server->getTimeMS()-lastresettime>1000)
@@ -101,7 +101,7 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 	{
 		if(wait)
 		{
-			DLOG(Server->Log("Throttler: Sleeping for " + nconvert(maxRateTime)+ "ms", LL_DEBUG));
+			DLOG(Server->Log("Throttler: Sleeping for " + convert(maxRateTime)+ "ms", LL_DEBUG));
 			Server->wait(static_cast<unsigned int>(maxRateTime));
 		}
 		curr_bytes=0;

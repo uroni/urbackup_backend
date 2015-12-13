@@ -13,11 +13,11 @@ const int SESSION_ID_TOKEN_AUTH = -2;
 class Helper
 {
 public:
-	Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS);
-	void update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS);
+	Helper(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS);
+	void update(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS);
 	~Helper(void);
 	SUser *getSession(void);
-	std::wstring generateSession(std::wstring username);
+	std::string generateSession(std::string username);
 	void OverwriteLanguage(std::string pLanguage);
 	ITemplate *createTemplate(std::string name);
 	IDatabase *getDatabase(void);
@@ -35,8 +35,8 @@ public:
 	std::vector<int> getRightIDs(std::string rights);
 	bool hasRights(int clientid, std::string rights, std::vector<int> right_ids);
 
-	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id, bool plainpw);
-	bool ldapLogin(const std::wstring &username, const std::wstring &password,
+	bool checkPassword(const std::string &username, const std::string &password, int *user_id, bool plainpw);
+	bool ldapLogin(const std::string &username, const std::string &password,
 		std::string* ret_errmsg=NULL, std::string* rights=NULL, bool dry_login=false);
 
 	std::vector<int> clientRights(const std::string& right_name, bool& all_client_rights);
@@ -58,7 +58,7 @@ private:
 	bool invalid_session;
 
 	str_map *GET;
-	str_nmap *PARAMS;
+	str_map *PARAMS;
 
 	std::map<std::string, std::string> ldap_rights;
 

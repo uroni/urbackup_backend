@@ -128,7 +128,7 @@ void ClientDAO::restartQueries(void)
 	prepareQueries();
 }
 
-bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
+bool ClientDAO::getFiles(std::string path, std::vector<SFileAndHash> &data)
 {
 	q_get_files->Bind(path);
 	db_results res=q_get_files->Read();
@@ -136,12 +136,12 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 	if(res.size()==0)
 		return false;
 
-	std::wstring &qdata=res[0][L"data"];
+	std::string &qdata=res[0]["data"];
 
 	if(qdata.empty())
 		return true;
 
-	int num=watoi(res[0][L"num"]);
+	int num=watoi(res[0]["num"]);
 	char *ptr=(char*)&qdata[0];
 	while(ptr-(char*)&qdata[0]<num)
 	{
@@ -152,7 +152,7 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 		std::string tmp;
 		tmp.resize(ss);
 		memcpy(&tmp[0], ptr, ss);
-		f.name=Server->ConvertToUnicode(tmp);
+		f.name=(tmp);
 		ptr+=ss;
 		memcpy(&f.size, ptr, sizeof(int64));
 		ptr+=sizeof(int64);
@@ -194,7 +194,7 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 			{
 				tmp.resize(ss);
 				memcpy(&tmp[0], ptr, ss);
-				f.symlink_target=Server->ConvertToUnicode(tmp);
+				f.symlink_target=(tmp);
 				ptr+=ss;
 			}			
 		}
@@ -211,7 +211,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 	utf.resize(data.size());
 	for(size_t i=0;i<data.size();++i)
 	{
-		utf[i]=Server->ConvertToUTF8(data[i].name);
+		utf[i]=(data[i].name);
 		datasize+=utf[i].size();
 		datasize+=sizeof(unsigned short);
 		datasize+=sizeof(int64)*2;
@@ -223,7 +223,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		if(data[i].issym)
 		{
 			datasize+=sizeof(unsigned short);
-			datasize+=Server->ConvertToUTF8(data[i].symlink_target).size();
+			datasize+=(data[i].symlink_target).size();
 		}
 	}
 	char *buffer=new char[datasize];
@@ -257,7 +257,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		++ptr;
 		if(data[i].issym)
 		{
-			std::string symlink_target = Server->ConvertToUTF8(data[i].symlink_target);
+			std::string symlink_target = (data[i].symlink_target);
 			ss=(unsigned short)symlink_target.size();
 			memcpy(ptr, (char*)&ss, sizeof(unsigned short));
 			ptr+=sizeof(unsigned short);
@@ -283,7 +283,7 @@ GUID randomGuid()
 	return ret;
 }
 
-void ClientDAO::addFiles(std::wstring path, const std::vector<SFileAndHash> &data)
+void ClientDAO::addFiles(std::string path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
@@ -295,7 +295,7 @@ void ClientDAO::addFiles(std::wstring path, const std::vector<SFileAndHash> &dat
 	delete []buffer;
 }
 
-void ClientDAO::modifyFiles(std::wstring path, const std::vector<SFileAndHash> &data)
+void ClientDAO::modifyFiles(std::string path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
@@ -307,13 +307,13 @@ void ClientDAO::modifyFiles(std::wstring path, const std::vector<SFileAndHash> &
 	delete []buffer;
 }
 
-bool ClientDAO::hasFiles(std::wstring path)
+bool ClientDAO::hasFiles(std::string path)
 {
 	q_has_files->Bind(path);
 	db_results res=q_has_files->Read();
 	q_has_files->Reset();
 	if(res.size()>0)
-		return res[0][L"num"]==L"1";
+		return res[0]["num"]=="1";
 	else
 		return false;
 }
@@ -328,15 +328,15 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		SBackupDir dir;
-		dir.id=watoi(res[i][L"id"]);
-		dir.tname=res[i][L"name"];
-		dir.path=res[i][L"path"];
-		dir.flags=watoi(res[i][L"optional"]);
-		dir.group=watoi(res[i][L"tgroup"]);
-		dir.symlinked=(res[i][L"symlinked"]==L"1");
+		dir.id=watoi(res[i]["id"]);
+		dir.tname=res[i]["name"];
+		dir.path=res[i]["path"];
+		dir.flags=watoi(res[i]["optional"]);
+		dir.group=watoi(res[i]["tgroup"]);
+		dir.symlinked=(res[i]["symlinked"]=="1");
 		dir.symlinked_confirmed=false;
 
-		if(dir.tname!=L"*")
+		if(dir.tname!="*")
 		{
 			if(dir.symlinked)
 			{
@@ -359,35 +359,35 @@ void ClientDAO::removeAllFiles(void)
 	q_remove_all->Write();
 }
 
-std::vector<std::wstring> ClientDAO::getChangedDirs(const std::wstring& path, bool del)
+std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool del)
 {
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 
-	std::wstring sep = os_file_sep();
-	if(path == L"##-GAP-##")
+	std::string sep = os_file_sep();
+	if(path == "##-GAP-##")
 	{
-		sep = L"";
+		sep = "";
 	}
 
 	if(del)
 	{
-		q_save_changed_dirs->Bind(path+sep+L"*");
+		q_save_changed_dirs->Bind(path+sep+"*");
 		q_save_changed_dirs->Write();
 		q_save_changed_dirs->Reset();
-		q_remove_changed_dirs->Bind(path+sep+L"*");
+		q_remove_changed_dirs->Bind(path+sep+"*");
 		q_remove_changed_dirs->Write();
 		q_remove_changed_dirs->Reset();
 	}
 
-	q_get_changed_dirs->Bind(path+sep+L"*");
-	q_get_changed_dirs->Bind(path+sep+L"*");
+	q_get_changed_dirs->Bind(path+sep+"*");
+	q_get_changed_dirs->Bind(path+sep+"*");
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 
 	ret.reserve(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret.push_back(res[i][L"name"] );
+		ret.push_back(res[i]["name"] );
 	}
 	return ret;
 }
@@ -401,18 +401,18 @@ std::vector<SShadowCopy> ClientDAO::getShadowcopies(void)
 	{
 		db_single_result &r=res[i];
 		SShadowCopy sc;
-		sc.id=watoi(r[L"id"]);
-		memcpy(&sc.vssid, r[L"vssid"].c_str(), sizeof(GUID) );
-		memcpy(&sc.ssetid, r[L"ssetid"].c_str(), sizeof(GUID) );
-		sc.target=r[L"target"];
-		sc.path=r[L"path"];
-		sc.tname=r[L"tname"];
-		sc.orig_target=r[L"orig_target"];
-		sc.filesrv=r[L"filesrv"]==L"0"?false:true;
-		sc.vol=r[L"vol"];
-		sc.passedtime=watoi(r[L"passedtime"]);
-		sc.refs=watoi(r[L"refs"]);
-		sc.starttoken=r[L"starttoken"];
+		sc.id=watoi(r["id"]);
+		memcpy(&sc.vssid, r["vssid"].c_str(), sizeof(GUID) );
+		memcpy(&sc.ssetid, r["ssetid"].c_str(), sizeof(GUID) );
+		sc.target=r["target"];
+		sc.path=r["path"];
+		sc.tname=r["tname"];
+		sc.orig_target=r["orig_target"];
+		sc.filesrv=r["filesrv"]=="0"?false:true;
+		sc.vol=r["vol"];
+		sc.passedtime=watoi(r["passedtime"]);
+		sc.refs=watoi(r["refs"]);
+		sc.starttoken=r["starttoken"];
 		ret.push_back(sc);
 	}
 	return ret;
@@ -442,7 +442,7 @@ int ClientDAO::modShadowcopyRefCount(int id, int m)
 	q_get_shadowcopy_refcount->Reset();
 	if(!res.empty())
 	{
-		int refs=watoi(res[0][L"refs"]);
+		int refs=watoi(res[0]["refs"]);
 		refs+=m;
 		q_set_shadowcopy_refcount->Bind(refs);
 		q_set_shadowcopy_refcount->Bind(id);
@@ -473,7 +473,7 @@ bool ClientDAO::hasChangedGap(void)
 	return !res.empty();
 }
 
-void ClientDAO::deleteChangedDirs(const std::wstring& path)
+void ClientDAO::deleteChangedDirs(const std::string& path)
 {
 	if(path.empty())
 	{
@@ -481,48 +481,48 @@ void ClientDAO::deleteChangedDirs(const std::wstring& path)
 	}
 	else
 	{
-		q_remove_changed_dirs->Bind(path+os_file_sep()+L"*");
+		q_remove_changed_dirs->Bind(path+os_file_sep()+"*");
 	}
 	q_remove_changed_dirs->Write();
 	q_remove_changed_dirs->Reset();
 }
 
-std::vector<std::wstring> ClientDAO::getGapDirs(void)
+std::vector<std::string> ClientDAO::getGapDirs(void)
 {
 	db_results res=q_has_changed_gap->Read();
 	q_has_changed_gap->Reset();
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring gap=res[i][L"name"];
+		std::string gap=res[i]["name"];
 		gap.erase(0,9);
 		ret.push_back(gap);
 	}
 	return ret;
 }
 
-std::vector<std::wstring> ClientDAO::getDelDirs(const std::wstring& path, bool del)
+std::vector<std::string> ClientDAO::getDelDirs(const std::string& path, bool del)
 {
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 
 	if(del)
 	{
-		q_copy_del_dirs->Bind(path+os_file_sep()+L"*");
+		q_copy_del_dirs->Bind(path+os_file_sep()+"*");
 		q_copy_del_dirs->Write();
 		q_copy_del_dirs->Reset();
-		q_del_del_dirs->Bind(path+os_file_sep()+L"*");
+		q_del_del_dirs->Bind(path+os_file_sep()+"*");
 		q_del_del_dirs->Write();
 		q_del_del_dirs->Reset();
 	}
 
-	q_get_del_dirs->Bind(path+os_file_sep()+L"*");
-	q_get_del_dirs->Bind(path+os_file_sep()+L"*");
+	q_get_del_dirs->Bind(path+os_file_sep()+"*");
+	q_get_del_dirs->Bind(path+os_file_sep()+"*");
 	db_results res=q_get_del_dirs->Read();
 	q_get_del_dirs->Reset();
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret.push_back(res[i][L"name"]);
+		ret.push_back(res[i]["name"]);
 	}
 	return ret;
 }
@@ -533,54 +533,54 @@ void ClientDAO::deleteSavedDelDirs(void)
 	q_del_del_dirs_copy->Reset();
 }
 
-void ClientDAO::removeDeletedDir(const std::wstring &dir)
+void ClientDAO::removeDeletedDir(const std::string &dir)
 {
-	q_remove_del_dir->Bind(dir+L"*");
+	q_remove_del_dir->Bind(dir+"*");
 	q_remove_del_dir->Write();
 	q_remove_del_dir->Reset();
 }
 
 const std::string exclude_pattern_key="exclude_pattern";
 
-std::wstring ClientDAO::getOldExcludePattern(void)
+std::string ClientDAO::getOldExcludePattern(void)
 {
 	return getMiscValue(exclude_pattern_key);
 }
 
-void ClientDAO::updateOldExcludePattern(const std::wstring &pattern)
+void ClientDAO::updateOldExcludePattern(const std::string &pattern)
 {
 	updateMiscValue(exclude_pattern_key, pattern);
 }
 
 const std::string include_pattern_key="include_pattern";
 
-std::wstring ClientDAO::getOldIncludePattern(void)
+std::string ClientDAO::getOldIncludePattern(void)
 {
 	return getMiscValue(include_pattern_key);
 }
 
-void ClientDAO::updateOldIncludePattern(const std::wstring &pattern)
+void ClientDAO::updateOldIncludePattern(const std::string &pattern)
 {
 	updateMiscValue(include_pattern_key, pattern);
 }
 
-std::wstring ClientDAO::getMiscValue(const std::string& key)
+std::string ClientDAO::getMiscValue(const std::string& key)
 {
 	q_get_pattern->Bind(key);
 	db_results res=q_get_pattern->Read();
 	q_get_pattern->Reset();
 	if(!res.empty())
 	{
-		return res[0][L"tvalue"];
+		return res[0]["tvalue"];
 	}
 	else
 	{
-		return L"";
+		return "";
 	}
 }
 
 
-void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& value)
+void ClientDAO::updateMiscValue(const std::string& key, const std::string& value)
 {
 	q_get_pattern->Bind(key);
 	db_results res=q_get_pattern->Read();
@@ -628,7 +628,7 @@ void ClientDAO::updateShadowCopyStarttime(int id)
 *      VALUES
 *           (:accountname(string), :token(string), :is_user(int))
 */
-void ClientDAO::updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user)
+void ClientDAO::updateFileAccessToken(const std::string& accountname, const std::string& token, int is_user)
 {
 	if(q_updateFileAccessToken==NULL)
 	{
@@ -660,10 +660,10 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].id=watoi64(res[i][L"id"]);
-		ret[i].accountname=res[i][L"accountname"];
-		ret[i].token=res[i][L"token"];
-		ret[i].is_user=watoi(res[i][L"is_user"]);
+		ret[i].id=watoi64(res[i]["id"]);
+		ret[i].accountname=res[i]["accountname"];
+		ret[i].token=res[i]["token"];
+		ret[i].is_user=watoi(res[i]["is_user"]);
 	}
 	return ret;
 }
@@ -677,7 +677,7 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  (is_user = :is_user_alt1(int) OR is_user = :is_user_alt2(int))
 */
-ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::string& accountname, int is_user_alt1, int is_user_alt2)
 {
 	if(q_getFileAccessTokenId2Alts==NULL)
 	{
@@ -692,7 +692,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::wstring& ac
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -706,7 +706,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::wstring& ac
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  is_user = :is_user(int)
 */
-ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::string& accountname, int is_user)
 {
 	if(q_getFileAccessTokenId==NULL)
 	{
@@ -720,7 +720,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& account
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -734,7 +734,7 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& account
 *      VALUES
 *           (:uid(int64), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
 */
-void ClientDAO::updateGroupMembership(int64 uid, const std::wstring& accountname)
+void ClientDAO::updateGroupMembership(int64 uid, const std::string& accountname)
 {
 	if(q_updateGroupMembership==NULL)
 	{
@@ -768,7 +768,7 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=watoi(res[i][L"gid"]);
+		ret[i]=watoi(res[i]["gid"]);
 	}
 	return ret;
 }
@@ -783,7 +783,7 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 *       (:name(string), :path(string), :server_default(int), :flags(int), :tgroup(int),
 *        :symlinked(int) )
 **/
-void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked)
+void ClientDAO::addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked)
 {
 	if(q_addBackupDir==NULL)
 	{

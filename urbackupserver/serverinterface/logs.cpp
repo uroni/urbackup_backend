@@ -31,8 +31,8 @@ ACTION_IMPL(logs)
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
-	std::wstring filter=GET[L"filter"];
-	std::wstring s_logid=GET[L"logid"];
+	std::string filter=GET["filter"];
+	std::string s_logid=GET["logid"];
 	int logid=watoi(s_logid);
 	std::string rights=helper.getRights("logs");
 	std::vector<int> clientid;
@@ -51,14 +51,14 @@ ACTION_IMPL(logs)
 		{
 			filter+=convert(clientid[i]);
 			if(i+1<clientid.size())
-				filter+=L",";
+				filter+=",";
 		}
 	}
 	std::vector<int> v_filter;
 	if(!filter.empty())
 	{
-		std::vector<std::wstring> s_filter;
-		Tokenize(filter, s_filter, L",");
+		std::vector<std::string> s_filter;
+		Tokenize(filter, s_filter, ",");
 		for(size_t i=0;i<s_filter.size();++i)
 		{
 			v_filter.push_back(watoi(s_filter[i]));
@@ -78,8 +78,8 @@ ACTION_IMPL(logs)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"]));
-			obj.set("name", res[i][L"name"]);
+			obj.set("id", watoi(res[i]["id"]));
+			obj.set("name", res[i]["name"]);
 			clients.add(obj);
 		}
 		if(clientid.empty())
@@ -98,8 +98,8 @@ ACTION_IMPL(logs)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"]));
-			obj.set("name", res[i][L"name"]);
+			obj.set("id", watoi(res[i]["id"]));
+			obj.set("name", res[i]["name"]);
 			log_right_clients.add(obj);
 		}
 		ret.set("log_right_clients", log_right_clients);
@@ -107,7 +107,7 @@ ACTION_IMPL(logs)
 		ret.set("filter", filter);
 		if(s_logid.empty())
 		{
-			std::wstring s_ll=GET[L"ll"];
+			std::string s_ll=GET["ll"];
 			int ll=2;
 			if(!s_ll.empty())
 			{
@@ -143,35 +143,35 @@ ACTION_IMPL(logs)
 			for(size_t i=0;i<res.size();++i)
 			{
 				JSON::Object obj;
-				obj.set("name", res[i][L"name"]);
-				obj.set("id", watoi(res[i][L"id"]));
-				obj.set("time", watoi64(res[i][L"time"]));
-				obj.set("errors", watoi(res[i][L"errors"]));
-				obj.set("warnings", watoi(res[i][L"warnings"]));
-				obj.set("image", watoi(res[i][L"image"]));
-				obj.set("incremental", watoi(res[i][L"incremental"]));
-				obj.set("resumed", watoi(res[i][L"resumed"]));
+				obj.set("name", res[i]["name"]);
+				obj.set("id", watoi(res[i]["id"]));
+				obj.set("time", watoi64(res[i]["time"]));
+				obj.set("errors", watoi(res[i]["errors"]));
+				obj.set("warnings", watoi(res[i]["warnings"]));
+				obj.set("image", watoi(res[i]["image"]));
+				obj.set("incremental", watoi(res[i]["incremental"]));
+				obj.set("resumed", watoi(res[i]["resumed"]));
 				logs.add(obj);
 			}
 			ret.set("logs", logs);
 			ret.set("ll", ll);
 
-			if(GET.find(L"report_mail")!=GET.end())
+			if(GET.find("report_mail")!=GET.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=? WHERE id=?");
-				q->Bind(GET[L"report_mail"]);
-				q->Bind(watoi(GET[L"report_loglevel"]));
+				q->Bind(GET["report_mail"]);
+				q->Bind(watoi(GET["report_loglevel"]));
 				q->Bind(session->id);
 				q->Write();
 				q->Reset();
 			}
 
-			if(GET.find(L"report_mail")!=GET.end())
+			if(GET.find("report_mail")!=GET.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
-				q->Bind(GET[L"report_mail"]);
-				q->Bind(watoi(GET[L"report_loglevel"]));
-				q->Bind(watoi(GET[L"report_sendonly"]));
+				q->Bind(GET["report_mail"]);
+				q->Bind(watoi(GET["report_loglevel"]));
+				q->Bind(watoi(GET["report_sendonly"]));
 				q->Bind(session->id);
 				q->Write();
 				ret.set("saved_ok", true);
@@ -184,9 +184,9 @@ ACTION_IMPL(logs)
 			
 			if(!res.empty())
 			{
-				ret.set("report_mail", res[0][L"report_mail"]);
-				ret.set("report_loglevel", watoi(res[0][L"report_loglevel"]));
-				ret.set("report_sendonly", watoi(res[0][L"report_sendonly"]));
+				ret.set("report_mail", res[0]["report_mail"]);
+				ret.set("report_loglevel", watoi(res[0]["report_loglevel"]));
+				ret.set("report_sendonly", watoi(res[0]["report_sendonly"]));
 			}
 			else
 			{
@@ -220,7 +220,7 @@ ACTION_IMPL(logs)
 				if(!clientid.empty())
 				{
 					ok=false;
-					int t_clientid=watoi(res[0][L"clientid"]);
+					int t_clientid=watoi(res[0]["clientid"]);
 					for(size_t i=0;i<clientid.size();++i)
 					{
 						if(clientid[i]==t_clientid)
@@ -234,9 +234,9 @@ ACTION_IMPL(logs)
 				if(ok)
 				{
 					JSON::Object log;
-					log.set("data", res[0][L"logdata"]);
-					log.set("time", watoi64(res[0][L"time"]));
-					log.set("clientname", res[0][L"name"]);
+					log.set("data", res[0]["logdata"]);
+					log.set("time", watoi64(res[0]["time"]));
+					log.set("clientname", res[0]["name"]);
 					ret.set("log", log);
 				}
 			}

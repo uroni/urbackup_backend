@@ -107,11 +107,6 @@ bool CMemoryFile::PunchHole( _i64 spos, _i64 size )
 	return false;
 }
 
-std::wstring CMemoryFile::getFilenameW(  )
-{
-	return L"_MEMORY_";
-}
-
 bool CMemoryFile::Sync()
 {
 	return false;

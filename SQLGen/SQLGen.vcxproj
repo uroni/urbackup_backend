@@ -110,6 +110,7 @@
     <ClCompile Include="..\SQLiteFactory.cpp" />
     <ClCompile Include="..\sqlite\shell.c" />
     <ClCompile Include="..\sqlite\sqlite3.c" />
+    <ClCompile Include="..\StaticPluginRegistration.cpp" />
     <ClCompile Include="..\StreamPipe.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="..\Table.cpp" />

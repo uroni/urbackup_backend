@@ -51,7 +51,7 @@ std::string loginMethodToString(LoginMethod lm)
 	return std::string();
 }
 
-void logSuccessfullLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
+void logSuccessfullLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 	IQuery* q = helper.getDatabase()->Prepare("INSERT INTO settings_db.login_access_log (username, ip, method)"
 		" VALUES (?, ?, ?)");
@@ -67,7 +67,7 @@ void logSuccessfullLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& u
 #endif
 }
 
-void logFailedLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
+void logFailedLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 #ifndef _WIN32
 	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %S from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
@@ -108,21 +108,21 @@ ACTION_IMPL(login)
 	IDatabase *db=helper.getDatabase();
 
 	bool has_session=false;
-	std::wstring ses;
-	if(!GET[L"ses"].empty())
+	std::string ses;
+	if(!GET["ses"].empty())
 	{
-		ses=GET[L"ses"];
+		ses=GET["ses"];
 		has_session=true;
 	}
 
-	std::wstring username=GET[L"username"];
+	std::string username=GET["username"];
 	if(!username.empty())
 	{
-		bool plainpw=GET[L"plainpw"]==L"1";
+		bool plainpw=GET["plainpw"]=="1";
 		if(!has_session && plainpw)
 		{
-			ses=helper.generateSession(L"anonymous");
-			GET[L"ses"]=ses;
+			ses=helper.generateSession("anonymous");
+			GET["ses"]=ses;
 			ret.set("session", JSON::Value(ses));
 			helper.update(tid, &GET, &PARAMS);
 		}
@@ -131,13 +131,13 @@ ACTION_IMPL(login)
 		{
 			int user_id = SESSION_ID_TOKEN_AUTH;
 			
-			if(helper.checkPassword(username, GET[L"password"], &user_id, plainpw) ||
-				(plainpw && helper.ldapLogin(username, GET[L"password"])) )
+			if(helper.checkPassword(username, GET["password"], &user_id, plainpw) ||
+				(plainpw && helper.ldapLogin(username, GET["password"])) )
 			{
 				ret.set("success", JSON::Value(true));
 				logSuccessfullLogin(helper, PARAMS, username, LoginMethod_Webinterface);
-				session->mStr[L"login"]=L"ok";
-				session->mStr[L"username"]=username;
+				session->mStr["login"]="ok";
+				session->mStr["username"]=username;
 				session->id=user_id;
 
 				ret.set("status", helper.getRights("status") );
@@ -164,7 +164,7 @@ ACTION_IMPL(login)
 		ret.set("lang", helper.getLanguage());
 		bool ldap_enabled = helper.ldapEnabled();
 		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if( (!res.empty() && watoi(res[0][L"c"])>0) || ldap_enabled)
+		if( (!res.empty() && watoi(res[0]["c"])>0) || ldap_enabled)
 		{
 			ret.set("success", JSON::Value(false) );
 			if(ldap_enabled)
@@ -177,16 +177,16 @@ ACTION_IMPL(login)
 			ret.set("success", JSON::Value(true) );
 			if(has_session==false)
 			{
-				ses=helper.generateSession(L"anonymous");
-				GET[L"ses"]=ses;
+				ses=helper.generateSession("anonymous");
+				GET["ses"]=ses;
 				ret.set("session", JSON::Value(ses));
 				helper.update(tid, &GET, &PARAMS);
 			}
 			SUser *session=helper.getSession();
 			if(session!=NULL)
 			{
-				logSuccessfullLogin(helper, PARAMS, L"anonymous", LoginMethod_Webinterface);
-				session->mStr[L"login"]=L"ok";
+				logSuccessfullLogin(helper, PARAMS, "anonymous", LoginMethod_Webinterface);
+				session->mStr["login"]="ok";
 				session->id=SESSION_ID_ADMIN;
 			}
 			else

@@ -196,7 +196,7 @@ std::vector<IFile*> CFileBufMgr::getBuffers(unsigned int n)
 
 void CFileBufMgr::releaseBuffer(IFile *buf)
 {
-	std::wstring fn=buf->getFilenameW();
+	std::string fn=buf->getFilename();
 	Server->destroy(buf);
 	if(!Server->deleteFile(fn))
 	{

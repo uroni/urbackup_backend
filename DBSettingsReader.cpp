@@ -54,7 +54,7 @@ bool CDBSettingsReader::getValue(std::string key, std::string *value)
 	}
 
 	query->Bind(key);
-	db_nresults res=query->ReadN();
+	db_results res=query->Read();
 	query->Reset();
 
 	if( res.size()>0 )
@@ -66,27 +66,7 @@ bool CDBSettingsReader::getValue(std::string key, std::string *value)
 		return false;
 }
 
-bool CDBSettingsReader::getValue(std::wstring key, std::wstring *value)
+std::vector<std::string> CDBSettingsReader::getKeys()
 {
-	if(query==NULL)
-	{
-		return false;
-	}
-
-	query->Bind(key);
-	db_results res=query->Read();
-	query->Reset();
-
-	if( res.size()>0 )
-	{
-		*value=res[0][L"value"];
-		return true;
-	}
-	else
-		return false;
-}
-
-std::vector<std::wstring> CDBSettingsReader::getKeys()
-{
-	return std::vector<std::wstring>();
+	return std::vector<std::string>();
 }

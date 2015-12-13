@@ -25,14 +25,14 @@ bool create_reflink(const std::string &linkname, const std::string &fname)
 	int src_desc=open64(fname.c_str(), O_RDONLY);
 	if( src_desc<0)
 	{
-		Server->Log("Error opening source file. errno="+nconvert(errno));
+		Server->Log("Error opening source file. errno="+convert(errno));
 	    return false;
 	}
 
 	int dst_desc=open64(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
-		Server->Log("Error opening destination file. errno="+nconvert(errno));
+		Server->Log("Error opening destination file. errno="+convert(errno));
 	    close(src_desc);
 	    return false;
 	}
@@ -44,7 +44,7 @@ bool create_reflink(const std::string &linkname, const std::string &fname)
 
 	if(rc)
 	{
-		Server->Log("Reflink ioctl failed. errno="+nconvert(errno));
+		Server->Log("Reflink ioctl failed. errno="+convert(errno));
 	}
 
 	close(src_desc);
@@ -57,10 +57,10 @@ bool create_reflink(const std::string &linkname, const std::string &fname)
 }
 
 
-CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
+CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
  : bitmap_dirty(false), finished(false), curr_offset(0)
 {
-	filename = Server->ConvertToUTF8(fn);
+	filename = (fn);
 	read_only = pRead_only;
 	filesize = pDstsize;
 
@@ -104,7 +104,7 @@ CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
 
 				if(rc!=0)
 				{
-					Server->Log("Truncating cow file to size "+nconvert(filesize)+" failed", LL_ERROR);
+					Server->Log("Truncating cow file to size "+convert(filesize)+" failed", LL_ERROR);
 					is_open=false;
 					close(fd);
 				}
@@ -127,15 +127,15 @@ CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
 	}
 }
 
-CowFile::CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only)
+CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only)
 	: bitmap_dirty(false), finished(false), curr_offset(0)
 {
-	filename = Server->ConvertToUTF8(fn);
+	filename = (fn);
 	read_only = pRead_only;
 
 
 	struct stat64 statbuf;
-	int rc = stat64(Server->ConvertToUTF8(parent_fn).c_str(), &statbuf);
+	int rc = stat64((parent_fn).c_str(), &statbuf);
 	if(rc==0)
 	{
 		filesize = statbuf.st_size;
@@ -155,7 +155,7 @@ CowFile::CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 		}
 		else if(!read_only)
 		{
-			is_open = loadBitmap(Server->ConvertToUTF8(parent_fn)+".bitmap");
+			is_open = loadBitmap((parent_fn)+".bitmap");
 		}
 		else
 		{
@@ -167,7 +167,7 @@ CowFile::CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	{
 		if(!FileExists(filename))
 		{
-			is_open = create_reflink(filename, Server->ConvertToUTF8(parent_fn));
+			is_open = create_reflink(filename, (parent_fn));
 		}
 
 		if(is_open)
@@ -204,7 +204,7 @@ CowFile::CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 
 					if(rc!=0)
 					{
-						Server->Log("Truncating cow file to parent size "+nconvert(filesize)+" failed", LL_ERROR);
+						Server->Log("Truncating cow file to parent size "+convert(filesize)+" failed", LL_ERROR);
 						is_open=false;
 						close(fd);
 					}
@@ -242,7 +242,7 @@ bool CowFile::Seek(_i64 offset)
 
 	if(off!=curr_offset)
 	{
-		Server->Log("Seeking in file failed. errno="+nconvert(errno), LL_ERROR);
+		Server->Log("Seeking in file failed. errno="+convert(errno), LL_ERROR);
 		return false;
 	}
 
@@ -275,7 +275,7 @@ _u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 	if( w<0 )
 	{
 		if(has_error) *has_error=true;
-		Server->Log("Write to CowFile failed. errno="+nconvert(errno), LL_DEBUG);
+		Server->Log("Write to CowFile failed. errno="+convert(errno), LL_DEBUG);
 		return 0;
 	}
 
@@ -323,11 +323,6 @@ uint64 CowFile::usedSize(void)
 std::string CowFile::getFilename(void)
 {
 	return filename;
-}
-
-std::wstring CowFile::getFilenameW(void)
-{
-	return Server->ConvertToUnicode(filename);
 }
 
 bool CowFile::has_sector(_i64 sector_size)
@@ -465,7 +460,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 	}
 	else
 	{
-		Server->Log("fallocate failed (setting unused image range) with errno "+nconvert((int)errno), LL_WARNING);
+		Server->Log("fallocate failed (setting unused image range) with errno "+convert((int)errno), LL_WARNING);
 		return false;
 	}
 }

@@ -55,7 +55,7 @@
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
-std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
+std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -145,17 +145,17 @@ namespace
 		int64 LowestValidUsn;
 	};
 
-	int64 getUsnNum( const std::wstring& dir, int64& sequence_id )
+	int64 getUsnNum( const std::string& dir, int64& sequence_id )
 	{
 		WCHAR volume_path[MAX_PATH]; 
-		BOOL ok = GetVolumePathNameW(dir.c_str(), volume_path, MAX_PATH);
+		BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir).c_str(), volume_path, MAX_PATH);
 		if(!ok)
 		{
 			Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in getUsnNum", LL_ERROR);
 			return -1;
 		}
 
-		std::wstring vol=volume_path;
+		std::string vol=Server->ConvertFromWchar(volume_path);
 
 		if(vol.size()>0)
 		{
@@ -167,13 +167,13 @@ namespace
 
 		if(!vol.empty() && vol[0]!='\\')
 		{
-			vol = L"\\\\.\\"+vol;
+			vol = "\\\\.\\"+vol;
 		}
 
-		HANDLE hVolume=CreateFileW(vol.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE hVolume=CreateFileW(Server->ConvertToWchar(vol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if(hVolume==INVALID_HANDLE_VALUE)
 		{
-			Server->Log(L"CreateFile of volume '"+vol+L"' failed. - getUsnNum", LL_ERROR);
+			Server->Log("CreateFile of volume '"+vol+"' failed. - getUsnNum", LL_ERROR);
 			return -1;
 		}
 
@@ -190,7 +190,7 @@ namespace
 		}
 		else
 		{
-			std::auto_ptr<IFile> journal_info(Server->openFile(vol+L"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal_info(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
 
 			if(journal_info.get()==NULL) return -1;
 
@@ -202,7 +202,7 @@ namespace
 
 			sequence_id = journal_data.UsnJournalID;
 
-			std::auto_ptr<IFile> journal(Server->openFile(vol+L"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
+			std::auto_ptr<IFile> journal(Server->openFile(vol+"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
 
 			if(journal.get()==NULL) return -1;
 
@@ -243,7 +243,7 @@ IPipe* IndexThread::msgpipe=NULL;
 IFileServ *IndexThread::filesrv=NULL;
 IMutex *IndexThread::filesrv_mutex=NULL;
 
-std::wstring add_trailing_slash(const std::wstring &strDirName)
+std::string add_trailing_slash(const std::string &strDirName)
 {
 	if(!strDirName.empty() && strDirName[strDirName.size()-1]!=os_file_sep()[0])
 	{
@@ -322,7 +322,7 @@ void IndexThread::updateDirs(void)
 	readBackupDirs();
 
 #ifdef _WIN32
-	std::vector<std::wstring> watching;
+	std::vector<std::string> watching;
 	std::vector<ContinuousWatchEnqueue::SWatchItem> continuous_watch;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
@@ -344,7 +344,7 @@ void IndexThread::updateDirs(void)
 	{
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
-			std::wstring msg=L"A"+backup_dirs[i].path;
+			std::string msg="A"+backup_dirs[i].path;
 			dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 		}
 	}
@@ -442,7 +442,7 @@ void IndexThread::operator()(void)
 			{
 				Server->Log("Deleting file-index... GAP found...", LL_INFO);
 
-				std::vector<std::wstring> gaps=cd->getGapDirs();
+				std::vector<std::string> gaps=cd->getGapDirs();
 
 				std::string q_str="DELETE FROM files";
 				if(!gaps.empty())
@@ -459,8 +459,8 @@ void IndexThread::operator()(void)
 				IQuery *q=db->Prepare(q_str, false);
 				for(size_t i=0;i<gaps.size();++i)
 				{
-					Server->Log(L"Deleting file-index from drive \""+gaps[i]+L"\"", LL_INFO);
-					q->Bind(gaps[i]+L"*");
+					Server->Log("Deleting file-index from drive \""+gaps[i]+"\"", LL_INFO);
+					q->Bind(gaps[i]+"*");
 				}
 
 				q->Write();
@@ -525,7 +525,7 @@ void IndexThread::operator()(void)
 			}
 			//full backup
 			{
-				cd->deleteChangedDirs(std::wstring());
+				cd->deleteChangedDirs(std::string());
 				cd->deleteSavedChangedDirs();
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
@@ -557,7 +557,7 @@ void IndexThread::operator()(void)
 			data.getStr(&starttoken);
 			uchar image_backup=0;
 			data.getUChar(&image_backup);
-			std::wstring wscdir=Server->ConvertToUnicode(scdir);
+			std::string wscdir=(scdir);
 			SCDirs *scd=getSCDir(wscdir);
 
 			unsigned char fileserv;
@@ -571,11 +571,11 @@ void IndexThread::operator()(void)
 				}
 				if(start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==1?true:false))
 				{
-					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
+					contractor->Write("done-"+convert(scd->ref->save_id)+"-"+(scd->target));
 				}
 				else
 				{
-					VSSLog(L"Getting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					VSSLog("Getting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
 					contractor->Write("failed");
 				}
 			}
@@ -583,11 +583,11 @@ void IndexThread::operator()(void)
 			{
 				if(scd->running==true)
 				{
-					Server->Log(L"Removing shadowcopy \""+scd->dir+L"\" because of timeout...", LL_WARNING);
+					Server->Log("Removing shadowcopy \""+scd->dir+"\" because of timeout...", LL_WARNING);
 					bool b=release_shadowcopy(scd, false, -1, scd);
 					if(!b)
 					{
-						Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+						Server->Log("Deleting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
 					}
 				}
 
@@ -606,22 +606,22 @@ void IndexThread::operator()(void)
 
 				scd->orig_target=scd->target;
 
-				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_DEBUG);
+				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_DEBUG);
 				bool b=start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
 					if(scd->fileserv)
 					{
-						shareDir(widen(starttoken), scd->dir, scd->target);
+						shareDir(starttoken, scd->dir, scd->target);
 					}
 
 					contractor->Write("failed");
-					Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					Server->Log("Creating shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
 				else
 				{
-					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
+					contractor->Write("done-"+convert(scd->ref->save_id)+"-"+(scd->target));
 					scd->running=true;
 				}
 			}
@@ -633,7 +633,7 @@ void IndexThread::operator()(void)
 			data.getStr(&starttoken);
 			uchar image_backup=0;
 			data.getUChar(&image_backup);
-			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
+			SCDirs *scd=getSCDir((scdir));
 
 			int save_id=-1;
 			data.getInt(&save_id);
@@ -652,12 +652,12 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
-				std::wstring release_dir=scd->dir;
+				std::string release_dir=scd->dir;
 				bool b=release_shadowcopy(scd, image_backup==1?true:false, save_id);
 				if(!b)
 				{
 					contractor->Write("failed");
-					Server->Log(L"Deleting shadowcopy of \""+release_dir+L"\" failed.", LL_ERROR);
+					Server->Log("Deleting shadowcopy of \""+release_dir+"\" failed.", LL_ERROR);
 				}
 				else
 				{
@@ -677,7 +677,7 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
-					contractor->Write("done-"+nconvert(save_id)+"-"+path);
+					contractor->Write("done-"+convert(save_id)+"-"+path);
 				}
 			}
 		}
@@ -687,13 +687,13 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::wstring msg=L"A"+os_get_final_path(Server->ConvertToUnicode( dir ));
+				std::string msg="A"+os_get_final_path(( dir ));
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			std::string name;
 			if(data.getStr(&name))
 			{
-				std::wstring msg=L"C"+os_get_final_path(Server->ConvertToUnicode( dir ))+L"|"+Server->ConvertToUnicode(name);
+				std::string msg="C"+os_get_final_path(( dir ))+"|"+(name);
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
@@ -704,13 +704,13 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::wstring msg=L"D"+os_get_final_path(Server->ConvertToUnicode( dir ));
+				std::string msg="D"+os_get_final_path(( dir ));
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			std::string name;
 			if(data.getStr(&name))
 			{
-				std::wstring msg=L"X"+os_get_final_path(Server->ConvertToUnicode( dir ))+L"|"+Server->ConvertToUnicode(name);
+				std::string msg="X"+os_get_final_path(( dir ))+"|"+(name);
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
@@ -731,19 +731,19 @@ void IndexThread::operator()(void)
 		else if(action==IndexThreadAction_GetLog)
 		{
 			std::string ret;
-			ret+="0-"+nconvert(Server->getTimeSeconds())+"-\n";
+			ret+="0-"+convert(Server->getTimeSeconds())+"-\n";
 			for(size_t i=0;i<vsslog.size();++i)
 			{
-				ret+=nconvert(vsslog[i].loglevel)+"-"+nconvert(vsslog[i].times)+"-"+vsslog[i].msg+"\n";
+				ret+=convert(vsslog[i].loglevel)+"-"+convert(vsslog[i].times)+"-"+vsslog[i].msg+"\n";
 			}
-			Server->Log("VSS logdata - "+nconvert(ret.size())+" bytes", LL_DEBUG);
+			Server->Log("VSS logdata - "+convert(ret.size())+" bytes", LL_DEBUG);
 			contractor->Write(ret);
 		}
 		else if(action==IndexThreadAction_PingShadowCopy)
 		{
 			std::string scdir;
 			data.getStr(&scdir);
-			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
+			SCDirs *scd=getSCDir((scdir));
 
 			int save_id=-1;
 			data.getInt(&save_id);
@@ -781,7 +781,7 @@ void IndexThread::indexDirs(void)
 
 	token_cache.reset();
 
-	std::vector<std::wstring> selected_dirs;
+	std::vector<std::string> selected_dirs;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		if(backup_dirs[i].group==index_group)
@@ -805,16 +805,16 @@ void IndexThread::indexDirs(void)
 	changed_dirs.clear();
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
-		std::vector<std::wstring> acd=cd->getChangedDirs(selected_dirs[i]);
+		std::vector<std::string> acd=cd->getChangedDirs(selected_dirs[i]);
 		changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 	}
 
 	//move GAP dirs to backup table
-	cd->getChangedDirs(L"##-GAP-##");
+	cd->getChangedDirs("##-GAP-##");
 	
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
-		std::vector<std::wstring> deldirs=cd->getDelDirs(selected_dirs[i]);
+		std::vector<std::string> deldirs=cd->getDelDirs(selected_dirs[i]);
 		for(size_t i=0;i<deldirs.size();++i)
 		{
 			cd->removeDeletedDir(deldirs[i]);
@@ -824,7 +824,7 @@ void IndexThread::indexDirs(void)
 	db->EndTransaction();
 	//---END TRANSACTION---
 
-	std::wstring tmp = cd->getMiscValue("last_filebackup_filetime_lower");
+	std::string tmp = cd->getMiscValue("last_filebackup_filetime_lower");
 	if(!tmp.empty())
 	{
 		last_filebackup_filetime = watoi64(tmp);
@@ -877,7 +877,7 @@ void IndexThread::indexDirs(void)
 			}
 			scd->fileserv=true;
 
-			std::wstring mod_path=backup_dirs[i].path;
+			std::string mod_path=backup_dirs[i].path;
 
 #ifdef _WIN32
 			if(mod_path.size()==2) //e.g. C:
@@ -896,16 +896,16 @@ void IndexThread::indexDirs(void)
 
 			if(filetype!=0 || !shadowcopy_optional)
 			{
-				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_DEBUG);	
+				VSSLog("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_DEBUG);	
 				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
 				VSSLog("done.", LL_DEBUG);
 			}
 			else if(shadowcopy_optional)
 			{
-				std::wstring err_msg;
+				std::string err_msg;
 				int64 errcode = os_last_error(err_msg);
 
-				VSSLog(L"Cannot access \""+mod_path+L"\". Not creating snapshot.  Errorcode: "+convert(errcode)+L" - "+trim(err_msg), LL_ERROR);
+				VSSLog("Cannot access \""+mod_path+"\". Not creating snapshot.  Errorcode: "+convert(errcode)+" - "+trim(err_msg), LL_ERROR);
 			}
 
 			if(stale_shadowcopy)
@@ -917,9 +917,9 @@ void IndexThread::indexDirs(void)
 			{
 				if(!shadowcopy_optional)
 				{
-					VSSLog(L"Creating snapshot of \""+scd->dir+L"\" failed.", LL_ERROR);
+					VSSLog("Creating snapshot of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
-				shareDir(widen(starttoken), scd->dir, scd->target);
+				shareDir(starttoken, scd->dir, scd->target);
 			}
 			else
 			{
@@ -945,7 +945,7 @@ void IndexThread::indexDirs(void)
 				DirectoryWatcherThread::update_and_wait(open_files);
 				std::sort(open_files.begin(), open_files.end());
 				Server->wait(1000);
-				std::vector<std::wstring> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
+				std::vector<std::string> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
 				for(size_t j=0;j<acd.size();++j)
 				{
 					if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
@@ -956,11 +956,11 @@ void IndexThread::indexDirs(void)
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
 				#if !defined(VSS_XP) && !defined(VSS_S03)
-				VSSLog(L"Scanning for changed hard links in \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
+				VSSLog("Scanning for changed hard links in \""+backup_dirs[i].tname+"\"...", LL_DEBUG);
 				handleHardLinks(backup_dirs[i].path, mod_path);
 				#endif
 
-				std::vector<std::wstring> deldirs=cd->getDelDirs(strlower(backup_dirs[i].path), false);
+				std::vector<std::string> deldirs=cd->getDelDirs(strlower(backup_dirs[i].path), false);
 				for(size_t i=0;i<deldirs.size();++i)
 				{
 					cd->removeDeletedDir(deldirs[i]);
@@ -970,10 +970,10 @@ void IndexThread::indexDirs(void)
 
 			for(size_t k=0;k<changed_dirs.size();++k)
 			{
-				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
+				VSSLog("Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
 
-			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
+			VSSLog("Indexing \""+backup_dirs[i].tname+"\"...", LL_DEBUG);
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
@@ -1001,17 +1001,17 @@ void IndexThread::indexDirs(void)
 				}
 				
 				outfile.close();
-				removeFile(Server->ConvertToUnicode(filelist_fn));
+				removeFile((filelist_fn));
 
 				if(stop_index)
 				{
-					VSSLog(L"Indexing files failed, because of error", LL_ERROR);
+					VSSLog("Indexing files failed, because of error", LL_ERROR);
 				}
 
 				return;
 			}
 
-			VSSLog(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
+			VSSLog("Indexing of \""+backup_dirs[i].tname+"\" done. "+convert(index_c_fs)+" filesystem lookups "+convert(index_c_db)+" db lookups and "+convert(index_c_db_update)+" db updates" , LL_INFO);		
 
 			if(i+1<backup_dirs.size() && backup_dirs[i+1].symlinked)
 			{
@@ -1024,7 +1024,7 @@ void IndexThread::indexDirs(void)
 		if(pos!=outfile.tellg())
 		{
 			outfile.close();
-			bool b=os_file_truncate(Server->ConvertToUnicode(filelist_fn), pos);
+			bool b=os_file_truncate((filelist_fn), pos);
 			if(!b)
 			{
 				VSSLog("Error changing filelist size", LL_ERROR);
@@ -1087,13 +1087,13 @@ void IndexThread::indexDirs(void)
 		IScopedLock lock(filelist_mutex);
 		if(index_group==c_group_default)
 		{
-			removeFile(L"urbackup/data/filelist.ub");
-			moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist.ub");
+			removeFile("urbackup/data/filelist.ub");
+			moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist.ub");
 		}
 		else
 		{
-			removeFile(L"urbackup/data/filelist_"+convert(index_group)+L".ub");
-			moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist_"+convert(index_group)+L".ub");
+			removeFile("urbackup/data/filelist_"+convert(index_group)+".ub");
+			moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist_"+convert(index_group)+".ub");
 		}
 	}
 
@@ -1113,7 +1113,7 @@ void IndexThread::resetFileEntries(void)
 	db->Write("DELETE FROM mdirs_backup");
 }
 
-bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& namedpath)
+bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath)
 {
 	if( isExcluded(exlude_dirs, filepath) || isExcluded(exlude_dirs, namedpath) )
 	{
@@ -1128,7 +1128,7 @@ bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& nam
 	return false;
 }
 
-bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wstring named_path, std::fstream &outfile,
+bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
 	bool first, int flags, bool use_db, bool symlinked)
 {
 	bool has_include=false;
@@ -1148,13 +1148,13 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 		return false;
 	}
 
-	std::wstring fn_filter;
+	std::string fn_filter;
 	bool close_dir=false;
 	std::string extra;
 	
 	if(first)
 	{
-		std::wstring curr_dir = os_file_prefix(dir);
+		std::string curr_dir = os_file_prefix(dir);
 		int filetype = os_get_file_type(curr_dir);
 
 		if(filetype==0)
@@ -1167,10 +1167,10 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 		{
 			if(!(flags & EBackupDirFlag_Optional) && (!symlinked || !(flags & EBackupDirFlag_SymlinksOptional) ) )
 			{
-				std::wstring err_msg;
+				std::string err_msg;
 				int64 errcode = os_last_error(err_msg);
 
-				VSSLog(L"Cannot access path to backup: \""+dir+L"\" Errorcode: "+convert(errcode)+L" - "+trim(err_msg), LL_ERROR);
+				VSSLog("Cannot access path to backup: \""+dir+"\" Errorcode: "+convert(errcode)+" - "+trim(err_msg), LL_ERROR);
 				index_error=true;
 			}
 
@@ -1179,8 +1179,8 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 
 		if(with_orig_path)
 		{
-			extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(orig_dir))
-				+ "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
+			extra+="&orig_path=" + EscapeParamString((orig_dir))
+				+ "&orig_sep=" + EscapeParamString((os_file_sep()));
 		}
 
 #ifdef _WIN32
@@ -1188,8 +1188,8 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 		int64 sequence_next = getUsnNum(dir, sequence_id);
 		if(sequence_next!=-1 && with_sequence)
 		{
-			extra += "&sequence_next="+nconvert(sequence_next) +
-				"&sequence_id="+nconvert(sequence_id);
+			extra += "&sequence_next="+convert(sequence_next) +
+				"&sequence_id="+convert(sequence_id);
 		}
 #endif
 
@@ -1238,14 +1238,14 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 			}
 			has_include=true;
 
-			std::wstring listname = files[i].name;
+			std::string listname = files[i].name;
 
 			if(first && !fn_filter.empty() && i==0)
 			{
 				listname = named_path;
 			}
 
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
+			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
 			bool params_started=false;
 
@@ -1268,7 +1268,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 
 			if(files[i].issym && with_proper_symlinks)
 			{
-				extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
+				extra+="&sym_target="+EscapeParamString((files[i].symlink_target));
 			}
 			
 			if(files[i].isspecial && with_proper_symlinks)
@@ -1317,7 +1317,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 
 				if(files[i].issym && with_proper_symlinks)
 				{
-					extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
+					extra+="&sym_target="+EscapeParamString((files[i].symlink_target));
 				}
 
 				if(files[i].isspecial && with_proper_symlinks)
@@ -1325,7 +1325,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 					extra+="&special=1";
 				}
 
-				std::wstring listname = files[i].name;
+				std::string listname = files[i].name;
 
 				if(first && !fn_filter.empty() && i==0)
 				{
@@ -1381,7 +1381,7 @@ bool IndexThread::readBackupDirs(void)
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		backup_dirs[i].path=os_get_final_path(backup_dirs[i].path);
-		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
+		Server->Log("Final path: "+backup_dirs[i].path, LL_INFO);
 
 		if(index_group!=-1 && backup_dirs[i].group == index_group)
 		{
@@ -1389,7 +1389,7 @@ bool IndexThread::readBackupDirs(void)
 		}
 
 		if(filesrv!=NULL)
-			shareDir(L"", backup_dirs[i].tname, backup_dirs[i].path);
+			shareDir("", backup_dirs[i].tname, backup_dirs[i].path);
 	}
 	return has_backup_dir;
 }
@@ -1403,14 +1403,14 @@ bool IndexThread::readBackupScripts()
 		return false;
 	}
 	
-	std::wstring script_path;
-	std::wstring script_cmd;
+	std::string script_path;
+	std::string script_cmd;
 #ifdef _WIN32
-	script_path = Server->getServerWorkingDir() + os_file_sep() + L"backup_scripts";
-	script_cmd = script_path + os_file_sep() + L"list.bat";
+	script_path = Server->getServerWorkingDir() + os_file_sep() + "backup_scripts";
+	script_cmd = script_path + os_file_sep() + "list.bat";
 #else
-	script_path = L"/etc/urbackup/scripts";
-	script_cmd = script_path + os_file_sep() + L"list";
+	script_path = "/etc/urbackup/scripts";
+	script_cmd = script_path + os_file_sep() + "list";
 #endif
 
 	std::string output = execute_script(script_cmd);
@@ -1432,7 +1432,7 @@ bool IndexThread::readBackupScripts()
 				str_map params;
 				ParseParamStrHttp(line, &params);
 
-				str_map::iterator it = params.find(L"scriptname");
+				str_map::iterator it = params.find("scriptname");
 				if(it==params.end())
 				{
 					continue;
@@ -1440,7 +1440,7 @@ bool IndexThread::readBackupScripts()
 
 				new_script.scriptname = it->second;
 
-				it=params.find(L"outputname");
+				it=params.find("outputname");
 				if(it!=params.end())
 				{
 					new_script.outputname = it->second;
@@ -1450,7 +1450,7 @@ bool IndexThread::readBackupScripts()
 					new_script.outputname = new_script.scriptname;
 				}
 
-				it=params.find(L"size");
+				it=params.find("size");
 				if(it!=params.end())
 				{
 					new_script.size = watoi64(it->second);
@@ -1472,14 +1472,14 @@ bool IndexThread::readBackupScripts()
 
 		if(filesrv!=NULL && !scripts.empty())
 		{
-			filesrv->shareDir(L"urbackup_backup_scripts", script_path, std::string());
+			filesrv->shareDir("urbackup_backup_scripts", script_path, std::string());
 		}
 	}
 	
 	return !scripts.empty();	
 }
 
-bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath)
+bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path, const std::string& filepath, const std::string& namedpath)
 {
 	bool calculated_hash=false;
 
@@ -1544,24 +1544,24 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 	return calculated_hash;
 }
 
-std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_path, std::wstring path, const std::wstring& named_path, bool use_db, const std::wstring& fn_filter)
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter)
 {
 #ifndef _WIN32
 	if(path.empty())
 	{
 		path = os_file_sep();
 	}
-	std::wstring path_lower=orig_path + os_file_sep();
+	std::string path_lower=orig_path + os_file_sep();
 #else
-	std::wstring path_lower=strlower(orig_path+os_file_sep());
+	std::string path_lower=strlower(orig_path+os_file_sep());
 #endif
 
-	std::vector<std::wstring>::iterator it_dir=changed_dirs.end();
+	std::vector<std::string>::iterator it_dir=changed_dirs.end();
 #ifdef _WIN32
 
 	bool dir_changed=std::binary_search(changed_dirs.begin(), changed_dirs.end(), path_lower);
 	
-	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
+	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+"urbackup"+os_file_sep())
 	{
 		use_db=false;
 	}
@@ -1574,7 +1574,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 	{
 		++index_c_fs;
 
-		std::wstring tpath=os_file_prefix(path);
+		std::string tpath=os_file_prefix(path);
 
 		bool has_error;
 		fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
@@ -1584,18 +1584,18 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			if(os_directory_exists(os_file_prefix(index_root_path)))
 			{
 #ifdef _WIN32
-				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 #else
-                VSSLog(L"Error while getting files in folder \""+path+L"\". User may not have permissions to access this folder. Errno is "+convert(errno), LL_ERROR);
+                VSSLog("Error while getting files in folder \""+path+"\". User may not have permissions to access this folder. Errno is "+convert(errno), LL_ERROR);
                 index_error=true;
 #endif
 			}
 			else
 			{
 #ifdef _WIN32
-				VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". Windows errorcode: "+convert((int)GetLastError())+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 #else
-				VSSLog(L"Error while getting files in folder \""+path+L"\". Errorno is "+convert(errno)+L". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". Errorno is "+convert(errno)+". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
 #endif
 				index_error=true;
 			}
@@ -1616,7 +1616,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #ifdef _WIN32
 		if(dir_changed)
 		{
-			VSSLog(L"Indexing changed dir: " + path, LL_DEBUG);
+			VSSLog("Indexing changed dir: " + path, LL_DEBUG);
 
 			for(size_t i=0;i<fs_files.size();++i)
 			{
@@ -1624,7 +1624,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 				{
 					if( std::binary_search(open_files.begin(), open_files.end(), path_lower+strlower(fs_files[i].name) ) )
 					{
-						VSSLog(L"File is open: " + fs_files[i].name, LL_DEBUG);
+						VSSLog("File is open: " + fs_files[i].name, LL_DEBUG);
 
 						fs_files[i].change_indicator*=(std::max)((unsigned int)2, Server->getRandomNumber());
 						if(fs_files[i].change_indicator>0)
@@ -1687,7 +1687,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		{
 			++index_c_fs;
 
-			std::wstring tpath=os_file_prefix(path);
+			std::string tpath=os_file_prefix(path);
 
 			bool has_error;
 			fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
@@ -1695,11 +1695,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			{
 				if(os_directory_exists(index_root_path))
 				{
-					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+					VSSLog("Error while getting files in folder \""+path+"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 				}
 				else
 				{
-					VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+					VSSLog("Error while getting files in folder \""+path+"\". Windows errorcode: "+convert((int)GetLastError())+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 					index_error=true;
 				}
 			}
@@ -1760,7 +1760,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::wstring& wpath,
+bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath,
 	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens)
 {
 	for(size_t i=sc_refs.size();i-- > 0;)
@@ -1827,18 +1827,18 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 			{
 				if( only_own_tokens)
 				{
-					VSSLog(L"Restarting shadow copy of " + sc_refs[i]->target + L" because it was started by this server", LL_WARNING);
+					VSSLog("Restarting shadow copy of " + sc_refs[i]->target + " because it was started by this server", LL_WARNING);
 				}
 				else if(!cannot_open_shadowcopy)
 				{
-					VSSLog(L"Restarting/not using already existing shadow copy of " + sc_refs[i]->target + L" because it is too old", LL_INFO);
+					VSSLog("Restarting/not using already existing shadow copy of " + sc_refs[i]->target + " because it is too old", LL_INFO);
 				}
 
 				SCRef *curr=sc_refs[i];
-				std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+				std::map<std::string, SCDirs*>& scdirs_server = scdirs[starttoken];
 
-				std::vector<std::wstring> paths;
-				for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
+				std::vector<std::string> paths;
+				for(std::map<std::string, SCDirs*>::iterator it=scdirs_server.begin();
 					it!=scdirs_server.end();++it)
 				{
 					paths.push_back(it->first);
@@ -1846,11 +1846,11 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 
 				for(size_t j=0;j<paths.size();++j)
 				{
-					std::map<std::wstring, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+					std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
 					if(it!=scdirs_server.end() 
 						&& it->second->ref==curr)
 					{
-						VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
+						VSSLog("Releasing "+it->first+" orig_target="+it->second->orig_target+" target="+it->second->target, LL_DEBUG);
 						release_shadowcopy(it->second, false, -1, dir);
 					}
 				}
@@ -1869,7 +1869,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					dir->ref->dontincrement=false;
 				}
 
-				VSSLog(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
+				VSSLog("orig_target="+dir->orig_target+" volpath="+dir->ref->volpath, LL_DEBUG);
 
 				dir->target=dir->orig_target;
 				dir->target.erase(0,wpath.size());
@@ -1877,15 +1877,15 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 #ifndef _WIN32
 				if(dir->target.empty() || dir->target[0]!='/')
 				{
-					dir->target = L"/" + dir->target;
+					dir->target = "/" + dir->target;
 				}
-				dir->target=dir->ref->volpath+ (dir->target.empty()? L"" : dir->target);
+				dir->target=dir->ref->volpath+ (dir->target.empty()? "" : dir->target);
 #else
 				dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 #endif
 				if(dir->fileserv)
 				{
-					shareDir(widen(starttoken), dir->dir, dir->target);
+					shareDir(starttoken, dir->dir, dir->target);
 				}
 
 				if(for_imagebackup && dir->ref->save_id!=-1)
@@ -1925,15 +1925,15 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 
 #ifdef _WIN32
 	WCHAR volume_path[MAX_PATH]; 
-	BOOL ok = GetVolumePathNameW(dir->orig_target.c_str(), volume_path, MAX_PATH);
+	BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir->orig_target).c_str(), volume_path, MAX_PATH);
 	if(!ok)
 	{
 		VSSLog("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
 		return false;
 	}
-	std::wstring wpath=volume_path;
+	std::string wpath=Server->ConvertFromWchar(volume_path);
 #else
-	std::wstring wpath = Server->ConvertToUnicode(getFolderMount(Server->ConvertToUTF8(dir->orig_target)));
+	std::string wpath = (getFolderMount((dir->orig_target)));
 	if(wpath.empty())
 	{
 		wpath = dir->orig_target;
@@ -1994,7 +1994,7 @@ namespace
 			{
 				if(scs[i].target==dir->target || ( dir->ref!=NULL && dir->ref->backupcom==NULL ) )
 				{
-					Server->Log(L"Removing shadowcopy entry for path \""+scs[i].path+L"\"", LL_DEBUG);
+					Server->Log("Removing shadowcopy entry for path \""+scs[i].path+"\"", LL_DEBUG);
 					cd->deleteShadowcopy(scs[i].id);
 				}
 			}
@@ -2017,7 +2017,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 		wait_for(pb_result);
 	}
 
-	std::wstring errmsg;
+	std::string errmsg;
 	check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
 
 #ifndef VSS_XP
@@ -2068,7 +2068,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target), loglines);
 	if(rc!=0)
 	{
-		VSSLog(L"Error removing snapshot to "+dir->target, LL_ERROR);
+		VSSLog("Error removing snapshot to "+dir->target, LL_ERROR);
 		VSSLogLines(loglines, LL_ERROR);
 		return false;
 	}
@@ -2109,7 +2109,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			|| Server->getTimeSeconds()-dir->ref->starttime>shadowcopy_timeout/1000)
 		{
 
-			VSSLog(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_DEBUG);
+			VSSLog("Deleting shadowcopy for path \""+dir->target+"\" -2", LL_DEBUG);
 			ok = deleteShadowcopy(dir);
 
 			if(dir->ref->save_id!=-1)
@@ -2144,22 +2144,22 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		{
 			if(sc_refs[i]->starttokens.empty())
 			{
-				VSSLog(L"Deleting Shadowcopy for dir \""+sc_refs[i]->target+L"\"", LL_DEBUG);
+				VSSLog("Deleting Shadowcopy for dir \""+sc_refs[i]->target+"\"", LL_DEBUG);
 				bool c=true;
 				while(c)
 				{
 					c=false;
-					for(std::map<std::string, std::map<std::wstring, SCDirs*> >::iterator server_it = scdirs.begin();
+					for(std::map<std::string, std::map<std::string, SCDirs*> >::iterator server_it = scdirs.begin();
 						server_it!=scdirs.end();++server_it)
 					{
-						for(std::map<std::wstring, SCDirs*>::iterator it=server_it->second.begin();
+						for(std::map<std::string, SCDirs*>::iterator it=server_it->second.begin();
 							it!=server_it->second.end();++it)
 						{
 							if(it->second->ref==sc_refs[i])
 							{
 								if(it->second->fileserv)
 								{
-									shareDir(widen(server_it->first), it->second->dir, it->second->orig_target);
+									shareDir(server_it->first, it->second->dir, it->second->orig_target);
 								}
 								it->second->target=it->second->orig_target;
 
@@ -2245,7 +2245,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target), loglines);
 	if(rc!=0)
 	{
-		VSSLog(L"Error removing snapshot to "+scs.orig_target, LL_ERROR);
+		VSSLog("Error removing snapshot to "+scs.orig_target, LL_ERROR);
 		VSSLogLines(loglines, LL_ERROR);
 		return false;
 	}
@@ -2290,7 +2290,7 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 		}
 		if(f2 && (scs[i].refs<=0
 			|| scs[i].passedtime>shadowcopy_timeout/1000
-			|| (start && !scs[i].filesrv && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==widen(starttoken) ) ) )
+			|| (start && !scs[i].filesrv && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==starttoken ) ) )
 		{
 			ok = ok && deleteSavedShadowCopy(scs[i], context);
 		}
@@ -2304,12 +2304,12 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 #ifdef _WIN32
 #ifdef ENABLE_VSS
 
-bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg, int loglevel, bool* retryable_error)
+bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error)
 {
-#define FAIL_STATE(x) case x: { state=L#x; failure=true; } break
-#define OK_STATE(x) case x: { state=L#x; } break
+#define FAIL_STATE(x) case x: { state=#x; failure=true; } break
+#define OK_STATE(x) case x: { state=#x; } break
 
-	std::wstring state;
+	std::string state;
 	bool failure=false;
 	switch(pState)
 	{
@@ -2338,12 +2338,12 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 #undef FAIL_STATE
 #undef OK_STATE
 
-	std::wstring err;
+	std::string err;
 	bool has_error=false;
-#define HR_ERR(x) case x: { err=L#x; has_error=true; } break
+#define HR_ERR(x) case x: { err=#x; has_error=true; } break
 	switch(pHrResultFailure)
 	{
-	case S_OK: { err=L"S_OK"; } break;
+	case S_OK: { err="S_OK"; } break;
 		HR_ERR(VSS_E_WRITERERROR_INCONSISTENTSNAPSHOT);
 		HR_ERR(VSS_E_WRITERERROR_OUTOFRESOURCES);
 		HR_ERR(VSS_E_WRITERERROR_TIMEOUT);
@@ -2358,16 +2358,16 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 	}
 #undef HR_ERR
 
-	std::wstring writerName;
+	std::string writerName;
 	if(pbstrWriter)
-		writerName=pbstrWriter;
+		writerName=Server->ConvertFromWchar(pbstrWriter);
 	else
-		writerName=L"(NULL)";
+		writerName="(NULL)";
 
 	if(failure || has_error)
 	{
-		const std::wstring erradd=L". UrBackup will continue with the backup but the associated data may not be consistent.";
-		std::wstring nerrmsg=L"Writer "+writerName+L" has failure state "+state+L" with error "+err;
+		const std::string erradd=". UrBackup will continue with the backup but the associated data may not be consistent.";
+		std::string nerrmsg="Writer "+writerName+" has failure state "+state+" with error "+err;
 		if(retryable_error && pHrResultFailure==VSS_E_WRITERERROR_RETRYABLE)
 		{
 			loglevel=LL_INFO;
@@ -2383,14 +2383,14 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 	}
 	else
 	{
-		VSSLog(L"Writer "+writerName+L" has failure state "+state+L" with error "+err+L".", LL_DEBUG);
+		VSSLog("Writer "+writerName+" has failure state "+state+" with error "+err+".", LL_DEBUG);
 	}
 
 	return true;
 }
 
 
-bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg, int loglevel, bool* retryable_error)
+bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error)
 {
 	IVssAsync *pb_result;
 	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
@@ -2404,7 +2404,7 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstr
 	UINT nWriters;
 	CHECK_COM_RESULT_RETURN(backupcom->GetWriterStatusCount(&nWriters));
 
-	VSSLog("Number of Writers: "+nconvert(nWriters), LL_DEBUG);
+	VSSLog("Number of Writers: "+convert(nWriters), LL_DEBUG);
 
 	bool has_error=false;
 	for(UINT i=0;i<nWriters;++i)
@@ -2495,7 +2495,7 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 			CHECK_COM_RESULT_RELEASE_S(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
 			VSS_SNAPSHOT_PROP snap_props={}; 
 			CHECK_COM_RESULT_RELEASE_S(backupcom->GetSnapshotProperties(scs[i].vssid, &snap_props));
-			std::string ret=Server->ConvertToUTF8(snap_props.m_pwszSnapshotDeviceObject);
+			std::string ret=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
 			VssFreeSnapshotProperties(&snap_props);
 			backupcom->Release();
 			return ret;
@@ -2506,10 +2506,10 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 	return "";
 }
 
-SCDirs* IndexThread::getSCDir(const std::wstring path)
+SCDirs* IndexThread::getSCDir(const std::string path)
 {
-	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
-	std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.find(path);
+	std::map<std::string, SCDirs*>& scdirs_server = scdirs[starttoken];
+	std::map<std::string, SCDirs*>::iterator it=scdirs_server.find(path);
 	if(it!=scdirs_server.end())
 	{
 		return it->second;
@@ -2517,7 +2517,7 @@ SCDirs* IndexThread::getSCDir(const std::wstring path)
 	else
 	{
 		SCDirs *nd=new SCDirs;
-		scdirs_server.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
+		scdirs_server.insert(std::pair<std::string, SCDirs*>(path, nd) );
 
 		nd->running=false;
 
@@ -2534,7 +2534,7 @@ IFileServ *IndexThread::getFileSrv(void)
 void IndexThread::execute_prebackup_hook(void)
 {
 #ifdef _WIN32
-	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\prefilebackup.bat\"").c_str());
+	system(("\""+Server->getServerWorkingDir()+"\\prefilebackup.bat\"").c_str());
 #else
 	system("/etc/urbackup/prefilebackup");
 #endif
@@ -2543,7 +2543,7 @@ void IndexThread::execute_prebackup_hook(void)
 void IndexThread::execute_postindex_hook(void)
 {
 #ifdef _WIN32
-	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\postfileindex.bat\"").c_str());
+	system(("\""+Server->getServerWorkingDir()+"\\postfileindex.bat\"").c_str());
 #else
 	system("/etc/urbackup/postfileindex");
 #endif
@@ -2557,9 +2557,9 @@ void IndexThread::execute_postbackup_hook(void)
 	memset(&si, 0, sizeof(STARTUPINFO) );
 	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
 	si.cb=sizeof(STARTUPINFO);
-	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->getServerWorkingDir()+L"\\postfilebackup.bat\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->ConvertToWchar(Server->getServerWorkingDir())+L"\\postfilebackup.bat\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
 	{
-		Server->Log("Executing postfilebackup.bat failed: "+nconvert((int)GetLastError()), LL_INFO);
+		Server->Log("Executing postfilebackup.bat failed: "+convert((int)GetLastError()), LL_INFO);
 	}
 	else
 	{
@@ -2579,7 +2579,7 @@ void IndexThread::execute_postbackup_hook(void)
 			char *a1=(char*)"/etc/urbackup/postfilebackup";
 			char* const argv[]={ a1, NULL };
 			execv(a1, argv);
-			Server->Log("Error in execv /etc/urbackup/postfilebackup: "+nconvert(errno), LL_INFO);
+			Server->Log("Error in execv /etc/urbackup/postfilebackup: "+convert(errno), LL_INFO);
 			exit(1);
 		}
 		else
@@ -2595,19 +2595,19 @@ void IndexThread::execute_postbackup_hook(void)
 #endif
 }
 
-std::wstring IndexThread::sanitizePattern(const std::wstring &p)
+std::string IndexThread::sanitizePattern(const std::string &p)
 {
-	std::wstring ep=trim(p);
-	std::wstring nep;
+	std::string ep=trim(p);
+	std::string nep;
 	nep.reserve(ep.size()*2);
 	for(size_t j=0;j<ep.size();++j)
 	{
-		wchar_t ch=ep[j];
+		char ch=ep[j];
 		if(ch=='/')
 		{
-			if(os_file_sep()==L"\\")
+			if(os_file_sep()=="\\")
 			{
-				nep+=L"\\\\";
+				nep+="\\\\";
 			}
 			else
 			{
@@ -2616,9 +2616,9 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 		}
 		else if(ch=='\\' && j+1<ep.size() && ep[j+1]=='\\')
 		{
-			if(os_file_sep()==L"\\")
+			if(os_file_sep()=="\\")
 			{
-				nep+=L"\\\\";
+				nep+="\\\\";
 			}
 			else
 			{
@@ -2628,8 +2628,8 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 		}
 		else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='[' ) ) )
 		{
-			if(os_file_sep()==L"\\")
-				nep+=L"\\\\";
+			if(os_file_sep()=="\\")
+				nep+="\\\\";
 			else
 				nep+=os_file_sep();
 		}
@@ -2643,13 +2643,13 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 
 void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns)
 {
-	std::wstring exclude_pattern_key = L"exclude_files";
-	std::wstring include_pattern_key = L"include_files";
+	std::string exclude_pattern_key = "exclude_files";
+	std::string include_pattern_key = "include_files";
 
 	if(index_group==c_group_continuous)
 	{
-		exclude_pattern_key=L"continuous_exclude_files";
-		include_pattern_key=L"continuous_include_files";
+		exclude_pattern_key="continuous_exclude_files";
+		include_pattern_key="continuous_include_files";
 	}
 
 	std::string settings_fn = "urbackup/data/settings.cfg";
@@ -2662,8 +2662,8 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 	exlude_dirs.clear();
 	if(curr_settings!=NULL)
 	{	
-		std::wstring val;
-		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+L"_def", &val) )
+		std::string val;
+		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+"_def", &val) )
 		{
 			if(index_group==c_group_default
 				&& val!=cd->getOldExcludePattern())
@@ -2679,10 +2679,10 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 		}
 		else
 		{
-			exlude_dirs = parseExcludePatterns(std::wstring());
+			exlude_dirs = parseExcludePatterns(std::string());
 		}
 
-		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+L"_def", &val) )
+		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
 		{
 			if(index_group==c_group_default
 				&& val!=cd->getOldIncludePattern())
@@ -2700,17 +2700,17 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 	}
 	else
 	{
-		exlude_dirs = parseExcludePatterns(std::wstring());
+		exlude_dirs = parseExcludePatterns(std::string());
 	}
 }
 
-std::vector<std::wstring> IndexThread::parseExcludePatterns(const std::wstring& val)
+std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
 {
-	std::vector<std::wstring> exlude_dirs;
+	std::vector<std::string> exlude_dirs;
 	if(!val.empty())
 	{
-		std::vector<std::wstring> toks;
-		Tokenize(val, toks, L";");
+		std::vector<std::string> toks;
+		Tokenize(val, toks, ";");
 		exlude_dirs=toks;
 #ifdef _WIN32
 		for(size_t i=0;i<exlude_dirs.size();++i)
@@ -2720,11 +2720,11 @@ std::vector<std::wstring> IndexThread::parseExcludePatterns(const std::wstring& 
 #endif
 		for(size_t i=0;i<exlude_dirs.size();++i)
 		{
-			if(exlude_dirs[i].find('\\')==std::wstring::npos
-				&& exlude_dirs[i].find('/')==std::wstring::npos
-				&& exlude_dirs[i].find('*')==std::wstring::npos )
+			if(exlude_dirs[i].find('\\')==std::string::npos
+				&& exlude_dirs[i].find('/')==std::string::npos
+				&& exlude_dirs[i].find('*')==std::string::npos )
 			{
-				exlude_dirs[i]=L"*/"+trim(exlude_dirs[i]);
+				exlude_dirs[i]="*/"+trim(exlude_dirs[i]);
 			}
 		}
 		for(size_t i=0;i<exlude_dirs.size();++i)
@@ -2738,12 +2738,12 @@ std::vector<std::wstring> IndexThread::parseExcludePatterns(const std::wstring& 
 	return exlude_dirs;
 }
 
-std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
-	std::vector<std::wstring>& include_prefix)
+std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& val, std::vector<int>& include_depth,
+	std::vector<std::string>& include_prefix)
 {
-	std::vector<std::wstring> toks;
-	Tokenize(val, toks, L";");
-	std::vector<std::wstring> include_dirs=toks;
+	std::vector<std::string> toks;
+	Tokenize(val, toks, ";");
+	std::vector<std::string> include_dirs=toks;
 #ifdef _WIN32
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
@@ -2758,8 +2758,8 @@ std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& 
 	include_depth.resize(include_dirs.size());
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		std::wstring ip=include_dirs[i];
-		if(ip.find(L"*")==ip.size()-1 || ip.find(L"*")==std::string::npos)
+		std::string ip=include_dirs[i];
+		if(ip.find("*")==ip.size()-1 || ip.find("*")==std::string::npos)
 		{
 			int depth=0;
 			for(size_t j=0;j<ip.size();++j)
@@ -2782,11 +2782,11 @@ std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& 
 	include_prefix.resize(include_dirs.size());
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		size_t f1=include_dirs[i].find_first_of(L":");
-		size_t f2=include_dirs[i].find_first_of(L"[");
-		size_t f3=include_dirs[i].find_first_of(L"*");
+		size_t f1=include_dirs[i].find_first_of(":");
+		size_t f2=include_dirs[i].find_first_of("[");
+		size_t f3=include_dirs[i].find_first_of("*");
 		while(f2>0 && f2!=std::string::npos && include_dirs[i][f2-1]=='\\')
-			f2=include_dirs[i].find_first_of(L"[", f2);
+			f2=include_dirs[i].find_first_of("[", f2);
 
 		size_t f=(std::min)((std::min)(f1,f2), f3);
 
@@ -2802,10 +2802,10 @@ std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& 
 			include_prefix[i]=include_dirs[i];
 		}
 
-		std::wstring nep;
+		std::string nep;
 		for(size_t j=0;j<include_prefix[i].size();++j)
 		{
-			wchar_t ch=include_prefix[i][j];
+			char ch=include_prefix[i][j];
 			if(ch=='/')
 				nep+=os_file_sep();
 			else if(ch=='\\' && j+1<include_prefix[i].size() && include_prefix[i][j+1]=='\\')
@@ -2825,9 +2825,9 @@ std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& 
 	return include_dirs;
 }
 
-bool IndexThread::isExcluded(const std::vector<std::wstring>& exlude_dirs, const std::wstring &path)
+bool IndexThread::isExcluded(const std::vector<std::string>& exlude_dirs, const std::string &path)
 {
-	std::wstring wpath=path;
+	std::string wpath=path;
 #ifdef _WIN32
 	strupper(&wpath);
 #endif
@@ -2845,10 +2845,10 @@ bool IndexThread::isExcluded(const std::vector<std::wstring>& exlude_dirs, const
 	return false;
 }
 
-bool IndexThread::isIncluded(const std::vector<std::wstring>& include_dirs, const std::vector<int>& include_depth,
-	const std::vector<std::wstring>& include_prefix, const std::wstring &path, bool *adding_worthless)
+bool IndexThread::isIncluded(const std::vector<std::string>& include_dirs, const std::vector<int>& include_depth,
+	const std::vector<std::string>& include_prefix, const std::string &path, bool *adding_worthless)
 {
-	std::wstring wpath=path;
+	std::string wpath=path;
 #ifdef _WIN32
 	strupper(&wpath);
 #endif
@@ -2902,19 +2902,19 @@ bool IndexThread::isIncluded(const std::vector<std::wstring>& include_dirs, cons
 
 void IndexThread::start_filesrv(void)
 {
-	std::wstring name;
+	std::string name;
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
-		name=L"##restore##"+convert(Server->getTimeSeconds())+convert(Server->getRandomNumber()%10000);
-		writestring(Server->ConvertToUTF8(name), "clientname.txt");
+		name="##restore##"+convert(Server->getTimeSeconds())+convert(Server->getRandomNumber()%10000);
+		writestring((name), "clientname.txt");
 	}
 	else
 	{
 		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 		if(curr_settings!=NULL)
 		{
-			std::wstring val;
-			if(curr_settings->getValue(L"computername", &val))
+			std::string val;
+			if(curr_settings->getValue("computername", &val))
 			{
 				if(!val.empty())
 				{
@@ -2939,7 +2939,7 @@ void IndexThread::start_filesrv(void)
 	if(db)
 	{
 		db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey = 'use_fqdn'");
-		if(!res.empty() && res[0][L"tvalue"]==L"1")
+		if(!res.empty() && res[0]["tvalue"]=="1")
 		{
 			use_fqdn=true;
 		}
@@ -2955,37 +2955,37 @@ void IndexThread::start_filesrv(void)
 
 	filesrv=filesrv_fak->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
 		backgroundBackupsEnabled(std::string()));
-	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data", std::string());
+	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data", std::string());
 
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
 }
 
-void IndexThread::shareDir(const std::wstring& token, std::wstring name, const std::wstring &path)
+void IndexThread::shareDir(const std::string& token, std::string name, const std::string &path)
 {
 	if(!token.empty())
 	{
-		name = token + L"|" +name;
+		name = token + "|" +name;
 	}
 	IScopedLock lock(filesrv_mutex);
 	filesrv_share_dirs[name]=path;
 }
 
-void IndexThread::removeDir(const std::wstring& token, std::wstring name)
+void IndexThread::removeDir(const std::string& token, std::string name)
 {
 	if(!token.empty())
 	{
-		name = token + L"|" +name;
+		name = token + "|" +name;
 	}
 	IScopedLock lock(filesrv_mutex);
-	std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.find(name);
+	std::map<std::string, std::string>::iterator it=filesrv_share_dirs.find(name);
 	if(it!=filesrv_share_dirs.end())
 	{
 		filesrv_share_dirs.erase(it);
 	}
 }
 
-std::wstring IndexThread::getShareDir(const std::wstring &name)
+std::string IndexThread::getShareDir(const std::string &name)
 {
 	IScopedLock lock(filesrv_mutex);
 	return filesrv_share_dirs[name];
@@ -2994,9 +2994,9 @@ std::wstring IndexThread::getShareDir(const std::wstring &name)
 void IndexThread::share_dirs()
 {
 	IScopedLock lock(filesrv_mutex);
-	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
+	for(std::map<std::string, std::string>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
-		std::wstring dir=it->first;
+		std::string dir=it->first;
 		filesrv->shareDir(dir, it->second, std::string());
 	}
 }
@@ -3004,9 +3004,9 @@ void IndexThread::share_dirs()
 void IndexThread::unshare_dirs()
 {
 	IScopedLock lock(filesrv_mutex);
-	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
+	for(std::map<std::string, std::string>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
-		std::wstring dir=it->first;
+		std::string dir=it->first;
 		filesrv->removeDir(dir, std::string());
 	}
 }
@@ -3020,9 +3020,9 @@ void IndexThread::doStop(void)
 }
 
 
-size_t IndexThread::calcBufferSize( std::wstring &path, const std::vector<SFileAndHash> &data )
+size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data )
 {
-	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::wstring);
+	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::string);
 	for(size_t i=0;i<data.size();++i)
 	{
 		add_size+=data[i].name.size()*sizeof(wchar_t);
@@ -3035,7 +3035,7 @@ size_t IndexThread::calcBufferSize( std::wstring &path, const std::vector<SFileA
 }
 
 
-void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data)
+void IndexThread::modifyFilesInt(std::string path, const std::vector<SFileAndHash> &data)
 {
 	modify_file_buffer_size+=calcBufferSize(path, data);
 
@@ -3067,7 +3067,7 @@ void IndexThread::commitModifyFilesBuffer(void)
 	last_file_buffer_commit_time=Server->getTimeMS();
 }
 
-void IndexThread::addFilesInt( std::wstring path, const std::vector<SFileAndHash> &data )
+void IndexThread::addFilesInt( std::string path, const std::vector<SFileAndHash> &data )
 {
 	add_file_buffer_size+=calcBufferSize(path, data);
 
@@ -3101,7 +3101,7 @@ void IndexThread::commitAddFilesBuffer()
 }
 
 
-std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path)
+std::string IndexThread::removeDirectorySeparatorAtEnd(const std::string& path)
 {
 	wchar_t path_sep=os_file_sep()[0];
 	if(!path.empty() && path[path.size()-1]==path_sep )
@@ -3111,7 +3111,7 @@ std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path
 	return path;
 }
 
-std::wstring IndexThread::addDirectorySeparatorAtEnd(const std::wstring& path)
+std::string IndexThread::addDirectorySeparatorAtEnd(const std::string& path)
 {
 	wchar_t path_sep=os_file_sep()[0];
 	if(!path.empty() && path[path.size()-1]!=path_sep )
@@ -3121,7 +3121,7 @@ std::wstring IndexThread::addDirectorySeparatorAtEnd(const std::wstring& path)
 	return path;
 }
 
-std::string IndexThread::getSHA256(const std::wstring& fn)
+std::string IndexThread::getSHA256(const std::string& fn)
 {
 	sha256_ctx ctx;
 	sha256_init(&ctx);
@@ -3153,9 +3153,9 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	return bytesToHex(dig, 32);
 }
 
-std::string IndexThread::getSHA512Binary(const std::wstring& fn)
+std::string IndexThread::getSHA512Binary(const std::string& fn)
 {
-	Server->Log(L"Calculating SHA512 Hash for file \""+fn+L"\"", LL_DEBUG);
+	Server->Log("Calculating SHA512 Hash for file \""+fn+"\"", LL_DEBUG);
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
@@ -3208,19 +3208,6 @@ void IndexThread::VSSLog(const std::string& msg, int loglevel)
 	}
 }
 
-void IndexThread::VSSLog(const std::wstring& msg, int loglevel)
-{
-	Server->Log(msg, loglevel);
-	if(loglevel>LL_DEBUG)
-	{
-		SVssLogItem item;
-		item.msg = Server->ConvertToUTF8(msg);
-		item.loglevel = loglevel;
-		item.times = Server->getTimeSeconds();
-		vsslog.push_back(item);
-	}
-}
-
 void IndexThread::VSSLogLines(const std::string& msg, int loglevel)
 {
 	std::vector<std::string> lines;
@@ -3240,40 +3227,42 @@ void IndexThread::VSSLogLines(const std::string& msg, int loglevel)
 #ifdef _WIN32
 namespace
 {
-	LONG GetStringRegKey(HKEY hKey, const std::wstring &strValueName, std::wstring &strValue, const std::wstring &strDefaultValue)
+	LONG GetStringRegKey(HKEY hKey, const std::string &strValueName, std::string &strValue, const std::string &strDefaultValue)
 	{
 		strValue = strDefaultValue;
 		WCHAR szBuffer[8192];
 		DWORD dwBufferSize = sizeof(szBuffer);
 		ULONG nError;
-		nError = RegQueryValueExW(hKey, strValueName.c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		std::wstring rval;
+		nError = RegQueryValueExW(hKey, Server->ConvertToWchar(strValueName).c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
 		if (ERROR_SUCCESS == nError)
 		{
-			strValue.resize(dwBufferSize/sizeof(wchar_t));
-			memcpy(const_cast<wchar_t*>(strValue.c_str()), szBuffer, dwBufferSize);
+			rval.resize(dwBufferSize/sizeof(wchar_t));
+			memcpy(const_cast<wchar_t*>(rval.c_str()), szBuffer, dwBufferSize);
+			strValue = Server->ConvertFromWchar(rval);
 		}
 		return nError;
 	}
 }
 #endif
 
-void IndexThread::addFileExceptions(std::vector<std::wstring>& exlude_dirs)
+void IndexThread::addFileExceptions(std::vector<std::string>& exlude_dirs)
 {
 #ifdef _WIN32
-	exlude_dirs.push_back(sanitizePattern(L"C:\\HIBERFIL.SYS"));
+	exlude_dirs.push_back(sanitizePattern("C:\\HIBERFIL.SYS"));
 
 	HKEY hKey;
 	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
 	if(lRes != ERROR_SUCCESS)
 		return;
 
-	std::wstring tfiles;
-	lRes = GetStringRegKey(hKey, L"ExistingPageFiles", tfiles, L"");
+	std::string tfiles;
+	lRes = GetStringRegKey(hKey, "ExistingPageFiles", tfiles, "");
 	if(lRes != ERROR_SUCCESS)
 		return;
 
-	std::vector<std::wstring> toks;
-	std::wstring sep;
+	std::vector<std::string> toks;
+	std::string sep;
 	sep.resize(1);
 	sep[0]=0;
 	Tokenize(tfiles, toks, sep);
@@ -3286,7 +3275,7 @@ void IndexThread::addFileExceptions(std::vector<std::wstring>& exlude_dirs)
 
 		toks[i]=trim(toks[i]);
 
-		if(toks[i].find(L"\\??\\")==0)
+		if(toks[i].find("\\??\\")==0)
 		{
 			toks[i].erase(0, 4);
 		}
@@ -3298,47 +3287,47 @@ void IndexThread::addFileExceptions(std::vector<std::wstring>& exlude_dirs)
 #endif
 }
 
-void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath)
+void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath)
 {
 #ifdef _WIN32
-	std::wstring prefixedbpath=os_file_prefix(bpath);
+	std::string prefixedbpath=os_file_prefix(bpath);
 	std::wstring tvolume;
 	tvolume.resize(prefixedbpath.size()+100);
 	DWORD cchBufferLength=static_cast<DWORD>(tvolume.size());
-	BOOL b=GetVolumePathNameW(prefixedbpath.c_str(), &tvolume[0], cchBufferLength);
+	BOOL b=GetVolumePathNameW(Server->ConvertToWchar(prefixedbpath).c_str(), &tvolume[0], cchBufferLength);
 	if(!b)
 	{
-		VSSLog(L"Error getting volume path for "+bpath, LL_WARNING);
+		VSSLog("Error getting volume path for "+bpath, LL_WARNING);
 		return;
 	}
 
 	std::wstring tvssvolume;
 	tvssvolume.resize(vsspath.size()+100);
 	cchBufferLength=static_cast<DWORD>(tvssvolume.size());
-	b=GetVolumePathNameW(vsspath.c_str(), &tvssvolume[0], cchBufferLength);
+	b=GetVolumePathNameW(Server->ConvertToWchar(vsspath).c_str(), &tvssvolume[0], cchBufferLength);
 	if(!b)
 	{
-		VSSLog(L"Error getting volume path for "+vsspath, LL_WARNING);
+		VSSLog("Error getting volume path for "+vsspath, LL_WARNING);
 		return;
 	}
 
-	std::wstring vssvolume=tvssvolume.c_str();
+	std::string vssvolume=Server->ConvertFromWchar(tvssvolume.c_str());
 
-	std::wstring volume=strlower(tvolume.c_str());
+	std::string volume=strlower(Server->ConvertFromWchar(tvolume.c_str()));
 
-	if(volume.find(L"\\\\?\\")==0)
+	if(volume.find("\\\\?\\")==0)
 		volume.erase(0, 4);
 
-	std::vector<std::wstring> additional_changed_dirs;
-	std::vector<std::wstring> additional_open_files;
+	std::vector<std::string> additional_changed_dirs;
+	std::vector<std::string> additional_open_files;
 
-	std::wstring prev_path;
+	std::string prev_path;
 
 	for(size_t i=0;i<changed_dirs.size();++i)
 	{
-		std::wstring vsstpath;
+		std::string vsstpath;
 		{
-			std::wstring tpath=changed_dirs[i];
+			std::string tpath=changed_dirs[i];
 
 			if(tpath.find(volume)!=0)
 			{
@@ -3358,12 +3347,12 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 		bool has_error;
 		std::vector<SFile> files = getFilesWin(os_file_prefix(vsstpath), &has_error, false, false, (index_flags & EBackupDirFlag_OneFilesystem)>0);
-		std::vector<std::wstring> changed_files;
+		std::vector<std::string> changed_files;
 		bool looked_up_changed_files=false;
 
 		if(has_error)
 		{
-			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_DEBUG);
+			VSSLog("Cannot open directory "+vsstpath+" to handle hard links", LL_DEBUG);
 		}
 
 		const size_t& cdir_idx = i;
@@ -3376,12 +3365,12 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 				continue;
 			}
 
-			std::wstring fn=vsstpath+files[i].name;
-			HANDLE hFile = CreateFileW(os_file_prefix(fn).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			std::string fn=vsstpath+files[i].name;
+			HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 			if(hFile==INVALID_HANDLE_VALUE)
 			{
-				VSSLog(L"Cannot open file "+fn+L" to read the file attributes", LL_INFO);
+				VSSLog("Cannot open file "+fn+" to read the file attributes", LL_INFO);
 			}
 			else
 			{
@@ -3390,7 +3379,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 				if(!b)
 				{
-					VSSLog(L"Error getting file information of "+fn, LL_INFO);
+					VSSLog("Error getting file information of "+fn, LL_INFO);
 					CloseHandle(hFile);
 				}
 				else if(fileInformation.nNumberOfLinks>1)
@@ -3403,27 +3392,27 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 					std::wstring outBuf;
 					DWORD stringLength=4096;
 					outBuf.resize(stringLength);
-					HANDLE hFn=FindFirstFileNameW(os_file_prefix(fn).c_str(), 0, &stringLength, &outBuf[0]);
+					HANDLE hFn=FindFirstFileNameW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), 0, &stringLength, &outBuf[0]);
 
 					if(hFn==INVALID_HANDLE_VALUE && GetLastError()==ERROR_MORE_DATA)
 					{
 						outBuf.resize(stringLength);
-						hFn=FindFirstFileNameW(os_file_prefix(fn).c_str(), 0, &stringLength, &outBuf[0]);
+						hFn=FindFirstFileNameW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), 0, &stringLength, &outBuf[0]);
 					}
 
 					if(hFn==INVALID_HANDLE_VALUE)
 					{
-						VSSLog(L"Error reading hard link names of "+fn, LL_INFO);
+						VSSLog("Error reading hard link names of "+fn, LL_INFO);
 					}
 					else
 					{
-						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
+						std::string nfn = strlower(Server->ConvertFromWchar(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1)));
 						if(nfn[0]=='\\')
 							nfn=volume+nfn.substr(1);
 						else
 							nfn=volume+nfn;
 
-						std::wstring ndir=ExtractFilePath(nfn)+os_file_sep();
+						std::string ndir=ExtractFilePath(nfn)+os_file_sep();
 					
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
@@ -3449,17 +3438,17 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 							if(!b && GetLastError()!=ERROR_HANDLE_EOF)
 							{
-								VSSLog(L"Error reading (2) hard link names of "+fn, LL_INFO);
+								VSSLog("Error reading (2) hard link names of "+fn, LL_INFO);
 							}
 							else if(b)
 							{
-								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
+								std::string nfn = strlower(std::string(outBuf.begin(), outBuf.begin()+stringLength-1));
 								if(nfn[0]=='\\')
 									nfn=volume+nfn.substr(1);
 								else
 									nfn=volume+nfn;
 
-								std::wstring ndir=ExtractFilePath(nfn)+os_file_sep();
+								std::string ndir=ExtractFilePath(nfn)+os_file_sep();
 														
 								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
 								{
@@ -3517,7 +3506,7 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	return ret;
 }
 
-std::string IndexThread::getShaBinary( const std::wstring& fn )
+std::string IndexThread::getShaBinary( const std::string& fn )
 {
 	if(sha_version!=256)
 	{
@@ -3529,9 +3518,9 @@ std::string IndexThread::getShaBinary( const std::wstring& fn )
 	}
 }
 
-std::string IndexThread::getSHA256Binary( const std::wstring& fn )
+std::string IndexThread::getSHA256Binary( const std::string& fn )
 {
-	Server->Log(L"Calculating SHA256 Hash for file \""+fn+L"\"", LL_DEBUG);
+	Server->Log("Calculating SHA256 Hash for file \""+fn+"\"", LL_DEBUG);
 	sha256_ctx ctx;
 	sha256_init(&ctx);
 
@@ -3590,7 +3579,7 @@ void IndexThread::writeTokens()
 		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::string access_keys_data;
-	std::vector<std::wstring> keys
+	std::vector<std::string> keys
 		= access_keys->getKeys();
 
 
@@ -3599,16 +3588,16 @@ void IndexThread::writeTokens()
 	int64 curr_key_age = 0;
 	for(size_t i=0;i<keys.size();++i)
 	{
-		if(keys[i]==L"key."+widen(starttoken))
+		if(keys[i]=="key."+starttoken)
 		{
 			has_server_key=true;
-			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
-			curr_key_age = access_keys->getValue(L"key_age."+widen(starttoken), Server->getTimeSeconds());
+			curr_key=access_keys->getValue(keys[i], std::string());
+			curr_key_age = access_keys->getValue("key_age."+starttoken, Server->getTimeSeconds());
 		}
-		else if(keys[i]!=L"key."+widen(starttoken))
+		else if(keys[i]!="key."+starttoken)
 		{
-			access_keys_data+=wnarrow(keys[i])+"="+
-				wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+			access_keys_data+=keys[i]+"="+
+				access_keys->getValue(keys[i], std::string())+"\n";
 		}
 	}
 
@@ -3625,7 +3614,7 @@ void IndexThread::writeTokens()
 		curr_key+"\n";
 
 	access_keys_data+="key_age."+starttoken+"="+
-		nconvert(curr_key_age)+"\n";
+		convert(curr_key_age)+"\n";
 
 	if(modified_file)
 	{
@@ -3644,7 +3633,7 @@ void IndexThread::writeTokens()
 		{
 			ids+=",";
 		}
-		ids+=nconvert(tokens[i].id);
+		ids+=convert(tokens[i].id);
 
 		if(tokens[i].is_user)
 		{
@@ -3652,7 +3641,7 @@ void IndexThread::writeTokens()
 			{
 				uids+=",";
 			}
-			uids+=nconvert(tokens[i].id);
+			uids+=convert(tokens[i].id);
 		}
 
 		if(tokens[i].is_user &&
@@ -3662,7 +3651,7 @@ void IndexThread::writeTokens()
 			{
 				real_uids+=",";
 			}
-			real_uids+=nconvert(tokens[i].id);
+			real_uids+=convert(tokens[i].id);
 		}
 
 	}
@@ -3674,8 +3663,8 @@ void IndexThread::writeTokens()
 
 	for(size_t i=0;i<tokens.size();++i)
 	{
-		data+=nconvert(tokens[i].id)+".accountname="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].accountname))+"\n";
-		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
+		data+=convert(tokens[i].id)+".accountname="+base64_encode_dash((tokens[i].accountname))+"\n";
+		data+=convert(tokens[i].id)+".token="+(tokens[i].token)+"\n";
 
 		if(tokens[i].is_user)
 		{
@@ -3689,20 +3678,20 @@ void IndexThread::writeTokens()
 				{
 					gids+=",";
 				}
-				gids+=nconvert(groups[j]);
+				gids+=convert(groups[j]);
 			}
 
-			data+=nconvert(tokens[i].id)+".gids="+gids+"\n";
+			data+=convert(tokens[i].id)+".gids="+gids+"\n";
 		}
 	}
 
 
-	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
+	write_file_only_admin(data, "urbackup"+os_file_sep()+"data"+os_file_sep()+"tokens_"+starttoken+".properties");
 }
 
-void IndexThread::writeDir(std::fstream& out, const std::wstring& name, bool with_change, int64 change_identicator, const std::string& extra)
+void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with_change, int64 change_identicator, const std::string& extra)
 {
-	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\"";
+	out << "d\"" << escapeListName((name)) << "\"";
 
 	if(with_change)
 	{
@@ -3722,14 +3711,14 @@ void IndexThread::writeDir(std::fstream& out, const std::wstring& name, bool wit
 	}
 }
 
-std::string IndexThread::execute_script(const std::wstring& cmd)
+std::string IndexThread::execute_script(const std::string& cmd)
 {
 	std::string output;
-	int rc = os_popen(Server->ConvertToUTF8(cmd), output);
+	int rc = os_popen((cmd), output);
 
 	if(rc!=0)
 	{
-		Server->Log(L"Script "+cmd+L" had error (code "+convert(rc)+L"). Not using script list.", LL_ERROR);
+		Server->Log("Script "+cmd+" had error (code "+convert(rc)+"). Not using script list.", LL_ERROR);
 		return std::string();
 	}
 
@@ -3744,7 +3733,7 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 		for(size_t i=0;i<scripts.size();++i)
 		{
-			outfile << "f\"" << Server->ConvertToUTF8(scripts[i].outputname) << "\" " << scripts[i].size << " " << Server->getRandomNumber() << Server->getRandomNumber() << "\n";	
+			outfile << "f\"" << (scripts[i].outputname) << "\" " << scripts[i].size << " " << Server->getRandomNumber() << Server->getRandomNumber() << "\n";	
 		}
 
 		outfile << "d\"..\"\n";
@@ -3766,15 +3755,15 @@ void IndexThread::setFlags( unsigned int flags )
 	with_sequence = (flags & flag_with_sequence)>0;
 }
 
-bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target)
+bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::string& orig_path, std::string& target)
 {
 	if(!os_get_symlink_target(symlink, target))
 	{
-		VSSLog(L"Error getting symlink target of symlink "+symlink+L". Not following symlink.", LL_WARNING);
+		VSSLog("Error getting symlink target of symlink "+symlink+". Not following symlink.", LL_WARNING);
 		return false;
 	}
 
-	std::wstring orig_target = target;
+	std::string orig_target = target;
 
 	if(!os_path_absolute(target))
 	{
@@ -3792,12 +3781,12 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 			&& !(index_flags & EBackupDirFlag_FollowSymlinks))
 			continue;
 
-		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
+		std::string bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
 		
 		#ifndef _WIN32
 		if(bpath.empty())
 		{
-			bpath=L"/";
+			bpath="/";
 		}
 		#endif
 		
@@ -3805,11 +3794,11 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 			|| next(target, 0, bpath))
 		{
 			target.erase(0, bpath.size());
-			target = backup_dirs[i].tname + (target.empty() ? L"" : (os_file_sep() + target));
+			target = backup_dirs[i].tname + (target.empty() ? "" : (os_file_sep() + target));
 
 			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
-				VSSLog(L"Following symbolic link at \""+symlink+L"\" to \""+orig_target+L"\" confirms symlink backup target \""+backup_dirs[i].tname+L"\" to \""+backup_dirs[i].path+L"\"", LL_INFO);
+				VSSLog("Following symbolic link at \""+symlink+"\" to \""+orig_target+"\" confirms symlink backup target \""+backup_dirs[i].tname+"\" to \""+backup_dirs[i].path+"\"", LL_INFO);
 				backup_dirs[i].symlinked_confirmed=true;
 			}
 
@@ -3819,29 +3808,29 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
-		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new symlink backup target at \""+target+L"\"", LL_INFO);
+		VSSLog("Following symbolic link at \""+symlink+"\" to new symlink backup target at \""+target+"\"", LL_INFO);
 		addSymlinkBackupDir(target);
 		return true;
 	}
 	else
 	{
-		Server->Log(L"Not following symlink "+symlink+L" because of configuration.", LL_DEBUG);
+		Server->Log("Not following symlink "+symlink+" because of configuration.", LL_DEBUG);
 		return false;
 	}
 }
 
-void IndexThread::addSymlinkBackupDir( const std::wstring& target )
+void IndexThread::addSymlinkBackupDir( const std::string& target )
 {
-	std::wstring name=L".symlink_"+ExtractFileName(target);
+	std::string name=".symlink_"+ExtractFileName(target);
 
 	//Make sure it is unique
 	if(backupNameInUse(name))
 	{
 		int n=1;
-		std::wstring add=L"_"+convert(n);
+		std::string add="_"+convert(n);
 		while(backupNameInUse(name+add))
 		{
-			add=L"_"+convert(++n);
+			add="_"+convert(++n);
 		}
 		name+=add;
 	}
@@ -3855,7 +3844,7 @@ void IndexThread::addSymlinkBackupDir( const std::wstring& target )
 #ifdef _WIN32
 	if(dwt!=NULL)
 	{
-		std::wstring msg=L"A"+target;
+		std::string msg="A"+target;
 		dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
     }
 #endif
@@ -3871,7 +3860,7 @@ void IndexThread::addSymlinkBackupDir( const std::wstring& target )
 	backup_dirs.push_back(backup_dir);
 }
 
-bool IndexThread::backupNameInUse( const std::wstring& name )
+bool IndexThread::backupNameInUse( const std::string& name )
 {
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
@@ -3894,7 +3883,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 #ifdef _WIN32
 			if(dwt!=NULL)
 			{
-				std::wstring msg=L"D"+backup_dirs[i].path;
+				std::string msg="D"+backup_dirs[i].path;
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 #endif
@@ -3908,7 +3897,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 	}
 }
 
-std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring& orig_dir, const std::vector<SFile> files, const std::wstring& fn_filter)
+std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter)
 {
 	std::vector<SFileAndHash> ret;
 	if(fn_filter.empty())
@@ -3957,7 +3946,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 			{
 				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
 				{
-					VSSLog(L"Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
+					VSSLog("Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
 				}
 			}
 		}
@@ -3966,7 +3955,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 }
 
 #ifdef _WIN32
-bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool for_imagebackup, bool * &onlyref )
+bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref )
 {
 	const char* crash_consistent_explanation = "This means the files open by this application (e.g. databases) will be backed up in a crash consistent "
 		"state instead of a properly shutdown state. Properly written applications can recover from system crashes or power failures.";
@@ -3999,7 +3988,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool 
 #endif
 #endif
 
-		std::wstring errmsg;
+		std::string errmsg;
 
 		retryable_error=false;
 		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
@@ -4029,7 +4018,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool 
 			CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
 		}
 
-		CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(&wpath[0], GUID_NULL, &dir->ref->ssetid) );
+		CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(&(Server->ConvertToWchar(wpath)[0]), GUID_NULL, &dir->ref->ssetid) );
 
 		CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
 		wait_for(pb_result);
@@ -4113,24 +4102,24 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool 
 	}
 
 	dir->target.erase(0,wpath.size());
-	dir->ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
+	dir->ref->volpath=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
 	dir->starttime=Server->getTimeSeconds();
 	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 	if(dir->fileserv)
 	{
-		shareDir(widen(starttoken), dir->dir, dir->target);
+		shareDir(starttoken, dir->dir, dir->target);
 	}
 
 	SShadowCopy tsc;
 	tsc.vssid=snap_props.m_SnapshotId;
 	tsc.ssetid=snap_props.m_SnapshotSetId;
 	tsc.target=dir->orig_target;
-	tsc.path=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
+	tsc.path=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
 	tsc.orig_target=dir->orig_target;
 	tsc.filesrv=dir->fileserv;
 	tsc.vol=wpath;
 	tsc.tname=dir->dir;
-	tsc.starttoken=widen(starttoken);
+	tsc.starttoken=starttoken;
 	if(for_imagebackup)
 	{
 		tsc.refs=1;
@@ -4138,7 +4127,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool 
 	dir->ref->save_id=cd->addShadowcopy(tsc);
 	dir->ref->ok=true;
 
-	VSSLog(L"Shadowcopy path: "+tsc.path, LL_DEBUG);
+	VSSLog("Shadowcopy path: "+tsc.path, LL_DEBUG);
 
 	dir->ref->ssetid=snap_props.m_SnapshotId;
 
@@ -4155,7 +4144,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool 
 #endif //_WIN32
 
 #ifndef _WIN32
-bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool for_imagebackup, bool * &onlyref )
+bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref )
 {
 	std::string scriptname;
 	if(dir->fileserv)
@@ -4179,7 +4168,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool 
 
 	if(rc!=0)
 	{
-		VSSLog(L"Creating snapshot of "+dir->orig_target+L" failed", LL_ERROR);
+		VSSLog("Creating snapshot of "+dir->orig_target+" failed", LL_ERROR);
 		VSSLogLines(loglines, LL_ERROR);
 		return false;
 	}
@@ -4211,15 +4200,15 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool 
 
 	if(dir->target.empty() || dir->target[0]!='/')
 	{
-		dir->target = L"/" + dir->target;
+		dir->target = "/" + dir->target;
 	}
 
-	dir->ref->volpath=Server->ConvertToUnicode(snapshot_target);
+	dir->ref->volpath=(snapshot_target);
 	dir->starttime=Server->getTimeSeconds();
-	dir->target=dir->ref->volpath+ (dir->target.empty()? L"" : dir->target);
+	dir->target=dir->ref->volpath+ (dir->target.empty()? "" : dir->target);
 	if(dir->fileserv)
 	{
-		shareDir(widen(starttoken), dir->dir, dir->target);
+		shareDir(starttoken, dir->dir, dir->target);
 	}
 
 	SShadowCopy tsc;
@@ -4231,7 +4220,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool 
 	tsc.filesrv=dir->fileserv;
 	tsc.vol=wpath;
 	tsc.tname=dir->dir;
-	tsc.starttoken=widen(starttoken);
+	tsc.starttoken=starttoken;
 	if(for_imagebackup)
 	{
 		tsc.refs=1;
@@ -4239,7 +4228,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool 
 	dir->ref->save_id=cd->addShadowcopy(tsc);
 	dir->ref->ok=true;
 
-	VSSLog(L"Shadowcopy path: "+tsc.path, LL_DEBUG);
+	VSSLog("Shadowcopy path: "+tsc.path, LL_DEBUG);
 
 	if(onlyref!=NULL)
 	{
@@ -4252,11 +4241,6 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool 
 std::string IndexThread::escapeDirParam( const std::string& dir )
 {
 	return "\""+greplace("\"", "\\\"", dir)+"\"";
-}
-
-std::string IndexThread::escapeDirParam( const std::wstring& dir )
-{
-	return escapeDirParam(Server->ConvertToUTF8(dir));
 }
 
 

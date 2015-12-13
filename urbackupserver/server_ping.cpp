@@ -26,7 +26,7 @@
 const int64 ping_intervall=10000;
 extern std::string server_token;
 
-ServerPingThread::ServerPingThread(ClientMain *client_main, const std::wstring& clientname, size_t status_id, bool with_eta)
+ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& clientname, size_t status_id, bool with_eta)
 	: client_main(client_main), clientname(clientname), status_id(status_id), with_eta(with_eta)
 {
 	stop=false;
@@ -50,7 +50,7 @@ void ServerPingThread::operator()(void)
 		int i_pcdone = proc.pcdone;
 		if(i_pcdone>=0)
 		{
-			pcdone=nconvert(i_pcdone);
+			pcdone=convert(i_pcdone);
 		}
 
 		int64 add_time = Server->getTimeMS() - proc.eta_set_time;
@@ -58,7 +58,7 @@ void ServerPingThread::operator()(void)
 
 		if(!with_eta)
 		{
-			if(client_main->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false, LL_DEBUG))
+			if(client_main->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", "Error sending 'running' ping to client", 30000, false, LL_DEBUG))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}
@@ -69,8 +69,8 @@ void ServerPingThread::operator()(void)
 			{
 				etams=61*1000;
 			}
-			if(client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+(etams>0?"&eta_ms="+nconvert(etams):"")
-							+"&status_id="+nconvert(status_id)+"#token="+server_token, "OK", L"Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
+			if(client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+(etams>0?"&eta_ms="+convert(etams):"")
+							+"&status_id="+convert(status_id)+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}

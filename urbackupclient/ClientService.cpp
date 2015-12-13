@@ -120,7 +120,7 @@ public:
 		si.cb=sizeof(STARTUPINFO);
 		if(!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
 		{
-			Server->Log("Executing silent update failed: "+nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Executing silent update failed: "+convert((int)GetLastError()), LL_ERROR);
 		}
 		else
 		{
@@ -145,7 +145,7 @@ void ClientConnector::init_mutex(void)
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
 	if(!res.empty())
 	{
-		last_capa=watoi(res[0][L"last_capa"]);
+		last_capa=watoi(res[0]["last_capa"]);
 	}
 	else
 	{
@@ -474,7 +474,7 @@ bool ClientConnector::Run(void)
 					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig2");
 					writeUpdateFile(hashdatafile, "UrBackupUpdate_untested.exe");
 
-					std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
+					std::string hashdatafile_fn=hashdatafile->getFilename();
 					Server->destroy(hashdatafile);
 					Server->deleteFile(hashdatafile_fn);
 
@@ -489,7 +489,7 @@ bool ClientConnector::Run(void)
 								if(crypto_fak->verifyFile("urbackup_ecdsa409k1.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig2"))
 								{
 									Server->deleteFile("UrBackupUpdate.exe");
-									moveFile(L"UrBackupUpdate_untested.exe", L"UrBackupUpdate.exe");
+									moveFile("UrBackupUpdate_untested.exe", "UrBackupUpdate.exe");
 									
 									tcpstack.Send(pipe, "ok");
 
@@ -500,7 +500,7 @@ bool ClientConnector::Run(void)
 									else
 									{
 										Server->deleteFile("version.txt");
-										moveFile(L"version_new.txt", L"version.txt");
+										moveFile("version_new.txt", "version.txt");
 									}
 								}
 								else
@@ -658,10 +658,10 @@ void ClientConnector::ReceivePackets(void)
 	{
 		if(!do_quit)
 		{
-			Server->Log("rc=0 hasError="+nconvert(pipe->hasError())+" state="+nconvert(state), LL_DEBUG);
+			Server->Log("rc=0 hasError="+convert(pipe->hasError())+" state="+convert(state), LL_DEBUG);
 #ifdef _WIN32
 #ifdef _DEBUG
-			Server->Log("Err: "+nconvert((int)GetLastError()), LL_DEBUG);
+			Server->Log("Err: "+convert((int)GetLastError()), LL_DEBUG);
 #endif
 #endif
 		}
@@ -693,7 +693,7 @@ void ClientConnector::ReceivePackets(void)
 		if(hashdataleft>=cmd.size())
 		{
 			hashdataleft-=(_u32)cmd.size();
-			//Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
+			//Server->Log("Hashdataleft: "+convert(hashdataleft), LL_DEBUG);
 		}
 		else
 		{
@@ -750,7 +750,7 @@ void ClientConnector::ReceivePackets(void)
 			ParseParamStrHttp(getafter("#", cmd), &params, false);
 
 			cmd.erase(hashpos, cmd.size()-hashpos);
-			if(!checkPassword(params[L"pw"], pw_change_ok))
+			if(!checkPassword(params["pw"], pw_change_ok))
 			{
 				Server->Log("Password wrong!", LL_ERROR);
                 do_quit=true;
@@ -1010,11 +1010,11 @@ void ClientConnector::ReceivePackets(void)
 	}
 }
 
-bool ClientConnector::checkPassword(const std::wstring &pw, bool& change_pw)
+bool ClientConnector::checkPassword(const std::string &pw, bool& change_pw)
 {
 	static std::string stored_pw=getFile(pw_file);
 	static std::string stored_pw_change=getFile(pw_change_file);
-	std::string utf8_pw = Server->ConvertToUTF8(pw);
+	std::string utf8_pw = (pw);
 	if(stored_pw_change==utf8_pw)
 	{
 		change_pw=true;
@@ -1030,10 +1030,10 @@ bool ClientConnector::checkPassword(const std::wstring &pw, bool& change_pw)
 
 namespace
 {
-	std::wstring removeChars(std::wstring in)
+	std::string removeChars(std::string in)
 	{
 		wchar_t illegalchars[] = {'*', ':', '/' , '\\'};
-		std::wstring ret;
+		std::string ret;
 		for(size_t i=0;i<in.size();++i)
 		{
 			bool found=false;
@@ -1060,8 +1060,8 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
-	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN "+nconvert(group_offset)+" AND "+nconvert(group_offset+c_group_max))->Write();
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?, ?)");
+	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN "+convert(group_offset)+" AND "+convert(group_offset+c_group_max))->Write();
+	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -1072,19 +1072,19 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}
 	*/
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
-	std::wstring dir;
+	std::string dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
-	std::vector<std::wstring> all_backupdirs;
+	std::vector<std::string> all_backupdirs;
 	do
 	{
-		dir=args[L"dir_"+convert(i)];
+		dir=args["dir_"+convert(i)];
 		if(!dir.empty())
 		{
 			all_backupdirs.push_back(dir);
 
-			std::wstring name;
-			str_map::iterator name_arg=args.find(L"dir_"+convert(i)+L"_name");
+			std::string name;
+			str_map::iterator name_arg=args.find("dir_"+convert(i)+"_name");
 			if(name_arg!=args.end() && !name_arg->second.empty())
 				name=name_arg->second;
 			else
@@ -1092,35 +1092,35 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 
 			int group = group_offset + c_group_default;
 
-			str_map::iterator group_arg=args.find(L"dir_"+convert(i)+L"_group");
+			str_map::iterator group_arg=args.find("dir_"+convert(i)+"_group");
 			if(group_arg!=args.end() && !group_arg->second.empty())
 				group=group_offset + watoi(group_arg->second);
 
 			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional; //default flags
-			size_t flags_off = name.find(L"/");
+			size_t flags_off = name.find("/");
 			if(flags_off!=std::string::npos)
 			{
 				flags=0;
 
-				std::vector<std::wstring> str_flags;
-				TokenizeMail(getafter(L"/", name), str_flags, L",;");
+				std::vector<std::string> str_flags;
+				TokenizeMail(getafter("/", name), str_flags, ",;");
 
 				for(size_t i=0;i<str_flags.size();++i)
 				{
-					std::wstring flag = strlower(trim(str_flags[i]));
-					if(flag==L"optional")
+					std::string flag = strlower(trim(str_flags[i]));
+					if(flag=="optional")
 					{
 						flags |= EBackupDirFlag_Optional;
 					}
-					else if(flag==L"follow_symlinks")
+					else if(flag=="follow_symlinks")
 					{
 						flags |= EBackupDirFlag_FollowSymlinks;
 					}
-					else if(flag==L"symlinks_optional")
+					else if(flag=="symlinks_optional")
 					{
 						flags |= EBackupDirFlag_SymlinksOptional;
 					}
-					else if(flag==L"one_filesystem" || flag==L"one_fs")
+					else if(flag=="one_filesystem" || flag=="one_fs")
 					{
 						flags |= EBackupDirFlag_OneFilesystem;
 					}
@@ -1136,10 +1136,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 #ifndef _WIN32
 				if(dir.empty())
 				{
-					dir=L"/";
+					dir="/";
 					if(name.empty())
 					{
-						name=L"root";
+						name="root";
 					}
 				}
 #endif
@@ -1151,10 +1151,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				for(int k=0;k<100;++k)
 				{
 					q2->Reset();
-					q2->Bind(name+L"_"+convert(k));
+					q2->Bind(name+"_"+convert(k));
 					if(q2->Read().empty()==true)
 					{
-						name+=L"_"+convert(k);
+						name+="_"+convert(k);
 						break;
 					}
 				}
@@ -1164,10 +1164,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			bool found=false;
 			for(size_t i=0;i<backupdirs.size();++i)
 			{
-				if(backupdirs[i][L"path"]==dir)
+				if(backupdirs[i]["path"]==dir)
 				{
-					backupdirs[i][L"need"]=L"1";
-					backupdirs[i][L"group"] = convert(group);
+					backupdirs[i]["need"]="1";
+					backupdirs[i]["group"] = convert(group);
 					found=true;
 					break;
 				}
@@ -1202,10 +1202,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_AddWatchdir);
 		data.addVoidPtr(contractor);
-		data.addString(Server->ConvertToUTF8(new_watchdirs[i].path));
+		data.addString((new_watchdirs[i].path));
 		if(new_watchdirs[i].group==c_group_continuous)
 		{
-			data.addString(Server->ConvertToUTF8(new_watchdirs[i].tname));
+			data.addString((new_watchdirs[i].tname));
 		}
 		IndexThread::stopIndex();
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
@@ -1216,17 +1216,17 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
-		if(backupdirs[i][L"need"]!=L"1" && backupdirs[i][L"path"]!=L"*")
+		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
 			//Delete the watch
 			IPipe *contractor=Server->createMemoryPipe();
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
 			data.addVoidPtr(contractor);
-			data.addString(Server->ConvertToUTF8(backupdirs[i][L"path"]));
-			if(watoi(backupdirs[i][L"group"])%c_group_size==c_group_continuous)
+			data.addString((backupdirs[i]["path"]));
+			if(watoi(backupdirs[i]["group"])%c_group_size==c_group_continuous)
 			{
-				data.addString(Server->ConvertToUTF8(backupdirs[i][L"name"]));
+				data.addString((backupdirs[i]["name"]));
 			}
 			IndexThread::stopIndex();
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
@@ -1236,7 +1236,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		}
 	}
 
-	if(Server->fileExists(Server->getServerWorkingDir()+L"\\UrBackupClient.exe"))
+	if(Server->fileExists(Server->getServerWorkingDir()+"\\UrBackupClient.exe"))
 	{
 		{
 			bool deleted_key;
@@ -1244,7 +1244,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			do 
 			{
 				deleted_key=false;
-				if(RegDeleteKeyW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str())==ERROR_SUCCESS)
+				if(RegDeleteKeyW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str())==ERROR_SUCCESS)
 				{
 					deleted_key=true;
 				}
@@ -1253,11 +1253,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		}
 
 
-		std::wstring mui_text=L"&Access backups";
+		std::string mui_text="&Access backups";
 		std::string read_mui_text=getFile("access_backups_shell_mui.txt");
 		if(	!read_mui_text.empty() && read_mui_text.find("@")==std::string::npos)
 		{
-			mui_text=Server->ConvertToUnicode(read_mui_text);
+			mui_text=(read_mui_text);
 		}
 
 		/**
@@ -1267,16 +1267,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		for(size_t i=0;i<all_backupdirs.size();++i)
 		{
 			HKEY urbackup_access;
-			if(RegCreateKeyExW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access, NULL)==ERROR_SUCCESS)
+			if(RegCreateKeyExW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access, NULL)==ERROR_SUCCESS)
 			{
 				HKEY urbackup_access_command;
-				if(RegCreateKeyExW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)+L"\\Command").c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access_command, NULL)!=ERROR_SUCCESS)
+				if(RegCreateKeyExW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access."+convert(i)+"\\Command").c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access_command, NULL)!=ERROR_SUCCESS)
 				{
 					Server->Log("Error creating command registry sub-key", LL_ERROR);
 				}
 				else
 				{
-					std::wstring cmd=L"\""+Server->getServerWorkingDir()+L"\\UrBackupClient.exe\" access \"%1\"";
+					std::string cmd="\""+Server->getServerWorkingDir()+"\\UrBackupClient.exe\" access \"%1\"";
 					//cmd = greplace(L"\\", L"\\\\", cmd);
 					if(RegSetValueExW(urbackup_access_command, NULL, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()), static_cast<DWORD>(cmd.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
 					{
@@ -1289,9 +1289,9 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					Server->Log("Error setting MUIVerb in registry", LL_ERROR);
 				}
 
-				std::wstring path = greplace(L"/", L"\\", all_backupdirs[i]);
+				std::string path = greplace("/", "\\", all_backupdirs[i]);
 
-				std::wstring applies_to=L"System.ParsingPath:~<\""+path+L"\"";
+				std::string applies_to="System.ParsingPath:~<\""+path+"\"";
 
 				if(RegSetValueExW(urbackup_access, L"AppliesTo", 0, REG_SZ, reinterpret_cast<const BYTE*>(applies_to.c_str()), static_cast<DWORD>(applies_to.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
 				{
@@ -1348,7 +1348,7 @@ void ClientConnector::updateLastBackup(void)
 	db->destroyAllQueries();
 }
 
-std::vector<std::wstring> getSettingsList(void);
+std::vector<std::string> getSettingsList(void);
 
 void ClientConnector::updateSettings(const std::string &pData)
 {
@@ -1369,10 +1369,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
-	std::vector<std::wstring> settings_names=getSettingsList();
-	settings_names.push_back(L"client_set_settings");
-	settings_names.push_back(L"client_set_settings_time");
-	std::wstring new_settings_str=L"";
+	std::vector<std::string> settings_names=getSettingsList();
+	settings_names.push_back("client_set_settings");
+	settings_names.push_back("client_set_settings_time");
+	std::string new_settings_str="";
 	bool mod=false;
 	std::string tmp_str;
 	bool client_set_settings=false;
@@ -1389,24 +1389,24 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
-		std::wstring key=settings_names[i];
+		std::string key=settings_names[i];
 
-		std::wstring v;
-		std::wstring def_v;
-		curr_settings->getValue(key+L"_def", def_v);
+		std::string v;
+		std::string def_v;
+		curr_settings->getValue(key+"_def", def_v);
 
 		if(!curr_settings->getValue(key, &v) )
 		{
-			std::wstring nv;
-			std::wstring new_key;
+			std::string nv;
+			std::string new_key;
 			if(new_settings->getValue(key, &nv) )
 			{
-				new_settings_str+=key+L"="+nv+L"\n";
+				new_settings_str+=key+"="+nv+"\n";
 				mod=true;
 			}
-			if(new_settings->getValue(key+L"_def", &nv) )
+			if(new_settings->getValue(key+"_def", &nv) )
 			{
-				new_settings_str+=key+L"_def="+nv+L"\n";
+				new_settings_str+=key+"_def="+nv+"\n";
 				if(nv!=def_v)
 				{
 					mod=true;
@@ -1417,14 +1417,14 @@ void ClientConnector::updateSettings(const std::string &pData)
 		{
 			if(client_set_settings)
 			{
-				std::wstring orig_v;
-				std::wstring nv;
-				if(new_settings->getValue(key+L"_orig", &orig_v) &&
+				std::string orig_v;
+				std::string nv;
+				if(new_settings->getValue(key+"_orig", &orig_v) &&
 					orig_v==v &&
 					(new_settings->getValue(key, &nv) ||
-					 new_settings->getValue(key+L"_def", &nv) ) )
+					 new_settings->getValue(key+"_def", &nv) ) )
 				{
-					new_settings_str+=key+L"="+nv+L"\n";
+					new_settings_str+=key+"="+nv+"\n";
 					if(nv!=v)
 					{
 						mod=true;
@@ -1432,37 +1432,37 @@ void ClientConnector::updateSettings(const std::string &pData)
 				}
 				else
 				{
-					new_settings_str+=key+L"="+v+L"\n";
+					new_settings_str+=key+"="+v+"\n";
 				}
 			}
 			else
 			{
-				std::wstring nv;
+				std::string nv;
 				if(new_settings->getValue(key, &nv) )
 				{
-					if(key==L"internet_server" && nv.empty() && !v.empty()
-						|| key==L"computername" && nv.empty() && !v.empty())
+					if(key=="internet_server" && nv.empty() && !v.empty()
+						|| key=="computername" && nv.empty() && !v.empty())
 					{
-						new_settings_str+=key+L"="+v+L"\n";
+						new_settings_str+=key+"="+v+"\n";
 					}
 					else
 					{
-						new_settings_str+=key+L"="+nv+L"\n";
+						new_settings_str+=key+"="+nv+"\n";
 						if(v!=nv)
 						{
 							mod=true;
 						}
 					}
 				}
-				else if(key==L"internet_server" && !v.empty()
-					|| key==L"computername" && !v.empty())
+				else if(key=="internet_server" && !v.empty()
+					|| key=="computername" && !v.empty())
 				{
-					new_settings_str+=key+L"="+v+L"\n";
+					new_settings_str+=key+"="+v+"\n";
 				}
 
-				if(new_settings->getValue(key+L"_def", &nv) )
+				if(new_settings->getValue(key+"_def", &nv) )
 				{
-					new_settings_str+=key+L"_def="+nv+L"\n";
+					new_settings_str+=key+"_def="+nv+"\n";
 					if(nv!=def_v)
 					{
 						mod=true;
@@ -1479,24 +1479,24 @@ void ClientConnector::updateSettings(const std::string &pData)
 	db->destroyQuery(q);
 	if(res.empty())
 	{
-		std::wstring default_dirs;
-		if(!new_settings->getValue(L"default_dirs", &default_dirs) )
-			new_settings->getValue(L"default_dirs_def", &default_dirs);
+		std::string default_dirs;
+		if(!new_settings->getValue("default_dirs", &default_dirs) )
+			new_settings->getValue("default_dirs_def", &default_dirs);
 
 		if(!default_dirs.empty())
 		{
-			std::vector<std::wstring> def_dirs_toks;
-			Tokenize(default_dirs, def_dirs_toks, L";");
+			std::vector<std::string> def_dirs_toks;
+			Tokenize(default_dirs, def_dirs_toks, ";");
 			str_map args;
 			for(size_t i=0;i<def_dirs_toks.size();++i)
 			{
-				std::wstring path=trim(def_dirs_toks[i]);
-				std::wstring name;
+				std::string path=trim(def_dirs_toks[i]);
+				std::string name;
 				int group = c_group_default;
-				if(path.find(L"|")!=std::string::npos)
+				if(path.find("|")!=std::string::npos)
 				{
-					std::vector<std::wstring> toks;
-					Tokenize(path, toks, L"|");
+					std::vector<std::string> toks;
+					Tokenize(path, toks, "|");
 					path = toks[0];
 					name = toks[1];
 					if(toks.size()>2)
@@ -1504,11 +1504,11 @@ void ClientConnector::updateSettings(const std::string &pData)
 						group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
 					}
 				}
-				args[L"dir_"+convert(i)]=path;
+				args["dir_"+convert(i)]=path;
 				if(!name.empty())
-					args[L"dir_"+convert(i)+L"_name"]=name;
+					args["dir_"+convert(i)+"_name"]=name;
 
-				args[L"dir_"+convert(i)+L"_group"]=convert(group);
+				args["dir_"+convert(i)+"_group"]=convert(group);
 			}
 
 			saveBackupDirs(args, true, group_offset);
@@ -1517,36 +1517,36 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), settings_fn);
+		writestring((new_settings_str), settings_fn);
 
 		InternetClient::updateSettings();
 	}
 
 	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader(settings_server_fn));
-	std::vector<std::wstring> global_settings = getGlobalizedSettingsList();
+	std::vector<std::string> global_settings = getGlobalizedSettingsList();
 
-	std::wstring new_token_settings=L"";
+	std::string new_token_settings="";
 
 	bool mod_server_settings=false;
 	for(size_t i=0;i<global_settings.size();++i)
 	{
-		std::wstring key=global_settings[i];
+		std::string key=global_settings[i];
 
-		std::wstring v;
+		std::string v;
 		bool curr_v=curr_server_settings->getValue(key, &v);
-		std::wstring nv;
+		std::string nv;
 		bool new_v=new_settings->getValue(key, &nv);
 
 		if(!curr_v && new_v)
 		{
-			new_token_settings+=key+L"="+nv;
+			new_token_settings+=key+"="+nv;
 			mod_server_settings=true;
 		}
 		else if(curr_v)
 		{
 			if(new_v)
 			{
-				new_token_settings+=key+L"="+nv;
+				new_token_settings+=key+"="+nv;
 
 				if(nv!=v)
 				{
@@ -1555,14 +1555,14 @@ void ClientConnector::updateSettings(const std::string &pData)
 			}
 			else
 			{
-				new_token_settings+=key+L"="+v;
+				new_token_settings+=key+"="+v;
 			}
 		}
 	}
 
 	if(mod_server_settings)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), settings_server_fn);
+		writestring((new_settings_str), settings_server_fn);
 	}
 }
 
@@ -1570,7 +1570,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 {
 	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
 
-	std::wstring ncname=new_settings->getValue(L"computername", L"");
+	std::string ncname=new_settings->getValue("computername", "");
 	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
 	{
 		CWData data;
@@ -1588,17 +1588,17 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 	ISettingsReader* old_settings=Server->createFileSettingsReader(settings_fn);
 
-	std::vector<std::wstring> new_keys = new_settings->getKeys();
+	std::vector<std::string> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
 	if(old_settings!=NULL)
 	{
 		modified_settings=false;
-		std::vector<std::wstring> old_keys = old_settings->getKeys();
+		std::vector<std::string> old_keys = old_settings->getKeys();
 
 		for(size_t i=0;i<old_keys.size();++i)
 		{
-			std::wstring old_val;
-			std::wstring new_val;
+			std::string old_val;
+			std::string new_val;
 			if( old_settings->getValue(old_keys[i], &old_val) &&
 			    (!new_settings->getValue(old_keys[i], &new_val) ||
 					old_val!=new_val ) )
@@ -1612,7 +1612,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		{
 			for(size_t i=0;i<new_keys.size();++i)
 			{
-				std::wstring old_val;
+				std::string old_val;
 				if(!old_settings->getValue(new_keys[i], &old_val))
 				{
 					modified_settings=true;
@@ -1630,19 +1630,19 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 		for(size_t i=0;i<new_keys.size();++i)
 		{
-			if(new_keys[i]==L"client_set_settings" ||
-				new_keys[i]==L"client_set_settings_time")
+			if(new_keys[i]=="client_set_settings" ||
+				new_keys[i]=="client_set_settings_time")
 				continue;
 
-			std::wstring val;
+			std::string val;
 			if(new_settings->getValue(new_keys[i], &val))
 			{
-				new_data+=Server->ConvertToUTF8(new_keys[i])+"="+Server->ConvertToUTF8(val)+"\n";
+				new_data+=(new_keys[i])+"="+(val)+"\n";
 			}
 		}
 
 		new_data+="client_set_settings=true\n";
-		new_data+="client_set_settings_time="+nconvert(Server->getTimeSeconds())+"\n";
+		new_data+="client_set_settings_time="+convert(Server->getTimeSeconds())+"\n";
 
 		writestring(new_data, settings_fn);
 	}
@@ -1689,7 +1689,7 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 				u_msg=getafter("-", u_msg);
 			}
 		}
-		std::wstring msg=Server->ConvertToUnicode(u_msg);
+		std::string msg=(u_msg);
 
 		q->Bind(logid);
 		q->Bind(loglevel);
@@ -1712,8 +1712,8 @@ std::string ClientConnector::getLogpoints(void)
 	std::string ret;
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret+=Server->ConvertToUTF8(res[i][L"id"])+"-";
-		ret+=Server->ConvertToUTF8(res[i][L"ltime"])+"\n";
+		ret+=(res[i]["id"])+"-";
+		ret+=(res[i]["ltime"])+"\n";
 	}
 	db->destroyAllQueries();
 	return ret;
@@ -1729,8 +1729,8 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 	db_results res=q->Read(&timeoutms);
 	for(size_t i=0;i<res.size();++i)
 	{
-		data+=Server->ConvertToUTF8(res[i][L"loglevel"])+"-";
-		data+=Server->ConvertToUTF8(res[i][L"message"])+"\n";
+		data+=(res[i]["loglevel"])+"-";
+		data+=(res[i]["message"])+"\n";
 	}
 	db->destroyAllQueries();
 }
@@ -1784,7 +1784,7 @@ bool ClientConnector::waitForThread(void)
 		return false;
 }
 
-bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
+bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 {
 #ifdef _WIN32
 #pragma pack(push)
@@ -1810,17 +1810,17 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 	const uint64 gpt_magic = 0x5452415020494645ULL;
 
-	std::wstring vpath=dl;
+	std::string vpath=dl;
 	if(!vpath.empty() && vpath[0]!='\\')
 	{
-		dl+=L":";
-		vpath=L"\\\\.\\"+dl;
+		dl+=":";
+		vpath="\\\\.\\"+dl;
 	}
 
-	HANDLE hVolume=CreateFileW(vpath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hVolume=CreateFileW(Server->ConvertToWchar(vpath).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		errmsg=L"CreateFile of volume '"+dl+L"' failed. - sendMBR. Errorcode: "+convert((int)GetLastError());
+		errmsg="CreateFile of volume '"+dl+"' failed. - sendMBR. Errorcode: "+convert((int)GetLastError());
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
@@ -1835,7 +1835,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	bool dynamic_volume=false;
 	if(b==FALSE)
 	{
-		errmsg=L"DeviceIoControl IOCTL_STORAGE_GET_DEVICE_NUMBER failed. Volume: '"+dl+L"'";
+		errmsg="DeviceIoControl IOCTL_STORAGE_GET_DEVICE_NUMBER failed. Volume: '"+dl+"'";
 		Server->Log(errmsg, LL_WARNING);
 		dynamic_volume=true;
 	}
@@ -1846,14 +1846,14 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		if(b==0 && GetLastError()==ERROR_MORE_DATA)
 		{
 			DWORD ext_num=vde->NumberOfDiskExtents;
-			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Extends: "+convert((int)ext_num);
+			errmsg="DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Extends: "+convert((int)ext_num);
 			Server->Log(errmsg, LL_WARNING);
 			DWORD vde_size=sizeof(VOLUME_DISK_EXTENTS)+sizeof(DISK_EXTENT)*(ext_num-1);
 			vde.reset((VOLUME_DISK_EXTENTS*)new char[vde_size]);
 			b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde.get(), vde_size, &ret_bytes, NULL);
 			if(b==0)
 			{
-				errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed twice. Volume: '"+dl+L"'";
+				errmsg="DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed twice. Volume: '"+dl+"'";
 				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hVolume);
 				return false;
@@ -1861,7 +1861,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		}
 		else if(b==0)
 		{
-			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
+			errmsg="DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Volume: '"+dl+"' Error: "+convert((int)GetLastError());
 			Server->Log(errmsg, LL_ERROR);
 			CloseHandle(hVolume);
 			return false;
@@ -1869,10 +1869,10 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(vde->NumberOfDiskExtents>0)
 		{
-			HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+convert((int)vde->Extents[0].DiskNumber)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			HANDLE hDevice=CreateFileW(Server->ConvertToWchar("\\\\.\\PhysicalDrive"+convert((int)vde->Extents[0].DiskNumber)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if(hDevice==INVALID_HANDLE_VALUE)
 			{
-				errmsg=L"CreateFile of device '"+dl+L"' failed. - sendMBR";
+				errmsg="CreateFile of device '"+dl+"' failed. - sendMBR";
 				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hVolume);
 				return false;
@@ -1893,7 +1893,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			}
 			if(b==0)
 			{
-				errmsg=L"DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
+				errmsg="DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Volume: '"+dl+"' Error: "+convert((int)GetLastError());
 				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hDevice);
 				CloseHandle(hVolume);
@@ -1906,7 +1906,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			}
 			else if(inf->PartitionStyle!=PARTITION_STYLE_MBR)
 			{
-				errmsg=L"Partition style "+convert((unsigned int)inf->PartitionStyle)+L" not supported. Volume: '"+dl;
+				errmsg="Partition style "+convert((unsigned int)inf->PartitionStyle)+" not supported. Volume: '"+dl;
 				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hDevice);
 				CloseHandle(hVolume);
@@ -1927,7 +1927,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 				if(b==FALSE)
 				{
-					Server->Log(L"Cannot get physical sector size of volume: '"+dl+L". Assuming 512 bytes.", LL_WARNING);
+					Server->Log("Cannot get physical sector size of volume: '"+dl+". Assuming 512 bytes.", LL_WARNING);
 				}
 				else
 				{
@@ -1959,12 +1959,12 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 				if(found)
 				{
-					errmsg=L"Dynamic volumes are not supported. It may work with mirrored whole disk volumes though. Volume: '"+dl+L"'";
+					errmsg="Dynamic volumes are not supported. It may work with mirrored whole disk volumes though. Volume: '"+dl+"'";
 					Server->Log(errmsg, LL_WARNING);
 				}
 				else
 				{
-					errmsg=L"Did not find PartitionNumber of dynamic volume. Volume: '"+dl+L"'";
+					errmsg="Did not find PartitionNumber of dynamic volume. Volume: '"+dl+"'";
 					Server->Log(errmsg, LL_ERROR);
 					CloseHandle(hVolume);
 					return false;
@@ -1975,7 +1975,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		}
 		else
 		{
-			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS returned no extends. Volume: '"+dl+L"'";
+			errmsg="DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS returned no extends. Volume: '"+dl+"'";
 			Server->Log(errmsg, LL_ERROR);
 			CloseHandle(hVolume);
 			return false;
@@ -1989,10 +1989,10 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	DWORD voln_sern;
 	wchar_t fsn[MAX_PATH+1];
 	DWORD fsn_size=MAX_PATH+1;
-	b=GetVolumeInformationW((dl+L"\\").c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
+	b=GetVolumeInformationW(Server->ConvertToWchar(dl+"\\").c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
 	if(b==0)
 	{
-		errmsg=L"GetVolumeInformationW failed. Volume: '"+dl+L"'";
+		errmsg="GetVolumeInformationW failed. Volume: '"+dl+"'";
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
@@ -2002,15 +2002,15 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	mbr.addChar(gpt_style?1:0);
 	mbr.addInt(dev_num.DeviceNumber);
 	mbr.addInt(dev_num.PartitionNumber);
-	mbr.addString(nconvert((_i64)voln_sern));
-	mbr.addString(Server->ConvertToUTF8((std::wstring)voln));
-	mbr.addString(Server->ConvertToUTF8((std::wstring)fsn));
+	mbr.addString(convert((_i64)voln_sern));
+	mbr.addString(Server->ConvertFromWchar(voln));
+	mbr.addString(Server->ConvertFromWchar(fsn));
 
-	IFile *dev=Server->openFile(L"\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ_DEVICE);
+	IFile *dev=Server->openFile("\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ_DEVICE);
 
 	if(dev==NULL)
 	{
-		errmsg=L"Error opening Device "+convert((int)dev_num.DeviceNumber);
+		errmsg="Error opening Device "+convert((int)dev_num.DeviceNumber);
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
@@ -2025,7 +2025,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(!dev->Seek(logical_sector_size))
 		{
-			errmsg=L"Error seeking in device to GPT header "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error seeking in device to GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2034,14 +2034,14 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(gpt_header.size()!=logical_sector_size)
 		{
-			errmsg=L"Error reading GPT header "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error reading GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
 		if(gpt_header.size()<sizeof(EfiHeader))
 		{
-			errmsg=L"GPT header too small "+convert((int)dev_num.DeviceNumber);
+			errmsg="GPT header too small "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2050,7 +2050,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(gpt_header_s->signature!=gpt_magic)
 		{
-			errmsg=L"GPT magic wrong "+convert((int)dev_num.DeviceNumber);
+			errmsg="GPT magic wrong "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2061,7 +2061,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		int64 paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
 		if(!dev->Seek(paritition_table_pos))
 		{
-			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2073,7 +2073,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(gpt_table.size()!=toread)
 		{
-			errmsg=L"Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2085,7 +2085,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		int64 backup_gpt_location = gpt_header_s->backup_lba*logical_sector_size;
 		if(!dev->Seek(backup_gpt_location))
 		{
-			errmsg=L"Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2094,14 +2094,14 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(gpt_header.size()!=logical_sector_size)
 		{
-			errmsg=L"Error reading backup GPT header "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error reading backup GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
 		if(gpt_header.size()<sizeof(EfiHeader))
 		{
-			errmsg=L"Backup GPT header too small "+convert((int)dev_num.DeviceNumber);
+			errmsg="Backup GPT header too small "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2110,7 +2110,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(backup_gpt_header_s->signature!=gpt_magic)
 		{
-			errmsg=L"Backup GPT magic wrong "+convert((int)dev_num.DeviceNumber);
+			errmsg="Backup GPT magic wrong "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2121,7 +2121,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
 		if(!dev->Seek(paritition_table_pos))
 		{
-			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2131,7 +2131,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		if(gpt_table.size()!=toread)
 		{
-			errmsg=L"Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
+			errmsg="Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
@@ -2140,7 +2140,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		mbr.addString(gpt_table);
 	}
 	
-	mbr.addString(Server->ConvertToUTF8(errmsg));
+	mbr.addString((errmsg));
 
 	tcpstack.Send(pipe, mbr);
 
@@ -2201,17 +2201,17 @@ void ClientConnector::downloadImage(str_map params)
 	{
 		IPipe *c=channel_pipes[i].pipe;
 		std::string offset;
-		if(params.find(L"offset")!=params.end())
+		if(params.find("offset")!=params.end())
 		{
-			offset="&offset="+wnarrow(params[L"offset"]);
+			offset="&offset="+params["offset"];
 		}
-		tcpstack.Send(c, "DOWNLOAD IMAGE img_id="+wnarrow(params[L"img_id"])+"&time="+wnarrow(params[L"time"])+"&mbr="+wnarrow(params[L"mbr"])+offset);
+		tcpstack.Send(c, "DOWNLOAD IMAGE img_id="+params["img_id"]+"&time="+params["time"]+"&mbr="+params["mbr"]+offset);
 
-		Server->Log("Downloading from channel "+nconvert((int)i), LL_DEBUG);
+		Server->Log("Downloading from channel "+convert((int)i), LL_DEBUG);
 
 		_i64 imgsize=-1;
 		c->Read((char*)&imgsize, sizeof(_i64), 60000);
-		Server->Log("Imagesize "+nconvert(imgsize), LL_DEBUG);
+		Server->Log("Imagesize "+convert(imgsize), LL_DEBUG);
 		if(imgsize==-1)
 		{
 			Server->Log("Error reading size", LL_ERROR);
@@ -2235,7 +2235,7 @@ void ClientConnector::downloadImage(str_map params)
 		char buf[c_buffer_size];
 		_i64 read=0;
 
-		if(params[L"mbr"]==L"true")
+		if(params["mbr"]=="true")
 		{
 			Server->Log("Downloading MBR...", LL_DEBUG);
 			while(read<imgsize)
@@ -2273,7 +2273,7 @@ void ClientConnector::downloadImage(str_map params)
 			}
 			if(!pipe->Write(&buf[off], r, (int)receive_timeouttime*5))
 			{
-				Server->Log("Could not write to pipe! downloadImage-3 size "+nconvert(r)+" off "+nconvert(off), LL_ERROR);
+				Server->Log("Could not write to pipe! downloadImage-3 size "+convert(r)+" off "+convert(off), LL_ERROR);
 				removeChannelpipe(c);
 				return;
 			}
@@ -2291,7 +2291,7 @@ void ClientConnector::downloadImage(str_map params)
 						memcpy((char*)&s, &buf[off], sizeof(_i64) );
 						if(s>imgsize)
 						{
-							Server->Log("invalid seek value: "+nconvert(s), LL_ERROR);
+							Server->Log("invalid seek value: "+convert(s), LL_ERROR);
 						}
 						off+=sizeof(_i64);
 						pos=s;
@@ -2626,9 +2626,9 @@ void ClientConnector::sendStatus()
 	ret += "#" + getCurrRunningJob(true);
 
 	if(backup_running!=RUNNING_INCR_IMAGE)
-		ret+="#"+nconvert(pcdone);
+		ret+="#"+convert(pcdone);
 	else
-		ret+="#"+nconvert(pcdone2);
+		ret+="#"+convert(pcdone2);
 
 	if(IdleCheckerThread::getPause())
 	{
@@ -2639,7 +2639,7 @@ void ClientConnector::sendStatus()
 		ret+="#NP";
 	}
 
-	ret+="#capa="+nconvert(getCapabilities());
+	ret+="#capa="+convert(getCapabilities());
 
 	{
 		IScopedLock lock(ident_mutex);
@@ -2672,12 +2672,7 @@ void ClientConnector::sendStatus()
 
 bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity)
 {
-	return sendMessageToChannel("LOG "+nconvert(log_id)+"-"+nconvert(loglevel)+"-"+msg, 10000, identity);
-}
-
-bool ClientConnector::tochannelLog(int64 log_id, const std::wstring& msg, int loglevel, const std::string& identity )
-{
-	return tochannelLog(log_id, Server->ConvertToUTF8(msg), loglevel, identity);
+	return sendMessageToChannel("LOG "+convert(log_id)+"-"+convert(loglevel)+"-"+msg, 10000, identity);
 }
 
 void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string& identity )
@@ -2699,16 +2694,16 @@ void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string
 		pcdone = nv;
 	}
 
-	sendMessageToChannel("RESTORE PERCENT pc="+nconvert(nv)+"&status_id="+nconvert(status_id),
+	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id),
 		0, identity);
 }
 
 bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity )
 {
-	return sendMessageToChannel("RESTORE DONE status_id="+nconvert(status_id)+
-		"&log_id=" + nconvert(log_id) +
-		"&id=" + nconvert(restore_id) +
-		"&success=" + nconvert(success), 60000, identity);
+	return sendMessageToChannel("RESTORE DONE status_id="+convert(status_id)+
+		"&log_id=" + convert(log_id) +
+		"&id=" + convert(restore_id) +
+		"&success=" + convert(success), 60000, identity);
 }
 
 bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutms, const std::string& identity )
@@ -2741,7 +2736,7 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 	return false;
 }
 
-std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, bool with_clientname )
+std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bool with_clientname )
 {
     if(tokens.empty())
     {
@@ -2751,7 +2746,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 	std::auto_ptr<ISettingsReader> access_keys(
 		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
-	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
+	std::vector<std::string> server_token_keys = access_keys->getKeys();
 
 	if(server_token_keys.empty())
 	{
@@ -2768,14 +2763,14 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
-		std::wstring server_key;
+		std::string server_key;
 
 		if(access_keys->getValue(server_token_keys[i],
 			&server_key) && !server_key.empty())
 		{
-			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
+			ret += "&tokens"+convert(i)+"="+base64_encode_dash(
 				crypto_fak->encryptAuthenticatedAES(session_key,
-				Server->ConvertToUTF8(server_key), 1));
+				(server_key), 1));
 			has_token=true;
 		}
 	}
@@ -2783,7 +2778,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 	if(has_token)
 	{
 		ret += "&token_data="+base64_encode_dash(
-			crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
+			crypto_fak->encryptAuthenticatedAES((tokens),
 			session_key, 1) );
 	}	
 
@@ -2799,7 +2794,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
         }
         if(computername.empty())
         {
-            computername = Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+            computername = (IndexThread::getFileSrv()->getServerName());
         }
 
         if(!computername.empty())

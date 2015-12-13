@@ -8,7 +8,7 @@
 class PipeFileBase : public IFile, public IThread
 {
 public:
-	PipeFileBase(const std::wstring& pCmd);
+	PipeFileBase(const std::string& pCmd);
 
 	virtual void operator()();
 
@@ -27,8 +27,6 @@ public:
 	virtual _i64 RealSize();
 
 	virtual std::string getFilename(void);
-
-	virtual std::wstring getFilenameW(void);
 
 	int64 getLastRead();
 
@@ -63,7 +61,7 @@ private:
 	void readBuf(char* buf, size_t toread);
 
 
-	std::wstring cmd;
+	std::string cmd;
 
 	int64 curr_pos;
 	size_t buf_w_pos;

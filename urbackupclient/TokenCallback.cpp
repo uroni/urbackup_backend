@@ -32,7 +32,7 @@ namespace
 		{
 		}
 
-		virtual std::string getFileTokens( const std::wstring& fn )
+		virtual std::string getFileTokens( const std::string& fn )
 		{
 			return tokens::get_file_tokens(fn, &client_dao, token_cache);
 		}

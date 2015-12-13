@@ -57,7 +57,7 @@ namespace
 	bool needs_login(void)
 	{
 		db_results res=getDatabase()->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(watoi(res[0][L"c"])>0)
+		if(watoi(res[0]["c"])>0)
 		{
 			return true;
 		}
@@ -71,7 +71,7 @@ namespace
 	class SessionKeepaliveThread : public IThread
 	{
 	public:
-		SessionKeepaliveThread(std::wstring session)
+		SessionKeepaliveThread(std::string session)
 			: do_quit(false), session(session)
 		{
 
@@ -81,7 +81,7 @@ namespace
 		{
 			while(!do_quit)
 			{
-				SUser* user=Server->getSessionMgr()->getUser(session, std::wstring());
+				SUser* user=Server->getSessionMgr()->getUser(session, std::string());
 				if(user!=NULL)
 				{
 					Server->getSessionMgr()->releaseUser(user);
@@ -98,7 +98,7 @@ namespace
 
 	private:
 		volatile bool do_quit;
-		std::wstring session;
+		std::string session;
 	};
 
 	class FileservClientThread : public IThread
@@ -129,7 +129,7 @@ void ServerChannelThread::initOffset()
     IDatabase* db = getDatabase();
     ServerBackupDao backupdao(db);
 
-    ServerBackupDao::CondString offset_str = backupdao.getMiscValue(L"img_id_offset");
+    ServerBackupDao::CondString offset_str = backupdao.getMiscValue("img_id_offset");
 
     if(offset_str.exists)
     {
@@ -138,11 +138,11 @@ void ServerChannelThread::initOffset()
     else
     {
         img_id_offset = Server->getRandomNumber()%((unsigned int)INT_MAX/2);
-        backupdao.addMiscValue(L"img_id_offset", convert(img_id_offset));
+        backupdao.addMiscValue("img_id_offset", convert(img_id_offset));
     }
 }
 
-ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identity) :
+ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, const std::string& identity) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
 	do_exit=false;
@@ -171,7 +171,7 @@ void ServerChannelThread::operator()(void)
 			IPipe *np=client_main->getClientCommandConnection(10000, &client_addr);
 			if(np==NULL)
 			{
-				Server->Log(L"Connecting Channel to "+clientname+L" failed - CONNECT error -55", LL_DEBUG);
+				Server->Log("Connecting Channel to "+clientname+" failed - CONNECT error -55", LL_DEBUG);
 				Server->wait(10000);
 			}
 			else
@@ -181,7 +181,7 @@ void ServerChannelThread::operator()(void)
 					input=np;
 				}
 
-				tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&token="+server_token);
+				tcpstack.Send(input, identity+"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token);
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -191,7 +191,7 @@ void ServerChannelThread::operator()(void)
 		{
 			if(Server->getTimeMS()-lasttime>180000)
 			{
-				Server->Log(L"Resetting channel to "+clientname+L" because of timeout.", LL_DEBUG);
+				Server->Log("Resetting channel to "+clientname+" because of timeout.", LL_DEBUG);
 				IScopedLock lock(mutex);
 				Server->destroy(input);
 				input=NULL;
@@ -229,7 +229,7 @@ void ServerChannelThread::operator()(void)
 				{
 					if(input->hasError())
 					{
-						Server->Log(L"Lost channel connection to "+clientname+L". has_error=true", LL_DEBUG);
+						Server->Log("Lost channel connection to "+clientname+". has_error=true", LL_DEBUG);
 						IScopedLock lock(mutex);
 						Server->destroy(input);
 						input=NULL;
@@ -238,7 +238,7 @@ void ServerChannelThread::operator()(void)
 					}
 					else
 					{
-						Server->Log(L"Lost channel connection to "+clientname+L". has_error=false", LL_DEBUG);
+						Server->Log("Lost channel connection to "+clientname+". has_error=false", LL_DEBUG);
 						Server->wait(1000);
 					}
 				}
@@ -317,7 +317,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(next(msg, 0, "GET BACKUPIMAGES ") && !internet_mode && hasDownloadImageRights())
 	{
-		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
+		std::string name=(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
     else if(next(msg, 0, "GET FILE BACKUPS TOKENS"))
@@ -334,7 +334,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
     }
 	else if(next(msg, 0, "GET FILE BACKUPS ") && hasDownloadImageRights())
 	{
-		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
+		std::string name=(msg.substr(17));
 		GET_FILE_BACKUPS(name);
 	}
 	else if(next(msg, 0, "GET FILE LIST TOKENS "))
@@ -464,12 +464,12 @@ int ServerChannelThread::constructCapabilities(void)
 
 void ServerChannelThread::LOGIN(str_map& params)
 {
-	str_nmap PARAMS;
+	str_map PARAMS;
 	str_map GET;
 
 	if(!session.empty())
 	{
-		GET[L"ses"]=session;
+		GET["ses"]=session;
 	}
 
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
@@ -478,8 +478,8 @@ void ServerChannelThread::LOGIN(str_map& params)
 	{
 		if(session.empty())
 		{
-			session=helper.generateSession(L"anonymous");
-			GET[L"ses"]=session;
+			session=helper.generateSession("anonymous");
+			GET["ses"]=session;
 			helper.update(Server->getThreadID(), &GET, &PARAMS);
 
 			if(keepalive_thread!=NULL)
@@ -490,26 +490,26 @@ void ServerChannelThread::LOGIN(str_map& params)
 			Server->getThreadPool()->execute(keepalive_thread);
 		}
 
-		helper.getSession()->mStr[L"rnd"]=widen(salt);
+		helper.getSession()->mStr["rnd"]=salt;
 
 		int user_id;
-		if(helper.checkPassword(params[L"username"], params[L"password"], &user_id, false))
+		if(helper.checkPassword(params["username"], params["password"], &user_id, false))
 		{
 			helper.getSession()->id=user_id;
 			PARAMS["REMOTE_ADDR"]=client_addr;
-			logSuccessfullLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
+			logSuccessfullLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
 			tcpstack.Send(input, "ok");
 		}
 		else
 		{
 			helper.getSession()->id=-1;
 			tcpstack.Send(input, "err");
-			logFailedLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
+			logFailedLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
 		}
 	}
 	else
 	{
-		logSuccessfullLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
+		logSuccessfullLogin(helper, PARAMS, "anonymous", LoginMethod_RestoreCD);
 		tcpstack.Send(input, "ok");
 	}
 }
@@ -518,7 +518,7 @@ void ServerChannelThread::SALT(str_map& params)
 {
 	if(needs_login())
 	{
-		std::wstring username=params[L"username"];
+		std::string username=params["username"];
 
 		if(username.empty())
 		{
@@ -526,12 +526,12 @@ void ServerChannelThread::SALT(str_map& params)
 			return;
 		}
 
-		str_nmap PARAMS;
+		str_map PARAMS;
 		str_map GET;
 
 		if(!session.empty())
 		{
-			GET[L"ses"]=session;
+			GET["ses"]=session;
 		}
 
 		Helper helper(Server->getThreadID(), &GET, &PARAMS);
@@ -548,12 +548,12 @@ void ServerChannelThread::SALT(str_map& params)
 			salt=ServerSettings::generateRandomAuthKey();
 
 			std::string pbkdf2_rounds="";
-			if(res[0][L"pbkdf2_rounds"]!=L"0")
+			if(res[0]["pbkdf2_rounds"]!="0")
 			{
-				pbkdf2_rounds+=";"+Server->ConvertToUTF8(res[0][L"pbkdf2_rounds"]);
+				pbkdf2_rounds+=";"+(res[0]["pbkdf2_rounds"]);
 			}
 
-			tcpstack.Send(input, "ok;"+Server->ConvertToUTF8(res[0][L"salt"])+";"+salt+pbkdf2_rounds);
+			tcpstack.Send(input, "ok;"+(res[0]["salt"])+";"+salt+pbkdf2_rounds);
 		}
 	}
 	else
@@ -571,8 +571,8 @@ bool ServerChannelThread::hasDownloadImageRights()
 	}
 
 	str_map GET;
-	str_nmap PARAMS;
-	GET[L"ses"]=session;
+	str_map PARAMS;
+	GET["ses"]=session;
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
 
 	if(helper.getSession()==NULL)
@@ -613,7 +613,7 @@ void ServerChannelThread::GET_BACKUPCLIENTS(void)
 		t_where=" WHERE 1=2";
 		for(size_t i=0;i<client_right_ids.size();++i)
 		{
-			t_where+=" OR id="+nconvert(client_right_ids[i]);
+			t_where+=" OR id="+convert(client_right_ids[i]);
 		}
 	}
 
@@ -621,13 +621,13 @@ void ServerChannelThread::GET_BACKUPCLIENTS(void)
 	std::string clients;
 	for(size_t i=0;i<res.size();++i)
 	{
-		clients+=Server->ConvertToUTF8(res[i][L"id"])+"|"+Server->ConvertToUTF8(res[i][L"name"])+"\n";
+		clients+=(res[i]["id"])+"|"+(res[i]["name"])+"\n";
 	}
 	tcpstack.Send(input, clients);
 	ServerStatus::updateActive();
 }
 
-void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
+void ServerChannelThread::GET_BACKUPIMAGES(const std::string& clientname)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	//TODO language
@@ -638,7 +638,7 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 	for(size_t i=0;i<res.size();++i)
 	{
 		if(!all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i][L"clientid"]))==client_right_ids.end())
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i]["clientid"]))==client_right_ids.end())
 		{
 			tcpstack.Send(input, "0|0|0|NO RIGHTS");
 			db->destroyAllQueries();
@@ -650,14 +650,14 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 	q=db->Prepare("SELECT backupid AS id,strftime('%s', backuptime) AS timestamp, strftime('%Y-%m-%d %H:%M',backuptime) AS backuptime FROM ((SELECT id AS backupid, clientid, backuptime, letter, complete FROM backup_images) c INNER JOIN (SELECT assoc_id, img_id FROM assoc_images WHERE img_id=?) b ON backupid=b.assoc_id) a WHERE a.complete=1 ORDER BY backuptime DESC");
 	for(size_t i=0;i<res.size();++i)
 	{
-		r+=nconvert(img_id_offset+watoi(res[i][L"id"]))+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"letter"])+"\n";
+		r+=convert(img_id_offset+watoi(res[i]["id"]))+"|"+(res[i]["timestamp"])+"|"+(res[i]["backuptime"])+"|"+(res[i]["letter"])+"\n";
 			
-		q->Bind(watoi(res[i][L"id"]));
+		q->Bind(watoi(res[i]["id"]));
 		db_results res2=q->Read();
 		q->Reset();
 		for(size_t j=0;j<res2.size();++j)
 		{
-			r+="#|"+nconvert(img_id_offset+watoi(res2[j][L"id"]))+"|"+Server->ConvertToUTF8(res2[j][L"timestamp"])+"|"+Server->ConvertToUTF8(res2[j][L"backuptime"])+"\n";
+			r+="#|"+convert(img_id_offset+watoi(res2[j]["id"]))+"|"+(res2[j]["timestamp"])+"|"+(res2[j]["backuptime"])+"\n";
 		}
 	}
 	tcpstack.Send(input, r);
@@ -667,7 +667,7 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 	ServerStatus::updateActive();
 }
 
-void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
+void ServerChannelThread::GET_FILE_BACKUPS( const std::string& clientname )
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("SELECT backupid AS id, strftime('%s', backuptime) AS timestamp, strftime('%Y-%m-%d %H:%M',backuptime) AS backuptime, clientid, tgroup FROM "
@@ -679,7 +679,7 @@ void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
 	for(size_t i=0;i<res.size();++i)
 	{
 		if(!all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i][L"clientid"]))==client_right_ids.end())
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i]["clientid"]))==client_right_ids.end())
 		{
 			tcpstack.Send(input, "0|0|0|NO RIGHTS");
 			db->destroyAllQueries();
@@ -690,7 +690,7 @@ void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
 	std::string r;
 	for(size_t i=0;i<res.size();++i)
 	{
-		r+=nconvert(img_id_offset+watoi(res[i][L"id"]))+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"tgroup"])+"\n";
+		r+=convert(img_id_offset+watoi(res[i]["id"]))+"|"+(res[i]["timestamp"])+"|"+(res[i]["backuptime"])+"|"+(res[i]["tgroup"])+"\n";
 	}
 	tcpstack.Send(input, r);
 
@@ -703,7 +703,7 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	if(params.find(L"token_data")!=params.end())
+	if(params.find("token_data")!=params.end())
 	{
 		last_fileaccesstokens = backupaccess::decryptTokens(db, params);
 	}
@@ -716,7 +716,7 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 	}
 
 	int local_id_offset;
-	if(params[L"with_id_offset"]==L"false")
+	if(params["with_id_offset"]=="false")
 	{
 		local_id_offset = 0;
 	}
@@ -737,7 +737,7 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	if(params.find(L"token_data")!=params.end())
+	if(params.find("token_data")!=params.end())
 	{
 		last_fileaccesstokens = backupaccess::decryptTokens(db, params);
 	}
@@ -751,7 +751,7 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	}
 
 	int local_id_offset;
-	if(params[L"with_id_offset"]==L"false")
+	if(params["with_id_offset"]=="false")
 	{
 		local_id_offset = 0;
 	}
@@ -760,14 +760,14 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 		local_id_offset = img_id_offset;
 	}
 
-	bool has_backupid=params.find(L"backupid")!=params.end();
+	bool has_backupid=params.find("backupid")!=params.end();
 	int backupid=0;
 	if(has_backupid)
 	{
-		backupid=watoi(params[L"backupid"])-local_id_offset;
+		backupid=watoi(params["backupid"])-local_id_offset;
 	}
 
-	std::wstring u_path=params[L"path"];
+	std::string u_path=params["path"];
 
 	if(!backupaccess::get_files_with_tokens(db, has_backupid? &backupid:NULL,
         clientid, clientname, &last_fileaccesstokens, u_path, local_id_offset, ret))
@@ -786,12 +786,12 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
-	int img_id=watoi(params[L"img_id"])-img_id_offset;
+	int img_id=watoi(params["img_id"])-img_id_offset;
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("SELECT path, version, clientid FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
 	q->Bind(img_id);
-	q->Bind(params[L"time"]);
+	q->Bind(params["time"]);
 	db_results res=q->Read();
 	if(res.empty())
 	{
@@ -801,7 +801,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	else
 	{
 		if( !all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0][L"clientid"]))==client_right_ids.end())
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
 		{
 			_i64 r=-1;
 			input->Write((char*)&r, sizeof(_i64));
@@ -809,10 +809,10 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		}
 
 
-		int img_version=watoi(res[0][L"version"]);
-		if(params[L"mbr"]==L"true")
+		int img_version=watoi(res[0]["version"]);
+		if(params["mbr"]=="true")
 		{
-			IFile *f=Server->openFile(os_file_prefix(res[0][L"path"]+L".mbr"), MODE_READ);
+			IFile *f=Server->openFile(os_file_prefix(res[0]["path"]+".mbr"), MODE_READ);
 			if(f==NULL)
 			{
 				_i64 r=little_endian(-1);
@@ -850,15 +850,15 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		}
 
 		uint64 offset=0;
-		str_map::iterator it1=params.find(L"offset");
+		str_map::iterator it1=params.find("offset");
 		if(it1!=params.end())
-			offset=(uint64)os_atoi64(wnarrow(it1->second));
+			offset=(uint64)os_atoi64(it1->second);
 
 		ServerStatus::updateActive();
 
 		lasttime=Server->getTimeMS();
 
-		IVHDFile *vhdfile=image_fak->createVHDFile(res[0][L"path"], true, 0);
+		IVHDFile *vhdfile=image_fak->createVHDFile(res[0]["path"], true, 0);
 		if(!vhdfile->isOpen())
 		{
 			_i64 r=-1;
@@ -955,12 +955,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 {
-	int backupid=watoi(params[L"backupid"])-img_id_offset;
+	int backupid=watoi(params["backupid"])-img_id_offset;
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("SELECT clientid FROM backups WHERE id=? AND strftime('%s', backuptime)=?");
 	q->Bind(backupid);
-	q->Bind(params[L"time"]);
+	q->Bind(params["time"]);
 	db_results res=q->Read();
 	if(res.empty())
 	{
@@ -969,7 +969,7 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 	else
 	{
 		if( !all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0][L"clientid"]))==client_right_ids.end())
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
 		{
 			tcpstack.Send(input, "Insufficient rights");
 			return;
@@ -1000,11 +1000,11 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 			break;
 		}
 
-		bool has_backupid=params.find(L"backupid")!=params.end();
+		bool has_backupid=params.find("backupid")!=params.end();
 		int backupid=0;
 		if(has_backupid)
 		{
-			backupid=watoi(params[L"backupid"]);
+			backupid=watoi(params["backupid"]);
 		}
 		else
 		{
@@ -1012,10 +1012,10 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 			break;
 		}
 
-		std::wstring u_path=params[L"path"];
+		std::string u_path=params["path"];
 
-		std::wstring backupfolder = backupaccess::getBackupFolder(db);
-		std::wstring backuppath = backupaccess::get_backup_path(db, backupid, clientid);
+		std::string backupfolder = backupaccess::getBackupFolder(db);
+		std::string backuppath = backupaccess::get_backup_path(db, backupid, clientid);
 
 		if(backupfolder.empty())
 		{
@@ -1035,7 +1035,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
 
-		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, params[L"filter"], true,
+		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, params["filter"], true,
 			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
 		{
 			ret.set("err", 5);
@@ -1052,18 +1052,18 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 
 void ServerChannelThread::RESTORE_PERCENT( str_map params )
 {
-	int64 status_id = watoi64(params[L"status_id"]);
-	int pc = watoi(params[L"pc"]);
+	int64 status_id = watoi64(params["status_id"]);
+	int pc = watoi(params["pc"]);
 
 	ServerStatus::setProcessPcDone(clientname, status_id, pc);
 }
 
 void ServerChannelThread::RESTORE_DONE( str_map params )
 {
-	int64 status_id = watoi64(params[L"status_id"]);
-	logid_t log_id = std::make_pair(watoi64(params[L"log_id"]), 0);
-	int64 restore_id = watoi64(params[L"id"]);
-	bool success = params[L"success"]==L"true";
+	int64 status_id = watoi64(params["status_id"]);
+	logid_t log_id = std::make_pair(watoi64(params["log_id"]), 0);
+	int64 restore_id = watoi64(params["id"]);
+	bool success = params["success"]=="true";
 
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -1072,18 +1072,18 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 
 	if(restore_ident.exists && !restore_ident.value.empty())
 	{
-		std::string ident = Server->ConvertToUTF8(restore_ident.value);
+		std::string ident = (restore_ident.value);
 		ServerStatus::stopProcess(clientname, status_id);
 
 		fileserv->removeIdentity(ident);
-		fileserv->removeDir(L"clientdl_filelist", ident);
-		fileserv->removeDir(L"clientdl", ident);
-		fileserv->removeMetadataCallback(L"clientdl", ident);
+		fileserv->removeDir("clientdl_filelist", ident);
+		fileserv->removeDir("clientdl", ident);
+		fileserv->removeMetadataCallback("clientdl", ident);
 
 		int errors=0;
 		int warnings=0;
 		int infos=0;
-		std::wstring logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
+		std::string logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
 
 		backup_dao.saveBackupLog(clientid, errors, warnings, infos, 0,
 			0, 0, 1);

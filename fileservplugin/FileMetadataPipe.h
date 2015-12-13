@@ -19,7 +19,7 @@ const _u32 ID_METADATA_V1 = ID_METADATA_OS | 1<<3;
 class FileMetadataPipe : public PipeFileBase
 {
 public:
-	FileMetadataPipe(IPipe* pipe, const std::wstring& cmd);
+	FileMetadataPipe(IPipe* pipe, const std::string& cmd);
 
 	virtual bool getExitCode( int& exit_code );
 

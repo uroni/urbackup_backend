@@ -73,9 +73,9 @@ struct SCRef
 	IVssBackupComponents *backupcom;
 #endif
 	VSS_ID ssetid;
-	std::wstring volpath;
+	std::string volpath;
 	int64 starttime;
-	std::wstring target;
+	std::string target;
 	int save_id;
 	bool ok;
 	bool dontincrement;
@@ -85,9 +85,9 @@ struct SCRef
 struct SCDirs
 {
 	SCDirs(void): ref(NULL) {}
-	std::wstring dir;
-	std::wstring target;
-	std::wstring orig_target;
+	std::string dir;
+	std::string target;
+	std::string orig_target;
 	bool running;
 	SCRef *ref;
 	int64 starttime;
@@ -96,7 +96,7 @@ struct SCDirs
 
 struct SHashedFile
 {
-	SHashedFile(const std::wstring& path,
+	SHashedFile(const std::string& path,
 				_i64 filesize,
 				_i64 modifytime,
 				const std::string& hash)
@@ -106,7 +106,7 @@ struct SHashedFile
 	{
 	}
 
-	std::wstring path;
+	std::string path;
 	_i64 filesize;
 	_i64 modifytime;
 	std::string hash;
@@ -134,8 +134,8 @@ struct SVssLogItem
 
 struct SBackupScript
 {
-	std::wstring scriptname;
-	std::wstring outputname;
+	std::string scriptname;
+	std::string outputname;
 	int64 size;
 };
 
@@ -162,9 +162,9 @@ public:
 
 	static void stopIndex(void);
 
-	static void shareDir(const std::wstring& token, std::wstring name, const std::wstring &path);
-	static void removeDir(const std::wstring& token, std::wstring name);
-	static std::wstring getShareDir(const std::wstring &name);
+	static void shareDir(const std::string& token, std::string name, const std::string &path);
+	static void removeDir(const std::string& token, std::string name);
+	static std::string getShareDir(const std::string &name);
 	static void share_dirs();
 	static void unshare_dirs();
 	
@@ -174,57 +174,57 @@ public:
 	
 	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
-	static std::vector<std::wstring> parseExcludePatterns(const std::wstring& val);
-	static std::vector<std::wstring> parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
-		std::vector<std::wstring>& include_prefix);
+	static std::vector<std::string> parseExcludePatterns(const std::string& val);
+	static std::vector<std::string> parseIncludePatterns(const std::string& val, std::vector<int>& include_depth,
+		std::vector<std::string>& include_prefix);
 
-	static bool isExcluded(const std::vector<std::wstring>& exlude_dirs, const std::wstring &path);
-	static bool isIncluded(const std::vector<std::wstring>& include_dirs, const std::vector<int>& include_depth,
-		const std::vector<std::wstring>& include_prefix, const std::wstring &path, bool *adding_worthless);
+	static bool isExcluded(const std::vector<std::string>& exlude_dirs, const std::string &path);
+	static bool isIncluded(const std::vector<std::string>& include_dirs, const std::vector<int>& include_depth,
+		const std::vector<std::string>& include_prefix, const std::string &path, bool *adding_worthless);
 
-	static std::wstring mapScriptOutputName(const std::wstring& fn);
+	static std::string mapScriptOutputName(const std::string& fn);
 
-	static std::string getSHA256(const std::wstring& fn);
-	static std::string getSHA512Binary(const std::wstring& fn);
+	static std::string getSHA256(const std::string& fn);
+	static std::string getSHA512Binary(const std::string& fn);
 
 private:
 
 	bool readBackupDirs(void);
 	bool readBackupScripts();
 
-    bool getAbsSymlinkTarget(const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target);
-	void addSymlinkBackupDir(const std::wstring& target);
-	bool backupNameInUse(const std::wstring& name);
+    bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target);
+	void addSymlinkBackupDir(const std::string& target);
+	bool backupNameInUse(const std::string& name);
 	void removeUnconfirmedSymlinkDirs();
 
-	std::vector<SFileAndHash> convertToFileAndHash(const std::wstring& orig_dir, const std::vector<SFile> files, const std::wstring& fn_filter);
+	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 
-	bool initialCheck(std::wstring orig_dir, std::wstring dir, std::wstring named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked);
+	bool initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked);
 
 	void indexDirs(void);
 
 	void updateDirs(void);
 
-	static std::wstring sanitizePattern(const std::wstring &p);
+	static std::string sanitizePattern(const std::string &p);
 	void readPatterns(bool &pattern_changed, bool update_saved_patterns);	
 
-	std::vector<SFileAndHash> getFilesProxy(const std::wstring &orig_path, std::wstring path, const std::wstring& named_path, bool use_db, const std::wstring& fn_filter);
+	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter);
 
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL);
 
-	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::wstring& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
+	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
 		bool consider_only_own_tokens);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32
-	bool start_shadowcopy_win( SCDirs * dir, std::wstring &wpath, bool for_imagebackup, bool * &onlyref );
+	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
 	bool wait_for(IVssAsync *vsasync);
 	std::string GetErrorHResErrStr(HRESULT res);
-	bool check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg, int loglevel, bool* retryable_error);
-	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg, int loglevel, bool* retryable_error);
+	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error);
+	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error);
 #else
-	bool start_shadowcopy_lin( SCDirs * dir, std::wstring &wpath, bool for_imagebackup, bool * &onlyref );
+	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
 #endif
 
 	bool deleteShadowcopy(SCDirs *dir);
@@ -233,57 +233,55 @@ private:
 
 	
 	void VSSLog(const std::string& msg, int loglevel);
-	void VSSLog(const std::wstring& msg, int loglevel);
 	void VSSLogLines(const std::string& msg, int loglevel);
 
-	SCDirs* getSCDir(const std::wstring path);
+	SCDirs* getSCDir(const std::string path);
 
 	void execute_prebackup_hook(void);
 	void execute_postindex_hook(void);
-	std::string execute_script(const std::wstring& cmd);
+	std::string execute_script(const std::string& cmd);
 
 	void start_filesrv(void);
 
-	bool skipFile(const std::wstring& filepath, const std::wstring& namedpath);
+	bool skipFile(const std::string& filepath, const std::string& namedpath);
 
-	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath);
+	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path, const std::string& filepath, const std::string& namedpath);
 
-	void modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
-	size_t calcBufferSize( std::wstring &path, const std::vector<SFileAndHash> &data );
+	void modifyFilesInt(std::string path, const std::vector<SFileAndHash> &data);
+	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
 
 	void commitModifyFilesBuffer();
 
-	void addFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
+	void addFilesInt(std::string path, const std::vector<SFileAndHash> &data);
 	void commitAddFilesBuffer();
-	std::string getShaBinary(const std::wstring& fn);
+	std::string getShaBinary(const std::string& fn);
 
-	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
-	std::string getSHA256Binary(const std::wstring& fn);
-	std::wstring addDirectorySeparatorAtEnd(const std::wstring& path);
+	std::string removeDirectorySeparatorAtEnd(const std::string& path);
+	std::string getSHA256Binary(const std::string& fn);
+	std::string addDirectorySeparatorAtEnd(const std::string& path);
 
 	void resetFileEntries(void);
 
-	static void addFileExceptions(std::vector<std::wstring>& exlude_dirs);
+	static void addFileExceptions(std::vector<std::string>& exlude_dirs);
 
-	void handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath);
+	void handleHardLinks(const std::string& bpath, const std::string& vsspath);
 
 	std::string escapeListName(const std::string& listname);
 
 	std::string escapeDirParam(const std::string& dir);
-	std::string escapeDirParam(const std::wstring& dir);
 
 	void writeTokens();
 
 	void setFlags(unsigned int flags);
 
-	void writeDir(std::fstream& out, const std::wstring& name, bool with_change, int64 change_identicator, const std::string& extra=std::string());
+	void writeDir(std::fstream& out, const std::string& name, bool with_change, int64 change_identicator, const std::string& extra=std::string());
 	bool addBackupScripts(std::fstream& outfile);
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
 
-	std::vector<std::wstring> changed_dirs;
-	std::vector<std::wstring> open_files;
+	std::vector<std::string> changed_dirs;
+	std::vector<std::string> open_files;
 
 	static IMutex *filelist_mutex;
 	static IMutex *filesrv_mutex;
@@ -301,7 +299,7 @@ private:
 	DirectoryWatcherThread *dwt;
 	THREADPOOL_TICKET dwt_ticket;
 
-	std::map<std::string, std::map<std::wstring, SCDirs*> > scdirs;
+	std::map<std::string, std::map<std::string, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
 
 	int index_c_db;
@@ -310,18 +308,18 @@ private:
 
 	static volatile bool stop_index;
 
-	std::vector<std::wstring> exlude_dirs;
-	std::vector<std::wstring> include_dirs;
+	std::vector<std::string> exlude_dirs;
+	std::vector<std::string> include_dirs;
 	std::vector<int> include_depth;
-	std::vector<std::wstring> include_prefix;
+	std::vector<std::string> include_prefix;
 
 	int64 last_transaction_start;
 
-	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
+	static std::map<std::string, std::string> filesrv_share_dirs;
 
-	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > modify_file_buffer;
+	std::vector< std::pair<std::string, std::vector<SFileAndHash> > > modify_file_buffer;
 	size_t modify_file_buffer_size;
-	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > add_file_buffer;
+	std::vector< std::pair<std::string, std::vector<SFileAndHash> > > add_file_buffer;
 	size_t add_file_buffer_size;
 
 	int64 last_file_buffer_commit_time;
@@ -341,7 +339,7 @@ private:
 
 	int64 last_tmp_update_time;
 
-	std::wstring index_root_path;
+	std::string index_root_path;
 	bool index_error;
 
 	std::vector<SVssLogItem> vsslog;
@@ -354,4 +352,4 @@ private:
 	int sha_version;
 };
 
-std::wstring add_trailing_slash(const std::wstring &strDirName);
+std::string add_trailing_slash(const std::string &strDirName);

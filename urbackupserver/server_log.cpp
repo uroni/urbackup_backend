@@ -60,22 +60,6 @@ void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int 
 	logMemory(times, logid, pStr, LogLevel);
 }
 
-void ServerLogger::Log(logid_t logid, const std::wstring &pStr, int LogLevel)
-{
-	Server->Log(pStr, LogLevel);
-
-	IScopedLock lock(mutex);
-
-	const std::string utf8Str=Server->ConvertToUTF8(pStr);
-
-	logCircular(logid_client[logid], utf8Str, LogLevel);
-
-	if(LogLevel<0)
-		return;
-
-	logMemory(Server->getTimeSeconds(), logid, utf8Str, LogLevel);
-}
-
 void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	SLogEntry le;
@@ -131,11 +115,11 @@ void ServerLogger::destroy_mutex(void)
 	Server->destroy(mutex);
 }
 
-std::wstring ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings, int &infos)
+std::string ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings, int &infos)
 {
 	IScopedLock lock(mutex);
 
-	std::wstring ret;
+	std::string ret;
 
 	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
@@ -152,18 +136,18 @@ std::wstring ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings,
 				++infos;
 			
 			ret+=convert(le.loglevel);
-			ret+=L"-";
+			ret+="-";
 			ret+=convert(le.time);
-			ret+=L"-";
-			ret+=Server->ConvertToUnicode(le.data);
-			ret+=L"\n";
+			ret+="-";
+			ret+=(le.data);
+			ret+="\n";
 		}
 		
 		return ret;
 	}
 	else
 	{
-		return L"";
+		return "";
 	}
 }
 

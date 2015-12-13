@@ -70,7 +70,7 @@ void JournalDAO::destroyQueries()
 *    SELECT journal_id, last_record, index_done
 *	 FROM journal_ids WHERE device_name=:device_name(string)
 */
-JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::wstring& device_name)
+JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::string& device_name)
 {
 	if(q_getDeviceInfo==NULL)
 	{
@@ -83,9 +83,9 @@ JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::wstring& device_nam
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.journal_id=watoi64(res[0][L"journal_id"]);
-		ret.last_record=watoi64(res[0][L"last_record"]);
-		ret.index_done=watoi(res[0][L"index_done"]);
+		ret.journal_id=watoi64(res[0]["journal_id"]);
+		ret.last_record=watoi64(res[0]["last_record"]);
+		ret.index_done=watoi(res[0]["index_done"]);
 	}
 	return ret;
 }
@@ -97,7 +97,7 @@ JournalDAO::SDeviceInfo JournalDAO::getDeviceInfo(const std::wstring& device_nam
 * @sql
 *    SELECT id FROM map_frn WHERE rid=-1 AND name=:name(string)
 */
-JournalDAO::CondInt64 JournalDAO::getRootId(const std::wstring& name)
+JournalDAO::CondInt64 JournalDAO::getRootId(const std::string& name)
 {
 	if(q_getRootId==NULL)
 	{
@@ -110,7 +110,7 @@ JournalDAO::CondInt64 JournalDAO::getRootId(const std::wstring& name)
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -123,7 +123,7 @@ JournalDAO::CondInt64 JournalDAO::getRootId(const std::wstring& name)
 *    VALUES (:name(string), :pid(int64), :pid_high(int64), :frn(int64), :frn_high(int64),
 *            :rid(int64) )
 */
-void JournalDAO::addFrn(const std::wstring& name, int64 pid, int64 pid_high, int64 frn, int64 frn_high, int64 rid)
+void JournalDAO::addFrn(const std::string& name, int64 pid, int64 pid_high, int64 frn, int64 frn_high, int64 rid)
 {
 	if(q_addFrn==NULL)
 	{
@@ -178,7 +178,7 @@ JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 frn_high, int64
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
 }
@@ -205,8 +205,8 @@ std::vector<JournalDAO::SFrn> JournalDAO::getFrnChildren(int64 pid, int64 pid_hi
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].frn=watoi64(res[i][L"frn"]);
-		ret[i].frn_high=watoi64(res[i][L"frn_high"]);
+		ret[i].frn=watoi64(res[i]["frn"]);
+		ret[i].frn_high=watoi64(res[i]["frn_high"]);
 	}
 	return ret;
 }
@@ -246,13 +246,13 @@ JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 frn_high, int
 	q_getNameAndPid->Bind(rid);
 	db_results res=q_getNameAndPid->Read();
 	q_getNameAndPid->Reset();
-	SNameAndPid ret = { false, L"", 0, 0 };
+	SNameAndPid ret = { false, "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.name=res[0][L"name"];
-		ret.pid=watoi64(res[0][L"pid"]);
-		ret.pid_high=watoi64(res[0][L"pid_high"]);
+		ret.name=res[0]["name"];
+		ret.pid=watoi64(res[0]["pid"]);
+		ret.pid_high=watoi64(res[0]["pid_high"]);
 	}
 	return ret;
 }
@@ -264,7 +264,7 @@ JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 frn_high, int
 *    INSERT INTO journal_ids (journal_id, device_name, last_record, index_done)
 *		VALUES (:journal_id(int64), :device_name(string), :last_record(int64), 0)
 */
-void JournalDAO::insertJournal(int64 journal_id, const std::wstring& device_name, int64 last_record)
+void JournalDAO::insertJournal(int64 journal_id, const std::string& device_name, int64 last_record)
 {
 	if(q_insertJournal==NULL)
 	{
@@ -283,7 +283,7 @@ void JournalDAO::insertJournal(int64 journal_id, const std::wstring& device_name
 * @sql
 *    UPDATE journal_ids SET journal_id=:journal_id(int64) WHERE device_name=:device_name(string)
 */
-void JournalDAO::updateJournalId(int64 journal_id, const std::wstring& device_name)
+void JournalDAO::updateJournalId(int64 journal_id, const std::string& device_name)
 {
 	if(q_updateJournalId==NULL)
 	{
@@ -301,7 +301,7 @@ void JournalDAO::updateJournalId(int64 journal_id, const std::wstring& device_na
 * @sql
 *    UPDATE journal_ids SET last_record=:last_record(int64) WHERE device_name=:device_name(string)
 */
-void JournalDAO::updateJournalLastUsn(int64 last_record, const std::wstring& device_name)
+void JournalDAO::updateJournalLastUsn(int64 last_record, const std::string& device_name)
 {
 	if(q_updateJournalLastUsn==NULL)
 	{
@@ -319,7 +319,7 @@ void JournalDAO::updateJournalLastUsn(int64 last_record, const std::wstring& dev
 * @sql
 *    UPDATE map_frn SET name=:name(string), pid=:pid(int64), pid_high=:pid_high(int64) WHERE id=:id(int64)
 */
-void JournalDAO::updateFrnNameAndPid(const std::wstring& name, int64 pid, int64 pid_high, int64 id)
+void JournalDAO::updateFrnNameAndPid(const std::string& name, int64 pid, int64 pid_high, int64 id)
 {
 	if(q_updateFrnNameAndPid==NULL)
 	{
@@ -341,7 +341,7 @@ void JournalDAO::updateFrnNameAndPid(const std::wstring& name, int64 pid, int64 
 *      VALUES (:device_name(string), :journal_id(int64), :usn(int64), :reason(int64), :filename(string), :frn(int64), :frn_high(int64),
 *			   :parent_frn(int64), :parent_frn_high(int64), :next_usn(int64), :attributes(int64) )
 */
-void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journal_id, int64 usn, int64 reason, const std::wstring& filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes)
+void JournalDAO::insertJournalData(const std::string& device_name, int64 journal_id, int64 usn, int64 reason, const std::string& filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes)
 {
 	if(q_insertJournalData==NULL)
 	{
@@ -370,7 +370,7 @@ void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journa
 *    SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data
 *		WHERE device_name=:device_name(string) ORDER BY usn ASC
 */
-std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::wstring& device_name)
+std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::string& device_name)
 {
 	if(q_getJournalData==NULL)
 	{
@@ -383,15 +383,15 @@ std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::wstr
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].usn=watoi64(res[i][L"usn"]);
-		ret[i].reason=watoi64(res[i][L"reason"]);
-		ret[i].filename=res[i][L"filename"];
-		ret[i].frn=watoi64(res[i][L"frn"]);
-		ret[i].frn_high=watoi64(res[i][L"frn_high"]);
-		ret[i].parent_frn=watoi64(res[i][L"parent_frn"]);
-		ret[i].parent_frn_high=watoi64(res[i][L"parent_frn_high"]);
-		ret[i].next_usn=watoi64(res[i][L"next_usn"]);
-		ret[i].attributes=watoi64(res[i][L"attributes"]);
+		ret[i].usn=watoi64(res[i]["usn"]);
+		ret[i].reason=watoi64(res[i]["reason"]);
+		ret[i].filename=res[i]["filename"];
+		ret[i].frn=watoi64(res[i]["frn"]);
+		ret[i].frn_high=watoi64(res[i]["frn_high"]);
+		ret[i].parent_frn=watoi64(res[i]["parent_frn"]);
+		ret[i].parent_frn_high=watoi64(res[i]["parent_frn_high"]);
+		ret[i].next_usn=watoi64(res[i]["next_usn"]);
+		ret[i].attributes=watoi64(res[i]["attributes"]);
 	}
 	return ret;
 }
@@ -402,7 +402,7 @@ std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::wstr
 * @sql
 *    UPDATE journal_ids SET index_done=:index_done(int) WHERE device_name=:device_name(string)
 */
-void JournalDAO::updateSetJournalIndexDone(int index_done, const std::wstring& device_name)
+void JournalDAO::updateSetJournalIndexDone(int index_done, const std::string& device_name)
 {
 	if(q_updateSetJournalIndexDone==NULL)
 	{
@@ -420,7 +420,7 @@ void JournalDAO::updateSetJournalIndexDone(int index_done, const std::wstring& d
 * @sql
 *    DELETE FROM journal_data WHERE device_name=:device_name(string)
 */
-void JournalDAO::delJournalData(const std::wstring& device_name)
+void JournalDAO::delJournalData(const std::string& device_name)
 {
 	if(q_delJournalData==NULL)
 	{
@@ -456,7 +456,7 @@ void JournalDAO::delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid)
 * @sql
 *    DELETE FROM journal_ids WHERE device_name=:device_name(string)
 */
-void JournalDAO::delJournalDeviceId(const std::wstring& device_name)
+void JournalDAO::delJournalDeviceId(const std::string& device_name)
 {
 	if(q_delJournalDeviceId==NULL)
 	{

@@ -28,7 +28,7 @@ IMutex* CFileSettingsReader::settings_mutex=NULL;
 
 namespace
 {
-	std::string readFile(const std::wstring& fn)
+	std::string readFile(const std::string& fn)
 	{
 		std::auto_ptr<IFile> file(Server->openFile(fn));
 		if(file.get()==NULL)
@@ -71,27 +71,6 @@ CFileSettingsReader::CFileSettingsReader(std::string pFile)
 
 }
 
-CFileSettingsReader::CFileSettingsReader( std::wstring pFile )
-{
-	std::map<std::string, SCachedSettings*>::iterator iter;
-	{
-		IScopedLock lock(settings_mutex);
-		iter=settings->find(Server->ConvertToUTF8(pFile));
-	}
-	if( iter==settings->end() )
-	{
-		std::string fdata=readFile(pFile);
-
-		read(fdata, Server->ConvertToUTF8(pFile));
-	}
-	else
-	{
-		IScopedLock lock(settings_mutex);
-		cached_settings=iter->second;
-		++cached_settings->refcount;
-	}
-}
-
 CFileSettingsReader::~CFileSettingsReader()
 {
 	IScopedLock lock(settings_mutex);
@@ -110,24 +89,9 @@ CFileSettingsReader::~CFileSettingsReader()
 
 bool CFileSettingsReader::getValue(std::string key, std::string *value)
 {
-	std::wstring s_value;
-	bool b=getValue( widen(key), &s_value);
-
-	if(b==true)
-	{
-		std::string nvalue=wnarrow(s_value);
-		*value=nvalue;		
-		return true;
-	}
-
-	return false;
-}
-
-bool CFileSettingsReader::getValue(std::wstring key, std::wstring *value)
-{
 	IScopedLock lock(cached_settings->smutex);
 
-	std::map<std::wstring,std::wstring>::iterator i=cached_settings->mSettingsMap.find(key);
+	std::map<std::string,std::string>::iterator i=cached_settings->mSettingsMap.find(key);
 	if( i!= cached_settings->mSettingsMap.end() )
 	{
 		*value=i->second;
@@ -155,12 +119,12 @@ void CFileSettingsReader::setup()
 	settings_mutex=Server->createMutex();
 }
 
-std::vector<std::wstring> CFileSettingsReader::getKeys()
+std::vector<std::string> CFileSettingsReader::getKeys()
 {
 	IScopedLock lock(cached_settings->smutex);
 
-	std::vector<std::wstring> ret;
-	for(std::map<std::wstring,std::wstring>::iterator i=cached_settings->mSettingsMap.begin();
+	std::vector<std::string> ret;
+	for(std::map<std::string,std::string>::iterator i=cached_settings->mSettingsMap.begin();
 		i!=cached_settings->mSettingsMap.end();++i)
 	{
 		ret.push_back(i->first);
@@ -198,7 +162,7 @@ void CFileSettingsReader::read( const std::string& fdata, const std::string& pFi
 
 	for(size_t i=0;i<mSettings.size();++i)
 	{
-		cached_settings->mSettingsMap[Server->ConvertToUnicode(mSettings[i].key)]=Server->ConvertToUnicode(mSettings[i].value);
+		cached_settings->mSettingsMap[(mSettings[i].key)]=(mSettings[i].value);
 	}
 
 	cached_settings->refcount=1;

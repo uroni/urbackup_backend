@@ -62,7 +62,7 @@ void ServerSettings::clear_cache()
 		}
 		else
 		{
-			Server->Log("Refcount for settings for clientid \""+nconvert(it->second.settings->clientid)+"\" is not 0. Not deleting.", LL_WARNING);
+			Server->Log("Refcount for settings for clientid \""+convert(it->second.settings->clientid)+"\" is not 0. Not deleting.", LL_WARNING);
 			++it;
 		}
 	}
@@ -102,7 +102,7 @@ void ServerSettings::createSettingsReaders()
 		settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 		if(clientid!=-1)
 		{
-			settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
+			settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(clientid));
 		}
 		else
 		{
@@ -235,16 +235,16 @@ void ServerSettings::readSettingsDefault(void)
 	SSettings* settings=settings_cache->settings;
 	settings->clientid=clientid;
 	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
-	settings->update_freq_incr=settings_default->getValue("update_freq_incr", nconvert(5*60*60) );
-	settings->update_freq_full=settings_default->getValue("update_freq_full", nconvert(30*24*60*60) );
-	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", nconvert( 7*24*60*60) );
+	settings->update_freq_incr=settings_default->getValue("update_freq_incr", convert(5*60*60) );
+	settings->update_freq_full=settings_default->getValue("update_freq_full", convert(30*24*60*60) );
+	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", convert( 7*24*60*60) );
 	if(getImageFileFormatInt(settings->image_file_format)==image_file_format_cowraw)
 	{
-		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( 60*24*60*60) );
+		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", convert( 60*24*60*60) );
 	}
 	else
 	{
-		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( -60*24*60*60) );
+		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", convert( -60*24*60*60) );
 	}	
 	settings->max_file_incr=settings_default->getValue("max_file_incr", 100);
 	settings->min_file_incr=settings_default->getValue("min_file_incr", 40);
@@ -258,8 +258,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings->no_file_backups=(settings_default->getValue("no_file_backups", "false")=="true");
 	settings->overwrite=false;
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
-	settings->backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
-	settings->backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings->backupfolder));
+	settings->backupfolder=trim(settings_default->getValue("backupfolder", "C:\\urbackup"));
+	settings->backupfolder_uncompr=trim(settings_default->getValue("backupfolder_uncompr", settings->backupfolder));
 	settings->autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
 	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings->download_client=(settings_default->getValue("download_client", "true")=="true");
@@ -270,9 +270,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings->backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
 	settings->max_active_clients=settings_default->getValue("max_active_clients", 100);
 	settings->max_sim_backups=settings_default->getValue("max_sim_backups", 10);
-	settings->exclude_files=settings_default->getValue(L"exclude_files", L"");
-	settings->include_files=settings_default->getValue(L"include_files", L"");
-	settings->default_dirs=settings_default->getValue(L"default_dirs", L"");
+	settings->exclude_files=settings_default->getValue("exclude_files", "");
+	settings->include_files=settings_default->getValue("include_files", "");
+	settings->default_dirs=settings_default->getValue("default_dirs", "");
 	settings->cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
 	settings->allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
 	settings->allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
@@ -300,7 +300,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->silent_update=(settings_default->getValue("silent_update", "false")=="true");
 	settings->use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
 	settings->use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
-	settings->tmpdir=settings_default->getValue(L"tmpdir",L"");
+	settings->tmpdir=settings_default->getValue("tmpdir","");
 	settings->local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
 	settings->internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "hashed");
 	settings->local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
@@ -392,16 +392,16 @@ void ServerSettings::readSettingsClient(void)
 	tmp=settings_client->getValue("startup_backup_delay", -1);
 	if(tmp!=-1)
 		settings->startup_backup_delay=tmp;	
-	std::wstring swtmp=settings_client->getValue(L"computername", L"");
+	std::string swtmp=settings_client->getValue("computername", "");
 	if(!swtmp.empty())
 		settings->computername=swtmp;
-	if(settings_client->getValue(L"virtual_clients", &swtmp))
+	if(settings_client->getValue("virtual_clients", &swtmp))
 		settings->virtual_clients=swtmp;
-	if(settings_client->getValue(L"exclude_files", &swtmp))
+	if(settings_client->getValue("exclude_files", &swtmp))
 		settings->exclude_files=swtmp;
-	if(settings_client->getValue(L"include_files", &swtmp))
+	if(settings_client->getValue("include_files", &swtmp))
 		settings->include_files=swtmp;
-	swtmp=settings_client->getValue(L"default_dirs", L"");
+	swtmp=settings_client->getValue("default_dirs", "");
 	if(!swtmp.empty())
 		settings->default_dirs=swtmp;
 	stmp=settings_client->getValue("image_letters", "");
@@ -915,37 +915,37 @@ SLDAPSettings ServerSettings::getLDAPSettings()
 	ldap_settings.group_class_query = settings_default->getValue("ldap_group_class_query", "DC=example,DC=com?memberOf,objectClass?sub?(sAMAccountName={USERNAME})");
 	ldap_settings.group_key_name = settings_default->getValue("ldap_group_key_name", "memberOf");
 	ldap_settings.class_key_name = settings_default->getValue("ldap_class_key_name", "objectClass");
-	ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue(L"ldap_group_rights_map", L"CN=Domain Admins,*==>all=all"));
-	ldap_settings.class_rights_map = parseLdapMap(settings_default->getValue(L"ldap_class_rights_map", L"user==>lastacts={AUTOCLIENTS},progress={AUTOCLIENTS},status={AUTOCLIENTS},stop_backup={AUTOCLIENTS},start_backup=all,browse_backups=tokens"));
+	ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue("ldap_group_rights_map", "CN=Domain Admins,*==>all=all"));
+	ldap_settings.class_rights_map = parseLdapMap(settings_default->getValue("ldap_class_rights_map", "user==>lastacts={AUTOCLIENTS},progress={AUTOCLIENTS},status={AUTOCLIENTS},stop_backup={AUTOCLIENTS},start_backup=all,browse_backups=tokens"));
 
 	return ldap_settings;
 }
 
-std::map<std::wstring, std::wstring> ServerSettings::parseLdapMap( const std::wstring& data )
+std::map<std::string, std::string> ServerSettings::parseLdapMap( const std::string& data )
 {
-	std::vector<std::wstring> mappings;
-	std::map<std::wstring, std::wstring> ret;
-	Tokenize(data, mappings, L"/");
+	std::vector<std::string> mappings;
+	std::map<std::string, std::string> ret;
+	Tokenize(data, mappings, "/");
 	for(size_t i=0;i<mappings.size();++i)
 	{
-		std::wstring source = getuntil(L"==>", data);
-		std::wstring target = getafter(L"==>", data);
+		std::string source = getuntil("==>", data);
+		std::string target = getafter("==>", data);
 		ret[source] = target;
 	}
 	return ret;
 }
 
-std::wstring ServerSettings::ldapMapToString( const std::map<std::wstring, std::wstring>& ldap_map )
+std::string ServerSettings::ldapMapToString( const std::map<std::string, std::string>& ldap_map )
 {
-	std::wstring ret;
-	for(std::map<std::wstring, std::wstring>::const_iterator it=ldap_map.begin();
+	std::string ret;
+	for(std::map<std::string, std::string>::const_iterator it=ldap_map.begin();
 		it!=ldap_map.end();++it)
 	{
 		if(!ret.empty())
 		{
-			ret+=L"/";
+			ret+="/";
 		}
-		ret+=it->first+L"==>"+it->second;
+		ret+=it->first+"==>"+it->second;
 	}
 	return ret;
 }

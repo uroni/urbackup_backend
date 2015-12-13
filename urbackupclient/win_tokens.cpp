@@ -79,7 +79,7 @@ void TokenCache::reset(TokenCacheInt* cache)
 	token_cache.reset(cache);
 }
 
-std::vector<std::wstring> get_users()
+std::vector<std::string> get_users()
 {
 	LPUSER_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
@@ -87,7 +87,7 @@ std::vector<std::wstring> get_users()
 	DWORD totalentries = 0;
 	DWORD resume_handle = 0;
 	NET_API_STATUS status;
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	do 
 	{
 		 status = NetUserEnum(NULL, 0, FILTER_NORMAL_ACCOUNT,
@@ -99,12 +99,12 @@ std::vector<std::wstring> get_users()
 			 for(DWORD i=0;i<entriesread;++i)
 			 {
 				 LPUSER_INFO_0 user_info = (buf+i);
-				 ret.push_back(user_info->usri0_name);
+				 ret.push_back(Server->ConvertFromWchar(user_info->usri0_name));
 			 }
 		 }
 		 else
 		 {
-			 Server->Log("Error while enumerating users: "+ nconvert((int)status), LL_ERROR);
+			 Server->Log("Error while enumerating users: "+ convert((int)status), LL_ERROR);
 		 }
 
 		 if(buf!=NULL)
@@ -117,7 +117,7 @@ std::vector<std::wstring> get_users()
 	return ret;
 }
 
-std::vector<std::wstring> get_user_groups(const std::wstring& username)
+std::vector<std::string> get_user_groups(const std::string& username)
 {
 	LPLOCALGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
@@ -125,9 +125,9 @@ std::vector<std::wstring> get_user_groups(const std::wstring& username)
 	DWORD totalentries = 0;
 	DWORD resume_handle = 0;
 	NET_API_STATUS status;
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 
-	status = NetUserGetLocalGroups(NULL, username.c_str(), 0, LG_INCLUDE_INDIRECT,
+	status = NetUserGetLocalGroups(NULL, Server->ConvertToWchar(username).c_str(), 0, LG_INCLUDE_INDIRECT,
 		(LPBYTE*)&buf, prefmaxlen, &entriesread,
 		&totalentries);
 
@@ -136,12 +136,12 @@ std::vector<std::wstring> get_user_groups(const std::wstring& username)
 		for(DWORD i=0;i<entriesread;++i)
 		{
 			LPLOCALGROUP_USERS_INFO_0 user_info = (buf+i);
-			ret.push_back(user_info->lgrui0_name);
+			ret.push_back(Server->ConvertFromWchar(user_info->lgrui0_name));
 		}
 	}
 	else
 	{
-		Server->Log("Error while enumerating users: "+ nconvert((int)status), LL_ERROR);
+		Server->Log("Error while enumerating users: "+ convert((int)status), LL_ERROR);
 	}
 
 	if(buf!=NULL)
@@ -153,14 +153,14 @@ std::vector<std::wstring> get_user_groups(const std::wstring& username)
 	
 }
 
-std::vector<std::wstring> get_groups()
+std::vector<std::string> get_groups()
 {
 	LPLOCALGROUP_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
 	DWORD entriesread = 0;
 	DWORD totalentries = 0;
 	NET_API_STATUS status;
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	DWORD_PTR resume_handle = 0;
 	do 
 	{
@@ -173,12 +173,12 @@ std::vector<std::wstring> get_groups()
 			for(DWORD i=0;i<entriesread;++i)
 			{
 				LPLOCALGROUP_INFO_0 group_info = (buf+i);
-				ret.push_back(group_info->lgrpi0_name);
+				ret.push_back(Server->ConvertFromWchar(group_info->lgrpi0_name));
 			}
 		}
 		else
 		{
-			Server->Log("Error while enumerating groups: "+ nconvert((int)status), LL_ERROR);
+			Server->Log("Error while enumerating groups: "+ convert((int)status), LL_ERROR);
 		}
 
 		if(buf!=NULL)
@@ -192,7 +192,7 @@ std::vector<std::wstring> get_groups()
 }
 
 
-bool write_token( std::wstring hostname, bool is_user, std::wstring accountname, const std::wstring &token_fn, ClientDAO &dao )
+bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao )
 {
 	std::vector<char> sid_buffer;
 	sid_buffer.resize(sizeof(SID));
@@ -202,7 +202,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	std::wstring referenced_domain;
 	referenced_domain.resize(1);
 	DWORD referenced_domain_size = 1;
-	BOOL b=LookupAccountNameW(NULL, ((is_user?hostname:L"")+accountname).c_str(),
+	BOOL b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
 		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 		&referenced_domain_size, &sid_name_use);
 
@@ -210,14 +210,14 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	{
 		referenced_domain.resize(referenced_domain_size);
 		sid_buffer.resize(account_sid_size);
-		b=LookupAccountNameW(NULL, ((is_user?hostname:L"")+accountname).c_str(),
+		b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 	}
 
 	if(!b)
 	{
-		Server->Log("Error getting accout SID. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+		Server->Log("Error getting accout SID. Errorcode: "+convert((int)GetLastError()), LL_ERROR);
 		return false;
 	}
 
@@ -227,7 +227,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	b = ConvertSidToStringSidW(account_sid, &str_account_sid);
 	if(!b)
 	{
-		Server->Log("Error converting SID to string SID. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+		Server->Log("Error converting SID to string SID. Errorcode: "+convert((int)GetLastError()), LL_ERROR);
 		return false;
 	}
 
@@ -249,22 +249,22 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 
 	if(!b)
 	{
-		Server->Log("Error creating security descriptor. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+		Server->Log("Error creating security descriptor. Errorcode: "+convert((int)GetLastError()), LL_ERROR);
 		return false;
 	}
 
-	HANDLE file = CreateFileW(token_fn.c_str(),
+	HANDLE file = CreateFileW(Server->ConvertToWchar(token_fn).c_str(),
 		GENERIC_READ | GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, 0, NULL);
 
 	if(file==INVALID_HANDLE_VALUE)
 	{
-		Server->Log("Error opening file. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+		Server->Log("Error opening file. Errorcode: "+convert((int)GetLastError()), LL_ERROR);
 		LocalFree(sa.lpSecurityDescriptor);
 		return false;
 	}
 
 	std::string token = Server->secureRandomString(20);
-	dao.updateFileAccessToken(accountname, widen(token), is_user?1:0);
+	dao.updateFileAccessToken(accountname, token, is_user?1:0);
 
 	DWORD written=0;
 	while(written<token.size())
@@ -272,7 +272,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 		b = WriteFile(file, token.data()+written, static_cast<DWORD>(token.size())-written, &written, NULL);
 		if(!b)
 		{
-			Server->Log("Error writing to token file.  Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Error writing to token file.  Errorcode: "+convert((int)GetLastError()), LL_ERROR);
 			CloseHandle(file);
 			LocalFree(sa.lpSecurityDescriptor);
 			return true;
@@ -285,20 +285,20 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	return true;
 }
 
-std::wstring get_hostname()
+std::string get_hostname()
 {
 	char hostname_c[MAX_PATH];
 	hostname_c[0]=0;
 	gethostname(hostname_c, MAX_PATH);
 
-	std::wstring hostname = widen(hostname_c);
+	std::string hostname = hostname_c;
 	if(!hostname.empty())
-		hostname+=L"\\";
+		hostname+="\\";
 
 	return hostname;
 }
 
-bool read_account_sid( std::vector<char>& sid, std::wstring hostname, std::wstring accountname, bool is_user )
+bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string accountname, bool is_user )
 {
 	sid.resize(sizeof(SID));
 	DWORD account_sid_size = sizeof(SID);
@@ -306,7 +306,7 @@ bool read_account_sid( std::vector<char>& sid, std::wstring hostname, std::wstri
 	std::wstring referenced_domain;
 	referenced_domain.resize(1);
 	DWORD referenced_domain_size = 1;
-	BOOL b=LookupAccountNameW(NULL, ((is_user?hostname:L"")+accountname).c_str(),
+	BOOL b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
 		&sid[0], &account_sid_size, &referenced_domain[0],
 		&referenced_domain_size, &sid_name_use);
 
@@ -314,7 +314,7 @@ bool read_account_sid( std::vector<char>& sid, std::wstring hostname, std::wstri
 	{
 		referenced_domain.resize(referenced_domain_size);
 		sid.resize(account_sid_size);
-		b=LookupAccountNameW(NULL, ((is_user?hostname:L"")+accountname).c_str(),
+		b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
 			&sid[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 	}
@@ -334,15 +334,15 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	TokenCacheInt* cache = new TokenCacheInt;
 	token_cache.reset(cache);
 
-	std::vector<std::wstring> users = get_users();
+	std::vector<std::string> users = get_users();
 
 	char hostname_c[MAX_PATH];
 	hostname_c[0]=0;
 	gethostname(hostname_c, MAX_PATH);
 
-	std::wstring hostname = widen(hostname_c);
+	std::string hostname = hostname_c;
 	if(!hostname.empty())
-		hostname+=L"\\";
+		hostname+="\\";
 
 	for(size_t i=0;i<users.size();++i)
 	{
@@ -351,7 +351,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		std::vector<char> sid;
 		if(!read_account_sid(sid, hostname, users[i], true))
 		{
-			Server->Log(L"Cannot get account SID for user "+users[i], LL_ERROR);
+			Server->Log("Cannot get account SID for user "+users[i], LL_ERROR);
 			continue;
 		}
 
@@ -369,7 +369,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		cache->tokens[sid]=new_token;
 	}
 
-	std::vector<std::wstring> groups = get_groups();
+	std::vector<std::string> groups = get_groups();
 
 	for(size_t i=0;i<groups.size();++i)
 	{
@@ -378,7 +378,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		std::vector<char> sid;
 		if(!read_account_sid(sid, hostname, groups[i], false))
 		{
-			Server->Log(L"Cannot get account SID for group "+groups[i], LL_ERROR);
+			Server->Log("Cannot get account SID for group "+groups[i], LL_ERROR);
 			continue;
 		}
 
@@ -397,7 +397,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
-std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache& token_cache )
+std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
 {
 	if(token_cache.get()==NULL)
 	{
@@ -409,13 +409,13 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 	PACL dacl;
 	PSECURITY_DESCRIPTOR sec_desc;
 
-	DWORD rc = GetNamedSecurityInfoW(fn.c_str(), SE_FILE_OBJECT,
+	DWORD rc = GetNamedSecurityInfoW(Server->ConvertToWchar(fn).c_str(), SE_FILE_OBJECT,
 		DACL_SECURITY_INFORMATION|PROTECTED_DACL_SECURITY_INFORMATION|UNPROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, &dacl,
 		NULL, &sec_desc);
 
 	if(rc!=ERROR_SUCCESS)
 	{
-		Server->Log(L"Error getting DACL of file \""+fn+L"\". Errorcode: "+convert((int)rc), LL_ERROR);
+		Server->Log("Error getting DACL of file \""+fn+"\". Errorcode: "+convert((int)rc), LL_ERROR);
 		return std::string();
 	}
 
@@ -494,7 +494,7 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 			}
 			else if(!allow)
 			{
-				Server->Log(L"Error getting SID of ACE entry of file \""+fn+L"\"", LL_ERROR);
+				Server->Log("Error getting SID of ACE entry of file \""+fn+"\"", LL_ERROR);
 				LocalFree(sec_desc);
 				return std::string();
 			}				

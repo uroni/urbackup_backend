@@ -22,10 +22,18 @@
 #include <string>
 #include <iostream>
 #include "../stringtools.h"
-#include "../log_redir.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Server.h"
+#include "../urbackupcommon/server_compat.h"
+
+namespace
+{
+	void Log(const std::wstring& pStr, int loglevel)
+	{
+		Log(ConvertFromWchar(pStr), loglevel);
+	}
+}
 
 std::wstring getVolumeLabel(PWCHAR VolumeName)
 {
@@ -64,7 +72,7 @@ DWORD getDevNum(std::wstring VolumeName, DWORD& device_type)
 	HANDLE hVolume=CreateFileW(VolumeName.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		LOG("Cannot open volume", LL_DEBUG);
+		Log("Cannot open volume", LL_DEBUG);
 		return -1;
 	}
 
@@ -74,7 +82,7 @@ DWORD getDevNum(std::wstring VolumeName, DWORD& device_type)
 	CloseHandle(hVolume);
 	if(b==0)
 	{
-		LOG("Cannot get storage device number", LL_DEBUG);
+		Log("Cannot get storage device number", LL_DEBUG);
 		return -1;
 	}
 
@@ -169,7 +177,7 @@ bool isBootable(const PWCHAR VolumeName)
 	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		LOG(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
+		Log(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
 		return false;
 	}
 
@@ -180,7 +188,7 @@ bool isBootable(const PWCHAR VolumeName)
 
 	if(b==FALSE)
 	{
-		LOG(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
+		Log(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
 		return false;
 	}
 
@@ -188,31 +196,31 @@ bool isBootable(const PWCHAR VolumeName)
 	{
 		if(partition_information.PartitionStyle==PARTITION_STYLE_GPT)
 		{
-			LOG(L"GPT formated hard disk encountered. No bootable flag. Attributes = "+convert((int64)partition_information.Gpt.Attributes), LL_DEBUG);
+			Log(L"GPT formated hard disk encountered. No bootable flag. Attributes = "+ConvertToWchar(convert((int64)partition_information.Gpt.Attributes)), LL_DEBUG);
 
 			if(partition_information.Gpt.Attributes & (DWORD64)1<<63)
 			{
-				LOG("Do not automount is set", LL_DEBUG);
+				Log("Do not automount is set", LL_DEBUG);
 			}
 
 			if(partition_information.Gpt.Attributes & (DWORD64)1<<62)
 			{
-				LOG("Hidden is set", LL_DEBUG);
+				Log("Hidden is set", LL_DEBUG);
 			}
 
 			if(partition_information.Gpt.Attributes & (DWORD64)1<<1)
 			{
-				LOG("EFI firmware ignore is set", LL_DEBUG);
+				Log("EFI firmware ignore is set", LL_DEBUG);
 			}
 
 			if(partition_information.Gpt.Attributes & (DWORD64)1<<2)
 			{
-				LOG("Legacy bios bootable is set", LL_DEBUG);
+				Log("Legacy bios bootable is set", LL_DEBUG);
 			}
 
 			if(partition_information.Gpt.Attributes & (DWORD64)1<<0)
 			{
-				LOG("System partition is set", LL_DEBUG);
+				Log("System partition is set", LL_DEBUG);
 			}
 
 			return (partition_information.Gpt.Attributes & (DWORD64)1<<0) &&
@@ -220,7 +228,7 @@ bool isBootable(const PWCHAR VolumeName)
 		}
 		else
 		{
-			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
+			Log(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 
 			return false;
 		}
@@ -233,10 +241,10 @@ bool isBootable(const PWCHAR VolumeName)
 
 std::string findGptUuid(int device_num, GUID uuid)
 {
-	HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+convert(device_num)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+ConvertToWchar(convert(device_num))).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hDevice==INVALID_HANDLE_VALUE)
 	{
-		LOG(L"CreateFile of device '"+convert(device_num)+L"' failed.", LL_ERROR);
+		Log("CreateFile of device '"+convert(device_num)+"' failed.", LL_ERROR);
 		return std::string();
 	}
 
@@ -257,13 +265,13 @@ std::string findGptUuid(int device_num, GUID uuid)
 	CloseHandle(hDevice);
 	if(b==0)
 	{
-		LOG(L"DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Device: '"+convert(device_num)+L"' Error: "+convert((int)GetLastError()), LL_ERROR);		
+		Log("DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Device: '"+convert(device_num)+"' Error: "+convert((int)GetLastError()), LL_ERROR);		
 		return std::string();
 	}
 
 	if(inf->PartitionStyle!=PARTITION_STYLE_GPT)
 	{
-		LOG(L"Device is not GPT formatted ("+convert(device_num)+L")", LL_DEBUG);
+		Log("Device is not GPT formatted ("+convert(device_num)+")", LL_DEBUG);
 		return std::string();
 	}
 
@@ -272,13 +280,13 @@ std::string findGptUuid(int device_num, GUID uuid)
 		LPOLESTR uuid_str;
 		if(StringFromCLSID(inf->PartitionEntry[i].Gpt.PartitionType, &uuid_str)==NOERROR)
 		{
-			LOG(L"EFI partition with type UUID "+std::wstring(uuid_str), LL_DEBUG);
+			Log(L"EFI partition with type UUID "+std::wstring(uuid_str), LL_DEBUG);
 			CoTaskMemFree(uuid_str);
 		}
 
 		if(memcmp(&inf->PartitionEntry[i].Gpt.PartitionType, &uuid, sizeof(uuid))==0)
 		{
-			return "\\\\?\\GLOBALROOT\\Device\\Harddisk"+nconvert(device_num)+"\\Partition"+nconvert((int)i+1);
+			return "\\\\?\\GLOBALROOT\\Device\\Harddisk"+convert(device_num)+"\\Partition"+convert((int)i+1);
 		}
 	}
 
@@ -299,7 +307,7 @@ namespace
 	};
 }
 
-std::wstring getSysVolume(std::wstring &mpath)
+std::string getSysVolume(std::string &mpath)
 {
     DWORD  CharCount            = 0;
     WCHAR  DeviceName[MAX_PATH] = L"";
@@ -316,8 +324,8 @@ std::wstring getSysVolume(std::wstring &mpath)
     if (FindHandle == INVALID_HANDLE_VALUE)
     {
         Error = GetLastError();
-		LOG(L"FindFirstVolumeW failed with error code "+convert((int)Error), LL_ERROR);
-        return L"";
+		Log("FindFirstVolumeW failed with error code "+convert((int)Error), LL_ERROR);
+        return "";
     }
 
 	DWORD c_drive_num=-1;
@@ -335,7 +343,7 @@ std::wstring getSysVolume(std::wstring &mpath)
             VolumeName[Index] != L'\\') 
         {
             Error = ERROR_BAD_PATHNAME;
-            LOG(L"FindFirstVolumeW/FindNextVolumeW returned a bad path: "+(std::wstring)VolumeName, LL_ERROR);
+            Log(L"FindFirstVolumeW/FindNextVolumeW returned a bad path: "+(std::wstring)VolumeName, LL_ERROR);
             break;
         }
 
@@ -351,7 +359,7 @@ std::wstring getSysVolume(std::wstring &mpath)
         if ( CharCount == 0 ) 
         {
             Error = GetLastError();
-            LOG(L"QueryDosDeviceW failed with error code "+convert((int)Error), LL_ERROR );
+            Log("QueryDosDeviceW failed with error code "+convert((int)Error), LL_ERROR );
             break;
         }
 
@@ -369,12 +377,12 @@ std::wstring getSysVolume(std::wstring &mpath)
 		}
 		VolumeName[Index] = L'\\';
 
-		LOG(L"Filesystem. Vol=\""+std::wstring(VolumeName)+L"\" Name=\""+strlower(getVolumeLabel(VolumeName))+
-			L"\" Type=\""+strlower(getFilesystem(VolumeName))+L"\" VPaths="+convert(vpaths.size())+L" Size="+convert(getPartSize(VolumeName)), LL_DEBUG);
+		Log(L"Filesystem. Vol=\""+std::wstring(VolumeName)+L"\" Name=\""+ConvertToWchar(strlower(ConvertFromWchar(getVolumeLabel(VolumeName))))+
+			L"\" Type=\""+ConvertToWchar(strlower(ConvertFromWchar(getFilesystem(VolumeName))))+L"\" VPaths="+ConvertToWchar(convert(vpaths.size()))+L" Size="+ConvertToWchar(convert(getPartSize(VolumeName))), LL_DEBUG);
 
 		if(is_c_drive)
 		{
-			LOG("Filesystem is System partition. Skipping...", LL_DEBUG);
+			Log("Filesystem is System partition. Skipping...", LL_DEBUG);
 		}
 		else
 		{		
@@ -388,8 +396,8 @@ std::wstring getSysVolume(std::wstring &mpath)
 				candidate.volpath=vpaths[0];
 			}
 
-			if( strlower(getVolumeLabel(VolumeName))==L"system reserved"
-				|| strlower(getVolumeLabel(VolumeName))==L"system-reserviert" )
+			if( strlower(ConvertFromWchar(getVolumeLabel(VolumeName)))=="system reserved"
+				|| strlower(ConvertFromWchar(getVolumeLabel(VolumeName)))=="system-reserviert" )
 			{
 				candidate.score+=100;
 			}
@@ -408,18 +416,18 @@ std::wstring getSysVolume(std::wstring &mpath)
 			VolumeName[Index] = L'\0';
 			if( isBootable(VolumeName) )
 			{
-				LOG("Bootable flag set for volume", LL_DEBUG);
+				Log("Bootable flag set for volume", LL_DEBUG);
 				candidate.score+=2;
 			}
 			else
 			{
-				LOG("Bootable flag not set for volume", LL_DEBUG);
+				Log("Bootable flag not set for volume", LL_DEBUG);
 			}
 			VolumeName[Index] = L'\\';
 
 			if(candidate.score>0)
 			{
-				LOG(L"Found potential candidate: "+std::wstring(VolumeName)+L" Score: "+convert(candidate.score), LL_DEBUG);			
+				Log(L"Found potential candidate: "+std::wstring(VolumeName)+L" Score: "+ConvertToWchar(convert(candidate.score)), LL_DEBUG);			
 				system_vols.push_back(candidate);
 			}
 		}
@@ -434,7 +442,7 @@ std::wstring getSysVolume(std::wstring &mpath)
 
             if (Error != ERROR_NO_MORE_FILES) 
             {
-                LOG(L"FindNextVolumeW failed with error code "+convert((int)Error));
+                Log("FindNextVolumeW failed with error code "+convert((int)Error), LL_INFO);
                 break;
             }
 
@@ -465,46 +473,46 @@ std::wstring getSysVolume(std::wstring &mpath)
 			}
 			else
 			{
-				LOG(L"Different device type from 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
+				Log(L"Different device type from 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
 			}
 		}
 		else
 		{
-			LOG(L"Not on Physical Device 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
+			Log(L"Not on Physical Device 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
 		}
 	}
 
 	if(selidx!=std::string::npos)
 	{
-		LOG(L"Selected volume "+system_vols[selidx].volname+(system_vols[selidx].volpath.empty()?L"":(L" ("+system_vols[selidx].volpath+L")")), LL_DEBUG);
-		mpath=system_vols[selidx].volpath;
-		return system_vols[selidx].volname;
+		Log(L"Selected volume "+system_vols[selidx].volname+(system_vols[selidx].volpath.empty()?L"":(L" ("+system_vols[selidx].volpath+L")")), LL_DEBUG);
+		mpath=ConvertFromWchar(system_vols[selidx].volpath);
+		return ConvertFromWchar(system_vols[selidx].volname);
 	}
 
 
-	LOG("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
+	Log("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
 
-    return L"";
+    return "";
 }
 
-std::wstring getEspVolume( std::wstring &mpath )
+std::string getEspVolume( std::string &mpath )
 {
 	//GPT partition with UUID esp_uuid
 	GUID esp_uuid;
 	if(CLSIDFromString(L"{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}", &esp_uuid)!=NOERROR)
 	{
-		LOG("Error converting ESP uuid", LL_ERROR);
-		return std::wstring();
+		Log("Error converting ESP uuid", LL_ERROR);
+		return std::string();
 	}
 
 	WCHAR sysdir[MAX_PATH];
 	if(GetWindowsDirectoryW(sysdir, MAX_PATH)==0)
 	{
-		LOG("Error getting system dir: "+nconvert((int)GetLastError()), LL_ERROR);
-		return std::wstring();
+		Log("Error getting system dir: "+convert((int)GetLastError()), LL_ERROR);
+		return std::string();
 	}
 
-	LOG(L"System dir: "+std::wstring(sysdir), LL_DEBUG);
+	Log(L"System dir: "+std::wstring(sysdir), LL_DEBUG);
 
 	std::wstring volpath;
 	if(sysdir[0]!=0)
@@ -512,35 +520,35 @@ std::wstring getEspVolume( std::wstring &mpath )
 		volpath = std::wstring(L"\\\\.\\")+sysdir[0]+L":";
 	}
 
-	LOG(L"Volpath: "+volpath, LL_DEBUG);
+	Log(L"Volpath: "+volpath, LL_DEBUG);
 
 	DWORD device_type;
 	DWORD dev_num = getDevNum(volpath.c_str(), device_type);
 
 	if(dev_num==-1)
 	{
-		LOG("Error getting device number of system directory", LL_ERROR);
-		return std::wstring();
+		Log("Error getting device number of system directory", LL_ERROR);
+		return std::string();
 	}
 
 	std::string found_part = findGptUuid(dev_num, esp_uuid);
 	
 	if(found_part.empty())
 	{
-		LOG("Found no EFI System Partition", LL_INFO);
+		Log("Found no EFI System Partition", LL_INFO);
 	}
 	else
 	{
-		LOG("EFI System Partition is at "+found_part, LL_INFO);
+		Log("EFI System Partition is at "+found_part, LL_INFO);
 	}
 
-	return widen(found_part);
+	return found_part;
 }
 
 namespace
 {
-	std::wstring mpath_cached;
-	std::wstring sysvol_name_cached;
+	std::string mpath_cached;
+	std::string sysvol_name_cached;
 
 	IMutex* mutex = NULL;
 
@@ -558,7 +566,7 @@ namespace
 	};
 }
 
-std::wstring getSysVolumeCached(std::wstring &mpath)
+std::string getSysVolumeCached(std::string &mpath)
 {
 	IScopedLock lock(mutex);
 

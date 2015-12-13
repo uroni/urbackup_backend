@@ -40,7 +40,7 @@ const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
 
-VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
 	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false),
 	file(NULL)
 {
@@ -101,7 +101,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 		}
 
 		write_header(false);
-		write_dynamicheader(NULL, 0, L"");
+		write_dynamicheader(NULL, 0, "");
 		write_bat();
 
 		nextblock_offset=bat_offset+batsize*sizeof(unsigned int);
@@ -135,7 +135,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	}
 }
 
-VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress)
 	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false), file(NULL)
 {
 	compressed_file=NULL;
@@ -348,7 +348,7 @@ unsigned int VHDFile::calculate_checksum(const unsigned char * data, size_t dsiz
 	return ~big_endian(checksum);
 }
 
-bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn)
+bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::string parentfn)
 {
 	memset(&dynamicheader, 0, sizeof(VHDDynamicHeader) );
 
@@ -376,7 +376,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=big_endian(parent_timestamp);
 		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
-		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
+		std::string rel_unicodename=Server->ConvertToUTF16(".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
 		unicodename[unicodename.size()-2]=0;
@@ -557,15 +557,16 @@ bool VHDFile::read_dynamicheader(void)
 		parent_unicodename.resize(512);
 		memcpy(&parent_unicodename[0], dynamicheader.parent_unicodename, 512);
 		parent_unicodename=big_endian_utf16(parent_unicodename);
-		std::wstring parent_fn=Server->ConvertFromUTF16(parent_unicodename);
+		std::wstring parent_fn=Server->ConvertToWchar(Server->ConvertFromUTF16(parent_unicodename));
 		parent_fn.resize(wcslen(parent_fn.c_str()));
-		parent_fn=ExtractFilePath(file->getFilenameW())+L"/"+parent_fn;
-		Server->Log(L"VHD-Parent: \""+parent_fn+L"\"", LL_INFO);
-		parent=new VHDFile(parent_fn, true, 0);
+		parent_fn=Server->ConvertToWchar(ExtractFilePath(file->getFilename()))+L"/"+parent_fn;
+		std::string utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+		Server->Log("VHD-Parent: \""+utf8_parent_fn+"\"", LL_INFO);
+		parent=new VHDFile(utf8_parent_fn, true, 0);
 
 		if(parent->isOpen()==false)
 		{
-			Server->Log(L"Error opening Parentvhdfile \""+parent_fn+L"\"", LL_ERROR);
+			Server->Log("Error opening Parentvhdfile \""+utf8_parent_fn+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -710,7 +711,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 
 			if(dataoffset+bitmap_size+blockoffset+bsize>(uint64)file->Size() )
 			{
-				Server->Log("Wrong dataoffset: "+nconvert(dataoffset), LL_ERROR);
+				Server->Log("Wrong dataoffset: "+convert(dataoffset), LL_ERROR);
 				return false;
 			}
 
@@ -808,7 +809,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 	}
 	if(bsize+curr_offset>dstsize)
 	{
-		Server->Log("VHD file is not large enough. Want to write till "+nconvert(bsize+curr_offset)+" but size is "+nconvert(dstsize), LL_ERROR);
+		Server->Log("VHD file is not large enough. Want to write till "+convert(bsize+curr_offset)+" but size is "+convert(dstsize), LL_ERROR);
 		if(has_error) *has_error=true;
 		return 0;
 	}
@@ -988,7 +989,7 @@ bool VHDFile::has_block(bool use_parent)
 
 		if(dataoffset+bitmap_size+blockoffset>(uint64)file->Size() )
 		{
-			Server->Log("Wrong dataoffset: "+nconvert(dataoffset), LL_ERROR);
+			Server->Log("Wrong dataoffset: "+convert(dataoffset), LL_ERROR);
 			return false;
 		}
 
@@ -1124,11 +1125,6 @@ std::string VHDFile::getFilename(void)
 	return file->getFilename();
 }
 
-std::wstring VHDFile::getFilenameW(void)
-{
-	return file->getFilenameW();
-}
-
 std::string VHDFile::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
@@ -1184,9 +1180,9 @@ void VHDFile::addVolumeOffset(_i64 offset)
 void VHDFile::print_last_error()
 {
 #ifdef _WIN32
-	Server->Log("Last error: "+nconvert((int)GetLastError()), LL_ERROR);
+	Server->Log("Last error: "+convert((int)GetLastError()), LL_ERROR);
 #else
-	Server->Log("Last error: "+nconvert(errno), LL_ERROR);
+	Server->Log("Last error: "+convert(errno), LL_ERROR);
 #endif
 }
 
@@ -1276,13 +1272,13 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 					bool has_error = false;
 					if(Read(buffer.data(), sector_size)!=sector_size)
 					{
-						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+nconvert(block_pos + i), LL_WARNING);
+						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+convert(block_pos + i), LL_WARNING);
 						return false;
 					}
 					
 					if(!write_callback->writeVHD(block_pos + i, buffer.data(), sector_size))
 					{
-						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+nconvert(block_pos + i), LL_WARNING);
+						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+convert(block_pos + i), LL_WARNING);
 						return false;
 					}
 				}
@@ -1296,7 +1292,7 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 	Server->Log("Writing new headers...", LL_INFO);
 
 	if(!write_header(false) ||
-		!write_dynamicheader(NULL, 0, L"") ||
+		!write_dynamicheader(NULL, 0, "") ||
 		!write_footer() )
 	{
 		Server->Log("Error writing new headers", LL_WARNING);

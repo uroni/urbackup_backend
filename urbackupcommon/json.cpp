@@ -136,11 +136,6 @@ namespace JSON
 		init(val);
 	}
 
-	Value::Value(const std::wstring &val)
-	{
-		init(val);
-	}
-
 	Value::Value(const Object &val)
 	{
 		init(val);
@@ -186,11 +181,6 @@ namespace JSON
 		init(val);
 	}
 	
-	Value::Value(const wchar_t *val)
-	{
-		init(val);
-	}
-	
 	Value::Value(long unsigned int val)
 	{
 		init(val);
@@ -208,22 +198,10 @@ namespace JSON
 		data=new std::string(val);
 	}
 	
-	void Value::init(const wchar_t *val)
-	{
-		data_type=wstr_type;
-		data=new std::wstring(val);
-	}
-
 	void Value::init(const std::string &val)
 	{
 		data_type=str_type;
 		data=new std::string(val);
-	}
-
-	void Value::init(const std::wstring &val)
-	{
-		data_type=wstr_type;
-		data=new std::wstring(val);
 	}
 
 	void Value::init(const Object &val)
@@ -297,7 +275,7 @@ namespace JSON
 		switch(data_type)
 		{
 			case str_type: delete ((std::string*)data); break;
-			case wstr_type: delete ((std::wstring*)data); break;
+			case wstr_type: delete ((std::string*)data); break;
 			case obj_type: delete ((Object*)data); break;
 			case array_type: delete ((Array*)data); break;
 			case bool_type: delete ((bool*)data); break;
@@ -352,26 +330,26 @@ namespace JSON
 		return *this;
 	}
 
-    std::wstring Value::escape(const std::wstring &t) const
+    std::string Value::escape(const std::string &t) const
 	{
-		std::wstring r;
+		std::string r;
 		for(size_t i=0;i<t.size();++i)
 		{
 			if(t[i]=='\\')
 			{
-				r+=L"\\\\";
+				r+="\\\\";
 			}
 			else if(t[i]=='"')
 			{
-				r+=L"\\\"";
+				r+="\\\"";
 			}
 			else if(t[i]=='\n')
 			{
-				r+=L"\\n";
+				r+="\\n";
 			}
 			else if(t[i]=='\r')
 			{
-				r+=L"\\r";
+				r+="\\r";
 			}
 			else if(t[i]<32)
 			{
@@ -380,7 +358,7 @@ namespace JSON
 				{
 					hex="0"+hex;
 				}
-				r+=L"\\u00"+widen(hex);
+				r+="\\u00"+hex;
 			}
 			else
 			{
@@ -394,27 +372,27 @@ namespace JSON
 	{
 		switch(data_type)
 		{
-			case str_type: return "\""+Server->ConvertToUTF8(escape(Server->ConvertToUnicode(*((std::string*)data))))+"\"";
-			case wstr_type: return "\""+Server->ConvertToUTF8(escape(*((std::wstring*)data)))+"\"";
+			case str_type: return "\""+(escape((*((std::string*)data))))+"\"";
+			case wstr_type: return "\""+(escape(*((std::string*)data)))+"\"";
             case obj_type: return ((Object*)data)->stringify(compressed);
             case array_type: return ((Array*)data)->stringify(compressed);
-			case bool_type: return nconvert(*((bool*)data));
-			case int_type: return nconvert(*((int*)data));
-			case uint_type: return nconvert(*((unsigned int*)data));
-			case int64_type: return nconvert(*((_i64*)data));
-			case uint64_type: return nconvert(*((uint64*)data));
-			case double_type: return nconvert(*((double*)data));
-			case luint_type: return nconvert((size_t)*((long unsigned int*)data));
+			case bool_type: return convert(*((bool*)data));
+			case int_type: return convert(*((int*)data));
+			case uint_type: return convert(*((unsigned int*)data));
+			case int64_type: return convert(*((_i64*)data));
+			case uint64_type: return convert(*((uint64*)data));
+			case double_type: return convert(*((double*)data));
+			case luint_type: return convert((size_t)*((long unsigned int*)data));
 			default: return "null";
 		}
 	}
 
-	std::wstring Value::toString() const
+	std::string Value::toString() const
 	{
 		switch(data_type)
 		{
-		case str_type: return Server->ConvertToUnicode(*((std::string*)data));
-		case wstr_type: return *((std::wstring*)data);
+		case str_type: return (*((std::string*)data));
+		case wstr_type: return *((std::string*)data);
 		case bool_type: return convert(*((bool*)data));
 		case int_type: return convert(*((int*)data));
 		case uint_type: return convert(*((unsigned int*)data));
@@ -422,7 +400,7 @@ namespace JSON
 		case uint64_type: return convert(*((uint64*)data));
 		case double_type: return convert(*((double*)data));
 		case luint_type: return convert((size_t)*((long unsigned int*)data));
-		default: return L"null";
+		default: return "null";
 		}
 	}
 
@@ -438,11 +416,11 @@ namespace JSON
 		}
 	}
 
-	const std::wstring & Value::getWString(void) const
+	const std::string & Value::getWString(void) const
 	{
 		if(data_type==wstr_type)
 		{
-			return *((std::wstring*)data);
+			return *((std::string*)data);
 		}
 		else
 		{

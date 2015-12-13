@@ -29,18 +29,18 @@
 
 struct s_mapl
 {
-	std::wstring value;
+	std::string value;
 	_u32 lastmaptime;
 };
 
 namespace
 {
-	std::map<std::pair<std::wstring, std::string>, s_mapl> mapbuffer;
+	std::map<std::pair<std::string, std::string>, s_mapl> mapbuffer;
 	CriticalSection mapcs;
 }
 
 
-std::wstring getOsDir(std::wstring input)
+std::string getOsDir(std::string input)
 {
 #ifdef _WIN32
 	for(size_t i=0;i<input.size();++i)
@@ -52,21 +52,21 @@ std::wstring getOsDir(std::wstring input)
 	return input;
 }
 
-std::wstring map_file(std::wstring fn, const std::string& identity)
+std::string map_file(std::string fn, const std::string& identity)
 {
-	std::wstring ts=getuntil(L"/",fn);
+	std::string ts=getuntil("/",fn);
 	if(ts.empty())
 		ts=fn;
 	fn.erase(0,ts.size());
 
-	std::wstring cp;
+	std::string cp;
 	for(size_t i=0;i<fn.size();++i)
 	{
 		if(fn[i]=='/')
 		{
-			if(cp==L"." || cp==L"..")
+			if(cp=="." || cp=="..")
 			{
-				return L"";
+				return "";
 			}
 			cp.clear();
 		}
@@ -77,7 +77,7 @@ std::wstring map_file(std::wstring fn, const std::string& identity)
 	}
 
 	mapcs.Enter();
-	std::map<std::pair<std::wstring, std::string>, s_mapl>::iterator i=mapbuffer.find(std::make_pair(ts, std::string()));
+	std::map<std::pair<std::string, std::string>, s_mapl>::iterator i=mapbuffer.find(std::make_pair(ts, std::string()));
 
 	if(i==mapbuffer.end())
 	{
@@ -87,13 +87,13 @@ std::wstring map_file(std::wstring fn, const std::string& identity)
 	if(i==mapbuffer.end() )
 	{
 		mapcs.Leave();
-		Log("Could not find share \""+Server->ConvertToUTF8(ts)+"\"", LL_WARNING);
-		return L"";
+		Log("Could not find share \""+ts+"\"", LL_WARNING);
+		return "";
 	}
 	else
 	{
-		std::wstring ret;
-		if(i->second.value!=L"/" || fn.empty() || fn[0]!='/')
+		std::string ret;
+		if(i->second.value!="/" || fn.empty() || fn[0]!='/')
 	            ret = i->second.value + getOsDir(fn);
 	        else
 	    	    ret = getOsDir(fn);
@@ -103,7 +103,7 @@ std::wstring map_file(std::wstring fn, const std::string& identity)
 	}
 }
 
-void add_share_path(const std::wstring &name, const std::wstring &path, const std::string& identity)
+void add_share_path(const std::string &name, const std::string &path, const std::string& identity)
 {
 	s_mapl m;
 	m.value=getOsDir(path);
@@ -113,11 +113,11 @@ void add_share_path(const std::wstring &name, const std::wstring &path, const st
 	mapcs.Leave();
 }
 
-void remove_share_path(const std::wstring &name, const std::string& identity)
+void remove_share_path(const std::string &name, const std::string& identity)
 {
 	mapcs.Enter();
 
-	std::map<std::pair<std::wstring, std::string>, s_mapl>::iterator it=mapbuffer.find(std::make_pair(name, identity));
+	std::map<std::pair<std::string, std::string>, s_mapl>::iterator it=mapbuffer.find(std::make_pair(name, identity));
 	if(it!=mapbuffer.end())
 	{
 		mapbuffer.erase(it);

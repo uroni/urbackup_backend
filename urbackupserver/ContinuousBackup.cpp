@@ -21,8 +21,8 @@
 #include "server_continuous.h"
 #include "IncrFileBackup.h"
 
-ContinuousBackup::ContinuousBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action,
-	int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
+ContinuousBackup::ContinuousBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
+	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
 {
 	cdp_path=true;
@@ -34,7 +34,7 @@ ContinuousBackup::~ContinuousBackup()
 
 bool ContinuousBackup::doFileBackup()
 {
-	if(!client_main->sendClientMessageRetry("CONTINUOUS WATCH START", "OK", L"Error sending command to continuously watch the backups from now on", 10000, 3))
+	if(!client_main->sendClientMessageRetry("CONTINUOUS WATCH START", "OK", "Error sending command to continuously watch the backups from now on", 10000, 3))
 	{
 		return false;
 	}
@@ -67,7 +67,7 @@ bool ContinuousBackup::doFileBackup()
 		continuous_sequences=incr_backup.getContinuousSequences();
 
 		std::vector<BackupServerContinuous::SSequence> new_sequences;
-		for(std::map<std::wstring, SContinuousSequence>::iterator it=continuous_sequences.begin();
+		for(std::map<std::string, SContinuousSequence>::iterator it=continuous_sequences.begin();
 			it!=continuous_sequences.end();++it)
 		{
 			BackupServerContinuous::SSequence seq = {};

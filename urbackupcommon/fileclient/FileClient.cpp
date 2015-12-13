@@ -205,7 +205,7 @@ void FileClient::bindToNewInterfaces()
 	{
 		retryBindToNewInterfaces=false;
 
-		Server->Log("Getting interface ips failed. errno="+nconvert(errno)+
+		Server->Log("Getting interface ips failed. errno="+convert(errno)+
 			". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
 
 		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
@@ -332,7 +332,7 @@ std::vector<sockaddr_in> FileClient::getServers(void)
         return servers;
 }
 
-std::vector<std::wstring> FileClient::getServerNames(void)
+std::vector<std::string> FileClient::getServerNames(void)
 {
         return servernames;
 }
@@ -503,7 +503,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 								sn.resize(err-2);
 								memcpy((char*)sn.c_str(), &buffer[2], err-2);
 
-								servernames.push_back(Server->ConvertToUnicode(sn));
+								servernames.push_back((sn));
 							}
 							else
 							{
@@ -931,7 +931,7 @@ bool FileClient::Reconnect(void)
 						if(written<rc)
 						{
 							if(nofreespace_callback!=NULL
-								&& !nofreespace_callback->handle_not_enough_space(file->getFilenameW()) )
+								&& !nofreespace_callback->handle_not_enough_space(file->getFilename()) )
 							{
 								Server->Log("Error while writing to file. No free space -2", LL_ERROR);
 								Reconnect();

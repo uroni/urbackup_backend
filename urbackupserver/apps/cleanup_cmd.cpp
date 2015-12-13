@@ -42,35 +42,33 @@ int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
 
 	strupper(&cleanup_pc);
 
-	std::wstring wcleanup_pc=widen(cleanup_pc);
-
 	int64 cleanup_bytes=0;
 	if(cleanup_pc.find("%")!=std::string::npos)
 	{
 		double pc=atof(getuntil("%", cleanup_pc).c_str());
-		Server->Log("Cleaning up "+nconvert(pc)+" percent", LL_INFO);
+		Server->Log("Cleaning up "+convert(pc)+" percent", LL_INFO);
 
 		cleanup_bytes=(int64)((pc/100)*total_space+0.5);
 	}
 	else if(cleanup_pc.find("K")!=std::string::npos)
 	{
-		cleanup_bytes=watoi64(getuntil(L"K", wcleanup_pc))*1024;
+		cleanup_bytes=watoi64(getuntil("K", cleanup_pc))*1024;
 	}
 	else if(cleanup_pc.find("M")!=std::string::npos)
 	{
-		cleanup_bytes=watoi64(getuntil(L"M", wcleanup_pc))*1024*1024;
+		cleanup_bytes=watoi64(getuntil("M", cleanup_pc))*1024*1024;
 	}
 	else if(cleanup_pc.find("G")!=std::string::npos)
 	{
-		cleanup_bytes=watoi64(getuntil(L"G", wcleanup_pc))*1024*1024*1024;
+		cleanup_bytes=watoi64(getuntil("G", cleanup_pc))*1024*1024*1024;
 	}
 	else if(cleanup_pc.find("T")!=std::string::npos)
 	{
-		cleanup_bytes=watoi64(getuntil(L"T", wcleanup_pc))*1024*1024*1024*1024;
+		cleanup_bytes=watoi64(getuntil("T", cleanup_pc))*1024*1024*1024*1024;
 	}
 	else
 	{
-		cleanup_bytes=watoi64(wcleanup_pc);
+		cleanup_bytes=watoi64(cleanup_pc);
 	}
 
 	if(cleanup_bytes>total_space)
@@ -232,10 +230,10 @@ int cleanup_database(void)
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		db_results rc=db->Read("SELECT count(*) AS c FROM "+wnarrow(res[i][L"name"]));
+		db_results rc=db->Read("SELECT count(*) AS c FROM "+res[i]["name"]);
 		if(!rc.empty())
 		{
-			Server->Log(L"Table "+res[i][L"name"]+L" has "+rc[0][L"c"]+L" rows", LL_INFO);
+			Server->Log("Table "+res[i]["name"]+" has "+rc[0]["c"]+" rows", LL_INFO);
 		}
 	}
 
@@ -243,7 +241,7 @@ int cleanup_database(void)
 	db_results rc=db->Read("SELECT count(*) AS c FROM del_stats");
 	if(!rc.empty())
 	{
-		if(watoi64(rc[0][L"c"])>10000000)
+		if(watoi64(rc[0]["c"])>10000000)
 		{
 			db->Write("DELETE FROM del_stats");
 		}

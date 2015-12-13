@@ -22,8 +22,8 @@ namespace
 struct SSettings
 {
 	int clientid;
-	std::wstring backupfolder;
-	std::wstring backupfolder_uncompr;
+	std::string backupfolder;
+	std::string backupfolder_uncompr;
 	std::string update_freq_incr;
 	std::string update_freq_full;
 	std::string update_freq_image_full;
@@ -50,11 +50,11 @@ struct SSettings
 	std::string backup_window_full_file;
 	std::string backup_window_incr_image;
 	std::string backup_window_full_image;
-	std::wstring computername;
-	std::wstring virtual_clients;
-	std::wstring exclude_files;
-	std::wstring include_files;
-	std::wstring default_dirs;
+	std::string computername;
+	std::string virtual_clients;
+	std::string exclude_files;
+	std::string include_files;
+	std::string default_dirs;
 	std::string cleanup_window;
 	bool allow_pause;
 	bool allow_starting_full_file_backups;
@@ -83,7 +83,7 @@ struct SSettings
 	bool silent_update;
 	bool use_tmpfiles;
 	bool use_tmpfiles_images;
-	std::wstring tmpdir;
+	std::string tmpdir;
 	std::string local_full_file_transfer_mode;
 	std::string internet_full_file_transfer_mode;
 	std::string local_incr_file_transfer_mode;
@@ -129,8 +129,8 @@ struct SLDAPSettings
 	std::string group_class_query;
 	std::string group_key_name;
 	std::string class_key_name;
-	std::map<std::wstring, std::wstring> group_rights_map;
-	std::map<std::wstring, std::wstring> class_rights_map;
+	std::map<std::string, std::string> group_rights_map;
+	std::map<std::string, std::string> class_rights_map;
 };
 
 struct STimeSpan
@@ -208,7 +208,7 @@ public:
 
 	SLDAPSettings getLDAPSettings();
 
-	std::wstring ldapMapToString(const std::map<std::wstring, std::wstring>& ldap_map);
+	std::string ldapMapToString(const std::map<std::string, std::string>& ldap_map);
 
 private:
 	void operator=(const ServerSettings& other){};
@@ -236,7 +236,7 @@ private:
 	void readSizeClientSetting(const std::string &name, size_t *output);
 	void createSettingsReaders();
 	void updateInternal(bool* was_updated);
-	std::map<std::wstring, std::wstring> parseLdapMap(const std::wstring& data);
+	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 
 	SSettingsCacheItem* settings_cache;
 	SSettings* local_settings;

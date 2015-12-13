@@ -6,7 +6,7 @@
 class INotEnoughSpaceCallback
 {
 public:
-	virtual bool handle_not_enough_space(const std::wstring &path)=0;
+	virtual bool handle_not_enough_space(const std::string &path)=0;
 };
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,

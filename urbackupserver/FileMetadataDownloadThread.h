@@ -22,7 +22,7 @@ namespace
 		}
 
 		std::string path;
-		std::wstring os_path;
+		std::string os_path;
 		int64 created;
 		int64 modified;
 		int64 accessed;
@@ -35,13 +35,13 @@ class FileMetadataDownloadThread : public IThread
 {
 public:
 	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
-	FileMetadataDownloadThread(const std::string& server_token, std::wstring metadata_tmp_fn);
+	FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn);
 	~FileMetadataDownloadThread();
 
 	virtual void operator()();
 
-	bool applyMetadata(const std::wstring& backup_metadata_dir, const std::wstring& backup_dir,
-		INotEnoughSpaceCallback *cb, const std::map<std::wstring, std::wstring>& filepath_corrections);
+	bool applyMetadata(const std::string& backup_metadata_dir, const std::string& backup_dir,
+		INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections);
 	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
 
@@ -52,7 +52,7 @@ public:
 private:
 
 	void addSingleFileItem(std::string dir_path);
-	void addFolderItem(std::string path, const std::wstring& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items);
+	void addFolderItem(std::string path, const std::string& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items);
 
 	std::vector<SFolderItem> saved_folder_items;
 
@@ -62,7 +62,7 @@ private:
 	std::vector<char> buffer;
 
 	bool has_error;
-	std::wstring metadata_tmp_fn;
+	std::string metadata_tmp_fn;
 	logid_t logid;
 
 	bool dry_run;

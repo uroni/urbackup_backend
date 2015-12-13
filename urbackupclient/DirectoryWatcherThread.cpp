@@ -28,7 +28,7 @@
 IPipe *DirectoryWatcherThread::pipe=NULL;
 IMutex *DirectoryWatcherThread::update_mutex=NULL;
 ICondition *DirectoryWatcherThread::update_cond=NULL;
-std::vector<std::wstring> DirectoryWatcherThread::open_files;
+std::vector<std::string> DirectoryWatcherThread::open_files;
 
 
 namespace
@@ -37,7 +37,7 @@ namespace
 }
 
 
-DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs,
+DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::string> &watchdirs,
 	const std::vector<ContinuousWatchEnqueue::SWatchItem> &watchdirs_continuous)
 {
 	do_stop=false;
@@ -78,7 +78,7 @@ void DirectoryWatcherThread::operator()(void)
 		db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='last_backup_filetime'");
 		if(!res.empty())
 		{
-			dcw.set_last_backup_time(watoi64(res[0][L"tvalue"]));
+			dcw.set_last_backup_time(watoi64(res[0]["tvalue"]));
 		}
 	}
 	
@@ -97,7 +97,7 @@ void DirectoryWatcherThread::operator()(void)
 	{
 		std::string r;
 		pipe->Read(&r, 10000);
-		std::wstring msg;
+		std::string msg;
 		if(r.size()/sizeof(wchar_t)>0)
 		{
 			msg.resize( r.size()/sizeof(wchar_t));
@@ -115,7 +115,7 @@ void DirectoryWatcherThread::operator()(void)
 		{
 			if( msg[0]=='A' )
 			{
-				std::wstring dir=strlower(add_trailing_slash(msg.substr(1)));
+				std::string dir=strlower(add_trailing_slash(msg.substr(1)));
 				bool w=false;
 				for(size_t i=0;i<watching.size();++i)
 				{
@@ -134,7 +134,7 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='D' )
 			{
-				std::wstring dir=strlower(add_trailing_slash(msg.substr(1)));
+				std::string dir=strlower(add_trailing_slash(msg.substr(1)));
 				for(size_t i=0;i<watching.size();++i)
 				{
 					if(watching[i]==dir)
@@ -146,8 +146,8 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='C')
 			{
-				std::wstring dir=strlower(add_trailing_slash(getuntil(L"|", msg.substr(1))));
-				std::wstring name=getafter(L"|", msg.substr(1));
+				std::string dir=strlower(add_trailing_slash(getuntil("|", msg.substr(1))));
+				std::string name=getafter("|", msg.substr(1));
 
 				if(continuous_watch.get()==NULL)
 				{
@@ -159,8 +159,8 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='X')
 			{
-				std::wstring dir=strlower(add_trailing_slash(getuntil(L"|", msg.substr(1))));
-				std::wstring name=getafter(L"|", msg.substr(1));
+				std::string dir=strlower(add_trailing_slash(getuntil("|", msg.substr(1))));
+				std::string name=getafter("|", msg.substr(1));
 
 				continuous_watch->removeWatchdir(ContinuousWatchEnqueue::SWatchItem(dir, name));
 			}
@@ -218,7 +218,7 @@ void DirectoryWatcherThread::operator()(void)
 
 void DirectoryWatcherThread::update(void)
 {
-	std::wstring msg=L"U";
+	std::string msg="U";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 }
 
@@ -229,10 +229,10 @@ void DirectoryWatcherThread::init_mutex(void)
 	update_cond=Server->createCondition();
 }
 
-void DirectoryWatcherThread::update_and_wait(std::vector<std::wstring>& r_open_files)
+void DirectoryWatcherThread::update_and_wait(std::vector<std::string>& r_open_files)
 {
 	IScopedLock lock(update_mutex);
-	std::wstring msg=L"U";
+	std::string msg="U";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 
@@ -242,7 +242,7 @@ void DirectoryWatcherThread::update_and_wait(std::vector<std::wstring>& r_open_f
 void DirectoryWatcherThread::freeze(void)
 {
 	IScopedLock lock(update_mutex);
-	std::wstring msg=L"K";
+	std::string msg="K";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
@@ -250,7 +250,7 @@ void DirectoryWatcherThread::freeze(void)
 void DirectoryWatcherThread::unfreeze(void)
 {
 	IScopedLock lock(update_mutex);
-	std::wstring msg=L"H";
+	std::string msg="H";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
@@ -258,7 +258,7 @@ void DirectoryWatcherThread::unfreeze(void)
 void DirectoryWatcherThread::update_last_backup_time(void)
 {
 	IScopedLock lock(update_mutex);
-	std::wstring msg=L"t";
+	std::string msg="t";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
@@ -266,12 +266,12 @@ void DirectoryWatcherThread::update_last_backup_time(void)
 void DirectoryWatcherThread::commit_last_backup_time(void)
 {
 	IScopedLock lock(update_mutex);
-	std::wstring msg=L"T";
+	std::string msg="T";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
 
-void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
+void DirectoryWatcherThread::OnDirMod(const std::string &dir)
 {
 	bool found=false;
 	int64 currtime=Server->getTimeMS();
@@ -314,7 +314,7 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 			}
 			else
 			{
-				dir_id=watoi64(res[0][L"id"]);
+				dir_id=watoi64(res[0]["id"]);
 				q_add_dir_with_id->Bind(dir_id);
 				q_add_dir_with_id->Bind(dir);
 				q_add_dir_with_id->Write();
@@ -329,7 +329,7 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 	}
 }
 
-void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
+void DirectoryWatcherThread::OnDirRm(const std::string &dir)
 {
 	q_add_del_dir->Bind(dir);
 	q_add_del_dir->Bind(dir);
@@ -340,7 +340,7 @@ void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
 void DirectoryWatcherThread::stop(void)
 {
 	do_stop=true;
-	std::wstring msg=L"Q";
+	std::string msg="Q";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 }
 
@@ -349,36 +349,36 @@ IPipe *DirectoryWatcherThread::getPipe(void)
 	return pipe;
 }
 
-void DirectoryWatcherThread::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed)
+void DirectoryWatcherThread::On_FileNameChanged(const std::string & strOldFileName, const std::string & strNewFileName, bool closed)
 {
 	On_FileModified(strOldFileName, closed);
 	On_FileModified(strNewFileName, closed);
 }
 
-void DirectoryWatcherThread::On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed )
+void DirectoryWatcherThread::On_DirNameChanged( const std::string & strOldFileName, const std::string & strNewFileName, bool closed )
 {
 	On_FileNameChanged(strOldFileName, strNewFileName, closed);
 }
 
-void DirectoryWatcherThread::On_FileRemoved(const std::wstring & strFileName, bool closed)
+void DirectoryWatcherThread::On_FileRemoved(const std::string & strFileName, bool closed)
 {
 	On_FileModified(strFileName, closed);
 }
 
-void DirectoryWatcherThread::On_FileAdded(const std::wstring & strFileName, bool closed)
+void DirectoryWatcherThread::On_FileAdded(const std::string & strFileName, bool closed)
 {
 	On_FileModified(strFileName, closed);
 }
 
-void DirectoryWatcherThread::On_DirAdded( const std::wstring & strFileName, bool closed )
+void DirectoryWatcherThread::On_DirAdded( const std::string & strFileName, bool closed )
 {
 	On_FileModified(strFileName, closed);
 }
 
-void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, bool closed)
+void DirectoryWatcherThread::On_FileModified(const std::string & strFileName, bool closed)
 {
 	bool ok=false;
-	std::wstring dir=strlower(ExtractFilePath(strFileName))+os_file_sep();
+	std::string dir=strlower(ExtractFilePath(strFileName))+os_file_sep();
 	for(size_t i=0;i<watching.size();++i)
 	{
 		if(dir.find(watching[i])==0)
@@ -389,9 +389,9 @@ void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, b
 	}	
 }
 
-void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName, bool closed)
+void DirectoryWatcherThread::On_DirRemoved(const std::string & strDirName, bool closed)
 {
-	std::wstring rmDir=strlower(add_trailing_slash(strDirName));
+	std::string rmDir=strlower(add_trailing_slash(strDirName));
 	bool ok=false;
 	for(size_t i=0;i<watching.size();++i)
 	{
@@ -410,9 +410,9 @@ bool DirectoryWatcherThread::is_stopped(void)
 	return do_stop;
 }
 
-void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)
+void DirectoryWatcherThread::On_ResetAll(const std::string & vol)
 {
-	OnDirMod(L"##-GAP-##"+strlower(vol));
+	OnDirMod("##-GAP-##"+strlower(vol));
 }
 
 _i64 DirectoryWatcherThread::get_current_filetime()
@@ -434,7 +434,7 @@ int64 DirectoryWatcherThread::getStartUsn( int64 sequence_id )
 	return -1;
 }
 
-void DirectoryWatcherThread::On_FileOpen( const std::wstring & strFileName )
+void DirectoryWatcherThread::On_FileOpen( const std::string & strFileName )
 {
 	open_files.push_back(strlower(strFileName));
 }

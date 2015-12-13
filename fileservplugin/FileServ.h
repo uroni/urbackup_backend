@@ -6,23 +6,23 @@
 class FileServ : public IFileServ
 {
 public:
-	FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket, bool use_fqdn);
+	FileServ(bool *pDostop, const std::string &servername, THREADPOOL_TICKET serverticket, bool use_fqdn);
 	~FileServ(void);
-	void shareDir(const std::wstring &name, const std::wstring &path, const std::string& identity);
-	void removeDir(const std::wstring &name, const std::string& identity);
+	void shareDir(const std::string &name, const std::string &path, const std::string& identity);
+	void removeDir(const std::string &name, const std::string& identity);
 	void stopServer(void);
-	std::wstring getServerName(void);
-	std::wstring getShareDir(const std::wstring &name, const std::string& identity);
+	std::string getServerName(void);
+	std::string getShareDir(const std::string &name, const std::string& identity);
 	void addIdentity(const std::string &pIdentity);
 	bool removeIdentity(const std::string &pIdentity);
 	void setPause(bool b);
 	bool getPause(void);
-	bool getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code);
-	void addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn);
+	bool getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code);
+	void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn);
 
-	virtual void registerMetadataCallback(const std::wstring &name, const std::string& identity, IMetadataCallback* callback);
+	virtual void registerMetadataCallback(const std::string &name, const std::string& identity, IMetadataCallback* callback);
 
-	virtual void removeMetadataCallback(const std::wstring &name, const std::string& identity);
+	virtual void removeMetadataCallback(const std::string &name, const std::string& identity);
 
 	virtual void runClient(IPipe *cp);
 
@@ -33,7 +33,7 @@ public:
 
 	static bool checkIdentity(const std::string &pIdentity);
 
-	static std::wstring mapScriptOutputNameToScript(const std::wstring& script_fn);
+	static std::string mapScriptOutputNameToScript(const std::string& script_fn);
 
 	virtual void registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory );
 
@@ -42,11 +42,11 @@ public:
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
-	std::wstring servername;
+	std::string servername;
 
 	static std::vector<std::string> identities;
 	static bool pause;
-	static std::map<std::wstring, std::wstring> script_output_names;
+	static std::map<std::string, std::string> script_output_names;
 	
 	static IMutex *mutex;
 

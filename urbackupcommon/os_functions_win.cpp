@@ -104,8 +104,6 @@ namespace
 }
 
 
-
-
 void getMousePos(int &x, int &y)
 {
 	POINT mousepos;
@@ -127,13 +125,29 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool ignore_other_fs)
+std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignore_other_fs)
 {
 	return getFilesWin(path, has_error, true, false, ignore_other_fs);
 }
 
+std::wstring os_file_prefix(std::wstring path)
+{
+	if(path.size()>=2 && path[0]=='\\' && path[1]=='\\' )
+	{
+		if(path.size()>=3 && path[2]=='?')
+		{
+			return path;
+		}
+		else
+		{
+			return L"\\\\?\\UNC"+path.substr(1);
+		}
+	}
+	else
+		return L"\\\\?\\"+path;
+}
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
+std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 	bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
@@ -147,7 +161,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 	std::vector<SFile> tmp;
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
-	std::wstring tpath=path;
+	std::wstring tpath=ConvertToWchar(path);
 	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
 	fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 	if(fHandle==INVALID_HANDLE_VALUE)
@@ -176,8 +190,8 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 	do
 	{
 		SFile f;
-		f.name=wfd.cFileName;
-		if(f.name==L"." || f.name==L".." )
+		f.name=ConvertFromWchar(wfd.cFileName);
+		if(f.name=="." || f.name==".." )
 			continue;
 
 		f.usn=0;
@@ -210,7 +224,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 		{
 			if(with_usn)
 			{
-				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+ConvertToWchar(f.name)).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 				if(hFile!=INVALID_HANDLE_VALUE)
@@ -255,7 +269,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 							}
 							else
 							{
-								Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
+								Log("USN entry major version "+convert(usnv2->MajorVersion)+" of file \""+ConvertFromWchar(tpath)+"\\"+f.name+"\" not supported", LL_ERROR);
 							}
 						}
 						else
@@ -276,7 +290,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 			else
 			{
 				WIN32_FILE_ATTRIBUTE_DATA fad;
-				if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+f.name).c_str(),  GetFileExInfoStandard, &fad) )
+				if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+ConvertToWchar(f.name)).c_str(),  GetFileExInfoStandard, &fad) )
 				{
 					size.HighPart = fad.nFileSizeHigh;
 					size.LowPart = fad.nFileSizeLow;
@@ -305,12 +319,12 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
 	return tmp;
 }
 
-SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
+SFile getFileMetadataWin( const std::string &path, bool with_usn )
 {
 	SFile ret;
 	ret.name=path;
 	WIN32_FILE_ATTRIBUTE_DATA fad;
-	if( GetFileAttributesExW(path.c_str(),  GetFileExInfoStandard, &fad) )
+	if( GetFileAttributesExW(ConvertToWchar(path).c_str(),  GetFileExInfoStandard, &fad) )
 	{
 		if (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
@@ -339,7 +353,7 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 
 		if(with_usn && !ret.isdir && !(fad.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
 		{
-			HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+			HANDLE hFile = CreateFileW(ConvertToWchar(path).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 				OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 			if(hFile!=INVALID_HANDLE_VALUE)
@@ -367,7 +381,7 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 						}
 						else
 						{
-							Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+path+L"\" not supported", LL_ERROR);
+							Log("USN entry major version "+convert(usnv2->MajorVersion)+" of file \""+path+"\" not supported", LL_ERROR);
 						}
 					}
 					else
@@ -394,29 +408,29 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 	}
 }
 
-SFile getFileMetadata( const std::wstring &path )
+SFile getFileMetadata( const std::string &path )
 {
 	return getFileMetadataWin(path, false);
 }
 
-void removeFile(const std::wstring &path)
+void removeFile(const std::string &path)
 {
-	_unlink(ConvertToUTF8(path).c_str());
+	_unlink(path.c_str());
 }
 
-void moveFile(const std::wstring &src, const std::wstring &dst)
+void moveFile(const std::string &src, const std::string &dst)
 {
-	rename(ConvertToUTF8(src).c_str(), ConvertToUTF8(dst).c_str() );
+	rename(src.c_str(), dst.c_str() );
 }
 
-bool isDirectory(const std::wstring &path, void* transaction)
+bool isDirectory(const std::string &path, void* transaction)
 {
         DWORD attrib;
 #ifdef USE_NTFS_TXF
 		if(transaction!=NULL)
 		{
 			WIN32_FILE_ATTRIBUTE_DATA ad;
-			if(!GetFileAttributesTransactedW(path.c_str(), GetFileExInfoStandard, &ad, transaction))
+			if(!GetFileAttributesTransactedW(ConvertToWchar(path).c_str(), GetFileExInfoStandard, &ad, transaction))
 			{
 				attrib=0xFFFFFFFF;
 			}
@@ -428,7 +442,7 @@ bool isDirectory(const std::wstring &path, void* transaction)
 		else
 		{
 #endif
-			attrib = GetFileAttributesW(path.c_str());
+			attrib = GetFileAttributesW(ConvertToWchar(path).c_str());
 #ifdef USE_NTFS_TXF
 		}
 #endif	
@@ -443,9 +457,9 @@ bool isDirectory(const std::wstring &path, void* transaction)
         }
 }
 
-int os_get_file_type(const std::wstring &path)
+int os_get_file_type(const std::string &path)
 {
-	DWORD attrib = GetFileAttributesW(path.c_str());
+	DWORD attrib = GetFileAttributesW(ConvertToWchar(path).c_str());
 
 	if(attrib==INVALID_FILE_ATTRIBUTES)
 	{
@@ -476,19 +490,14 @@ int64 os_atoi64(const std::string &str)
 	return _atoi64(str.c_str());
 }
 
-bool os_create_dir(const std::wstring &dir)
-{
-	return CreateDirectoryW(dir.c_str(), NULL)!=0;
-}
-
 bool os_create_dir(const std::string &dir)
 {
-	return CreateDirectoryA(dir.c_str(), NULL)!=0;
+	return CreateDirectoryW(ConvertToWchar(dir).c_str(), NULL)!=0;
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
+bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links)
 {
-	BOOL r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);
+	BOOL r=CreateHardLinkW(ConvertToWchar(linkname).c_str(), ConvertToWchar(fname).c_str(), NULL);
 	if(too_many_links!=NULL)
 	{
 		*too_many_links=false;
@@ -504,9 +513,9 @@ bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname,
 	return r!=0;
 }
 
-int64 os_free_space(const std::wstring &path)
+int64 os_free_space(const std::string &path)
 {
-	std::wstring cp=path;
+	std::string cp=path;
 	if(path.size()==0)
 		return -1;
 	if(cp[cp.size()-1]=='/')
@@ -515,16 +524,16 @@ int64 os_free_space(const std::wstring &path)
 		cp+='\\';
 
 	ULARGE_INTEGER li;
-	BOOL r=GetDiskFreeSpaceExW(path.c_str(), &li, NULL, NULL);
+	BOOL r=GetDiskFreeSpaceExW(ConvertToWchar(path).c_str(), &li, NULL, NULL);
 	if(r!=0)
 		return li.QuadPart;
 	else
 		return -1;
 }
 
-int64 os_total_space(const std::wstring &path)
+int64 os_total_space(const std::string &path)
 {
-	std::wstring cp=path;
+	std::string cp=path;
 	if(path.size()==0)
 		return -1;
 	if(cp[cp.size()-1]=='/')
@@ -533,32 +542,37 @@ int64 os_total_space(const std::wstring &path)
 		cp+='\\';
 
 	ULARGE_INTEGER li;
-	BOOL r=GetDiskFreeSpaceExW(path.c_str(), NULL, &li, NULL);
+	BOOL r=GetDiskFreeSpaceExW(ConvertToWchar(path).c_str(), NULL, &li, NULL);
 	if(r!=0)
 		return li.QuadPart;
 	else
 		return -1;
 }
 
-bool os_directory_exists(const std::wstring &path)
+bool os_directory_exists(const std::string &path)
 {
 	return isDirectory(path, NULL);
 }
 
-bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
+bool os_remove_symlink_dir_int(const std::wstring &path)
+{
+	return RemoveDirectoryW(path.c_str())!=FALSE;
+}
+
+bool os_remove_nonempty_dir_int(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
 	WIN32_FIND_DATAW wfd; 
-	HANDLE hf=FindFirstFileW((path+L"\\*").c_str(), &wfd);
 	std::wstring tpath=path;
+	HANDLE hf=FindFirstFileW((tpath+L"\\*").c_str(), &wfd);
 	if(hf==INVALID_HANDLE_VALUE)
 	{
-		if(next(tpath, 0, L"\\\\?\\UNC"))
+		if(tpath.find(L"\\\\?\\UNC")==0)
 		{
 			tpath.erase(0, 7);
 			tpath=L"\\"+tpath;
 			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 		}
-		else if(next(tpath, 0, L"\\\\?\\"))
+		else if(tpath.find(L"\\\\?\\")==0)
 		{
 			tpath.erase(0, 4);
 			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
@@ -579,11 +593,11 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 					&& (wfd.dwReserved0==IO_REPARSE_TAG_MOUNT_POINT
 					|| wfd.dwReserved0==IO_REPARSE_TAG_SYMLINK) )
 				{
-					symlink_callback(path+L"\\"+wfd.cFileName, userdata);
+					symlink_callback(ConvertFromWchar(path+L"\\"+wfd.cFileName), userdata);
 				}
 				else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
-					os_remove_symlink_dir(path+L"\\"+wfd.cFileName);
+					os_remove_symlink_dir_int(path+L"\\"+wfd.cFileName);
 				}
 				else
 				{
@@ -592,7 +606,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 			}
 			else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
-				os_remove_nonempty_dir(tpath+L"\\"+wfd.cFileName, symlink_callback, userdata);
+				os_remove_nonempty_dir_int(tpath+L"\\"+wfd.cFileName, symlink_callback, userdata, true);
 			}
 			else
 			{
@@ -608,38 +622,34 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 	{
 		if(!RemoveDirectoryW(path.c_str()))
 		{
-			Log(L"Error deleting directory \""+path+L"\"", LL_ERROR);
+			Log("Error deleting directory \""+ConvertFromWchar(path)+"\"", LL_ERROR);
 		}
 	}
 	return true;
 }
 
-bool os_remove_symlink_dir(const std::wstring &path)
+bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
-	return RemoveDirectoryW(path.c_str())!=FALSE;
+	return os_remove_nonempty_dir_int(ConvertToWchar(path), symlink_callback, userdata, delete_root);
+}
+
+bool os_remove_symlink_dir(const std::string &path)
+{
+	return RemoveDirectoryW(ConvertToWchar(path).c_str())!=FALSE;
 }
 
 bool os_remove_dir(const std::string &path)
 {
-	return RemoveDirectoryA(path.c_str())!=FALSE;
+	return RemoveDirectoryW(ConvertToWchar(path).c_str())!=FALSE;
 }
 
-bool os_remove_dir(const std::wstring &path)
-{
-	return RemoveDirectoryW(path.c_str())!=FALSE;
-}
-
-std::wstring os_file_sep(void)
-{
-	return L"\\";
-}
-
-std::string os_file_sepn(void)
+std::string os_file_sep(void)
 {
 	return "\\";
 }
 
-bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
+
+bool os_link_symbolic_symlink(const std::string &target, const std::string &lname, void* transaction, bool* isdir)
 {
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
@@ -655,15 +665,15 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 	DWORD rc;
 	if(transaction==NULL)
 	{
-		rc=CreateSymbolicLink(lname.c_str(), target.c_str(), flags);
+		rc=CreateSymbolicLink(ConvertToWchar(lname).c_str(), ConvertToWchar(target).c_str(), flags);
 	}
 	else
 	{
-		rc=CreateSymbolicLinkTransactedW(lname.c_str(), target.c_str(), flags, transaction);
+		rc=CreateSymbolicLinkTransactedW(ConvertToWchar(lname).c_str(), ConvertToWchar(target).c_str(), flags, transaction);
 	}
 	if(rc==FALSE)
 	{
-		Log(L"Creating symbolic link from \""+lname+L"\" to \""+target+L"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
+		Log("Creating symbolic link from \""+lname+"\" to \""+target+"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
 	}
 	return rc!=0;
 #else
@@ -671,10 +681,10 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 #endif
 }
 
-bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &lname)
+bool os_link_symbolic_junctions(const std::string &target, const std::string &lname)
 {
 	bool ret=false;
-	std::wstring wtarget=target;
+	std::wstring wtarget=ConvertToWchar(target);
 	HANDLE hJunc=INVALID_HANDLE_VALUE;
 	char *buf=NULL;
 
@@ -694,12 +704,13 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 	if(!wtarget.empty() && wtarget[wtarget.size()-1]=='\\')
 		wtarget.erase(wtarget.size()-1, 1);
 
-	if(!CreateDirectoryW(lname.c_str(), NULL) )
+	std::wstring wlname = ConvertToWchar(lname);
+	if(!CreateDirectoryW(wlname.c_str(), NULL) )
 	{
 		goto cleanup;
 	}
 
-	hJunc=CreateFileW(lname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	hJunc=CreateFileW(wlname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
 	if(hJunc==INVALID_HANDLE_VALUE)
 		goto cleanup;
 
@@ -724,14 +735,14 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 cleanup:
 	if(!ret)
 	{
-		Log("Creating junction failed. Last error="+nconvert((int)GetLastError()), LL_ERROR);
+		Log("Creating junction failed. Last error="+convert((int)GetLastError()), LL_ERROR);
 	}
 	delete []buf;
 	if(hJunc!=INVALID_HANDLE_VALUE)
 		CloseHandle(hJunc);
 	if(!ret)
 	{
-		RemoveDirectoryW(lname.c_str());
+		RemoveDirectoryW(ConvertToWchar(lname).c_str());
 	}
 	return ret;
 }
@@ -786,7 +797,7 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 }
 #endif
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
+bool os_link_symbolic(const std::string &target, const std::string &lname, void* transaction, bool* isdir)
 {
 	if(transaction==NULL)
 	{
@@ -810,9 +821,9 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, voi
 	return true;
 }
 
-bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
+bool os_get_symlink_target(const std::string &lname, std::string &target)
 {
-	HANDLE hJunc=CreateFileW(lname.c_str(), GENERIC_READ, FILE_SHARE_READ,
+	HANDLE hJunc=CreateFileW(ConvertToWchar(lname).c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_ATTRIBUTE_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if(hJunc==INVALID_HANDLE_VALUE)
@@ -854,17 +865,18 @@ bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
 
 	bool ret=true;
 
+	std::wstring wtarget;
 	if(reparse_buffer->ReparseTag==IO_REPARSE_TAG_SYMLINK)
 	{
-		target.resize(reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
-		memcpy(&target[0],
+		wtarget.resize(reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
+		memcpy(&wtarget[0],
 			&reparse_buffer->SymbolicLinkReparseBuffer.PathBuffer[reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameOffset/sizeof(wchar_t)],
 			reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameLength);
 	}
 	else if(reparse_buffer->ReparseTag==IO_REPARSE_TAG_MOUNT_POINT)
 	{
-		target.resize(reparse_buffer->MountPointReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
-		memcpy(&target[0],
+		wtarget.resize(reparse_buffer->MountPointReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
+		memcpy(&wtarget[0],
 			&reparse_buffer->MountPointReparseBuffer.PathBuffer[reparse_buffer->MountPointReparseBuffer.SubstituteNameOffset/sizeof(wchar_t)],
 			reparse_buffer->MountPointReparseBuffer.SubstituteNameLength);
 	}
@@ -873,22 +885,24 @@ bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
 		ret=false;
 	}
 
-	if(next(target, 0, L"\\??\\"))
+	target = ConvertFromWchar(wtarget);
+
+	if(next(target, 0, "\\??\\"))
 		target.erase(0,4);
 
 	return ret;
 }
 
-bool os_is_symlink(const std::wstring &lname)
+bool os_is_symlink(const std::string &lname)
 {
-	DWORD attrs = GetFileAttributesW(lname.c_str());
+	DWORD attrs = GetFileAttributesW(ConvertToWchar(lname).c_str());
 	if(attrs == INVALID_FILE_ATTRIBUTES)
 		return false;
 
 	return (attrs & FILE_ATTRIBUTE_REPARSE_POINT)>0;
 }
 
-std::wstring os_file_prefix(std::wstring path)
+std::string os_file_prefix(std::string path)
 {
 	if(path.size()>=2 && path[0]=='\\' && path[1]=='\\' )
 	{
@@ -898,17 +912,17 @@ std::wstring os_file_prefix(std::wstring path)
 		}
 		else
 		{
-			return L"\\\\?\\UNC"+path.substr(1);
+			return "\\\\?\\UNC"+path.substr(1);
 		}
 	}
 	else
-		return L"\\\\?\\"+path;
+		return "\\\\?\\"+path;
 }
 
-bool os_file_truncate(const std::wstring &fn, int64 fsize)
+bool os_file_truncate(const std::string &fn, int64 fsize)
 {
 	int fh;
-	if( _wsopen_s ( &fh, fn.c_str(), _O_RDWR | _O_CREAT, _SH_DENYNO,
+	if( _wsopen_s ( &fh, ConvertToWchar(fn).c_str(), _O_RDWR | _O_CREAT, _SH_DENYNO,
             _S_IREAD | _S_IWRITE ) == 0 )
 	{
 		if( _chsize_s( fh, fsize ) != 0 )
@@ -937,7 +951,7 @@ std::string os_strftime(std::string fs)
 	return r;
 }
 
-bool os_create_dir_recursive(std::wstring fn)
+bool os_create_dir_recursive(std::string fn)
 {
 	if(fn.empty())
 		return false;
@@ -957,22 +971,22 @@ bool os_create_dir_recursive(std::wstring fn)
 	}
 }
 
-std::wstring os_get_final_path(std::wstring path)
+std::string os_get_final_path(std::string path)
 {
 #if (_WIN32_WINNT >= 0x0600)
-	std::wstring ret;
+	std::wstring wret;
 
-	if(path.size()<3 && path.find(L":")==std::string::npos)
+	if(path.size()<3 && path.find(":")==std::string::npos)
 	{
-		path+=L":";
+		path+=":";
 	}
 
-	if(path.find(L"\\")==std::string::npos)
+	if(path.find("\\")==std::string::npos)
 	{
-		path+=L"\\";
+		path+="\\";
 	}
 
-	HANDLE hFile = CreateFileW(path.c_str(),               
+	HANDLE hFile = CreateFileW(ConvertToWchar(path).c_str(),               
                        GENERIC_READ,          
                        FILE_SHARE_READ,       
                        NULL,                  
@@ -982,7 +996,7 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if( hFile==INVALID_HANDLE_VALUE )
 	{
-		Log(L"Could not open path in os_get_final_path for \""+path+L"\"", LL_ERROR);
+		Log("Could not open path in os_get_final_path for \""+path+"\"", LL_ERROR);
 		return path;
 	}
 
@@ -990,42 +1004,42 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if(dwBufsize==0)
 	{
-		Log(L"Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+L" for \""+path+L"\"", LL_ERROR);
+		Log("Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+" for \""+path+"\"", LL_ERROR);
 		CloseHandle(hFile);
 		return path;
 	}
 
-	ret.resize(dwBufsize+1);
+	wret.resize(dwBufsize+1);
 
-	DWORD dwRet = GetFinalPathNameByHandleW( hFile, (LPWSTR)ret.c_str(), dwBufsize, VOLUME_NAME_DOS );
+	DWORD dwRet = GetFinalPathNameByHandleW( hFile, (LPWSTR)wret.c_str(), dwBufsize, VOLUME_NAME_DOS );
 
 	CloseHandle(hFile);
 
 	if(dwRet==0)
 	{
-		Log("Error getting path in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+		Log("Error getting path in in os_get_final_path error="+convert((int)GetLastError()), LL_ERROR);
 	}
-	else if(dwRet<ret.size())
+	else if(dwRet<wret.size())
 	{
-		ret.resize(dwRet);
-		if(ret.find(L"\\\\?\\UNC")==0)
+		wret.resize(dwRet);
+		if(wret.find(L"\\\\?\\UNC")==0)
 		{
-			ret.erase(0, 7);
-			ret=L"\\"+ret;
+			wret.erase(0, 7);
+			wret=L"\\"+wret;
 		}
-		if(ret.find(L"\\\\?\\")==0)
+		if(wret.find(L"\\\\?\\")==0)
 		{
-			ret.erase(0,4);
+			wret.erase(0,4);
 		}
-		/*if(ret.size()>=2 && ret[ret.size()-2]=='.' && ret[ret.size()-1]=='.' )
+		/*if(wret.size()>=2 && wret[wret.size()-2]=='.' && ret[wret.size()-1]=='.' )
 		{
-			ret.resize(ret.size()-2);
+			wret.resize(ret.size()-2);
 		}*/
-		return ret;
+		return ConvertFromWchar(wret);
 	}
 	else
 	{
-		Log("Error getting path (buffer too small) in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+		Log("Error getting path (buffer too small) in in os_get_final_path error="+convert((int)GetLastError()), LL_ERROR);
 	}
 
 	return path;
@@ -1034,25 +1048,25 @@ std::wstring os_get_final_path(std::wstring path)
 #endif
 }
 
-bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
+bool os_rename_file(std::string src, std::string dst, void* transaction)
 {
 	BOOL rc;
 #ifdef USE_NTFS_TXF
 	if(transaction==NULL)
 	{
 #endif
-		rc = MoveFileExW(src.c_str(), dst.c_str(), MOVEFILE_REPLACE_EXISTING);
+		rc = MoveFileExW(ConvertToWchar(src).c_str(), ConvertToWchar(dst).c_str(), MOVEFILE_REPLACE_EXISTING);
 #ifdef USE_NTFS_TXF
 	}
 	else
 	{
-		rc=MoveFileTransactedW(src.c_str(), dst.c_str(), NULL, NULL, MOVEFILE_REPLACE_EXISTING, transaction);
+		rc=MoveFileTransactedW(ConvertToWchar(src).c_str(), ConvertToWchar(dst).c_str(), NULL, NULL, MOVEFILE_REPLACE_EXISTING, transaction);
 	}	
 #endif
 #ifdef _DEBUG
 	if(rc==0)
 	{
-		Log("MoveFileW error: "+nconvert((int)GetLastError()), LL_ERROR);
+		Log("MoveFileW error: "+convert((int)GetLastError()), LL_ERROR);
 	}
 #endif
 	return rc!=0;
@@ -1064,7 +1078,7 @@ void* os_start_transaction()
 	HANDLE htrans = CreateTransaction(NULL, NULL, 0, 0, 0, 0, NULL);
 	if(htrans==INVALID_HANDLE_VALUE)
 	{
-		Log("Creating transaction failed. ec="+nconvert((int)GetLastError), LL_WARNING);
+		Log("Creating transaction failed. ec="+convert((int)GetLastError), LL_WARNING);
 		return NULL;
 	}
 	return htrans;
@@ -1083,7 +1097,7 @@ bool os_finish_transaction(void* transaction)
 	BOOL b = CommitTransaction(transaction);
 	if(!b)
 	{
-		Log("Commiting transaction failed. ec="+nconvert((int)GetLastError), LL_ERROR);
+		Log("Commiting transaction failed. ec="+convert((int)GetLastError), LL_ERROR);
 		CloseHandle(transaction);
 		return false;
 	}
@@ -1099,9 +1113,9 @@ int64 os_last_error()
 	return GetLastError();
 }
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed)
+bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified, int64 accessed)
 {
-	HANDLE hFile = CreateFileW(fn.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+	HANDLE hFile = CreateFileW(ConvertToWchar(fn).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if(hFile!=INVALID_HANDLE_VALUE)
@@ -1144,7 +1158,7 @@ bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool copy_file(const std::wstring &src, const std::wstring &dst)
+bool copy_file(const std::string &src, const std::string &dst)
 {
 	IFile *fsrc=Server->openFile(src, MODE_READ);
 	if(fsrc==NULL) return false;
@@ -1184,9 +1198,9 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 }
 #endif
 
-bool os_path_absolute(const std::wstring& path)
+bool os_path_absolute(const std::string& path)
 {
-	return PathIsRelative(path.c_str())==FALSE;
+	return PathIsRelativeW(ConvertToWchar(path).c_str())==FALSE;
 }
 
 int os_popen(const std::string& cmd, std::string& ret)
@@ -1222,7 +1236,7 @@ int os_popen(const std::string& cmd, std::string& ret)
 	return _pclose(in);
 }
 
-int64 os_last_error(std::wstring& message)
+int64 os_last_error(std::string& message)
 {
 	DWORD last_error = GetLastError();
 
@@ -1233,8 +1247,10 @@ int64 os_last_error(std::wstring& message)
 
 	if(r>0 && output!=NULL)
 	{
-		message.resize(r);
-		memcpy(&message[0], output, r*sizeof(wchar_t));
+		std::wstring wmessage;
+		wmessage.resize(r);
+		memcpy(&wmessage[0], output, r*sizeof(wchar_t));
+		message = ConvertFromWchar(wmessage);
 	}
 
 	if(output!=NULL)

@@ -63,7 +63,7 @@ namespace
 		return true;
 	}
 
-	void read_tokens(std::wstring token_path, std::string& tokens)
+	void read_tokens(std::string token_path, std::string& tokens)
 	{
             if(os_directory_exists(os_file_prefix(token_path)))
             {
@@ -76,7 +76,7 @@ namespace
 				continue;
 			}
 
-			std::string nt = getFile(wnarrow(token_path + os_file_sep() + token_files[i].name));
+			std::string nt = getFile(token_path + os_file_sep() + token_files[i].name);
 			if(!nt.empty())
 			{
 				if(!tokens.empty())
@@ -208,7 +208,7 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 		if(i!=0)
 			args+="&";
 
-		args+="dir_"+nconvert(i)+"="+(std::string)res[i].path;
+		args+="dir_"+convert(i)+"="+(std::string)res[i].path;
 	}
 
 	std::string d=getResponse("SAVE BACKUP DIRS", args, false);
@@ -321,7 +321,7 @@ std::vector<SLogEntry> Connector::getLogEntries(void)
 
 std::vector<SLogLine>  Connector::getLogdata(int logid, int loglevel)
 {
-	std::string d=getResponse("GET LOGDATA","logid="+nconvert(logid)+"&loglevel="+nconvert(loglevel), true);
+	std::string d=getResponse("GET LOGDATA","logid="+convert(logid)+"&loglevel="+convert(loglevel), true);
 	std::vector<std::string> lines;
 	TokenizeMail(d, lines, "\n");
 	std::vector<SLogLine> ret;
@@ -408,15 +408,15 @@ bool Connector::readTokens()
 		return true;
 	}
 
-	read_tokens(L"tokens", tokens);
+	read_tokens("tokens", tokens);
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-	read_tokens(L"/var/urbackup/tokens", tokens);
-	read_tokens(L"/usr/local/var/urbackup/tokens", tokens);
+	read_tokens("/var/urbackup/tokens", tokens);
+	read_tokens("/usr/local/var/urbackup/tokens", tokens);
 #endif
 
 #ifdef __APPLE__
-	read_tokens(L"/usr/var/urbackup/tokens", tokens);
+	read_tokens("/usr/var/urbackup/tokens", tokens);
 #endif
 
 	return !tokens.empty();
@@ -438,7 +438,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid )
 
 	if(backupid!=NULL)
 	{
-		params+="&backupid="+nconvert(*backupid);
+		params+="&backupid="+convert(*backupid);
 	}
 
 	std::string list = getResponse("GET FILE LIST TOKENS",

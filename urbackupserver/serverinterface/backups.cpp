@@ -41,7 +41,7 @@ namespace backupaccess
 		std::string clientf="(";
 		for(size_t i=0;i<clientid.size();++i)
 		{
-			clientf+=key+"="+nconvert(clientid[i]);
+			clientf+=key+"="+convert(clientid[i]);
 			if(i+1<clientid.size())
 				clientf+=" OR ";
 		}
@@ -51,22 +51,22 @@ namespace backupaccess
 }
 
 
-bool create_zip_to_output(const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
+bool create_zip_to_output(const std::string& foldername, const std::string& hashfoldername, const std::string& filter, bool token_authentication,
 	const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes);
 
 namespace
 {
-	bool sendFile(Helper& helper, const std::wstring& filename)
+	bool sendFile(Helper& helper, const std::string& filename)
 	{
 		THREAD_ID tid = Server->getThreadID();
 		Server->setContentType(tid, "application/octet-stream");
-		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(ExtractFileName(filename))+"\"");
+		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+(ExtractFileName(filename))+"\"");
 		IFile *in=Server->openFile(os_file_prefix(filename), MODE_READ);
 		if(in!=NULL)
 		{
 			helper.releaseAll();
 
-			Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
+			Server->addHeader(tid, "Content-Length: "+convert(in->Size()) );
 			char buf[4096];
 			_u32 r;
 			do
@@ -80,26 +80,26 @@ namespace
 		}
 		else
 		{
-			Server->Log(L"Error opening file \""+filename+L"\"", LL_ERROR);
+			Server->Log("Error opening file \""+filename+"\"", LL_ERROR);
 			return false;
 		}
 	}
 
-	bool sendZip(Helper& helper, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
+	bool sendZip(Helper& helper, const std::string& foldername, const std::string& hashfoldername, const std::string& filter, bool token_authentication,
 		const std::vector<backupaccess::SToken>& backup_tokens, const std::vector<std::string>& tokens, bool skip_hashes)
 	{
-		std::wstring zipname=ExtractFileName(foldername)+L".zip";
+		std::string zipname=ExtractFileName(foldername)+".zip";
 
 		THREAD_ID tid = Server->getThreadID();
 		Server->setContentType(tid, "application/octet-stream");
-		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(zipname)+"\"");
+		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+(zipname)+"\"");
 		helper.releaseAll();
 
 		return create_zip_to_output(foldername, hashfoldername, filter, token_authentication,
 			backup_tokens, tokens, skip_hashes);
 	}
 
-	std::vector<FileMetadata> getMetadata(std::wstring dir, const std::vector<SFile>& files, bool skip_special)
+	std::vector<FileMetadata> getMetadata(std::string dir, const std::vector<SFile>& files, bool skip_special)
 	{
 		std::vector<FileMetadata> ret;
 		ret.resize(files.size());
@@ -111,10 +111,10 @@ namespace
 
 		for(size_t i=0;i<files.size();++i)
 		{
-			if(skip_special && (files[i].name==L".hashes" || files[i].name==L"user_views") )
+			if(skip_special && (files[i].name==".hashes" || files[i].name=="user_views") )
 				continue;
 
-			std::wstring metadata_fn;
+			std::string metadata_fn;
 			if(files[i].isdir)
 				metadata_fn = dir+escape_metadata_fn(files[i].name)+os_file_sep()+metadata_dir_fn;
 			else
@@ -122,21 +122,21 @@ namespace
 
 			if(!read_metadata(metadata_fn, ret[i]) )
 			{
-				Server->Log(L"Error reading metadata of file "+dir+os_file_sep()+files[i].name, LL_ERROR);
+				Server->Log("Error reading metadata of file "+dir+os_file_sep()+files[i].name, LL_ERROR);
 			}
 		}
 
 		return ret;
 	}
 
-	FileMetadata getMetaData(std::wstring path, bool is_file)
+	FileMetadata getMetaData(std::string path, bool is_file)
 	{
 		if(path.empty() || (!is_file && path[path.size()-1]!=os_file_sep()[0]) )
 		{
 			path+=os_file_sep();
 		}
 
-		std::wstring metadata_fn;
+		std::string metadata_fn;
 		if(is_file)
 		{
 			metadata_fn = ExtractFilePath(path) + os_file_sep() + escape_metadata_fn(ExtractFileName(path));
@@ -149,12 +149,12 @@ namespace
 		FileMetadata ret;
 		if(!read_metadata(metadata_fn, ret) )
 		{
-			Server->Log(L"Error reading metadata of path "+path, LL_ERROR);
+			Server->Log("Error reading metadata of path "+path, LL_ERROR);
 		}
 		return ret;
 	}
 
-	int getClientid(IDatabase* db, const std::wstring& clientname)
+	int getClientid(IDatabase* db, const std::string& clientname)
 	{
 		IQuery* q=db->Prepare("SELECT id FROM clients WHERE name=?");
 		q->Bind(clientname);
@@ -163,12 +163,12 @@ namespace
 
 		if(!res.empty())
 		{
-			return watoi(res[0][L"id"]);
+			return watoi(res[0]["id"]);
 		}
 		return -1;
 	}
 
-	std::wstring getClientname(IDatabase* db, int clientid)
+	std::string getClientname(IDatabase* db, int clientid)
 	{
 		IQuery *q=db->Prepare("SELECT name FROM clients WHERE id=?");
 		q->Bind(clientid);
@@ -176,15 +176,15 @@ namespace
 		q->Reset();
 		if(!res.empty())
 		{
-			return res[0][L"name"];
+			return res[0]["name"];
 		}
 		else
 		{
-			return std::wstring();
+			return std::string();
 		}
 	}
 
-	bool checkBackupTokens(const std::string& fileaccesstokens, const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
+	bool checkBackupTokens(const std::string& fileaccesstokens, const std::string& backupfolder, const std::string& clientname, const std::string& path)
 	{
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
@@ -212,7 +212,7 @@ namespace
 		return false;
 	}
 
-	bool checkFileToken(const std::string& fileaccesstokens, const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path, const std::wstring& filemetadatapath)
+	bool checkFileToken(const std::string& fileaccesstokens, const std::string& backupfolder, const std::string& clientname, const std::string& path, const std::string& filemetadatapath)
 	{
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
@@ -235,18 +235,18 @@ namespace
 
 namespace backupaccess
 {
-	std::wstring getBackupFolder(IDatabase* db)
+	std::string getBackupFolder(IDatabase* db)
 	{
 		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
 		db_results res_bf=q->Read();
 		q->Reset();
 		if(!res_bf.empty() )
 		{
-			return res_bf[0][L"value"];
+			return res_bf[0]["value"];
 		}
 		else
 		{
-			return std::wstring();
+			return std::string();
 		}
 	}
 
@@ -258,14 +258,14 @@ namespace backupaccess
 		}
 
 		int clientid;
-		str_map::const_iterator iter_clientname =GET.find(L"clientname");
+		str_map::const_iterator iter_clientname =GET.find("clientname");
 		if(iter_clientname!=GET.end())
 		{
 			clientid = getClientid(db, iter_clientname->second);
 		}
 		else
 		{
-			str_map::const_iterator iter_clientid = GET.find(L"clientid");
+			str_map::const_iterator iter_clientid = GET.find("clientid");
 			if(iter_clientid!=GET.end())
 			{
 				clientid = watoi(iter_clientid->second);
@@ -289,22 +289,22 @@ namespace backupaccess
 		str_map::const_iterator iter;
 		do 
 		{
-			iter = GET.find(L"tokens"+convert(i));
+			iter = GET.find("tokens"+convert(i));
 
 			if(iter!=GET.end())
 			{
-				std::string bin_input = base64_decode_dash(wnarrow(iter->second));
+				std::string bin_input = base64_decode_dash(iter->second);
 				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key, 1);
 				if(!session_key.empty())
 				{
-					iter = GET.find(L"token_data");
+					iter = GET.find("token_data");
 
 					if(iter==GET.end())
 					{
 						return std::string();
 					}
 
-					bin_input = base64_decode_dash(wnarrow(iter->second));
+					bin_input = base64_decode_dash(iter->second);
 
 					std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, session_key, 1);
 
@@ -332,14 +332,14 @@ namespace backupaccess
 		return std::string();
 	}
 
-	STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
+	STokens readTokens(const std::string& backupfolder, const std::string& clientname, const std::string& path)
 	{
 		if(backupfolder.empty() || clientname.empty() || path.empty())
 		{
 			return STokens();
 		}
 
-		std::auto_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+L".hashes"+os_file_sep()+L".urbackup_tokens.properties"));
+		std::auto_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+".hashes"+os_file_sep()+".urbackup_tokens.properties"));
 
 		if(!backup_tokens.get())
 		{
@@ -353,7 +353,7 @@ namespace backupaccess
 		std::vector<SToken> ret;
 		for(size_t i=0;i<ids.size();++i)
 		{
-			SToken token = { watoi64(widen(ids[i])),
+			SToken token = { watoi64(ids[i]),
 				base64_decode_dash(backup_tokens->getValue(ids[i]+"."+"accountname", "")),
 				backup_tokens->getValue(ids[i]+"."+"token", "") };
 
@@ -391,9 +391,9 @@ namespace backupaccess
 		return has_permission;
 	}
 
-	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, int backupid_offset)
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::string clientname, std::string* fileaccesstokens, int backupid_offset)
 	{
-		std::wstring backupfolder = getBackupFolder(db);
+		std::string backupfolder = getBackupFolder(db);
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -403,22 +403,22 @@ namespace backupaccess
 		JSON::Array backups;
 		for(size_t i=0;i<res.size();++i)
 		{
-			if(fileaccesstokens!=NULL && !checkBackupTokens(*fileaccesstokens, backupfolder, clientname, res[i][L"path"]) )
+			if(fileaccesstokens!=NULL && !checkBackupTokens(*fileaccesstokens, backupfolder, clientname, res[i]["path"]) )
 			{
 				continue;
 			}
 
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
-			obj.set("backuptime", watoi64(res[i][L"t_backuptime"]));
-			obj.set("incremental", watoi(res[i][L"incremental"]));
-            obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
-            int archived = watoi(res[i][L"archived"]);
-            obj.set("archived", watoi(res[i][L"archived"]));
+			obj.set("id", watoi(res[i]["id"])+backupid_offset);
+			obj.set("backuptime", watoi64(res[i]["t_backuptime"]));
+			obj.set("incremental", watoi(res[i]["incremental"]));
+            obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
+            int archived = watoi(res[i]["archived"]);
+            obj.set("archived", watoi(res[i]["archived"]));
 			_i64 archive_timeout=0;
-			if(!res[i][L"archive_timeout"].empty())
+			if(!res[i]["archive_timeout"].empty())
 			{
-				archive_timeout=watoi64(res[i][L"archive_timeout"]);
+				archive_timeout=watoi64(res[i]["archive_timeout"]);
 				if(archive_timeout!=0)
 				{
 					archive_timeout-=Server->getTimeSeconds();
@@ -434,7 +434,7 @@ namespace backupaccess
 		return backups;
 	}
 
-	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, std::string* fileaccesstokens, std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath)
+	SPathInfo get_metadata_path_with_tokens(const std::string& u_path, std::string* fileaccesstokens, std::string clientname, std::string backupfolder, int* backupid, std::string backuppath)
 	{
 		SPathInfo ret;
 		std::vector<std::string> tokens;
@@ -444,22 +444,22 @@ namespace backupaccess
 			Tokenize(*fileaccesstokens, tokens, ";");
 		}
 
-		std::vector<std::wstring> t_path;
-		Tokenize(u_path, t_path, L"/");
+		std::vector<std::string> t_path;
+		Tokenize(u_path, t_path, "/");
 
         ret.can_access_path=true;
 
 		for(size_t i=0;i<t_path.size();++i)
 		{
-			if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
-				&& t_path[i].find(L"/")==std::string::npos
-				&& t_path[i].find(L"\\")==std::string::npos )
+			if(!t_path[i].empty() && t_path[i]!=" " && t_path[i]!="." && t_path[i]!=".."
+				&& t_path[i].find("/")==std::string::npos
+				&& t_path[i].find("\\")==std::string::npos )
 			{
 			
 				ret.rel_path+=UnescapeSQLString(t_path[i]);
 				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]));
 				
-				std::wstring curr_full_dir = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?L"":(os_file_sep()+ret.rel_path));
+				std::string curr_full_dir = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?"":(os_file_sep()+ret.rel_path));
 				
 				if(i==t_path.size()-1 && !os_directory_exists(os_file_prefix(curr_full_dir)) )
 				{
@@ -473,7 +473,7 @@ namespace backupaccess
 
 				if(fileaccesstokens)
 				{
-					std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
+					std::string curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+".hashes"+(ret.rel_metadata_path.empty()?"":(os_file_sep()+ret.rel_metadata_path));
 
 					if(!ret.is_file)
 					{
@@ -495,13 +495,13 @@ namespace backupaccess
 			}
 		}
 
-		ret.full_metadata_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
-		ret.full_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?L"":(os_file_sep()+ret.rel_path));
+		ret.full_metadata_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+".hashes"+(ret.rel_metadata_path.empty()?"":(os_file_sep()+ret.rel_metadata_path));
+		ret.full_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?"":(os_file_sep()+ret.rel_path));
 
 		return ret;
 	}
 
-	std::wstring get_backup_path(IDatabase* db, int backupid, int t_clientid)
+	std::string get_backup_path(IDatabase* db, int backupid, int t_clientid)
 	{
 		IQuery* q=db->Prepare("SELECT path FROM backups WHERE id=? AND clientid=?");
 		q->Bind(backupid);
@@ -510,16 +510,16 @@ namespace backupaccess
 		q->Reset();
 		if(!res.empty())
 		{
-			return res[0][L"path"];
+			return res[0]["path"];
 		}
 		else
 		{
-			return std::wstring();
+			return std::string();
 		}
 	}
 
-    bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens,
-                               const std::wstring& u_path, int backupid_offset, JSON::Object& ret)
+    bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::string clientname, std::string* fileaccesstokens,
+                               const std::string& u_path, int backupid_offset, JSON::Object& ret)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -534,7 +534,7 @@ namespace backupaccess
 
 			if(!res.empty())
 			{
-				ret.set("backuptime", watoi64(res[0][L"backuptime"]));
+				ret.set("backuptime", watoi64(res[0]["backuptime"]));
                 ret.set("backupid", *backupid + backupid_offset);
 			}
             else
@@ -550,23 +550,23 @@ namespace backupaccess
 			q->Reset();
 		}
 
-		std::wstring backupfolder=getBackupFolder(db);
+		std::string backupfolder=getBackupFolder(db);
 
 		if(backupfolder.empty())
 		{
 			return false;
 		}
 
-		std::wstring path;
-		std::vector<std::wstring> t_path;
-		Tokenize(u_path, t_path, L"/");
+		std::string path;
+		std::vector<std::string> t_path;
+		Tokenize(u_path, t_path, "/");
 
 		bool is_file=false;
 
 		JSON::Array ret_files;
 		for(size_t k=0;k<res.size();++k)
 		{
-			std::wstring backuppath=res[k][L"path"];
+			std::string backuppath=res[k]["path"];
 
 			if( !fileaccesstokens || checkBackupTokens(*fileaccesstokens, backupfolder, clientname, backuppath) )
 			{
@@ -599,7 +599,7 @@ namespace backupaccess
 					{
 						if(tfiles[i].isdir)
 						{
-							if(path.empty() && (tfiles[i].name==L".hashes" || tfiles[i].name==L"user_views") )
+							if(path.empty() && (tfiles[i].name==".hashes" || tfiles[i].name=="user_views") )
 								continue;
 
 							if(fileaccesstokens && 
@@ -621,7 +621,7 @@ namespace backupaccess
 					{
 						if(!tfiles[i].isdir)
 						{
-							if(path.empty() && tfiles[i].name==L".urbackup_tokens.properties")
+							if(path.empty() && tfiles[i].name==".urbackup_tokens.properties")
 								continue;
 
 							if(fileaccesstokens && 
@@ -674,8 +674,8 @@ namespace backupaccess
 						obj.set("mod", metadata.last_modified);
 						obj.set("creat", metadata.created);
 						obj.set("access", metadata.accessed);
-                        obj.set("backupid", watoi(res[k][L"id"])+backupid_offset);
-						obj.set("backuptime", watoi64(res[k][L"backuptime"]));
+                        obj.set("backupid", watoi(res[k]["id"])+backupid_offset);
+						obj.set("backuptime", watoi64(res[k]["backuptime"]));
 						if(!metadata.shahash.empty())
 						{
 							obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(metadata.shahash.c_str()), static_cast<unsigned int>(metadata.shahash.size())));
@@ -704,7 +704,7 @@ ACTION_IMPL(backups)
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 
-	bool has_tokens = GET.find(L"tokens0")!=GET.end();
+	bool has_tokens = GET.find("tokens0")!=GET.end();
 
 	bool token_authentication=false;
 	std::string fileaccesstokens;
@@ -719,20 +719,20 @@ ACTION_IMPL(backups)
 		}
 		else
 		{
-			std::wstring ses=helper.generateSession(L"anonymous");
+			std::string ses=helper.generateSession("anonymous");
 			ret.set("session", ses);
-			GET[L"ses"]=ses;
+			GET["ses"]=ses;
 			helper.update(tid, &GET, &PARAMS);
 			if(helper.getSession())
 			{
-				helper.getSession()->mStr[L"fileaccesstokens"]=widen(fileaccesstokens);
+				helper.getSession()->mStr["fileaccesstokens"]=fileaccesstokens;
 				helper.getSession()->id = SESSION_ID_TOKEN_AUTH;
 			}
 		}
 	}
 	else if(session!=NULL && session->id==SESSION_ID_TOKEN_AUTH)
 	{
-		fileaccesstokens = wnarrow(session->mStr[L"fileaccesstokens"]);
+		fileaccesstokens = session->mStr["fileaccesstokens"];
 		if(!fileaccesstokens.empty())
 		{
 			token_authentication=true;
@@ -748,7 +748,7 @@ ACTION_IMPL(backups)
 		ret.set("token_authentication", true);
 	}
 
-	std::wstring sa=GET[L"sa"];
+	std::string sa=GET["sa"];
 	std::string rights=helper.getRights("browse_backups");
 	std::string archive_rights=helper.getRights("manual_archive");
 	std::vector<int> clientid;
@@ -759,8 +759,8 @@ ACTION_IMPL(backups)
 	std::vector<int> clientid_archive=helper.getRightIDs(archive_rights);
 	if(clientid.size()==1 && sa.empty() )
 	{
-		sa=L"backups";
-		GET[L"clientid"]=convert(clientid[0]);
+		sa="backups";
+		GET["clientid"]=convert(clientid[0]);
 	}
 	if( (session!=NULL && rights!="none" ) || token_authentication)
 	{
@@ -770,7 +770,7 @@ ACTION_IMPL(backups)
 			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
 			if(token_authentication)
 			{
-				if(GET.find(L"clientname")==GET.end())
+				if(GET.find("clientname")==GET.end())
 				{
 					std::vector<std::string> tokens;
 					Tokenize(fileaccesstokens, tokens, ";");
@@ -783,7 +783,7 @@ ACTION_IMPL(backups)
 
 						if(!res.empty())
 						{
-							int n_clientid = watoi(res[0][L"clientid"]);
+							int n_clientid = watoi(res[0]["clientid"]);
 							if(std::find(clientid.begin(), clientid.end(), n_clientid)==
 								clientid.end())
 							{
@@ -798,12 +798,12 @@ ACTION_IMPL(backups)
 					}
 					else
 					{
-						sa=L"backups";
+						sa="backups";
 					}
 				}
 				else
 				{
-					sa=L"backups";
+					sa="backups";
 				}				
 			}
 			else
@@ -816,7 +816,7 @@ ACTION_IMPL(backups)
 
 			qstr+=" ORDER BY name";
 
-			if(sa!=L"backups")
+			if(sa!="backups")
 			{
 				IQuery *q=db->Prepare(qstr);
 				db_results res=q->Read();
@@ -825,22 +825,22 @@ ACTION_IMPL(backups)
 				for(size_t i=0;i<res.size();++i)
 				{
 					JSON::Object obj;
-					obj.set("name", res[i][L"name"]);
-					obj.set("id", watoi(res[i][L"id"]));
-					obj.set("lastbackup", watoi64(res[i][L"lastbackup"]));
+					obj.set("name", res[i]["name"]);
+					obj.set("id", watoi(res[i]["id"]));
+					obj.set("lastbackup", watoi64(res[i]["lastbackup"]));
 					clients.add(obj);
 				}
 				ret.set("clients", clients);
 			}			
 		}
-		if(sa==L"backups")
+		if(sa=="backups")
 		{
 			int t_clientid;
-			std::wstring clientname;
+			std::string clientname;
 
-			if(token_authentication && GET.find(L"clientid")==GET.end())
+			if(token_authentication && GET.find("clientid")==GET.end())
 			{
-				clientname=GET[L"clientname"];
+				clientname=GET["clientname"];
 				t_clientid = getClientid(helper.getDatabase(), clientname);
 				if(t_clientid==-1)
 				{
@@ -851,7 +851,7 @@ ACTION_IMPL(backups)
 			}
 			else
 			{
-				t_clientid=watoi(GET[L"clientid"]);
+				t_clientid=watoi(GET["clientid"]);
 
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
@@ -863,16 +863,16 @@ ACTION_IMPL(backups)
 			{
 				if(archive_ok)
 				{
-					if(GET.find(L"archive")!=GET.end())
+					if(GET.find("archive")!=GET.end())
 					{
 						IQuery *q=db->Prepare("UPDATE backups SET archived=1, archive_timeout=0 WHERE id=?");
-						q->Bind(watoi(GET[L"archive"]));
+						q->Bind(watoi(GET["archive"]));
 						q->Write();
 					}
-					else if(GET.find(L"unarchive")!=GET.end())
+					else if(GET.find("unarchive")!=GET.end())
 					{
 						IQuery *q=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
-						q->Bind(watoi(GET[L"unarchive"]));
+						q->Bind(watoi(GET["unarchive"]));
 						q->Write();
 					}
 				}
@@ -891,13 +891,13 @@ ACTION_IMPL(backups)
 				ret.set("error", 2);
 			}
 		}
-		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl" )
+		else if(sa=="files" || sa=="filesdl" || sa=="zipdl" || sa=="clientdl" )
 		{
 			int t_clientid;
-			std::wstring clientname;
-			if(token_authentication && GET.find(L"clientid")==GET.end())
+			std::string clientname;
+			if(token_authentication && GET.find("clientid")==GET.end())
 			{
-				clientname=GET[L"clientname"];
+				clientname=GET["clientname"];
 				t_clientid = getClientid(helper.getDatabase(), clientname);
 				if(t_clientid==-1)
 				{
@@ -908,7 +908,7 @@ ACTION_IMPL(backups)
 			}
 			else
 			{
-				t_clientid = watoi(GET[L"clientid"]);
+				t_clientid = watoi(GET["clientid"]);
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
 			bool r_ok = token_authentication ? true : 
@@ -916,20 +916,20 @@ ACTION_IMPL(backups)
 
 			if(r_ok)
 			{
-				bool has_backupid=GET.find(L"backupid")!=GET.end();
+				bool has_backupid=GET.find("backupid")!=GET.end();
 				int backupid=0;
 				if(has_backupid)
 				{
-					backupid=watoi(GET[L"backupid"]);
+					backupid=watoi(GET["backupid"]);
 				}
-				std::wstring u_path=UnescapeHTML(GET[L"path"]);
+				std::string u_path=UnescapeHTML(GET["path"]);
 
 				if(!clientname.empty() )
 				{
-					if( (sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl") && has_backupid)
+					if( (sa=="filesdl" || sa=="zipdl" || sa=="clientdl") && has_backupid)
 					{
-						std::wstring backupfolder = backupaccess::getBackupFolder(db);
-						std::wstring backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
+						std::string backupfolder = backupaccess::getBackupFolder(db);
+						std::string backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
 
 						if(backupfolder.empty())
 						{
@@ -950,7 +950,7 @@ ACTION_IMPL(backups)
 							Tokenize(fileaccesstokens, tokens, ";");
 						}
 
-						if(sa==L"filesdl")
+						if(sa=="filesdl")
 						{
 							if(!token_authentication || checkFileToken(fileaccesstokens, backupfolder, clientname, backuppath, path_info.full_metadata_path))
 							{
@@ -958,12 +958,12 @@ ACTION_IMPL(backups)
 							}
 							return;
 						}
-						else if(sa==L"zipdl")
+						else if(sa=="zipdl")
 						{
-							sendZip(helper, path_info.full_path, path_info.full_metadata_path, GET[L"filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
+							sendZip(helper, path_info.full_path, path_info.full_metadata_path, GET["filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
 							return;
 						}
-						else if(sa==L"clientdl" && fileserv!=NULL)
+						else if(sa=="clientdl" && fileserv!=NULL)
 						{
 							if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
 							{
@@ -972,7 +972,7 @@ ACTION_IMPL(backups)
 								return;
 							}
 
-							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, GET[L"filter"], token_authentication,
+							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, GET["filter"], token_authentication,
 								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
 							{
 								ret.set("err", "internal_error");

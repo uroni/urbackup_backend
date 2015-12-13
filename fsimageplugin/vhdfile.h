@@ -64,8 +64,8 @@ class CompressedFile;
 class VHDFile : public IVHDFile, public IFile
 {
 public:
-	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
-	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
 	~VHDFile();
 
 	virtual std::string Read(_u32 tr, bool *has_error=NULL);
@@ -85,7 +85,6 @@ public:
 	char *getUID(void);
 	unsigned int getTimestamp(void);
 	std::string getFilename(void);
-	std::wstring getFilenameW(void);
 
 	bool has_sector(_i64 sector_size=-1);
 	bool this_has_sector(_i64 sector_size=-1);
@@ -121,7 +120,7 @@ private:
 	bool check_if_compressed();
 
 	bool write_header(bool diff);
-	bool write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn);
+	bool write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::string parentfn);
 	bool write_bat(void);
 	bool write_footer(void);
 

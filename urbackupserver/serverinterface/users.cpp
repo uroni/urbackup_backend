@@ -37,8 +37,8 @@ ACTION_IMPL(users)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("id",watoi(res[i][L"id"]));
-			obj.set("name",res[i][L"name"]);
+			obj.set("id",watoi(res[i]["id"]));
+			obj.set("name",res[i]["name"]);
 			users.add(obj);
 		}
 		ret.set("users", users);

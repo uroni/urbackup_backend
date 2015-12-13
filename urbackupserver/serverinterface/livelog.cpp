@@ -86,13 +86,13 @@ ACTION_IMPL(livelog)
 	}
 
 	int clientid=0;
-	std::wstring s_clientid=GET[L"clientid"];
+	std::string s_clientid=GET["clientid"];
 	if(!s_clientid.empty())
 	{
 		clientid=watoi(s_clientid);
 	}
 
-	std::wstring s_lastid=GET[L"lastid"];
+	std::string s_lastid=GET["lastid"];
 	size_t lastid=std::string::npos;
 	if(!s_lastid.empty())
 	{

@@ -165,7 +165,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(2);
 	}
 	
-	vhdfile = image_fak->createVHDFile(Server->ConvertToUnicode(vhd_filename), true, 0);
+	vhdfile = image_fak->createVHDFile((vhd_filename), true, 0);
 	
 	if(vhdfile==NULL || !vhdfile->isOpen())
 	{
@@ -180,7 +180,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		global_offset=atoi(offset_s.c_str());
 	}
 	
-	Server->Log("Volume offset is "+nconvert(global_offset)+" bytes. Configure via --offset", LL_DEBUG);
+	Server->Log("Volume offset is "+convert(global_offset)+" bytes. Configure via --offset", LL_DEBUG);
 	
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 	

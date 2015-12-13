@@ -19,7 +19,7 @@ public:
 
 	void reset(void);
 
-	bool nextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra);
+	bool nextEntry(char ch, SFile &data, std::map<std::string, std::string>* extra);
 
 private:
 

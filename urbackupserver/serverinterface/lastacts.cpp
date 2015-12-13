@@ -29,7 +29,7 @@ void cleanupLastActs()
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
 	db->Write("CREATE INDEX IF NOT EXISTS del_stats_del_idx ON del_stats (clientid, created)");
-	db->Write("DELETE FROM del_stats WHERE (SELECT COUNT(*) FROM del_stats b WHERE del_stats.clientid=b.clientid AND b.created<del_stats.created)>"+nconvert(max_display));
+	db->Write("DELETE FROM del_stats WHERE (SELECT COUNT(*) FROM del_stats b WHERE del_stats.clientid=b.clientid AND b.created<del_stats.created)>"+convert(max_display));
 	db->Write("DROP INDEX del_stats_del_idx");
 }
 
@@ -71,7 +71,7 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 	"0 AS incremental, (strftime('%s',g.finished)-strftime('%s',g.created)) AS duration, -1 AS size_bytes, 0 AS image, 0 AS del, 0 AS size_calculated, 0 AS resumed, 1 AS restore "
 	"FROM restores g INNER JOIN clients h ON g.clientid=h.id "
 	"WHERE 1=1 "+filter+
-	") ORDER BY bt DESC LIMIT "+nconvert(max_display));
+	") ORDER BY bt DESC LIMIT "+convert(max_display));
 
 	for(size_t i=0;i<clientids.size();++i)
 	{
@@ -89,23 +89,23 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 	for(size_t i=0;i<res.size();++i)
 	{
 		JSON::Object obj;
-		obj.set("id", watoi(res[i][L"backupid"]));
-		obj.set("clientid", watoi(res[i][L"clientid"]));
-		obj.set("name", res[i][L"name"]);
-		obj.set("backuptime", watoi64(res[i][L"backuptime"]));
-		obj.set("incremental", watoi(res[i][L"incremental"]));
-		obj.set("duration", watoi64(res[i][L"duration"]));
-		obj.set("resumed", watoi(res[i][L"resumed"]));
-		if(watoi(res[i][L"size_calculated"])==1)
+		obj.set("id", watoi(res[i]["backupid"]));
+		obj.set("clientid", watoi(res[i]["clientid"]));
+		obj.set("name", res[i]["name"]);
+		obj.set("backuptime", watoi64(res[i]["backuptime"]));
+		obj.set("incremental", watoi(res[i]["incremental"]));
+		obj.set("duration", watoi64(res[i]["duration"]));
+		obj.set("resumed", watoi(res[i]["resumed"]));
+		if(watoi(res[i]["size_calculated"])==1)
 		{
-			obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
+			obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
 		}
 		else
 		{
 			obj.set("size_bytes", -1);
 		}
-		obj.set("image", watoi(res[i][L"image"]));
-		obj.set("del", (res[i][L"del"]==L"1") );
+		obj.set("image", watoi(res[i]["image"]));
+		obj.set("del", (res[i]["del"]=="1") );
 		lastacts.add(obj);
 	}
 	ret.set("lastacts", lastacts);

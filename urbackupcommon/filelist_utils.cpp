@@ -67,11 +67,11 @@ void writeFileItem(IFile* f, SFile cf)
 {
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" 0 "+nconvert(cf.last_modified)+"\n");
+		writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)+"\n");
 	}
 	else
 	{
-		writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+		writeFileRepeat(f, "f\""+escapeListName((cf.name))+"\" "+convert(cf.size)+" "+convert(cf.last_modified)+"\n");
 	}
 }
 
@@ -81,20 +81,20 @@ void writeFileItem(IFile* f, SFile cf, std::string extra)
 
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" 0 "+nconvert(cf.last_modified)
+		writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)
 			+extra+"\n");
 	}
 	else
 	{
 		
 
-		writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)
+		writeFileRepeat(f, "f\""+escapeListName((cf.name))+"\" "+convert(cf.size)+" "+convert(cf.last_modified)
 			+extra+"\n");
 	}
 }
 
 
-bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std::wstring>* extra )
+bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std::string>* extra )
 {
 	switch(state)
 	{
@@ -115,7 +115,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std
 		if(ch!='"')
 		{
 			t_name.erase(t_name.size()-1,1);
-			data.name=Server->ConvertToUnicode(t_name);
+			data.name=(t_name);
 			t_name="";
 			if(data.isdir)
 			{

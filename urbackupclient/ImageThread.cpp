@@ -125,7 +125,7 @@ void ImageThread::sendFullImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
+				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
 					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
@@ -485,7 +485,7 @@ void ImageThread::sendIncrImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
+				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
 					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
@@ -651,7 +651,7 @@ void ImageThread::sendIncrImageThread(void)
 							empty_vhd_blocks_buffer=NULL;
 						}
 
-						Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
+						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
 						bool notify_cs=false;
 						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 						{
@@ -692,7 +692,7 @@ void ImageThread::sendIncrImageThread(void)
 					}
 					else
 					{
-						//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
+						//Server->Log("Block didn't change: "+convert(i), LL_DEBUG);
 						int64 tt=Server->getTimeMS();
 						if(tt-lastsendtime>10000)
 						{
@@ -795,7 +795,7 @@ void ImageThread::sendIncrImageThread(void)
 
 	delete [] zeroblockbuf;
 
-	std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
+	std::string hashdatafile_fn=hashdatafile->getFilename();
 	Server->destroy(hashdatafile);
 	Server->deleteFile(hashdatafile_fn);
 
@@ -855,7 +855,7 @@ void ImageThread::operator()(void)
 		}
 		else
 		{
-			Server->Log("Error receiving hashdata. timouts="+nconvert(timeouts)+" isquitting="+nconvert(client->isQuitting()), LL_ERROR);
+			Server->Log("Error receiving hashdata. timouts="+convert(timeouts)+" isquitting="+convert(client->isQuitting()), LL_ERROR);
 			if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
 			{
 				mempipe->Write("exit");

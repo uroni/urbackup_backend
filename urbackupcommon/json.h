@@ -75,7 +75,6 @@ namespace JSON
 		Value(void);
 		Value(const Value &other);
 		Value(const std::string &val);
-		Value(const std::wstring &val);
 		Value(const Object &val); 
 		Value(const Array &val);
 		Value(bool val);
@@ -85,7 +84,6 @@ namespace JSON
 		Value(uint64 val);
 		Value(double val);
 		Value(const char* val);
-		Value(const wchar_t* val);
 		Value(long unsigned int val);
 		void destroy();
 		~Value();
@@ -94,10 +92,10 @@ namespace JSON
 
         std::string stringify(bool compressed) const;
 
-		std::wstring toString() const;
+		std::string toString() const;
 
 		const std::string & getString(void) const;
-		const std::wstring & getWString(void) const;
+		const std::string & getWString(void) const;
 		const Object & getObject(void) const;
 		const Array & getArray(void) const;
 		bool getBool(void) const;
@@ -114,7 +112,6 @@ namespace JSON
 		void init(void);
 		void init(const Value &other);
 		void init(const std::string &val);
-		void init(const std::wstring &val);
 		void init(const Object &val); 
 		void init(const Array &val);
 		void init(bool val);
@@ -124,10 +121,9 @@ namespace JSON
 		void init(uint64 val);
 		void init(double val);
 		void init(const char* val);
-		void init(const wchar_t* val);
 		void init(long unsigned int val);
 
-        std::wstring escape(const std::wstring &t) const;
+        std::string escape(const std::string &t) const;
 
 		void *data;
 		Value_type data_type;

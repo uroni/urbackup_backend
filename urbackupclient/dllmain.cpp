@@ -109,7 +109,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())
 	{
-		os_remove_nonempty_dir(widen(rmtest));
+		os_remove_nonempty_dir(rmtest);
 		return;
 	}
 
@@ -134,20 +134,20 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		wcscpy_s(tmpp,L"C:\\");
 	}
 
-	std::wstring w_tmp=tmpp;
+	std::string w_tmp=Server->ConvertFromWchar(tmpp);
 
 	if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
 	{
 		w_tmp.erase(w_tmp.size()-1, 1);
 	}
 
-	os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
-	if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp"))
+	os_remove_nonempty_dir(w_tmp+os_file_sep()+"urbackup_client_tmp");
+	if(!os_create_dir(w_tmp+os_file_sep()+"urbackup_client_tmp"))
 	{
 		Server->wait(5000);
-		os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+		os_create_dir(w_tmp+os_file_sep()+"urbackup_client_tmp");
 	}
-	Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+	Server->setTemporaryDirectory(w_tmp+os_file_sep()+"urbackup_client_tmp");
 #endif
 
 	if(Server->getServerParameter("restore_mode")=="true")
@@ -186,17 +186,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(getFile(pw_file).size()<5)
 	{
-		writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_file);
+		writestring(Server->getSessionMgr()->GenerateSessionIDWithUser("",""), pw_file);
 	}
 	if(getFile(pw_change_file).size()<5)
 	{
-		write_file_only_admin(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_change_file);
+		write_file_only_admin(Server->getSessionMgr()->GenerateSessionIDWithUser("",""), pw_change_file);
 	}
 
 	if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
 	{
 		//Copy file
-		copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
+		copy_file("urbackup/backup_client.db.template", "urbackup/backup_client.db");
 	}
 
 #ifndef _DEBUG
@@ -212,14 +212,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifdef _WIN32
 	if( !FileExists("prefilebackup.bat") && FileExists("prefilebackup_new.bat") )
 	{
-		copy_file(L"prefilebackup_new.bat", L"prefilebackup.bat");
+		copy_file("prefilebackup_new.bat", "prefilebackup.bat");
 		Server->deleteFile("prefilebackup_new.bat");
 	}
 #endif
 
 	if( !FileExists("urbackup/data/settings.cfg") && FileExists("initial_settings.cfg") )
 	{
-		copy_file(L"initial_settings.cfg", L"urbackup/data/settings.cfg");
+		copy_file("initial_settings.cfg", "urbackup/data/settings.cfg");
 		Server->deleteFile("initial_settings.cfg");
 	}
 
@@ -413,7 +413,7 @@ void update_client11_12(IDatabase *db)
 	db->Write("DELETE FROM misc WHERE tkey='last_backup_filetime'");
 	if(!res.empty())
 	{
-		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+wnarrow(res[0][L"c"])+"')");
+		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+res[0]["c"]+"')");
 	}
 
 	db_results misc = db->Read("SELECT tkey, tvalue FROM misc");
@@ -423,8 +423,8 @@ void update_client11_12(IDatabase *db)
 	IQuery* q_insert = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)");
 	for(size_t i=0;i<misc.size();++i)
 	{
-		q_insert->Bind(misc[i][L"tkey"]);
-		q_insert->Bind(misc[i][L"tvalue"]);
+		q_insert->Bind(misc[i]["tkey"]);
+		q_insert->Bind(misc[i]["tvalue"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -502,7 +502,7 @@ bool upgrade_client(void)
 	if(res_v.empty())
 		return false;
 	
-	int ver=watoi(res_v[0][L"tvalue"]);
+	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");

@@ -43,12 +43,12 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 	q_del->Write();
 	q_del->Reset();
 
-	str_map::iterator idx=rights.find(L"idx");
+	str_map::iterator idx=rights.find("idx");
 
 	if(idx!=rights.end())
 	{
-		std::vector<std::wstring> elms;
-		Tokenize(idx->second, elms, L",");
+		std::vector<std::string> elms;
+		Tokenize(idx->second, elms, ",");
 
 		if(!elms.empty())
 		{
@@ -56,8 +56,8 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 
 			for(size_t i=0;i<elms.size();++i)
 			{
-				str_map::iterator it_domain=rights.find(elms[i]+L"_domain");
-				str_map::iterator it_right=rights.find(elms[i]+L"_right");
+				str_map::iterator it_domain=rights.find(elms[i]+"_domain");
+				str_map::iterator it_right=rights.find(elms[i]+"_right");
 				if(it_domain!=rights.end() && it_right!=rights.end())
 				{
 					q_insert->Bind(it_domain->second);
@@ -74,17 +74,17 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 namespace 
 {
 
-std::vector<std::wstring> getMailSettingsList(void)
+std::vector<std::string> getMailSettingsList(void)
 {
-	std::vector<std::wstring> tmp;
-	tmp.push_back(L"mail_servername");
-	tmp.push_back(L"mail_serverport");
-	tmp.push_back(L"mail_username");
-	tmp.push_back(L"mail_password");
-	tmp.push_back(L"mail_from");
-	tmp.push_back(L"mail_ssl_only");
-	tmp.push_back(L"mail_check_certificate");
-	tmp.push_back(L"mail_admin_addrs");
+	std::vector<std::string> tmp;
+	tmp.push_back("mail_servername");
+	tmp.push_back("mail_serverport");
+	tmp.push_back("mail_username");
+	tmp.push_back("mail_password");
+	tmp.push_back("mail_from");
+	tmp.push_back("mail_ssl_only");
+	tmp.push_back("mail_check_certificate");
+	tmp.push_back("mail_admin_addrs");
 	return tmp;
 }
 
@@ -195,7 +195,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 
 void getMailSettings(JSON::Object &obj, IDatabase *db)
 {
-	std::vector<std::wstring> slist=getMailSettingsList();
+	std::vector<std::string> slist=getMailSettingsList();
 	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	for(size_t i=0;i<slist.size();++i)
 	{
@@ -204,14 +204,14 @@ void getMailSettings(JSON::Object &obj, IDatabase *db)
 		q->Reset();
 		if(!res.empty())
 		{
-			obj.set(Server->ConvertToUTF8(slist[i]), res[0][L"value"]);
+			obj.set((slist[i]), res[0]["value"]);
 		}
 		else
 		{
 			std::string v="";
-			if(slist[i]==L"mail_serverport")
+			if(slist[i]=="mail_serverport")
 				v="25";
-			obj.set(Server->ConvertToUTF8(slist[i]), v);
+			obj.set((slist[i]), v);
 		}
 	}
 }
@@ -243,15 +243,15 @@ SClientSettings getClientSettings(IDatabase *db, int clientid)
 	SClientSettings ret;
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring key=res[i][L"key"];
-		std::wstring value=res[i][L"value"];
-		if(key==L"overwrite" && value==L"true")
+		std::string key=res[i]["key"];
+		std::string value=res[i]["value"];
+		if(key=="overwrite" && value=="true")
 			ret.overwrite=true;
 	}
 	return ret;
 }
 
-void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert)
+void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert)
 {
 	q_get->Bind(key);
 	db_results r_get=q_get->Read();
@@ -263,7 +263,7 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 		q_insert->Write();
 		q_insert->Reset();
 	}
-	else if( r_get[0][L"value"]!=value )
+	else if( r_get[0]["value"]!=value )
 	{
 		q_update->Bind(value);
 		q_update->Bind(key);
@@ -274,7 +274,7 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 
 namespace
 {
-	void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int clientid)
+	void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int clientid)
 	{
 		q_get->Bind(key);
 		q_get->Bind(clientid);
@@ -288,7 +288,7 @@ namespace
 			q_insert->Write();
 			q_insert->Reset();
 		}
-		else if( r_get[0][L"value"]!=value )
+		else if( r_get[0]["value"]!=value )
 		{
 			q_update->Bind(value);
 			q_update->Bind(key);
@@ -298,7 +298,7 @@ namespace
 		}
 	}
 
-	std::wstring fixupBackupfolder(const std::wstring val, ServerBackupDao& backupdao, ServerSettings &server_settings)
+	std::string fixupBackupfolder(const std::string val, ServerBackupDao& backupdao, ServerSettings &server_settings)
 	{
 		if(val!=server_settings.getSettings()->backupfolder)
 		{
@@ -322,20 +322,20 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
 
-	std::vector<std::wstring> settings=getGlobalSettingsList();
+	std::vector<std::string> settings=getGlobalSettingsList();
 	for(size_t i=0;i<settings.size();++i)
 	{
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			std::wstring val = UnescapeSQLString(it->second);
-			if(settings[i]==L"backupfolder")
+			std::string val = UnescapeSQLString(it->second);
+			if(settings[i]=="backupfolder")
 			{
 				val = fixupBackupfolder(val, backupdao, server_settings);
 
 #ifndef _WIN32
 				os_create_dir("/etc/urbackup");
-				writestring(Server->ConvertToUTF8(val), "/etc/urbackup/backupfolder");
+				writestring((val), "/etc/urbackup/backupfolder");
 #endif
 			}
 			updateSetting(settings[i], val, q_get, q_update, q_insert);
@@ -343,16 +343,16 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 	}
 
 #ifdef _WIN32
-	std::wstring tmpdir=GET[L"tmpdir"];
+	std::string tmpdir=GET["tmpdir"];
 	if(!tmpdir.empty())
 	{
-		os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
-		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
+		os_create_dir(tmpdir+os_file_sep()+"urbackup_tmp");
+		Server->setTemporaryDirectory(tmpdir+os_file_sep()+"urbackup_tmp");
 	}
 #endif
 }
 
-void updateSettingsWithList(str_map &GET, IDatabase *db, const std::vector<std::wstring>& settingsList)
+void updateSettingsWithList(str_map &GET, IDatabase *db, const std::vector<std::string>& settingsList)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
@@ -370,21 +370,21 @@ void updateSettingsWithList(str_map &GET, IDatabase *db, const std::vector<std::
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
 
-	updateSetting(L"overwrite", settings.overwrite?L"true":L"false", q_get, q_update, q_insert);
+	updateSetting("overwrite", settings.overwrite?"true":"false", q_get, q_update, q_insert);
 }
 
 void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(t_clientid));
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(t_clientid));
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(t_clientid)+")");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(t_clientid)+")");
 
-	std::vector<std::wstring> sset=getSettingsList();
-	sset.push_back(L"allow_overwrite");
+	std::vector<std::string> sset=getSettingsList();
+	sset.push_back("allow_overwrite");
 	for(size_t i=0;i<sset.size();++i)
 	{
 		str_map::iterator it=GET.find(sset[i]);
@@ -403,10 +403,10 @@ void propagateGlobalClientSettings(ServerBackupDao& backupdao, IDatabase *db, st
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?");
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)");
 
-	std::vector<std::wstring> sset=getSettingsList();
-	sset.push_back(L"allow_overwrite");
+	std::vector<std::string> sset=getSettingsList();
+	sset.push_back("allow_overwrite");
 
-	std::map<std::wstring, std::wstring> orig_settings;
+	std::map<std::string, std::string> orig_settings;
 
 	{
 		ServerSettings server_settings(db);
@@ -414,7 +414,7 @@ void propagateGlobalClientSettings(ServerBackupDao& backupdao, IDatabase *db, st
 
 		for(size_t i=0;i<sset.size();++i)
 		{
-			JSON::Value val = settings_json.get(wnarrow(sset[i]));
+			JSON::Value val = settings_json.get(sset[i]);
 			if(val.getType()!=JSON::null_type)
 			{
 				orig_settings[sset[i]]=val.toString();
@@ -426,10 +426,10 @@ void propagateGlobalClientSettings(ServerBackupDao& backupdao, IDatabase *db, st
 	{
 		int clientid = clientids[i];
 
-		ServerBackupDao::CondString server_overwrite = backupdao.getClientSetting(L"overwrite", clientid);
+		ServerBackupDao::CondString server_overwrite = backupdao.getClientSetting("overwrite", clientid);
 
 		if(server_overwrite.exists &&
-			server_overwrite.value==L"true")
+			server_overwrite.value=="true")
 		{
 			continue;
 		}
@@ -459,12 +459,12 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 	q->Bind(clientid);
 	q->Write();
 	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-	while(GET.find(L"archive_every_"+convert(i))!=GET.end())
+	while(GET.find("archive_every_"+convert(i))!=GET.end())
 	{
-		_i64 archive_next=watoi64(GET[L"archive_next_"+convert(i)]);
-		int archive_every=watoi(GET[L"archive_every_"+convert(i)]);
-		int archive_for=watoi(GET[L"archive_for_"+convert(i)]);
-		std::wstring backup_type_str=GET[L"archive_backup_type_"+convert(i)];
+		_i64 archive_next=watoi64(GET["archive_next_"+convert(i)]);
+		int archive_every=watoi(GET["archive_every_"+convert(i)]);
+		int archive_for=watoi(GET["archive_for_"+convert(i)]);
+		std::string backup_type_str=GET["archive_backup_type_"+convert(i)];
 		int backup_types=ServerAutomaticArchive::getBackupTypes(backup_type_str);
 
 
@@ -484,12 +484,12 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 			q->Bind(archive_next);
 		}
 		q->Bind(archive_every);
-		q->Bind(GET[L"archive_every_unit_"+convert(i)]);
+		q->Bind(GET["archive_every_unit_"+convert(i)]);
 		q->Bind(archive_for);
-		q->Bind(GET[L"archive_for_unit_"+convert(i)]);
+		q->Bind(GET["archive_for_unit_"+convert(i)]);
 		q->Bind(backup_types);
 		q->Bind(clientid);
-		q->Bind(GET[L"archive_window_"+convert(i)]);
+		q->Bind(GET["archive_window_"+convert(i)]);
 		q->Write();
 		q->Reset();
 
@@ -498,9 +498,9 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 
 	if(clientid!=0)
 	{		
-		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
-		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
-		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
+		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
+		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
+		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
 
 		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window "
 			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=0)"
@@ -509,19 +509,19 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 		db_results res = q_identical_config->Read();
 		q_identical_config->Reset();
 
-		std::wstring overwrite_archive_settings = L"false";
+		std::string overwrite_archive_settings = "false";
 		for(size_t i=0;i<res.size();++i)
 		{
-			if(res[i][L"min_clientid"]!=L"0" ||
-				res[i][L"max_clientid"]!=convert(clientid) ||
-				watoi(res[i][L"c"])%2!=0)
+			if(res[i]["min_clientid"]!="0" ||
+				res[i]["max_clientid"]!=convert(clientid) ||
+				watoi(res[i]["c"])%2!=0)
 			{
-				overwrite_archive_settings=L"true";
+				overwrite_archive_settings="true";
 				break;
 			}
 		}
 
-		updateSetting(L"overwrite_archive_settings", overwrite_archive_settings, q_get, q_update, q_insert);
+		updateSetting("overwrite_archive_settings", overwrite_archive_settings, q_get, q_update, q_insert);
 	}
 	else
 	{
@@ -531,16 +531,16 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 
 void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
 	q_get->Bind("overwrite");
 	db_results res=q_get->Read();
 	q_get->Reset();
-	if(res.empty() || res[0][L"value"]!=L"true")
+	if(res.empty() || res[0]["value"]!="true")
 		clientid=0;
 
 	q_get->Bind("overwrite_archive_settings");
 	res=q_get->Read();
-	if(res.empty() || res[0][L"value"]!=L"true")
+	if(res.empty() || res[0]["value"]!="true")
 		clientid=0;
 
 	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
@@ -550,16 +550,16 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 	JSON::Array arr;
 	for(size_t i=0;i<res.size();++i)
 	{
-		_i64 archive_next=watoi64(res[i][L"next_archival"]);
+		_i64 archive_next=watoi64(res[i]["next_archival"]);
 
 		JSON::Object ca;
-		ca.set("next_archival", res[i][L"next_archival"]);
-		ca.set("archive_every", watoi(res[i][L"interval"]));
-		ca.set("archive_every_unit", res[i][L"interval_unit"]);
-		ca.set("archive_for", watoi(res[i][L"length"]));
-		ca.set("archive_for_unit", res[i][L"length_unit"]);
-		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i][L"backup_types"])));
-		ca.set("archive_window", res[i][L"archive_window"]);
+		ca.set("next_archival", res[i]["next_archival"]);
+		ca.set("archive_every", watoi(res[i]["interval"]));
+		ca.set("archive_every_unit", res[i]["interval_unit"]);
+		ca.set("archive_for", watoi(res[i]["length"]));
+		ca.set("archive_for_unit", res[i]["length_unit"]);
+		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
+		ca.set("archive_window", res[i]["archive_window"]);
 
 		if(archive_next>0 && clientid!=0)
 		{
@@ -584,7 +584,7 @@ void updateOnlineClientSettings(IDatabase *db, int clientid)
 	q->Reset();
 	if(!res.empty())
 	{
-		std::wstring clientname = res[0][L"name"];
+		std::string clientname = res[0]["name"];
 
 		IPipe* comm_pipe = ServerStatus::getStatus(clientname).comm_pipe;
 		if(comm_pipe!=NULL)
@@ -600,7 +600,7 @@ void updateAllOnlineClientSettings(IDatabase *db)
 	db_results res = q->Read();
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring clientname = res[i][L"name"];
+		std::string clientname = res[i]["name"];
 
 		IPipe* comm_pipe = ServerStatus::getStatus(clientname).comm_pipe;
 		if(comm_pipe!=NULL)
@@ -618,8 +618,8 @@ ACTION_IMPL(settings)
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
-	std::wstring sa=GET[L"sa"];
-	int t_clientid=watoi(GET[L"t_clientid"]);
+	std::string sa=GET["sa"];
+	int t_clientid=watoi(GET["t_clientid"]);
 	std::string rights=helper.getRights("client_settings");
 	std::vector<int> clientid;
 	IDatabase *db=helper.getDatabase();
@@ -637,15 +637,15 @@ ACTION_IMPL(settings)
 	{
 		if(rights=="all" || helper.getRights("general_settings")=="all")
 		{
-			sa=L"general";
+			sa="general";
 		}
 		else if(helper.getRights("usermod")=="all")
 		{
-			sa=L"listusers";
+			sa="listusers";
 		}
 		else if(!clientid.empty() )
 		{
-			sa=L"clientsettings";
+			sa="clientsettings";
 			t_clientid=clientid[0];
 		}
 	}
@@ -688,8 +688,8 @@ ACTION_IMPL(settings)
 				for(size_t i=0;i<res.size();++i)
 				{
 					JSON::Object u;
-					u.set("id",watoi(res[i][L"id"]));
-					u.set("name", res[i][L"name"]);
+					u.set("id",watoi(res[i]["id"]));
+					u.set("name", res[i]["name"]);
 					clients.add(u);
 				}
 			}
@@ -703,7 +703,7 @@ ACTION_IMPL(settings)
 					q->Reset();
 					JSON::Object u;
 					u.set("id", clientid[i]);
-					u.set("name", res[0][L"name"]);
+					u.set("name", res[0]["name"]);
 					clients.add(u);
 				}
 			}
@@ -717,7 +717,7 @@ ACTION_IMPL(settings)
 			ret.set("navitems", navitems);
 		}
 
-		if(sa==L"clientsettings" || sa==L"clientsettings_save")
+		if(sa=="clientsettings" || sa=="clientsettings_save")
 		{
 			bool r_ok=false;
 			if(rights=="all")
@@ -739,9 +739,9 @@ ACTION_IMPL(settings)
 			{
 				SClientSettings s;
 				
-				if(sa==L"clientsettings_save")
+				if(sa=="clientsettings_save")
 				{
-					s.overwrite=(GET[L"overwrite"]==L"true");
+					s.overwrite=(GET["overwrite"]=="true");
 					if(s.overwrite)
 					{
 						db->BeginWriteTransaction();
@@ -753,7 +753,7 @@ ACTION_IMPL(settings)
 					db->BeginWriteTransaction();
 					saveClientSettings(s, db, t_clientid);
 					db->EndTransaction();
-					if(GET[L"no_ok"]!=L"true")
+					if(GET["no_ok"]!="true")
 					{
 						ret.set("saved_ok", true);
 					}
@@ -780,15 +780,15 @@ ACTION_IMPL(settings)
 
 				getArchiveSettings(ret, db, t_clientid);
 				
-				sa=L"clientsettings";
+				sa="clientsettings";
 				ret.set("sa", sa);
 			}
 		}
-		else if(sa==L"useradd" && helper.getRights("usermod")=="all")
+		else if(sa=="useradd" && helper.getRights("usermod")=="all")
 		{
-			std::wstring name=strlower(GET[L"name"]);
-			std::wstring salt=GET[L"salt"];
-			std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
+			std::string name=strlower(GET["name"]);
+			std::string salt=GET["salt"];
+			std::string pwmd5=(GET["pwmd5"]);
 
 			IQuery *q_find=db->Prepare("SELECT id FROM settings_db.si_users WHERE name=?");
 			q_find->Bind(name);
@@ -802,7 +802,7 @@ ACTION_IMPL(settings)
 				{
 					pbkdf2_rounds=10000;
 
-					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), (salt), pbkdf2_rounds));
 				}
 
 				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?,?)");
@@ -817,7 +817,7 @@ ACTION_IMPL(settings)
 
 				int t_userid=(int)db->getLastInsertID();
 
-				std::string s_rights=Server->ConvertToUTF8(GET[L"rights"]);
+				std::string s_rights=(GET["rights"]);
 				updateRights(t_userid, s_rights, db);
 			}
 			else
@@ -825,31 +825,31 @@ ACTION_IMPL(settings)
 				ret.set("alread_exists", true);
 			}			
 
-			sa=L"listusers";
+			sa="listusers";
 			
 		}
-		if(sa==L"changepw" && ( helper.getRights("usermod")=="all" || (GET[L"userid"]==L"own" && helper.getRights("disable_change_pw")!="all") ) )
+		if(sa=="changepw" && ( helper.getRights("usermod")=="all" || (GET["userid"]=="own" && helper.getRights("disable_change_pw")!="all") ) )
 		{
 			bool ok=true;
-			if(GET[L"userid"]==L"own")
+			if(GET["userid"]=="own")
 			{
-				if(!helper.checkPassword(session->mStr[L"username"], GET[L"old_pw"], NULL, false) )
+				if(!helper.checkPassword(session->mStr["username"], GET["old_pw"], NULL, false) )
 				{
 					ok=false;
 				}
 			}
 			if(ok)
 			{
-				std::wstring salt=GET[L"salt"];
-				std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
+				std::string salt=GET["salt"];
+				std::string pwmd5=(GET["pwmd5"]);
 				int t_userid;
-				if(GET[L"userid"]==L"own")
+				if(GET["userid"]=="own")
 				{
 					t_userid=session->id;
 				}
 				else
 				{
-					t_userid=watoi(GET[L"userid"]);
+					t_userid=watoi(GET["userid"]);
 				}
 
 				size_t pbkdf2_rounds=0;
@@ -857,7 +857,7 @@ ACTION_IMPL(settings)
 				{
 					pbkdf2_rounds=10000;
 
-					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), (salt), pbkdf2_rounds));
 				}
 
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=?, pbkdf2_rounds=? WHERE id=?");
@@ -870,9 +870,9 @@ ACTION_IMPL(settings)
 				q->Reset();
 				ret.set("change_ok", true);
 
-				if(GET[L"userid"]!=L"own")
+				if(GET["userid"]!="own")
 				{
-					sa=L"listusers";
+					sa="listusers";
 				}
 			}
 			else
@@ -880,26 +880,26 @@ ACTION_IMPL(settings)
 				ret.set("old_pw_wrong", true);
 			}
 		}
-		if(sa==L"updaterights" && helper.getRights("usermod")=="all")
+		if(sa=="updaterights" && helper.getRights("usermod")=="all")
 		{
-			int t_userid=watoi(GET[L"userid"]);
-			std::string s_rights=Server->ConvertToUTF8(GET[L"rights"]);
+			int t_userid=watoi(GET["userid"]);
+			std::string s_rights=(GET["rights"]);
 			updateRights(t_userid, s_rights, db);
-			sa=L"listusers";
+			sa="listusers";
 			ret.set("update_right", true);
 		}
-		if(sa==L"removeuser" && helper.getRights("usermod")=="all")
+		if(sa=="removeuser" && helper.getRights("usermod")=="all")
 		{
-			int userid=watoi(GET[L"userid"]);
+			int userid=watoi(GET["userid"]);
 
 			IQuery *q=db->Prepare("DELETE FROM settings_db.si_users WHERE id=?");
 			q->Bind(userid);
 			q->Write();
 			q->Reset();
 			ret.set("removeuser", true);
-			sa=L"listusers";
+			sa="listusers";
 		}
-		if(sa==L"listusers" && helper.getRights("usermod")=="all" )
+		if(sa=="listusers" && helper.getRights("usermod")=="all" )
 		{
 			IQuery *q=db->Prepare("SELECT id,name FROM settings_db.si_users");
 			db_results res=q->Read();
@@ -909,10 +909,10 @@ ACTION_IMPL(settings)
 			for(size_t i=0;i<res.size();++i)
 			{
 				JSON::Object obj;
-				obj.set("name", res[i][L"name"]);
-				obj.set("id", res[i][L"id"]);
+				obj.set("name", res[i]["name"]);
+				obj.set("id", res[i]["id"]);
 				
-				q->Bind(res[i][L"id"]);
+				q->Bind(res[i]["id"]);
 				db_results res_r=q->Read();
 				q->Reset();
 
@@ -920,8 +920,8 @@ ACTION_IMPL(settings)
 				for(size_t j=0;j<res_r.size();++j)
 				{
 					JSON::Object o;
-					o.set("right", res_r[j][L"t_right"]);
-					o.set("domain", res_r[j][L"t_domain"]);
+					o.set("right", res_r[j]["t_right"]);
+					o.set("domain", res_r[j]["t_domain"]);
 					rights.add(o);
 				}
 
@@ -935,7 +935,7 @@ ACTION_IMPL(settings)
 		
 		if(helper.getRights("general_settings")=="all")
 		{
-			if(sa==L"general_save")
+			if(sa=="general_save")
 			{
 				ServerSettings serv_settings(db);
 				db->BeginWriteTransaction();
@@ -950,11 +950,11 @@ ACTION_IMPL(settings)
 				updateAllOnlineClientSettings(db);
 
 				ret.set("saved_ok", true);
-				sa=L"general";
+				sa="general";
 			}
-			if((sa==L"navitems" || sa==L"general") )
+			if((sa=="navitems" || sa=="general") )
 			{
-				sa=L"general";
+				sa="general";
 				ret.set("sa", sa);
 
 				ServerSettings serv_settings(db);
@@ -974,18 +974,18 @@ ACTION_IMPL(settings)
 				getArchiveSettings(ret, db, t_clientid);
 			}
 		}
-		if(sa==L"mail_save" && helper.getRights("mail_settings")=="all")
+		if(sa=="mail_save" && helper.getRights("mail_settings")=="all")
 		{
 			updateSettingsWithList(GET, db, getMailSettingsList());
 			ret.set("saved_ok", true);
-			std::wstring testmailaddr=GET[L"testmailaddr"];
+			std::string testmailaddr=GET["testmailaddr"];
 			if(!testmailaddr.empty())
 			{
 				MailServer mail_server=ClientMain::getMailServerSettings();
 				if(url_fak!=NULL)
 				{
 					std::vector<std::string> to;
-					to.push_back(Server->ConvertToUTF8(testmailaddr));
+					to.push_back((testmailaddr));
 					std::string errmsg;
 					bool b=url_fak->sendMail(mail_server, to, "UrBackup mail test", "This is a test mail from UrBackup", &errmsg);
 					if(!b)
@@ -1002,26 +1002,26 @@ ACTION_IMPL(settings)
 					ret.set("mail_test", "Mail module not loaded");
 				}
 			}
-			sa=L"mail";
+			sa="mail";
 		}
-		if( sa==L"mail" && helper.getRights("mail_settings")=="all")
+		if( sa=="mail" && helper.getRights("mail_settings")=="all")
 		{
 			JSON::Object obj;
 			getMailSettings(obj, db);
 			ret.set("settings", obj);
 			ret.set("sa", sa);
 		}
-		if(sa==L"ldap_save" && helper.getRights("ldap_settings")=="all")
+		if(sa=="ldap_save" && helper.getRights("ldap_settings")=="all")
 		{
 			updateSettingsWithList(GET, db, getLdapSettingsList());
 			ret.set("saved_ok", true);
-			sa=L"ldap";
+			sa="ldap";
 
-			std::wstring testusername = GET[L"testusername"];
+			std::string testusername = GET["testusername"];
 
 			if(!testusername.empty() && helper.ldapEnabled())
 			{
-				std::wstring testpassword = GET[L"testpassword"];
+				std::string testpassword = GET["testpassword"];
 
 				std::string errmsg;
 				std::string rights;
@@ -1044,7 +1044,7 @@ ACTION_IMPL(settings)
 				ret.set("ldap_test", "Login via LDAP not enabled");
 			}
 		}
-		if( sa==L"ldap" && helper.getRights("ldap_settings")=="all")
+		if( sa=="ldap" && helper.getRights("ldap_settings")=="all")
 		{
 			JSON::Object obj;
 			ServerSettings serv_settings(db);

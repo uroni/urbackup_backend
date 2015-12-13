@@ -39,8 +39,8 @@ enum EBackupDirFlag
 struct SBackupDir
 {
 	int id;
-	std::wstring tname;
-	std::wstring path;
+	std::string tname;
+	std::string path;
 	int flags;
 	int group;
 	bool symlinked;
@@ -53,12 +53,12 @@ struct SShadowCopy
 	int id;
 	GUID vssid;
 	GUID ssetid;
-	std::wstring target;
-	std::wstring path;
-	std::wstring tname;
-	std::wstring orig_target;
-	std::wstring vol;
-	std::wstring starttoken;
+	std::string target;
+	std::string path;
+	std::string tname;
+	std::string orig_target;
+	std::string vol;
+	std::string starttoken;
 	bool filesrv;
 	int refs;
 	int passedtime;
@@ -66,7 +66,7 @@ struct SShadowCopy
 
 struct SFileAndHash
 {
-	std::wstring name;
+	std::string name;
 	int64 size;
 	int64 change_indicator;
 	bool isdir;
@@ -74,7 +74,7 @@ struct SFileAndHash
 	bool issym;
 	bool isspecial;
 
-	std::wstring symlink_target;
+	std::string symlink_target;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -103,17 +103,17 @@ public:
 	void prepareQueriesGen(void);
 	void destroyQueriesGen(void);
 
-	bool getFiles(std::wstring path, std::vector<SFileAndHash> &data);
+	bool getFiles(std::string path, std::vector<SFileAndHash> &data);
 
-	void addFiles(std::wstring path, const std::vector<SFileAndHash> &data);
-	void modifyFiles(std::wstring path, const std::vector<SFileAndHash> &data);
-	bool hasFiles(std::wstring path);
+	void addFiles(std::string path, const std::vector<SFileAndHash> &data);
+	void modifyFiles(std::string path, const std::vector<SFileAndHash> &data);
+	bool hasFiles(std::string path);
 	
 	void removeAllFiles(void);
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<std::wstring> getChangedDirs(const std::wstring& path, bool del=true);
+	std::vector<std::string> getChangedDirs(const std::string& path, bool del=true);
 
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
@@ -124,23 +124,23 @@ public:
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
-	void deleteChangedDirs(const std::wstring& path);
+	void deleteChangedDirs(const std::string& path);
 
-	std::vector<std::wstring> getGapDirs(void);
+	std::vector<std::string> getGapDirs(void);
 
-	std::vector<std::wstring> getDelDirs(const std::wstring& path, bool del=true);
+	std::vector<std::string> getDelDirs(const std::string& path, bool del=true);
 	void deleteSavedDelDirs(void);
 
-	void removeDeletedDir(const std::wstring &dir);
+	void removeDeletedDir(const std::string &dir);
 
-	std::wstring getOldExcludePattern(void);
-	void updateOldExcludePattern(const std::wstring &pattern);
+	std::string getOldExcludePattern(void);
+	void updateOldExcludePattern(const std::string &pattern);
 
-	std::wstring getOldIncludePattern(void);
-	void updateOldIncludePattern(const std::wstring &pattern);
+	std::string getOldIncludePattern(void);
+	void updateOldIncludePattern(const std::string &pattern);
 
-	std::wstring getMiscValue(const std::string& key);
-	void updateMiscValue(const std::string& key, const std::wstring& value);
+	std::string getMiscValue(const std::string& key);
+	void updateMiscValue(const std::string& key, const std::string& value);
 
 	static const int c_is_group;
 	static const int c_is_user;
@@ -155,20 +155,20 @@ public:
 	struct SToken
 	{
 		int64 id;
-		std::wstring accountname;
-		std::wstring token;
+		std::string accountname;
+		std::string token;
 		int is_user;
 	};
 
 
 	void updateShadowCopyStarttime(int id);
-	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
+	void updateFileAccessToken(const std::string& accountname, const std::string& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
-	CondInt64 getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
-	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
-	void updateGroupMembership(int64 uid, const std::wstring& accountname);
+	CondInt64 getFileAccessTokenId2Alts(const std::string& accountname, int is_user_alt1, int is_user_alt2);
+	CondInt64 getFileAccessTokenId(const std::string& accountname, int is_user);
+	void updateGroupMembership(int64 uid, const std::string& accountname);
 	std::vector<int> getGroupMembership(int uid);
-	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked);
+	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
 	void delBackupDir(int64 id);
 	//@-SQLGenFunctionsEnd
 

@@ -27,24 +27,14 @@ File::~File()
 
 std::string File::getFilename(void)
 {
-	return Server->ConvertToUTF8(getFilenameW());
-}
-
-std::wstring File::getFilenameW(void)
-{
 	return fn;
 }
 
 bool DeleteFileInt(std::string pFilename)
 {
-	return _unlink(pFilename.c_str())==0?true:false;
-}
-
-bool DeleteFileInt(std::wstring pFilename)
-{
 #ifndef _WIN32
-	return _unlink(Server->ConvertToUTF8(pFilename).c_str())==0?true:false;
+	return _unlink((pFilename).c_str())==0?true:false;
 #else
-	return DeleteFileW(pFilename.c_str())!=0;
+	return DeleteFileW(Server->ConvertToWchar(pFilename).c_str())!=0;
 #endif
 }

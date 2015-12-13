@@ -61,7 +61,7 @@ void ServerHashExisting::operator()()
 
 		if(f==NULL)
 		{
-			ServerLogger::Log(logid, L"Error opening file \""+item.hashpath+L"\" for hashing", LL_WARNING);
+			ServerLogger::Log(logid, "Error opening file \""+item.hashpath+"\" for hashing", LL_WARNING);
 			has_error = true;
 		}
 		else
@@ -92,7 +92,7 @@ void ServerHashExisting::queueStop( bool front )
 	cond->notify_one();
 }
 
-void ServerHashExisting::queueFile( const std::wstring& fullpath, const std::wstring& hashpath )
+void ServerHashExisting::queueFile( const std::string& fullpath, const std::string& hashpath )
 {
 	SHashItem item;
 	item.fullpath = fullpath;

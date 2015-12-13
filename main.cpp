@@ -67,7 +67,7 @@ void destroy_mutex_selthread(void);
 void termination_handler(int signum)
 {
 	run=false;
-	Server->Log("Shutting down (Signal "+nconvert(signum)+")", LL_WARNING);
+	Server->Log("Shutting down (Signal "+convert(signum)+")", LL_WARNING);
 }
 
 void hub_handler(int signum)
@@ -306,15 +306,15 @@ int main_fkt(int argc, char *argv[])
 #ifndef AS_SERVICE
 		{
 			wchar_t buf[MAX_PATH];
-			GetCurrentDirectory(MAX_PATH, buf);
-			Server->setServerWorkingDir(buf);
+			GetCurrentDirectoryW(MAX_PATH, buf);
+			Server->setServerWorkingDir(Server->ConvertFromWchar(buf));
 		}
 #else
 		{
 			wchar_t buf[MAX_PATH+1];
 			GetModuleFileNameW(NULL, buf, MAX_PATH);
-			Server->setServerWorkingDir(ExtractFilePath(buf));
-			SetCurrentDirectory(ExtractFilePath(buf).c_str());
+			Server->setServerWorkingDir(ExtractFilePath(Server->ConvertFromWchar(buf)));
+			SetCurrentDirectoryW(Server->ConvertToWchar(ExtractFilePath(Server->ConvertFromWchar(buf))).c_str());
 		}
 #endif
 #else
@@ -322,19 +322,19 @@ int main_fkt(int argc, char *argv[])
 		char* cwd = getcwd(buf, sizeof(buf));
 		if(cwd==NULL)
 		{
-			Server->setServerWorkingDir(Server->ConvertToUnicode(ExtractFilePath(argv[0])));
+			Server->setServerWorkingDir((ExtractFilePath(argv[0])));
 		}
 		else
 		{
-			Server->setServerWorkingDir(Server->ConvertToUnicode(cwd));
+			Server->setServerWorkingDir((cwd));
 		}		
 #endif
 	}
 	else
 	{
-		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
+		Server->setServerWorkingDir((workingdir));
 #ifndef _WIN32
-		int rc = chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		int rc = chdir((Server->getServerWorkingDir()).c_str());
 		if(rc!=0)
 		{
 			Server->Log("Cannot set working directory to directory "+workingdir, LL_ERROR);
@@ -370,7 +370,7 @@ int main_fkt(int argc, char *argv[])
 			exit(0);
 		}
 
-		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		chdir((Server->getServerWorkingDir()).c_str());
 		
 		if(pidfile.empty())
 		{
@@ -450,7 +450,7 @@ int main_fkt(int argc, char *argv[])
 	//sqlite3_enable_shared_cache(1);
 
 	{
-		str_nmap::iterator iter=srv_params.find("sqlite_tmpdir");
+		str_map::iterator iter=srv_params.find("sqlite_tmpdir");
 		if(iter!=srv_params.end() && !iter->second.empty())
 		{
 			sqlite3_temp_directory=sqlite3_mprintf("%s", iter->second.c_str());
@@ -599,7 +599,7 @@ void my_stop_fcn(void)
 	{
 		Server->ShutdownPlugins();
 	}
-	nt_service&  service = nt_service::instance(L"CompiledServer");
+	nt_service&  service = nt_service::instance("CompiledServer");
 	service.stop(0);
 }
 
@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		// creates an access point to the instance of the service framework
-		nt_service&  service = nt_service::instance(L"CompiledServer");
+		nt_service&  service = nt_service::instance("CompiledServer");
 
 		// register "my_service_main" to be executed as the service main method 
 		service.register_service_main( my_service_main );

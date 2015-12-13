@@ -85,7 +85,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	int window_size;
 	int window_size_len=sizeof(window_size);
 	getsockopt(pSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-	Log("Info: Window size="+nconvert(window_size));
+	Log("Info: Window size="+convert(window_size));
 #endif
 
 	close_the_socket=true;
@@ -199,7 +199,7 @@ bool CClientThread::RecvMessage()
 		rc=-1;
 	if( rc==0 )
 	{
-		Log("1 min Timeout deleting Buffers ("+nconvert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
+		Log("1 min Timeout deleting Buffers ("+convert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
 		delete bufmgr;
 		bufmgr=NULL;
 		lon.tv_sec=3600;
@@ -304,7 +304,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					is_script=true;
 				}
 
-				std::wstring o_filename=Server->ConvertToUnicode(s_filename);
+				std::string o_filename=s_filename;
 
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
@@ -313,22 +313,22 @@ bool CClientThread::ProcessPacket(CRData *data)
                 {
                     if(!is_script)
                     {
-                        Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                        Log("Sending file (normal) "+o_filename, LL_DEBUG);
                     }
                     else
                     {
-                        Log("Sending script output (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                        Log("Sending script output (normal) "+o_filename, LL_DEBUG);
                     }
                 }
                 else
                 {
-                    Log("Sending meta data of "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                    Log("Sending meta data of "+o_filename, LL_DEBUG);
                 }
 				
 
-				std::wstring filename=map_file(o_filename, ident);
+				std::string filename=map_file(o_filename, ident);
 
-				Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
+				Log("Mapped name: "+filename, LL_DEBUG);
 
 				if(filename.empty())
 				{
@@ -358,12 +358,12 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(filename.size()<3 || filename[2]!='?')
 						{
-							filename=L"\\\\?\\UNC"+filename.substr(1);
+							filename="\\\\?\\UNC"+filename.substr(1);
 						}
 					}
 					else
 					{
-						filename = L"\\\\?\\"+filename;
+						filename = "\\\\?\\"+filename;
 					}
 				}				
 
@@ -401,33 +401,33 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH))
 						{
-							PipeSessions::removeFile(file->getFilenameW());
+							PipeSessions::removeFile(file->getFilename());
 						}
 						break;
 					}
 				}
 				else if(next(s_filename, 0, "clientdl/"))
 				{
-					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+					PipeSessions::transmitFileMetadata(filename,
 						s_filename, ident, ident, folder_items);
 				}
 				else if(s_filename.find("|")!=std::string::npos)
 				{
-					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+					PipeSessions::transmitFileMetadata(filename,
 						getafter("|",s_filename), getuntil("|", s_filename), ident, folder_items);
 				}
 
 #ifndef LINUX
 #ifndef BACKUP_SEM
-				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
+					std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
@@ -496,7 +496,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					break;
 				}
 
-				assert(!(GetFileAttributesW(filename.c_str()) & FILE_ATTRIBUTE_DIRECTORY));
+				assert(!(GetFileAttributesW(Server->ConvertToWchar(filename).c_str()) & FILE_ATTRIBUTE_DIRECTORY));
 
 				for(_i64 i=start_offset;i<filesize.QuadPart && !stopped;i+=READSIZE)
 				{
@@ -529,7 +529,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if(errorcode!=0)
 					{
-						Log("Error occurred while reading from file. Errorcode is "+nconvert(errorcode), LL_ERROR);
+						Log("Error occurred while reading from file. Errorcode is "+convert(errorcode), LL_ERROR);
 						stopped=true;						
 					}
 
@@ -537,7 +537,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(!ReadFilePart(hFile, i, last))
 						{
-							Log("Reading from file failed. Last error is "+nconvert((unsigned int)GetLastError()), LL_ERROR);
+							Log("Reading from file failed. Last error is "+convert((unsigned int)GetLastError()), LL_ERROR);
 							stopped=true;
 						}
 					}
@@ -622,12 +622,12 @@ bool CClientThread::ProcessPacket(CRData *data)
                     break;
                 }
 
-				hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+				hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
 				
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
+					std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
@@ -731,7 +731,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						#endif
 						if(rc<0)
 						{
-							Log("Error: Reading and sending from file failed. Errno: "+nconvert(errno), LL_DEBUG);
+							Log("Error: Reading and sending from file failed. Errno: "+convert(errno), LL_DEBUG);
 							CloseHandle(hFile);
 							delete []buf;
 							return false;
@@ -763,7 +763,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						}
 						else if(rc<0)
 						{
-							Log("Error: Reading from file failed. Errno: "+nconvert(errno), LL_DEBUG);
+							Log("Error: Reading from file failed. Errno: "+convert(errno), LL_DEBUG);
 							CloseHandle(hFile);
 							delete []buf;
 							return false;
@@ -953,7 +953,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 	if( ldata->buffer==NULL ) 
 	{
 		Log("Error: No Free Buffer", LL_DEBUG);
-		Log("Info: Free Buffers="+nconvert(bufmgr->nfreeBufffer()), LL_DEBUG );
+		Log("Info: Free Buffers="+convert(bufmgr->nfreeBufffer()), LL_DEBUG );
 		delete ldata;
 		return true;
 	}
@@ -1032,7 +1032,7 @@ int CClientThread::SendData()
 	#else
 					err=errno;
 	#endif
-					Log("SOCKET_ERROR in SendData(). BSize: "+nconvert(ldata->bsize)+" WSAGetLastError: "+nconvert(err), LL_DEBUG);
+					Log("SOCKET_ERROR in SendData(). BSize: "+convert(ldata->bsize)+" WSAGetLastError: "+convert(err), LL_DEBUG);
 				
 					if( ldata->delbuf )
 					{
@@ -1172,7 +1172,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		s_filename = s_filename.substr(7);
 	}
 
-	std::wstring o_filename=Server->ConvertToUnicode(s_filename);
+	std::string o_filename=s_filename;
 
 	_i64 start_offset=0;
 	data->getInt64(&start_offset);
@@ -1183,11 +1183,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	_i64 requested_filesize=-1;
 	data->getInt64(&requested_filesize);
 
-	Log("Sending file (chunked) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+	Log("Sending file (chunked) "+o_filename, LL_DEBUG);
 
-	std::wstring filename=map_file(o_filename, ident);
+	std::string filename=map_file(o_filename, ident);
 
-	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
+	Log("Mapped name: "+filename, LL_DEBUG);
 
 	state=CS_BLOCKHASH;
 
@@ -1207,12 +1207,12 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		{
 			if(filename.size()<3 || filename[2]!='?')
 			{
-				filename=L"\\\\?\\UNC"+filename.substr(1);
+				filename="\\\\?\\UNC"+filename.substr(1);
 			}
 		}
 		else
 		{
-			filename = L"\\\\?\\"+filename;
+			filename = "\\\\?\\"+filename;
 		}
 	}
 #endif
@@ -1233,24 +1233,24 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	{			
 		if(s_filename.find("|"))
 		{
-			PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+			PipeSessions::transmitFileMetadata(filename,
 				getafter("|",s_filename), getuntil("|", s_filename), ident, 0);
 		}
 
 #ifdef _WIN32
 #ifndef BACKUP_SEM
-		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 #else //_WIN32
-		hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+		hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
 #endif //_WIN32
 
 		if(hFile == INVALID_HANDLE_VALUE)
 		{
 	#ifdef CHECK_BASE_PATH
-			std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
+			std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
 			if(!isDirectory(basePath))
 			{
 				queueChunk(SChunk(ID_BASE_DIR_LOST));
@@ -1408,13 +1408,13 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	}
 #endif
 
-	std::wstring o_filename=Server->ConvertToUnicode(s_filename);
+	std::string o_filename=s_filename;
 
-	Log("Calculating hash of file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+	Log("Calculating hash of file "+o_filename, LL_DEBUG);
 
-	std::wstring filename=map_file(o_filename, ident);
+	std::string filename=map_file(o_filename, ident);
 
-	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
+	Log("Mapped name: "+filename, LL_DEBUG);
 
 	if(filename.empty())
 	{
@@ -1434,29 +1434,29 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	{
 		if(filename.size()<3 || filename[2]!='?')
 		{
-			filename=L"\\\\?\\UNC"+filename.substr(1);
+			filename="\\\\?\\UNC"+filename.substr(1);
 		}
 	}
 	else
 	{
-		filename = L"\\\\?\\"+filename;
+		filename = "\\\\?\\"+filename;
 	}		
 #endif
 
 #ifdef _WIN32
 #ifndef BACKUP_SEM
-	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 #else //_WIN32
-	hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+	hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
 #endif //_WIN32
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
 #ifdef CHECK_BASE_PATH
-		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
+		std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
 		if(!isDirectory(basePath))
 		{
 			char ch=ID_BASE_DIR_LOST;
@@ -1578,12 +1578,12 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 	if(start_offset!=0)
 	{
-		Log("Sending pipe file from offset "+nconvert(start_offset), LL_DEBUG);
+		Log("Sending pipe file from offset "+convert(start_offset), LL_DEBUG);
 	}
 
 	if(!file->Seek(start_offset))
 	{
-		Log("Error: Seeking in file failed (5044) to "+nconvert(start_offset), LL_ERROR);
+		Log("Error: Seeking in file failed (5044) to "+convert(start_offset), LL_ERROR);
 		return false;
 	}
 

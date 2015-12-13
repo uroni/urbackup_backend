@@ -63,8 +63,8 @@ public:
 		}
 	};
 
-	BackupServerContinuous(ClientMain* client_main, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_path_backup,
-		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink,
+	BackupServerContinuous(ClientMain* client_main, const std::string& continuous_path, const std::string& continuous_hash_path, const std::string& continuous_path_backup,
+		const std::string& tmpfile_path, bool use_tmpfiles, int clientid, const std::string& clientname, int backupid, bool use_snapshots, bool use_reflink,
 		IPipe* hashpipe_prepare)
 		: client_main(client_main), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
 		continuous_path_backup(continuous_path_backup),
@@ -209,7 +209,7 @@ public:
 		cond->notify_all();
 	}
 
-	void updateSettings(int tbackupid, const std::wstring& tcontinuous_path, const std::wstring& tcontinuous_hash_path, const std::wstring& tcontinuous_path_backup)
+	void updateSettings(int tbackupid, const std::string& tcontinuous_path, const std::string& tcontinuous_hash_path, const std::string& tcontinuous_path_backup)
 	{
 		backupid = tbackupid;
 		continuous_path = tcontinuous_path;
@@ -551,28 +551,28 @@ private:
 		return true;
 	}
 
-	std::wstring getOsFp(const std::string& fn)
+	std::string getOsFp(const std::string& fn)
 	{
 		std::vector<std::string> tokens;
 		TokenizeMail(fn, tokens, "/");
 
-		std::wstring fp;
+		std::string fp;
 		for(size_t i=0;i<tokens.size();++i)
 		{
 			if(tokens[i]!="." && tokens[i]!="..")
 			{
-				fp+=os_file_sep()+Server->ConvertToUnicode(tokens[i]);
+				fp+=os_file_sep()+(tokens[i]);
 			}
 		}
 		return fp;
 	}
 
-	std::wstring getFullpath(const std::string& fn)
+	std::string getFullpath(const std::string& fn)
 	{
 		return continuous_path+getOsFp(fn);
 	}
 
-	std::wstring getFullHashpath(const std::string& fn)
+	std::string getFullHashpath(const std::string& fn)
 	{
 		return continuous_hash_path+getOsFp(fn);
 	}
@@ -608,7 +608,7 @@ private:
 
 	bool execDelFile(SChange& change)
 	{
-		if(backupFile(Server->ConvertToUnicode(change.fn1))==std::wstring())
+		if(backupFile((change.fn1))==std::string())
 		{
 			return false;
 		}
@@ -675,10 +675,10 @@ private:
 
 	bool execRen(SChange& change)
 	{
-		std::wstring fn2=getFullpath(change.fn2);
+		std::string fn2=getFullpath(change.fn2);
 		if(Server->fileExists(fn2))
 		{
-			if(backupFile(Server->ConvertToUnicode(change.fn2))==std::wstring())
+			if(backupFile((change.fn2))==std::string())
 			{
 				return false;
 			}
@@ -712,7 +712,7 @@ private:
 	{
 		server_download.reset(new ServerDownloadThread(*fileclient.get(),
 			fileclient_chunked.get(), continuous_path,
-			continuous_hash_path, continuous_path, std::wstring(), hashed_transfer_full,
+			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid));
 
@@ -743,7 +743,7 @@ private:
 		{
 			if(!client_main->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
 			{
-				ServerLogger::Log(logid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
+				ServerLogger::Log(logid, "Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
 				return false;
 			}
 			else
@@ -751,7 +751,7 @@ private:
 				fileclient_chunked->setDestroyPipe(true);
 				if(fileclient_chunked->hasError())
 				{
-					ServerLogger::Log(logid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
+					ServerLogger::Log(logid, "Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
 					return false;
 				}
 			}
@@ -766,7 +766,7 @@ private:
 
 		if(rc!=ERR_SUCCESS)
 		{
-			ServerLogger::Log(logid, L"Error getting file hash and metadata for \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+			ServerLogger::Log(logid, "Error getting file hash and metadata for \""+(change.fn1)+"\" from "+clientname+". Errorcode: "+fileclient->getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 			return false;
 		}
 
@@ -786,7 +786,7 @@ private:
 		}
 
 		bool tries_once;
-		std::wstring ff_last;
+		std::string ff_last;
 		bool hardlink_limit = false;
 		bool copied_file=false;
 		int64 entryid=0;
@@ -808,8 +808,8 @@ private:
 			constructServerDownloadThread();
 		}
 
-		std::wstring fn = Server->ConvertToUnicode(ExtractFileName(change.fn1));
-		std::wstring fpath = Server->ConvertToUnicode(ExtractFilePath(change.fn1));
+		std::string fn = (ExtractFileName(change.fn1));
+		std::string fpath = (ExtractFilePath(change.fn1));
 
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
@@ -825,9 +825,9 @@ private:
 		return true;
 	}
 
-	std::wstring backupFile(const std::wstring& fn)
+	std::string backupFile(const std::string& fn)
 	{
-		std::wstring filePath = continuous_path + fn;
+		std::string filePath = continuous_path + fn;
 		time_t tt=time(NULL);
 #ifdef _WIN32
 		tm lt;
@@ -838,15 +838,15 @@ private:
 #endif
 		char buffer[500];
 		strftime(buffer, 500, "%y-%m-%d %H.%M.%S", t);
-		std::wstring backupPath = continuous_path_backup + widen(buffer)+L"-"+convert(Server->getTimeSeconds())+os_file_sep()+fn;
+		std::string backupPath = continuous_path_backup + buffer+"-"+convert(Server->getTimeSeconds())+os_file_sep()+fn;
 		if(!os_create_dir_recursive(os_file_prefix(ExtractFilePath(backupPath))))
 		{
-			return std::wstring();
+			return std::string();
 		}
 		
 		if(!os_rename_file(os_file_prefix(filePath), os_file_prefix(backupPath)))
 		{
-			return std::wstring();
+			return std::string();
 		}
 
 		return backupPath;
@@ -908,17 +908,17 @@ private:
 	bool collect_only;
 	bool first_compaction;
 	bool stop;
-	std::wstring continuous_path;
-	std::wstring continuous_hash_path;
-	std::wstring continuous_path_backup;
+	std::string continuous_path;
+	std::string continuous_hash_path;
+	std::string continuous_path_backup;
 
-	std::wstring tmpfile_path;
+	std::string tmpfile_path;
 	bool use_tmpfiles;
 	int clientid;
 	bool use_snapshots;
 	bool use_reflink;
 
-	std::wstring clientname;
+	std::string clientname;
 
 	int backupid;
 	IPipe* hashpipe_prepare;

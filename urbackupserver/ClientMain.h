@@ -96,15 +96,15 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 {
 	friend class ServerHashExisting;
 public:
-	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, const std::wstring& pSubName, const std::wstring& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
+	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~ClientMain(void);
 
 	void operator()(void);
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
-	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
-	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
-	std::string sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
+	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
+	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
+	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 
 	bool createDirectoryForClient();
@@ -119,15 +119,15 @@ public:
 
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);
-	static int getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client);
+	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client);
 
 	IPipe *getClientCommandConnection(int timeoutms=10000, std::string* clientaddr=NULL);
 
 	virtual IPipe * new_fileclient_connection(void);
 
-	virtual bool handle_not_enough_space(const std::wstring &path);
+	virtual bool handle_not_enough_space(const std::string &path);
 
-	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, logid_t logid);
+	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
 
 	static void destroyTemporaryFile(IFile *tmp);
 
@@ -159,7 +159,7 @@ public:
 		return curr_image_version;
 	}
 
-	static void run_script(std::wstring name, const std::wstring& params, logid_t logid);
+	static void run_script(std::string name, const std::string& params, logid_t logid);
 
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
@@ -194,7 +194,7 @@ private:
 	void sendClientBackupIncrIntervall(void);
 	void sendSettings(void);
 	bool getClientSettings(bool& doesnt_exist);
-	bool updateClientSetting(const std::wstring &key, const std::wstring &value);
+	bool updateClientSetting(const std::string &key, const std::string &value);
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
 	bool isRunningFileBackup(int group);	
@@ -223,12 +223,12 @@ private:
 
 	sockaddr_in clientaddr;
 	IMutex *clientaddr_mutex;
-	std::wstring clientname;
-	std::wstring clientsubname;
-	std::wstring clientmainname;
+	std::string clientname;
+	std::string clientsubname;
+	std::string clientmainname;
 	int filebackup_group_offset;
 
-	std::wstring tmpfile_path;
+	std::string tmpfile_path;
 	static size_t tmpfile_num;
 	static IMutex *tmpfile_mutex;
 

@@ -59,7 +59,7 @@ void ServerAutomaticArchive::archiveTimeout(void)
 	if(q_unarchive==NULL) return;
 	for(size_t i=0;i<res_timeout.size();++i)
 	{
-		q_unarchive->Bind(res_timeout[i][L"id"]);
+		q_unarchive->Bind(res_timeout[i]["id"]);
 		q_unarchive->Write();
 		q_unarchive->Reset();
 	}
@@ -70,28 +70,28 @@ void ServerAutomaticArchive::archiveBackups(void)
 	db_results res_clients=db->Read("SELECT id FROM clients");
 	for(size_t i=0;i<res_clients.size();++i)
 	{
-		int clientid=watoi(res_clients[i][L"id"]);
+		int clientid=watoi(res_clients[i]["id"]);
 		int r_clientid=clientid;
 		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
 		q_get->Bind(clientid);
 		q_get->Bind("overwrite");
 		db_results res=q_get->Read();
 		q_get->Reset();
-		if(res.empty() || res[0][L"value"]!=L"true")
+		if(res.empty() || res[0]["value"]!="true")
 			r_clientid=0;
 
 		q_get->Bind(clientid);
 		q_get->Bind("overwrite_archive_settings");
 		res=q_get->Read();
 		q_get->Reset();
-		if(res.empty() || res[0][L"value"]!=L"true")
+		if(res.empty() || res[0]["value"]!="true")
 			r_clientid=0;
 
 		bool archive_settings_copied=false;
 		q_get->Bind(clientid);
 		q_get->Bind("archive_settings_copied");
 		res=q_get->Read();
-		if(!res.empty() && res[0][L"value"]==L"true")
+		if(!res.empty() && res[0]["value"]=="true")
 			archive_settings_copied=true;
 
 		if(r_clientid==0 && !archive_settings_copied)
@@ -106,24 +106,24 @@ void ServerAutomaticArchive::archiveBackups(void)
 		
 		for(size_t j=0;j<res_archived.size();++j)
 		{
-			_i64 next_archival=watoi64(res_archived[j][L"next_archival"]);
+			_i64 next_archival=watoi64(res_archived[j]["next_archival"]);
 
-			std::wstring &archive_window=res_archived[j][L"archive_window"];
+			std::string &archive_window=res_archived[j]["archive_window"];
 						
 			_i64 curr_time=Server->getTimeSeconds();
 			if(next_archival<curr_time && (archive_window.empty() || isInArchiveWindow(archive_window)) )
 			{
-				int backupid=getNonArchivedFileBackup(watoi(res_archived[j][L"backup_types"]), clientid);
+				int backupid=getNonArchivedFileBackup(watoi(res_archived[j]["backup_types"]), clientid);
 				if(backupid!=0)
 				{
-					int length=watoi(res_archived[j][L"length"]);
+					int length=watoi(res_archived[j]["length"]);
 					archiveFileBackup(backupid, length);
-					Server->Log("Archived file backup with id="+nconvert(backupid)+" for "+nconvert(length)+" seconds", LL_INFO);
-					updateInterval(watoi(res_archived[j][L"id"]), watoi(res_archived[j][L"interval"]));
+					Server->Log("Archived file backup with id="+convert(backupid)+" for "+convert(length)+" seconds", LL_INFO);
+					updateInterval(watoi(res_archived[j]["id"]), watoi(res_archived[j]["interval"]));
 				}
 				else
 				{
-					Server->Log("Did not find file backup suitable for archiving with backup_type="+nconvert(watoi(res_archived[j][L"backup_types"])), LL_INFO);
+					Server->Log("Did not find file backup suitable for archiving with backup_type="+convert(watoi(res_archived[j]["backup_types"])), LL_INFO);
 				}
 			}
 		}
@@ -156,7 +156,7 @@ int ServerAutomaticArchive::getNonArchivedFileBackup(int backup_types, int clien
 	q_get_backups->Bind(clientid);
 	db_results res=q_get_backups->Read();
 	if(!res.empty())
-		return watoi(res[0][L"id"]);
+		return watoi(res[0]["id"]);
 	else
 		return 0;
 }
@@ -176,29 +176,29 @@ void ServerAutomaticArchive::archiveFileBackup(int backupid, int length)
 	q_archive->Write();
 }
 
-int ServerAutomaticArchive::getBackupTypes(const std::wstring &backup_type_name)
+int ServerAutomaticArchive::getBackupTypes(const std::string &backup_type_name)
 {
 	int type=0;
-	if(backup_type_name==L"incr_file")
+	if(backup_type_name=="incr_file")
 		type|=backup_type_incr_file;
-	else if(backup_type_name==L"full_file")
+	else if(backup_type_name=="full_file")
 		type|=backup_type_full_file;
-	else if(backup_type_name==L"file")
+	else if(backup_type_name=="file")
 		type|=backup_type_incr_file|backup_type_full_file;
 
 	return type;
 }
 
-std::wstring ServerAutomaticArchive::getBackupType(int backup_types)
+std::string ServerAutomaticArchive::getBackupType(int backup_types)
 {
 	if( backup_types & backup_type_full_file && backup_types & backup_type_incr_file )
-		return L"file";
+		return "file";
 	else if( backup_types & backup_type_full_file )
-		return L"full_file";
+		return "full_file";
 	else if( backup_types & backup_type_incr_file)
-		return L"incr_file";
+		return "incr_file";
 
-	return L"";
+	return "";
 }
 
 void ServerAutomaticArchive::copyArchiveSettings(int clientid)
@@ -206,15 +206,15 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=0");
 
 
-	std::vector<std::wstring> next_archivals;
+	std::vector<std::string> next_archivals;
 	for(size_t i=0;i<res_all.size();++i)
 	{
-		std::wstring &interval=res_all[i][L"interval"];
-		std::wstring &length=res_all[i][L"length"];
-		std::wstring &backup_types=res_all[i][L"backup_types"];
-		std::wstring &id=res_all[i][L"id"];
-		std::wstring &archive_window=res_all[i][L"archive_window"];
-		std::wstring next_archival=res_all[i][L"next_archival"];
+		std::string &interval=res_all[i]["interval"];
+		std::string &length=res_all[i]["length"];
+		std::string &backup_types=res_all[i]["backup_types"];
+		std::string &id=res_all[i]["id"];
+		std::string &archive_window=res_all[i]["archive_window"];
+		std::string next_archival=res_all[i]["next_archival"];
 
 		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=?");
 		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid=0 AND interval=? AND length=? AND backup_types=? AND archive_window=? AND id<?");
@@ -225,7 +225,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		q_num->Bind(archive_window);
 		q_num->Bind(id);
 		db_results res_num=q_num->Read();
-		int num=watoi(res_num[0][L"num"]);
+		int num=watoi(res_num[0]["num"]);
 
 		q_next->Bind(clientid);
 		q_next->Bind(interval);
@@ -237,7 +237,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		db_results res_next=q_next->Read();
 		if((size_t)num<res_next.size())
 		{
-			next_archival=res_next[num][L"next_archival"];
+			next_archival=res_next[num]["next_archival"];
 			_i64 na=watoi64(next_archival);
 			if(na==0)
 			{
@@ -258,16 +258,16 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 
 	for(size_t i=0;i<res_all.size();++i)
 	{
-		std::wstring &interval=res_all[i][L"interval"];
-		std::wstring &length=res_all[i][L"length"];
-		std::wstring &backup_types=res_all[i][L"backup_types"];		
-		std::wstring &archive_window=res_all[i][L"archive_window"];
+		std::string &interval=res_all[i]["interval"];
+		std::string &length=res_all[i]["length"];
+		std::string &backup_types=res_all[i]["backup_types"];		
+		std::string &archive_window=res_all[i]["archive_window"];
 
 		q_insert_all->Bind(next_archivals[i]);
 		q_insert_all->Bind(interval);
-		q_insert_all->Bind(res_all[i][L"interval_unit"]);
+		q_insert_all->Bind(res_all[i]["interval_unit"]);
 		q_insert_all->Bind(length);
-		q_insert_all->Bind(res_all[i][L"length_unit"]);
+		q_insert_all->Bind(res_all[i]["length_unit"]);
 		q_insert_all->Bind(backup_types);
 		q_insert_all->Bind(clientid);
 		q_insert_all->Bind(archive_window);		
@@ -286,18 +286,18 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 	q_insert_copied->Reset();
 }
 
-bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)
+bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)
 {
-	std::vector<std::wstring> toks;
-	Tokenize(window_def, toks, L";");
+	std::vector<std::string> toks;
+	Tokenize(window_def, toks, ";");
 	bool matched_dom=false;
 	for(size_t i=0;i<toks.size();++i)
 	{
-		if(trim(toks[i])==L"*")
+		if(trim(toks[i])=="*")
 			continue;
 
-		std::vector<std::wstring> stoks;
-		Tokenize(toks[i], stoks, L",");
+		std::vector<std::string> stoks;
+		Tokenize(toks[i], stoks, ",");
 
 		std::vector<int> nums;
 		for(size_t j=0;j<stoks.size();++j)

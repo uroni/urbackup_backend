@@ -83,7 +83,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		}
 		else if(file_pos>=filesize)
 		{
-			Server->Log("Patch corrupt file_pos>=filesize. file_pos="+nconvert(file_pos)+" next_header.patch_off="+nconvert(next_header.patch_off)+" next_header.patch_size="+nconvert(next_header.patch_size)+" tr="+nconvert(tr)+" size="+nconvert(size)+" filesize="+nconvert(filesize)+" has_header="+nconvert(has_header), LL_ERROR);
+			Server->Log("Patch corrupt file_pos>=filesize. file_pos="+convert(file_pos)+" next_header.patch_off="+convert(next_header.patch_off)+" next_header.patch_size="+convert(next_header.patch_size)+" tr="+convert(tr)+" size="+convert(size)+" filesize="+convert(filesize)+" has_header="+convert(has_header), LL_ERROR);
 			assert(file_pos<filesize);
 			return false;
 		}
@@ -92,7 +92,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		{
 			assert(file_pos==next_header.patch_off);
 
-			VLOG(Server->Log("Applying patch at "+nconvert(file_pos)+" length="+nconvert(next_header.patch_size), LL_DEBUG));
+			VLOG(Server->Log("Applying patch at "+convert(file_pos)+" length="+convert(next_header.patch_size), LL_DEBUG));
 
 			file_pos+=next_header.patch_size;
 
@@ -140,7 +140,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		}
 		else
 		{
-			Server->Log("Patch corrupt. file_pos="+nconvert(file_pos)+" next_header.patch_off="+nconvert(next_header.patch_off)+" next_header.patch_size="+nconvert(next_header.patch_size)+" tr="+nconvert(tr)+" size="+nconvert(size)+" filesize="+nconvert(filesize), LL_ERROR);
+			Server->Log("Patch corrupt. file_pos="+convert(file_pos)+" next_header.patch_off="+convert(next_header.patch_off)+" next_header.patch_size="+convert(next_header.patch_size)+" tr="+convert(tr)+" size="+convert(size)+" filesize="+convert(filesize), LL_ERROR);
 			assert(false);
 			return false;
 		}

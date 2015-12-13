@@ -101,14 +101,14 @@ void BackupServerPrepareHash::operator()(void)
 			FileMetadata metadata;
 			metadata.read(rd);
 
-			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix((temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
 			if(diff_file)
 			{
-				old_file=Server->openFile(os_file_prefix(Server->ConvertToUnicode(old_file_fn)), MODE_READ);
+				old_file=Server->openFile(os_file_prefix((old_file_fn)), MODE_READ);
 				if(old_file==NULL)
 				{
-					ServerLogger::Log(logid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file ec="+nconvert(os_last_error()), LL_ERROR);
+					ServerLogger::Log(logid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file ec="+convert(os_last_error()), LL_ERROR);
 					has_error=true;
 					if(tf!=NULL) Server->destroy(tf);
 					continue;
@@ -117,7 +117,7 @@ void BackupServerPrepareHash::operator()(void)
 
 			if(tf==NULL)
 			{
-				ServerLogger::Log(logid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn ec="+nconvert(os_last_error()), LL_ERROR);
+				ServerLogger::Log(logid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn ec="+convert(os_last_error()), LL_ERROR);
 				has_error=true;
 				if(old_file!=NULL)
 				{

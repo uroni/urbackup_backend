@@ -260,7 +260,7 @@ void generateStructure(std::string name, std::vector<ReturnType> return_types, G
 	{
 		std::string type=return_types[i].type;
 		if(type=="string")
-			type="std::wstring";
+			type="std::string";
 		if(type=="blob")
 			type="std::string";
 
@@ -292,7 +292,7 @@ std::string generateConditional(ReturnType rtype, GeneratedData& gen_data)
 	code+="\t\tbool exists;\r\n";
 	std::string type=rtype.type;
 	if(type=="string")
-		type="std::wstring";
+		type="std::string";
 	if(type=="blob")
 		type="std::string";
 	code+="\t\t"+type+" value;\r\n";
@@ -321,9 +321,7 @@ std::string return_blob(size_t tabs, std::string value_name, std::string sql_nam
 	static int nb = 0;
 	std::string tabss(tabs, '\t');
 	++nb;
-	ret+=tabss+"std::wstring& val"+nconvert(nb)+" = res["+res_idx+"][L\""+sql_name+"\"];\r\n";
-	ret+=tabss+value_name+".resize(val"+nconvert(nb)+".size()*sizeof(wchar_t));\r\n";
-	ret+=tabss+"memcpy(&"+value_name+"[0], val"+nconvert(nb)+".data(), val"+nconvert(nb)+".size()*sizeof(wchar_t));\r\n";
+	ret+=tabss+value_name+"=res["+res_idx+"][\""+sql_name+"\"];\r\n";
 	if(do_return)
 	{
 		ret+=tabss+"return "+value_name+";\r\n";
@@ -364,7 +362,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		struct_name=getbetween("<", ">", return_type);
 		if(struct_name=="string")
 		{
-			return_type="std::vector<std::wstring>";
+			return_type="std::vector<std::string>";
 		}
 		return_vector=true;
 	}
@@ -487,7 +485,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				if(return_types[0].type=="string")
 				{
-					return_outer+="std::wstring";
+					return_outer+="std::string";
 				}
 				else
 				{
@@ -511,10 +509,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	
 
 	if(return_outer=="string")
-		return_outer="std::wstring";
+		return_outer="std::string";
 
 	if(return_type=="string")
-		return_type="std::wstring";
+		return_type="std::string";
 
 	std::string funcdecl=return_type+" "+func_s_name+"(";
 	std::string code="\r\n"+return_outer+" "+funcsig+"(";
@@ -540,9 +538,9 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			funcdecl+=", ";
 		}
 		std::string type=params[i].type;
-		if(type=="string" || type=="std::wstring" )
+		if(type=="string" || type=="std::string" )
 		{
-			type="const std::wstring&";
+			type="const std::string&";
 		}
 		else if(type=="blob")
 		{
@@ -626,7 +624,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				if(return_types[0].type=="string")
 				{
-					code+="std::wstring";
+					code+="std::string";
 				}
 				else
 				{
@@ -653,11 +651,11 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				if(return_types[i].type=="int")
 				{
-					code+="\t\tret[i]."+return_types[i].name+"=watoi(res[i][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=watoi(res[i][\""+return_types[i].name+"\"]);\r\n";
 				}
 				else if(return_types[i].type=="int64")
 				{
-					code+="\t\tret[i]."+return_types[i].name+"=watoi64(res[i][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=watoi64(res[i][\""+return_types[i].name+"\"]);\r\n";
 				}
 				else if(return_types[i].type=="blob")
 				{
@@ -665,7 +663,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				}
 				else
 				{
-					code+="\t\tret[i]."+return_types[i].name+"=res[i][L\""+return_types[i].name+"\"];\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=res[i][\""+return_types[i].name+"\"];\r\n";
 				}			
 			}
 		}
@@ -675,11 +673,11 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				if(return_types[0].type=="int")
 				{
-					code+="\t\tret[i]=watoi(res[i][L\""+return_types[0].name+"\"]);\r\n";
+					code+="\t\tret[i]=watoi(res[i][\""+return_types[0].name+"\"]);\r\n";
 				}
 				else if(return_types[0].type=="int64")
 				{
-					code+="\t\tret[i]=watoi64(res[i][L\""+return_types[0].name+"\"]);\r\n";
+					code+="\t\tret[i]=watoi64(res[i][\""+return_types[0].name+"\"]);\r\n";
 				}
 				else if(return_types[0].type=="blob")
 				{
@@ -687,7 +685,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				}
 				else
 				{
-					code+="\t\tret[i]=res[i][L\""+return_types[0].name+"\"];\r\n";
+					code+="\t\tret[i]=res[i][\""+return_types[0].name+"\"];\r\n";
 				}
 			}
 			else
@@ -716,7 +714,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				}
 				else
 				{
-					code+="L\"\"";
+					code+="\"\"";
 				}
 				if(i+1<return_types.size())
 				{
@@ -737,7 +735,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			}
 			else
 			{
-				code+="L\"\"";
+				code+="\"\"";
 			}
 		}
 		code+=" };\r\n";
@@ -753,11 +751,11 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				if(return_types[i].type=="int")
 				{
-					code+="\t\tret."+return_types[i].name+"=watoi(res[0][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret."+return_types[i].name+"=watoi(res[0][\""+return_types[i].name+"\"]);\r\n";
 				}
 				else if(return_types[i].type=="int64")
 				{
-					code+="\t\tret."+return_types[i].name+"=watoi64(res[0][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret."+return_types[i].name+"=watoi64(res[0][\""+return_types[i].name+"\"]);\r\n";
 				}
 				else if(return_types[i].type=="blob")
 				{
@@ -765,7 +763,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				}
 				else
 				{
-					code+="\t\tret."+return_types[i].name+"=res[0][L\""+return_types[i].name+"\"];\r\n";
+					code+="\t\tret."+return_types[i].name+"=res[0][\""+return_types[i].name+"\"];\r\n";
 				}			
 			}
 		}
@@ -773,11 +771,11 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		{
 			if(return_types[0].type=="int")
 			{
-				code+="\t\tret.value=watoi(res[0][L\""+return_types[0].name+"\"]);\r\n";
+				code+="\t\tret.value=watoi(res[0][\""+return_types[0].name+"\"]);\r\n";
 			}
 			else if(return_types[0].type=="int64")
 			{
-				code+="\t\tret.value=watoi64(res[0][L\""+return_types[0].name+"\"]);\r\n";
+				code+="\t\tret.value=watoi64(res[0][\""+return_types[0].name+"\"]);\r\n";
 			}
 			else if(return_types[0].type=="blob")
 			{
@@ -785,7 +783,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			}
 			else
 			{
-				code+="\t\tret.value=res[0][L\""+return_types[0].name+"\"];\r\n";
+				code+="\t\tret.value=res[0][\""+return_types[0].name+"\"];\r\n";
 			}
 		}
 		code+="\t}\r\n";
@@ -796,11 +794,11 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		code+="\tassert(!res.empty());\r\n";
 		if(return_types[0].type=="int")
 		{
-			code+="\treturn watoi(res[0][L\""+return_types[0].name+"\"]);\r\n";
+			code+="\treturn watoi(res[0][\""+return_types[0].name+"\"]);\r\n";
 		}
 		else if(return_types[0].type=="int64")
 		{
-			code+="\treturn watoi64(res[0][L\""+return_types[0].name+"\"]);\r\n";
+			code+="\treturn watoi64(res[0][\""+return_types[0].name+"\"]);\r\n";
 		}
 		else if(return_types[0].type=="blob")
 		{
@@ -808,7 +806,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			code+="\treturn res[0][L\""+return_types[0].name+"\"];\r\n";
+			code+="\treturn res[0][\""+return_types[0].name+"\"];\r\n";
 		}
 	}
 	code+="}";

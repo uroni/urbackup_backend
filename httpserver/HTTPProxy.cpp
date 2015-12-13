@@ -26,7 +26,7 @@
 
 extern CHTTPService* http_service;
 
-CHTTPProxy::CHTTPProxy(std::string pHttp_method, std::string pHttp_query, int pHttp_version, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput, IPipe *pNotify, IPipe *pTimeoutPipe) :
+CHTTPProxy::CHTTPProxy(std::string pHttp_method, std::string pHttp_query, int pHttp_version, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput, IPipe *pNotify, IPipe *pTimeoutPipe) :
 http_method(pHttp_method), http_query(pHttp_query), http_version(pHttp_version), POSTStr(pPOSTStr), RawPARAMS(pRawPARAMS), notify(pNotify), timeoutpipe(pTimeoutPipe)
 {
 	output.push_back(pOutput);
@@ -41,8 +41,8 @@ void CHTTPProxy::operator()(void)
 	if(http_version==10)html_ver=" HTTP/1.0";
 
 	std::string request=http_method+" "+http_query+html_ver+"\r\n";
-	request+="Host: "+http_service->getProxyServer()+":"+nconvert(http_service->getProxyPort())+"\r\n";
-	for(str_nmap::iterator it=RawPARAMS.begin();it!=RawPARAMS.end();++it)
+	request+="Host: "+http_service->getProxyServer()+":"+convert(http_service->getProxyPort())+"\r\n";
+	for(str_map::iterator it=RawPARAMS.begin();it!=RawPARAMS.end();++it)
 	{
 		if(strlower(it->first)!="host")
 		{
@@ -92,7 +92,7 @@ void CHTTPProxy::operator()(void)
 			IPipe *np;
 			if(notify->Read((char*)&np, sizeof(IPipe*), 0))
 			{
-				Server->Log("New streaming client for url: \""+http_query+"\" "+nconvert(output.size())+" streaming clients.");
+				Server->Log("New streaming client for url: \""+http_query+"\" "+convert(output.size())+" streaming clients.");
 				output_buffer.push_back(std::queue<CBuffer>());
 				output.push_back(np);
 				sync.push_back(0);
@@ -227,7 +227,7 @@ void CHTTPProxy::operator()(void)
 		}
 		if(output.empty())
 		{
-			Server->Log("No streaming clients left. nbuffers="+nconvert(nbuffers));
+			Server->Log("No streaming clients left. nbuffers="+convert(nbuffers));
 			break;
 		}
 		buf=new char[1500];

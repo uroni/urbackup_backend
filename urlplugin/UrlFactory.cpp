@@ -111,7 +111,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		mailfrom="<"+mailfrom+">";
 	}
 
-	curl_easy_setopt(curl, CURLOPT_URL, ("smtp://"+server.servername+":"+nconvert(server.port)).c_str());
+	curl_easy_setopt(curl, CURLOPT_URL, ("smtp://"+server.servername+":"+convert(server.port)).c_str());
 	curl_easy_setopt(curl, CURLOPT_USE_SSL, server.ssl_only?CURLUSESSL_ALL:CURLUSESSL_TRY);
 	if(!server.check_certificate)
 	{
@@ -153,11 +153,11 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
 		{
-			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" ("+nconvert(res)+") -- "+errbuf, LL_DEBUG);
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" ("+convert(res)+") -- "+errbuf, LL_DEBUG);
 		}
 		else
 		{
-			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + convert(res) + "), " + errbuf;
 		}
 		curl_slist_free_all(recpt);
 		curl_easy_cleanup(curl);
@@ -199,11 +199,11 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
 		{
-			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+nconvert(res)+"), "+errbuf, LL_DEBUG);
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+convert(res)+"), "+errbuf, LL_DEBUG);
 		}
 		else
 		{
-			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + convert(res) + "), " + errbuf;
 		}
 		output.clear();
 	}
@@ -242,11 +242,11 @@ bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
 		{
-			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+nconvert(res)+"), "+errbuf, LL_DEBUG);
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+convert(res)+"), "+errbuf, LL_DEBUG);
 		}
 		else
 		{
-			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + convert(res) + "), " + errbuf;
 		}
 	}
 
@@ -314,11 +314,11 @@ std::vector<std::multimap<std::string, std::string> > UrlFactory::queryLDAP( con
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
 		{
-			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+nconvert(res)+"), "+errbuf, LL_DEBUG);
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+convert(res)+"), "+errbuf, LL_DEBUG);
 		}
 		else
 		{
-			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + convert(res) + "), " + errbuf;
 		}
 
 		output.clear();

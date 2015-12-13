@@ -14,7 +14,7 @@ public:
 
 	bool applyMetadata();
 
-	bool applyOsMetadata(IFile* metadata_f, const std::wstring& output_fn);
+	bool applyOsMetadata(IFile* metadata_f, const std::string& output_fn);
 
 
 private:
@@ -25,7 +25,7 @@ private:
 	std::vector<char> buffer;
 
 	bool has_error;
-	std::wstring metadata_tmp_fn;
+	std::string metadata_tmp_fn;
 };
 
 } //namespace client

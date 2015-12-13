@@ -18,11 +18,6 @@
 
 #include "FileWrapper.h"
 
-std::wstring FileWrapper::getFilenameW( void )
-{
-	return wfile->getFilenameW();
-}
-
 std::string FileWrapper::getFilename( void )
 {
 	return wfile->getFilename();

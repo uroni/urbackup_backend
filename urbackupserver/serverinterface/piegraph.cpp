@@ -39,8 +39,8 @@ ACTION_IMPL(piegraph)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("data", ((float)atof(wnarrow(res[i][L"used"]).c_str())));
-			obj.set("label", Server->ConvertToUTF8(res[i][L"name"]));
+			obj.set("data", ((float)atof(res[i]["used"].c_str())));
+			obj.set("label", (res[i]["name"]));
 			data.add(obj);
 		}
 		ret.set("data", data);		

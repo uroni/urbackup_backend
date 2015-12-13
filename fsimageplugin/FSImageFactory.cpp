@@ -38,10 +38,10 @@
 
 void PrintInfo(IFilesystem *fs)
 {
-	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
+	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
+IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -52,14 +52,14 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 #else
 		last_error=errno;
 #endif
-		Server->Log(L"Error opening device file ("+pDev+L") Errorcode: "+convert(last_error), LL_ERROR);
+		Server->Log("Error opening device file ("+pDev+") Errorcode: "+convert(last_error), LL_ERROR);
 		return NULL;
 	}
 	char buffer[1024];
 	_u32 rc=dev->Read(buffer, 1024);
 	if(rc!=1024)
 	{
-		Server->Log(L"Error reading data from device ("+pDev+L")", LL_ERROR);
+		Server->Log("Error reading data from device ("+pDev+")", LL_ERROR);
 		return NULL;
 	}
 
@@ -67,7 +67,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 
 	if(isNTFS(buffer) )
 	{
-		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
+		Server->Log("Filesystem type is ntfs ("+pDev+")", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 
 
@@ -87,14 +87,14 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 			int64 idx_start=idx;
 			for(size_t i=0;i<100;++i)
 			{
-				b1+=nconvert((int)fs->readBlock(idx, NULL));
-				b2+=nconvert((int)fs2->readBlock(idx, NULL));
+				b1+=convert((int)fs->readBlock(idx, NULL));
+				b2+=convert((int)fs2->readBlock(idx, NULL));
 				++idx;
 			}
 			if(b1!=b2)
 			{
-				Server->Log(nconvert(idx_start)+" fs1: "+b1, LL_DEBUG);
-				Server->Log(nconvert(idx_start)+" fs2: "+b2, LL_DEBUG);
+				Server->Log(convert(idx_start)+" fs1: "+b1, LL_DEBUG);
+				Server->Log(convert(idx_start)+" fs2: "+b2, LL_DEBUG);
 			}
 		}*/
 
@@ -142,7 +142,7 @@ bool FSImageFactory::isNTFS(char *buffer)
 	}
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize,
+IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
 	unsigned int pBlocksize, bool fast_mode, ImageFormat format)
 {
 	switch(format)
@@ -160,7 +160,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only,
 	return NULL;
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn,
+IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string &parent_fn,
 	bool pRead_only, bool fast_mode, ImageFormat format)
 {
 	switch(format)

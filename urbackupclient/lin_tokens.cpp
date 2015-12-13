@@ -60,68 +60,68 @@ TokenCache::TokenCache(const TokenCache& other)
 	assert(false);
 }
 
-std::wstring get_hostname()
+std::string get_hostname()
 {
 	char hostname_c[255];
 	hostname_c[0]=0;
 	gethostname(hostname_c, 255);
 
-	std::wstring hostname = widen(hostname_c);
+	std::string hostname = hostname_c;
 	if(!hostname.empty())
-		hostname+=L"\\";
+		hostname+="\\";
 
 	return hostname;
 }
 
-std::vector<std::wstring> get_users()
+std::vector<std::string> get_users()
 {
 	std::ifstream passwd("/etc/passwd");
 
 	if(!passwd.is_open())
 	{
-		return std::vector<std::wstring>();
+		return std::vector<std::string>();
 	}
 
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	for(std::string line; std::getline(passwd, line);)
 	{
 		std::string user = getuntil(":", line);
-		ret.push_back(Server->ConvertToUnicode(user));
+		ret.push_back((user));
 	}
 
 	return ret;
 }
 
-std::vector<std::wstring> get_groups()
+std::vector<std::string> get_groups()
 {
 	std::ifstream group("/etc/group");
 
 	if(!group.is_open())
 	{
-		return std::vector<std::wstring>();
+		return std::vector<std::string>();
 	}
 
-	std::vector<std::wstring> ret;
+	std::vector<std::string> ret;
 	for(std::string line; std::getline(group, line);)
 	{
 		std::string cgroup = getuntil(":", line);
-		ret.push_back(Server->ConvertToUnicode(cgroup));
+		ret.push_back((cgroup));
 	}
 
 	return ret;
 }
 
-std::vector<std::wstring> get_user_groups(const std::wstring& username)
+std::vector<std::string> get_user_groups(const std::string& username)
 {
 	#ifdef __APPLE__
 	#define gid_t int
 	#endif
-	std::string utf8_username = Server->ConvertToUTF8(username).c_str();
+	std::string utf8_username = (username).c_str();
 	struct passwd* pw = getpwnam(utf8_username.c_str());
 	if(pw==NULL)
 	{
-		Server->Log(L"Error getting passwd structure for user with name \""+ username + L"\"", LL_ERROR);
-		return std::vector<std::wstring>();
+		Server->Log("Error getting passwd structure for user with name \""+ username + "\"", LL_ERROR);
+		return std::vector<std::string>();
 	}
 
 	std::vector<gid_t> group_ids;
@@ -133,22 +133,22 @@ std::vector<std::wstring> get_user_groups(const std::wstring& username)
 		group_ids.resize(ngroups);
 		if(getgrouplist(utf8_username.c_str(), pw->pw_gid, group_ids.data(), &ngroups)==-1)
 		{
-			Server->Log(L"Error getting group ids for user with name \""+ username + L"\"", LL_ERROR);
-			return std::vector<std::wstring>();
+			Server->Log("Error getting group ids for user with name \""+ username + "\"", LL_ERROR);
+			return std::vector<std::string>();
 		}
 
-		std::vector<std::wstring> ret;
+		std::vector<std::string> ret;
 		for(size_t i=0;i<group_ids.size();++i)
 		{
 			struct group* gr =  getgrgid(group_ids[i]);
-			ret.push_back(Server->ConvertToUnicode(gr->gr_name));
+			ret.push_back((gr->gr_name));
 		}
 
 		return ret;
 	}
 	else
 	{
-		return std::vector<std::wstring>();
+		return std::vector<std::string>();
 	}
 
 	#ifdef gid_t
@@ -176,13 +176,13 @@ int read_val(std::string val_name)
 }
 
 
-bool write_token( std::wstring hostname, bool is_user, std::wstring accountname, const std::wstring &token_fn, ClientDAO &dao )
+bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao )
 {
-	int token_fd = creat(Server->ConvertToUTF8(token_fn).c_str(), is_user?S_IRWXU:S_IRWXG);
+	int token_fd = creat((token_fn).c_str(), is_user?S_IRWXU:S_IRWXG);
 
 	if(token_fd==-1)
 	{
-		Server->Log(L"Error creating token file "+token_fn+L" errno="+convert(errno), LL_ERROR);
+		Server->Log("Error creating token file "+token_fn+" errno="+convert(errno), LL_ERROR);
 		return false;
 	}
 
@@ -190,7 +190,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 
 	if(is_user)
 	{
-		struct passwd* pw = getpwnam(Server->ConvertToUTF8(accountname).c_str());
+		struct passwd* pw = getpwnam((accountname).c_str());
 		if(pw!=NULL)
 		{
 			static int uid_min = read_val("UID_MIN");
@@ -206,7 +206,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	}
 
 	std::string token = Server->secureRandomString(20);
-	dao.updateFileAccessToken(accountname, widen(token),
+	dao.updateFileAccessToken(accountname, token,
 			is_user ? (is_system_user ? ClientDAO::c_is_system_user : ClientDAO::c_is_user) : ClientDAO::c_is_group  );
 
 	size_t written = 0;
@@ -215,7 +215,7 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 		ssize_t w = write(token_fd, token.data() + written, token.size()-written);
 		if(w<=0 && errno!=EINTR)
 		{
-			Server->Log("Error writing to token file. Errno="+nconvert(errno), LL_ERROR);
+			Server->Log("Error writing to token file. Errno="+convert(errno), LL_ERROR);
 			close(token_fd);
 			return false;
 		}
@@ -227,34 +227,34 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 
 	if(is_user)
 	{
-		struct passwd* pw = getpwnam(Server->ConvertToUTF8(accountname).c_str());
+		struct passwd* pw = getpwnam((accountname).c_str());
 		if(pw==NULL)
 		{
-			Server->Log(L"Error getting passwd structure for user with name \""+ accountname + L"\"", LL_ERROR);
+			Server->Log("Error getting passwd structure for user with name \""+ accountname + "\"", LL_ERROR);
 			close(token_fd);
 			return false;
 		}
 
 		if(fchown(token_fd, pw->pw_uid, pw->pw_gid)!=0)
 		{
-			Server->Log(L"Error changing user ownership of token file \""+ token_fn + L"\"", LL_ERROR);
+			Server->Log("Error changing user ownership of token file \""+ token_fn + "\"", LL_ERROR);
 			close(token_fd);
 			return false;
 		}
 	}
 	else
 	{
-		struct group* gr = getgrnam(Server->ConvertToUTF8(accountname).c_str());
+		struct group* gr = getgrnam((accountname).c_str());
 		if(gr==NULL)
 		{
-			Server->Log(L"Error getting group structure for group with name \""+ accountname + L"\"", LL_ERROR);
+			Server->Log("Error getting group structure for group with name \""+ accountname + "\"", LL_ERROR);
 			close(token_fd);
 			return false;
 		}
 
 		if(fchown(token_fd, 0, gr->gr_gid)!=0)
 		{
-			Server->Log(L"Error changing group ownership of token file \""+ token_fn + L"\"", LL_ERROR);
+			Server->Log("Error changing group ownership of token file \""+ token_fn + "\"", LL_ERROR);
 			close(token_fd);
 			return false;
 		}
@@ -269,15 +269,15 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	TokenCacheInt* cache = new TokenCacheInt;
 	token_cache.reset(cache);
 
-	std::vector<std::wstring> users = get_users();
+	std::vector<std::string> users = get_users();
 
 	for(size_t i=0;i<users.size();++i)
 	{
-		struct passwd* pw = getpwnam(Server->ConvertToUTF8(users[i]).c_str());
+		struct passwd* pw = getpwnam((users[i]).c_str());
 
 		if(pw==NULL)
 		{
-			Server->Log(L"Error getting passwd structure for user with name \""+ users[i] + L"\"", LL_ERROR);
+			Server->Log("Error getting passwd structure for user with name \""+ users[i] + "\"", LL_ERROR);
 			continue;
 		}
 
@@ -292,15 +292,15 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		cache->uid_map[pw->pw_uid] = token_id.value;
 	}
 
-	std::vector<std::wstring> groups = get_groups();
+	std::vector<std::string> groups = get_groups();
 
 	for(size_t i=0;i<groups.size();++i)
 	{
-		struct group* gr = getgrnam(Server->ConvertToUTF8(groups[i]).c_str());
+		struct group* gr = getgrnam((groups[i]).c_str());
 
 		if(gr==NULL)
 		{
-			Server->Log(L"Error getting group structure for group with name \""+ groups[i] + L"\"", LL_ERROR);
+			Server->Log("Error getting group structure for group with name \""+ groups[i] + "\"", LL_ERROR);
 			continue;
 		}
 
@@ -316,7 +316,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
-std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache& token_cache )
+std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
 {
 	if(token_cache.get()==NULL)
 	{
@@ -325,9 +325,9 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 
 	struct stat stat_data;
 
-	if(stat(Server->ConvertToUTF8(fn.c_str()).c_str(), &stat_data)!=0)
+	if(stat(fn.c_str(), &stat_data)!=0)
 	{
-		Server->Log(L"Error stating file \"" + fn + L"\" to get file tokens. Errno: "+convert(errno), LL_ERROR);
+		Server->Log("Error stating file \"" + fn + "\" to get file tokens. Errno: "+convert(errno), LL_ERROR);
 		return std::string();
 	}
 
@@ -358,7 +358,7 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 			std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(stat_data.st_uid);
 			if(it==token_cache.get()->uid_map.end())
 			{
-				Server->Log("Error getting internal id for user with id "+nconvert(stat_data.st_uid), LL_ERROR);
+				Server->Log("Error getting internal id for user with id "+convert(stat_data.st_uid), LL_ERROR);
 			}
 			else
 			{
@@ -374,7 +374,7 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 			std::map<gid_t, int64>::iterator it = token_cache.get()->gid_map.find(stat_data.st_gid);
 			if(it==token_cache.get()->gid_map.end())
 			{
-				Server->Log("Error getting internal id for group with id "+nconvert(stat_data.st_gid), LL_ERROR);
+				Server->Log("Error getting internal id for group with id "+convert(stat_data.st_gid), LL_ERROR);
 			}
 			else
 			{

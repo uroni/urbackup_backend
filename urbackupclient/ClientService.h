@@ -125,8 +125,6 @@ public:
 
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
 
-	static bool tochannelLog(int64 log_id, const std::wstring& msg, int loglevel, const std::string& identity);
-
 	static void updateRestorePc(int64 status_id, int nv, const std::string& identity);
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
@@ -134,7 +132,7 @@ public:
 	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
 
 private:
-	bool checkPassword(const std::wstring &cmd, bool& change_pw);
+	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
 	void updateLastBackup(void);
 	std::string replaceChars(std::string in);
@@ -146,7 +144,7 @@ private:
 	bool waitForThread(void);
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
-	bool sendMBR(std::wstring dl, std::wstring &errmsg);
+	bool sendMBR(std::string dl, std::string &errmsg);
     std::string receivePacket(const SChannel& channel);
 	void downloadImage(str_map params);
 	void removeChannelpipe(IPipe *cp);
@@ -161,7 +159,7 @@ private:
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 
-	std::string getAccessTokensParams(const std::wstring& tokens, bool with_clientname);
+	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname);
 
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 

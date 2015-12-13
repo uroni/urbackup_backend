@@ -141,7 +141,7 @@ bool RestoreFiles::downloadFilelist( FileClient& fc )
 
 	if(rc!=ERR_SUCCESS)
 	{
-		log("Error getting file list. Errorcode: "+FileClient::getErrorString(rc)+" ("+nconvert(rc)+")", LL_ERROR);
+		log("Error getting file list. Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		return false;
 	}
 
@@ -157,7 +157,7 @@ int64 RestoreFiles::calculateDownloadSize()
 
 	_u32 read;
 	SFile data;
-	std::map<std::wstring, std::wstring> extra;
+	std::map<std::string, std::string> extra;
 
 	int64 total_size = 0;
 
@@ -194,17 +194,17 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	_u32 read;
 	SFile data;
-	std::map<std::wstring, std::wstring> extra;
+	std::map<std::string, std::string> extra;
 
 	size_t depth = 0;
 
-	std::wstring restore_path;
-	std::wstring server_path = L"clientdl";
+	std::string restore_path;
+	std::string server_path = "clientdl";
 
 	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
     THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download);
 
-	std::wstring curr_files_dir;
+	std::string curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
 
 	ClientDAO client_dao(db);
@@ -247,7 +247,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					}
 				}
 
-				if(!data.isdir || data.name!=L"..")
+				if(!data.isdir || data.name!="..")
 				{
 					for(size_t j=0;j<folder_items.size();++j)
 					{
@@ -257,12 +257,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 				if(data.isdir)
 				{
-					if(data.name!=L"..")
+					if(data.name!="..")
 					{
 						bool set_orig_path = false;
                         if(!metadata.orig_path.empty())
 						{
-                            restore_path = Server->ConvertToUnicode(metadata.orig_path);
+                            restore_path = (metadata.orig_path);
 							set_orig_path=true;
 						}
 
@@ -272,7 +272,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							{
 								if(!os_create_dir_recursive(os_file_prefix(restore_path)))
 								{
-									log(L"Error recursively creating directory \""+restore_path+L"\"", LL_ERROR);
+									log("Error recursively creating directory \""+restore_path+"\"", LL_ERROR);
 									has_error=true;
 								}
 							}
@@ -288,7 +288,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							{
 								if(!os_create_dir(os_file_prefix(restore_path)))
 								{
-									log(L"Error creating directory \""+restore_path+L"\"", LL_ERROR);
+									log("Error creating directory \""+restore_path+"\"", LL_ERROR);
 									has_error=true;
 								}
 							}							
@@ -296,7 +296,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 						folder_items.push_back(0);
 
-						server_path+=L"/"+data.name;
+						server_path+="/"+data.name;
 
 						++depth;
 					}
@@ -304,7 +304,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					{
 						--depth;
 
-						server_path=ExtractFilePath(server_path, L"/");
+						server_path=ExtractFilePath(server_path, "/");
 						restore_path=ExtractFilePath(restore_path, os_file_sep());						
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
@@ -315,15 +315,15 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 				}
 				else
 				{
-					std::wstring local_fn = restore_path + os_file_sep() + data.name;
+					std::string local_fn = restore_path + os_file_sep() + data.name;
 #ifdef _WIN32
-					std::wstring name_lower = strlower(data.name);
+					std::string name_lower = strlower(data.name);
 #else
-					std::wstring name_lower = data.name;
+					std::string name_lower = data.name;
 #endif
-					std::wstring server_fn = server_path + L"/" + data.name;
+					std::string server_fn = server_path + "/" + data.name;
 
-					str_map::iterator it_orig_path = extra.find(L"orig_path");
+					str_map::iterator it_orig_path = extra.find("orig_path");
 					if(it_orig_path!=extra.end())
 					{
                         local_fn = it_orig_path->second;
@@ -337,9 +337,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							curr_files_dir = restore_path;
 
 #ifndef _WIN32
-							std::wstring restore_path_lower = restore_path;
+							std::string restore_path_lower = restore_path;
 #else
-							std::wstring restore_path_lower = strlower(restore_path);
+							std::string restore_path_lower = strlower(restore_path);
 #endif
 
 							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), curr_files))
@@ -378,7 +378,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 						if(orig_file==NULL)
 						{
-							log(L"Cannot open file \""+local_fn+L"\" for writing. Not restoring file.", LL_ERROR);
+							log("Cannot open file \""+local_fn+"\" for writing. Not restoring file.", LL_ERROR);
 							has_error=true;
 						}
 						else
@@ -387,7 +387,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 							if(chunkhashes==NULL)
 							{
-								log(L"Cannot open temporary file for chunk hashes of file \""+local_fn+L"\". Not restoring file.", LL_ERROR);
+								log("Cannot open temporary file for chunk hashes of file \""+local_fn+"\". Not restoring file.", LL_ERROR);
 								has_error=true;
 								delete orig_file;
 							}
@@ -396,16 +396,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
                                 bool calc_hashes=false;
 								if(shahash.empty())
 								{
-									log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
+									log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
 									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL);
                                     calc_hashes = true;
 								}
 								
-								if(shahash!=base64_decode_dash(wnarrow(extra[L"shahash"])))
+								if(shahash!=base64_decode_dash(extra["shahash"]))
 								{
                                     if(!calc_hashes)
                                     {
-                                        log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
+                                        log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
                                         build_chunk_hashs(orig_file, chunkhashes, NULL, false, NULL, false, NULL);
                                     }
 
@@ -417,7 +417,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
                                         data.size, metadata, false, true, 0);
 
-									std::wstring tmpfn = chunkhashes->getFilenameW();
+									std::string tmpfn = chunkhashes->getFilename();
 									delete chunkhashes;
 									Server->deleteFile(tmpfn);
 									delete orig_file;
@@ -462,15 +462,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 }
 
 void RestoreFiles::log( const std::string& msg, int loglevel )
-{
-	Server->Log(msg, loglevel);
-	if(loglevel>=LL_INFO)
-	{
-		ClientConnector::tochannelLog(log_id, msg, loglevel, server_token);
-	}
-}
-
-void RestoreFiles::log( const std::wstring& msg, int loglevel )
 {
 	Server->Log(msg, loglevel);
 	if(loglevel>=LL_INFO)

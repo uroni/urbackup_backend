@@ -38,7 +38,7 @@
 const size_t metadata_id_size = 4+4+8+4;
 
 
-FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::wstring& cmd )
+FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	: PipeFileBase(cmd), pipe(pipe),
 #ifdef _WIN32
 	hFile(INVALID_HANDLE_VALUE),
@@ -111,7 +111,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			{
 				if(!metadata_file->Seek(metadata_file_off))
 				{
-					errpipe->Write(Server->ConvertToUTF8(L"Error seeking to metadata in \"" + metadata_file->getFilenameW()+L"\""));
+					errpipe->Write("Error seeking to metadata in \"" + metadata_file->getFilename()+"\"");
 
 					read_bytes=0;
 					metadata_state = MetadataState_Wait;
@@ -128,7 +128,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	{
 		if(metadata_buffer_size==0)
 		{
-			SFile file_meta = getFileMetadata(os_file_prefix(Server->ConvertToUnicode(local_fn)));
+			SFile file_meta = getFileMetadata(os_file_prefix(local_fn));
 			if(file_meta.name.empty())
 			{
 				Server->Log("Error getting metadata (created and last modified time) of "+local_fn, LL_ERROR);
@@ -142,7 +142,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addVarInt(folder_items);
 			if(token_callback.get()!=NULL)
 			{
-				meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+				meta_data.addString(token_callback->getFileTokens(local_fn));
 			}
 			else
 			{
@@ -158,7 +158,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			}
 			else
 			{
-				Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)meta_data.getDataSize())+")", LL_ERROR);
+				Server->Log("File metadata of "+local_fn+" too large ("+convert((size_t)meta_data.getDataSize())+")", LL_ERROR);
 			}
 			
 		}
@@ -206,7 +206,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		_u32 read = metadata_file->Read(buf, static_cast<_u32>(read_bytes));
 		if(read!=read_bytes)
 		{
-			errpipe->Write(Server->ConvertToUTF8(L"Error reading metadata stream from file \""+metadata_file->getFilenameW()+L"\"\n"));
+			errpipe->Write("Error reading metadata stream from file \""+metadata_file->getFilename()+"\"\n");
 			memset(buf + read, 0, read_bytes - read);
 		}
 
@@ -255,7 +255,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				}
 
 
-				int file_type_flags = os_get_file_type(os_file_prefix(Server->ConvertToUnicode(local_fn)));
+				int file_type_flags = os_get_file_type(os_file_prefix(local_fn));
 
 				if(file_type_flags==0)
 				{
@@ -373,12 +373,12 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
-		hFile = CreateFileW(os_file_prefix(Server->ConvertToUnicode(local_fn)).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
+		hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
             OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 		if(hFile==INVALID_HANDLE_VALUE)
 		{
-			errpipe->Write("Error opening file \""+local_fn+"\" to read metadata. Last error: "+nconvert((int)GetLastError())+"\n");
+			errpipe->Write("Error opening file \""+local_fn+"\" to read metadata. Last error: "+convert((int)GetLastError())+"\n");
 			return false;
 		}
 
@@ -388,7 +388,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 		BY_HANDLE_FILE_INFORMATION file_information;
 		if(GetFileInformationByHandle(hFile, &file_information)==FALSE)
 		{
-			errpipe->Write("Error getting file attributes of \""+local_fn+"\". Last error: "+nconvert((int)GetLastError())+"\n");
+			errpipe->Write("Error getting file attributes of \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
 			return false;
 		}
 
@@ -415,7 +415,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		if(b==FALSE)
 		{
-			errpipe->Write("Error getting metadata of file \""+local_fn+"\". Last error: "+nconvert((int)GetLastError())+"\n");
+			errpipe->Write("Error getting metadata of file \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
 			*buf = 0;
 			read_bytes = 1;
 			return false;
@@ -454,7 +454,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 			if(b==FALSE)
 			{
-				errpipe->Write("Error getting metadata of file \""+local_fn+"\" (2). Last error: "+nconvert((int)GetLastError())+"\n");
+				errpipe->Write("Error getting metadata of file \""+local_fn+"\" (2). Last error: "+convert((int)GetLastError())+"\n");
 				*buf=0;
 				read_bytes = 1;
 				return false;
@@ -481,7 +481,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 			if(b==FALSE)
 			{
-				errpipe->Write("Error skipping data stream of file \""+local_fn+"\" (1). Last error: "+nconvert((int)GetLastError())+"\n");
+				errpipe->Write("Error skipping data stream of file \""+local_fn+"\" (1). Last error: "+convert((int)GetLastError())+"\n");
 				*buf=0;
 				read_bytes = 1;
 				return false;
@@ -489,7 +489,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 			if(seeked.QuadPart!=curr_stream->Size.QuadPart)
 			{
-				errpipe->Write("Error skipping data stream of file \""+local_fn+"\" (2). Last error: "+nconvert((int)GetLastError())+"\n");
+				errpipe->Write("Error skipping data stream of file \""+local_fn+"\" (2). Last error: "+convert((int)GetLastError())+"\n");
 				*buf=0;
 				read_bytes = 1;
 				return false;
@@ -515,7 +515,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		if(b==FALSE)
 		{
-			errpipe->Write("Error reading metadata stream of file \""+local_fn+"\". Last error: "+nconvert((int)GetLastError())+"\n");
+			errpipe->Write("Error reading metadata stream of file \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
 			memset(buf, 0, toread);
 		}
 
@@ -562,7 +562,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno), LL_ERROR);
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno), LL_ERROR);
 				return false;
 			}
 
@@ -579,7 +579,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno)+" (2)", LL_ERROR);
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno)+" (2)", LL_ERROR);
 				return false;
 			}
 
@@ -606,7 +606,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute "+key+" of file "+fn+" errno: "+nconvert(errno), LL_ERROR);
+				Server->Log("Error getting extended attribute "+key+" of file "+fn+" errno: "+convert(errno), LL_ERROR);
 				return false;
 			}
 
@@ -622,7 +622,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno)+" (2)", LL_ERROR);
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno)+" (2)", LL_ERROR);
 				return false;
 			}
 
@@ -651,7 +651,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 
 		if(rc!=0)
 		{
-            Server->Log("Error with lstat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
+            Server->Log("Error with lstat of "+local_fn+" errorcode: "+convert(errno), LL_ERROR);
 			return false;
 		}
 
@@ -659,7 +659,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 
 		if(data.getDataSize()+sizeof(_u32)>metadata_buffer.size())
 		{
-			Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)data.getDataSize()+sizeof(_u32))+")", LL_ERROR);
+			Server->Log("File metadata of "+local_fn+" too large ("+convert((size_t)data.getDataSize()+sizeof(_u32))+")", LL_ERROR);
 			return false;
 		}
 

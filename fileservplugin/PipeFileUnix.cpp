@@ -26,7 +26,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 
-PipeFile::PipeFile(const std::wstring& pCmd)
+PipeFile::PipeFile(const std::string& pCmd)
 	: PipeFileBase(pCmd),
 		hStderr(0),
 		hStdout(0)
@@ -35,7 +35,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 
 	if(pipe(stdout_pipe) == -1)
 	{
-		Server->Log("Error creating stdout pipe: " + nconvert(errno), LL_ERROR);
+		Server->Log("Error creating stdout pipe: " + convert(errno), LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -43,7 +43,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 	int stderr_pipe[2];
 	if(pipe(stderr_pipe) == -1)
 	{
-		Server->Log("Error creating stderr pipe: " + nconvert(errno), LL_ERROR);
+		Server->Log("Error creating stderr pipe: " + convert(errno), LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -52,7 +52,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 
 	if(child_pid==-1)
 	{
-		Server->Log("Error forking to execute command: " + nconvert(errno), LL_ERROR);
+		Server->Log("Error forking to execute command: " + convert(errno), LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -66,7 +66,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 		close(stderr_pipe[0]);
 		close(stderr_pipe[1]);
 
-		int rc = system(Server->ConvertToUTF8(pCmd).c_str());
+		int rc = system((pCmd).c_str());
 
 		_exit(rc);
 	}
@@ -138,7 +138,7 @@ bool PipeFile::getExitCode(int& exit_code)
 
 	if(rc==-1)
 	{
-		Server->Log("Error while waiting for exit code: " + nconvert(errno), LL_ERROR);
+		Server->Log("Error while waiting for exit code: " + convert(errno), LL_ERROR);
 		return false;
 	}
 	else
@@ -150,7 +150,7 @@ bool PipeFile::getExitCode(int& exit_code)
 		}
 		else if(WIFSIGNALED(status))
 		{
-			Server->Log("Script was terminated by signal " + nconvert(WTERMSIG(status)), LL_ERROR);
+			Server->Log("Script was terminated by signal " + convert(WTERMSIG(status)), LL_ERROR);
 			return false;
 		}
 		else if(WCOREDUMP(status))
@@ -160,7 +160,7 @@ bool PipeFile::getExitCode(int& exit_code)
 		}
 		else if(WIFSTOPPED(status))
 		{
-			Server->Log("Script was stopped by signal " + nconvert(WSTOPSIG(status)), LL_ERROR);
+			Server->Log("Script was stopped by signal " + convert(WSTOPSIG(status)), LL_ERROR);
 			return false;
 		}
 		else

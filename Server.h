@@ -51,7 +51,7 @@ public:
 	CServer();
 	~CServer();
 	void setup(void);
-	void setServerParameters(const str_nmap &pServerParams);
+	void setServerParameters(const str_map &pServerParams);
 
 	virtual std::string getServerParameter(const std::string &key);
 	virtual std::string getServerParameter(const std::string &key, const std::string &def);
@@ -61,19 +61,18 @@ public:
 	virtual void setLogCircularBufferSize(size_t size);
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid);
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
-	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO);
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true);
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true);
 
 	virtual void setContentType(THREAD_ID tid, const std::string &str);
 	virtual void addHeader(THREAD_ID tid, const std::string &str);
 
-	THREAD_ID Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS, IOutputStream *req);
-	std::string Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS);
+	THREAD_ID Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS, IOutputStream *req);
+	std::string Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS);
 
 	virtual void AddAction(IAction *action);
 	virtual bool RemoveAction(IAction *action);
-	virtual void setActionContext(std::wstring context);
+	virtual void setActionContext(std::string context);
 	virtual void resetActionContext(void);
 
 	virtual int64 getTimeSeconds(void);
@@ -95,7 +94,6 @@ public:
 	virtual void createThread(IThread *thread);
 	virtual IThreadPool *getThreadPool(void);
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);
-	virtual ISettingsReader* createFileSettingsReader(const std::wstring& pFile);
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
@@ -111,17 +109,15 @@ public:
 
 	virtual THREAD_ID getThreadID(void);
 	
-	virtual std::string ConvertToUTF8(const std::wstring &input);
-	virtual std::wstring ConvertToUnicode(const std::string &input);
-	virtual std::string ConvertToUTF16(const std::wstring &input);
-	virtual std::string ConvertToUTF32(const std::wstring &input);
-	virtual std::wstring ConvertFromUTF16(const std::string &input);
-	virtual std::wstring ConvertFromUTF32(const std::string &input);
+	virtual std::string ConvertToUTF16(const std::string &input);
+	virtual std::string ConvertToUTF32(const std::string &input);
+	virtual std::wstring ConvertToWchar(const std::string &input);
+	virtual std::string ConvertFromWchar(const std::wstring &input);
+	virtual std::string ConvertFromUTF16(const std::string &input);
+	virtual std::string ConvertFromUTF32(const std::string &input);
 
 	virtual std::string GenerateHexMD5(const std::string &input);
 	virtual std::string GenerateBinaryMD5(const std::string &input);
-	virtual std::string GenerateHexMD5(const std::wstring &input);
-	virtual std::string GenerateBinaryMD5(const std::wstring &input);
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
@@ -139,26 +135,23 @@ public:
 	virtual void addRequest(void);
 
 	virtual IFile* openFile(std::string pFilename, int pMode=0);
-	virtual IFile* openFile(std::wstring pFilename, int pMode=0);
 	virtual IFile* openFileFromHandle(void *handle);
 	virtual IFile* openTemporaryFile(void);
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);
-	virtual bool deleteFile(std::wstring pFilename);
 	virtual bool fileExists(std::string pFilename);
-	virtual bool fileExists(std::wstring pFilename);
 
 	virtual POSTFILE_KEY getPostFileKey();
 	virtual void addPostFile(POSTFILE_KEY pfkey, const std::string &name, const SPostfile &pf);
 	virtual SPostfile getPostFile(POSTFILE_KEY pfkey, const std::string &name);
 	virtual void clearPostFiles(POSTFILE_KEY pfkey);
 
-	virtual std::wstring getServerWorkingDir(void);
-	void setServerWorkingDir(const std::wstring &wdir);
+	virtual std::string getServerWorkingDir(void);
+	void setServerWorkingDir(const std::string &wdir);
 
 	void ShutdownPlugins(void);
 
-	void setTemporaryDirectory(const std::wstring &dir);
+	void setTemporaryDirectory(const std::string &dir);
 
 	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory);
 	virtual bool hasDatabaseFactory(const std::string &pEngineName);
@@ -225,7 +218,7 @@ private:
 	ICondition *startup_complete_cond;
 	bool startup_complete;
 
-	std::map< std::wstring, std::map<std::wstring, IAction*> > actions;
+	std::map< std::string, std::map<std::string, IAction*> > actions;
 
 	std::map<std::string, UNLOADACTIONS> unload_functs;
 	std::vector<HMODULE> unload_handles;
@@ -259,7 +252,7 @@ private:
 	std::map<POSTFILE_KEY, std::map<std::string, SPostfile > > postfiles;
 	POSTFILE_KEY curr_postfilekey;
 
-	str_nmap server_params;
+	str_map server_params;
 
 	PLUGIN_ID curr_pluginid;
 
@@ -267,11 +260,11 @@ private:
 
 	CThreadPool* threadpool;
 
-	std::wstring action_context;
+	std::string action_context;
 
-	std::wstring workingdir;
+	std::string workingdir;
 
-	std::wstring tmpdir;
+	std::string tmpdir;
 
 	std::map<std::string, IDatabaseFactory*> database_factories;
 

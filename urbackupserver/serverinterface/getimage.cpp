@@ -29,8 +29,8 @@ ACTION_IMPL(getimage)
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL )
 	{
-		int img_id=watoi(GET[L"image_id"]);
-		std::map<std::string, IObject* >::iterator iter=session->mCustom.find("image_"+nconvert(img_id));
+		int img_id=watoi(GET["image_id"]);
+		std::map<std::string, IObject* >::iterator iter=session->mCustom.find("image_"+convert(img_id));
 		if(iter!=session->mCustom.end())
 		{
 			Server->setContentType(tid, "image/png");

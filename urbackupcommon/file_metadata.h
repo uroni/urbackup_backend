@@ -58,30 +58,30 @@ public:
 	void set_orig_path(const std::string& the_orig_path);
 };
 
-bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing);
+bool write_file_metadata(const std::string& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing);
 
 bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing, int64& truncate_to_bytes);
 
 bool is_metadata_only(IFile* hash_file);
 
-bool read_metadata(const std::wstring& in_fn, FileMetadata& metadata);
+bool read_metadata(const std::string& in_fn, FileMetadata& metadata);
 
 bool read_metadata(IFile* in, FileMetadata& metadata);
 
-bool has_metadata(const std::wstring& in_fn, const FileMetadata& metadata);
+bool has_metadata(const std::string& in_fn, const FileMetadata& metadata);
 
 int64 os_metadata_offset(IFile* meta_file);
 
 int64 read_hashdata_size(IFile* meta_file);
 
-bool copy_os_metadata(const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb);
+bool copy_os_metadata(const std::string& in_fn, const std::string& out_fn, INotEnoughSpaceCallback *cb);
 
 namespace
 {
-	const wchar_t* metadata_dir_fn=L".dir_metadata";
+	const char* metadata_dir_fn=".dir_metadata";
 }
 
-std::wstring escape_metadata_fn(const std::wstring& fn);
+std::string escape_metadata_fn(const std::string& fn);
 
-std::wstring unescape_metadata_fn(const std::wstring& fn);
+std::string unescape_metadata_fn(const std::string& fn);
 

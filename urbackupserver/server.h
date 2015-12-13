@@ -40,24 +40,24 @@ public:
 
 	static void updateDeletePending();
 
-	static void forceOfflineClient(const std::wstring& clientname);
+	static void forceOfflineClient(const std::string& clientname);
 
-	static void setVirtualClients(const std::wstring& clientname, const std::wstring& virtual_clients);
+	static void setVirtualClients(const std::string& clientname, const std::string& virtual_clients);
 
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
 	void removeAllClients(void);
 	void maybeUpdateDeletePendingClients();
-	bool isDeletePendingClient(const std::wstring& clientname);
+	bool isDeletePendingClient(const std::string& clientname);
 	void maybeUpdateExistingClientsLower();
-	void fixClientnameCase(std::wstring& clientname);
+	void fixClientnameCase(std::string& clientname);
 
-	std::map<std::wstring, SClient> clients;
+	std::map<std::string, SClient> clients;
 
 	bool update_existing_client_names;
-	std::vector<std::wstring> existing_client_names;
-	std::vector<std::wstring> existing_client_names_lower;
+	std::vector<std::string> existing_client_names;
+	std::vector<std::string> existing_client_names_lower;
 
 	IQuery *q_get_extra_hostnames;
 	IQuery *q_update_extra_ip;
@@ -75,13 +75,13 @@ private:
 	static bool filesystem_transactions_enabled;
 
 	static volatile bool update_delete_pending_clients;
-	std::vector<std::wstring> delete_pending_clients;
+	std::vector<std::string> delete_pending_clients;
 
 	static IMutex* force_offline_mutex;
-	static std::vector<std::wstring> force_offline_clients;
+	static std::vector<std::string> force_offline_clients;
 
 	static IMutex* virtual_clients_mutex;
-	static std::map<std::wstring, std::vector<std::wstring> > virtual_clients;
+	static std::map<std::string, std::vector<std::string> > virtual_clients;
 };
 
 #endif //URB_SERVER_H

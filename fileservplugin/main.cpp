@@ -153,7 +153,7 @@ bool SetPrivilege(
             lpszPrivilege,   // privilege to lookup 
             &luid ) )        // receives LUID of privilege
     {
-        Log("LookupPrivilegeValue error: "+nconvert((int)GetLastError()), LL_ERROR ); 
+        Log("LookupPrivilegeValue error: "+convert((int)GetLastError()), LL_ERROR ); 
         return false; 
     }
 
@@ -174,7 +174,7 @@ bool SetPrivilege(
            (PTOKEN_PRIVILEGES) NULL, 
            (PDWORD) NULL) )
     { 
-          Log("AdjustTokenPrivileges error: "+nconvert((int)GetLastError()), LL_ERROR ); 
+          Log("AdjustTokenPrivileges error: "+convert((int)GetLastError()), LL_ERROR ); 
           return false; 
     } 
 

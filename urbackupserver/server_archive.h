@@ -15,8 +15,8 @@ public:
 	void operator()(void);
 
 
-	static int getBackupTypes(const std::wstring &backup_type_name);
-	static std::wstring getBackupType(int backup_types);
+	static int getBackupTypes(const std::string &backup_type_name);
+	static std::string getBackupType(int backup_types);
 	static void doQuit(void);
 	static void initMutex(void);
 	static void destroyMutex(void);
@@ -28,7 +28,7 @@ private:
 	void archiveFileBackup(int backupid, int length);
 	void updateInterval(int archiveid, int interval);
 
-	bool isInArchiveWindow(const std::wstring &window_def);
+	bool isInArchiveWindow(const std::string &window_def);
 
 	void copyArchiveSettings(int clientid);
 

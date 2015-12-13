@@ -23,15 +23,15 @@
 
 namespace
 {
-	bool client_start_backup(IPipe *comm_pipe, std::wstring backup_type)
+	bool client_start_backup(IPipe *comm_pipe, std::string backup_type)
 	{
-		if(backup_type==L"full_file")
+		if(backup_type=="full_file")
 			comm_pipe->Write("START BACKUP FULL");
-		else if(backup_type==L"incr_file")
+		else if(backup_type=="incr_file")
 			comm_pipe->Write("START BACKUP INCR");
-		else if(backup_type==L"full_image")
+		else if(backup_type=="full_image")
 			comm_pipe->Write("START IMAGE FULL");
-		else if(backup_type==L"incr_image")
+		else if(backup_type=="incr_image")
 			comm_pipe->Write("START IMAGE INCR");
 		else
 			return false;
@@ -57,9 +57,9 @@ ACTION_IMPL(start_backup)
 		}
 	}
 
-	std::wstring s_start_client=GET[L"start_client"];
+	std::string s_start_client=GET["start_client"];
 	std::vector<int> start_client;
-	std::wstring start_type=GET[L"start_type"];
+	std::string start_type=GET["start_type"];
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
@@ -68,8 +68,8 @@ ACTION_IMPL(start_backup)
 	{
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
 
-		std::vector<std::wstring> sv_start_client;
-		Tokenize(s_start_client, sv_start_client, L",");
+		std::vector<std::string> sv_start_client;
+		Tokenize(s_start_client, sv_start_client, ",");
 
 		JSON::Array result;
 

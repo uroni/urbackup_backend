@@ -98,7 +98,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			if(curr_pc!=last_pc)
 			{
 				last_pc=curr_pc;
-				Server->Log(nconvert(curr_pc)+"%", LL_INFO);
+				Server->Log(convert(curr_pc)+"%", LL_INFO);
 			}
 		}
 
@@ -258,7 +258,7 @@ bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpa
 	int rc=f->Write(buf, (_u32)bsize);
 	if(rc!=bsize)
 	{
-		if(cb!=NULL && cb->handle_not_enough_space(f->getFilenameW()) )
+		if(cb!=NULL && cb->handle_not_enough_space(f->getFilename()) )
 		{
 			_u32 written=rc;
 			do

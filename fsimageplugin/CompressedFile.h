@@ -11,7 +11,7 @@
 class CompressedFile : public IFile, public ICacheEvictionCallback
 {
 public:
-	CompressedFile(std::wstring pFilename, int pMode);
+	CompressedFile(std::string pFilename, int pMode);
 	CompressedFile(IFile* file, bool openExisting, bool readOnly);
 	~CompressedFile();
 
@@ -25,7 +25,6 @@ public:
 	virtual bool PunchHole( _i64 spos, _i64 size );
 
 	virtual std::string getFilename(void);
-	virtual std::wstring getFilenameW(void);
 
 	virtual bool Sync();
 

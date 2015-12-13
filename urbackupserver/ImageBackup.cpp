@@ -99,7 +99,7 @@ namespace
 	}
 }
 
-ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool incremental, std::string letter)
+ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool incremental, std::string letter)
 	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
 }
@@ -228,7 +228,7 @@ bool ImageBackup::doBackup()
 		{
 			synthetic_full=false;
 			ServerLogger::Log(logid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
-			ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
+			ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
 					client_main->getProtocolVersions().image_protocol_version>1);
 		}
 		else
@@ -240,7 +240,7 @@ bool ImageBackup::doBackup()
 	}
 	else
 	{
-		ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
+		ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
 			      client_main->getProtocolVersions().image_protocol_version>1);
 	}
 
@@ -284,13 +284,13 @@ namespace
 }
 
 
-bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format, bool transfer_bitmap)
+bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format, bool transfer_bitmap)
 {
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 
@@ -328,7 +328,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	}
 	else
 	{
-		IFile *hashfile=Server->openFile(os_file_prefix(pParentvhd+L".hash"));
+		IFile *hashfile=Server->openFile(os_file_prefix(pParentvhd+".hash"));
 		if(hashfile==NULL)
 		{
 			ServerLogger::Log(logid, "Error opening hashfile", LL_ERROR);
@@ -337,7 +337,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token+chksum_str;
+		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
@@ -356,7 +356,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 		Server->destroy(hashfile);
 	}
 
-	std::wstring imagefn=constructImagePath(widen(sletter), image_file_format);
+	std::string imagefn=constructImagePath(sletter, image_file_format);
 
 	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
 	if(free_space!=-1 && free_space<minfreespace_image)
@@ -371,7 +371,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	}
 
 	{
-		std::string mbrd=getMBR(widen(sletter));
+		std::string mbrd=getMBR(sletter);
 		if(mbrd.empty())
 		{
 			if(pLetter!="SYSVOL" && pLetter!="ESP")
@@ -381,7 +381,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 		}
 		else
 		{
-			IFile *mbr_file=Server->openFile(os_file_prefix(imagefn+L".mbr"), MODE_WRITE);
+			IFile *mbr_file=Server->openFile(os_file_prefix(imagefn+".mbr"), MODE_WRITE);
 			if(mbr_file!=NULL)
 			{
 				_u32 w=mbr_file->Write(mbrd);
@@ -405,11 +405,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 	if(pParentvhd.empty())
 	{
-		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), widen(pLetter));
+		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
 	}
 	else
 	{
-		backup_dao->newImageBackup(clientid, imagefn, synthetic_full?0:incremental, incremental_ref, client_main->getCurrImageVersion(), widen(pLetter));
+		backup_dao->newImageBackup(clientid, imagefn, synthetic_full?0:incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
 	}
 	backupid=static_cast<int>(db->getLastInsertID());
 
@@ -477,7 +477,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	{
 		if(ServerStatus::getProcess(clientname, status_id).stop)
 		{
-			ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
+			ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
 			goto do_image_cleanup;
 		}
 		size_t r=0;
@@ -503,7 +503,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				{
 					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
-						ServerLogger::Log(logid, L"Server admin stopped backup. (2)", LL_ERROR);
+						ServerLogger::Log(logid, "Server admin stopped backup. (2)", LL_ERROR);
 						goto do_image_cleanup;
 					}
 					ServerStatus::setROnline(clientname, false);
@@ -527,7 +527,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 								client_main->updateClientAddress(msg.substr(7), switch_to_internet_connection);
 								if(switch_to_internet_connection)
 								{
-									ServerLogger::Log(logid, L"Stopped image backup because client is connected via Internet now", LL_WARNING);
+									ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
 									goto do_image_cleanup;
 								}
 							}
@@ -558,7 +558,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 				if(pParentvhd.empty())
 				{
-					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id);
+					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id);
 					if(transfer_bitmap)
 					{
 						cmd+="&bitmap=1";
@@ -580,7 +580,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				}
 				else
 				{
-					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
+					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id)+"&hashsize="+convert(parenthashfile->Size());
 					if(transfer_bitmap)
 					{
 						ts+="&bitmap=1";
@@ -623,7 +623,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 			}
 			else
 			{
-				ServerLogger::Log(logid, "Pipe to client unexpectedly closed has_error="+(cc==NULL?"NULL":nconvert(cc->hasError())), LL_ERROR);
+				ServerLogger::Log(logid, "Pipe to client unexpectedly closed has_error="+(cc==NULL?"NULL":convert(cc->hasError())), LL_ERROR);
 				goto do_image_cleanup;
 			}
 		}
@@ -714,23 +714,23 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 					if(r_vhdfile==NULL || !r_vhdfile->isOpen())
 					{
-						ServerLogger::Log(logid, L"Error opening VHD file \""+imagefn+L"\"", LL_ERROR);
+						ServerLogger::Log(logid, "Error opening VHD file \""+imagefn+"\"", LL_ERROR);
 						goto do_image_cleanup;
 					}
 
-					hashfile=Server->openFile(os_file_prefix(imagefn+L".hash"), MODE_WRITE);
+					hashfile=Server->openFile(os_file_prefix(imagefn+".hash"), MODE_WRITE);
 					if(hashfile==NULL)
 					{
-						ServerLogger::Log(logid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
+						ServerLogger::Log(logid, "Error opening Hashfile \""+imagefn+".hash\"", LL_ERROR);
 						goto do_image_cleanup;
 					}
 					
 					if(transfer_bitmap)
 					{
-						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+L".bitmap"), MODE_WRITE));
+						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+".bitmap"), MODE_WRITE));
 						if(bitmap_file.get()==NULL)
 						{
-							ServerLogger::Log(logid, L"Error opening bitmap file \""+imagefn+L".bitmap\"", LL_ERROR);
+							ServerLogger::Log(logid, "Error opening bitmap file \""+imagefn+".bitmap\"", LL_ERROR);
 							goto do_image_cleanup;
 						}
 						else
@@ -747,10 +747,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 					if(has_parent)
 					{
-						parenthashfile=Server->openFile(os_file_prefix(pParentvhd+L".hash"), MODE_READ);
+						parenthashfile=Server->openFile(os_file_prefix(pParentvhd+".hash"), MODE_READ);
 						if(parenthashfile==NULL)
 						{
-							ServerLogger::Log(logid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
+							ServerLogger::Log(logid, "Error opening Parenthashfile \""+pParentvhd+".hash\"", LL_ERROR);
 							goto do_image_cleanup;
 						}
 					}
@@ -758,7 +758,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 					mbr_offset=writeMBR(vhdfile, drivesize);
 					if( mbr_offset==0 )
 					{
-						ServerLogger::Log(logid, L"Error writing image MBR", LL_ERROR);
+						ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
 						goto do_image_cleanup;
 					}
 					else
@@ -1001,7 +1001,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 							if(nextblock%vhd_blocksize==0 && nextblock!=0)
 							{
-								//Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
+								//Server->Log("Hash written "+convert(currblock), LL_DEBUG);
 								sha256_final(&shactx, verify_checksum);
 								hashfile->Write((char*)verify_checksum, sha_size);
 								sha256_init(&shactx);
@@ -1016,7 +1016,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 						}
 						else
 						{
-							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+nconvert(nextblock)+" got "+nconvert(currblock)+". Stopping image backup.", LL_ERROR);
+							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+convert(nextblock)+" got "+convert(currblock)+". Stopping image backup.", LL_ERROR);
 							goto do_image_cleanup;
 						}
 
@@ -1036,7 +1036,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 								if(nextblock!=0)
 								{
-									//Server->Log("Hash written "+nconvert(nextblock), LL_INFO);
+									//Server->Log("Hash written "+convert(nextblock), LL_INFO);
 									unsigned char dig[sha_size];
 									sha256_final(&shactx, dig);
 									hashfile->Write((char*)dig, sha_size);
@@ -1105,7 +1105,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 							ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 							if(transferred_bytes_real>0)
 							{
-								ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+nconvert((float)transferred_bytes_real/transferred_bytes)+")");
+								ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+convert((float)transferred_bytes_real/transferred_bytes)+")");
 							}
 
 							return !vhdfile_err;
@@ -1181,7 +1181,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 								if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
-									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+nconvert(hblock), LL_DEBUG);
+									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock), LL_DEBUG);
 									if(num_hash_errors<10)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
@@ -1236,7 +1236,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 						}
 						else if(currblock<0)
 						{
-							ServerLogger::Log(logid, "Received unknown block number: "+nconvert(currblock)+". Stopping image backup.", LL_ERROR);
+							ServerLogger::Log(logid, "Received unknown block number: "+convert(currblock)+". Stopping image backup.", LL_ERROR);
 							goto do_image_cleanup;
 						}
 						else
@@ -1291,7 +1291,7 @@ do_image_cleanup:
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time) )), LL_INFO );
 	if(transferred_bytes_real>0)
 	{
-		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+nconvert((float)transferred_bytes_real/transferred_bytes)+")");
+		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+convert((float)transferred_bytes_real/transferred_bytes)+")");
 	}
 	if(cc!=NULL)
 		Server->destroy(cc);
@@ -1464,7 +1464,7 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 	return nextblock+1;
 }
 
-std::wstring ImageBackup::constructImagePath(const std::wstring &letter, std::string image_file_format)
+std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format)
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -1476,19 +1476,19 @@ std::wstring ImageBackup::constructImagePath(const std::wstring &letter, std::st
 #endif
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
-	std::wstring backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
-	std::wstring imgpath = backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer);
+	std::string backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
+	std::string imgpath = backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+"Image_"+letter+"_"+(std::string)buffer;
 	if(image_file_format==image_file_format_vhd)
 	{
-		imgpath+=L".vhd";
+		imgpath+=".vhd";
 	}
 	else if(image_file_format==image_file_format_cowraw)
 	{
-		imgpath+=L".raw";
+		imgpath+=".raw";
 	}
 	else
 	{
-		imgpath+=L".vhdz";
+		imgpath+=".vhdz";
 	}
 	return imgpath;
 }
@@ -1498,11 +1498,11 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	ServerBackupDao::SImageBackup image_backup;
 	if(incr)
 	{
-		image_backup = backup_dao->getLastImage(clientid, client_main->getCurrImageVersion(), widen(letter));
+		image_backup = backup_dao->getLastImage(clientid, client_main->getCurrImageVersion(), letter);
 	}
 	else
 	{
-		image_backup = backup_dao->getLastFullImage(clientid, client_main->getCurrImageVersion(), widen(letter));
+		image_backup = backup_dao->getLastFullImage(clientid, client_main->getCurrImageVersion(), letter);
 	}
 
 	if(image_backup.exists)
@@ -1523,9 +1523,9 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	}
 }
 
-std::string ImageBackup::getMBR(const std::wstring &dl)
+std::string ImageBackup::getMBR(const std::string &dl)
 {
-	std::string ret=client_main->sendClientMessage("MBR driveletter="+wnarrow(dl), L"Getting MBR for drive "+dl+L" failed", 10000);
+	std::string ret=client_main->sendClientMessage("MBR driveletter="+dl, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
 	char b;
 	if(r.getChar(&b) && b==1 )
@@ -1535,7 +1535,7 @@ std::string ImageBackup::getMBR(const std::wstring &dl)
 		{
 			if(ver!=0 && ver!=1)
 			{
-				ServerLogger::Log(logid, L"MBR version "+convert((int)ver)+L" is not supported by this server", LL_ERROR);
+				ServerLogger::Log(logid, "MBR version "+convert((int)ver)+" is not supported by this server", LL_ERROR);
 			}
 			else
 			{
@@ -1550,10 +1550,10 @@ std::string ImageBackup::getMBR(const std::wstring &dl)
 		}
 		else
 		{
-			ServerLogger::Log(logid, L"Could not read version information in MBR", LL_ERROR);
+			ServerLogger::Log(logid, "Could not read version information in MBR", LL_ERROR);
 		}
 	}
-	else if(dl!=L"SYSVOL" && dl!=L"ESP")
+	else if(dl!="SYSVOL" && dl!="ESP")
 	{
 		std::string errmsg;
 		if( r.getStr(&errmsg) && !errmsg.empty())

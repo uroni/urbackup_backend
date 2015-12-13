@@ -26,8 +26,6 @@ public:
 
 	virtual std::string getFilename(void);
 
-	virtual std::wstring getFilenameW(void);
-
 	virtual bool PunchHole( _i64 spos, _i64 size );
 
 	virtual bool Sync();

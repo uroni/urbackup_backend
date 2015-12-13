@@ -27,7 +27,7 @@ const size_t buffer_size = 5*1024*1024;
 const _u32 buffer_keep_free = 1*1024*1024;
 
 
-PipeFileBase::PipeFileBase(const std::wstring& pCmd)
+PipeFileBase::PipeFileBase(const std::string& pCmd)
 	: curr_pos(0), has_error(false), cmd(pCmd), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
 	threadidx(0), has_eof(false), stream_size(-1),
 	buf_circle(false), stdout_thread(ILLEGAL_THREADPOOL_TICKET), stderr_thread(ILLEGAL_THREADPOOL_TICKET)
@@ -200,11 +200,6 @@ _i64 PipeFileBase::RealSize()
 }
 
 std::string PipeFileBase::getFilename(void)
-{
-	return Server->ConvertToUTF8(cmd);
-}
-
-std::wstring PipeFileBase::getFilenameW(void)
 {
 	return cmd;
 }

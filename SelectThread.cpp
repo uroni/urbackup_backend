@@ -82,7 +82,7 @@ CSelectThread::~CSelectThread()
 		IScopedLock lock(workers_mutex);
 		for(size_t i=0;i<workers.size();++i)
 		{
-			Server->Log("worker: "+nconvert(i));
+			Server->Log("worker: "+convert(i));
 			delete workers[i];
 		}
 		workers.clear();
@@ -226,7 +226,7 @@ void CSelectThread::operator()()
 			}
 			else
 			{
-				Server->Log("Select error: "+nconvert(errno),LL_ERROR);
+				Server->Log("Select error: "+convert(errno),LL_ERROR);
 			}
 		}
 	}

@@ -270,7 +270,7 @@ void InternetClient::doUpdateSettings(void)
 		 && !settings->getValue("computername_def", &computername) ) 
 		   || computername.empty())
 	{
-		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());		
+		computername=(IndexThread::getFileSrv()->getServerName());		
 	}
 	if( (settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name))
 		&& !server_name.empty() )
@@ -355,7 +355,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		unsigned short port=server_settings.servers[i].second;
 
 		lock->relock(NULL);
-		Server->Log("Trying to connect to internet server \""+name+"\" at port "+nconvert(port), LL_DEBUG);
+		Server->Log("Trying to connect to internet server \""+name+"\" at port "+convert(port), LL_DEBUG);
 		IPipe *cs=Server->ConnectStream(name, port, 10000);
 		lock->relock(mutex);
 		if(cs!=NULL)
@@ -899,7 +899,7 @@ void InternetClientThread::printInfo( IPipe * pipe )
 		if(comp_pipe!=NULL)
 		{
 			int64 uncompr_transferred = comp_pipe->getUncompressedReceivedBytes()+comp_pipe->getUncompressedSentBytes();
-			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+nconvert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");
+			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+convert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");
 			Server->Log("Average sent paket size: "+PrettyPrintBytes(comp_pipe->getUncompressedSentBytes()/comp_pipe->getSentFlushes()));
 		}
 	}

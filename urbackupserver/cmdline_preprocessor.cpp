@@ -271,13 +271,13 @@ int action_run(std::vector<std::string> args)
 	if(std::find(real_args.begin(), real_args.end(), "--port")==real_args.end())
 	{
 		real_args.push_back("--port");
-		real_args.push_back(nconvert(fastcgi_port_arg.getValue()));
+		real_args.push_back(convert(fastcgi_port_arg.getValue()));
 	}
 	
 	if(std::find(real_args.begin(), real_args.end(), "--http_port")==real_args.end())
 	{
 		real_args.push_back("--http_port");
-		real_args.push_back(nconvert(http_port_arg.getValue()));
+		real_args.push_back(convert(http_port_arg.getValue()));
 	}
 
 	real_args.push_back("--pidfile");

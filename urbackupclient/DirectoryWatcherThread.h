@@ -12,14 +12,14 @@
 
 struct SLastEntries
 {
-	std::wstring dir;
+	std::string dir;
 	int64 time;
 };
 
 class DirectoryWatcherThread : public IThread, public IChangeJournalListener
 {
 public:
-	DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs,
+	DirectoryWatcherThread(const std::vector<std::string> &watchdirs,
 		const std::vector<ContinuousWatchEnqueue::SWatchItem> &watchdirs_continuous);
 
 	static void init_mutex(void);
@@ -31,22 +31,22 @@ public:
 	void stop(void);
 
 	virtual int64 getStartUsn(int64 sequence_id);
-	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed);
-	void On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
-    void On_FileRemoved(const std::wstring & strFileName, bool closed);
-    void On_FileAdded(const std::wstring & strFileName, bool closed);
-	void On_DirAdded( const std::wstring & strFileName, bool closed );
-    void On_FileModified(const std::wstring & strFileName, bool closed);
-	void On_FileOpen(const std::wstring & strFileName);
-	void On_ResetAll(const std::wstring &vol);
-	void On_DirRemoved(const std::wstring & strDirName, bool closed);
+	void On_FileNameChanged(const std::string & strOldFileName, const std::string & strNewFileName, bool closed);
+	void On_DirNameChanged( const std::string & strOldFileName, const std::string & strNewFileName, bool closed );
+    void On_FileRemoved(const std::string & strFileName, bool closed);
+    void On_FileAdded(const std::string & strFileName, bool closed);
+	void On_DirAdded( const std::string & strFileName, bool closed );
+    void On_FileModified(const std::string & strFileName, bool closed);
+	void On_FileOpen(const std::string & strFileName);
+	void On_ResetAll(const std::string &vol);
+	void On_DirRemoved(const std::string & strDirName, bool closed);
 	void Commit(const std::vector<IChangeJournalListener::SSequence>& sequences);
 
-	void OnDirMod(const std::wstring &dir);
-	void OnDirRm(const std::wstring &dir);
+	void OnDirMod(const std::string &dir);
+	void OnDirRm(const std::string &dir);
 
 	static void update(void);
-	static void update_and_wait(std::vector<std::wstring>& r_open_files);
+	static void update_and_wait(std::vector<std::string>& r_open_files);
 
 	static void freeze(void);
 	static void unfreeze(void);
@@ -77,7 +77,7 @@ private:
 	IQuery* q_update_last_backup_time;
 
 	std::list<SLastEntries> lastentries;
-	std::vector<std::wstring> watching;
+	std::vector<std::string> watching;
 
 	static IMutex *update_mutex;
 	static ICondition *update_cond;
@@ -86,5 +86,5 @@ private:
 
 	std::auto_ptr<ContinuousWatchEnqueue> continuous_watch;
 
-	static std::vector<std::wstring> open_files;
+	static std::vector<std::string> open_files;
 };

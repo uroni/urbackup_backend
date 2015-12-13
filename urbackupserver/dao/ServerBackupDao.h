@@ -35,17 +35,17 @@ public:
 	struct CondString
 	{
 		bool exists;
-		std::wstring value;
+		std::string value;
 	};
 	struct DirectoryLinkEntry
 	{
-		std::wstring name;
-		std::wstring target;
+		std::string name;
+		std::string target;
 	};
 	struct JournalEntry
 	{
-		std::wstring linkname;
-		std::wstring linktarget;
+		std::string linkname;
+		std::string linktarget;
 	};
 	struct SDuration
 	{
@@ -59,7 +59,7 @@ public:
 		int clientid;
 		int64 backuptime;
 		int incremental;
-		std::wstring path;
+		std::string path;
 		int complete;
 		int64 running;
 		int64 size_bytes;
@@ -74,8 +74,8 @@ public:
 	struct SFileEntry
 	{
 		bool exists;
-		std::wstring fullpath;
-		std::wstring hashpath;
+		std::string fullpath;
+		std::string hashpath;
 		std::string shahash;
 		int64 filesize;
 		int64 rsize;
@@ -84,11 +84,11 @@ public:
 	{
 		bool exists;
 		int64 id;
-		std::wstring shahash;
+		std::string shahash;
 		int backupid;
 		int clientid;
-		std::wstring fullpath;
-		std::wstring hashpath;
+		std::string fullpath;
+		std::string hashpath;
 		int64 filesize;
 		int64 next_entry;
 		int64 prev_entry;
@@ -101,7 +101,7 @@ public:
 		bool exists;
 		int64 id;
 		int incremental;
-		std::wstring path;
+		std::string path;
 		int64 duration;
 	};
 	struct SIncomingStat
@@ -110,7 +110,7 @@ public:
 		int64 filesize;
 		int clientid;
 		int backupid;
-		std::wstring existing_clients;
+		std::string existing_clients;
 		int direction;
 		int incremental;
 	};
@@ -118,7 +118,7 @@ public:
 	{
 		bool exists;
 		int incremental;
-		std::wstring path;
+		std::string path;
 		int resumed;
 		int complete;
 		int id;
@@ -126,7 +126,7 @@ public:
 	struct SReportSettings
 	{
 		bool exists;
-		std::wstring report_mail;
+		std::string report_mail;
 		int report_loglevel;
 		int report_sendonly;
 	};
@@ -138,80 +138,80 @@ public:
 		int clientid;
 		int64 filesize;
 		int64 rsize;
-		std::wstring shahash;
+		std::string shahash;
 		int64 next_entry;
 		int64 prev_entry;
 	};
 
 
-	void addDirectoryLink(int clientid, const std::wstring& name, const std::wstring& target);
-	void removeDirectoryLink(int clientid, const std::wstring& target);
-	void removeDirectoryLinkGlob(int clientid, const std::wstring& target);
-	int getDirectoryRefcount(int clientid, const std::wstring& name);
-	void addDirectoryLinkJournalEntry(const std::wstring& linkname, const std::wstring& linktarget);
+	void addDirectoryLink(int clientid, const std::string& name, const std::string& target);
+	void removeDirectoryLink(int clientid, const std::string& target);
+	void removeDirectoryLinkGlob(int clientid, const std::string& target);
+	int getDirectoryRefcount(int clientid, const std::string& name);
+	void addDirectoryLinkJournalEntry(const std::string& linkname, const std::string& linktarget);
 	void removeDirectoryLinkJournalEntry(int64 entry_id);
 	std::vector<JournalEntry> getDirectoryLinkJournalEntries(void);
 	void removeDirectoryLinkJournalEntries(void);
-	std::vector<DirectoryLinkEntry> getLinksInDirectory(int clientid, const std::wstring& dir);
+	std::vector<DirectoryLinkEntry> getLinksInDirectory(int clientid, const std::string& dir);
 	void deleteLinkReferenceEntry(int64 id);
-	void updateLinkReferenceTarget(const std::wstring& new_target, int64 id);
-	void addToOldBackupfolders(const std::wstring& backupfolder);
-	std::vector<std::wstring> getOldBackupfolders(void);
-	std::vector<std::wstring> getDeletePendingClientNames(void);
+	void updateLinkReferenceTarget(const std::string& new_target, int64 id);
+	void addToOldBackupfolders(const std::string& backupfolder);
+	std::vector<std::string> getOldBackupfolders(void);
+	std::vector<std::string> getDeletePendingClientNames(void);
 	CondString getVirtualMainClientname(int clientid);
 	bool createTemporaryLastFilesTable(void);
 	void dropTemporaryLastFilesTable(void);
 	bool createTemporaryLastFilesTableIndex(void);
 	bool dropTemporaryLastFilesTableIndex(void);
 	bool copyToTemporaryLastFilesTable(int backupid);
-	SFileEntry getFileEntryFromTemporaryTable(const std::wstring& fullpath);
-	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::wstring& fullpath_glob);
-	void insertIntoOrigClientSettings(int clientid, std::string data);
+	SFileEntry getFileEntryFromTemporaryTable(const std::string& fullpath);
+	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob);
+	void insertIntoOrigClientSettings(int clientid, const std::string& data);
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
 	std::vector<SDuration> getLastFullDurations(int clientid);
 	void setNextEntry(int64 next_entry, int64 id);
 	void setPrevEntry(int64 prev_entry, int64 id);
 	void setPointedTo(int64 pointed_to, int64 id);
-	CondString getClientSetting(const std::wstring& key, int clientid);
+	CondString getClientSetting(const std::string& key, int clientid);
 	std::vector<int> getClientIds(void);
 	CondInt64 getPointedTo(int64 id);
-	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
-	CondString getSetting(int clientid, const std::wstring& key);
-	void insertSetting(const std::wstring& key, const std::wstring& value, int clientid);
-	void updateSetting(const std::wstring& value, const std::wstring& key, int clientid);
+	void addFileEntry(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
+	CondString getSetting(int clientid, const std::string& key);
+	void insertSetting(const std::string& key, const std::string& value, int clientid);
+	void updateSetting(const std::string& value, const std::string& key, int clientid);
 	void delFileEntry(int64 id);
 	SFindFileEntry getFileEntry(int64 id);
 	SStatFileEntry getStatFileEntry(int64 id);
-	void addIncomingFile(int64 filesize, int clientid, int backupid, const std::wstring& existing_clients, int direction, int incremental);
+	void addIncomingFile(int64 filesize, int clientid, int backupid, const std::string& existing_clients, int direction, int incremental);
 	std::vector<SIncomingStat> getIncomingStats(void);
 	CondInt64 getIncomingStatsCount(void);
 	void delIncomingStatEntry(int64 id);
-	CondString getMiscValue(const std::wstring& tkey);
-	void addMiscValue(const std::wstring& tkey, const std::wstring& tvalue);
-	void delMiscValue(const std::wstring& tkey);
+	CondString getMiscValue(const std::string& tkey);
+	void addMiscValue(const std::string& tkey, const std::string& tvalue);
+	void delMiscValue(const std::string& tkey);
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
 	bool createTemporaryPathLookupTable(void);
 	void dropTemporaryPathLookupTable(void);
 	void dropTemporaryPathLookupIndex(void);
 	void populateTemporaryPathLookupTable(int backupid);
 	bool createTemporaryPathLookupIndex(void);
-	CondInt64 lookupEntryIdByPath(const std::wstring& fullpath);
-	void newFileBackup(int incremental, int clientid, const std::wstring& path, int resumed, int64 indexing_time_ms, int tgroup);
+	CondInt64 lookupEntryIdByPath(const std::string& fullpath);
+	void newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
 	void updateFileBackupRunning(int backupid);
 	void setFileBackupDone(int backupid);
 	SLastIncremental getLastIncrementalFileBackup(int clientid, int tgroup);
 	SLastIncremental getLastIncrementalCompleteFileBackup(int clientid, int tgroup);
 	void updateFileBackupSetComplete(int backupid);
 	void saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed, int restore);
-	void saveBackupLogData(int64 logid, const std::wstring& data);
+	void saveBackupLogData(int64 logid, const std::string& data);
 	std::vector<int> getMailableUserIds(void);
-	CondString getUserRight(int clientid, const std::wstring& t_domain);
+	CondString getUserRight(int clientid, const std::string& t_domain);
 	SReportSettings getUserReportSettings(int userid);
 	CondString formatUnixtime(int64 unixtime);
-	SImageBackup getLastFullImage(int clientid, int image_version, const std::wstring& letter);
-	SImageBackup getLastImage(int clientid, int image_version, const std::wstring& letter);
-	void newImageBackup(int clientid, const std::wstring& path, int incremental, int incremental_ref, int image_version, const std::wstring& letter);
+	SImageBackup getLastFullImage(int clientid, int image_version, const std::string& letter);
+	SImageBackup getLastImage(int clientid, int image_version, const std::string& letter);
+	void newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter);
 	void setImageSize(int64 size_bytes, int backupid);
 	void addImageSizeToClient(int clientid, int64 add_size);
 	void setImageBackupComplete(int backupid);
@@ -220,25 +220,25 @@ public:
 	void updateClientLastImageBackup(int backupid, int clientid);
 	void updateClientLastFileBackup(int backupid, int clientid);
 	void deleteAllUsersOnClient(int clientid);
-	void addUserOnClient(int clientid, const std::wstring& username);
-	void addClientToken(int clientid, const std::wstring& token);
-	void addUserToken(const std::wstring& username, const std::wstring& token);
-	CondInt64 hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int tgroup);
-	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid, int tgroup);
-	CondInt64 hasRecentFullOrIncrImageBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int image_version, const std::wstring& letter);
-	CondInt64 hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
-	void addRestore(int clientid, const std::wstring& path, const std::wstring& identity);
+	void addUserOnClient(int clientid, const std::string& username);
+	void addClientToken(int clientid, const std::string& token);
+	void addUserToken(const std::string& username, const std::string& token);
+	CondInt64 hasRecentFullOrIncrFileBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int tgroup);
+	CondInt64 hasRecentIncrFileBackup(const std::string& backup_interval, int clientid, int tgroup);
+	CondInt64 hasRecentFullOrIncrImageBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int image_version, const std::string& letter);
+	CondInt64 hasRecentIncrImageBackup(const std::string& backup_interval, int clientid, int image_version, const std::string& letter);
+	void addRestore(int clientid, const std::string& path, const std::string& identity);
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
-	void setVirtualMainClient(const std::wstring& virtualmain, int64 clientid);
+	void setVirtualMainClient(const std::string& virtualmain, int64 clientid);
 	void deleteUsedAccessTokens(int clientid);
 	CondInt hasUsedAccessToken(const std::string& tokenhash);
 	void addUsedAccessToken(int clientid, const std::string& tokenhash);
 	//@-SQLGenFunctionsEnd
 
-	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
-	void updateOrInsertSetting(int clientid, const std::wstring& key, const std::wstring& value);
+	int64 addFileEntryExternal(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
+	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}

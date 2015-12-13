@@ -19,15 +19,15 @@ class FileMetadata;
 
 struct STmpFile
 {
-	STmpFile(int backupid, std::wstring fp, std::wstring hashpath)
+	STmpFile(int backupid, std::string fp, std::string hashpath)
 		: backupid(backupid), fp(fp), hashpath(hashpath)
 	{
 	}
 	STmpFile(void) {}
 
 	int backupid;
-	std::wstring fp;
-	std::wstring hashpath;
+	std::string fp;
+	std::string hashpath;
 };
 
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
@@ -49,22 +49,22 @@ public:
 
 	bool hasError(void);
 
-	virtual bool handle_not_enough_space(const std::wstring &path);
+	virtual bool handle_not_enough_space(const std::string &path);
 
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
 	void setupDatabase(void);
 	void deinitDatabase(void);
 
-	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring hash_fn, const std::string &sha2, _i64 t_filesize, const std::string &hashoutput_fn, 
-		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid, int64& rsize, int64& next_entry,
+	bool findFileAndLink(const std::string &tfn, IFile *tf, std::string hash_fn, const std::string &sha2, _i64 t_filesize, const std::string &hashoutput_fn, 
+		bool copy_from_hardlink_if_failed, bool &tries_once, std::string &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid, int64& rsize, int64& next_entry,
 		const FileMetadata& metadata, bool datch_dbs);
 
-	void addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path,
+	void addFileSQL(int backupid, int clientid, int incremental, const std::string &fp, const std::string &hash_path,
 		const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex);
 
-	static void addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp,
-		const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid,
+	static void addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::string &fp,
+		const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid,
 		int64 next_entry, bool update_fileindex);
 		
 		
@@ -74,8 +74,8 @@ public:
 		bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat);
 
 private:
-	void addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
-			std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
+	void addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
+			std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
 			const FileMetadata& metadata);
 			
 	struct SFindState
@@ -92,25 +92,25 @@ private:
 
 	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
 
-	bool copyFile(IFile *tf, const std::wstring &dest);
-	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
-	bool freeSpace(int64 fs, const std::wstring &fp);
+	bool copyFile(IFile *tf, const std::string &dest);
+	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const FileMetadata& metadata);
+	bool freeSpace(int64 fs, const std::string &fp);
 	
 	int countFilesInTmp(void);
-	IFile* openFileRetry(const std::wstring &dest, int mode);
-	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
+	IFile* openFileRetry(const std::string &dest, int mode);
+	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
 		const FileMetadata& metadata, _i64 tfilesize);
 
-	bool createChunkHashes(IFile *tf, const std::wstring hash_fn);
+	bool createChunkHashes(IFile *tf, const std::string hash_fn);
 	
-	bool replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn);
-	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn,
+	bool replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn);
+	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn,
 		const FileMetadata& metadata);
 
-	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
-	bool renameFile(IFile *tf, const std::wstring &dest);
+	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const FileMetadata& metadata);
+	bool renameFile(IFile *tf, const std::string &dest);
 
-	bool correctPath(std::wstring& ff, std::wstring& f_hashpath);
+	bool correctPath(std::string& ff, std::string& f_hashpath);
 
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
@@ -142,9 +142,9 @@ private:
 
 	FileIndex *fileindex;
 
-	std::wstring backupfolder;
+	std::string backupfolder;
 	bool old_backupfolders_loaded;
-	std::vector<std::wstring> old_backupfolders;
+	std::vector<std::string> old_backupfolders;
 
 	logid_t logid;
 

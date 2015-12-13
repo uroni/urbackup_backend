@@ -88,7 +88,7 @@ void ServerUpdateStats::operator()(void)
 	if(db->getEngineName()=="sqlite")
 	{
 		cache_res=db->Read("PRAGMA cache_size");
-		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 	}
 
 	createQueries();
@@ -125,7 +125,7 @@ void ServerUpdateStats::operator()(void)
 	destroyQueries();
 	if(!cache_res.empty())
 	{
-		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA cache_size = "+cache_res[0]["cache_size"]);
 		db->freeMemory();
 	}
 
@@ -153,12 +153,12 @@ void ServerUpdateStats::update_images(void)
 
 	for(size_t i=0;i<all_clients.size();++i)
 	{
-		clients_used[watoi(all_clients[i][L"id"])]=0;
+		clients_used[watoi(all_clients[i]["id"])]=0;
 	}
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring &fn=res[i][L"path"];
+		std::string &fn=res[i]["path"];
 		IFile * file=Server->openFile(os_file_prefix(fn), MODE_READ);
 		if(file==NULL)
 		{
@@ -168,10 +168,10 @@ void ServerUpdateStats::update_images(void)
 				update_images();
 				return;
 			}
-			Server->Log(L"Error opening file '"+fn+L"'", LL_ERROR);
+			Server->Log("Error opening file '"+fn+"'", LL_ERROR);
 			continue;
 		}
-		int cid=watoi(res[i][L"clientid"]);
+		int cid=watoi(res[i]["clientid"]);
 		std::map<int, _i64>::iterator it=clients_used.find(cid);
 		if(it==clients_used.end())
 		{
@@ -200,7 +200,7 @@ void ServerUpdateStats::measureSpeed(void)
 	if(lasttime!=ttime)
 	{
 		float speed=num_updated_files/((ttime-lasttime)/1000.f);
-		Server->Log("File processing speed: "+nconvert(speed)+" files/s", LL_INFO);
+		Server->Log("File processing speed: "+convert(speed)+" files/s", LL_INFO);
 		num_updated_files=0;
 		lasttime=ttime;
 	}
@@ -257,7 +257,7 @@ void ServerUpdateStats::update_files(void)
 				if(pc!=last_pc)
 				{
 					measureSpeed();
-					Server->Log( "Updating file statistics: "+nconvert(pc)+"%", LL_INFO);
+					Server->Log( "Updating file statistics: "+convert(pc)+"%", LL_INFO);
 					last_pc=pc;
 				}
 
@@ -272,8 +272,8 @@ void ServerUpdateStats::update_files(void)
 			ServerBackupDao::SIncomingStat& entry = stat_entries[i];
 
 			std::vector<int> clients;
-			std::vector<std::wstring> s_clients;
-			Tokenize(entry.existing_clients, s_clients, L",");
+			std::vector<std::string> s_clients;
+			Tokenize(entry.existing_clients, s_clients, ",");
 			clients.resize(s_clients.size());
 			for(size_t j=0;j<s_clients.size();++j)
 			{
@@ -363,7 +363,7 @@ std::map<int, _i64> ServerUpdateStats::getFilebackupSizesClients(void)
 	q_get_sizes->Reset();
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret.insert(std::pair<int, _i64>(watoi(res[i][L"id"]), os_atoi64(wnarrow(res[i][L"bytes_used_files"]))));
+		ret.insert(std::pair<int, _i64>(watoi(res[i]["id"]), os_atoi64(res[i]["bytes_used_files"])));
 	}
 	return ret;
 }
@@ -397,7 +397,7 @@ void ServerUpdateStats::add(std::map<int, _i64> &data, int backupid, _i64 filesi
 		q_get_backup_size->Reset();
 		if(!res.empty())
 		{
-			_i64 b_fs=os_atoi64(wnarrow(res[0][L"size_bytes"]));
+			_i64 b_fs=os_atoi64(res[0]["size_bytes"]);
 			if(b_fs!=-1)
 			{
 				filesize+=b_fs;
@@ -432,7 +432,7 @@ void ServerUpdateStats::add_del(std::map<int, SDelInfo> &data, int backupid, _i6
 		q_get_del_size->Reset();
 		if(!res.empty())
 		{
-			filesize+=os_atoi64(wnarrow(res[0][L"delsize"]));
+			filesize+=os_atoi64(res[0]["delsize"]);
 		}
 		SDelInfo di;
 		di.delsize=filesize;
@@ -474,7 +474,7 @@ void ServerUpdateStats::updateDels(std::map<int, SDelInfo> &data)
 
 bool ServerUpdateStats::repairImagePath(str_map img)
 {
-	int clientid=watoi(img[L"clientid"]);
+	int clientid=watoi(img["clientid"]);
 	ServerSettings settings(db, clientid);
 	IQuery *q=db->Prepare("SELECT name FROM clients WHERE id=?", false);
 	q->Bind(clientid);
@@ -483,22 +483,22 @@ bool ServerUpdateStats::repairImagePath(str_map img)
 	db->destroyQuery(q);
 	if(!res.empty())
 	{
-		std::wstring clientname=res[0][L"name"];
-		std::wstring imgname=ExtractFileName(img[L"path"]);
+		std::string clientname=res[0]["name"];
+		std::string imgname=ExtractFileName(img["path"]);
 
-		std::wstring new_name=settings.getSettings()->backupfolder+os_file_sep()+clientname+os_file_sep()+imgname;
+		std::string new_name=settings.getSettings()->backupfolder+os_file_sep()+clientname+os_file_sep()+imgname;
 
 		IFile * file=Server->openFile(os_file_prefix(new_name), MODE_READ);
 		if(file==NULL)
 		{
-			Server->Log(L"Repairing image failed", LL_INFO);
+			Server->Log("Repairing image failed", LL_INFO);
 			return false;
 		}
 		Server->destroy(file);
 
 		q=db->Prepare("UPDATE backup_images SET path=? WHERE id=?", false);
 		q->Bind(new_name);
-		q->Bind(img[L"id"]);
+		q->Bind(img["id"]);
 		q->Write();
 		q->Reset();
 		db->destroyQuery(q);

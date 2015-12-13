@@ -44,11 +44,11 @@ ACTION_IMPL(progress)
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
-		if(GET.find(L"stop_clientid")!=GET.end() &&
-			GET.find(L"stop_id")!=GET.end())
+		if(GET.find("stop_clientid")!=GET.end() &&
+			GET.find("stop_id")!=GET.end())
 		{
-			int stop_clientid=watoi(GET[L"stop_clientid"]);
-			int stop_id=watoi(GET[L"stop_id"]);
+			int stop_clientid=watoi(GET["stop_clientid"]);
+			int stop_id=watoi(GET["stop_id"]);
 
 			std::string stop_rights=helper.getRights("stop_backup");
 			bool stop_ok=false;
@@ -77,7 +77,7 @@ ACTION_IMPL(progress)
 				db_results res=q_get_name->Read();
 				if(!res.empty())
 				{
-					ServerStatus::stopProcess(res[0][L"name"], stop_id, true);
+					ServerStatus::stopProcess(res[0]["name"], stop_id, true);
 				}
 			}
 		}

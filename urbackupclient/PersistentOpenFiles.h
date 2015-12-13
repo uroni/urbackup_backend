@@ -19,13 +19,13 @@ public:
 
 	~PersistentOpenFiles();
 
-	void add(const std::wstring& fn);
+	void add(const std::string& fn);
 
-	void remove(const std::wstring& fn);
+	void remove(const std::string& fn);
 
-	bool is_present(const std::wstring& fn);
+	bool is_present(const std::string& fn);
 
-	std::vector<std::wstring> get();
+	std::vector<std::string> get();
 
 	bool flushf();
 
@@ -35,7 +35,7 @@ private:
 
 	bool load();
 
-	void addf(const std::wstring& fn, unsigned int id);
+	void addf(const std::string& fn, unsigned int id);
 
 	void removef(unsigned int id, size_t fn_size);	
 
@@ -45,7 +45,7 @@ private:
 
 	IFile* persistf;
 
-	std::map<std::wstring, unsigned int> open_files;
+	std::map<std::string, unsigned int> open_files;
 
 	size_t bytes_written;
 

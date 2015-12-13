@@ -42,7 +42,7 @@ private:
 	inline void parseAction(std::string pQuery, std::string &pAction, std::string &pContext);
 	inline void ParseMultipartData(const std::string &data, const std::string &boundary);
 
-	str_nmap http_params;
+	str_map http_params;
 	std::string http_method;
 	std::string http_query;
 	std::string http_content;

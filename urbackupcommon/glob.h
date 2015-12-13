@@ -1,3 +1,3 @@
 #pragma once
 
-bool amatch(const wchar_t *str, const wchar_t *p);
+bool amatch(const char *str, const char *p);

@@ -16,7 +16,7 @@
 class PipeFile : public PipeFileBase
 {
 public:
-	PipeFile(const std::wstring& pCmd);
+	PipeFile(const std::string& pCmd);
 	~PipeFile();
 
 	virtual bool getExitCode(int& exit_code);

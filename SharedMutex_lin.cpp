@@ -8,7 +8,7 @@ SharedMutex::SharedMutex()
 	int rc = pthread_rwlock_init(&lock, NULL);
 	if(rc)
 	{
-		Server->Log("Error initializing rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error initializing rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -18,7 +18,7 @@ SharedMutex::~SharedMutex()
 	int rc = pthread_rwlock_destroy(&lock);
 	if(rc)
 	{
-		Server->Log("Error destroying rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error destroying rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -40,7 +40,7 @@ ReadLock::ReadLock( pthread_rwlock_t* read_lock )
 	int rc = pthread_rwlock_rdlock(read_lock);
 	if(rc)
 	{
-		Server->Log("Error locking rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error locking rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -50,7 +50,7 @@ ReadLock::~ReadLock()
 	int rc = pthread_rwlock_unlock(read_lock);
 	if(rc)
 	{
-		Server->Log("Error unlocking rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error unlocking rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -61,7 +61,7 @@ WriteLock::WriteLock( pthread_rwlock_t* write_lock )
 	int rc = pthread_rwlock_wrlock(write_lock);
 	if(rc)
 	{
-		Server->Log("Error locking rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error locking rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -71,7 +71,7 @@ WriteLock::~WriteLock()
 	int rc = pthread_rwlock_unlock(write_lock);
 	if(rc)
 	{
-		Server->Log("Error unlocking rwlock rc="+nconvert(rc), LL_ERROR);
+		Server->Log("Error unlocking rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }

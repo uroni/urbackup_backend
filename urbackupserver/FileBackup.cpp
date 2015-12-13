@@ -35,6 +35,7 @@
 #include <stack>
 #include <limits.h>
 #include "FileMetadataDownloadThread.h"
+#include "../utf8/utf8.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -44,7 +45,7 @@ const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
 extern std::string server_token;
 
-FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots)
+FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots)
 	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental), group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
@@ -92,11 +93,11 @@ bool FileBackup::getResult()
 }
 
 bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
-	bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::wstring& clientsubname)
+	bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::string& clientsubname)
 {
 	if(server_settings->getSettings()->end_to_end_file_backup_verification)
 	{
-		client_main->sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK", L"Enabling end to end file backup verficiation on client failed.", 10000);
+		client_main->sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK", "Enabling end to end file backup verficiation on client failed.", 10000);
 	}
 
 	unsigned int timeout_time=full_backup_construct_timeout;
@@ -107,11 +108,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
-	ServerLogger::Log(logid, clientname+L": Connecting for filelist...", LL_DEBUG);
+	ServerLogger::Log(logid, clientname+": Connecting for filelist...", LL_DEBUG);
 	IPipe *cc=client_main->getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error during filelist construction", LL_ERROR);
+		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error during filelist construction", LL_ERROR);
 		connect_fail=true;
 		return false;
 	}
@@ -143,10 +144,10 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 	if(client_main->getProtocolVersions().file_protocol_version_v2>=1)
 	{
-		start_backup_cmd+=" group="+nconvert(group);
+		start_backup_cmd+=" group="+convert(group);
 		if(!clientsubname.empty())
 		{
-			start_backup_cmd+="&clientsubname="+EscapeParamString(Server->ConvertToUTF8(clientsubname));
+			start_backup_cmd+="&clientsubname="+EscapeParamString((clientsubname));
 		}
 	}
 
@@ -173,7 +174,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 	tcpstack.Send(cc, start_backup_cmd);
 
-	ServerLogger::Log(logid, clientname+L": Waiting for filelist", LL_DEBUG);
+	ServerLogger::Log(logid, clientname+": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	int64 total_starttime_s = Server->getTimeSeconds();
 	int64 starttime=Server->getTimeMS();
@@ -185,14 +186,14 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			if(client_main->getProtocolVersions().file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
-				ServerLogger::Log(logid, clientname+L": Trying old filelist request", LL_WARNING);
+				ServerLogger::Log(logid, clientname+": Trying old filelist request", LL_WARNING);
 				return request_filelist_construct(full, resume, group, false, no_backup_dirs, connect_fail, clientsubname);
 			}
 			else
 			{
 				if(client_main->getProtocolVersions().file_protocol_version>=2 || pingthread->isTimeout() )
 				{
-					ServerLogger::Log(logid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed - TIMEOUT(1)", LL_ERROR);
 					break;
 				}
 				else
@@ -218,12 +219,12 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				else if(ret!="no backup dirs")
 				{
 					logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
-					ServerLogger::Log(logid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
 					break;
 				}
 				else
 				{
-					ServerLogger::Log(logid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret)+L". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
+					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret+". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
 					no_backup_dirs=true;
 					break;
 				}				
@@ -247,7 +248,7 @@ bool FileBackup::hasEarlyError()
 
 void FileBackup::logVssLogdata(int64 vss_duration_s)
 {
-	std::string vsslogdata=client_main->sendClientMessage("GET VSSLOG", L"Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
+	std::string vsslogdata=client_main->sendClientMessage("GET VSSLOG", "Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
 
 	if(!vsslogdata.empty() && vsslogdata!="ERR")
 	{
@@ -304,30 +305,30 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 {
 	bool has_token_file=true;
 	
-	IFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties"), MODE_WRITE);
+	IFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties"), MODE_WRITE);
 	if(tokens_file==NULL)
 	{
-		ServerLogger::Log(logid, L"Error opening "+backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
 		return false;
 	}
 	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error getting tokens file of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_DEBUG);
+		ServerLogger::Log(logid, "Error getting tokens file of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_DEBUG);
 		has_token_file=false;
 	}
 	Server->destroy(tokens_file);
 
 
 	std::auto_ptr<ISettingsReader> urbackup_tokens(
-		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties")));
+		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	std::string access_key;
 	if(urbackup_tokens->getValue("access_key", &access_key) &&
 		!access_key.empty() &&
 		access_key != server_settings->getSettings()->client_access_key )
 	{
-		backup_dao->updateOrInsertSetting(clientid, L"client_access_key", widen(access_key));
+		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
 
 		if(!server_settings->getSettings()->client_access_key.empty())
 		{
@@ -346,10 +347,10 @@ std::string FileBackup::clientlistName( int group, bool new_list )
 
 	if(group!=0)
 	{
-		ret+=nconvert(group)+"_";
+		ret+=convert(group)+"_";
 	}
 
-	ret+=nconvert(clientid);
+	ret+=convert(clientid);
 	if(new_list)
 	{
 		ret+="_new";
@@ -425,18 +426,18 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 					}
 					else if(indirchange==true)
 					{
-						if(cf.name!=L"..")
+						if(cf.name!="..")
 							++indir_currdepth;
 						else
 							--indir_currdepth;
 					}
 
-					if(cf.name==L".." && indir_currdepth>0)
+					if(cf.name==".." && indir_currdepth>0)
 					{
 						--indir_currdepth;
 					}
 
-					if(cf.name!=L"..")
+					if(cf.name!="..")
 					{
 						++depth;
 					}
@@ -507,7 +508,7 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 
 bool FileBackup::doBackup()
 {
-	if(!client_main->handle_not_enough_space(L""))
+	if(!client_main->handle_not_enough_space(""))
 	{
 		return false;
 	}
@@ -530,7 +531,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPath(with_hashes, use_snapshots, !r_incremental))
 		{
-            ServerLogger::Log(logid, L"Cannot create directory "+backuppath+L" for backup (server error)", LL_ERROR);
+            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
 			return false;
 		}
 	}
@@ -538,7 +539,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPathCdp())
 		{
-            ServerLogger::Log(logid, L"Cannot create directory "+backuppath+L" for backup (server error)", LL_ERROR);
+            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
 			return false;
 		}
 	}
@@ -596,43 +597,82 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames, const std::wstring& curr_path)
+std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::string>& samedir_filenames, const std::string& curr_path)
 {
-	std::wstring ret;
+	std::string ret;
 	bool modified_filename=false;
 #ifdef _WIN32
-	if(fn.size()>=MAX_PATH-15)
-	{
-		ret=fn;
-		ServerLogger::Log(logid, L"Filename \""+fn+L"\" too long. Shortening it and appending hash.", LL_WARNING);
-		ret.resize(MAX_PATH-15);
-		modified_filename=true;
-	}
-	std::wstring disallowed_chars = L"\\:*?\"<>|/";
+	std::string disallowed_chars = "\\:*?\"<>|/";
 	for(char ch=1;ch<=31;++ch)
 	{
 		disallowed_chars+=ch;
 	}
 
-	if(fn==L"CON" || fn==L"PRN" || fn==L"AUX" || fn==L"NUL" || fn==L"COM1" || fn==L"COM2" || fn==L"COM3" ||
-		fn==L"COM4" || fn==L"COM5" || fn==L"COM6" || fn==L"COM7" || fn==L"COM8" || fn==L"COM9" || fn==L"LPT1" ||
-		fn==L"LPT2" || fn==L"LPT3" || fn==L"LPT4" || fn==L"LPT5" || fn==L"LPT6" || fn==L"LPT7" || fn==L"LPT8" || fn==L"LPT9")
+	if(fn=="CON" || fn=="PRN" || fn=="AUX" || fn=="NUL" || fn=="COM1" || fn=="COM2" || fn=="COM3" ||
+		fn=="COM4" || fn=="COM5" || fn=="COM6" || fn=="COM7" || fn=="COM8" || fn=="COM9" || fn=="LPT1" ||
+		fn=="LPT2" || fn=="LPT3" || fn=="LPT4" || fn=="LPT5" || fn=="LPT6" || fn=="LPT7" || fn=="LPT8" || fn=="LPT9")
 	{
-		ServerLogger::Log(logid, L"Filename \""+fn+L"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
-		ret = L"_" + fn;
+		ServerLogger::Log(logid, "Filename \""+fn+"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
+		ret = "_" + fn;
 		modified_filename=true;
 	}
 
-	if(next(fn, 0, L"CON.") || next(fn, 0, L"PRN.") || next(fn, 0, L"AUX.") || next(fn, 0, L"NUL.") || next(fn, 0, L"COM1.") || next(fn, 0, L"COM2.") || next(fn, 0, L"COM3.") ||
-		next(fn, 0, L"COM4.") || next(fn, 0, L"COM5.") || next(fn, 0, L"COM6.") || next(fn, 0, L"COM7.") || next(fn, 0, L"COM8.") || next(fn, 0, L"COM9.") || next(fn, 0, L"LPT1.") ||
-		next(fn, 0, L"LPT2.") || next(fn, 0, L"LPT3.") || next(fn, 0, L"LPT4.") || next(fn, 0, L"LPT5.") || next(fn, 0, L"LPT6.") || next(fn, 0, L"LPT7.") || next(fn, 0, L"LPT8.") || next(fn, 0, L"LPT9.") )
+	if(next(fn, 0, "CON.") || next(fn, 0, "PRN.") || next(fn, 0, "AUX.") || next(fn, 0, "NUL.") || next(fn, 0, "COM1.") || next(fn, 0, "COM2.") || next(fn, 0, "COM3.") ||
+		next(fn, 0, "COM4.") || next(fn, 0, "COM5.") || next(fn, 0, "COM6.") || next(fn, 0, "COM7.") || next(fn, 0, "COM8.") || next(fn, 0, "COM9.") || next(fn, 0, "LPT1.") ||
+		next(fn, 0, "LPT2.") || next(fn, 0, "LPT3.") || next(fn, 0, "LPT4.") || next(fn, 0, "LPT5.") || next(fn, 0, "LPT6.") || next(fn, 0, "LPT7.") || next(fn, 0, "LPT8.") || next(fn, 0, "LPT9.") )
 	{
-		ServerLogger::Log(logid, L"Filename \""+fn+L"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
-		ret = L"_" + fn;
+		ServerLogger::Log(logid, "Filename \""+fn+"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
+		ret = "_" + fn;
 		modified_filename=true;
 	}
+
+	std::vector<utf8::uint16_t> tmp;
+	bool unicode_err=false;
+	try
+	{		
+		if(modified_filename)
+		{
+			utf8::utf8to16(ret.begin(), ret.end(), back_inserter(tmp) );
+		}
+		else
+		{
+			utf8::utf8to16(fn.begin(), fn.end(), back_inserter(tmp) );
+		}
+	}
+	catch (...)
+	{	
+		unicode_err=true;
+	}
+
+	if(unicode_err)
+	{
+		ServerLogger::Log(logid, "Filename \""+fn+"\" has encoding problems (assuming UTF-8 encoding). Mangling filename.", LL_WARNING);
+
+		ret.clear();
+		try
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(ret));
+		}
+		catch (...)
+		{
+		}		
+		modified_filename=true;
+	}
+
+
+	if( (modified_filename && ret.size()>=MAX_PATH-15) || (!modified_filename && ret.size()>=MAX_PATH-15))
+	{
+		if(!modified_filename)
+		{
+			ret=fn;
+		}
+		ServerLogger::Log(logid, "Filename \""+ret+"\" too long. Shortening it and appending hash.", LL_WARNING);
+		ret.resize(MAX_PATH-15);
+		modified_filename=true;
+	}
+
 #else
-	if(Server->ConvertToUTF8(fn).size()>=NAME_MAX-11)
+	if((fn).size()>=NAME_MAX-11)
 	{
 		ret=fn;
 		bool log_msg=true;
@@ -640,21 +680,21 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 		{
 			if( log_msg )
 			{
-				ServerLogger::Log(logid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
+				ServerLogger::Log(logid, "Filename \""+fn+"\" too long. Shortening it.", LL_WARNING);
 				log_msg=false;
 			}
 			ret.resize(ret.size()-1);
 			modified_filename=true;
 		}
-		while( Server->ConvertToUTF8(ret).size()>=NAME_MAX-11 );
+		while( (ret).size()>=NAME_MAX-11 );
 	}
 
-	std::wstring disallowed_chars = L"/";	
+	std::string disallowed_chars = "/";	
 #endif
 
 	for(size_t i=0;i<disallowed_chars.size();++i)
 	{
-		wchar_t ch = disallowed_chars[i];
+		char ch = disallowed_chars[i];
 		if(fn.find(ch)!=std::string::npos)
 		{
 			if(!modified_filename)
@@ -662,7 +702,7 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 				ret = fn;
 				modified_filename=true;
 			}
-			ServerLogger::Log(logid, L"Filename \""+fn+L"\" contains '"+std::wstring(1, ch)+L"' which the operating system does not allow in paths. Replacing '"+std::wstring(1, ch)+L"' with '_' and appending hash.", LL_WARNING);
+			ServerLogger::Log(logid, "Filename \""+fn+"\" contains '"+std::string(1, ch)+"' which the operating system does not allow in paths. Replacing '"+std::string(1, ch)+"' with '_' and appending hash.", LL_WARNING);
 			ret = ReplaceChar(ret, ch, '_');
 		}
 	}
@@ -670,7 +710,7 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 	if(modified_filename)
 	{
 		std::string hex_md5=Server->GenerateHexMD5(fn);
-		ret = ret+L"-"+widen(hex_md5.substr(0, 10));
+		ret = ret+"-"+hex_md5.substr(0, 10);
 	}
 	else
 	{
@@ -679,10 +719,10 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 
 #ifdef _WIN32
 	size_t idx=0;
-	std::wstring base=ret;
+	std::string base=ret;
 	while(samedir_filenames.find(strlower(ret))!=samedir_filenames.end())
 	{
-		ret = base + L"_" + convert(idx);
+		ret = base + "_" + convert(idx);
 		++idx;
 		modified_filename=true;
 	}
@@ -698,16 +738,16 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 		}
 		else
 		{
-			filepath_corrections[curr_path+L"/"+fn] = ret;
+			filepath_corrections[curr_path+"/"+fn] = ret;
 		}
 	}
 
 	return ret;
 }
 
-std::wstring FileBackup::convertToOSPathFromFileClient(std::wstring path)
+std::string FileBackup::convertToOSPathFromFileClient(std::string path)
 {
-	if(os_file_sep()!=L"/")
+	if(os_file_sep()!="/")
 	{
 		for(size_t i=0;i<path.size();++i)
 			if(path[i]=='/')
@@ -718,20 +758,22 @@ std::wstring FileBackup::convertToOSPathFromFileClient(std::wstring path)
 
 std::string FileBackup::systemErrorInfo()
 {
-	return " (errorcode="+nconvert(os_last_error())+")";
+	std::string errmsg;
+	int64 rc = os_last_error(errmsg);
+	return trim(errmsg)+" (errorcode="+convert(rc)+")";
 }
 
-bool FileBackup::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-	const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata)
+bool FileBackup::link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
+	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata)
 {
-	std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);
-	std::wstring os_curr_hash_path=convertToOSPathFromFileClient(os_path+L"/"+escape_metadata_fn(short_fn));
-	std::wstring dstpath=backuppath+os_curr_path;
-	std::wstring hashpath=backuppath_hashes+os_curr_hash_path;
-	std::wstring filepath_old;
+	std::string os_curr_path=convertToOSPathFromFileClient(os_path+"/"+short_fn);
+	std::string os_curr_hash_path=convertToOSPathFromFileClient(os_path+"/"+escape_metadata_fn(short_fn));
+	std::string dstpath=backuppath+os_curr_path;
+	std::string hashpath=backuppath_hashes+os_curr_hash_path;
+	std::string filepath_old;
 
 	bool tries_once;
-	std::wstring ff_last;
+	std::string ff_last;
 	bool hardlink_limit;
 	bool copied_file;
 	int64 entryid=0;
@@ -751,13 +793,13 @@ bool FileBackup::link_file(const std::wstring &fn, const std::wstring &short_fn,
 
 	if(ok)
 	{
-		ServerLogger::Log(logid, L"GT: Linked file \""+fn+L"\"", LL_DEBUG);
+		ServerLogger::Log(logid, "GT: Linked file \""+fn+"\"", LL_DEBUG);
 	}
 	else
 	{
 		if(filesize!=0)
 		{
-			ServerLogger::Log(logid, L"GT: File \""+fn+L"\" not found via hash. Loading file...", LL_DEBUG);
+			ServerLogger::Log(logid, "GT: File \""+fn+"\" not found via hash. Loading file...", LL_DEBUG);
 		}
 	}
 
@@ -783,7 +825,7 @@ void FileBackup::sendBackupOkay(bool b_okay)
 
 void FileBackup::notifyClientBackupSuccessfull(void)
 {
-	client_main->sendClientMessageRetry("DID BACKUP", "OK", L"Sending status (DID BACKUP) to client failed", 10000, 5);
+	client_main->sendClientMessageRetry("DID BACKUP", "OK", "Sending status (DID BACKUP) to client failed", 10000, 5);
 }
 
 void FileBackup::waitForFileThreads(void)
@@ -814,61 +856,61 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 	std::ostringstream log;
 
-	log << "Verification of file backup with id " << backupid << ". Path=" << Server->ConvertToUTF8(backuppath) << std::endl;
+	log << "Verification of file backup with id " << backupid << ". Path=" << (backuppath) << std::endl;
 
 	unsigned int read;
 	char buffer[4096];
-	std::wstring curr_path=backuppath;
-	std::wstring remote_path;
+	std::string curr_path=backuppath;
+	std::string remote_path;
 	size_t verified_files=0;
 	SFile cf;
 	fileentries->Seek(0);
 	FileListParser list_parser;
-	std::stack<std::set<std::wstring> > folder_files;
-	folder_files.push(std::set<std::wstring>());
+	std::stack<std::set<std::string> > folder_files;
+	folder_files.push(std::set<std::string>());
 
 	while( (read=fileentries->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			std::map<std::wstring, std::wstring> extras;
+			std::map<std::string, std::string> extras;
 			bool b=list_parser.nextEntry(buffer[i], cf, &extras);
 			if(b)
 			{
-				std::wstring cfn;
+				std::string cfn;
 
-				if(!cf.isdir || cf.name!=L"..")
+				if(!cf.isdir || cf.name!="..")
 				{
 					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
 				}
 
 				if( !cf.isdir )
 				{
-					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256_verify"]);
+					std::string sha256hex=(extras["sha256_verify"]);
 
 					if(sha256hex.empty() && SHA_DEF_DIGEST_SIZE == 64)
 					{
 						//compatibility
-						sha256hex = Server->ConvertToUTF8(extras[L"sha256"]);
+						sha256hex = (extras["sha256"]);
 					}
 
 					if(sha256hex.empty())
 					{
-						std::string shabase64 = wnarrow(extras[sha_def_identifier_w]);
+						std::string shabase64 = extras[sha_def_identifier];
 						if(shabase64.empty())
 						{
-							std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
+							std::string msg="No hash for file \""+(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
 						}
 						else if(getSHADef(curr_path+os_file_sep()+cfn)!=base64_decode_dash(shabase64))
 						{
-							std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
+							std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
-							save_debug_data(remote_path+L"/"+cf.name,
+							save_debug_data(remote_path+"/"+cf.name,
 								base64_encode_dash(getSHADef(curr_path+os_file_sep()+cfn)),
 								shabase64);
 						}
@@ -879,7 +921,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					}
 					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
 					{
-						std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
+						std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
 						verify_ok=false;
 						ServerLogger::Log(logid, msg, LL_ERROR);
 						log << msg << std::endl;
@@ -891,10 +933,10 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 				}
 				else
 				{
-					if(cf.name==L"..")
+					if(cf.name=="..")
 					{
 						curr_path=ExtractFilePath(curr_path, os_file_sep());
-						remote_path=ExtractFilePath(remote_path, L"/");
+						remote_path=ExtractFilePath(remote_path, "/");
 						
 						folder_files.pop();
 					}
@@ -903,11 +945,11 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 						curr_path+=os_file_sep()+cfn;
 
 						if(!remote_path.empty())
-							remote_path+=L"/";
+							remote_path+="/";
 
 						remote_path+=cfn;
 
-						folder_files.push(std::set<std::wstring>());
+						folder_files.push(std::set<std::string>());
 					}
 				}
 			}
@@ -920,13 +962,13 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 	}
 	else
 	{
-		ServerLogger::Log(logid, "Verified "+nconvert(verified_files)+" files", LL_DEBUG);
+		ServerLogger::Log(logid, "Verified "+convert(verified_files)+" files", LL_DEBUG);
 	}
 
 	return verify_ok;
 }
 
-std::string FileBackup::getSHA256(const std::wstring& fn)
+std::string FileBackup::getSHA256(const std::string& fn)
 {
 	sha256_ctx ctx;
 	sha256_init(&ctx);
@@ -953,7 +995,7 @@ std::string FileBackup::getSHA256(const std::wstring& fn)
 	return bytesToHex(dig, 32);
 }
 
-std::string FileBackup::getSHA512(const std::wstring& fn)
+std::string FileBackup::getSHA512(const std::string& fn)
 {
 	sha512_ctx ctx;
 	sha512_init(&ctx);
@@ -981,7 +1023,7 @@ std::string FileBackup::getSHA512(const std::wstring& fn)
 	return dig;
 }
 
-std::string FileBackup::getSHADef(const std::wstring& fn)
+std::string FileBackup::getSHADef(const std::string& fn)
 {
 	sha_def_ctx ctx;
 	sha_def_init(&ctx);
@@ -1031,12 +1073,12 @@ bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool cr
 #endif
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
-	backuppath_single=widen((std::string)buffer);
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	backuppath_single=(std::string)buffer;
+	std::string backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
-	backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
+	backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+".hashes";
 
-	dir_pool_path = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
+	dir_pool_path = backupfolder + os_file_sep() + clientname + os_file_sep() + ".directory_pool";
 
 	if(on_snapshot)
 	{
@@ -1067,10 +1109,10 @@ bool FileBackup::constructBackupPathCdp()
 #endif
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
-	backuppath_single=L"continuous_"+widen(buffer);
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	backuppath_single="continuous_"+std::string(buffer);
+	std::string backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
-	backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
+	backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+".hashes";
 
 	if( os_directory_exists(os_file_prefix(backuppath)) && os_directory_exists(os_file_prefix(backuppath_hashes)))
 	{
@@ -1083,7 +1125,7 @@ bool FileBackup::constructBackupPathCdp()
 void FileBackup::createUserViews(IFile* file_list_f)
 {
 	std::auto_ptr<ISettingsReader> urbackup_tokens(
-		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties")));
+		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	if(urbackup_tokens.get()==NULL)
 	{
@@ -1114,7 +1156,7 @@ void FileBackup::createUserViews(IFile* file_list_f)
 		std::vector<size_t> identical_permission_roots = findIdenticalPermissionRoots(file_list_f, ids);
 		if(!createUserView(file_list_f, ids, accountname, identical_permission_roots))
 		{
-			ServerLogger::Log(logid, "Error creating user view for user with id "+nconvert(uid), LL_WARNING);
+			ServerLogger::Log(logid, "Error creating user view for user with id "+convert(uid), LL_WARNING);
 		}
 	}
 }
@@ -1146,10 +1188,10 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 	{
 		for(_u32 i=0;i<bread;++i)
 		{
-			std::map<std::wstring, std::wstring> extra;
+			std::map<std::string, std::string> extra;
 			if(file_list_parser.nextEntry(buffer[i], data, &extra))
 			{
-				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
+				std::string permissions = base64_decode_dash(extra["dacl"]);
 
 				bool has_perm=false;
 				for(size_t j=0;j<ids.size();++j)
@@ -1164,7 +1206,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 				if(data.isdir)
 				{
-					if(data.name==L"..")
+					if(data.name=="..")
 					{
 						SDirStatItem last_dir = {};
 
@@ -1227,7 +1269,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots)
 {
-	std::wstring user_view_home_path = backuppath + os_file_sep() + L"user_views" + os_file_sep() + Server->ConvertToUnicode(accoutname);
+	std::string user_view_home_path = backuppath + os_file_sep() + "user_views" + os_file_sep() + (accoutname);
 
 	if(!os_create_dir_recursive(os_file_prefix(user_view_home_path)))
 	{
@@ -1240,25 +1282,25 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 	char buffer[4096];
 	_u32 bread;
 	FileListParser file_list_parser;
-	std::wstring curr_path;
+	std::string curr_path;
 	size_t skip = 0;
 	size_t id = 0;
 	SFile data;
-	std::stack<std::set<std::wstring> > folder_files;
-	folder_files.push(std::set<std::wstring>());
+	std::stack<std::set<std::string> > folder_files;
+	folder_files.push(std::set<std::string>());
 	
 	while((bread=file_list_f->Read(buffer, 4096))>0)
 	{
 		for(_u32 i=0;i<bread;++i)
 		{
-			std::map<std::wstring, std::wstring> extra;
+			std::map<std::string, std::string> extra;
 			if(file_list_parser.nextEntry(buffer[i], data, &extra))
 			{
 				if(skip>0)
 				{
 					if(data.isdir)
 					{
-						if(data.name==L"..")
+						if(data.name=="..")
 						{
 							--skip;
 
@@ -1276,24 +1318,24 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 					continue;
 				}
 
-				std::wstring osspecific_name;
+				std::string osspecific_name;
 
-				if(!data.isdir || data.name!=L"..")
+				if(!data.isdir || data.name!="..")
 				{
 					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
 				}
 
-				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
+				std::string permissions = base64_decode_dash(extra["dacl"]);
 				if(data.isdir)
 				{
-					if(data.name==L"..")
+					if(data.name=="..")
 					{
 						folder_files.pop();
 						curr_path = ExtractFilePath(curr_path, os_file_sep());
 					}
 					else
 					{
-						folder_files.push(std::set<std::wstring>());
+						folder_files.push(std::set<std::string>());
 						curr_path += os_file_sep() + osspecific_name;
 
 						bool has_perm = false;
@@ -1339,7 +1381,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						bool denied=false;
 						if(FileMetadata::hasPermission(permissions, ids[j], denied))
 						{
-							std::wstring filename = curr_path + os_file_sep() + osspecific_name;
+							std::string filename = curr_path + os_file_sep() + osspecific_name;
 
 							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
 								os_file_prefix(user_view_home_path + filename)))
@@ -1357,8 +1399,8 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 		}
 	}
 
-	std::wstring backupfolder = server_settings->getSettings()->backupfolder;
-	std::wstring o_user_view_folder = backupfolder+os_file_sep()+L"user_views" + os_file_sep()+clientname+ os_file_sep()+Server->ConvertToUnicode(accoutname);
+	std::string backupfolder = server_settings->getSettings()->backupfolder;
+	std::string o_user_view_folder = backupfolder+os_file_sep()+"user_views" + os_file_sep()+clientname+ os_file_sep()+(accoutname);
 
 	if(!os_directory_exists(os_file_prefix(o_user_view_folder)) &&
 		!os_create_dir_recursive(o_user_view_folder))
@@ -1370,15 +1412,15 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 	if(!os_link_symbolic(os_file_prefix(user_view_home_path),
 		os_file_prefix(o_user_view_folder + os_file_sep() + backuppath_single)))
 	{
-		ServerLogger::Log(logid, L"Error creating user view link at user_views in backup storage", LL_WARNING);
+		ServerLogger::Log(logid, "Error creating user view link at user_views in backup storage", LL_WARNING);
 		return false;
 	}
 
-	os_remove_symlink_dir(os_file_prefix(o_user_view_folder + os_file_sep() + L"current"));
+	os_remove_symlink_dir(os_file_prefix(o_user_view_folder + os_file_sep() + "current"));
 	if(!os_link_symbolic(os_file_prefix(user_view_home_path),
-		os_file_prefix(o_user_view_folder + os_file_sep() + L"current")))
+		os_file_prefix(o_user_view_folder + os_file_sep() + "current")))
 	{
-		ServerLogger::Log(logid, L"Error creating current user view link at user_views in backup storage", LL_WARNING);
+		ServerLogger::Log(logid, "Error creating current user view link at user_views in backup storage", LL_WARNING);
 		return false;
 	}
 
@@ -1388,7 +1430,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 void FileBackup::saveUsersOnClient()
 {
 	std::auto_ptr<ISettingsReader> urbackup_tokens(
-		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties")));
+		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	if(urbackup_tokens.get()==NULL)
 	{
@@ -1404,10 +1446,10 @@ void FileBackup::saveUsersOnClient()
 
 	for(size_t i=0;i<uids.size();++i)
 	{
-		std::wstring accountname = Server->ConvertToUnicode(base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string())));
+		std::string accountname = (base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string())));
 		backup_dao->addUserOnClient(clientid, accountname);
 
-		backup_dao->addUserToken(accountname, widen(urbackup_tokens->getValue(uids[i]+".token", std::string())));
+		backup_dao->addUserToken(accountname, urbackup_tokens->getValue(uids[i]+".token", std::string()));
 
 		std::string s_gids = urbackup_tokens->getValue(uids[i]+".gids", "");
 		std::vector<std::string> gids;
@@ -1415,16 +1457,16 @@ void FileBackup::saveUsersOnClient()
 
 		for(size_t j=0;j<gids.size();++j)
 		{
-			backup_dao->addUserToken(accountname, widen(urbackup_tokens->getValue(gids[j]+".token", std::string())));
+			backup_dao->addUserToken(accountname, urbackup_tokens->getValue(gids[j]+".token", std::string()));
 		}
 	}
 
-	std::vector<std::wstring> keys = urbackup_tokens->getKeys();
+	std::vector<std::string> keys = urbackup_tokens->getKeys();
 	for(size_t i=0;i<keys.size();++i)
 	{
-		if(keys[i].find(L".token")==keys[i].size()-6)
+		if(keys[i].find(".token")==keys[i].size()-6)
 		{
-			backup_dao->addClientToken(clientid, urbackup_tokens->getValue(keys[i], std::wstring()));
+			backup_dao->addClientToken(clientid, urbackup_tokens->getValue(keys[i], std::string()));
 		}
 	}
 }
@@ -1451,25 +1493,25 @@ void FileBackup::deleteBackup()
 	}
 }
 
-bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep, bool isdir )
+bool FileBackup::createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir )
 {
-	std::vector<std::wstring> toks;
+	std::vector<std::string> toks;
 	TokenizeMail(symlink_target, toks, dir_sep);
 
-	std::wstring target;
+	std::string target;
 
 	for(size_t i=0;i<depth;++i)
 	{
-		target+=L".."+os_file_sep();
+		target+=".."+os_file_sep();
 	}
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		std::set<std::wstring> emptyset;
-		std::wstring emptypath;
-		std::wstring component = fixFilenameForOS(toks[i], emptyset, emptypath);
+		std::set<std::string> emptyset;
+		std::string emptypath;
+		std::string component = fixFilenameForOS(toks[i], emptyset, emptypath);
 
-		if(component==L".." || component==L".")
+		if(component==".." || component==".")
 			continue;
 
 		target+=component;
@@ -1495,7 +1537,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 		_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream.get(), server_settings.get(), 10000);
 		if(rc!=ERR_CONNECTED)
 		{
-			ServerLogger::Log(logid, L"Full Backup of "+clientname+L" failed - CONNECT error (for metadata stream)", LL_ERROR);
+			ServerLogger::Log(logid, "Full Backup of "+clientname+" failed - CONNECT error (for metadata stream)", LL_ERROR);
 			has_early_error=true;
 			log_backup=false;
 			return false;
@@ -1546,10 +1588,10 @@ bool FileBackup::stopFileMetadataDownloadThread()
 	return true;
 }
 
-void FileBackup::save_debug_data(const std::wstring& rfn, const std::string& local_hash, const std::string& remote_hash)
+void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)
 {
 	ServerLogger::Log(logid, "Local hash: "+local_hash+" remote hash: "+remote_hash, LL_INFO);
-	ServerLogger::Log(logid, L"Trying to download "+rfn, LL_INFO);
+	ServerLogger::Log(logid, "Trying to download "+rfn, LL_INFO);
 
 	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
@@ -1558,29 +1600,29 @@ void FileBackup::save_debug_data(const std::wstring& rfn, const std::string& loc
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(logid, L"Cannot connect to retrieve file that failed to verify - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, "Cannot connect to retrieve file that failed to verify - CONNECT error", LL_ERROR);
 		return;
 	}
 
 	std::auto_ptr<IFile> tmpfile(Server->openTemporaryFile());
-	std::wstring tmpdirname = tmpfile->getFilenameW();
+	std::string tmpdirname = tmpfile->getFilename();
 	tmpfile.reset();
 	Server->deleteFile(tmpdirname);
 	os_create_dir(tmpdirname);
 
-	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+L"verify_failed.file", MODE_WRITE));
-	rc = fc.GetFile(Server->ConvertToUTF8(rfn), output_file.get(), true, false);
+	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
+	rc = fc.GetFile((rfn), output_file.get(), true, false);
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error downloading "+rfn+L" after verification failed", LL_ERROR);
+		ServerLogger::Log(logid, "Error downloading "+rfn+" after verification failed", LL_ERROR);
 	}
 	else
 	{
 		output_file.reset();
-		std::string sha512 = base64_encode_dash(getSHA512(tmpdirname+os_file_sep()+L"verify_failed.file"));
-		std::string sha256 = getSHA256(tmpdirname+os_file_sep()+L"verify_failed.file");
-		ServerLogger::Log(logid, L"Downloaded file "+rfn+L" with failed verification to "+tmpdirname+L" for analysis. "
-			L" SHA512: "+widen(sha512)+L" SHA256: "+widen(sha256), LL_INFO);
+		std::string sha512 = base64_encode_dash(getSHA512(tmpdirname+os_file_sep()+"verify_failed.file"));
+		std::string sha256 = getSHA256(tmpdirname+os_file_sep()+"verify_failed.file");
+		ServerLogger::Log(logid, "Downloaded file "+rfn+" with failed verification to "+tmpdirname+" for analysis. "
+			" SHA512: "+sha512+" SHA256: "+sha256, LL_INFO);
 	}
 }

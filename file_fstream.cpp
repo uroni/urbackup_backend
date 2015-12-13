@@ -28,7 +28,7 @@ File::File()
 
 }
 
-bool File::Open(std::wstring pfn, int mode)
+bool File::Open(std::string pfn, int mode)
 {
 	fn=pfn;
 	std::ios::openmode _mode;
@@ -58,7 +58,7 @@ bool File::Open(void *handle)
 	return false;
 }
 
-bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
+bool File::OpenTemporaryFile(const std::string &dir, bool first_try)
 {
 	return Open(tmpnam(NULL), MODE_TEMP);
 } 

@@ -22,44 +22,44 @@ public:
 	struct CondString
 	{
 		bool exists;
-		std::wstring value;
+		std::string value;
 	};
 	struct SClientInfo
 	{
 		int id;
-		std::wstring name;
+		std::string name;
 	};
 	struct SFileBackupInfo
 	{
 		bool exists;
 		int id;
-		std::wstring backuptime;
-		std::wstring path;
+		std::string backuptime;
+		std::string path;
 	};
 	struct SHistItem
 	{
 		int id;
-		std::wstring name;
-		std::wstring lastbackup;
-		std::wstring lastseen;
-		std::wstring lastbackup_image;
+		std::string name;
+		std::string lastbackup;
+		std::string lastseen;
+		std::string lastbackup_image;
 		int64 bytes_used_files;
 		int64 bytes_used_images;
-		std::wstring max_created;
+		std::string max_created;
 		int64 hist_id;
 	};
 	struct SImageBackupInfo
 	{
 		bool exists;
 		int id;
-		std::wstring backuptime;
-		std::wstring path;
-		std::wstring letter;
+		std::string backuptime;
+		std::string path;
+		std::string letter;
 	};
 	struct SImageLetter
 	{
 		int id;
-		std::wstring letter;
+		std::string letter;
 	};
 	struct SImageRef
 	{
@@ -71,14 +71,14 @@ public:
 		int id;
 		int clientid;
 		int incremental;
-		std::wstring backuptime;
-		std::wstring path;
-		std::wstring clientname;
+		std::string backuptime;
+		std::string path;
+		std::string clientname;
 	};
 	struct SIncompleteImages
 	{
 		int id;
-		std::wstring path;
+		std::string path;
 	};
 
 
@@ -110,17 +110,17 @@ public:
 	std::vector<SClientInfo> getClients(void);
 	std::vector<SFileBackupInfo> getFileBackupsOfClient(int clientid);
 	std::vector<SImageBackupInfo> getImageBackupsOfClient(int clientid);
-	CondInt findFileBackup(int clientid, const std::wstring& path);
+	CondInt findFileBackup(int clientid, const std::string& path);
 	void removeDanglingFiles(void);
 	CondInt64 getUsedStorage(int clientid);
 	void cleanupBackupLogs(void);
 	void cleanupAuthLog(void);
 	std::vector<SIncompleteFileBackup> getIncompleteFileBackups(void);
-	std::vector<SHistItem> getClientHistory(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
-	void deleteClientHistoryIds(const std::wstring& back_start, const std::wstring& back_stop);
-	void deleteClientHistoryItems(const std::wstring& back_start, const std::wstring& back_stop);
-	void insertClientHistoryId(const std::wstring& created);
-	void insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, const std::wstring& lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, const std::wstring& created, int64 hist_id);
+	std::vector<SHistItem> getClientHistory(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping);
+	void deleteClientHistoryIds(const std::string& back_start, const std::string& back_stop);
+	void deleteClientHistoryItems(const std::string& back_start, const std::string& back_stop);
+	void insertClientHistoryId(const std::string& created);
+	void insertClientHistoryItem(int id, const std::string& name, const std::string& lastbackup, const std::string& lastseen, const std::string& lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, const std::string& created, int64 hist_id);
 	//@-SQLGenFunctionsEnd
 
 private:

@@ -55,7 +55,7 @@ db_results create_callback(size_t n_done, size_t n_rows, void *userdata)
 	
 	if(curr_pc!=last_pc)
 	{
-		Server->Log("Creating files index: "+nconvert((double)curr_pc/10)+"% finished", LL_INFO);
+		Server->Log("Creating files index: "+convert((double)curr_pc/10)+"% finished", LL_INFO);
 	}
 	
 	db_results ret;
@@ -78,7 +78,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 	{
 		cache_res=db->Read("PRAGMA cache_size");
 		ServerSettings server_settings(db);
-		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 
 		Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
 		db->Write("PRAGMA journal_mode = DELETE");
@@ -94,7 +94,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 	int64 n_files = 0;
 	if(!res.empty())
 	{
-		n_files=watoi64(res[0][L"c"]);
+		n_files=watoi64(res[0]["c"]);
 	}
 
 	db->BeginWriteTransaction();
@@ -123,7 +123,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	if(!cache_res.empty())
 	{
-		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA cache_size = "+cache_res[0]["cache_size"]);
 		db->Write("PRAGMA shrink_memory");
 		db->Write("PRAGMA journal_mode = WAL");
 	}
@@ -171,14 +171,14 @@ bool create_files_index(SStartupStatus& status)
 
 	ServerBackupDao backupdao(db);
 
-	bool creating_index = backupdao.getMiscValue(L"creating_file_entry_index").value==L"true";
+	bool creating_index = backupdao.getMiscValue("creating_file_entry_index").value=="true";
 
 	if(!FileExists("urbackup/fileindex/backup_server_files_index.lmdb") || creating_index)
 	{
 		delete_file_index();
 
-		backupdao.delMiscValue(L"creating_file_entry_index");
-		backupdao.addMiscValue(L"creating_file_entry_index", L"true");
+		backupdao.delMiscValue("creating_file_entry_index");
+		backupdao.addMiscValue("creating_file_entry_index", "true");
 		backupdao.commit();
 
 		status.upgrading_database=false;
@@ -191,7 +191,7 @@ bool create_files_index(SStartupStatus& status)
 		}
 		else
 		{
-			backupdao.delMiscValue(L"creating_file_entry_index");
+			backupdao.delMiscValue("creating_file_entry_index");
 		}
 	}
 	

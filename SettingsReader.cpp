@@ -69,55 +69,5 @@ int64 CSettingsReader::getValue(std::string key, int64 def)
 	if(b==false)
 		return def;
 	else
-		return watoi64(widen(value));
-}
-
-std::wstring CSettingsReader::getValue(std::wstring key,std::wstring def)
-{
-	std::wstring value;
-	bool b=getValue(key,&value);
-	if(b==false)
-		return def;
-	else
-		return value;
-}
-
-std::wstring CSettingsReader::getValue(std::wstring key)
-{
-	std::wstring value;
-	bool b=getValue(key,&value);
-	if(b==false)
-		return L"";
-	else
-		return value;
-}
-
-int CSettingsReader::getValue(std::wstring key, int def)
-{
-	std::wstring value;
-	bool b=getValue(key,&value);
-	if(b==false)
-		return def;
-	else
-		return atoi(wnarrow(value).c_str());
-}
-
-float CSettingsReader::getValue(std::wstring key, float def)
-{
-	std::wstring value;
-	bool b=getValue(key,&value);
-	if(b==false)
-		return def;
-	else
-		return (float)atof(wnarrow(value).c_str());
-}
-
-int64 CSettingsReader::getValue(std::wstring key, int64 def)
-{
-	std::wstring value;
-	bool b=getValue(key,&value);
-	if(b==false)
-		return def;
-	else
 		return watoi64(value);
 }

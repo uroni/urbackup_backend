@@ -195,10 +195,10 @@ void ServerVHDWriter::operator()(void)
 
 void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 {
-	std::wstring p;
+	std::string p;
 	{
 		IScopedLock lock(vhd_mutex);
-		p=ExtractFilePath(vhd->getFilenameW());
+		p=ExtractFilePath(vhd->getFilename());
 	}
 	int64 fs=os_free_space(os_file_prefix(p));
 	if(fs!=-1 && fs <= free_space_lim )
@@ -235,7 +235,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			}
 		}
 
-		std::wstring p=ExtractFilePath(vhd->getFilenameW());
+		std::string p=ExtractFilePath(vhd->getFilename());
 		int64 fs=os_free_space(os_file_prefix(p));
 		if(fs!=-1 && fs <= free_space_lim )
 		{

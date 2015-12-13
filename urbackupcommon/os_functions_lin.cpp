@@ -56,18 +56,18 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn, bool ignore_other_fs)
+std::vector<SFile> getFilesWin(const std::string &path, bool *has_error, bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
 	return getFiles(path, has_error, ignore_other_fs);
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool ignore_other_fs)
+std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
 	{
 		*has_error=false;
 	}
-    std::string upath=ConvertToUTF8(path);
+    std::string upath=(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
     struct dirent64 *dirp;
@@ -77,9 +77,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
 		{
 			*has_error=true;
 		}
-		std::wstring errmsg;
+		std::string errmsg;
 		int err = os_last_error(errmsg);
-		Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+		Log("Cannot open \""+path+"\": "+errmsg+" ("+convert(err)+")", LL_ERROR);
         return tmp;
     }
 	
@@ -96,14 +96,14 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
 		}
 	}
 	
-	upath+=os_file_sepn();
+	upath+=os_file_sep();
 
     errno=0;
     while ((dirp = readdir64(dp)) != NULL)
 	{
 		SFile f;
-        f.name=ConvertToUnicode(dirp->d_name);
-		if(f.name==L"." || f.name==L".." )
+        f.name=(dirp->d_name);
+		if(f.name=="." || f.name==".." )
 			continue;		
 
 		f.isdir=(dirp->d_type==DT_DIR);
@@ -156,9 +156,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
 		}
 		else
 		{
-			std::wstring errmsg;
+			std::string errmsg;
 			int err = os_last_error(errmsg);
-			Log("Cannot stat \""+upath+dirp->d_name+"\": "+ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
+			Log("Cannot stat \""+upath+dirp->d_name+"\": "+(errmsg)+" ("+convert(err)+")", LL_ERROR);
 			if(has_error!=NULL)
 			{
 				*has_error=true;
@@ -171,9 +171,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
     
     if(errno!=0)
     {
-		std::wstring errmsg;
+		std::string errmsg;
 		int err = os_last_error(errmsg);
-	    Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+	    Log("Error listing files in directory \""+path+"\": "+errmsg+" ("+convert(err)+")", LL_ERROR);
 		if(has_error!=NULL)
 			*has_error=true;
     }
@@ -185,19 +185,19 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
     return tmp;
 }
 
-void removeFile(const std::wstring &path)
+void removeFile(const std::string &path)
 {
-    unlink(ConvertToUTF8(path).c_str());
+    unlink((path).c_str());
 }
 
-void moveFile(const std::wstring &src, const std::wstring &dst)
+void moveFile(const std::string &src, const std::string &dst)
 {
-    rename(ConvertToUTF8(src).c_str(), ConvertToUTF8(dst).c_str() );
+    rename((src).c_str(), (dst).c_str() );
 }
 
-bool os_remove_symlink_dir(const std::wstring &path)
+bool os_remove_symlink_dir(const std::string &path)
 {
-    return unlink(ConvertToUTF8(path).c_str())==0;
+    return unlink((path).c_str())==0;
 }
 
 bool os_remove_dir(const std::string &path)
@@ -205,18 +205,13 @@ bool os_remove_dir(const std::string &path)
 	return rmdir(path.c_str())==0;
 }
 
-bool os_remove_dir(const std::wstring &path)
-{
-    return rmdir(ConvertToUTF8(path).c_str())==0;
-}
-
-bool isDirectory(const std::wstring &path, void* transaction)
+bool isDirectory(const std::string &path, void* transaction)
 {
         struct stat64 f_info;
-        int rc=stat64(ConvertToUTF8(path).c_str(), &f_info);
+        int rc=stat64((path).c_str(), &f_info);
 		if(rc!=0)
 		{
-            rc = lstat64(ConvertToUTF8(path).c_str(), &f_info);
+            rc = lstat64((path).c_str(), &f_info);
 			if(rc!=0)
 			{
 				return false;
@@ -233,11 +228,11 @@ bool isDirectory(const std::wstring &path, void* transaction)
         }
 }
 
-int os_get_file_type(const std::wstring &path)
+int os_get_file_type(const std::string &path)
 {
 	int ret = 0;
 	struct stat64 f_info;
-    int rc1=stat64(ConvertToUTF8(path).c_str(), &f_info);
+    int rc1=stat64((path).c_str(), &f_info);
 	if(rc1==0)
 	{
 		if ( S_ISDIR(f_info.st_mode) )
@@ -250,7 +245,7 @@ int os_get_file_type(const std::wstring &path)
 		}
 	}
 
-    int rc2 = lstat64(ConvertToUTF8(path).c_str(), &f_info);
+    int rc2 = lstat64((path).c_str(), &f_info);
 	if(rc2==0)
 	{
 		if(S_ISLNK(f_info.st_mode))
@@ -272,31 +267,25 @@ int64 os_atoi64(const std::string &str)
 	return strtoll(str.c_str(), NULL, 10);
 }
 
-bool os_create_dir(const std::wstring &dir)
-{
-    int rc=mkdir(ConvertToUTF8(dir).c_str(), S_IRWXU | S_IRWXG );
-	return rc==0;
-}
-
 bool os_create_dir(const std::string &path)
 {
 	return mkdir(path.c_str(), S_IRWXU | S_IRWXG)==0;
 }
 
-bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
+bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
 #ifndef sun
-    int src_desc=open64(ConvertToUTF8(fname).c_str(), O_RDONLY);
+    int src_desc=open64((fname).c_str(), O_RDONLY);
 	if( src_desc<0)
 	{
-        Log("Error opening source file. errno="+nconvert(errno), LL_INFO);
+        Log("Error opening source file. errno="+convert(errno), LL_INFO);
 	    return false;
 	}
 
-    int dst_desc=open64(ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+    int dst_desc=open64((linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
-        Log("Error opening destination file. errno="+nconvert(errno), LL_INFO);
+        Log("Error opening destination file. errno="+convert(errno), LL_INFO);
 	    close(src_desc);
 	    return false;
 	}
@@ -308,7 +297,7 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	
 	if(rc)
 	{
-        Log("Reflink ioctl failed. errno="+nconvert(errno), LL_INFO);
+        Log("Reflink ioctl failed. errno="+convert(errno), LL_INFO);
 	}
 
 	close(src_desc);
@@ -316,9 +305,9 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	
 	if(rc)
 	{
-        if(unlink(ConvertToUTF8(linkname).c_str()))
+        if(unlink((linkname).c_str()))
 		{
-            Log("Removing destination file failed. errno="+nconvert(errno), LL_INFO);
+            Log("Removing destination file failed. errno="+convert(errno), LL_INFO);
 		}
 	}
 	
@@ -328,7 +317,7 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 #endif
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
+bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links)
 {
 	if(too_many_links!=NULL)
 		*too_many_links=false;
@@ -336,13 +325,13 @@ bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname,
 	if( use_ioref )
 		return os_create_reflink(linkname, fname);
 		
-    int rc=link(ConvertToUTF8(fname).c_str(), ConvertToUTF8(linkname).c_str());
+    int rc=link((fname).c_str(), (linkname).c_str());
 	return rc==0;
 }
 
-int64 os_free_space(const std::wstring &path)
+int64 os_free_space(const std::string &path)
 {
-	std::wstring cp=path;
+	std::string cp=path;
 	if(path.size()==0)
 		return -1;
 	if(cp[cp.size()-1]=='/')
@@ -351,7 +340,7 @@ int64 os_free_space(const std::wstring &path)
 		cp+='/';
 
 	struct statvfs64 buf = {};
-    int rc=statvfs64(ConvertToUTF8(path).c_str(), &buf);
+    int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
 		int64 blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
@@ -363,9 +352,9 @@ int64 os_free_space(const std::wstring &path)
 	}
 }
 
-int64 os_total_space(const std::wstring &path)
+int64 os_total_space(const std::string &path)
 {
-	std::wstring cp=path;
+	std::string cp=path;
 	if(path.size()==0)
 		return -1;
 	if(cp[cp.size()-1]=='/')
@@ -374,7 +363,7 @@ int64 os_total_space(const std::wstring &path)
 		cp+='/';
 
 	struct statvfs64 buf;
-    int rc=statvfs64(ConvertToUTF8(path).c_str(), &buf);
+    int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
 		fsblkcnt_t used=buf.f_blocks-buf.f_bfree;
@@ -384,18 +373,18 @@ int64 os_total_space(const std::wstring &path)
 		return -1;
 }
 
-bool os_directory_exists(const std::wstring &path)
+bool os_directory_exists(const std::string &path)
 {
-    //std::string upath=ConvertToUTF8(path);
+    //std::string upath=(path);
 	//DIR *dp=opendir(upath.c_str());
 	//closedir(dp);
 	//return dp!=NULL;
 	return isDirectory(path);
 }
 
-bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
+bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
-    std::string upath=ConvertToUTF8(path);
+    std::string upath=(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
     struct dirent *dirp;
@@ -406,7 +395,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
     }
 	
 	bool ok=true;
-	std::vector<std::wstring> subdirs;
+	std::vector<std::string> subdirs;
 	while ((dirp = readdir(dp)) != NULL)
 	{
 		if( (std::string)dirp->d_name!="." && (std::string)dirp->d_name!=".." )
@@ -421,13 +410,13 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 				{
 					if(S_ISDIR(f_info.st_mode) )
 					{
-                        subdirs.push_back(ConvertToUnicode(dirp->d_name));
+                        subdirs.push_back((dirp->d_name));
 					}
 					else if(S_ISLNK(f_info.st_mode))
 					{
 						if(symlink_callback!=NULL)
 						{
-                            symlink_callback(ConvertToUnicode(upath+"/"+(std::string)dirp->d_name), userdata);
+                            symlink_callback((upath+"/"+(std::string)dirp->d_name), userdata);
 						}
 						else
 						{
@@ -447,7 +436,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 				}
 				else
 				{
-					std::string e=nconvert(errno);
+					std::string e=convert(errno);
 					switch(errno)
 					{
 					    case EACCES: e="EACCES"; break;
@@ -465,13 +454,13 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 			}
 			else if(dirp->d_type==DT_DIR )
 			{
-                subdirs.push_back(ConvertToUnicode(dirp->d_name));
+                subdirs.push_back((dirp->d_name));
 			}
 			else if(dirp->d_type==DT_LNK )
 			{
 				if(symlink_callback!=NULL)
 				{
-                    symlink_callback(ConvertToUnicode(upath+"/"+(std::string)dirp->d_name), userdata);
+                    symlink_callback((upath+"/"+(std::string)dirp->d_name), userdata);
 				}
 				else
 				{
@@ -494,7 +483,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
     closedir(dp);
     for(size_t i=0;i<subdirs.size();++i)
     {
-		bool b=os_remove_nonempty_dir(path+L"/"+subdirs[i], symlink_callback, userdata);
+		bool b=os_remove_nonempty_dir(path+"/"+subdirs[i], symlink_callback, userdata);
 		if(!b)
 		    ok=false;
     }
@@ -508,19 +497,14 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 	return ok;
 }
 
-std::wstring os_file_sep(void)
-{
-	return L"/";
-}
-
-std::string os_file_sepn(void)
+std::string os_file_sep(void)
 {
 	return "/";
 }
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
+bool os_link_symbolic(const std::string &target, const std::string &lname, void* transaction, bool* isdir)
 {
-    return symlink(ConvertToUTF8(target).c_str(), ConvertToUTF8(lname).c_str())==0;
+    return symlink((target).c_str(), (lname).c_str())==0;
 }
 
 bool os_lookuphostname(std::string pServer, unsigned int *dest)
@@ -570,14 +554,14 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	return true;
 }
 
-std::wstring os_file_prefix(std::wstring path)
+std::string os_file_prefix(std::string path)
 {
 	return path;
 }
 
-bool os_file_truncate(const std::wstring &fn, int64 fsize)
+bool os_file_truncate(const std::string &fn, int64 fsize)
 {
-    if( truncate(ConvertToUTF8(fn).c_str(), (off_t)fsize) !=0 )
+    if( truncate((fn).c_str(), (off_t)fsize) !=0 )
 	{
 		return false;
 	}
@@ -596,7 +580,7 @@ std::string os_strftime(std::string fs)
 	return r;
 }
 
-bool os_create_dir_recursive(std::wstring fn)
+bool os_create_dir_recursive(std::string fn)
 {
 	if(fn.empty())
 		return false;
@@ -616,15 +600,15 @@ bool os_create_dir_recursive(std::wstring fn)
 	}
 }
 
-bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
+bool os_rename_file(std::string src, std::string dst, void* transaction)
 {
-    int rc=rename(ConvertToUTF8(src).c_str(), ConvertToUTF8(dst).c_str());
+    int rc=rename((src).c_str(), (dst).c_str());
 	return rc==0;
 }
 
-bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
+bool os_get_symlink_target(const std::string &lname, std::string &target)
 {
-    std::string lname_utf8 = ConvertToUTF8(lname);
+    std::string lname_utf8 = (lname);
 	struct stat sb;
 	if(lstat(lname_utf8.c_str(), &sb)==-1)
 	{
@@ -651,15 +635,15 @@ bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
 		target_buf.resize(rc);
 	}
 	
-    target = ConvertToUnicode(target_buf);
+    target = (target_buf);
 	
 	return true;
 }
 
-bool os_is_symlink(const std::wstring &lname)
+bool os_is_symlink(const std::string &lname)
 {
 	struct stat sb;
-    if(lstat(ConvertToUTF8(lname).c_str(), &sb)==-1)
+    if(lstat((lname).c_str(), &sb)==-1)
 	{
 		return false;
 	}
@@ -682,13 +666,13 @@ int64 os_last_error()
 	return errno;
 }
 
-int64 os_last_error(std::wstring& message)
+int64 os_last_error(std::string& message)
 {
 	int err = errno;
 	char* str = strerror(err);
 	if(str!=NULL)
 	{
-		message = ConvertToUnicode(str);
+		message = (str);
 	}
 	return err;
 }
@@ -706,17 +690,17 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed)
+bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified, int64 accessed)
 {
 	struct utimbuf times;
 	times.actime = static_cast<time_t>(accessed);
 	times.modtime = static_cast<time_t>(last_modified);
-    int rc = utime(ConvertToUTF8(fn).c_str(), &times);
+    int rc = utime((fn).c_str(), &times);
 	return rc==0;
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool copy_file(const std::wstring &src, const std::wstring &dst)
+bool copy_file(const std::string &src, const std::string &dst)
 {
     IFile *fsrc=Server->openFile(src, MODE_READ);
 	if(fsrc==NULL) return false;
@@ -756,18 +740,18 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 }
 #endif //OS_FUNC_NO_SERVER
 
-SFile getFileMetadataWin( const std::wstring &path, bool with_usn)
+SFile getFileMetadataWin( const std::string &path, bool with_usn)
 {
 	return getFileMetadata(path);
 }
 
-SFile getFileMetadata( const std::wstring &path )
+SFile getFileMetadata( const std::string &path )
 {
 	SFile ret;
 	ret.name=path;
 
 	struct stat64 f_info;
-    int rc=lstat64(ConvertToUTF8(path).c_str(), &f_info);
+    int rc=lstat64((path).c_str(), &f_info);
 
 	if(rc==0)
 	{
@@ -789,19 +773,19 @@ SFile getFileMetadata( const std::wstring &path )
 	}
 }
 
-std::wstring os_get_final_path(std::wstring path)
+std::string os_get_final_path(std::string path)
 {
-    char* retptr = realpath(ConvertToUTF8(path).c_str(), NULL);
+    char* retptr = realpath((path).c_str(), NULL);
 	if(retptr==NULL)
 	{
 		return path;
 	}
-    std::wstring ret = ConvertToUnicode(retptr);
+    std::string ret = (retptr);
 	free(retptr);
 	return ret;
 }
 
-bool os_path_absolute(const std::wstring& path)
+bool os_path_absolute(const std::string& path)
 {
     if(!path.empty() && path[0]=='/')
     {

@@ -60,7 +60,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(port),LL_ERROR);
+		Server->Log("Failed setting SO_REUSEADDR for port "+convert(port),LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -83,7 +83,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log(name+": Failed binding socket to port "+nconvert(port)+". Another instance of this application may already be active and bound to this port.",LL_ERROR);
+		Server->Log(name+": Failed binding socket to port "+convert(port)+". Another instance of this application may already be active and bound to this port.",LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -109,7 +109,7 @@ CServiceAcceptor::~CServiceAcceptor()
 		workers[i]->stop();
 	}
 	size_t c=0;
-	Server->Log("c=0/"+nconvert(workers.size()+1));
+	Server->Log("c=0/"+convert(workers.size()+1));
 	while(c<workers.size()+1)
 	{
 		std::string r;
@@ -117,7 +117,7 @@ CServiceAcceptor::~CServiceAcceptor()
 		if(r=="ok")
 		{
 			++c;
-			Server->Log("c="+nconvert(c)+"/"+nconvert(workers.size()+1));
+			Server->Log("c="+convert(c)+"/"+convert(workers.size()+1));
 		}
 	}
 	Server->destroy(exitpipe);
@@ -172,7 +172,7 @@ void CServiceAcceptor::operator()(void)
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 				if(ns!=SOCKET_ERROR)
 				{
-					//Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
+					//Server->Log(name+": New Connection incomming "+convert(Server->getTimeMS())+" s: "+convert((int)ns), LL_DEBUG);
 
 	#ifdef _WIN32
 					int window_size=512*1024;

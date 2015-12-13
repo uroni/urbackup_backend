@@ -97,7 +97,7 @@ bool change_file_permissions_admin_only(const std::string& filename)
 	 DWORD rc = SetNamedSecurityInfoA(const_cast<char*>(filename.c_str()), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
 	 if(rc!=ERROR_SUCCESS)
 	 {
-		 Server->Log("Error setting security information of file " + filename + ". rc: "+nconvert((int)rc), LL_ERROR);
+		 Server->Log("Error setting security information of file " + filename + ". rc: "+convert((int)rc), LL_ERROR);
 		 ret=false;
 	 }
 

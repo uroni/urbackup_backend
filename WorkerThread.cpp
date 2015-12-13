@@ -187,7 +187,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 
 	str_map GET,POST;
 
-	str_nmap::iterator iter=req->params.find("QUERY_STRING");
+	str_map::iterator iter=req->params.find("QUERY_STRING");
 	if( iter!=req->params.end() )
 	{
 		for(size_t i=0,size=iter->second.size();i<size;++i)
@@ -220,11 +220,11 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 	{
 		std::string boundary=getafter("boundary=",ct);
 		pfkey=ParseMultipartData(req->stdin_stream, boundary);
-	        req->params["POSTFILEKEY"]=nconvert(pfkey);
+	        req->params["POSTFILEKEY"]=convert(pfkey);
 	        postfile=true;
 	}
 
-	str_map::iterator iter2=GET.find(L"a");
+	str_map::iterator iter2=GET.find("a");
 
 	bool has_error=false;
 
@@ -232,9 +232,9 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 	{
 		int64 starttime=Server->getTimeMS();
 
-		str_map::iterator iter3=GET.find(L"c");
+		str_map::iterator iter3=GET.find("c");
 
-		std::wstring context;
+		std::string context;
 		if( iter3!=GET.end() )
 			context=iter3->second;
 
@@ -244,11 +244,11 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 
 			if( tid==0 )
 			{
-				std::wstring error=L"Error: Unknown action ["+iter2->second+L"]";
+				std::string error="Error: Unknown action ["+iter2->second+"]";
 				Server->Log(error, LL_WARNING);
 				try
 				{
-					req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+					req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
 				}
 				catch (std::exception&)
 				{
@@ -264,7 +264,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 		}				
 
 		starttime=Server->getTimeMS()-starttime;
-		//Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
+		//Server->Log("Execution Time: "+convert(starttime)+" ms - time="+convert(Server->getTimeMS() ), LL_INFO);
 	}
 	else
 	{
@@ -370,7 +370,7 @@ POSTFILE_KEY CWorkerThread::ParseMultipartData(const std::string &data, const st
             	IFile *memfile=Server->openMemoryFile();
 				memfile->Write(data.substr(start,i-start-2) );
 				memfile->Seek(0);
-				Server->addPostFile(pfilekey, name, SPostfile(memfile, widen(filename), widen(contenttype)) );
+				Server->addPostFile(pfilekey, name, SPostfile(memfile, filename, contenttype) );
 				state=0;
 				rboundary.erase(rboundary.size()-2,2);
 				i+=rboundary.size()+2;

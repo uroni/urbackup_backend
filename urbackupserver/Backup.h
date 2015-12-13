@@ -14,9 +14,9 @@ class ServerBackupDao;
 struct SBackup
 {
 	int incremental;
-	std::wstring path;
+	std::string path;
 	int incremental_ref;
-	std::wstring complete;
+	std::string complete;
 	bool is_complete;
 	bool is_resumed;
 	int backupid;
@@ -34,7 +34,7 @@ enum LogAction
 class Backup : public IThread
 {
 public:
-	Backup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental);
+	Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental);
 	virtual ~Backup() {}
 
 	virtual void operator()();
@@ -64,13 +64,13 @@ protected:
 
 	bool createDirectoryForClient();
 	void saveClientLogdata(int image, int incremental, bool r_success, bool resumed);
-	void sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data);
-	std::wstring getUserRights(int userid, std::string domain);
+	void sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::string &data);
+	std::string getUserRights(int userid, std::string domain);
 
 	ClientMain* client_main;
 	int clientid;
-	std::wstring clientname;
-	std::wstring clientsubname;
+	std::string clientname;
+	std::string clientsubname;
 	LogAction log_action;
 
 	IDatabase* db;

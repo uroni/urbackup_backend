@@ -44,7 +44,7 @@ int check_files_index()
 	if(db->getEngineName()=="sqlite")
 	{
 		ServerSettings server_settings(db);
-		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 	}
 
 
@@ -78,17 +78,17 @@ int check_files_index()
 	db_single_result res;
 	while(cursor->next(res))
 	{
-		int64 id = watoi64(res[L"id"]);
-		int64 filesize = watoi64(res[L"filesize"]);
-		int clientid = watoi(res[L"clientid"]);
+		int64 id = watoi64(res["id"]);
+		int64 filesize = watoi64(res["filesize"]);
+		int clientid = watoi(res["clientid"]);
 		bool found_entry=false;
 
-		int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(reinterpret_cast<const char*>(res[L"shahash"].data()),
+		int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(reinterpret_cast<const char*>(res["shahash"].data()),
 			filesize, clientid));
 
 		if(entryid==0)
 		{
-			Server->Log(L"Cannot find entry for file with id "+convert(id)+L" with path \""+res[L"fullpath"]+L"\"", LL_ERROR);
+			Server->Log("Cannot find entry for file with id "+convert(id)+" with path \""+res["fullpath"]+"\"", LL_ERROR);
 			has_error=true;
 			continue;
 		}		
@@ -103,7 +103,7 @@ int check_files_index()
 		{
 			ServerBackupDao::SFindFileEntry fileentry = backupdao.getFileEntry(entryid);
 			
-			//Server->Log("Current entry id="+nconvert(fileentry.id));
+			//Server->Log("Current entry id="+convert(fileentry.id));
 
 			if(fileentry.id == id)
 			{
@@ -112,7 +112,7 @@ int check_files_index()
 
 			if(clientid!=fileentry.clientid)
 			{
-				Server->Log(L"First entry with id "+convert(entryid)+L" has wrong clientid (expected: "+convert(clientid)+L" has: "+convert(fileentry.clientid)+L")", LL_ERROR);
+				Server->Log("First entry with id "+convert(entryid)+" has wrong clientid (expected: "+convert(clientid)+" has: "+convert(fileentry.clientid)+")", LL_ERROR);
 				has_error=true;
 			}
 
@@ -120,7 +120,7 @@ int check_files_index()
 			{
 				if(!fileentry.pointed_to)
 				{
-					Server->Log(L"First entry with id "+convert(entryid)+L" does not have pointed_to set to a value unequal 0 ("+convert(fileentry.pointed_to)+L")", LL_ERROR);
+					Server->Log("First entry with id "+convert(entryid)+" does not have pointed_to set to a value unequal 0 ("+convert(fileentry.pointed_to)+")", LL_ERROR);
 					has_error=true;
 				}	
 				backward_entryid=fileentry.next_entry;
@@ -129,7 +129,7 @@ int check_files_index()
 
 			if(!fileentry.exists)
 			{
-				Server->Log(L"File entry for file with id "+convert(entryid)+L" in index does not exist in database", LL_ERROR);
+				Server->Log("File entry for file with id "+convert(entryid)+" in index does not exist in database", LL_ERROR);
 				has_error=true;
 				break;
 			}
@@ -137,14 +137,14 @@ int check_files_index()
 			if(prev_entryid!=0 &&
 				fileentry.next_entry!=prev_entryid)
 			{
-				Server->Log(L"Next entry for file with id "+convert(entryid)+L" is wrong. Assumed="+convert(prev_entryid)+L" Actual="+convert(fileentry.next_entry)+L" Origin="+convert(id), LL_ERROR);
+				Server->Log("Next entry for file with id "+convert(entryid)+" is wrong. Assumed="+convert(prev_entryid)+" Actual="+convert(fileentry.next_entry)+" Origin="+convert(id), LL_ERROR);
 				has_error=true;
 				break;
 			}
 
-			if(fileentry.shahash!=res[L"shahash"])
+			if(fileentry.shahash!=res["shahash"])
 			{
-				Server->Log(L"Shahash of entry with id "+convert(entryid)+L" differs from shahash of entry with id "+convert(id)+L". It should not differ.", LL_ERROR);
+				Server->Log("Shahash of entry with id "+convert(entryid)+" differs from shahash of entry with id "+convert(id)+". It should not differ.", LL_ERROR);
 				has_error=true;
 				break;
 			}
@@ -174,7 +174,7 @@ int check_files_index()
 
 				if(!fileentry.exists)
 				{
-					Server->Log(L"File entry for file with id "+convert(entryid)+L" in index does not exist in database", LL_ERROR);
+					Server->Log("File entry for file with id "+convert(entryid)+" in index does not exist in database", LL_ERROR);
 					has_error=true;
 					break;
 				}
@@ -182,14 +182,14 @@ int check_files_index()
 				if(prev_entryid!=0 &&
 					fileentry.prev_entry!=prev_entryid)
 				{
-					Server->Log(L"Previous entry for file with id "+convert(entryid)+L" is wrong. Assumed="+convert(prev_entryid)+L" Actual="+convert(fileentry.prev_entry)+L" Origin="+convert(id), LL_ERROR);
+					Server->Log("Previous entry for file with id "+convert(entryid)+" is wrong. Assumed="+convert(prev_entryid)+" Actual="+convert(fileentry.prev_entry)+" Origin="+convert(id), LL_ERROR);
 					has_error=true;
 					break;
 				}
 
-				if(fileentry.shahash!=res[L"shahash"])
+				if(fileentry.shahash!=res["shahash"])
 				{
-					Server->Log(L"Shahash of entry with id "+convert(entryid)+L" differs from shahash of entry with id "+convert(id)+L". It should not differ. -2", LL_ERROR);
+					Server->Log("Shahash of entry with id "+convert(entryid)+" differs from shahash of entry with id "+convert(id)+". It should not differ. -2", LL_ERROR);
 					has_error=true;
 					break;
 				}
@@ -207,7 +207,7 @@ int check_files_index()
 
 		if(!found_entry)
 		{
-			Server->Log(L"Entry with id "+convert(id)+L" is not in the list and therefore not indexed by the file entry index. Initial list id is "+convert(found_entryid), LL_ERROR);
+			Server->Log("Entry with id "+convert(id)+" is not in the list and therefore not indexed by the file entry index. Initial list id is "+convert(found_entryid), LL_ERROR);
 			has_error=true;
 		}
 
@@ -215,7 +215,7 @@ int check_files_index()
 
 		if(n_checked%10000==0)
 		{
-			Server->Log("Checked "+nconvert(n_checked)+" file entries", LL_INFO);
+			Server->Log("Checked "+convert(n_checked)+" file entries", LL_INFO);
 		}
 	}
 

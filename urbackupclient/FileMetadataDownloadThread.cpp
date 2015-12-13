@@ -66,7 +66,7 @@ void FileMetadataDownloadThread::operator()()
 
 	if(rc!=ERR_SUCCESS)
 	{
-		restore.log(L"Error getting file metadata. Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		restore.log("Error getting file metadata. Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		has_error=true;
 	}
 	else
@@ -74,7 +74,7 @@ void FileMetadataDownloadThread::operator()()
 		has_error=false;
 	}
 
-	metadata_tmp_fn = tmp_f->getFilenameW();
+	metadata_tmp_fn = tmp_f->getFilename();
 }
 
 bool FileMetadataDownloadThread::applyMetadata()
@@ -84,11 +84,11 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 	if(metadata_f.get()==NULL)
 	{
-		restore.log(L"Error opening metadata file. Cannot save file metadata.", LL_ERROR);
+		restore.log("Error opening metadata file. Cannot save file metadata.", LL_ERROR);
 		return false;
 	}
 
-	restore.log(L"Applying file metadata...", LL_INFO);
+	restore.log("Applying file metadata...", LL_INFO);
 
 	do 
 	{
@@ -108,7 +108,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 			unsigned int curr_fn_size =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size))!=sizeof(curr_fn_size))
 			{
-				restore.log(L"Error saving metadata. Filename size could not be read.", LL_ERROR);
+				restore.log("Error saving metadata. Filename size could not be read.", LL_ERROR);
 				return false;
 			}
 
@@ -120,14 +120,14 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
-					restore.log(L"Error saving metadata. Filename could not be read.", LL_ERROR);
+					restore.log("Error saving metadata. Filename could not be read.", LL_ERROR);
 					return false;
 				}
 			}
 
 			if(curr_fn.empty())
 			{
-				restore.log(L"Error saving metadata. Filename is empty.", LL_ERROR);
+				restore.log("Error saving metadata. Filename is empty.", LL_ERROR);
 				return false;
 			}
 
@@ -136,9 +136,9 @@ bool FileMetadataDownloadThread::applyMetadata()
 			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
 
 #ifdef _WIN32
-			std::wstring os_path;
+			std::string os_path;
 #else
-            std::wstring os_path=L"/";
+            std::string os_path="/";
 #endif
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
@@ -150,7 +150,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 					if(!os_path.empty())
 						os_path+=os_file_sep();
 
-					os_path += Server->ConvertToUnicode(fs_toks[i]);				
+					os_path += (fs_toks[i]);				
 				}
 			}
 
@@ -161,12 +161,12 @@ bool FileMetadataDownloadThread::applyMetadata()
 			}
 			else
 			{
-				restore.log("Wrong metadata. This metadata is not for this operating system! (id=" + nconvert(ch)+")", LL_ERROR);
+				restore.log("Wrong metadata. This metadata is not for this operating system! (id=" + convert(ch)+")", LL_ERROR);
 			}
 
 			if(!ok)
 			{
-				restore.log(L"Error saving metadata. Could not save OS specific metadata to \"" + os_path + L"\"", LL_ERROR);
+				restore.log("Error saving metadata. Could not save OS specific metadata to \"" + os_path + "\"", LL_ERROR);
 				return false;
 			}			
 		}
@@ -192,14 +192,14 @@ namespace
 	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
 }
 
-bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::wstring& output_fn)
+bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
-	HANDLE hFile = CreateFileW(os_file_prefix(output_fn).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 
 	if(hFile==INVALID_HANDLE_VALUE)
 	{
-		restore.log(L"Cannot open handle to restore file metadata of file \""+output_fn+L"\"", LL_ERROR);
+		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\"", LL_ERROR);
 		return false;
 	}
 
@@ -207,14 +207,14 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(metadata_f->Read(reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size))!=sizeof(win32_magic_and_size))
 	{
-		restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		has_error=true;
 		return false;
 	}
 
 	if(win32_magic_and_size[1]!=win32_meta_magic)
 	{
-		restore.log(L"Win32 metadata magic wrong in  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Win32 metadata magic wrong in  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -222,7 +222,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(_u32))!=sizeof(_u32))
 	{
-		restore.log(L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
@@ -230,7 +230,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(stat_data_size<1)
 	{
-		restore.log(L"Stat data size from \"" + metadata_f->getFilenameW() + L"\" is zero", LL_ERROR);
+		restore.log("Stat data size from \"" + metadata_f->getFilename() + "\" is zero", LL_ERROR);
 		return false;
 	}
 
@@ -240,7 +240,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	stat_data.resize(stat_data_size);
 	if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!=stat_data.size())
 	{
-		restore.log(L"Error reading windows metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Error reading windows metadata from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
@@ -248,7 +248,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(!read_stat.getChar(&version) || version!=1)
 	{
-		restore.log(L"Unknown windows metadata version "+convert((int)version)+L" in \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Unknown windows metadata version "+convert((int)version)+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
@@ -260,7 +260,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		char cont = 0;
 		if(metadata_f->Read(&cont, sizeof(cont))!=sizeof(cont))
 		{
-			restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+			restore.log("Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 			has_error=true;
 			break;
 		}
@@ -275,7 +275,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 		if(metadata_f->Read(stream_id.data(), metadata_id_size)!=metadata_id_size)
 		{
-			restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+			restore.log("Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 			has_error=true;
 			break;
 		}
@@ -289,7 +289,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 			if(metadata_f->Read(stream_id.data() + metadata_id_size, static_cast<_u32>(curr_stream_id->dwStreamNameSize))!=curr_stream_id->dwStreamNameSize)
 			{
-				restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\" -2", LL_ERROR);
+				restore.log("Error reading  \"" + metadata_f->getFilename() + "\" -2", LL_ERROR);
 				has_error=true;
 				break;
 			}
@@ -300,7 +300,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 		if(!b || written!=stream_id.size())
 		{
-			restore.log(L"Error writting metadata to file \""+output_fn+L"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
+			restore.log("Error writting metadata to file \""+output_fn+"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
 			has_error=true;
 			break;
 		}
@@ -313,7 +313,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 			if(metadata_f->Read(buffer.data(), toread)!=toread)
 			{
-				restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\" -3", LL_ERROR);
+				restore.log("Error reading  \"" + metadata_f->getFilename() + "\" -3", LL_ERROR);
 				has_error=true;
 				break;
 			}
@@ -323,7 +323,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 			if(!b || written!=toread)
 			{
-				restore.log(L"Error writting metadata to file \""+output_fn+L"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
+				restore.log("Error writting metadata to file \""+output_fn+"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
 				has_error=true;
 				break;
 			}
@@ -342,31 +342,31 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(!read_stat.getUInt(reinterpret_cast<unsigned int*>(&basic_info.FileAttributes)))
 	{
-		restore.log(L"Error getting FileAttributes of file \""+output_fn+L"\".", LL_ERROR);
+		restore.log("Error getting FileAttributes of file \""+output_fn+"\".", LL_ERROR);
 		has_error=true;
 	}
 
 	if(!read_stat.getVarInt(&basic_info.CreationTime.QuadPart))
 	{
-		restore.log(L"Error getting CreationTime of file \""+output_fn+L"\".", LL_ERROR);
+		restore.log("Error getting CreationTime of file \""+output_fn+"\".", LL_ERROR);
 		has_error=true;
 	}
 
 	if(!read_stat.getVarInt(&basic_info.LastAccessTime.QuadPart))
 	{
-		restore.log(L"Error getting LastAccessTime of file \""+output_fn+L"\".", LL_ERROR);
+		restore.log("Error getting LastAccessTime of file \""+output_fn+"\".", LL_ERROR);
 		has_error=true;
 	}
 
 	if(!read_stat.getVarInt(&basic_info.LastWriteTime.QuadPart))
 	{
-		restore.log(L"Error getting LastWriteTime of file \""+output_fn+L"\".", LL_ERROR);
+		restore.log("Error getting LastWriteTime of file \""+output_fn+"\".", LL_ERROR);
 		has_error=true;
 	}
 
 	if(SetFileInformationByHandle(hFile, FileBasicInfo, &basic_info, sizeof(basic_info))!=TRUE)
 	{
-		restore.log(L"Error setting file attributes of file \""+output_fn+L"\".", LL_ERROR);
+		restore.log("Error setting file attributes of file \""+output_fn+"\".", LL_ERROR);
 		has_error=true;
 	}
 
@@ -408,7 +408,7 @@ namespace
         {
             if(lchown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
             {
-                restore.log("Error setting owner of symlink \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+                restore.log("Error setting owner of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
 
@@ -418,7 +418,7 @@ namespace
 
             if(lutimes(fn.c_str(), tvs)!=0)
             {
-                restore.log("Error setting access and modification time of symlink \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+                restore.log("Error setting access and modification time of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
 
@@ -428,7 +428,7 @@ namespace
         {
             if(chmod(fn.c_str(), statbuf.st_mode)!=0)
             {
-                restore.log("Error changing permissions of file \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+                restore.log("Error changing permissions of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
         }
@@ -438,7 +438,7 @@ namespace
 
             if(mkfifo(fn.c_str(), statbuf.st_mode)!=0)
             {
-                restore.log("Error creating FIFO \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+                restore.log("Error creating FIFO \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
         }
@@ -448,14 +448,14 @@ namespace
 
             if(mknod(fn.c_str(), statbuf.st_mode, statbuf.st_dev)!=0)
             {
-                restore.log("Error creating file system node \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+                restore.log("Error creating file system node \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
         }
 
         if(chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
         {
-            restore.log("Error setting owner of file \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+            restore.log("Error setting owner of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
             ret = false;
         }
 
@@ -465,7 +465,7 @@ namespace
 
         if(utimes(fn.c_str(), tvs)!=0)
         {
-            restore.log("Error setting access and modification time of file \""+fn+"\" errno: "+nconvert(errno), LL_ERROR);
+            restore.log("Error setting access and modification time of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
             ret = false;
         }
 
@@ -481,7 +481,7 @@ namespace
 
             if(bufsize==-1)
             {
-                Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno), LL_ERROR);
+                Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno), LL_ERROR);
                 return false;
             }
 
@@ -498,7 +498,7 @@ namespace
 
             if(bufsize==-1)
             {
-                Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno)+" (2)", LL_ERROR);
+                Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno)+" (2)", LL_ERROR);
                 return false;
             }
 
@@ -520,7 +520,7 @@ namespace
         {
             if(lremovexattr(fn.c_str(), keys[i].c_str())!=0)
             {
-                Server->Log("Error removing xattr "+keys[i]+" from "+fn+" errno: "+nconvert(errno), LL_ERROR);
+                Server->Log("Error removing xattr "+keys[i]+" from "+fn+" errno: "+convert(errno), LL_ERROR);
                 return false;
             }
         }
@@ -529,20 +529,20 @@ namespace
     }
 }
 
-bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::wstring& output_fn)
+bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
     int64 unix_magic_and_size[2];
 
     if(metadata_f->Read(reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size))!=sizeof(unix_magic_and_size))
     {
-        restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        restore.log("Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         has_error=true;
         return false;
     }
 
     if(unix_magic_and_size[1]!=unix_meta_magic)
     {
-        restore.log(L"Unix metadata magic wrong in  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        restore.log("Unix metadata magic wrong in  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         has_error=true;
         return false;
     }
@@ -550,7 +550,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(_u32))!=sizeof(_u32))
 	{
-		restore.log(L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
@@ -558,7 +558,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(stat_data_size<1)
 	{
-		restore.log(L"Stat data size from \"" + metadata_f->getFilenameW() + L"\" is zero", LL_ERROR);
+		restore.log("Stat data size from \"" + metadata_f->getFilename() + "\" is zero", LL_ERROR);
 		return false;
 	}
 
@@ -568,7 +568,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	stat_data.resize(stat_data_size);
     if(metadata_f->Read(stat_data.data(), stat_data.size())!=stat_data.size())
     {
-        restore.log(L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        restore.log("Error reading unix metadata from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
@@ -576,18 +576,18 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 	if(!read_stat.getChar(&version) || version!=1)
 	{
-		restore.log(L"Unknown unix metadata version +"+convert((int)version)+L" in \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		restore.log("Unknown unix metadata version +"+convert((int)version)+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	struct stat64 statbuf;
     unserialize_stat_buf(read_stat, statbuf);
 
-    std::string utf8fn = Server->ConvertToUTF8(output_fn);
+    std::string utf8fn = (output_fn);
 
     if(!restore_stat_buf(restore, statbuf, utf8fn))
     {
-        restore.log(L"Error setting unix metadata of "+output_fn, LL_ERROR);
+        restore.log("Error setting unix metadata of "+output_fn, LL_ERROR);
     }
 
     if(!remove_all_xattr(utf8fn))
@@ -598,7 +598,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
     int64 num_eattr_keys;
     if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
     {
-        restore.log(L"Error reading eattr num from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        restore.log("Error reading eattr num from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
@@ -609,7 +609,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         unsigned int key_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
         {
-            restore.log(L"Error reading eattr key size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            restore.log("Error reading eattr key size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
@@ -620,14 +620,14 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
         if(metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
         {
-            restore.log(L"Error reading eattr key from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            restore.log("Error reading eattr key from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         unsigned int val_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
-            restore.log(L"Error reading eattr value size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            restore.log("Error reading eattr value size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
@@ -638,13 +638,13 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
         if(metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
         {
-            restore.log(L"Error reading eattr value from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            restore.log("Error reading eattr value from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         if(lsetxattr(utf8fn.c_str(), eattr_key.c_str(), eattr_val.data(), eattr_val.size(), 0)!=0)
         {
-            restore.log("Error setting xattr "+eattr_key+" of "+utf8fn+" errno: "+nconvert(errno), LL_ERROR);
+            restore.log("Error setting xattr "+eattr_key+" of "+utf8fn+" errno: "+convert(errno), LL_ERROR);
         }
     }
 

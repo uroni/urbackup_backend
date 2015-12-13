@@ -25,12 +25,11 @@ class ServerLogger
 public:
 	static void Log(logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
 	static void Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
-	static void Log(logid_t logid, const std::wstring &pStr, int LogLevel=LL_INFO);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
-	static std::wstring getLogdata(logid_t logid, int &errors, int &warnings, int &infos);
+	static std::string getLogdata(logid_t logid, int &errors, int &warnings, int &infos);
 	static std::string getWarningLevelTextLogdata(logid_t logid);
 
 	static void reset(logid_t id);

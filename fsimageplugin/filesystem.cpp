@@ -247,7 +247,7 @@ namespace
 	}
 }
 
-Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool background_priority)
+Filesystem::Filesystem(const std::string &pDev, bool read_ahead, bool background_priority)
 	: buffer_mutex(Server->createMutex())
 {
 	has_error=false;
@@ -255,7 +255,7 @@ Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool backgroun
 	dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
 	{
-		Server->Log("Error opening device file. Errorcode: "+nconvert(getLastSystemError()), LL_ERROR);
+		Server->Log("Error opening device file. Errorcode: "+convert(getLastSystemError()), LL_ERROR);
 		has_error=true;
 	}
 	own_dev=true;
@@ -386,12 +386,12 @@ bool Filesystem::readFromDev(char *buf, _u32 bsize)
 	while(rc<bsize)
 	{
 		Server->wait(200);
-		Server->Log("Reading from device failed. Retrying. Errorcode: "+nconvert(getLastSystemError()), LL_WARNING);
+		Server->Log("Reading from device failed. Retrying. Errorcode: "+convert(getLastSystemError()), LL_WARNING);
 		rc+=dev->Read(buf+rc, bsize-rc);
 		--tries;
 		if(tries<0)
 		{
-			Server->Log("Reading from device failed. Errorcode: "+nconvert(getLastSystemError()), LL_ERROR);
+			Server->Log("Reading from device failed. Errorcode: "+convert(getLastSystemError()), LL_ERROR);
 			return false;
 		}
 	}

@@ -166,7 +166,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			Server->destroy(dstfile);
 			if(rc==ERR_SUCCESS && fsize>remote_filesize)
 			{
-				os_file_truncate(widen(dest), remote_filesize);
+				os_file_truncate(dest, remote_filesize);
 			}
 		}
 
@@ -267,7 +267,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			{
 				if(rc==ERR_SUCCESS && fsize>patcher.getFilesize())
 				{
-					os_file_truncate(widen(dest), patcher.getFilesize());
+					os_file_truncate(dest, patcher.getFilesize());
 				}
 				cleanup_tmpfile(patchfile);
 			}

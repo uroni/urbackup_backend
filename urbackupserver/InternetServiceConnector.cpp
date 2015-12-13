@@ -472,7 +472,7 @@ void InternetServiceConnector::ReceivePackets(void)
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
 
-							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+nconvert(spare_connections_num)+" spare connections", LL_DEBUG);
+							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+convert(spare_connections_num)+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
 						}
@@ -561,7 +561,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 			if(!isc->Connect(service, static_cast<int>(rtime)))
 			{
 				//Automatically freed
-				Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
+				Server->Log("Connecting on internet connection failed. Service="+convert((int)service), LL_DEBUG);
 			}
 			else
 			{
@@ -601,14 +601,14 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 						isc_pipe2->destroyBackendPipeOnDelete(true);
 					}
 				}
-				Server->Log("Established internet connection. Service="+nconvert((int)service), LL_DEBUG);
+				Server->Log("Established internet connection. Service="+convert((int)service), LL_DEBUG);
 					
 				return ret;
 			}
 		}
 	}while(timeoutms==-1 || Server->getTimeMS()-starttime<(unsigned int)timeoutms);
 
-	Server->Log("Establishing internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
+	Server->Log("Establishing internet connection failed. Service="+convert((int)service), LL_DEBUG);
 	return NULL;
 }
 
@@ -768,7 +768,7 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 	if(!res.empty())
 	{					
 		db_timeout=false;
-		return Server->ConvertToUTF8(res[0][L"value"]);
+		return (res[0]["value"]);
 	}
 	else if(timeoutms==1)
 	{

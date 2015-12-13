@@ -96,8 +96,8 @@ bool ClientMain::running_backups_allowed=true;
 
 
 
-ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
-	const std::wstring& pSubName, const std::wstring& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink)
+ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName,
+	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
@@ -195,7 +195,7 @@ void ClientMain::operator ()(void)
 			c=false;
 			bool retok_err=false;
 			std::string ret_str;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
+			bool b=sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \""+clientname+"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
 			if(!b)
 			{
 				if(retok_err)
@@ -225,7 +225,7 @@ void ClientMain::operator ()(void)
 				if(msg=="exit" || msg=="exitnow")
 				{
 					pipe->Write("ok");
-					Server->Log(L"client_main Thread for client \""+clientname+L"\" finished and the identity was not recognized", LL_INFO);
+					Server->Log("client_main Thread for client \""+clientname+"\" finished and the identity was not recognized", LL_INFO);
 
 					delete this;
 					return;
@@ -238,7 +238,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	if( clientname.find(L"##restore##")==0 )
+	if( clientname.find("##restore##")==0 )
 	{
 		{
 			IScopedLock lock(cleanup_mutex);
@@ -262,7 +262,7 @@ void ClientMain::operator ()(void)
 		cleanupShares();
 
 		pipe->Write("ok");
-		Server->Log(L"client_main Thread for client "+clientname+L" finished, restore thread");
+		Server->Log("client_main Thread for client "+clientname+" finished, restore thread");
 		delete this;
 		return;
 	}
@@ -284,7 +284,7 @@ void ClientMain::operator ()(void)
 				pipe->Read(&msg, ident_err_retry_time);
 				if(msg=="exit" || msg=="exitnow")
 				{
-					Server->Log(L"client_main Thread for client \""+clientname+L"\" finished and the authentification failed", LL_INFO);
+					Server->Log("client_main Thread for client \""+clientname+"\" finished and the authentification failed", LL_INFO);
 					pipe->Write("ok");
 					delete this;
 					return;
@@ -315,7 +315,7 @@ void ClientMain::operator ()(void)
 	if(clientid==-1)
 	{
 		ServerStatus::setStatusError(clientname, se_too_many_clients);
-		Server->Log(L"client_main Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
+		Server->Log("client_main Thread for client "+clientname+" finished, because there were too many clients", LL_INFO);
 
 		Server->wait(10*60*1000); //10min
 
@@ -334,7 +334,7 @@ void ClientMain::operator ()(void)
 	logid = ServerLogger::getLogId(clientid);
 
 	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
-	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
+	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(clientid));
 
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
@@ -385,7 +385,7 @@ void ClientMain::operator ()(void)
 		
 	if(!updateCapabilities())
 	{
-		Server->Log(L"Could not get client capabilities", LL_ERROR);
+		Server->Log("Could not get client capabilities", LL_ERROR);
 
 		Server->wait(5*60*1000); //5min
 
@@ -407,7 +407,7 @@ void ClientMain::operator ()(void)
 	use_tmpfiles_images=server_settings->getSettings()->use_tmpfiles_images;
 	if(!use_tmpfiles)
 	{
-		tmpfile_path=server_settings->getSettings()->backupfolder+os_file_sep()+L"urbackup_tmp_files";
+		tmpfile_path=server_settings->getSettings()->backupfolder+os_file_sep()+"urbackup_tmp_files";
 		os_create_dir(tmpfile_path);
 		if(!os_directory_exists(tmpfile_path))
 		{
@@ -789,8 +789,8 @@ void ClientMain::operator ()(void)
 			rdata.getInt64(&log_id);
 
 			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+
-				"&id="+nconvert(restore_id)+"&status_id="+nconvert(status_id)+
-				"&log_id="+nconvert(log_id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
+				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
+				"&log_id="+convert(log_id), "Starting restore failed", 10000, 10, true, LL_ERROR);
 		}
 
 		if(!msg.empty())
@@ -799,7 +799,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	Server->Log("Waiting for backup threads to finish (clientid="+nconvert(clientid)+", nthreads=" + nconvert(backup_queue.size())+")...", LL_DEBUG);
+	Server->Log("Waiting for backup threads to finish (clientid="+convert(clientid)+", nthreads=" + convert(backup_queue.size())+")...", LL_DEBUG);
 	for(size_t i=0;i<backup_queue.size();++i)
 	{
 		if(backup_queue[i].ticket!=ILLEGAL_THREADPOOL_TICKET)
@@ -833,7 +833,7 @@ void ClientMain::operator ()(void)
 	delete server_settings;
 	server_settings=NULL;
 	pipe->Write("ok");
-	Server->Log(L"client_main Thread for client "+clientname+L" finished");
+	Server->Log("client_main Thread for client "+clientname+" finished");
 
 	delete this;
 }
@@ -847,7 +847,7 @@ void ClientMain::prepareSQL(void)
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
-int ClientMain::getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client)
+int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client)
 {
 	if(new_client!=NULL)
 		*new_client=false;
@@ -860,14 +860,14 @@ int ClientMain::getClientID(IDatabase *db, const std::wstring &clientname, Serve
 	db->destroyQuery(q);
 
 	if(res.size()>0)
-		return watoi(res[0][L"id"]);
+		return watoi(res[0]["id"]);
 	else
 	{
 		IQuery *q_get_num_clients=db->Prepare("SELECT count(*) AS c FROM clients WHERE lastseen > date('now', '-2 month')", false);
 		db_results res_r=q_get_num_clients->Read();
 		q_get_num_clients->Reset();
 		int c_clients=-1;
-		if(!res_r.empty()) c_clients=watoi(res_r[0][L"c"]);
+		if(!res_r.empty()) c_clients=watoi(res_r[0]["c"]);
 
 		db->destroyQuery(q_get_num_clients);
 
@@ -894,7 +894,7 @@ int ClientMain::getClientID(IDatabase *db, const std::wstring &clientname, Serve
 		}
 		else
 		{
-			Server->Log(L"Too many clients. Didn't accept client '"+clientname+L"'", LL_INFO);
+			Server->Log("Too many clients. Didn't accept client '"+clientname+"'", LL_INFO);
 			return -1;
 		}
 	}
@@ -917,8 +917,8 @@ bool ClientMain::isUpdateFull(int tgroup)
 	if(update_freq_incr<0)
 		update_freq_incr=0;
 
-	return !backup_dao->hasRecentFullOrIncrFileBackup(convert(-1*update_freq_full)+L" seconds",
-		clientid, convert(-1*update_freq_incr)+L" seconds", tgroup).exists;
+	return !backup_dao->hasRecentFullOrIncrFileBackup(convert(-1*update_freq_full)+" seconds",
+		clientid, convert(-1*update_freq_incr)+" seconds", tgroup).exists;
 }
 
 bool ClientMain::isUpdateIncr(int tgroup)
@@ -927,7 +927,7 @@ bool ClientMain::isUpdateIncr(int tgroup)
 	if( update_freq<0 )
 		return false;
 
-	return !backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+L" seconds",
+	return !backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+" seconds",
 		clientid, tgroup).exists;
 }
 
@@ -941,8 +941,8 @@ bool ClientMain::isUpdateFullImage(const std::string &letter)
 	if(update_freq_incr<0)
 		update_freq_incr=0;
 
-	return !backup_dao->hasRecentFullOrIncrImageBackup(convert(-1*update_freq_full)+L" seconds",
-		clientid, convert(-1*update_freq_incr)+L" seconds", curr_image_version, widen(letter)).exists;
+	return !backup_dao->hasRecentFullOrIncrImageBackup(convert(-1*update_freq_full)+" seconds",
+		clientid, convert(-1*update_freq_incr)+" seconds", curr_image_version, letter).exists;
 }
 
 bool ClientMain::isUpdateFullImage(void)
@@ -977,11 +977,11 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 	if( server_settings->getUpdateFreqImageFull()<0 || update_freq<0 )
 		return false;
 
-	return !backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+L" seconds",
-		clientid, curr_image_version, widen(letter)).exists;
+	return !backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+" seconds",
+		clientid, curr_image_version, letter).exists;
 }
 
-std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
+std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
 {
 	std::string res;
 	do
@@ -1012,16 +1012,16 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 	return res;
 }
 
-std::string ClientMain::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
+std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			Server->Log("Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
 		return "";
 	}
 
@@ -1068,16 +1068,16 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::wst
 	}
 
 	if(logerr)
-		ServerLogger::Log(logid, L"Timeout: "+errmsg, max_loglevel);
+		ServerLogger::Log(logid, "Timeout: "+errmsg, max_loglevel);
 	else
-		Server->Log(L"Timeout: "+errmsg, max_loglevel);
+		Server->Log("Timeout: "+errmsg, max_loglevel);
 
 	Server->destroy(cc);
 
 	return "";
 }
 
-bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
+bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
 {
 	bool res;
 	do
@@ -1108,16 +1108,16 @@ bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::strin
 	return res;
 }
 
-bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
+bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			Server->Log("Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
 		return false;
 	}
 
@@ -1182,9 +1182,9 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	if(!ok && !herr)
 	{
 		if(logerr)
-			ServerLogger::Log(logid, L"Timeout: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, "Timeout: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Timeout: "+errmsg, max_loglevel);
+			Server->Log("Timeout: "+errmsg, max_loglevel);
 	}
 
 	Server->destroy(cc);
@@ -1194,93 +1194,93 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 
 void ClientMain::sendClientBackupIncrIntervall(void)
 {
-	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getUpdateFreqFileIncr())+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
+	sendClientMessage("INCRINTERVALL \""+convert(server_settings->getUpdateFreqFileIncr())+"\"", "OK", "Sending incremental file backup interval to client failed", 10000);
 }
 
 bool ClientMain::updateCapabilities(void)
 {
-	std::string cap=sendClientMessageRetry("CAPA", L"Querying client capabilities failed", 10000, 10, false);
+	std::string cap=sendClientMessageRetry("CAPA", "Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
 		ParseParamStrHttp(cap, &params);
-		if(params[L"IMAGE"]!=L"1")
+		if(params["IMAGE"]!="1")
 		{
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
 			can_backup_images=false;
 		}
-		str_map::iterator it=params.find(L"FILESRV");
+		str_map::iterator it=params.find("FILESRV");
 		if(it!=params.end())
 		{
 			protocol_versions.filesrv_protocol_version=watoi(it->second);
 		}
 
-		it=params.find(L"FILE");
+		it=params.find("FILE");
 		if(it!=params.end())
 		{
 			protocol_versions.file_protocol_version=watoi(it->second);
 		}	
-		it=params.find(L"FILE2");
+		it=params.find("FILE2");
 		if(it!=params.end())
 		{
 			protocol_versions.file_protocol_version_v2=watoi(it->second);
 		}
-		it=params.find(L"SET_SETTINGS");
+		it=params.find("SET_SETTINGS");
 		if(it!=params.end())
 		{
 			protocol_versions.set_settings_version=watoi(it->second);
 		}
-		it=params.find(L"IMAGE_VER");
+		it=params.find("IMAGE_VER");
 		if(it!=params.end())
 		{
 			protocol_versions.image_protocol_version=watoi(it->second);
 		}
-		it=params.find(L"CLIENTUPDATE");
+		it=params.find("CLIENTUPDATE");
 		if(it!=params.end())
 		{
 			update_version=watoi(it->second);
 		}
-		it=params.find(L"CLIENT_VERSION_STR");
+		it=params.find("CLIENT_VERSION_STR");
 		if(it!=params.end())
 		{
-			ServerStatus::setClientVersionString(clientname, Server->ConvertToUTF8(it->second));
+			ServerStatus::setClientVersionString(clientname, (it->second));
 		}
-		it=params.find(L"OS_VERSION_STR");
+		it=params.find("OS_VERSION_STR");
 		if(it!=params.end())
 		{
-			ServerStatus::setOSVersionString(clientname, Server->ConvertToUTF8(it->second));
+			ServerStatus::setOSVersionString(clientname, (it->second));
 		}
-		it=params.find(L"ALL_VOLUMES");
+		it=params.find("ALL_VOLUMES");
 		if(it!=params.end())
 		{
-			all_volumes=Server->ConvertToUTF8(it->second);
+			all_volumes=(it->second);
 		}
-		it=params.find(L"ALL_NONUSB_VOLUMES");
+		it=params.find("ALL_NONUSB_VOLUMES");
 		if(it!=params.end())
 		{
-			all_nonusb_volumes=Server->ConvertToUTF8(it->second);
+			all_nonusb_volumes=(it->second);
 		}
-		it=params.find(L"ETA");
+		it=params.find("ETA");
 		if(it!=params.end())
 		{
 			protocol_versions.eta_version=watoi(it->second);
 		}
-		it=params.find(L"CDP");
+		it=params.find("CDP");
 		if(it!=params.end())
 		{
 			protocol_versions.cdp_version=watoi(it->second);
 		}
-		it=params.find(L"EFI");
+		it=params.find("EFI");
 		if(it!=params.end())
 		{
 			protocol_versions.efi_version=watoi(it->second);
 		}
-		it=params.find(L"FILE_META");
+		it=params.find("FILE_META");
 		if(it!=params.end())
 		{
 			protocol_versions.file_meta=watoi(it->second);
 		}
-		it=params.find(L"SELECT_SHA");
+		it=params.find("SELECT_SHA");
 		if(it!=params.end())
 		{
 			protocol_versions.select_sha_version=watoi(it->second);
@@ -1296,14 +1296,14 @@ void ClientMain::sendSettings(void)
 
 	if(!clientsubname.empty())
 	{
-		s_settings+="clientsubname="+Server->ConvertToUTF8(clientsubname)+"\n";
-		s_settings+="filebackup_group_offset="+nconvert(filebackup_group_offset)+"\n";
+		s_settings+="clientsubname="+(clientsubname)+"\n";
+		s_settings+="filebackup_group_offset="+convert(filebackup_group_offset)+"\n";
 	}
 
-	std::vector<std::wstring> settings_names=getSettingsList();
-	std::vector<std::wstring> global_settings_names=getGlobalizedSettingsList();
-	std::vector<std::wstring> local_settings_names=getLocalizedSettingsList();
-	std::vector<std::wstring> only_server_settings_names=getOnlyServerClientSettingsList();
+	std::vector<std::string> settings_names=getSettingsList();
+	std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
+	std::vector<std::string> local_settings_names=getLocalizedSettingsList();
+	std::vector<std::string> only_server_settings_names=getOnlyServerClientSettingsList();
 
 	std::string stmp=settings_client->getValue("overwrite", "");
 	bool overwrite=true;
@@ -1327,13 +1327,13 @@ void ClientMain::sendSettings(void)
 	std::auto_ptr<ISettingsReader> origSettings;
 	if(origSettingsData.exists)
 	{
-		origSettings.reset(Server->createMemorySettingsReader(Server->ConvertToUTF8(origSettingsData.value)));
+		origSettings.reset(Server->createMemorySettingsReader((origSettingsData.value)));
 	}
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
-		std::wstring key=settings_names[i];
-		std::wstring value;
+		std::string key=settings_names[i];
+		std::string value;
 
 		bool globalized=std::find(global_settings_names.begin(), global_settings_names.end(), key)!=global_settings_names.end();
 		bool localized=std::find(local_settings_names.begin(), local_settings_names.end(), key)!=local_settings_names.end();
@@ -1341,22 +1341,22 @@ void ClientMain::sendSettings(void)
 		if( globalized || (!overwrite && !allow_overwrite && !localized) || !settings_client->getValue(key, &value) )
 		{
 			if(!settings->getValue(key, &value) )
-				key=L"";
+				key="";
 		}
 
 		if(!key.empty())
 		{
 			if(!allow_overwrite)
 			{
-				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
+				s_settings+=(key)+"="+(value)+"\n";
 			}
 			else if(origSettings.get()!=NULL)
 			{
-				std::wstring orig_v;
+				std::string orig_v;
 				if( (origSettings->getValue(key, &orig_v) ||
-					origSettings->getValue(key+L"_def", &orig_v) ) && orig_v!=value)
+					origSettings->getValue(key+"_def", &orig_v) ) && orig_v!=value)
 				{
-					s_settings+=Server->ConvertToUTF8(key)+"_orig="+Server->ConvertToUTF8(orig_v)+"\n";
+					s_settings+=(key)+"_orig="+(orig_v)+"\n";
 				}
 			}
 
@@ -1364,18 +1364,18 @@ void ClientMain::sendSettings(void)
 				std::find(only_server_settings_names.begin(), only_server_settings_names.end(), key)!=only_server_settings_names.end())
 			{
 				settings->getValue(key, &value);
-				key+=L"_def";
-				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";				
+				key+="_def";
+				s_settings+=(key)+"="+(value)+"\n";				
 			}
 			else
 			{
-				key+=L"_def";
-				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
+				key+="_def";
+				s_settings+=(key)+"="+(value)+"\n";
 			}
 		}
 	}
 	escapeClientMessage(s_settings);
-	if(sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000))
+	if(sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{
 		backup_dao->insertIntoOrigClientSettings(clientid, s_settings);
 	}
@@ -1389,7 +1389,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	_u32 rc=getClientFilesrvConnection(&fc, server_settings);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(logid, L"Getting Client settings of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, "Getting Client settings of "+clientname+" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 	
@@ -1404,13 +1404,13 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	if(!clientsubname.empty())
 	{
-		settings_fn = "urbackup/settings_"+Server->ConvertToUTF8(clientsubname)+".cfg";
+		settings_fn = "urbackup/settings_"+(clientsubname)+".cfg";
 	}
 
 	rc=fc.GetFile(settings_fn, tmp, true, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error getting Client settings of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, "Error getting Client settings of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		std::string tmp_fn=tmp->getFilename();
 		Server->destroy(tmp);
 		Server->deleteFile(tmp_fn);
@@ -1427,7 +1427,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	ISettingsReader *sr=Server->createFileSettingsReader(tmp->getFilename());
 
-	std::vector<std::wstring> setting_names=getSettingsList();
+	std::vector<std::string> setting_names=getSettingsList();
 
 	bool mod=false;
 
@@ -1444,14 +1444,14 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		}
 		else
 		{
-			bool b=updateClientSetting(L"client_set_settings", L"true");
+			bool b=updateClientSetting("client_set_settings", "true");
 			if(b)
 				mod=true;
 
-			std::wstring settings_update_time;
-			if(sr->getValue(L"client_set_settings_time", &settings_update_time))
+			std::string settings_update_time;
+			if(sr->getValue("client_set_settings_time", &settings_update_time))
 			{
-				b=updateClientSetting(L"client_set_settings_time", settings_update_time);
+				b=updateClientSetting("client_set_settings_time", settings_update_time);
 				if(b)
 				{
 					backup_dao->insertIntoOrigClientSettings(clientid, settings_data);
@@ -1469,12 +1469,12 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		}
 	}
 
-	std::vector<std::wstring> only_server_settings = getOnlyServerClientSettingsList();
+	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
-		std::wstring &key=setting_names[i];
-		std::wstring value;
+		std::string &key=setting_names[i];
+		std::string value;
 
 		if(std::find(only_server_settings.begin(), only_server_settings.end(),
 			key)!=only_server_settings.end())
@@ -1484,7 +1484,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 		if(sr->getValue(key, &value) )
 		{
-			if(internet_connection && key==L"computername" &&
+			if(internet_connection && key=="computername" &&
 				value!=clientname)
 			{
 				continue;
@@ -1510,9 +1510,9 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	return true;
 }
 
-bool ClientMain::updateClientSetting(const std::wstring &key, const std::wstring &value)
+bool ClientMain::updateClientSetting(const std::string &key, const std::string &value)
 {
-	std::wstring tmp;
+	std::string tmp;
 	if(settings_client->getValue(key, &tmp)==false )
 	{
 		q_insert_setting->Bind(key);
@@ -1547,11 +1547,11 @@ void ClientMain::sendClientLogdata(void)
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
+		std::string logdata=(res[i]["logdata"]);
 		escapeClientMessage(logdata);
-		if(sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false, LL_WARNING))
+		if(sendClientMessage("2LOGDATA "+res[i]["created"]+" "+logdata, "OK", "Sending logdata to client failed", 10000, false, LL_WARNING))
 		{
-			q_set_logdata_sent->Bind(res[i][L"id"]);
+			q_set_logdata_sent->Bind(res[i]["id"]);
 			q_set_logdata_sent->Write();
 			q_set_logdata_sent->Reset();
 		}
@@ -1564,7 +1564,7 @@ MailServer ClientMain::getMailServerSettings(void)
 
 	MailServer ms;
 	ms.servername=settings->getValue("mail_servername", "");
-	ms.port=(unsigned short)watoi(settings->getValue(L"mail_serverport", L"587"));
+	ms.port=(unsigned short)watoi(settings->getValue("mail_serverport", "587"));
 	ms.username=settings->getValue("mail_username", "");
 	ms.password=settings->getValue("mail_password", "");
 	ms.mailfrom=settings->getValue("mail_from", "");
@@ -1613,7 +1613,7 @@ void ClientMain::checkClientVersion(void)
 	std::string version=getFile("urbackup/version.txt");
 	if(!version.empty())
 	{
-		std::string r=sendClientMessage("VERSION "+version, L"Sending version to client failed", 10000);
+		std::string r=sendClientMessage("VERSION "+version, "Sending version to client failed", 10000);
 		if(r=="update")
 		{
 			ScopedProcess process(clientname, sa_update);
@@ -1636,18 +1636,18 @@ void ClientMain::checkClientVersion(void)
 			IPipe *cc=getClientCommandConnection(10000);
 			if(cc==NULL)
 			{
-				ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
 				return;
 			}
 
 			std::string msg;
 			if(update_version>0)
 			{
-				msg="1CLIENTUPDATE size="+nconvert(datasize)+"&silent_update="+nconvert(server_settings->getSettings()->silent_update);
+				msg="1CLIENTUPDATE size="+convert(datasize)+"&silent_update="+convert(server_settings->getSettings()->silent_update);
 			}
 			else
 			{
-				msg="CLIENTUPDATE "+nconvert(datasize);
+				msg="CLIENTUPDATE "+convert(datasize);
 			}
 			std::string identity= session_identity.empty()?server_identity:session_identity;
 			tcpstack.Send(cc, identity+msg);
@@ -1740,7 +1740,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(!ok)
 			{
-				ServerLogger::Log(logid, L"Timeout: In client update", LL_ERROR);
+				ServerLogger::Log(logid, "Timeout: In client update", LL_ERROR);
 			}
 
 			Server->destroy(cc);
@@ -1749,7 +1749,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(ok)
 			{
-				ServerLogger::Log(logid, L"Updated client successfully", LL_INFO);
+				ServerLogger::Log(logid, "Updated client successfully", LL_INFO);
 			}
 		}
 	}
@@ -1839,17 +1839,17 @@ IPipeThrottler *ClientMain::getThrottler(size_t speed_bps)
 
 IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* clientaddr)
 {
-	std::string curr_clientname = Server->ConvertToUTF8(clientname);
+	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
-		curr_clientname =  Server->ConvertToUTF8(clientmainname);
+		curr_clientname =  (clientmainname);
 	}
 
 	if(clientaddr!=NULL)
 	{
-		unsigned int ip = ServerStatus::getStatus(Server->ConvertToUnicode(curr_clientname)).ip_addr;
+		unsigned int ip = ServerStatus::getStatus((curr_clientname)).ip_addr;
 		unsigned char *ips=reinterpret_cast<unsigned char*>(&ip);
-		*clientaddr=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+		*clientaddr=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
 	}
 	if(internet_connection)
 	{
@@ -1891,10 +1891,10 @@ IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* client
 
 _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms)
 {
-	std::string curr_clientname = Server->ConvertToUTF8(clientname);
+	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
-		curr_clientname =  Server->ConvertToUTF8(clientmainname);
+		curr_clientname =  (clientmainname);
 	}
 
 	fc->setProgressLogCallback(this);
@@ -1947,10 +1947,10 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 
 bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms)
 {
-	std::string curr_clientname = Server->ConvertToUTF8(clientname);
+	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
-		curr_clientname =  Server->ConvertToUTF8(clientmainname);
+		curr_clientname =  (clientmainname);
 	}
 
 	std::string identity = session_identity.empty()?server_identity:session_identity;
@@ -2020,7 +2020,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 	return true;
 }
 
-IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, logid_t logid)
+IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid)
 {
 	int tries=50;
 	IFile *pfd=NULL;
@@ -2065,17 +2065,17 @@ IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& 
 
 void ClientMain::destroyTemporaryFile(IFile *tmp)
 {
-	std::wstring fn=tmp->getFilenameW();
+	std::string fn=tmp->getFilename();
 	Server->destroy(tmp);
 	Server->deleteFile(fn);
 }
 
 IPipe * ClientMain::new_fileclient_connection(void)
 {
-	std::string curr_clientname = Server->ConvertToUTF8(clientname);
+	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
-		curr_clientname =  Server->ConvertToUTF8(clientmainname);
+		curr_clientname =  (clientmainname);
 	}
 
 	IPipe *rp=NULL;
@@ -2091,7 +2091,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	return rp;
 }
 
-bool ClientMain::handle_not_enough_space(const std::wstring &path)
+bool ClientMain::handle_not_enough_space(const std::string &path)
 {
 	int64 free_space=-1;
 	if(!path.empty())
@@ -2171,7 +2171,7 @@ bool ClientMain::authenticatePubKey()
 		return false;
 	}
 
-	std::string challenge = sendClientMessageRetry("GET CHALLENGE", L"Failed to get challenge from client", 10000, 10, false, LL_INFO);
+	std::string challenge = sendClientMessageRetry("GET CHALLENGE", "Failed to get challenge from client", 10000, 10, false, LL_INFO);
 
 	if(challenge=="ERR")
 	{
@@ -2236,7 +2236,7 @@ bool ClientMain::authenticatePubKey()
 			"&pubkey_ecdsa409k1="+base64_encode_dash(pubkey_ecdsa)+
 			"&signature="+base64_encode_dash(signature)+
 			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
-			"&session_identity="+identity, "ok", L"Error sending server signature to client", 10000, 10, true);
+			"&session_identity="+identity, "ok", "Error sending server signature to client", 10000, 10, true);
 
 		if(ret)
 		{
@@ -2251,37 +2251,37 @@ bool ClientMain::authenticatePubKey()
 	}
 }
 
-void ClientMain::run_script( std::wstring name, const std::wstring& params, logid_t logid)
+void ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
 {
 #ifdef _WIN32
-	name = name + L".bat";
+	name = name + ".bat";
 #endif
 
-	if(!FileExists(wnarrow(name)))
+	if(!FileExists(name))
 	{
-		ServerLogger::Log(logid, L"Script does not exist "+name, LL_DEBUG);
+		ServerLogger::Log(logid, "Script does not exist "+name, LL_DEBUG);
 		return;
 	}
 
-	if(!FileExists(wnarrow(name)))
+	if(!FileExists(name))
 	{
-		ServerLogger::Log(logid, L"Script does not exist "+name, LL_DEBUG);
+		ServerLogger::Log(logid, "Script does not exist "+name, LL_DEBUG);
 		return;
 	}
 
-	name+=L" "+params;
+	name+=" "+params;
 
-	name +=L" 2>&1";
+	name +=" 2>&1";
 
 #ifdef _WIN32
-	FILE* fp = _wpopen(name.c_str(), L"rb");
+	FILE* fp = _wpopen(Server->ConvertToWchar(name).c_str(), L"rb");
 #else
-	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "r");
+	FILE* fp = popen(name.c_str(), "r");
 #endif
 
 	if(!fp)
 	{
-		ServerLogger::Log(logid, L"Could not open pipe for command "+name, LL_DEBUG);
+		ServerLogger::Log(logid, "Could not open pipe for command "+name, LL_DEBUG);
 		return;
 	}
 
@@ -2302,7 +2302,7 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, logi
 
 	if(rc!=0)
 	{
-		ServerLogger::Log(logid, L"Script "+name+L" had error (code "+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, "Script "+name+" had error (code "+convert(rc)+")", LL_ERROR);
 	}
 
 	std::vector<std::string> toks;
@@ -2310,7 +2310,7 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, logi
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		ServerLogger::Log(logid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
+		ServerLogger::Log(logid, "Script output Line("+convert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
 	}
 }
 
@@ -2323,7 +2323,7 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
 		}
-		ServerLogger::Log(logid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+fn+"\". "+convert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 	else
 	{
@@ -2364,10 +2364,10 @@ void ClientMain::updateClientAddress(const std::string& address_data, bool& swit
 
 bool ClientMain::createDirectoryForClient()
 {
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	std::string backupfolder=server_settings->getSettings()->backupfolder;
 	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
 	{
-		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
+		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
 		return false;
 	}
 	return true;
@@ -2440,7 +2440,7 @@ void ClientMain::cleanupShares()
 		{
 			if(tocleanup[i].cleanup_file)
 			{
-				std::wstring cleanupfile = fileserv->getShareDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+				std::string cleanupfile = fileserv->getShareDir((tocleanup[i].name), tocleanup[i].identity);
 				if(!cleanupfile.empty())
 				{
 					Server->deleteFile(cleanupfile);
@@ -2449,10 +2449,10 @@ void ClientMain::cleanupShares()
 
 			if(tocleanup[i].remove_callback)
 			{
-				fileserv->removeMetadataCallback(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+				fileserv->removeMetadataCallback((tocleanup[i].name), tocleanup[i].identity);
 			}
 
-			fileserv->removeDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+			fileserv->removeDir((tocleanup[i].name), tocleanup[i].identity);
 
 			if(!tocleanup[i].identity.empty())
 			{

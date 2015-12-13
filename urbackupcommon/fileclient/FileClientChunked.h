@@ -43,7 +43,7 @@ public:
 	class NoFreeSpaceCallback
 	{
 	public:
-		virtual bool handle_not_enough_space(const std::wstring &path)=0;
+		virtual bool handle_not_enough_space(const std::string &path)=0;
 	};
 
 	class QueueCallback

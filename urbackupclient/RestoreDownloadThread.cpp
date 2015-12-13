@@ -117,12 +117,12 @@ void RestoreDownloadThread::operator()()
 
 		if(rc!=ERR_SUCCESS)
 		{
-			Server->Log(L"Error informing client about metadata stream end. Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+			Server->Log("Error informing client about metadata stream end. Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		}
 	}
 }
 
-void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remotefn, const std::wstring &destfn,
+void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remotefn, const std::string &destfn,
     _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items)
 {
 	SQueueItem ni;
@@ -147,7 +147,7 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remot
 	sleepQueue(lock);
 }
 
-void RestoreDownloadThread::addToQueueChunked( size_t id, const std::wstring &remotefn, const std::wstring &destfn,
+void RestoreDownloadThread::addToQueueChunked( size_t id, const std::string &remotefn, const std::string &destfn,
 	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes )
 {
 	SQueueItem ni;
@@ -206,13 +206,13 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 		}
 	}
 
-	_u32 rc = fc.GetFile(Server->ConvertToUTF8(todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
+	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		dest_f->Seek(0);
-		rc=fc.GetFile(Server->ConvertToUTF8(todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
+		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
 		--hash_retries;
 	}
 
@@ -230,13 +230,13 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 	ScopedDeleteFile del_3(todl.patch_dl_files.chunkhashes);
 
 	int64 dl_filesize;
-	_u32 rc = fc_chunked.GetFileChunked(Server->ConvertToUTF8(todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
+	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		todl.patch_dl_files.orig_file->Seek(0);
-		rc=fc_chunked.GetFileChunked(Server->ConvertToUTF8(todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
+		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
 		--hash_retries;
 	}
 
@@ -278,7 +278,7 @@ std::string RestoreDownloadThread::getQueuedFileFull( FileClient::MetadataQueue&
 				metadata = FileClient::MetadataQueue_Data;
 			}
 			folder_items = it->folder_items;
-			return Server->ConvertToUTF8(it->remotefn);
+			return (it->remotefn);
 		}
 	}
 
@@ -293,7 +293,7 @@ void RestoreDownloadThread::unqueueFileFull( const std::string& fn )
 	{
 		if(it->action==EQueueAction_Fileclient && 
 			it->queued && it->fileclient==EFileClient_Full
-			&& Server->ConvertToUTF8(it->remotefn) == fn)
+			&& (it->remotefn) == fn)
 		{
 			it->queued=false;
 			return;
@@ -326,7 +326,7 @@ bool RestoreDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*&
 			!it->queued && it->fileclient==EFileClient_Chunked
 			&& it->predicted_filesize>0)
 		{
-			remotefn = Server->ConvertToUTF8(it->remotefn);
+			remotefn = (it->remotefn);
 
 			it->queued=true;
 			orig_file = it->patch_dl_files.orig_file;
@@ -349,7 +349,7 @@ void RestoreDownloadThread::unqueueFileChunked( const std::string& remotefn )
 	{
 		if(it->action==EQueueAction_Fileclient && 
 			it->queued && it->fileclient==EFileClient_Chunked
-			&& Server->ConvertToUTF8(it->remotefn) == remotefn )
+			&& (it->remotefn) == remotefn )
 		{
 			it->queued=false;
 			return;

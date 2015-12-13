@@ -25,7 +25,6 @@ public:
 	virtual IPipe * new_fileclient_connection( );
 
 	void log(const std::string& msg, int loglevel);
-	void log(const std::wstring& msg, int loglevel);
 
 
 private:

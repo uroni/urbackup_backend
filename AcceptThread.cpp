@@ -54,7 +54,7 @@ void OutputCallback::operator() (const void* buf, size_t count)
 	#else
 			ec=errno;
 	#endif
-			Server->Log("Send failed in OutputCallback ec="+nconvert(ec), LL_INFO);
+			Server->Log("Send failed in OutputCallback ec="+convert(ec), LL_INFO);
 			throw std::runtime_error("Send failed in OutputCallback");
 		}
 		else
@@ -83,7 +83,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(uPort),LL_ERROR);
+		Server->Log("Failed setting SO_REUSEADDR for port "+convert(uPort),LL_ERROR);
 		error=true;
 		return;
 	}
@@ -98,7 +98,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed binding SOCKET to Port "+nconvert(uPort),LL_ERROR);
+		Server->Log("Failed binding SOCKET to Port "+convert(uPort),LL_ERROR);
 		error=true;
 		return;
 	}

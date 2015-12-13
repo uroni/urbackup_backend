@@ -64,7 +64,7 @@ struct SStatus
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
 		comm_pipe=NULL; status_error=se_none; running_jobs=0; }
 
-	std::wstring client;
+	std::string client;
 	int clientid;
 	bool has_status;
 	bool online;
@@ -81,25 +81,25 @@ struct SStatus
 class ServerStatus
 {
 public:
-	static void setOnline(const std::wstring &clientname, bool bonline);
-	static void setROnline(const std::wstring &clientname, bool bonline);
-	static bool removeStatus(const std::wstring &clientname);
+	static void setOnline(const std::string &clientname, bool bonline);
+	static void setROnline(const std::string &clientname, bool bonline);
+	static bool removeStatus(const std::string &clientname);
 
-	static void setIP(const std::wstring &clientname, unsigned int ip);
-	static void setStatusError(const std::wstring &clientname, SStatusError se);
-	static void setCommPipe(const std::wstring &clientname, IPipe *p);
-	static void stopProcess(const std::wstring &clientname, size_t id, bool b);
-	static bool isProcessStopped(const std::wstring &clientname, size_t id);
-	static void setClientVersionString(const std::wstring &clientname, const std::string& client_version_string);
-	static void setOSVersionString(const std::wstring &clientname, const std::string& os_version_string);
-	static bool sendToCommPipe(const std::wstring &clientname, const std::string& msg);
-	static void setClientId(const std::wstring &clientname, int clientid);
+	static void setIP(const std::string &clientname, unsigned int ip);
+	static void setStatusError(const std::string &clientname, SStatusError se);
+	static void setCommPipe(const std::string &clientname, IPipe *p);
+	static void stopProcess(const std::string &clientname, size_t id, bool b);
+	static bool isProcessStopped(const std::string &clientname, size_t id);
+	static void setClientVersionString(const std::string &clientname, const std::string& client_version_string);
+	static void setOSVersionString(const std::string &clientname, const std::string& os_version_string);
+	static bool sendToCommPipe(const std::string &clientname, const std::string& msg);
+	static void setClientId(const std::string &clientname, int clientid);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
 	static std::vector<SStatus> getStatus(void);
-	static SStatus getStatus(const std::wstring &clientname);
+	static SStatus getStatus(const std::string &clientname);
 
 	static bool isActive(void);
 	static void updateActive(void);
@@ -110,40 +110,40 @@ public:
 	static int getServerNospcStalled(void);
 	static bool getServerNospcFatal(void);
 
-	static size_t startProcess(const std::wstring &clientname, SStatusAction action);
-	static bool stopProcess(const std::wstring &clientname, size_t id);
+	static size_t startProcess(const std::string &clientname, SStatusAction action);
+	static bool stopProcess(const std::string &clientname, size_t id);
 
-	static void setProcessQueuesize(const std::wstring &clientname, size_t id,
+	static void setProcessQueuesize(const std::string &clientname, size_t id,
 		unsigned int prepare_hashqueuesize,
 		unsigned int hashqueuesize);
 
-	static void setProcessStarttime(const std::wstring &clientname, size_t id,
+	static void setProcessStarttime(const std::string &clientname, size_t id,
 		int64 starttime);
 
-	static void setProcessEta(const std::wstring &clientname, size_t id,
+	static void setProcessEta(const std::string &clientname, size_t id,
 		int64 eta_ms, int64 eta_set_time);
 
-	static void setProcessEta(const std::wstring &clientname, size_t id,
+	static void setProcessEta(const std::string &clientname, size_t id,
 		int64 eta_ms);
 
-	static void setProcessEtaSetTime(const std::wstring &clientname, size_t id,
+	static void setProcessEtaSetTime(const std::string &clientname, size_t id,
 		int64 eta_set_time);
 
-	static void setProcessPcDone(const std::wstring &clientname, size_t id,
+	static void setProcessPcDone(const std::string &clientname, size_t id,
 		int pcdone);
 
-	static void addRunningJob(const std::wstring &clientname);
+	static void addRunningJob(const std::string &clientname);
 
-	static void subRunningJob(const std::wstring &clientname);
+	static void subRunningJob(const std::string &clientname);
 
-	static int numRunningJobs(const std::wstring &clientname);
+	static int numRunningJobs(const std::string &clientname);
 
-	static SProcess getProcess(const std::wstring &clientname, size_t id);
+	static SProcess getProcess(const std::string &clientname, size_t id);
 
 private:
-	static SProcess* getProcessInt(const std::wstring &clientname, size_t id);
+	static SProcess* getProcessInt(const std::string &clientname, size_t id);
 
-	static std::map<std::wstring, SStatus> status;
+	static std::map<std::string, SStatus> status;
 	static IMutex *mutex;
 	static int64 last_status_update;
 	static size_t curr_process_id;
@@ -155,7 +155,7 @@ private:
 class ScopedProcess
 {
 public:
-	ScopedProcess(std::wstring clientname, SStatusAction action)
+	ScopedProcess(std::string clientname, SStatusAction action)
 		: clientname(clientname)
 	{
 		status_id = ServerStatus::startProcess(clientname, action);
@@ -166,7 +166,7 @@ public:
 		ServerStatus::stopProcess(clientname, status_id);
 	}
 private:
-	std::wstring clientname;
+	std::string clientname;
 	size_t status_id;
 };
 

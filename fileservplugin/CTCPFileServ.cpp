@@ -149,7 +149,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
+			Server->Log("Binding tcp socket to port "+convert(tcpport)+" failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
 #else
 			Log("Failed. Binding tcp socket.", LL_ERROR);
 #endif
@@ -256,7 +256,7 @@ void CTCPFileServ::DelClientThreads(void)
 				delete clientthreads[i];
 				clientthreads.erase( clientthreads.begin()+i );
 				proc=true;
-				Log("ClientThread deleted. "+nconvert((NBUFFERS*READSIZE)/1024)+" KB Memory freed.",LL_DEBUG);
+				Log("ClientThread deleted. "+convert((NBUFFERS*READSIZE)/1024)+" KB Memory freed.",LL_DEBUG);
 				break;
 			}
 		}

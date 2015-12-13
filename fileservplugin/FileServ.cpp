@@ -29,17 +29,17 @@
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
-std::map<std::wstring, std::wstring> FileServ::script_output_names;
+std::map<std::string, std::string> FileServ::script_output_names;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 
 
-FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
+FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
 	: servername(pServername), serverticket(serverticket)
 {
 	dostop=pDostop;
 	if(servername.empty())
 	{
-		servername=Server->ConvertToUnicode(getSystemServerName(use_fqdn));
+		servername=getSystemServerName(use_fqdn);
 	}
 }
 
@@ -48,12 +48,12 @@ FileServ::~FileServ(void)
 	delete dostop;
 }
 
-void FileServ::shareDir(const std::wstring &name, const std::wstring &path, const std::string& identity)
+void FileServ::shareDir(const std::string &name, const std::string &path, const std::string& identity)
 {
 	add_share_path(name, path, identity);
 }
 
-void FileServ::removeDir(const std::wstring &name, const std::string& identity)
+void FileServ::removeDir(const std::string &name, const std::string& identity)
 {
 	remove_share_path(name, identity);
 }
@@ -64,7 +64,7 @@ void FileServ::stopServer(void)
 	Server->getThreadPool()->waitFor(serverticket);
 }
 
-std::wstring FileServ::getShareDir(const std::wstring &name, const std::string& identity)
+std::string FileServ::getShareDir(const std::string &name, const std::string& identity)
 {
 	return map_file(name, identity);
 }
@@ -117,7 +117,7 @@ bool FileServ::isPause(void)
 	return pause;
 }
 
-std::wstring FileServ::getServerName(void)
+std::string FileServ::getServerName(void)
 {
 	return servername;
 }
@@ -143,7 +143,7 @@ bool FileServ::removeIdentity( const std::string &pIdentity )
 	}
 }
 
-bool FileServ::getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code)
+bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code)
 {
 	SExitInformation exit_info = PipeSessions::getExitInformation(map_file(cmd, std::string()));
 
@@ -160,18 +160,18 @@ bool FileServ::getExitInformation(const std::wstring& cmd, std::string& stderr_d
 	}
 }
 
-void FileServ::addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn)
+void FileServ::addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn)
 {
 	IScopedLock lock(mutex);
 
 	script_output_names[script_output_fn] = script_fn;
 }
 
-std::wstring FileServ::mapScriptOutputNameToScript(const std::wstring& script_fn)
+std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn)
 {
 	IScopedLock lock(mutex);
 
-	std::map<std::wstring, std::wstring>::iterator it = script_output_names.find(script_fn);
+	std::map<std::string, std::string>::iterator it = script_output_names.find(script_fn);
 	if(it!=script_output_names.end())
 	{
 		return it->second;
@@ -182,12 +182,12 @@ std::wstring FileServ::mapScriptOutputNameToScript(const std::wstring& script_fn
 	}
 }
 
-void FileServ::registerMetadataCallback( const std::wstring &name, const std::string& identity, IMetadataCallback* callback)
+void FileServ::registerMetadataCallback( const std::string &name, const std::string& identity, IMetadataCallback* callback)
 {
 	PipeSessions::registerMetadataCallback(name, identity, callback);
 }
 
-void FileServ::removeMetadataCallback( const std::wstring &name, const std::string& identity )
+void FileServ::removeMetadataCallback( const std::string &name, const std::string& identity )
 {
 	PipeSessions::removeMetadataCallback(name, identity);
 }

@@ -26,7 +26,7 @@ CRATable::~CRATable()
 	}
 }
 
-void CRATable::addObject(std::wstring key, ITable *tab)
+void CRATable::addObject(std::string key, ITable *tab)
 {
 	table_map[key]=tab;
 	tables.push_back(tab);
@@ -40,9 +40,9 @@ ITable* CRATable::getObject(size_t n)
 		return NULL;
 }
 
-ITable* CRATable::getObject(std::wstring str)
+ITable* CRATable::getObject(std::string str)
 {
-	std::map<std::wstring, ITable*>::iterator iter=table_map.find(str);
+	std::map<std::string, ITable*>::iterator iter=table_map.find(str);
 	if( iter!= table_map.end() )
 	{
 		return iter->second;
@@ -51,9 +51,9 @@ ITable* CRATable::getObject(std::wstring str)
 		return NULL;
 }
 
-std::wstring CRATable::getValue()
+std::string CRATable::getValue()
 {
-	return L"";
+	return "";
 }
 
 size_t CRATable::getSize()
@@ -61,7 +61,7 @@ size_t CRATable::getSize()
 	return tables.size();
 }
 
-void CRATable::addString(std::wstring key, std::wstring str)
+void CRATable::addString(std::string key, std::string str)
 {
 	CTablestring *ts=new CTablestring(str);
 	this->addObject(key, ts);
@@ -70,13 +70,13 @@ void CRATable::addString(std::wstring key, std::wstring str)
 //-------------------------
 CTable::~CTable()
 {
-	for(std::map<std::wstring, ITable*>::iterator i=table_map.begin();i!=table_map.end();++i)
+	for(std::map<std::string, ITable*>::iterator i=table_map.begin();i!=table_map.end();++i)
 	{
 		delete i->second;
 	}
 }
 
-void CTable::addObject(std::wstring key, ITable *tab)
+void CTable::addObject(std::string key, ITable *tab)
 {
 	table_map[key]=tab;
 }
@@ -86,9 +86,9 @@ ITable* CTable::getObject(size_t n)
 	return NULL;
 }
 
-ITable* CTable::getObject(std::wstring str)
+ITable* CTable::getObject(std::string str)
 {
-	std::map<std::wstring, ITable*>::iterator iter=table_map.find(str);
+	std::map<std::string, ITable*>::iterator iter=table_map.find(str);
 	if( iter!= table_map.end() )
 	{
 		return iter->second;
@@ -97,9 +97,9 @@ ITable* CTable::getObject(std::wstring str)
 		return NULL;
 }
 
-std::wstring CTable::getValue()
+std::string CTable::getValue()
 {
-	return L"";
+	return "";
 }
 
 size_t CTable::getSize()
@@ -107,18 +107,18 @@ size_t CTable::getSize()
 	return table_map.size();
 }
 
-void CTable::addString(std::wstring key, std::wstring str)
+void CTable::addString(std::string key, std::string str)
 {
 	CTablestring *ts=new CTablestring(str);
 	this->addObject(key, ts);
 }
 //------------------------
-CTablestring::CTablestring(std::wstring pStr)
+CTablestring::CTablestring(std::string pStr)
 {
 	str=pStr;
 }
 
-void CTablestring::addObject(std::wstring key, ITable *tab)
+void CTablestring::addObject(std::string key, ITable *tab)
 {
 }
 
@@ -127,12 +127,12 @@ ITable* CTablestring::getObject(size_t n)
 	return NULL;
 }
 
-ITable* CTablestring::getObject(std::wstring key)
+ITable* CTablestring::getObject(std::string key)
 {
 	return NULL;
 }
 
-std::wstring CTablestring::getValue()
+std::string CTablestring::getValue()
 {
 	return str;
 }
@@ -142,6 +142,6 @@ size_t CTablestring::getSize()
 	return 1;
 }
 
-void CTablestring::addString(std::wstring key, std::wstring str)
+void CTablestring::addString(std::string key, std::string str)
 {
 }

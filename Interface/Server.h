@@ -33,11 +33,11 @@ class IPipeThrottlerUpdater;
 
 struct SPostfile
 {
-	SPostfile(IFile *f, std::wstring n, std::wstring ct){ file=f; name=n; contenttype=ct; }
+	SPostfile(IFile *f, std::string n, std::string ct){ file=f; name=n; contenttype=ct; }
 	SPostfile(){ file=NULL; }
 	IFile *file;
-	std::wstring name;
-	std::wstring contenttype;
+	std::string name;
+	std::string contenttype;
 };
 
 struct SCircularLogEntry
@@ -61,7 +61,6 @@ public:
 	virtual void setLogCircularBufferSize(size_t size)=0;
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
-	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO)=0;
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true)=0;
 
@@ -72,12 +71,12 @@ public:
 	virtual void setContentType(THREAD_ID tid, const std::string &str)=0;
 	virtual void addHeader(THREAD_ID tid, const std::string &str)=0;
 
-	virtual THREAD_ID Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS, IOutputStream *req)=0;
-	virtual std::string Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS)=0;
+	virtual THREAD_ID Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS, IOutputStream *req)=0;
+	virtual std::string Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS)=0;
 
 	virtual void AddAction(IAction *action)=0;
 	virtual bool RemoveAction(IAction *action)=0;
-	virtual void setActionContext(std::wstring context)=0;
+	virtual void setActionContext(std::string context)=0;
 	virtual void resetActionContext(void)=0;
 
 	virtual int64 getTimeSeconds(void)=0;
@@ -98,7 +97,6 @@ public:
 	virtual IPipe *createMemoryPipe(void)=0;
 	virtual IThreadPool *getThreadPool(void)=0;
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile)=0;
-	virtual ISettingsReader* createFileSettingsReader(const std::wstring& pFile)=0;
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
@@ -113,15 +111,13 @@ public:
 
 	virtual THREAD_ID getThreadID(void)=0;
 	
-	virtual std::string ConvertToUTF8(const std::wstring &input)=0;
-	virtual std::wstring ConvertToUnicode(const std::string &input)=0;
-	virtual std::string ConvertToUTF16(const std::wstring &input)=0;
-	virtual std::string ConvertToUTF32(const std::wstring &input)=0;
-	virtual std::wstring ConvertFromUTF16(const std::string &input)=0;
-	virtual std::wstring ConvertFromUTF32(const std::string &input)=0;
+	virtual std::string ConvertToUTF16(const std::string &input)=0;
+	virtual std::string ConvertToUTF32(const std::string &input)=0;
+	virtual std::wstring ConvertToWchar(const std::string &input)=0;
+	virtual std::string ConvertFromWchar(const std::wstring &input)=0;
+	virtual std::string ConvertFromUTF16(const std::string &input)=0;
+	virtual std::string ConvertFromUTF32(const std::string &input)=0;
 
-	virtual std::string GenerateHexMD5(const std::wstring &input)=0;
-	virtual std::string GenerateBinaryMD5(const std::wstring &input)=0;
 	virtual std::string GenerateHexMD5(const std::string &input)=0;
 	virtual std::string GenerateBinaryMD5(const std::string &input)=0;
 
@@ -147,23 +143,20 @@ public:
 	virtual void addRequest(void)=0;
 
 	virtual IFile* openFile(std::string pFilename, int pMode=0)=0;
-	virtual IFile* openFile(std::wstring pFilename, int pMode=0)=0;
 	virtual IFile* openFileFromHandle(void *handle)=0;
 	virtual IFile* openTemporaryFile(void)=0;
 	virtual IFile* openMemoryFile(void)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
-	virtual bool deleteFile(std::wstring pFilename)=0;
 	virtual bool fileExists(std::string pFilename)=0;
-	virtual bool fileExists(std::wstring pFilename)=0;
 
 	virtual POSTFILE_KEY getPostFileKey()=0;
 	virtual void addPostFile(POSTFILE_KEY pfkey, const std::string &name, const SPostfile &pf)=0;
 	virtual SPostfile getPostFile(POSTFILE_KEY pfkey, const std::string &name)=0;
 	virtual void clearPostFiles(POSTFILE_KEY pfkey)=0;
 
-	virtual std::wstring getServerWorkingDir(void)=0;
+	virtual std::string getServerWorkingDir(void)=0;
 
-	virtual void setTemporaryDirectory(const std::wstring &dir)=0;
+	virtual void setTemporaryDirectory(const std::string &dir)=0;
 
 	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)=0;
 	virtual bool hasDatabaseFactory(const std::string &pEngineName)=0;

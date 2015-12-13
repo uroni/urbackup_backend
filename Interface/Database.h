@@ -10,7 +10,6 @@
 class IDatabase : public IObject
 {
 public:
-	virtual db_nresults ReadN(std::string pQuery)=0; 
 	virtual db_results Read(std::string pQuery)=0; 
 	virtual bool Write(std::string pQuery)=0;
 
@@ -38,7 +37,7 @@ public:
 
 	virtual int getLastChanges()=0;
 
-	virtual std::wstring getTempDirectoryPath() = 0;
+	virtual std::string getTempDirectoryPath() = 0;
 };
 
 class DBScopedFreeMemory

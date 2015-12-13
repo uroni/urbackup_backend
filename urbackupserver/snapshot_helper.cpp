@@ -28,27 +28,27 @@ bool SnapshotHelper::isAvailable(void)
 	return rc==0;
 }
 
-bool SnapshotHelper::createEmptyFilesystem(std::wstring clientname, std::wstring name)
+bool SnapshotHelper::createEmptyFilesystem(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" create \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
+	int rc=system((helper_name+" create \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
-bool SnapshotHelper::snapshotFileSystem(std::wstring clientname, std::wstring old_name, std::wstring snapshot_name)
+bool SnapshotHelper::snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name)
 {
-	int rc=system((helper_name+" snapshot \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(old_name)+"\" \""+Server->ConvertToUTF8(snapshot_name)+"\"").c_str());
+	int rc=system((helper_name+" snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\"").c_str());
 	return rc==0;
 }
 
-bool SnapshotHelper::removeFilesystem(std::wstring clientname, std::wstring name)
+bool SnapshotHelper::removeFilesystem(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" remove \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
+	int rc=system((helper_name+" remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
-bool SnapshotHelper::isSubvolume(std::wstring clientname, std::wstring name)
+bool SnapshotHelper::isSubvolume(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" issubvolume \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
+	int rc=system((helper_name+" issubvolume \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 

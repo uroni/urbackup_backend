@@ -102,7 +102,7 @@ void ChunkSendThread::operator()(void)
 	}
 	if(file!=NULL && curr_file_size!=-1)
 	{
-		PipeSessions::removeFile(file->getFilenameW());
+		PipeSessions::removeFile(file->getFilename());
 		Server->destroy(file);
 		file=NULL;
 	}
@@ -156,7 +156,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		unsigned tmp_blockleft=little_endian(blockleft);
 		memcpy(chunk_buf+1+sizeof(_i64), &tmp_blockleft, sizeof(unsigned int));
 
-		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
+		Log("Sending whole block start="+convert(chunk->startpos)+" size="+convert(blockleft), LL_DEBUG);
 		_u32 r;
 
 		bool script_eof=false;
@@ -320,7 +320,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					_u32 r_tmp = little_endian(r);
 					memcpy(cptr-sizeof(_u32), &r_tmp, sizeof(_u32));
 
-					Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
+					Log("Sending chunk start="+convert(curr_pos)+" size="+convert(r), LL_DEBUG);
 
 					if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
 					{
@@ -345,7 +345,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 	if(!sent_update && memcmp(md5_hash.raw_digest_int(), chunk->big_hash, big_hash_size)!=0 )
 	{
-		Log("Sending whole block(2) start="+nconvert(chunk->startpos)+" size="+nconvert(read_total), LL_DEBUG);
+		Log("Sending whole block(2) start="+convert(chunk->startpos)+" size="+convert(read_total), LL_DEBUG);
 
 		*chunk_buf=ID_WHOLE_BLOCK;
 		_i64 chunk_startpos = little_endian(chunk->startpos);

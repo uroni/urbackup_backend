@@ -6,5 +6,5 @@
 class IPermissionCallback
 {
 public:
-	virtual std::string getPermissions(const std::wstring& path) = 0;
+	virtual std::string getPermissions(const std::string& path) = 0;
 };

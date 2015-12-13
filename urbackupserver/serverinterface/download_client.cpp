@@ -45,9 +45,9 @@ namespace
 		SSettings *settingsptr=settings.getSettings();
 
 		std::string ret="\r\n";
-		ret+="internet_mode_enabled="+nconvert(settingsptr->internet_mode_enabled)+"\r\n";
+		ret+="internet_mode_enabled="+convert(settingsptr->internet_mode_enabled)+"\r\n";
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
-		ret+="internet_server_port="+nconvert(settingsptr->internet_server_port)+"\r\n";
+		ret+="internet_server_port="+convert(settingsptr->internet_server_port)+"\r\n";
 		ret+="internet_authkey="+settingsptr->internet_authkey+"\r\n";
 		if(!clientname.empty())
 		{
@@ -134,7 +134,7 @@ ACTION_IMPL(download_client)
 	std::string errstr;
 	if( session!=NULL && (all_client_rights || !clientids.empty() ) )
 	{
-		int clientid=watoi(GET[L"clientid"]);
+		int clientid=watoi(GET["clientid"]);
 
 		if(all_client_rights ||
 			std::find(clientids.begin(), clientids.end(), clientid)!=clientids.end() )
@@ -150,7 +150,7 @@ ACTION_IMPL(download_client)
 				std::string clientname;
 				if(!res.empty())
 				{
-					clientname=Server->ConvertToUTF8(res[0][L"name"]);
+					clientname=(res[0]["name"]);
 				}
 
 				std::string data=getFile("urbackup/UrBackupUpdate.exe");
@@ -158,7 +158,7 @@ ACTION_IMPL(download_client)
 				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
-					Server->addHeader(tid, "Content-Length: "+nconvert(data.size()) );
+					Server->addHeader(tid, "Content-Length: "+convert(data.size()) );
 					Server->WriteRaw(tid, data.c_str(), data.size(), false);
 				}
 				else

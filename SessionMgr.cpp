@@ -52,8 +52,8 @@ CSessionMgr::~CSessionMgr()
 	  Server->Log("removing sessions...");
 	  if(!mSessions.empty() )
 	  {
-		  std::vector<std::wstring> sesids;
-		  for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
+		  std::vector<std::string> sesids;
+		  for(std::map<std::string, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 		  {
 			  sesids.push_back(i->first);
 		  }
@@ -90,9 +90,9 @@ void CSessionMgr::startTimeoutSessionThread()
     Server->createThread(this);
 }
 
-std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsername, const std::wstring &pIdentData, bool update_user)
+std::string CSessionMgr::GenerateSessionIDWithUser(const std::string &pUsername, const std::string &pIdentData, bool update_user)
 {
-	std::wstring ret;
+	std::string ret;
 	ret.resize(SESSIONID_LEN);
 	std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(SESSIONID_LEN);
 	for(int i=0;i<SESSIONID_LEN;++i)
@@ -101,8 +101,8 @@ std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsernam
 	IScopedLock lock( sess_mutex );
 	if(update_user)
 	{
-		std::vector<std::wstring> to_remove;
-		for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
+		std::vector<std::string> to_remove;
+		for(std::map<std::string, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 		{
 			if( i->second->username==pUsername )
 			{
@@ -129,15 +129,15 @@ std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsernam
 	user->ident_data=pIdentData;
 	user->id=-1;
 	user->lastused=Server->getTimeMS();
-	mSessions.insert(std::pair<std::wstring, SUser*>(ret, user) );
+	mSessions.insert(std::pair<std::string, SUser*>(ret, user) );
 
 	return ret;
 }
 
-SUser *CSessionMgr::getUser(const std::wstring &pSID, const std::wstring &pIdentData, bool update)
+SUser *CSessionMgr::getUser(const std::string &pSID, const std::string &pIdentData, bool update)
 {
 	IScopedLock lock( sess_mutex );
-	std::map<std::wstring, SUser*>::iterator i=mSessions.find(pSID);
+	std::map<std::string, SUser*>::iterator i=mSessions.find(pSID);
 	if( i!=mSessions.end() )
 	{
 		if( i->second->ident_data!=pIdentData )
@@ -172,10 +172,10 @@ void CSessionMgr::lockUser(SUser *user)
 	}
 }
 
-bool CSessionMgr::RemoveSession(const std::wstring &pSID)
+bool CSessionMgr::RemoveSession(const std::string &pSID)
 {
 	IScopedLock lock( sess_mutex );
-	std::map<std::wstring, SUser*>::iterator i=mSessions.find(pSID);
+	std::map<std::string, SUser*>::iterator i=mSessions.find(pSID);
 	if( i!=mSessions.end() )
 	{
 		SUser* user=i->second;
@@ -205,17 +205,17 @@ bool CSessionMgr::RemoveSession(const std::wstring &pSID)
 unsigned int CSessionMgr::TimeoutSessions(void)
 {
 	if(Server!=NULL)
-		Server->Log("Looking for old Sessions... "+nconvert(mSessions.size())+" sessions", LL_INFO);
+		Server->Log("Looking for old Sessions... "+convert(mSessions.size())+" sessions", LL_INFO);
 	unsigned int ret=0;
 	IScopedLock lock( sess_mutex );
 	int64 ttime=Server->getTimeMS();
-	std::vector<std::wstring> to_timeout;
-	for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
+	std::vector<std::string> to_timeout;
+	for(std::map<std::string, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 	{
 		int64 diff=ttime-i->second->lastused;
 		if( diff > (unsigned int)(SESSION_TIMEOUT_S)*1000 )
 		{
-			Server->Log(L"Session timeout: Session "+i->first, LL_INFO);
+			Server->Log("Session timeout: Session "+i->first, LL_INFO);
 			to_timeout.push_back(i->first);
 		}
 		else

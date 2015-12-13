@@ -276,7 +276,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 					pw_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pw_md5), salts[i].salt, salts[i].pbkdf2_rounds));
 				}
 
-				auth_str+="&password"+nconvert(i)+"="+
+				auth_str+="&password"+convert(i)+"="+
 					Server->GenerateHexMD5(salts[i].rnd+pw_md5);
 			}
 		}
@@ -495,10 +495,10 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	std::string s_offset;
 	if(offset!=-1)
 	{
-		s_offset="&offset="+nconvert(offset);
+		s_offset="&offset="+convert(offset);
 	}
 
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+convert(img_id)+"&time="+img_time+"&mbr="+convert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
 	Server->Log("Restoring to "+restore_out);
@@ -617,7 +617,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
 						if(*s>imgsize)
 						{
-							Server->Log("invalid seek value: "+nconvert(*s), LL_ERROR);
+							Server->Log("invalid seek value: "+convert(*s), LL_ERROR);
 							pos=*s;
 							break;
 						}
@@ -681,7 +681,7 @@ int downloadFiles(int backupid, std::string backup_time)
 		return 10;
 	}
 
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&backupid="+nconvert(backupid)+"&time="+backup_time);
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
 	int64 starttime = Server->getTimeMS();
 
 	while(Server->getTimeMS()-starttime<60000)
@@ -1441,7 +1441,7 @@ void restore_wizard(void)
 					std::string mi;
 					for(size_t i=0;i<clients.size();++i)
 					{
-						mi+="\""+nconvert((int)i+1)+"\" \""+clients[i]+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+clients[i]+"\" ";
 					}
 					int r=system(("dialog --menu \"`cat urbackup/restore/select`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
@@ -1505,7 +1505,7 @@ void restore_wizard(void)
 						if(!images[i].letter.empty())
 							images[i].letter=" "+images[i].letter;
 
-						mi+="\""+nconvert((int)i+1)+"\" \""+images[i].time_str+images[i].letter+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+images[i].time_str+images[i].letter+"\" ";
 					}
 					int r=system(("dialog --menu \"`cat urbackup/restore/select_date`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
@@ -1558,7 +1558,7 @@ void restore_wizard(void)
 				{
 					if(drives[i].type=="disk")
 					{
-						mi+="\""+nconvert((int)i+1)+"\" \""+drives[i].model+" `cat urbackup/restore/size`: "+drives[i].size+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+drives[i].model+" `cat urbackup/restore/size`: "+drives[i].size+"\" ";
 					}
 				}
 				std::string scmd="dialog --menu \"`cat urbackup/restore/select_drive`\" 15 50 10 "+mi+"2> out";
@@ -1590,7 +1590,7 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				int rc = downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				int rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true);
 				if (rc !=0 )
 				{
 					Server->Log("Error downloading MBR", LL_ERROR);
@@ -1653,7 +1653,7 @@ void restore_wizard(void)
 							state=101;
 							break;						
 						}
-						Server->Log("Logical block size: "+nconvert(logical_block_size));
+						Server->Log("Logical block size: "+convert(logical_block_size));
 					}
 					else
 					{
@@ -1705,7 +1705,7 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
-				Server->Log("Selected device: "+seldrive+" Partition: "+nconvert(mbrdata.partition_number));
+				Server->Log("Selected device: "+seldrive+" Partition: "+convert(mbrdata.partition_number));
 				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
@@ -1755,7 +1755,7 @@ void restore_wizard(void)
 				{
 					windows_partition=selpart;
 				}
-				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selpart);
+				RestoreThread rt(selimage.id, convert(selimage.time_s), selpart);
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{

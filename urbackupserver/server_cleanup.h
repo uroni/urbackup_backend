@@ -29,7 +29,7 @@ struct CleanupAction
 	}
 
 	//Delete file backup
-	CleanupAction(std::wstring backupfolder, int clientid, int backupid, bool force_remove)
+	CleanupAction(std::string backupfolder, int clientid, int backupid, bool force_remove)
 		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid),
 		  force_remove(force_remove)
 	{
@@ -50,7 +50,7 @@ struct CleanupAction
 
 	ECleanupAction action;
 	
-	std::wstring backupfolder;
+	std::string backupfolder;
 	int clientid;
 	int backupid;
 	bool force_remove;
@@ -86,11 +86,11 @@ private:
 
 	void do_remove_unknown(void);
 
-	bool correct_target(const std::wstring& backupfolder, std::wstring& target);
+	bool correct_target(const std::string& backupfolder, std::string& target);
 
-	bool correct_poolname(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& pool_name, std::wstring& pool_path);
+	bool correct_poolname(const std::string& backupfolder, const std::string& clientname, const std::string& pool_name, std::string& pool_path);
 
-	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder);
+	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder);
 
 	int max_removable_incr_images(ServerSettings& settings, int backupid);
 
@@ -104,7 +104,7 @@ private:
 
 	void cleanup_other();
 
-	void rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
+	void rewrite_history(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping);
 
 	void cleanup_client_hist();
 
@@ -119,7 +119,7 @@ private:
 
 	void removeClient(int clientid);
 
-	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove=false);
+	bool deleteFileBackup(const std::string &backupfolder, int clientid, int backupid, bool force_remove=false);
 
 	void removeFileBackupSql( int backupid );
 
@@ -127,13 +127,13 @@ private:
 
 	void backup_database(void);
 
-	bool deleteAndTruncateFile(std::wstring path);
-	bool deleteImage(std::wstring path);
+	bool deleteAndTruncateFile(std::string path);
+	bool deleteImage(std::string path);
 	int64 getImageSize(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
-	bool truncate_files_recurisve(std::wstring path);
+	bool truncate_files_recurisve(std::string path);
 
 	void enforce_quotas(void);
 

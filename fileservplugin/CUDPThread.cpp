@@ -126,12 +126,12 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		addr_udp.sin_port=htons(udpport);
 		addr_udp.sin_addr.s_addr=INADDR_ANY;
 
-		Log("Binding udp socket at port "+nconvert(udpport)+"...", LL_DEBUG);
+		Log("Binding udp socket at port "+convert(udpport)+"...", LL_DEBUG);
 		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding udp socket to port "+nconvert(udpport)+" failed", LL_ERROR);
+			Server->Log("Binding udp socket to port "+convert(udpport)+" failed", LL_ERROR);
 #else
 			Log("Failed binding udp socket.", LL_ERROR);
 #endif
@@ -273,7 +273,7 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
 #ifdef _WIN32
-			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Last error: "+ convert((int)GetLastError()), LL_ERROR);
 #endif
 #endif
 			has_error=true;
@@ -284,7 +284,7 @@ bool CUDPThread::UdpStep(void)
 			if(buffer[0]==ID_PING)
 			{
 				unsigned int rsleep=Server->getRandomNumber()%500;
-				Log("UDP: PING received... sending PONG. Delay="+nconvert(rsleep)+"ms", LL_DEBUG);
+				Log("UDP: PING received... sending PONG. Delay="+convert(rsleep)+"ms", LL_DEBUG);
 				Server->wait(rsleep);
 				char *buffer=new char[mServername.size()+2];
 				buffer[0]=ID_PONG;
@@ -293,7 +293,7 @@ bool CUDPThread::UdpStep(void)
 				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
 				if( rc==SOCKET_ERROR )
 				{
-					Log("Sending reply failed "+nconvert(rc), LL_DEBUG);
+					Log("Sending reply failed "+convert(rc), LL_DEBUG);
 				}
 				delete[] buffer;
 			}
@@ -310,7 +310,7 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Select error in CUDPThread::UdpStep", LL_ERROR);
 #ifdef _WIN32
-			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Last error: "+ convert((int)GetLastError()), LL_ERROR);
 #endif
 #endif
 		has_error=true;

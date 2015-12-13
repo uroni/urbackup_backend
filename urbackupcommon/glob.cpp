@@ -39,7 +39,7 @@
 #define NEGATE	'^'			/* std cset negation char */
 #endif
 
-bool amatch(const wchar_t *str, const wchar_t *p)
+bool amatch(const char *str, const char *p)
 {
 	int negate;
 	int match;
@@ -162,68 +162,68 @@ bool amatch(const wchar_t *str, const wchar_t *p)
 
 bool test_amatch(void)
 {
-	if(amatch(L"foo bar", L"* bar")==false)
+	if(amatch("foo bar", "* bar")==false)
 		return false;
 
-	if(amatch(L"foo\\ bar", L"*\\ bar")==false)
+	if(amatch("foo\\ bar", "*\\ bar")==false)
 		return false;
 
-	if(amatch(L"abcdef", L"*")==false)
+	if(amatch("abcdef", "*")==false)
 		return false;
-	if(amatch(L"abcdef", L":")==false)
+	if(amatch("abcdef", ":")==false)
 		return false;
-	if(amatch(L"abcdef", L"abcdef:")==false)
+	if(amatch("abcdef", "abcdef:")==false)
 		return false;
-	if(amatch(L"abcdef", L"abcdef:\\\\")==true)
+	if(amatch("abcdef", "abcdef:\\\\")==true)
 		return false;
-	if(amatch(L"abcdef/", L":")==true)
+	if(amatch("abcdef/", ":")==true)
 		return false;
-	if(amatch(L"abcdef/", L":/")==false)
+	if(amatch("abcdef/", ":/")==false)
 		return false;
-	if(amatch(L"abcdef\\", L":")==true)
+	if(amatch("abcdef\\", ":")==true)
 		return false;
-	if(amatch(L"abcdef\\", L":\\\\")==false)
-		return false;
-
-	if(amatch(L"abcdef/asd", L":/asd")==false)
-		return false;
-	if(amatch(L"abcdef\\asd", L":asd")==true)
-		return false;
-	if(amatch(L"abcdef\\asd", L":\\\\asd")==false)
+	if(amatch("abcdef\\", ":\\\\")==false)
 		return false;
 
-	if(amatch(L"abcdef/asd", L":/:")==false)
+	if(amatch("abcdef/asd", ":/asd")==false)
 		return false;
-	if(amatch(L"abcdef\\asd", L"::")==true)
+	if(amatch("abcdef\\asd", ":asd")==true)
 		return false;
-	if(amatch(L"abcdef\\asd", L":\\\\:")==false)
-		return false;
-	if(amatch(L"abcdef\\", L":\\\\:")==false)
+	if(amatch("abcdef\\asd", ":\\\\asd")==false)
 		return false;
 
-	if(amatch(L"cvab_abba", L"*ab*ab*ba")==false)
+	if(amatch("abcdef/asd", ":/:")==false)
 		return false;
-	if(amatch(L"cvab_abba", L"*abab*ba")==true)
+	if(amatch("abcdef\\asd", "::")==true)
+		return false;
+	if(amatch("abcdef\\asd", ":\\\\:")==false)
+		return false;
+	if(amatch("abcdef\\", ":\\\\:")==false)
 		return false;
 
-	if(amatch(L"cvab_abba", L":ab:ab:ba")==false)
+	if(amatch("cvab_abba", "*ab*ab*ba")==false)
 		return false;
-	if(amatch(L"cvab_abba", L"abab:ba")==true)
+	if(amatch("cvab_abba", "*abab*ba")==true)
 		return false;
 
-	if(amatch(L"Users/Bernd/Documents", L"Users/:/Documents")==false)
+	if(amatch("cvab_abba", ":ab:ab:ba")==false)
 		return false;
-	if(amatch(L"Users/Bernd/bla/Documents", L"Users/:/Documents")==true)
+	if(amatch("cvab_abba", "abab:ba")==true)
 		return false;
-	if(amatch(L"Users/Bernd/bla/Documents", L"Users/*/Documents")==false)
+
+	if(amatch("Users/Bernd/Documents", "Users/:/Documents")==false)
 		return false;
-	if(amatch(L"Users/Bernd/Documents", L"Users/:/:/Documents")==true)
+	if(amatch("Users/Bernd/bla/Documents", "Users/:/Documents")==true)
 		return false;
-	if(amatch(L"Users/Bernd/bla/Documents", L"Users/:/:/Documents")==false)
+	if(amatch("Users/Bernd/bla/Documents", "Users/*/Documents")==false)
 		return false;
-	if(amatch(L"Users/Bernd/bla/Documents/xyz", L"Users/:/:/Documents/*")==false)
+	if(amatch("Users/Bernd/Documents", "Users/:/:/Documents")==true)
 		return false;
-	if(amatch(L"Users/Bernd/bla/Documents2/xyz", L"Users/:/:/Documents/*")==true)
+	if(amatch("Users/Bernd/bla/Documents", "Users/:/:/Documents")==false)
+		return false;
+	if(amatch("Users/Bernd/bla/Documents/xyz", "Users/:/:/Documents/*")==false)
+		return false;
+	if(amatch("Users/Bernd/bla/Documents2/xyz", "Users/:/:/Documents/*")==true)
 		return false;
 
 	return true;

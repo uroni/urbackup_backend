@@ -33,7 +33,6 @@ public:
 	virtual bool Sync() = 0;
 	
 	virtual std::string getFilename(void)=0;
-	virtual std::wstring getFilenameW(void)=0;
 };
 
 class ScopedDeleteFile
@@ -57,7 +56,7 @@ public:
 private:
 	void del() {
 		if(file!=NULL) {
-			std::wstring tmpfn=file->getFilenameW();
+			std::string tmpfn=file->getFilename();
 			file->Remove();
 			Server->deleteFile(tmpfn);
 		}

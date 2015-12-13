@@ -15,7 +15,7 @@ public:
 
 	void queueStop(bool front);
 
-	void queueFile(const std::wstring& fullpath, const std::wstring& hashpath);
+	void queueFile(const std::string& fullpath, const std::string& hashpath);
 
 	void operator()();
 
@@ -27,8 +27,8 @@ private:
 			: do_stop(false)
 		{}
 
-		std::wstring fullpath;
-		std::wstring hashpath;
+		std::string fullpath;
+		std::string hashpath;
 		bool do_stop;
 	};
 

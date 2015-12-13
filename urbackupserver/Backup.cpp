@@ -30,7 +30,7 @@
 
 extern IUrlFactory *url_fak;
 
-Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental)
+Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0)
@@ -99,7 +99,7 @@ void Backup::operator()()
 
 	if(!has_early_error && log_action!=LogAction_NoLogging)
 	{
-		ServerLogger::Log(logid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(Server->getTimeMS()-backup_starttime)), LL_INFO);
+		ServerLogger::Log(logid, "Time taken for backing up client "+clientname+": "+PrettyPrintTime(Server->getTimeMS()-backup_starttime), LL_INFO);
 		if(!backup_result)
 		{
 			ServerLogger::Log(logid, "Backup failed", LL_ERROR);
@@ -129,10 +129,10 @@ void Backup::operator()()
 
 bool Backup::createDirectoryForClient(void)
 {
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	std::string backupfolder=server_settings->getSettings()->backupfolder;
 	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
 	{
-		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
+		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
 		return false;
 	}
 	return true;
@@ -143,7 +143,7 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	int errors=0;
 	int warnings=0;
 	int infos=0;
-	std::wstring logdata=ServerLogger::getLogdata(logid, errors, warnings, infos);
+	std::string logdata=ServerLogger::getLogdata(logid, errors, warnings, infos);
 
 	backup_dao->saveBackupLog(clientid, errors, warnings, infos, is_file_backup?0:1,
 		r_incremental?1:0, r_resumed?1:0, 0);
@@ -153,7 +153,7 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	sendLogdataMail(r_success, image, incremental, resumed, errors, warnings, infos, logdata);
 }
 
-void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data)
+void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::string &data)
 {
 	MailServer mail_server=ClientMain::getMailServerSettings();
 	if(mail_server.servername.empty())
@@ -165,12 +165,12 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 	std::vector<int> mailable_user_ids = backup_dao->getMailableUserIds();
 	for(size_t i=0;i<mailable_user_ids.size();++i)
 	{
-		std::wstring logr=getUserRights(mailable_user_ids[i], "logs");
+		std::string logr=getUserRights(mailable_user_ids[i], "logs");
 		bool has_r=false;
-		if(logr!=L"all")
+		if(logr!="all")
 		{
-			std::vector<std::wstring> toks;
-			Tokenize(logr, toks, L",");
+			std::vector<std::string> toks;
+			Tokenize(logr, toks, ",");
 			for(size_t j=0;j<toks.size();++j)
 			{
 				if(watoi(toks[j])==clientid)
@@ -191,7 +191,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 
 			if(report_settings.exists)
 			{
-				std::wstring report_mail=report_settings.report_mail;
+				std::string report_mail=report_settings.report_mail;
 				int report_loglevel=report_settings.report_loglevel;
 				int report_sendonly=report_settings.report_sendonly;
 
@@ -203,7 +203,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					( report_sendonly==2 && r_success)) )
 				{
 					std::vector<std::string> to_addrs;
-					Tokenize(Server->ConvertToUTF8(report_mail), to_addrs, ",;");
+					Tokenize(report_mail, to_addrs, ",;");
 
 					std::string subj="UrBackup: ";
 					std::string msg="UrBackup just did ";
@@ -244,35 +244,35 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 						msg+="file ";
 						subj+="file ";
 					}
-					subj+="backup of \""+Server->ConvertToUTF8(clientname)+"\"\n";
-					msg+="backup of \""+Server->ConvertToUTF8(clientname)+"\".\n";
+					subj+="backup of \""+clientname+"\"\n";
+					msg+="backup of \""+clientname+"\".\n";
 					msg+="\nReport:\n";
-					msg+="( "+nconvert(infos);
+					msg+="( "+convert(infos);
 					if(infos!=1) msg+=" infos, ";
 					else msg+=" info, ";
-					msg+=nconvert(warnings);
+					msg+=convert(warnings);
 					if(warnings!=1) msg+=" warnings, ";
 					else msg+=" warning, ";
-					msg+=nconvert(errors);
+					msg+=convert(errors);
 					if(errors!=1) msg+=" errors";
 					else msg+=" error";
 					msg+=" )\n\n";
-					std::vector<std::wstring> msgs;
-					TokenizeMail(data, msgs, L"\n");
+					std::vector<std::string> msgs;
+					TokenizeMail(data, msgs, "\n");
 
 					for(size_t j=0;j<msgs.size();++j)
 					{
-						std::wstring ll;
+						std::string ll;
 						if(!msgs[j].empty()) ll=msgs[j][0];
 						int li=watoi(ll);
 						msgs[j].erase(0, 2);
-						std::wstring tt=getuntil(L"-", msgs[j]);
-						std::wstring m=getafter(L"-", msgs[j]);
+						std::string tt=getuntil("-", msgs[j]);
+						std::string m=getafter("-", msgs[j]);
 						tt=backup_dao->formatUnixtime(watoi64(tt)).value;
 						std::string lls="info";
 						if(li==1) lls="warning";
 						else if(li==2) lls="error";
-						msg+=Server->ConvertToUTF8(tt)+"("+lls+"): "+Server->ConvertToUTF8(m)+"\n";
+						msg+=(tt)+"("+lls+"): "+(m)+"\n";
 					}
 					if(!r_success)
 						subj+=" - failed";
@@ -291,21 +291,21 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 	}
 }
 
-std::wstring Backup::getUserRights(int userid, std::string domain)
+std::string Backup::getUserRights(int userid, std::string domain)
 {
 	if(domain!="all")
 	{
-		if(getUserRights(userid, "all")==L"all")
-			return L"all";
+		if(getUserRights(userid, "all")=="all")
+			return "all";
 	}
 
-	ServerBackupDao::CondString t_right = backup_dao->getUserRight(userid, widen(domain));
+	ServerBackupDao::CondString t_right = backup_dao->getUserRight(userid, domain);
 	if(t_right.exists)
 	{
 		return t_right.value;
 	}
 	else
 	{
-		return L"none";
+		return "none";
 	}
 }

@@ -41,8 +41,8 @@ namespace
 		}
 
 		size_t id;
-		std::wstring remotefn;
-		std::wstring destfn;
+		std::string remotefn;
+		std::string destfn;
 		_i64 predicted_filesize;
 		EFileClient fileclient;
 		bool metadata_only;
@@ -62,10 +62,10 @@ public:
 
 	void operator()();
 
-	void addToQueueFull(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
+	void addToQueueFull(size_t id, const std::string &remotefn, const std::string &destfn,
         _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items);
 
-	void addToQueueChunked(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
+	void addToQueueChunked(size_t id, const std::string &remotefn, const std::string &destfn,
 		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes);
 
 	void queueSkip();

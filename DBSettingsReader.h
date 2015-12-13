@@ -8,9 +8,8 @@ public:
 	CDBSettingsReader(IDatabase *pDB, const std::string &pTable, const std::string &pSQL="");
 
 	bool getValue(std::string key, std::string *value);	
-	bool getValue(std::wstring key, std::wstring *value);
 
-	std::vector<std::wstring> getKeys();
+	std::vector<std::string> getKeys();
 
 private:
 	std::string table;	

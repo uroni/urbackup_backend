@@ -26,14 +26,14 @@
 
 #define DEF_BLOCKSIZE 4096
 
-FSUnknown::FSUnknown(const std::wstring &pDev, bool read_ahead, bool background_priority)
+FSUnknown::FSUnknown(const std::string &pDev, bool read_ahead, bool background_priority)
 	: Filesystem(pDev, read_ahead, background_priority)
 {
 	if(has_error)
 		return;
 
 #ifdef _WIN32
-	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
+	HANDLE hDev=CreateFileW( Server->ConvertToWchar(pDev).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Error opening device -2", LL_ERROR);

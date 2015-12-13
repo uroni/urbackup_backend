@@ -5,23 +5,23 @@
 #include "../../urbackupcommon/os_functions.h"
 #include <memory>
 
-bool skiphash_copy(const std::wstring& src_path,
-	const std::wstring& dst_path,
-	const std::wstring& hashinput_path)
+bool skiphash_copy(const std::string& src_path,
+	const std::string& dst_path,
+	const std::string& hashinput_path)
 {
 	std::auto_ptr<IFile> src(Server->openFile(os_file_prefix(src_path), MODE_READ_SEQUENTIAL));
 
 	if(!src.get())
 	{
-		Server->Log(L"Could not open source file for reading at \"" + src_path+L"\"", LL_ERROR);
+		Server->Log("Could not open source file for reading at \"" + src_path+"\"", LL_ERROR);
 		return false;
 	}
 
-	std::auto_ptr<IFile> hashoutput(Server->openFile(os_file_prefix(dst_path+L".hash"), MODE_WRITE));
+	std::auto_ptr<IFile> hashoutput(Server->openFile(os_file_prefix(dst_path+".hash"), MODE_WRITE));
 
 	if(!hashoutput.get())
 	{
-		Server->Log(L"Could not open hash output for writing at \""+dst_path+L".hash\"", LL_ERROR);
+		Server->Log("Could not open hash output for writing at \""+dst_path+".hash\"", LL_ERROR);
 		return false;
 	}
 
@@ -36,7 +36,7 @@ bool skiphash_copy(const std::wstring& src_path,
 
 	if(!dst.get())
 	{
-		Server->Log(L"Could not open output file for writing at \""+dst_path+L"\"", LL_ERROR);
+		Server->Log("Could not open output file for writing at \""+dst_path+"\"", LL_ERROR);
 		return false;
 	}
 
@@ -48,7 +48,7 @@ bool skiphash_copy(const std::wstring& src_path,
 
 		if(!hashinput.get())
 		{
-			Server->Log(L"Could not open hash input file at \""+hashinput_path+L"\"", LL_ERROR);
+			Server->Log("Could not open hash input file at \""+hashinput_path+"\"", LL_ERROR);
 			return false;
 		}
 	}
@@ -71,7 +71,7 @@ bool skiphash_copy(const std::wstring& src_path,
 		
 		Server->Log("Wrote "+PrettyPrintBytes(inplace_written)
 			+". Skipped "+PrettyPrintBytes(src->Size()-inplace_written)+" ("+
-			nconvert(static_cast<int>(skipped_pc+0.5f))+"%)", LL_INFO);
+			convert(static_cast<int>(skipped_pc+0.5f))+"%)", LL_INFO);
 
 		return ret;
 	}
@@ -83,7 +83,7 @@ int skiphash_copy_file()
 	std::string dst = Server->getServerParameter("dst");
 	std::string hashsrc = Server->getServerParameter("hashsrc");
 
-	return skiphash_copy(Server->ConvertToUnicode(src),
-		Server->ConvertToUnicode(dst),
-		Server->ConvertToUnicode(hashsrc)) ? 0 : 1;
+	return skiphash_copy((src),
+		(dst),
+		(hashsrc)) ? 0 : 1;
 }

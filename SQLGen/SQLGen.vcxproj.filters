@@ -132,6 +132,9 @@
     <ClCompile Include="..\SharedMutex_boost.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="..\StaticPluginRegistration.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Database.h">

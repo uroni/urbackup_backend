@@ -15,12 +15,12 @@ ContinuousWatchEnqueue::ContinuousWatchEnqueue()
 
 }
 
-void ContinuousWatchEnqueue::On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed )
+void ContinuousWatchEnqueue::On_FileNameChanged( const std::string & strOldFileName, const std::string & strNewFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::pair<std::wstring, std::wstring> > dirs =
+	std::vector<std::pair<std::string, std::string> > dirs =
 		getWatchDirs(strOldFileName, strNewFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -46,12 +46,12 @@ void ContinuousWatchEnqueue::On_FileNameChanged( const std::wstring & strOldFile
 }
 
 
-void ContinuousWatchEnqueue::On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed )
+void ContinuousWatchEnqueue::On_DirNameChanged( const std::string & strOldFileName, const std::string & strNewFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::pair<std::wstring, std::wstring> > dirs =
+	std::vector<std::pair<std::string, std::string> > dirs =
 		getWatchDirs(strOldFileName, strNewFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -77,12 +77,12 @@ void ContinuousWatchEnqueue::On_DirNameChanged( const std::wstring & strOldFileN
 }
 
 
-void ContinuousWatchEnqueue::On_FileRemoved( const std::wstring & strFileName, bool closed )
+void ContinuousWatchEnqueue::On_FileRemoved( const std::string & strFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::wstring> dirs =
+	std::vector<std::string> dirs =
 		getWatchDirs(strFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -94,12 +94,12 @@ void ContinuousWatchEnqueue::On_FileRemoved( const std::wstring & strFileName, b
 	}
 }
 
-void ContinuousWatchEnqueue::On_FileAdded( const std::wstring & strFileName, bool closed )
+void ContinuousWatchEnqueue::On_FileAdded( const std::string & strFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::wstring> dirs =
+	std::vector<std::string> dirs =
 		getWatchDirs(strFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -112,12 +112,12 @@ void ContinuousWatchEnqueue::On_FileAdded( const std::wstring & strFileName, boo
 }
 
 
-void ContinuousWatchEnqueue::On_DirAdded( const std::wstring & strFileName, bool closed )
+void ContinuousWatchEnqueue::On_DirAdded( const std::string & strFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::wstring> dirs =
+	std::vector<std::string> dirs =
 		getWatchDirs(strFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -130,12 +130,12 @@ void ContinuousWatchEnqueue::On_DirAdded( const std::wstring & strFileName, bool
 }
 
 
-void ContinuousWatchEnqueue::On_FileModified( const std::wstring & strFileName, bool closed )
+void ContinuousWatchEnqueue::On_FileModified( const std::string & strFileName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::wstring> dirs =
+	std::vector<std::string> dirs =
 		getWatchDirs(strFileName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -147,17 +147,17 @@ void ContinuousWatchEnqueue::On_FileModified( const std::wstring & strFileName, 
 	}
 }
 
-void ContinuousWatchEnqueue::On_ResetAll( const std::wstring & vol )
+void ContinuousWatchEnqueue::On_ResetAll( const std::string & vol )
 {
 	On_ResetAllInt(vol);
 }
 
-void ContinuousWatchEnqueue::On_DirRemoved( const std::wstring & strDirName, bool closed )
+void ContinuousWatchEnqueue::On_DirRemoved( const std::string & strDirName, bool closed )
 {
 	if(!closed)
 		return;
 
-	std::vector<std::wstring> dirs =
+	std::vector<std::string> dirs =
 		getWatchDirs(strDirName);
 
 	for(size_t i=0;i<dirs.size();++i)
@@ -233,17 +233,17 @@ void ContinuousWatchEnqueue::removeWatchdir( SWatchItem item )
 	}
 }
 
-std::vector<std::wstring> ContinuousWatchEnqueue::getWatchDirs( const std::wstring& fn )
+std::vector<std::string> ContinuousWatchEnqueue::getWatchDirs( const std::string& fn )
 {
-	std::wstring fn_lower = strlower(fn);
+	std::string fn_lower = strlower(fn);
 
-	std::vector<std::wstring> dirs;
+	std::vector<std::string> dirs;
 
 	for(size_t i=0;i<watchdirs.size();++i)
 	{
 		if(next(fn_lower, 0, watchdirs[i].dir))
 		{
-			std::wstring fn_sub = fn.substr(watchdirs[i].dir.size());
+			std::string fn_sub = fn.substr(watchdirs[i].dir.size());
 			dirs.push_back(watchdirs[i].name+fn_sub);
 		}
 	}
@@ -252,24 +252,24 @@ std::vector<std::wstring> ContinuousWatchEnqueue::getWatchDirs( const std::wstri
 }
 
 
-std::vector<std::pair<std::wstring, std::wstring> > ContinuousWatchEnqueue::getWatchDirs( const std::wstring& fn1, const std::wstring& fn2 )
+std::vector<std::pair<std::string, std::string> > ContinuousWatchEnqueue::getWatchDirs( const std::string& fn1, const std::string& fn2 )
 {
-	std::wstring fn1_lower = strlower(fn1);
-	std::wstring fn2_lower = strlower(fn1);
+	std::string fn1_lower = strlower(fn1);
+	std::string fn2_lower = strlower(fn1);
 
-	std::vector<std::pair<std::wstring, std::wstring> > dirs;
+	std::vector<std::pair<std::string, std::string> > dirs;
 
 	for(size_t i=0;i<watchdirs.size();++i)
 	{
 		bool fn1_ins = next(fn1_lower, 0, watchdirs[i].dir);
 		bool fn2_ins = next(fn2_lower, 0, watchdirs[i].dir);
 
-		std::wstring fn1_sub;
+		std::string fn1_sub;
 		if(fn1_ins)
 		{
 			fn1_sub = watchdirs[i].name+fn1.substr(watchdirs[i].dir.size());
 		}
-		std::wstring fn2_sub;
+		std::string fn2_sub;
 		if(fn2_ins)
 		{
 			fn2_sub = watchdirs[i].name+fn2.substr(watchdirs[i].dir.size());
@@ -282,56 +282,56 @@ std::vector<std::pair<std::wstring, std::wstring> > ContinuousWatchEnqueue::getW
 }
 
 
-void ContinuousWatchEnqueue::On_FileNameChangedInt( const std::wstring & strOldFileName, const std::wstring & strNewFileName )
+void ContinuousWatchEnqueue::On_FileNameChangedInt( const std::string & strOldFileName, const std::string & strNewFileName )
 {
 	queue.addChar(CHANGE_REN_FILE);
-	queue.addString(Server->ConvertToUTF8(strOldFileName));
-	queue.addString(Server->ConvertToUTF8(strNewFileName));
+	queue.addString((strOldFileName));
+	queue.addString((strNewFileName));
 }
 
-void ContinuousWatchEnqueue::On_DirNameChangedInt( const std::wstring & strOldFileName, const std::wstring & strNewFileName )
+void ContinuousWatchEnqueue::On_DirNameChangedInt( const std::string & strOldFileName, const std::string & strNewFileName )
 {
 	queue.addChar(CHANGE_REN_DIR);
-	queue.addString(Server->ConvertToUTF8(strOldFileName));
-	queue.addString(Server->ConvertToUTF8(strNewFileName));
+	queue.addString((strOldFileName));
+	queue.addString((strNewFileName));
 }
 
-void ContinuousWatchEnqueue::On_FileRemovedInt( const std::wstring & strFileName )
+void ContinuousWatchEnqueue::On_FileRemovedInt( const std::string & strFileName )
 {
 	queue.addChar(CHANGE_DEL_FILE);
-	queue.addString(Server->ConvertToUTF8(strFileName));
+	queue.addString((strFileName));
 }
 
-void ContinuousWatchEnqueue::On_FileAddedInt( const std::wstring & strFileName )
+void ContinuousWatchEnqueue::On_FileAddedInt( const std::string & strFileName )
 {
 	queue.addChar(CHANGE_ADD_FILE);
-	queue.addString(Server->ConvertToUTF8(strFileName));
+	queue.addString((strFileName));
 }
 
-void ContinuousWatchEnqueue::On_DirAddedInt( const std::wstring & strFileName )
+void ContinuousWatchEnqueue::On_DirAddedInt( const std::string & strFileName )
 {
 	queue.addChar(CHANGE_ADD_DIR);
-	queue.addString(Server->ConvertToUTF8(strFileName));
+	queue.addString((strFileName));
 }
 
-void ContinuousWatchEnqueue::On_FileModifiedInt( const std::wstring & strFileName )
+void ContinuousWatchEnqueue::On_FileModifiedInt( const std::string & strFileName )
 {
 	queue.addChar(CHANGE_MOD);
-	queue.addString(Server->ConvertToUTF8(strFileName));
+	queue.addString((strFileName));
 }
 
-void ContinuousWatchEnqueue::On_ResetAllInt( const std::wstring & vol )
+void ContinuousWatchEnqueue::On_ResetAllInt( const std::string & vol )
 {
 	queue.addChar(CHANGE_MOD_ALL);
-	queue.addString(Server->ConvertToUTF8(vol));
+	queue.addString((vol));
 }
 
-void ContinuousWatchEnqueue::On_DirRemovedInt( const std::wstring & strDirName )
+void ContinuousWatchEnqueue::On_DirRemovedInt( const std::string & strDirName )
 {
 	readIncludeExcludePatterns();
 
 	queue.addChar(CHANGE_DEL_DIR);
-	queue.addString(Server->ConvertToUTF8(strDirName));
+	queue.addString((strDirName));
 }
 
 void ContinuousWatchEnqueue::readIncludeExcludePatterns()
@@ -345,30 +345,30 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 
 	if(curr_settings.get())
 	{
-		std::wstring val;
-		if(curr_settings->getValue(L"continuous_exclude_files", &val)
-			|| curr_settings->getValue(L"continuous_exclude_files_def", &val) )
+		std::string val;
+		if(curr_settings->getValue("continuous_exclude_files", &val)
+			|| curr_settings->getValue("continuous_exclude_files_def", &val) )
 		{
 			exlude_dirs = IndexThread::parseExcludePatterns(val);
 		}
 		else
 		{
-			exlude_dirs = IndexThread::parseExcludePatterns(std::wstring());
+			exlude_dirs = IndexThread::parseExcludePatterns(std::string());
 		}
 
-		if(curr_settings->getValue(L"continuous_include_files", &val)
-			|| curr_settings->getValue(L"continuous_include_files_def", &val) )
+		if(curr_settings->getValue("continuous_include_files", &val)
+			|| curr_settings->getValue("continuous_include_files_def", &val) )
 		{
 			include_dirs = IndexThread::parseIncludePatterns(val, include_depth, include_prefix);
 		}
 	}
 	else
 	{
-		IndexThread::parseExcludePatterns(std::wstring());
+		IndexThread::parseExcludePatterns(std::string());
 	}
 }
 
-bool ContinuousWatchEnqueue::pathIncluded( const std::wstring& path, const std::wstring& named_path )
+bool ContinuousWatchEnqueue::pathIncluded( const std::string& path, const std::string& named_path )
 {
 	if( IndexThread::isExcluded(exlude_dirs, path)
 		|| IndexThread::isExcluded(exlude_dirs, named_path) )
@@ -403,7 +403,7 @@ void ContinuousWatchEnqueue::setStartUsn( int64 sequence_id, int64 seq_start )
 	sequences_start[sequence_id]=seq_start;
 }
 
-void ContinuousWatchEnqueue::On_FileOpen( const std::wstring & strFileName )
+void ContinuousWatchEnqueue::On_FileOpen( const std::string & strFileName )
 {
 
 }

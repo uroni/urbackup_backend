@@ -18,7 +18,6 @@ public:
 		size_t allocation_chunk_size);
 	~CDatabase();
 
-	virtual db_nresults ReadN(std::string pQuery); 
 	virtual db_results Read(std::string pQuery); 
 	virtual bool Write(std::string pQuery);
 
@@ -36,7 +35,6 @@ public:
 	sqlite3 *getDatabase(void);
 
 	//private function
-	void InsertResults(const db_nsingle_result &pResult);
 	bool WaitForUnlock(void);
 
 	bool LockForTransaction(void);
@@ -60,12 +58,11 @@ public:
 
 	virtual int getLastChanges();
 
-	virtual std::wstring getTempDirectoryPath();
+	virtual std::string getTempDirectoryPath();
 private:
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);
 
-	db_nresults results;
 	sqlite3 *db;
 	bool in_transaction;
 

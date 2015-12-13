@@ -113,8 +113,8 @@ void ServerIdentityMgr::loadServerIdentities(void)
 				str_map params;
 				ParseParamStrHttp(l.substr(hashpos+1), &params);
 				
-				pubkeys = SPublicKeys(base64_decode_dash(wnarrow(params[L"pubkey"])),
-					base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"])));
+				pubkeys = SPublicKeys(base64_decode_dash(params["pubkey"]),
+					base64_decode_dash(params["pubkey_ecdsa409k1"]));
 
 				l = l.substr(0, hashpos);
 			}
@@ -160,7 +160,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 
 			l = l.substr(0, hashpos);
 
-			SSessionIdentity session_ident(l, wnarrow(params[L"endpoint"]), -1*Server->getTimeMS());
+			SSessionIdentity session_ident(l, params["endpoint"], -1*Server->getTimeMS());
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I"+l+"#");

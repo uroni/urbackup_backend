@@ -11,13 +11,13 @@ class CSessionMgr : public ISessionMgr, public IThread
 public:
 	CSessionMgr(void);
 	~CSessionMgr();
-	virtual std::wstring GenerateSessionIDWithUser(const std::wstring &pUsername, const std::wstring &pIdentData, bool update_user=false);
+	virtual std::string GenerateSessionIDWithUser(const std::string &pUsername, const std::string &pIdentData, bool update_user=false);
 
-	virtual SUser *getUser(const std::wstring &pSID, const std::wstring &pIdentData, bool update=true);
+	virtual SUser *getUser(const std::string &pSID, const std::string &pIdentData, bool update=true);
 	virtual void releaseUser(SUser *user);
 	virtual void lockUser(SUser *user);
 
-	virtual bool RemoveSession(const std::wstring &pSID);
+	virtual bool RemoveSession(const std::string &pSID);
 	
 	void startTimeoutSessionThread();	
 	void operator()(void);
@@ -29,7 +29,7 @@ private:
 	int SESSION_TIMEOUT_S;
 
 	std::vector<wchar_t> Pool;
-	std::map<std::wstring, SUser*> mSessions;
+	std::map<std::string, SUser*> mSessions;
 
 	IMutex* sess_mutex;
 	

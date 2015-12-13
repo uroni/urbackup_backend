@@ -29,16 +29,16 @@ namespace tokens
 		std::auto_ptr<TokenCacheInt> token_cache;
 	};
 
-	std::string get_file_tokens(const std::wstring& fn, ClientDAO* dao, TokenCache& cache);
+	std::string get_file_tokens(const std::string& fn, ClientDAO* dao, TokenCache& cache);
 
-	std::wstring get_hostname();
+	std::string get_hostname();
 
-	std::vector<std::wstring> get_users();
+	std::vector<std::string> get_users();
 
-	std::vector<std::wstring> get_groups();
+	std::vector<std::string> get_groups();
 
-	std::vector<std::wstring> get_user_groups(const std::wstring& username);
+	std::vector<std::string> get_user_groups(const std::string& username);
 
-	bool write_token( std::wstring hostname, bool is_user, std::wstring accountname, const std::wstring &token_fn, ClientDAO &dao );
+	bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao );
 
 }

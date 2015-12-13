@@ -36,7 +36,7 @@ int my_stat(const wchar_t *pFilename, struct MZ_FILE_STAT_STRUCT* statbuf)
 #if defined(_MSC_VER) || defined(__MINGW64__)
 	return _wstat(pFilename, statbuf);
 #else
-	return MZ_FILE_STAT(Server->ConvertToUTF8(pFilename).c_str(), statbuf);
+	return MZ_FILE_STAT(Server->ConvertFromWchar(pFilename).c_str(), statbuf);
 #endif
 }
 
@@ -98,7 +98,7 @@ mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_nam
   }
   
     
-  pSrc_file = Server->openFile(os_file_prefix(pSrc_filename));
+  pSrc_file = Server->openFile(os_file_prefix(Server->ConvertFromWchar(pSrc_filename)));
   if (!pSrc_file)
     return MZ_FALSE;
 
@@ -289,7 +289,7 @@ bool my_miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 	return true;
 }
 
-bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter,
+bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, const std::string& foldername, const std::string& hashfoldername, const std::string& filter,
 		bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
 {
 	bool has_error=false;
@@ -303,14 +303,14 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		const SFile& file=files[i];
 
 		if(skip_special
-			&& (file.name==L".hashes" || file.name==L"user_views") )
+			&& (file.name==".hashes" || file.name=="user_views") )
 		{
 			continue;
 		}
 
-		std::wstring archivename = archivefoldername + (archivefoldername.empty()?L"":L"/") + file.name;
-		std::wstring metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
-		std::wstring filename = foldername + os_file_sep() + file.name;
+		std::string archivename = archivefoldername + (archivefoldername.empty()?"":"/") + file.name;
+		std::string metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
+		std::string filename = foldername + os_file_sep() + file.name;
 
 		if(!filter.empty() && archivename!=filter)
 			continue;
@@ -353,18 +353,18 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		mz_bool rc;
 		if(file.isdir)
 		{
-			rc = mz_zip_writer_add_mem_ex(&zip_archive, Server->ConvertToUTF8(archivename + L"/").c_str(), NULL, 0, NULL, 0, MZ_DEFAULT_LEVEL,
+			rc = mz_zip_writer_add_mem_ex(&zip_archive, (archivename + "/").c_str(), NULL, 0, NULL, 0, MZ_DEFAULT_LEVEL,
 			0, 0, 1<<11, last_modified);
 		}
 		else
 		{			
-			rc = my_mz_zip_writer_add_file(&zip_archive, Server->ConvertToUTF8(archivename).c_str(), filename.c_str(), NULL, 0, MZ_DEFAULT_LEVEL,
+			rc = my_mz_zip_writer_add_file(&zip_archive, archivename.c_str(), Server->ConvertToWchar(filename).c_str(), NULL, 0, MZ_DEFAULT_LEVEL,
 				last_modified);
 		}
 
 		if(rc==MZ_FALSE)
 		{
-			Server->Log(L"Error while adding file \""+filename+L"\" to ZIP file. RC="+convert((int)rc), LL_ERROR);
+			Server->Log("Error while adding file \""+filename+"\" to ZIP file. RC="+convert((int)rc), LL_ERROR);
 			return false;
 		}
 
@@ -380,7 +380,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 
 }
 
-bool create_zip_to_output(const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
+bool create_zip_to_output(const std::string& foldername, const std::string& hashfoldername, const std::string& filter, bool token_authentication,
 	const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
 {
 	mz_zip_archive zip_archive;
@@ -396,7 +396,7 @@ bool create_zip_to_output(const std::wstring& foldername, const std::wstring& ha
 		return false;
 	}
 
-	if(!add_dir(zip_archive, L"", foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes))
+	if(!add_dir(zip_archive, "", foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes))
 	{
 		Server->Log("Error while adding files and folders to ZIP archive", LL_ERROR);
 		return false;

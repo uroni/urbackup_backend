@@ -145,7 +145,7 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 	{
 		if(init_db)
 		{
-			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
+			copy_file("urbackup/backup_server.db.template", "urbackup/backup_server.db");
 		}
 	}
 		
@@ -156,7 +156,7 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 		std::string db_fn="urbackup/backup_server.db";
 		if(Server->hasDatabaseFactory("bdb") )
 		{
-			os_create_dir(L"urbackup/backup_server.bdb-journal");
+			os_create_dir("urbackup/backup_server.bdb-journal");
 			writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
 			engine="bdb";
 			db_fn="urbackup/backup_server.bdb";
@@ -196,7 +196,7 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 			{
 				Server->destroyAllDatabases();
 
-				os_create_dir(L"urbackup/backup_server.bdb-journal");
+				os_create_dir("urbackup/backup_server.bdb-journal");
 				writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
 
 				if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
@@ -236,8 +236,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 
 	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
 	{
-		Server->Log(L"Couldn't open backup server database. Exiting. Expecting database at \""+
-			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server.db\"", LL_ERROR);
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \""+
+			Server->getServerWorkingDir()+os_file_sep()+"urbackup"+os_file_sep()+"backup_server.db\"", LL_ERROR);
 		exit(1);
 	}
 	else
@@ -278,7 +278,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())
 	{
-		os_remove_nonempty_dir(widen(rmtest));
+		os_remove_nonempty_dir(rmtest);
 		return;
 	}
 
@@ -298,7 +298,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		FileDownload dl(Server->getServerParameter("servername"), tcpport);
 
 		int predicted_filesize = atoi(Server->getServerParameter("predicted_filesize", "-1").c_str());
-		Server->Log("Starting file download... (predicted_filesize="+nconvert(predicted_filesize)+")");
+		Server->Log("Starting file download... (predicted_filesize="+convert(predicted_filesize)+")");
 		dl.filedownload(download_file, Server->getServerParameter("dstfn"), method, predicted_filesize, SQueueStatus_NoQueue);
 		exit(1);
 	}
@@ -518,8 +518,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
 	{
-		Server->Log(L"Couldn't open backup server settings database. Exiting. Expecting database at \""+
-			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server_settings.db\"", LL_ERROR);
+		Server->Log("Couldn't open backup server settings database. Exiting. Expecting database at \""+
+			Server->getServerWorkingDir()+os_file_sep()+"urbackup"+os_file_sep()+"backup_server_settings.db\"", LL_ERROR);
 		exit(1);
 	}
 		
@@ -541,7 +541,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!create_files_index(startup_status))
 	{
-		Server->Log(L"Could not create or open file entry index. Exiting.", LL_ERROR);
+		Server->Log("Could not create or open file entry index. Exiting.", LL_ERROR);
 		exit(1);
 	}
 
@@ -590,7 +590,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			db_results res=db->Read("SELECT id FROM si_users WHERE name='admin'");
 			if(!res.empty())
 			{
-				updateRights(watoi(res[0][L"id"]), "idx=0&0_domain=all&0_right=all", db);
+				updateRights(watoi(res[0]["id"]), "idx=0&0_domain=all&0_right=all", db);
 
 				Server->Log("Updated admin rights.", LL_INFO);
 			}
@@ -781,12 +781,12 @@ namespace
 
 void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_update, db_results &curr_r)
 {
-	_i64 filesize=os_atoi64(wnarrow(curr_r[0][L"filesize"]));
+	_i64 filesize=os_atoi64(curr_r[0]["filesize"]);
 
 	std::map<int, int> client_c;
 	for(size_t i=0;i<curr_r.size();++i)
 	{
-		int cid=watoi(curr_r[i][L"clientid"]);
+		int cid=watoi(curr_r[i]["clientid"]);
 		std::map<int, int>::iterator it=client_c.find(cid);
 		if(it==client_c.end())
 		{
@@ -800,14 +800,14 @@ void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_upd
 		if(i==0)
 		{
 			q_file_update->Bind(filesize);
-			q_file_update->Bind(os_atoi64(wnarrow(curr_r[i][L"id"])));
+			q_file_update->Bind(os_atoi64(curr_r[i]["id"]));
 			q_file_update->Write();
 			q_file_update->Reset();
 		}
 		else
 		{
 			q_file_update->Bind(0);
-			q_file_update->Bind(os_atoi64(wnarrow(curr_r[i][L"id"])));
+			q_file_update->Bind(os_atoi64(curr_r[i]["id"]));
 			q_file_update->Write();
 			q_file_update->Reset();
 		}
@@ -821,7 +821,7 @@ void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_upd
 		q_space_get->Reset();
 		if(!res.empty())
 		{
-			_i64 used=os_atoi64(wnarrow(res[0][L"bytes_used_files"]));
+			_i64 used=os_atoi64(res[0]["bytes_used_files"]);
 			used+=filesize/client_c.size();
 			q_space_update->Bind(used);
 			q_space_update->Bind(it->first);
@@ -847,8 +847,8 @@ void upgrade_1(void)
 	IQuery *q_space_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?");
 	IQuery *q_file_update=db->Prepare("UPDATE files SET rsize=? WHERE rowid=?");
 
-	std::wstring filesize;
-	std::wstring shhash;
+	std::string filesize;
+	std::string shhash;
 	db_results curr_r;
 	int last_pc=0;
 	Server->Log("Updating client space usage...", LL_INFO);
@@ -859,22 +859,22 @@ void upgrade_1(void)
 		q_read->Reset();
 		for(size_t j=0;j<res.size();++j)
 		{
-			if(shhash.empty() || (res[j][L"shahash"]!=shhash || res[j][L"filesize"]!=filesize )  )
+			if(shhash.empty() || (res[j]["shahash"]!=shhash || res[j]["filesize"]!=filesize )  )
 			{
 				if(!curr_r.empty())
 				{
 					update_file(q_space_get, q_space_update, q_file_update, curr_r);
 				}
 				curr_r.clear();
-				shhash=res[j][L"shhash"];
-				filesize=res[j][L"filesize"];
+				shhash=res[j]["shhash"];
+				filesize=res[j]["filesize"];
 				curr_r.push_back(res[j]);
 			}
 
 			int pc=(int)(((float)j/(float)res.size())*100.f+0.5f);
 			if(pc!=last_pc)
 			{
-				Server->Log(nconvert(pc)+"%", LL_INFO);
+				Server->Log(convert(pc)+"%", LL_INFO);
 				last_pc=pc;
 			}
 		}
@@ -1029,7 +1029,7 @@ void upgrade16_17(void)
 	{
 		std::string key=ServerSettings::generateRandomAuthKey();
 		q->Bind(key);
-		q->Bind(res[i][L"id"]);
+		q->Bind(res[i]["id"]);
 		q->Write();
 		q->Reset();
 	}
@@ -1085,14 +1085,14 @@ void upgrade23_24(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("allow_starting_incr_file_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("allow_starting_full_file_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1102,14 +1102,14 @@ void upgrade23_24(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("allow_starting_incr_image_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("allow_starting_full_image_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1129,8 +1129,8 @@ void upgrade25_26(void)
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES ('client_settings', ?, ?)");
 	for(size_t i=0;i<res.size();++i)
 	{
-		q_insert->Bind(res[i][L"t_right"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["t_right"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1144,26 +1144,26 @@ void upgrade26_27(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("backup_window_incr_file");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_full_file");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_incr_image");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_full_image");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1251,16 +1251,16 @@ bool upgrade35_36()
 
 	if(db_file.get() && Server->getServerParameter("override_freespace_check")==std::string())
 	{
-		int64 free_space = os_free_space(Server->getServerWorkingDir()+os_file_sep()+L"urbackup");
+		int64 free_space = os_free_space(Server->getServerWorkingDir()+os_file_sep()+"urbackup");
 
 		int64 missing_free_space = db_file->Size()-free_space;
 		if(free_space<db_file->Size())
 		{
-			Server->Log(L"UrBackup needs "+widen(PrettyPrintBytes(missing_free_space))+L" more free space for the upgrade process. Please free up this amount of space at \""+Server->getServerWorkingDir()+os_file_sep()+L"urbackup\"", LL_ERROR);
+			Server->Log("UrBackup needs "+PrettyPrintBytes(missing_free_space)+" more free space for the upgrade process. Please free up this amount of space at \""+Server->getServerWorkingDir()+os_file_sep()+"urbackup\"", LL_ERROR);
 			return false;
 		}
 
-		std::wstring tmpdir = db->getTempDirectoryPath();
+		std::string tmpdir = db->getTempDirectoryPath();
 		if(!tmpdir.empty())
 		{
 			free_space = os_free_space(tmpdir);
@@ -1268,8 +1268,8 @@ bool upgrade35_36()
 			int64 missing_free_space = db_file->Size()-free_space;
 			if(free_space<db_file->Size())
 			{
-				Server->Log(L"UrBackup needs "+widen(PrettyPrintBytes(missing_free_space))+L" more free space for the upgrade process at the temporary location. "
-					L"Please free up this amount of space at \""+tmpdir+L"\"", LL_ERROR);
+				Server->Log("UrBackup needs "+PrettyPrintBytes(missing_free_space)+" more free space for the upgrade process at the temporary location. "
+					"Please free up this amount of space at \""+tmpdir+"\"", LL_ERROR);
 				return false;
 			}
 		}
@@ -1360,8 +1360,8 @@ bool update37_38()
 		res=db->Read("SELECT l.id AS id, l.logdata AS logdata FROM logs l WHERE NOT EXISTS (SELECT id FROM log_data WHERE logid = l.id) LIMIT 100");
 		for(size_t i=0;i<res.size();++i)
 		{
-			q_ins->Bind(res[i][L"id"]);
-			q_ins->Bind(res[i][L"logdata"]);
+			q_ins->Bind(res[i]["id"]);
+			q_ins->Bind(res[i]["logdata"]);
 			q_ins->Write();
 			q_ins->Reset();
 		}
@@ -1422,12 +1422,12 @@ bool upgrade40_41()
 
 		for(size_t i=0;i<res.size();++i)
 		{
-			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->ConvertToUTF8(res[i][L"password_md5"])),
-				Server->ConvertToUTF8(res[i][L"salt"]), pbkdf2_rounds));
+			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes((res[i]["password_md5"])),
+				(res[i]["salt"]), pbkdf2_rounds));
 
 			q_update->Bind(password_md5);
 			q_update->Bind(pbkdf2_rounds);
-			q_update->Bind(res[i][L"id"]);
+			q_update->Bind(res[i]["id"]);
 			q_update->Write();
 			q_update->Reset();
 		}
@@ -1481,7 +1481,7 @@ void upgrade(void)
 	if(res_v.empty())
 		return;
 	
-	int ver=watoi(res_v[0][L"tvalue"]);
+	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
 	int max_v=43;
 	{
@@ -1503,7 +1503,7 @@ void upgrade(void)
 	{
 		cache_res=db->Read("PRAGMA cache_size");
 		ServerSettings server_settings(db);
-		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
@@ -1511,12 +1511,12 @@ void upgrade(void)
 	{
 		if(ver<max_v)
 		{
-		    Server->Log("Upgrading database to version "+nconvert(ver+1), LL_WARNING);
+		    Server->Log("Upgrading database to version "+convert(ver+1), LL_WARNING);
 		}
 		if(ver>max_v)
 		{
-			Server->Log("Current UrBackup database version is "+nconvert(ver)+". This UrBackup"
-				" server version only supports databases up to version "+nconvert(max_v)+"."
+			Server->Log("Current UrBackup database version is "+convert(ver)+". This UrBackup"
+				" server version only supports databases up to version "+convert(max_v)+"."
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
 		}
@@ -1764,7 +1764,7 @@ void upgrade(void)
 
 	if(!cache_res.empty())
 	{
-		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA cache_size = "+cache_res[0]["cache_size"]);
 		db->freeMemory();
 	}
 	

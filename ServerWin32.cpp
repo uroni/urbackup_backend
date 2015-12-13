@@ -31,7 +31,7 @@ bool CServer::LoadDLL(const std::string &name)
 
 	if(dll==NULL)
 	{
-		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+nconvert((int)GetLastError()));
+		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+convert((int)GetLastError()));
 		return false;
 	}
 
@@ -62,7 +62,7 @@ int CServer::WriteDump(void* pExceptionPointers)
     WCHAR szPath[MAX_PATH]; 
     WCHAR szFileName[MAX_PATH]; 
     WCHAR* szAppName = L"UrBackup";
-    WCHAR* szVersion = L"v0.25.1";
+    WCHAR* szVersion = L"v2.0.0";
     DWORD dwBufferSize = MAX_PATH;
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;
@@ -93,13 +93,13 @@ int CServer::WriteDump(void* pExceptionPointers)
 
 		if(!bMiniDumpSuccessful)
 		{
-			Server->Log("Writing minidump failed: Last error="+nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Writing minidump failed: Last error="+convert((int)GetLastError()), LL_ERROR);
 		}
 
 		CloseHandle(hDumpFile);
 	}
 
-	Server->Log(L"Fatal exception (APPLICATION CRASHED). Crash dump written to \""+(std::wstring)szFileName+L"\"", LL_ERROR);
+	Server->Log("Fatal exception (APPLICATION CRASHED). Crash dump written to \""+Server->ConvertFromWchar(szFileName)+"\"", LL_ERROR);
 
     return EXCEPTION_EXECUTE_HANDLER;
 }

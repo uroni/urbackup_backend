@@ -42,8 +42,8 @@ bool BackupServer::snapshots_enabled=false;
 bool BackupServer::filesystem_transactions_enabled = false;
 volatile bool BackupServer::update_delete_pending_clients=true;
 IMutex* BackupServer::force_offline_mutex=NULL;
-std::vector<std::wstring> BackupServer::force_offline_clients;
-std::map<std::wstring, std::vector<std::wstring> >  BackupServer::virtual_clients;
+std::vector<std::string> BackupServer::force_offline_clients;
+std::map<std::string, std::vector<std::string> >  BackupServer::virtual_clients;
 IMutex* BackupServer::virtual_clients_mutex=NULL;
 
 
@@ -74,16 +74,16 @@ void BackupServer::operator()(void)
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
 
 #ifdef _WIN32
-	std::wstring tmpdir;
-	if(settings->getValue(L"tmpdir", &tmpdir) && !tmpdir.empty())
+	std::string tmpdir;
+	if(settings->getValue("tmpdir", &tmpdir) && !tmpdir.empty())
 	{
-		os_remove_nonempty_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
-		if(!os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp"))
+		os_remove_nonempty_dir(tmpdir+os_file_sep()+"urbackup_tmp");
+		if(!os_create_dir(tmpdir+os_file_sep()+"urbackup_tmp"))
 		{
 			Server->wait(5000);
-			os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+			os_create_dir(tmpdir+os_file_sep()+"urbackup_tmp");
 		}
-		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(tmpdir+os_file_sep()+"urbackup_tmp");
 	}
 	else
 	{
@@ -94,28 +94,28 @@ void BackupServer::operator()(void)
 			wcscpy_s(tmpp,L"C:\\");
 		}
 
-		std::wstring w_tmp=tmpp;
+		std::string w_tmp=Server->ConvertFromWchar(tmpp);
 
 		if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
 		{
 			w_tmp.erase(w_tmp.size()-1, 1);		}
 
 
-		os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
-		if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp"))
+		os_remove_nonempty_dir(w_tmp+os_file_sep()+"urbackup_tmp");
+		if(!os_create_dir(w_tmp+os_file_sep()+"urbackup_tmp"))
 		{
 			Server->wait(5000);
-			os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
+			os_create_dir(w_tmp+os_file_sep()+"urbackup_tmp");
 		}
-		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(w_tmp+os_file_sep()+"urbackup_tmp");
 	}
 #endif
-	std::wstring backupfolder;
-	if( settings->getValue(L"backupfolder", &backupfolder) )
+	std::string backupfolder;
+	if( settings->getValue("backupfolder", &backupfolder) )
 	{
 		if( settings->getValue("use_tmpfiles", "")!="true" )
 		{		
-			std::wstring tmpfile_path=backupfolder+os_file_sep()+L"urbackup_tmp_files";
+			std::string tmpfile_path=backupfolder+os_file_sep()+"urbackup_tmp_files";
 
 			Server->Log("Removing temporary files...");
 			os_remove_nonempty_dir(tmpfile_path);
@@ -129,7 +129,7 @@ void BackupServer::operator()(void)
 
 #ifndef _WIN32
 		os_create_dir("/etc/urbackup");
-		writestring(Server->ConvertToUTF8(backupfolder), "/etc/urbackup/backupfolder");
+		writestring((backupfolder), "/etc/urbackup/backupfolder");
 #endif
 	}
 
@@ -187,11 +187,11 @@ void BackupServer::findClients(FileClient &fc)
 		for(size_t i=0;i<res.size();++i)
 		{
 			unsigned int dest;
-			bool b=os_lookuphostname(Server->ConvertToUTF8(res[i][L"hostname"]), &dest);
+			bool b=os_lookuphostname((res[i]["hostname"]), &dest);
 			if(b)
 			{
 				q_update_extra_ip->Bind((_i64)dest);
-				q_update_extra_ip->Bind(res[i][L"id"]);
+				q_update_extra_ip->Bind(res[i]["id"]);
 				q_update_extra_ip->Write();
 				q_update_extra_ip->Reset();
 
@@ -223,7 +223,7 @@ namespace
 {
 	struct SClientInfo
 	{
-		explicit SClientInfo(std::wstring name)
+		explicit SClientInfo(std::string name)
 			: name(name), internetclient(false), delete_pending(false),
 			filebackup_group_offset(0)
 		{
@@ -242,9 +242,9 @@ namespace
 			return name==other.name;
 		}
 
-		std::wstring name;
-		std::wstring subname;
-		std::wstring mainname;
+		std::string name;
+		std::string subname;
+		std::string mainname;
 		sockaddr_in addr;
 		std::string endpoint_name;
 		bool internetclient;
@@ -259,7 +259,7 @@ void BackupServer::startClients(FileClient &fc)
 
 	if(!internet_only_mode)
 	{
-		std::vector<std::wstring> names=fc.getServerNames();
+		std::vector<std::string> names=fc.getServerNames();
 		std::vector<sockaddr_in> servers=fc.getServers();
 
 		client_info.resize(servers.size());
@@ -276,7 +276,7 @@ void BackupServer::startClients(FileClient &fc)
 	std::vector<std::pair<std::string, std::string> > anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		std::wstring new_name = Server->ConvertToUnicode(anames[i].first);
+		std::string new_name = (anames[i].first);
 		if(std::find(client_info.begin(), client_info.end(), SClientInfo(new_name))!=client_info.end())
 		{
 			continue;
@@ -293,7 +293,7 @@ void BackupServer::startClients(FileClient &fc)
 
 	for(size_t i=0;i<client_info.size();++i)
 	{
-		client_info[i].name=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(client_info[i].name)));
+		client_info[i].name=(conv_filename((client_info[i].name)));
 
 		fixClientnameCase(client_info[i].name);
 
@@ -305,15 +305,15 @@ void BackupServer::startClients(FileClient &fc)
 
 		for(size_t i=0,size=client_info.size();i<size;++i)
 		{
-			std::map<std::wstring, std::vector<std::wstring> >::iterator it=virtual_clients.find(client_info[i].name);
+			std::map<std::string, std::vector<std::string> >::iterator it=virtual_clients.find(client_info[i].name);
 
 			if(it!=virtual_clients.end())
 			{
 				for(size_t j=0;j<it->second.size();++j)
 				{
-					std::wstring new_name = client_info[i].name+L"["+it->second[j]+L"]";
+					std::string new_name = client_info[i].name+"["+it->second[j]+"]";
 
-					new_name = Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(new_name)));
+					new_name = (conv_filename((new_name)));
 
 					fixClientnameCase(new_name);
 
@@ -331,7 +331,7 @@ void BackupServer::startClients(FileClient &fc)
 
 	maybeUpdateDeletePendingClients();
 
-	std::vector<std::wstring> local_force_offline_clients;
+	std::vector<std::string> local_force_offline_clients;
 	{
 		IScopedLock lock(force_offline_mutex);
 		local_force_offline_clients = force_offline_clients;
@@ -349,10 +349,10 @@ void BackupServer::startClients(FileClient &fc)
 			continue;
 		}
 
-		std::map<std::wstring, SClient>::iterator it=clients.find(curr_info.name);
+		std::map<std::string, SClient>::iterator it=clients.find(curr_info.name);
 		if( it==clients.end() )
 		{
-			Server->Log(L"New Backupclient: "+curr_info.name);
+			Server->Log("New Backupclient: "+curr_info.name);
 			ServerStatus::setOnline(curr_info.name, true);
 			IPipe *np=Server->createMemoryPipe();
 
@@ -382,7 +382,7 @@ void BackupServer::startClients(FileClient &fc)
 				ServerStatus::setIP(curr_info.name, c.addr.sin_addr.s_addr);
 			}
 
-			clients.insert(std::pair<std::wstring, SClient>(curr_info.name, c) );
+			clients.insert(std::pair<std::string, SClient>(curr_info.name, c) );
 		}
 		else if(it->second.offlinecount<max_offline)
 		{
@@ -421,7 +421,7 @@ void BackupServer::startClients(FileClient &fc)
 
 					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
 
-					Server->Log("New client address: "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_INFO);
+					Server->Log("New client address: "+convert((unsigned char)ip[0])+"."+convert((unsigned char)ip[1])+"."+convert((unsigned char)ip[2])+"."+convert((unsigned char)ip[3]), LL_INFO);
 
 					ServerStatus::setIP(curr_info.name, it->second.addr.sin_addr.s_addr);
 
@@ -438,7 +438,7 @@ void BackupServer::startClients(FileClient &fc)
 		c=false;
 
 		size_t i_c=0;
-		for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+		for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 		{
 			bool found=false;
 			for(size_t i=0;i<client_info.size();++i)
@@ -456,7 +456,7 @@ void BackupServer::startClients(FileClient &fc)
 			{
 				if(it->second.offlinecount==max_offline)
 				{
-					Server->Log(L"Client exited: "+it->first);
+					Server->Log("Client exited: "+it->first);
 					it->second.pipe->Write("exit");
 					++it->second.offlinecount;
 					ServerStatus::setCommPipe(it->first, NULL);
@@ -474,14 +474,14 @@ void BackupServer::startClients(FileClient &fc)
 						}
 						else
 						{
-							Server->Log(L"Client finished: "+it->first);
+							Server->Log("Client finished: "+it->first);
 							ServerStatus::removeStatus(it->first);
 							Server->destroy(it->second.pipe);
 
 							{
 								IScopedLock lock(virtual_clients_mutex);
 
-								std::map<std::wstring, std::vector<std::wstring> >::iterator virt_it=virtual_clients.find(it->first);
+								std::map<std::string, std::vector<std::string> >::iterator virt_it=virtual_clients.find(it->first);
 								if(virt_it!=virtual_clients.end())
 								{
 									virtual_clients.erase(virt_it);
@@ -489,12 +489,12 @@ void BackupServer::startClients(FileClient &fc)
 							}
 
 							IScopedLock lock(force_offline_mutex);
-							std::vector<std::wstring>::iterator off_iter = std::find(force_offline_clients.begin(),
+							std::vector<std::string>::iterator off_iter = std::find(force_offline_clients.begin(),
 								force_offline_clients.end(),
 								it->first);
 							if(off_iter!= force_offline_clients.end())
 							{
-								Server->Log(L"Client was forced offline: "+it->first);
+								Server->Log("Client was forced offline: "+it->first);
 								force_offline_clients.erase(off_iter);
 							}
 
@@ -534,7 +534,7 @@ void BackupServer::startClients(FileClient &fc)
 
 void BackupServer::removeAllClients(void)
 {
-	for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+	for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 	{
 		it->second.pipe->Write("exitnow");
 		std::string msg;
@@ -676,10 +676,10 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 
 	ServerSettings settings(db);
 
-	const std::wstring testdirname = L"FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
-	const std::wstring testdirname_renamed = testdirname+L"_2";
+	const std::string testdirname = "FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
+	const std::string testdirname_renamed = testdirname+"_2";
 
-	std::wstring backupfolder = settings.getSettings()->backupfolder;
+	std::string backupfolder = settings.getSettings()->backupfolder;
 
 	void* transaction = os_start_transaction();
 
@@ -729,7 +729,7 @@ void BackupServer::updateDeletePending()
 	update_delete_pending_clients=true;
 }
 
-bool BackupServer::isDeletePendingClient( const std::wstring& clientname )
+bool BackupServer::isDeletePendingClient( const std::string& clientname )
 {
 	return std::find(delete_pending_clients.begin(), delete_pending_clients.end(), clientname)!=
 		delete_pending_clients.end();
@@ -747,11 +747,11 @@ void BackupServer::maybeUpdateDeletePendingClients()
 	}
 }
 
-void BackupServer::forceOfflineClient( const std::wstring& clientname )
+void BackupServer::forceOfflineClient( const std::string& clientname )
 {
 	IScopedLock lock(force_offline_mutex);
 
-	Server->Log(L"Forcing offline client \""+clientname+L"\"", LL_DEBUG);
+	Server->Log("Forcing offline client \""+clientname+"\"", LL_DEBUG);
 
 	force_offline_clients.push_back(clientname);
 }
@@ -766,17 +766,17 @@ void BackupServer::maybeUpdateExistingClientsLower()
 		existing_client_names_lower.resize(res.size());
 		for(size_t i=0;i<res.size();++i)
 		{
-			existing_client_names[i]=res[i][L"name"];
-			existing_client_names_lower[i]=strlower(res[i][L"name"]);
+			existing_client_names[i]=res[i]["name"];
+			existing_client_names_lower[i]=strlower(res[i]["name"]);
 		}
 
 		update_existing_client_names=false;
 	}
 }
 
-void BackupServer::fixClientnameCase( std::wstring& clientname )
+void BackupServer::fixClientnameCase( std::string& clientname )
 {
-	std::wstring name_lower = strlower(clientname);
+	std::string name_lower = strlower(clientname);
 	for(size_t j=0;j<existing_client_names_lower.size();++j)
 	{
 		if(existing_client_names_lower[j]==name_lower)
@@ -787,10 +787,10 @@ void BackupServer::fixClientnameCase( std::wstring& clientname )
 	}
 }
 
-void BackupServer::setVirtualClients( const std::wstring& clientname, const std::wstring& new_virtual_clients )
+void BackupServer::setVirtualClients( const std::string& clientname, const std::string& new_virtual_clients )
 {
-	std::vector<std::wstring> toks;
-	TokenizeMail(new_virtual_clients, toks, L"|");
+	std::vector<std::string> toks;
+	TokenizeMail(new_virtual_clients, toks, "|");
 
 	IScopedLock lock(virtual_clients_mutex);
 	virtual_clients[clientname] = toks;

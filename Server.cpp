@@ -267,9 +267,9 @@ CServer::~CServer()
 
 	Log("Deleting actions...");
 
-	for(std::map< std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.begin();iter1!=actions.end();++iter1)
+	for(std::map< std::string, std::map<std::string, IAction*> >::iterator iter1=actions.begin();iter1!=actions.end();++iter1)
 	{
-		for(std::map<std::wstring, IAction*>::iterator iter2=iter1->second.begin();iter2!=iter1->second.end();++iter2)
+		for(std::map<std::string, IAction*>::iterator iter2=iter1->second.begin();iter2!=iter1->second.end();++iter2)
 		{
 			iter2->second->Remove();
 		}
@@ -322,7 +322,7 @@ CServer::~CServer()
 	std::cout << "Server cleanup done..." << std::endl;
 }
 
-void CServer::setServerParameters(const str_nmap &pServerParams)
+void CServer::setServerParameters(const str_map &pServerParams)
 {
 	IScopedLock lock(param_mutex);
 	server_params=pServerParams;
@@ -336,7 +336,7 @@ std::string CServer::getServerParameter(const std::string &key)
 std::string CServer::getServerParameter(const std::string &key, const std::string &def)
 {
 	IScopedLock lock(param_mutex);
-	str_nmap::iterator iter=server_params.find(key);
+	str_map::iterator iter=server_params.find(key);
 	if( iter!=server_params.end() )
 	{
 		return iter->second;
@@ -424,79 +424,14 @@ void CServer::rotateLogfile()
 
 		for(size_t i=log_rotation_files-1;i>0;--i)
 		{
-			rename((logfile_fn+"."+nconvert(i)).c_str(), (logfile_fn+"."+nconvert(i+1)).c_str());
+			rename((logfile_fn+"."+convert(i)).c_str(), (logfile_fn+"."+convert(i+1)).c_str());
 		}
 
-		deleteFile(logfile_fn+"."+nconvert(log_rotation_files));
+		deleteFile(logfile_fn+"."+convert(log_rotation_files));
 
 		rename(logfile_fn.c_str(), (logfile_fn+".1").c_str());
 
 		setLogFile(logfile_fn, logfile_chown_user);
-	}
-}
-
-void CServer::Log( const std::wstring &pStr, int LogLevel)
-{
-	if( loglevel <=LogLevel )
-	{
-		IScopedLock lock(log_mutex);
-
-		time_t rawtime;		
-		char buffer [100];
-		time ( &rawtime );
-#ifdef _WIN32
-		struct tm  timeinfo;
-		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
-#else
-		struct tm *timeinfo;
-		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
-#endif		
-
-		std::string out_str=ConvertToUTF8(pStr);
-
-		if(log_console_time)
-		{
-			std::cout << buffer;
-		}
-
-		if( LogLevel==LL_ERROR )
-		{
-			std::cout << "ERROR: " << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << "ERROR: " << out_str << std::endl;
-		}
-		else if( LogLevel==LL_WARNING )
-		{
-			std::cout << "WARNING: " << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << "WARNING: " << out_str << std::endl;
-		}
-		else
-		{
-			std::cout << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << out_str<< std::endl;
-		}
-
-		if(logfile_a)
-		{
-			logfile.flush();
-
-			rotateLogfile();
-		}
-
-		if(has_circular_log_buffer)
-		{
-			logToCircularBuffer(out_str, LogLevel);
-		}
-	}
-	else if(has_circular_log_buffer)
-	{
-		IScopedLock lock(log_mutex);
-
-		logToCircularBuffer(ConvertToUTF8(pStr), LogLevel);
 	}
 }
 
@@ -540,15 +475,15 @@ void CServer::setLogLevel(int LogLevel)
 	loglevel=LogLevel;
 }
 
-THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS, IOutputStream *req)
+THREAD_ID CServer::Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS, IOutputStream *req)
 {
 	IAction *action_ptr=NULL;
 	{
 		IScopedLock lock(action_mutex);
-		std::map<std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.find( context );
+		std::map<std::string, std::map<std::string, IAction*> >::iterator iter1=actions.find( context );
 		if( iter1!=actions.end() )
 		{
-			std::map<std::wstring, IAction*>::iterator iter2=iter1->second.find(action);
+			std::map<std::string, IAction*>::iterator iter2=iter1->second.find(action);
 			if( iter2!=iter1->second.end() )
 				action_ptr=iter2->second;
 		}
@@ -599,7 +534,7 @@ THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &conte
 	return 0;
 }
 
-std::string CServer::Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS)
+std::string CServer::Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS)
 {
 	CStringOutputStream cos;
 	Execute(action, context, GET, POST, PARAMS, &cos);
@@ -610,19 +545,19 @@ void CServer::AddAction(IAction *action)
 {
 	IScopedLock lock(action_mutex);
 
-	std::map<std::wstring, IAction*> *ptr=&actions[action_context];
-	ptr->insert( std::pair<std::wstring, IAction*>(action->getName(), action ) );
+	std::map<std::string, IAction*> *ptr=&actions[action_context];
+	ptr->insert( std::pair<std::string, IAction*>(action->getName(), action ) );
 }
 
 bool CServer::RemoveAction(IAction *action)
 {
 	IScopedLock lock(action_mutex);
 
-	std::map<std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.find(action_context);
+	std::map<std::string, std::map<std::string, IAction*> >::iterator iter1=actions.find(action_context);
 	
 	if( iter1!=actions.end() )
 	{	
-		std::map<std::wstring, IAction*>::iterator iter2=iter1->second.find( action->getName() );
+		std::map<std::string, IAction*>::iterator iter2=iter1->second.find( action->getName() );
 		if( iter2!=iter1->second.end() )
 		{
 			iter1->second.erase( iter2 );
@@ -632,7 +567,7 @@ bool CServer::RemoveAction(IAction *action)
 	return false;
 }
 
-void CServer::setActionContext(std::wstring context)
+void CServer::setActionContext(std::string context)
 {
 	action_context=context;
 }
@@ -909,7 +844,7 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	std::map<DATABASE_ID, SDatabase >::iterator database_iter=databases.find(pIdentifier);
 	if( database_iter==databases.end() )
 	{
-		Log("Database with identifier \""+nconvert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
+		Log("Database with identifier \""+convert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
 		return NULL;
 	}
 
@@ -1014,49 +949,11 @@ std::string CServer::GenerateHexMD5(const std::string &input)
 
 std::string CServer::GenerateBinaryMD5(const std::string &input)
 {
-	MD5 md((unsigned char*)input.c_str() );
-	unsigned char *p=md.raw_digest();
-	std::string ret;
-	ret.resize(16);
-	for(size_t i=0;i<16;++i)
-		ret[i]=p[i];
-	delete []p;
+	MD5 md((unsigned char*)input.c_str(), static_cast<unsigned int>(input.size()));
+	unsigned char *p=md.raw_digest_int();
+	std::string ret(reinterpret_cast<char*>(p), reinterpret_cast<char*>(p)+16);
 	return ret;
 }
-
-std::string CServer::GenerateHexMD5(const std::wstring &input)
-{
-	unsigned int *tmp=new unsigned int[input.size()];
-	for(size_t i=0,l=input.size();i<l;++i)
-	{
-		tmp[i]=input[i];
-	}
-	MD5 md((unsigned char*)tmp, (unsigned int)input.size()*sizeof(unsigned int) );
-	char *p=md.hex_digest();
-	std::string ret=p;
-	delete []p;
-	delete []tmp;
-	return ret;
-}
-
-std::string CServer::GenerateBinaryMD5(const std::wstring &input)
-{
-	unsigned int *tmp=new unsigned int[input.size()];
-	for(size_t i=0,l=input.size();i<l;++i)
-	{
-		tmp[i]=input[i];
-	}
-	MD5 md((unsigned char*)tmp, (unsigned int)input.size()*sizeof(unsigned int) );
-	unsigned char *p=md.raw_digest();
-	std::string ret;
-	ret.resize(16);
-	for(size_t i=0;i<16;++i)
-		ret[i]=p[i];
-	delete []p;
-	delete []tmp;
-	return ret;
-}
-
 
 void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 {
@@ -1143,7 +1040,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		if(err)
 		{
 			closesocket(s);
-			Server->Log("Socket has error: "+nconvert(err), LL_INFO);
+			Server->Log("Socket has error: "+convert(err), LL_INFO);
 			return NULL;
 		}
 		else
@@ -1373,11 +1270,6 @@ ISettingsReader* CServer::createFileSettingsReader(const std::string& pFile)
 	return new CFileSettingsReader(pFile);
 }
 
-ISettingsReader* CServer::createFileSettingsReader(const std::wstring& pFile)
-{
-	return new CFileSettingsReader(pFile);
-}
-
 ISettingsReader* CServer::createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL)
 {
 	return new CDBSettingsReader(tid, pIdentifier, pTable, pSQL);
@@ -1417,11 +1309,6 @@ void CServer::addRequest(void)
 }
 
 IFile* CServer::openFile(std::string pFilename, int pMode)
-{
-	return openFile(ConvertToUnicode(pFilename), pMode);
-}
-
-IFile* CServer::openFile(std::wstring pFilename, int pMode)
 {
 	File *file=new File;
 	if(!file->Open(pFilename, pMode) )
@@ -1466,22 +1353,12 @@ bool CServer::deleteFile(std::string pFilename)
 	return DeleteFileInt(pFilename);
 }
 
-bool CServer::deleteFile(std::wstring pFilename)
-{
-	return DeleteFileInt(pFilename);
-}
-
 bool CServer::fileExists(std::string pFilename)
 {
-	return FileExists(pFilename);
-}
-
-bool CServer::fileExists(std::wstring pFilename)
-{
 #ifndef WIN32
-	return FileExists(ConvertToUTF8(pFilename));
+	return ::FileExists(pFilename);
 #else
-	fstream in(pFilename.c_str(), ios::in);
+	fstream in(ConvertToWchar(pFilename).c_str(), ios::in);
 	if( in.is_open()==false )
 		return false;
 
@@ -1490,139 +1367,104 @@ bool CServer::fileExists(std::wstring pFilename)
 #endif
 }
 
-std::string CServer::ConvertToUTF8(const std::wstring &input)
-{
-    std::string ret;
-    try
-    {
-	if(sizeof(wchar_t)==2 )
-    	    utf8::utf16to8(input.begin(), input.end(), back_inserter(ret));
-        else
-            utf8::utf32to8(input.begin(), input.end(), back_inserter(ret));
-    }
-    catch(...){}
-    return ret;
-}
-
-std::wstring CServer::ConvertToUnicode(const std::string &input)
-{
-    std::wstring ret;
-    try
-    {
-		if(sizeof(wchar_t)==2)
-			utf8::utf8to16(input.begin(), input.end(), back_inserter(ret));
-        else
-			utf8::utf8to32(input.begin(), input.end(), back_inserter(ret));
-    }
-    catch(...){}
-	
-    return ret;
-}
-
-std::string CServer::ConvertToUTF16(const std::wstring &input)
+std::string CServer::ConvertToUTF16(const std::string &input)
 {
 	std::string ret;
 	try
 	{
-		if(sizeof(wchar_t)==2)
-		{
-			ret.resize(input.size()*2);
-			memcpy(&ret[0], &input[0], input.size()*2);
-		}
-		else
-		{
-			std::string utf8=ConvertToUTF8(input);
-			std::vector<utf8::uint16_t> tmp;
-			utf8::utf8to16(utf8.begin(), utf8.end(), back_inserter(tmp) );
-			ret.resize(tmp.size()*2);
-			memcpy(&ret[0], &tmp[0], tmp.size()*2); 
-		}
+		std::vector<utf8::uint16_t> tmp;
+		utf8::utf8to16(input.begin(), input.end(), back_inserter(tmp) );
+		ret.resize(tmp.size()*2);
+		memcpy(&ret[0], &tmp[0], tmp.size()*2); 
 	}
 	catch(...){}
 
 	return ret;
 }
 
-std::string CServer::ConvertToUTF32(const std::wstring &input)
+std::string CServer::ConvertToUTF32(const std::string &input)
 {
 	std::string ret;
 	try
 	{
-		if(sizeof(wchar_t)==4)
-		{
-			ret.resize(input.size()*4);
-			memcpy(&ret[0], &input[0], input.size()*4);
-		}
-		else
-		{
-			std::string utf8=ConvertToUTF8(input);
-			std::vector<utf8::uint32_t> tmp;
-			utf8::utf8to32(utf8.begin(), utf8.end(), back_inserter(tmp) );
-			ret.resize(tmp.size()*4);
-			memcpy(&ret[0], &tmp[0], tmp.size()*4); 
-		}
+		std::vector<utf8::uint32_t> tmp;
+		utf8::utf8to32(input.begin(), input.end(), back_inserter(tmp) );
+		ret.resize(tmp.size()*4);
+		memcpy(&ret[0], &tmp[0], tmp.size()*4); 
 	}
 	catch(...){}
 
 	return ret;
 }
 
-std::wstring CServer::ConvertFromUTF16(const std::string &input)
+std::string CServer::ConvertFromUTF16(const std::string &input)
 {
-	std::wstring ret;
+	std::string ret;
     try
     {
-		if(sizeof(wchar_t)==2)
-		{
-			ret.resize(input.size()/2);
-			memcpy(&ret[0], &input[0], input.size());
-		}
-        else
-		{
-			if(input.empty())
-			{
-				return L"";
-			}
-			else
-			{
-				std::string tmp;
-				utf8::utf16to8((utf8::uint16_t*)&input[0], (utf8::uint16_t*)(&input[input.size()-1]+1), back_inserter(tmp));
-				ret=ConvertToUnicode(tmp);
-			}
-		}
+		utf8::utf16to8((utf8::uint16_t*)&input[0], (utf8::uint16_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
-    catch(...){}
-	
+    catch(...){}	
     return ret;
 }
 
-std::wstring CServer::ConvertFromUTF32(const std::string &input)
+std::string CServer::ConvertFromUTF32(const std::string &input)
 {
-	std::wstring ret;
+	std::string ret;
     try
     {
-		if(sizeof(wchar_t)==4)
-		{
-			ret.resize(input.size()/4);
-			memcpy(&ret[0], &input[0], input.size());
-		}
-        else
-		{
-			if(input.empty())
-			{
-				return L"";
-			}
-			else
-			{
-				std::string tmp;
-				utf8::utf32to8((utf8::uint32_t*)&input[0], (utf8::uint32_t*)(&input[input.size()-1]+1), back_inserter(tmp));
-				ret=ConvertToUnicode(tmp);
-			}
-		}
+		utf8::utf32to8((utf8::uint32_t*)&input[0], (utf8::uint32_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
-    catch(...){}
-	
+    catch(...){}	
     return ret;
+}
+
+std::wstring CServer::ConvertToWchar(const std::string &input)
+{
+	if(input.empty())
+	{
+		return std::wstring();
+	}
+
+	std::wstring ret;
+	try
+	{
+		if(sizeof(wchar_t)==2)
+		{
+			utf8::utf8to16(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		else if(sizeof(wchar_t)==4)
+		{
+			utf8::utf8to32(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		
+	}
+	catch(...){}	
+	return ret;
+}
+
+std::string CServer::ConvertFromWchar(const std::wstring &input)
+{
+	if(input.empty())
+	{
+		return std::string();
+	}
+
+	std::string ret;
+	try
+	{
+		if(sizeof(wchar_t)==2)
+		{
+			utf8::utf16to8(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		else if(sizeof(wchar_t)==4)
+		{
+			utf8::utf32to8(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+
+	}
+	catch(...){}	
+	return ret;
 }
 
 ICondition* CServer::createCondition(void)
@@ -1672,17 +1514,17 @@ POSTFILE_KEY CServer::getPostFileKey()
 	return curr_postfilekey++;
 }
 
-std::wstring CServer::getServerWorkingDir(void)
+std::string CServer::getServerWorkingDir(void)
 {
 	return workingdir;
 }
 
-void CServer::setServerWorkingDir(const std::wstring &wdir)
+void CServer::setServerWorkingDir(const std::string &wdir)
 {
 	workingdir=wdir;
 }
 
-void CServer::setTemporaryDirectory(const std::wstring &dir)
+void CServer::setTemporaryDirectory(const std::string &dir)
 {
 	tmpdir=dir;
 }

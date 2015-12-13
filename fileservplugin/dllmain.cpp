@@ -74,7 +74,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			udpport=atoi(s_udpport.c_str());
 
 		IFileServ *fileserv=fileserv_fak->createFileServ(tcpport, udpport);
-		fileserv->shareDir(widen(ExtractFileName(share_dir)), widen(share_dir), std::string());
+		fileserv->shareDir(ExtractFileName(share_dir), share_dir, std::string());
 		fileserv->addIdentity("");
 	}
 

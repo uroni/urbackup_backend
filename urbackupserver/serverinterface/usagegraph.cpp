@@ -25,9 +25,9 @@ namespace
 	struct SUsed
 	{
 		SUsed(void):used(0) {}
-		SUsed(const std::wstring &pTdate_full, const std::wstring &pTdate, double pUsed): tdate_full(pTdate_full), tdate(pTdate), used(pUsed) {}
-		std::wstring tdate_full;
-		std::wstring tdate;
+		SUsed(const std::string &pTdate_full, const std::string &pTdate, double pUsed): tdate_full(pTdate_full), tdate(pTdate), used(pUsed) {}
+		std::string tdate_full;
+		std::string tdate;
 		double used;
 	};
 }
@@ -38,7 +38,7 @@ ACTION_IMPL(usagegraph)
 
 	IDatabase *db=helper.getDatabase();
 	int clientid=-1;
-	std::wstring s_clientid=GET[L"clientid"];
+	std::string s_clientid=GET["clientid"];
 	if(!s_clientid.empty())
 	{
 		IQuery *q=db->Prepare("SELECT id,name FROM clients WHERE id=?");
@@ -48,7 +48,7 @@ ACTION_IMPL(usagegraph)
 
 		if(!res.empty())
 		{
-			clientid=watoi(res[0][L"id"]);
+			clientid=watoi(res[0]["id"]);
 		}
 	}
 
@@ -85,7 +85,7 @@ ACTION_IMPL(usagegraph)
 	{	
 		helper.releaseAll();
 		
-		std::string scale = wnarrow(GET[L"scale"]);
+		std::string scale = GET["scale"];
 
 		if(scale.empty())
 		{
@@ -95,7 +95,7 @@ ACTION_IMPL(usagegraph)
 		std::string t_where=" 0=0";
 		if(clientid!=-1)
 		{
-			t_where+=" AND id="+nconvert(clientid)+" ";
+			t_where+=" AND id="+convert(clientid)+" ";
 		}
 		
 		int c_lim=1;
@@ -105,7 +105,7 @@ ACTION_IMPL(usagegraph)
 			db_results res_c=q_count_clients->Read();
 			q_count_clients->Reset();
 			if(!res_c.empty())
-				c_lim=watoi(res_c[0][L"c"]);
+				c_lim=watoi(res_c[0]["c"]);
 		}
 
 		unsigned int n_items;
@@ -140,7 +140,7 @@ ACTION_IMPL(usagegraph)
 				    "GROUP BY strftime('"+date_fmt+"', created, 'localtime'), id "
 					"HAVING mcreated>date('now','"+back+"') "
 				    "ORDER BY mcreated DESC "
-				    "LIMIT "+nconvert(c_lim*(n_items*2))+" "
+				    "LIMIT "+convert(c_lim*(n_items*2))+" "
 				    ") a "
 				    "INNER JOIN clients_hist b ON a.mcreated=b.created WHERE "+t_where+" AND b.created>date('now','"+back+"') "
 				    "GROUP BY strftime('"+date_fmt+"', b.created, 'localtime'), id "
@@ -153,15 +153,15 @@ ACTION_IMPL(usagegraph)
 			bool found=false;
 			for(size_t j=0;j<used.size();++j)
 			{
-				if(used[j].tdate==res[i][L"tdate"])
+				if(used[j].tdate==res[i]["tdate"])
 				{
 					found=true;
-					used[j].used+=atof(wnarrow(res[i][L"used"]).c_str());
+					used[j].used+=atof(res[i]["used"].c_str());
 				}
 			}
 			if(!found && used.size()<n_items)
 			{
-				used.push_back(SUsed(res[i][L"tdate_full"], res[i][L"tdate"], atof(wnarrow(res[i][L"used"]).c_str()) ) );
+				used.push_back(SUsed(res[i]["tdate_full"], res[i]["tdate"], atof(res[i]["used"].c_str()) ) );
 			}
 		}
 
@@ -185,7 +185,7 @@ ACTION_IMPL(usagegraph)
 				size/=1024*1024;
 			}
 			JSON::Object obj;
-			obj.set("xlabel", Server->ConvertToUTF8(used[i].tdate_full));
+			obj.set("xlabel", (used[i].tdate_full));
 			obj.set("data", (float)size);
 			data.add(obj);
 		}

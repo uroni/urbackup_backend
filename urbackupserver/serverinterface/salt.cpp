@@ -26,12 +26,12 @@ ACTION_IMPL(salt)
 	Helper helper(tid, &GET, &PARAMS);
 
 	JSON::Object ret;
-	std::wstring username=GET[L"username"];
+	std::string username=GET["username"];
 	if(helper.getSession()==NULL && !username.empty())
 	{
-		std::wstring ses=helper.generateSession(username);
+		std::string ses=helper.generateSession(username);
 		ret.set("ses", JSON::Value(ses));
-		GET[L"ses"]=ses;
+		GET["ses"]=ses;
 		helper.update(tid, &GET, &PARAMS);
 	}
 
@@ -40,7 +40,7 @@ ACTION_IMPL(salt)
 	{
 		if(username.empty())
 		{
-			str_map::iterator iter=session->mStr.find(L"username");
+			str_map::iterator iter=session->mStr.find("username");
 			if(iter!=session->mStr.end())
 			{
 				username=iter->second;
@@ -56,11 +56,11 @@ ACTION_IMPL(salt)
 		}
 		else
 		{
-			ret.set("salt", res[0][L"salt"]);
-			ret.set("pbkdf2_rounds", watoi(res[0][L"pbkdf2_rounds"]));
+			ret.set("salt", res[0]["salt"]);
+			ret.set("pbkdf2_rounds", watoi(res[0]["pbkdf2_rounds"]));
 			std::string rnd=ServerSettings::generateRandomAuthKey();
 			ret.set("rnd", JSON::Value(rnd));
-			session->mStr[L"rnd"]=widen(rnd);
+			session->mStr["rnd"]=rnd;
 		}
 	}
 	else

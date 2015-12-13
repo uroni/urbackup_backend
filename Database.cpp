@@ -72,23 +72,6 @@ struct UnlockNotification {
   IMutex *mutex;              
 };
 
-static int callback(void *CPtr, int argc, char **argv, char **azColName)
-{
-	CDatabase* db=(CDatabase*)CPtr;
-	db_nsingle_result result;
-	
-	for(int i=0; i<argc; i++)
-	{
-		//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		if( azColName[i] && argv[i])
-			result.insert(std::pair<std::string,std::string>(azColName[i], argv[i]) ); 
-	}
-
-	db->InsertResults(result);
-  
-	return 0;
-}
-
 static void unlock_notify_cb(void **apArg, int nArg)
 {
 	for(int i=0; i<nArg; i++)
@@ -149,7 +132,7 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 		}
 
 		static size_t sqlite_cache_size = get_sqlite_cache_size();
-		Write("PRAGMA cache_size = -"+nconvert(sqlite_cache_size));	
+		Write("PRAGMA cache_size = -"+convert(sqlite_cache_size));	
 
 		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
 		AttachDBs();
@@ -168,22 +151,6 @@ void CDatabase::destroyMutex(void)
 {
 	Server->destroy(lock_mutex);
 	Server->destroy(unlock_cond);
-}
-
-db_nresults CDatabase::ReadN(std::string pQuery)
-{
-	//Server->Log("SQL Query(Read): "+pQuery);
-	results.clear();
-	char *zErrMsg = 0;
-	int rc=sqlite3_exec(db, pQuery.c_str(), callback, this, &zErrMsg);
-	if( rc!=SQLITE_OK )
-	{
-		Server->Log("SQL ERROR: "+(std::string)zErrMsg);
-	}
-	if( zErrMsg!=NULL )
-		sqlite3_free(zErrMsg);
-
-	return results;
 }
 
 db_results CDatabase::Read(std::string pQuery)
@@ -214,12 +181,6 @@ bool CDatabase::Write(std::string pQuery)
 		return false;
 	}
 }
-
-void CDatabase::InsertResults(const db_nsingle_result &pResult)
-{
-	results.push_back(pResult);
-}
-
 
 //ToDo: Cache Writings
 
@@ -552,7 +513,7 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
     rc = sqlite3_errcode(pBackupDB);
 	if(rc!=0)
 	{
-		Server->Log("Database backup failed with error code: "+nconvert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_ERROR);
+		Server->Log("Database backup failed with error code: "+convert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_ERROR);
 	}
   }
   
@@ -589,18 +550,18 @@ int CDatabase::getLastChanges()
 	return sqlite3_changes(db);
 }
 
-std::wstring CDatabase::getTempDirectoryPath()
+std::string CDatabase::getTempDirectoryPath()
 {
 	char* tmpfn = NULL;
 	if(sqlite3_file_control(db, NULL, SQLITE_FCNTL_TEMPFILENAME, &tmpfn)==SQLITE_OK && tmpfn!=NULL)
 	{
-		std::wstring ret = ExtractFilePath(Server->ConvertToUnicode(tmpfn));
+		std::string ret = ExtractFilePath(tmpfn);
 		sqlite3_free(tmpfn);
 		return ret;
 	}
 	else
 	{
-		return std::wstring();
+		return std::string();
 	}
 }
 

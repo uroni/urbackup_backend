@@ -111,10 +111,10 @@ ACTION_IMPL(usage)
 			for(size_t i=0;i<res.size();++i)
 			{
 				JSON::Object obj;
-				obj.set("used",atof(wnarrow(res[i][L"used"]).c_str()));
-				obj.set("files",atof(wnarrow(res[i][L"bytes_used_files"]).c_str()));
-				obj.set("images",atof(wnarrow(res[i][L"bytes_used_images"]).c_str()));
-				obj.set("name",res[i][L"name"]);
+				obj.set("used",atof(res[i]["used"].c_str()));
+				obj.set("files",atof(res[i]["bytes_used_files"].c_str()));
+				obj.set("images",atof(res[i]["bytes_used_images"].c_str()));
+				obj.set("name",res[i]["name"]);
 				usage.add(obj);
 			}
 			ret.set("usage", usage);
@@ -123,7 +123,7 @@ ACTION_IMPL(usage)
 		{
 			ret.set("reset_statistics", "true");
 
-			if(GET[L"recalculate"]==L"true")
+			if(GET["recalculate"]=="true")
 			{
 				Server->getThreadPool()->execute(new RecalculateStatistics);
 			}

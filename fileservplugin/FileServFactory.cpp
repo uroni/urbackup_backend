@@ -31,7 +31,7 @@ bool FileServFactory::backupground_backups_enabled = true;
 class ExecThread : public IThread
 {
 public:
-	ExecThread(unsigned short pTcpport, unsigned short pUdpport, const std::wstring &pName, bool *pDostop, bool pUse_fqdn)
+	ExecThread(unsigned short pTcpport, unsigned short pUdpport, const std::string &pName, bool *pDostop, bool pUse_fqdn)
 	{
 		tcpport=pTcpport;
 		udpport=pUdpport;
@@ -42,17 +42,17 @@ public:
 
 	void operator()(void)
 	{
-		int r=start_server_int(tcpport, udpport, Server->ConvertToUTF8(name), dostop, use_fqdn);
+		int r=start_server_int(tcpport, udpport, name, dostop, use_fqdn);
 		if(r!=2)
 		{
-			Server->Log("FileServ exit with error code: "+nconvert(r), LL_ERROR);
+			Server->Log("FileServ exit with error code: "+convert(r), LL_ERROR);
 		}
 		delete this;
 	}
 
 private:
 	unsigned short tcpport,udpport;
-	std::wstring name;
+	std::string name;
 	bool *dostop;
 	bool use_fqdn;
 };
@@ -60,7 +60,7 @@ private:
 
 IPermissionCallback* FileServFactory::permission_callback = NULL;
 
-IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default, bool enable_background_priority)
+IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name, bool use_fqdn_default, bool enable_background_priority)
 {
 	bool *dostop=new bool;
 	*dostop=false;
@@ -91,7 +91,7 @@ IPermissionCallback* FileServFactory::getPermissionCallback()
 	return permission_callback;
 }
 
-IFileServ* FileServFactory::createFileServNoBind(const std::wstring &name, bool use_fqdn_default)
+IFileServ* FileServFactory::createFileServNoBind(const std::string &name, bool use_fqdn_default)
 {
 	bool *dostop=new bool;
 	*dostop=false;
@@ -99,7 +99,7 @@ IFileServ* FileServFactory::createFileServNoBind(const std::wstring &name, bool 
 	return fs;
 }
 
-std::wstring FileServFactory::getDefaultServerName( bool use_fqdn )
+std::string FileServFactory::getDefaultServerName( bool use_fqdn )
 {
-	return Server->ConvertToUnicode(getSystemServerName(use_fqdn));
+	return getSystemServerName(use_fqdn);
 }

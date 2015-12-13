@@ -38,19 +38,11 @@ const THREAD_ID ILLEGAL_THREAD_ID=-1;
 const PLUGIN_ID ILLEGAL_PLUGIN_ID=-1;
 const THREADPOOL_TICKET ILLEGAL_THREADPOOL_TICKET=0;
 
-typedef std::map<std::wstring,std::wstring> str_map;
-typedef std::map<std::wstring,float> float_map;
-typedef std::map<std::wstring,int> int_map;
+typedef std::map<std::string,std::string> str_map;
+typedef std::map<std::string,float> float_map;
+typedef std::map<std::string,int> int_map;
 
-typedef std::map<std::string,std::string> str_nmap;
-typedef std::map<std::string,float> float_nmap;
-typedef std::map<std::string,int> int_nmap;
-
-typedef std::map<std::string, std::string> db_nsingle_result;
-typedef std::vector< db_nsingle_result > db_nresults;
-
-
-typedef std::map<std::wstring, std::wstring> db_single_result;
+typedef std::map<std::string, std::string> db_single_result;
 typedef std::vector< db_single_result > db_results;
 
 #ifdef _WIN32

@@ -19,8 +19,6 @@ public:
 	
 	virtual std::string getFilename(void);
 
-	virtual std::wstring getFilenameW( void );
-
 private:
 	std::string data;
 	size_t pos;

@@ -157,8 +157,8 @@ bool ClientSend::hasError(void)
 void ClientSend::print_last_error(void)
 {
 #ifdef _WIN32
-	Server->Log("Sending failed. Last error: "+nconvert((int)GetLastError()), LL_DEBUG);
+	Server->Log("Sending failed. Last error: "+convert((int)GetLastError()), LL_DEBUG);
 #else
-	Server->Log("Sending failed. Last error: "+nconvert(errno), LL_DEBUG);
+	Server->Log("Sending failed. Last error: "+convert(errno), LL_DEBUG);
 #endif
 }

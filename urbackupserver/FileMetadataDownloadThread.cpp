@@ -37,7 +37,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const st
 
 }
 
-FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::wstring metadata_tmp_fn)
+FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn)
 	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true)
 {
 
@@ -45,7 +45,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::wstring(), logid));
+	std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::string(), logid));
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token;
 
@@ -53,7 +53,7 @@ void FileMetadataDownloadThread::operator()()
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error getting file metadata. Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, "Error getting file metadata. Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		has_error=true;
 	}
 	else
@@ -61,22 +61,22 @@ void FileMetadataDownloadThread::operator()()
 		has_error=false;
 	}
 
-	metadata_tmp_fn = tmp_f->getFilenameW();
+	metadata_tmp_fn = tmp_f->getFilename();
 }
 
-bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metadata_dir,
-	const std::wstring& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::wstring, std::wstring>& filepath_corrections)
+bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metadata_dir,
+	const std::string& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
 
 	if(metadata_f.get()==NULL)
 	{
-		ServerLogger::Log(logid, L"Error opening metadata file. Cannot save file metadata.", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening metadata file. Cannot save file metadata.", LL_ERROR);
 		return false;
 	}
 
-	ServerLogger::Log(logid, L"Saving file metadata...", LL_INFO);
+	ServerLogger::Log(logid, "Saving file metadata...", LL_INFO);
 
 	do 
 	{
@@ -94,7 +94,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			}
 			if(not_applied)
 			{
-				ServerLogger::Log(logid, L"Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
+				ServerLogger::Log(logid, "Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
 			}
 			return true;
 		}
@@ -109,7 +109,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			unsigned int curr_fn_size =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size))!=sizeof(curr_fn_size))
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Filename size could not be read.", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Filename size could not be read.", LL_ERROR);
 				return false;
 			}
 			
@@ -122,25 +122,25 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			{
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Filename could not be read. Size: "+convert(curr_fn_size), LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Filename could not be read. Size: "+convert(curr_fn_size), LL_ERROR);
 					return false;
 				}
 			}
 			else
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Filename is empty.", LL_ERROR);
 				return false;
 			}				
 
 			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
 			bool is_dir_symlink = curr_fn[0]=='l';
 
-			std::wstring os_path_metadata;
-			std::wstring os_path;
+			std::string os_path_metadata;
+			std::string os_path;
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
 
-			std::wstring curr_path;
+			std::string curr_path;
 			for(size_t i=0;i<fs_toks.size();++i)
 			{
 				if(fs_toks[i]!="." && fs_toks[i]!="..")
@@ -151,9 +151,9 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 						os_path+=os_file_sep();
 					}
 
-					std::wstring path_component = Server->ConvertToUnicode(fs_toks[i]);
+					std::string path_component = (fs_toks[i]);
 
-					curr_path += L"/" + path_component;
+					curr_path += "/" + path_component;
 
 					str_map::const_iterator it_correction = filepath_corrections.find(curr_path);
 					if(it_correction!=filepath_corrections.end())
@@ -195,7 +195,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 
 				if(output_f.get()==NULL)
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
 				}
 			}			
@@ -203,7 +203,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			unsigned int common_metadata_size =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&common_metadata_size), sizeof(common_metadata_size))!=sizeof(common_metadata_size))
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Common metadata size could not be read.", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Common metadata size could not be read.", LL_ERROR);
 				return false;
 			}
 			
@@ -214,7 +214,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 
 			if(metadata_f->Read(&common_metadata[0], static_cast<_u32>(common_metadata.size()))!=common_metadata.size())
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Common metadata could not be read.", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Common metadata could not be read.", LL_ERROR);
 				return false;
 			}
 
@@ -233,14 +233,14 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				|| !common_data.getVarInt(&folder_items)
 				|| !common_data.getStr(&permissions) )
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Cannot parse common metadata.", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Cannot parse common metadata.", LL_ERROR);
 				return false;
 			}
 
 			FileMetadata curr_metadata;
 			if(!dry_run && !new_metadata_file && !read_metadata(output_f.get(), curr_metadata))
 			{
-				ServerLogger::Log(logid, L"Error reading current metadata", LL_WARNING);
+				ServerLogger::Log(logid, "Error reading current metadata", LL_WARNING);
 			}
 
 			curr_metadata.exist=true;
@@ -256,7 +256,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				int64 truncate_to_bytes;
 				if(!write_file_metadata(output_f.get(), cb, curr_metadata, true, truncate_to_bytes))
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Cannot write common metadata.", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Cannot write common metadata.", LL_ERROR);
 					return false;
 				}
 
@@ -264,13 +264,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 
 				if(offset==-1)
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Metadata offset cannot be calculated at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Metadata offset cannot be calculated at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
 				}
 
 				if(!output_f->Seek(offset))
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Could not seek to end of file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Could not seek to end of file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
 				}
 			}			
@@ -288,7 +288,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 
 			if(!ok)
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 				return false;
 			}
 			else if(!dry_run && offset+metadata_size<output_f->Size())
@@ -297,14 +297,14 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				if(!os_file_truncate(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata),
 					offset+metadata_size))
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Could not truncate file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Could not truncate file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
 				}
 			}
 
 			if(!dry_run && !is_dir && !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
 			{
-				ServerLogger::Log(logid, L"Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
+				ServerLogger::Log(logid, "Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
 			}
 
 			if(!dry_run)
@@ -314,7 +314,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 		}
 		else
 		{
-			ServerLogger::Log(logid, L"Error applying meta data. Unknown meta data.", LL_ERROR);
+			ServerLogger::Log(logid, "Error applying meta data. Unknown meta data.", LL_ERROR);
 			return false;
 		}
 
@@ -346,7 +346,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	
 	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (beg)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (beg)", LL_ERROR);
 		return false;
 	}
 
@@ -355,13 +355,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
 	{
-		ServerLogger::Log(logid, L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data_size)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data_size)", LL_ERROR);
 		return false;
 	}
 
@@ -371,26 +371,26 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(stat_data_size<1)
 	{
-		ServerLogger::Log(logid, L"stat data size is zero", LL_ERROR);
+		ServerLogger::Log(logid, "stat data size is zero", LL_ERROR);
 		return false;
 	}
 
 	char version;
 	if(metadata_f->Read(&version, 1)!=1)
 	{
-		ServerLogger::Log(logid, L"Error reading windows metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading windows metadata version from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	if(version!=1)
 	{
-		ServerLogger::Log(logid, L"Unknown windows metadata version +"+convert((int)version)+L" in \"" + output_f->getFilenameW() + L"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Unknown windows metadata version +"+convert((int)version)+" in \"" + output_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (ver)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (ver)", LL_ERROR);
 		return false;
 	}
 
@@ -401,13 +401,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
 	{
-		ServerLogger::Log(logid, L"Error reading windows stat data from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading windows stat data from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data)", LL_ERROR);
 		return false;
 	}
 
@@ -418,13 +418,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		char cont = 0;
 		if(metadata_f->Read(reinterpret_cast<char*>(&cont), sizeof(cont))!=sizeof(cont))
 		{
-			ServerLogger::Log(logid, L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 			return false;
 		}
 
 		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&cont), sizeof(cont), cb))
 		{
-			ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (cont)", LL_ERROR);
+			ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (cont)", LL_ERROR);
 			return false;
 		}
 		++metadata_size;
@@ -438,13 +438,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 		if(metadata_f->Read(reinterpret_cast<char*>(&stream_id), metadata_id_size)!=metadata_id_size)
 		{
-			ServerLogger::Log(logid, L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 			return false;
 		}
 
 		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stream_id), metadata_id_size, cb))
 		{
-			ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\"", LL_ERROR);
 			return false;
 		}
 
@@ -457,13 +457,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 			if(metadata_f->Read(stream_name.data(), static_cast<_u32>(stream_name.size()))!=stream_name.size())
 			{
-				ServerLogger::Log(logid, L"Error reading  \"" + metadata_f->getFilenameW() + L"\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -2", LL_ERROR);
 				return false;
 			}
 
 			if(!dry_run && !writeRepeatFreeSpace(output_f, stream_name.data(), stream_name.size(), cb))
 			{
-				ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" -2", LL_ERROR);
 				return false;
 			}
 
@@ -478,13 +478,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 			if(metadata_f->Read(buffer.data(), toread)!=toread)
 			{
-				ServerLogger::Log(logid, L"Error reading  \"" + metadata_f->getFilenameW() + L"\" -3", LL_ERROR);
+				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3", LL_ERROR);
 				return false;
 			}
 
 			if(!dry_run && !writeRepeatFreeSpace(output_f, buffer.data(), toread, cb))
 			{
-				ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" -3", LL_ERROR);
+				ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" -3", LL_ERROR);
 				return false;
 			}
 
@@ -496,7 +496,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(!dry_run && !output_f->Seek(output_offset))
 	{
-		ServerLogger::Log(logid, L"Error seeking to  \"" + convert(output_offset) + L"\" -5 in output_f", LL_ERROR);
+		ServerLogger::Log(logid, "Error seeking to  \"" + convert(output_offset) + "\" -5 in output_f", LL_ERROR);
 		return false;
 	}
 
@@ -504,7 +504,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&win32_magic_and_size[0]), sizeof(win32_magic_and_size[0]), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (end)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (end)", LL_ERROR);
 		return false;
 	}
 
@@ -518,7 +518,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size), cb))
     {
-        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (beg, unix)", LL_ERROR);
+        ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (beg, unix)", LL_ERROR);
         return false;
     }
 
@@ -527,13 +527,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
 	{
-		ServerLogger::Log(logid, L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
 	{
-		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data_size)", LL_ERROR);
+		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data_size)", LL_ERROR);
 		return false;
 	}
 
@@ -543,26 +543,26 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
 	if(stat_data_size<1)
 	{
-		ServerLogger::Log(logid, L"stat data size is zero", LL_ERROR);
+		ServerLogger::Log(logid, "stat data size is zero", LL_ERROR);
 		return false;
 	}
 
     char version;
     if(metadata_f->Read(&version, 1)!=1)
     {
-        ServerLogger::Log(logid, L"Error reading unix metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading unix metadata version from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
     if(version!=1)
     {
-        ServerLogger::Log(logid, L"Unknown unix metadata version +"+convert((int)version)+L" in \"" + output_f->getFilenameW() + L"\"", LL_ERROR);
+        ServerLogger::Log(logid, "Unknown unix metadata version +"+convert((int)version)+" in \"" + output_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
     {
-        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (ver)", LL_ERROR);
+        ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (ver)", LL_ERROR);
         return false;
     }
 
@@ -573,13 +573,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
     {
-        ServerLogger::Log(logid, L"Error reading stat data from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading stat data from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
     {
-        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data)", LL_ERROR);
+        ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data)", LL_ERROR);
         return false;
     }
 
@@ -588,13 +588,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     int64 num_eattr_keys;
     if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
     {
-        ServerLogger::Log(logid, L"Error reading eattr num from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading eattr num from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys), cb))
     {
-        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (num_eattr_keys)", LL_ERROR);
+        ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (num_eattr_keys)", LL_ERROR);
         return false;
     }
 
@@ -607,13 +607,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         unsigned int key_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
         {
-            ServerLogger::Log(logid, L"Error reading eattr key size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr key size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&key_size), sizeof(key_size), cb))
         {
-            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (key_size)", LL_ERROR);
+            ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (key_size)", LL_ERROR);
             return false;
         }
 
@@ -625,13 +625,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
         if(metadata_f->Read(&eattr_key[0], key_size)!=key_size)
         {
-            ServerLogger::Log(logid, L"Error reading eattr key from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr key from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_key.data(), eattr_key.size(), cb))
         {
-            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (eattr_key)", LL_ERROR);
+            ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (eattr_key)", LL_ERROR);
             return false;
         }
 
@@ -640,13 +640,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         unsigned int val_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
-            ServerLogger::Log(logid, L"Error reading eattr value size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr value size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&val_size), sizeof(val_size), cb))
         {
-            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (val_size)", LL_ERROR);
+            ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (val_size)", LL_ERROR);
             return false;
         }
 
@@ -658,13 +658,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
         if(metadata_f->Read(&eattr_val[0], val_size)!=val_size)
         {
-            ServerLogger::Log(logid, L"Error reading eattr value from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr value from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_val.data(), eattr_val.size(), cb))
         {
-            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (eattr_val)", LL_ERROR);
+            ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (eattr_val)", LL_ERROR);
             return false;
         }
 
@@ -673,7 +673,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(!dry_run && !output_f->Seek(output_offset))
     {
-        ServerLogger::Log(logid, L"Error seeking to  \"" + convert(output_offset) + L"\" -6 in output_f", LL_ERROR);
+        ServerLogger::Log(logid, "Error seeking to  \"" + convert(output_offset) + "\" -6 in output_f", LL_ERROR);
         return false;
     }
 
@@ -681,7 +681,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&unix_magic_and_size[0]), sizeof(unix_magic_and_size[0]), cb))
     {
-        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (end,unix)", LL_ERROR);
+        ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (end,unix)", LL_ERROR);
         return false;
     }
 
@@ -706,7 +706,7 @@ void FileMetadataDownloadThread::shutdown()
 	fc->Shutdown();
 }
 
-void FileMetadataDownloadThread::addFolderItem(std::string path, const std::wstring& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items)
+void FileMetadataDownloadThread::addFolderItem(std::string path, const std::string& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items)
 {
 	std::vector<std::string> toks;
 	TokenizeMail(path, toks, "/");
@@ -728,7 +728,7 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::wstr
 		{
 			if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
 			{
-				ServerLogger::Log(logid, L"Error setting file time of "+os_path, LL_WARNING);
+				ServerLogger::Log(logid, "Error setting file time of "+os_path, LL_WARNING);
 			}
 			return;
 		}
@@ -741,7 +741,7 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::wstr
 				{
 					if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
 					{
-						ServerLogger::Log(logid, L"Error setting file time of "+os_path, LL_WARNING);
+						ServerLogger::Log(logid, "Error setting file time of "+os_path, LL_WARNING);
 					}
 					saved_folder_items.erase(saved_folder_items.begin()+i);
 				}
@@ -772,7 +772,7 @@ void FileMetadataDownloadThread::addSingleFileItem( std::string dir_path )
 			{
 				if(!os_set_file_time(os_file_prefix(saved_folder_items[i].os_path), saved_folder_items[i].created, saved_folder_items[i].modified, saved_folder_items[i].accessed))
 				{
-					ServerLogger::Log(logid, L"Error setting file time of "+saved_folder_items[i].os_path, LL_WARNING);
+					ServerLogger::Log(logid, "Error setting file time of "+saved_folder_items[i].os_path, LL_WARNING);
 				}
 				saved_folder_items.erase(saved_folder_items.begin()+i);
 			}
@@ -792,10 +792,10 @@ int check_metadata()
 	std::string metadata_file = Server->getServerParameter("metadata_file");
 
 	std::string dummy_server_token;
-	FileMetadataDownloadThread metadata_thread(dummy_server_token, Server->ConvertToUnicode(metadata_file));
+	FileMetadataDownloadThread metadata_thread(dummy_server_token, (metadata_file));
 
 	str_map corrections;
-	return metadata_thread.applyMetadata(std::wstring(), std::wstring(), NULL, corrections)?0:1;
+	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, corrections)?0:1;
 }
 
 } //namespace server

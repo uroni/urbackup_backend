@@ -124,13 +124,13 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 		for(size_t i=0;i<res.size();++i)
 		{
-			const std::wstring& shahash=res[i][L"shahash"];
-			int64 id = watoi64(res[i][L"id"]);
-			SIndexKey key(reinterpret_cast<const char*>(shahash.c_str()), watoi64(res[i][L"filesize"]), watoi(res[i][L"clientid"]));
+			const std::string& shahash=res[i]["shahash"];
+			int64 id = watoi64(res[i]["id"]);
+			SIndexKey key(reinterpret_cast<const char*>(shahash.c_str()), watoi64(res[i]["filesize"]), watoi(res[i]["clientid"]));
 
-			int64 next_entry = watoi64(res[i][L"next_entry"]);
-			int64 prev_entry = watoi64(res[i][L"prev_entry"]);
-			int pointed_to = watoi(res[i][L"pointed_to"]);
+			int64 next_entry = watoi64(res[i]["next_entry"]);
+			int64 prev_entry = watoi64(res[i]["prev_entry"]);
+			int pointed_to = watoi(res[i]["pointed_to"]);
 
 			assert(memcmp(&last, &key, sizeof(SIndexKey))!=1);
 
@@ -176,7 +176,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 			if(n_done % 1000 == 0 && n_done>0)
 			{
-				Server->Log("File entry index contains "+nconvert(n_done)+" entries now.", LL_INFO);
+				Server->Log("File entry index contains "+convert(n_done)+" entries now.", LL_INFO);
 			}
 
 			if(n_done % c_create_commit_n == 0 && n_done>0)
@@ -503,7 +503,7 @@ bool LMDBFileIndex::create_env()
 			return false;
 		}
 
-		os_create_dir(L"urbackup/fileindex");
+		os_create_dir("urbackup/fileindex");
 
 		unsigned int flags = MDB_NOSUBDIR|MDB_NOMETASYNC;
 		if(no_sync)

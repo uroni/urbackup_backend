@@ -58,7 +58,7 @@ namespace
 	};
 }
 
-CHTTPAction::CHTTPAction(const std::wstring &pName, const std::wstring pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput)
+CHTTPAction::CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput)
 {
 	name=pName;
 	GETStr=pGETStr;
@@ -72,8 +72,8 @@ CHTTPAction::CHTTPAction(const std::wstring &pName, const std::wstring pContext,
 
 void CHTTPAction::operator()(void)
 {
-	std::map<std::wstring, std::wstring> GET;
-	std::map<std::wstring, std::wstring> POST;
+	std::map<std::string, std::string> GET;
+	std::map<std::string, std::string> POST;
 	ParseParamStrHttp(GETStr, &GET, true);
 	ParseParamStrHttp(POSTStr, &POST, true);
 
@@ -98,8 +98,8 @@ void CHTTPAction::operator()(void)
 
 	if( tid==0 )
 	{
-		std::wstring error=L"Error: Unknown action ["+name+L"]";
+		std::string error="Error: Unknown action ["+name+"]";
 		Server->Log(error, LL_WARNING);
-		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
 	}
 }

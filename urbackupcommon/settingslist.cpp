@@ -18,156 +18,156 @@
 
 #include "settingslist.h"
 
-std::vector<std::wstring> getSettingsList(void)
+std::vector<std::string> getSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"update_freq_incr");
-	ret.push_back(L"update_freq_full");
-	ret.push_back(L"update_freq_image_full");
-	ret.push_back(L"update_freq_image_incr");
-	ret.push_back(L"max_file_incr");
-	ret.push_back(L"min_file_incr");
-	ret.push_back(L"max_file_full");
-	ret.push_back(L"min_file_full");
-	ret.push_back(L"min_image_incr");
-	ret.push_back(L"max_image_incr");
-	ret.push_back(L"min_image_full");
-	ret.push_back(L"max_image_full");
-	ret.push_back(L"startup_backup_delay");
-	ret.push_back(L"backup_window_incr_file");
-	ret.push_back(L"backup_window_full_file");
-	ret.push_back(L"backup_window_incr_image");
-	ret.push_back(L"backup_window_full_image");
-	ret.push_back(L"exclude_files");
-	ret.push_back(L"include_files");
-	ret.push_back(L"computername");
-	ret.push_back(L"virtual_clients");
-	ret.push_back(L"default_dirs");
-	ret.push_back(L"allow_config_paths");
-	ret.push_back(L"allow_starting_full_file_backups");
-	ret.push_back(L"allow_starting_incr_file_backups");
-	ret.push_back(L"allow_starting_full_image_backups");
-	ret.push_back(L"allow_starting_incr_image_backups");
-	ret.push_back(L"allow_pause");
-	ret.push_back(L"allow_log_view");
-	ret.push_back(L"allow_overwrite");
-	ret.push_back(L"allow_tray_exit");
-	ret.push_back(L"image_letters");
-	ret.push_back(L"internet_server");
-	ret.push_back(L"internet_server_port");
-	ret.push_back(L"internet_authkey");
-	ret.push_back(L"internet_speed");
-	ret.push_back(L"local_speed");
-	ret.push_back(L"internet_client_enabled");
-	ret.push_back(L"internet_image_backups");
-	ret.push_back(L"internet_full_file_backups");
-	ret.push_back(L"internet_encrypt");
-	ret.push_back(L"internet_compress");
-	ret.push_back(L"internet_mode_enabled");
-	ret.push_back(L"silent_update");
-	ret.push_back(L"client_quota");
-	ret.push_back(L"local_full_file_transfer_mode");
-	ret.push_back(L"internet_full_file_transfer_mode");
-	ret.push_back(L"local_incr_file_transfer_mode");
-	ret.push_back(L"internet_incr_file_transfer_mode");
-	ret.push_back(L"local_image_transfer_mode");
-	ret.push_back(L"internet_image_transfer_mode");
-	ret.push_back(L"end_to_end_file_backup_verification");
-	ret.push_back(L"internet_calculate_filehashes_on_client");
-	ret.push_back(L"image_file_format");
-	ret.push_back(L"internet_connect_always");
-	ret.push_back(L"server_url");
-	ret.push_back(L"verify_using_client_hashes");
-	ret.push_back(L"internet_readd_file_entries");
-	ret.push_back(L"max_running_jobs_per_client");
-	ret.push_back(L"background_backups");
-	ret.push_back(L"local_full_image_style");
-	ret.push_back(L"internet_incr_image_style");
-	ret.push_back(L"internet_full_image_style");
+	std::vector<std::string> ret;
+	ret.push_back("update_freq_incr");
+	ret.push_back("update_freq_full");
+	ret.push_back("update_freq_image_full");
+	ret.push_back("update_freq_image_incr");
+	ret.push_back("max_file_incr");
+	ret.push_back("min_file_incr");
+	ret.push_back("max_file_full");
+	ret.push_back("min_file_full");
+	ret.push_back("min_image_incr");
+	ret.push_back("max_image_incr");
+	ret.push_back("min_image_full");
+	ret.push_back("max_image_full");
+	ret.push_back("startup_backup_delay");
+	ret.push_back("backup_window_incr_file");
+	ret.push_back("backup_window_full_file");
+	ret.push_back("backup_window_incr_image");
+	ret.push_back("backup_window_full_image");
+	ret.push_back("exclude_files");
+	ret.push_back("include_files");
+	ret.push_back("computername");
+	ret.push_back("virtual_clients");
+	ret.push_back("default_dirs");
+	ret.push_back("allow_config_paths");
+	ret.push_back("allow_starting_full_file_backups");
+	ret.push_back("allow_starting_incr_file_backups");
+	ret.push_back("allow_starting_full_image_backups");
+	ret.push_back("allow_starting_incr_image_backups");
+	ret.push_back("allow_pause");
+	ret.push_back("allow_log_view");
+	ret.push_back("allow_overwrite");
+	ret.push_back("allow_tray_exit");
+	ret.push_back("image_letters");
+	ret.push_back("internet_server");
+	ret.push_back("internet_server_port");
+	ret.push_back("internet_authkey");
+	ret.push_back("internet_speed");
+	ret.push_back("local_speed");
+	ret.push_back("internet_client_enabled");
+	ret.push_back("internet_image_backups");
+	ret.push_back("internet_full_file_backups");
+	ret.push_back("internet_encrypt");
+	ret.push_back("internet_compress");
+	ret.push_back("internet_mode_enabled");
+	ret.push_back("silent_update");
+	ret.push_back("client_quota");
+	ret.push_back("local_full_file_transfer_mode");
+	ret.push_back("internet_full_file_transfer_mode");
+	ret.push_back("local_incr_file_transfer_mode");
+	ret.push_back("internet_incr_file_transfer_mode");
+	ret.push_back("local_image_transfer_mode");
+	ret.push_back("internet_image_transfer_mode");
+	ret.push_back("end_to_end_file_backup_verification");
+	ret.push_back("internet_calculate_filehashes_on_client");
+	ret.push_back("image_file_format");
+	ret.push_back("internet_connect_always");
+	ret.push_back("server_url");
+	ret.push_back("verify_using_client_hashes");
+	ret.push_back("internet_readd_file_entries");
+	ret.push_back("max_running_jobs_per_client");
+	ret.push_back("background_backups");
+	ret.push_back("local_full_image_style");
+	ret.push_back("internet_incr_image_style");
+	ret.push_back("internet_full_image_style");
 	return ret;
 }
 
-std::vector<std::wstring> getOnlyServerClientSettingsList(void)
+std::vector<std::string> getOnlyServerClientSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"silent_update");
-	ret.push_back(L"client_quota");
-	ret.push_back(L"local_full_file_transfer_mode");
-	ret.push_back(L"internet_full_file_transfer_mode");
-	ret.push_back(L"local_incr_file_transfer_mode");
-	ret.push_back(L"internet_incr_file_transfer_mode");
-	ret.push_back(L"local_image_transfer_mode");
-	ret.push_back(L"internet_image_transfer_mode");
-	ret.push_back(L"end_to_end_file_backup_verification");
-	ret.push_back(L"internet_calculate_filehashes_on_client");
-	ret.push_back(L"image_file_format");
-	ret.push_back(L"verify_using_client_hashes");
-	ret.push_back(L"internet_readd_file_entries");
-	ret.push_back(L"local_incr_image_style");
-	ret.push_back(L"local_full_image_style");
-	ret.push_back(L"background_backups");
-	ret.push_back(L"internet_incr_image_style");
-	ret.push_back(L"internet_full_image_style");
+	std::vector<std::string> ret;
+	ret.push_back("silent_update");
+	ret.push_back("client_quota");
+	ret.push_back("local_full_file_transfer_mode");
+	ret.push_back("internet_full_file_transfer_mode");
+	ret.push_back("local_incr_file_transfer_mode");
+	ret.push_back("internet_incr_file_transfer_mode");
+	ret.push_back("local_image_transfer_mode");
+	ret.push_back("internet_image_transfer_mode");
+	ret.push_back("end_to_end_file_backup_verification");
+	ret.push_back("internet_calculate_filehashes_on_client");
+	ret.push_back("image_file_format");
+	ret.push_back("verify_using_client_hashes");
+	ret.push_back("internet_readd_file_entries");
+	ret.push_back("local_incr_image_style");
+	ret.push_back("local_full_image_style");
+	ret.push_back("background_backups");
+	ret.push_back("internet_incr_image_style");
+	ret.push_back("internet_full_image_style");
 	return ret;
 }
 
-std::vector<std::wstring> getGlobalizedSettingsList(void)
+std::vector<std::string> getGlobalizedSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"internet_server");
-	ret.push_back(L"internet_server_port");
-	ret.push_back(L"server_url");
+	std::vector<std::string> ret;
+	ret.push_back("internet_server");
+	ret.push_back("internet_server_port");
+	ret.push_back("server_url");
 	return ret;
 }
 
-std::vector<std::wstring> getLocalizedSettingsList(void)
+std::vector<std::string> getLocalizedSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"internet_authkey");
+	std::vector<std::string> ret;
+	ret.push_back("internet_authkey");
 	return ret;
 }
 
-std::vector<std::wstring> getGlobalSettingsList(void)
+std::vector<std::string> getGlobalSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"backupfolder");
-	ret.push_back(L"no_images");
-	ret.push_back(L"no_file_backups");
-	ret.push_back(L"autoshutdown");
-	ret.push_back(L"download_client");
-	ret.push_back(L"autoupdate_clients");
-	ret.push_back(L"max_sim_backups");
-	ret.push_back(L"max_active_clients");
-	ret.push_back(L"cleanup_window");
-	ret.push_back(L"backup_database");
-	ret.push_back(L"internet_server");
-	ret.push_back(L"internet_server_port");
-	ret.push_back(L"global_local_speed");
-	ret.push_back(L"global_internet_speed");
-	ret.push_back(L"use_tmpfiles");
-	ret.push_back(L"use_tmpfiles_images");
-	ret.push_back(L"tmpdir");
-	ret.push_back(L"update_stats_cachesize");
-	ret.push_back(L"global_soft_fs_quota");
-	ret.push_back(L"trust_client_hashes");
-	ret.push_back(L"show_server_updates");
-	ret.push_back(L"server_url");
-	ret.push_back(L"use_incremental_symlinks");
+	std::vector<std::string> ret;
+	ret.push_back("backupfolder");
+	ret.push_back("no_images");
+	ret.push_back("no_file_backups");
+	ret.push_back("autoshutdown");
+	ret.push_back("download_client");
+	ret.push_back("autoupdate_clients");
+	ret.push_back("max_sim_backups");
+	ret.push_back("max_active_clients");
+	ret.push_back("cleanup_window");
+	ret.push_back("backup_database");
+	ret.push_back("internet_server");
+	ret.push_back("internet_server_port");
+	ret.push_back("global_local_speed");
+	ret.push_back("global_internet_speed");
+	ret.push_back("use_tmpfiles");
+	ret.push_back("use_tmpfiles_images");
+	ret.push_back("tmpdir");
+	ret.push_back("update_stats_cachesize");
+	ret.push_back("global_soft_fs_quota");
+	ret.push_back("trust_client_hashes");
+	ret.push_back("show_server_updates");
+	ret.push_back("server_url");
+	ret.push_back("use_incremental_symlinks");
 	return ret;
 }
 
-std::vector<std::wstring> getLdapSettingsList(void)
+std::vector<std::string> getLdapSettingsList(void)
 {
-	std::vector<std::wstring> ret;
-	ret.push_back(L"ldap_login_enabled");
-	ret.push_back(L"ldap_server_name");
-	ret.push_back(L"ldap_server_port");
-	ret.push_back(L"ldap_username_prefix");
-	ret.push_back(L"ldap_username_suffix");
-	ret.push_back(L"ldap_group_class_query");
-	ret.push_back(L"ldap_group_key_name");
-	ret.push_back(L"ldap_class_key_name");
-	ret.push_back(L"ldap_group_rights_map");
-	ret.push_back(L"ldap_class_rights_map");
+	std::vector<std::string> ret;
+	ret.push_back("ldap_login_enabled");
+	ret.push_back("ldap_server_name");
+	ret.push_back("ldap_server_port");
+	ret.push_back("ldap_username_prefix");
+	ret.push_back("ldap_username_suffix");
+	ret.push_back("ldap_group_class_query");
+	ret.push_back("ldap_group_key_name");
+	ret.push_back("ldap_class_key_name");
+	ret.push_back("ldap_group_rights_map");
+	ret.push_back("ldap_class_rights_map");
 	return ret;
 }

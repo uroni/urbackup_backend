@@ -35,24 +35,24 @@ public:
 	static void init();
 	static void destroy();
 
-	static IFile* getFile(const std::wstring& cmd);
-	static void removeFile(const std::wstring& cmd);
-	static SExitInformation getExitInformation(const std::wstring& cmd);
+	static IFile* getFile(const std::string& cmd);
+	static void removeFile(const std::string& cmd);
+	static SExitInformation getExitInformation(const std::string& cmd);
 
 	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
 		const std::string& server_token, const std::string& identity, int64 folder_items);
 
 	static void metadataStreamEnd(const std::string& server_token);
 
-	static void registerMetadataCallback(const std::wstring &name, const std::string& identity, IFileServ::IMetadataCallback* callback);
-	static void removeMetadataCallback(const std::wstring &name, const std::string& identity);
+	static void registerMetadataCallback(const std::string &name, const std::string& identity, IFileServ::IMetadataCallback* callback);
+	static void removeMetadataCallback(const std::string &name, const std::string& identity);
 
 	void operator()();
 
 private:
 	static IMutex* mutex;
 	static volatile bool do_stop;
-	static std::map<std::wstring, SPipeSession> pipe_files;
-	static std::map<std::wstring, SExitInformation> exit_information;
+	static std::map<std::string, SPipeSession> pipe_files;
+	static std::map<std::string, SExitInformation> exit_information;
 	static std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> metadata_callbacks;
 };

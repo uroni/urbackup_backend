@@ -34,7 +34,7 @@ extern std::string server_identity;
 extern std::string server_token;
 
 
-FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
+FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
 {
 
@@ -106,11 +106,11 @@ bool FullFileBackup::doFileBackup()
 
 	if(hashed_transfer)
 	{
-		ServerLogger::Log(logid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+": Doing backup with hashed transfer...", LL_DEBUG);
 	}
 	else
 	{
-		ServerLogger::Log(logid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
@@ -118,7 +118,7 @@ bool FullFileBackup::doFileBackup()
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(logid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, "Full Backup of "+clientname+" failed - CONNECT error", LL_ERROR);
 		has_early_error=true;
 		log_backup=false;
 		return false;
@@ -127,18 +127,18 @@ bool FullFileBackup::doFileBackup()
 	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(tmp==NULL) 
 	{
-		ServerLogger::Log(logid, L"Error creating temporary file in ::doFullBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error creating temporary file in ::doFullBackup", LL_ERROR);
 		return false;
 	}
 
-	ServerLogger::Log(logid, clientname+L": Loading file list...", LL_INFO);
+	ServerLogger::Log(logid, clientname+": Loading file list...", LL_INFO);
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+nconvert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
@@ -156,14 +156,14 @@ bool FullFileBackup::doFileBackup()
 
 	if(clientlist==NULL )
 	{
-		ServerLogger::Log(logid, L"Error creating clientlist for client "+clientname, LL_ERROR);
+		ServerLogger::Log(logid, "Error creating clientlist for client "+clientname, LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
 
 	if(ServerStatus::getProcess(clientname, status_id).stop)
 	{
-		ServerLogger::Log(logid, L"Server admin stopped backup. -1", LL_ERROR);
+		ServerLogger::Log(logid, "Server admin stopped backup. -1", LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
@@ -179,8 +179,8 @@ bool FullFileBackup::doFileBackup()
 
 	char buffer[4096];
 	_u32 read;
-	std::wstring curr_path;
-	std::wstring curr_os_path;
+	std::string curr_path;
+	std::string curr_os_path;
 	std::string curr_orig_path;
 	std::string orig_sep;
 	SFile cf;
@@ -193,10 +193,10 @@ bool FullFileBackup::doFileBackup()
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
 
-	ServerLogger::Log(logid, clientname+L": Started loading files...", LL_INFO);
+	ServerLogger::Log(logid, clientname+": Started loading files...", LL_INFO);
 
-	std::wstring last_backuppath;
-	std::wstring last_backuppath_complete;
+	std::string last_backuppath;
+	std::string last_backuppath_complete;
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, NULL, backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname,
@@ -222,8 +222,8 @@ bool FullFileBackup::doFileBackup()
 	bool is_offline=false;
 	bool script_dir=false;
 
-	std::stack<std::set<std::wstring> > folder_files;
-	folder_files.push(std::set<std::wstring>());
+	std::stack<std::set<std::string> > folder_files;
+	folder_files.push(std::set<std::string>());
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
@@ -231,7 +231,7 @@ bool FullFileBackup::doFileBackup()
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			std::map<std::wstring, std::wstring> extra_params;
+			std::map<std::string, std::string> extra_params;
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
@@ -242,7 +242,7 @@ bool FullFileBackup::doFileBackup()
 				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
-					orig_sep = Server->ConvertToUTF8(extra_params[L"orig_sep"]);
+					orig_sep = (extra_params["orig_sep"]);
 					if(orig_sep.empty()) orig_sep="\\";
 				}
 
@@ -253,7 +253,7 @@ bool FullFileBackup::doFileBackup()
 					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
 						r_done=true;
-						ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
+						ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
 						server_download->queueSkip();
 						break;
 					}
@@ -280,15 +280,15 @@ bool FullFileBackup::doFileBackup()
 
 				if(server_download->isOffline())
 				{
-					ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
+					ServerLogger::Log(logid, "Client "+clientname+" went offline.", LL_ERROR);
 					is_offline = true;
 					r_done=true;
 					break;
 				}
 
-				std::wstring osspecific_name;
+				std::string osspecific_name;
 
-				if(!cf.isdir || cf.name!=L"..")
+				if(!cf.isdir || cf.name!="..")
 				{
 					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
 
@@ -300,77 +300,77 @@ bool FullFileBackup::doFileBackup()
 
 				if(cf.isdir)
 				{
-					if(cf.name!=L"..")
+					if(cf.name!="..")
 					{
-						std::wstring orig_curr_path = curr_path;
-						std::wstring orig_curr_os_path = curr_os_path;
-						curr_path+=L"/"+cf.name;
-						curr_os_path+=L"/"+osspecific_name;
-						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
+						std::string orig_curr_path = curr_path;
+						std::string orig_curr_os_path = curr_os_path;
+						curr_path+="/"+cf.name;
+						curr_os_path+="/"+osspecific_name;
+						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
 						if(!has_orig_path)
 						{
-							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
+							curr_orig_path += orig_sep + (cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
 							metadata.has_orig_path=true;
 						}
 
-						std::wstring metadata_fn = backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn;
+						std::string metadata_fn = backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn;
 
 						bool create_hash_dir=true;
-						str_map::iterator sym_target = extra_params.find(L"sym_target");
+						str_map::iterator sym_target = extra_params.find("sym_target");
 						if(sym_target!=extra_params.end())
 						{
-							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
+							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, (orig_sep), true))
 							{
-								ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+								ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
 								c_has_error=true;
 								break;
 							}
 
-							metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + L"/" + escape_metadata_fn(cf.name)); 
+							metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
 							create_hash_dir=false;
 						}
 						else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
-							ServerLogger::Log(logid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							ServerLogger::Log(logid, "Creating directory  \""+backuppath+local_curr_os_path+"\" failed. " + systemErrorInfo(), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
 						
 						if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
-							ServerLogger::Log(logid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							ServerLogger::Log(logid, "Creating directory  \""+backuppath_hashes+local_curr_os_path+"\" failed. " + systemErrorInfo(), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
 						else if(metadata.exist && !write_file_metadata(metadata_fn, client_main, metadata, false))
 						{
-							ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(logid, "Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
 
-						folder_files.push(std::set<std::wstring>());
+						folder_files.push(std::set<std::string>());
 						folder_items.push_back(0);
 
 						++depth;
 						if(depth==1)
 						{
-							std::wstring t=curr_path;
+							std::string t=curr_path;
 							t.erase(0,1);
-							if(t==L"urbackup_backup_scripts")
+							if(t=="urbackup_backup_scripts")
 							{
 								script_dir=true;
 							}
 							else
 							{
-								ServerLogger::Log(logid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
+								ServerLogger::Log(logid, "Starting shadowcopy \""+t+"\".", LL_DEBUG);
 								server_download->addToQueueStartShadowcopy(t);
 
 								continuous_sequences[cf.name]=SContinuousSequence(
-									watoi64(extra_params[L"sequence_id"]), watoi64(extra_params[L"sequence_next"]));
+									watoi64(extra_params["sequence_id"]), watoi64(extra_params["sequence_next"]));
 							}							
 						}
 					}
@@ -380,29 +380,29 @@ bool FullFileBackup::doFileBackup()
 
                         if(client_main->getProtocolVersions().file_meta>0 && !script_dir)
 						{
-							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),
-								ExtractFileName(curr_os_path, L"/"), ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
+							server_download->addToQueueFull(line, ExtractFileName(curr_path, "/"),
+								ExtractFileName(curr_os_path, "/"), ExtractFilePath(curr_path, "/"), ExtractFilePath(curr_os_path, "/"), queue_downloads?0:-1,
 								metadata, false, true, folder_items.back());
 						}
 						folder_items.pop_back();
 						--depth;
 						if(depth==0)
 						{
-							std::wstring t=curr_path;
+							std::string t=curr_path;
 							t.erase(0,1);
-							if(t==L"urbackup_backup_scripts")
+							if(t=="urbackup_backup_scripts")
 							{
 								script_dir=false;
 							}
 							else
 							{
-								ServerLogger::Log(logid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
+								ServerLogger::Log(logid, "Stoping shadowcopy \""+t+"\".", LL_DEBUG);
 								server_download->addToQueueStopShadowcopy(t);
 							}							
 						}
 
-						curr_path=ExtractFilePath(curr_path, L"/");
-						curr_os_path=ExtractFilePath(curr_os_path, L"/");
+						curr_path=ExtractFilePath(curr_path, "/");
+						curr_os_path=ExtractFilePath(curr_os_path, "/");
 
 						if(!has_orig_path)
 						{
@@ -414,18 +414,18 @@ bool FullFileBackup::doFileBackup()
 				{
 					if(!has_orig_path)
 					{
-						metadata.orig_path = curr_orig_path + orig_sep + Server->ConvertToUTF8(cf.name);
+						metadata.orig_path = curr_orig_path + orig_sep + (cf.name);
 					}
 
 					bool file_ok=false;
 
-                    str_map::iterator sym_target = extra_params.find(L"sym_target");
+                    str_map::iterator sym_target = extra_params.find("sym_target");
                     if(sym_target!=extra_params.end())
                     {
-                        std::wstring symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
-                        if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
+                        std::string symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+                        if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), true))
                         {
-                            ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+                            ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
                             c_has_error=true;
                             break;
                         }
@@ -434,13 +434,13 @@ bool FullFileBackup::doFileBackup()
                             file_ok=true;
                         }
                     }
-					else if(extra_params.find(L"special")!=extra_params.end())
+					else if(extra_params.find("special")!=extra_params.end())
 					{
-						std::wstring touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+						std::string touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
 						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
 						if(touch_file.get()==NULL)
 						{
-							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							ServerLogger::Log(logid, "Error touching file at \""+touch_path+"\". " + systemErrorInfo(), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
@@ -450,10 +450,10 @@ bool FullFileBackup::doFileBackup()
 						}
 					}
 
-					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier_w) );
+					std::map<std::string, std::string>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier) );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(wnarrow(hash_it->second)), cf.size,
+						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(hash_it->second), cf.size,
 							true, metadata))
 						{
 							file_ok=true;
@@ -490,7 +490,7 @@ bool FullFileBackup::doFileBackup()
 
 	server_download->queueStop(false);
 
-	ServerLogger::Log(logid, L"Waiting for file transfers...", LL_INFO);
+	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -516,7 +516,7 @@ bool FullFileBackup::doFileBackup()
 
 	if(server_download->isOffline() && !is_offline)
 	{
-		ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
+		ServerLogger::Log(logid, "Client "+clientname+" went offline.", LL_ERROR);
 		r_done=true;
 	}
 
@@ -536,14 +536,14 @@ bool FullFileBackup::doFileBackup()
 	running_updater->stop();
 	backup_dao->updateFileBackupRunning(backupid);
 
-	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
+	ServerLogger::Log(logid, "Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();
 
 
 	bool metadata_ok = stopFileMetadataDownloadThread();
 
-	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);	
+	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);	
 
 	tmp->Seek(0);
 	line = 0;
@@ -609,7 +609,7 @@ bool FullFileBackup::doFileBackup()
 		FileIndex::flush();
 
 		db->BeginWriteTransaction();
-		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
+		if(!os_rename_file(clientlistName(group, true), clientlistName(group, false)) )
 		{
 			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);
 		}
@@ -620,21 +620,21 @@ bool FullFileBackup::doFileBackup()
 	if( !r_done && !c_has_error && !disk_error
 		&& (group==c_group_default || group==c_group_continuous)) 
 	{
-		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+		std::string backupfolder=server_settings->getSettings()->backupfolder;
 
-		std::wstring name=L"current";
+		std::string name="current";
 		if(group==c_group_continuous)
 		{
-			name=L"continuous";
+			name="continuous";
 		}
 
-		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
+		std::string currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		os_remove_symlink_dir(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 		if(group==c_group_default)
 		{
-			currdir=backupfolder+os_file_sep()+L"clients";
+			currdir=backupfolder+os_file_sep()+"clients";
 			if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
@@ -655,7 +655,7 @@ bool FullFileBackup::doFileBackup()
 	}
 
 	{
-		std::wstring tmp_fn=tmp->getFilenameW();
+		std::string tmp_fn=tmp->getFilename();
 		Server->destroy(tmp);
 		Server->deleteFile(os_file_prefix(tmp_fn));
 	}
@@ -668,10 +668,10 @@ bool FullFileBackup::doFileBackup()
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 	if(transferred_compressed>0)
 	{
-		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
+		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+convert((float)transferred_compressed/transferred_bytes)+")");
 	}
 
-	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", logid);
+	ClientMain::run_script("urbackup" + os_file_sep() + "post_full_filebackup", "\""+ backuppath + "\"", logid);
 
 	if(c_has_error)
 		return false;

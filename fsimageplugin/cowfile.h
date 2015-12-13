@@ -6,8 +6,8 @@
 class CowFile : public IVHDFile
 {
 public:
-	CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize);
-	CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only);
+	CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize);
+	CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only);
 	~CowFile();
 
 
@@ -18,7 +18,6 @@ public:
 	virtual uint64 getSize(void);
 	virtual uint64 usedSize(void);
 	virtual std::string getFilename(void);
-	virtual std::wstring getFilenameW(void);
 	virtual bool has_sector(_i64 sector_size=-1);
 	virtual bool this_has_sector(_i64 sector_size=-1);
 	virtual unsigned int getBlocksize();

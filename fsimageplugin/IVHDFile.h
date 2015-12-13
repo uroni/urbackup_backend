@@ -27,7 +27,6 @@ public:
 	virtual uint64 getSize(void)=0;
 	virtual uint64 usedSize(void)=0;
 	virtual std::string getFilename(void)=0;
-	virtual std::wstring getFilenameW(void)=0;
 	virtual bool has_sector(_i64 sector_size=-1)=0;
 	virtual bool this_has_sector(_i64 sector_size=-1)=0;
 	virtual unsigned int getBlocksize()=0;

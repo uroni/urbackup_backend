@@ -25,27 +25,29 @@
 #include "../../Interface/Server.h"
 IServer *Server = NULL;
 
+#include "../../urbackupcommon/server_compat.h"
+
 int main(void)
 {
-	std::wstring mpath;
-	std::wstring sysvol=getSysVolume(mpath);
+	std::string mpath;
+	std::string sysvol=getSysVolume(mpath);
 
 	if(!sysvol.empty())
 	{
-		std::cout << "Found sysvol \"" << wnarrow(sysvol) << "\"" <<
-			" Path: \"" << wnarrow(mpath) << "\"" << std::endl;
+		std::cout << "Found sysvol \"" << sysvol << "\"" <<
+			" Path: \"" << mpath << "\"" << std::endl;
 	}
 	else
 	{
 		std::cout << "No sysvolume found." << std::endl;
 	}
 
-	std::cout << "Trying to open SYSVOL(" << wnarrow(sysvol) << ")..." << std::endl;
+	std::cout << "Trying to open SYSVOL(" << sysvol << ")..." << std::endl;
 
-	HANDLE hVolume=CreateFileW(sysvol.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hVolume=CreateFileW(ConvertToWchar(sysvol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		std::cout << "Could not open SYSVOL(" << wnarrow(sysvol) << "). Last error=" << GetLastError() << std::endl;
+		std::cout << "Could not open SYSVOL(" << sysvol << "). Last error=" << GetLastError() << std::endl;
 	}
 	else
 	{
@@ -57,20 +59,20 @@ int main(void)
 
 	if(!sysvol.empty())
 	{
-		std::cout << "Found EFI System Partition \"" << wnarrow(sysvol) << "\"" <<
-			" Path: \"" << wnarrow(mpath) << "\"" << std::endl;
+		std::cout << "Found EFI System Partition \"" << sysvol << "\"" <<
+			" Path: \"" << mpath << "\"" << std::endl;
 	}
 	else
 	{
 		std::cout << "No EFI System Partition found." << std::endl;
 	}
 
-	std::cout << "Trying to open EFI System Partition(" << wnarrow(sysvol) << ")..." << std::endl;
+	std::cout << "Trying to open EFI System Partition(" << sysvol << ")..." << std::endl;
 
-	hVolume=CreateFileW(sysvol.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	hVolume=CreateFileW(ConvertToWchar(sysvol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		std::cout << "Could not open EFI System Partition(" << wnarrow(sysvol) << "). Last error=" << GetLastError() << std::endl;
+		std::cout << "Could not open EFI System Partition(" << sysvol << "). Last error=" << GetLastError() << std::endl;
 	}
 	else
 	{

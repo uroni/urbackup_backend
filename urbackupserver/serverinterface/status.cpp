@@ -57,8 +57,8 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		int clientid=watoi(res[i][L"id"]);
-		std::wstring clientname=res[i][L"name"];
+		int clientid=watoi(res[i]["id"]);
+		std::string clientname=res[i]["name"];
 
 		bool found=false;
 		if( (clientid_rights_all
@@ -82,8 +82,8 @@ void set_server_version_info(JSON::Object& ret)
 
 	if(infoProperties.get())
 	{
-		std::wstring curr_version_num;
-		if(infoProperties->getValue(L"curr_version_num", &curr_version_num))
+		std::string curr_version_num;
+		if(infoProperties->getValue("curr_version_num", &curr_version_num))
 		{
 			ret.set("curr_version_num", watoi64(curr_version_num));
 		}
@@ -122,8 +122,8 @@ ACTION_IMPL(status)
 	{
 		{
 			ServerSettings settings(db);
-			std::wstring backupfolder = settings.getSettings()->backupfolder;
-			std::wstring backupfolder_uncompr = settings.getSettings()->backupfolder_uncompr;
+			std::string backupfolder = settings.getSettings()->backupfolder;
+			std::string backupfolder_uncompr = settings.getSettings()->backupfolder_uncompr;
 
 #ifdef _WIN32
 			if(backupfolder.size()==2 && backupfolder[1]==':')
@@ -144,7 +144,7 @@ ACTION_IMPL(status)
 				else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) )
 					ret.set("dir_error_ext", "err_folder_not_found");
 			}
-			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) )
+			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) )
 			{
 				ret.set("dir_error" ,true);
 				ret.set("dir_error_ext", "err_cannot_create_subdir");
@@ -175,10 +175,10 @@ ACTION_IMPL(status)
 			}
 		}
 
-		std::wstring hostname=GET[L"hostname"];
+		std::string hostname=GET["hostname"];
 		if(!hostname.empty() && rights=="all")
 		{
-			if(GET[L"remove"]==L"true")
+			if(GET["remove"]=="true")
 			{
 				IQuery *q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?");
 				q->Bind(hostname);
@@ -194,21 +194,21 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )
+		if(GET.find("clientname")!=GET.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
-			int id=ClientMain::getClientID(db, GET[L"clientname"], NULL, &new_client);
+			int id=ClientMain::getClientID(db, GET["clientname"], NULL, &new_client);
 			if(new_client)
 			{
 				ret.set("added_new_client", true);
 			}
 		}
-		std::wstring s_remove_client=GET[L"remove_client"];
+		std::string s_remove_client=GET["remove_client"];
 		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
 		{
-			std::vector<std::wstring> remove_client;
-			Tokenize(s_remove_client, remove_client, L",");
-			if(GET.find(L"stop_remove_client")!=GET.end())
+			std::vector<std::string> remove_client;
+			Tokenize(s_remove_client, remove_client, ",");
+			if(GET.find("stop_remove_client")!=GET.end())
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{
@@ -240,7 +240,7 @@ ACTION_IMPL(status)
 			filter=" WHERE ";
 			for(size_t i=0;i<clientids.size();++i)
 			{
-				filter+="id="+nconvert(clientids[i]);
+				filter+="id="+convert(clientids[i]);
 				if(i+1<clientids.size())
 					filter+=" OR ";
 			}
@@ -252,14 +252,14 @@ ACTION_IMPL(status)
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
 		if(res_t.size()>0)
 		{
-			backup_ok_mod_file=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
+			backup_ok_mod_file=atof((res_t[0]["value"]).c_str());
 		}
 
 		double backup_ok_mod_image=3.;
 		res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_image' AND clientid=0");
 		if(res_t.size()>0)
 		{
-			backup_ok_mod_image=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
+			backup_ok_mod_image=atof((res_t[0]["value"]).c_str());
 		}
 
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
@@ -267,14 +267,14 @@ ACTION_IMPL(status)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object stat;
-			int clientid=watoi(res[i][L"id"]);
-			std::wstring clientname=res[i][L"name"];
+			int clientid=watoi(res[i]["id"]);
+			std::string clientname=res[i]["name"];
 			stat.set("id", clientid);
 			stat.set("name", clientname);
-			stat.set("lastbackup", watoi64(res[i][L"lastbackup"]));
-			stat.set("lastseen", watoi64(res[i][L"lastseen"]));
-			stat.set("lastbackup_image", watoi64(res[i][L"lastbackup_image"]));
-			stat.set("delete_pending", res[i][L"delete_pending"] );
+			stat.set("lastbackup", watoi64(res[i]["lastbackup"]));
+			stat.set("lastseen", watoi64(res[i]["lastseen"]));
+			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
+			stat.set("delete_pending", res[i]["delete_pending"] );
 
 			std::string ip="-";
 			std::string client_version_string;
@@ -295,7 +295,7 @@ ACTION_IMPL(status)
 					}
 
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
-					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+					ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
@@ -343,7 +343,7 @@ ACTION_IMPL(status)
 				time_filebackup=time_filebackup_full;
 			}
 			
-			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
+			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+convert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
 			q->Bind(clientid);
 			db_results res_file_ok=q->Read();
 			q->Reset();
@@ -357,7 +357,7 @@ ACTION_IMPL(status)
 				time_imagebackup=time_imagebackup_full;
 			}
 
-			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+nconvert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
+			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+convert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
 			q->Bind(clientid);
 			res_file_ok=q->Read();
 			q->Reset();
@@ -373,7 +373,7 @@ ACTION_IMPL(status)
 				bool found=false;
 				for(size_t j=0;j<res.size();++j)
 				{
-					if(res[j][L"name"]==client_status[i].client)
+					if(res[j]["name"]==client_status[i].client)
 					{
 						found=true;
 						break;
@@ -392,7 +392,7 @@ ACTION_IMPL(status)
 				stat.set("delete_pending", 0);
 				std::string ip;
 				unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
-				ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+				ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
 				stat.set("ip", ip);
 
 				switch(client_status[i].status_error)
@@ -423,9 +423,9 @@ ACTION_IMPL(status)
 			{
 				JSON::Object extra_client;
 
-				extra_client.set("hostname", res[i][L"hostname"]);
+				extra_client.set("hostname", res[i]["hostname"]);
 
-				_i64 i_ip=os_atoi64(wnarrow(res[i][L"lastip"]));
+				_i64 i_ip=os_atoi64(res[i]["lastip"]);
 
 				bool online=false;
 
@@ -436,7 +436,7 @@ ACTION_IMPL(status)
 						online=true;
 					}
 				}
-				extra_client.set("id", res[i][L"id"]);
+				extra_client.set("id", res[i]["id"]);
 				extra_client.set("online", online);
 
 				extra_clients.add(extra_client);

@@ -39,7 +39,7 @@ const size_t draw_segments=30;
 const size_t c_speed_size=15;
 const size_t c_max_l_length=80;
 
-void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
+void draw_progress(std::string curr_fn, _i64 curr_verified, _i64 verify_size)
 {
 	static _i64 last_progress_bytes=0;
 	static int64 last_time=0;
@@ -73,11 +73,11 @@ void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 		std::string speed_str=PrettyPrintSpeed((size_t)((new_bytes*1000)/passed_time));
 		while(speed_str.size()<c_speed_size)
 			speed_str+=" ";
-		std::string pcdone=nconvert((int)(pc_done*100.f));
+		std::string pcdone=convert((int)(pc_done*100.f));
 		if(pcdone.size()==1)
 			pcdone=" "+pcdone;
 
-		toc+="] "+pcdone+"% "+speed_str+" "+Server->ConvertToUTF8(curr_fn);
+		toc+="] "+pcdone+"% "+speed_str+" "+(curr_fn);
 		
 		if(toc.size()>=c_max_l_length)
 		    toc=toc.substr(0, c_max_l_length);
@@ -98,22 +98,22 @@ void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
 {
-	std::wstring fp=res[L"fullpath"];
+	std::string fp=res["fullpath"];
 	IFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
 	if( f==NULL )
 	{
-		Server->Log(L"Error opening file \""+fp+L"\"", LL_ERROR);
+		Server->Log("Error opening file \""+fp+"\"", LL_ERROR);
 		missing = true;
 		return false;
 	}
 
-	if(watoi64(res[L"filesize"])!=f->Size())
+	if(watoi64(res["filesize"])!=f->Size())
 	{
-		Server->Log(L"Filesize of \""+fp+L"\" is wrong", LL_ERROR);
+		Server->Log("Filesize of \""+fp+"\" is wrong", LL_ERROR);
 		return false;
 	}
 
-	std::wstring f_name=ExtractFileName(fp);
+	std::string f_name=ExtractFileName(fp);
 
 	sha_def_ctx shactx;
 	sha_def_init(&shactx);
@@ -136,19 +136,19 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	
 	Server->destroy(f);
 
-	if(curr_verified-curr_verified_start!=watoi64(res[L"filesize"]))
+	if(curr_verified-curr_verified_start!=watoi64(res["filesize"]))
 	{
-		Server->Log(L"Could not read all bytes of file \""+fp+L"\"", LL_ERROR);
+		Server->Log("Could not read all bytes of file \""+fp+"\"", LL_ERROR);
 		return false;
 	}
 
-	const unsigned char * db_sha=(unsigned char*)res[L"shahash"].c_str();
+	const unsigned char * db_sha=(unsigned char*)res["shahash"].c_str();
 	unsigned char calc_dig[SHA_DEF_DIGEST_SIZE];
 	sha_def_final(&shactx, calc_dig);
 
 	if(memcmp(db_sha, calc_dig, SHA_DEF_DIGEST_SIZE)!=0)
 	{
-		Server->Log(L"Hash of \""+fp+L"\" is wrong", LL_ERROR);
+		Server->Log("Hash of \""+fp+"\" is wrong", LL_ERROR);
 		return false;
 	}
 
@@ -159,8 +159,8 @@ bool verify_hashes(std::string arg)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	std::string working_dir=Server->ConvertToUTF8(Server->getServerWorkingDir());
-	std::string v_output_fn=working_dir+os_file_sepn()+"urbackup"+os_file_sepn()+"verification_result.txt";
+	std::string working_dir=(Server->getServerWorkingDir());
+	std::string v_output_fn=working_dir+os_file_sep()+"urbackup"+os_file_sep()+"verification_result.txt";
 	std::fstream v_failure;
 	v_failure.open(v_output_fn.c_str(), std::ios::out|std::ios::binary);
 	if( !v_failure.is_open() )
@@ -200,7 +200,7 @@ bool verify_hashes(std::string arg)
 			db_results res=q->Read();
 			if(!res.empty())
 			{
-				cid=watoi(res[0][L"id"]);
+				cid=watoi(res[0]["id"]);
 			}
 			else
 			{
@@ -208,7 +208,7 @@ bool verify_hashes(std::string arg)
 				return false;
 			}
 
-			filter=" WHERE clientid="+nconvert(cid);
+			filter=" WHERE clientid="+convert(cid);
 		}
 		else
 		{
@@ -228,8 +228,8 @@ bool verify_hashes(std::string arg)
 					db_results res=q->Read();
 					if(!res.empty())
 					{
-						backupid_filter="= "+wnarrow(res[0][L"id"]);
-						Server->Log(L"Last backup: "+res[0][L"path"], LL_INFO);
+						backupid_filter="= "+res[0]["id"];
+						Server->Log("Last backup: "+res[0]["path"], LL_INFO);
 					}
 					else
 					{
@@ -245,7 +245,7 @@ bool verify_hashes(std::string arg)
 			}
 			else if(backupname=="*")
 			{
-				backupid_filter=" IN (SELECT id FROM backups WHERE clientid="+nconvert(cid)+")";
+				backupid_filter=" IN (SELECT id FROM backups WHERE clientid="+convert(cid)+")";
 			}
 			else
 			{		
@@ -255,7 +255,7 @@ bool verify_hashes(std::string arg)
 				db_results res=q->Read();
 				if(!res.empty())
 				{
-					backupid_filter="= "+wnarrow(res[0][L"id"]);
+					backupid_filter="= "+res[0]["id"];
 				}
 				else
 				{
@@ -281,7 +281,7 @@ bool verify_hashes(std::string arg)
 		return false;
 	}
 
-	_i64 verify_size=watoi64(res[0][L"c"]);
+	_i64 verify_size=watoi64(res[0]["c"]);
 	_i64 curr_verified=0;
 
 	std::cout << "To be verified: " << PrettyPrintBytes(verify_size) << " of files" << std::endl;
@@ -305,17 +305,17 @@ bool verify_hashes(std::string arg)
 		{
 			if(!is_missing)
 			{
-				v_failure << "Verification of \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed\r\n";
+				v_failure << "Verification of \"" << (res_single["fullpath"]) << "\" failed\r\n";
 				is_okay=false;
 
 				if(delete_failed)
 				{
-					todelete.push_back(watoi64(res_single[L"id"]));
+					todelete.push_back(watoi64(res_single["id"]));
 				}
 			}
 			else
 			{
-				missing_files.push_back(watoi64(res_single[L"id"]));
+				missing_files.push_back(watoi64(res_single["id"]));
 			}			
 		}
 	}
@@ -344,12 +344,12 @@ bool verify_hashes(std::string arg)
 			db_single_result& res_single = res[0];
 			if(!verify_file(res_single, curr_verified, verify_size, is_missing))
 			{
-				v_failure << "Verification of file \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
+				v_failure << "Verification of file \"" << (res_single["fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
 				is_okay=false;
 
 				if(delete_failed)
 				{
-					todelete.push_back(watoi64(res_single[L"id"]));
+					todelete.push_back(watoi64(res_single["id"]));
 				}
 			}
 		}

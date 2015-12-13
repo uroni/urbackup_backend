@@ -28,23 +28,7 @@
 CTemplate::CTemplate(std::string pFile)
 {
 	file=pFile;
-	std::string tdata=getFile(pFile);
-
-	//if( utf8::is_bom(tdata.begin()) )
-	{
-		try
-		{
-			utf8::utf8to16(tdata.begin(), tdata.end(), back_inserter(data) );
-		}
-		catch(...)
-		{
-			data=L"Invalid UTF-8";
-		}
-	}
-	/*else
-	{
-		data=widen(tdata);
-	}*/
+	data=getFile(pFile);
 
 	mCurrValues=new CTable();
 	mValuesRoot=mCurrValues;
@@ -82,10 +66,10 @@ void CTemplate::AddDefaultReplacements(void)
 	ADD_REPLACEMENT_CODE(223, "\\xDF");*/
 }
 
-ITable* CTemplate::createTableRecursive(std::wstring key)
+ITable* CTemplate::createTableRecursive(std::string key)
 {
-	std::vector<std::wstring> toks;
-	Tokenize(key, toks, L".");
+	std::vector<std::string> toks;
+	Tokenize(key, toks, ".");
 	ITable *ct=mCurrValues;
 	for(size_t i=0;i<toks.size();++i)
 	{
@@ -101,7 +85,7 @@ ITable* CTemplate::createTableRecursive(std::wstring key)
 	return ct;
 }
 
-ITable* CTemplate::getTable(std::wstring key)
+ITable* CTemplate::getTable(std::string key)
 {
 	ITable *ret;
 	if( (ret=findTable(key))!=NULL )
@@ -110,10 +94,10 @@ ITable* CTemplate::getTable(std::wstring key)
 		return createTableRecursive(key);
 }
 
-void CTemplate::setValue(std::wstring key, std::wstring value)
+void CTemplate::setValue(std::string key, std::string value)
 {
-	std::vector<std::wstring> toks;
-	Tokenize(key, toks, L".");
+	std::vector<std::string> toks;
+	Tokenize(key, toks, ".");
 	ITable *ct=mCurrValues;
 	if( toks.size()==0 )
 		return;
@@ -132,10 +116,10 @@ void CTemplate::setValue(std::wstring key, std::wstring value)
 		ct->addString(toks[toks.size()-1], value);
 }
 
-ITable *CTemplate::findTable(std::wstring key)
+ITable *CTemplate::findTable(std::string key)
 {
-	std::vector<std::wstring> toks;
-	Tokenize(key, toks, L".");
+	std::vector<std::string> toks;
+	Tokenize(key, toks, ".");
 	ITable *ct;
 
 	if( toks.size()>0 )
@@ -157,7 +141,7 @@ ITable *CTemplate::findTable(std::wstring key)
 }
 
 
-bool CTemplate::FindValue(const std::wstring &key, std::wstring &value, bool dbs)
+bool CTemplate::FindValue(const std::string &key, std::string &value, bool dbs)
 {
 	ITable *val=findTable(key);
 
@@ -181,7 +165,7 @@ bool CTemplate::FindValue(const std::wstring &key, std::wstring &value, bool dbs
 				if( res.size() >0 )
 				{
 					db_single_result result=res[0];
-					db_single_result::iterator iter=result.find(L"value");
+					db_single_result::iterator iter=result.find("value");
 					if( iter!= result.end() )
 					{
 						value=iter->second;
@@ -196,7 +180,7 @@ bool CTemplate::FindValue(const std::wstring &key, std::wstring &value, bool dbs
 
 std::string CTemplate::getData(void)
 {
-	std::wstring output=data;
+	std::string output=data;
 	transform(output);
 	std::string ret;
 	try
@@ -214,13 +198,13 @@ std::string CTemplate::getData(void)
 	return ret;
 }
 
-void CTemplate::transform(std::wstring &output)
+void CTemplate::transform(std::string &output)
 {
 	for(size_t i=0;i<output.size();++i)
 	{
 		if( output[i]=='\n' && i!=0 && output[i-1]!='\r' )
 		{
-			output.insert(i,L"\r");
+			output.insert(i,"\r");
 		}
 	}
 	
@@ -231,7 +215,7 @@ void CTemplate::transform(std::wstring &output)
 		for(size_t i=0;i<output.size();++i)
 		{
 			// VALUES
-			if( next(output, i, L"#{")==true )
+			if( next(output, i, "#{")==true )
 			{
 				size_t j;
 				for(j=i+2;j<output.size();++j)
@@ -240,8 +224,8 @@ void CTemplate::transform(std::wstring &output)
 						break;
 				}
 
-				std::wstring var=output.substr(i+2, (j)-(i+2) );
-				std::wstring value;
+				std::string var=output.substr(i+2, (j)-(i+2) );
+				std::string value;
 
 				bool b=FindValue( var, value);
 				if( b==true )
@@ -255,17 +239,17 @@ void CTemplate::transform(std::wstring &output)
 			}
 			//PREPROCESSOR
 			{ 
-				if( ((i==0||i==1) && next(output, i, L"#exit" )) || (i!=0 && next(output, i, L"\n#exit")) )
+				if( ((i==0||i==1) && next(output, i, "#exit" )) || (i!=0 && next(output, i, "\n#exit")) )
 				{
 					output.erase(i);
 					break;
 				}
 				bool foreach1=false,foreach2=false;
-				if( ((i==0||i==1) && (foreach1=next(output, i, L"#foreach in ")==true)) ||  (foreach2=next(output, i, L"\r\n#foreach in "))==true)
+				if( ((i==0||i==1) && (foreach1=next(output, i, "#foreach in ")==true)) ||  (foreach2=next(output, i, "\r\n#foreach in "))==true)
 				{
 					if( foreach2 )
 						i+=2;
-					std::wstring var;
+					std::string var;
 					for(size_t j=i+12;j<output.size();++j)
 					{
 						if( output[j]=='\n' || output[j]=='\r' )
@@ -284,11 +268,11 @@ void CTemplate::transform(std::wstring &output)
 						int count=0;
 						for(size_t j=i+len;j<output.size();++j)
 						{
-							if( next(output, j, L"\r\n#foreach") )
+							if( next(output, j, "\r\n#foreach") )
 							{
 								++count;
 							}
-							if( next(output, j, L"\r\n#endfor" ) )
+							if( next(output, j, "\r\n#endfor" ) )
 							{
 								if( count<=0 )
 								{
@@ -312,14 +296,14 @@ void CTemplate::transform(std::wstring &output)
 
 						if( end!=std::string::npos )
 						{
-							std::wstring mid=output.substr(i+len, end-(i+len));
-							std::wstring strend=output.substr(end+9);
+							std::string mid=output.substr(i+len, end-(i+len));
+							std::string strend=output.substr(end+9);
 							output=output.substr(0,i);
 							ITable *old_values=mCurrValues;
 
 							for(size_t k=0;k<tab->getSize();++k)
 							{
-								std::wstring tmp=mid;
+								std::string tmp=mid;
 								mCurrValues=tab->getObject(k);
 								transform(tmp);
 								output+=tmp;
@@ -334,8 +318,8 @@ void CTemplate::transform(std::wstring &output)
 				}
 				bool ifndef1=false,ifndef2=false;
 				bool next2=false;
-				if( ((i==0||i==1) && next(output, i, L"#ifdef ")==true) || (next2=next(output, i, L"\r\n#ifdef "))==true 
-					||((i==0||i==1) && (ifndef1=next(output, i, L"#ifndef "))==true) || ((ifndef2=next(output, i, L"\r\n#ifndef "))==true)
+				if( ((i==0||i==1) && next(output, i, "#ifdef ")==true) || (next2=next(output, i, "\r\n#ifdef "))==true 
+					||((i==0||i==1) && (ifndef1=next(output, i, "#ifndef "))==true) || ((ifndef2=next(output, i, "\r\n#ifndef "))==true)
 					)
 				{
 					bool ifndef=false;
@@ -345,7 +329,7 @@ void CTemplate::transform(std::wstring &output)
 					if( next2==true||ifndef2==true )
 						i+=2;
 
-					std::wstring var;
+					std::string var;
 					int addi=7;
 					if( ifndef==true )
 						++addi;
@@ -357,7 +341,7 @@ void CTemplate::transform(std::wstring &output)
 						var+=output[j];
 					}
 
-					std::wstring value;
+					std::string value;
 
 					bool found=FindValue(var, value);
 
@@ -376,21 +360,21 @@ void CTemplate::transform(std::wstring &output)
 						size_t proc=0;
 						for(j=i;j<output.size();++j)
 						{
-							if( next(output, j , L"\r\n#ifdef") ||  next(output, j , L"\r\n#ifndef") )
+							if( next(output, j , "\r\n#ifdef") ||  next(output, j , "\r\n#ifndef") )
 							{
 								++proc;
 							}
-							else if( proc==0 && next(output, j, L"\r\n#elseif" ) )
+							else if( proc==0 && next(output, j, "\r\n#elseif" ) )
 							{
 								if( todel==std::string::npos )
 									todel=j;
 							}
-							else if( proc==0 && next(output, j, L"\r\n#else" ) )
+							else if( proc==0 && next(output, j, "\r\n#else" ) )
 							{
 								if( todel==std::string::npos )
 									todel=j;
 							}
-							else if( next(output, j, L"\r\n#endif" ) )
+							else if( next(output, j, "\r\n#endif" ) )
 							{
 								if( proc!=0 )
 								{
@@ -414,13 +398,13 @@ void CTemplate::transform(std::wstring &output)
 						size_t proc=0;
 						for(size_t j=i;j<output.size();++j)
 						{
-							if( next(output, j , L"\r\n#ifdef") ||  next(output, j , L"\r\n#ifndef") )
+							if( next(output, j , "\r\n#ifdef") ||  next(output, j , "\r\n#ifndef") )
 							{
 								++proc;
 							}
-							else if( proc==0 && next(output, j , L"\r\n#elseif" ) )
+							else if( proc==0 && next(output, j , "\r\n#elseif" ) )
 							{
-								std::wstring key;
+								std::string key;
 								for(size_t k=j+10;k<output.size();++k)
 								{
 									if( output[k]=='\r' || output[k]=='\n' )
@@ -429,7 +413,7 @@ void CTemplate::transform(std::wstring &output)
 								}
 								if( enterelseif==std::string::npos )
 								{
-									std::wstring value;
+									std::string value;
 									if( FindValue( key, value) )
 									{
 										enterelseif=j;
@@ -441,7 +425,7 @@ void CTemplate::transform(std::wstring &output)
 								}
 								output.erase(j, 10+key.size() );
 							}
-							else if( proc==0 &&next(output, j, L"\r\n#else") )
+							else if( proc==0 &&next(output, j, "\r\n#else") )
 							{
 								if( enterelseif==std::string::npos )
 								{
@@ -455,7 +439,7 @@ void CTemplate::transform(std::wstring &output)
 								if( todel>0 )
 									todel--;
 							}
-							else if( next(output, j, L"\r\n#endif" ) )
+							else if( next(output, j, "\r\n#endif" ) )
 							{
 								if( proc!=0 )
 									--proc;
@@ -469,7 +453,7 @@ void CTemplate::transform(std::wstring &output)
 							}
 							++todel;
 						}
-						std::wstring data;
+						std::string data;
 						if( enterelseif!=std::string::npos )
 							data=output.substr(enterelseif, stopelseif-enterelseif);
 						if( i==0 && data.size()>1 )
@@ -493,9 +477,9 @@ void CTemplate::transform(std::wstring &output)
 						}
 					}
 				}
-				if( next(output, i, L"#include \"")==true )
+				if( next(output, i, "#include \"")==true )
 				{
-					std::wstring fn;
+					std::string fn;
 					bool inside=false;
 					for(size_t j=i;j<output.size();++j)
 					{
@@ -508,7 +492,7 @@ void CTemplate::transform(std::wstring &output)
 					}
 
 					output.erase(i,11+fn.size() );
-					std::wstring ttext=getFileUTF8(ExtractFilePath(file)+"/"+wnarrow(fn) );
+					std::string ttext=getFile(ExtractFilePath(file)+"/"+fn );
 					transform(ttext);
 					output.insert(i, ttext );
 				}				

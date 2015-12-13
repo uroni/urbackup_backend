@@ -18,7 +18,7 @@
 
 #include "PipeFile.h"
 
-PipeFile::PipeFile(const std::wstring& pCmd)
+PipeFile::PipeFile(const std::string& pCmd)
 	: PipeFileBase(pCmd),
 	hStderr(INVALID_HANDLE_VALUE),
 	hStdout(INVALID_HANDLE_VALUE)
@@ -67,13 +67,13 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 	start_info.hStdOutput = hStdoutW;
 	start_info.dwFlags |= STARTF_USESTDHANDLES;
 
-	BOOL b = CreateProcessW(NULL, const_cast<LPWSTR>(getFilenameW().c_str()),
+	BOOL b = CreateProcessW(NULL, const_cast<LPWSTR>(Server->ConvertToWchar(getFilename()).c_str()),
 		&saAttr, NULL, TRUE, 0, NULL, NULL, &start_info,
 		&proc_info);
 
 	if(!b)
 	{
-		Server->Log(L"Error starting script \"" + getFilenameW() + L"\"", LL_ERROR);
+		Server->Log("Error starting script \"" + getFilename() + "\"", LL_ERROR);
 		has_error=true;
 	}
 

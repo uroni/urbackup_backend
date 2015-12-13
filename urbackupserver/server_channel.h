@@ -14,7 +14,7 @@ class SessionKeepaliveThread;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identiy);
+	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, const std::string& identiy);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -37,8 +37,8 @@ private:
 	void SALT(str_map& params);
 
 	void GET_BACKUPCLIENTS(void);
-	void GET_BACKUPIMAGES(const std::wstring& clientname);
-	void GET_FILE_BACKUPS(const std::wstring& clientname);
+	void GET_BACKUPIMAGES(const std::string& clientname);
+	void GET_FILE_BACKUPS(const std::string& clientname);
 	void GET_FILE_BACKUPS_TOKENS(str_map& params);
 	void GET_FILE_LIST_TOKENS(str_map& params);
 	void DOWNLOAD_IMAGE(str_map& params);
@@ -60,7 +60,7 @@ private:
 	bool internet_mode;
 
 	std::string salt;
-	std::wstring session;
+	std::string session;
 	std::vector<int> client_right_ids;
 	bool all_client_rights;
 
@@ -71,7 +71,7 @@ private:
 
 	SessionKeepaliveThread* keepalive_thread;
 
-	std::wstring clientname;
+	std::string clientname;
 
 	std::string last_fileaccesstokens;
 };
