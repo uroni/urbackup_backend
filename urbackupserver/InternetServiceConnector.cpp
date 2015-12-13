@@ -165,6 +165,7 @@ bool InternetServiceConnector::Run(void)
 {
 	if(stop_connecting)
 	{
+		IScopedLock lock(local_mutex);
 		cleanup_pipes(false);
 		return false;
 	}
@@ -218,6 +219,7 @@ bool InternetServiceConnector::Run(void)
 			IScopedLock lock(mutex);
 			if(!connect_start)
 			{
+				has_timeout=true;
 				cleanup_pipes(true);
 				return false;
 			}
@@ -544,9 +546,14 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 		else
 		{
 			InternetServiceConnector *isc=iter->second.spare_connections.back();
-			iter->second.spare_connections.pop_back();
 
-			isc->connectStart();
+			if(!isc->connectStart())
+			{
+				Server->Log("Connecting on internet connection failed (1). Service="+convert((int)service), LL_DEBUG);
+				continue;
+			}
+
+			iter->second.spare_connections.pop_back();
 
 			lock.relock(NULL);
 
@@ -631,9 +638,15 @@ bool InternetServiceConnector::closeSocket(void)
 		return true;
 }
 
-void InternetServiceConnector::connectStart()
+bool InternetServiceConnector::connectStart()
 {
+	if(has_timeout)
+	{
+		return false;
+	}
+
 	connect_start=true;
+	return true;
 }
 
 bool InternetServiceConnector::Connect(char service, int timems)
