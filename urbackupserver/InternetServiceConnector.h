@@ -70,7 +70,7 @@ public:
 	static std::vector<std::pair<std::string, std::string> > getOnlineClients(void);
 	
 
-	void connectStart();
+	bool connectStart();
 	bool Connect(char service, int timems);
 	void stopConnecting(void);
 	void freeConnection(void);
