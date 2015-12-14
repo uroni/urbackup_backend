@@ -127,7 +127,18 @@ function refresh_page()
 function change_lang_select()
 {
 	var selidx=I('change_lang_select').selectedIndex;
-	change_lang(g.languages[selidx].s, true);
+	
+	var cookie_lang = g.languages[selidx].s;
+	
+	var d = new Date();
+	d.setTime(d.getTime() + 365*24*60*60*1000);		
+	document.cookie="urbackup_lang="+cookie_lang+"; expires="+d.toUTCString()+"";
+	if(window.localStorage)
+	{
+		window.localStorage.setItem('urbackup_lang', cookie_lang);
+	}
+	
+	change_lang(cookie_lang, true);
 }
 
 
@@ -178,7 +189,22 @@ function try_anonymous_login(data)
 			}
 		}
 		g.startup=false;
-		change_lang(lang, false);
+		
+		cookie_lang = getCookie("urbackup_lang");
+		
+		if(!cookie_lang && window.localStorage)
+		{
+			cookie_lang = localStorage.getItem("urbackup_lang");
+		}
+		
+		if(cookie_lang)
+		{
+			change_lang(cookie_lang, false);
+		}
+		else
+		{		
+			change_lang(lang, false);
+		}
 	}
 	
 	if(data.upgrading_database)
