@@ -1165,7 +1165,7 @@ namespace
 {
 	struct SDirStatItem
 	{
-		bool has_perm;
+		size_t has_perm;
 		size_t id;
 		size_t nodecount;
 		size_t identicalcount;
@@ -1183,6 +1183,11 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 	size_t curr_id = 0;
 	std::vector<size_t> identical_permission_roots;
 	SFile data;
+	std::stack<std::set<std::string> > folder_files;
+	folder_files.push(std::set<std::string>());
+
+	std::string curr_path;
+	std::string metadata_home_path = backuppath + os_file_sep() + ".hashes";
 
 	while((bread=file_list_f->Read(buffer, 4096))>0)
 	{
@@ -1191,16 +1196,63 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 			std::map<std::string, std::string> extra;
 			if(file_list_parser.nextEntry(buffer[i], data, &extra))
 			{
-				std::string permissions = base64_decode_dash(extra["dacl"]);
 
-				bool has_perm=false;
+				std::string osspecific_name;
+				std::string permissions;
+
+				if(!data.isdir || data.name!="..")
+				{
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
+				}
+
+				if(data.isdir)
+				{
+					if(data.name=="..")
+					{
+						folder_files.pop();
+						curr_path = ExtractFilePath(curr_path, os_file_sep());
+					}
+					else
+					{
+						folder_files.push(std::set<std::string>());
+						curr_path += os_file_sep() + osspecific_name;
+
+						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
+
+						FileMetadata metadata;
+						if(!read_metadata(metadata_fn, metadata))
+						{
+							ServerLogger::Log(logid, "Error reading metadata of "+curr_path, LL_WARNING);
+						}
+						else
+						{
+							permissions = metadata.file_permissions;
+						}
+					}
+				}
+				else
+				{
+					std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + escape_metadata_fn(osspecific_name);
+					std::string filename = curr_path + os_file_sep() + osspecific_name;
+
+					FileMetadata metadata;
+					if(!read_metadata(metadata_fn, metadata))
+					{
+						ServerLogger::Log(logid, "Error reading metadata of "+filename, LL_WARNING);
+					}
+					else
+					{
+						permissions = metadata.file_permissions;
+					}
+				}
+
+				size_t has_perm=0;
 				for(size_t j=0;j<ids.size();++j)
 				{
 					bool denied=false;
 					if(FileMetadata::hasPermission(permissions, ids[j], denied))
 					{
-						has_perm=true;
-						break;
+						++has_perm;
 					}
 				}
 
@@ -1269,7 +1321,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots)
 {
-	std::string user_view_home_path = backuppath + os_file_sep() + "user_views" + os_file_sep() + (accoutname);
+	std::string user_view_home_path = backuppath + os_file_sep() + "user_views" + os_file_sep() + accoutname;
 
 	if(!os_create_dir_recursive(os_file_prefix(user_view_home_path)))
 	{
@@ -1283,6 +1335,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 	_u32 bread;
 	FileListParser file_list_parser;
 	std::string curr_path;
+	std::string metadata_home_path = backuppath + os_file_sep() + ".hashes";
 	size_t skip = 0;
 	size_t id = 0;
 	SFile data;
@@ -1307,6 +1360,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 							if(skip==0)
 							{
 								curr_path = ExtractFilePath(curr_path, os_file_sep());
+								folder_files.pop();
 							}
 						}
 						else
@@ -1319,13 +1373,13 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 				}
 
 				std::string osspecific_name;
+				std::string permissions;
 
 				if(!data.isdir || data.name!="..")
 				{
 					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
 				}
 
-				std::string permissions = base64_decode_dash(extra["dacl"]);
 				if(data.isdir)
 				{
 					if(data.name=="..")
@@ -1338,11 +1392,19 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						folder_files.push(std::set<std::string>());
 						curr_path += os_file_sep() + osspecific_name;
 
+						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
+
+						FileMetadata metadata;
+						if(!read_metadata(metadata_fn, metadata))
+						{
+							ServerLogger::Log(logid, "Error reading metadata of "+curr_path, LL_WARNING);
+						}
+
 						bool has_perm = false;
 						for(size_t j=0;j<ids.size();++j)
 						{
 							bool denied=false;
-							if(FileMetadata::hasPermission(permissions, ids[j], denied))
+							if(FileMetadata::hasPermission(metadata.file_permissions, ids[j], denied))
 							{
 								if(std::binary_search(identical_permission_roots.begin(),
 									identical_permission_roots.end(), id))
@@ -1364,7 +1426,6 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 									}
 								}
 								has_perm=true;
-								break;
 							}
 						}
 						
@@ -1376,13 +1437,20 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 				}
 				else
 				{
+					std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + escape_metadata_fn(osspecific_name);
+					std::string filename = curr_path + os_file_sep() + osspecific_name;
+
+					FileMetadata metadata;
+					if(!read_metadata(metadata_fn, metadata))
+					{
+						ServerLogger::Log(logid, "Error reading metadata of "+filename, LL_WARNING);
+					}
+
 					for(size_t j=0;j<ids.size();++j)
 					{
 						bool denied=false;
 						if(FileMetadata::hasPermission(permissions, ids[j], denied))
 						{
-							std::string filename = curr_path + os_file_sep() + osspecific_name;
-
 							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
 								os_file_prefix(user_view_home_path + filename)))
 							{

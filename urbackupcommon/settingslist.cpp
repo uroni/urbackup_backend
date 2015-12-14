@@ -84,6 +84,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("local_full_image_style");
 	ret.push_back("internet_incr_image_style");
 	ret.push_back("internet_full_image_style");
+	ret.push_back("create_linked_user_views");
+	ret.push_back("max_running_jobs_per_client");
 	return ret;
 }
 
@@ -108,6 +110,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("background_backups");
 	ret.push_back("internet_incr_image_style");
 	ret.push_back("internet_full_image_style");
+	ret.push_back("create_linked_user_views");
+	ret.push_back("max_running_jobs_per_client");
 	return ret;
 }
 

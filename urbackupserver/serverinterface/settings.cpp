@@ -152,6 +152,8 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(background_backups);
 	SET_SETTING(internet_incr_image_style);
 	SET_SETTING(internet_full_image_style);
+	SET_SETTING(create_linked_user_views);
+	SET_SETTING(max_running_jobs_per_client);
 #undef SET_SETTING
 	return ret;
 }

@@ -418,7 +418,7 @@ bool FullFileBackup::doFileBackup()
 				{
 					if(!has_orig_path)
 					{
-						metadata.orig_path = curr_orig_path + orig_sep + (cf.name);
+						metadata.orig_path = curr_orig_path + orig_sep + cf.name;
 					}
 
 					bool file_ok=false;

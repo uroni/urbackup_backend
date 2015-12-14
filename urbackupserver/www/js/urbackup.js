@@ -1968,7 +1968,7 @@ function show_settings2(data)
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
-			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
+			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -2098,7 +2098,7 @@ function show_settings2(data)
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
-			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
+			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -2415,6 +2415,7 @@ g.settings_list=[
 "local_incr_image_style",
 "local_full_image_style",
 "background_backups",
+"create_linked_user_views",
 "internet_incr_image_style",
 "internet_full_image_style"
 ];

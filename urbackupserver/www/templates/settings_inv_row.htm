@@ -528,7 +528,7 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="internet_incr_file_transfer_mode">"{tInternet incremental file backup transfer mode}:</label>
+				<label class="col-sm-4 control-label" for="internet_incr_file_transfer_mode">{tInternet incremental file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_incr_file_transfer_mode"><option value="raw" {internet_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {internet_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
 				</div>
@@ -571,7 +571,7 @@
 			</div>
 			{global_settings_start|s}
 			<div class="form-group">
-				<label class="col-sm-4 control-label" for="update_stats_cachesize">{tUpdate stats database cachesize}:</label>
+				<label class="col-sm-4 control-label" for="update_stats_cachesize">{tDatabase cache size during batch processing}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="update_stats_cachesize" value="{update_stats_cachesize}"/>
@@ -608,6 +608,24 @@
 				<label class="col-sm-4 control-label" for="internet_readd_file_entries">{tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_readd_file_entries" value="true" {internet_readd_file_entries}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="background_backups">{tRun backups with background priority on the clients}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="background_backups" value="true" {background_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="create_linked_user_views">{tCreate symbolically linked views for each user on the clients after file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="create_linked_user_views" value="true" {create_linked_user_views}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="max_running_jobs_per_client">{tMaximum number of simultaneous jobs per client}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="max_running_jobs_per_client" value="{max_running_jobs_per_client}"/></label>
 				</div>
 			</div>
 		</form>
