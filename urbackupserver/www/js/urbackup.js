@@ -3831,7 +3831,7 @@ function setBackupWindowDisplay(display)
 }
 function showBackupWindowDetails()
 {
-	setBackupWindowDisplay("table-row");
+	setBackupWindowDisplay("inline");
 	I('backup_window_row').style.display="none";
 	g.showing_backup_window_details=true;
 }
