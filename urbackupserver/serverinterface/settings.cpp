@@ -773,7 +773,9 @@ ACTION_IMPL(settings)
 				s=getClientSettings(db, t_clientid);
 				obj.set("overwrite", s.overwrite);
 				obj.set("clientid", t_clientid);
-				obj.set("main_client", backupdao.getVirtualMainClientname(t_clientid).value.empty());
+				ServerBackupDao::SClientName client_name = backupdao.getVirtualMainClientname(t_clientid);
+				obj.set("main_client", client_name.virtualmain.empty());
+				obj.set("clientname", client_name.name);
 
 				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings",  obj);

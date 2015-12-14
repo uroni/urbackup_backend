@@ -285,6 +285,7 @@ function startLoading()
 	
 	I('loading_div').style.visibility="visible";
 	g.loading=true;
+	SetLoadingCursor();
 	return true;
 }
 
@@ -292,6 +293,7 @@ function stopLoading()
 {
 	I('loading_div').style.visibility="hidden";
 	g.loading=false;
+	ResetCursor();
 }
 
 
@@ -505,7 +507,20 @@ function show_progress2(data)
 		{
 			var obj=data.lastacts[i];
 			var action=0;
-			if(obj.image==0)
+			var no_size=false;
+			if(obj.restore!=0)
+			{
+				if(obj.image==0)
+				{
+					action=8;
+				}
+				else
+				{
+					action=9;
+				}
+				no_size=true;
+			}
+			else if(obj.image==0)
 			{
 				if(obj.resumed==0)
 				{
@@ -533,12 +548,19 @@ function show_progress2(data)
 			if(obj.del)
 				a+="_d";
 			obj.action=trans(a);
-			if(obj.size_bytes==-1)
-				obj.size=trans("unknown");
+			if(no_size)
+			{
+				obj.size="-";
+			}
 			else
-				obj.size=format_size(obj.size_bytes);
-			if(obj.del)
-				obj.size="-"+obj.size;
+			{
+				if(obj.size_bytes==-1)
+					obj.size=trans("unknown");
+				else
+					obj.size=format_size(obj.size_bytes);
+				if(obj.del)
+					obj.size="-"+obj.size;
+			}
 			
 			obj.duration/=60;
 			obj.duration=Math.ceil(obj.duration);
@@ -595,7 +617,7 @@ function show_statistics2(data)
 	if(data.users.length>0)
 	{
 		ndata+="<div class=\"col-sm-2\">";
-		ndata+="<select class=\"form-control\" onchange=\"stat_client()\" id=\"statclient\">";
+		ndata+="<select onchange=\"stat_client()\" class=\"selectpicker\" data-live-search=\"true\" id=\"statclient\">";
 		if(g.settings_nav_pos<1)
 		{
 			ndata+="<option value=\"n\">"+trans("clients")+"</option>";
@@ -615,6 +637,8 @@ function show_statistics2(data)
 	ndata+="</div>";
 	ndata+="<br/>&nbsp<br/>";
 	I('nav_pos').innerHTML=ndata;
+	
+	$('#statclient').selectpicker({});
 }
 
 
@@ -1267,8 +1291,8 @@ function show_backups2(data)
 		for(var i=0;i<data.clients.length;++i)
 		{
 			var obj=data.clients[i];
-			if(obj.lastbackup.length=="")
-				obj.lastbackup="&nbsp;";
+			if(obj.lastbackup==0)
+				obj.lastbackup="-";
 			else
 				obj.lastbackup = format_unix_timestamp(obj.lastbackup);
 			rows+=dustRender("backups_clients_row", obj);
@@ -1315,7 +1339,14 @@ function show_backups2(data)
 			
 			obj.clientid=data.clientid;
 			
-			obj.backuptime = format_unix_timestamp(obj.backuptime);
+			if(obj.backuptime!=0)
+			{
+				obj.backuptime = format_unix_timestamp(obj.backuptime);
+			}
+			else
+			{
+				obj.backuptime = "-";
+			}
 				
 			rows+=dustRender("backups_backups_row", obj);
 		}
@@ -1836,21 +1867,35 @@ function show_settings2(data)
 			
 			if(nav.clients.length>0)
 			{
-				n+="<li role=\"presentation\" class=\"dropdown\">";
-				n+="<a class=\"dropdown-toggle\" data-toggle=\"dropdown\" href=\"#\">Client <span class=\"caret\"></span></a>";
-				n+="<ul class=\"dropdown-menu\" role=\"menu\">";
+				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\">";
+				n+="<option value=\"n\">"+trans("clients")+"</option>";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
-					n+="<li><a href=\"javascript: clientSettings(" + nav.clients[i].id + ", " + idx + ")\">" + nav.clients[i].name + "</a></li>";
+					var selected = "";
+					if(g.settings_nav_pos==idx)
+					{
+						selected = "selected=\"selected\"";
+					}
+					n+="<option value=\""+nav.clients[i].id + ";" + idx + "\" "+selected+">" + nav.clients[i].name + "</option>";
 					++idx;
 				}
+				n+="</select>";
 			}
 		}
 		I('nav_pos').innerHTML=n;
+		
+		$("#clientpicker").change(function() {
+			var vals = I("clientpicker")[I("clientpicker").selectedIndex].value.split(";");
+			clientSettings(vals[0], vals[1]);
+		});
+		
+		$('#clientpicker').selectpicker({
+		  style: 'btn',
+		});
 	}
 	
 	var ndata="";
-	var tabber_set_idx=-1;
+	var tabber_set_idx=false;
 	if(data.sa)
 	{
 		if(data.sa=="general")
@@ -1977,7 +2022,7 @@ function show_settings2(data)
 			if(data.saved_ok)
 			{
 				ndata+=dustRender("settings_save_ok");
-				tabber_set_idx=g.tabberidx;
+				tabber_set_idx=true;
 			}
 		}
 		else if(data.sa=="clientsettings")
@@ -2084,11 +2129,11 @@ function show_settings2(data)
 			if(data.saved_ok)
 			{
 				ndata+=dustRender("settings_save_ok");
-				tabber_set_idx=g.tabberidx;
+				tabber_set_idx=true
 			}
 			else if(data.saved_part)
 			{
-				tabber_set_idx=g.tabberidx;
+				tabber_set_idx=true;
 			}
 		}
 		else if(data.sa=="mail")
@@ -2230,9 +2275,9 @@ function show_settings2(data)
 		changePW();
 	}
 	
-	if(update_tabber)
+	if(update_tabber && tabber_set_idx)
 	{
-		//TODO: sett column to tabber_set_idx
+		$('#settings_tabber a[href="' + g.active_pane_name + '"]').tab('show');
 	}
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
@@ -2246,6 +2291,10 @@ function show_settings2(data)
 					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft, data.sa=="general");
 		}
 	}
+	
+	$('#settings_tabber').bind('click', function (e) {
+        g.active_pane_name = e.target.getAttribute("href");
+    });
 }
 function settingsCheckboxHandle(cbid)
 {
@@ -3101,7 +3150,7 @@ function show_logs2(data)
 		np+=trans("filter")+": ";
 		np+="</label>";
 		np+="<div class=\"col-sm-2\">";
-		np+="<select class=\"form-control\" onchange=\"logClientChange()\" id=\"logclients\">";
+		np+="<select class=\"form-control\" onchange=\"logClientChange()\" id=\"logclients\" class=\"selectpicker\" data-live-search=\"true\" >";
 		np+="<option value=\"-1\">"+trans("all")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
@@ -3123,6 +3172,8 @@ function show_logs2(data)
 		
 		
 		I('nav_pos').innerHTML=np;
+		$("#logclients").selectpicker();
+		
 		I('logsfilter').selectedIndex=2-data.ll;
 		
 		if(data.all_clients)
@@ -3585,19 +3636,7 @@ function backupTypeStr(bt)
 }
 function getArchiveTable()
 {
-	archive_table=I('archive_table');
-	
-	if(archive_table.childNodes.length<=2)
-	{
-		for(var i=0;i<archive_table.childNodes.length;++i)
-		{
-			if(archive_table.childNodes[i].childNodes.length>2)
-			{
-				archive_table=archive_table.childNodes[i];
-				break;
-			}
-		}
-	}
+	archive_table=I('archive_table').childNodes[1];
 	return archive_table;
 }
 function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_timeleft, global)
@@ -3637,36 +3676,24 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	
 	var archive_table=getArchiveTable();
 	
-	if(archive_table.childNodes.length>2)
-	{
-		var n=0;
-		for(var i=archive_table.childNodes.length-1;i>=0;--i)
-		{
-			if(archive_table.childNodes[i].nodeName.toLowerCase()=='tr')
-				++n;
-			
-			if(n==2)
-			{
-				archive_table.insertBefore(new_item, archive_table.childNodes[i]);
-				break;
-			}
-		}
-	}
+	archive_table.appendChild(new_item);
 	
 	++g.archive_item_id;
 }
 function replaceArchiveId(old_id, new_id)
 {
 	var archive_timeleft;
+	var show_archive_timeleft=false;
 	if(I('archive_timeleft_'+old_id))
 	{
 		archive_timeleft = I('archive_timeleft_'+old_id).value;
+		show_archive_timeleft=true;
 	}
 	var item=I('archive_'+old_id);
 	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
-			archive_timeleft: archive_timeleft } );
+			archive_timeleft: archive_timeleft, show_archive_timeleft: show_archive_timeleft } );
 }
 function deleteArchiveItem(id)
 {

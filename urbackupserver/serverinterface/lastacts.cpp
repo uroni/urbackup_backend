@@ -67,7 +67,7 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 	"FROM del_stats e INNER JOIN clients f ON e.clientid=f.id "
 	"WHERE 1=1 "+filter+
 	"UNION ALL " 
-	"SELECT g.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', g.created, 'localtime') AS backuptime, g.created as bt,"
+	"SELECT g.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', g.created) AS backuptime, g.created as bt,"
 	"0 AS incremental, (strftime('%s',g.finished)-strftime('%s',g.created)) AS duration, -1 AS size_bytes, 0 AS image, 0 AS del, 0 AS size_calculated, 0 AS resumed, 1 AS restore "
 	"FROM restores g INNER JOIN clients h ON g.clientid=h.id "
 	"WHERE 1=1 "+filter+

@@ -47,6 +47,12 @@ public:
 		std::string linkname;
 		std::string linktarget;
 	};
+	struct SClientName
+	{
+		bool exists;
+		std::string virtualmain;
+		std::string name;
+	};
 	struct SDuration
 	{
 		int64 indexing_time_ms;
@@ -158,7 +164,7 @@ public:
 	void addToOldBackupfolders(const std::string& backupfolder);
 	std::vector<std::string> getOldBackupfolders(void);
 	std::vector<std::string> getDeletePendingClientNames(void);
-	CondString getVirtualMainClientname(int clientid);
+	SClientName getVirtualMainClientname(int clientid);
 	bool createTemporaryLastFilesTable(void);
 	void dropTemporaryLastFilesTable(void);
 	bool createTemporaryLastFilesTableIndex(void);

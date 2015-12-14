@@ -114,25 +114,12 @@ function getScreenY()
 		
 function SetLoadingCursor()
 {
-	document.getElementsByTagName('body')[0].style.cursor="wait";
+	$('body').addClass('wait');
 }
 	
 function ResetCursor()
 {
-	document.getElementsByTagName('body')[0].style.cursor="auto";
-	setTimeout("ResetCursor()",100);
-}
-	
-function StartLoad()
-{
-	I('loading_sign').style.visibility="visible";
-	SetLoadingCursor();
-}
-	
-function StopLoad()
-{
-	I('loading_sign').style.visibility="hidden";		
-	ResetCursor();
+	$('body').removeClass('wait');
 }
 
 function getURL(action, parameters)

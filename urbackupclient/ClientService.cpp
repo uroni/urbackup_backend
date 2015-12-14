@@ -1729,7 +1729,7 @@ std::string ClientConnector::getLogpoints(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	int timeoutms=300;
-	IQuery *q=db->Prepare("SELECT id, strftime('"+time_format_str+"',ttime, 'localtime') AS ltime FROM logs ORDER BY ttime DESC LIMIT 100");
+	IQuery *q=db->Prepare("SELECT id, strftime('%s',ttime) AS ltime FROM logs ORDER BY ttime DESC LIMIT 100");
 	db_results res=q->Read(&timeoutms);
 	std::string ret;
 	for(size_t i=0;i<res.size();++i)

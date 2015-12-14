@@ -346,25 +346,26 @@ std::vector<std::string> ServerBackupDao::getDeletePendingClientNames(void)
 
 /**
 * @-SQLGenAccess
-* @func string ServerBackupDao::getVirtualMainClientname
-* @return string virtualmain
+* @func SClientName ServerBackupDao::getVirtualMainClientname
+* @return string virtualmain, string name
 * @sql
-*      SELECT virtualmain FROM clients WHERE id=:clientid(int)
+*      SELECT virtualmain, name FROM clients WHERE id=:clientid(int)
 */
-ServerBackupDao::CondString ServerBackupDao::getVirtualMainClientname(int clientid)
+ServerBackupDao::SClientName ServerBackupDao::getVirtualMainClientname(int clientid)
 {
 	if(q_getVirtualMainClientname==NULL)
 	{
-		q_getVirtualMainClientname=db->Prepare("SELECT virtualmain FROM clients WHERE id=?", false);
+		q_getVirtualMainClientname=db->Prepare("SELECT virtualmain, name FROM clients WHERE id=?", false);
 	}
 	q_getVirtualMainClientname->Bind(clientid);
 	db_results res=q_getVirtualMainClientname->Read();
 	q_getVirtualMainClientname->Reset();
-	CondString ret = { false, "" };
+	SClientName ret = { false, "", "" };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=res[0]["virtualmain"];
+		ret.virtualmain=res[0]["virtualmain"];
+		ret.name=res[0]["name"];
 	}
 	return ret;
 }
