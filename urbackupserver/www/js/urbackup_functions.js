@@ -234,7 +234,7 @@ function loadGraph(action, parameters, pDivid, pGraphdata, pAddHtml)
 	
 	this.init_cb = function(data)
 	{	
-		I(divid).style.width = graphdata.width+"px";
+		I(divid).style.width = "100%";
 		I(divid).style.height = graphdata.height+"px";
 		I(divid).innerHTML="<span id='"+divid+"_plot' style='width: 100%; height: 100%; display: inline-block'></span>"+addHtml;
 		I(divid).style.display="inline-block";

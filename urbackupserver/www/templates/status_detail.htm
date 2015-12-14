@@ -44,22 +44,24 @@
 		</div>
 		
 		{?removed_clients_table}
-		<table id="status_table" class="table table-striped">
-			<thead>
-				<tr>
-					<th>{tComputer name}</th>
-					<th>&nbsp;</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#removed_clients}
-				<tr>
-					<td>{name}</td>
-					<td>{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
-				</tr>
-				{/removed_clients}
-			</tbody>
-		</table>
+		<div style="margin-top: 20px">
+			<table id="status_table" class="table table-striped">
+				<thead>
+					<tr>
+						<th>{tComputer name}</th>
+						<th>&nbsp;</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#removed_clients}
+					<tr>
+						<td>{name}</td>
+						<td>{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
+					</tr>
+					{/removed_clients}
+				</tbody>
+			</table>
+		</div>
 		{/removed_clients_table}
 	</div>
 </div>
