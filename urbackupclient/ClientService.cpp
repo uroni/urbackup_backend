@@ -1291,7 +1291,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				}
 				else
 				{
-					std::string cmd="\""+Server->getServerWorkingDir()+"\\UrBackupClient.exe\" access \"%1\"";
+					std::wstring cmd=Server->ConvertToWchar("\""+Server->getServerWorkingDir()+"\\UrBackupClient.exe\" access \"%1\"");
 					//cmd = greplace(L"\\", L"\\\\", cmd);
 					if(RegSetValueExW(urbackup_access_command, NULL, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()), static_cast<DWORD>(cmd.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
 					{
@@ -1304,9 +1304,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					Server->Log("Error setting MUIVerb in registry", LL_ERROR);
 				}
 
+				std::wstring icon_path = Server->ConvertToWchar(Server->getServerWorkingDir()+"\\backup-ok.ico");
+
+				if(RegSetValueExW(urbackup_access, L"Icon", 0, REG_SZ, reinterpret_cast<const BYTE*>(icon_path.c_str()), static_cast<DWORD>(icon_path.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
+				{
+					Server->Log("Error setting Icon in registry", LL_ERROR);
+				}			
+
 				std::string path = greplace("/", "\\", all_backupdirs[i]);
 
-				std::string applies_to="System.ParsingPath:~<\""+path+"\"";
+				std::wstring applies_to=Server->ConvertToWchar("System.ParsingPath:~<\""+path+"\"");
 
 				if(RegSetValueExW(urbackup_access, L"AppliesTo", 0, REG_SZ, reinterpret_cast<const BYTE*>(applies_to.c_str()), static_cast<DWORD>(applies_to.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
 				{
