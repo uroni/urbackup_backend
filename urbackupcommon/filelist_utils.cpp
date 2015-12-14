@@ -132,6 +132,9 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 			t_name="";
 			if(data.isdir && data.name=="..")
 			{
+				data.last_modified=0;
+				data.size = 0;
+
 				if(ch=='\n')
 				{
 					reset();
@@ -146,6 +149,18 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 					state=ParseState_ExtraParams;
 					return false;
 				}
+			}
+			else if(data.isdir && ch=='\n')
+			{
+				data.last_modified=0;
+				data.size = 0;
+
+				reset();
+				if(extra!=NULL)
+				{
+					extra->clear();
+				}
+				return true;
 			}
 			else
 			{
@@ -180,16 +195,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 		state=ParseState_Name;
 		break;
 	case ParseState_Filesize:
-		if(data.isdir && ch=='\n')
-		{
-			reset();
-			if(extra!=NULL)
-			{
-				extra->clear();
-			}
-			return true;
-		}
-		else if(ch!=' ')
+		if(ch!=' ')
 		{
 			t_name+=ch;
 		}
