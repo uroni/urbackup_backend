@@ -1431,10 +1431,11 @@ function show_backups2(data)
 			server_confirms_restore="true";
 		}
 		
+		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
 		var obj = {files: data.files, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
-			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			backupid: data.backupid, path: folder_path, folder_path: folder_path };
 			
 		if(!data.token_authentication)
 		{
@@ -1455,6 +1456,7 @@ function show_backups2(data)
 			var path=unescapeHTML(data.path);
 			
 			var cp="";
+			var folder_path="";
 			if(g.last_browse_backupid)
 			{
 				var els=path.split("/");
@@ -1485,6 +1487,7 @@ function show_backups2(data)
 						curr_path+="/"+els[i];
 						if(i+1<els.length)
 						{
+							folder_path+="/"+els[i];
 							cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
 							if(i!=0)
 							{
@@ -1580,10 +1583,18 @@ function show_backups2(data)
 				
 			items.push(obj);
 		}
-			
-		var obj = {items: items,
+		
+		var server_confirms_restore="false";
+		if(data.server_confirms_restore)
+		{
+			server_confirms_restore="true";
+		}
+		
+		var folder_path = encodeURIComponent(folder_path).replace(/'/g,"%27");
+		var obj = {items: items, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
-			clientid: data.clientid, cpath: cp, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			clientid: data.clientid, cpath: cp,
+			path: encodeURIComponent(path).replace(/'/g,"%27"), folder_path: folder_path };
 			
 		if(!data.token_authentication)
 		{
@@ -1690,7 +1701,7 @@ function downloadZIP(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
-function restoreFiles(clientid, backupid, path, server_confirms_restore)
+function restoreFiles(clientid, backupid, path, server_confirms_restore, fn_filter)
 {
 	if(!startLoading()) return;
 	
@@ -1703,7 +1714,13 @@ function restoreFiles(clientid, backupid, path, server_confirms_restore)
 		}
 	}
 	
-	new getJSON("backups", "sa=clientdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"), restore_callback);
+	var filter="";
+	if(fn_filter)
+	{
+		filter+="&filter="+fn_filter.replace(/\//g,"%2F")
+	}
+	
+	new getJSON("backups", "sa=clientdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F")+filter, restore_callback);
 }
 
 function restore_callback(data)

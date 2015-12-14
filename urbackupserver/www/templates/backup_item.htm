@@ -11,26 +11,28 @@
 			<thead>
 				<tr>
 					<th style="width: 25px" class="tabHeader">&nbsp;</th>
-					<th style="width: 150px" class="tabHeader">{tFile}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tSize}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tCreated}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tLast modified}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tLast accessed}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tBackup time}</th>
-					<th style="width: 150px" class="tabHeaderRight">{tVersion}</th>
+					<th style="width: 100%" class="tabHeader">{tFile}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tSize}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tCreated}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tLast modified}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tLast accessed}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tBackup time}</th>
+					<th style="white-space: nowrap;" class="tabHeaderRight">{tVersion}</th>
+					{?can_restore}<th style="white-space: nowrap;" class="tabHeaderRight"></th>{/can_restore}
 				</tr>
 			</thead>
 			<tbody>
 				{#items}
-					<tr onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')">
-						<td style="cursor: pointer">&nbsp;</td>
-						<td style="cursor: pointer">{name|s}</td>
-						<td style="cursor: pointer">{size|s}</td>
-						<td style="cursor: pointer">{creat|s}</td>
-						<td style="cursor: pointer">{mod|s}</td>
-						<td style="cursor: pointer">{access|s}</td>
-						<td style="cursor: pointer">{backuptime|s}</td>
-						{?has_version}<td style="cursor: pointer; vertical-align: bottom" valign="bottom" rowspan="{rowspan}">{version}</td>{/has_version}
+					<tr>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">&nbsp;</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{name|s}</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{size|s}</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{creat|s}</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{mod|s}</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{access|s}</td>
+						<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{backuptime|s}</td>
+						{?has_version}<td style="cursor: pointer; vertical-align: bottom;white-space: nowrap;" valign="bottom" rowspan="{rowspan}">{version}</td>{/has_version}
+						{?can_restore}<td style="cursor: pointer;white-space: nowrap;"><a class="btn btn-default" href="javascript: restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}')">{tRestore}</a></td>{/can_restore}
 					</tr>
 				{/items}
 			</tbody>

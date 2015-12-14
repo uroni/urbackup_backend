@@ -244,26 +244,25 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 {
 	ScopedDeleteFile del_3(todl.patch_dl_files.chunkhashes);
 
-	int64 dl_filesize;
-	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
+	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		todl.patch_dl_files.orig_file->Seek(0);
-		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, dl_filesize);
+		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize);
 		--hash_retries;
 	}
 
 	int64 fsize = todl.patch_dl_files.orig_file->Size();
 
-	if(rc==ERR_SUCCESS && fsize>dl_filesize)
-	{
-		os_file_truncate(os_file_prefix(todl.destfn), dl_filesize);
-	}
-
 	delete todl.patch_dl_files.orig_file;
 	todl.patch_dl_files.orig_file=NULL;
+
+	if(rc==ERR_SUCCESS && fsize>todl.predicted_filesize)
+	{
+		os_file_truncate(os_file_prefix(todl.destfn), todl.predicted_filesize);
+	}
 
 	if(rc!=ERR_SUCCESS)
 	{

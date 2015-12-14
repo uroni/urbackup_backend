@@ -11,12 +11,12 @@
 			<thead>
 				<tr>
 					<th style="width: 25px" class="tabHeader">&nbsp;</th>
-					<th style="width: 150px" class="tabHeader">{tFile}</th>
-					<th style="width: 150px" class="tabHeader">{tSize}</th>
-					<th style="width: 150px" class="tabHeader">{tCreated}</th>
-					<th style="width: 150px" class="tabHeader">{tLast modified}</th>
-					<th style="width: 150px" class="tabHeader">{tLast accessed}</th>
-					<th style="width: 50px" class="tabHeaderRight">&nbsp;</th>
+					<th style="width: 100%" class="tabHeader">{tFile}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tSize}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tCreated}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tLast modified}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tLast accessed}</th>
+					<th class="tabHeader">&nbsp;</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -24,21 +24,24 @@
 				<tr>
 					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">&nbsp;</td>
 					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{name|s}</td>
-					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{size}</td>
-					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{creat}</td>
-					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{mod}</td>
-					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{access}</td>
-					<td>{?list_items}<a href="javascript: tabMouseClick{proc}Access({clientid},{backupid},'{path}')">{tList in all backups}</a>{/list_items}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{size}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{creat}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{mod}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{access}</td>
+					<td style="white-space: nowrap;">
+						{?list_items}<a class="btn btn-default" href="javascript: tabMouseClick{proc}Access({clientid},{backupid},'{path|j}')">{tList}</a>{/list_items}
+						{?can_restore}<a class="btn btn-default" href="javascript: restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}')">{tRestore}</a>{/can_restore}</td>
+					<td>
 				</tr>
 			{/files}
 			</tbody>
 		</table>
 
 		{?download_zip}
-		<a class="btn btn-default" href="javascript: downloadZIP({clientid},{backupid},'{path}')">{tDownload folder as ZIP}</a>
+		<a class="btn btn-default" href="javascript: downloadZIP({clientid}, {backupid}, '{path|j}')">{tDownload folder as ZIP}</a>
 		{/download_zip}
 		{?can_restore}
-		<a class="btn btn-default" href="javascript: restoreFiles({clientid},{backupid},'{path}', {server_confirms_restore})">{tRestore folder to client}</a>
+		<a class="btn btn-default" href="javascript: restoreFiles({clientid}, {backupid},'{path|j}', {server_confirms_restore})">{tRestore folder to client}</a>
 		{/can_restore}
 	</div>
 </div>
