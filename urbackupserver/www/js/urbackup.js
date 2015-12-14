@@ -989,8 +989,8 @@ function show_status2(data)
 			}
 		}
 		
-		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" />";
-		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" />";
+		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" style=\"display:none\" />";
+		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" style=\"display:none\" />";
 		
 		if(obj.os_version_string)
 		{
@@ -3825,6 +3825,7 @@ function backups_started(data)
 				}
 			}
 			
+			I(dom_id).style.display="inline";
 			I(dom_id).innerHTML = text;
 		}
 	}
