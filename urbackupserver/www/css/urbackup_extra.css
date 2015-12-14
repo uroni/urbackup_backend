@@ -4,3 +4,6 @@
 body.wait *, body.wait {
 cursor:wait !important;
 }
+.progress {
+border: 1px solid black;
+}
