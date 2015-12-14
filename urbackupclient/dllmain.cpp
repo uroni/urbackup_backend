@@ -177,6 +177,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+#ifdef _WIN32
+	std::string restore=Server->getServerParameter("allow_restore");
+	if(restore=="default" && !Server->fileExists(Server->getServerWorkingDir()+"\\UrBackupClient.exe"))
+	{
+		//Client without tray icon
+		Server->setServerParameter("allow_restore", "server-confirms");
+	}
+	else
+	{
+		Server->setServerParameter("allow_restore", "client-confirms");
+	}
+#endif
+
 
 
 	ServerIdentityMgr::init_mutex();

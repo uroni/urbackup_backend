@@ -2843,6 +2843,7 @@ void ClientConnector::requestRestoreRestart()
 {
 	IScopedLock lock(backup_mutex);
 	++needs_restore_restart;
+	status_updated=true;
 }
 
 std::string ClientConnector::getHasNoRecentBackup()

@@ -654,6 +654,7 @@ std::string EscapeParamString(const std::string &pStr)
 	{
 		switch(pStr[i])
 		{
+		case '%': ret+="%25"; break;
 		case '&': ret+="%26"; break;
 		case '$': ret+="%24"; break;
 		case '/': ret+="%2F"; break;

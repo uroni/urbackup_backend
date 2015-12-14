@@ -420,7 +420,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 						IFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
 
 #ifdef _WIN32
-						if(orig_file)
+						if(orig_file==NULL)
 						{
 							size_t idx=0;
 							std::string old_local_fn=local_fn;

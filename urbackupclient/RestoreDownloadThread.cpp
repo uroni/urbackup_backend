@@ -187,7 +187,7 @@ void RestoreDownloadThread::queueStop()
     ni.action = EQueueAction_Quit;
 
     IScopedLock lock(mutex.get());
-    dl_queue.push_front(ni);
+    dl_queue.push_back(ni);
     cond->notify_one();
 }
 
