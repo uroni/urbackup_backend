@@ -96,6 +96,7 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 		obj.set("incremental", watoi(res[i]["incremental"]));
 		obj.set("duration", watoi64(res[i]["duration"]));
 		obj.set("resumed", watoi(res[i]["resumed"]));
+		obj.set("restore", watoi(res[i]["restore"]));
 		if(watoi(res[i]["size_calculated"])==1)
 		{
 			obj.set("size_bytes", watoi64(res[i]["size_bytes"]));

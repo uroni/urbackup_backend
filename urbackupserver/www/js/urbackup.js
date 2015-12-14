@@ -461,11 +461,11 @@ function show_progress1(stop_backup)
 		clearTimeout(g.refresh_timeout);
 	}
 	g.refresh_timeout=0;
-	show_progress11();
+	show_progress11(true);
 }
 
 
-function show_progress11()
+function show_progress11(manual_click)
 {
 	if(g.refresh_timeout==-1) return;
 	clearTimeout(g.refresh_timeout);
@@ -480,13 +480,20 @@ function show_progress11()
 	}
 	
 	g.progress_first=true;
-	new getJSON("progress", pars, show_progress2);
+	new getJSON("progress", pars, manual_click ? show_progress2 : show_progress21);
 	
 	g.main_nav_pos=5;
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
 
+function show_progress21(data)
+{
+	if(I("lastacts_visible"))
+	{
+		show_progress2(data);
+	}
+}
 
 function show_progress2(data)
 {
@@ -965,21 +972,22 @@ function show_status2(data)
 		obj.start_file_backup="";
 		obj.start_image_backup="";
 		
-		if(obj.done_pc<0)
-			obj.done_pc=0;
-		
-		if(obj.status>0 && obj.status<7)
+		for(var j=0;j<obj.processes.length;++j)
 		{
-			if(obj.status==1 || obj.status==2 ||
-				obj.status==5 || obj.status==6)
+			var proc = obj.processes[j];
+			if(proc.action>0 && proc.action<7)
 			{
-				obj.start_file_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
+				if(proc.action==1 || proc.action==2 ||
+					proc.action==5 || proc.action==6)
+				{
+					obj.start_file_backup=dustRender("status_percent_done", proc);
+				}
+				else
+				{
+					obj.start_image_backup=dustRender("status_percent_done", proc);
+				}
 			}
-			else
-			{
-				obj.start_image_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
-			}
-		}	
+		}
 		
 		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" />";
 		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" />";
