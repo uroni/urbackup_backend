@@ -111,6 +111,8 @@ struct SSettings
 	std::string local_full_image_style;
 	std::string internet_incr_image_style;
 	std::string internet_full_image_style;
+	float backup_ok_mod_file;
+	float backup_ok_mod_image;
 };
 
 struct SLDAPSettings

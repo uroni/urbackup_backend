@@ -326,6 +326,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);
 	settings->internet_incr_image_style=settings_default->getValue("internet_incr_image_style", incr_image_style_to_last);
 	settings->internet_full_image_style=settings_default->getValue("internet_full_image_style", full_image_style_synthetic);
+	settings->backup_ok_mod_file = settings_default->getValue("backup_ok_mod_file", 3.f);
+	settings->backup_ok_mod_image = settings_default->getValue("backup_ok_mod_image", 3.f);
 }
 
 void ServerSettings::readSettingsClient(void)

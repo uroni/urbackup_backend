@@ -1201,24 +1201,25 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 
 void ClientMain::sendClientBackupIncrIntervall(void)
 {
+	SSettings* settings = server_settings->getSettings();
 	int incr_freq=INT_MAX;
 	if(server_settings->getUpdateFreqFileIncr()>0)
 	{
-		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileIncr());
+		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqFileIncr()*settings->backup_ok_mod_file));
 	}
 	if(server_settings->getUpdateFreqImageIncr()>0)
 	{
-		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqImageIncr());
+		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqImageIncr()*settings->backup_ok_mod_image));
 	}
 	if(server_settings->getUpdateFreqFileFull()>0)
 	{
-		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileFull());
+		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqFileFull()*settings->backup_ok_mod_file));
 	}
-	if(server_settings->getUpdateFreqFileIncr()>0)
+	if(server_settings->getUpdateFreqImageFull()>0)
 	{
-		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileIncr());
+		incr_freq = (std::min)(incr_freq, static_cast<int>(server_settings->getUpdateFreqImageFull()*settings->backup_ok_mod_image));
 	}
-	int curr_startup_backup_delay = server_settings->getSettings()->startup_backup_delay;
+	int curr_startup_backup_delay = settings->startup_backup_delay;
 	if(incr_freq!=INT_MAX && (incr_freq!=last_incr_freq || curr_startup_backup_delay!=last_startup_backup_delay) )
 	{
 		std::string delay_str;
