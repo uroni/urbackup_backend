@@ -134,10 +134,11 @@ public:
 
 	static void requestRestoreRestart();
 
+	static void updateLastBackup(void);
+
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
-	void updateLastBackup(void);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
 	void replaceSettings(const std::string &pData);
@@ -166,7 +167,9 @@ private:
 
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 
-	std::string getLastBackupTime();
+	static std::string getLastBackupTime();
+
+	static std::string getHasNoRecentBackup();
 
 	static std::string getCurrRunningJob(bool reset_done);
 
@@ -180,7 +183,6 @@ private:
 	void CMD_SET_INCRINTERVAL(const std::string &cmd);
 	void CMD_GET_BACKUPDIRS(const std::string &cmd);
 	void CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params);
-	void CMD_GET_INCRINTERVAL(const std::string &cmd);
 	void CMD_DID_BACKUP(const std::string &cmd);
 	void CMD_STATUS(const std::string &cmd);
 	void CMD_STATUS_DETAIL(const std::string &cmd);
@@ -242,7 +244,8 @@ private:
 	static void* backup_running_owner;
 	static volatile bool backup_done;
 	static IMutex *backup_mutex;
-	static unsigned int incr_update_intervall;
+	static int backup_interval;
+	static int backup_alert_delay;
 	static int64 last_pingtime;
 	static SChannel channel_pipe;
 	static std::vector<SChannel> channel_pipes;
@@ -269,6 +272,7 @@ private:
 	static RestoreFiles* restore_files;
 	static bool status_updated;
 	static size_t needs_restore_restart;
+	static int64 service_starttime;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

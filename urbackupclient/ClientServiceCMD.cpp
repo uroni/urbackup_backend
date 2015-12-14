@@ -445,10 +445,45 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 {
 	if(cmd[cmd.size()-1]=='"')
 	{
+		IScopedLock lock(backup_mutex);
+
 		std::string intervall=cmd.substr(15, cmd.size()-16);
-		incr_update_intervall=atoi(intervall.c_str());
+
+		bool update_db=false;
+
+		if(intervall.find("?")!=std::string::npos)
+		{
+			str_map params;
+			ParseParamStrHttp(getafter("?", intervall), &params);
+
+			str_map::iterator it_startup_delay=params.find("startup_delay");
+			if(it_startup_delay!=params.end())
+			{
+				int new_waittime = watoi(it_startup_delay->second);
+				if(new_waittime>backup_alert_delay)
+				{
+					update_db=true;					
+					backup_alert_delay = new_waittime;
+				}
+			}
+		}
+
+		int new_interval=atoi(intervall.c_str());
+		if(backup_interval==0 || new_interval<backup_interval)
+		{			
+			update_db=true;
+			backup_interval = new_interval;
+		}
 		tcpstack.Send(pipe, "OK");
 		lasttime=Server->getTimeMS();
+
+		if(update_db)
+		{
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+			ClientDAO dao(db);
+			dao.updateMiscValue("backup_interval", convert(backup_interval));
+			dao.updateMiscValue("backup_alert_delay", convert(backup_alert_delay));
+		}
 	}
 	else
 	{
@@ -510,19 +545,6 @@ void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &param
 	lasttime=Server->getTimeMS();
 }
 
-void ClientConnector::CMD_GET_INCRINTERVAL(const std::string &cmd)
-{
-	if(incr_update_intervall==0 )
-	{
-		tcpstack.Send(pipe, convert(0));
-	}
-	else
-	{
-		tcpstack.Send(pipe, convert(incr_update_intervall+10*60) );
-	}
-	lasttime=Server->getTimeMS();
-}
-
 void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 {
 	updateLastBackup();
@@ -548,7 +570,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 std::string ClientConnector::getLastBackupTime()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT strftime('"+time_format_str+"',last_backup, 'localtime') AS last_backup FROM status");
+	IQuery *q=db->Prepare("SELECT strftime('%s',last_backup) AS last_backup FROM status");
 	if(q==NULL)
 		return std::string();
 
@@ -577,15 +599,19 @@ std::string ClientConnector::getCurrRunningJob(bool reset_done)
 {
 	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
 	{
-		return "NOA";
+		return getHasNoRecentBackup();
 	}
 
 	if(backup_running==RUNNING_NONE)
 	{
 		if(backup_done)
+		{
 			return "DONE";
+		}
 		else
-			return "NOA";
+		{
+			return getHasNoRecentBackup();
+		}
 		
 		if(reset_done)
 		{

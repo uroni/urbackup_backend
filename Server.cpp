@@ -182,7 +182,6 @@ void CServer::setup(void)
 
 void CServer::destroyAllDatabases(void)
 {
-	Log("Destroying all databases...", LL_DEBUG);
 	IScopedLock lock(db_mutex);
 
 	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();

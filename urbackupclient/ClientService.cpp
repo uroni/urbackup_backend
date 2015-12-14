@@ -64,7 +64,8 @@ void ClientService::destroyClient( ICustomClient * pClient)
 RunningAction ClientConnector::backup_running=RUNNING_NONE;
 volatile bool ClientConnector::backup_done=false;
 IMutex *ClientConnector::backup_mutex=NULL;
-unsigned int ClientConnector::incr_update_intervall=0;
+int ClientConnector::backup_interval=0;
+int ClientConnector::backup_alert_delay=5*60;
 int64 ClientConnector::last_pingtime=0;
 SChannel ClientConnector::channel_pipe;
 int ClientConnector::pcdone=0;
@@ -91,6 +92,7 @@ RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
 size_t ClientConnector::needs_restore_restart = 0;
+int64 ClientConnector::service_starttime = 0;
 
 
 
@@ -154,6 +156,21 @@ void ClientConnector::init_mutex(void)
 		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_capa', '0');");
 		last_capa=0;
 	}
+
+	ClientDAO clientdao(db);
+
+	std::string tmp = clientdao.getMiscValue("backup_alert_delay");
+	if(!tmp.empty())
+	{
+		backup_alert_delay = watoi(tmp);
+	}
+	tmp = clientdao.getMiscValue("backup_interval");
+	if(!tmp.empty())
+	{
+		backup_interval = watoi(tmp);
+	}
+
+	service_starttime = Server->getTimeMS();
 }
 
 void ClientConnector::destroy_mutex(void)
@@ -918,10 +935,6 @@ void ClientConnector::ReceivePackets(void)
 			if( cmd=="GET BACKUP DIRS" )
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
-			}
-			else if(cmd=="GET INCRINTERVALL" )
-			{
-				CMD_GET_INCRINTERVAL(cmd); continue;
 			}
 			else if(cmd=="STATUS" )
 			{
@@ -2823,6 +2836,30 @@ void ClientConnector::requestRestoreRestart()
 {
 	IScopedLock lock(backup_mutex);
 	++needs_restore_restart;
+}
+
+std::string ClientConnector::getHasNoRecentBackup()
+{
+	IScopedLock lock(backup_mutex);
+
+	std::string last_backup_time = getLastBackupTime();
+
+	if(last_backup_time.empty())
+	{
+		return "NO_RECENT";
+	}
+
+	if(Server->getTimeMS()-service_starttime<backup_alert_delay)
+	{
+		return "NOA";
+	}
+
+	if(Server->getTimeSeconds()-watoi64(last_backup_time)<=backup_interval)
+	{
+		return "NOA";
+	}
+
+	return "NO_RECENT";
 }
 
 

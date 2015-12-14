@@ -54,7 +54,6 @@ public:
 	static std::vector<SBackupDir> getSharedPaths(void);
 	static bool saveSharedPaths(const std::vector<SBackupDir> &res);
 	static SStatus getStatus(void);
-	static unsigned int getIncrUpdateIntervall(void);
 	static int startBackup(bool full);
 	static int startImage(bool full);
 	static bool updateSettings(const std::string &sdata);

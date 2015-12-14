@@ -141,6 +141,8 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	throttle_mutex=Server->createMutex();	
 
 	curr_image_version=1;
+	last_incr_freq=-1;
+	last_startup_backup_delay = -1;
 }
 
 ClientMain::~ClientMain(void)
@@ -513,6 +515,11 @@ void ClientMain::operator ()(void)
 				if(settings_updated && (received_client_settings || settings_dont_exist) )
 				{
 					sendSettings();
+				}
+
+				if(settings_updated)
+				{
+					sendClientBackupIncrIntervall();
 				}
 			}
 
@@ -1194,7 +1201,38 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 
 void ClientMain::sendClientBackupIncrIntervall(void)
 {
-	sendClientMessage("INCRINTERVALL \""+convert(server_settings->getUpdateFreqFileIncr())+"\"", "OK", "Sending incremental file backup interval to client failed", 10000);
+	int incr_freq=INT_MAX;
+	if(server_settings->getUpdateFreqFileIncr()>0)
+	{
+		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileIncr());
+	}
+	if(server_settings->getUpdateFreqImageIncr()>0)
+	{
+		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqImageIncr());
+	}
+	if(server_settings->getUpdateFreqFileFull()>0)
+	{
+		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileFull());
+	}
+	if(server_settings->getUpdateFreqFileIncr()>0)
+	{
+		incr_freq = (std::min)(incr_freq, server_settings->getUpdateFreqFileIncr());
+	}
+	int curr_startup_backup_delay = server_settings->getSettings()->startup_backup_delay;
+	if(incr_freq!=INT_MAX && (incr_freq!=last_incr_freq || curr_startup_backup_delay!=last_startup_backup_delay) )
+	{
+		std::string delay_str;
+		if(curr_startup_backup_delay>0)
+		{
+			delay_str="?startup_delay="+convert(curr_startup_backup_delay);
+		}
+
+		if(sendClientMessage("INCRINTERVALL \""+convert(incr_freq)+delay_str+"\"", "OK", "Sending backup interval to client failed", 10000))
+		{
+			last_incr_freq = incr_freq;
+			last_startup_backup_delay = curr_startup_backup_delay;
+		}
+	}	
 }
 
 bool ClientMain::updateCapabilities(void)

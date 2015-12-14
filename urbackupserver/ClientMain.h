@@ -301,4 +301,7 @@ private:
 	logid_t logid;
 	static int restore_client_id;
 	static bool running_backups_allowed;
+
+	int last_incr_freq;
+	int last_startup_backup_delay;
 };

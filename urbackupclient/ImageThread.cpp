@@ -799,6 +799,8 @@ void ImageThread::sendIncrImageThread(void)
 	Server->destroy(hashdatafile);
 	Server->deleteFile(hashdatafile_fn);
 
+	ClientConnector::updateLastBackup();
+
 	Server->Log("Sending image done", LL_INFO);
 
 #ifdef VSS_XP //persistence
