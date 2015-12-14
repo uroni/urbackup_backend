@@ -1327,17 +1327,14 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 		{
 			if(list_parser.nextEntry(buffer[i], curr_file, NULL))
 			{
-				if(curr_file.isdir)
+				if(curr_file.isdir && curr_file.name=="..")
 				{
-					if(curr_file.name=="..")
+					folder_files.pop();
+					curr_path=ExtractFilePath(curr_path, "/");
+					curr_os_path=ExtractFilePath(curr_os_path, "/");
+					if(!curr_dir_exists)
 					{
-						folder_files.pop();
-						curr_path=ExtractFilePath(curr_path, "/");
-						curr_os_path=ExtractFilePath(curr_os_path, "/");
-						if(!curr_dir_exists)
-						{
-							curr_dir_exists=os_directory_exists(curr_path);
-						}
+						curr_dir_exists=os_directory_exists(curr_path);
 					}
 				}
 
