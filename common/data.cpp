@@ -60,6 +60,11 @@ namespace
 	u8 sqlite3GetVarint(const unsigned char *p, u64 *v, size_t max_length){
 		u32 a,b,s;
 
+		if(max_length==0)
+		{
+			return 0;
+		}
+
 		a = *p;
 		/* a: p0 (unmasked) */
 		if (!(a&0x80))
