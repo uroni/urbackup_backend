@@ -35,13 +35,35 @@
 #include "cowfile.h"
 #endif
 
+#ifdef _WIN32
+namespace
+{
+	LONG GetStringRegKey(HKEY hKey, const std::string &strValueName, std::string &strValue, const std::string &strDefaultValue)
+	{
+		strValue = strDefaultValue;
+		WCHAR szBuffer[8192];
+		DWORD dwBufferSize = sizeof(szBuffer);
+		ULONG nError;
+		std::wstring rval;
+		nError = RegQueryValueExW(hKey, Server->ConvertToWchar(strValueName).c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		if (ERROR_SUCCESS == nError)
+		{
+			rval.resize(dwBufferSize/sizeof(wchar_t));
+			memcpy(const_cast<wchar_t*>(rval.c_str()), szBuffer, dwBufferSize);
+			strValue = Server->ConvertFromWchar(rval);
+		}
+		return nError;
+	}
+}
+#endif
+
 
 void PrintInfo(IFilesystem *fs)
 {
 	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
+IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -71,12 +93,62 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 
 
-		/** NOT TESTED ENOUGH
-		if(exclude_shadow_storage && pDev.find(L"HarddiskVolumeShadowCopy")!=std::string::npos)
+#ifdef _WIN32
+		if(next(orig_letter, 0, "C"))
 		{
-			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
-			fs->excludeFile(pDev+L"\\pagefile.sys");
-		}*/
+			fs->excludeFile(pDev+"\\HIBERFIL.SYS");
+		}
+
+		HKEY hKey;
+		LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
+		if(lRes == ERROR_SUCCESS)
+		{
+			std::string tfiles;
+			lRes = GetStringRegKey(hKey, "ExistingPageFiles", tfiles, "");
+			if(lRes == ERROR_SUCCESS)
+			{
+				std::vector<std::string> toks;
+				std::string sep;
+				sep.resize(1);
+				sep[0]=0;
+				Tokenize(tfiles, toks, sep);
+				for(size_t i=0;i<toks.size();++i)
+				{
+					toks[i]=trim(toks[i].c_str());
+
+					if(toks[i].empty())
+						continue;
+
+					toks[i]=trim(toks[i]);
+
+					if(toks[i].find("\\??\\")==0)
+					{
+						toks[i].erase(0, 4);
+					}
+
+					toks[i]=strlower(toks[i]);
+
+					if(next(toks[i], 0, strlower(orig_letter)))
+					{
+						std::string fs_path=orig_letter;
+						if(fs_path.find(":")==std::string::npos)
+						{
+							fs_path+=":";
+						}
+						if(fs_path.find("\\")!=std::string::npos)
+						{
+							fs_path = fs_path.substr(0, fs_path.size()-1);
+						}
+						if(toks[i].size()>fs_path.size())
+						{
+							std::string pagefile_shadowcopy = toks[i].substr(fs_path.size());
+							fs->excludeFile(pDev+pagefile_shadowcopy);
+						}
+					}
+				}
+			}
+		}		
+#endif
 		
 		/*
 		int64 idx=0;

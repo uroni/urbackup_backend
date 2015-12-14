@@ -12,7 +12,7 @@ public:
 	const unsigned char * getBitmap(void);
 
 	bool excludeFiles(const std::string& path, const std::string& fn_contains);
-	bool excludeFile(const std::wstring& path);
+	bool excludeFile(const std::string& path);
 	bool excludeSectors(int64 start, int64 count);
 	bool excludeBlock(int64 block);
 

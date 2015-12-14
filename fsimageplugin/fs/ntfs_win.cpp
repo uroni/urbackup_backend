@@ -141,7 +141,7 @@ bool FSNTFSWIN::excludeFiles( const std::string& path, const std::string& fn_con
 
 		if(!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 		{
-			if(!excludeFile(tpath+L"\\"+wfd.cFileName))
+			if(!excludeFile(Server->ConvertFromWchar(tpath+L"\\"+wfd.cFileName)))
 			{
 				ret=false;
 			}
@@ -182,11 +182,11 @@ bool FSNTFSWIN::excludeBlock( int64 block )
 	return true;
 }
 
-bool FSNTFSWIN::excludeFile( const std::wstring& path )
+bool FSNTFSWIN::excludeFile( const std::string& path )
 {
-	Server->Log("Trying to exclude contents of file "+Server->ConvertFromWchar(path)+" from backup...", LL_DEBUG);
+	Server->Log("Trying to exclude contents of file "+path+" from backup...", LL_DEBUG);
 
-	HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(path).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if(hFile!=INVALID_HANDLE_VALUE)
@@ -218,7 +218,7 @@ bool FSNTFSWIN::excludeFile( const std::wstring& path )
 
 						if(!excludeSectors(ret_ptrs->Extents[i].Lcn.QuadPart, count))
 						{
-							Server->Log("Error excluding sectors of file "+Server->ConvertFromWchar(path), LL_WARNING);
+							Server->Log("Error excluding sectors of file "+path, LL_WARNING);
 						}
 					}							
 
@@ -249,7 +249,7 @@ bool FSNTFSWIN::excludeFile( const std::wstring& path )
 	}
 	else
 	{
-		Server->Log("Error opening file handle to "+Server->ConvertFromWchar(path), LL_WARNING);
+		Server->Log("Error opening file handle to "+path, LL_WARNING);
 		return false;
 	}
 }

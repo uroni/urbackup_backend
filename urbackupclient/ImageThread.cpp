@@ -126,7 +126,7 @@ void ImageThread::sendFullImageThread(void)
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(std::string()), true));
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -486,7 +486,7 @@ void ImageThread::sendIncrImageThread(void)
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(std::string()), true));
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)

@@ -9,7 +9,7 @@ class IVHDFile;
 class IFSImageFactory : public IPlugin
 {
 public:
-	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)=0;
+	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)=0;
 
 	enum ImageFormat
 	{

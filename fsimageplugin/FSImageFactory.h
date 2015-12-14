@@ -5,7 +5,7 @@
 class FSImageFactory : public IFSImageFactory
 {
 public:
-	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage);
+	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter);
 
 	virtual IVHDFile *createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
 		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, IFSImageFactory::ImageFormat format=IFSImageFactory::ImageFormat_VHD);
