@@ -556,7 +556,7 @@ void ClientMain::operator ()(void)
 			}
 
 
-			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
+			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
 				&& exponentialBackoffFile() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
@@ -588,7 +588,7 @@ void ClientMain::operator ()(void)
 
 				do_incr_backup_now=false;
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
+			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_full_image_now)
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
 				&& exponentialBackoffImage() ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
@@ -611,7 +611,7 @@ void ClientMain::operator ()(void)
 
 				do_full_image_now=false;
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
+			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_incr_image_now)
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
 				&& exponentialBackoffImage() ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
