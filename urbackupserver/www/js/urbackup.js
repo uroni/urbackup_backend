@@ -489,7 +489,7 @@ function show_progress11(manual_click)
 
 function show_progress21(data)
 {
-	if(I("lastacts_visible"))
+	if(I("lastacts_visible") && !g.loading)
 	{
 		show_progress2(data);
 	}
