@@ -1268,11 +1268,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		}
 
 
-		std::string mui_text="&Access backups";
+		std::wstring mui_text=L"&Access backups";
 		std::string read_mui_text=getFile("access_backups_shell_mui.txt");
 		if(	!read_mui_text.empty() && read_mui_text.find("@")==std::string::npos)
 		{
-			mui_text=(read_mui_text);
+			mui_text=Server->ConvertToWchar(read_mui_text);
 		}
 
 		/**
