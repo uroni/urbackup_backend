@@ -1890,7 +1890,7 @@ function show_settings2(data)
 				++g.settings_nav_pos;
 			}
 			
-			n+="<a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+			n+="<li><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
 
 			++idx;
 			++g.user_nav_pos_offset;
@@ -1902,7 +1902,7 @@ function show_settings2(data)
 			if(nav.clients.length>0)
 			{
 				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\">";
-				n+="<option value=\"n\">"+trans("clients")+"</option>";
+				n+="<option value=\"n;\">"+trans("clients")+"</option>";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
 					var selected = "";
@@ -1920,6 +1920,10 @@ function show_settings2(data)
 		
 		$("#clientpicker").change(function() {
 			var vals = I("clientpicker")[I("clientpicker").selectedIndex].value.split(";");
+			if(vals[0]=="n")
+			{
+				return;
+			}
 			clientSettings(vals[0], vals[1]);
 		});
 		
@@ -2679,7 +2683,7 @@ function createUser()
 	if(g.num_users==0)
 		d="disabled=\"disabled\"";
 		
-	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+">";
+	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+" class=\"selectpicker\" data-live-search=\"true\">";
 	rights+="<option value=\"-1\">"+trans("admin")+"</option>";
 	
 	for(var i=0;i<g.settings_clients.length;++i)
@@ -2700,6 +2704,8 @@ function createUser()
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
+	
+	$("#rights").selectpicker();
 	
 	if(g.num_users==0)
 	{
@@ -2913,12 +2919,12 @@ function changePW(el)
 {
 	if(I('settingsclient'))
 	{
-		I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
+		I('settingsclient').innerHTML="<option value=\"n;\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
 		I('settingsclient').selectedIndex=0;
 	}
 	if(I('change_pw_el'))
 	{
-		I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+		I('change_pw_el').innerHTML="<li class=\"active\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
 	}
 	var ndata=dustRender("change_pw");
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
