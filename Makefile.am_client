@@ -37,7 +37,7 @@ else
 urbackupclientgui_osx_SOURCES =
 endif
 
-urbackupclientgui_SOURCES = client/gui/GUI.cpp client/main.cpp client/ConfigPath.cpp client/Connector.cpp client/escape.cpp client/FileSettingsReader.cpp client/Info.cpp client/Logs.cpp client/Settings.cpp client/stringtools.cpp client/TaskBarBaloon.cpp client/tcpstack.cpp client/TrayIcon.cpp client/Status.cpp client/jsoncpp.cpp client/TranslationHelper.cpp $(urbackupclientgui_osx_SOURCES)
+urbackupclientgui_SOURCES = client/gui/GUI.cpp client/main.cpp client/ConfigPath.cpp client/Connector.cpp client/escape.cpp client/FileSettingsReader.cpp client/Info.cpp client/Logs.cpp client/Settings.cpp client/stringtools.cpp client/TaskBarBaloon.cpp client/tcpstack.cpp client/TrayIcon.cpp client/Status.cpp client/jsoncpp.cpp client/TranslationHelper.cpp $(urbackupclientgui_osx_SOURCES) client/gui/GUISetupWizard.cpp client/SetupWizard.cpp
 urbackupclientgui_CXXFLAGS = -DLINUX $(WX_CXXFLAGS_ONLY) -DDATADIR='"$(datadir)"' -DVARDIR='"$(localstatedir)"'
 urbackupclientgui_CFLAGS = $(WX_CFLAGS_ONLY)
 urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS)
@@ -56,7 +56,7 @@ INSTALL_OPTS=
 
 if WITH_GUI_CLIENT
 install-data-local: urbackupclient/backup_client.db urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb \
-					client/data/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm \
+					client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm \
 					client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm \
 					client/data/logo1.png client/data/lang/*/*.mo
 else
@@ -77,7 +77,7 @@ if WITH_GUI_CLIENT
 	$(INSTALL_DATA) $(srcdir)/client/data/*.png "$(DESTDIR)$(datadir)/urbackup/"
 	$(INSTALL_DATA) $(srcdir)/client/data/*.xpm "$(DESTDIR)$(datadir)/urbackup/"
 	$(INSTALL_DATA) $(srcdir)/client/data/*.ico "$(DESTDIR)$(datadir)/urbackup/"
-	$(INSTALL_DATA) $(srcdir)/client/data/info.txt "$(DESTDIR)$(datadir)/urbackup/"
+	$(INSTALL_DATA) $(srcdir)/client/info.txt "$(DESTDIR)$(datadir)/urbackup/"
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/it
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/pl
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/pt_BR
@@ -151,6 +151,6 @@ tclap_headers = \
 	
 noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h Mutex_boost.h Condition_boost.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h sqlite/shell.h SQLiteFactory.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h client_version.h Interface/SharedMutex.h SharedMutex_lin.h $(cryptoplugin_headers) $(fileservplugin_headers) $(fsimageplugin_headers) $(urbackupclientctl_headers) $(client_headers) $(tclap_headers)
 
-EXTRA_DIST_GUI = client/data/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo
+EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h
 
 EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackup-client-backend.service
