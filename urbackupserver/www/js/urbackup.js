@@ -1027,6 +1027,15 @@ function show_status2(data)
 		if(data.allow_modify_clients)
 		{
 			obj.show_select_box=true;
+			
+			if(!data.no_images)
+			{
+				obj.allow_image_backup_start=true;
+			}
+			if(!data.no_file_backups)
+			{
+				obj.allow_file_backup_start=true;
+			}
 		}
 		
 		if( obj.delete_pending && obj.delete_pending==1)
@@ -1184,57 +1193,59 @@ function show_status2(data)
 		
 		if(data.no_images)
 		{
-			show_hide_column('status_table', 5, false);
-			show_hide_column('status_table', 7, false);
+			show_hide_column('status_table', 6, false);
+			show_hide_column('status_table', 8, false);
 		}
 		
 		if(data.no_file_backups)
 		{
-			show_hide_column('status_table', 4, false);
-			show_hide_column('status_table', 6, false);
+			show_hide_column('status_table', 5, false);
+			show_hide_column('status_table', 7, false);
 		}
 		
 		var datatable_config = g.datatable_default_config;
 		
 		datatable_config.aoColumnDefs = [
-				{ "bVisible": false, "aTargets": [ 2, 8, 9, 10 ]
+				{ "bVisible": false, "aTargets": [ 3, 9, 10, 11 ]
 				}];
 				
 		if(data.allow_modify_clients)
 		{
-			datatable_config.aoColumnDefs.push({ "bSortable": false, 'aTargets': [ 11 ] });
+			datatable_config.aoColumnDefs.push({ "bSortable": false, 'aTargets': [ 0 ] });
 		}
 			
-		datatable_config.oColVis.aiExclude = [ 0 ];
+		datatable_config.oColVis.aiExclude = [ 1 ];
 		
 		if(data.allow_modify_clients)
 		{
-			datatable_config.oColVis.aiExclude.push(11);
-			datatable_config.aoColumnDefs.push({ "bVisible": true, "aTargets": [11]});
+			datatable_config.oColVis.aiExclude.push(0);
+			datatable_config.aoColumnDefs.push({ "bVisible": true, "aTargets": [0]});
 		}
 		
 		if(data.no_images)
+		{
+			datatable_config.oColVis.aiExclude.push(6);
+			datatable_config.oColVis.aiExclude.push(8);
+		}
+		
+		if(data.no_file_backups)
 		{
 			datatable_config.oColVis.aiExclude.push(5);
 			datatable_config.oColVis.aiExclude.push(7);
 		}
 		
-		if(data.no_file_backups)
-		{
-			datatable_config.oColVis.aiExclude.push(4);
-			datatable_config.oColVis.aiExclude.push(6);
-		}
-		
-		var columns = [ 0 ];
+		var columns = [ 1 ];
 		
 		if(!data.no_file_backups)
-			columns.push(4);		
+			columns.push(5);		
 		if(!data.no_images)
-			columns.push(5);
+			columns.push(6);
 		if(!data.no_file_backups)
-			columns.push(6);		
+			columns.push(7);		
 		if(!data.no_images)
-			columns.push(7);
+			columns.push(8);
+			
+		
 
 		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
 		save_buttons[2].mColumns = columns;
@@ -1246,6 +1257,11 @@ function show_status2(data)
 		
 		$("#status_table").dataTable(datatable_config);
 	}
+	
+	$('select[id^="startbackup_"]').filter(
+    function(){
+        $(this).selectpicker();
+    });
 	
 	if(data.curr_version_num)
 	{
@@ -3584,6 +3600,17 @@ function removeClients()
 		alert(trans("no_client_selected"));
 	}
 }
+function selectClientsToggle()
+{
+	if(I("status_selected_toggle").checked)
+	{
+		selectAllClients();
+	}
+	else
+	{
+		selectNoClients();
+	}
+}
 function selectAllClients()
 {
 	var cbs=document.getElementsByName("status_selected");
@@ -3788,15 +3815,28 @@ function changeArchiveForUnit()
 		I('archive_for').type="text";
 	}
 }
-function startBackups(start_type)
+function startBackups(start_type, clientid)
 {
-	var cbs=document.getElementsByName("status_selected");
-	var ids=[];
-	for(var i=0;i<cbs.length;++i)
+	if(start_type=="none")
 	{
-		if(cbs[i].checked)
+		return;
+	}
+	
+	var ids=[];
+	if(clientid)
+	{
+		ids.push(clientid);
+	}
+	else
+	{
+		var cbs=document.getElementsByName("status_selected");
+		var ids=[];
+		for(var i=0;i<cbs.length;++i)
 		{
-			ids.push(cbs[i].value);
+			if(cbs[i].checked)
+			{
+				ids.push(cbs[i].value);
+			}
 		}
 	}
 	if(ids.length>0)

@@ -12,7 +12,10 @@
 
 		<table id="status_table" class="table table-striped dt-responsive" width="100%">
 			<thead>
-				<tr>			
+				<tr>
+					{?show_select_box}
+					<th><input type="checkbox" id="status_selected_toggle" onClick="selectClientsToggle()"/></td>
+					{/show_select_box}
 					<th>{tComputer name}</th>
 					<th>{tOnline}</th>
 					<th>{tStatus}</th>
@@ -24,9 +27,6 @@
 					<th>{tIP}</th>
 					<th>{tClient version}</th>
 					<th>{tOperating System}</th>
-					{?show_select_box}
-					<th>&nbsp;</td>
-					{/show_select_box}
 				</tr>
 			</thead>
 			<tbody>
