@@ -508,8 +508,8 @@ function show_progress2(data)
 	{
 		return;
 	}
-	g.progress_first=false;
 	if(!data.from_timeout)
+	g.progress_first=false;
 	{
 		stopLoading();
 	}
@@ -1263,6 +1263,7 @@ function show_status2(data)
 			$('select[id^="startbackup_"]').filter(
 				function() {
 					$(this).selectpicker();
+					$(this).prop('selectedIndex', -1);
 				});
 		};
 		datatable_config.preDrawCallback = function(settings) {
