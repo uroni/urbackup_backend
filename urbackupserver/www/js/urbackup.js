@@ -990,11 +990,11 @@ function show_status2(data)
 				if(proc.action==1 || proc.action==2 ||
 					proc.action==5 || proc.action==6)
 				{
-					obj.start_file_backup=dustRender("status_percent_done", proc);
+					obj.start_file_backup+=dustRender("status_percent_done", proc);
 				}
 				else
 				{
-					obj.start_image_backup=dustRender("status_percent_done", proc);
+					obj.start_image_backup+=dustRender("status_percent_done", proc);
 				}
 			}
 		}
