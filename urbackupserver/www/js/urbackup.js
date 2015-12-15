@@ -9,6 +9,7 @@ g.current_version=1005000000;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
+g.mousedown=false;
 
 g.languages=[ 
 			    { l: "Deutsch", s: "de" },
@@ -100,6 +101,13 @@ function startup()
 		available_langs+=g.languages[i].s;
 		if(i+1<g.languages.length)
 			available_langs+=",";
+	}
+	
+	document.body.onmousedown = function() {
+		g.mousedown=true;
+	}
+	document.body.onmouseup = function() {
+		g.mousedown=false;
 	}
 	
 	new getJSON("login", available_langs, try_anonymous_login);
@@ -492,7 +500,15 @@ function show_progress21(data)
 {
 	if(I("lastacts_visible") && !g.loading)
 	{
-		show_progress2(data);
+		if(g.mousedown)
+		{
+			clearTimeout(g.refresh_timeout);
+			g.refresh_timeout=setTimeout(show_progress11, 1000);
+		}
+		else
+		{
+			show_progress2(data);
+		}
 	}
 }
 
