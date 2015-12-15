@@ -5258,7 +5258,7 @@ void BackupServerGet::addSparseFileEntry( std::wstring curr_path, SFile &cf, int
 
 	std::string curr_file_path = Server->ConvertToUTF8(curr_path + L"/" + cf.name);
 	int crc32 = static_cast<int>(urb_adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
-	if(crc32 % copy_file_entries_sparse_modulo == incremental_num )
+	if(crc32 % copy_file_entries_sparse_modulo == incremental_num % copy_file_entries_sparse_modulo )
 	{
 		if(trust_client_hashes && !curr_sha2.empty())
 		{
