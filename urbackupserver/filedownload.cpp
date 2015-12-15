@@ -97,7 +97,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 				}
 			}
 
-			rc=fc->GetFile(remotefn, dstfile, true, false);
+			rc=fc->GetFile(remotefn, dstfile, true, false, 0);
 
 			Server->destroy(dstfile);
 		}

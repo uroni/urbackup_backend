@@ -1560,7 +1560,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	if(!with_hashes)
 	{
 		s_bsize=32768;
-		if(curr_filesize>0)
+		if(curr_filesize>=0)
 		{
 			next_checkpoint=curr_filesize;
 		}
@@ -1583,7 +1583,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 	if(!file->Seek(start_offset))
 	{
-		Log("Error: Seeking in file failed (5044) to "+convert(start_offset), LL_ERROR);
+		Log("Error: Seeking in file failed (5044) to "+convert(start_offset)+" file size is "+convert(file->Size()), LL_ERROR);
 		return false;
 	}
 
@@ -1600,9 +1600,10 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
 			
 		bool has_error = false;
-			_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
+		
+		_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
 
-		if(rc<count && curr_filesize==-1)
+		if(rc==0 && curr_filesize==-1)
 		{
 			is_eof=true;
 		}

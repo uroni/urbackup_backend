@@ -151,7 +151,7 @@ bool RestoreFiles::downloadFilelist( FileClient& fc )
 		return false;
 	}
 
-	_u32 rc = fc.GetFile("clientdl_filelist", filelist, true, false);
+	_u32 rc = fc.GetFile("clientdl_filelist", filelist, true, false, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{

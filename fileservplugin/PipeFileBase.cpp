@@ -60,11 +60,14 @@ std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 
 	last_read = Server->getTimeMS();
 
-	while(getReadAvail()<tr && !has_eof)
+	int64 starttime = Server->getTimeMS();
+	size_t read_avail = getReadAvail();
+	while(read_avail<tr && !has_eof && (read_avail==0 || Server->getTimeMS()-starttime<60000))
 	{
 		lock.relock(NULL);
 		Server->wait(10);
 		lock.relock(buffer_mutex.get());
+		read_avail = getReadAvail();
 	}
 
 	if(has_eof)
@@ -99,7 +102,7 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	while(getReadAvail()<(std::max)(bsize, buffer_keep_free) && !has_eof)
 	{
 		lock.relock(NULL);
-		Server->wait(10);
+		Server->wait(100);
 		lock.relock(buffer_mutex.get());
 	}
 
@@ -334,6 +337,7 @@ size_t PipeFileBase::getReadAvail()
 
 void PipeFileBase::readBuf(char* buf, size_t toread)
 {
+	
 	if(buf_w_pos>=buf_r_pos)
 	{
 		assert(buf_w_pos - buf_r_pos >= toread);

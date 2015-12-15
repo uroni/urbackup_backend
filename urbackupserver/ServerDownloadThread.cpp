@@ -401,7 +401,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 				}
 				if(file_old==NULL)
 				{
-					ServerLogger::Log(logid, "No old file for \""+todl.fn+"\"", LL_DEBUG);
+					ServerLogger::Log(logid, "No old file for \""+todl.fn+"\" (2)", LL_DEBUG);
 					filepath_old.clear();
 				}
 			}
@@ -497,7 +497,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-            addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, true, false);
+            addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, false);
 			return true;
 		}
 	}
@@ -797,47 +797,56 @@ void ServerDownloadThread::resetQueueFull()
 bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize )
 {
 	IScopedLock lock(mutex);
-	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
-		it!=dl_queue.end();++it)
+	bool retry=true;
+	while(retry)
 	{
-		if(it->action==EQueueAction_Fileclient && 
-			!it->queued && it->fileclient==EFileClient_Chunked
-			&& it->predicted_filesize>0)
+		retry=false;
+
+		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+			it!=dl_queue.end();++it)
 		{
-			if(it->patch_dl_files.prepare_error)
+			if(it->action==EQueueAction_Fileclient && 
+				!it->queued && it->fileclient==EFileClient_Chunked
+				&& it->predicted_filesize>0)
 			{
-				continue;
-			}
-			
-			remotefn = (getDLPath(*it));
-
-
-			if(!it->patch_dl_files.prepared)
-			{
-				bool full_dl;
-				it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
-
-				if(it->patch_dl_files.orig_file==NULL &&
-					full_dl)
+				if(it->patch_dl_files.prepare_error)
 				{
-					it->fileclient=EFileClient_Full;
-					queue_size-=queue_items_chunked-queue_items_full;
 					continue;
 				}
-			}
 
-			if(it->patch_dl_files.prepared)
-			{
-				it->queued=true;
-				orig_file = it->patch_dl_files.orig_file;
-				patchfile = it->patch_dl_files.patchfile;
-				chunkhashes = it->patch_dl_files.chunkhashes;
-				hashoutput = it->patch_dl_files.hashoutput;
-				predicted_filesize = it->predicted_filesize;
-				return true;
+				remotefn = (getDLPath(*it));
+
+				if(!it->patch_dl_files.prepared)
+				{
+					bool full_dl;
+					it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
+
+					if(it->patch_dl_files.orig_file==NULL &&
+						full_dl)
+					{
+						SQueueItem item = *it;
+						dl_queue.erase(it);
+						dl_queue.push_back(item);
+						it->fileclient=EFileClient_Full;
+						queue_size-=queue_items_chunked-queue_items_full;
+						retry=true;
+						break;
+					}
+				}
+
+				if(it->patch_dl_files.prepared)
+				{
+					it->queued=true;
+					orig_file = it->patch_dl_files.orig_file;
+					patchfile = it->patch_dl_files.patchfile;
+					chunkhashes = it->patch_dl_files.chunkhashes;
+					hashoutput = it->patch_dl_files.hashoutput;
+					predicted_filesize = it->predicted_filesize;
+					return true;
+				}
 			}
 		}
-	}
+	}	
 
 	return false;
 }
@@ -885,7 +894,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 		}
 		if(file_old.get()==NULL)
 		{
-			ServerLogger::Log(logid, "No old file for \""+todl.fn+"\"", LL_DEBUG);
+			ServerLogger::Log(logid, "No old file for \""+todl.fn+"\" (1)", LL_DEBUG);
 			full_dl=true;
 			return dlfiles;
 		}

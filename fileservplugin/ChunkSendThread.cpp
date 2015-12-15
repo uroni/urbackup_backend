@@ -160,6 +160,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		_u32 r;
 
 		bool script_eof=false;
+		bool off_sent=false;
 
 		do
 		{
@@ -168,49 +169,49 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			{
 				_u32 toread = (std::min)(blockleft, c_chunk_size);
 				bool readerr=false;
-				r=file->Read(chunk_buf+off,  toread, &readerr);
 
-				if(r<toread)
+				while(r<toread)
 				{
-					if(curr_file_size==-1)
+					_u32 r_add=file->Read(chunk_buf+off+r,  toread-r, &readerr);
+					if(r_add==0)
 					{
-						if(!script_eof)
+						if(curr_file_size==-1)
 						{
-							Log("Script output eof", LL_DEBUG);
-							script_eof=true;
+							if(!script_eof)
+							{
+								Log("Script output eof", LL_DEBUG);
+								script_eof=true;
+							}
+
+							memset(chunk_buf+off+r, 0, toread-r);
+							r=toread;
 						}
-						
-						memset(chunk_buf+off+r, 0, toread-r);
-						r=toread;
-					}
-					else if(!readerr)
-					{
-						memset(chunk_buf+off+r, 0, toread-r);
-						r=toread;
+						else if(!readerr)
+						{
+							memset(chunk_buf+off+r, 0, toread-r);
+							r=toread;
+						}
+						else
+						{
+							sendError(ERR_READING_FAILED, getSystemErrorCode());
+						}
 					}
 					else
 					{
-						sendError(ERR_READING_FAILED, getSystemErrorCode());
+						md5_hash.update((unsigned char*)chunk_buf+off+r, r_add);
+
+						if(parent->SendInt(chunk_buf+(off_sent?off:0)+r, (off_sent?0:off)+r_add, r_add<toread)==SOCKET_ERROR)
+						{
+							Log("Error sending whole block", LL_DEBUG);
+							return false;
+						}
+
+						if( FileServ::isPause() ) Sleep(500);
+
+						off_sent=true;
 					}
-				}
-				
-			}
-
-			if(r>0)
-			{
-				md5_hash.update((unsigned char*)chunk_buf+off, r);
-			}
-			if(r+off>0)
-			{
-				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
-				{
-					Log("Error sending whole block", LL_DEBUG);
-					return false;
-				}
-
-				if( FileServ::isPause() ) Sleep(500);
-
-				off=0;
+					r+=r_add;
+				}				
 			}
 
 			if(r<=blockleft)
@@ -272,6 +273,38 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		bool readerr=false;
 		r=file->Read(cptr, to_read, &readerr);
+
+
+		while(r<to_read)
+		{
+			_u32 r_add = file->Read(cptr+r, to_read-r, &readerr);
+
+			if(r_add==0)
+			{
+				if(curr_file_size==-1)
+				{
+					if(!script_eof)
+					{
+						Log("Script output eof -2", LL_DEBUG);
+						script_eof=true;
+					}
+
+					memset(cptr+r, 0, to_read-r);
+					r=to_read;
+				}
+				else if(readerr)
+				{
+					sendError(ERR_READING_FAILED, getSystemErrorCode());
+				}
+				else
+				{
+					memset(cptr+r, 0, to_read-r);
+					r=to_read;
+				}
+			}
+
+			r+=r_add;
+		}
 
 		if(r<to_read)
 		{

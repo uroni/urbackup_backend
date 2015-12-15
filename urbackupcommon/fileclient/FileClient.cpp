@@ -660,7 +660,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout, size_t folder_items)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -723,7 +723,7 @@ bool FileClient::Reconnect(void)
 		if(tcpsock->isReadable() || dl_off==0 ||
 			(firstpacket && dl_buf[0]==ID_FILESIZE && dl_off<1+sizeof(_u64) ) )
 		{
-			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, with_timeout ? 120000 : -1)+dl_off;
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
 		}
 		else
 		{
@@ -1014,7 +1014,7 @@ bool FileClient::Reconnect(void)
             }
 		}
             
-	    if( with_timeout && Server->getTimeMS()-starttime > SERVER_TIMEOUT )
+	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
 			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
 			bool b=Reconnect();
@@ -1143,6 +1143,8 @@ void FileClient::fillQueue()
 
 	bool needs_send_flush=false;
 
+	std::vector<std::string> queued_files;
+
 	while(queued.size()<maxQueuedFiles)
 	{
 		if(!tcpsock->isWritable())
@@ -1196,12 +1198,20 @@ void FileClient::fillQueue()
 		}
 
 		queued.push_back(queue_fn);
+		queued_files.push_back(queue_fn);
 		needs_flush=true;
 	}
 
 	if(needs_send_flush)
 	{
-		tcpsock->Flush(c_default_timeout);
+		if(!tcpsock->Flush(c_default_timeout))
+		{
+			Server->Log("Flushing failed after queueing files", LL_DEBUG);
+			for(size_t i=0;i<queued_files.size();++i)
+			{
+				queue_callback->unqueueFileFull(queued_files[i]);
+			}
+		}
 	}
 }
 

@@ -62,7 +62,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+client_token;
 
-	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false);
+	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{

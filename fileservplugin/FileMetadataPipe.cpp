@@ -227,7 +227,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	while(true)
 	{
 		std::string msg;
-		size_t r = pipe->Read(&msg, 100000);
+		size_t r = pipe->Read(&msg, 60000);
 
 		if(r==0)
 		{

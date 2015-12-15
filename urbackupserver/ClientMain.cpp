@@ -1462,7 +1462,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		settings_fn = "urbackup/settings_"+(clientsubname)+".cfg";
 	}
 
-	rc=fc.GetFile(settings_fn, tmp, true, false);
+	rc=fc.GetFile(settings_fn, tmp, true, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting Client settings of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);

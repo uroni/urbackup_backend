@@ -135,7 +135,7 @@ bool FullFileBackup::doFileBackup()
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);

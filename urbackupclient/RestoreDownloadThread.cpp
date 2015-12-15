@@ -221,13 +221,13 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 		}
 	}
 
-	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
+	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		dest_f->Seek(0);
-		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, true, todl.folder_items);
+		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items);
 		--hash_retries;
 	}
 

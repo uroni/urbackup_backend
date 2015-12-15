@@ -311,7 +311,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
 		return false;
 	}
-	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false);
+	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting tokens file of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_DEBUG);
@@ -1679,7 +1679,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	os_create_dir(tmpdirname);
 
 	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
-	rc = fc.GetFile((rfn), output_file.get(), true, false);
+	rc = fc.GetFile((rfn), output_file.get(), true, false, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{
