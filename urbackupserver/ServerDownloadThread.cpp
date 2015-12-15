@@ -826,8 +826,8 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					{
 						SQueueItem item = *it;
 						dl_queue.erase(it);
+						item.fileclient=EFileClient_Full;
 						dl_queue.push_back(item);
-						it->fileclient=EFileClient_Full;
 						queue_size-=queue_items_chunked-queue_items_full;
 						retry=true;
 						break;
