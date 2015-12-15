@@ -905,7 +905,7 @@ void IndexThread::indexDirs(void)
 				std::string err_msg;
 				int64 errcode = os_last_error(err_msg);
 
-				VSSLog("Cannot access \""+mod_path+"\". Not creating snapshot.  Errorcode: "+convert(errcode)+" - "+trim(err_msg), LL_ERROR);
+				VSSLog("Cannot access \""+mod_path+"\". Not creating snapshot. Errorcode: "+convert(errcode)+" - "+trim(err_msg), LL_DEBUG);
 			}
 
 			if(stale_shadowcopy)
@@ -1011,7 +1011,10 @@ void IndexThread::indexDirs(void)
 				return;
 			}
 
-			VSSLog("Indexing of \""+backup_dirs[i].tname+"\" done. "+convert(index_c_fs)+" filesystem lookups "+convert(index_c_db)+" db lookups and "+convert(index_c_db_update)+" db updates" , LL_INFO);		
+			if(!backup_dirs[i].symlinked)
+			{
+				VSSLog("Indexing of \""+backup_dirs[i].tname+"\" done. "+convert(index_c_fs)+" filesystem lookups "+convert(index_c_db)+" db lookups and "+convert(index_c_db_update)+" db updates" , LL_INFO);
+			}
 
 			if(i+1<backup_dirs.size() && backup_dirs[i+1].symlinked)
 			{
@@ -3751,6 +3754,7 @@ void IndexThread::setFlags( unsigned int flags )
 	with_scripts = (flags & flag_with_scripts)>0;
 	with_orig_path = (flags & flag_with_orig_path)>0;
 	with_sequence = (flags & flag_with_sequence)>0;
+	with_proper_symlinks = (flags & flag_with_proper_symlinks)>0;
 }
 
 bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::string& orig_path, std::string& target)
@@ -3856,6 +3860,8 @@ void IndexThread::addSymlinkBackupDir( const std::string& target )
 	backup_dir.symlinked_confirmed=true;
 
 	backup_dirs.push_back(backup_dir);
+
+	shareDir(std::string(), name, target);
 }
 
 bool IndexThread::backupNameInUse( const std::string& name )
@@ -3875,21 +3881,33 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 	for(size_t i=0;i<backup_dirs.size();)
 	{
 		if(backup_dirs[i].symlinked
-			&& !backup_dirs[i].symlinked_confirmed
 			&& index_group == backup_dirs[i].group)
 		{
-#ifdef _WIN32
-			if(dwt!=NULL)
+			if(!backup_dirs[i].symlinked_confirmed)
 			{
-				std::string msg="D"+backup_dirs[i].path;
-				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
-			}
+#ifdef _WIN32
+				if(dwt!=NULL)
+				{
+					std::string msg="D"+backup_dirs[i].path;
+					dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+				}
 #endif
 
-			cd->delBackupDir(backup_dirs[i].id);
+				cd->delBackupDir(backup_dirs[i].id);
 
-			backup_dirs.erase(backup_dirs.begin()+i);
-			continue;
+				backup_dirs.erase(backup_dirs.begin()+i);
+
+				removeDir(starttoken, backup_dirs[i].tname);
+				removeDir(std::string(), backup_dirs[i].tname);
+
+				if(filesrv!=NULL)
+				{
+					filesrv->removeDir(backup_dirs[i].tname, starttoken);
+					filesrv->removeDir(backup_dirs[i].tname, std::string());
+				}
+
+				continue;
+			}
 		}
 		++i;
 	}

@@ -427,19 +427,23 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
-					if(!isDirectory(basePath))
+					std::string share_name = getuntil("/",o_filename);
+					if(!share_name.empty())
 					{
-						char ch=ID_BASE_DIR_LOST;
-						int rc=SendInt(&ch, 1);
-						if(rc==SOCKET_ERROR)
+						std::string basePath=map_file(share_name+"/", ident);
+						if(!isDirectory(basePath))
 						{
-							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
-							return false;
+							char ch=ID_BASE_DIR_LOST;
+							int rc=SendInt(&ch, 1);
+							if(rc==SOCKET_ERROR)
+							{
+								Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
+								return false;
+							}
+							Log("Info: Base dir lost", LL_DEBUG);
+							break;
 						}
-						Log("Info: Base dir lost", LL_DEBUG);
-						break;
-					}
+					}					
 #endif
 					
 					char ch=ID_COULDNT_OPEN;
@@ -627,19 +631,23 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
-					if(!isDirectory(basePath))
+					std::string share_name = getuntil("/",o_filename);
+					if(!share_name.empty())
 					{
-						char ch=ID_BASE_DIR_LOST;
-						int rc=SendInt(&ch, 1);
-						if(rc==SOCKET_ERROR)
+						std::string basePath=map_file(share_name+"/", ident);
+						if(!isDirectory(basePath))
 						{
-							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
-							return false;
+							char ch=ID_BASE_DIR_LOST;
+							int rc=SendInt(&ch, 1);
+							if(rc==SOCKET_ERROR)
+							{
+								Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
+								return false;
+							}
+							Log("Info: Base dir lost", LL_DEBUG);
+							break;
 						}
-						Log("Info: Base dir lost", LL_DEBUG);
-						break;
-					}
+					}					
 #endif
 					char ch=ID_COULDNT_OPEN;
 					int rc=SendInt(&ch, 1);
@@ -1250,13 +1258,17 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		if(hFile == INVALID_HANDLE_VALUE)
 		{
 	#ifdef CHECK_BASE_PATH
-			std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
-			if(!isDirectory(basePath))
+			std::string share_name = getuntil("/",o_filename);
+			if(!share_name.empty())
 			{
-				queueChunk(SChunk(ID_BASE_DIR_LOST));
-				Log("Info: Base dir lost", LL_DEBUG);
-				return true;
-			}
+				std::string basePath=map_file(share_name+"/", ident);
+				if(!isDirectory(basePath))
+				{
+					queueChunk(SChunk(ID_BASE_DIR_LOST));
+					Log("Info: Base dir lost", LL_DEBUG);
+					return true;
+				}
+			}			
 	#endif
 					
 			queueChunk(SChunk(ID_COULDNT_OPEN));
@@ -1456,7 +1468,8 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
 #ifdef CHECK_BASE_PATH
-		std::string basePath=map_file(getuntil("/",o_filename)+"/", ident);
+		std::string share_name = getuntil("/",o_filename);
+		std::string basePath=map_file(share_name + "/", ident);
 		if(!isDirectory(basePath))
 		{
 			char ch=ID_BASE_DIR_LOST;
