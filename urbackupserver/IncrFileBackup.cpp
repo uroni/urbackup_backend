@@ -1468,7 +1468,7 @@ void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int c
 
 	std::string curr_file_path = (curr_path + "/" + cf.name);
 	int crc32 = static_cast<int>(urb_adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
-	if(crc32 % copy_file_entries_sparse_modulo == incremental_num )
+	if(crc32 % copy_file_entries_sparse_modulo == incremental_num % copy_file_entries_sparse_modulo )
 	{
 		if(trust_client_hashes && !curr_sha2.empty())
 		{
