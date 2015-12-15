@@ -492,6 +492,7 @@ function show_progress21(data)
 {
 	if(I("lastacts_visible") && !g.loading)
 	{
+		data.from_timeout=true;
 		show_progress2(data);
 	}
 }
@@ -508,7 +509,10 @@ function show_progress2(data)
 		return;
 	}
 	g.progress_first=false;
-	stopLoading();
+	if(!data.from_timeout)
+	{
+		stopLoading();
+	}
 	
 	var rows="";
 	var tdata="";
