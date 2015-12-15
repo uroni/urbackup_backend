@@ -1781,6 +1781,14 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
 	std::string client_version_str=std::string(c_client_version);
+
+	std::string restore=Server->getServerParameter("allow_restore");
+
+	if(restore.empty() || restore=="default")
+	{
+		restore="client-confirms";
+	}
+
 #ifdef _WIN32
 	std::string buf;
 	buf.resize(1024);
@@ -1792,13 +1800,6 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		IScopedLock lock(backup_mutex);
 		win_volumes = get_all_volumes_list(false, volumes_cache);
 		win_nonusb_volumes = get_all_volumes_list(true, volumes_cache);
-	}
-
-	std::string restore=Server->getServerParameter("allow_restore");
-
-	if(restore.empty())
-	{
-		restore="client-confirms";
 	}
 
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
