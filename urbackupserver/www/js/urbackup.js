@@ -1257,14 +1257,14 @@ function show_status2(data)
 		
 		datatable_config.drawCallback = function(settings) {
 			$('select[id^="startbackup_"]').filter(
-				function(){
+				function() {
 					$(this).selectpicker();
 				});
 		};
 		datatable_config.preDrawCallback = function(settings) {
 			$('select[id^="startbackup_"]').filter(
-				function(){
-					$(this).selectpicker("destroy");
+				function() {
+					$( ".bootstrap-select.open" ).removeClass("open");
 				});
 		};
 		
