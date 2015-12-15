@@ -3179,14 +3179,15 @@ function show_logs2(data)
 	if(data.clients && !data.log)
 	{
 		var np="";
-		np+="<form class=\"form-horizontal\" role=\"form\">";
+		np+="<form class=\"form-inline\" role=\"form\">";
 		np+="<div class=\"form-group\">";
-		np+="<label class=\"col-sm-1 control-label\">";
+		np+="<label for=\"logsfilter\">";
 		np+=trans("filter")+": ";
 		np+="</label>";
-		np+="<div class=\"col-sm-2\">";
-		np+="<select class=\"form-control\" onchange=\"logClientChange()\" id=\"logclients\" class=\"selectpicker\" data-live-search=\"true\" >";
-		np+="<option value=\"-1\">"+trans("all")+"</option>";
+		np+=dustRender("logs_filter");
+		np+="<span style=\"margin-left:20px\">";
+		np+="<select onchange=\"logClientChange()\" id=\"logclients\" class=\"selectpicker\" data-live-search=\"true\">";
+		np+="<option value=\"-1\">"+trans("all_clients")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
 			var obj=data.clients[i];
@@ -3199,9 +3200,7 @@ function show_logs2(data)
 			np+=obj.name;
 			np+="</option>";
 		}
-		np+="</select> ";
-		np+="</div>";
-		np+=dustRender("logs_filter");
+		np+="</span>";
 		np+="</div>";
 		np+="</form>";
 		
@@ -3213,7 +3212,7 @@ function show_logs2(data)
 		
 		if(data.all_clients)
 		{
-			live_log_clients+="<option value=\"0\">"+trans("all")+"</option>";
+			live_log_clients+="<option value=\"0\">"+trans("all_clients")+"</option>";
 		}		
 		for(var i=0;i<data.log_right_clients.length;++i)
 		{
@@ -3490,6 +3489,8 @@ function logsFilterChange()
 	
 	g.has_logsfilter=true;
 	g.logsfilter=v;
+	g.has_logfilter=true;
+	g.logfilter=v;
 	
 	if(v2==-1)
 	{
