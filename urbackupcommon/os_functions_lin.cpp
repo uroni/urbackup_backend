@@ -39,7 +39,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
-#include <utime.h>
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define lstat64 lstat
@@ -692,10 +691,16 @@ int64 os_to_windows_filetime(int64 unix_time)
 
 bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified, int64 accessed)
 {
-	struct utimbuf times;
-	times.actime = static_cast<time_t>(accessed);
-	times.modtime = static_cast<time_t>(last_modified);
-    int rc = utime((fn).c_str(), &times);
+	time_t atime = static_cast<time_t>(accessed);
+	time_t mtime = static_cast<time_t>(last_modified);
+
+	timespec tss[2];
+	tss[0].tv_sec = atime;
+	tss[0].tv_nsec = 0;
+	tss[1].tv_sec = mtime;
+	tss[1].tv_nsec = 0;
+	
+	int rc = utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW);
 	return rc==0;
 }
 

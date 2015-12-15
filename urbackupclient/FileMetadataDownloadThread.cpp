@@ -418,11 +418,18 @@ namespace
                 ret = false;
             }
 
-            struct timeval tvs[2];
+            /* for utimes
+			struct timeval tvs[2];
             TIMESPEC_TO_TIMEVAL(&tvs[0], &(statbuf.st_atim));
             TIMESPEC_TO_TIMEVAL(&tvs[1], &(statbuf.st_mtim));
+			if(lutimes(fn.c_str(), tvs)!=0)
+			*/
 
-            if(lutimes(fn.c_str(), tvs)!=0)
+			timespec tss[2];
+			tss[0]=statbuf.st_atim;
+			tss[1]=statbuf.st_mtim;
+
+            if(utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW)!=0)
             {
                 restore.log("Error setting access and modification time of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
@@ -465,12 +472,19 @@ namespace
             ret = false;
         }
 
-        struct timeval tvs[2];
+        /* for utimes
+		struct timeval tvs[2];
         TIMESPEC_TO_TIMEVAL(&tvs[0], &(statbuf.st_atim));
         TIMESPEC_TO_TIMEVAL(&tvs[1], &(statbuf.st_mtim));
+		if(utimes(fn.c_str(), tvs)!=0)
+		*/
 
-        if(utimes(fn.c_str(), tvs)!=0)
-        {
+		timespec tss[2];
+		tss[0]=statbuf.st_atim;
+		tss[1]=statbuf.st_mtim;
+
+		if(utimensat(0, fn.c_str(), tss, 0)!=0)
+		{
             restore.log("Error setting access and modification time of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
             ret = false;
         }
