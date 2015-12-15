@@ -208,7 +208,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, size_t folder_items)
+    bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -232,7 +232,10 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	cond->notify_one();
 
 	queue_size+=queue_items_full;
-	sleepQueue(lock);
+	if(with_sleep_on_full)
+	{
+		sleepQueue(lock);
+	}
 }
 
 
@@ -313,13 +316,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	std::string cfn=getDLPath(todl);
 
-    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, true, todl.folder_items);
+    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, true, todl.folder_items);
+        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items);
 		--hash_retries;
 	}
 
@@ -494,7 +497,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-            addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, true);
+            addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, true, false);
 			return true;
 		}
 	}

@@ -136,7 +136,7 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full=true);
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);
