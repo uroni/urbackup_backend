@@ -1261,6 +1261,12 @@ function show_status2(data)
 					$(this).selectpicker();
 				});
 		};
+		datatable_config.preDrawCallback = function(settings) {
+			$('select[id^="startbackup_"]').filter(
+				function(){
+					$(this).selectpicker("destroy");
+				});
+		};
 		
 		$("#status_table").dataTable(datatable_config);
 	}
