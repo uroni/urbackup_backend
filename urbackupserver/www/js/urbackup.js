@@ -977,6 +977,16 @@ function show_status2(data)
 			var proc = obj.processes[j];
 			if(proc.action>0 && proc.action<7)
 			{
+				if(proc.pcdone<0)
+				{
+					proc.indexing=true;
+					proc.pcdone=0;
+				}
+				else
+				{
+					proc.percent=true;
+				}
+				
 				if(proc.action==1 || proc.action==2 ||
 					proc.action==5 || proc.action==6)
 				{
