@@ -1255,13 +1255,15 @@ function show_status2(data)
 		
 		datatable_config.oTableTools.aButtons[0].aButtons[2].mColumns = columns;
 		
+		datatable_config.drawCallback = function(settings) {
+			$('select[id^="startbackup_"]').filter(
+				function(){
+					$(this).selectpicker();
+				});
+		};
+		
 		$("#status_table").dataTable(datatable_config);
 	}
-	
-	$('select[id^="startbackup_"]').filter(
-    function(){
-        $(this).selectpicker();
-    });
 	
 	if(data.curr_version_num)
 	{
