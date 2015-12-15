@@ -38,7 +38,7 @@
 extern std::string server_identity;
 extern std::string server_token;
 
-const int64 c_readd_size_limit=100*1024;
+const int64 c_readd_size_limit=4096;
 
 IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
