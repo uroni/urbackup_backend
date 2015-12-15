@@ -892,6 +892,17 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					{
 						//compatibility
 						sha256hex = (extras["sha256"]);
+
+						if(!sha256hex.empty())
+						{
+							for(size_t j=0;j<sha256hex.size();j+=2)
+							{
+								if(j+1<sha256hex.size())
+								{
+									std::swap(sha256hex[j], sha256hex[j+1]);
+								}
+							}
+						}
 					}
 
 					if(sha256hex.empty())
