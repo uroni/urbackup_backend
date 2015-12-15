@@ -89,7 +89,7 @@ void ServerLogger::logCircular(int clientid, const std::string &pStr, int LogLev
 		data=&circular_logdata[clientid];
 		data->data.resize(circular_logdata_buffersize);
 		data->idx=0;
-		data->id=0;
+		data->id=1;
 	}
 	else
 	{
@@ -225,6 +225,17 @@ std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, s
 	}
 	else
 	{
+		if(minid==std::string::npos)
+		{
+			std::vector<SCircularLogEntry> ret;
+			SCircularLogEntry entry;
+			entry.id=0;
+			entry.loglevel=LL_INFO;
+			entry.time=Server->getTimeSeconds();
+			entry.utf8_msg="No log entries yet";
+			ret.push_back(entry);
+			return ret;
+		}
 		return std::vector<SCircularLogEntry>();
 	}
 }

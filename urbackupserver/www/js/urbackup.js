@@ -3342,6 +3342,8 @@ function show_logs2(data)
 		g.data_f=ndata;
 	}
 	
+	$("#live_log_clientid").selectpicker();
+	
 	if(g.has_logfilter && I('logfilter'))
 	{
 		I('logfilter').selectedIndex=2-g.logfilter;
