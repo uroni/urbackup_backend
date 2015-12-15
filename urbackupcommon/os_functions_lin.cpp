@@ -709,12 +709,45 @@ bool copy_file(const std::string &src, const std::string &dst)
 {
     IFile *fsrc=Server->openFile(src, MODE_READ);
 	if(fsrc==NULL) return false;
-    IFile *fdst=Server->openFile(dst, MODE_WRITE);
+	IFile *fdst=Server->openFile(dst, MODE_WRITE);
 	if(fdst==NULL)
 	{
-        Server->destroy(fsrc);
+		Server->destroy(fsrc);
 		return false;
 	}
+
+	bool has_error = copy_file(fsrc, fdst);
+
+	Server->destroy(fsrc);
+	Server->destroy(fdst);
+
+	if(has_error)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool copy_file(IFile *fsrc, IFile *fdst)
+{
+	if(fsrc==NULL || fdst==NULL)
+	{
+		return false;
+	}
+	
+	if(!fsrc->Seek(0))
+	{
+		return false;
+	}
+
+	if(!fdst->Seek(0))
+	{
+		return false;
+	}
+
 	char buf[4096];
 	size_t rc;
 	bool has_error=false;
@@ -730,9 +763,6 @@ bool copy_file(const std::string &src, const std::string &dst)
 			}
 		}
 	}
-
-    Server->destroy(fsrc);
-    Server->destroy(fdst);
 
 	if(has_error)
 	{

@@ -1168,6 +1168,39 @@ bool copy_file(const std::string &src, const std::string &dst)
 		Server->destroy(fsrc);
 		return false;
 	}
+
+	bool has_error = copy_file(fsrc, fdst);
+
+	Server->destroy(fsrc);
+	Server->destroy(fdst);
+
+	if(has_error)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool copy_file(IFile *fsrc, IFile *fdst)
+{
+	if(fsrc==NULL || fdst==NULL)
+	{
+		return false;
+	}
+
+	if(!fsrc->Seek(0))
+	{
+		return false;
+	}
+
+	if(!fdst->Seek(0))
+	{
+		return false;
+	}
+
 	char buf[4096];
 	size_t rc;
 	bool has_error=false;
@@ -1184,9 +1217,6 @@ bool copy_file(const std::string &src, const std::string &dst)
 		}
 	}
 
-	Server->destroy(fsrc);
-	Server->destroy(fdst);
-
 	if(has_error)
 	{
 		return false;
@@ -1196,6 +1226,7 @@ bool copy_file(const std::string &src, const std::string &dst)
 		return true;
 	}
 }
+
 #endif
 
 bool os_path_absolute(const std::string& path)

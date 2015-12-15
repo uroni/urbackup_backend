@@ -109,6 +109,9 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 
 bool copy_file(const std::string &src, const std::string &dst);
 
+class IFile;
+bool copy_file(IFile *fsrc, IFile *fdst);
+
 bool os_path_absolute(const std::string& path);
 
 enum EFileType
