@@ -65,14 +65,14 @@ std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 	while(read_avail<tr && !has_eof && (read_avail==0 || Server->getTimeMS()-starttime<60000))
 	{
 		lock.relock(NULL);
-		Server->wait(10);
+		Server->wait(100);
 		lock.relock(buffer_mutex.get());
 		read_avail = getReadAvail();
 	}
 
 	if(has_eof)
 	{
-		tr = (std::min)(static_cast<_u32>(getReadAvail()), tr);
+		tr = (std::min)(static_cast<_u32>(read_avail), tr);
 		std::string ret;
 		if(tr>0)
 		{
@@ -87,7 +87,10 @@ std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 	}
 	else
 	{
+		tr = (std::min)(static_cast<_u32>(read_avail), tr);
+
 		std::string ret;
+		ret.resize(tr);
 		readBuf(&ret[0], tr);
 		return ret;
 	}
@@ -99,16 +102,19 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 
 	last_read = Server->getTimeMS();
 
-	while(getReadAvail()<(std::max)(bsize, buffer_keep_free) && !has_eof)
+	int64 starttime = Server->getTimeMS();
+	size_t read_avail = getReadAvail();
+	while(read_avail<bsize && !has_eof && (read_avail==0 || Server->getTimeMS()-starttime<60000))
 	{
 		lock.relock(NULL);
 		Server->wait(100);
 		lock.relock(buffer_mutex.get());
+		read_avail = getReadAvail();
 	}
 
 	if(has_eof)
 	{
-		size_t tr = (std::min)(getReadAvail(), static_cast<size_t>(bsize));
+		size_t tr = (std::min)(read_avail, static_cast<size_t>(bsize));
 		readBuf(buffer, tr);
 		if(getReadAvail()==0)
 		{
@@ -118,8 +124,9 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	}
 	else
 	{
-		readBuf(buffer, bsize);
-		return bsize;
+		size_t tr = (std::min)(read_avail, static_cast<size_t>(bsize));
+		readBuf(buffer, tr);
+		return static_cast<_u32>(tr);
 	}
 }
 

@@ -315,6 +315,14 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 		else
 		{
 			ServerLogger::Log(logid, "Error applying meta data. Unknown meta data.", LL_ERROR);
+
+			std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
+
+			if(copy_file(metadata_f.get(), tmp.get()))
+			{
+				ServerLogger::Log(logid, "Copied metadata to "+tmp->getFilename()+" for error analysis", LL_INFO);
+			}
+
 			return false;
 		}
 

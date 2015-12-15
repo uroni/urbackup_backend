@@ -1621,7 +1621,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			is_eof=true;
 		}
 			
-		if(rc>=0 && rc<count && curr_filesize!=-1)
+		if(rc>=0 && rc<count && curr_filesize!=-1 && !has_error)
 		{
 			memset(&buf[rc], 0, count-rc);
 			rc=static_cast<_u32>(count);
