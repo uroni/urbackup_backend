@@ -2,7 +2,7 @@
 	{?show_select_box}
 	<td>
 		<input type="checkbox" name="status_selected" value="{id}" />
-		<select onchange="startBackups(I('startbackup_{id}')[I('startbackup_{id}').selectedIndex].value, {id})" id="startbackup_{id}" style="margin-left:5px; display:none; line-height: 14px;" class="selectpicker" data-width="20px"  data-container="body" data-style="btn btn-xs">
+		<select onchange="startBackups(I('startbackup_{id}')[I('startbackup_{id}').selectedIndex].value, {id})" id="startbackup_{id}" style="margin-left:5px; display:none; line-height: 14px;" class="selectpicker" data-width="20px"  data-container="#data_f" data-style="btn btn-xs">
 			<option value="incr_file">{tIncremental file backup}</option>
 			<option value="full_file">{tFull file backup}</option>
 			<option value="incr_image">{tIncremental image backup}</option>
