@@ -279,7 +279,7 @@ function try_anonymous_login(data)
 
 function file_access(params)
 {
-	var p = "clientname="+params.computername;
+	var p = "clientname="+params.clientname;
 	p+="&token_data="+encodeURIComponent(params["token_data"]);
 	
 	for(var i=0;;++i)
