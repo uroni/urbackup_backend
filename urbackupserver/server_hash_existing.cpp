@@ -76,19 +76,12 @@ void ServerHashExisting::operator()()
 	}
 }
 
-void ServerHashExisting::queueStop( bool front )
+void ServerHashExisting::queueStop()
 {
 	SHashItem item;
 	item.do_stop = true;
 	IScopedLock lock(mutex);
-	if(front)
-	{
-		queue.push_front(item);
-	}
-	else
-	{
-		queue.push_back(item);
-	}
+	queue.push_back(item);
 	cond->notify_one();
 }
 

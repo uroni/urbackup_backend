@@ -13,7 +13,7 @@ public:
 	ServerHashExisting(int clientid, logid_t logid, IncrFileBackup* incr_backup);
 	~ServerHashExisting();
 
-	void queueStop(bool front);
+	void queueStop();
 
 	void queueFile(const std::string& fullpath, const std::string& hashpath);
 

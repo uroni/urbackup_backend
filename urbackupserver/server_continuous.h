@@ -165,7 +165,7 @@ public:
 
 		if(server_download.get())
 		{
-			server_download->queueStop(false);
+			server_download->queueStop();
 			Server->getThreadPool()->waitFor(server_download_ticket);
 		}
 

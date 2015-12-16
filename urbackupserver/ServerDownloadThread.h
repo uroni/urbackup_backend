@@ -145,7 +145,7 @@ public:
 
 	void addToQueueStopShadowcopy(const std::string& fn);
 
-	void queueStop(bool immediately);
+	void queueStop();
 
 	void queueSkip();
 	

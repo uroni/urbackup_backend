@@ -70,7 +70,16 @@ void RestoreDownloadThread::operator()()
 
 		if(curr.action==EQueueAction_Quit)
 		{
-			break;
+			IScopedLock lock(mutex.get());
+			if(!dl_queue.empty())
+			{
+				dl_queue.push_back(curr);
+				continue;
+			}
+			else
+			{
+				break;
+			}
 		}
 		else if(curr.action==EQueueAction_Skip)
 		{

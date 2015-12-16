@@ -491,7 +491,7 @@ bool IncrFileBackup::doFileBackup()
 							server_download->queueSkip();
 							if(server_hash_existing.get())
 							{
-								server_hash_existing->queueStop(true);
+								server_hash_existing->queueStop();
 							}
 						}
 					}
@@ -1005,10 +1005,10 @@ bool IncrFileBackup::doFileBackup()
 			break;
 	}
 
-	server_download->queueStop(false);
+	server_download->queueStop();
 	if(server_hash_existing.get())
 	{
-		server_hash_existing->queueStop(false);
+		server_hash_existing->queueStop();
 	}
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);

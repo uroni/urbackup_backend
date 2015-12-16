@@ -492,7 +492,7 @@ bool FullFileBackup::doFileBackup()
 			break;
 	}
 
-	server_download->queueStop(false);
+	server_download->queueStop();
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 

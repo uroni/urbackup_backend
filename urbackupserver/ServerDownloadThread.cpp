@@ -97,7 +97,16 @@ void ServerDownloadThread::operator()( void )
 
 		if(curr.action==EQueueAction_Quit)
 		{
-			break;
+			IScopedLock lock(mutex);
+			if(!dl_queue.empty())
+			{
+				dl_queue.push_back(curr);
+				continue;
+			}
+			else
+			{
+				break;
+			}
 		}
 		else if(curr.action==EQueueAction_Skip)
 		{
@@ -709,20 +718,13 @@ bool ServerDownloadThread::isOffline()
 	return is_offline;
 }
 
-void ServerDownloadThread::queueStop(bool immediately)
+void ServerDownloadThread::queueStop()
 {
 	SQueueItem ni;
 	ni.action = EQueueAction_Quit;
 
 	IScopedLock lock(mutex);
-	if(immediately)
-	{
-		dl_queue.push_front(ni);
-	}
-	else
-	{
-		dl_queue.push_back(ni);
-	}
+	dl_queue.push_back(ni);
 	cond->notify_one();
 }
 
