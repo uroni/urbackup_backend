@@ -633,7 +633,7 @@ bool IncrFileBackup::doFileBackup()
 							str_map::iterator sym_target = extra_params.find("sym_target");
 							if(sym_target!=extra_params.end())
 							{
-								if(dir_diff && use_snapshots)
+								if(use_snapshots && dir_diff)
 								{
 									if(!os_remove_symlink_dir(backuppath+local_curr_os_path))
 									{
@@ -643,12 +643,15 @@ bool IncrFileBackup::doFileBackup()
 									}
 								}
 
-								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, (orig_sep), true))
+								if(!use_snapshots || dir_diff)
 								{
-									ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
-									c_has_error=true;
-									break;
-								}
+									if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, (orig_sep), true))
+									{
+										ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
+										c_has_error=true;
+										break;
+									}
+								}								
 
 								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
 								create_hash_dir=false;
@@ -806,10 +809,13 @@ bool IncrFileBackup::doFileBackup()
 
                     bool download_metadata=false;
 
+					bool file_changed = hasChange(line, diffs);
+
 					str_map::iterator sym_target = extra_params.find("sym_target");
-					if(sym_target!=extra_params.end())
+					if(sym_target!=extra_params.end() && (indirchange || file_changed) )
 					{
 						std::string symlink_path = backuppath+local_curr_os_path;
+
 						if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), true))
 						{
 							ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
@@ -821,7 +827,7 @@ bool IncrFileBackup::doFileBackup()
                             download_metadata=true;
                         }
 					}
-					else if(extra_params.find("special")!=extra_params.end())
+					else if(extra_params.find("special")!=extra_params.end() && (indirchange || file_changed) )
 					{
 						std::string touch_path = backuppath+local_curr_os_path;
 						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
@@ -836,7 +842,7 @@ bool IncrFileBackup::doFileBackup()
 							download_metadata=true;
 						}
 					}
-					else if(indirchange || hasChange(line, diffs)) //is changed
+					else if(indirchange || file_changed) //is changed
 					{
 						bool f_ok=false;
 						if(!curr_sha2.empty())
