@@ -625,15 +625,27 @@ bool IncrFileBackup::doFileBackup()
 								{
 									skip_dir_copy_sparse = readd_file_entries_sparse;
 								}
+
+								if(!write_file_metadata(metadata_fn, client_main, metadata, false))
+								{
+									ServerLogger::Log(logid, "Writing directory metadata to \""+metadata_fn+"\" failed.", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
 							}
 						}
 						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
 						{
-							bool create_hash_dir= !(dir_diff && use_snapshots);
+							bool dir_already_exists = (use_snapshots && dir_diff);
 							str_map::iterator sym_target = extra_params.find("sym_target");
+
+							bool symlinked_file = false;
+
+							std::string metadata_srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
+
 							if(sym_target!=extra_params.end())
 							{
-								if(use_snapshots && dir_diff)
+								if(dir_already_exists)
 								{
 									if(!os_remove_symlink_dir(backuppath+local_curr_os_path))
 									{
@@ -643,50 +655,54 @@ bool IncrFileBackup::doFileBackup()
 									}
 								}
 
-								if(!use_snapshots || dir_diff)
+								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, orig_sep, true))
 								{
-									if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, (orig_sep), true))
+									ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
+									c_has_error=true;
+									break;
+								}					
+
+								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
+								metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
+								symlinked_file=true;
+							}
+							else if( !dir_already_exists )
+							{
+								if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)) )
+								{
+									if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 									{
-										ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
+										ServerLogger::Log(logid, "Creating directory  \""+backuppath+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
 										c_has_error=true;
 										break;
 									}
+									else
+									{
+										ServerLogger::Log(logid, "Directory \""+backuppath+local_curr_os_path+"\" does already exist.", LL_WARNING);
+									}
 								}								
-
-								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
-								create_hash_dir=false;
-							}
-							else if( (dir_diff && use_snapshots) || !os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
-							{
-								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
-								{
-									ServerLogger::Log(logid, "Creating directory  \""+backuppath+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
-									c_has_error=true;
-									break;
-								}
-								else
-								{
-									ServerLogger::Log(logid, "Directory \""+backuppath+local_curr_os_path+"\" does already exist.", LL_WARNING);
-								}
 							}
 							
-							if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+							if(!dir_already_exists && !symlinked_file)
 							{
-								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+								if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
-									ServerLogger::Log(logid, "Creating directory  \""+backuppath_hashes+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
-									c_has_error=true;
-									break;
-								}
-								else
-								{
-									ServerLogger::Log(logid, "Directory  \""+backuppath_hashes+local_curr_os_path+"\" does already exist. - " + systemErrorInfo(), LL_WARNING);
-								}
+									if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+									{
+										ServerLogger::Log(logid, "Creating directory  \""+backuppath_hashes+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
+										c_has_error=true;
+										break;
+									}
+									else
+									{
+										ServerLogger::Log(logid, "Directory  \""+backuppath_hashes+local_curr_os_path+"\" does already exist. - " + systemErrorInfo(), LL_WARNING);
+									}
+								}								
 							}
 
-							if(dir_diff && use_snapshots)
+							if(dir_already_exists)
 							{
-								if(!Server->deleteFile(metadata_fn))
+								if(!Server->deleteFile(os_file_prefix(metadata_fn)))
 								{
 									ServerLogger::Log(logid, "Error deleting metadata file \""+metadata_fn+"\".", LL_ERROR);
 									c_has_error=true;
@@ -694,23 +710,22 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 							
-							if(!indirchange && !dir_diff && curr_path!="/urbackup_backup_scripts")
+							if( !dir_diff && !indirchange && curr_path!="/urbackup_backup_scripts")
 							{
-								std::string srcpath=os_file_prefix(last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn);
-								if(!os_create_hardlink(metadata_fn, srcpath, use_snapshots, NULL))
+								if(!os_create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), use_snapshots, NULL))
 								{
-									if(!copy_file(srcpath, metadata_fn))
+									if(!copy_file(metadata_srcpath, metadata_fn))
 									{
 										if(client_main->handle_not_enough_space(metadata_fn))
 										{
-											if(!copy_file(srcpath, metadata_fn))
+											if(!copy_file(metadata_srcpath, metadata_fn))
 											{
-												ServerLogger::Log(logid, "Cannot copy directory metadata from \""+srcpath+"\" to \""+metadata_fn+"\". - " + systemErrorInfo(), LL_ERROR);
+												ServerLogger::Log(logid, "Cannot copy directory metadata from \""+metadata_srcpath+"\" to \""+metadata_fn+"\". - " + systemErrorInfo(), LL_ERROR);
 											}
 										}
 										else
 										{
-											ServerLogger::Log(logid, "Cannot copy directory metadata from \""+srcpath+"\" to \""+metadata_fn+"\". - " + systemErrorInfo(), LL_ERROR);
+											ServerLogger::Log(logid, "Cannot copy directory metadata from \""+metadata_srcpath+"\" to \""+metadata_fn+"\". - " + systemErrorInfo(), LL_ERROR);
 										}
 									}
 								}
