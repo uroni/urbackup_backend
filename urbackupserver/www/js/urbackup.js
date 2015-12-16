@@ -3835,6 +3835,12 @@ function startBackups(start_type, clientid)
 		return;
 	}
 	
+	if(start_type=="remove")
+	{
+		removeClient(clientid);
+		return;
+	}
+	
 	var ids=[];
 	if(clientid)
 	{
@@ -3843,7 +3849,6 @@ function startBackups(start_type, clientid)
 	else
 	{
 		var cbs=document.getElementsByName("status_selected");
-		var ids=[];
 		for(var i=0;i<cbs.length;++i)
 		{
 			if(cbs[i].checked)
