@@ -9,6 +9,7 @@ g.current_version=1005000000;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
+g.maximized=false;
 
 g.languages=[ 
 			    { l: "Deutsch", s: "de" },
@@ -791,7 +792,8 @@ function show_statistics3(data)
 		obj.images=format_size(obj.images);*/
 		rows+=dustRender("stat_general_row", obj);
 	}
-	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
+	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total),
+				images_total: format_size(images_total), ses: g.session, maximized: g.maximized});
 	if(g.data_f!=ndata)
 	{	
 		I('data_f').innerHTML=ndata;
@@ -3659,6 +3661,7 @@ function show_live_log()
 	var clientid=I('live_log_clientid').value;
 	var win = window.open('', '_blank', '');
 	var live_log_page = dustRender("live_log", {session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text});
+	I('live_log_clientid').selectedIndex=-1;
 	win.document.write(live_log_page);
 	win.document.close();
 	win.focus();
@@ -3923,6 +3926,8 @@ function changeArchiveForUnit()
 }
 function startBackups(start_type, clientid)
 {
+	$(this).prop('selectedIndex', -1);
+	
 	if(start_type=="none")
 	{
 		return;
@@ -4083,6 +4088,7 @@ g.maximize_or_minimize = function()
 		{
 			window.localStorage.setItem('bootstrap_maximize', 'true');
 		}
+		g.maximized=true;
 	}
 	else
 	{
@@ -4093,6 +4099,7 @@ g.maximize_or_minimize = function()
 		{
 			window.localStorage.setItem('bootstrap_maximize', 'false');
 		}
+		g.maximized=false;
 	}
 	
 	if($("#status_table"))
@@ -4105,4 +4112,5 @@ g.maximize_or_minimize = function()
 		$("#statistics_table").DataTable().columns.adjust().draw();
 	}
 	
+	refresh_page();
 }
