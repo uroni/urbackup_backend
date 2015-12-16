@@ -86,6 +86,7 @@
 </div>
 {/has_client_download}
 
+{?status_extra_clients}
 <div class="col-lg-4">
 	<div class="panel panel-default">
 		<div class="panel-heading">{tInternet clients}</div>
@@ -102,7 +103,6 @@
 	</div>
 </div>
 
-{?status_extra_clients}
 <div class="col-lg-4">
 	<div class="panel panel-default">
 		<div class="panel-heading">
@@ -135,7 +135,11 @@
 {/status_extra_clients}
 
 {?has_client_download}
+{?status_extra_clients}
 <div class="col-lg-2">
+{:else}
+<div class="col-lg-4">
+{/status_extra_clients}
 {:else}
 <div class="col-lg-4">
 {/has_client_download}
