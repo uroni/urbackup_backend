@@ -553,6 +553,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string set_admin_pw=Server->getServerParameter("set_admin_pw");
 	if(!set_admin_pw.empty())
 	{
+		std::string set_admin_username = Server->getServerParameter("set_admin_username");
+
+		if(set_admin_username.empty())
+		{
+			set_admin_username = "admin";
+		}
+
 		std::string new_salt=ServerSettings::generateRandomAuthKey(20);
 
 		const size_t pbkdf2_rounds = 10000;
@@ -567,27 +574,33 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if(res.empty())
 		{
 			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?)");
-			q->Bind("admin");
+			q->Bind(set_admin_username);
 			q->Bind(password_md5);
 			q->Bind(new_salt);
 			q->Bind(pbkdf2_rounds);
 			q->Write();
 			q->Reset();
+
+			Server->Log("User account \""+set_admin_username+"\" not present. Created admin user account with specified password.", LL_INFO);
 		}
 		else
 		{
-			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name='admin'");
+			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name=?");
 			q->Bind(password_md5);
 			q->Bind(new_salt);
 			q->Bind(pbkdf2_rounds);
+			q->Bind(set_admin_username);
 			q->Write();
 			q->Reset();
+
+			Server->Log("Changed admin password.", LL_INFO);
 		}
 
-		Server->Log("Changed admin password.", LL_INFO);
-
 		{
-			db_results res=db->Read("SELECT id FROM si_users WHERE name='admin'");
+			IQuery *q=db->Prepare("SELECT id FROM si_users WHERE name=?");
+			q->Bind(set_admin_username);
+			db_results res = q->Read();
+			q->Reset();
 			if(!res.empty())
 			{
 				updateRights(watoi(res[0]["id"]), "idx=0&0_domain=all&0_right=all", db);

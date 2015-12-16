@@ -465,6 +465,10 @@ int action_reset_admin_pw(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
+	TCLAP::ValueArg<std::string> admin_user_arg("a", "admin-user",
+		"Admin account user name",
+		false, "admin", "user account name", cmd);
+
 	cmd.parse(args);
 
 	std::vector<std::string> real_args;
@@ -478,6 +482,8 @@ int action_reset_admin_pw(std::vector<std::string> args)
 	real_args.push_back("debug");
 	real_args.push_back("--set_admin_pw");
 	real_args.push_back(password_arg.getValue());
+	real_args.push_back("--set_admin_username");
+	real_args.push_back(admin_user_arg.getValue());
 
 	return run_real_main(real_args);
 }
