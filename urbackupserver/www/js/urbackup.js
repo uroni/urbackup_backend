@@ -1987,11 +1987,11 @@ function show_settings2(data)
 			{
 				if(g.settings_nav_pos==idx)
 				{
-					n+="<li id=\"client_settings_el\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
+					n+="<li id=\"client_settings_el\" class=\"active\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
 				}
 				else
 				{
-					n+="<li id=\"client_settings_el\" class=\"active\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
+					n+="<li id=\"client_settings_el\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
 				}
 				++idx;
 			}
