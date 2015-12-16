@@ -63,14 +63,14 @@ void logSuccessfullLogin(Helper& helper, str_map& PARAMS, const std::string& use
 	q->Reset();
 
 #ifndef _WIN32
-	syslog(LOG_AUTH|LOG_INFO, "Login successful for %S from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+	syslog(LOG_AUTH|LOG_INFO, "Login successful for %s from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
 #endif
 }
 
 void logFailedLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 #ifndef _WIN32
-	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %S from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %s from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
 #endif
 }
 
