@@ -8,3 +8,8 @@ cursor:wait !important;
 border: 1px solid black;
 margin-bottom: 0px;
 }
+@media (min-width: 1200px) {
+  .container {
+    width: 1200px;
+  }
+}

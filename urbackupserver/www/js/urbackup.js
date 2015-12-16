@@ -1175,10 +1175,12 @@ function show_status2(data)
 	}
 	
 	var status_client_download="";
+	var has_client_download=false;
 	if(data.client_downloads)
 	{
 		var client_download_data=build_client_download_select(data.client_downloads);
 		status_client_download=dustRender("status_client_download", {download_clients: client_download_data});
+		has_client_download=true;
 	}
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
@@ -1188,7 +1190,8 @@ function show_status2(data)
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
 		status_client_download: status_client_download,
-		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients});
+		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
+		has_client_download: has_client_download});
 	
 	if(g.data_f!=ndata)
 	{
@@ -3388,6 +3391,7 @@ function show_logs2(data)
 	}
 	
 	$("#live_log_clientid").selectpicker();
+	$("#live_log_clientid").prop('selectedIndex', -1);
 	
 	if(g.has_logfilter && I('logfilter'))
 	{

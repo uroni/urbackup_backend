@@ -76,55 +76,73 @@
 	</div>
 </div>
 
-<div class="panel panel-default">
-	{status_client_download|s}
+<div class="row">
+
+{?has_client_download}
+<div class="col-lg-2">
+	<div class="panel panel-default">
+		{status_client_download|s}
+	</div>
+</div>
+{/has_client_download}
+
+<div class="col-lg-4">
+	<div class="panel panel-default">
+		<div class="panel-heading">{tInternet clients}</div>
+		<div class="panel-body">
+			{internet_client_added|s}
+			<form class="form" action="#" onsubmit="addInternetClient(); return false;" role="form">
+				<div class="form-group">
+					<label for="clientname">{tAdd additional internet clients}:</label>
+					<input type="text" class="form-control" id="clientname" placeholder="{tClient name}" value=""/>
+				</div>
+				<input type="submit" class="btn btn-default" value="{tAdd}"/>
+			</form>
+		</div>
+	</div>
 </div>
 
 {?status_extra_clients}
-<div class="panel panel-default">
-	<div class="panel-heading">{tInternet clients}</div>
-	<div class="panel-body">
-		{internet_client_added|s}
-		<form class="form" action="#" onsubmit="addInternetClient(); return false;" role="form">
-			<div class="form-group">
-				<label for="clientname">{tAdd additional internet clients}:</label>
-				<input type="text" class="form-control" id="clientname" placeholder="{tClient name}" value=""/>
-			</div>
-			<input type="submit" class="btn btn-default" value="{tAdd}"/>
-		</form>
-	</div>
-</div>
+<div class="col-lg-4">
+	<div class="panel panel-default">
+		<div class="panel-heading">
+			{tExtra clients}
+		</div>
+		<div class="panel-body">
+			<table class="table table-hover">
+				<thead>
+					<tr>			
+						<th>{tHostname/IP}</th>
+						<th>{tOnline}</th>
+						<th>{tActions}</th>
+					</tr>
+				</thead>
+				<tbody>
+				{extra_clients_rows|s}
+				</tbody>
+			</table>
 
-<div class="panel panel-default">
-	<div class="panel-heading">
-		{tExtra clients}
-	</div>
-	<div class="panel-body">
-		<table class="table table-hover">
-			<thead>
-				<tr>			
-					<th>{tHostname/IP}</th>
-					<th>{tOnline}</th>
-					<th>{tActions}</th>
-				</tr>
-			</thead>
-			<tbody>
-			{extra_clients_rows|s}
-			</tbody>
-		</table>
-
-		<form class="form" action="#" onsubmit="addExtraClient(); return false;" role="form">
-			<div class="form-group">
-				<label for="hostname">{tAdd extra client}:</label>
-				<input type="text" class="form-control" id="hostname" value="" placeholder="{tHostname/IP}"/>
-			</div>
-			<input type="submit" class="btn btn-default" value="{tAdd}"/>
-		</form>
+			<form class="form" action="#" onsubmit="addExtraClient(); return false;" role="form">
+				<div class="form-group">
+					<label for="hostname">{tAdd extra client}:</label>
+					<input type="text" class="form-control" id="hostname" value="" placeholder="{tHostname/IP}"/>
+				</div>
+				<input type="submit" class="btn btn-default" value="{tAdd}"/>
+			</form>
+		</div>
 	</div>
 </div>
 {/status_extra_clients}
-	
-<div class="panel panel-default">
-	<div class="panel-heading">{tServer identity}</div>
-	<div class="panel-body">{server_identity}</div>
+
+{?has_client_download}
+<div class="col-lg-2">
+{:else}
+<div class="col-lg-4">
+{/has_client_download}
+	<div class="panel panel-default">
+		<div class="panel-heading">{tServer identity}</div>
+		<div class="panel-body" style="word-wrap:break-word;">{server_identity}</div>
+	</div>
+</div>
+
 </div>

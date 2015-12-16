@@ -1,29 +1,33 @@
 ﻿<div class="panel panel-default">
 	<div class="panel-heading">{tBackup Statistics}</div>
 	<div class="panel-body">
-		<table id="statistics_table" class="table table-striped">
-			<thead>
-				<tr>			
-					<th>{tComputer name}</th>
-					<th>{tImages}</th>
-					<th>{tFiles}</th>
-					<th>{tAll}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{rows|s}
-			</tbody>
-		</table>
-		
-		<div class="panel panel-primary">
-			<div class="panel-heading">{tSum}</div>
-			<div class="panel-body">
-				<table class="table table-striped">
-					<tr><td>{tImages}</td><td>{images_total}</td></tr>
-					<tr><td>{tFiles}</td><td>{files_total}</td></tr>
-					<tr><td>{tAll}</td><td>{used_total}</td></tr>
+		<div class="row">
+			<div class="col-lg-8">
+				<table id="statistics_table" class="table table-striped">
+					<thead>
+						<tr>			
+							<th>{tComputer name}</th>
+							<th>{tImages}</th>
+							<th>{tFiles}</th>
+							<th>{tAll}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{rows|s}
+					</tbody>
 				</table>
-				<button class="btn btn-default" onclick="recalculateStatistics()">{tRecalculate statistics}</button>
+				
+				<div class="panel panel-primary">
+					<div class="panel-heading">{tSum}</div>
+					<div class="panel-body">
+						<table class="table table-striped">
+							<tr><td>{tImages}</td><td>{images_total}</td></tr>
+							<tr><td>{tFiles}</td><td>{files_total}</td></tr>
+							<tr><td>{tAll}</td><td>{used_total}</td></tr>
+						</table>
+						<button class="btn btn-default" onclick="recalculateStatistics()">{tRecalculate statistics}</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
