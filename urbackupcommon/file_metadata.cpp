@@ -199,7 +199,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 						return false;
 					}
 
-					size_should+=sizeof(int64)+little_endian(os_metadata_size);
+					size_should+=little_endian(os_metadata_size);
 
 					if(out->Size()!=size_should)
 					{
