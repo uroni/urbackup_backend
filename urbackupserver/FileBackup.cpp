@@ -1230,6 +1230,12 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
 
+						str_map::iterator sym_target = extra.find("sym_target");
+						if(sym_target!=extra.end())
+						{
+							metadata_fn=metadata_home_path + curr_path + os_file_sep() + escape_metadata_fn(osspecific_name);
+						}
+
 						FileMetadata metadata;
 						if(!read_metadata(metadata_fn, metadata))
 						{
@@ -1404,6 +1410,12 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						curr_path += os_file_sep() + osspecific_name;
 
 						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
+
+						str_map::iterator sym_target = extra.find("sym_target");
+						if(sym_target!=extra.end())
+						{
+							metadata_fn=metadata_home_path + curr_path + os_file_sep() + escape_metadata_fn(osspecific_name);
+						}
 
 						FileMetadata metadata;
 						if(!read_metadata(metadata_fn, metadata))
