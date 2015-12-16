@@ -1848,7 +1848,7 @@ function show_settings1()
 	new getJSON("settings", "", show_settings2);
 	
 	g.main_nav_pos=1;
-	g.settings_nav_pos=0;
+	g.settings_nav_pos=-1;
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
@@ -1866,6 +1866,8 @@ function show_settings2(data)
 		n+="<ul class=\"nav nav-tabs\" role=\"tablist\">";
 		if(nav.general)
 		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<li class=\"active\"><a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a></li>";
@@ -1883,6 +1885,8 @@ function show_settings2(data)
 		}
 		if(nav.mail)
 		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<li class=\"active\"><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
@@ -1899,6 +1903,8 @@ function show_settings2(data)
 		}
 		if(nav.ldap)
 		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<li class=\"active\"><a href=\"javascript: ldapSettings()\">"+trans("ldap_settings")+"</a></li>";
@@ -1914,6 +1920,8 @@ function show_settings2(data)
 		}
 		if(nav.users)
 		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<li class=\"active\"><a href=\"javascript: userSettings()\">"+trans("users")+"</a></li>";
@@ -1928,24 +1936,22 @@ function show_settings2(data)
 		}
 		else
 		{
-			if(data.sa=="clientsettings")
-			{
-				++g.settings_nav_pos;
-			}
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=1;
 			
-			n+="<li><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+			n+="<li id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
 
 			++idx;
 			++g.user_nav_pos_offset;
 		}
 		if(nav.clients)
 		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
 			g.settings_clients=nav.clients;
 			
-			if(nav.clients.length>0)
+			if(nav.clients.length>1)
 			{
-				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\">";
-				n+="<option value=\"n;\">"+trans("clients")+"</option>";
+				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\" title=\""+trans("clients")+"\">";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
 					var selected = "";
@@ -1957,6 +1963,18 @@ function show_settings2(data)
 					++idx;
 				}
 				n+="</select>";
+			}
+			else
+			{
+				if(g.settings_nav_pos==idx)
+				{
+					n+="<li id=\"client_settings_el\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
+				}
+				else
+				{
+					n+="<li id=\"client_settings_el\" class=\"active\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
+				}
+				++idx;
 			}
 		}
 		I('nav_pos').innerHTML=n;
@@ -2960,15 +2978,12 @@ function changeUserPassword(uid, name)
 }
 function changePW(el)
 {
-	if(I('settingsclient'))
+	if(I('clientpicker'))
 	{
-		I('settingsclient').innerHTML="<option value=\"n;\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
-		I('settingsclient').selectedIndex=0;
+		I('clientpicker').selectedIndex=-1;
 	}
-	if(I('change_pw_el'))
-	{
-		I('change_pw_el').innerHTML="<li class=\"active\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
-	}
+	$("#change_pw_el").addClass("active");
+	$("#client_settings_el").removeClass("active");
 	var ndata=dustRender("change_pw");
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
