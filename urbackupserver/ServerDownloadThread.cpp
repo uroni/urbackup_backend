@@ -460,6 +460,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		
 		hash_tmp_destroy.release();
 		delete dlfiles.hashoutput;
+		dlfiles.hashoutput=NULL;
 			
 		if(ok && copy_file(hashfile_old_fn, hashoutput_fn) 
 		    && (dlfiles.hashoutput=Server->openFile(hashoutput_fn, MODE_RW))!=NULL )
@@ -471,7 +472,6 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		}
 		else
 		{
-			hash_tmp_destroy.reset(dlfiles.hashoutput);
 			return false;
 		}
 	}
