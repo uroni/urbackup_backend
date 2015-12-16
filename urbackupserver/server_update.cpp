@@ -25,7 +25,7 @@
 
 extern IUrlFactory *url_fak;
 
-const std::string urbackup_update_url = "http://update2.urbackup.org/";
+const std::string urbackup_update_url = "http://update3.urbackup.org/";
 
 ServerUpdate::ServerUpdate(void)
 {
