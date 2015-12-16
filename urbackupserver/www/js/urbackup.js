@@ -1952,11 +1952,11 @@ function show_settings2(data)
 			
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<li id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+				n+="<li id=\"change_pw_el\" class=\"active\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
 			}
 			else
 			{
-				n+="<li id=\"change_pw_el\"  class=\"active\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+				n+="<li id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
 			}
 
 			++idx;
