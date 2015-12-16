@@ -471,8 +471,8 @@ bool FullFileBackup::doFileBackup()
 
                     if(file_ok)
                     {
-                	if(client_main->getProtocolVersions().file_meta>0)
-                	{
+						if(client_main->getProtocolVersions().file_meta>0)
+						{
                     	    server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
                     	        metadata, script_dir, true, 0);
                     	}

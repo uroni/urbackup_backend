@@ -144,8 +144,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 	bool needs_truncate=false;
 	truncate_to_bytes=-1;
 
-	out->Seek(0);
-	if(out->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
+	if(out->Size()==0)
 	{
 		hashfilesize=little_endian((int64)-1);
 		out->Seek(0);
@@ -160,6 +159,12 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 	}
 	else
 	{
+		if(out->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
+		{
+			Server->Log("Error reading hashfilesize from metadata file \""+out->getFilename()+"\"", LL_ERROR);
+			return false;
+		}
+
 		hashfilesize=little_endian(hashfilesize);
 
 		hashdata_size = get_hashdata_size(hashfilesize);
