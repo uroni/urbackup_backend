@@ -14,7 +14,17 @@
 			<thead>
 				<tr>
 					{?show_select_box}
-					<th><input type="checkbox" id="status_selected_toggle" onClick="selectClientsToggle()"/></td>
+					<th>
+						<input type="checkbox" id="status_selected_toggle" onClick="selectClientsToggle()"/>
+						<select onchange="startBackups(I('startbackup_toggle')[I('startbackup_toggle').selectedIndex].value)" id="startbackup_toggle"
+								style="margin-left:5px; display:none;" class="selectpicker" data-width="20px"  data-container="#data_f" data-style="btn btn-xs" title="">
+							<option value="incr_file">{tIncremental file backup}</option>
+							<option value="full_file">{tFull file backup}</option>
+							<option value="incr_image">{tIncremental image backup}</option>
+							<option value="full_image">{tFull image backup}</option>
+							<option value="remove">{tRemove client}</option>
+						</select>
+					</td>
 					{/show_select_box}
 					<th>{tComputer name}</th>
 					<th>{tOnline}</th>

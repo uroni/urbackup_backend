@@ -3584,8 +3584,14 @@ function removeClient(clientid)
 		show_status1("", false, [clientid]);
 	}
 }
-function removeClients()
+function removeClients(clientid)
 {
+	if(clientid)
+	{
+		removeClient(clientid);
+		return;
+	}
+	
 	var cbs=document.getElementsByName("status_selected");
 	var ids=[];
 	for(var i=0;i<cbs.length;++i)
@@ -3837,7 +3843,7 @@ function startBackups(start_type, clientid)
 	
 	if(start_type=="remove")
 	{
-		removeClient(clientid);
+		removeClients(clientid);
 		return;
 	}
 	
