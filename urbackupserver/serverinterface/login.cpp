@@ -163,13 +163,17 @@ ACTION_IMPL(login)
 	{
 		ret.set("lang", helper.getLanguage());
 		bool ldap_enabled = helper.ldapEnabled();
-		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if( (!res.empty() && watoi(res[0]["c"])>0) || ldap_enabled)
+		db_results res=db->Read("SELECT name FROM settings_db.si_users LIMIT 2");
+		if( !res.empty() || ldap_enabled)
 		{
 			ret.set("success", JSON::Value(false) );
 			if(ldap_enabled)
 			{
 				ret.set("ldap_enabled", true);
+			}
+			if(res.size()==1)
+			{
+				ret.set("admin_only", res[0]["name"]);
 			}
 		}
 		else

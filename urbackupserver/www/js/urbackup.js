@@ -272,7 +272,17 @@ function try_anonymous_login(data)
 				I('data_f').innerHTML=ndata;
 				g.data_f=ndata;
 			}
-			I('username').focus();
+			
+			if(data.admin_only)
+			{
+				I('username_row').style.display="none";
+				I('username').value = data.admin_only;
+				I("password").focus();
+			}
+			else
+			{
+				I('username').focus();
+			}
 		}
 	}
 }
@@ -2338,6 +2348,31 @@ function show_settings2(data)
 			var rows="";
 			if(data.users.length>0)
 			{
+				var num_users=0;
+				var num_admins=0;
+				for(var i=0;i<data.users.length;++i)
+				{
+					var obj=data.users[i];
+					var is_admin=false;
+					for(var j=0;j<obj.rights.length;++j)
+					{
+						var right=obj.rights[j];
+						if(right.domain=="all" && right.right=="all")
+						{
+							is_admin=true;
+						}
+					}
+					
+					if(!is_admin)
+					{
+						num_users+=1;
+					}
+					else
+					{
+						num_admins+=1;
+					}
+				}
+			
 				g.user_rights={};
 				for(var i=0;i<data.users.length;++i)
 				{
@@ -2357,6 +2392,15 @@ function show_settings2(data)
 					}
 					
 					obj.rights=t_rights;
+					
+					if(t_rights==trans("admin") && num_users>0 && num_admins==1)
+					{
+						obj.can_change=false;
+					}
+					else
+					{
+						obj.can_change=true;
+					}
 					
 					rows+=dustRender("settings_users_start_row", obj);
 				}
