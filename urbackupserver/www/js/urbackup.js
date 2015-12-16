@@ -1854,6 +1854,7 @@ function show_settings1()
 }
 function show_settings2(data)
 {
+	var go_to_change_pw=false;
 	stopLoading();
 	if(data.navitems)
 	{
@@ -1936,9 +1937,27 @@ function show_settings2(data)
 		}
 		else
 		{
-			if(g.settings_nav_pos==-1) g.settings_nav_pos=1;
+			if(g.settings_nav_pos==-1)
+			{
+				if(nav.clients && nav.clients.length>0)
+				{
+					g.settings_nav_pos=1;
+				}
+				else
+				{
+					g.settings_nav_pos=0;
+					go_to_change_pw=true;
+				}
+			}
 			
-			n+="<li id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+			if(g.settings_nav_pos==idx)
+			{
+				n+="<li id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+			}
+			else
+			{
+				n+="<li id=\"change_pw_el\"  class=\"active\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+			}
 
 			++idx;
 			++g.user_nav_pos_offset;
@@ -1964,7 +1983,7 @@ function show_settings2(data)
 				}
 				n+="</select>";
 			}
-			else
+			else if(nav.clients.length>0)
 			{
 				if(g.settings_nav_pos==idx)
 				{
@@ -2394,6 +2413,11 @@ function show_settings2(data)
 	$('#settings_tabber').bind('click', function (e) {
         g.active_pane_name = e.target.getAttribute("href");
     });
+	
+	if(go_to_change_pw)
+	{
+		changePW();
+	}
 }
 function settingsCheckboxHandle(cbid)
 {
