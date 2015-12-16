@@ -797,7 +797,7 @@ function show_statistics3(data)
 	if(g.data_f!=ndata)
 	{	
 		I('data_f').innerHTML=ndata;
-		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 640, height: 480, 
+		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 640, height: 900, 
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
 		
 		createUsageGraph(0, "");
@@ -4075,7 +4075,7 @@ function backupWindowChange()
 	}
 }
 
-g.maximize_or_minimize = function()
+g.maximize_or_minimize = function(refresh)
 {
 	if(I('boostrap_container').className==="container")
 	{
@@ -4112,5 +4112,8 @@ g.maximize_or_minimize = function()
 		$("#statistics_table").DataTable().columns.adjust().draw();
 	}
 	
-	refresh_page();
+	if(refresh)
+	{
+		refresh_page();
+	}
 }
