@@ -444,7 +444,7 @@ CRData::CRData(void)
 
 void CRData::set(const char* c,size_t datalength, bool pCopy)
 {
-	datalen = (std::min)(100*1024*1024, datalength);
+	datalen = (std::min)(size_t(100*1024*1024), datalength);
 
 	copy=pCopy;
 	if( copy==false )
