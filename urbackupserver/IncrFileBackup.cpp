@@ -487,6 +487,7 @@ bool IncrFileBackup::doFileBackup()
 						{
 							r_offline=true;
 							backup_stopped=true;
+							should_backoff=false;
 							ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
 							server_download->queueSkip();
 							if(server_hash_existing.get())
@@ -1069,6 +1070,12 @@ bool IncrFileBackup::doFileBackup()
 	}
 
 	sendBackupOkay(!r_offline && !c_has_error);
+
+	if(r_offline && server_download->hasTimeout())
+	{
+		ServerLogger::Log(logid, "Client had timeout. Retrying backup soon...", LL_INFO);
+		should_backoff=false;
+	}
 
 	ServerLogger::Log(logid, "Waiting for file hashing and copying threads...", LL_INFO);
 

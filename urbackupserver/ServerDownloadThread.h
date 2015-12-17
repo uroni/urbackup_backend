@@ -180,6 +180,8 @@ public:
 
 	virtual void resetQueueChunked();
 
+	bool hasTimeout();
+
 private:
 	void sleepQueue(IScopedLock& lock);
 
@@ -217,6 +219,7 @@ private:
 	int incremental_num;
 
 	bool is_offline;
+	bool has_timeout;
 
 	std::deque<SQueueItem> dl_queue;
 	size_t queue_size;

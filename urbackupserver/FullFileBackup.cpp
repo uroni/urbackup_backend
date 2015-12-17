@@ -185,7 +185,6 @@ bool FullFileBackup::doFileBackup()
 	std::string orig_sep;
 	SFile cf;
 	int depth=0;
-	bool r_done=false;
 	int64 laststatsupdate=0;
 	int64 last_eta_update=0;
 	int64 last_eta_received_bytes=0;
@@ -219,15 +218,15 @@ bool FullFileBackup::doFileBackup()
 	size_t max_ok_id=0;
 
 	bool c_has_error=false;
-	bool is_offline=false;
 	bool script_dir=false;
+	bool r_offline=false;
 
 	std::stack<std::set<std::string> > folder_files;
 	folder_files.push(std::set<std::string>());
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
-	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
+	while( (read=tmp->Read(buffer, 4096))>0 && !r_offline && c_has_error)
 	{
 		for(size_t i=0;i<read;++i)
 		{
@@ -256,7 +255,8 @@ bool FullFileBackup::doFileBackup()
 				{
 					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
-						r_done=true;
+						r_offline=true;
+						should_backoff=false;
 						ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
 						server_download->queueSkip();
 						break;
@@ -285,8 +285,7 @@ bool FullFileBackup::doFileBackup()
 				if(server_download->isOffline())
 				{
 					ServerLogger::Log(logid, "Client "+clientname+" went offline.", LL_ERROR);
-					is_offline = true;
-					r_done=true;
+					r_offline=true;
 					break;
 				}
 
@@ -518,23 +517,29 @@ bool FullFileBackup::doFileBackup()
 		}
 	}
 
-	if(server_download->isOffline() && !is_offline)
+	if(server_download->isOffline() && !r_offline)
 	{
 		ServerLogger::Log(logid, "Client "+clientname+" went offline.", LL_ERROR);
-		r_done=true;
+		r_offline=true;
 	}
 
 	int64 transfer_stop_time = Server->getTimeMS();
 
 	size_t max_line = line;
 
-	if(!r_done && !c_has_error)
+	if(!r_offline && !c_has_error)
 	{
 		sendBackupOkay(true);
 	}
 	else
 	{
 		sendBackupOkay(false);
+	}
+
+	if(r_offline && server_download->hasTimeout())
+	{
+		ServerLogger::Log(logid, "Client had timeout. Retrying backup soon...", LL_INFO);
+		should_backoff=false;
 	}
 
 	running_updater->stop();
@@ -561,7 +566,7 @@ bool FullFileBackup::doFileBackup()
 			{
 				if(cf.isdir && line<max_line)
 				{
-					if(!metadata_ok || is_offline)
+					if(!metadata_ok || r_offline)
 					{
 						cf.last_modified *= Server->getRandomNumber();
 					}
@@ -586,7 +591,7 @@ bool FullFileBackup::doFileBackup()
 	Server->destroy(clientlist);
 
 	bool verification_ok = true;
-	if(!r_done && !c_has_error
+	if(!r_offline && !c_has_error
 	        && (server_settings->getSettings()->end_to_end_file_backup_verification
 		|| (client_main->isOnInternetConnection()
 		&& server_settings->getSettings()->verify_using_client_hashes 
@@ -621,7 +626,7 @@ bool FullFileBackup::doFileBackup()
 		db->EndTransaction();
 	}
 
-	if( !r_done && !c_has_error && !disk_error
+	if( !r_offline && !c_has_error && !disk_error
 		&& (group==c_group_default || group==c_group_continuous)) 
 	{
 		std::string backupfolder=server_settings->getSettings()->backupfolder;
@@ -680,6 +685,6 @@ bool FullFileBackup::doFileBackup()
 	if(c_has_error)
 		return false;
 
-	return !r_done;
+	return !r_offline;
 }
 

@@ -46,7 +46,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true), incremental_num(incremental_num), logid(logid)
+	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -370,6 +370,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
 		{
 			ret=false;
+			has_timeout = true;
 		}
 	}
 	else
@@ -581,6 +582,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(rc==ERR_ERRORCODES)
 		{
 			ServerLogger::Log(logid, "Remote Error: "+fc_chunked->getErrorcodeString(), LL_ERROR);
+		}
+
+		if(rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR || rc==ERR_BASE_DIR_LOST)
+		{
+			has_timeout=true;
 		}
 
 		{
@@ -1060,4 +1066,9 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 	}
 	
 	return true;
+}
+
+bool ServerDownloadThread::hasTimeout()
+{
+	return has_timeout;
 }
