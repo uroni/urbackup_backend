@@ -3431,6 +3431,7 @@ function show_logs2(data)
 		td.sel_all=(data.report_sendonly==0)?sel:"";
 		td.sel_failed=(data.report_sendonly==1)?sel:"";
 		td.sel_succ=(data.report_sendonly==2)?sel:"";
+		td.sel_failed_clienttimeout=(data.report_sendonly==3)?sel:"";
 		td.sel_info=(data.report_loglevel==0)?sel:"";
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";

@@ -1075,6 +1075,7 @@ bool IncrFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "Client had timeout. Retrying backup soon...", LL_INFO);
 		should_backoff=false;
+		has_timeout_error=true;
 	}
 
 	ServerLogger::Log(logid, "Waiting for file hashing and copying threads...", LL_INFO);

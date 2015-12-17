@@ -79,6 +79,7 @@ protected:
 
 	bool log_backup;
 	bool has_early_error;
+	bool has_timeout_error;
 	bool is_file_backup;
 	bool r_resumed;
 	bool r_incremental;

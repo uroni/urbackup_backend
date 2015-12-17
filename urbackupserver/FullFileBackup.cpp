@@ -540,6 +540,7 @@ bool FullFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "Client had timeout. Retrying backup soon...", LL_INFO);
 		should_backoff=false;
+		has_timeout_error=true;
 	}
 
 	running_updater->stop();

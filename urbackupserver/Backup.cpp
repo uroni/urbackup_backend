@@ -33,7 +33,7 @@ extern IUrlFactory *url_fak;
 Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
-	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0)
+	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false)
 {
 	
 }
@@ -200,7 +200,8 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					|| ( report_loglevel<=2 && errors>0 ) ) &&
 					(report_sendonly==0 ||
 					( report_sendonly==1 && !r_success ) ||
-					( report_sendonly==2 && r_success)) )
+					( report_sendonly==2 && r_success) ||
+					( report_sendonly==3 && !r_success && !has_timeout_error) )) )
 				{
 					std::vector<std::string> to_addrs;
 					Tokenize(report_mail, to_addrs, ",;");
