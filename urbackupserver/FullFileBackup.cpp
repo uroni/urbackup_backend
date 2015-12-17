@@ -226,7 +226,7 @@ bool FullFileBackup::doFileBackup()
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
-	while( (read=tmp->Read(buffer, 4096))>0 && !r_offline && c_has_error)
+	while( (read=tmp->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
 	{
 		for(size_t i=0;i<read;++i)
 		{
