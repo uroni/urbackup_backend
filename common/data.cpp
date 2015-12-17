@@ -444,6 +444,8 @@ CRData::CRData(void)
 
 void CRData::set(const char* c,size_t datalength, bool pCopy)
 {
+	datalen = (std::min)(100*1024*1024, datalength);
+
 	copy=pCopy;
 	if( copy==false )
 	{
@@ -453,11 +455,10 @@ void CRData::set(const char* c,size_t datalength, bool pCopy)
 	{
 		if( data!=NULL )
 			delete [] data;
-		data=new char[datalength];
-		memcpy((void*)data, c, datalength);
+		data=new char[datalen];
+		memcpy((void*)data, c, datalen);
 	}
 	streampos=0;
-	datalen=datalength;
 }
 
 CRData::CRData(const std::string *str)
@@ -549,7 +550,12 @@ bool CRData::getStr(std::string *ret)
 
 	strlen = little_endian(strlen);
 
-	if(streampos+strlen>datalen )
+	if(strlen>10*1024*1024)
+	{
+		return false;
+	}
+
+	if(streampos+strlen>datalen)
 	{
 		return false;
 	}
