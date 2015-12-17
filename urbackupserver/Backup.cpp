@@ -201,7 +201,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					(report_sendonly==0 ||
 					( report_sendonly==1 && !r_success ) ||
 					( report_sendonly==2 && r_success) ||
-					( report_sendonly==3 && !r_success && !has_timeout_error) )) )
+					( report_sendonly==3 && !r_success && !has_timeout_error) ) )
 				{
 					std::vector<std::string> to_addrs;
 					Tokenize(report_mail, to_addrs, ",;");
