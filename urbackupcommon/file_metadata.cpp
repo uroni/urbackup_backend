@@ -159,6 +159,12 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 	}
 	else
 	{
+		if(!out->Seek(0))
+		{
+			Server->Log("Error seeking in metadata file \""+out->getFilename()+"\"", LL_ERROR);
+			return false;
+		}
+
 		if(out->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
 		{
 			Server->Log("Error reading hashfilesize from metadata file \""+out->getFilename()+"\"", LL_ERROR);
