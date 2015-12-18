@@ -93,7 +93,7 @@ class CClientThread : public IThread
 {
 public:
 	CClientThread(SOCKET pSocket, CTCPFileServ* pParent);
-	CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent);
+	CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vector<char>* extra_buffer);
 	~CClientThread();
 
 	bool isStopped(void);
@@ -123,6 +123,7 @@ private:
 
 	void queueChunk(SChunk chunk);
 	bool InformMetadataStreamEnd( CRData * data );
+	bool FinishScript( CRData * data );
 
 	volatile bool stopped;
 	volatile bool killable;
@@ -163,4 +164,6 @@ private:
 
 	SOCKET int_socket;
 	bool has_socket;
+
+	std::vector<char>* extra_buffer;
 };

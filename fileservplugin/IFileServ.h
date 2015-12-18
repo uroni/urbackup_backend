@@ -17,7 +17,7 @@ public:
 	public:
 		virtual ~IMetadataCallback() {}
 
-		virtual IFile* getMetadata(const std::string& path, std::string& orig_path, int64& offset, int64& length)=0;
+		virtual IFile* getMetadata(const std::string& path, std::string& orig_path, int64& offset, int64& length, _u32& version)=0;
 	};
 
 	class ITokenCallback
@@ -42,7 +42,7 @@ public:
 	virtual bool removeIdentity(const std::string &pIdentity)=0;
 	virtual void setPause(bool b)=0;
 	virtual bool getPause(void)=0;
-	virtual void runClient(IPipe *cp)=0;
+	virtual void runClient(IPipe *cp, std::vector<char>* extra_buffer)=0;
 	virtual bool getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code) = 0;
 	virtual void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn) = 0;
 	virtual void registerMetadataCallback(const std::string &name, const std::string& identity, IMetadataCallback* callback) = 0;

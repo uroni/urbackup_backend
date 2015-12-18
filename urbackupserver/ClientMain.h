@@ -101,6 +101,8 @@ public:
 
 	void operator()(void);
 
+	bool authenticateIfNeeded();
+
 	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
 	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
 	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
@@ -304,4 +306,7 @@ private:
 
 	int last_incr_freq;
 	int last_startup_backup_delay;
+
+	std::string curr_server_token;
+	bool needs_authentification;
 };

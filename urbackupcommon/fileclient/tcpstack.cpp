@@ -26,8 +26,8 @@
 
 const unsigned int checksum_len=16;
 
-CTCPStack::CTCPStack(bool add_checksum)
-	: add_checksum(add_checksum)
+CTCPStack::CTCPStack(bool add_checksum, size_t max_packet_size)
+	: add_checksum(add_checksum), max_packet_size(max_packet_size)
 {
 }
 
@@ -51,6 +51,11 @@ void CTCPStack::AddData( std::string data )
 
 size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms, bool flush)
 {
+	if(msglen>max_packet_size)
+	{
+		return 0;
+	}
+
 	char* buffer;
 	size_t msg_off=sizeof(MAX_PACKETSIZE);
 	size_t len_off=0;
@@ -122,7 +127,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 			memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE) );
 			len=little_endian(len);
 
-			if(buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
+			if(len<max_packet_size && buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
 			{
 				char* buf=new char[len+1];
 				if(len>0)
@@ -148,7 +153,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 			memcpy(&len, &buffer[checksum_len], sizeof(MAX_PACKETSIZE) );
 			len=little_endian(len);
 
-			if(buffer.size()>=checksum_len+(size_t)len+sizeof(MAX_PACKETSIZE))
+			if(len<max_packet_size && buffer.size()>=checksum_len+(size_t)len+sizeof(MAX_PACKETSIZE))
 			{
 				MD5 md((unsigned char*)&buffer[checksum_len], (size_t)len+sizeof(MAX_PACKETSIZE) );
 
@@ -202,6 +207,11 @@ void CTCPStack::reset(void)
 
 char *CTCPStack::getBuffer()
 {
+	if(buffer.empty())
+	{
+		return NULL;
+	}
+
 	return &buffer[0];
 }
 
@@ -213,4 +223,9 @@ size_t CTCPStack::getBuffersize()
 void CTCPStack::setAddChecksum(bool b)
 {
 	add_checksum=b;
+}
+
+void CTCPStack::setMaxPacketSize( size_t mp )
+{
+	max_packet_size = mp;
 }

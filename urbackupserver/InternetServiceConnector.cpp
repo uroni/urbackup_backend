@@ -104,6 +104,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	connection_done_cond=NULL;
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
+	tcpstack.setMaxPacketSize(32768);
 	challenge=ServerSettings::generateRandomBinaryKey();
 	{
 		CWData data;

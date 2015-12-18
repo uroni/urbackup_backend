@@ -83,6 +83,23 @@ void RestoreFiles::operator()()
     std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token ));
 	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
 
+	int64 starttime=Server->getTimeMS();
+
+	while(Server->getTimeMS()-starttime<10000)
+	{
+		if(fc_metadata.isDownloading())
+		{
+			break;
+		}
+	}
+
+	if(!fc_metadata.isDownloading())
+	{
+		log("Error starting metadata download", LL_INFO);
+		restore_failed(fc, metadata_dl);
+		return;
+	}
+
 	log("Downloading necessary file data...", LL_INFO);
 
 	if(!downloadFiles(fc, total_size))
@@ -151,7 +168,7 @@ bool RestoreFiles::downloadFilelist( FileClient& fc )
 		return false;
 	}
 
-	_u32 rc = fc.GetFile("clientdl_filelist", filelist, true, false, 0);
+	_u32 rc = fc.GetFile("clientdl_filelist", filelist, true, false, 0, false);
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -205,6 +222,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 	FileListParser filelist_parser;
 
 	std::auto_ptr<FileClientChunked> fc_chunked = createFcChunked();
+
+	if(fc_chunked.get()==NULL)
+	{
+		return false;
+	}
 
 	_u32 read;
 	SFile data;

@@ -49,7 +49,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token;
 
-	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false);
+	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false, true);
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -793,6 +793,11 @@ void FileMetadataDownloadThread::addSingleFileItem( std::string dir_path )
 	new_folder_item.counted_items=1;
 	new_folder_item.path = dir_path;
 	saved_folder_items.push_back(new_folder_item);
+}
+
+bool FileMetadataDownloadThread::isDownloading()
+{
+	return fc->isDownloading();
 }
 
 int check_metadata()

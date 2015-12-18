@@ -49,6 +49,8 @@ public:
 	
 	void shutdown();
 
+	bool isDownloading();
+
 private:
 
 	void addSingleFileItem(std::string dir_path);

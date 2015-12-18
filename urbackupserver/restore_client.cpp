@@ -37,6 +37,12 @@ extern IFileServ* fileserv;
 
 namespace
 {
+	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4AULL);
+	const int64 unix_meta_magic =  little_endian(0xFE4378A3467647F0ULL);
+
+	const _u32 ID_METADATA_V1_WIN = 1<<0 | 1<<3;
+	const _u32 ID_METADATA_V1_UNIX = 1<<2 | 1<<3;
+
 	class MetadataCallback : public IFileServ::IMetadataCallback
 	{
 	public:
@@ -46,7 +52,7 @@ namespace
 
 		}
 
-		virtual IFile* getMetadata( const std::string& path, std::string& orig_path, int64& offset, int64& length )
+		virtual IFile* getMetadata( const std::string& path, std::string& orig_path, int64& offset, int64& length, _u32& version )
 		{
 			if(path.empty()) return NULL;
 
@@ -72,26 +78,55 @@ namespace
 				}
 			}
 
-			IFile* metadata_file = Server->openFile(os_file_prefix(metadata_path), MODE_READ);
+			std::auto_ptr<IFile> metadata_file(Server->openFile(os_file_prefix(metadata_path), MODE_READ));
 
-			if(metadata_file==NULL)
+			if(metadata_file.get()==NULL)
 			{
-				return metadata_file;
+				return NULL;
 			}
 
 			FileMetadata metadata;
 
-			if(!read_metadata(metadata_file, metadata))
+			if(!read_metadata(metadata_file.get(), metadata))
 			{
-				delete metadata_file;
 				return NULL;
 			}
 
 			orig_path = metadata.orig_path;
-			offset = os_metadata_offset(metadata_file);
+			offset = os_metadata_offset(metadata_file.get());
 			length = metadata_file->Size() - offset;
 
-			return metadata_file;
+			int64 metadata_magic_and_size[2];
+
+			if(!metadata_file->Seek(offset))
+			{
+				return NULL;
+			}
+
+			if(metadata_file->Read(reinterpret_cast<char*>(&metadata_magic_and_size), sizeof(metadata_magic_and_size))!=sizeof(metadata_magic_and_size))
+			{
+				return NULL;
+			}
+
+			if(metadata_magic_and_size[1]==win32_meta_magic)
+			{
+				version=ID_METADATA_V1_WIN;
+			}
+			else if(metadata_magic_and_size[1]==unix_meta_magic)
+			{
+				version=ID_METADATA_V1_UNIX;
+			}
+			else
+			{
+				version=0;
+			}
+
+			if(!metadata_file->Seek(offset))
+			{
+				return NULL;
+			}
+
+			return metadata_file.release();
 		}
 
 	private:
@@ -105,11 +140,12 @@ namespace
 			const std::string& hashfoldername, const std::string& filter,
 			bool token_authentication,
 			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
-			const std::string& folder_log_name)
+			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
-			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name)
+			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name),
+			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id)
 		{
 			TokenizeMail(filter, filter_fns, "/");
 		}
@@ -118,14 +154,6 @@ namespace
 		{
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			ServerBackupDao backup_dao(db);
-
-			std::string identity = ServerSettings::generateRandomAuthKey(25);
-			backup_dao.addRestore(restore_clientid, folder_log_name, identity);
-
-			restore_id = db->getLastInsertID();
-			status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file);
-
-			log_id = ServerLogger::getLogId(restore_clientid);
 
 			if(!createFilelist(foldername, hashfoldername, 0, skip_special_root))
 			{
@@ -154,7 +182,9 @@ namespace
 
 			MetadataCallback* callback = new MetadataCallback(hashfoldername);
 			fileserv->shareDir("clientdl", foldername, identity);
+			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
+			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("urbackup", identity, false, false));
 			fileserv->registerMetadataCallback("clientdl", identity, callback);
 
 
@@ -164,6 +194,7 @@ namespace
 			data.addInt64(restore_id);
 			data.addUInt64(status_id);
 			data.addInt64(log_id.first);
+			data.addString(restore_token);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(curr_clientname, msg);
@@ -286,12 +317,14 @@ namespace
 		int64 restore_id;
 		size_t status_id;
 		logid_t log_id;
+		std::string restore_token;
+		std::string identity;
 	};
 }
 
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
-	const std::string& folder_log_name)
+	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -310,13 +343,26 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 		hashfoldername = hashfoldername.substr(0, hashfoldername.size()-1);
 	}
 
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	std::string identity = ServerSettings::generateRandomAuthKey(25);
+	backup_dao.addRestore(restore_clientid, folder_log_name, identity);
+
+	restore_id = db->getLastInsertID();
+	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file);
+
+	log_id = ServerLogger::getLogId(restore_clientid);
+
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
-		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name));
+		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,
+		status_id, log_id, restore_token, identity));
 
 	return true;
 }
 
-bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid)
+bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid,
+	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -352,6 +398,6 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	std::vector<backupaccess::SToken> backup_tokens;
 	std::vector<std::string> tokens;
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(), false, backup_tokens,
-		tokens, true, "");
+		tokens, true, "", restore_id, status_id, log_id, restore_token);
 }
 

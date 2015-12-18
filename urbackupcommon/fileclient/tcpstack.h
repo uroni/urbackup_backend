@@ -14,7 +14,7 @@ const int c_default_timeout = 10000;
 class CTCPStack
 {
 public:
-	CTCPStack(bool add_checksum=false);
+	CTCPStack(bool add_checksum=false, size_t max_packet_size=100*1024*1024);
 	void AddData(char* buf, size_t datasize);
 	void AddData(std::string data);
 
@@ -31,12 +31,14 @@ public:
 	size_t getBuffersize();
 
 	void setAddChecksum(bool b);
+	void setMaxPacketSize(size_t mp);
 
 private:
 	
 	std::vector<char> buffer;
 
 	bool add_checksum;
+	size_t max_packet_size;
 };
 
 #endif //TCPSTACK_H

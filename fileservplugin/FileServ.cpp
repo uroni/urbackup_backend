@@ -122,9 +122,9 @@ std::string FileServ::getServerName(void)
 	return servername;
 }
 
-void FileServ::runClient(IPipe *cp)
+void FileServ::runClient(IPipe *cp, std::vector<char>* extra_buffer)
 {
-	CClientThread cc(cp, NULL);
+	CClientThread cc(cp, NULL, extra_buffer);
 	cc();
 }
 

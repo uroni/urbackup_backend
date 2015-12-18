@@ -101,7 +101,7 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
-	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset)
+	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -143,6 +143,12 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	curr_image_version=1;
 	last_incr_freq=-1;
 	last_startup_backup_delay = -1;
+
+	curr_server_token = server_token;
+	if(filebackup_group_offset>0)
+	{
+		curr_server_token+=convert(filebackup_group_offset/c_group_size);
+	}
 }
 
 ClientMain::~ClientMain(void)
@@ -189,7 +195,6 @@ void ClientMain::unloadSQL(void)
 
 void ClientMain::operator ()(void)
 {
-	bool needs_authentification = false;
 	{
 		bool c=true;
 		while(c)
@@ -247,7 +252,7 @@ void ClientMain::operator ()(void)
 			clientid = restore_client_id--;
 		}
 
-		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity);
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity, curr_server_token);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 		while(true)
@@ -270,36 +275,10 @@ void ClientMain::operator ()(void)
 	}
 	else
 	{
-		bool c = false;
-		do
-		{			
-			c=false;
-
-			bool b = authenticatePubKey();
-			if(!b && needs_authentification)
-			{
-				ServerStatus::setStatusError(clientname, se_authentication_error);
-
-				Server->wait(5*60*1000); //5min
-
-				std::string msg;
-				pipe->Read(&msg, ident_err_retry_time);
-				if(msg=="exit" || msg=="exitnow")
-				{
-					Server->Log("client_main Thread for client \""+clientname+"\" finished and the authentification failed", LL_INFO);
-					pipe->Write("ok");
-					delete this;
-					return;
-				}
-
-				c=true;
-			}
-			else
-			{
-				ServerStatus::setStatusError(clientname, se_none);
-			}
+		if(!authenticateIfNeeded())
+		{
+			return;
 		}
-		while(c);
 	}
 
 	std::string identity = session_identity.empty()?server_identity:session_identity;
@@ -418,7 +397,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity);
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity, curr_server_token);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	bool received_client_settings=true;
@@ -565,7 +544,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots);
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -581,7 +560,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots);
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -601,8 +580,9 @@ void ClientMain::operator ()(void)
 					if( (isUpdateFullImage(letter) && !isRunningImageBackup(letter)) || do_full_image_now )
 					{
 						SRunningBackup backup;
-						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter);
+						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
+							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
+							false, letter, curr_server_token);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -624,7 +604,7 @@ void ClientMain::operator ()(void)
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter);
+							true, letter, curr_server_token);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -776,6 +756,11 @@ void ClientMain::operator ()(void)
 			}
 
 			tcpstack.setAddChecksum(internet_connection);
+
+			if(!authenticateIfNeeded())
+			{
+				return;
+			}
 		}
 		else if(msg=="WAKEUP")
 		{
@@ -792,12 +777,33 @@ void ClientMain::operator ()(void)
 			rdata.getInt64(&restore_id);
 			int64 status_id;
 			rdata.getInt64(&status_id);
-			int64 log_id;
-			rdata.getInt64(&log_id);
+			logid_t log_id = logid_t();
+			rdata.getInt64(&log_id.first);
+			std::string restore_token;
+			rdata.getStr(&restore_token);
 
-			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+
+			bool server_confirms;
+			if(ServerStatus::canRestore(clientname, server_confirms))
+			{
+				if(server_confirms || !restore_token.empty())
+				{
+					ServerLogger::Log(log_id, "Starting restore...", LL_INFO);
+				}
+				else
+				{
+					ServerLogger::Log(log_id, "Starting restore. Waiting for client confirmation...", LL_INFO);
+				}
+			}
+			else
+			{
+				ServerLogger::Log(log_id, "Starting restore. But client may be offline...", LL_INFO);
+			}
+			
+
+			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
-				"&log_id="+convert(log_id), "Starting restore failed", 10000, 10, true, LL_ERROR);
+				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token),
+				"Starting restore failed", 10000, 10, true, LL_ERROR);
 		}
 
 		if(!msg.empty())
@@ -1462,7 +1468,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		settings_fn = "urbackup/settings_"+(clientsubname)+".cfg";
 	}
 
-	rc=fc.GetFile(settings_fn, tmp, true, false, 0);
+	rc=fc.GetFile(settings_fn, tmp, true, false, 0, false);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting Client settings of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -2547,4 +2553,42 @@ void ClientMain::stopBackupBarrier()
 {
 	IScopedLock lock(running_backup_mutex);
 	running_backups_allowed=true;
+}
+
+bool ClientMain::authenticateIfNeeded()
+{
+	session_identity.clear();
+
+	bool c = false;
+	do
+	{			
+		c=false;
+
+		bool b = authenticatePubKey();
+		if(!b && needs_authentification)
+		{
+			ServerStatus::setStatusError(clientname, se_authentication_error);
+
+			Server->wait(5*60*1000); //5min
+
+			std::string msg;
+			pipe->Read(&msg, ident_err_retry_time);
+			if(msg=="exit" || msg=="exitnow")
+			{
+				Server->Log("client_main Thread for client \""+clientname+"\" finished and the authentification failed", LL_INFO);
+				pipe->Write("ok");
+				delete this;
+				return false;
+			}
+
+			c=true;
+		}
+		else
+		{
+			ServerStatus::setStatusError(clientname, se_none);
+		}
+	}
+	while(c);
+
+	return true;
 }

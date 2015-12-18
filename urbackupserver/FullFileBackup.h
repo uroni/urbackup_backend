@@ -5,7 +5,9 @@
 class FullFileBackup : public FileBackup
 {
 public:
-	FullFileBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots);
+	FullFileBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
+		LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink,
+		bool use_snapshots, std::string server_token);
 
 protected:
 	virtual bool doFileBackup();

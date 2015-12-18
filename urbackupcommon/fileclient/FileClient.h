@@ -59,8 +59,8 @@ public:
 		class QueueCallback
 		{
 		public:
-			virtual std::string getQueuedFileFull(MetadataQueue& metadata, size_t& folder_items) = 0;
-			virtual void unqueueFileFull(const std::string& fn) = 0;
+			virtual std::string getQueuedFileFull(MetadataQueue& metadata, size_t& folder_items, bool& finish_script) = 0;
+			virtual void unqueueFileFull(const std::string& fn, bool finish_script) = 0;
 			virtual void resetQueueFull() = 0;
 		};
 
@@ -93,11 +93,13 @@ public:
 		void Shutdown();
 
         //---needs Connection
-        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items);
+        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script);
 
 		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
 
 		_u32 InformMetadataStreamEnd(const std::string& server_token);
+
+		_u32 FinishScript(std::string remotefn);
 
 		void addThrottler(IPipeThrottler *throttler);
 
@@ -119,6 +121,8 @@ public:
 		_u32 Flush();
 
 		bool Reconnect(void);
+
+		bool isDownloading();
               
 private:
 		void bindToNewInterfaces();
@@ -180,7 +184,19 @@ private:
 
 		IMutex* mutex;
 
-		std::deque<std::string> queued;
+		struct SQueueItem
+		{
+			SQueueItem(std::string fn, bool finish_script)
+				: fn(fn), finish_script(finish_script)
+			{
+
+			}
+
+			std::string fn;
+			bool finish_script;
+		};
+
+		std::deque<SQueueItem> queued;
 
 		char dl_buf[BUFFERSIZE];
 		size_t dl_off;
@@ -190,6 +206,8 @@ private:
 		FileClient::ProgressLogCallback* progress_log_callback;
 
 		bool needs_flush;
+
+		bool is_downloading;
 };
 
 const _u32 ERR_CONTINUE=0;

@@ -209,6 +209,7 @@ private:
 	void CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd);
 	void CMD_RESTORE_GET_FILE_BACKUPS_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &params);
+	void CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
@@ -273,6 +274,8 @@ private:
 	static bool status_updated;
 	static size_t needs_restore_restart;
 	static int64 service_starttime;
+	static int64 restore_token_time;
+	static std::string restore_token;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

@@ -66,11 +66,6 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		token_callback.reset(FileServ::newTokenCallback());
 	}
 
-    if(token_callback.get()==NULL)
-    {
-        return false;
-    }
-
 	if(buf_avail==0)
 	{
 		read_bytes = 0;
@@ -298,7 +293,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				else
 				{
 					std::string orig_path;
-					metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size);
+					_u32 version=0;
+					metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version);
 
 					if(metadata_file==NULL)
 					{
@@ -309,6 +305,10 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						return false;
 					}
 
+					if(version!=0)
+					{
+						*buf=version;
+					}
 					public_fn = file_type + orig_path;
 				}
 

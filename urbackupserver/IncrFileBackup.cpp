@@ -36,13 +36,12 @@
 #include <algorithm>
 
 extern std::string server_identity;
-extern std::string server_token;
 
 const int64 c_readd_size_limit=4096;
 
 IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
-	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots), 
+	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token)
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token), 
 	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL)
 {
 
@@ -190,7 +189,7 @@ bool IncrFileBackup::doFileBackup()
 	int64 incr_backup_starttime=Server->getTimeMS();
 	int64 incr_backup_stoptime=0;
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -626,13 +625,6 @@ bool IncrFileBackup::doFileBackup()
 								{
 									skip_dir_copy_sparse = readd_file_entries_sparse;
 								}
-
-								if(!write_file_metadata(metadata_fn, client_main, metadata, false))
-								{
-									ServerLogger::Log(logid, "Writing directory metadata to \""+metadata_fn+"\" failed.", LL_ERROR);
-									c_has_error=true;
-									break;
-								}
 							}
 						}
 						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
@@ -974,7 +966,8 @@ bool IncrFileBackup::doFileBackup()
 
 							if(!copied_hashes)
 							{
-								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
+								bool too_many_hardlinks;
+								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
 							}
 						}
 					}
@@ -1537,7 +1530,8 @@ bool IncrFileBackup::doFullBackup()
 
 	ServerStatus::stopProcess(clientname, status_id);
 
-	FullFileBackup full_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
+	FullFileBackup full_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
+		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token);
 	full_backup();
 
 	disk_error = full_backup.hasDiskError();

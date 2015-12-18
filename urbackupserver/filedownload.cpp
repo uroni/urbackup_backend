@@ -97,7 +97,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 				}
 			}
 
-			rc=fc->GetFile(remotefn, dstfile, true, false, 0);
+			rc=fc->GetFile(remotefn, dstfile, true, false, 0, false);
 
 			Server->destroy(dstfile);
 		}
@@ -448,7 +448,7 @@ FileDownload::FileDownload( std::string servername, unsigned int tcpport )
 	fc->setQueueCallback(this);
 }
 
-std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items)
+std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
 {
 	for(size_t i=0;i<dlqueueFull.size();++i)
 	{
@@ -456,13 +456,14 @@ std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata
 		{
 			metadata=FileClient::MetadataQueue_Data;
 			folder_items=0;
+			finish_script=false;
 			return dlqueueFull[i].remotefn;
 		}
 	}
 	return std::string();
 }
 
-void FileDownload::unqueueFileFull( const std::string& fn )
+void FileDownload::unqueueFileFull( const std::string& fn, bool finish_script)
 {
 	for(size_t i=0;i<dlqueueFull.size();++i)
 	{

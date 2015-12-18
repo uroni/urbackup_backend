@@ -43,7 +43,6 @@
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
-extern std::string server_token;
 extern IFileServ* fileserv;
 
 namespace
@@ -104,21 +103,25 @@ namespace
 	class FileservClientThread : public IThread
 	{
 	public:
-		FileservClientThread(IPipe* pipe)
+		FileservClientThread(IPipe* pipe, const char* p_extra_buffer, size_t extra_buffer_size)
 			: pipe(pipe)
 		{
-
+			if(extra_buffer_size>0)
+			{
+				extra_buffer.assign(p_extra_buffer, p_extra_buffer+extra_buffer_size);
+			}
 		}
 
 		void operator()()
 		{
-			fileserv->runClient(pipe);
+			fileserv->runClient(pipe, &extra_buffer);
 			delete pipe;
 			delete this;
 		}
 
 	private:
 		IPipe* pipe;
+		std::vector<char> extra_buffer;
 	};
 }
 
@@ -142,8 +145,10 @@ void ServerChannelThread::initOffset()
     }
 }
 
-ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, const std::string& identity) :
-	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
+ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
+	bool internet_mode, const std::string& identity, std::string server_token) :
+	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
+		internet_mode(internet_mode), identity(identity), keepalive_thread(NULL), server_token(server_token)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -345,6 +350,12 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 		GET_FILE_LIST_TOKENS(params);
 	}
+	else if(next(msg, 0, "START RESTORE TOKENS "))
+	{
+		std::string s_params=msg.substr(21);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+	}
 	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
 	{
 		std::string s_params=msg.substr(15);
@@ -352,6 +363,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 
 		DOWNLOAD_IMAGE(params);
+	}
+	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
+	{
+		std::string s_params=msg.substr(22);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		DOWNLOAD_FILES_TOKENS(params);
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES ") && hasDownloadImageRights())
 	{
@@ -361,14 +380,6 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 		DOWNLOAD_FILES(params);
 	}
-	else if(next(msg, 0, "DOWNLOAD FILES TOKENS ") && hasDownloadImageRights())
-	{
-		std::string s_params=msg.substr(21);
-		str_map params;
-		ParseParamStrHttp(s_params, &params);
-
-		DOWNLOAD_FILES_TOKENS(params);
-	}
 	else if(next(msg, 0, "CHANGES "))
 	{
 		client_main->addContinuousChanges(msg.substr(8));
@@ -377,7 +388,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		if(fileserv!=NULL)
 		{
-			Server->getThreadPool()->execute(new FileservClientThread(input));
+			Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize()));
 			input=NULL;
 		}
 	}
@@ -975,7 +986,11 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 			return;
 		}
 
-		if(create_clientdl_thread(backupid, clientname, clientid))
+		int64 restore_id;
+		size_t status_id;
+		logid_t log_id;
+
+		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id, params["restore_token"]))
 		{
 			tcpstack.Send(input, "ok");
 		}
@@ -996,7 +1011,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 	{
 		if(fileaccesstokens.empty())
 		{
-			ret.set("err", 1);			
+			ret.set("err", 1);
 			break;
 		}
 
@@ -1008,7 +1023,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		}
 		else
 		{
-			ret.set("err", 2);			
+			ret.set("err", 2);
 			break;
 		}
 
@@ -1035,14 +1050,43 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
 
-		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, params["filter"], true,
-			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
+		int64 restore_id;
+		size_t status_id;
+		logid_t log_id;
+
+		std::string filename;
+		if(path_info.is_file)
+		{
+			filename = ExtractFileName(path_info.full_path, os_file_sep());
+			if(!filename.empty())
+			{
+				path_info.full_path = ExtractFilePath(path_info.full_path, os_file_sep());
+				path_info.full_metadata_path = ExtractFilePath(path_info.full_metadata_path, os_file_sep());
+				path_info.rel_path = ExtractFilePath(path_info.rel_path, os_file_sep());
+			}
+			else
+			{
+				ret.set("err", 5);
+				break;
+			}
+		}
+
+		if(filename.empty())
+		{
+			filename = params["filter"];
+		}
+
+		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, true,
+			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"]))
 		{
 			ret.set("err", 5);
 			break;
 		}
 
 		ret.set("ok", true);
+		ret.set("restore_id", restore_id);
+		ret.set("status_id", status_id);
+		ret.set("log_id", log_id.first);
 
 	} while (false);
 

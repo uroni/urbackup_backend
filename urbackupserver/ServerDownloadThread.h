@@ -24,7 +24,7 @@ namespace
 	enum EFileClient
 	{
 		EFileClient_Full,
-		EFileClient_Chunked
+		EFileClient_Chunked,
 	};
 
 	enum EQueueAction
@@ -57,7 +57,8 @@ namespace
 			queued(false),
 			action(EQueueAction_Fileclient),
 			is_script(false),
-			folder_items(0)
+			folder_items(0),
+			script_end(false)
 		{
 		}
 
@@ -75,6 +76,7 @@ namespace
 		bool is_script;
         bool metadata_only;
 		size_t folder_items;
+		bool script_end;
 	};
 	
 	
@@ -136,7 +138,7 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full=true);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full=true, bool at_front_postpone_quitstop=false);
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);
@@ -148,6 +150,8 @@ public:
 	void queueStop();
 
 	void queueSkip();
+
+	void queueScriptEnd(const std::string &fn);
 	
 	bool load_file(SQueueItem todl);
 		
@@ -172,9 +176,9 @@ public:
 
 	virtual void resetQueueFull();
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script);
 
-	virtual void unqueueFileFull(const std::string& fn);
+	virtual void unqueueFileFull(const std::string& fn, bool finish_script);
 
 	virtual void unqueueFileChunked(const std::string& remotefn);
 
@@ -195,6 +199,11 @@ private:
 
 	
 	bool link_or_copy_file(SQueueItem todl);
+
+	size_t insertFullQueueEarliest(SQueueItem ni);
+
+	void postponeQuitStop(size_t idx);
+
 
 	FileClient& fc;
 	FileClientChunked* fc_chunked;

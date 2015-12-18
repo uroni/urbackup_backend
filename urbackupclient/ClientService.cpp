@@ -93,7 +93,8 @@ bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
 size_t ClientConnector::needs_restore_restart = 0;
 int64 ClientConnector::service_starttime = 0;
-
+std::string ClientConnector::restore_token;
+int64 ClientConnector::restore_token_time = 0;
 
 
 #ifdef _WIN32
@@ -983,6 +984,10 @@ void ClientConnector::ReceivePackets(void)
 			else if(cmd=="GET FILE LIST TOKENS")
 			{
 				CMD_GET_FILE_LIST_TOKENS(cmd, params); continue;
+			}
+			else if(cmd=="DOWNLOAD FILES TOKENS")
+			{
+				CMD_DOWNLOAD_FILES_TOKENS(cmd, params); continue;
 			}
 			else if( cmd=="LOGIN FOR DOWNLOAD" )
 			{
@@ -2415,15 +2420,21 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 			_u32 rc=(_u32)tmpstack.Send(channel_pipe.pipe, ts);
 			if(rc!=0)
 				ok=true;
-		}
-		if(!ok)
-		{
-			tcpstack.Send(pipe, "FAILED");
+
+			if(!ok)
+			{
+				tcpstack.Send(pipe, "FAILED");
+			}
+			else
+			{
+				tcpstack.Send(pipe, "OK");
+			}
 		}
 		else
 		{
-			tcpstack.Send(pipe, "OK");
+			tcpstack.Send(pipe, "NO SERVER");
 		}
+		
 	}
 }
 
@@ -2620,6 +2631,8 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 
 	} while (Server->getTimeMS()-starttime<timeoutms);
 
+	Server->Log("Timeout while getting a fileserv connection");
+
 	return NULL;	
 }
 
@@ -2785,7 +2798,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 
 	std::string session_key;
 	session_key.resize(32);
-	Server->randomFill(&session_key[0], session_key.size());
+	Server->secureRandomFill(&session_key[0], session_key.size());
 
 	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
@@ -2869,5 +2882,7 @@ std::string ClientConnector::getHasNoRecentBackup()
 
 	return "NO_RECENT";
 }
+
+
 
 

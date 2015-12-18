@@ -43,10 +43,11 @@
 
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
-extern std::string server_token;
 
-FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots)
-	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental), group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
+FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
+	bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token)
+	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental, server_token),
+	group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
@@ -311,7 +312,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
 		return false;
 	}
-	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0);
+	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0, false);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting tokens file of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_DEBUG);
@@ -544,7 +545,7 @@ bool FileBackup::doBackup()
 		}
 	}
 
-	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0);
+	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
@@ -1340,9 +1341,14 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 {
 	std::string user_view_home_path = backuppath + os_file_sep() + "user_views" + os_file_sep() + accoutname;
 
+	if(os_directory_exists(os_file_prefix(user_view_home_path)))
+	{
+		os_remove_nonempty_dir(os_file_prefix(user_view_home_path));
+	}
+
 	if(!os_create_dir_recursive(os_file_prefix(user_view_home_path)))
 	{
-		ServerLogger::Log(logid, "Error creating folder for user at user_views in backup storage of current backup", LL_WARNING);
+		ServerLogger::Log(logid, "Error creating folder \""+user_view_home_path+"\" for user at user_views in backup storage of current backup", LL_WARNING);
 		return false;
 	}
 
@@ -1435,7 +1441,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 									if(!os_link_symbolic(os_file_prefix(backuppath + curr_path),
 										os_file_prefix(user_view_home_path + curr_path)))
 									{
-										ServerLogger::Log(logid, "Error creating symbolic link for user view (directory)", LL_WARNING);
+										ServerLogger::Log(logid, "Error creating symbolic link at \""+user_view_home_path + curr_path+"\" for user view (directory)", LL_WARNING);
 										return false;
 									}
 									skip=1;
@@ -1444,7 +1450,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 								{
 									if(!os_create_dir(os_file_prefix(user_view_home_path + curr_path)))
 									{
-										ServerLogger::Log(logid, "Error creating directory for user view", LL_WARNING);
+										ServerLogger::Log(logid, "Error creating directory \""+user_view_home_path+curr_path+"\" for user view", LL_WARNING);
 										return false;
 									}
 								}
@@ -1477,7 +1483,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
 								os_file_prefix(user_view_home_path + filename)))
 							{
-								ServerLogger::Log(logid, "Error creating symbolic link for user view (file)", LL_WARNING);
+								ServerLogger::Log(logid, "Error creating symbolic link at \""+user_view_home_path + filename+"\" for user view (file)", LL_WARNING);
 								return false;
 							}
 							break;
@@ -1637,6 +1643,23 @@ bool FileBackup::startFileMetadataDownloadThread()
         metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
+
+		int64 starttime=Server->getTimeMS();
+
+		do
+		{
+			if(metadata_download_thread->isDownloading())
+			{
+				break;
+			}
+		}
+		while(Server->getTimeMS()-starttime<10000);
+
+		if(!metadata_download_thread->isDownloading())
+		{
+			stopFileMetadataDownloadThread();
+			return false;
+		}
 	}	
 
 	return true;
@@ -1702,7 +1725,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	os_create_dir(tmpdirname);
 
 	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
-	rc = fc.GetFile((rfn), output_file.get(), true, false, 0);
+	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false);
 
 	if(rc!=ERR_SUCCESS)
 	{

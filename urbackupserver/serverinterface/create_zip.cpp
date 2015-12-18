@@ -303,7 +303,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		const SFile& file=files[i];
 
 		if(skip_special
-			&& (file.name==".hashes" || file.name=="user_views") )
+			&& (file.name==".hashes" || file.name=="user_views" || next(files[i].name, 0, ".symlink_") ) )
 		{
 			continue;
 		}

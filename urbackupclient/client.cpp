@@ -966,6 +966,11 @@ void IndexThread::indexDirs(void)
 					cd->removeDeletedDir(deldirs[i]);
 				}
 			}
+#else
+			if(!onlyref)
+			{
+				past_refs.push_back(scd->ref);
+			}
 #endif
 
 			for(size_t k=0;k<changed_dirs.size();++k)

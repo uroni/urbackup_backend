@@ -24,10 +24,11 @@
 #include "../stringtools.h"
 
 const int64 ping_intervall=10000;
-extern std::string server_token;
 
-ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& clientname, size_t status_id, bool with_eta)
-	: client_main(client_main), clientname(clientname), status_id(status_id), with_eta(with_eta)
+ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& clientname,
+	size_t status_id, bool with_eta, std::string server_token)
+	: client_main(client_main), clientname(clientname), status_id(status_id),
+	with_eta(with_eta), server_token(server_token)
 {
 	stop=false;
 	is_timeout=false;

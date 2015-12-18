@@ -305,6 +305,7 @@ void PipeSessions::removeMetadataCallback( const std::string &name, const std::s
 	if(iter!=metadata_callbacks.end())
 	{
 		delete iter->second;
+		metadata_callbacks.erase(iter);
 	}
 }
 

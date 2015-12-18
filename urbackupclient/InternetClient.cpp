@@ -804,7 +804,7 @@ void InternetClientThread::operator()(void)
 			else if(service==SERVICE_FILESRV)
 			{
 				Server->Log("Started connection to SERVICE_FILESRV", LL_DEBUG);
-				IndexThread::getFileSrv()->runClient(comm_pipe);
+				IndexThread::getFileSrv()->runClient(comm_pipe, NULL);
 				Server->Log("SERVICE_FILESRV finished", LL_DEBUG);
 				goto cleanup;
 			}

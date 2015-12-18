@@ -23,7 +23,8 @@
 
 ContinuousBackup::ContinuousBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action,
+	true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token)
 {
 	cdp_path=true;
 }
@@ -59,7 +60,8 @@ bool ContinuousBackup::doFileBackup()
 		client_main->setContinuousBackup(continuous_update);
 	}
 
-	IncrFileBackup incr_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
+	IncrFileBackup incr_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
+		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token);
 	incr_backup();
 
 	if(incr_backup.getResult())

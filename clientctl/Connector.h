@@ -62,8 +62,9 @@ public:
 	static bool setPause(bool b_pause);
 	static std::string getStatusDetail();
 
-	static std::string getFileBackupsList();
-	static std::string getFileList(const std::string& path, int* backupid);
+	static std::string getFileBackupsList(bool& no_server);
+	static std::string getFileList(const std::string& path, int* backupid, bool& no_server);
+	static std::string startRestore( const std::string& path, int backupid, bool& no_server);
 
 	static void setPWFile(const std::string &pPWFile);
 	static void setPWFileChange(const std::string &pPWFile);

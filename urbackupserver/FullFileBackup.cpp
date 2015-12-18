@@ -31,11 +31,13 @@
 #include <stack>
 
 extern std::string server_identity;
-extern std::string server_token;
 
 
-FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
+FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
+	LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots,
+	std::string server_token)
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group,
+	use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token)
 {
 
 }
@@ -135,7 +137,7 @@ bool FullFileBackup::doFileBackup()
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -350,7 +352,7 @@ bool FullFileBackup::doFileBackup()
 						}
 						else if(metadata.exist && !write_file_metadata(metadata_fn, client_main, metadata, false))
 						{
-							ServerLogger::Log(logid, "Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+"\" failed.", LL_ERROR);
+							ServerLogger::Log(logid, "Writing directory metadata to \""+metadata_fn+"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}

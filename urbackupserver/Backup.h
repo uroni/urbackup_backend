@@ -34,7 +34,9 @@ enum LogAction
 class Backup : public IThread
 {
 public:
-	Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental);
+	Backup(ClientMain* client_main, int clientid, std::string clientname,
+		std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental,
+		std::string server_token);
 	virtual ~Backup() {}
 
 	virtual void operator()();
@@ -91,4 +93,6 @@ protected:
 	size_t status_id;
 
 	ActiveThread* active_thread;
+
+	std::string server_token;
 };

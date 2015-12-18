@@ -26,6 +26,7 @@
 #include <fstream>
 #include <algorithm>
 #include <memory.h>
+#include <assert.h>
 #ifndef _WIN32
 #include <errno.h>
 #endif
@@ -1643,14 +1644,14 @@ void CServer::randomFill(char *buf, size_t blen)
 	char *dptr=buf+blen;
 	while(buf<dptr)
 	{
-		if(dptr-buf>=sizeof(unsigned long))
+		if(dptr-buf>=sizeof(unsigned int))
 		{
-			*((unsigned long*)buf)=genrand_int32();
-			buf+=sizeof(unsigned long);
+			*((unsigned int*)buf)=genrand_int32();
+			buf+=sizeof(unsigned int);
 		}
 		else
 		{
-			unsigned long rnd=genrand_int32();
+			unsigned int rnd=genrand_int32();
 			memcpy(buf, &rnd, dptr-buf);
 			buf+=dptr-buf;
 		}
@@ -1677,6 +1678,7 @@ unsigned int CServer::getSecureRandomNumber(void)
 		return getRandomNumber();
 	}
 	rnd_in.read((char*)&rnd, sizeof(unsigned int));
+	assert(rnd_in.gcount()==sizeof(unsigned int));
 	if(rnd_in.fail() || rnd_in.eof() )
 	{
 		Log("Error reading secure random number", LL_ERROR);
@@ -1747,6 +1749,8 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 	}
 
 	rnd_in.read(buf, blen);
+
+	assert(rnd_in.gcount()==blen);
 
 	if(rnd_in.fail() || rnd_in.eof() )
 	{

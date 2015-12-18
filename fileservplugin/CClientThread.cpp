@@ -64,6 +64,7 @@
 
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
+	: extra_buffer(NULL)
 {
 	int_socket=pSocket;
 
@@ -97,7 +98,8 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 }
 
-CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
+CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vector<char>* extra_buffer)
+	: extra_buffer(extra_buffer)
 {
 	stopped=false;
 	killable=false;
@@ -194,24 +196,32 @@ bool CClientThread::RecvMessage()
 	timeval lon;
 	lon.tv_usec=0;
 	lon.tv_sec=60;
-	rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
-	if(clientpipe->hasError())
-		rc=-1;
-	if( rc==0 )
+	if(extra_buffer==NULL || extra_buffer->empty())
 	{
-		Log("1 min Timeout deleting Buffers ("+convert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
-		delete bufmgr;
-		bufmgr=NULL;
-		lon.tv_sec=3600;
-		int n=0;
-		while(!stopped && rc==0 && n<60)
+		rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+		if(clientpipe->hasError())
+			rc=-1;
+		if( rc==0 )
 		{
-			rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
-			if(clientpipe->hasError())
-				rc=-1;
-			++n;
+			Log("1 min Timeout deleting Buffers ("+convert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
+			delete bufmgr;
+			bufmgr=NULL;
+			lon.tv_sec=3600;
+			int n=0;
+			while(!stopped && rc==0 && n<60)
+			{
+				rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+				if(clientpipe->hasError())
+					rc=-1;
+				++n;
+			}
 		}
 	}
+	else
+	{
+		rc=1;
+	}
+	
 	
 	if(rc<1)
 	{
@@ -221,8 +231,17 @@ bool CClientThread::RecvMessage()
 	}
 	else
 	{
-		rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, lon.tv_sec*1000);
-
+		if(extra_buffer==NULL || extra_buffer->empty())
+		{
+			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, lon.tv_sec*1000);
+		}
+		else
+		{
+			size_t tocopy = (std::min)((size_t)BUFFERSIZE, extra_buffer->size());
+			memcpy(buffer, extra_buffer->data(), tocopy);
+			extra_buffer->erase(extra_buffer->begin(), extra_buffer->begin()+tocopy);
+			rc = static_cast<_i32>(tocopy);
+		}
 
 		if(rc<1)
 		{
@@ -399,9 +418,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					else
 					{
-						if(sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH))
+						bool b = sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH);
+						if(!b)
 						{
-							PipeSessions::removeFile(file->getFilename());
+							Log("Sending script "+o_filename+" not finished yet", LL_INFO);
+						}
+						else
+						{
+							Log("Sent script "+o_filename, LL_INFO);
 						}
 						break;
 					}
@@ -843,6 +867,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 			} break;
+		case ID_SCRIPT_FINISH:
+			{
+				if(!FinishScript(data))
+				{
+					return false;
+				}
+			} break;
 		case ID_FLUSH_SOCKET:
 			{
 				Server->Log("Received flush.", LL_DEBUG);
@@ -1238,8 +1269,13 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		}
 	}
 	else
-	{			
-		if(s_filename.find("|"))
+	{
+		if(next(s_filename, 0, "clientdl/"))
+		{
+			PipeSessions::transmitFileMetadata(filename,
+				s_filename, ident, ident, 0);
+		}
+		else if(s_filename.find("|"))
 		{
 			PipeSessions::transmitFileMetadata(filename,
 				getafter("|",s_filename), getuntil("|", s_filename), ident, 0);
@@ -1321,6 +1357,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	chunk.update_file = srv_file;
 	chunk.startpos = curr_filesize;
 	chunk.hashsize = curr_hash_size;
+
+	hFile=INVALID_HANDLE_VALUE;
 
 	queueChunk(chunk);
 
@@ -1664,6 +1702,11 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 	if(curr_filesize==-1)
 	{
+		if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
+		{
+			Server->Log("Error flushing output socket (3)", LL_INFO);
+		}
+
 		//script needs one reconnect
 		clientpipe->shutdown();
 	}
@@ -1702,4 +1745,96 @@ bool CClientThread::InformMetadataStreamEnd( CRData * data )
 	}
 
 	return true;
+}
+
+bool CClientThread::FinishScript( CRData * data )
+{
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if(!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -FinishScript", LL_DEBUG);
+		return false;
+	}
+#endif
+
+	std::string s_filename;
+	data->getStr(&s_filename);
+
+	if(next(s_filename, 0, "SCRIPT|"))
+	{
+		s_filename = s_filename.substr(7);
+	}
+	else
+	{
+		return false;
+	}
+
+	Log("Finishing script "+s_filename, LL_DEBUG);
+
+	std::string filename=map_file(s_filename, ident);
+
+	Log("Mapped name: "+filename, LL_DEBUG);
+
+	if(filename.empty())
+	{
+		char ch=ID_BASE_DIR_LOST;
+		int rc=SendInt(&ch, 1);
+
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -4", LL_DEBUG);
+			return false;
+		}
+		Log("Info: Base dir lost -2", LL_DEBUG);
+		clientpipe->Flush(CLIENT_TIMEOUT*1000);
+		return false;
+	}
+
+	IFile* file;
+	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
+	{
+		file = PipeSessions::getFile(s_filename);
+	}
+	else
+	{
+		file = PipeSessions::getFile(filename);
+	}			
+
+	bool ret=false;
+
+	if(!file)
+	{
+		char ch=ID_COULDNT_OPEN;
+		int rc=SendInt(&ch, 1);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
+			return false;
+		}
+		Log("Info: Couldn't open script", LL_DEBUG);
+	}
+	else
+	{
+		PipeSessions::removeFile(file->getFilename());
+
+		char ch = ID_PONG;
+		int rc = SendInt(&ch, 1);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Sending data failed (FinishScript)");
+			return false;
+		}
+
+		ret=true;
+	}
+
+	if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
+	{
+		Server->Log("Error flushing output socket (2)", LL_INFO);
+		ret=false;
+	}
+
+	return ret;
 }

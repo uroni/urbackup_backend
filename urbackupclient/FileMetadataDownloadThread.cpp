@@ -62,7 +62,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+client_token;
 
-	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false, 0);
+	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false, 0, true);
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -72,6 +72,8 @@ void FileMetadataDownloadThread::operator()()
 	else
 	{
 		has_error=false;
+
+		fc.FinishScript(remote_fn);
 	}
 
 	metadata_tmp_fn = tmp_f->getFilename();
@@ -190,6 +192,19 @@ namespace
 
 	const size_t metadata_id_size = 4+4+8+4;
 	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
+
+	class HandleScope
+	{
+	public:
+		HandleScope(HANDLE hfile):
+		  hfile(hfile) {}
+
+		  ~HandleScope(){
+			  CloseHandle(hfile);
+		  }
+	private:
+		HANDLE hfile;
+	};
 }
 
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
@@ -202,6 +217,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\"", LL_ERROR);
 		return false;
 	}
+
+	HandleScope handle_scope(hFile);
 
 	int64 win32_magic_and_size[2];
 
@@ -376,7 +393,6 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		has_error=true;
 	}
 
-	CloseHandle(hFile);
 	return !has_error;
 }
 

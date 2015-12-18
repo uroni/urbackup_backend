@@ -51,7 +51,6 @@ const unsigned int image_recv_timeout_after_first=2*60*1000;
 const unsigned int mbr_size=(1024*1024)/2;
 
 extern std::string server_identity;
-extern std::string server_token;
 extern IFSImageFactory *image_fak;
 
 namespace
@@ -99,8 +98,9 @@ namespace
 	}
 }
 
-ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action, bool incremental, std::string letter)
-	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
+ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
+	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token)
+	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
 }
 
@@ -157,7 +157,7 @@ bool ImageBackup::doBackup()
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		client_main->stopBackupRunning(false);
-		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL");
+		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL", server_token);
 		sysvol_backup();
 
 		if(sysvol_backup.getResult())
@@ -173,7 +173,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			client_main->stopBackupRunning(false);
-			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP");
+			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP", server_token);
 			esp_backup();
 
 			if(esp_backup.getResult())
@@ -187,7 +187,7 @@ bool ImageBackup::doBackup()
 		}
 	}
 
-	pingthread = new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0);
+	pingthread = new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	bool ret = false;

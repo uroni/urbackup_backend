@@ -111,7 +111,7 @@ namespace
 
 		for(size_t i=0;i<files.size();++i)
 		{
-			if(skip_special && (files[i].name==".hashes" || files[i].name=="user_views") )
+			if(skip_special && (files[i].name==".hashes" || files[i].name=="user_views" || next(files[i].name, 0, ".symlink_") ) )
 				continue;
 
 			std::string metadata_fn;
@@ -562,6 +562,7 @@ namespace backupaccess
 		Tokenize(u_path, t_path, "/");
 
 		bool is_file=false;
+		bool has_access=false;
 
 		JSON::Array ret_files;
 		for(size_t k=0;k<res.size();++k)
@@ -576,6 +577,8 @@ namespace backupaccess
 				{
 					continue;
 				}
+
+				has_access=true;
 
 				is_file = path_info.is_file;
 
@@ -601,15 +604,34 @@ namespace backupaccess
 
 				if(backupid)
 				{
-					std::vector<SFile> tfiles=getFiles(os_file_prefix(path_info.full_path), NULL);
-					std::vector<FileMetadata> tmetadata=getMetadata(path_info.full_metadata_path, tfiles, path.empty());
+					std::string full_path = path_info.full_path;
+					std::string full_metadata_path = path_info.full_metadata_path;
+					std::string fn_filter;
+
+					if(is_file)
+					{
+						fn_filter = ExtractFileName(path_info.full_path, os_file_sep());
+						if(!fn_filter.empty())
+						{
+							full_path = ExtractFilePath(path_info.full_path, os_file_sep());
+							full_metadata_path = ExtractFilePath(path_info.full_metadata_path, os_file_sep());
+						}
+					}
+
+					std::vector<SFile> tfiles=getFiles(os_file_prefix(full_path), NULL);
+					std::vector<FileMetadata> tmetadata=getMetadata(full_metadata_path, tfiles, path.empty());
 
 					JSON::Array files;
 					for(size_t i=0;i<tfiles.size();++i)
 					{
+						if(!fn_filter.empty() && tfiles[i].name!=fn_filter)
+						{
+							continue;
+						}
+
 						if(tfiles[i].isdir)
 						{
-							if(path.empty() && (tfiles[i].name==".hashes" || tfiles[i].name=="user_views") )
+							if(path.empty() && (tfiles[i].name==".hashes" || tfiles[i].name=="user_views" || next(tfiles[i].name, 0, ".symlink_") ) )
 								continue;
 
 							if(fileaccesstokens && 
@@ -629,9 +651,14 @@ namespace backupaccess
 					}
 					for(size_t i=0;i<tfiles.size();++i)
 					{
+						if(!fn_filter.empty() && tfiles[i].name!=fn_filter)
+						{
+							continue;
+						}
+
 						if(!tfiles[i].isdir)
 						{
-							if(path.empty() && tfiles[i].name==".urbackup_tokens.properties")
+							if(path.empty() && (tfiles[i].name==".urbackup_tokens.properties" || next(tfiles[i].name, 0, ".symlink_")) )
 								continue;
 
 							if(fileaccesstokens && 
@@ -703,7 +730,7 @@ namespace backupaccess
 			ret.set("files", ret_files);
 		}
 
-		return true;
+		return has_access;
 	}
 
 } //namespace backupaccess
@@ -982,8 +1009,12 @@ ACTION_IMPL(backups)
 								return;
 							}
 
+							int64 restore_id;
+							size_t status_id;
+							logid_t log_id;
+
 							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, GET["filter"], token_authentication,
-								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
+								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string()))
 							{
 								ret.set("err", "internal_error");
                                 helper.Write(ret.stringify(false));

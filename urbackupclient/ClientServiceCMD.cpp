@@ -1282,7 +1282,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 	waitForPings(&lock);
 	if(channel_pipes.size()==0)
 	{
-		tcpstack.Send(pipe, "0");
+		tcpstack.Send(pipe, "1");
 	}
 	else
 	{
@@ -1310,7 +1310,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 
 						if(token_params.empty())
 						{
-							tcpstack.Send(pipe, "0");
+							tcpstack.Send(pipe, "2");
 							return;
 						}
 
@@ -1356,11 +1356,11 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 		}
         if(filebackups.empty())
         {
-            tcpstack.Send(pipe, "0");
+            tcpstack.Send(pipe, "3");
         }
         else
         {
-            tcpstack.Send(pipe, "1"+filebackups);
+            tcpstack.Send(pipe, "0"+filebackups);
         }
 	}
 }
@@ -1372,7 +1372,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 	waitForPings(&lock);
 	if(channel_pipes.size()==0)
 	{
-		tcpstack.Send(pipe, "0");
+		tcpstack.Send(pipe, "1");
 	}
 	else
 	{
@@ -1419,7 +1419,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 
 						if(token_params.empty())
 						{
-							tcpstack.Send(pipe, "0");
+							tcpstack.Send(pipe, "2");
 							return;
 						}
 
@@ -1478,13 +1478,122 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 
         if(!filelist.empty())
         {
-            tcpstack.Send(pipe, "1"+filelist);
+            tcpstack.Send(pipe, "0"+filelist);
         }
         else
         {
-            tcpstack.Send(pipe, "0");
+            tcpstack.Send(pipe, "3");
         }
 	}
+}
+
+void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "1");
+		return;
+	}
+
+	std::string accessparams;
+
+	str_map::iterator it_path = params.find("path");
+
+	if(it_path==params.end())
+	{
+		tcpstack.Send(pipe, "2");
+		return;
+	}
+	
+	accessparams+="&path="+EscapeParamString((it_path->second));
+	
+
+	str_map::iterator it_backupid = params.find("backupid");
+
+	if(it_backupid==params.end())
+	{
+		tcpstack.Send(pipe, "3");
+		return;
+	}
+	
+	accessparams+="&backupid="+EscapeParamString((it_backupid->second));
+	
+	if(channel_pipes.size()==1)
+	{
+		accessparams+="&with_id_offset=false";
+	}
+
+	std::string restore_token_binary;
+	restore_token_binary.resize(16);
+	Server->secureRandomFill(&restore_token_binary[0], restore_token_binary.size());
+
+	restore_token = bytesToHex(restore_token_binary);
+	restore_token_time = Server->getTimeMS();
+
+	accessparams+="&restore_token="+restore_token;
+
+	std::string filelist;
+
+	accessparams[0]=' ';
+
+	std::string utf8_tokens = params["tokens"];
+	bool has_token_params=false;
+	std::string last_err;
+	for(size_t i=0;i<channel_pipes.size();++i)
+	{
+		for(size_t j=0;j<2;++j)
+		{
+			if(channel_pipes[i].last_tokens!=utf8_tokens)
+			{
+				if(!has_token_params)
+				{
+					std::string token_params = getAccessTokensParams(params["tokens"], true);
+
+					if(token_params.empty())
+					{
+						tcpstack.Send(pipe, "error encrypting access tokens");
+						return;
+					}
+
+					if(accessparams.empty())
+					{
+						accessparams = token_params;
+						accessparams[0]=' ';
+					}
+					else
+					{
+						accessparams+=token_params;
+					}
+
+					has_token_params=true;
+				}
+			}
+
+			sendChannelPacket(channel_pipes[i], cmd+accessparams);
+
+			last_err=receivePacket(channel_pipes[i]);
+			if(!last_err.empty() && last_err!="err")
+			{
+				channel_pipes[i].last_tokens = utf8_tokens;
+
+				tcpstack.Send(pipe, "0" + last_err);
+				return;
+			}
+			else if(!has_token_params)
+			{
+				channel_pipes[i].last_tokens="";
+			}
+			else
+			{
+				break;
+			}		
+		}
+	}
+
+	tcpstack.Send(pipe, last_err);
 }
 
 void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params)
@@ -1504,7 +1613,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
-	Server->Log("Downloading image...", LL_DEBUG);
+	Server->Log("Downloading files...", LL_DEBUG);
 	IScopedLock lock(backup_mutex);
 	waitForPings(&lock);
 	
@@ -1937,7 +2046,16 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 
 	RestoreFiles* local_restore_files = new RestoreFiles(restore_id, status_id, log_id, client_token, server_token);
 
-	if(restore == "client-confirms")
+
+	bool has_restore_token=false;
+	if(params["restore_token"]==restore_token
+		&& Server->getTimeMS()-restore_token_time<120*1000)
+	{
+		restore_token="";
+		has_restore_token=true;
+	}
+
+	if(restore == "client-confirms" && !has_restore_token)
 	{
 		IScopedLock lock(backup_mutex);
 		restore_ok_status = RestoreOk_Wait;
@@ -1976,11 +2094,8 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 		restore_ok_status = RestoreOk_Declined;
 	}
 
-	if(restore_files!=NULL)
-	{
-		delete restore_files;
-		restore_files=NULL;
-	}
+	delete restore_files;
+	restore_files=NULL;
 
 	tcpstack.Send(pipe, "ok");
 }

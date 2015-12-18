@@ -857,7 +857,7 @@ private:
 		return false;
 	}
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items)
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
 	{
 		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 			it!=dl_queue.end();++it)
@@ -869,6 +869,7 @@ private:
 				metadata=FileClient::MetadataQueue_MetadataAndHash;
 				it->queued_metdata=true;
 				folder_items=0;
+				finish_script=false;
 				return it->change.fn1;
 			}
 		}
@@ -876,7 +877,7 @@ private:
 		return std::string();
 	}
 
-	virtual void unqueueFileFull(const std::string& fn)
+	virtual void unqueueFileFull(const std::string& fn, bool finish_script)
 	{
 		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 			it!=dl_queue.end();++it)

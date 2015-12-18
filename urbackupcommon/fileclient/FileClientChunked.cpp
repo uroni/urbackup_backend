@@ -376,6 +376,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				&& needs_flush)
 			{
 				Flush(getPipe());
+				needs_flush=false;
 			}
 		}
 
@@ -665,9 +666,12 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						return;
 					}
 
-					m_hashoutput->Seek(0);
-					_i64 endian_remote_filesize = little_endian(remote_filesize);
-					writeFileRepeat(m_hashoutput, (char*)&endian_remote_filesize, sizeof(_i64));
+					if(m_hashoutput!=NULL)
+					{
+						m_hashoutput->Seek(0);
+						_i64 endian_remote_filesize = little_endian(remote_filesize);
+						writeFileRepeat(m_hashoutput, (char*)&endian_remote_filesize, sizeof(_i64));
+					}					
 				}				
 			}break;
 		case ID_BASE_DIR_LOST:
@@ -735,9 +739,12 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				adler_remaining=c_chunk_size;
 				block_pos=0;
 
-				m_hashoutput->Seek(chunkhash_file_off+(block_start/c_checkpoint_dist)*chunkhash_single_size);
-				char tmp[big_hash_size]={};
-				writeFileRepeat(m_hashoutput, tmp, big_hash_size);
+				if(m_hashoutput!=NULL)
+				{
+					m_hashoutput->Seek(chunkhash_file_off+(block_start/c_checkpoint_dist)*chunkhash_single_size);
+					char tmp[big_hash_size]={};
+					writeFileRepeat(m_hashoutput, tmp, big_hash_size);
+				}				
 			}break;
 		case ID_UPDATE_CHUNK:
 			{
@@ -762,7 +769,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					getfile_done=true;
 					return;
 				}
-				else if(new_block)
+				else if(new_block && m_hashoutput!=NULL)
 				{
 					m_hashoutput->Seek(chunkhash_file_off+(chunk_start/c_checkpoint_dist)*chunkhash_single_size);
 					_i64 block_start = block*c_checkpoint_dist;
@@ -780,8 +787,11 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				m_file->Seek(chunk_start);
 				
 				unsigned int chunknum=(chunk_start%c_checkpoint_dist)/c_chunk_size;
-				m_hashoutput->Seek(chunkhash_file_off+block*chunkhash_single_size
-					+big_hash_size+chunknum*small_hash_size);
+				if(m_hashoutput!=NULL)
+				{
+					m_hashoutput->Seek(chunkhash_file_off+block*chunkhash_single_size
+						+big_hash_size+chunknum*small_hash_size);
+				}				
 
 				state=CS_CHUNK;
 				adler_hash=urb_adler32(0, NULL, 0);
@@ -958,8 +968,11 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 	}
 	else
 	{
-		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
-		writeFileRepeat(m_hashoutput, hash_from_client, big_hash_size);
+		if(m_hashoutput!=NULL)
+		{
+			m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
+			writeFileRepeat(m_hashoutput, hash_from_client, big_hash_size);
+		}
 
 		curr_output_fsize = (std::max)(curr_output_fsize, curr_pos+c_checkpoint_dist);
 
@@ -987,16 +1000,27 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 	{
 		Server->Log("Block without change. currpos="+convert(curr_pos), LL_DEBUG);
 		addReceivedBlock(curr_pos);
-		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
+
+		if(m_hashoutput!=NULL)
+		{
+			m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
+		}
+		
 		if(curr_pos+c_checkpoint_dist<=remote_filesize)
 		{
-			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+			if(m_hashoutput!=NULL)
+			{
+				writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+			}
 			curr_output_fsize = (std::max)(curr_output_fsize, curr_pos+c_checkpoint_dist);
 		}
 		else
 		{
 			size_t missing_chunks = static_cast<size_t>((curr_pos + c_checkpoint_dist - remote_filesize)/c_chunk_size);
-			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size-missing_chunks*small_hash_size);
+			if(m_hashoutput!=NULL)
+			{
+				writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size-missing_chunks*small_hash_size);
+			}
 			curr_output_fsize = (std::max)(curr_output_fsize, remote_filesize);
 		}
 		pending_chunks.erase(it);
@@ -1045,7 +1069,10 @@ void FileClientChunked::State_Block(void)
 		if(adler_remaining==0 || whole_block_remaining==0)
 		{
 			_u32 endian_adler_hash = little_endian(adler_hash);
-			writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
+			if(m_hashoutput!=NULL)
+			{
+				writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
+			}
 			adler_hash=urb_adler32(0, NULL, 0);
 			adler_remaining=c_chunk_size;
 		}
@@ -1057,8 +1084,11 @@ void FileClientChunked::State_Block(void)
 	{
 		md5_hash.finalize();
 		hash_for_whole_block=true;
-		m_hashoutput->Seek(chunkhash_file_off+(block_for_chunk_start/c_checkpoint_dist)*chunkhash_single_size);
-		writeFileRepeat(m_hashoutput, (char*)md5_hash.raw_digest_int(), big_hash_size);
+		if(m_hashoutput!=NULL)
+		{
+			m_hashoutput->Seek(chunkhash_file_off+(block_for_chunk_start/c_checkpoint_dist)*chunkhash_single_size);
+			writeFileRepeat(m_hashoutput, (char*)md5_hash.raw_digest_int(), big_hash_size);
+		}
 
 		state=CS_ID_FIRST;
 	}
@@ -1124,7 +1154,10 @@ void FileClientChunked::State_Chunk(void)
 	if(adler_remaining==0)
 	{
 		_u32 endian_adler_hash = little_endian(adler_hash);
-		writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
+		if(m_hashoutput!=NULL)
+		{
+			writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
+		}
 		state=CS_ID_FIRST;
 	}
 }
@@ -1773,33 +1806,36 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 		Server->Log("Hashfilesize greater than currently downloaded filesize. Using old filesize (of base file) and copying hash data.", LL_DEBUG);
 		filesize_out = hashfilesize;
 
-		if(m_hashoutput->Seek(m_hashoutput->Size()) &&
-			m_chunkhashes->Seek(m_hashoutput->Size()))
+		if(m_hashoutput!=NULL)
 		{
-			std::vector<char> buffer;
-			buffer.resize(4096);
-
-			_u32 read;
-			do 
+			if(m_hashoutput->Seek(m_hashoutput->Size()) &&
+				m_chunkhashes->Seek(m_hashoutput->Size()))
 			{
-				bool has_error;
-				read = m_chunkhashes->Read(&buffer[0], 4096, &has_error);
+				std::vector<char> buffer;
+				buffer.resize(4096);
 
-				if(has_error)
+				_u32 read;
+				do 
 				{
-					Server->Log("Error reading from chunkhashes file. Copying hashdata failed.", LL_ERROR);
-				}
+					bool has_error;
+					read = m_chunkhashes->Read(&buffer[0], 4096, &has_error);
 
-				writeFileRepeat(m_hashoutput, buffer.data(), read);	
+					if(has_error)
+					{
+						Server->Log("Error reading from chunkhashes file. Copying hashdata failed.", LL_ERROR);
+					}
 
-			} while (read==4096);
+					writeFileRepeat(m_hashoutput, buffer.data(), read);	
 
-			assert(m_hashoutput->Size() == m_chunkhashes->Size());
-		}
-		else
-		{
-			Server->Log("Error seeking to hashoutput end. Copying hashdata failed.", LL_ERROR);
-		}
+				} while (read==4096);
+
+				assert(m_hashoutput->Size() == m_chunkhashes->Size());
+			}
+			else
+			{
+				Server->Log("Error seeking to hashoutput end. Copying hashdata failed.", LL_ERROR);
+			}
+		}		
 	}
 
 	if(patch_mode)
@@ -1807,9 +1843,13 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 		writePatchSize(filesize_out);
 	}
 
-	m_hashoutput->Seek(0);
-	_i64 endian_filesize_out = little_endian(filesize_out);
-	writeFileRepeat(m_hashoutput, (char*)&endian_filesize_out, sizeof(_i64));
+	if(m_hashoutput!=NULL)
+	{
+		m_hashoutput->Seek(0);
+		_i64 endian_filesize_out = little_endian(filesize_out);
+		writeFileRepeat(m_hashoutput, (char*)&endian_filesize_out, sizeof(_i64));
+	}
+	
 
 	Server->Log("Not successfull. Returning filesize "+convert(filesize_out), LL_DEBUG);
 }

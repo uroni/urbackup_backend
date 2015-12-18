@@ -97,7 +97,7 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
 	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
 	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
-	real_transferred_bytes(0)
+	real_transferred_bytes(0), is_downloading(false)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -660,7 +660,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -695,7 +695,8 @@ bool FileClient::Reconnect(void)
 	}
 	else
 	{
-		assert(queued.front() == remotefn);
+		assert(queued.front().fn == remotefn);
+		assert(!queued.front().finish_script);
 		queued.pop_front();
 	}
 
@@ -717,7 +718,18 @@ bool FileClient::Reconnect(void)
 
 	while(true)
 	{        
-		fillQueue();
+		if(!is_script)
+		{
+			fillQueue();
+		}
+		else
+		{
+			if(needs_flush)
+			{
+				needs_flush=false;
+				Flush();
+			}
+		}
 
 		size_t rc;
 		if(tcpsock->isReadable() || dl_off==0 ||
@@ -813,6 +825,11 @@ bool FileClient::Reconnect(void)
 				{
 					if(rc >= 1+sizeof(_u64))
 					{
+						{
+							IScopedLock lock(mutex);
+							is_downloading=true;
+						}
+
 						memcpy(&filesize, buf+1, sizeof(_u64) );
 						filesize=little_endian(filesize);
 						off=1+sizeof(_u64);
@@ -1143,7 +1160,7 @@ void FileClient::fillQueue()
 
 	bool needs_send_flush=false;
 
-	std::vector<std::string> queued_files;
+	std::vector<SQueueItem> queued_files;
 
 	while(queued.size()<maxQueuedFiles)
 	{
@@ -1154,7 +1171,8 @@ void FileClient::fillQueue()
 
 		MetadataQueue metadata_queue = MetadataQueue_Data;
 		size_t folder_items = 0;
-		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue, folder_items);
+		bool finish_script=false;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue, folder_items, finish_script);
 
 		if(queue_fn.empty())
 		{
@@ -1193,12 +1211,12 @@ void FileClient::fillQueue()
 		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
 		{
 			Server->Log("Queueing file failed", LL_DEBUG);
-			queue_callback->unqueueFileFull(queue_fn);
+			queue_callback->unqueueFileFull(queue_fn, finish_script);
 			return;
 		}
 
-		queued.push_back(queue_fn);
-		queued_files.push_back(queue_fn);
+		queued.push_back(SQueueItem(queue_fn, finish_script));
+		queued_files.push_back(SQueueItem(queue_fn, finish_script));
 		needs_flush=true;
 	}
 
@@ -1209,7 +1227,7 @@ void FileClient::fillQueue()
 			Server->Log("Flushing failed after queueing files", LL_DEBUG);
 			for(size_t i=0;i<queued_files.size();++i)
 			{
-				queue_callback->unqueueFileFull(queued_files[i]);
+				queue_callback->unqueueFileFull(queued_files[i].fn, queued_files[i].finish_script);
 			}
 		}
 	}
@@ -1262,7 +1280,8 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 	}
 	else
 	{
-		assert(queued.front() == remotefn);
+		assert(queued.front().fn == remotefn);
+		assert(!queued.front().finish_script);
 		queued.pop_front();
 	}
 
@@ -1526,6 +1545,77 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
 	}
 }
 
+_u32 FileClient::FinishScript(std::string remotefn)
+{
+	if(queued.empty())
+	{
+		CWData data;
+		data.addUChar( ID_SCRIPT_FINISH );
+		data.addString( identity );
+		data.addString(remotefn);
+
+		int tries=5000;
+
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during sending finish script (1)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
+
+		needs_flush=true;
+	}
+	else
+	{
+		assert(queued.front().fn == remotefn);
+		assert(queued.front().finish_script);
+		queued.pop_front();
+	}
+
+	int tries=20;
+
+	while(true)
+	{
+		size_t rc = tcpsock->Read(dl_buf, 1, 120000);
+
+		if(rc==0)
+		{
+			Server->Log("Server timeout (2) in FileClient sending finish script", LL_DEBUG);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT (finish script)", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_SCRIPT_FINISH );
+				data.addString( identity );
+				data.addString(remotefn);
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending metadata stream end", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+			}
+		}
+		else
+		{
+			if(*dl_buf==ID_PONG)
+			{
+				return ERR_SUCCESS;
+			}
+			else
+			{
+				return ERR_ERROR;
+			}
+		}
+	}
+}
+
 _u32 FileClient::Flush()
 {
 	if(tcpsock==NULL)
@@ -1561,5 +1651,11 @@ void FileClient::Shutdown()
 	{
 		tcpsock->shutdown();
 	}
+}
+
+bool FileClient::isDownloading()
+{
+	IScopedLock lock(mutex);
+	return is_downloading;
 }
 

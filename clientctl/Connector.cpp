@@ -258,6 +258,8 @@ int Connector::startBackup(bool full)
 
 	if(d=="RUNNING")
 		return 2;
+	else if(d=="NO SERVER")
+		return 3;
 	else if(d!="OK")
 		return 0;
 	else
@@ -276,6 +278,8 @@ int Connector::startImage(bool full)
 
 	if(d=="RUNNING")
 		return 2;
+	else if(d=="NO SERVER")
+		return 3;
 	else if(d!="OK")
 		return 0;
 	else
@@ -368,8 +372,10 @@ std::string Connector::getStatusDetail()
 	return getResponse("STATUS DETAIL", "", false);
 }
 
-std::string Connector::getFileBackupsList()
+std::string Connector::getFileBackupsList(bool& no_server)
 {
+	no_server=false;
+
 	if(!readTokens())
 	{
 		return std::string();
@@ -379,8 +385,13 @@ std::string Connector::getFileBackupsList()
 
 	if(!list.empty())
 	{
-		if(list[0]!='1')
+		if(list[0]!='0')
 		{
+			if(list[0]=='1')
+			{
+				no_server=true;
+			}
+
 			return std::string();
 		}
 		else
@@ -415,8 +426,10 @@ bool Connector::readTokens()
 	return !tokens.empty();
 }
 
-std::string Connector::getFileList( const std::string& path, int* backupid )
+std::string Connector::getFileList( const std::string& path, int* backupid, bool& no_server)
 {
+	no_server=false;
+
 	if(!readTokens())
 	{
 		return std::string();
@@ -439,13 +452,56 @@ std::string Connector::getFileList( const std::string& path, int* backupid )
 
 	if(!list.empty())
 	{
-		if(list[0]!='1')
+		if(list[0]!='0')
 		{
+			if(list[0]=='1')
+			{
+				no_server=true;
+			}
+
 			return std::string();
 		}
 		else
 		{
 			return list.substr(1);
+		}
+	}
+	else
+	{
+		return std::string();
+	}
+}
+
+std::string Connector::startRestore( const std::string& path, int backupid, bool& no_server )
+{
+	no_server=false;
+
+	if(!readTokens())
+	{
+		return std::string();
+	}
+
+	std::string params = "tokens="+tokens;
+	params+="&path="+EscapeParamString(path);
+	params+="&backupid="+convert(backupid);
+
+	std::string res = getResponse("DOWNLOAD FILES TOKENS",
+		params, false);
+
+	if(!res.empty())
+	{
+		if(res[0]!='0')
+		{
+			if(res[0]=='1')
+			{
+				no_server=true;
+			}
+
+			return std::string();
+		}
+		else
+		{
+			return res.substr(1);
 		}
 	}
 	else

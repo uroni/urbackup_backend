@@ -803,6 +803,7 @@ function base64_decode_dash(b)
 	return $.base64.decode(b.replace(/-/g, "="));
 }
 
+//from https://stackoverflow.com/questions/4003823/javascript-getcookie-functions/4004010#4004010
 if (typeof Array.prototype.map !== "function") {
     Array.prototype.map = function(callback, thisArg) {
         for (var i=0, n=this.length, a=[]; i<n; i++) {

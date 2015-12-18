@@ -230,13 +230,13 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 		}
 	}
 
-	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items);
+	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items, false);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		dest_f->Seek(0);
-		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items);
+		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items, false);
 		--hash_retries;
 	}
 
@@ -282,7 +282,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 	return true;
 }
 
-std::string RestoreDownloadThread::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items)
+std::string RestoreDownloadThread::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
 {
 	IScopedLock lock(mutex.get());
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
@@ -301,6 +301,7 @@ std::string RestoreDownloadThread::getQueuedFileFull( FileClient::MetadataQueue&
 				metadata = FileClient::MetadataQueue_Data;
 			}
 			folder_items = it->folder_items;
+			finish_script = false;
 			return (it->remotefn);
 		}
 	}
@@ -308,7 +309,7 @@ std::string RestoreDownloadThread::getQueuedFileFull( FileClient::MetadataQueue&
 	return std::string();
 }
 
-void RestoreDownloadThread::unqueueFileFull( const std::string& fn )
+void RestoreDownloadThread::unqueueFileFull( const std::string& fn, bool finish_script)
 {
 	IScopedLock lock(mutex.get());
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();

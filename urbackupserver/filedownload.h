@@ -46,8 +46,8 @@ public:
 	virtual void unqueueFileChunked(const std::string& remotefn);
 	virtual void resetQueueChunked();
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items);
-	virtual void unqueueFileFull(const std::string& fn);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script);
+	virtual void unqueueFileFull(const std::string& fn, bool finish_script);
 	virtual void resetQueueFull();
 private:
 

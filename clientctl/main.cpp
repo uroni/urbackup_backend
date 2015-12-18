@@ -132,9 +132,14 @@ int action_start(std::vector<std::string> args)
 		std::cout << "Backup started" << std::endl;
 		return 0;
 	}
+	else if(rc==3)
+	{
+		std::cout << "Error starting backup. No backup server found." << std::endl;
+		return 3;
+	}
 	else
 	{
-		std::cerr << "Error starting backup. No server found?" << std::endl;
+		std::cerr << "Error starting backup." << std::endl;
 		return 1;		
 	}
 }
@@ -182,7 +187,8 @@ int action_list(std::vector<std::string> args)
 
 	if(path_arg.getValue().empty() && !backupid_arg.isSet())
 	{
-		std::string filebackups = Connector::getFileBackupsList();
+		bool no_server;
+		std::string filebackups = Connector::getFileBackupsList(no_server);
 
 		if(!filebackups.empty())
 		{
@@ -191,8 +197,16 @@ int action_list(std::vector<std::string> args)
 		}
 		else
 		{
-			std::cerr << "Error getting file backups" << std::endl;
-			return 1;
+			if(no_server)
+			{
+				std::cerr << "Error getting file backups. No backup server found." << std::endl;
+				return 2;
+			}
+			else
+			{
+				std::cerr << "Error getting file backups" << std::endl;
+				return 1;
+			}			
 		}
 	}
 	else
@@ -202,7 +216,8 @@ int action_list(std::vector<std::string> args)
 		{
 			pbackupid = &backupid_arg.getValue();
 		}
-		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid);
+		bool no_server;
+		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, no_server);
 
 		if(!filelist.empty())
 		{
@@ -211,7 +226,56 @@ int action_list(std::vector<std::string> args)
 		}
 		else
 		{
-			std::cerr << "Error getting file list" << std::endl;
+			if(no_server)
+			{
+				std::cerr << "Error getting file list. No backup server found." << std::endl;
+				return 2;
+			}
+			else
+			{
+				std::cerr << "Error getting file list" << std::endl;
+				return 1;
+			}
+		}
+	}
+}
+
+int action_start_restore(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List backups and files/folders in backups", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd);
+
+	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
+		"Backupid of backup from which to restore files/folders",
+		true, 0, "id", cmd);
+
+	TCLAP::ValueArg<std::string> path_arg("d", "path",
+		"Path of folder/file to restore",
+		true, "", "path", cmd);
+
+	cmd.parse(args);
+
+	pw_client_cmd.set();
+
+	bool no_server;
+	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(), no_server);
+
+	if(!restore_info.empty())
+	{
+		std::cout << restore_info << std::endl;
+		return 0;
+	}
+	else
+	{
+		if(no_server)
+		{
+			std::cerr << "Error starting restore. No backup server found." << std::endl;
+			return 2;
+		}
+		else
+		{
+			std::cerr << "Error starting restore" << std::endl;
 			return 1;
 		}
 	}
@@ -233,6 +297,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_status);
 	actions.push_back("list");
 	action_funs.push_back(action_list);
+	actions.push_back("restore-start");
+	action_funs.push_back(action_start_restore);
 
 	bool has_help=false;
 	bool has_version=false;

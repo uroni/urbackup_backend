@@ -76,9 +76,9 @@ public:
 
 	bool load_file_patch(SQueueItem todl);
 
-	virtual std::string getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items);
+	virtual std::string getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script);
 
-	virtual void unqueueFileFull( const std::string& fn );
+	virtual void unqueueFileFull( const std::string& fn, bool finish_script);
 
 	virtual void resetQueueFull();
 

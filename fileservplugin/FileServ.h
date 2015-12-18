@@ -24,7 +24,7 @@ public:
 
 	virtual void removeMetadataCallback(const std::string &name, const std::string& identity);
 
-	virtual void runClient(IPipe *cp);
+	virtual void runClient(IPipe *cp, std::vector<char>* extra_buffer);
 
 	static bool isPause(void);
 
