@@ -235,3 +235,4 @@ urbackup/new_version_deb/*
 urbackupserver/www/js/templates.js.new
 urbackupserver/www/templates.js.new
 clientctl/Release/*
+urbackup/UrBackupUpdate.sig2

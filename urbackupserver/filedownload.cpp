@@ -97,7 +97,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 				}
 			}
 
-			rc=fc->GetFile(remotefn, dstfile, true, false, 0, false);
+			rc=fc->GetFile(remotefn, dstfile, true, false, 0, false, 0);
 
 			Server->destroy(dstfile);
 		}
@@ -157,7 +157,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 
 		if(queueStatus==SQueueStatus_NoQueue || queueStatus==SQueueStatus_IsQueued)
 		{
-			rc=fc_chunked->GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize);
+			rc=fc_chunked->GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize, 0);
 
 			cleanup_tmpfile(hashfile);
 			cleanup_tmpfile(hashfile_output);
@@ -239,7 +239,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 		if(queueStatus==SQueueStatus_IsQueued || queueStatus==SQueueStatus_NoQueue)
 		{
 			Server->Log("Downloading file...");
-			rc=fc_chunked->GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize);
+			rc=fc_chunked->GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize, 0);
 
 			IFile *tmpfile=Server->openTemporaryFile();
 			Server->Log("Copying to temporary...");
@@ -368,7 +368,7 @@ void FileDownload::cleanup_tmpfile(IFile *tmpfile)
 	Server->deleteFile(fn);
 }
 
-bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize )
+bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id )
 {
 	for(size_t i=0;i<dlqueueChunked.size();++i)
 	{
@@ -381,6 +381,7 @@ bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_fil
 			hashoutput = dlqueueChunked[i].hashoutput;
 			predicted_filesize = dlqueueChunked[i].predicted_filesize;
 			dlqueueChunked[i].queued=true;
+			file_id=0;
 			return true;
 		}
 	}
@@ -448,7 +449,7 @@ FileDownload::FileDownload( std::string servername, unsigned int tcpport )
 	fc->setQueueCallback(this);
 }
 
-std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
+std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script, int64& file_id)
 {
 	for(size_t i=0;i<dlqueueFull.size();++i)
 	{
@@ -456,6 +457,7 @@ std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata
 		{
 			metadata=FileClient::MetadataQueue_Data;
 			folder_items=0;
+			file_id=0;
 			finish_script=false;
 			return dlqueueFull[i].remotefn;
 		}

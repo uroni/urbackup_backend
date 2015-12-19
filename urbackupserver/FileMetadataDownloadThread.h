@@ -46,10 +46,14 @@ public:
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
 
 	bool getHasError();
+
+	bool getHasTimeoutError();
 	
 	void shutdown();
 
 	bool isDownloading();
+
+	bool hasMetadataId(int64 id);
 
 private:
 
@@ -64,8 +68,12 @@ private:
 	std::vector<char> buffer;
 
 	bool has_error;
+	bool has_timeout_error;
 	std::string metadata_tmp_fn;
 	logid_t logid;
+
+	int64 max_metadata_id;
+	std::vector<int64> last_metadata_ids;
 
 	bool dry_run;
 };

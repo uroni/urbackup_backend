@@ -291,10 +291,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 	{
 		switch(id)
 		{
-		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE:
+		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE_RESUME_HASH:
 		case ID_GET_FILE_METADATA_ONLY:
+		case ID_GET_FILE_WITH_METADATA:
 			{
 				errorcode = 0;
 				std::string s_filename;
@@ -310,12 +311,64 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 #endif
+				int64 metadata_id = 0;
 				int64 folder_items=0;
 				if(id==ID_GET_FILE_METADATA_ONLY)
 				{
-					data->getVarInt(&folder_items);
+					char c_version;
+					if(!data->getChar(&c_version))
+					{
+						break;
+					}
+
+					if(c_version!=0)
+					{
+						break;
+					}
+
+					if(!data->getVarInt(&folder_items))
+					{
+						break;
+					}
+
+					if(!data->getVarInt(&metadata_id))
+					{
+						break;
+					}
 				}
 
+				with_hashes = id==ID_GET_FILE_RESUME_HASH;
+
+				if(id==ID_GET_FILE_WITH_METADATA)
+				{
+					char c_version;
+					if(!data->getChar(&c_version))
+					{
+						break;
+					}
+
+					if(c_version!=0)
+					{
+						break;
+					}
+
+					char c_with_hash;
+					if(!data->getChar(&c_with_hash))
+					{
+						break;
+					}
+
+					with_hashes = c_with_hash!=0;
+
+					if(!data->getVarInt(&metadata_id))
+					{
+						break;
+					}
+				}
+
+				_i64 start_offset=0;
+				bool offset_set=data->getInt64(&start_offset);
+								
 				bool is_script = false;
 				if(next(s_filename, 0, "SCRIPT|"))
 				{
@@ -324,9 +377,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 				std::string o_filename=s_filename;
-
-				_i64 start_offset=0;
-				bool offset_set=data->getInt64(&start_offset);
 
                 if(id!=ID_GET_FILE_METADATA_ONLY)
                 {
@@ -363,9 +413,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					break;
 				}
 
-				cmd_id=id;
-
-				if( id==ID_GET_FILE_RESUME_HASH )
+				if( with_hashes )
 				{
 					hash_func.init();
 				}
@@ -418,7 +466,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					else
 					{
-						bool b = sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH);
+						bool b = sendFullFile(file, start_offset, with_hashes);
 						if(!b)
 						{
 							Log("Sending script "+o_filename+" not finished yet", LL_INFO);
@@ -430,15 +478,15 @@ bool CClientThread::ProcessPacket(CRData *data)
 						break;
 					}
 				}
-				else if(next(s_filename, 0, "clientdl/"))
+				else if(metadata_id!=0 && next(s_filename, 0, "clientdl/"))
 				{
 					PipeSessions::transmitFileMetadata(filename,
-						s_filename, ident, ident, folder_items);
+						s_filename, ident, ident, folder_items, metadata_id);
 				}
-				else if(s_filename.find("|")!=std::string::npos)
+				else if(metadata_id!=0 && s_filename.find("|")!=std::string::npos)
 				{
 					PipeSessions::transmitFileMetadata(filename,
-						getafter("|",s_filename), getuntil("|", s_filename), ident, folder_items);
+						getafter("|",s_filename), getuntil("|", s_filename), ident, folder_items, metadata_id);
 				}
 
 #ifndef LINUX
@@ -501,21 +549,18 @@ bool CClientThread::ProcessPacket(CRData *data)
 					curr_filesize = 0;
 				}
 
-				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
-				{
-					CWData data;
-					data.addUChar(ID_FILESIZE);
-					data.addUInt64(little_endian(curr_filesize));
+				CWData data;
+				data.addUChar(ID_FILESIZE);
+				data.addUInt64(little_endian(curr_filesize));
 
-					int rc=SendInt(data.getDataPtr(), data.getDataSize());
-					if(rc==SOCKET_ERROR)
-					{
-						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
-						CloseHandle(hFile);
-						hFile=INVALID_HANDLE_VALUE;
-						return false;
-					}
-				}
+				int rc=SendInt(data.getDataPtr(), data.getDataSize());
+				if(rc==SOCKET_ERROR)
+				{
+					Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
+					CloseHandle(hFile);
+					hFile=INVALID_HANDLE_VALUE;
+					return false;
+				}		
 
 				if(curr_filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
@@ -693,21 +738,18 @@ bool CClientThread::ProcessPacket(CRData *data)
 				off64_t filesize=stat_buf.st_size;
 				curr_filesize=filesize;
 				
-				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
-				{
-					CWData data;
-					data.addUChar(ID_FILESIZE);
-					data.addUInt64(little_endian(static_cast<uint64>(filesize)));
+				CWData data;
+				data.addUChar(ID_FILESIZE);
+				data.addUInt64(little_endian(static_cast<uint64>(filesize)));
 
-					int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
-					if(rc==SOCKET_ERROR)
-					{
-						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
-						CloseHandle(hFile);
-						hFile=INVALID_HANDLE_VALUE;
-						return false;
-					}
-				}
+				int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
+				if(rc==SOCKET_ERROR)
+				{
+					Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
+					CloseHandle(hFile);
+					hFile=INVALID_HANDLE_VALUE;
+					return false;
+				}				
 				
 				if(filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
@@ -720,7 +762,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				unsigned int s_bsize=8192;
 
-				if(id==ID_GET_FILE || id==ID_GET_FILE_RESUME )
+				if( with_hashes )
 				{
 					s_bsize=32768;
 					next_checkpoint=curr_filesize;
@@ -732,7 +774,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					    next_checkpoint=curr_filesize;
 				}
 
-				if( clientpipe!=NULL || (id!=ID_GET_FILE && id!=ID_GET_FILE_RESUME) )
+				if(foffset>0)
 				{
 					if(lseek64(hFile, foffset, SEEK_SET)!=foffset)
 					{
@@ -740,7 +782,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						CloseHandle(hFile);
 						return false;
 					}
-				}
+				}				
 
 				char *buf=new char[s_bsize];
 
@@ -749,7 +791,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				while( foffset < filesize )
 				{
 					size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
-					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
+					if( clientpipe==NULL && !with_hashes )
 					{
 						#ifdef __APPLE__
 						ssize_t rc=sendfile64(int_socket, hFile, foffset, reinterpret_cast<off_t*>(&count));
@@ -809,14 +851,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 							delete []buf;
 							return false;
 						}
-						else if(id==ID_GET_FILE_RESUME_HASH)
+						else if(with_hashes)
 						{
 							hash_func.update((unsigned char*)buf, rc);
 						}
 
 						foffset+=rc;
 						
-						if(id==ID_GET_FILE_RESUME_HASH && foffset==next_checkpoint)
+						if(with_hashes && foffset==next_checkpoint)
 						{
 							hash_func.finalize();
 							SendInt((char*)hash_func.raw_digest_int(), 16);
@@ -841,7 +883,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 			}break;
 		case ID_GET_FILE_BLOCKDIFF:
 			{
-				bool b=GetFileBlockdiff(data);
+				bool b=GetFileBlockdiff(data, false);
+				if(!b)
+					return false;
+			}break;
+		case ID_GET_FILE_BLOCKDIFF_WITH_METADATA:
+			{
+				bool b=GetFileBlockdiff(data, true);
 				if(!b)
 					return false;
 			}break;
@@ -1057,7 +1105,7 @@ int CClientThread::SendData()
 			while(sent<ldata->bsize)
 			{
 				_i32 ts;
-				if(cmd_id==ID_GET_FILE_RESUME_HASH)
+				if(with_hashes)
 					ts=(std::min)((unsigned int)(next_checkpoint-sent_bytes), ldata->bsize-sent);
 				else
 					ts=ldata->bsize;
@@ -1082,13 +1130,13 @@ int CClientThread::SendData()
 					delete ldata;
 					return -1;
 				}
-				else if(cmd_id==ID_GET_FILE_RESUME_HASH)
+				else if(with_hashes)
 				{
 					hash_func.update((unsigned char*)&ldata->buffer[sent], ts);
 				}
 				sent+=ts;
 				sent_bytes+=ts;
-				if(cmd_id==ID_GET_FILE_RESUME_HASH)
+				if(with_hashes)
 				{
 					if(next_checkpoint-sent_bytes==0)
 					{
@@ -1187,7 +1235,7 @@ bool CClientThread::isKillable(void)
 	return killable;
 }
 
-bool CClientThread::GetFileBlockdiff(CRData *data)
+bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 {
 	std::string s_filename;
 	if(data->getStr(&s_filename)==false)
@@ -1202,6 +1250,27 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		return false;
 	}
 #endif
+
+	int64 metadata_id=0;
+
+	if(with_metadata)
+	{
+		char c_version;
+		if(!data->getChar(&c_version))
+		{
+			return false;
+		}
+
+		if(c_version!=0)
+		{
+			return false;
+		}
+
+		if(!data->getVarInt(&metadata_id))
+		{
+			return false;
+		}
+	}
 
 	bool is_script=false;
 
@@ -1270,15 +1339,15 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	}
 	else
 	{
-		if(next(s_filename, 0, "clientdl/"))
+		if(metadata_id!=0 && next(s_filename, 0, "clientdl/"))
 		{
 			PipeSessions::transmitFileMetadata(filename,
-				s_filename, ident, ident, 0);
+				s_filename, ident, ident, 0, metadata_id);
 		}
-		else if(s_filename.find("|"))
+		else if(metadata_id!=0 && s_filename.find("|"))
 		{
 			PipeSessions::transmitFileMetadata(filename,
-				getafter("|",s_filename), getuntil("|", s_filename), ident, 0);
+				getafter("|",s_filename), getuntil("|", s_filename), ident, 0, metadata_id);
 		}
 
 #ifdef _WIN32
@@ -1595,7 +1664,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	data.addUChar(ID_FILESIZE);
 	data.addUInt64(little_endian(static_cast<uint64>(curr_filesize)));
 
-	int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
+	int rc=SendInt(data.getDataPtr(), data.getDataSize(), true);	
 	if(rc==SOCKET_ERROR)
 	{
 		return false;

@@ -33,6 +33,7 @@
 #include "../common/adler32.h"
 #include "../common/data.h"
 #include "FullFileBackup.h"
+#include "FileMetadataDownloadThread.h"
 #include <algorithm>
 
 extern std::string server_identity;
@@ -189,7 +190,7 @@ bool IncrFileBackup::doFileBackup()
 	int64 incr_backup_starttime=Server->getTimeMS();
 	int64 incr_backup_stoptime=0;
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -398,6 +399,8 @@ bool IncrFileBackup::doFileBackup()
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 	std::stack<bool> dir_diff_stack;
+	std::stack<int64> dir_ids;
+	std::map<int64, int64> dir_end_ids;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -428,6 +431,7 @@ bool IncrFileBackup::doFileBackup()
 								curr_os_path=ExtractFilePath(curr_os_path, "/");
 								curr_path=ExtractFilePath(curr_path, "/");
 								folder_files.pop();
+								dir_ids.pop();
 							}
 						}
 						else
@@ -436,6 +440,7 @@ bool IncrFileBackup::doFileBackup()
 							curr_path+="/"+cf.name;
 							++skip_dir_completely;
 							folder_files.push(std::set<std::string>());
+							dir_ids.push(line);
 						}
 					}
 					else if(skip_dir_copy_sparse)
@@ -733,6 +738,7 @@ bool IncrFileBackup::doFileBackup()
 						
 						folder_files.push(std::set<std::string>());
 						folder_items.push_back(0);
+						dir_ids.push(line);
 
 						++depth;
 						if(depth==1)
@@ -759,11 +765,14 @@ bool IncrFileBackup::doFileBackup()
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, "/"), ExtractFileName(curr_os_path, "/"),
 								ExtractFilePath(curr_path, "/"), ExtractFilePath(curr_os_path, "/"), queue_downloads?0:-1,
 								metadata, false, true, folder_items.back());
+
+							dir_end_ids[dir_ids.top()] = line;
 						}
 
 						folder_files.pop();
 						folder_items.pop_back();
 						dir_diff_stack.pop();
+						dir_ids.pop();
 
 						--depth;
 						if(indirchange==true && depth==changelevel)
@@ -1080,15 +1089,18 @@ bool IncrFileBackup::doFileBackup()
 		disk_error=true;
 	}
 
-	bool metadata_ok = stopFileMetadataDownloadThread();
+	stopFileMetadataDownloadThread(false);
 
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
 	download_nok_ids.finalize();
 
-	
+	bool has_all_metadata=true;
+
 	tmp->Seek(0);
 	line = 0;
+	size_t output_offset=0;
+	std::stack<size_t> last_modified_offsets;
 	list_parser.reset();
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -1099,21 +1111,49 @@ bool IncrFileBackup::doFileBackup()
 			{
 				if(cf.isdir)
 				{
-					if( (r_offline || !metadata_ok)
-						&& hasChange(line, dir_diffs))
+					if(cf.name!="..")
 					{
-						cf.last_modified *= Server->getRandomNumber();
+						int64 end_id = dir_end_ids[line];
+						if( metadata_download_thread.get()!=NULL
+							&& hasChange(line, dir_diffs)
+							&& !metadata_download_thread->hasMetadataId(end_id+1))
+						{
+							has_all_metadata=false;
+
+							if(cf.last_modified==0)
+							{
+								cf.last_modified+=1;
+							}
+							
+							cf.last_modified *= Server->getRandomNumber();
+						}
 					}
+					
 
 					writeFileItem(clientlist, cf);
 				}
 				else if(server_download->isDownloadOk(line)
 					 && !download_nok_ids.hasId(line))
 				{
-					if(server_download->isDownloadPartial(line))
+					bool metadata_missing = (metadata_download_thread.get()!=NULL
+						&& !metadata_download_thread->hasMetadataId(line+1));
+
+					if(metadata_missing)
 					{
+						has_all_metadata=false;
+					}
+
+					if(server_download->isDownloadPartial(line) ||
+						metadata_missing )
+					{
+						if(cf.last_modified==0)
+						{
+							cf.last_modified+=1;
+						}
+
 						cf.last_modified *= Server->getRandomNumber();
 					}
+
 					writeFileItem(clientlist, cf);
 				}
 				++line;

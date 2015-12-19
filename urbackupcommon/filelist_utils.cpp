@@ -63,22 +63,57 @@ std::string escapeListName( const std::string& listname )
 	return ret;
 }
 
-void writeFileItem(IFile* f, SFile cf)
+void writeFileItem(IFile* f, SFile cf, size_t* written, size_t* change_identicator_off)
 {
 	if(cf.isdir)
 	{
 		if(cf.name!="..")
 		{
-			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)+"\n");
+			std::string towrite = "d\""+escapeListName((cf.name))+"\" 0 ";
+
+			if(change_identicator_off!=NULL)
+			{
+				*change_identicator_off=towrite.size();
+			}
+
+			towrite+=convert(cf.last_modified)+"\n";
+
+			writeFileRepeat(f, towrite);
+
+			if(written!=NULL)
+			{
+				*written+=towrite.size();
+			}
 		}
 		else
 		{
-			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\"\n");
+			std::string towrite="d\""+escapeListName((cf.name))+"\"\n";
+			
+			writeFileRepeat(f, towrite);
+
+			if(written!=NULL)
+			{
+				*written+=towrite.size();
+			}
 		}		
 	}
 	else
 	{
-		writeFileRepeat(f, "f\""+escapeListName((cf.name))+"\" "+convert(cf.size)+" "+convert(cf.last_modified)+"\n");
+		std::string towrite = "f\""+escapeListName((cf.name))+"\" "+convert(cf.size)+" ";
+
+		if(change_identicator_off!=NULL)
+		{
+			*change_identicator_off=towrite.size();
+		}
+
+		towrite+=convert(cf.last_modified)+"\n";
+
+		writeFileRepeat(f, towrite);
+
+		if(written!=NULL)
+		{
+			*written+=towrite.size();
+		}
 	}
 }
 

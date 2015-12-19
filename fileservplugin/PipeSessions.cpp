@@ -231,7 +231,7 @@ void PipeSessions::operator()()
 }
 
 void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn,
-	const std::string& server_token, const std::string& identity, int64 folder_items)
+	const std::string& server_token, const std::string& identity, int64 folder_items, int64 metadata_id)
 {
 	if(public_fn.empty() || next(public_fn, 0, "urbackup/"))
 	{
@@ -244,6 +244,7 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	data.addString(public_fn);
 	data.addString(local_fn);
 	data.addInt64(folder_items);
+	data.addInt64(metadata_id);
 
 	IScopedLock lock(mutex);
 
@@ -274,6 +275,7 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 		CWData data;
 		data.addString(std::string());
 		data.addString(std::string());
+		data.addInt64(0);
 		data.addInt64(0);
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());

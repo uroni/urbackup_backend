@@ -172,11 +172,11 @@ public:
 	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
 		const FileMetadata& metadata, bool is_script);
 
-	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize);
+	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id);
 
 	virtual void resetQueueFull();
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script, int64& file_id);
 
 	virtual void unqueueFileFull(const std::string& fn, bool finish_script);
 

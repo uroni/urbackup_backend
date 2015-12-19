@@ -28,6 +28,7 @@
 #include "server_running.h"
 #include "ServerDownloadThread.h"
 #include "../urbackupcommon/file_metadata.h"
+#include "FileMetadataDownloadThread.h"
 #include <stack>
 
 extern std::string server_identity;
@@ -137,7 +138,7 @@ bool FullFileBackup::doFileBackup()
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -154,7 +155,7 @@ bool FullFileBackup::doFileBackup()
 
 	FileListParser list_parser;
 
-	IFile *clientlist=Server->openFile(clientlistName(group, true), MODE_WRITE);
+	IFile *clientlist=Server->openFile(clientlistName(group, true), MODE_RW_CREATE);
 
 	if(clientlist==NULL )
 	{
@@ -553,13 +554,17 @@ bool FullFileBackup::doFileBackup()
 	waitForFileThreads();
 
 
-	bool metadata_ok = stopFileMetadataDownloadThread();
+	stopFileMetadataDownloadThread(false);
 
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);	
+
+	bool has_all_metadata=true;
 
 	tmp->Seek(0);
 	line = 0;
 	list_parser.reset();
+	size_t output_offset=0;
+	std::stack<size_t> last_modified_offsets;
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
@@ -569,26 +574,88 @@ bool FullFileBackup::doFileBackup()
 			{
 				if(cf.isdir && line<max_line)
 				{
-					if(!metadata_ok || r_offline)
+					if(cf.name!="..")
 					{
-						cf.last_modified *= Server->getRandomNumber();
-					}
+						size_t curr_last_modified_offset=0;
+						size_t curr_output_offset = output_offset;
+						writeFileItem(clientlist, cf, &output_offset, &curr_last_modified_offset);
 
-					writeFileItem(clientlist, cf);
+						last_modified_offsets.push(curr_output_offset+curr_last_modified_offset);
+					}					
+					else
+					{
+						if(metadata_download_thread.get()!=NULL
+							&& !metadata_download_thread->hasMetadataId(line+1))
+						{
+							has_all_metadata=false;
+
+							//go back to the directory entry and change the last modfied time
+							if(clientlist->Seek(last_modified_offsets.top()))
+							{
+								char ch;
+								if(clientlist->Read(&ch, 1)!=1)
+								{
+									ch = (ch=='0' ? '1' : '0');
+									if(!clientlist->Seek(last_modified_offsets.top())
+										|| clientlist->Write(&ch, 1)!=1)
+									{
+										ServerLogger::Log(logid, "Error writing to clientlist", LL_ERROR);
+									}
+								}
+								else
+								{
+									ServerLogger::Log(logid, "Error reading from clientlist", LL_ERROR);	
+								}
+							}
+							else
+							{
+								ServerLogger::Log(logid, "Error seeking in clientlist", LL_ERROR);	
+							}
+
+							if(!clientlist->Seek(clientlist->Size()))
+							{
+								ServerLogger::Log(logid, "Error seeking to end in clientlist", LL_ERROR);	
+							}
+						}
+
+						last_modified_offsets.pop();
+					}					
 				}
 				else if(!cf.isdir && 
 					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
-					if(server_download->isDownloadPartial(line))
+					bool metadata_missing = (metadata_download_thread.get()!=NULL
+						&& !metadata_download_thread->hasMetadataId(line+1));
+
+					if(metadata_missing)
 					{
+						has_all_metadata=false;
+					}
+
+					if(server_download->isDownloadPartial(line)
+						|| metadata_missing)
+					{
+						if(cf.last_modified==0)
+						{
+							cf.last_modified+=1;
+						}
 						cf.last_modified *= Server->getRandomNumber();
 					}
-					writeFileItem(clientlist, cf);
+					writeFileItem(clientlist, cf, &output_offset);
 				}				
 				++line;
 			}
 		}
+	}
+
+	if(has_all_metadata)
+	{
+		ServerLogger::Log(logid, "All metadata was present", LL_INFO);
+	}
+	else
+	{
+		ServerLogger::Log(logid, "Some metadata was missing", LL_DEBUG);
 	}
 
 	Server->destroy(clientlist);

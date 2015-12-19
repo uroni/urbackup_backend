@@ -49,7 +49,7 @@ public:
 	class QueueCallback
 	{
 	public:
-		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize) = 0;
+		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id) = 0;
 		virtual void unqueueFileChunked(const std::string& remotefn) = 0;
 		virtual void resetQueueChunked() = 0;
 	};
@@ -59,8 +59,8 @@ public:
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id);
 
 	bool hasError(void);
 
@@ -98,7 +98,7 @@ private:
 
 	void setInitialBytes(const char* buf, size_t bsize);
 
-	_u32 GetFile(std::string remotefn, _i64& filesize_out);
+	_u32 GetFile(std::string remotefn, _i64& filesize_out, int64 file_id);
 
 	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize);
 
@@ -250,6 +250,8 @@ private:
 	bool reconnected;
 
 	bool needs_flush;
+
+	int64 curr_file_id;
 };
 
 #endif //FILECLIENTCHUNKED_H

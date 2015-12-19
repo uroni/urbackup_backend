@@ -312,7 +312,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
 		return false;
 	}
-	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0, false);
+	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting tokens file of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_DEBUG);
@@ -1652,12 +1652,13 @@ bool FileBackup::startFileMetadataDownloadThread()
 			{
 				break;
 			}
+			Server->wait(100);
 		}
 		while(Server->getTimeMS()-starttime<10000);
 
 		if(!metadata_download_thread->isDownloading())
 		{
-			stopFileMetadataDownloadThread();
+			stopFileMetadataDownloadThread(true);
 			return false;
 		}
 	}	
@@ -1665,7 +1666,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 	return true;
 }
 
-bool FileBackup::stopFileMetadataDownloadThread()
+bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 {
 	if(metadata_download_thread.get()!=NULL)
 	{
@@ -1688,12 +1689,15 @@ bool FileBackup::stopFileMetadataDownloadThread()
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
 				Server->wait(1000);
 
-				metadata_download_thread->shutdown();
+				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0))
+				{
+					metadata_download_thread->shutdown();
+				}
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	
 
-		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
+		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
 			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
 		}
@@ -1725,7 +1729,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	os_create_dir(tmpdirname);
 
 	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
-	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false);
+	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{

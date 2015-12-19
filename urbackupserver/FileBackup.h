@@ -104,7 +104,7 @@ protected:
 	void deleteBackup();
 	bool createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir);
 	bool startFileMetadataDownloadThread();
-	bool stopFileMetadataDownloadThread();
+	bool stopFileMetadataDownloadThread(bool stopped);
 
 	int group;
 	bool use_tmpfiles;

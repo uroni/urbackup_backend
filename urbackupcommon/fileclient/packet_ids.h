@@ -3,11 +3,12 @@
 
 typedef unsigned char uchar;
 
-const uchar ID_GET_FILE=0;
 const uchar ID_GET_FILE_RESUME=6;
 const uchar ID_GET_FILE_RESUME_HASH=7;
 const uchar ID_GET_FILE_METADATA_ONLY=12;
+const uchar ID_GET_FILE_WITH_METADATA=15;
 const uchar ID_GET_FILE_BLOCKDIFF=8;
+const uchar ID_GET_FILE_BLOCKDIFF_WITH_METADATA=16;
 	const uchar ID_COULDNT_OPEN=0;
 	const uchar ID_FILESIZE=1;
 	const uchar ID_BASE_DIR_LOST=2;

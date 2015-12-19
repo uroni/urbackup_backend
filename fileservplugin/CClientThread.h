@@ -116,7 +116,7 @@ private:
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
-	bool GetFileBlockdiff(CRData *data);
+	bool GetFileBlockdiff(CRData *data, bool with_metadata);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 
 	bool GetFileHashAndMetadata(CRData* data);
@@ -157,7 +157,7 @@ private:
 	ICondition *cond;
 	std::queue<SChunk> next_chunks;
 
-	uchar cmd_id;
+	bool with_hashes;
 
 	EClientState state;
 	THREADPOOL_TICKET chunk_send_thread_ticket;

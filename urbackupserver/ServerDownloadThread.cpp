@@ -414,13 +414,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	std::string cfn=getDLPath(todl);
 
-    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script);
+    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, todl.id+1);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script);
+        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, todl.id+1);
 		--hash_retries;
 	}
 
@@ -629,7 +629,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		cfn=server_token+"|"+cfn;
 	}
 
-	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize);
+	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize, todl.id+1);
 
 	int64 download_filesize = todl.predicted_filesize;
 
@@ -653,7 +653,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
 		dlfiles.chunkhashes->Seek(0);
 		download_filesize = todl.predicted_filesize;
-		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize);
+		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize, todl.id+1);
 		--hash_retries;
 	} 
 
@@ -843,7 +843,7 @@ size_t ServerDownloadThread::getMaxOkId()
 	return max_ok_id;
 }
 
-std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
+std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script, int64& file_id)
 {
 	IScopedLock lock(mutex);
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
@@ -853,6 +853,7 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 			!it->queued && it->fileclient==EFileClient_Full )
 		{
 			it->queued=true;
+			file_id=it->id+1;
 			metadata=it->metadata_only? FileClient::MetadataQueue_Metadata : FileClient::MetadataQueue_Data;
 			folder_items = it->folder_items;
 			finish_script = it->script_end;
@@ -895,7 +896,7 @@ void ServerDownloadThread::resetQueueFull()
 	}
 }
 
-bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize )
+bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id )
 {
 	IScopedLock lock(mutex);
 	bool retry=true;
@@ -944,6 +945,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					chunkhashes = it->patch_dl_files.chunkhashes;
 					hashoutput = it->patch_dl_files.hashoutput;
 					predicted_filesize = it->predicted_filesize;
+					file_id = it->id+1;
 					return true;
 				}
 			}
