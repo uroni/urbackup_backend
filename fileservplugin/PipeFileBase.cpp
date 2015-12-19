@@ -22,6 +22,7 @@
 #include <memory.h>
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
+#include "../stringtools.h"
 
 const size_t buffer_size = 5*1024*1024;
 const _u32 buffer_keep_free = 1*1024*1024;
@@ -42,6 +43,8 @@ void PipeFileBase::init()
 {
 	if(!has_error)
 	{
+		sha_def_init(&sha_ctx);
+
 		buffer.resize(buffer_size);
 		stdout_thread = Server->getThreadPool()->execute(this);
 		stderr_thread = Server->getThreadPool()->execute(this);
@@ -291,6 +294,8 @@ bool PipeFileBase::fillBuffer()
 
 	bool b = readStdoutIntoBuffer(&buffer[buf_w_pos], bsize_free, read);
 
+	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(&buffer[buf_w_pos]), static_cast<unsigned int>(read));
+
 	lock.relock(buffer_mutex.get());
 
 	buf_w_pos+=read;
@@ -316,15 +321,48 @@ bool PipeFileBase::readStderr()
 
 	if(!b)
 	{
+		int64 starttime = Server->getTimeMS();
+		IScopedLock lock(buffer_mutex.get());
+
+		while(!has_eof && Server->getTimeMS()-starttime<10000)
+		{
+			lock.relock(NULL);
+			Server->wait(100);
+			lock.relock(buffer_mutex.get());
+		}
+
+		if(has_eof)
+		{
+			unsigned char dig[SHA_DEF_DIGEST_SIZE];
+			sha_def_final(&sha_ctx, dig);
+
+			int64 timems = little_endian(Server->getTimeMS());
+
+			stderr_ret.append(1, 1);
+
+			stderr_ret.append(reinterpret_cast<const char*>(dig),
+				reinterpret_cast<const char*>(dig)+SHA_DEF_DIGEST_SIZE);
+		}
+
 		return false;
 	}
 	else if(read>0)
 	{
 		IScopedLock lock(buffer_mutex.get());
 
-		size_t stderr_pos = stderr_ret.size();
-		stderr_ret.resize(stderr_pos + read);
-		memcpy(&stderr_ret[stderr_pos], buf, read);
+
+		int64 timems = little_endian(Server->getTimeMS());
+		unsigned int le_read = little_endian(static_cast<unsigned int>(read));
+
+		stderr_ret.append(1, 0);
+
+		stderr_ret.append(reinterpret_cast<const char*>(&timems),
+			reinterpret_cast<const char*>(&timems)+sizeof(timems));
+
+		stderr_ret.append(reinterpret_cast<const char*>(&le_read),
+			reinterpret_cast<const char*>(&le_read)+sizeof(le_read));
+
+		stderr_ret.append(buf, buf+read);
 	}
 
 	return true;

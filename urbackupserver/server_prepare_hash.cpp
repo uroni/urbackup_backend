@@ -101,6 +101,9 @@ void BackupServerPrepareHash::operator()(void)
 			int64 t_filesize;
 			rd.getInt64(&t_filesize);
 
+			std::string client_sha_dig;
+			rd.getStr(&client_sha_dig);
+
 			FileMetadata metadata;
 			metadata.read(rd);
 
@@ -138,6 +141,13 @@ void BackupServerPrepareHash::operator()(void)
 				else
 				{
 					h=hash_with_patch(old_file, tf);
+				}
+
+				if(!client_sha_dig.empty() && h!=client_sha_dig)
+				{
+					ServerLogger::Log(logid, "Client calculated hash of \""+tfn+"\" differs from server calculated hash. "
+						"This may be caused by a bug, when a file changes while it is being backed up (backing up without snapshots) or by random bit flips on hard disks. "
+						"This message will most likely disappear if you run a full backup.", LL_WARNING);
 				}
 
 				Server->destroy(tf);

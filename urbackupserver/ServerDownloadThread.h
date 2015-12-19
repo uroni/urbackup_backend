@@ -77,6 +77,8 @@ namespace
         bool metadata_only;
 		size_t folder_items;
 		bool script_end;
+		std::string sha_dig;
+		unsigned int script_random;
 	};
 	
 	
@@ -138,10 +140,11 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full=true, bool at_front_postpone_quitstop=false);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig,
+		bool with_sleep_on_full=true, bool at_front_postpone_quitstop=false);
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);
+		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig);
 
 	void addToQueueStartShadowcopy(const std::string& fn);
 
@@ -157,7 +160,7 @@ public:
 		
 	bool load_file_patch(SQueueItem todl);
 
-	bool logScriptOutput(std::string cfn, const SQueueItem &todl);
+	bool logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times);
 
 	bool isDownloadOk(size_t id);
 
@@ -170,7 +173,7 @@ public:
 	bool isOffline();
 
 	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
-		const FileMetadata& metadata, bool is_script);
+		const FileMetadata& metadata, bool is_script, std::string sha_dig);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id);
 

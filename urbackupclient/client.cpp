@@ -1409,13 +1409,21 @@ bool IndexThread::readBackupScripts()
 		return false;
 	}
 	
-	std::string script_path;
+	std::string script_path = Server->getServerParameter("script_path");
 	std::string script_cmd;
+
+	if(script_path.empty())
+	{
 #ifdef _WIN32
-	script_path = Server->getServerWorkingDir() + os_file_sep() + "backup_scripts";
+		script_path = Server->getServerWorkingDir() + os_file_sep() + "backup_scripts";
+#else
+		script_path = "/etc/urbackup/scripts";
+#endif
+	}
+
+#ifdef _WIN32
 	script_cmd = script_path + os_file_sep() + "list.bat";
 #else
-	script_path = "/etc/urbackup/scripts";
 	script_cmd = script_path + os_file_sep() + "list";
 #endif
 
@@ -1433,6 +1441,11 @@ bool IndexThread::readBackupScripts()
 			std::string line = trim(lines[i]);
 			if(!line.empty())
 			{
+				if(line[0]=='#')
+				{
+					continue;
+				}
+
 				SBackupScript new_script;
 
 				str_map params;

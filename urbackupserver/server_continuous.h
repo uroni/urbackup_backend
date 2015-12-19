@@ -815,12 +815,12 @@ private:
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata, false, false, 0);
+				fpath, fpath, filesize, metadata, false, false, 0, hash);
 		}
 		else
 		{
 			server_download->addToQueueChunked(0, fn, fn,
-				fpath, fpath, filesize, metadata, false);
+				fpath, fpath, filesize, metadata, false, hash);
 		}
 
 		return true;

@@ -3,6 +3,7 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Pipe.h"
+#include "../urbackupcommon/sha2/sha2.h"
 #include <memory>
 
 class PipeFileBase : public IFile, public IThread
@@ -74,6 +75,8 @@ private:
 	size_t threadidx;
 	bool has_eof;
 	int64 stream_size;
+
+	sha_def_ctx sha_ctx;
 
 	int64 last_read;
 

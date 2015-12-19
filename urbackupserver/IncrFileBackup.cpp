@@ -725,7 +725,7 @@ bool IncrFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, "/"), ExtractFileName(curr_os_path, "/"),
 								ExtractFilePath(curr_path, "/"), ExtractFilePath(curr_os_path, "/"), queue_downloads?0:-1,
-								metadata, false, true, folder_items.back());
+								metadata, false, true, folder_items.back(), std::string());
 
 							dir_end_ids[dir_ids.top()] = line;
 						}
@@ -845,12 +845,12 @@ bool IncrFileBackup::doFileBackup()
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir);
+										metadata, script_dir, curr_sha2);
 								}
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false, 0);
+										metadata, script_dir, false, 0, curr_sha2);
 								}
 							}
 							else
@@ -928,12 +928,12 @@ bool IncrFileBackup::doFileBackup()
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir);
+										metadata, script_dir, curr_sha2);
 								}
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false, 0);
+										metadata, script_dir, false, 0, curr_sha2);
 								}
 							}
 						}
@@ -988,7 +988,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                            metadata, script_dir, true, 0);
+                            metadata, script_dir, true, 0, std::string());
                     }
 				}
 				++line;
@@ -1071,6 +1071,7 @@ bool IncrFileBackup::doFileBackup()
 	size_t output_offset=0;
 	std::stack<size_t> last_modified_offsets;
 	list_parser.reset();
+	script_dir=false;
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
@@ -1082,8 +1083,14 @@ bool IncrFileBackup::doFileBackup()
 				{
 					if(cf.name!="..")
 					{
+						if(cf.name=="urbackup_backup_scripts")
+						{
+							script_dir=true;
+						}
+
 						int64 end_id = dir_end_ids[line];
-						if( metadata_download_thread.get()!=NULL
+						if( !script_dir
+							&& metadata_download_thread.get()!=NULL
 							&& hasChange(line, dir_diffs)
 							&& !metadata_download_thread->hasMetadataId(end_id+1))
 						{
@@ -1097,6 +1104,10 @@ bool IncrFileBackup::doFileBackup()
 							cf.last_modified *= Server->getRandomNumber();
 						}
 					}
+					else
+					{
+						script_dir=false;
+					}
 					
 
 					writeFileItem(clientlist, cf);
@@ -1104,7 +1115,8 @@ bool IncrFileBackup::doFileBackup()
 				else if(server_download->isDownloadOk(line)
 					 && !download_nok_ids.hasId(line))
 				{
-					bool metadata_missing = (metadata_download_thread.get()!=NULL
+					bool metadata_missing = (!script_dir
+						&& metadata_download_thread.get()!=NULL
 						&& !metadata_download_thread->hasMetadataId(line+1));
 
 					if(metadata_missing)

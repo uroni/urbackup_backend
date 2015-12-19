@@ -388,7 +388,7 @@ bool FullFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, "/"),
 								ExtractFileName(curr_os_path, "/"), ExtractFilePath(curr_path, "/"), ExtractFilePath(curr_os_path, "/"), queue_downloads?0:-1,
-								metadata, false, true, folder_items.back());
+								metadata, false, true, folder_items.back(), std::string());
 						}
 						folder_items.pop_back();
 						--depth;
@@ -456,10 +456,12 @@ bool FullFileBackup::doFileBackup()
 						}
 					}
 
+					std::string curr_sha2;
 					std::map<std::string, std::string>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier) );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(hash_it->second), cf.size,
+						curr_sha2 = base64_decode_dash(hash_it->second);
+						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size,
 							true, metadata))
 						{
 							file_ok=true;
@@ -476,13 +478,13 @@ bool FullFileBackup::doFileBackup()
 						if(client_main->getProtocolVersions().file_meta>0)
 						{
                     	    server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                    	        metadata, script_dir, true, 0);
+                    	        metadata, script_dir, true, 0, curr_sha2);
                     	}
                     }
                     else
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, script_dir, false, 0);
+							metadata, script_dir, false, 0, curr_sha2);
 					}
 				}
 
@@ -556,7 +558,7 @@ bool FullFileBackup::doFileBackup()
 
 	stopFileMetadataDownloadThread(false);
 
-	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);	
+	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
 	bool has_all_metadata=true;
 
@@ -565,6 +567,7 @@ bool FullFileBackup::doFileBackup()
 	list_parser.reset();
 	size_t output_offset=0;
 	std::stack<size_t> last_modified_offsets;
+	script_dir=false;
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
@@ -581,10 +584,16 @@ bool FullFileBackup::doFileBackup()
 						writeFileItem(clientlist, cf, &output_offset, &curr_last_modified_offset);
 
 						last_modified_offsets.push(curr_output_offset+curr_last_modified_offset);
+
+						if(cf.name=="urbackup_backup_scripts")
+						{
+							script_dir=true;
+						}
 					}					
 					else
 					{
-						if(metadata_download_thread.get()!=NULL
+						if(!script_dir
+							&& metadata_download_thread.get()!=NULL
 							&& !metadata_download_thread->hasMetadataId(line+1))
 						{
 							has_all_metadata=false;
@@ -618,6 +627,7 @@ bool FullFileBackup::doFileBackup()
 							}
 						}
 
+						script_dir=false;
 						last_modified_offsets.pop();
 					}					
 				}
@@ -625,7 +635,7 @@ bool FullFileBackup::doFileBackup()
 					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
-					bool metadata_missing = (metadata_download_thread.get()!=NULL
+					bool metadata_missing = (!script_dir && metadata_download_thread.get()!=NULL
 						&& !metadata_download_thread->hasMetadataId(line+1));
 
 					if(metadata_missing)
