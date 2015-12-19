@@ -319,7 +319,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
-	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "true")=="true");
+	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "false")=="true");
 	settings->background_backups=(settings_default->getValue("background_backups", "true")=="true");
 	settings->local_incr_image_style=settings_default->getValue("local_incr_image_style", incr_image_style_to_full);
 	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);
