@@ -25,7 +25,6 @@
 #include "server_dir_links.h"
 #include "server_running.h"
 #include "ServerDownloadThread.h"
-#include "server_hash_existing.h"
 #include "FileIndex.h"
 #include <stack>
 #include "../urbackupcommon/file_metadata.h"
@@ -256,14 +255,12 @@ bool IncrFileBackup::doFileBackup()
 				has_early_error=true;
 				return false;
 			}
-			if(with_hashes)
+
+			if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
 			{
-				if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
-				{
-					ServerLogger::Log(logid, "Cannot create hash path (Server error)", LL_ERROR);
-					has_early_error=true;
-					return false;
-				}
+				ServerLogger::Log(logid, "Cannot create hash path (Server error)", LL_ERROR);
+				has_early_error=true;
+				return false;
 			}
 
 			use_snapshots=false;
@@ -282,10 +279,12 @@ bool IncrFileBackup::doFileBackup()
 			return false;
 		}
 
-		if(with_hashes)
+		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
+		if(!deleteFilesInSnapshot(clientlistName(group), deleted_ids, backuppath_hashes, true))
 		{
-			ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
-			deleteFilesInSnapshot(clientlistName(group), deleted_ids, backuppath_hashes, true);
+			ServerLogger::Log(logid, "Deleting files in hash snapshot failed (Server error)", LL_ERROR);
+			has_early_error=true;
+			return false;
 		}
 	}
 
@@ -307,18 +306,9 @@ bool IncrFileBackup::doFileBackup()
 
 	int copy_file_entries_sparse_modulo = server_settings->getSettings()->min_file_incr;
 
-	bool trust_client_hashes = server_settings->getSettings()->trust_client_hashes;
-
-	if(copy_last_file_entries)
+	if(copy_last_file_entries && resumed_full)
 	{
-		copy_last_file_entries = copy_last_file_entries && backup_dao->createTemporaryLastFilesTable();
-		backup_dao->createTemporaryLastFilesTableIndex();
-		copy_last_file_entries = copy_last_file_entries && backup_dao->copyToTemporaryLastFilesTable(last.backupid);
-
-		if(resumed_full)
-		{
-			readd_file_entries_sparse=false;
-		}
+		readd_file_entries_sparse=false;
 	}
 
 	IFile *clientlist=Server->openFile(clientlistName(group, true), MODE_WRITE);
@@ -333,21 +323,12 @@ bool IncrFileBackup::doFileBackup()
 		hashed_transfer, intra_file_diffs, clientid, clientname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num, logid));
+		incremental_num, logid, with_hashes));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
 		Server->getThreadPool()->execute(server_download.get());
-
-	std::auto_ptr<ServerHashExisting> server_hash_existing;
-	THREADPOOL_TICKET server_hash_existing_ticket = ILLEGAL_THREADPOOL_TICKET;
-	if(readd_file_entries_sparse && !trust_client_hashes)
-	{
-		server_hash_existing.reset(new ServerHashExisting(clientid, logid, this));
-		server_hash_existing_ticket =
-			Server->getThreadPool()->execute(server_hash_existing.get());
-	}
 
 	char buffer[4096];
 	_u32 read;
@@ -392,7 +373,6 @@ bool IncrFileBackup::doFileBackup()
 	bool c_has_error=false;
 	bool backup_stopped=false;
 	size_t skip_dir_completely=0;
-	bool skip_dir_copy_sparse=false;
 	bool script_dir=false;
 	std::stack<std::set<std::string> > folder_files;
 	folder_files.push(std::set<std::string>());
@@ -443,20 +423,33 @@ bool IncrFileBackup::doFileBackup()
 							dir_ids.push(line);
 						}
 					}
-					else if(skip_dir_copy_sparse)
+					else if(copy_last_file_entries)
 					{
-						std::string curr_sha2;
-						{
-							std::map<std::string, std::string>::iterator hash_it = 
-								( (local_hash.get()==NULL)?extra_params.end():extra_params.find("sha512") );					
-							if(hash_it!=extra_params.end())
-							{
-								curr_sha2 = base64_decode_dash(hash_it->second);
-							}
-						}
 						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
-						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num, trust_client_hashes,
-							curr_sha2, local_curr_os_path, with_hashes, server_hash_existing, num_readded_entries);
+
+						FileMetadata metadata;
+						if(read_metadata(last_backuppath_hashes+local_curr_os_path, metadata))
+						{
+							if(!metadata.shahash.empty())
+							{
+								addFileEntrySQLWithExisting(backuppath + local_curr_os_path, backuppath_hashes + local_curr_os_path,
+									metadata.shahash, cf.size, metadata.rsize, incremental_num);
+							}
+							else
+							{
+								ServerLogger::Log(logid, "Error adding file entry from last backup. Hash is empty. (read from "+last_backuppath_hashes+local_curr_os_path+")", LL_WARNING);
+							}							
+						}
+						else
+						{
+							ServerLogger::Log(logid, "Error adding file entry from last backup. Could not read metadata from "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
+						}						
+					}
+					else if(readd_file_entries_sparse)
+					{
+						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
+						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num,
+							local_curr_os_path, num_readded_entries);
 					}
 
 
@@ -494,10 +487,6 @@ bool IncrFileBackup::doFileBackup()
 							should_backoff=false;
 							ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
 							server_download->queueSkip();
-							if(server_hash_existing.get())
-							{
-								server_hash_existing->queueStop();
-							}
 						}
 					}
 
@@ -593,43 +582,15 @@ bool IncrFileBackup::doFileBackup()
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
 						{
 							std::string srcpath=last_backuppath+local_curr_os_path;
+							std::string src_hashpath = last_backuppath_hashes+local_curr_os_path;
 							if(link_directory_pool(*backup_dao, clientid, backuppath+local_curr_os_path,
-								srcpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled()) )
+								srcpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled())
+								&&
+								link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+								src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled()))
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
-
-								std::string src_hashpath = last_backuppath_hashes+local_curr_os_path;
-
-								bool curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
-										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
-
-								if(copy_last_file_entries)
-								{
-									std::vector<ServerBackupDao::SFileEntry> file_entries = backup_dao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath)+os_file_sep()+"*");
-									for(size_t i=0;i<file_entries.size();++i)
-									{
-										if(file_entries[i].fullpath.size()>srcpath.size())
-										{
-											std::string entry_hashpath;
-											if( curr_has_hashes && next(file_entries[i].hashpath, 0, src_hashpath))
-											{
-												entry_hashpath = backuppath_hashes+local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
-											}
-
-											addFileEntrySQLWithExisting(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
-												file_entries[i].shahash, file_entries[i].filesize, 0, incremental_num);
-
-											++num_copied_file_entries;
-										}
-									}
-
-									skip_dir_copy_sparse = false;
-								}
-								else
-								{
-									skip_dir_copy_sparse = readd_file_entries_sparse;
-								}
 							}
 						}
 						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
@@ -812,7 +773,6 @@ bool IncrFileBackup::doFileBackup()
 					}
 
 					bool copy_curr_file_entry=false;
-					bool curr_has_hash = true;
 					bool readd_curr_file_entry_sparse=false;
 					std::string curr_sha2;
 					{
@@ -903,8 +863,18 @@ bool IncrFileBackup::doFileBackup()
 					{						
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
+
+						if(b)
+						{
+							b = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
+
+							if(!b)
+							{
+								Server->deleteFile(os_file_prefix(backuppath+local_curr_os_path));
+							}
+						}
+
 						bool f_ok = false;
-						bool copied_hashes = false;
 						if(b)
 						{
 							f_ok=true;
@@ -917,7 +887,6 @@ bool IncrFileBackup::doFileBackup()
 								backuppath_hashes+local_curr_os_path,
 								metadata);
 							f_ok=true;
-							copied_hashes=true;
 						}
 
 						if(!f_ok) //creating hard link failed and not because of too many hard links per inode
@@ -972,12 +941,6 @@ bool IncrFileBackup::doFileBackup()
 						{
 							copy_curr_file_entry=copy_last_file_entries;						
 							readd_curr_file_entry_sparse = readd_file_entries_sparse;
-
-							if(!copied_hashes)
-							{
-								bool too_many_hardlinks;
-								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
-							}
 						}
 					}
 					else //use_snapshot
@@ -988,23 +951,33 @@ bool IncrFileBackup::doFileBackup()
 
 					if(copy_curr_file_entry)
 					{
-						ServerBackupDao::SFileEntry fileEntry = backup_dao->getFileEntryFromTemporaryTable(srcpath);
-
-						if(fileEntry.exists)
+						FileMetadata last_metadata;
+						if(!read_metadata(last_backuppath_hashes+local_curr_os_path, last_metadata))
 						{
-							addFileEntrySQLWithExisting(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::string(),
-								fileEntry.shahash, fileEntry.filesize, fileEntry.rsize, incremental_num);
-							++num_copied_file_entries;
+							ServerLogger::Log(logid, "Error while copying file entry from last backup. Could not read metadata from "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
+						}
+						else
+						{
+							if(last_metadata.shahash.empty())
+							{
+								ServerLogger::Log(logid, "Error while copying file entry from last backup. Hash is empty at "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
+							}
+							else
+							{
+								addFileEntrySQLWithExisting(backuppath+local_curr_os_path, backuppath_hashes+local_curr_os_path,
+									last_metadata.shahash, cf.size, last_metadata.rsize, incremental_num);
 
-							readd_curr_file_entry_sparse=false;
+								++num_copied_file_entries;
+
+								readd_curr_file_entry_sparse=false;
+							}
 						}
 					}
 
 					if(readd_curr_file_entry_sparse)
 					{
 						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num,
-							trust_client_hashes, curr_sha2, local_curr_os_path, curr_has_hash, server_hash_existing,
-							num_readded_entries);
+							local_curr_os_path, num_readded_entries);
 					}
 
                     if(download_metadata && client_main->getProtocolVersions().file_meta>0)
@@ -1030,10 +1003,6 @@ bool IncrFileBackup::doFileBackup()
 	}
 
 	server_download->queueStop();
-	if(server_hash_existing.get())
-	{
-		server_hash_existing->queueStop();
-	}
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
 
@@ -1163,15 +1132,6 @@ bool IncrFileBackup::doFileBackup()
 
 	Server->destroy(clientlist);
 
-	if(server_hash_existing_ticket!=ILLEGAL_THREADPOOL_TICKET)
-	{
-		ServerLogger::Log(logid, "Waiting for file entry hashing thread...", LL_INFO);
-
-		Server->getThreadPool()->waitFor(server_hash_existing_ticket);
-	}
-
-	addExistingHashesToDb(incremental_num);
-
 	if(copy_last_file_entries || readd_file_entries_sparse)
 	{
 		if(num_readded_entries>0)
@@ -1182,12 +1142,6 @@ bool IncrFileBackup::doFileBackup()
 		if(num_copied_file_entries>0)
 		{
 			ServerLogger::Log(logid, "Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
-		}
-
-		if(copy_last_file_entries)
-		{
-			backup_dao->dropTemporaryLastFilesTableIndex();
-			backup_dao->dropTemporaryLastFilesTable();
 		}
 	}
 
@@ -1469,31 +1423,6 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 	return true;
 }
 
-void IncrFileBackup::addExistingHash( const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize , int64 rsize)
-{
-	ServerBackupDao::SFileEntry file_entry;
-	file_entry.exists = true;
-	file_entry.fullpath = fullpath;
-	file_entry.hashpath = hashpath;
-	file_entry.shahash = shahash;
-	file_entry.filesize = filesize;
-	file_entry.rsize = rsize;
-
-	IScopedLock lock(hash_existing_mutex);
-	hash_existing.push_back(file_entry);
-}
-
-void IncrFileBackup::addExistingHashesToDb(int incremental)
-{
-	IScopedLock lock(hash_existing_mutex);
-	for(size_t i=0;i<hash_existing.size();++i)
-	{
-		addFileEntrySQLWithExisting(hash_existing[i].fullpath, hash_existing[i].hashpath,
-			hash_existing[i].shahash, hash_existing[i].filesize, hash_existing[i].rsize, incremental);
-	}
-	hash_existing.clear();
-}
-
 void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int incremental)
 {
 	int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
@@ -1520,8 +1449,8 @@ void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const s
 		shahash, filesize, rsize, entryid, clientid, fentry.next_entry, false);
 }
 
-void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num, bool trust_client_hashes, std::string &curr_sha2,
-	std::string local_curr_os_path, bool curr_has_hash, std::auto_ptr<ServerHashExisting> &server_hash_existing, size_t& num_readded_entries )
+void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num,
+	std::string local_curr_os_path, size_t& num_readded_entries )
 {
 	if(cf.size<c_readd_size_limit)
 	{
@@ -1532,18 +1461,24 @@ void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int c
 	int crc32 = static_cast<int>(urb_adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
 	if(crc32 % copy_file_entries_sparse_modulo == incremental_num % copy_file_entries_sparse_modulo )
 	{
-		if(trust_client_hashes && !curr_sha2.empty())
+		FileMetadata metadata;
+		if(!read_metadata(backuppath_hashes+local_curr_os_path, metadata) )
 		{
-			addFileEntrySQLWithExisting(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::string(), 
-				curr_sha2, cf.size, -1, incremental_num);
+			ServerLogger::Log(logid, "Error adding sparse file entry. Could not read metadata from "+backuppath_hashes+local_curr_os_path, LL_WARNING);
+		}
+		else
+		{
+			if(metadata.shahash.empty())
+			{
+				ServerLogger::Log(logid, "Error adding sparse file entry. Could not read hash from "+backuppath_hashes+local_curr_os_path, LL_WARNING);
+			}
+			else
+			{
+				addFileEntrySQLWithExisting(backuppath+local_curr_os_path, backuppath_hashes+local_curr_os_path, 
+					metadata.shahash, cf.size, 0, incremental_num);
 
-			++num_readded_entries;
-		}							
-		else if(server_hash_existing.get())
-		{
-			addExistingHashesToDb(incremental_num);
-			server_hash_existing->queueFile(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::string());
-			++num_readded_entries;
+				++num_readded_entries;
+			}			
 		}
 	}
 }

@@ -188,7 +188,6 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(tmpdir);
 	SET_SETTING(update_stats_cachesize);
 	SET_SETTING(use_incremental_symlinks);
-	SET_SETTING(trust_client_hashes);
 	SET_SETTING(show_server_updates);
 	SET_SETTING(server_url);
 

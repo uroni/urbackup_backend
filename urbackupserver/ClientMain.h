@@ -26,7 +26,6 @@ class IPipe;
 class ServerPingThread;
 class FileClient;
 class IPipeThrottler;
-class ServerHashExisting;
 class BackupServerContinuous;
 class ContinuousBackup;
 class Backup;
@@ -94,7 +93,6 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback,
 	public FileClient::ProgressLogCallback
 {
-	friend class ServerHashExisting;
 public:
 	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~ClientMain(void);

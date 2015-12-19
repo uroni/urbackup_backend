@@ -28,12 +28,6 @@ const int ServerBackupDao::c_direction_outgoing_nobackupstat = 2;
 /**
 * @-SQLGenTempSetup
 * @sql
-*		CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, rsize INTEGER);
-*/
-
-/**
-* @-SQLGenTempSetup
-* @sql
 *		CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);
 */
 
@@ -369,151 +363,6 @@ ServerBackupDao::SClientName ServerBackupDao::getVirtualMainClientname(int clien
 	}
 	return ret;
 }
-
-
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::createTemporaryLastFilesTable
-* @sql
-*      CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE, rsize INTEGER );
-*/
-bool ServerBackupDao::createTemporaryLastFilesTable(void)
-{
-	if(q_createTemporaryLastFilesTable==NULL)
-	{
-		q_createTemporaryLastFilesTable=db->Prepare("CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE, rsize INTEGER );", false);
-	}
-	bool ret = q_createTemporaryLastFilesTable->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::dropTemporaryLastFilesTable
-* @sql
-*      DROP TABLE files_last
-*/
-void ServerBackupDao::dropTemporaryLastFilesTable(void)
-{
-	if(q_dropTemporaryLastFilesTable==NULL)
-	{
-		q_dropTemporaryLastFilesTable=db->Prepare("DROP TABLE files_last", false);
-	}
-	q_dropTemporaryLastFilesTable->Write();
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::createTemporaryLastFilesTableIndex
-* @sql
-*      CREATE INDEX files_last_idx ON files_last ( fullpath );
-*/
-bool ServerBackupDao::createTemporaryLastFilesTableIndex(void)
-{
-	if(q_createTemporaryLastFilesTableIndex==NULL)
-	{
-		q_createTemporaryLastFilesTableIndex=db->Prepare("CREATE INDEX files_last_idx ON files_last ( fullpath );", false);
-	}
-	bool ret = q_createTemporaryLastFilesTableIndex->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::dropTemporaryLastFilesTableIndex
-* @sql
-*      DROP INDEX files_last_idx;
-*/
-bool ServerBackupDao::dropTemporaryLastFilesTableIndex(void)
-{
-	if(q_dropTemporaryLastFilesTableIndex==NULL)
-	{
-		q_dropTemporaryLastFilesTableIndex=db->Prepare("DROP INDEX files_last_idx;", false);
-	}
-	bool ret = q_dropTemporaryLastFilesTableIndex->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func bool ServerBackupDao::copyToTemporaryLastFilesTable
-* @sql
-*      INSERT INTO files_last (fullpath, hashpath, shahash, filesize, rsize)
-*			SELECT fullpath, hashpath, shahash, filesize, rsize FROM files
-*				WHERE backupid = :backupid(int)
-*/
-bool ServerBackupDao::copyToTemporaryLastFilesTable(int backupid)
-{
-	if(q_copyToTemporaryLastFilesTable==NULL)
-	{
-		q_copyToTemporaryLastFilesTable=db->Prepare("INSERT INTO files_last (fullpath, hashpath, shahash, filesize, rsize) SELECT fullpath, hashpath, shahash, filesize, rsize FROM files WHERE backupid = ?", false);
-	}
-	q_copyToTemporaryLastFilesTable->Bind(backupid);
-	bool ret = q_copyToTemporaryLastFilesTable->Write();
-	q_copyToTemporaryLastFilesTable->Reset();
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable
-* @return string fullpath, string hashpath, blob shahash, int64 filesize, int64 rsize
-* @sql
-*      SELECT fullpath, hashpath, shahash, filesize, rsize
-*       FROM files_last WHERE fullpath = :fullpath(string)
-*/
-ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(const std::string& fullpath)
-{
-	if(q_getFileEntryFromTemporaryTable==NULL)
-	{
-		q_getFileEntryFromTemporaryTable=db->Prepare("SELECT fullpath, hashpath, shahash, filesize, rsize FROM files_last WHERE fullpath = ?", false);
-	}
-	q_getFileEntryFromTemporaryTable->Bind(fullpath);
-	db_results res=q_getFileEntryFromTemporaryTable->Read();
-	q_getFileEntryFromTemporaryTable->Reset();
-	SFileEntry ret = { false, "", "", "", 0, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.fullpath=res[0]["fullpath"];
-		ret.hashpath=res[0]["hashpath"];
-		ret.shahash=res[0]["shahash"];
-		ret.filesize=watoi64(res[0]["filesize"]);
-		ret.rsize=watoi64(res[0]["rsize"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func vector<SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob
-* @return string fullpath, string hashpath, blob shahash, int64 filesize
-* @sql
-*      SELECT fullpath, hashpath, shahash, filesize, rsize
-*       FROM files_last WHERE fullpath GLOB :fullpath_glob(string)
-*/
-std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob)
-{
-	if(q_getFileEntriesFromTemporaryTableGlob==NULL)
-	{
-		q_getFileEntriesFromTemporaryTableGlob=db->Prepare("SELECT fullpath, hashpath, shahash, filesize, rsize FROM files_last WHERE fullpath GLOB ?", false);
-	}
-	q_getFileEntriesFromTemporaryTableGlob->Bind(fullpath_glob);
-	db_results res=q_getFileEntriesFromTemporaryTableGlob->Read();
-	q_getFileEntriesFromTemporaryTableGlob->Reset();
-	std::vector<ServerBackupDao::SFileEntry> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i].exists=true;
-		ret[i].fullpath=res[i]["fullpath"];
-		ret[i].hashpath=res[i]["hashpath"];
-		ret[i].shahash=res[i]["shahash"];
-		ret[i].filesize=watoi64(res[i]["filesize"]);
-	}
-	return ret;
-}
-
 
 /**
 * @-SQLGenAccess
@@ -2100,13 +1949,6 @@ void ServerBackupDao::prepareQueries( void )
 	q_getOldBackupfolders=NULL;
 	q_getDeletePendingClientNames=NULL;
 	q_getVirtualMainClientname=NULL;
-	q_createTemporaryLastFilesTable=NULL;
-	q_dropTemporaryLastFilesTable=NULL;
-	q_createTemporaryLastFilesTableIndex=NULL;
-	q_dropTemporaryLastFilesTableIndex=NULL;
-	q_copyToTemporaryLastFilesTable=NULL;
-	q_getFileEntryFromTemporaryTable=NULL;
-	q_getFileEntriesFromTemporaryTableGlob=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
@@ -2196,13 +2038,6 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getOldBackupfolders);
 	db->destroyQuery(q_getDeletePendingClientNames);
 	db->destroyQuery(q_getVirtualMainClientname);
-	db->destroyQuery(q_createTemporaryLastFilesTable);
-	db->destroyQuery(q_dropTemporaryLastFilesTable);
-	db->destroyQuery(q_createTemporaryLastFilesTableIndex);
-	db->destroyQuery(q_dropTemporaryLastFilesTableIndex);
-	db->destroyQuery(q_copyToTemporaryLastFilesTable);
-	db->destroyQuery(q_getFileEntryFromTemporaryTable);
-	db->destroyQuery(q_getFileEntriesFromTemporaryTableGlob);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);

@@ -97,7 +97,6 @@ struct SSettings
 	bool internet_calculate_filehashes_on_client;
 	bool use_incremental_symlinks;
 	std::string image_file_format;
-	bool trust_client_hashes;
 	bool internet_connect_always;
 	bool show_server_updates;
 	std::string server_url;

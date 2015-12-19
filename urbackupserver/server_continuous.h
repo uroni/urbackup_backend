@@ -714,7 +714,7 @@ private:
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
-			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid));
+			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid, true));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
 	}
@@ -762,6 +762,7 @@ private:
 		int64 filesize;
 		int64 created;
 		int64 modified;
+		int64 accessed=0; //TODO
 		_u32 rc = fileclient_metadata->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
 
 		if(rc!=ERR_SUCCESS)
@@ -793,7 +794,7 @@ private:
 		int entryclientid=0;
 		int64 next_entryid=0;
 		int64 rsize = -1;
-		FileMetadata metadata(permissions, modified, created, std::string());
+		FileMetadata metadata(permissions, modified, created, accessed, std::string());
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
 			entryclientid, rsize, next_entryid, metadata, true))

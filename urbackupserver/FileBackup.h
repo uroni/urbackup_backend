@@ -85,7 +85,7 @@ protected:
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	std::string fixFilenameForOS(const std::string& fn, std::set<std::string>& samedir_filenames, const std::string& curr_path);	
 	bool link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
+		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
 	void notifyClientBackupSuccessfull(void);
 	void waitForFileThreads();
@@ -94,7 +94,7 @@ protected:
 	std::string getSHA256(const std::string& fn);
 	std::string getSHA512(const std::string& fn);
 	std::string getSHADef(const std::string& fn);
-	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
+	bool constructBackupPath(bool on_snapshot, bool create_fs);
 	bool constructBackupPathCdp();
 	std::string systemErrorInfo();
 	void saveUsersOnClient();

@@ -58,7 +58,7 @@ public:
 
 	bool findFileAndLink(const std::string &tfn, IFile *tf, std::string hash_fn, const std::string &sha2, _i64 t_filesize, const std::string &hashoutput_fn, 
 		bool copy_from_hardlink_if_failed, bool &tries_once, std::string &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid, int64& rsize, int64& next_entry,
-		const FileMetadata& metadata, bool datch_dbs);
+		FileMetadata& metadata, bool datch_dbs);
 
 	void addFileSQL(int backupid, int clientid, int incremental, const std::string &fp, const std::string &hash_path,
 		const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex);
@@ -76,7 +76,7 @@ public:
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
 			std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-			const FileMetadata& metadata);
+			FileMetadata& metadata, bool with_hashes);
 			
 	struct SFindState
 	{
@@ -93,21 +93,20 @@ private:
 	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
 
 	bool copyFile(IFile *tf, const std::string &dest);
-	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const FileMetadata& metadata);
+	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest);
 	bool freeSpace(int64 fs, const std::string &fp);
 	
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::string &dest, int mode);
 	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
-		const FileMetadata& metadata, _i64 tfilesize);
+		_i64 tfilesize);
 
 	bool createChunkHashes(IFile *tf, const std::string hash_fn);
 	
 	bool replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn);
-	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn,
-		const FileMetadata& metadata);
+	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn);
 
-	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const FileMetadata& metadata);
+	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest);
 	bool renameFile(IFile *tf, const std::string &dest);
 
 	bool correctPath(std::string& ff, std::string& f_hashpath);

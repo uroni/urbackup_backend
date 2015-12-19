@@ -40,13 +40,13 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num, logid_t logid)
+	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false)
+	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -510,7 +510,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, (filepath_old), fd->Size(), todl.metadata, todl.is_script);
+		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -764,14 +764,15 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 	int l_backup_id=backupid;
 
 	CWData data;
-	data.addString((fd->getFilename()));
+	data.addString(fd->getFilename());
 	data.addInt(l_backup_id);
-	data.addInt(r_incremental==true?1:0);
-	data.addString((dstpath));
-	data.addString((hashpath));
+	data.addInt(r_incremental?1:0);
+	data.addChar(with_hashes?1:0);
+	data.addString(dstpath);
+	data.addString(hashpath);
 	if(hashoutput!=NULL)
 	{
-		data.addString((hashoutput->getFilename()));
+		data.addString(hashoutput->getFilename());
 	}
 	else
 	{

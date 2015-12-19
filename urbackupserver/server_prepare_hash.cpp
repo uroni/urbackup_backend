@@ -81,6 +81,9 @@ void BackupServerPrepareHash::operator()(void)
 			int incremental;
 			rd.getInt(&incremental);
 
+			char with_hashes;
+			rd.getChar(&with_hashes);
+
 			std::string tfn;
 			rd.getStr(&tfn);
 
@@ -148,6 +151,7 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(temp_fn);
 				data.addInt(backupid);
 				data.addInt(incremental);
+				data.addChar(with_hashes);
 				data.addString(tfn);
 				data.addString(hashpath);
 				data.addString(h);

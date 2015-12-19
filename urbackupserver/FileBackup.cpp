@@ -517,11 +517,15 @@ bool FileBackup::doBackup()
 	if( server_settings->getSettings()->internet_mode_enabled )
 	{
 		if( server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash")
+		{
 			with_hashes=true;
+		}
 	}
-
+	
 	if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
+	{
 		with_hashes=true;
+	}
 
 	if(!fileindex.get())
 	{
@@ -530,7 +534,7 @@ bool FileBackup::doBackup()
 
 	if(!cdp_path)
 	{
-		if(!constructBackupPath(with_hashes, use_snapshots, !r_incremental))
+		if(!constructBackupPath(use_snapshots, !r_incremental))
 		{
             ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
 			return false;
@@ -765,7 +769,7 @@ std::string FileBackup::systemErrorInfo()
 }
 
 bool FileBackup::link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata)
+	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata)
 {
 	std::string os_curr_path=convertToOSPathFromFileClient(os_path+"/"+short_fn);
 	std::string os_curr_hash_path=convertToOSPathFromFileClient(os_path+"/"+escape_metadata_fn(short_fn));
@@ -1068,7 +1072,7 @@ bool FileBackup::hasDiskError()
 	return disk_error;
 }
 
-bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs)
+bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs)
 {
 	if(!createDirectoryForClient())
 	{

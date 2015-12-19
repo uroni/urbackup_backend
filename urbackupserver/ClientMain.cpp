@@ -40,7 +40,6 @@
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
 #include "../cryptoplugin/ICryptoFactory.h"
-#include "server_hash_existing.h"
 #include "server_dir_links.h"
 #include "server.h"
 #include "../urbackupcommon/filelist_utils.h"
@@ -58,6 +57,7 @@
 #include "create_files_index.h"
 #include <stack>
 #include "FullFileBackup.h"
+#include "IncrFileBackup.h"
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
 #include "ThrottleUpdater.h"
