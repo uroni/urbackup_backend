@@ -275,7 +275,6 @@ namespace JSON
 		switch(data_type)
 		{
 			case str_type: delete ((std::string*)data); break;
-			case wstr_type: delete ((std::string*)data); break;
 			case obj_type: delete ((Object*)data); break;
 			case array_type: delete ((Array*)data); break;
 			case bool_type: delete ((bool*)data); break;
@@ -305,7 +304,6 @@ namespace JSON
 		switch(other_type)
 		{
 			case str_type: init(other.getString()); break;
-			case wstr_type: init(other.getWString()); break;
 			case obj_type: init(other.getObject()); break;
 			case array_type: init(other.getArray()); break;
 			case bool_type: init(other.getBool()); break;
@@ -351,7 +349,7 @@ namespace JSON
 			{
 				r+="\\r";
 			}
-			else if(t[i]<32)
+			else if(t[i]>=0 && t[i]<32)
 			{
 				std::string hex = byteToHex(static_cast<unsigned char>(t[i]));
 				if(hex.size()<2)
@@ -373,7 +371,6 @@ namespace JSON
 		switch(data_type)
 		{
 			case str_type: return "\""+(escape((*((std::string*)data))))+"\"";
-			case wstr_type: return "\""+(escape(*((std::string*)data)))+"\"";
             case obj_type: return ((Object*)data)->stringify(compressed);
             case array_type: return ((Array*)data)->stringify(compressed);
 			case bool_type: return convert(*((bool*)data));
@@ -392,7 +389,6 @@ namespace JSON
 		switch(data_type)
 		{
 		case str_type: return (*((std::string*)data));
-		case wstr_type: return *((std::string*)data);
 		case bool_type: return convert(*((bool*)data));
 		case int_type: return convert(*((int*)data));
 		case uint_type: return convert(*((unsigned int*)data));
@@ -407,18 +403,6 @@ namespace JSON
 	const std::string & Value::getString(void) const
 	{
 		if(data_type==str_type)
-		{
-			return *((std::string*)data);
-		}
-		else
-		{
-			throw BadTypeException();
-		}
-	}
-
-	const std::string & Value::getWString(void) const
-	{
-		if(data_type==wstr_type)
 		{
 			return *((std::string*)data);
 		}

@@ -832,6 +832,8 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 				if(tf!=NULL)
 				{
+					metadata.rsize=tf->Size();
+
 					std::string temp_fn=tf->getFilename();
 					Server->destroy(tf);
 					tf=NULL;
@@ -840,8 +842,6 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 				if(r)
 				{
-					metadata.rsize=tf->Size();
-
 					if(cow_filesize>0)
 					{
 						metadata.rsize=cow_filesize;
