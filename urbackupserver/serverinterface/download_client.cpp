@@ -123,7 +123,7 @@ namespace
 
 ACTION_IMPL(download_client)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
@@ -134,7 +134,7 @@ ACTION_IMPL(download_client)
 	std::string errstr;
 	if( session!=NULL && (all_client_rights || !clientids.empty() ) )
 	{
-		int clientid=watoi(GET["clientid"]);
+		int clientid=watoi(POST["clientid"]);
 
 		if(all_client_rights ||
 			std::find(clientids.begin(), clientids.end(), clientid)!=clientids.end() )

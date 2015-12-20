@@ -124,24 +124,20 @@ function ResetCursor()
 
 function getURL(action, parameters)
 {
-	var ses="";
-	if(g.session!=null && g.session!="" )
+	if(parameters)
 	{
-		ses="&ses="+g.session;
+		if(g.session!=null && g.session!="" )
+		{
+			action+="&ses="+g.session;
+		}
+		if(g.lang)
+		{
+			action+="&lang="+g.lang;
+		}
+		action+="&"+parameters;
 	}
-	if(g.lang)
-	{
-		ses+="&lang="+g.lang;
-	}
-	if(parameters!="" && parameters!=null )
-	{
-		return "x?a="+action+ses+"&"+parameters+iernd();
-	}
-	else
-	{
-		
-		return "x?a="+action+ses+iernd();
-	}
+
+	return "x?a="+action;
 }
 
 function clone(obj){
@@ -192,9 +188,33 @@ getJSON = function(action, parameters, callback)
 		g.last_action=action;
 	}
 	
+	if(!parameters)
+	{
+		parameters="";
+	}
+	
+	if(g.session!=null && g.session!="" )
+	{
+		if(parameters.length>0)
+		{
+			parameters+="&";
+		}
+		parameters+="ses="+g.session;
+	}
+	if(g.lang)
+	{
+		if(parameters.length>0)
+		{
+			parameters+="&";
+		}
+		parameters+="lang="+g.lang;
+	}
+	
 	$.ajax(
-	{ url: getURL(action, parameters),
-	  dataType: "json"
+	{ url: getURL(action),
+	  dataType: "json",
+	  method: "POST",
+	  data: parameters
 	}
 	).done(function(data)
 		{			

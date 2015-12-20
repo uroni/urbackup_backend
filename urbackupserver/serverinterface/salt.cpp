@@ -23,16 +23,17 @@
 
 ACTION_IMPL(salt)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	JSON::Object ret;
-	std::string username=GET["username"];
+	std::string username=POST["username"];
+
 	if(helper.getSession()==NULL && !username.empty())
 	{
 		std::string ses=helper.generateSession(username);
 		ret.set("ses", JSON::Value(ses));
-		GET["ses"]=ses;
-		helper.update(tid, &GET, &PARAMS);
+		POST["ses"]=ses;
+		helper.update(tid, &POST, &PARAMS);
 	}
 
 	SUser *session=helper.getSession();

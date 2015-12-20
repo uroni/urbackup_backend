@@ -78,13 +78,13 @@ ACTION_IMPL(login)
 {
 	JSON::Object ret;
 
-	ret.set("api_version", 1);
+	ret.set("api_version", 2);
 
 	{
 		IScopedLock lock(startup_status.mutex);
 		if(startup_status.creating_filesindex)
 		{
-			Helper helper(tid, &GET, &PARAMS);
+			Helper helper(tid, &POST, &PARAMS);
 			ret.set("lang", helper.getLanguage());
 			ret.set("creating_filescache", startup_status.creating_filesindex);
 			ret.set("processed_file_entries", startup_status.processed_file_entries);
@@ -94,7 +94,7 @@ ACTION_IMPL(login)
 		}
 		else if(startup_status.upgrading_database)
 		{
-			Helper helper(tid, &GET, &PARAMS);
+			Helper helper(tid, &POST, &PARAMS);
 			ret.set("lang", helper.getLanguage());
 			ret.set("upgrading_database", startup_status.upgrading_database);
 			ret.set("curr_db_version", startup_status.curr_db_version);
@@ -104,35 +104,35 @@ ACTION_IMPL(login)
 		}
 	}
 
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	IDatabase *db=helper.getDatabase();
 
 	bool has_session=false;
 	std::string ses;
-	if(!GET["ses"].empty())
+	if(!POST["ses"].empty())
 	{
-		ses=GET["ses"];
+		ses=POST["ses"];
 		has_session=true;
 	}
 
-	std::string username=GET["username"];
+	std::string username=POST["username"];
 	if(!username.empty())
 	{
-		bool plainpw=GET["plainpw"]=="1";
+		bool plainpw=POST["plainpw"]=="1";
 		if(!has_session && plainpw)
 		{
 			ses=helper.generateSession("anonymous");
-			GET["ses"]=ses;
+			POST["ses"]=ses;
 			ret.set("session", JSON::Value(ses));
-			helper.update(tid, &GET, &PARAMS);
+			helper.update(tid, &POST, &PARAMS);
 		}
 		SUser *session=helper.getSession();
 		if(session!=NULL)
 		{
 			int user_id = SESSION_ID_TOKEN_AUTH;
 			
-			if(helper.checkPassword(username, GET["password"], &user_id, plainpw) ||
-				(plainpw && helper.ldapLogin(username, GET["password"])) )
+			if(helper.checkPassword(username, POST["password"], &user_id, plainpw) ||
+				(plainpw && helper.ldapLogin(username, POST["password"])) )
 			{
 				ret.set("success", JSON::Value(true));
 				logSuccessfullLogin(helper, PARAMS, username, LoginMethod_Webinterface);
@@ -182,9 +182,9 @@ ACTION_IMPL(login)
 			if(has_session==false)
 			{
 				ses=helper.generateSession("anonymous");
-				GET["ses"]=ses;
+				POST["ses"]=ses;
 				ret.set("session", JSON::Value(ses));
-				helper.update(tid, &GET, &PARAMS);
+				helper.update(tid, &POST, &PARAMS);
 			}
 			SUser *session=helper.getSession();
 			if(session!=NULL)

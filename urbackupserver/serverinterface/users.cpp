@@ -22,7 +22,7 @@
 
 ACTION_IMPL(users)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();

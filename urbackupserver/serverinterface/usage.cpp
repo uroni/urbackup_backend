@@ -94,7 +94,7 @@ namespace
 
 ACTION_IMPL(usage)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
@@ -123,7 +123,7 @@ ACTION_IMPL(usage)
 		{
 			ret.set("reset_statistics", "true");
 
-			if(GET["recalculate"]=="true")
+			if(POST["recalculate"]=="true")
 			{
 				Server->getThreadPool()->execute(new RecalculateStatistics);
 			}

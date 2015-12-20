@@ -27,12 +27,12 @@ extern IUrlFactory *url_fak;
 
 ACTION_IMPL(logs)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
-	std::string filter=GET["filter"];
-	std::string s_logid=GET["logid"];
+	std::string filter=POST["filter"];
+	std::string s_logid=POST["logid"];
 	int logid=watoi(s_logid);
 	std::string rights=helper.getRights("logs");
 	std::vector<int> clientid;
@@ -107,7 +107,7 @@ ACTION_IMPL(logs)
 		ret.set("filter", filter);
 		if(s_logid.empty())
 		{
-			std::string s_ll=GET["ll"];
+			std::string s_ll=POST["ll"];
 			int ll=2;
 			if(!s_ll.empty())
 			{
@@ -157,22 +157,22 @@ ACTION_IMPL(logs)
 			ret.set("logs", logs);
 			ret.set("ll", ll);
 
-			if(GET.find("report_mail")!=GET.end())
+			if(POST.find("report_mail")!=POST.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=? WHERE id=?");
-				q->Bind(GET["report_mail"]);
-				q->Bind(watoi(GET["report_loglevel"]));
+				q->Bind(POST["report_mail"]);
+				q->Bind(watoi(POST["report_loglevel"]));
 				q->Bind(session->id);
 				q->Write();
 				q->Reset();
 			}
 
-			if(GET.find("report_mail")!=GET.end())
+			if(POST.find("report_mail")!=POST.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
-				q->Bind(GET["report_mail"]);
-				q->Bind(watoi(GET["report_loglevel"]));
-				q->Bind(watoi(GET["report_sendonly"]));
+				q->Bind(POST["report_mail"]);
+				q->Bind(watoi(POST["report_loglevel"]));
+				q->Bind(watoi(POST["report_sendonly"]));
 				q->Bind(session->id);
 				q->Write();
 				ret.set("saved_ok", true);

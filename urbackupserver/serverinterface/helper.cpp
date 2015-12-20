@@ -31,26 +31,26 @@ extern std::string server_identity;
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
 
-Helper::Helper(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS)
+Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
 	session=NULL;
-	update(pTID,pGET,pPARAMS);
+	update(pTID,pPOST,pPARAMS);
 }
 
-void Helper::update(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS)
+void Helper::update(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
 	tid=pTID;
-	GET=pGET;
+	POST=pPOST;
 	PARAMS=pPARAMS;
 
-	if(GET==NULL)
+	if(POST==NULL)
 	{
 		return;
 	}
 
 	if( session==NULL )
 	{	
-		session=Server->getSessionMgr()->getUser( (*GET)["ses"], (*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"] );
+		session=Server->getSessionMgr()->getUser( (*POST)["ses"], (*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"] );
 
 		if(session!=NULL)
 		{
@@ -63,14 +63,14 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS)
 	}
 
 	//Get language from ACCEPT_LANGUAGE
-	str_map::iterator lit=GET->find("lang");
-	if(lit!=GET->end() && lit->second!="-")
+	str_map::iterator lit=POST->find("lang");
+	if(lit!=POST->end() && lit->second!="-")
 	{
 		language=lit->second;
 	}
 	else
 	{
-		std::string langs=(*GET)["langs"];
+		std::string langs=(*POST)["langs"];
 		std::vector<std::string> clangs;
 		Tokenize(langs, clangs, ",");
 		for(size_t j=0;j<clangs.size();++j)
