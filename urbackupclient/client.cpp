@@ -3754,7 +3754,8 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 		for(size_t i=0;i<scripts.size();++i)
 		{
-			outfile << "f\"" << (scripts[i].outputname) << "\" " << scripts[i].size << " " << Server->getRandomNumber() << Server->getRandomNumber() << "\n";	
+			int64 rndnum=Server->getRandomNumber()<<30 | Server->getRandomNumber();
+			outfile << "f\"" << (scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum << "\n";	
 		}
 
 		outfile << "d\"..\"\n";

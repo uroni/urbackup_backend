@@ -76,7 +76,7 @@ protected:
 		bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::string& clientsubname);
 	void logVssLogdata(int64 vss_duration_s);
 	bool getTokenFile(FileClient &fc, bool hashed_transfer );
-	std::string clientlistName( int group, bool new_list=false );
+	std::string clientlistName(int ref_backupid);
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);

@@ -211,7 +211,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			data.addInt64(remote_filesize);
 		}
 
-		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
 		{
 			Server->Log("Timout during file request (3)", LL_ERROR);
 			return ERR_TIMEOUT;
@@ -244,7 +244,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 	do
 	{
 		if(queuedChunks()<c_max_queued_chunks && remote_filesize!=-1 && next_chunk<num_total_chunks)
-		{			
+		{		
 			while(queuedChunks()<c_max_queued_chunks && next_chunk<num_total_chunks)
 			{
 				if(!getPipe()->isWritable())
@@ -273,10 +273,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 							memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
 						}
 						const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
-						if(stack->Send( getPipe(), buf, send_size) != send_size)
+						if(stack->Send( getPipe(), buf, send_size, c_default_timeout, false) != send_size)
 						{
 							break;
 						}
+						needs_flush=true;
 
 						char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
 						SChunkHashes chhash;
@@ -296,10 +297,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					data.addUChar(ID_BLOCK_REQUEST);
 					data.addInt64(next_chunk*c_checkpoint_dist);
 					data.addChar(1);
-					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize()) != data.getDataSize() )
+					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize() )
 					{
 						break;
 					}
+					needs_flush=true;
 
 					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
@@ -328,12 +330,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			IFile* chunkhashes;
 			IFile* hashoutput;
 			_i64 predicted_filesize;
-			bool has_queue_item=true;
 			int64 file_id;
 
 			if(queue_callback && 
 				getPipe()->isWritable() &&
-				(has_queue_item=queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id)) )
+				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id) )
 			{
 				did_queue_fc=true;
 
@@ -380,14 +381,15 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 				else
 				{
 					next->setQueueOnly(false);
+					needs_flush=false;
 				}
 			}
-			else if(!has_queue_item
-				&& needs_flush)
-			{
-				Flush(getPipe());
-				needs_flush=false;
-			}
+		}
+
+		if(needs_flush)
+		{
+			Flush(getPipe());
+			needs_flush=false;
 		}
 
 		if(queue_only)

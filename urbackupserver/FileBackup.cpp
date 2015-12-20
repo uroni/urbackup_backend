@@ -342,23 +342,9 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 	return has_token_file;
 }
 
-std::string FileBackup::clientlistName( int group, bool new_list )
+std::string FileBackup::clientlistName(int ref_backupid)
 {
-	std::string ret="urbackup/clientlist_";
-
-	if(group!=0)
-	{
-		ret+=convert(group)+"_";
-	}
-
-	ret+=convert(clientid);
-	if(new_list)
-	{
-		ret+="_new";
-	}
-	ret+=".ub";
-
-	return ret;
+	return "urbackup/clientlist_b_" + convert(ref_backupid) + ".ub";
 }
 
 void FileBackup::createHashThreads(bool use_reflink)
@@ -1644,7 +1630,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
-        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
+        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
 

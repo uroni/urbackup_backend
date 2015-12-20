@@ -1428,6 +1428,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	chunk.update_file = srv_file;
 	chunk.startpos = curr_filesize;
 	chunk.hashsize = curr_hash_size;
+	chunk.requested_filesize = requested_filesize;
 
 	hFile=INVALID_HANDLE_VALUE;
 

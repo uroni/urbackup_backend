@@ -38,9 +38,23 @@ const int64 pipe_file_timeout = 1*60*60*1000;
 
 IFile* PipeSessions::getFile(const std::string& cmd)
 {
+	if(cmd.empty())
+	{
+		return NULL;
+	}
+
 	IScopedLock lock(mutex);
 
-	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(cmd);
+	int backupnum;
+	std::string session_key = getKey(cmd, backupnum);
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
+
+	if(it!=pipe_files.end() && it->second.backupnum!=backupnum)
+	{
+		removeFile(cmd);
+		it=pipe_files.end();
+	}
+
 	if(it != pipe_files.end())
 	{
 		return it->second.file;
@@ -51,23 +65,19 @@ IFile* PipeSessions::getFile(const std::string& cmd)
 
 		if(script_cmd=="urbackup/FILE_METADATA")
 		{
-			std::string server_token = getafter("|", cmd);
-
 			IPipe* cmd_pipe = Server->createMemoryPipe();
 			FileMetadataPipe* nf = new FileMetadataPipe(cmd_pipe, cmd);
 
 			SPipeSession new_session = {
-				nf, false, cmd_pipe
+				nf, false, cmd_pipe, backupnum
 			};
 
-			pipe_files[cmd] = new_session;
+			pipe_files[session_key] = new_session;
 
 			return nf;
 		}
 		else
 		{
-			int backupnum = watoi(getuntil("|", getafter("|", cmd)));
-
 			std::string output_filename = ExtractFileName(script_cmd);
 
 			script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
@@ -85,9 +95,9 @@ IFile* PipeSessions::getFile(const std::string& cmd)
 			}
 
 			SPipeSession new_session = {
-				nf, false, NULL
+				nf, false, NULL, backupnum
 			};
-			pipe_files[cmd] = new_session;
+			pipe_files[session_key] = new_session;
 
 			return nf;
 		}		
@@ -110,9 +120,17 @@ void PipeSessions::destroy()
 
 void PipeSessions::removeFile(const std::string& cmd)
 {
+	if(cmd.empty())
+	{
+		return;
+	}
+
 	IScopedLock lock(mutex);
 
-	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(cmd);
+	int backupnum;
+	std::string session_key = getKey(cmd, backupnum);
+
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
 	if(it != pipe_files.end())
 	{
 		Server->Log("Removing pipe file "+cmd, LL_DEBUG);
@@ -141,7 +159,7 @@ void PipeSessions::removeFile(const std::string& cmd)
 	}
 	else
 	{
-		Server->Log("Pipe file "+cmd+" not found while removing pipe file", LL_WARNING);
+		Server->Log("Pipe file "+cmd+" not found while removing pipe file", LL_INFO);
 	}
 }
 
@@ -149,8 +167,11 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 {
 	IScopedLock lock(mutex);
 
+	int backupnum;
+	std::string session_key = getKey(cmd, backupnum);
+
 	{
-		std::map<std::string, SExitInformation>::iterator it=exit_information.find(cmd);
+		std::map<std::string, SExitInformation>::iterator it=exit_information.find(session_key);
 
 		if(it!=exit_information.end())
 		{
@@ -161,7 +182,7 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 	}
 
 	{
-		std::map<std::string, SPipeSession>::iterator it = pipe_files.find(cmd);
+		std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
 		if(it != pipe_files.end() && !it->second.retrieved_exit_info)
 		{
 			int exit_code = -1;
@@ -308,6 +329,39 @@ void PipeSessions::removeMetadataCallback( const std::string &name, const std::s
 	{
 		delete iter->second;
 		metadata_callbacks.erase(iter);
+	}
+}
+
+std::string PipeSessions::getKey( const std::string& cmd, int& backupnum )
+{
+	if(cmd.empty())
+	{
+		return std::string();
+	}
+
+	std::vector<std::string> cmd_toks;
+	TokenizeMail(cmd, cmd_toks, "|");
+	std::string script_cmd = cmd_toks[0];
+
+	if(script_cmd=="urbackup/FILE_METADATA" && cmd_toks.size()>0)
+	{
+		std::string server_token = cmd_toks[1];
+		backupnum = 0;
+		if(cmd_toks.size()>1)
+		{
+			backupnum = atoi(cmd_toks[2].c_str());
+		}
+
+		return script_cmd+"|"+server_token;
+	}
+	else
+	{
+		if(cmd_toks.size()>1)
+		{
+			backupnum = atoi(cmd_toks[2].c_str());
+		}
+
+		return cmd;
 	}
 }
 

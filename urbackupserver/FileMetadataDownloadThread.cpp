@@ -32,14 +32,14 @@ const _u32 ID_METADATA_OS_UNIX = 1<<2;
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = 1<<3;
 
-FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid)
-	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false)
+FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid, int backupid)
+	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid)
 {
 
 }
 
-FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn)
-	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true)
+FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid)
+	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid)
 {
 
 }
@@ -48,7 +48,7 @@ void FileMetadataDownloadThread::operator()()
 {
 	std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::string(), logid));
 	
-	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token;
+	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
 
 	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false, true, 0);
 
@@ -65,6 +65,8 @@ void FileMetadataDownloadThread::operator()()
 	else
 	{
 		has_error=false;
+
+		fc->FinishScript(remote_fn);
 	}
 
 	metadata_tmp_fn = tmp_f->getFilename();
@@ -958,7 +960,7 @@ int check_metadata()
 	std::string metadata_file = Server->getServerParameter("metadata_file");
 
 	std::string dummy_server_token;
-	FileMetadataDownloadThread metadata_thread(dummy_server_token, (metadata_file));
+	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0);
 
 	str_map corrections;
 	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, corrections)?0:1;

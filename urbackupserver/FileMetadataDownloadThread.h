@@ -34,8 +34,8 @@ namespace
 class FileMetadataDownloadThread : public IThread
 {
 public:
-	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
-	FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn);
+	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid, int backupid);
+	FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid);
 	~FileMetadataDownloadThread();
 
 	virtual void operator()();
@@ -76,6 +76,8 @@ private:
 	std::vector<int64> last_metadata_ids;
 
 	bool dry_run;
+
+	int backupid;
 };
 
 int check_metadata();

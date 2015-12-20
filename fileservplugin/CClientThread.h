@@ -65,6 +65,7 @@ struct SChunk
 	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
 	IFile* update_file;
 	_i64 hashsize;
+	int64 requested_filesize;
 };
 
 struct SLPData

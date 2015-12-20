@@ -11,6 +11,7 @@ struct SPipeSession
 	PipeFileBase* file;
 	bool retrieved_exit_info;
 	IPipe* input_pipe;
+	int backupnum;
 };
 
 struct SExitInformation
@@ -50,6 +51,9 @@ public:
 	void operator()();
 
 private:
+
+	static std::string getKey(const std::string& cmd, int& backupnum);
+
 	static IMutex* mutex;
 	static volatile bool do_stop;
 	static std::map<std::string, SPipeSession> pipe_files;

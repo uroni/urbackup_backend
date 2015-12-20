@@ -127,8 +127,9 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
-	if(tmp==NULL) 
+	IFile* tmp_filelist = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	ScopedDeleteFile tmp_filelist_delete(tmp_filelist);
+	if(tmp_filelist==NULL) 
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in ::doFullBackup", LL_ERROR);
 		return false;
@@ -138,7 +139,7 @@ bool FullFileBackup::doFileBackup()
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false, 0);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp_filelist, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -151,11 +152,12 @@ bool FullFileBackup::doFileBackup()
 	backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS()-indexing_start_time, group);
 	backupid = static_cast<int>(db->getLastInsertID());
 
-	tmp->Seek(0);
+	tmp_filelist->Seek(0);
 
 	FileListParser list_parser;
 
-	IFile *clientlist=Server->openFile(clientlistName(group, true), MODE_RW_CREATE);
+	IFile *clientlist=Server->openFile(clientlistName(backupid), MODE_RW_CREATE);
+	ScopedDeleteFile clientlist_delete(clientlist);
 
 	if(clientlist==NULL )
 	{
@@ -178,7 +180,7 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	_i64 filelist_size=tmp->Size();
+	_i64 filelist_size=tmp_filelist->Size();
 
 	char buffer[4096];
 	_u32 read;
@@ -211,9 +213,9 @@ bool FullFileBackup::doFileBackup()
 		Server->getThreadPool()->execute(server_download.get());
 
 	std::vector<size_t> diffs;
-	_i64 files_size=getIncrementalSize(tmp, diffs, true);
+	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);
 	fc.resetReceivedDataBytes();
-	tmp->Seek(0);
+	tmp_filelist->Seek(0);
 
 	size_t line = 0;
 	int64 linked_bytes = 0;
@@ -229,7 +231,7 @@ bool FullFileBackup::doFileBackup()
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
-	while( (read=tmp->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
+	while( (read=tmp_filelist->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
 	{
 		for(size_t i=0;i<read;++i)
 		{
@@ -562,13 +564,13 @@ bool FullFileBackup::doFileBackup()
 
 	bool has_all_metadata=true;
 
-	tmp->Seek(0);
+	tmp_filelist->Seek(0);
 	line = 0;
 	list_parser.reset();
 	size_t output_offset=0;
 	std::stack<size_t> last_modified_offsets;
 	script_dir=false;
-	while( (read=tmp->Read(buffer, 4096))>0 )
+	while( (read=tmp_filelist->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
 		{
@@ -627,6 +629,8 @@ bool FullFileBackup::doFileBackup()
 							}
 						}
 
+						writeFileItem(clientlist, cf, &output_offset);
+
 						script_dir=false;
 						last_modified_offsets.pop();
 					}					
@@ -668,8 +672,6 @@ bool FullFileBackup::doFileBackup()
 		ServerLogger::Log(logid, "Some metadata was missing", LL_DEBUG);
 	}
 
-	Server->destroy(clientlist);
-
 	bool verification_ok = true;
 	if(!r_offline && !c_has_error
 	        && (server_settings->getSettings()->end_to_end_file_backup_verification
@@ -677,7 +679,7 @@ bool FullFileBackup::doFileBackup()
 		&& server_settings->getSettings()->verify_using_client_hashes 
 		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) ) )
 	{
-		if(!verify_file_backup(tmp))
+		if(!verify_file_backup(tmp_filelist))
 		{
 			ServerLogger::Log(logid, "Backup verification failed", LL_ERROR);
 			c_has_error=true;
@@ -697,13 +699,10 @@ bool FullFileBackup::doFileBackup()
 	{
 		FileIndex::flush();
 
-		db->BeginWriteTransaction();
-		if(!os_rename_file(clientlistName(group, true), clientlistName(group, false)) )
-		{
-			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);
-		}
+		clientlist->Sync();
+		clientlist_delete.release();
 		backup_dao->setFileBackupDone(backupid);
-		db->EndTransaction();
+		Server->destroy(clientlist);
 	}
 
 	if( !r_offline && !c_has_error && !disk_error
@@ -736,17 +735,11 @@ bool FullFileBackup::doFileBackup()
 			{
 				ServerLogger::Log(logid, "Creating user views...", LL_INFO);
 
-				createUserViews(tmp);
+				createUserViews(tmp_filelist);
 			}
 
 			saveUsersOnClient();
 		}
-	}
-
-	{
-		std::string tmp_fn=tmp->getFilename();
-		Server->destroy(tmp);
-		Server->deleteFile(os_file_prefix(tmp_fn));
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
