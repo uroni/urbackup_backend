@@ -40,13 +40,13 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num, logid_t logid)
+	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false)
+	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -224,7 +224,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, size_t folder_items, bool with_sleep_on_full, bool at_front_postpone_quitstop)
+    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool with_sleep_on_full, bool at_front_postpone_quitstop)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -241,6 +241,12 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	ni.is_script = is_script;
     ni.metadata_only = metadata_only;
 	ni.folder_items = folder_items;
+	ni.sha_dig = sha_dig;
+
+	if(is_script)
+	{
+		ni.script_random = Server->getRandomNumber();
+	}
 
 	IScopedLock lock(mutex);
 
@@ -266,7 +272,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 
 void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn,
 	const std::string &curr_path, const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	bool is_script)
+	bool is_script, const std::string& sha_dig)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -282,6 +288,12 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, c
 	ni.metadata = metadata;
 	ni.is_script = is_script;
     ni.metadata_only = false;
+	ni.sha_dig=sha_dig;
+
+	if(is_script)
+	{
+		ni.script_random = Server->getRandomNumber();
+	}
 
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
@@ -414,13 +426,15 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	std::string cfn=getDLPath(todl);
 
-    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script);
+	int64 script_start_time = Server->getTimeSeconds()-60;
+
+    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, todl.id+1);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script);
+        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, todl.id+1);
 		--hash_retries;
 	}
 
@@ -468,7 +482,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		{
 			queueScriptEnd(cfn);
 
-			script_ok = logScriptOutput(cfn, todl);
+			script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time);
 		}
 
 		max_ok_id = (std::max)(max_ok_id, todl.id);
@@ -510,7 +524,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, (filepath_old), fd->Size(), todl.metadata, todl.is_script);
+		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -568,7 +582,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script);
+			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig);
 			return true;
 		}
 		else
@@ -629,7 +643,9 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		cfn=server_token+"|"+cfn;
 	}
 
-	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize);
+	int64 script_start_time = Server->getTimeSeconds()-60;
+
+	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize, todl.id+1);
 
 	int64 download_filesize = todl.predicted_filesize;
 
@@ -653,7 +669,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
 		dlfiles.chunkhashes->Seek(0);
 		download_filesize = todl.predicted_filesize;
-		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize);
+		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize, todl.id+1);
 		--hash_retries;
 	} 
 
@@ -728,7 +744,9 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	{
 		if(todl.is_script)
 		{
-			script_ok = logScriptOutput(cfn, todl);
+			queueScriptEnd(cfn);
+
+			script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time);
 		}
 
 		max_ok_id = (std::max)(max_ok_id, todl.id);
@@ -743,7 +761,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			(dlfiles.filepath_old), download_filesize, todl.metadata, todl.is_script);
+			(dlfiles.filepath_old), download_filesize, todl.metadata, todl.is_script, todl.sha_dig);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -759,19 +777,20 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 }
 
 void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, bool is_script)
+	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig)
 {
 	int l_backup_id=backupid;
 
 	CWData data;
-	data.addString((fd->getFilename()));
+	data.addString(fd->getFilename());
 	data.addInt(l_backup_id);
-	data.addInt(r_incremental==true?1:0);
-	data.addString((dstpath));
-	data.addString((hashpath));
+	data.addInt(r_incremental?1:0);
+	data.addChar(with_hashes?1:0);
+	data.addString(dstpath);
+	data.addString(hashpath);
 	if(hashoutput!=NULL)
 	{
-		data.addString((hashoutput->getFilename()));
+		data.addString(hashoutput->getFilename());
 	}
 	else
 	{
@@ -780,6 +799,7 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 
 	data.addString(old_file);
 	data.addInt64(t_filesize);
+	data.addString(sha_dig);
 	metadata.serialize(data);
 
 	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName((dstpath))+"\"", LL_DEBUG);
@@ -843,7 +863,7 @@ size_t ServerDownloadThread::getMaxOkId()
 	return max_ok_id;
 }
 
-std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script)
+std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script, int64& file_id)
 {
 	IScopedLock lock(mutex);
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
@@ -853,6 +873,7 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 			!it->queued && it->fileclient==EFileClient_Full )
 		{
 			it->queued=true;
+			file_id=it->id+1;
 			metadata=it->metadata_only? FileClient::MetadataQueue_Metadata : FileClient::MetadataQueue_Data;
 			folder_items = it->folder_items;
 			finish_script = it->script_end;
@@ -871,7 +892,7 @@ std::string ServerDownloadThread::getDLPath( SQueueItem todl )
 
 	if(todl.is_script)
 	{
-		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(Server->getRandomNumber());
+		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random);
 	}
 	else if(!server_token.empty())
 	{
@@ -895,7 +916,7 @@ void ServerDownloadThread::resetQueueFull()
 	}
 }
 
-bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize )
+bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id )
 {
 	IScopedLock lock(mutex);
 	bool retry=true;
@@ -944,6 +965,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					chunkhashes = it->patch_dl_files.chunkhashes;
 					hashoutput = it->patch_dl_files.hashoutput;
 					predicted_filesize = it->predicted_filesize;
+					file_id = it->id+1;
 					return true;
 				}
 			}
@@ -1126,9 +1148,9 @@ bool ServerDownloadThread::isAllDownloadsOk()
 	return all_downloads_ok;
 }
 
-bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &todl)
+bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times)
 {
-	std::string script_output = client_main->sendClientMessageRetry("SCRIPT STDERR "+(cfn),
+	std::string script_output = client_main->sendClientMessageRetry("SCRIPT STDERR "+cfn,
 		"Error getting script output for command \""+todl.fn+"\"", 10000, 10, true);
 
 	if(script_output=="err")
@@ -1139,21 +1161,94 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 
 	if(!script_output.empty())
 	{
-		int retval = atoi(getuntil(" ", script_output).c_str());
-
-		std::vector<std::string> lines;
-		Tokenize(getafter(" ", script_output), lines, "\n");
-
-		for(size_t k=0;k<lines.size();++k)
+		size_t retval_stop=script_output.find(" ");
+		size_t time_stop=std::string::npos;
+		if(retval_stop!=std::string::npos)
 		{
-			ServerLogger::Log(logid, (todl.fn) + ": " + trim(lines[k]), retval!=0?LL_ERROR:LL_INFO);
+			time_stop=script_output.find(" ", retval_stop+1);
 		}
 
-		if(retval!=0)
+		if(retval_stop!=std::string::npos
+			&& time_stop!=std::string::npos)
 		{
-			ServerLogger::Log(logid, "Script \""+todl.fn+"\" return a nun-null value "+convert(retval)+". Failing backup.", LL_ERROR);
-			return false;
-		}
+			int retval = atoi(script_output.substr(0, retval_stop).c_str());
+			int64 last_timems = os_atoi64(script_output.substr(retval_stop+1, time_stop-retval_stop));
+
+
+			script_output = script_output.substr(time_stop+1);
+
+
+			std::string line;
+			int64 curr_time=Server->getTimeSeconds();
+			int64 timems;
+			for(size_t i=0;i<script_output.size();)
+			{
+				if(script_output[i]==0)
+				{
+					if(i+sizeof(int64)+sizeof(unsigned int)>=script_output.size())
+					{
+						ServerLogger::Log(logid, "Error parsing script output for command \""+todl.fn+"\" -1", LL_ERROR);
+						break;
+					}
+
+					memcpy(reinterpret_cast<char*>(&timems), &script_output[i+1], sizeof(timems));
+					timems = little_endian(timems);
+
+					unsigned int msgsize;
+					memcpy(reinterpret_cast<char*>(&msgsize), &script_output[i+1+sizeof(timems)], sizeof(msgsize));
+					msgsize = little_endian(msgsize);
+
+					for(size_t j=i+1+sizeof(int64)+sizeof(unsigned int);
+						j<i+1+sizeof(timems)+sizeof(msgsize)+msgsize && j<script_output.size();++j)
+					{
+						if(script_output[j]=='\n')
+						{
+							int64 times = curr_time - (last_timems - timems)/1000;
+
+							if(times<script_start_times || times>curr_time)
+							{
+								times = curr_time;
+							}
+
+							ServerLogger::Log(times, logid, todl.fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
+							line.clear();
+						}
+						else
+						{
+							line+=script_output[j];
+						}
+					}
+
+					i+=1+sizeof(timems)+sizeof(msgsize)+msgsize;
+				}
+				else if(script_output[i]==1)
+				{
+					if(i+SHA_DEF_DIGEST_SIZE+1==script_output.size())
+					{
+						sha_dig.assign(script_output.begin()+i+1, script_output.end());
+					}
+
+					i+=SHA_DEF_DIGEST_SIZE+1;
+				}
+				else
+				{
+					ServerLogger::Log(logid, "Error parsing script output for command \""+todl.fn+"\" -2", LL_ERROR);
+					break;
+				}
+			}
+			
+			if(!line.empty())
+			{
+				int64 times = curr_time - (last_timems - timems)/1000;
+				ServerLogger::Log(times, logid, todl.fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
+			}
+
+			if(retval!=0)
+			{
+				ServerLogger::Log(logid, "Script \""+todl.fn+"\" return a nun-null value "+convert(retval)+". Failing backup.", LL_ERROR);
+				return false;
+			}
+		}		
 	}
 	else
 	{

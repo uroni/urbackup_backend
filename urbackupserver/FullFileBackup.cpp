@@ -28,6 +28,7 @@
 #include "server_running.h"
 #include "ServerDownloadThread.h"
 #include "../urbackupcommon/file_metadata.h"
+#include "FileMetadataDownloadThread.h"
 #include <stack>
 
 extern std::string server_identity;
@@ -126,8 +127,9 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
-	if(tmp==NULL) 
+	IFile* tmp_filelist = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	ScopedDeleteFile tmp_filelist_delete(tmp_filelist);
+	if(tmp_filelist==NULL) 
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in ::doFullBackup", LL_ERROR);
 		return false;
@@ -137,7 +139,7 @@ bool FullFileBackup::doFileBackup()
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false, 0, false);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+convert(group)+".ub"):"urbackup/filelist.ub", tmp_filelist, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting filelist of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
@@ -150,11 +152,12 @@ bool FullFileBackup::doFileBackup()
 	backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS()-indexing_start_time, group);
 	backupid = static_cast<int>(db->getLastInsertID());
 
-	tmp->Seek(0);
+	tmp_filelist->Seek(0);
 
 	FileListParser list_parser;
 
-	IFile *clientlist=Server->openFile(clientlistName(group, true), MODE_WRITE);
+	IFile *clientlist=Server->openFile(clientlistName(backupid), MODE_RW_CREATE);
+	ScopedDeleteFile clientlist_delete(clientlist);
 
 	if(clientlist==NULL )
 	{
@@ -177,7 +180,7 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	_i64 filelist_size=tmp->Size();
+	_i64 filelist_size=tmp_filelist->Size();
 
 	char buffer[4096];
 	_u32 read;
@@ -202,7 +205,7 @@ bool FullFileBackup::doFileBackup()
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
-		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0, logid));
+		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0, logid, with_hashes));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -210,9 +213,9 @@ bool FullFileBackup::doFileBackup()
 		Server->getThreadPool()->execute(server_download.get());
 
 	std::vector<size_t> diffs;
-	_i64 files_size=getIncrementalSize(tmp, diffs, true);
+	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);
 	fc.resetReceivedDataBytes();
-	tmp->Seek(0);
+	tmp_filelist->Seek(0);
 
 	size_t line = 0;
 	int64 linked_bytes = 0;
@@ -228,7 +231,7 @@ bool FullFileBackup::doFileBackup()
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
-	while( (read=tmp->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
+	while( (read=tmp_filelist->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
 	{
 		for(size_t i=0;i<read;++i)
 		{
@@ -387,7 +390,7 @@ bool FullFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, "/"),
 								ExtractFileName(curr_os_path, "/"), ExtractFilePath(curr_path, "/"), ExtractFilePath(curr_os_path, "/"), queue_downloads?0:-1,
-								metadata, false, true, folder_items.back());
+								metadata, false, true, folder_items.back(), std::string());
 						}
 						folder_items.pop_back();
 						--depth;
@@ -455,10 +458,12 @@ bool FullFileBackup::doFileBackup()
 						}
 					}
 
+					std::string curr_sha2;
 					std::map<std::string, std::string>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier) );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(hash_it->second), cf.size,
+						curr_sha2 = base64_decode_dash(hash_it->second);
+						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size,
 							true, metadata))
 						{
 							file_ok=true;
@@ -475,13 +480,13 @@ bool FullFileBackup::doFileBackup()
 						if(client_main->getProtocolVersions().file_meta>0)
 						{
                     	    server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                    	        metadata, script_dir, true, 0);
+                    	        metadata, script_dir, true, 0, curr_sha2);
                     	}
                     }
                     else
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, script_dir, false, 0);
+							metadata, script_dir, false, 0, curr_sha2);
 					}
 				}
 
@@ -553,14 +558,19 @@ bool FullFileBackup::doFileBackup()
 	waitForFileThreads();
 
 
-	bool metadata_ok = stopFileMetadataDownloadThread();
+	stopFileMetadataDownloadThread(false);
 
-	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);	
+	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
-	tmp->Seek(0);
+	bool has_all_metadata=true;
+
+	tmp_filelist->Seek(0);
 	line = 0;
 	list_parser.reset();
-	while( (read=tmp->Read(buffer, 4096))>0 )
+	size_t output_offset=0;
+	std::stack<size_t> last_modified_offsets;
+	script_dir=false;
+	while( (read=tmp_filelist->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
 		{
@@ -569,29 +579,98 @@ bool FullFileBackup::doFileBackup()
 			{
 				if(cf.isdir && line<max_line)
 				{
-					if(!metadata_ok || r_offline)
+					if(cf.name!="..")
 					{
-						cf.last_modified *= Server->getRandomNumber();
-					}
+						size_t curr_last_modified_offset=0;
+						size_t curr_output_offset = output_offset;
+						writeFileItem(clientlist, cf, &output_offset, &curr_last_modified_offset);
 
-					writeFileItem(clientlist, cf);
+						last_modified_offsets.push(curr_output_offset+curr_last_modified_offset);
+
+						if(cf.name=="urbackup_backup_scripts")
+						{
+							script_dir=true;
+						}
+					}					
+					else
+					{
+						if(!script_dir
+							&& metadata_download_thread.get()!=NULL
+							&& !metadata_download_thread->hasMetadataId(line+1))
+						{
+							has_all_metadata=false;
+
+							//go back to the directory entry and change the last modfied time
+							if(clientlist->Seek(last_modified_offsets.top()))
+							{
+								char ch;
+								if(clientlist->Read(&ch, 1)!=1)
+								{
+									ch = (ch=='0' ? '1' : '0');
+									if(!clientlist->Seek(last_modified_offsets.top())
+										|| clientlist->Write(&ch, 1)!=1)
+									{
+										ServerLogger::Log(logid, "Error writing to clientlist", LL_ERROR);
+									}
+								}
+								else
+								{
+									ServerLogger::Log(logid, "Error reading from clientlist", LL_ERROR);	
+								}
+							}
+							else
+							{
+								ServerLogger::Log(logid, "Error seeking in clientlist", LL_ERROR);	
+							}
+
+							if(!clientlist->Seek(clientlist->Size()))
+							{
+								ServerLogger::Log(logid, "Error seeking to end in clientlist", LL_ERROR);	
+							}
+						}
+
+						writeFileItem(clientlist, cf, &output_offset);
+
+						script_dir=false;
+						last_modified_offsets.pop();
+					}					
 				}
 				else if(!cf.isdir && 
 					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
-					if(server_download->isDownloadPartial(line))
+					bool metadata_missing = (!script_dir && metadata_download_thread.get()!=NULL
+						&& !metadata_download_thread->hasMetadataId(line+1));
+
+					if(metadata_missing)
 					{
+						has_all_metadata=false;
+					}
+
+					if(server_download->isDownloadPartial(line)
+						|| metadata_missing)
+					{
+						if(cf.last_modified==0)
+						{
+							cf.last_modified+=1;
+						}
 						cf.last_modified *= Server->getRandomNumber();
 					}
-					writeFileItem(clientlist, cf);
+					writeFileItem(clientlist, cf, &output_offset);
 				}				
 				++line;
 			}
 		}
 	}
 
-	Server->destroy(clientlist);
+	if(has_all_metadata)
+	{
+		ServerLogger::Log(logid, "All metadata was present", LL_INFO);
+	}
+	else
+	{
+		ServerLogger::Log(logid, "Some metadata was missing", LL_DEBUG);
+	}
 
 	bool verification_ok = true;
 	if(!r_offline && !c_has_error
@@ -600,7 +679,7 @@ bool FullFileBackup::doFileBackup()
 		&& server_settings->getSettings()->verify_using_client_hashes 
 		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) ) )
 	{
-		if(!verify_file_backup(tmp))
+		if(!verify_file_backup(tmp_filelist))
 		{
 			ServerLogger::Log(logid, "Backup verification failed", LL_ERROR);
 			c_has_error=true;
@@ -620,13 +699,10 @@ bool FullFileBackup::doFileBackup()
 	{
 		FileIndex::flush();
 
-		db->BeginWriteTransaction();
-		if(!os_rename_file(clientlistName(group, true), clientlistName(group, false)) )
-		{
-			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);
-		}
+		clientlist->Sync();
+		clientlist_delete.release();
 		backup_dao->setFileBackupDone(backupid);
-		db->EndTransaction();
+		Server->destroy(clientlist);
 	}
 
 	if( !r_offline && !c_has_error && !disk_error
@@ -659,17 +735,11 @@ bool FullFileBackup::doFileBackup()
 			{
 				ServerLogger::Log(logid, "Creating user views...", LL_INFO);
 
-				createUserViews(tmp);
+				createUserViews(tmp_filelist);
 			}
 
 			saveUsersOnClient();
 		}
-	}
-
-	{
-		std::string tmp_fn=tmp->getFilename();
-		Server->destroy(tmp);
-		Server->deleteFile(os_file_prefix(tmp_fn));
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();

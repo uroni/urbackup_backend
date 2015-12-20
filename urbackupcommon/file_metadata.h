@@ -13,16 +13,16 @@ class FileMetadata
 {
 public:
 	FileMetadata()
-		: last_modified(0), created(0), accessed(0), exist(false), has_orig_path(false)
+		: last_modified(0), created(0), accessed(0), exist(false), has_orig_path(false), rsize(0)
 	{
 
 	}
 
 	FileMetadata(std::string file_permissions, int64 last_modified,
-		int64 created, std::string orig_path)
+		int64 created, int64 accessed, std::string orig_path)
 		: file_permissions(file_permissions),
 		last_modified(last_modified), created(created),
-		orig_path(orig_path)
+		orig_path(orig_path), rsize(0)
 	{
 
 	}
@@ -31,17 +31,11 @@ public:
 	int64 last_modified;
 	int64 created;
 	int64 accessed;
+	int64 rsize;
 	std::string shahash;
 	bool has_orig_path;
 	std::string orig_path;
 	bool exist;
-
-	bool operator==(const FileMetadata& other)
-	{
-		return file_permissions==other.file_permissions
-			&& last_modified== other.last_modified
-			&& created == other.created;
-	}
 
 	static bool hasPermission(const std::string& permissions, int64 id, bool& denied);
 
@@ -67,8 +61,6 @@ bool is_metadata_only(IFile* hash_file);
 bool read_metadata(const std::string& in_fn, FileMetadata& metadata);
 
 bool read_metadata(IFile* in, FileMetadata& metadata);
-
-bool has_metadata(const std::string& in_fn, const FileMetadata& metadata);
 
 int64 os_metadata_offset(IFile* meta_file);
 

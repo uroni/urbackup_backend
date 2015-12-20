@@ -313,14 +313,13 @@ void ServerSettings::readSettingsDefault(void)
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
-	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
 	settings->server_url=settings_default->getValue("server_url", "");
 	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
-	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "true")=="true");
+	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "false")=="true");
 	settings->background_backups=(settings_default->getValue("background_backups", "true")=="true");
 	settings->local_incr_image_style=settings_default->getValue("local_incr_image_style", incr_image_style_to_full);
 	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);

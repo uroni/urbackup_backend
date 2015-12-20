@@ -228,9 +228,6 @@
     <ClCompile Include="apps\export_auth_log.cpp">
       <Filter>apps</Filter>
     </ClCompile>
-    <ClCompile Include="server_hash_existing.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
@@ -484,9 +481,6 @@
     </ClInclude>
     <ClInclude Include="apps\export_auth_log.h">
       <Filter>apps</Filter>
-    </ClInclude>
-    <ClInclude Include="server_hash_existing.h">
-      <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\common\adler32.h">
       <Filter>fileclient</Filter>

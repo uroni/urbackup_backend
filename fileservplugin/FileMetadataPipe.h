@@ -2,6 +2,7 @@
 #include "PipeFileBase.h"
 #include "../Interface/Pipe.h"
 #include <string>
+#include <deque>
 #include "../Interface/Condition.h"
 #include "IFileServ.h"
 
@@ -65,19 +66,24 @@ private:
 		MetadataState_Wait,
 		MetadataState_FnSize,
 		MetadataState_Fn,
+		MetadataState_FnChecksum,
 		MetadataState_Common,
 		MetadataState_Os,
-		MetadataState_File
+		MetadataState_OsChecksum,
+		MetadataState_File,
+		MetadataState_FileChecksum
 	};
 
 	size_t fn_off;
 	std::string public_fn;
+	std::deque<std::string> last_public_fns;
 	std::string local_fn;
 	int64 folder_items;
 	IFileServ::IMetadataCallback* callback;
 	IFile* metadata_file;
 	int64 metadata_file_off;
 	int64 metadata_file_size;
+	int64 metadata_id;
 
 	MetadataState metadata_state;
 
@@ -90,4 +96,6 @@ private:
 	std::vector<char> metadata_buffer;
 
 	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
+
+	unsigned int curr_checksum;
 };

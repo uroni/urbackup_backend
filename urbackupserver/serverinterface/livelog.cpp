@@ -73,7 +73,7 @@ namespace
 
 ACTION_IMPL(livelog)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
@@ -86,13 +86,13 @@ ACTION_IMPL(livelog)
 	}
 
 	int clientid=0;
-	std::string s_clientid=GET["clientid"];
+	std::string s_clientid=POST["clientid"];
 	if(!s_clientid.empty())
 	{
 		clientid=watoi(s_clientid);
 	}
 
-	std::string s_lastid=GET["lastid"];
+	std::string s_lastid=POST["lastid"];
 	size_t lastid=std::string::npos;
 	if(!s_lastid.empty())
 	{

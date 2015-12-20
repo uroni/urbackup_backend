@@ -13,8 +13,8 @@ const int SESSION_ID_TOKEN_AUTH = -2;
 class Helper
 {
 public:
-	Helper(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS);
-	void update(THREAD_ID pTID, str_map *pGET, str_map *pPARAMS);
+	Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS);
+	void update(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS);
 	~Helper(void);
 	SUser *getSession(void);
 	std::string generateSession(std::string username);
@@ -57,7 +57,7 @@ private:
 
 	bool invalid_session;
 
-	str_map *GET;
+	str_map *POST;
 	str_map *PARAMS;
 
 	std::map<std::string, std::string> ldap_rights;

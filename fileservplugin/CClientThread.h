@@ -65,6 +65,7 @@ struct SChunk
 	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
 	IFile* update_file;
 	_i64 hashsize;
+	int64 requested_filesize;
 };
 
 struct SLPData
@@ -116,7 +117,7 @@ private:
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
-	bool GetFileBlockdiff(CRData *data);
+	bool GetFileBlockdiff(CRData *data, bool with_metadata);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 
 	bool GetFileHashAndMetadata(CRData* data);
@@ -157,7 +158,7 @@ private:
 	ICondition *cond;
 	std::queue<SChunk> next_chunks;
 
-	uchar cmd_id;
+	bool with_hashes;
 
 	EClientState state;
 	THREADPOOL_TICKET chunk_send_thread_ticket;

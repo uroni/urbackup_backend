@@ -85,7 +85,7 @@ namespace
 		}
 	}
 
-	bool sendZip(Helper& helper, const std::string& foldername, const std::string& hashfoldername, const std::string& filter, bool token_authentication,
+	bool sendZip(Helper& helper, std::string foldername, std::string hashfoldername, const std::string& filter, bool token_authentication,
 		const std::vector<backupaccess::SToken>& backup_tokens, const std::vector<std::string>& tokens, bool skip_hashes)
 	{
 		std::string zipname=ExtractFileName(foldername)+".zip";
@@ -94,6 +94,22 @@ namespace
 		Server->setContentType(tid, "application/octet-stream");
 		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+(zipname)+"\"");
 		helper.releaseAll();
+
+		if(!foldername.empty())
+		{
+			if(foldername[foldername.size()-1]==os_file_sep()[0])
+			{
+				foldername.resize(foldername.size()-1);
+			}
+		}
+
+		if(!hashfoldername.empty())
+		{
+			if(hashfoldername[hashfoldername.size()-1]==os_file_sep()[0])
+			{
+				hashfoldername.resize(hashfoldername.size()-1);
+			}
+		}
 
 		return create_zip_to_output(foldername, hashfoldername, filter, token_authentication,
 			backup_tokens, tokens, skip_hashes);
@@ -250,7 +266,7 @@ namespace backupaccess
 		}
 	}
 
-	std::string decryptTokens(IDatabase* db, const str_map& GET)
+	std::string decryptTokens(IDatabase* db, const str_map& CURRP)
 	{
 		if(crypto_fak==NULL)
 		{
@@ -258,15 +274,15 @@ namespace backupaccess
 		}
 
 		int clientid;
-		str_map::const_iterator iter_clientname =GET.find("clientname");
-		if(iter_clientname!=GET.end())
+		str_map::const_iterator iter_clientname =CURRP.find("clientname");
+		if(iter_clientname!=CURRP.end())
 		{
 			clientid = getClientid(db, iter_clientname->second);
 		}
 		else
 		{
-			str_map::const_iterator iter_clientid = GET.find("clientid");
-			if(iter_clientid!=GET.end())
+			str_map::const_iterator iter_clientid = CURRP.find("clientid");
+			if(iter_clientid!=CURRP.end())
 			{
 				clientid = watoi(iter_clientid->second);
 			}
@@ -289,17 +305,17 @@ namespace backupaccess
 		str_map::const_iterator iter;
 		do 
 		{
-			iter = GET.find("tokens"+convert(i));
+			iter = CURRP.find("tokens"+convert(i));
 
-			if(iter!=GET.end())
+			if(iter!=CURRP.end())
 			{
 				std::string bin_input = base64_decode_dash(iter->second);
 				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key, 1);
 				if(!session_key.empty())
 				{
-					iter = GET.find("token_data");
+					iter = CURRP.find("token_data");
 
-					if(iter==GET.end())
+					if(iter==CURRP.end())
 					{
 						return std::string();
 					}
@@ -327,7 +343,7 @@ namespace backupaccess
 				}
 			}
 			++i;
-		} while (iter!=GET.end());
+		} while (iter!=CURRP.end());
 
 		return std::string();
 	}
@@ -737,18 +753,20 @@ namespace backupaccess
 
 ACTION_IMPL(backups)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	str_map& CURRP = GET.find("ses")==GET.end()? POST : GET;
+
+	Helper helper(tid, &CURRP, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 
-	bool has_tokens = GET.find("tokens0")!=GET.end();
+	bool has_tokens = CURRP.find("tokens0")!=CURRP.end();
 
 	bool token_authentication=false;
 	std::string fileaccesstokens;
 	if( (session==NULL || session->id==SESSION_ID_TOKEN_AUTH) && has_tokens)
 	{
 		token_authentication=true;
-		fileaccesstokens = backupaccess::decryptTokens(helper.getDatabase(), GET);
+		fileaccesstokens = backupaccess::decryptTokens(helper.getDatabase(), CURRP);
 
 		if(fileaccesstokens.empty())
 		{
@@ -758,8 +776,8 @@ ACTION_IMPL(backups)
 		{
 			std::string ses=helper.generateSession("anonymous");
 			ret.set("session", ses);
-			GET["ses"]=ses;
-			helper.update(tid, &GET, &PARAMS);
+			CURRP["ses"]=ses;
+			helper.update(tid, &CURRP, &PARAMS);
 			if(helper.getSession())
 			{
 				helper.getSession()->mStr["fileaccesstokens"]=fileaccesstokens;
@@ -785,7 +803,7 @@ ACTION_IMPL(backups)
 		ret.set("token_authentication", true);
 	}
 
-	std::string sa=GET["sa"];
+	std::string sa=CURRP["sa"];
 	std::string rights=helper.getRights("browse_backups");
 	std::string archive_rights=helper.getRights("manual_archive");
 	std::vector<int> clientid;
@@ -797,7 +815,7 @@ ACTION_IMPL(backups)
 	if(clientid.size()==1 && sa.empty() )
 	{
 		sa="backups";
-		GET["clientid"]=convert(clientid[0]);
+		CURRP["clientid"]=convert(clientid[0]);
 	}
 	if( (session!=NULL && rights!="none" ) || token_authentication)
 	{
@@ -807,7 +825,7 @@ ACTION_IMPL(backups)
 			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
 			if(token_authentication)
 			{
-				if(GET.find("clientname")==GET.end())
+				if(CURRP.find("clientname")==CURRP.end())
 				{
 					std::vector<std::string> tokens;
 					Tokenize(fileaccesstokens, tokens, ";");
@@ -875,9 +893,9 @@ ACTION_IMPL(backups)
 			int t_clientid;
 			std::string clientname;
 
-			if(token_authentication && GET.find("clientid")==GET.end())
+			if(token_authentication && CURRP.find("clientid")==CURRP.end())
 			{
-				clientname=GET["clientname"];
+				clientname=CURRP["clientname"];
 				t_clientid = getClientid(helper.getDatabase(), clientname);
 				if(t_clientid==-1)
 				{
@@ -888,7 +906,7 @@ ACTION_IMPL(backups)
 			}
 			else
 			{
-				t_clientid=watoi(GET["clientid"]);
+				t_clientid=watoi(CURRP["clientid"]);
 
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
@@ -900,16 +918,16 @@ ACTION_IMPL(backups)
 			{
 				if(archive_ok)
 				{
-					if(GET.find("archive")!=GET.end())
+					if(CURRP.find("archive")!=CURRP.end())
 					{
 						IQuery *q=db->Prepare("UPDATE backups SET archived=1, archive_timeout=0 WHERE id=?");
-						q->Bind(watoi(GET["archive"]));
+						q->Bind(watoi(CURRP["archive"]));
 						q->Write();
 					}
-					else if(GET.find("unarchive")!=GET.end())
+					else if(CURRP.find("unarchive")!=CURRP.end())
 					{
 						IQuery *q=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
-						q->Bind(watoi(GET["unarchive"]));
+						q->Bind(watoi(CURRP["unarchive"]));
 						q->Write();
 					}
 				}
@@ -932,9 +950,9 @@ ACTION_IMPL(backups)
 		{
 			int t_clientid;
 			std::string clientname;
-			if(token_authentication && GET.find("clientid")==GET.end())
+			if(token_authentication && CURRP.find("clientid")==CURRP.end())
 			{
-				clientname=GET["clientname"];
+				clientname=CURRP["clientname"];
 				t_clientid = getClientid(helper.getDatabase(), clientname);
 				if(t_clientid==-1)
 				{
@@ -945,7 +963,7 @@ ACTION_IMPL(backups)
 			}
 			else
 			{
-				t_clientid = watoi(GET["clientid"]);
+				t_clientid = watoi(CURRP["clientid"]);
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
 			bool r_ok = token_authentication ? true : 
@@ -953,13 +971,13 @@ ACTION_IMPL(backups)
 
 			if(r_ok)
 			{
-				bool has_backupid=GET.find("backupid")!=GET.end();
+				bool has_backupid=CURRP.find("backupid")!=CURRP.end();
 				int backupid=0;
 				if(has_backupid)
 				{
-					backupid=watoi(GET["backupid"]);
+					backupid=watoi(CURRP["backupid"]);
 				}
-				std::string u_path=UnescapeHTML(GET["path"]);
+				std::string u_path=UnescapeHTML(CURRP["path"]);
 
 				if(!clientname.empty() )
 				{
@@ -997,7 +1015,7 @@ ACTION_IMPL(backups)
 						}
 						else if(sa=="zipdl")
 						{
-							sendZip(helper, path_info.full_path, path_info.full_metadata_path, GET["filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
+							sendZip(helper, path_info.full_path, path_info.full_metadata_path, CURRP["filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
 							return;
 						}
 						else if(sa=="clientdl" && fileserv!=NULL)
@@ -1013,7 +1031,7 @@ ACTION_IMPL(backups)
 							size_t status_id;
 							logid_t log_id;
 
-							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, GET["filter"], token_authentication,
+							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, CURRP["filter"], token_authentication,
 								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string()))
 							{
 								ret.set("err", "internal_error");

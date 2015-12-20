@@ -76,7 +76,7 @@ protected:
 		bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::string& clientsubname);
 	void logVssLogdata(int64 vss_duration_s);
 	bool getTokenFile(FileClient &fc, bool hashed_transfer );
-	std::string clientlistName( int group, bool new_list=false );
+	std::string clientlistName(int ref_backupid);
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
@@ -85,7 +85,7 @@ protected:
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	std::string fixFilenameForOS(const std::string& fn, std::set<std::string>& samedir_filenames, const std::string& curr_path);	
 	bool link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
+		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
 	void notifyClientBackupSuccessfull(void);
 	void waitForFileThreads();
@@ -94,7 +94,7 @@ protected:
 	std::string getSHA256(const std::string& fn);
 	std::string getSHA512(const std::string& fn);
 	std::string getSHADef(const std::string& fn);
-	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
+	bool constructBackupPath(bool on_snapshot, bool create_fs);
 	bool constructBackupPathCdp();
 	std::string systemErrorInfo();
 	void saveUsersOnClient();
@@ -104,7 +104,7 @@ protected:
 	void deleteBackup();
 	bool createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir);
 	bool startFileMetadataDownloadThread();
-	bool stopFileMetadataDownloadThread();
+	bool stopFileMetadataDownloadThread(bool stopped);
 
 	int group;
 	bool use_tmpfiles;

@@ -42,7 +42,7 @@ namespace
 
 ACTION_IMPL(start_backup)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	std::string status_rights=helper.getRights("status");
 	std::vector<int> status_right_clientids;
@@ -57,9 +57,9 @@ ACTION_IMPL(start_backup)
 		}
 	}
 
-	std::string s_start_client=GET["start_client"];
+	std::string s_start_client=POST["start_client"];
 	std::vector<int> start_client;
-	std::string start_type=GET["start_type"];
+	std::string start_type=POST["start_type"];
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;

@@ -48,7 +48,6 @@ namespace JSON
 	enum Value_type
 	{
 		str_type,
-		wstr_type,
 		obj_type,
 		array_type, 
 		bool_type, 
@@ -95,7 +94,6 @@ namespace JSON
 		std::string toString() const;
 
 		const std::string & getString(void) const;
-		const std::string & getWString(void) const;
 		const Object & getObject(void) const;
 		const Array & getArray(void) const;
 		bool getBool(void) const;

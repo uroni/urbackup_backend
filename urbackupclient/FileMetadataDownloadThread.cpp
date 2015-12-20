@@ -20,6 +20,7 @@
 #include "../urbackupcommon/file_metadata.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../common/data.h"
+#include "../common/adler32.h"
 #include <assert.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -62,7 +63,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+client_token;
 
-	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false, 0, true);
+	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false, 0, true, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -114,6 +115,8 @@ bool FileMetadataDownloadThread::applyMetadata()
 				return false;
 			}
 
+			unsigned int path_checksum = urb_adler32(urb_adler32(0, NULL, 0), reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size));
+
 			std::string curr_fn;
 
 			if(curr_fn_size>0)
@@ -125,11 +128,26 @@ bool FileMetadataDownloadThread::applyMetadata()
 					restore.log("Error saving metadata. Filename could not be read.", LL_ERROR);
 					return false;
 				}
+
+				path_checksum = urb_adler32(path_checksum, &curr_fn[0], static_cast<_u32>(curr_fn.size()));
 			}
 
 			if(curr_fn.empty())
 			{
 				restore.log("Error saving metadata. Filename is empty.", LL_ERROR);
+				return false;
+			}
+
+			unsigned int read_path_checksum =0;
+			if(metadata_f->Read(reinterpret_cast<char*>(&read_path_checksum), sizeof(read_path_checksum))!=sizeof(read_path_checksum))
+			{
+				restore.log( "Error saving metadata. Path checksum could not be read.", LL_ERROR);
+				return false;
+			}
+
+			if(little_endian(read_path_checksum)!=path_checksum)
+			{
+				restore.log("Error saving metadata. Path checksum wrong.", LL_ERROR);
 				return false;
 			}
 
@@ -221,6 +239,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	HandleScope handle_scope(hFile);
 
 	int64 win32_magic_and_size[2];
+	unsigned int data_checksum = urb_adler32(0, NULL, 0);
 
 	if(metadata_f->Read(reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size))!=sizeof(win32_magic_and_size))
 	{
@@ -228,6 +247,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		has_error=true;
 		return false;
 	}
+
+	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size));
 
 	if(win32_magic_and_size[1]!=win32_meta_magic)
 	{
@@ -242,6 +263,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		restore.log("Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
+
+	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(_u32));
 
 	stat_data_size = little_endian(stat_data_size);
 
@@ -260,6 +283,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		restore.log("Error reading windows metadata from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
+
+	data_checksum = urb_adler32(data_checksum, stat_data.data(), static_cast<_u32>(stat_data.size()));
 
 	CRData read_stat(stat_data.data(), stat_data.size());
 
@@ -282,6 +307,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 			break;
 		}
 
+		data_checksum = urb_adler32(data_checksum, &cont, 1);
+
 		if(cont==0)
 		{
 			break;
@@ -297,6 +324,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 			break;
 		}
 
+		data_checksum = urb_adler32(data_checksum, stream_id.data(), metadata_id_size);
+
 		WIN32_STREAM_ID_INT* curr_stream_id =
 			reinterpret_cast<WIN32_STREAM_ID_INT*>(stream_id.data());
 
@@ -310,6 +339,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 				has_error=true;
 				break;
 			}
+
+			data_checksum = urb_adler32(data_checksum, stream_id.data() + metadata_id_size, static_cast<_u32>(curr_stream_id->dwStreamNameSize));
 		}	
 
 		DWORD written=0;
@@ -335,6 +366,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 				break;
 			}
 
+			data_checksum = urb_adler32(data_checksum, buffer.data(), toread);
+
 			DWORD written=0;
 			BOOL b=BackupWrite(hFile, reinterpret_cast<LPBYTE>(buffer.data()), toread, &written, FALSE, TRUE, &context);
 
@@ -353,6 +386,19 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	{
 		DWORD written;
 		BackupWrite(hFile, NULL, 0, &written, TRUE, TRUE, &context);
+	}
+
+	unsigned int read_data_checksum =0;
+	if(metadata_f->Read(reinterpret_cast<char*>(&read_data_checksum), sizeof(read_data_checksum))!=sizeof(read_data_checksum))
+	{
+		restore.log( "Error saving metadata. Data checksum could not be read.", LL_ERROR);
+		return false;
+	}
+
+	if(little_endian(read_data_checksum)!=data_checksum)
+	{
+		restore.log("Error saving metadata. Data checksum wrong.", LL_ERROR);
+		return false;
 	}
 
 	FILE_BASIC_INFO basic_info;
@@ -568,6 +614,7 @@ namespace
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
     int64 unix_magic_and_size[2];
+	unsigned int data_checksum = urb_adler32(0, NULL, 0);
 
     if(metadata_f->Read(reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size))!=sizeof(unix_magic_and_size))
     {
@@ -575,6 +622,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         has_error=true;
         return false;
     }
+
+	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size));
 
     if(unix_magic_and_size[1]!=unix_meta_magic)
     {
@@ -589,6 +638,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		restore.log("Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
+
+	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(_u32));
 
 	stat_data_size = little_endian(stat_data_size);
 
@@ -607,6 +658,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         restore.log("Error reading unix metadata from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
+
+	data_checksum = urb_adler32(data_checksum, stat_data.data(), stat_data.size());
 
     CRData read_stat(stat_data.data(), stat_data.size());
 
@@ -638,6 +691,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         return false;
     }
 
+	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys));
+
     num_eattr_keys = little_endian(num_eattr_keys);
 
     for(int64 i=0;i<num_eattr_keys;++i)
@@ -648,6 +703,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
             restore.log("Error reading eattr key size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
+
+		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&key_size), sizeof(key_size));
 
         key_size = little_endian(key_size);
 
@@ -660,12 +717,16 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
             return false;
         }
 
+		data_checksum = urb_adler32(data_checksum, &eattr_key[0], eattr_key.size());
+
         unsigned int val_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
             restore.log("Error reading eattr value size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
             return false;
         }
+
+		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&val_size), sizeof(val_size));
 
         val_size = little_endian(val_size);
 
@@ -678,11 +739,26 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
             return false;
         }
 
+		data_checksum = urb_adler32(data_checksum, &eattr_val[0], eattr_val.size());
+
         if(lsetxattr(utf8fn.c_str(), eattr_key.c_str(), eattr_val.data(), eattr_val.size(), 0)!=0)
         {
             restore.log("Error setting xattr "+eattr_key+" of "+utf8fn+" errno: "+convert(errno), LL_ERROR);
         }
     }
+
+	unsigned int read_data_checksum =0;
+	if(metadata_f->Read(reinterpret_cast<char*>(&read_data_checksum), sizeof(read_data_checksum))!=sizeof(read_data_checksum))
+	{
+		restore.log( "Error saving metadata. Data checksum could not be read.", LL_ERROR);
+		return false;
+	}
+
+	if(little_endian(read_data_checksum)!=data_checksum)
+	{
+		restore.log("Error saving metadata. Data checksum wrong.", LL_ERROR);
+		return false;
+	}
 
     return true;
 }

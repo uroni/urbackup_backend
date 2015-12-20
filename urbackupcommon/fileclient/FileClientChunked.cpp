@@ -98,7 +98,7 @@ FileClientChunked::~FileClientChunked(void)
 	Server->destroy(ofb_pipe);
 }
 
-_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize)
+_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id)
 {
 	m_file=NULL;
 	patch_mode=true;
@@ -113,10 +113,10 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	last_transferred_bytes=0;
 	curr_output_fsize=0;
 
-	return GetFile(remotefn, predicted_filesize);
+	return GetFile(remotefn, predicted_filesize, file_id);
 }
 
-_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize)
+_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id)
 {
 	patch_mode=false;
 	m_file=file;
@@ -126,10 +126,10 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	last_transferred_bytes=0;
 	curr_output_fsize=0;
 	
-	return GetFile(remotefn, predicted_filesize);
+	return GetFile(remotefn, predicted_filesize, file_id);
 }
 
-_u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
+_u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 file_id)
 {
 	bool was_prepared = false;
 
@@ -140,8 +140,9 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 		queued_fcs.pop_front();
 
 		assert(next->remote_filename==remotefn);
+		assert(next->curr_file_id == file_id);
 
-		return next->GetFile(remotefn, filesize_out);
+		return next->GetFile(remotefn, filesize_out, file_id);
 	}
 	else if(parent!=NULL && !queue_only)
 	{
@@ -152,6 +153,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 	getfile_done=false;
 	retval=ERR_SUCCESS;
 	remote_filename=remotefn;
+	curr_file_id = file_id;
 
 	if(pipe==NULL)
 		return ERR_ERROR;
@@ -191,9 +193,16 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 	if(!was_prepared)
 	{
 		CWData data;
-		data.addUChar( ID_GET_FILE_BLOCKDIFF );
+		data.addUChar( file_id!=0 ? ID_GET_FILE_BLOCKDIFF_WITH_METADATA : ID_GET_FILE_BLOCKDIFF );
 		data.addString( remotefn );
 		data.addString( identity );
+
+		if(file_id!=0)
+		{
+			data.addChar(0);
+			data.addVarInt(file_id);
+		}
+
 		data.addInt64( fileoffset );
 		data.addInt64( hashfilesize );
 
@@ -202,7 +211,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			data.addInt64(remote_filesize);
 		}
 
-		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
 		{
 			Server->Log("Timout during file request (3)", LL_ERROR);
 			return ERR_TIMEOUT;
@@ -235,7 +244,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 	do
 	{
 		if(queuedChunks()<c_max_queued_chunks && remote_filesize!=-1 && next_chunk<num_total_chunks)
-		{			
+		{		
 			while(queuedChunks()<c_max_queued_chunks && next_chunk<num_total_chunks)
 			{
 				if(!getPipe()->isWritable())
@@ -264,10 +273,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 							memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
 						}
 						const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
-						if(stack->Send( getPipe(), buf, send_size) != send_size)
+						if(stack->Send( getPipe(), buf, send_size, c_default_timeout, false) != send_size)
 						{
 							break;
 						}
+						needs_flush=true;
 
 						char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
 						SChunkHashes chhash;
@@ -287,10 +297,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 					data.addUChar(ID_BLOCK_REQUEST);
 					data.addInt64(next_chunk*c_checkpoint_dist);
 					data.addChar(1);
-					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize()) != data.getDataSize() )
+					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize() )
 					{
 						break;
 					}
+					needs_flush=true;
 
 					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
@@ -319,11 +330,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			IFile* chunkhashes;
 			IFile* hashoutput;
 			_i64 predicted_filesize;
-			bool has_queue_item=true;
+			int64 file_id;
 
 			if(queue_callback && 
 				getPipe()->isWritable() &&
-				(has_queue_item=queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)) )
+				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id) )
 			{
 				did_queue_fc=true;
 
@@ -343,7 +354,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				next->setProgressLogCallback(progress_log_callback);
 
 				next->setQueueOnly(true);
-				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)!=ERR_SUCCESS)
+				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id)!=ERR_SUCCESS)
 				{
 					std::deque<FileClientChunked*>::iterator iter;
 					if(parent)
@@ -370,14 +381,15 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				else
 				{
 					next->setQueueOnly(false);
+					needs_flush=false;
 				}
 			}
-			else if(!has_queue_item
-				&& needs_flush)
-			{
-				Flush(getPipe());
-				needs_flush=false;
-			}
+		}
+
+		if(needs_flush)
+		{
+			Flush(getPipe());
+			needs_flush=false;
 		}
 
 		if(queue_only)
@@ -1335,9 +1347,16 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			if(rerequest)
 			{
 				CWData data;
-				data.addUChar( ID_GET_FILE_BLOCKDIFF );
+				data.addUChar( curr_file_id!=0 ? ID_GET_FILE_BLOCKDIFF_WITH_METADATA : ID_GET_FILE_BLOCKDIFF );
 				data.addString( remote_filename );
 				data.addString( identity );
+
+				if(curr_file_id!=0)
+				{
+					data.addChar(0);
+					data.addVarInt(curr_file_id);
+				}
+
 				data.addInt64( fileoffset );
 				data.addInt64( hashfilesize );			
 
@@ -1453,12 +1472,12 @@ _u32 FileClientChunked::loadFileOutOfBand()
 	if(patch_mode)
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out);
+		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id);
 	}
 	else
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out);
+		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id);
 	}
 }
 

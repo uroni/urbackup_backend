@@ -69,63 +69,59 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
 	TreeNode *c2=t2->getFirstChild();
+	TreeNode *c1=t1->getFirstChild();
 	bool did_subtree_change=false;
 	while(c2!=NULL)
 	{		
-		bool found=false;
-		bool name_found=false;
-		bool dir_diff=false;
-		TreeNode *c1=t1->getFirstChild();
-		while(c1!=NULL)
+		int cmp = 1;
+		if(c1!=NULL)
 		{
-			if(c1->nameEquals(*c2))
-			{
-				name_found=true;
-
-				bool equal_dir = (c1->getType()=='d' && c2->getType()=='d');
-
-				if(equal_dir)
-				{
-					dir_diff = !c1->dataEquals(*c2);
-				}
-
-				if( equal_dir
-					 || c1->dataEquals(*c2) )
-				{
-					gatherDiffs(c1, c2, diffs, modified_inplace_ids, dir_diffs);
-					c2->setMappedNode(c1);
-					c1->setMappedNode(c2);
-					found=true;
-					break;
-				}
-			}
-			c1=c1->getNextSibling();
+			cmp = c1->nameCompare(*c2);
 		}
 
-		if(!found || dir_diff)
+		if(cmp==0)
 		{
-			if(dir_diff)
+			bool equal_dir = (c1->getType()=='d' && c2->getType()=='d');
+			bool data_equals = c1->dataEquals(*c2);
+
+			if(equal_dir && !data_equals)
 			{
 				dir_diffs.push_back(c2->getId());
+				subtreeChanged(c2);
+			}
+
+			if( equal_dir
+				|| data_equals )
+			{
+				gatherDiffs(c1, c2, diffs, modified_inplace_ids, dir_diffs);
+				c2->setMappedNode(c1);
+				c1->setMappedNode(c2);
 			}
 			else
 			{
+				if(modified_inplace_ids!=NULL)
+				{
+					modified_inplace_ids->push_back(c2->getId());
+				}
+				
 				diffs.push_back(c2->getId());
+				subtreeChanged(c2);				
 			}
 
-			if(!did_subtree_change)
-			{
-				subtreeChanged(c2);
-				did_subtree_change=true;
-			}
-
-			if(name_found && !dir_diff && modified_inplace_ids!=NULL)
-			{
-				modified_inplace_ids->push_back(c2->getId());
-			}
+			c1=c1->getNextSibling();
+			c2=c2->getNextSibling();
 		}
+		else if(cmp<0)
+		{
+			c1=c1->getNextSibling();
+		}
+		else
+		{
+			diffs.push_back(c2->getId());
+			subtreeChanged(c2);
 
-		c2=c2->getNextSibling();
+			c2=c2->getNextSibling();
+		}
 	}
 }
 

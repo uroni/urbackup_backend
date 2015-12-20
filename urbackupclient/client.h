@@ -137,6 +137,11 @@ struct SBackupScript
 	std::string scriptname;
 	std::string outputname;
 	int64 size;
+
+	bool operator<(const SBackupScript &other) const
+	{
+		return outputname < other.outputname;
+	}
 };
 
 class ClientDAO;

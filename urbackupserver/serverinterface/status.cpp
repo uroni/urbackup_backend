@@ -100,7 +100,7 @@ void set_server_version_info(JSON::Object& ret)
 
 ACTION_IMPL(status)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 
 	std::string rights=helper.getRights("status");
@@ -175,10 +175,10 @@ ACTION_IMPL(status)
 			}
 		}
 
-		std::string hostname=GET["hostname"];
+		std::string hostname=POST["hostname"];
 		if(!hostname.empty() && rights=="all")
 		{
-			if(GET["remove"]=="true")
+			if(POST["remove"]=="true")
 			{
 				IQuery *q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?");
 				q->Bind(hostname);
@@ -194,21 +194,21 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(GET.find("clientname")!=GET.end() && helper.getRights("add_client")=="all" )
+		if(POST.find("clientname")!=POST.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
-			int id=ClientMain::getClientID(db, GET["clientname"], NULL, &new_client);
+			int id=ClientMain::getClientID(db, POST["clientname"], NULL, &new_client);
 			if(new_client)
 			{
 				ret.set("added_new_client", true);
 			}
 		}
-		std::string s_remove_client=GET["remove_client"];
+		std::string s_remove_client=POST["remove_client"];
 		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
 		{
 			std::vector<std::string> remove_client;
 			Tokenize(s_remove_client, remove_client, ",");
-			if(GET.find("stop_remove_client")!=GET.end())
+			if(POST.find("stop_remove_client")!=POST.end())
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{

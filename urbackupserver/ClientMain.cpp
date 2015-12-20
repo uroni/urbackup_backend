@@ -40,7 +40,6 @@
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
 #include "../cryptoplugin/ICryptoFactory.h"
-#include "server_hash_existing.h"
 #include "server_dir_links.h"
 #include "server.h"
 #include "../urbackupcommon/filelist_utils.h"
@@ -58,6 +57,7 @@
 #include "create_files_index.h"
 #include <stack>
 #include "FullFileBackup.h"
+#include "IncrFileBackup.h"
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
 #include "ThrottleUpdater.h"
@@ -1468,7 +1468,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		settings_fn = "urbackup/settings_"+(clientsubname)+".cfg";
 	}
 
-	rc=fc.GetFile(settings_fn, tmp, true, false, 0, false);
+	rc=fc.GetFile(settings_fn, tmp, true, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting Client settings of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);

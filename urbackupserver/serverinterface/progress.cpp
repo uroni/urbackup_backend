@@ -25,7 +25,7 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids);
 
 ACTION_IMPL(progress)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 
 	std::vector<int> clientids;
@@ -44,11 +44,11 @@ ACTION_IMPL(progress)
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
-		if(GET.find("stop_clientid")!=GET.end() &&
-			GET.find("stop_id")!=GET.end())
+		if(POST.find("stop_clientid")!=POST.end() &&
+			POST.find("stop_id")!=POST.end())
 		{
-			int stop_clientid=watoi(GET["stop_clientid"]);
-			int stop_id=watoi(GET["stop_id"]);
+			int stop_clientid=watoi(POST["stop_clientid"]);
+			int stop_id=watoi(POST["stop_id"]);
 
 			std::string stop_rights=helper.getRights("stop_backup");
 			bool stop_ok=false;

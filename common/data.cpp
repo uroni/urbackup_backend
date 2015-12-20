@@ -423,7 +423,7 @@ void CWData::clear()
 void CWData::addVarInt( int64 ta )
 {
 	size_t cpos=data.size();
-	int needed_bytes = sqlite3VarintLen(ta);
+	int needed_bytes = sqlite3VarintLen(static_cast<u64>(ta));
 	data.resize(cpos+needed_bytes);
 	int p = sqlite3PutVarint(reinterpret_cast<unsigned char*>(&data[cpos]), ta);
 	assert(p==needed_bytes);

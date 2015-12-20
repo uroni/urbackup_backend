@@ -316,18 +316,6 @@ bool read_metadata(IFile* in, FileMetadata& metadata)
 	return read_metadata_values(in, metadata);
 }
 
-bool has_metadata( const std::string& in_fn, const FileMetadata& metadata )
-{
-	FileMetadata r_metadata;
-	if(!read_metadata(in_fn, r_metadata))
-	{
-		return false;
-	}
-
-	return r_metadata==metadata;
-}
-
-
 std::string escape_metadata_fn( const std::string& fn )
 {
 	if(fn.find(metadata_dir_fn)==0)
@@ -510,6 +498,7 @@ void FileMetadata::serialize( CWData& data ) const
 	data.addVarInt(last_modified);
 	data.addVarInt(created);
 	data.addVarInt(accessed);
+	data.addVarInt(rsize);
 }
 
 bool FileMetadata::read( CRData& data )
@@ -521,6 +510,7 @@ bool FileMetadata::read( CRData& data )
 	ok &= data.getVarInt(&last_modified);
 	ok &= data.getVarInt(&created);
 	ok &= data.getVarInt(&accessed);
+	ok &= data.getVarInt(&rsize);
 
 	if(ok)
 	{

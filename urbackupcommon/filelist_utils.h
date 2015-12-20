@@ -8,7 +8,7 @@ void writeFileRepeat(IFile *f, const std::string &str);
 
 std::string escapeListName( const std::string& listname );
 
-void writeFileItem(IFile* f, SFile cf);
+void writeFileItem(IFile* f, SFile cf, size_t* written=NULL, size_t* change_identicator_off=NULL);
 void writeFileItem(IFile* f, SFile cf, std::string extra);
 
 

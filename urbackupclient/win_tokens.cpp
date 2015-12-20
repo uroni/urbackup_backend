@@ -406,7 +406,7 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 
 	TokenCacheInt* cache = token_cache.get();
 
-	PACL dacl;
+	PACL dacl=NULL;
 	PSECURITY_DESCRIPTOR sec_desc;
 
 	DWORD rc = GetNamedSecurityInfoW(Server->ConvertToWchar(fn).c_str(), SE_FILE_OBJECT,
@@ -421,86 +421,89 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 
 	CWData token_info;
 
-	if(dacl->AceCount==0)
+	if(dacl==NULL || dacl->AceCount==0)
 	{
 		//allow to all
 		token_info.addChar(ID_GRANT_ACCESS);
 		token_info.addVarInt(0);
 	}
 
-	char* ptr=reinterpret_cast<char*>(dacl+1);
-	for(WORD i=0;i<dacl->AceCount;++i)
+	if(dacl!=NULL)
 	{
-		ACE_HEADER* header = reinterpret_cast<ACE_HEADER*>(ptr);
-		std::vector<char> sid;
-		bool allow;
-		bool known;
-		ACCESS_MASK mask;
-		switch(header->AceType)
+		char* ptr=reinterpret_cast<char*>(dacl+1);
+		for(WORD i=0;i<dacl->AceCount;++i)
 		{
-		case ACCESS_ALLOWED_ACE_TYPE:
+			ACE_HEADER* header = reinterpret_cast<ACE_HEADER*>(ptr);
+			std::vector<char> sid;
+			bool allow;
+			bool known;
+			ACCESS_MASK mask;
+			switch(header->AceType)
 			{
-				ACCESS_ALLOWED_ACE* allowed_ace = reinterpret_cast<ACCESS_ALLOWED_ACE*>(ptr);
-				
-				size_t sid_size = header->AceSize+sizeof(DWORD)-sizeof(ACCESS_ALLOWED_ACE);
-				sid.resize(sid_size);
-				memcpy(&sid[0], &allowed_ace->SidStart, sid_size);
-
-				allow=true;
-				known=true;
-				mask = allowed_ace->Mask;
-			}
-			break;
-		case ACCESS_DENIED_ACE_TYPE:
-			{
-				ACCESS_DENIED_ACE* denied_ace = reinterpret_cast<ACCESS_DENIED_ACE*>(ptr);
-
-				size_t sid_size = header->AceSize+sizeof(DWORD)-sizeof(ACCESS_DENIED_ACE);
-				sid.resize(sid_size);
-				memcpy(&sid[0], &denied_ace->SidStart, sid_size);
-
-				allow=false;
-				known=true;
-				mask = denied_ace->Mask;
-			}			
-			break;
-		default:
-			known=false;
-			break;
-		}
-
-		if(known && (
-			mask & GENERIC_READ || mask & GENERIC_ALL
-			|| mask & FILE_GENERIC_READ || mask & FILE_ALL_ACCESS
-			) )
-		{			
-			std::map<std::vector<char>, Token>::iterator token_it =
-				token_cache.get()->tokens.find(sid);
-
-			if(token_it!=token_cache.get()->tokens.end())
-			{
-				assert(token_it->second.id!=0);
-
-				if(allow)
+			case ACCESS_ALLOWED_ACE_TYPE:
 				{
-					token_info.addChar(ID_GRANT_ACCESS);
-					token_info.addVarInt(token_it->second.id);
-				}
-				else
-				{
-					token_info.addChar(ID_DENY_ACCESS);
-					token_info.addVarInt(token_it->second.id);
-				}
-			}
-			else if(!allow)
-			{
-				Server->Log("Error getting SID of ACE entry of file \""+fn+"\"", LL_ERROR);
-				LocalFree(sec_desc);
-				return std::string();
-			}				
-		}
+					ACCESS_ALLOWED_ACE* allowed_ace = reinterpret_cast<ACCESS_ALLOWED_ACE*>(ptr);
 
-		ptr+=header->AceSize;
+					size_t sid_size = header->AceSize+sizeof(DWORD)-sizeof(ACCESS_ALLOWED_ACE);
+					sid.resize(sid_size);
+					memcpy(&sid[0], &allowed_ace->SidStart, sid_size);
+
+					allow=true;
+					known=true;
+					mask = allowed_ace->Mask;
+				}
+				break;
+			case ACCESS_DENIED_ACE_TYPE:
+				{
+					ACCESS_DENIED_ACE* denied_ace = reinterpret_cast<ACCESS_DENIED_ACE*>(ptr);
+
+					size_t sid_size = header->AceSize+sizeof(DWORD)-sizeof(ACCESS_DENIED_ACE);
+					sid.resize(sid_size);
+					memcpy(&sid[0], &denied_ace->SidStart, sid_size);
+
+					allow=false;
+					known=true;
+					mask = denied_ace->Mask;
+				}			
+				break;
+			default:
+				known=false;
+				break;
+			}
+
+			if(known && (
+				mask & GENERIC_READ || mask & GENERIC_ALL
+				|| mask & FILE_GENERIC_READ || mask & FILE_ALL_ACCESS
+				) )
+			{			
+				std::map<std::vector<char>, Token>::iterator token_it =
+					token_cache.get()->tokens.find(sid);
+
+				if(token_it!=token_cache.get()->tokens.end())
+				{
+					assert(token_it->second.id!=0);
+
+					if(allow)
+					{
+						token_info.addChar(ID_GRANT_ACCESS);
+						token_info.addVarInt(token_it->second.id);
+					}
+					else
+					{
+						token_info.addChar(ID_DENY_ACCESS);
+						token_info.addVarInt(token_it->second.id);
+					}
+				}
+				else if(!allow)
+				{
+					Server->Log("Error getting SID of ACE entry of file \""+fn+"\"", LL_ERROR);
+					LocalFree(sec_desc);
+					return std::string();
+				}				
+			}
+
+			ptr+=header->AceSize;
+		}
 	}
 
 	LocalFree(sec_desc);

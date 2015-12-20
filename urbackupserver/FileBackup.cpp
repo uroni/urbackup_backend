@@ -312,7 +312,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
 		return false;
 	}
-	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0, false);
+	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false, 0, false, 0);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting tokens file of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_DEBUG);
@@ -342,23 +342,9 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 	return has_token_file;
 }
 
-std::string FileBackup::clientlistName( int group, bool new_list )
+std::string FileBackup::clientlistName(int ref_backupid)
 {
-	std::string ret="urbackup/clientlist_";
-
-	if(group!=0)
-	{
-		ret+=convert(group)+"_";
-	}
-
-	ret+=convert(clientid);
-	if(new_list)
-	{
-		ret+="_new";
-	}
-	ret+=".ub";
-
-	return ret;
+	return "urbackup/clientlist_b_" + convert(ref_backupid) + ".ub";
 }
 
 void FileBackup::createHashThreads(bool use_reflink)
@@ -517,11 +503,15 @@ bool FileBackup::doBackup()
 	if( server_settings->getSettings()->internet_mode_enabled )
 	{
 		if( server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash")
+		{
 			with_hashes=true;
+		}
 	}
-
+	
 	if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
+	{
 		with_hashes=true;
+	}
 
 	if(!fileindex.get())
 	{
@@ -530,7 +520,7 @@ bool FileBackup::doBackup()
 
 	if(!cdp_path)
 	{
-		if(!constructBackupPath(with_hashes, use_snapshots, !r_incremental))
+		if(!constructBackupPath(use_snapshots, !r_incremental))
 		{
             ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
 			return false;
@@ -765,7 +755,7 @@ std::string FileBackup::systemErrorInfo()
 }
 
 bool FileBackup::link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata)
+	const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata)
 {
 	std::string os_curr_path=convertToOSPathFromFileClient(os_path+"/"+short_fn);
 	std::string os_curr_hash_path=convertToOSPathFromFileClient(os_path+"/"+escape_metadata_fn(short_fn));
@@ -1068,7 +1058,7 @@ bool FileBackup::hasDiskError()
 	return disk_error;
 }
 
-bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs)
+bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs)
 {
 	if(!createDirectoryForClient())
 	{
@@ -1640,7 +1630,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
-        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
+        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
 
@@ -1652,12 +1642,13 @@ bool FileBackup::startFileMetadataDownloadThread()
 			{
 				break;
 			}
+			Server->wait(100);
 		}
 		while(Server->getTimeMS()-starttime<10000);
 
 		if(!metadata_download_thread->isDownloading())
 		{
-			stopFileMetadataDownloadThread();
+			stopFileMetadataDownloadThread(true);
 			return false;
 		}
 	}	
@@ -1665,7 +1656,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 	return true;
 }
 
-bool FileBackup::stopFileMetadataDownloadThread()
+bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 {
 	if(metadata_download_thread.get()!=NULL)
 	{
@@ -1688,12 +1679,15 @@ bool FileBackup::stopFileMetadataDownloadThread()
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
 				Server->wait(1000);
 
-				metadata_download_thread->shutdown();
+				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0))
+				{
+					metadata_download_thread->shutdown();
+				}
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	
 
-		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
+		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
 			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
 		}
@@ -1725,7 +1719,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	os_create_dir(tmpdirname);
 
 	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
-	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false);
+	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{

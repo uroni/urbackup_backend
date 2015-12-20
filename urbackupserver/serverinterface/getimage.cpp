@@ -22,14 +22,14 @@
 
 ACTION_IMPL(getimage)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL )
 	{
-		int img_id=watoi(GET["image_id"]);
+		int img_id=watoi(POST["image_id"]);
 		std::map<std::string, IObject* >::iterator iter=session->mCustom.find("image_"+convert(img_id));
 		if(iter!=session->mCustom.end())
 		{

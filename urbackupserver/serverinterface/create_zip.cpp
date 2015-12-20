@@ -293,7 +293,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
 {
 	bool has_error=false;
-	const std::vector<SFile> files = getFiles(foldername, &has_error);
+	const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
 
 	if(has_error)
 		return false;

@@ -660,7 +660,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script, size_t file_id)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -676,13 +676,23 @@ bool FileClient::Reconnect(void)
 	if(queued.empty())
 	{
 		CWData data;
-		data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY:(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE) );
+		data.addUChar( metadata_only? ID_GET_FILE_METADATA_ONLY : (
+				file_id!=0 ? ID_GET_FILE_WITH_METADATA :
+				(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE_RESUME) ) );
 		data.addString( remotefn );
 		data.addString( identity );
 
 		if(metadata_only)
 		{
+			data.addChar(0);
 			data.addVarInt(folder_items);
+			data.addVarInt(file_id);
+		}
+		else if(file_id!=0)
+		{
+			data.addChar(0);
+			data.addChar(hashed?1:0);
+			data.addVarInt(file_id);
 		}
 
 		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
@@ -756,13 +766,23 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : (protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE)) );
+				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : 
+					( file_id!=0 ? ID_GET_FILE_WITH_METADATA :
+					(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE_RESUME) ) );
 				data.addString( remotefn );
 				data.addString( identity );
 
 				if(metadata_only)
 				{
+					data.addChar(0);
 					data.addVarInt(folder_items);
+					data.addVarInt(file_id);
+				}
+				else if(file_id!=0)
+				{
+					data.addChar(0);
+					data.addChar(hashed?1:0);
+					data.addVarInt(file_id);
 				}
 
 				if( protocol_version>1 )
@@ -1044,13 +1064,23 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : (protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE)) );
+				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : 
+					( file_id!=0 ? ID_GET_FILE_WITH_METADATA :
+					(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE_RESUME) ) );
 				data.addString( remotefn );
 				data.addString( identity );
 
 				if(metadata_only)
 				{
+					data.addChar(0);
 					data.addVarInt(folder_items);
+					data.addVarInt(file_id);
+				}
+				else if(file_id!=0)
+				{
+					data.addChar(0);
+					data.addChar(hashed?1:0);
+					data.addVarInt(file_id);
 				}
 
 				if( protocol_version>1 )
@@ -1172,7 +1202,8 @@ void FileClient::fillQueue()
 		MetadataQueue metadata_queue = MetadataQueue_Data;
 		size_t folder_items = 0;
 		bool finish_script=false;
-		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue, folder_items, finish_script);
+		int64 file_id;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue, folder_items, finish_script, file_id);
 
 		if(queue_fn.empty())
 		{
@@ -1189,7 +1220,14 @@ void FileClient::fillQueue()
 		CWData data;
 		if(metadata_queue==MetadataQueue_Data)
 		{
-			data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+			if(file_id==0)
+			{
+				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE_RESUME );
+			}
+			else
+			{
+				data.addUChar( ID_GET_FILE_WITH_METADATA );
+			}
 		}
 		else if(metadata_queue == MetadataQueue_MetadataAndHash)
 		{
@@ -1204,7 +1242,15 @@ void FileClient::fillQueue()
 
 		if(metadata_queue == MetadataQueue_Metadata)
 		{
+			data.addChar(0);
 			data.addVarInt(folder_items);
+			data.addVarInt(file_id);
+		}
+		else if(file_id!=0)
+		{
+			data.addChar(0);
+			data.addChar(protocol_version>1);
+			data.addVarInt(file_id);
 		}
 
 		needs_send_flush=true;

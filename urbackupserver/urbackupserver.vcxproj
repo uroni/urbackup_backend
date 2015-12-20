@@ -327,7 +327,6 @@
     <ClCompile Include="ServerDownloadThread.cpp" />
     <ClCompile Include="ClientMain.cpp" />
     <ClCompile Include="server_hash.cpp" />
-    <ClCompile Include="server_hash_existing.cpp" />
     <ClCompile Include="server_log.cpp" />
     <ClCompile Include="server_ping.cpp" />
     <ClCompile Include="server_prepare_hash.cpp" />
@@ -415,7 +414,6 @@
     <ClInclude Include="ServerDownloadThread.h" />
     <ClInclude Include="ClientMain.h" />
     <ClInclude Include="server_hash.h" />
-    <ClInclude Include="server_hash_existing.h" />
     <ClInclude Include="server_image.h" />
     <ClInclude Include="server_log.h" />
     <ClInclude Include="server_ping.h" />

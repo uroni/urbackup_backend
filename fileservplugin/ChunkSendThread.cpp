@@ -65,7 +65,7 @@ void ChunkSendThread::operator()(void)
 	{
 		if(chunk.msg != ID_ILLEGAL)
 		{
-			if(parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1)==SOCKET_ERROR)
+			if(parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1, true)==SOCKET_ERROR)
 			{
 				has_error = true;
 			}
@@ -83,7 +83,7 @@ void ChunkSendThread::operator()(void)
 			CWData sdata;
 			sdata.addUChar(ID_FILESIZE);
 			sdata.addUInt64(little_endian(curr_file_size));
-            if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize(), true)!=sdata.getDataSize())
+            if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize(), chunk.requested_filesize<0)!=sdata.getDataSize())
 			{
 				has_error = true;
 			}
@@ -248,6 +248,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 	unsigned int read_total=0;
 	_u32 r=0;
+	_u32 real_r=0;
 	bool sent_update=false;
 	char* cptr=chunk_buf+c_chunk_padding;
 	_i64 curr_pos=chunk->startpos;
@@ -272,8 +273,9 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		}
 
 		bool readerr=false;
-		r=file->Read(cptr, to_read, &readerr);
 
+		r=file->Read(cptr, to_read, &readerr);
+		real_r=r;
 
 		while(r<to_read)
 		{
@@ -304,75 +306,50 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			}
 
 			r+=r_add;
+			real_r+=r_add;
 		}
 
-		if(r<to_read)
+		md5_hash.update((unsigned char*)cptr, (unsigned int)r);
+		c_adler=urb_adler32(c_adler, cptr, r);
+
+		read_total+=r;
+
+		if(read_total==next_smallhash || r!=c_chunk_size)
 		{
-			if(curr_file_size==-1)
+			_u32 adler_other = little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]));
+			if(c_adler!=adler_other
+				|| curr_pos+r>curr_hash_size)
 			{
-				if(!script_eof)
+				sent_update=true;
+				char tmp_backup[c_chunk_padding];
+				memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
+
+				*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
+				_i64 curr_pos_tmp = little_endian(curr_pos);
+				memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos_tmp, sizeof(_i64));
+				_u32 r_tmp = little_endian(r);
+				memcpy(cptr-sizeof(_u32), &r_tmp, sizeof(_u32));
+
+				Log("Sending chunk start="+convert(curr_pos)+" size="+convert(r), LL_DEBUG);
+
+				if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
 				{
-					Log("Script output eof -2", LL_DEBUG);
-					script_eof=true;
+					Log("Error sending chunk", LL_DEBUG);
+					return false;
 				}
 
-				memset(cptr+r, 0, to_read-r);
-				r=to_read;
+				if( FileServ::isPause() ) Sleep(500);
+
+				memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
 			}
-			else if(readerr)
-			{
-				sendError(ERR_READING_FAILED, getSystemErrorCode());
-			}
-			else
-			{
-				memset(cptr+r, 0, to_read-r);
-				r=to_read;
-			}
+
+			c_adler=urb_adler32(0, NULL, 0);
+			++small_hash_num;
+			next_smallhash+=c_small_hash_dist;
 		}
+		curr_pos+=r;
 
-		if(r>0)
-		{
-			md5_hash.update((unsigned char*)cptr, (unsigned int)r);
-			c_adler=urb_adler32(c_adler, cptr, r);
-
-			read_total+=r;
-
-			if(read_total==next_smallhash || r!=c_chunk_size)
-			{
-				_u32 adler_other = little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]));
-				if(c_adler!=adler_other
-					|| curr_pos+r>curr_hash_size)
-				{
-					sent_update=true;
-					char tmp_backup[c_chunk_padding];
-					memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
-
-					*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
-					_i64 curr_pos_tmp = little_endian(curr_pos);
-					memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos_tmp, sizeof(_i64));
-					_u32 r_tmp = little_endian(r);
-					memcpy(cptr-sizeof(_u32), &r_tmp, sizeof(_u32));
-
-					Log("Sending chunk start="+convert(curr_pos)+" size="+convert(r), LL_DEBUG);
-
-					if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
-					{
-						Log("Error sending chunk", LL_DEBUG);
-						return false;
-					}
-
-					if( FileServ::isPause() ) Sleep(500);
-
-					memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
-				}
-
-				c_adler=urb_adler32(0, NULL, 0);
-				++small_hash_num;
-				next_smallhash+=c_small_hash_dist;
-			}
-			curr_pos+=r;
-		}
-	}while(r==c_chunk_size && read_total<c_checkpoint_dist);
+	}while(real_r==c_chunk_size && read_total<c_checkpoint_dist);
 
 	md5_hash.finalize();
 

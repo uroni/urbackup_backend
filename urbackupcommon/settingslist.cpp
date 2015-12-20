@@ -153,7 +153,6 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("tmpdir");
 	ret.push_back("update_stats_cachesize");
 	ret.push_back("global_soft_fs_quota");
-	ret.push_back("trust_client_hashes");
 	ret.push_back("show_server_updates");
 	ret.push_back("server_url");
 	ret.push_back("use_incremental_symlinks");

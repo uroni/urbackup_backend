@@ -114,7 +114,7 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 
 ACTION_IMPL(lastacts)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;

@@ -25,6 +25,7 @@
 #include "IFileServ.h"
 #include <cstring>
 #include "FileServ.h"
+#include "../common/adler32.h"
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -77,7 +78,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
 		unsigned int fn_size = little_endian(static_cast<unsigned int>(public_fn.size()));
 		fn_size = little_endian(fn_size);
-		memcpy(buf, &fn_size + fn_off, read_bytes);
+		memcpy(buf, reinterpret_cast<char*>(&fn_size) + fn_off, read_bytes);
+		curr_checksum = urb_adler32(curr_checksum, reinterpret_cast<char*>(&fn_size) + fn_off, static_cast<_u32>(read_bytes));
 		fn_off+=read_bytes;
 
 		if(fn_off==sizeof(unsigned int))
@@ -92,12 +94,29 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	{
 		read_bytes = (std::min)(buf_avail, public_fn.size()- fn_off);
 		memcpy(buf, public_fn.data()+fn_off, read_bytes);
+		curr_checksum = urb_adler32(curr_checksum, public_fn.data()+fn_off, static_cast<_u32>(read_bytes));
 		fn_off+=read_bytes;
 
 		if(fn_off==public_fn.size())
 		{
+			fn_off=0;
+			metadata_state = MetadataState_FnChecksum;
+		}
+
+		return true;
+	}
+	else if(metadata_state==MetadataState_FnChecksum)
+	{
+		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
+		unsigned int endian_curr_checksum = little_endian(curr_checksum);
+		memcpy(buf, reinterpret_cast<char*>(&endian_curr_checksum) + fn_off, read_bytes);
+		fn_off+=read_bytes;
+
+		if(fn_off==sizeof(unsigned int))
+		{
 			metadata_buffer_size = 0;
 			metadata_buffer_off = 0;
+			curr_checksum = urb_adler32(0, NULL, 0);
 			if(callback==NULL)
 			{
 				metadata_state = MetadataState_Common;
@@ -139,6 +158,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addVarInt(file_meta.last_modified);
 			meta_data.addVarInt(file_meta.accessed);
 			meta_data.addVarInt(folder_items);
+			meta_data.addVarInt(metadata_id);
 			if(token_callback.get()!=NULL)
 			{
 				meta_data.addString(token_callback->getFileTokens(local_fn));
@@ -148,12 +168,17 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				meta_data.addString("");
 			}
 
-			if(meta_data.getDataSize()+sizeof(unsigned int)<metadata_buffer.size())
+			if(meta_data.getDataSize()+2*sizeof(unsigned int)<metadata_buffer.size())
 			{
 				unsigned int data_size = little_endian(static_cast<unsigned int>(meta_data.getDataSize()));
 				memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
 				memcpy(metadata_buffer.data()+sizeof(unsigned int), meta_data.getDataPtr(), meta_data.getDataSize());
 				metadata_buffer_size = meta_data.getDataSize()+sizeof(unsigned int);
+
+				curr_checksum = urb_adler32(curr_checksum, metadata_buffer.data(), static_cast<_u32>(metadata_buffer_size));
+				unsigned int endian_curr_checksum = little_endian(curr_checksum);
+				memcpy(metadata_buffer.data()+metadata_buffer_size, &endian_curr_checksum, sizeof(endian_curr_checksum));
+				metadata_buffer_size+=sizeof(endian_curr_checksum);
 			}
 			else
 			{
@@ -172,6 +197,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			{
 				metadata_buffer_size = 0;
 				metadata_buffer_off = 0;
+				curr_checksum = urb_adler32(0, NULL, 0);
 				metadata_state=MetadataState_Os;
 			}
 		}
@@ -179,9 +205,17 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	}
 	else if(metadata_state == MetadataState_Os)
 	{
-		if(!transmitCurrMetadata(buf, buf_avail, read_bytes))
+		bool b = transmitCurrMetadata(buf, buf_avail, read_bytes);
+
+		if(read_bytes>0)
 		{
-			metadata_state = MetadataState_Wait;
+			curr_checksum = urb_adler32(curr_checksum, buf, static_cast<_u32>(read_bytes));
+		}
+
+		if(!b)
+		{
+			fn_off=0;
+			metadata_state = MetadataState_OsChecksum;
 
 #ifndef _WIN32
 			backup_state=BackupState_StatInit;
@@ -192,13 +226,27 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		}
 		return true;
 	}
+	else if(metadata_state == MetadataState_OsChecksum)
+	{
+		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
+		unsigned int endian_curr_checksum = little_endian(curr_checksum);
+		memcpy(buf, reinterpret_cast<char*>(&endian_curr_checksum) + fn_off, read_bytes);
+		fn_off+=read_bytes;
+
+		if(fn_off==sizeof(unsigned int))
+		{
+			metadata_state = MetadataState_Wait;
+		}
+
+		return true;
+	}
 	else if(metadata_state == MetadataState_File)
 	{
 		read_bytes = static_cast<size_t>((std::min)(static_cast<int64>(buf_avail), metadata_file_size));
 
 		if(read_bytes==0)
 		{
-			metadata_state = MetadataState_Wait;
+			metadata_state = MetadataState_FileChecksum;
 			return true;
 		}
 
@@ -209,12 +257,29 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			memset(buf + read, 0, read_bytes - read);
 		}
 
+		curr_checksum = urb_adler32(curr_checksum, buf, static_cast<_u32>(read_bytes));
+
 		metadata_file_size-=read_bytes;
 
 		if(read_bytes<buf_avail)
 		{
+			fn_off=0;
+			metadata_state = MetadataState_File;
+		}
+		return true;
+	}
+	else if(metadata_state == MetadataState_FileChecksum)
+	{
+		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
+		unsigned int endian_curr_checksum = little_endian(curr_checksum);
+		memcpy(buf, reinterpret_cast<char*>(&endian_curr_checksum) + fn_off, read_bytes);
+		fn_off+=read_bytes;
+
+		if(fn_off==sizeof(unsigned int))
+		{
 			metadata_state = MetadataState_Wait;
 		}
+
 		return true;
 	}
 
@@ -244,7 +309,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 			if(msg_data.getStr(&public_fn) &&
 				msg_data.getStr(&local_fn) &&
-				msg_data.getInt64(&folder_items))
+				msg_data.getInt64(&folder_items) &&
+				msg_data.getInt64(&metadata_id) )
 			{
 				if(public_fn.empty() &&
 					local_fn.empty())
@@ -253,6 +319,17 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return false;
 				}
 
+				if(std::find(last_public_fns.begin(), last_public_fns.end(), public_fn)!=last_public_fns.end())
+				{
+					continue;
+				}
+
+				last_public_fns.push_back(public_fn);
+
+				if(last_public_fns.size()>10)
+				{
+					last_public_fns.pop_front();
+				}
 
 				int file_type_flags = os_get_file_type(os_file_prefix(local_fn));
 
@@ -285,6 +362,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				*buf = ID_METADATA_V1;
 				read_bytes = 1;
 				fn_off = 0;
+				curr_checksum = urb_adler32(0, NULL, 0);
 
 				if(!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
 				{
@@ -351,6 +429,8 @@ void FileMetadataPipe::forceExitWait()
 	CWData data;
 	data.addString(std::string());
 	data.addString(std::string());
+	data.addInt64(0);
+	data.addInt64(0);
 	pipe->Write(data.getDataPtr(), data.getDataSize());
 
 	errpipe->shutdown();

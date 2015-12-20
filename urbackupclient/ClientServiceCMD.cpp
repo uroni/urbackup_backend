@@ -2018,7 +2018,7 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 	int exit_code;
 	if(IndexThread::getFileSrv()->getExitInformation(script_cmd, stderr_out, exit_code))
 	{
-		tcpstack.Send(pipe, convert(exit_code)+" "+stderr_out);
+		tcpstack.Send(pipe, convert(exit_code)+" "+convert(Server->getTimeMS())+" "+stderr_out);
 	}
 	else
 	{

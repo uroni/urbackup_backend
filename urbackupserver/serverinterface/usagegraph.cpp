@@ -34,11 +34,11 @@ namespace
 
 ACTION_IMPL(usagegraph)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	IDatabase *db=helper.getDatabase();
 	int clientid=-1;
-	std::string s_clientid=GET["clientid"];
+	std::string s_clientid=POST["clientid"];
 	if(!s_clientid.empty())
 	{
 		IQuery *q=db->Prepare("SELECT id,name FROM clients WHERE id=?");
@@ -85,7 +85,7 @@ ACTION_IMPL(usagegraph)
 	{	
 		helper.releaseAll();
 		
-		std::string scale = GET["scale"];
+		std::string scale = POST["scale"];
 
 		if(scale.empty())
 		{
@@ -197,7 +197,7 @@ ACTION_IMPL(usagegraph)
 		else
 			ret.set("ylabel", "MB");
 
-		helper.update(tid, &GET, &PARAMS);
+		helper.update(tid, &POST, &PARAMS);
 	}
 	else
 	{

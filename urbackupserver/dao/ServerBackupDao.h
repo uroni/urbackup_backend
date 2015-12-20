@@ -77,15 +77,6 @@ public:
 		int64 indexing_time_ms;
 		int tgroup;
 	};
-	struct SFileEntry
-	{
-		bool exists;
-		std::string fullpath;
-		std::string hashpath;
-		std::string shahash;
-		int64 filesize;
-		int64 rsize;
-	};
 	struct SFindFileEntry
 	{
 		bool exists;
@@ -165,13 +156,6 @@ public:
 	std::vector<std::string> getOldBackupfolders(void);
 	std::vector<std::string> getDeletePendingClientNames(void);
 	SClientName getVirtualMainClientname(int clientid);
-	bool createTemporaryLastFilesTable(void);
-	void dropTemporaryLastFilesTable(void);
-	bool createTemporaryLastFilesTableIndex(void);
-	bool dropTemporaryLastFilesTableIndex(void);
-	bool copyToTemporaryLastFilesTable(int backupid);
-	SFileEntry getFileEntryFromTemporaryTable(const std::string& fullpath);
-	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob);
 	void insertIntoOrigClientSettings(int clientid, const std::string& data);
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
@@ -269,13 +253,6 @@ private:
 	IQuery* q_getOldBackupfolders;
 	IQuery* q_getDeletePendingClientNames;
 	IQuery* q_getVirtualMainClientname;
-	IQuery* q_createTemporaryLastFilesTable;
-	IQuery* q_dropTemporaryLastFilesTable;
-	IQuery* q_createTemporaryLastFilesTableIndex;
-	IQuery* q_dropTemporaryLastFilesTableIndex;
-	IQuery* q_copyToTemporaryLastFilesTable;
-	IQuery* q_getFileEntryFromTemporaryTable;
-	IQuery* q_getFileEntriesFromTemporaryTableGlob;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;

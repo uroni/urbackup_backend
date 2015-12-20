@@ -1781,6 +1781,10 @@ void ServerCleanupThread::cleanup_other()
 	Server->Log("Cleaning deleted backups history...", LL_INFO);
 	cleanupLastActs();
 	Server->Log("Done cleaning deleted backups history.", LL_INFO);
+
+	Server->Log("Cleaning up client lists...", LL_INFO);
+	cleanup_clientlists();
+	Server->Log("Done cleaning up client lists.", LL_INFO);
 }
 
 void ServerCleanupThread::removeFileBackupSql( int backupid )
@@ -1919,6 +1923,31 @@ bool ServerCleanupThread::backup_ident()
 		{
 			Server->Log("Error backing up "+filelist[i], LL_ERROR);
 			has_error=true;
+		}
+	}
+
+	return !has_error;
+}
+
+bool ServerCleanupThread::cleanup_clientlists()
+{
+	std::string srcfolder = Server->getServerWorkingDir()+os_file_sep()+"urbackup";
+	std::vector<SFile> files = getFiles(srcfolder);
+
+	bool has_error=false;
+	for(size_t i=0;i<files.size();++i)
+	{
+		if(next(files[i].name, 0, "clientlist_b_"))
+		{
+			int backupid = watoi(getbetween("clientlist_b_", ".ub", files[i].name));
+
+			if(cleanupdao->hasMoreRecentFileBackup(backupid).exists)
+			{
+				if(!Server->deleteFile(os_file_prefix(srcfolder+os_file_sep()+files[i].name)))
+				{
+					has_error=true;
+				}
+			}
 		}
 	}
 
