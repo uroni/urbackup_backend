@@ -613,7 +613,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
             addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path,
-				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, false, true);
+				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, false, true);
 			return true;
 		}
 	}
