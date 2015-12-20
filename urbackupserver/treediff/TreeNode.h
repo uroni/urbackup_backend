@@ -23,6 +23,7 @@ public:
 
 	bool equals(const TreeNode& other);
 	bool nameEquals(const TreeNode& other);
+	int nameCompare(const TreeNode& other);
 	bool dataEquals(const TreeNode& other);
 
 	size_t getNumChildren();

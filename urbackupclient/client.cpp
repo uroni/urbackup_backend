@@ -1494,6 +1494,8 @@ bool IndexThread::readBackupScripts()
 			filesrv->shareDir("urbackup_backup_scripts", script_path, std::string());
 		}
 	}
+
+	std::sort(scripts.begin(), scripts.end());
 	
 	return !scripts.empty();	
 }

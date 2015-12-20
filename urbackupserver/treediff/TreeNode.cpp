@@ -158,6 +158,29 @@ bool TreeNode::getSubtreeChanged()
 	return subtree_changed;
 }
 
+int TreeNode::nameCompare(const TreeNode& other)
+{
+	if(name!=NULL && other.name!=NULL)
+	{
+		return strcmp(name, other.name);
+	}
+	else
+	{
+		if(name==other.name)
+		{
+			return 0;
+		}
+		else if(name==NULL)
+		{
+			return -1;
+		}
+		else
+		{
+			return 1;
+		}
+	}
+}
+
 bool TreeNode::nameEquals( const TreeNode& other )
 {
 	if(name!=NULL && other.name!=NULL)
