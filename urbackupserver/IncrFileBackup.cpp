@@ -346,7 +346,6 @@ bool IncrFileBackup::doFileBackup()
 	bool r_offline=false;
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
-	int indir_currdepth=0;
 	IdRange download_nok_ids;
 
 	fc.resetReceivedDataBytes();
@@ -525,23 +524,11 @@ bool IncrFileBackup::doFileBackup()
 					{
 						indirchange=true;
 						changelevel=depth;
-						indir_currdepth=0;
 
-						if(cf.name!="..")
-						{
-							indir_currdepth=1;
-						}
-						else
+						if(cf.name=="..")
 						{
 							--changelevel;
 						}
-					}
-					else if(indirchange)
-					{
-						if(cf.name!="..")
-							++indir_currdepth;
-						else
-							--indir_currdepth;
 					}
 
 					if(cf.name!="..")
@@ -789,7 +776,7 @@ bool IncrFileBackup::doFileBackup()
 					bool file_changed = hasChange(line, diffs);
 
 					str_map::iterator sym_target = extra_params.find("sym_target");
-					if(sym_target!=extra_params.end() && (indirchange || file_changed) )
+					if(sym_target!=extra_params.end() && (indirchange || file_changed || !use_snapshots) )
 					{
 						std::string symlink_path = backuppath+local_curr_os_path;
 
@@ -1072,6 +1059,7 @@ bool IncrFileBackup::doFileBackup()
 	std::stack<size_t> last_modified_offsets;
 	list_parser.reset();
 	script_dir=false;
+	indirchange=false;
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
@@ -1081,6 +1069,17 @@ bool IncrFileBackup::doFileBackup()
 			{
 				if(cf.isdir)
 				{
+					if(!indirchange && hasChange(line, diffs) )
+					{
+						indirchange=true;
+						changelevel=depth;
+
+						if(cf.name=="..")
+						{
+							--changelevel;
+						}
+					}
+
 					if(cf.name!="..")
 					{
 						if(cf.name=="urbackup_backup_scripts")
@@ -1091,7 +1090,7 @@ bool IncrFileBackup::doFileBackup()
 						int64 end_id = dir_end_ids[line];
 						if( !script_dir
 							&& metadata_download_thread.get()!=NULL
-							&& hasChange(line, dir_diffs)
+							&& (indirchange || hasChange(line, dir_diffs))
 							&& !metadata_download_thread->hasMetadataId(end_id+1))
 						{
 							has_all_metadata=false;
@@ -1103,9 +1102,16 @@ bool IncrFileBackup::doFileBackup()
 							
 							cf.last_modified *= Server->getRandomNumber();
 						}
+						++depth;
 					}
 					else
 					{
+						--depth;
+						if(indirchange && depth==changelevel)
+						{
+							indirchange=false;
+						}
+
 						script_dir=false;
 					}
 					
@@ -1117,6 +1123,7 @@ bool IncrFileBackup::doFileBackup()
 				{
 					bool metadata_missing = (!script_dir
 						&& metadata_download_thread.get()!=NULL
+						&& (indirchange || hasChange(line, diffs) )
 						&& !metadata_download_thread->hasMetadataId(line+1));
 
 					if(metadata_missing)

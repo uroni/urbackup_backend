@@ -392,6 +392,8 @@ bool CClientThread::ProcessPacket(CRData *data)
                 else
                 {
                     Log("Sending meta data of "+o_filename, LL_DEBUG);
+
+					assert(metadata_id!=0);
                 }
 				
 
@@ -762,7 +764,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				unsigned int s_bsize=8192;
 
-				if( with_hashes )
+				if( !with_hashes )
 				{
 					s_bsize=32768;
 					next_checkpoint=curr_filesize;
@@ -774,7 +776,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					    next_checkpoint=curr_filesize;
 				}
 
-				if(foffset>0)
+				if((clientpipe!=NULL || with_hashes) && foffset>0)
 				{
 					if(lseek64(hFile, foffset, SEEK_SET)!=foffset)
 					{

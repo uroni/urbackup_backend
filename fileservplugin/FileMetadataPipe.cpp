@@ -246,7 +246,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(read_bytes==0)
 		{
-			metadata_state = MetadataState_Wait;
+			metadata_state = MetadataState_FileChecksum;
 			return true;
 		}
 
@@ -429,6 +429,8 @@ void FileMetadataPipe::forceExitWait()
 	CWData data;
 	data.addString(std::string());
 	data.addString(std::string());
+	data.addInt64(0);
+	data.addInt64(0);
 	pipe->Write(data.getDataPtr(), data.getDataSize());
 
 	errpipe->shutdown();
