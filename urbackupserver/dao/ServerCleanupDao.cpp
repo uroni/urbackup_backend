@@ -985,6 +985,32 @@ void ServerCleanupDao::insertClientHistoryItem(int id, const std::string& name, 
 	q_insertClientHistoryItem->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func int ServerCleanupDao::hasMoreRecentFileBackup
+* @return int id
+* @sql
+*    SELECT id FROM backups b WHERE id=:backupid(int) AND EXISTS 
+*     (SELECT * FROM backups WHERE backuptime>b.backuptime 
+*       AND tgroup=b.tgroup AND clientid=b.clientid AND done=1)
+*/
+ServerCleanupDao::CondInt ServerCleanupDao::hasMoreRecentFileBackup(int backupid)
+{
+	if(q_hasMoreRecentFileBackup==NULL)
+	{
+		q_hasMoreRecentFileBackup=db->Prepare("SELECT id FROM backups b WHERE id=? AND EXISTS  (SELECT * FROM backups WHERE backuptime>b.backuptime  AND tgroup=b.tgroup AND clientid=b.clientid AND done=1)", false);
+	}
+	q_hasMoreRecentFileBackup->Bind(backupid);
+	db_results res=q_hasMoreRecentFileBackup->Read();
+	q_hasMoreRecentFileBackup->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["id"]);
+	}
+	return ret;
+}
 
 //@-SQLGenSetup
 void ServerCleanupDao::createQueries(void)
@@ -1028,6 +1054,7 @@ void ServerCleanupDao::createQueries(void)
 	q_deleteClientHistoryItems=NULL;
 	q_insertClientHistoryId=NULL;
 	q_insertClientHistoryItem=NULL;
+	q_hasMoreRecentFileBackup=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1072,4 +1099,5 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_deleteClientHistoryItems);
 	db->destroyQuery(q_insertClientHistoryId);
 	db->destroyQuery(q_insertClientHistoryItem);
+	db->destroyQuery(q_hasMoreRecentFileBackup);
 }

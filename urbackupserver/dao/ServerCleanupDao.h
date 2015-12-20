@@ -121,6 +121,7 @@ public:
 	void deleteClientHistoryItems(const std::string& back_start, const std::string& back_stop);
 	void insertClientHistoryId(const std::string& created);
 	void insertClientHistoryItem(int id, const std::string& name, const std::string& lastbackup, const std::string& lastseen, const std::string& lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, const std::string& created, int64 hist_id);
+	CondInt hasMoreRecentFileBackup(int backupid);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -169,5 +170,6 @@ private:
 	IQuery* q_deleteClientHistoryItems;
 	IQuery* q_insertClientHistoryId;
 	IQuery* q_insertClientHistoryItem;
+	IQuery* q_hasMoreRecentFileBackup;
 	//@-SQLGenVariablesEnd
 };

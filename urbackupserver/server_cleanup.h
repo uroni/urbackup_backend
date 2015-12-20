@@ -106,6 +106,8 @@ private:
 
 	void rewrite_history(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping);
 
+	bool cleanup_clientlists();
+
 	void cleanup_client_hist();
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
