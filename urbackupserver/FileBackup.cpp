@@ -879,6 +879,8 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 				{
 					std::string sha256hex=(extras["sha256_verify"]);
 
+					bool is_symlink = extras.find("sym_target")!=extras.end();
+
 					if(sha256hex.empty() && SHA_DEF_DIGEST_SIZE == 64)
 					{
 						//compatibility
@@ -906,30 +908,36 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
 						}
-						else if(getSHADef(curr_path+os_file_sep()+cfn)!=base64_decode_dash(shabase64))
-						{
-							std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
-							verify_ok=false;
-							ServerLogger::Log(logid, msg, LL_ERROR);
-							log << msg << std::endl;
-							save_debug_data(remote_path+"/"+cf.name,
-								base64_encode_dash(getSHADef(curr_path+os_file_sep()+cfn)),
-								shabase64);
-						}
 						else
 						{
+							std::string local_sha = getSHADef(curr_path+os_file_sep()+cfn);
+
+							if( local_sha!=base64_decode_dash(shabase64))
+							{
+								std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
+								verify_ok=false;
+								ServerLogger::Log(logid, msg, LL_ERROR);
+								log << msg << std::endl;
+								save_debug_data(remote_path+"/"+cf.name,
+									base64_encode_dash(getSHADef(curr_path+os_file_sep()+cfn)),
+									shabase64);
+							}
+
 							++verified_files;
 						}
 					}
-					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
-					{
-						std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
-						verify_ok=false;
-						ServerLogger::Log(logid, msg, LL_ERROR);
-						log << msg << std::endl;
-					}
 					else
 					{
+						std::string local_sha = getSHA256(curr_path+os_file_sep()+cfn);
+
+						if( !(local_sha.empty() && is_symlink) && local_sha!=sha256hex )
+						{
+							std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
+							verify_ok=false;
+							ServerLogger::Log(logid, msg, LL_ERROR);
+							log << msg << std::endl;
+						}
+
 						++verified_files;
 					}
 				}
