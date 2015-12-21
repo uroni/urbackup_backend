@@ -201,7 +201,10 @@ void ServerLogger::reset( int clientid )
 	for(std::map<logid_t, int>::iterator it=logid_client.begin();
 		it!=logid_client.end();++it)
 	{
-		reset(it->first);
+		if(it->second==clientid)
+		{
+			reset(it->first);
+		}
 	}
 }
 
