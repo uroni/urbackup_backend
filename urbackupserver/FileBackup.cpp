@@ -912,7 +912,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 						{
 							std::string local_sha = getSHADef(curr_path+os_file_sep()+cfn);
 
-							if( local_sha!=base64_decode_dash(shabase64))
+							if( !(local_sha.empty() && is_symlink) && local_sha!=base64_decode_dash(shabase64))
 							{
 								std::string msg="Hashes for \""+(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
 								verify_ok=false;
