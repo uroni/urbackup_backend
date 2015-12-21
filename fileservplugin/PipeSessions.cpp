@@ -343,11 +343,11 @@ std::string PipeSessions::getKey( const std::string& cmd, int& backupnum )
 	TokenizeMail(cmd, cmd_toks, "|");
 	std::string script_cmd = cmd_toks[0];
 
-	if(script_cmd=="urbackup/FILE_METADATA" && cmd_toks.size()>0)
+	if(script_cmd=="urbackup/FILE_METADATA" && cmd_toks.size()>1)
 	{
 		std::string server_token = cmd_toks[1];
 		backupnum = 0;
-		if(cmd_toks.size()>1)
+		if(cmd_toks.size()>2)
 		{
 			backupnum = atoi(cmd_toks[2].c_str());
 		}
@@ -356,7 +356,7 @@ std::string PipeSessions::getKey( const std::string& cmd, int& backupnum )
 	}
 	else
 	{
-		if(cmd_toks.size()>1)
+		if(cmd_toks.size()>2)
 		{
 			backupnum = atoi(cmd_toks[2].c_str());
 		}

@@ -2029,6 +2029,12 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 {
 	std::string restore=Server->getServerParameter("allow_restore");
+
+	if(restore=="default")
+	{
+		restore="client-confirms";
+	}
+
 	if(restore!="client-confirms" && restore!="server-confirms")
 	{
 		tcpstack.Send(pipe, "disabled");

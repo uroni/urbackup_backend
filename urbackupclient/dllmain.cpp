@@ -186,7 +186,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 	else if(restore.empty())
 	{
-		Server->setServerParameter("allow_restore", "client-confirms");
+		Server->setServerParameter("allow_restore", "default");
 	}
 #endif
 
