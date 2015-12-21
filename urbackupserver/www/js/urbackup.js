@@ -232,14 +232,17 @@ function try_anonymous_login(data)
 		return;
 	}
 	
-	if(document.cookie.indexOf("bootstrap_maximize=true")!=-1
-		|| (window.localStorage && localStorage.getItem("bootstrap_maximize")==="true") )
+	if(!g.maximized)
 	{
-		g.maximize_or_minimize();
-	}
-	else
-	{
-		I('maximize').innerHTML=trans('Maximize'); 
+		if(document.cookie.indexOf("bootstrap_maximize=true")!=-1
+			|| (window.localStorage && localStorage.getItem("bootstrap_maximize")==="true") )
+		{
+			g.maximize_or_minimize();
+		}
+		else
+		{
+			I('maximize').innerHTML=trans('Maximize'); 
+		}
 	}
 	
 	var params;
