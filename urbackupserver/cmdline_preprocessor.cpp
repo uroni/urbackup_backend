@@ -20,6 +20,7 @@
 #	include <memory>
 #	include "../Interface/SettingsReader.h"
 #	include <sys/resource.h>
+#	include <errno.h>
 #endif
 
 #ifndef _WIN32
