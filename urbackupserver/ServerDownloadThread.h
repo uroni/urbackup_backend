@@ -241,6 +241,7 @@ private:
 	IdRange download_partial_ids;
 	size_t max_ok_id;
 
+	bool with_metadata;
 	bool with_hashes;
 	
 
