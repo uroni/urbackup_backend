@@ -19,6 +19,7 @@
 #	include <sys/fcntl.h>
 #	include <memory>
 #	include "../Interface/SettingsReader.h"
+#	include <sys/resource.h>
 #endif
 
 #ifndef _WIN32
@@ -328,6 +329,16 @@ int action_run(std::vector<std::string> args)
 	{
 		real_args.push_back("--log_console_no_time");
 	}
+
+#ifndef _WIN32
+	struct rlimit limit;
+
+	limit.rlim_cur = 65535;
+	limit.rlim_max = 65535;
+	if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
+		std::cerr << "Raising maximum file descriptor to "<< limit.rlim_max << " failed. This may cause problems with many clients. (errno=" << errno <<")" << std::endl;
+	}
+#endif
 
 	return run_real_main(real_args);
 }

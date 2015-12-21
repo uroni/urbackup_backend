@@ -1,6 +1,6 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          urbackup_srv
+# Provides:          urbackupsrv
 # Required-Start:    $network $local_fs $remote_fs
 # Required-Stop:     $remote_fs $local_fs
 # Default-Start:     2 3 4 5
@@ -16,58 +16,15 @@
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="UrBackup server deamon"             # Introduce a short description here
-NAME="urbackup_srv"             # Introduce the short server's name here
+NAME="urbackupsrv"             # Introduce the short server's name here
 PREFIX="/usr"
-DAEMON=$PREFIX/sbin/start_urbackup_server # Introduce the server's location here
-DAEMON_REAL=$PREFIX/sbin/urbackup_srv
+DAEMON=$PREFIX/sbin/urbackupsrv # Introduce the server's location here
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-SQLITE_TMPDIR=""
-NICE_LEVEL="0"
-IOSCHED_CLASS="best-effort"
-BROADCAST_INTERFACES=""
-
-if [ ! -x $DAEMON ]
-then
-	PREFIX="/usr/local"
-	DAEMON=$PREFIX/sbin/start_urbackup_server
-	DAEMON_REAL=$PREFIX/sbin/urbackup_srv
-fi
+DAEMON_ARGS="run --config /etc/default/$NAME --daemon --pidfile $PIDFILE"
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
-
-#Default options that are passed to the Daemon.
-
-#Port for fastcgi requests
-FASTCGI_PORT=55413
-
-#Port for the webinterface
-HTTP_PORT=55414
-
-#logfile name
-LOGFILE="urbackup.log"
-
-#Either debug,warn,info or error
-LOGLEVEL="error"
-
-#Tmp file directory - be carefull this can get very large
-DAEMON_TMPDIR="/tmp"
-
-# Read configuration variable file if it is present
-[ -r /etc/default/$NAME ] && . /etc/default/$NAME
-
-if [ "x$SQLITE_TMPDIR" != "x" ]
-then
-	SQLITE_TMPDIR="--sqlite_tmpdir \"$SQLITE_TMPDIR\""
-fi
-
-if [ "x$BROADCAST_INTERFACES" != "x" ]
-then
-	BROADCAST_INTERFACES="--broadcast_interfaces \"$BROADCAST_INTERFACES\""
-fi
-
-DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT $SQLITE_TMPDIR $BROADCAST_INTERFACES"
 
 # Load the VERBOSE setting and other rcS variables
 [ -r /lib/init/vars.sh ] && . /lib/init/vars.sh
@@ -76,23 +33,16 @@ DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVE
 # Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
 . /lib/lsb/init-functions
 
-DAEMON_TMPDIR="$DAEMON_TMPDIR/urbackup_tmp"
-rm -Rf $DAEMON_TMPDIR > /dev/null 2>&1
-mkdir $DAEMON_TMPDIR > /dev/null 2>&1
-chown urbackup:urbackup $DAEMON_TMPDIR
-ulimit -n 10000 > /dev/null 2>&1
-
 #
 # Function that starts the daemon/service
 #
 do_start()
 {
-	export TMPDIR=$DAEMON_TMPDIR
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --nicelevel $NICE_LEVEL --iosched $IOSCHED_CLASS --exec $DAEMON_REAL --test > /dev/null \
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --nicelevel $NICE_LEVEL --iosched $IOSCHED_CLASS --exec $DAEMON --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --nicelevel $NICE_LEVEL --iosched $IOSCHED_CLASS --exec $DAEMON -- \
 		$DAEMON_ARGS \
@@ -121,7 +71,7 @@ do_stop()
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON_REAL
+	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
 	[ "$?" = 2 ] && return 2
 	# Many daemons don't delete their pidfiles when they exit.
 	rm -f $PIDFILE
@@ -159,7 +109,7 @@ case "$1" in
 	esac
 	;;
   status)
-       status_of_proc "${DAEMON_REAL}" "$NAME" && exit 0 || exit $?
+       status_of_proc "${DAEMON}" "$NAME" && exit 0 || exit $?
        ;;
   #reload|force-reload)
 	#
@@ -193,7 +143,6 @@ case "$1" in
 	esac
 	;;
   *)
-	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
 	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
 	exit 3
 	;;
