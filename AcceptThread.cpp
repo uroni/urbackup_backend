@@ -69,15 +69,13 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
-	Server->Log("Creating SOCKET...",LL_INFO);
 	s=socket(AF_INET,SOCK_STREAM,0);
 	if(s<1)
 	{
-		Server->Log("Creating SOCKET failed",LL_ERROR);
+		Server->Log("Creating SOCKET failed. Port "+convert((int)uPort)+" may already be in use",LL_ERROR);
 		error=true;
 		return;
 	}
-	Server->Log("done.",LL_INFO);
 
 	int optval=1;
 	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));

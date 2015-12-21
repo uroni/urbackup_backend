@@ -280,7 +280,7 @@ bool IncrFileBackup::doFileBackup()
 	if(use_snapshots)
 	{
 		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size())+")", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlistName(last.backupid), deleted_ids, backuppath, false) )
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false) )
 		{
 			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -288,7 +288,7 @@ bool IncrFileBackup::doFileBackup()
 		}
 
 		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlistName(last.backupid), deleted_ids, backuppath_hashes, true))
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true))
 		{
 			ServerLogger::Log(logid, "Deleting files in hash snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -1217,7 +1217,7 @@ bool IncrFileBackup::doFileBackup()
 			Server->destroy(clientlist);
 			backup_dao->setFileBackupDone(backupid);
 			backup_dao->commit();
-			Server->deleteFile(clientlistName(last.backupid));
+			Server->deleteFile(clientlist_name);
 		}
 
 		if(group==c_group_default || group==c_group_continuous )
@@ -1273,7 +1273,7 @@ bool IncrFileBackup::doFileBackup()
 		Server->destroy(clientlist);
 		backup_dao->setFileBackupDone(backupid);
 		backup_dao->commit();
-		Server->deleteFile(clientlistName(last.backupid));
+		Server->deleteFile(clientlist_name);
 	}
 	else
 	{

@@ -213,7 +213,10 @@ void ServerChannelThread::operator()(void)
 
 					while(tcpstack.getPacket(ret) && !ret.empty())
 					{
-						Server->Log("Channel message: "+ret, LL_DEBUG);
+						if(ret!="PING")
+						{
+							Server->Log("Channel message: "+ret, LL_DEBUG);
+						}
 						lasttime=Server->getTimeMS();
 						std::string r=processMsg(ret);
 						if(!r.empty())
