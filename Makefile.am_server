@@ -30,7 +30,7 @@ FORTIFY_FLAGS = -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=for
 endif
 
 urbackupsrv_LDADD = $(LIBCURL) $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) $(FUSE_LIBS)
-urbackupsrv_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN $(WITH_FUSEPLUGIN_CXXFLAGS) -DVARDIR='"$(localstatedir)"' -DBINDIR='"$(bindir)"'
+urbackupsrv_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN $(WITH_FUSEPLUGIN_CXXFLAGS) -DVARDIR='"$(localstatedir)"' -DBINDIR='"$(bindir)"' -DDATADIR='"$(datadir)"'
 urbackupsrv_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(LIBCURL_CPPFLAGS) $(FUSE_CFLAGS) $(FORTIFY_FLAGS)
 urbackupsrv_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
 urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS)
@@ -72,24 +72,30 @@ install-data-local: urbackupserver/backup_server.db urbackup/status.htm urbackup
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup"
 	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/urbackupserver/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
-	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/urbackup/status.htm" "$(DESTDIR)$(localstatedir)/urbackup/status.htm"
-	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www"
-	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/css"
-	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/js"
-	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/fonts"
-	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/images"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/css"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/js"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/fonts"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/images"
 if !PACKAGING
-	chmod u+x "$(DESTDIR)$(localstatedir)/urbackup/www"
-	chmod u+x "$(DESTDIR)$(localstatedir)/urbackup"
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www"
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup"
 endif
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/js/*.js "$(DESTDIR)$(localstatedir)/urbackup/www/js/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.htm "$(DESTDIR)$(localstatedir)/urbackup/www/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/css/*.css "$(DESTDIR)$(localstatedir)/urbackup/www/css/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.png "$(DESTDIR)$(localstatedir)/urbackup/www/images/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.gif "$(DESTDIR)$(localstatedir)/urbackup/www/images/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/urbackup_ecdsa409k1.pub "$(DESTDIR)$(localstatedir)/urbackup/urbackup_ecdsa409k1.pub"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.swf "$(DESTDIR)$(localstatedir)/urbackup/www/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/fonts/* "$(DESTDIR)$(localstatedir)/urbackup/www/fonts/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/js/*.js "$(DESTDIR)$(datadir)/urbackup/www/js/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.htm "$(DESTDIR)$(datadir)/urbackup/www/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/css/*.css "$(DESTDIR)$(datadir)/urbackup/www/css/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.png "$(DESTDIR)$(datadir)/urbackup/www/images/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.gif "$(DESTDIR)$(datadir)/urbackup/www/images/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.swf "$(DESTDIR)$(datadir)/urbackup/www/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/fonts/* "$(DESTDIR)$(datadir)/urbackup/www/fonts/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/urbackup_ecdsa409k1.pub "$(DESTDIR)$(datadir)/urbackup/urbackup_ecdsa409k1.pub"
+if !PACKAGING
+	chown urbackup:urbackup "$(DESTDIR)$(datadir)/urbackup"
+	chown urbackup:urbackup "$(DESTDIR)$(datadir)/urbackup/urbackup_ecdsa409k1.pub"
+	chown -R urbackup:urbackup "$(DESTDIR)$(datadir)/urbackup/www"
+endif
 	
 install-exec-hook:
 	chmod +s $(DESTDIR)$(bindir)/urbackup_snapshot_helper

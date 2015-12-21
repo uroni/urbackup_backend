@@ -992,29 +992,32 @@ function show_status2(data)
 		obj.start_file_backup="";
 		obj.start_image_backup="";
 		
-		for(var j=0;j<obj.processes.length;++j)
+		if(obj.processes)
 		{
-			var proc = obj.processes[j];
-			if(proc.action>0 && proc.action<7)
+			for(var j=0;j<obj.processes.length;++j)
 			{
-				if(proc.pcdone<0)
+				var proc = obj.processes[j];
+				if(proc.action>0 && proc.action<7)
 				{
-					proc.indexing=true;
-					proc.pcdone=0;
-				}
-				else
-				{
-					proc.percent=true;
-				}
-				
-				if(proc.action==1 || proc.action==2 ||
-					proc.action==5 || proc.action==6)
-				{
-					obj.start_file_backup+=dustRender("status_percent_done", proc);
-				}
-				else
-				{
-					obj.start_image_backup+=dustRender("status_percent_done", proc);
+					if(proc.pcdone<0)
+					{
+						proc.indexing=true;
+						proc.pcdone=0;
+					}
+					else
+					{
+						proc.percent=true;
+					}
+					
+					if(proc.action==1 || proc.action==2 ||
+						proc.action==5 || proc.action==6)
+					{
+						obj.start_file_backup+=dustRender("status_percent_done", proc);
+					}
+					else
+					{
+						obj.start_image_backup+=dustRender("status_percent_done", proc);
+					}
 				}
 			}
 		}

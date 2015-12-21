@@ -31,10 +31,16 @@ namespace
 			return false;
 
 #ifdef _WIN32
-		const std::string pubkey_fn="urbackup_ecdsa409k1.pub";
+		std::string pubkey_fn="urbackup_ecdsa409k1.pub";
 #else
-		const std::string pubkey_fn="urbackup/urbackup_ecdsa409k1.pub";
+		std::string pubkey_fn="urbackup/urbackup_ecdsa409k1.pub";
 #endif
+		std::string p_pubkey_fn = Server->getServerParameter("urbackup_public_key");
+
+		if(!p_pubkey_fn.empty())
+		{
+			pubkey_fn = p_pubkey_fn;
+		}
 
 		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig2");
 	}

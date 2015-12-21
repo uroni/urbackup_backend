@@ -30,6 +30,7 @@
 #define PACKAGE_VERSION "unknown"
 #define VARDIR ""
 #define BINDIR ""
+#define DATADIR ""
 #include <direct.h>
 #endif
 
@@ -286,6 +287,10 @@ int action_run(std::vector<std::string> args)
 	real_args.push_back(pidfile_arg.getValue());
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
+	real_args.push_back("--http_root");
+	real_args.push_back(DATADIR "/urbackup/www");
+	real_args.push_back("--urbackup_public_key");
+	real_args.push_back(DATADIR "/urbackup/urbackup_ecdsa409k1.pub");
 	real_args.push_back("--snapshot_helper");
 	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 	real_args.push_back("--user");
