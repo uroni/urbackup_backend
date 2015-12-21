@@ -415,7 +415,7 @@ void IndexThread::operator()(void)
 		char action;
 		data.getChar(&action);
 		data.getVoidPtr((void**)&contractor);
-		if(action==IndexThreadAction_StartFullFileBackup)
+		if(action==IndexThreadAction_StartIncrFileBackup)
 		{
 			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
@@ -502,7 +502,7 @@ void IndexThread::operator()(void)
 				contractor->Write("error - stop_index 1");
 			}
 		}
-		else if(action==IndexThreadAction_StartIncrFileBackup)
+		else if(action==IndexThreadAction_StartFullFileBackup)
 		{
 			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
