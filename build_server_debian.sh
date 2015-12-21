@@ -5,7 +5,7 @@ set -e
 git reset --hard
 python3.3 build/replace_versions.py
 
-wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
+wget http://buildserver.urbackup.org/urbackup-debian_dev.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
 if ! test -e build_server_debian_ok
@@ -15,7 +15,7 @@ then
 	automake --add-missing || true
 	libtoolize || true
 	autoreconf --install
-	./configure --with-pychart --enable-packaging --enable-install_initd --with-mountvhd
+	./configure --enable-packaging --enable-install_initd --with-mountvhd
 	touch build_server_debian_ok
 fi
 
