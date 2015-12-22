@@ -4,18 +4,18 @@
  * public domain
  *
  * glob patterns:
- *	*	matches zero or more wchar_tacters
- *	?	matches any single wchar_tacter
- *	[set]	matches any wchar_tacter in the set
- *	[^set]	matches any wchar_tacter NOT in the set
- *		where a set is a group of wchar_tacters or ranges. a range
- *		is written as two wchar_tacters seperated with a hyphen: a-z denotes
- *		all wchar_tacters between a to z inclusive.
- *	[-set]	set matches a literal hypen and any wchar_tacter in the set
- *	[]set]	matches a literal close bracket and any wchar_tacter in the set
+ *	*	matches zero or more characters
+ *	?	matches any single character
+ *	[set]	matches any character in the set
+ *	[^set]	matches any character NOT in the set
+ *		where a set is a group of characters or ranges. a range
+ *		is written as two characters seperated with a hyphen: a-z denotes
+ *		all characters between a to z inclusive.
+ *	[-set]	set matches a literal hypen and any character in the set
+ *	[]set]	matches a literal close bracket and any character in the set
  *
  *	char	matches itself except where char is '*' or '?' or '['
- *	\char	matches char, including any pattern wchar_tacter
+ *	\char	matches char, including any pattern character
  *
  * examples:
  *	a*c		ac abc abbc ...

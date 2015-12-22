@@ -28,7 +28,7 @@ private:
 	int SESSIONID_LEN;
 	int SESSION_TIMEOUT_S;
 
-	std::vector<wchar_t> Pool;
+	std::vector<char> Pool;
 	std::map<std::string, SUser*> mSessions;
 
 	IMutex* sess_mutex;

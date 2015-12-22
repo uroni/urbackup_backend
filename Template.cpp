@@ -182,20 +182,7 @@ std::string CTemplate::getData(void)
 {
 	std::string output=data;
 	transform(output);
-	std::string ret;
-	try
-	{
-	    if( sizeof(wchar_t)==2 )
-        	utf8::utf16to8(output.begin(), output.end(), back_inserter(ret) );
-    	    else
-    		utf8::utf32to8(output.begin(), output.end(), back_inserter(ret) );
-    	}
-    	catch(...)
-    	{
-    	    Server->Log("Invalid UTF8!", LL_ERROR);
-    	}
-    		
-	return ret;
+	return output;
 }
 
 void CTemplate::transform(std::string &output)

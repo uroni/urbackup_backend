@@ -1052,7 +1052,7 @@ namespace
 {
 	std::string removeChars(std::string in)
 	{
-		wchar_t illegalchars[] = {'*', ':', '/' , '\\'};
+		char illegalchars[] = {'*', ':', '/' , '\\'};
 		std::string ret;
 		for(size_t i=0;i<in.size();++i)
 		{

@@ -95,17 +95,11 @@ void DirectoryWatcherThread::operator()(void)
 
 	while(do_stop==false)
 	{
-		std::string r;
-		pipe->Read(&r, 10000);
 		std::string msg;
-		if(r.size()/sizeof(wchar_t)>0)
-		{
-			msg.resize( r.size()/sizeof(wchar_t));
-			memcpy(&msg[0], &r[0], r.size());
-		}
+		pipe->Read(&msg, 10000);
 
 #ifdef CHANGE_JOURNAL
-		if(r.empty())
+		if(msg.empty())
 		{
 			dcw.update();
 		}
@@ -218,8 +212,7 @@ void DirectoryWatcherThread::operator()(void)
 
 void DirectoryWatcherThread::update(void)
 {
-	std::string msg="U";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("U");
 }
 
 void DirectoryWatcherThread::init_mutex(void)
@@ -232,8 +225,7 @@ void DirectoryWatcherThread::init_mutex(void)
 void DirectoryWatcherThread::update_and_wait(std::vector<std::string>& r_open_files)
 {
 	IScopedLock lock(update_mutex);
-	std::string msg="U";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("U");
 	update_cond->wait(&lock);
 
 	r_open_files.insert(r_open_files.end(), open_files.begin(), open_files.end());
@@ -242,32 +234,28 @@ void DirectoryWatcherThread::update_and_wait(std::vector<std::string>& r_open_fi
 void DirectoryWatcherThread::freeze(void)
 {
 	IScopedLock lock(update_mutex);
-	std::string msg="K";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("K");
 	update_cond->wait(&lock);
 }
 
 void DirectoryWatcherThread::unfreeze(void)
 {
 	IScopedLock lock(update_mutex);
-	std::string msg="H";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("H");
 	update_cond->wait(&lock);
 }
 
 void DirectoryWatcherThread::update_last_backup_time(void)
 {
 	IScopedLock lock(update_mutex);
-	std::string msg="t";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("t");
 	update_cond->wait(&lock);
 }
 
 void DirectoryWatcherThread::commit_last_backup_time(void)
 {
 	IScopedLock lock(update_mutex);
-	std::string msg="T";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("T");
 	update_cond->wait(&lock);
 }
 
@@ -340,8 +328,7 @@ void DirectoryWatcherThread::OnDirRm(const std::string &dir)
 void DirectoryWatcherThread::stop(void)
 {
 	do_stop=true;
-	std::string msg="Q";
-	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	pipe->Write("Q");
 }
 
 IPipe *DirectoryWatcherThread::getPipe(void)

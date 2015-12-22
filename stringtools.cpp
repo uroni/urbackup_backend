@@ -557,18 +557,6 @@ bool isletter(char ch)
 }
 
 
-//--------------------------------------------------------------------
-/**
-*/
-bool isletter(wchar_t ch)
-{
-	ch=toupper(ch);
-	if( ch<=90 && ch>=65)
-		return true;
-	else
-		return false;
-}
-
 bool next(const std::string &pData, const size_t & doff, const std::string &pStr)
 {
         for(size_t i=0;i<pStr.size();++i)

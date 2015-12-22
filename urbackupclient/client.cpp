@@ -345,7 +345,7 @@ void IndexThread::updateDirs(void)
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
 			std::string msg="A"+backup_dirs[i].path;
-			dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+			dwt->getPipe()->Write(msg);
 		}
 	}
 #endif
@@ -687,14 +687,14 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::string msg="A"+os_get_final_path(( dir ));
-				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+				std::string msg="A"+os_get_final_path(dir);
+				dwt->getPipe()->Write(msg);
 			}
 			std::string name;
 			if(data.getStr(&name))
 			{
-				std::string msg="C"+os_get_final_path(( dir ))+"|"+(name);
-				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+				std::string msg="C"+os_get_final_path(dir)+"|"+(name);
+				dwt->getPipe()->Write(msg);
 			}
 			contractor->Write("done");
 			stop_index=false;
@@ -704,14 +704,14 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::string msg="D"+os_get_final_path(( dir ));
-				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+				std::string msg="D"+os_get_final_path(dir);
+				dwt->getPipe()->Write(msg);
 			}
 			std::string name;
 			if(data.getStr(&name))
 			{
-				std::string msg="X"+os_get_final_path(( dir ))+"|"+(name);
-				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+				std::string msg="X"+os_get_final_path(dir)+"|"+(name);
+				dwt->getPipe()->Write(msg);
 			}
 			contractor->Write("done");
 			stop_index=false;
@@ -3043,10 +3043,10 @@ void IndexThread::doStop(void)
 
 size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data )
 {
-	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::string);
+	size_t add_size=path.size()+sizeof(std::string);
 	for(size_t i=0;i<data.size();++i)
 	{
-		add_size+=data[i].name.size()*sizeof(wchar_t);
+		add_size+=data[i].name.size();
 		add_size+=sizeof(SFileAndHash);
 		add_size+=data[i].hash.size();
 	}
@@ -3124,7 +3124,7 @@ void IndexThread::commitAddFilesBuffer()
 
 std::string IndexThread::removeDirectorySeparatorAtEnd(const std::string& path)
 {
-	wchar_t path_sep=os_file_sep()[0];
+	char path_sep=os_file_sep()[0];
 	if(!path.empty() && path[path.size()-1]==path_sep )
 	{
 		return path.substr(0, path.size()-1);
@@ -3134,7 +3134,7 @@ std::string IndexThread::removeDirectorySeparatorAtEnd(const std::string& path)
 
 std::string IndexThread::addDirectorySeparatorAtEnd(const std::string& path)
 {
-	wchar_t path_sep=os_file_sep()[0];
+	char path_sep=os_file_sep()[0];
 	if(!path.empty() && path[path.size()-1]!=path_sep )
 	{
 		return path+os_file_sep();
@@ -3868,7 +3868,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target )
 	if(dwt!=NULL)
 	{
 		std::string msg="A"+target;
-		dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+		dwt->getPipe()->Write(msg);
     }
 #endif
 
@@ -3910,7 +3910,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 				if(dwt!=NULL)
 				{
 					std::string msg="D"+backup_dirs[i].path;
-					dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+					dwt->getPipe()->Write(msg);
 				}
 #endif
 
