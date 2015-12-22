@@ -119,7 +119,7 @@ fsimageplugin_headers = fsimageplugin/filesystem.h fsimageplugin/FSImageFactory.
 urbackupclientctl_headers = clientctl/Connector.h clientctl/tcpstack.h
 
 if WITH_GUI_CLIENT
-client_headers = client/ConfigPath.h client/Connector.h client/escape.h client/FileSettingsReader.h client/Info.h client/Logs.h client/main.h client/resource.h client/Settings.h client/stringtools.h client/TaskBarBaloon.h client/tcpstack.h client/TrayIcon.h client/utf8/utf8.h client/utf8/utf8/checked.h client/utf8/utf8/core.h client/utf8/utf8/unchecked.h client/gui/GUI.h client/capa_bits.h client/Status.h client/json/json.h client/json/json-forwards.h
+client_headers = client/ConfigPath.h client/Connector.h client/escape.h client/FileSettingsReader.h client/Info.h client/Logs.h client/main.h client/resource.h client/Settings.h client/stringtools.h client/TaskBarBaloon.h client/tcpstack.h client/TrayIcon.h client/utf8/utf8.h client/utf8/utf8/checked.h client/utf8/utf8/core.h client/utf8/utf8/unchecked.h client/gui/GUI.h client/capa_bits.h client/Status.h client/json/json.h client/json/json-forwards.h client/TranslationHelper.h
 else
 client_headers = 
 endif
