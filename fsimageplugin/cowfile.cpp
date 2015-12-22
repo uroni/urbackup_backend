@@ -378,7 +378,7 @@ void CowFile::resizeBitmap()
 	size_t n_bits = n_blocks/8 + (n_blocks%8>0?1:0);
 	if(n_bits>bitmap.size())
 	{
-		bitmap.insert(bitmap.end(), n_bits-bitmap.size(), (unsigned char)0xFF);
+		bitmap.insert(bitmap.end(), n_bits-bitmap.size(), 0);
 	}
 }
 

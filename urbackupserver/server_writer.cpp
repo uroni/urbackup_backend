@@ -159,6 +159,7 @@ void ServerVHDWriter::operator()(void)
 
 	if(do_trim)
 	{
+		trimmed_bytes=0;
 		ServerLogger::Log(logid, "Starting trimming image file (if possible)", LL_DEBUG);
 		if(!vhd->trimUnused(mbr_offset, this))
 		{
