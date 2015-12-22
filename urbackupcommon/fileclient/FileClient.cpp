@@ -1607,8 +1607,6 @@ _u32 FileClient::FinishScript(std::string remotefn)
 			Server->Log("Timeout during sending finish script (1)", LL_ERROR);
 			return ERR_TIMEOUT;
 		}
-
-		needs_flush=true;
 	}
 	else
 	{

@@ -151,8 +151,6 @@ void PipeSessions::removeFile(const std::string& cmd)
 
 		it->second.file->forceExitWait();
 
-        it->second.input_pipe->isReadable(10000);
-
 		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
