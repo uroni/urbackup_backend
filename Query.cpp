@@ -190,11 +190,12 @@ bool CQuery::Execute(int timeoutms)
 		}
 		else if(err==SQLITE_LOCKED)
 		{
-			if(!db->isInTransaction() 
-				&& !transaction_lock && db->LockForTransaction())
+			if(transaction_lock)
 			{
-				transaction_lock=true;
-			}				
+				db->UnlockForTransaction();
+				transaction_lock=false;
+				Server->Log("UnlockForTransaction in CQuery::Execute after SQLITE_LOCKED Stmt: ["+stmt_str+"]", LL_DEBUG);
+			}			
 			if(!db->WaitForUnlock())
 			{
 				Server->Log("DEADLOCK in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_ERROR);
