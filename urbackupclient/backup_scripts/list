@@ -4,4 +4,4 @@ CDIR=`dirname $0`
 
 . $CDIR/mariadb.conf
 
-if [ "x$MARIADB_ENABLED" != "x0" ]; then echo mariadb mariadb_dump.sql; fi
+if [ "x$MARIADB_ENABLED" != "x0" ]; then echo "scriptname=mariadb&outputname=mariadb_dump.sql"; fi
