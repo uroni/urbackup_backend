@@ -76,7 +76,6 @@ if WITH_GUI_CLIENT
 	$(MKDIR_P) "$(DESTDIR)$(datadir)/urbackup"
 	$(INSTALL_DATA) $(srcdir)/client/data/*.png "$(DESTDIR)$(datadir)/urbackup/"
 	$(INSTALL_DATA) $(srcdir)/client/data/*.xpm "$(DESTDIR)$(datadir)/urbackup/"
-	$(INSTALL_DATA) $(srcdir)/client/data/*.ico "$(DESTDIR)$(datadir)/urbackup/"
 	$(INSTALL_DATA) $(srcdir)/client/info.txt "$(DESTDIR)$(datadir)/urbackup/"
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/it
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/pl
