@@ -26,6 +26,7 @@ private:
 	enum ParseState
 	{
 		ParseState_Type,
+		ParseState_TypeFinish,
 		ParseState_Quote,
 		ParseState_Name,
 		ParseState_NameEscape,

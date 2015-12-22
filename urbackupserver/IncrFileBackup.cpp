@@ -788,7 +788,7 @@ bool IncrFileBackup::doFileBackup()
 					{
 						std::string symlink_path = backuppath+local_curr_os_path;
 
-						if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), true))
+						if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), false))
 						{
 							ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
 							c_has_error=true;

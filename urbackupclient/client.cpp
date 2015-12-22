@@ -1349,7 +1349,15 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false);
 				}
 
-				outfile << "d\"..\"\n";
+				if(!with_proper_symlinks)
+				{
+					outfile << "d\"..\"\n";
+				}
+				else
+				{
+					outfile << "u\n";
+				}
+				
 
 				if(!b)
 				{
@@ -1373,7 +1381,14 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 
 	if(close_dir)
 	{
-		outfile << "d\"..\"\n";
+		if(!with_proper_symlinks)
+		{
+			outfile << "d\"..\"\n";
+		}
+		else
+		{
+			outfile << "u\n";
+		}
 	}
 
 	return has_include;
@@ -3758,7 +3773,7 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 			outfile << "f\"" << (scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum << "\n";	
 		}
 
-		outfile << "d\"..\"\n";
+		outfile << "u\n";
 
 		return true;
 	}

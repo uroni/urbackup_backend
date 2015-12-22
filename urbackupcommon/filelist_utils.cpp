@@ -87,7 +87,7 @@ void writeFileItem(IFile* f, SFile cf, size_t* written, size_t* change_identicat
 		}
 		else
 		{
-			std::string towrite="d\""+escapeListName((cf.name))+"\"\n";
+			std::string towrite="u\n";
 			
 			writeFileRepeat(f, towrite);
 
@@ -130,7 +130,7 @@ void writeFileItem(IFile* f, SFile cf, std::string extra)
 		}
 		else
 		{
-			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\""+extra+"\n");
+			writeFileRepeat(f, "u\n");
 		}
 		
 	}
@@ -148,12 +148,42 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 	{
 	case ParseState_Type:
 		if(ch=='f')
+		{
 			data.isdir=false;
+			state=ParseState_Quote;
+		}
 		else if(ch=='d')
+		{
 			data.isdir=true;
+			state=ParseState_Quote;
+		}
+		else if(ch=='u')
+		{
+			data.isdir=true;
+			state=ParseState_TypeFinish;
+		}
 		else
+		{
 			Server->Log("Error parsing file BackupServerGet::getNextEntry - 1", LL_ERROR);
-		state=ParseState_Quote;
+		}
+		break;
+	case ParseState_TypeFinish:
+		if(ch=='\n')
+		{
+			data.name="..";
+			data.last_modified=0;
+			data.size = 0;
+			reset();
+			if(extra!=NULL)
+			{
+				extra->clear();
+			}
+			return true;
+		}
+		else
+		{
+			Server->Log("Error parsing file BackupServerGet::getNextEntry - 2", LL_ERROR);
+		}
 		break;
 	case ParseState_Quote:
 		//"

@@ -431,7 +431,7 @@ bool FullFileBackup::doFileBackup()
                     if(sym_target!=extra_params.end())
                     {
                         std::string symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
-                        if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), true))
+                        if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), false))
                         {
                             ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
                             c_has_error=true;
