@@ -526,6 +526,8 @@ void ServerCleanupThread::do_remove_unknown(void)
 					{
 						Server->Log("Could not delete file \""+rm_file+".hash\"", LL_ERROR);
 					}
+					Server->deleteFile(rm_file+".bitmap");
+					Server->deleteFile(rm_file+".cbitmap");
 				}
 			}
 		}
@@ -585,6 +587,8 @@ bool ServerCleanupThread::deleteImage(std::string path)
 	{
 		b=false;
 	}
+	deleteAndTruncateFile(path+".bitmap");
+	deleteAndTruncateFile(path+".cbitmap");
 	return b;
 }
 

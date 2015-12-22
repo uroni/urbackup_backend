@@ -727,10 +727,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					
 					if(transfer_bitmap)
 					{
-						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+".bitmap"), MODE_WRITE));
+						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+".cbitmap"), MODE_WRITE));
 						if(bitmap_file.get()==NULL)
 						{
-							ServerLogger::Log(logid, "Error opening bitmap file \""+imagefn+".bitmap\"", LL_ERROR);
+							ServerLogger::Log(logid, "Error opening bitmap file \""+imagefn+".cbitmap\"", LL_ERROR);
 							goto do_image_cleanup;
 						}
 						else

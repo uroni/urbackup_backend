@@ -135,7 +135,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 
 	struct stat64 statbuf;
-	int rc = stat64((parent_fn).c_str(), &statbuf);
+	int rc = stat64(parent_fn.c_str(), &statbuf);
 	if(rc==0)
 	{
 		filesize = statbuf.st_size;
@@ -155,7 +155,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 		}
 		else if(!read_only)
 		{
-			is_open = loadBitmap((parent_fn)+".bitmap");
+			is_open = loadBitmap(parent_fn+".bitmap");
 		}
 		else
 		{
@@ -372,6 +372,16 @@ void CowFile::setupBitmap()
 	bitmap.resize(n_bits);
 }
 
+void CowFile::resizeBitmap()
+{
+	uint64 n_blocks = filesize/blocksize+(filesize%blocksize>0?1:0);
+	size_t n_bits = n_blocks/8 + (n_blocks%8>0?1:0);
+	if(n_bits>bitmap.size())
+	{
+		bitmap.insert(bitmap.end(), n_bits-bitmap.size(), (unsigned char)0xFF);
+	}
+}
+
 bool CowFile::isBitmapSet(uint64 offset)
 {
 	uint64 block=offset/blocksize;
@@ -437,6 +447,8 @@ bool CowFile::loadBitmap(const std::string& bitmap_fn)
 	{
 		return false;
 	}
+	
+	resizeBitmap();
 
 	return true;
 }

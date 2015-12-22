@@ -34,8 +34,8 @@ private:
 	void setBitmapRange(uint64 offset_start, uint64 offset_end, bool v);
 	bool saveBitmap();
 	bool loadBitmap(const std::string& bitmap_fn);
+	void resizeBitmap();
 	bool setUnused(_i64 unused_start, _i64 unused_end);
-
 
 	int fd;
 	std::string filename;
