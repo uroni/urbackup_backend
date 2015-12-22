@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=1004011000;
+g.current_version=1004012000;
 g.status_show_all=false;
 g.datatable_default_config={};
 
