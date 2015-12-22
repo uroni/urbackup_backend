@@ -1000,7 +1000,7 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, errmsg, timeout, logerr, max_loglevel);
+		res = sendClientMessage(msg, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel);
 
 		if(res.empty())
 		{
@@ -1096,7 +1096,7 @@ bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::strin
 	do
 	{
 		int64 starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, max_loglevel, retok_err, retok_str);
+		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, retry>0 ? LL_DEBUG : max_loglevel, retok_err, retok_str);
 
 		if(!res)
 		{
