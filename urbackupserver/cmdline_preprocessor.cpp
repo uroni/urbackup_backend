@@ -196,6 +196,17 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(val);
 			}
 		}
+
+		if(settings->getValue("HTTP_SERVER", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--http_server");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -237,6 +248,8 @@ int action_run(std::vector<std::string> args)
 		cmd, false);
 
 	TCLAP::SwitchArg daemon_arg("d", "daemon", "Daemonize process", cmd, false);
+
+	TCLAP::SwitchArg disable_http_server_arg("e", "disable-http-server", "Do not start internal HTTP-server", cmd, false);
 
 	TCLAP::ValueArg<std::string> pidfile_arg("w", "pidfile",
 		"Save pid of daemon in file",
@@ -334,6 +347,11 @@ int action_run(std::vector<std::string> args)
 	if(no_console_time_arg.getValue())
 	{
 		real_args.push_back("--log_console_no_time");
+	}
+	if(std::find(real_args.begin(), real_args.end(), "--http_server")==real_args.end())
+	{
+		real_args.push_back("--http_server");
+		real_args.push_back(disable_http_server_arg.getValue() ? "false" : "true");
 	}
 
 #ifndef _WIN32

@@ -58,6 +58,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
 
+	if(Server->getServerParameter("http_server")!="true")
+	{
+		return;
+	}
+
 	CHTTPClient::init_mutex();
 
 	add_default_mimetypes();
@@ -105,6 +110,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
+	if(Server->getServerParameter("http_server")!="true")
+	{
+		return;
+	}
+
 	if(Server->getServerParameter("leak_check")=="true")
 	{
 		CHTTPClient::destroy_mutex();

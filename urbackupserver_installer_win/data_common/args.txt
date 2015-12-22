@@ -20,3 +20,5 @@ true
 urbackup\www
 --http_port
 55414
+--http_server
+true

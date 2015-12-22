@@ -10,6 +10,9 @@ FASTCGI_PORT=55413
 #Port for the web interface
 HTTP_PORT=55414
 
+#Enable internal HTTP server
+HTTP_SERVER="true"
+
 #log file name
 LOGFILE="/var/log/urbackup.log"
 
