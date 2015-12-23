@@ -56,14 +56,19 @@ bool TreeReader::readTree(const std::string &fn)
 				if(ch=='f' || ch=='d')
 				{
 					ltype = ch;
+					state = 1;
+				}
+				else if(ch=='u')
+				{
+					state = 10;
+					ltype = 'd';
+					name = "..";
 				}
 				else
 				{
 					Log("Error parsing file readTree - 0");
 					return false;
 				}
-
-				state=1;
 				break;
 			case 1:
 				//"
@@ -180,18 +185,23 @@ bool TreeReader::readTree(const std::string &fn)
 					if(ch=='f')
 					{
 						data+='f';
+						state=1;
 					}
 					else if(ch=='d')
 					{
 						data+='d';
+						state=1;
+					}
+					else if(ch=='u')
+					{
+						name="..";
+						state=10;
 					}
 					else
 					{
 						Log("Error parsing file readTree - 1");
 						return false;
-					}
-
-					state=1;
+					}					
 					break;
 				case 1:
 					//"
