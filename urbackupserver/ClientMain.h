@@ -164,7 +164,7 @@ public:
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
 
-	void updateClientAddress(const std::string& address_data, bool& switch_to_internet_connection);
+	void updateClientAddress(const std::string& address_data);
 
 	IPipe* getInternalCommandPipe()
 	{

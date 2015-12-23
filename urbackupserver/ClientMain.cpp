@@ -740,22 +740,7 @@ void ClientMain::operator ()(void)
 		else if(msg=="START IMAGE FULL") do_full_image_now=true;
 		else if(next(msg, 0, "address"))
 		{
-			IScopedLock lock(clientaddr_mutex);
-			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
-			bool prev_internet_connection = internet_connection;
-			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
-
-			if(prev_internet_connection!=internet_connection)
-			{
-				IScopedLock lock(throttle_mutex);
-
-				if(client_throttler!=NULL)
-				{
-					client_throttler->changeThrottleUpdater(new
-						ThrottleUpdater(clientid, internet_connection?
-							ThrottleScope_Internet:ThrottleScope_Local));
-				}				
-			}
+			updateClientAddress(msg.substr(7));
 
 			tcpstack.setAddChecksum(internet_connection);
 
@@ -2396,32 +2381,23 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 
 
 
-void ClientMain::updateClientAddress(const std::string& address_data, bool& switch_to_internet_connection)
+void ClientMain::updateClientAddress(const std::string& address_data)
 {
 	IScopedLock lock(clientaddr_mutex);
-	memcpy(&clientaddr, &address_data[0], sizeof(sockaddr_in) );
+	memcpy(&clientaddr, address_data.data(), sizeof(sockaddr_in));
 	bool prev_internet_connection = internet_connection;
-	internet_connection=(address_data[sizeof(sockaddr_in)]==0)?false:true;
+	internet_connection = (address_data[sizeof(sockaddr_in)] == 0) ? false : true;
 
-	if(prev_internet_connection!=internet_connection)
+	if (prev_internet_connection != internet_connection)
 	{
 		IScopedLock lock(throttle_mutex);
 
-		if(client_throttler!=NULL)
+		if (client_throttler != NULL)
 		{
 			client_throttler->changeThrottleUpdater(new
-				ThrottleUpdater(clientid, internet_connection?
-					ThrottleScope_Internet:ThrottleScope_Local));
-		}		
-	}
-
-	if(internet_connection && server_settings->getSettings()->internet_image_backups )
-	{
-		switch_to_internet_connection=true;
-	}
-	else
-	{
-		switch_to_internet_connection=false;
+				ThrottleUpdater(clientid, internet_connection ?
+					ThrottleScope_Internet : ThrottleScope_Local));
+		}
 	}
 }
 

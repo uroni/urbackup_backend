@@ -446,6 +446,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	Server->getThreadPool()->execute(running_updater);
 	unsigned char verify_checksum[sha_size];
 	bool warned_about_parenthashfile_error=false;
+	bool internet_connection = client_main->isOnInternetConnection();
 
 	bool has_parent=false;
 	if(!pParentvhd.empty())
@@ -513,32 +514,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
 					}
+
+					if (!internet_connection && client_main->isOnInternetConnection())
+					{
+						ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
+						goto do_image_cleanup;
+					}
+
 					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
 					cc=client_main->getClientCommandConnection(10000);
 					if(cc==NULL)
 					{
-						std::string msg;
-						std::vector<std::string> msgs;
-						while(client_main->getInternalCommandPipe()->Read(&msg, 0)>0)
-						{
-							if(msg.find("address")==0)
-							{
-								bool switch_to_internet_connection=false;
-								client_main->updateClientAddress(msg.substr(7), switch_to_internet_connection);
-								if(switch_to_internet_connection)
-								{
-									ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
-									goto do_image_cleanup;
-								}
-							}
-							else
-							{
-								msgs.push_back(msg);
-							}
-						}
-						for(size_t i=0;i<msgs.size();++i)
-							client_main->getInternalCommandPipe()->Write(msgs[i]);
-
 						Server->wait(60000);
 					}
 					else
