@@ -277,6 +277,8 @@ void ClientMain::operator ()(void)
 	{
 		if(!authenticateIfNeeded())
 		{
+			pipe->Write("ok");
+			delete this;
 			return;
 		}
 	}
@@ -759,7 +761,7 @@ void ClientMain::operator ()(void)
 
 			if(!authenticateIfNeeded())
 			{
-				return;
+				skip_checking=true;
 			}
 		}
 		else if(msg=="WAKEUP")
@@ -2576,8 +2578,7 @@ bool ClientMain::authenticateIfNeeded()
 			if(msg=="exit" || msg=="exitnow")
 			{
 				Server->Log("client_main Thread for client \""+clientname+"\" finished and the authentification failed", LL_INFO);
-				pipe->Write("ok");
-				delete this;
+				pipe->Write(msg);
 				return false;
 			}
 
