@@ -869,6 +869,28 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 		it!=dl_queue.end();++it)
 	{
+		if (it->action == EQueueAction_Fileclient &&
+			!it->queued && it->fileclient == EFileClient_Chunked)
+		{
+			if (it->patch_dl_files.prepare_error)
+			{
+				continue;
+			}
+
+			if (!it->patch_dl_files.prepared)
+			{
+				bool full_dl;
+				it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
+
+				if (it->patch_dl_files.orig_file == NULL &&
+					full_dl)
+				{
+					it->fileclient = EFileClient_Full;
+					queue_size -= queue_items_chunked - queue_items_full;
+				}
+			}
+		}
+
 		if(it->action==EQueueAction_Fileclient && 
 			!it->queued && it->fileclient==EFileClient_Full )
 		{
