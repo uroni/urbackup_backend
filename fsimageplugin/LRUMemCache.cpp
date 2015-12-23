@@ -109,7 +109,7 @@ void LRUMemCache::evict( SCacheItem& item, bool deleteBuffer )
 	}
 	if(deleteBuffer)
 	{
-		delete item.buffer;
+		delete[] item.buffer;
 	}
 }
 
