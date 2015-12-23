@@ -874,7 +874,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			}
 			if(transfer_state==ETransferState_Bitmap)
 			{
-				size_t bitmap_size = totalblocks/8;
+				size_t bitmap_size = static_cast<size_t>(totalblocks/8);
 				if(totalblocks%8!=0)
 				{
 					++bitmap_size;
@@ -1014,9 +1014,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								goto do_image_cleanup;
 							}
 						}
-						else
+						else if(nextblock-currblock>vhd_blocksize)
 						{
-							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+convert(nextblock)+" got "+convert(currblock)+". Stopping image backup.", LL_ERROR);
+							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+convert(nextblock-vhd_blocksize-1)+" got "+convert(currblock)+". Stopping image backup.", LL_ERROR);
 							goto do_image_cleanup;
 						}
 
