@@ -966,12 +966,12 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 		image_inf.no_shadowcopy=false;
 
-		if(image_inf.image_letter=="SYSVO"
+		if(image_inf.image_letter=="SYSVOL"
 			|| image_inf.image_letter=="ESP")
 		{
 			std::string mpath;
 			std::string sysvol;
-			if(image_inf.image_letter=="SYSVO")
+			if(image_inf.image_letter=="SYSVOL")
 			{
 				sysvol=getSysVolumeCached(mpath);
 			}
@@ -1166,7 +1166,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 
 	std::string dl=params["driveletter"];
 
-	if(dl=="SYSVO")
+	if(dl=="SYSVOL")
 	{
 		std::string mpath;
 		dl=getSysVolumeCached(mpath);
