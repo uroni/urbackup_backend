@@ -37,7 +37,7 @@ ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& c
 void ServerPingThread::operator()(void)
 {
 	int64 last_ping_ok=Server->getTimeMS();
-	while(stop==false)
+	while(!stop)
 	{
 		//Server->Log("Sending ping running...", LL_DEBUG);
 		std::string pcdone;
@@ -90,7 +90,10 @@ void ServerPingThread::operator()(void)
 
 		Server->wait(ping_intervall);
 	}
-	Server->wait(1000);
+	while(!stop)
+	{
+		Server->wait(1000);
+	}
 	delete this;
 }
 
