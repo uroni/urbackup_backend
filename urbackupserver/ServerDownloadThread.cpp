@@ -928,8 +928,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 			it!=dl_queue.end();++it)
 		{
 			if(it->action==EQueueAction_Fileclient && 
-				!it->queued && it->fileclient==EFileClient_Chunked
-				&& it->predicted_filesize>0)
+				!it->queued && it->fileclient==EFileClient_Chunked)
 			{
 				if(it->patch_dl_files.prepare_error)
 				{

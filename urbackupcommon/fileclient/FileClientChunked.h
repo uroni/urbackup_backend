@@ -13,7 +13,8 @@ class IFile;
 class IPipe;
 class CTCPStack;
 
-const unsigned int c_max_queued_chunks=100;
+const unsigned int c_max_queued_chunks=1000;
+const unsigned int c_queued_chunks_low=100;
 
 enum EChunkedState
 {
@@ -233,6 +234,8 @@ private:
 
 	FileClientChunked::QueueCallback* queue_callback;
 	bool queue_only;
+
+	bool queue_next;
 
 	std::vector<char> initial_bytes;
 

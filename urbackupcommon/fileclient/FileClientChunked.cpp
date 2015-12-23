@@ -65,7 +65,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0),
 	  parent(prev), queue_only(false), queue_callback(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0),
 	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false), needs_flush(false),
-	  real_transferred_bytes(0)
+	  real_transferred_bytes(0), queue_next(false)
 {
 	has_error=false;
 	if(parent==NULL)
@@ -81,7 +81,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 FileClientChunked::FileClientChunked(void)
 	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000), received_data_bytes(0),
 	  parent(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
-	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0)
+	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0), queue_next(false)
 {
 	has_error=true;
 	mutex=NULL;
@@ -155,7 +155,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 	remote_filename=remotefn;
 	curr_file_id = file_id;
 
-	if(pipe==NULL)
+	if(getPipe()==NULL)
 		return ERR_ERROR;
 
 	_i64 fileoffset=0;
@@ -241,9 +241,16 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		num_total_chunks=0;
 	}
 
+	size_t queued_chunks_low = c_queued_chunks_low;
+
+	if(queue_only)
+	{
+		queued_chunks_low = c_max_queued_chunks;
+	}
+
 	do
 	{
-		if(queuedChunks()<c_max_queued_chunks && remote_filesize!=-1 && next_chunk<num_total_chunks)
+		if(queuedChunks()<queued_chunks_low && remote_filesize!=-1 && next_chunk<num_total_chunks)
 		{		
 			while(queuedChunks()<c_max_queued_chunks && next_chunk<num_total_chunks)
 			{
@@ -321,69 +328,114 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		}
 
 		if( ( ( parent==NULL && queued_fcs.empty() ) || !did_queue_fc )
-			&& queuedChunks()<c_max_queued_chunks && next_chunk>=num_total_chunks
+			&& queuedChunks()<queued_chunks_low && next_chunk>=num_total_chunks
 			&& remote_filesize!=-1)
 		{
-			std::string remotefn;
-			IFile* orig_file;
-			IFile* patchfile;
-			IFile* chunkhashes;
-			IFile* hashoutput;
-			_i64 predicted_filesize;
-			int64 file_id;
-
-			if(queue_callback && 
-				getPipe()->isWritable() &&
-				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id) )
+			if(queue_only)
 			{
-				did_queue_fc=true;
-
-				FileClientChunked* next = new FileClientChunked(NULL, false, stack, reconnection_callback,
-					nofreespace_callback, identity, parent?parent:this);
-
-				if(parent)
+				queue_next=true;
+			}
+			else
+			{
+				FileClientChunked* prev=NULL;
+				bool has_next=true;
+				while(has_next)
 				{
-					parent->queued_fcs.push_back(next);
-				}
-				else
-				{
-					queued_fcs.push_back(next);
-				}
+					has_next=false;
 
-				next->setQueueCallback(queue_callback);
-				next->setProgressLogCallback(progress_log_callback);
+					std::string remotefn;
+					IFile* orig_file;
+					IFile* patchfile;
+					IFile* chunkhashes;
+					IFile* hashoutput;
+					_i64 predicted_filesize;
+					int64 file_id;
 
-				next->setQueueOnly(true);
-				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id)!=ERR_SUCCESS)
-				{
-					std::deque<FileClientChunked*>::iterator iter;
-					if(parent)
+					if(queue_callback && 
+						getPipe()->isWritable() &&
+						queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id) )
 					{
-						iter = std::find(parent->queued_fcs.begin(), parent->queued_fcs.end(), next);
-						if(iter!=parent->queued_fcs.end())
+						if(prev==NULL)
 						{
-							parent->queued_fcs.erase(iter);
+							did_queue_fc=true;
+						}
+						else
+						{
+							prev->did_queue_fc=true;
+						}
+						
+
+						FileClientChunked* next = new FileClientChunked(NULL, false, stack, reconnection_callback,
+							nofreespace_callback, identity, parent?parent:this);
+
+						if(parent)
+						{
+							parent->queued_fcs.push_back(next);
+						}
+						else
+						{
+							queued_fcs.push_back(next);
+						}
+
+						next->setQueueCallback(queue_callback);
+						next->setProgressLogCallback(progress_log_callback);
+
+						next->setQueueOnly(true);
+						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id)!=ERR_SUCCESS)
+						{
+							std::deque<FileClientChunked*>::iterator iter;
+							if(parent)
+							{
+								iter = std::find(parent->queued_fcs.begin(), parent->queued_fcs.end(), next);
+								if(iter!=parent->queued_fcs.end())
+								{
+									parent->queued_fcs.erase(iter);
+								}
+							}
+							else
+							{
+								iter = std::find(queued_fcs.begin(), queued_fcs.end(), next);
+								if(iter!=queued_fcs.end())
+								{
+									queued_fcs.erase(iter);
+								}
+							}
+							delete next;
+							if(prev==NULL)
+							{
+								did_queue_fc=false;
+							}
+							else
+							{
+								prev->did_queue_fc=false;
+							}
+
+							queue_callback->unqueueFileChunked(remotefn);
+						}
+						else
+						{
+							next->setQueueOnly(false);
+
+							if(prev==NULL)
+							{
+								needs_flush=false;
+							}
+							else
+							{
+								prev->needs_flush=false;
+							}
+							
+
+							if(next->queue_next)
+							{
+								has_next=true;
+								prev=next;
+							}
 						}
 					}
-					else
-					{
-						iter = std::find(queued_fcs.begin(), queued_fcs.end(), next);
-						if(iter!=queued_fcs.end())
-						{
-							queued_fcs.erase(iter);
-						}
-					}
-					delete next;
-					did_queue_fc=false;
-
-					queue_callback->unqueueFileChunked(remotefn);
-				}
-				else
-				{
-					next->setQueueOnly(false);
-					needs_flush=false;
 				}
 			}
+			
 		}
 
 		if(needs_flush)
