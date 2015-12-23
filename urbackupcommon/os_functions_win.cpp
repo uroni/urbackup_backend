@@ -84,23 +84,6 @@ namespace
 		};
 	} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
-	typedef struct {
-		DWORD         RecordLength;
-		WORD          MajorVersion;
-		WORD          MinorVersion;
-		BYTE          FileReferenceNumber[16];
-		BYTE          ParentFileReferenceNumber[16];
-		USN           Usn;
-		LARGE_INTEGER TimeStamp;
-		DWORD         Reason;
-		DWORD         SourceInfo;
-		DWORD         SecurityId;
-		DWORD         FileAttributes;
-		WORD          FileNameLength;
-		WORD          FileNameOffset;
-		WCHAR         FileName[1];
-	} USN_RECORD_V3, *PUSN_RECORD_V3;
-
 }
 
 

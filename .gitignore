@@ -237,3 +237,4 @@ urbackupserver/www/templates.js.new
 clientctl/Release/*
 urbackup/UrBackupUpdate.sig2
 backup_scripts/*
+.vs/UrBackupBackend/v14/.suo

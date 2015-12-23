@@ -1,13 +1,10 @@
 #pragma once
 #define NO_INTERFACE
 
-#ifdef THREAD_BOOST
-#	include <boost/thread/thread.hpp>
-#else
 #ifdef _WIN32
+#	include <thread>
 #else
 #	include <pthread.h>
-#endif
 #endif
 
 #include "Interface/Server.h"
@@ -228,7 +225,7 @@ private:
 
 	THREAD_ID curr_thread_id;
 #ifdef THREAD_BOOST
-	std::map<boost::thread::id, THREAD_ID> threads;
+	std::map<std::thread::id, THREAD_ID> threads;
 #else
 #ifdef _WIN32
 #else

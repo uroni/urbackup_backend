@@ -60,21 +60,16 @@
 
 
 
-#ifdef THREAD_BOOST
-#include <boost/thread/thread.hpp>
-#include <boost/thread/xtime.hpp>
-#include <boost/bind.hpp>
-#include "Mutex_boost.h"
-#include "Condition_boost.h"
-#include "SharedMutex_boost.h"
-#else
 #ifdef _WIN32
+#include <condition_variable>
+#include "Mutex_std.h"
+#include "Condition_std.h"
+#include "SharedMutex_std.h"
 #else
 #include <pthread.h>
 #include "Mutex_lin.h"
 #include "Condition_lin.h"
 #include "SharedMutex_lin.h"
-#endif
 #endif
 
 #ifdef _WIN32
@@ -775,8 +770,8 @@ THREAD_ID CServer::getThreadID(void)
 #ifdef THREAD_BOOST
 	IScopedLock lock(thread_mutex);
 	
-	boost::thread::id ct=boost::this_thread::get_id();
-	std::map<boost::thread::id, THREAD_ID>::iterator iter=threads.find(ct);
+	std::thread::id ct = std::this_thread::get_id();
+	std::map<std::thread::id, THREAD_ID>::iterator iter=threads.find(ct);
 	
 	if(iter!=threads.end() )
 	{
@@ -787,7 +782,7 @@ THREAD_ID CServer::getThreadID(void)
 	if( curr_thread_id>=MAX_THREAD_ID )
 		curr_thread_id=0;
 
-	threads.insert( std::pair<boost::thread::id, THREAD_ID>( ct, curr_thread_id) );
+	threads.insert( std::pair<std::thread::id, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
 #else
@@ -1237,12 +1232,9 @@ void* thread_helper_f(void * t)
 
 void CServer::createThread(IThread *thread)
 {
-#ifdef THREAD_BOOST
-	boost::thread tr(thread_helper_f, thread);
-	tr.yield();
-#else
 #ifdef _WIN32
-	
+	std::thread tr(thread_helper_f, thread);
+	tr.detach();
 #else
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
@@ -1257,7 +1249,6 @@ void CServer::createThread(IThread *thread)
 
 	pthread_attr_destroy(&attr);
 #endif
-#endif //THREAD_BOOST
 }
 
 IThreadPool *CServer::getThreadPool(void)

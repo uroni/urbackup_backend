@@ -20,14 +20,13 @@
 #include "ThreadPool.h"
 #include <windows.h>
 
-#include <boost/thread/mutex.hpp>
-
 #include <iostream>
+#include <mutex>
 
 using namespace std;
 
 std::deque<int> rands;
-boost::mutex gmutex;
+std::mutex gmutex;
 
 class Test1 : public IThread
 {
@@ -38,7 +37,7 @@ public:
 		int s;
 
 		{
-			boost::mutex::scoped_lock lock(gmutex);
+			std::lock_guard<std::mutex> lock(gmutex);
 			s=rands.front()%60000+2000;
 			rands.erase( rands.begin() );
 		}

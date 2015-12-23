@@ -16,45 +16,30 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#include "Condition_boost.h"
-#include "Mutex_boost.h"
+#include "Condition_std.h"
+#include "Mutex_std.h"
 #include "Server.h"
 
 void CCondition::wait(IScopedLock *lock, int timems)
 {
-	boost::recursive_mutex::scoped_lock *tl=((CLock*)lock->getLock())->getLock();
+	std::unique_lock<std::recursive_mutex> *tl=((CLock*)lock->getLock())->getLock();
 
-	if(timems<0)
+	if (timems < 0)
+	{
 		cond.wait(*tl);
+	}
 	else
 	{
-		cond.timed_wait(*tl, getWaitTime(timems));
+		cond.wait_for(*tl, std::chrono::milliseconds(timems));
 	}
 }
 
-boost::xtime CCondition::getWaitTime(int timeoutms)
-{
-	boost::xtime xt;
-#if BOOST_VERSION < 105000
-    xtime_get(&xt, boost::TIME_UTC);
-#else
-	xtime_get(&xt, boost::TIME_UTC_);
-#endif
-	if( timeoutms>1000 )
-	{
-		xt.sec+=timeoutms/1000;
-		timeoutms=timeoutms%1000;
-	}
-	xt.nsec+=timeoutms*1000000;
-	return xt;
-}
-
-void CCondition::notify_one(void)
+void CCondition::notify_one()
 {
 	cond.notify_one();
 }
 
-void CCondition::notify_all(void)
+void CCondition::notify_all()
 {
 	cond.notify_all();
 }
