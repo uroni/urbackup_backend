@@ -513,12 +513,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						transferred_bytes+=cc->getTransferedBytes();
 						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
+						cc = NULL;
 					}
 
 					if (!internet_connection && client_main->isOnInternetConnection())
 					{
-						ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
-						goto do_image_cleanup;
+						Server->wait(60000);
+						if(client_main->isOnInternetConnection())
+						{
+							ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
+							goto do_image_cleanup;
+						}						
 					}
 
 					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
