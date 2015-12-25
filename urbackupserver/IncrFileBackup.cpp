@@ -1114,6 +1114,8 @@ bool IncrFileBackup::doFileBackup()
 							{
 								has_all_metadata=false;
 
+								Server->Log("Metadata of \"" + cf.name + "\" is missing", LL_DEBUG);
+
 								if(cf.last_modified==0)
 								{
 									cf.last_modified+=1;
@@ -1147,6 +1149,7 @@ bool IncrFileBackup::doFileBackup()
 
 						if(metadata_missing)
 						{
+							Server->Log("Metadata of \"" + cf.name + "\" is missing", LL_DEBUG);
 							has_all_metadata=false;
 						}
 
