@@ -63,7 +63,7 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedistInstalled64:
-		File "deps\redist\vc_redist_2015.x64.exe"
+		File "..\deps\redist\vc_redist_2015.x64.exe"
 		ExecWait '"$TEMP\vc_redist_2015.x64.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
@@ -94,7 +94,7 @@ Section "install"
 				; Delete '$TEMP\vcredist_x86.exe'
 			; ${EndIf}
 		; ${EndIf}
-		File "deps\redist\vc_redist_2015.x86.exe"
+		File "..\deps\redist\vc_redist_2015.x86.exe"
 		ExecWait '"$TEMP\vc_redist_2015.x86.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
