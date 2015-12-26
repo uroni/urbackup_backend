@@ -63,24 +63,26 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedistInstalled64:
-		; Push $R0
-   		; ClearErrors
-   		; ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{8220EEFE-38CD-377E-8595-13398D740ACE}" "Version"
-	   	; IfErrors 0 VSRedist90Installed64
-		; inetc::get "http://www.urserver.de/vc90/vcredist_x64.exe" $TEMP\vcredist_x64.exe
-		; Pop $0
-		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
-		; Delete '$TEMP\vcredist_x64.exe'
-; VSRedist90Installed64:
-		File "vcredist\vcredist_2010sp1_x64.exe"
-		ExecWait '"$TEMP\vcredist_2010sp1_x64.exe" /q /norestart'
-		File "vcredist\idndl.amd64.exe"
-		${If} ${IsWinXP}
-			ExecWait '"$TEMP\idndl.amd64.exe" /q /norestart'
+		File "deps\redist\vc_redist_2015.x64.exe"
+		ExecWait '"$TEMP\vc_redist_2015.x64.exe" /q /norestart' $0
+		${If} $0 != '0'
+		${If} $0 != '3010'
+		${If} $0 != '8192'
+		${If} $0 != '1641'
+		${If} $0 != '1046'
+			ExecWait '"$TEMP\vc_redist_2015.x64.exe" /passive /norestart' $0
+			${If} $0 != '0'
+			${If} $0 != '3010'
+				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				Quit
+			${EndIf}
+			${EndIf}
 		${EndIf}
-		${If} ${IsWin2003}
-			ExecWait '"$TEMP\idndl.amd64.exe" /q /norestart'
 		${EndIf}
+		${EndIf}
+		${EndIf}
+		${EndIf}
+			
 	${Else}
 		; ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\10.0\VC\Runtimes\x86" 'Installed'
 		; ${If} $0 != '1'
@@ -92,23 +94,24 @@ Section "install"
 				; Delete '$TEMP\vcredist_x86.exe'
 			; ${EndIf}
 		; ${EndIf}
-		; Push $R0
-   		; ClearErrors
-   		; ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{9A25302D-30C0-39D9-BD6F-21E6EC160475}" "Version"
-	   	; IfErrors 0 VSRedist90Installed86
-		; inetc::get "http://www.urserver.de/vc90/vcredist_x86.exe" $TEMP\vcredist_x86.exe
-		; Pop $0
-		; ExecWait '"$TEMP\vcredist_x86.exe" /q'  
-		; Delete '$TEMP\vcredist_x86.exe'
-; VSRedist90Installed86:
-		File "vcredist\vcredist_2010sp1_x86.exe"
-		ExecWait '"$TEMP\vcredist_2010sp1_x86.exe" /q /norestart'
-		File "vcredist\idndl.x86.exe"
-		${If} ${IsWinXP}
-			ExecWait '"$TEMP\idndl.x86.exe" /q /norestart'
+		File "deps\redist\vc_redist_2015.x86.exe"
+		ExecWait '"$TEMP\vc_redist_2015.x86.exe" /q /norestart' $0
+		${If} $0 != '0'
+		${If} $0 != '3010'
+		${If} $0 != '8192'
+		${If} $0 != '1641'
+		${If} $0 != '1046'
+			ExecWait '"$TEMP\vc_redist_2015.x86.exe"  /passive /norestart' $0
+			${If} $0 != '0'
+			${If} $0 != '3010'
+				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				Quit
+			${EndIf}
+			${EndIf}
 		${EndIf}
-		${If} ${IsWin2003}
-			ExecWait '"$TEMP\idndl.x86.exe" /q /norestart'
+		${EndIf}
+		${EndIf}
+		${EndIf}
 		${EndIf}
 	${EndIf}
 	
