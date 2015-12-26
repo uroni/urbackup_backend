@@ -84,6 +84,25 @@ namespace
 		};
 	} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
+	namespace usn
+	{
+		typedef struct {
+			DWORD         RecordLength;
+			WORD          MajorVersion;
+			WORD          MinorVersion;
+			BYTE          FileReferenceNumber[16];
+			BYTE          ParentFileReferenceNumber[16];
+			USN           Usn;
+			LARGE_INTEGER TimeStamp;
+			DWORD         Reason;
+			DWORD         SourceInfo;
+			DWORD         SecurityId;
+			DWORD         FileAttributes;
+			WORD          FileNameLength;
+			WORD          FileNameOffset;
+			WCHAR         FileName[1];
+		} USN_RECORD_V3, *PUSN_RECORD_V3;
+	}
 }
 
 
@@ -247,7 +266,7 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 							}
 							else if(usnv2->MajorVersion==3)
 							{
-								USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(usn_buffer.data());
+								usn::USN_RECORD_V3* usnv3=reinterpret_cast<usn::USN_RECORD_V3*>(usn_buffer.data());
 								f.usn = usnv3->Usn;
 							}
 							else
@@ -359,7 +378,7 @@ SFile getFileMetadataWin( const std::string &path, bool with_usn )
 						}
 						else if(usnv2->MajorVersion==3)
 						{
-							USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(buffer.data());
+							usn::USN_RECORD_V3* usnv3=reinterpret_cast<usn::USN_RECORD_V3*>(buffer.data());
 							ret.usn = usnv3->Usn;
 						}
 						else
