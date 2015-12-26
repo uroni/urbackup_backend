@@ -1,4 +1,6 @@
-call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat"
+call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
+
+call update_deps.bat
 
 git reset --hard
 python build\replace_versions.py
