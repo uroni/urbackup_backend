@@ -767,7 +767,7 @@ ITemplate* CServer::createTemplate(std::string pFile)
 
 THREAD_ID CServer::getThreadID(void)
 {
-#ifdef THREAD_BOOST
+#ifdef _WIN32
 	IScopedLock lock(thread_mutex);
 	
 	std::thread::id ct = std::this_thread::get_id();
@@ -785,8 +785,7 @@ THREAD_ID CServer::getThreadID(void)
 	threads.insert( std::pair<std::thread::id, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
-#else
-#ifndef _WIN32
+#else //_WIN32
 	IScopedLock lock(thread_mutex);
 	
 	pthread_t ct=pthread_self();
@@ -804,8 +803,7 @@ THREAD_ID CServer::getThreadID(void)
 	threads.insert( std::pair<pthread_t, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
-#endif
-#endif //THREAD_BOOST
+#endif //_WIN32
 }
 
 bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine)

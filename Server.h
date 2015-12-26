@@ -224,13 +224,10 @@ private:
 	std::map<THREAD_ID, std::pair<bool, std::string> > current_outputs;
 
 	THREAD_ID curr_thread_id;
-#ifdef THREAD_BOOST
+#ifdef _WIN32
 	std::map<std::thread::id, THREAD_ID> threads;
 #else
-#ifdef _WIN32
-#else
 	std::map<pthread_t, THREAD_ID> threads;
-#endif
 #endif
 
 	std::map<DATABASE_ID, SDatabase > databases;
