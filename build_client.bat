@@ -1,7 +1,7 @@
+call update_deps.bat
+
 call checkout_client.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
-
-call update_deps.bat
 
 cd %~dp0
 
