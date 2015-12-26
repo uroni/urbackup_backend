@@ -2,3 +2,4 @@ if not exist deps git clone -b master http://buildserver.urbackup.org/git/urback
 cd deps
 git reset --hard
 git pull
+cd ..
