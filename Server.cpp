@@ -1203,7 +1203,7 @@ IPipe *CServer::createMemoryPipe(void)
 	return new CMemoryPipe;
 }
 
-#ifdef THREAD_BOOST
+#ifdef _WIN32
 void thread_helper_f(IThread *t)
 {
 #ifndef _DEBUG
@@ -1219,16 +1219,14 @@ void thread_helper_f(IThread *t)
 	}
 #endif
 }
-#else
-#ifndef _WIN32
+#else //_WIN32
 void* thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();
 	return NULL;
 }
-#endif
-#endif //THREAD_BOOST
+#endif //_WIN32
 
 void CServer::createThread(IThread *thread)
 {
