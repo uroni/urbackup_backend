@@ -85,12 +85,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CurlIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CurlIncludeDir);$(SolutionDir)/deps/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CurlLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>libcurld_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -101,12 +101,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CurlIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CurlIncludeDir);$(SolutionDir)/deps/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CurlLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>libcurld_x86_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -119,7 +119,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CurlIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CurlIncludeDir);$(SolutionDir)/deps/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,7 +129,7 @@
       <Version>
       </Version>
       <AdditionalDependencies>libcurl_x86.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(CurlLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -141,14 +141,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CurlIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CurlIncludeDir);$(SolutionDir)/deps/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(CurlLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>libcurl_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
