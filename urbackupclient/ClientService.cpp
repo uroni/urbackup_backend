@@ -860,7 +860,7 @@ void ClientConnector::ReceivePackets(void)
 			}
 			else if( next(cmd, 0, "1CHANNEL") )
 			{
-				CMD_CHANNEL(cmd, &g_lock); continue;
+				CMD_CHANNEL(cmd, &g_lock, identity); continue;
 			}
 			else if(next(cmd, 0, "2LOGDATA ") )
 			{
@@ -1018,11 +1018,11 @@ void ClientConnector::ReceivePackets(void)
 		{
 			if(cmd=="PONG" )
 			{
-				CMD_CHANNEL_PONG(cmd); continue;
+				CMD_CHANNEL_PONG(cmd, endpoint_name); continue;
 			}
 			else if(cmd=="PING" )
 			{
-				CMD_CHANNEL_PING(cmd); continue;
+				CMD_CHANNEL_PING(cmd, endpoint_name); continue;
 			}
 		}
 		

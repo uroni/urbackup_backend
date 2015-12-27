@@ -773,7 +773,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 #endif
 }
 
-void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
+void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity)
 {
 	if(!img_download_running)
 	{
@@ -789,8 +789,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 
 		channel_capa.push_back(capa);
 
-		channel_pipe=SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv);
-		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv));
+		channel_pipe=SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv, identity);
+		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv, identity));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -799,7 +799,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	}
 }
 
-void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd)
+void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd, const std::string& endpoint_name)
 {
 	lasttime=Server->getTimeMS();
 	IScopedLock lock(backup_mutex);
@@ -811,15 +811,36 @@ void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd)
 			break;
 		}
 	}
+
+	refreshSessionFromChannel(endpoint_name);
 }
 
-void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd)
+void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name)
+{
+	IScopedLock lock(backup_mutex);
+
+	for (size_t i = 0; i<channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].pipe == pipe)
+		{
+			if (!channel_pipes[i].server_identity.empty())
+			{
+				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
+			}
+			break;
+		}
+	}
+}
+
+void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name)
 {
 	lasttime=Server->getTimeMS();
 	if(tcpstack.Send(pipe, "PONG")==0)
 	{
 		do_quit=true;
 	}
+
+	refreshSessionFromChannel(endpoint_name);
 }
 
 void ClientConnector::CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd)

@@ -74,9 +74,10 @@ struct ImageInformation
 
 struct SChannel
 {
-	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name, std::string token, bool* make_fileserv)
+	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
+		std::string token, bool* make_fileserv, std::string server_identity)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
-		  token(token), make_fileserv(make_fileserv) {}
+		  token(token), make_fileserv(make_fileserv), server_identity(server_identity) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_fileserv(NULL) {}
 
@@ -86,6 +87,7 @@ struct SChannel
 	std::string token;
 	bool* make_fileserv;
 	std::string last_tokens;
+	std::string server_identity;
 };
 
 struct SVolumesCache;
@@ -189,9 +191,9 @@ private:
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);
 	void CMD_PING_RUNNING(const std::string &cmd);
 	void CMD_PING_RUNNING2(const std::string &cmd);
-	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock);
-	void CMD_CHANNEL_PONG(const std::string &cmd);
-	void CMD_CHANNEL_PING(const std::string &cmd);
+	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity);
+	void CMD_CHANNEL_PONG(const std::string &cmd, const std::string& endpoint_name);
+	void CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name);
 	void CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd);
 	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd);
 	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd);
@@ -228,6 +230,8 @@ private:
 	void CMD_RESTORE_OK(str_map &params);
 
 	int getCapabilities();
+
+	void refreshSessionFromChannel(const std::string& endpoint_name);
 
 	IPipe *pipe;
 	IPipe *mempipe;
