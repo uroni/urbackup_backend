@@ -1138,11 +1138,6 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 		logEntry(vol, UsnRecord);
 	}
 
-	if(UsnRecord->Filename.find("structure")!=std::string::npos)
-	{
-		int asfsf=3;
-	}
-
 	bool curr_has_error = false;
 	bool closed = (UsnRecord->Reason & USN_REASON_CLOSE)>0;
 

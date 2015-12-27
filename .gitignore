@@ -238,3 +238,5 @@ clientctl/Release/*
 urbackup/UrBackupUpdate.sig2
 backup_scripts/*
 .vs/UrBackupBackend/v14/.suo
+clientctl/x64/*
+UrBackupBackend.VC.opendb

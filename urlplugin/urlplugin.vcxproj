@@ -107,7 +107,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(CurlLibDir);$(SolutionDir)/deps/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurld_x86_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurld_x86_64.lib;ws2_32.lib;wldap32.lib;normaliz.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

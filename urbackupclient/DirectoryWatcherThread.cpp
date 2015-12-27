@@ -371,7 +371,7 @@ void DirectoryWatcherThread::On_FileModified(const std::string & strFileName, bo
 		if(dir.find(watching[i])==0)
 		{
 			OnDirMod(dir);
-			return;
+			break;
 		}
 	}	
 }
@@ -385,7 +385,7 @@ void DirectoryWatcherThread::On_DirRemoved(const std::string & strDirName, bool 
 		if(rmDir.find(watching[i])==0)
 		{
 			OnDirRm(rmDir);
-			return;
+			break;
 		}
 	}
 

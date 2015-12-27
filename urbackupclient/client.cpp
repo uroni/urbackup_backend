@@ -1617,21 +1617,30 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 		if(has_error)
 		{
-			if(os_directory_exists(os_file_prefix(index_root_path)))
+#ifdef _WIN32
+			int err = GetLastError();
+#else
+			int err = errno;
+#endif
+
+			bool root_exists = os_directory_exists(os_file_prefix(index_root_path)) ||
+				os_directory_exists(os_file_prefix(add_trailing_slash(index_root_path)));
+
+			if(root_exists)
 			{
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \""+path+"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert(err), LL_ERROR);
 #else
-                VSSLog("Error while getting files in folder \""+path+"\". User may not have permissions to access this folder. Errno is "+convert(errno), LL_ERROR);
+                VSSLog("Error while getting files in folder \""+path+"\". User may not have permissions to access this folder. Errno is "+convert(err), LL_ERROR);
                 index_error=true;
 #endif
 			}
 			else
 			{
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \""+path+"\". Windows errorcode: "+convert((int)GetLastError())+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". Windows errorcode: "+convert(err)+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 #else
-				VSSLog("Error while getting files in folder \""+path+"\". Errorno is "+convert(errno)+". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \""+path+"\". Errorno is "+convert(err)+". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
 #endif
 				index_error=true;
 			}
