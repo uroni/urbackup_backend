@@ -24,7 +24,7 @@
 #include "../Interface/Database.h"
 #include <memory>
 
-void WalCheckpointThread::checkpoint(bool in_transaction)
+void WalCheckpointThread::checkpoint()
 {
 	int mode = MODE_READ;
 #ifdef _WIN32
@@ -42,20 +42,9 @@ void WalCheckpointThread::checkpoint(bool in_transaction)
 
 			IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-
-			if(in_transaction)
-			{
-				db->Write("BEGIN EXCLUSIVE");
-			}
-
-			db->Write("PRAGMA wal_checkpoint(RESTART)");
-
-			if(in_transaction)
-			{
-				db->EndTransaction();
-			}
-
-			checkpoint(true);
+			db->lockForSingleUse();
+			db->Write("PRAGMA wal_checkpoint(TRUNCATE)");
+			db->unlockForSingleUse();
 		}		
 	}
 	else

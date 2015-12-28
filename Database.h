@@ -1,10 +1,12 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 #include "Interface/DatabaseInt.h"
 #include "Interface/Types.h"
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
+#include "Interface/SharedMutex.h"
 
 struct sqlite3;
 class CQuery;
@@ -59,6 +61,12 @@ public:
 	virtual int getLastChanges();
 
 	virtual std::string getTempDirectoryPath();
+
+	virtual void lockForSingleUse();
+
+	virtual void unlockForSingleUse();
+
+	ISharedMutex* getSingleUseMutex();
 private:
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);
@@ -72,6 +80,10 @@ private:
 	static IMutex* lock_mutex;
 	static int lock_count;
 	static ICondition *unlock_cond;
+	static ISharedMutex* single_user_mutex;
+
+	std::auto_ptr<IScopedReadLock> transaction_read_lock;
+	std::auto_ptr<IScopedWriteLock> write_lock;
 
 	std::vector<std::pair<std::string,std::string> > attached_dbs;
 };

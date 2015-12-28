@@ -38,6 +38,10 @@ public:
 	virtual int getLastChanges()=0;
 
 	virtual std::string getTempDirectoryPath() = 0;
+
+	virtual void lockForSingleUse() = 0;
+
+	virtual void unlockForSingleUse() = 0;
 };
 
 class DBScopedFreeMemory

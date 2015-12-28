@@ -47,6 +47,7 @@ extern "C"
 IMutex * CDatabase::lock_mutex=NULL;
 int CDatabase::lock_count=0;
 ICondition *CDatabase::unlock_cond=NULL;
+ISharedMutex* CDatabase::single_user_mutex = NULL;
 
 namespace
 {
@@ -145,12 +146,14 @@ void CDatabase::initMutex(void)
 {
 	lock_mutex=Server->createMutex();
 	unlock_cond=Server->createCondition();
+	single_user_mutex = Server->createSharedMutex();
 }
 
 void CDatabase::destroyMutex(void)
 {
 	Server->destroy(lock_mutex);
 	Server->destroy(unlock_cond);
+	Server->destroy(single_user_mutex);
 }
 
 db_results CDatabase::Read(std::string pQuery)
@@ -199,6 +202,8 @@ bool CDatabase::BeginReadTransaction()
 
 bool CDatabase::BeginWriteTransaction()
 {
+	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+
 	if(Write("BEGIN IMMEDIATE;"))
 	{
 		in_transaction=true;
@@ -225,11 +230,19 @@ bool CDatabase::EndTransaction(void)
 	{
 		Server->wait(50);
 	}
+	transaction_read_lock.reset();
 	return true;
 }
 
 IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 {
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	sqlite3_stmt *prepared_statement;
 	const char* tail;
 	int err;
@@ -294,6 +307,13 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 
 IQuery* CDatabase::Prepare(int id, std::string pQuery)
 {
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	std::map<int, IQuery*>::iterator iter=prepared_queries.find(id);
 	if( iter!=prepared_queries.end() )
 	{
@@ -479,6 +499,13 @@ void CDatabase::DetachDBs(void)
 
 bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
 {
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	int rc;                     /* Function return code */
   sqlite3 *pBackupDB;             /* Database connection opened on zFilename */
   sqlite3_backup *pBackup;    /* Backup handle used to copy data */
@@ -563,6 +590,21 @@ std::string CDatabase::getTempDirectoryPath()
 	{
 		return std::string();
 	}
+}
+
+void CDatabase::lockForSingleUse()
+{
+	write_lock.reset(new IScopedWriteLock(single_user_mutex));
+}
+
+void CDatabase::unlockForSingleUse()
+{
+	write_lock.reset();
+}
+
+ISharedMutex* CDatabase::getSingleUseMutex()
+{
+	return single_user_mutex;
 }
 
 #endif //NO_SQLITE

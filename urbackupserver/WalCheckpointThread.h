@@ -5,7 +5,7 @@ class WalCheckpointThread : public IThread
 {
 public:
 
-	void checkpoint(bool in_transaction=false);
+	void checkpoint();
 
 	void operator()();
 };

@@ -3,6 +3,8 @@
 
 #include "Interface/Query.h"
 #include "Interface/Mutex.h"
+#include "Interface/SharedMutex.h"
+#include <memory>
 
 struct sqlite3_stmt;
 struct sqlite3;
@@ -72,6 +74,8 @@ private:
 	static IMutex* active_mutex;
 	static std::vector<std::string> active_queries;
 #endif
+
+	std::auto_ptr<IScopedReadLock> single_use_lock;
 
 	friend class ScopedAddActiveQuery;
 };

@@ -134,6 +134,8 @@ void CQuery::Reset(void)
 
 bool CQuery::Write(int timeoutms)
 {
+	IScopedReadLock lock(db->getSingleUseMutex());
+
 #ifdef LOG_WRITE_QUERIES
 	ScopedAddActiveQuery active_query(this);
 #endif
@@ -248,6 +250,8 @@ bool CQuery::Execute(int timeoutms)
 
 void CQuery::setupStepping(int *timeoutms)
 {
+	single_use_lock.reset(new IScopedReadLock(db->getSingleUseMutex()));
+
 	if(timeoutms!=NULL && *timeoutms>=0)
 	{
 		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
@@ -286,10 +290,14 @@ void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 	}
+
+	single_use_lock.reset();
 }
 
 db_results CQuery::Read(int *timeoutms)
 {
+	IScopedReadLock lock(db->getSingleUseMutex());
+
 	int err;
 	db_results rows;
 
