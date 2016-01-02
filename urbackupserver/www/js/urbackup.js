@@ -497,9 +497,12 @@ function show_progress11(manual_click)
 	g.progress_first=true;
 	new getJSON("progress", pars, manual_click ? show_progress2 : show_progress21);
 	
-	g.main_nav_pos=5;
-	build_main_nav();
-	I('nav_pos').innerHTML="";
+	if(manual_click)
+	{
+		g.main_nav_pos=5;
+		build_main_nav();
+		I('nav_pos').innerHTML="";
+	}
 }
 
 function show_progress21(data)
@@ -522,8 +525,10 @@ function show_progress2(data)
 	{
 		return;
 	}
-	if(!data.from_timeout)
+	
 	g.progress_first=false;
+	
+	if(!data.from_timeout)
 	{
 		stopLoading();
 	}
