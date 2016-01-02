@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2015 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *    MiniZ parts by Rich Geldreich
 *
 *    This program is free software: you can redistribute it and/or modify

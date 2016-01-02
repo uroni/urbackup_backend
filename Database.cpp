@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2015 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -135,7 +135,8 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 		static size_t sqlite_cache_size = get_sqlite_cache_size();
 		Write("PRAGMA cache_size = -"+convert(sqlite_cache_size));	
 
-		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
+		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
+
 		AttachDBs();
 
 		return true;
@@ -489,12 +490,18 @@ std::string CDatabase::getEngineName(void)
 
 void CDatabase::AttachDBs(void)
 {
-	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);	}
+	for(size_t i=0;i<attached_dbs.size();++i)
+	{
+		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);
+	}
 }
 
 void CDatabase::DetachDBs(void)
 {
-	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("DETACH DATABASE "+attached_dbs[i].second);	}
+	for(size_t i=0;i<attached_dbs.size();++i)
+	{
+		Write("DETACH DATABASE "+attached_dbs[i].second);
+	}
 }
 
 bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)

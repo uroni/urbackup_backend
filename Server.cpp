@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2015 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU Affero General Public License as published by
@@ -609,7 +609,8 @@ int64 CServer::getTimeMS(void)
 	gettimeofday(&tp, NULL);
 	static long start_t=tp.tv_sec;
 	tp.tv_sec-=start_t;
-	return tp.tv_sec*1000+tp.tv_usec/1000;*/
+	return tp.tv_sec*1000+tp.tv_usec/1000;
+*/
 	timespec tp;
 	if(clock_gettime(CLOCK_MONOTONIC, &tp)!=0)
 	{
