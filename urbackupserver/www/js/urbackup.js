@@ -539,6 +539,18 @@ function show_progress2(data)
 	{
 		for(var i=0;i<data.progress.length;++i)
 		{
+			var action = data.progress[i].action;
+			
+			if(action==3 || action==4)
+			{
+				data.progress[i].image=true;
+			}
+			
+			if(action==10)
+			{
+				data.progress[i].client_update=true;
+			}
+		
 			data.progress[i].action=trans("action_"+data.progress[i].action);
 			if(data.progress[i].pcdone>=0)
 			{
@@ -569,11 +581,13 @@ function show_progress2(data)
 			{
 				if(obj.image==0)
 				{
+					obj.file_restore=true;
 					action=8;
 				}
 				else
 				{
 					action=9;
+					obj.is_image=true;
 				}
 				no_size=true;
 			}
@@ -596,6 +610,8 @@ function show_progress2(data)
 			}
 			else
 			{
+				obj.is_image=true;
+				
 				if(obj.incremental>0)
 					action=3;
 				else

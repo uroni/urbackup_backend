@@ -208,12 +208,12 @@ bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::str
 	return true;
 }
 
-size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action )
+size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action, const std::string& details)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
-	SProcess new_proc(curr_process_id++, action);
+	SProcess new_proc(curr_process_id++, action, details);
 	s->processes.push_back(new_proc);
 
 	return new_proc.id;
@@ -224,7 +224,7 @@ bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
-	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none));
+	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none, std::string()));
 
 	if(it!=s->processes.end())
 	{
@@ -241,7 +241,7 @@ SProcess* ServerStatus::getProcessInt( const std::string &clientname, size_t id 
 {
 	SStatus *s=&status[clientname];
 
-	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none));
+	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none, std::string()));
 
 	if(it!=s->processes.end())
 	{
@@ -337,7 +337,7 @@ SProcess ServerStatus::getProcess( const std::string &clientname, size_t id )
 	}
 	else
 	{
-		return SProcess(0, sa_none);
+		return SProcess(0, sa_none, std::string());
 	}
 }
 

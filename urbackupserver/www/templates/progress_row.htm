@@ -1,6 +1,17 @@
 <tr>
 	<td class="tabFLeft">{name}</td>
 	<td class="tabFLeft">{action}</td>
+	<td class="tabFLeft">
+		{?image}
+			Volume: {details}
+		{:else}
+			{?client_update}
+				To version: {details}
+			{:else}
+				-
+			{/client_update}
+		{/image}
+	</td>
 	<td class="tabFLeft" style="text-align: center;">
 		<div class="progress">
 		  <div class="progress-bar" role="progressbar" aria-valuenow="{pcdone}" aria-valuemin="0" aria-valuemax="100" style="width: {pcdone}%; {?percent}min-width: 2em;{/percent}">

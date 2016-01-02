@@ -2,6 +2,17 @@
 	<td>{id}</td>
 	<td>{name}</td>
 	<td>{action}</td>
+	<td>
+		{?is_image}
+			Volume: {details}
+		{:else}
+			{?file_restore}
+				Path: {details}
+			{:else}
+				-
+			{/file_restore}
+		{/is_image}
+	</td>
 	<td>{backuptime}</td>
 	<td>{duration}</td>
 	<td>{size}</td>

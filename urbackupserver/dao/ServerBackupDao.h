@@ -217,7 +217,7 @@ public:
 	CondInt64 hasRecentIncrFileBackup(const std::string& backup_interval, int clientid, int tgroup);
 	CondInt64 hasRecentFullOrIncrImageBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int image_version, const std::string& letter);
 	CondInt64 hasRecentIncrImageBackup(const std::string& backup_interval, int clientid, int image_version, const std::string& letter);
-	void addRestore(int clientid, const std::string& path, const std::string& identity);
+	void addRestore(int clientid, const std::string& path, const std::string& identity, int image, const std::string& letter);
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
@@ -225,6 +225,8 @@ public:
 	void deleteUsedAccessTokens(int clientid);
 	CondInt hasUsedAccessToken(const std::string& tokenhash);
 	void addUsedAccessToken(int clientid, const std::string& tokenhash);
+	CondString getClientnameByImageid(int backupid);
+	CondInt getClientidByImageid(int backupid);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -322,6 +324,8 @@ private:
 	IQuery* q_deleteUsedAccessTokens;
 	IQuery* q_hasUsedAccessToken;
 	IQuery* q_addUsedAccessToken;
+	IQuery* q_getClientnameByImageid;
+	IQuery* q_getClientidByImageid;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

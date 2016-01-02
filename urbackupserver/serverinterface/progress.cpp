@@ -107,6 +107,7 @@ ACTION_IMPL(progress)
 					obj.set("queue", JSON::Value(clients[i].processes[j].prepare_hashqueuesize+
 						clients[i].processes[j].hashqueuesize));
 					obj.set("id", JSON::Value(clients[i].processes[j].id));
+					obj.set("details", clients[i].processes[j].details);
 					pg.add(obj);
 				}
 			}

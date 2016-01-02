@@ -1749,19 +1749,21 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::
 * @-SQLGenAccess
 * @func void ServerBackupDao::addRestore
 * @sql
-*       INSERT INTO restores (clientid, done, path, identity, success)
+*       INSERT INTO restores (clientid, done, path, identity, success, image, letter)
 *       VALUES
-*			(:clientid(int), 0, :path(string), :identity(string), 0)
+*			(:clientid(int), 0, :path(string), :identity(string), 0, :image(int), :letter(string) )
 */
-void ServerBackupDao::addRestore(int clientid, const std::string& path, const std::string& identity)
+void ServerBackupDao::addRestore(int clientid, const std::string& path, const std::string& identity, int image, const std::string& letter)
 {
 	if(q_addRestore==NULL)
 	{
-		q_addRestore=db->Prepare("INSERT INTO restores (clientid, done, path, identity, success) VALUES (?, 0, ?, ?, 0)", false);
+		q_addRestore=db->Prepare("INSERT INTO restores (clientid, done, path, identity, success, image, letter) VALUES (?, 0, ?, ?, 0, ?, ? )", false);
 	}
 	q_addRestore->Bind(clientid);
 	q_addRestore->Bind(path);
 	q_addRestore->Bind(identity);
+	q_addRestore->Bind(image);
+	q_addRestore->Bind(letter);
 	q_addRestore->Write();
 	q_addRestore->Reset();
 }
@@ -1929,7 +1931,55 @@ void ServerBackupDao::addUsedAccessToken(int clientid, const std::string& tokenh
 	q_addUsedAccessToken->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getClientnameByImageid
+* @return string name
+* @sql
+*       SELECT name FROM clients WHERE id = (SELECT clientid FROM backup_images WHERE id=:backupid(int) )
+*/
+ServerBackupDao::CondString ServerBackupDao::getClientnameByImageid(int backupid)
+{
+	if(q_getClientnameByImageid==NULL)
+	{
+		q_getClientnameByImageid=db->Prepare("SELECT name FROM clients WHERE id = (SELECT clientid FROM backup_images WHERE id=? )", false);
+	}
+	q_getClientnameByImageid->Bind(backupid);
+	db_results res=q_getClientnameByImageid->Read();
+	q_getClientnameByImageid->Reset();
+	CondString ret = { false, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["name"];
+	}
+	return ret;
+}
 
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::getClientidByImageid
+* @return int id
+* @sql
+*       SELECT clientid FROM backup_images WHERE id=:backupid(int)
+*/
+ServerBackupDao::CondInt ServerBackupDao::getClientidByImageid(int backupid)
+{
+	if(q_getClientidByImageid==NULL)
+	{
+		q_getClientidByImageid=db->Prepare("SELECT clientid FROM backup_images WHERE id=?", false);
+	}
+	q_getClientidByImageid->Bind(backupid);
+	db_results res=q_getClientidByImageid->Read();
+	q_getClientidByImageid->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["id"]);
+	}
+	return ret;
+}
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -2018,6 +2068,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_deleteUsedAccessTokens=NULL;
 	q_hasUsedAccessToken=NULL;
 	q_addUsedAccessToken=NULL;
+	q_getClientnameByImageid=NULL;
+	q_getClientidByImageid=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2107,6 +2159,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_deleteUsedAccessTokens);
 	db->destroyQuery(q_hasUsedAccessToken);
 	db->destroyQuery(q_addUsedAccessToken);
+	db->destroyQuery(q_getClientnameByImageid);
+	db->destroyQuery(q_getClientidByImageid);
 }
 
 void ServerBackupDao::commit()

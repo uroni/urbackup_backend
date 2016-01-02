@@ -100,8 +100,8 @@ namespace
 }
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
-	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token)
-	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
+	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details)
+	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
 }
 
@@ -158,7 +158,7 @@ bool ImageBackup::doBackup()
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		client_main->stopBackupRunning(false);
-		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL", server_token);
+		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL", server_token, "SYSVOL");
 		sysvol_backup();
 
 		if(sysvol_backup.getResult())
@@ -174,7 +174,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			client_main->stopBackupRunning(false);
-			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP", server_token);
+			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP", server_token, "ESP");
 			esp_backup();
 
 			if(esp_backup.getResult())

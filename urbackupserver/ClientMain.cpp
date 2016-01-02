@@ -546,7 +546,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token);
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -562,7 +562,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token);
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -584,7 +584,7 @@ void ClientMain::operator ()(void)
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter, curr_server_token);
+							false, letter, curr_server_token, letter);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -606,7 +606,7 @@ void ClientMain::operator ()(void)
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter, curr_server_token);
+							true, letter, curr_server_token, letter);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -622,7 +622,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new ContinuousBackup(this, clientid, clientname, clientsubname,
 					LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_continuous, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots);
+					tmpfile_path, use_reflink, use_snapshots, convert(c_group_continuous));
 				backup.group=filebackup_group_offset + c_group_continuous;
 
 				backup_queue.push_back(backup);
@@ -1669,7 +1669,7 @@ void ClientMain::checkClientVersion(void)
 		std::string r=sendClientMessage("VERSION "+version, "Sending version to client failed", 10000);
 		if(r=="update")
 		{
-			ScopedProcess process(clientname, sa_update);
+			ScopedProcess process(clientname, sa_update, version);
 
 			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig2", MODE_READ);
 			if(sigfile==NULL)

@@ -791,6 +791,7 @@ translations.en = {
 "client_settings": "Client settings",
 "action_8": "File restore",
 "action_9": "Image restore",
+"action_10": "Client update",
 "action_1": "Incremental file backup",
 "action_2": "Full file backup",
 "action_3": "Incremental image backup",

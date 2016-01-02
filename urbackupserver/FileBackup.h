@@ -47,7 +47,8 @@ class FileBackup : public Backup
 {
 public:
 	FileBackup(ClientMain* client_main, int clientid, std::string clientname, std::string subclientname, LogAction log_action,
-		bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token);
+		bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots,
+		std::string server_token, std::string details);
 	~FileBackup();
 
 	bool getResult();

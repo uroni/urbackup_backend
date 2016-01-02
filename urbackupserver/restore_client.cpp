@@ -347,10 +347,10 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	ServerBackupDao backup_dao(db);
 
 	std::string identity = ServerSettings::generateRandomAuthKey(25);
-	backup_dao.addRestore(restore_clientid, folder_log_name, identity);
+	backup_dao.addRestore(restore_clientid, folder_log_name, identity, 0, std::string());
 
 	restore_id = db->getLastInsertID();
-	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file);
+	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file, folder_log_name);
 
 	log_id = ServerLogger::getLogId(restore_clientid);
 

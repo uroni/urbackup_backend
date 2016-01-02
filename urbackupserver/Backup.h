@@ -36,7 +36,7 @@ class Backup : public IThread
 public:
 	Backup(ClientMain* client_main, int clientid, std::string clientname,
 		std::string clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental,
-		std::string server_token);
+		std::string server_token, std::string details);
 	virtual ~Backup() {}
 
 	virtual void operator()();
@@ -86,6 +86,8 @@ protected:
 	bool r_resumed;
 	bool r_incremental;
 	bool should_backoff;
+
+	std::string details;
 
 	bool backup_result;
 

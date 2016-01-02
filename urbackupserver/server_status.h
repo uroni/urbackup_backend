@@ -20,8 +20,8 @@ enum SStatusAction
 	sa_resume_full_file=6,
 	sa_cdp_sync=7,
 	sa_restore_file=8,
-	sa_restore_imge=9,
-	sa_update
+	sa_restore_image=9,
+	sa_update=10
 };
 
 enum SStatusError
@@ -43,10 +43,10 @@ class IPipe;
 
 struct SProcess
 {
-	SProcess(size_t id, SStatusAction action)
+	SProcess(size_t id, SStatusAction action, std::string details)
 		: id(id), action(action), prepare_hashqueuesize(0),
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
-		 eta_set_time(0), stop(false)
+		 eta_set_time(0), stop(false), details(details)
 	{
 
 	}
@@ -60,6 +60,7 @@ struct SProcess
 	int64 eta_ms;
 	int64 eta_set_time;
 	bool stop;
+	std::string details;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -121,7 +122,7 @@ public:
 	static int getServerNospcStalled(void);
 	static bool getServerNospcFatal(void);
 
-	static size_t startProcess(const std::string &clientname, SStatusAction action);
+	static size_t startProcess(const std::string &clientname, SStatusAction action, const std::string& details);
 	static bool stopProcess(const std::string &clientname, size_t id);
 
 	static void setProcessQueuesize(const std::string &clientname, size_t id,
@@ -166,10 +167,10 @@ private:
 class ScopedProcess
 {
 public:
-	ScopedProcess(std::string clientname, SStatusAction action)
+	ScopedProcess(std::string clientname, SStatusAction action, const std::string& details)
 		: clientname(clientname)
 	{
-		status_id = ServerStatus::startProcess(clientname, action);
+		status_id = ServerStatus::startProcess(clientname, action, details);
 	}
 	
 	~ScopedProcess()

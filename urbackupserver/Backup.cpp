@@ -31,11 +31,11 @@
 extern IUrlFactory *url_fak;
 
 Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
-	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token)
+	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
-	server_token(server_token)
+	server_token(server_token), details(details)
 {
 	
 }
@@ -56,22 +56,22 @@ void Backup::operator()()
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file, details);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_incr_file);
+				status_id = ServerStatus::startProcess(clientname, sa_incr_file, details);
 			}
 		}
 		else
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file, details);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_full_file);
+				status_id = ServerStatus::startProcess(clientname, sa_full_file, details);
 			}
 		}
 	}
@@ -79,11 +79,11 @@ void Backup::operator()()
 	{
 		if(r_incremental)
 		{
-			status_id = ServerStatus::startProcess(clientname, sa_incr_image);
+			status_id = ServerStatus::startProcess(clientname, sa_incr_image, details);
 		}
 		else
 		{
-			status_id = ServerStatus::startProcess(clientname, sa_full_image);
+			status_id = ServerStatus::startProcess(clientname, sa_full_image, details);
 		}
 		ServerStatus::setProcessPcDone(clientname, status_id, 0);
 	}

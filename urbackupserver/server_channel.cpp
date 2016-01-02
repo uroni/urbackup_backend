@@ -800,10 +800,13 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
-	int img_id=watoi(params["img_id"])-img_id_offset;
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	IQuery *q=db->Prepare("SELECT path, version, clientid FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
+	ServerBackupDao backup_dao(db);
+
+	int img_id=watoi(params["img_id"])-img_id_offset;
+	
+	IQuery *q=db->Prepare("SELECT path, version, clientid, letter FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
 	q->Bind(img_id);
 	q->Bind(params["time"]);
 	db_results res=q->Read();
@@ -821,7 +824,6 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			input->Write((char*)&r, sizeof(_i64));
 			return;
 		}
-
 
 		int img_version=watoi(res[0]["version"]);
 		if(params["mbr"]=="true")
@@ -880,6 +882,10 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		}
 		else
 		{
+			ScopedProcess restore_process(backup_dao.getClientnameByImageid(img_id).value, sa_restore_image, res[0]["letter"]);
+			backup_dao.addRestore(backup_dao.getClientidByImageid(img_id).value, std::string(), std::string(), 1, res[0]["letter"]);
+			int64 restore_id = db->getLastInsertID();
+
 			int skip=1024*512;
 
 			if(img_version==0)
@@ -930,6 +936,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 						db->destroyAllQueries();
 						Server->destroy(input);
 						input=NULL;
+						backup_dao.setRestoreDone(0, restore_id);
 						return;
 					}
 					lasttime=Server->getTimeMS();
@@ -961,6 +968,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				uint64 currpos_endian = little_endian(currpos);
 				input->Write((char*)&currpos_endian, sizeof(uint64));
 			}
+
+			backup_dao.setRestoreDone(is_ok ? 1 : 0, restore_id);
 		}
 		image_fak->destroyVHDFile(vhdfile);
 	}

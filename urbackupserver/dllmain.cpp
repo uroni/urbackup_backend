@@ -1475,6 +1475,20 @@ bool upgrade42_43()
 	return b;
 }
 
+bool update43_44()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE restores ADD image INTEGER DEFAULT 0");
+
+	b &= db->Write("ALTER TABLE restores ADD letter TEXT DEFAULT ''");
+
+	return b;
+}
+
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1496,7 +1510,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=43;
+	int max_v=44;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1723,6 +1737,12 @@ void upgrade(void)
 				if(!upgrade42_43())
 				{
 					has_error=true;
+				}
+				++ver;
+			case 43:
+				if (!update43_44())
+				{
+					has_error = true;
 				}
 				++ver;
 			default:
