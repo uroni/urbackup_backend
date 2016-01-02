@@ -34,18 +34,19 @@ ServerCleanupDao::~ServerCleanupDao(void)
 /**
 * @-SQLGenAccess
 * @func std::vector<SIncompleteImages> ServerCleanupDao::getIncompleteImages
-* @return int id, string path
+* @return int id, string path, string clientname
 * @sql
-*   SELECT id, path
-*   FROM backup_images
+*   SELECT b.id AS id, b.path AS path, c.name AS clientname
+*   FROM backup_images b, clients c
 *   WHERE 
 *     complete=0 AND running<datetime('now','-300 seconds')
+*	  AND b.clientid=c.id
 */
 std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncompleteImages(void)
 {
 	if(q_getIncompleteImages==NULL)
 	{
-		q_getIncompleteImages=db->Prepare("SELECT id, path FROM backup_images WHERE  complete=0 AND running<datetime('now','-300 seconds')", false);
+		q_getIncompleteImages=db->Prepare("SELECT b.id AS id, b.path AS path, c.name AS clientname FROM backup_images b, clients c WHERE  complete=0 AND running<datetime('now','-300 seconds') AND b.clientid=c.id", false);
 	}
 	db_results res=q_getIncompleteImages->Read();
 	std::vector<ServerCleanupDao::SIncompleteImages> ret;
@@ -54,6 +55,7 @@ std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncomplete
 	{
 		ret[i].id=watoi(res[i]["id"]);
 		ret[i].path=res[i]["path"];
+		ret[i].clientname=res[i]["clientname"];
 	}
 	return ret;
 }
@@ -180,6 +182,32 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incr
 	}
 	return ret;
 }
+
+/**
+* @-SQLGenAccess
+* @func string ServerCleanupDao::getImageClientname
+* @return string name
+* @sql
+*	SELECT name FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=:id(int) )
+*/
+ServerCleanupDao::CondString ServerCleanupDao::getImageClientname(int id)
+{
+	if(q_getImageClientname==NULL)
+	{
+		q_getImageClientname=db->Prepare("SELECT name FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=? )", false);
+	}
+	q_getImageClientname->Bind(id);
+	db_results res=q_getImageClientname->Read();
+	q_getImageClientname->Reset();
+	CondString ret = { false, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["name"];
+	}
+	return ret;
+}
+
 
 /**
 * @-SQLGenAccess
@@ -1021,6 +1049,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getClientsSortImagebackups=NULL;
 	q_getFullNumImages=NULL;
 	q_getImageRefs=NULL;
+	q_getImageClientname=NULL;
 	q_getImagePath=NULL;
 	q_getIncrNumImages=NULL;
 	q_getIncrNumImagesForBackup=NULL;
@@ -1066,6 +1095,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getClientsSortImagebackups);
 	db->destroyQuery(q_getFullNumImages);
 	db->destroyQuery(q_getImageRefs);
+	db->destroyQuery(q_getImageClientname);
 	db->destroyQuery(q_getImagePath);
 	db->destroyQuery(q_getIncrNumImages);
 	db->destroyQuery(q_getIncrNumImagesForBackup);

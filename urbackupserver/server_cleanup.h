@@ -130,7 +130,7 @@ private:
 	void backup_database(void);
 
 	bool deleteAndTruncateFile(std::string path);
-	bool deleteImage(std::string path);
+	bool deleteImage(std::string clientname, std::string path);
 	int64 getImageSize(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);

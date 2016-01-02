@@ -11,57 +11,16 @@
 #include <fcntl.h>
 #include "fs/ntfs.h"
 #include <errno.h>
-#include <sys/ioctl.h>
 #include <memory>
 #include "FileWrapper.h"
 #include "ClientBitmap.h"
 
 const unsigned int blocksize = 4096;
 
-namespace
-{
-
-bool create_reflink(const std::string &linkname, const std::string &fname)
-{
-	int src_desc=open64(fname.c_str(), O_RDONLY);
-	if( src_desc<0)
-	{
-		Server->Log("Error opening source file. errno="+convert(errno));
-	    return false;
-	}
-
-	int dst_desc=open64(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
-	if( dst_desc<0 )
-	{
-		Server->Log("Error opening destination file. errno="+convert(errno));
-	    close(src_desc);
-	    return false;
-	}
-
-#define BTRFS_IOCTL_MAGIC 0x94
-#define BTRFS_IOC_CLONE _IOW (BTRFS_IOCTL_MAGIC, 9, int)
-
-	int rc=ioctl(dst_desc, BTRFS_IOC_CLONE, src_desc);
-
-	if(rc)
-	{
-		Server->Log("Reflink ioctl failed. errno="+convert(errno));
-	}
-
-	close(src_desc);
-	close(dst_desc);
-
-	return rc==0;
-}
-
-
-}
-
-
 CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
  : bitmap_dirty(false), finished(false), curr_offset(0)
 {
-	filename = (fn);
+	filename = fn;
 	read_only = pRead_only;
 	filesize = pDstsize;
 
@@ -131,7 +90,7 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only)
 	: bitmap_dirty(false), finished(false), curr_offset(0)
 {
-	filename = (fn);
+	filename = fn;
 	read_only = pRead_only;
 
 
@@ -168,7 +127,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 	{
 		if(!FileExists(filename))
 		{
-			is_open = create_reflink(filename, (parent_fn));
+			is_open=false;
 		}
 
 		if(is_open)

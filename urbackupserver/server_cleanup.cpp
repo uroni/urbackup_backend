@@ -464,31 +464,79 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 			if(cf.isdir)
 			{
-				ServerCleanupDao::CondInt res_id=cleanupdao->findFileBackup(clientid, cf.name);
-
-				if(!res_id.exists)
+				if (cf.name.find("Image") == std::string::npos)
 				{
-					Server->Log("File backup \""+cf.name+"\" of client \""+clientname+"\" not found in database. Deleting it.", LL_WARNING);
-					bool remove_folder=false;
-					if(BackupServer::isSnapshotsEnabled())
+					ServerCleanupDao::CondInt res_id = cleanupdao->findFileBackup(clientid, cf.name);
+
+					if (!res_id.exists)
 					{
-						if(!SnapshotHelper::removeFilesystem(clientname, cf.name) )
+						Server->Log("File backup \"" + cf.name + "\" of client \"" + clientname + "\" not found in database. Deleting it.", LL_WARNING);
+						bool remove_folder = false;
+						if (BackupServer::isSnapshotsEnabled())
 						{
-							remove_folder=true;
+							if (!SnapshotHelper::removeFilesystem(clientname, cf.name))
+							{
+								remove_folder = true;
+							}
+						}
+						else
+						{
+							remove_folder = true;
+						}
+
+						if (remove_folder)
+						{
+							std::string rm_dir = backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name;
+							if (!remove_directory_link_dir(rm_dir, *backupdao, clientid))
+							{
+								Server->Log("Could not delete directory \"" + rm_dir + "\"", LL_ERROR);
+							}
 						}
 					}
-					else
+				}
+				else
+				{
+					std::vector<SFile> image_files = getFiles(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name);
+
+					bool found_image = false;
+					for (size_t l = 0; l < image_files.size(); ++l)
 					{
-						remove_folder=true;
+						std::string extension = findextension(image_files[l].name);
+
+						if (extension != "vhd" && extension != "vhdz" && extension != "raw")
+							continue;
+
+						found_image = true;
+
+						bool found = false;
+
+						for (size_t k = 0; k<res_images.size(); ++k)
+						{
+							if (ExtractFileName(res_images[k].path) == image_files[l].name)
+							{
+								found = true;
+								break;
+							}
+						}
+
+						if (!found)
+						{
+							Server->Log("Image backup \"" + cf.name + "\" of client \"" + clientname + "\" not found in database. Deleting it.", LL_WARNING);
+							
+							if (extension == "raw")
+							{
+								SnapshotHelper::removeFilesystem(clientname, cf.name);
+							}
+							else
+							{
+								os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
+							}
+						}
 					}
 
-					if(remove_folder)
+					if (!found_image)
 					{
-						std::string rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-						if(!remove_directory_link_dir(rm_dir, *backupdao, clientid))
-						{
-							Server->Log("Could not delete directory \""+rm_dir+"\"", LL_ERROR);
-						}
+						os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
 					}
 				}
 			}
@@ -496,7 +544,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 			{
 				std::string extension=findextension(cf.name);
 
-				if(extension!="vhd" && extension!="vhdz")
+				if(extension!="vhd" && extension!="vhdz" && extension!="raw")
 					continue;
 
 				bool found=false;
@@ -572,24 +620,38 @@ bool ServerCleanupThread::deleteAndTruncateFile(std::string path)
 	return true;
 }
 
-bool ServerCleanupThread::deleteImage(std::string path)
+bool ServerCleanupThread::deleteImage(std::string clientname, std::string path)
 {
-	bool b=true;
-	if(!deleteAndTruncateFile(path))
+	std::string image_extension = findextension(path);
+
+	if (image_extension != "raw")
 	{
-		b=false;
+		bool b = true;
+		if (!deleteAndTruncateFile(path))
+		{
+			b = false;
+		}
+		if (!deleteAndTruncateFile(path + ".hash"))
+		{
+			b = false;
+		}
+		if (!deleteAndTruncateFile(path + ".mbr"))
+		{
+			b = false;
+		}
+		deleteAndTruncateFile(path + ".cbitmap");
+
+		if (b && ExtractFileName(ExtractFilePath(path)) != clientname)
+		{
+			b = os_remove_dir(os_file_prefix(ExtractFilePath(path)));
+		}
+
+		return b;
 	}
-	if(!deleteAndTruncateFile(path+".hash"))
+	else
 	{
-		b=false;
+		return SnapshotHelper::removeFilesystem(clientname, ExtractFileName(ExtractFilePath(path)));
 	}
-	if(!deleteAndTruncateFile(path+".mbr"))
-	{
-		b=false;
-	}
-	deleteAndTruncateFile(path+".bitmap");
-	deleteAndTruncateFile(path+".cbitmap");
-	return b;
 }
 
 int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int backupid)
@@ -705,7 +767,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	for(size_t i=0;i<incomplete_images.size();++i)
 	{
 		Server->Log("Deleting incomplete image file \""+incomplete_images[i].path+"\"...", LL_INFO);
-		if(!deleteImage(incomplete_images[i].path))
+		if(!deleteImage(incomplete_images[i].clientname, incomplete_images[i].path))
 		{
 			Server->Log("Deleting incomplete image \""+incomplete_images[i].path+"\" failed.", LL_WARNING); 
 		}
@@ -798,7 +860,8 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 	ServerStatus::updateActive();
 
 	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
-	if(res.exists)
+	ServerCleanupDao::CondString res_clientname = cleanupdao->getImageClientname(backupid);
+	if(res.exists && res_clientname.exists)
 	{
 		Server->Log("Deleting image backup ( id="+convert(backupid)+", path="+res.value+" ) ...", LL_INFO);
 
@@ -809,7 +872,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 			stat_id=db->getLastInsertID();
 		}
 
-		if( deleteImage(res.value) || force_remove )
+		if( deleteImage(res_clientname.value, res.value) || force_remove )
 		{
 			db->BeginWriteTransaction();
 			cleanupdao->removeImage(backupid);

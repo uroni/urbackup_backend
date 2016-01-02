@@ -39,6 +39,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/mbrdata.h"
 #include "server_ping.h"
+#include "snapshot_helper.h"
 
 const unsigned int status_update_intervall=1000;
 const unsigned int eta_update_intervall=60000;
@@ -349,7 +350,28 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		Server->destroy(hashfile);
 	}
 
-	std::string imagefn=constructImagePath(sletter, image_file_format);
+	bool full_backup = pParentvhd.empty();
+
+	std::string imagefn=constructImagePath(sletter, image_file_format, full_backup);
+
+	if (!full_backup && image_file_format == image_file_format_cowraw)
+	{
+		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
+
+		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
+		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
+		{
+			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at "+parent_backuppath_single, LL_ERROR);
+			Server->destroy(cc);
+			return false;
+		}
+		else
+		{
+			Server->deleteFile(imagefn + ".hash");
+			Server->deleteFile(imagefn + ".cbitmap");
+			Server->deleteFile(imagefn + ".mbr");
+		}
+	}
 
 	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
 	if(free_space!=-1 && free_space<minfreespace_image)
@@ -1456,8 +1478,13 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 	return nextblock+1;
 }
 
-std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format)
+std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format, bool full_backup)
 {
+	if (!createDirectoryForClient())
+	{
+		return std::string();
+	}
+
 	time_t tt=time(NULL);
 #ifdef _WIN32
 	tm lt;
@@ -1469,7 +1496,10 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
 	std::string backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
-	std::string imgpath = backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+"Image_"+letter+"_"+(std::string)buffer;
+	backuppath_single = std::string(buffer) + "_Image_" + letter;
+	std::string image_folder = backupfolder_uncompr + os_file_sep() + clientname + os_file_sep() + backuppath_single;
+	std::string imgpath = image_folder + os_file_sep() + "Image_"+letter+"_"+(std::string)buffer;
+	bool create_folder = true;
 	if(image_file_format==image_file_format_vhd)
 	{
 		imgpath+=".vhd";
@@ -1477,11 +1507,28 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	else if(image_file_format==image_file_format_cowraw)
 	{
 		imgpath+=".raw";
+		create_folder = false;
+		if (full_backup)
+		{
+			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single))
+			{
+				return std::string();
+			}
+		}
 	}
 	else
 	{
 		imgpath+=".vhdz";
 	}
+
+	if (create_folder)
+	{
+		if (!os_create_dir(os_file_prefix(image_folder)))
+		{
+			return std::string();
+		}
+	}
+
 	return imgpath;
 }
 
@@ -1557,4 +1604,3 @@ std::string ImageBackup::getMBR(const std::string &dl)
 
 	return "";
 }
-

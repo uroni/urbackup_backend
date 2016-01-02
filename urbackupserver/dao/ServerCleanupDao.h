@@ -79,6 +79,7 @@ public:
 	{
 		int id;
 		std::string path;
+		std::string clientname;
 	};
 
 
@@ -88,6 +89,7 @@ public:
 	std::vector<int> getClientsSortImagebackups(void);
 	std::vector<SImageLetter> getFullNumImages(int clientid);
 	std::vector<SImageRef> getImageRefs(int incremental_ref);
+	CondString getImageClientname(int id);
 	CondString getImagePath(int id);
 	std::vector<SImageLetter> getIncrNumImages(int clientid);
 	int getIncrNumImagesForBackup(int backupid);
@@ -137,6 +139,7 @@ private:
 	IQuery* q_getClientsSortImagebackups;
 	IQuery* q_getFullNumImages;
 	IQuery* q_getImageRefs;
+	IQuery* q_getImageClientname;
 	IQuery* q_getImagePath;
 	IQuery* q_getIncrNumImages;
 	IQuery* q_getIncrNumImagesForBackup;

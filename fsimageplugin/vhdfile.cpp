@@ -376,7 +376,19 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=big_endian(parent_timestamp);
-		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
+
+		std::string unicodename_source;
+		std::string dirname = ExtractFileName(ExtractFilePath(parentfn));
+		if (dirname.find("Image") != std::string::npos)
+		{
+			unicodename_source = "../" + dirname + "/" + ExtractFileName(parentfn);
+		}
+		else
+		{
+			unicodename_source = ExtractFileName(parentfn);
+		}
+
+		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(unicodename_source));
 		std::string rel_unicodename=Server->ConvertToUTF16(".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
@@ -563,6 +575,16 @@ bool VHDFile::read_dynamicheader(void)
 		parent_fn=Server->ConvertToWchar(ExtractFilePath(file->getFilename()))+L"/"+parent_fn;
 		std::string utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
 		Server->Log("VHD-Parent: \""+utf8_parent_fn+"\"", LL_INFO);
+
+		if (parent_fn.size()>2 && parent_fn[0]=='.' && parent_fn[1]=='.'
+			&& !FileExists(utf8_parent_fn))
+		{
+			parent_fn = Server->ConvertToWchar(ExtractFilePath(file->getFilename())) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
+			utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+			Server->Log("corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+		}
+
+
 		parent=new VHDFile(utf8_parent_fn, true, 0);
 
 		if(parent->isOpen()==false)
@@ -1197,7 +1219,11 @@ bool VHDFile::check_if_compressed()
 
 bool VHDFile::finish()
 {
-	finished=true;
+	if (finished)
+	{
+		return true;
+	}
+
 	switchBitmap(0);
 	if(fast_mode && !read_only)
 	{
@@ -1224,12 +1250,27 @@ bool VHDFile::finish()
 	CompressedFile* compfile = dynamic_cast<CompressedFile*>(file);
 	if(compfile!=NULL)
 	{
-		return compfile->finish();
+		if (compfile->finish())
+		{
+			finished = true;
+			return true;
+		}
 	}
 	else
 	{
-		return file->Sync();
+		if (read_only)
+		{
+			finished = true;
+			return true;
+		}
+		if (file->Sync())
+		{
+			finished = true;
+			return true;
+		}
 	}
+
+	return false;
 }
 
 VHDFile* VHDFile::getParent()

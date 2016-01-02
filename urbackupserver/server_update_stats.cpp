@@ -486,7 +486,17 @@ bool ServerUpdateStats::repairImagePath(str_map img)
 		std::string clientname=res[0]["name"];
 		std::string imgname=ExtractFileName(img["path"]);
 
-		std::string new_name=settings.getSettings()->backupfolder+os_file_sep()+clientname+os_file_sep()+imgname;
+		std::string backuppath_single = ExtractFileName(ExtractFilePath(img["path"]));
+
+		std::string new_name;
+		if (backuppath_single != clientname)
+		{
+			new_name = settings.getSettings()->backupfolder + os_file_sep() + clientname + os_file_sep() + backuppath_single + os_file_sep() + imgname;
+		}
+		else
+		{
+			new_name = settings.getSettings()->backupfolder + os_file_sep() + clientname + os_file_sep() + imgname;
+		}
 
 		IFile * file=Server->openFile(os_file_prefix(new_name), MODE_READ);
 		if(file==NULL)
