@@ -24,6 +24,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include "FileWrapper.h"
+#include "ClientBitmap.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -1244,26 +1245,35 @@ bool VHDFile::isCompressed()
 bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile, false, false);
+	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
 
-	if(ntfs.hasError())
+	bitmap_source.reset(new ClientBitmap(backing_file->getFilename() + ".cbitmap"));
+
+	if (bitmap_source->hasError())
+	{
+		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
+
+		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+	}
+
+	if(bitmap_source->hasError())
 	{
 		Server->Log("Error opening NTFS bitmap. Cannot convert incremental to full image.", LL_WARNING);
 		return false;
 	}
 
-	unsigned int ntfs_blocksize = static_cast<unsigned int>(ntfs.getBlocksize());
+	unsigned int bitmap_blocksize = static_cast<unsigned int>(bitmap_source->getBlocksize());
 
 	std::vector<char> buffer;
 	buffer.resize(sector_size);
 
-	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs_blocksize;
+	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/ bitmap_blocksize;
 		ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(ntfs.hasBlock(ntfs_block))
+		if(bitmap_source->hasBlock(ntfs_block))
 		{
-			int64 block_pos = fs_offset + ntfs_block*ntfs_blocksize;
-			for(unsigned int i=0;i<ntfs_blocksize;i+=sector_size)
+			int64 block_pos = fs_offset + ntfs_block*bitmap_blocksize;
+			for(unsigned int i=0;i<bitmap_blocksize;i+=sector_size)
 			{
 				Seek(block_pos + i);
 

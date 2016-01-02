@@ -870,6 +870,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					++bitmap_size;
 				}
+
+				bitmap_size += sizeof(unsigned int); //bitmap blocksize
 				
 				if(bitmap_size>1024*1024*1024)
 				{

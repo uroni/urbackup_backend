@@ -11,7 +11,7 @@ urbackupclientbackend_SOURCES += urbackupcommon/os_functions_lin.cpp urbackupcom
 
 urbackupclientbackend_SOURCES += cryptoplugin/dllmain.cpp cryptoplugin/AESDecryption.cpp cryptoplugin/CryptoFactory.cpp cryptoplugin/pluginmgr.cpp cryptoplugin/AESEncryption.cpp cryptoplugin/ZlibCompression.cpp cryptoplugin/ZlibDecompression.cpp cryptoplugin/AESGCMDecryption.cpp cryptoplugin/AESGCMEncryption.cpp cryptoplugin/ECDHKeyExchange.cpp
 
-urbackupclientbackend_SOURCES += fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/fs/ntfs.cpp fsimageplugin/fs/unknown.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp
+urbackupclientbackend_SOURCES += fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/fs/ntfs.cpp fsimageplugin/fs/unknown.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp fsimageplugin/ClientBitmap.cpp
 
 urbackupclientbackend_SOURCES += urbackupclient/dllmain.cpp urbackupclient/clientdao.cpp urbackupclient/client.cpp urbackupclient/ClientService.cpp urbackupclient/ClientSend.cpp urbackupclient/client_restore.cpp urbackupclient/ServerIdentityMgr.cpp urbackupclient/ClientServiceCMD.cpp  urbackupclient/ImageThread.cpp urbackupclient/InternetClient.cpp urbackupclient/file_permissions.cpp urbackupclient/lin_ver.cpp urbackupclient/lin_tokens.cpp urbackupclient/common_tokens.cpp urbackupclient/FileMetadataDownloadThread.cpp urbackupclient/RestoreFiles.cpp urbackupclient/RestoreDownloadThread.cpp urbackupclient/TokenCallback.cpp common/miniz.c urbackupclient/cmdline_preprocessor.cpp
 
@@ -113,7 +113,7 @@ cryptoplugin_headers = cryptoplugin/AESEncryption.h cryptoplugin/AESDecryption.h
 
 fileservplugin_headers = fileservplugin/bufmgr.h fileservplugin/CUDPThread.h fileservplugin/FileServFactory.h fileservplugin/IFileServ.h fileservplugin/packet_ids.h fileservplugin/socket_header.h fileservplugin/CriticalSection.h fileservplugin/FileServ.h fileservplugin/log.h fileservplugin/pluginmgr.h   fileservplugin/CClientThread.h fileservplugin/CTCPFileServ.h fileservplugin/IFileServFactory.h fileservplugin/map_buffer.h fileservplugin/settings.h fileservplugin/types.h fileservplugin/chunk_settings.h fileservplugin/ChunkSendThread.h fileservplugin/PipeFile.h fileservplugin/PipeSessions.h  fileservplugin/PipeFileBase.h fileservplugin/IPermissionCallback.h fileservplugin/FileMetadataPipe.h
 
-fsimageplugin_headers = fsimageplugin/filesystem.h fsimageplugin/FSImageFactory.h fsimageplugin/IFilesystem.h fsimageplugin/IFSImageFactory.h fsimageplugin/IVHDFile.h fsimageplugin/pluginmgr.h fsimageplugin/vhdfile.h fsimageplugin/fs/ntfs.h fsimageplugin/fs/unknown.h fsimageplugin/CompressedFile.h fsimageplugin/LRUMemCache.h common/miniz.c fsimageplugin/cowfile.h fsimageplugin/FileWrapper.h
+fsimageplugin_headers = fsimageplugin/filesystem.h fsimageplugin/FSImageFactory.h fsimageplugin/IFilesystem.h fsimageplugin/IFSImageFactory.h fsimageplugin/IVHDFile.h fsimageplugin/pluginmgr.h fsimageplugin/vhdfile.h fsimageplugin/fs/ntfs.h fsimageplugin/fs/unknown.h fsimageplugin/CompressedFile.h fsimageplugin/LRUMemCache.h common/miniz.c fsimageplugin/cowfile.h fsimageplugin/FileWrapper.h fsimageplugin/ClientBitmap.h
 
 urbackupclientctl_headers = clientctl/Connector.h clientctl/tcpstack.h
 

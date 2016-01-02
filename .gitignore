@@ -240,3 +240,4 @@ backup_scripts/*
 .vs/UrBackupBackend/v14/.suo
 clientctl/x64/*
 UrBackupBackend.VC.opendb
+deps/

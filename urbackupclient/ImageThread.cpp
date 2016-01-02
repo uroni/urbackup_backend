@@ -218,9 +218,19 @@ void ImageThread::sendFullImageThread(void)
 				}
 				
 				const unsigned char* bitmap = fs->getBitmap();
-				
+
 				sha256_ctx shactx;
 				sha256_init(&shactx);
+
+				unsigned int endian_blocksize = little_endian(blocksize);
+				if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize)) )
+				{
+					Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
+					run = false;
+					break;
+				}			
+
+				sha256_update(&shactx, reinterpret_cast<unsigned char*>(&endian_blocksize), sizeof(endian_blocksize));
 				
 				while(bitmap_size>0)
 				{

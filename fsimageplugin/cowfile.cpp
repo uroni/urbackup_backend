@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <memory>
 #include "FileWrapper.h"
+#include "ClientBitmap.h"
 
 const unsigned int blocksize = 4096;
 
@@ -480,20 +481,31 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile, false, false);
+	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
 
-	if(ntfs.hasError())
+	bitmap_source.reset(new ClientBitmap(filename + ".cbitmap"));
+
+	if (bitmap_source->hasError())
+	{
+		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
+
+		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+	}
+
+	if (bitmap_source->hasError())
 	{
 		Server->Log("Error opening NTFS bitmap. Cannot trim.", LL_WARNING);
 		return false;
 	}
 
+	unsigned int bitmap_blocksize = static_cast<unsigned int>(bitmap_source->getBlocksize());
+
 	int64 unused_start_block = -1;
 
-	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs.getBlocksize();
+	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/bitmap_blocksize;
 			ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(!ntfs.hasBlock(ntfs_block))
+		if(!bitmap_source->hasBlock(ntfs_block))
 		{
 			if(unused_start_block==-1)
 			{
@@ -502,8 +514,8 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 		}
 		else if(unused_start_block!=-1)
 		{
-			int64 unused_start = fs_offset + unused_start_block*ntfs.getBlocksize();
-			int64 unused_end = fs_offset + ntfs_block*ntfs.getBlocksize();
+			int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+			int64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
 			setBitmapRange(unused_start, unused_end, false);
 			if(!setUnused(unused_start, unused_end))
 			{
@@ -524,27 +536,38 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 bool CowFile::syncBitmap(_i64 fs_offset)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile, false, false);
+	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
 
-	if(ntfs.hasError())
+	bitmap_source.reset(new ClientBitmap(filename + ".cbitmap"));
+
+	if (bitmap_source->hasError())
+	{
+		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
+
+		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+	}
+
+	if (bitmap_source->hasError())
 	{
 		Server->Log("Error opening NTFS bitmap. Cannot synchronize bitmap.", LL_WARNING);
 		return false;
 	}
 
+	unsigned int bitmap_blocksize = static_cast<unsigned int>(bitmap_source->getBlocksize());
+
 	int64 used_start_block=-1;
 
-	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs.getBlocksize();
+	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/bitmap_blocksize;
 				ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(ntfs.hasBlock(ntfs_block))
+		if(bitmap_source->hasBlock(ntfs_block))
 		{
 			used_start_block=ntfs_block;
 		}
 		else if(used_start_block!=-1)
 		{
-			int64 used_start = fs_offset + used_start_block*ntfs.getBlocksize();
-			int64 used_end = fs_offset + ntfs_block*ntfs.getBlocksize();
+			int64 used_start = fs_offset + used_start_block*bitmap_blocksize;
+			int64 used_end = fs_offset + ntfs_block*bitmap_blocksize;
 			setBitmapRange(used_start, used_end, true);
 		}
 	}
