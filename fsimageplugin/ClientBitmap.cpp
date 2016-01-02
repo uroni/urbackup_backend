@@ -42,7 +42,7 @@ ClientBitmap::ClientBitmap(std::string fn)
 
 	bitmap_blocksize = little_endian(bitmap_blocksize);
 
-	bitmap_data.resize(bitmap_file->Size() - 8 - sha_size);
+	bitmap_data.resize(bitmap_file->Size() - 8 - sha_size - sizeof(bitmap_blocksize));
 
 	if (bitmap_file->Read(bitmap_data.data(), static_cast<_u32>(bitmap_data.size())) != bitmap_data.size())
 	{

@@ -211,50 +211,8 @@ void ImageThread::sendFullImageThread(void)
 			
 			if(image_inf->with_bitmap)
 			{
-				size_t bitmap_size = (drivesize/blocksize)/8;
-				if( (drivesize/blocksize)%8!=0 )
+				if (!sendBitmap(fs.get(), drivesize, blocksize))
 				{
-					++bitmap_size;
-				}
-				
-				const unsigned char* bitmap = fs->getBitmap();
-
-				sha256_ctx shactx;
-				sha256_init(&shactx);
-
-				unsigned int endian_blocksize = little_endian(blocksize);
-				if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize)) )
-				{
-					Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
-					run = false;
-					break;
-				}			
-
-				sha256_update(&shactx, reinterpret_cast<unsigned char*>(&endian_blocksize), sizeof(endian_blocksize));
-				
-				while(bitmap_size>0)
-				{
-					size_t tosend = (std::min)((size_t)4096, bitmap_size);
-					
-					sha256_update(&shactx, bitmap, (unsigned int)tosend);
-					
-					if(!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend))
-					{
-						Server->Log("Pipe broken while sending bitmap", LL_ERROR);
-						run = false;
-						break;
-					}
-					
-					bitmap_size-=tosend;
-					bitmap+=tosend;
-				}
-				
-				unsigned char dig[c_hashsize];
-				sha256_final(&shactx, dig);
-				
-				if(!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize))
-				{
-					Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
 					run = false;
 					break;
 				}
@@ -450,16 +408,12 @@ void ImageThread::sendIncrImageThread(void)
 
 	bool has_error=true;
 	bool with_checksum=image_inf->with_checksum;
-	bool with_emptyblocks=image_inf->with_emptyblocks;
 
 	int save_id=-1;
 	int update_cnt=0;
 
 	int64 lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
-
-	char* empty_vhd_blocks_buffer = NULL;
-	size_t empty_vhd_block_buffer_pos = 0;
 
 	bool run=true;
 	while(run)
@@ -532,15 +486,21 @@ void ImageThread::sendIncrImageThread(void)
 				cptr+=sizeof(int64);
 				memcpy(cptr, &blockcnt, sizeof(int64) );
 				cptr+=sizeof(int64);
-	#ifndef VSS_XP //persistence
-	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
-	#endif
-	#else
-				*cptr=0;
-	#endif
+				unsigned char* flags = reinterpret_cast<unsigned char*>(cptr);
+				*flags = 0;
+#ifndef VSS_XP //persistence
+#ifndef VSS_S03
+				*flags |= ImageFlag_Persistent;
+#endif
+#endif
+				if (image_inf->no_shadowcopy)
+				{
+					*flags = *flags & (~ImageFlag_Persistent);
+			}
+				if (image_inf->with_bitmap)
+				{
+					*flags |= ImageFlag_Bitmap;
+				}
 				++cptr;
 				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
 				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
@@ -564,6 +524,15 @@ void ImageThread::sendIncrImageThread(void)
 				{
 					Server->Log("Pipe broken -1", LL_ERROR);
 					run=false;
+					break;
+				}
+			}
+
+			if (image_inf->with_bitmap)
+			{
+				if (!sendBitmap(fs.get(), drivesize, blocksize))
+				{
+					run = false;
 					break;
 				}
 			}
@@ -655,12 +624,6 @@ void ImageThread::sendIncrImageThread(void)
 					}						
 					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize)!=0)
 					{
-						if(empty_vhd_blocks_buffer!=NULL)
-						{
-							cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
-							empty_vhd_blocks_buffer=NULL;
-						}
-
 						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
 						bool notify_cs=false;
 						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
@@ -737,27 +700,6 @@ void ImageThread::sendIncrImageThread(void)
 
 						lastsendtime=tt;
 					}
-
-					if(empty_vhd_blocks_buffer==NULL)
-					{
-						empty_vhd_blocks_buffer = cs->getBuffer();
-						empty_vhd_block_buffer_pos = 0;
-					}
-
-					if(with_emptyblocks)
-					{
-						int64 bs=-127;
-						memcpy(&empty_vhd_blocks_buffer[empty_vhd_block_buffer_pos], &bs, sizeof(bs));
-						empty_vhd_block_buffer_pos+=sizeof(bs);
-						memcpy(&empty_vhd_blocks_buffer[empty_vhd_block_buffer_pos], &i, sizeof(i));
-						empty_vhd_block_buffer_pos+=sizeof(i);
-
-						if(empty_vhd_block_buffer_pos>=blocksize-sizeof(int64))
-						{
-							cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
-							empty_vhd_blocks_buffer=NULL;
-						}
-					}
 				}
 
 				if(IdleCheckerThread::getPause())
@@ -770,12 +712,6 @@ void ImageThread::sendIncrImageThread(void)
 					updateShadowCopyStarttime(save_id);
 					last_shadowcopy_update = Server->getTimeSeconds();
 				}
-			}
-
-			if(empty_vhd_blocks_buffer!=NULL)
-			{
-				cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
-				empty_vhd_blocks_buffer=NULL;
 			}
 
 			cs->doExit();
@@ -895,4 +831,54 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
+}
+
+bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize)
+{
+	size_t bitmap_size = (drivesize / blocksize) / 8;
+	if ((drivesize / blocksize) % 8 != 0)
+	{
+		++bitmap_size;
+	}
+
+	const unsigned char* bitmap = fs->getBitmap();
+
+	sha256_ctx shactx;
+	sha256_init(&shactx);
+
+	unsigned int endian_blocksize = little_endian(blocksize);
+	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize)))
+	{
+		Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
+		return false;
+	}
+
+	sha256_update(&shactx, reinterpret_cast<unsigned char*>(&endian_blocksize), sizeof(endian_blocksize));
+
+	while (bitmap_size>0)
+	{
+		size_t tosend = (std::min)((size_t)4096, bitmap_size);
+
+		sha256_update(&shactx, bitmap, (unsigned int)tosend);
+
+		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend))
+		{
+			Server->Log("Pipe broken while sending bitmap", LL_ERROR);
+			return false;
+		}
+
+		bitmap_size -= tosend;
+		bitmap += tosend;
+	}
+
+	unsigned char dig[c_hashsize];
+	sha256_final(&shactx, dig);
+
+	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize))
+	{
+		Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
+		return false;
+	}
+
+	return true;
 }

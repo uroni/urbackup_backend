@@ -229,19 +229,19 @@ bool ImageBackup::doBackup()
 			synthetic_full=false;
 			ServerLogger::Log(logid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
 			ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
-					client_main->getProtocolVersions().image_protocol_version>1);
+					client_main->getProtocolVersions().client_bitmap_version>0);
 		}
 		else
 		{
 			ret = doImage(letter, last.path, last.incremental+1,
 				cowraw_format?0:last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat(),
-				client_main->getProtocolVersions().image_protocol_version>1);
+				client_main->getProtocolVersions().client_bitmap_version>0);
 		}
 	}
 	else
 	{
 		ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
-			      client_main->getProtocolVersions().image_protocol_version>1);
+			      client_main->getProtocolVersions().client_bitmap_version>0);
 	}
 
 	if(ret)
@@ -312,13 +312,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	{
 		chksum_str+="&bitmap=1";
 	}
-
-	/*
-	Not needed currently
-	if(client_main->getProtocolVersions().image_protocol_version>0)
-	{
-		chksum_str+="&emptyblocks=1";
-	}*/
 
 	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 
@@ -718,7 +711,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					
 					if(transfer_bitmap)
 					{
-						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+".cbitmap"), MODE_WRITE));
+						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+".cbitmap"), MODE_RW_CREATE));
 						if(bitmap_file.get()==NULL)
 						{
 							ServerLogger::Log(logid, "Error opening bitmap file \""+imagefn+".cbitmap\"", LL_ERROR);
@@ -889,7 +882,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				
 				size_t toread = (std::min)(bitmap_size - bitmap_read, r-off);
 				
-				if(bitmap_file->Write(&buffer[off], static_cast<_u32>(toread))!=toread)
+				if(bitmap_file.get()!=NULL 
+					&& bitmap_file->Write(&buffer[off], static_cast<_u32>(toread))!=toread)
 				{
 					ServerLogger::Log(logid, "Error writing to bitmap file", LL_ERROR);
 					goto do_image_cleanup;
@@ -901,21 +895,26 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					off+=static_cast<_u32>(toread);
 					
-					bitmap_file->Seek(bitmap_size-sha_size);
-					char dig_recv[sha_size];
-					bitmap_file->Read(dig_recv, sha_size);
-					
-					unsigned char dig[sha_size];
-					sha256_final(&shactx, dig);
-					
-					if(memcmp(dig, &buffer[off], sha_size)!=0)
+					if (bitmap_file.get() != NULL)
 					{
-						ServerLogger::Log(logid, "Checksum for bitmap wrong. Stopping image backup.", LL_ERROR);
-						goto do_image_cleanup;
+						bitmap_file->Seek(8 + bitmap_size - sha_size);
+						char dig_recv[sha_size];
+						bitmap_file->Read(dig_recv, sha_size);
+
+						unsigned char dig[sha_size];
+						sha256_final(&shactx, dig);
+
+						if (memcmp(dig, dig_recv, sha_size) != 0)
+						{
+							ServerLogger::Log(logid, "Checksum for bitmap wrong. Stopping image backup.", LL_ERROR);
+							goto do_image_cleanup;
+						}
 					}
 					
+					sha256_init(&shactx);
 					transfer_state = ETransferState_Image;
 					transfer_bitmap = false;
+					bitmap_file.reset();
 				}
 				else
 				{

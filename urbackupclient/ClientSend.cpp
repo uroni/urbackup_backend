@@ -51,6 +51,7 @@ void ClientSend::operator()(void)
 		BufferItem item;
 		bool has_item=false;
 		bool do_exit;
+		bool needs_flush = true;
 		{
 			IScopedLock lock(mutex);
 
@@ -58,8 +59,9 @@ void ClientSend::operator()(void)
 			{
 				cond->wait(&lock, 100);
 
-				if(tqueue.empty())
+				if(tqueue.empty() && needs_flush)
 				{
+					needs_flush = false;
 					if(!pipe->Flush(-1))
 					{
 						print_last_error();
@@ -97,6 +99,12 @@ void ClientSend::operator()(void)
 		}
 		else if(do_exit)
 		{
+			if (!pipe->Flush(-1))
+			{
+				print_last_error();
+				has_error = true;
+			}
+
 			break;
 		}
 	}

@@ -173,7 +173,7 @@ void ServerVHDWriter::operator()(void)
 
 	if(do_make_full)
 	{
-		ServerLogger::Log(logid, "Converting incremental image file to full image file...", LL_DEBUG);
+		ServerLogger::Log(logid, "Converting incremental image file to full image file...", LL_INFO);
 
 		if(!vhd->makeFull(mbr_offset, this))
 		{

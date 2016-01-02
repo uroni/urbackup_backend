@@ -2219,6 +2219,14 @@ function show_settings2(data)
 			}
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
+			var incr_image_style_params=["to-full", "to-last"];
+			data.settings=addSelectSelected(incr_image_style_params, "local_incr_image_style", data.settings);
+			data.settings=addSelectSelected(incr_image_style_params, "internet_incr_image_style", data.settings);
+			
+			var full_image_style_params=["full", "synthetic"];
+			data.settings=addSelectSelected(full_image_style_params, "local_full_image_style", data.settings);
+			data.settings=addSelectSelected(full_image_style_params, "internet_full_image_style", data.settings);
+			
 			data.settings.update_freq_incr=multiplyTimeSpan(data.settings.update_freq_incr, 1/(60.0*60.0));
 			data.settings.update_freq_full=multiplyTimeSpan(data.settings.update_freq_full, 1/(60.0*60.0*24.0));
 			data.settings.update_freq_image_incr=multiplyTimeSpan(data.settings.update_freq_image_incr, 1/(60.0*60.0*24.0));

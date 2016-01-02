@@ -983,8 +983,6 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 				image_inf.with_bitmap=true;
 		}
 
-		image_inf.with_emptyblocks=false;
-
 		image_inf.no_shadowcopy=false;
 
 		if(image_inf.image_letter=="SYSVOL"
@@ -1100,16 +1098,6 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 					image_inf.with_bitmap=true;
 			}
 			
-
-
-
-			image_inf.with_emptyblocks=false;
-			if(params.find("emptyblocks")!=params.end())
-			{
-				if(params["emptyblocks"]=="1")
-					image_inf.with_emptyblocks=true;
-			}
-
 			image_inf.no_shadowcopy=false;
 
 			if(image_inf.startpos==0)
@@ -1935,7 +1923,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore);
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"

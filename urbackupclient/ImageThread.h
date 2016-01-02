@@ -25,6 +25,8 @@ private:
 	void removeShadowCopyThread(int save_id);
 	void updateShadowCopyStarttime(int save_id);
 
+	bool sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize);
+
 	IPipe *pipe;
 	IPipe *mempipe;
 	ClientConnector *client;

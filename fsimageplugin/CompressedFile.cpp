@@ -525,12 +525,12 @@ bool CompressedFile::finish()
 	{
 		writeIndex();
 		writeHeader();
-	}
 
-	if(!uncompressedFile->Sync())
-	{
-		error=true;
-		Server->Log("Error syncing uncompressed file to disk", LL_ERROR);
+		if (!uncompressedFile->Sync())
+		{
+			error = true;
+			Server->Log("Error syncing uncompressed file to disk", LL_ERROR);
+		}
 	}
 
 	if(!error)

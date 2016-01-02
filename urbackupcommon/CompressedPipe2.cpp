@@ -24,6 +24,7 @@
 #include "../stringtools.h"
 #include <assert.h>
 #include <stdexcept>
+#include <assert.h>
 #include "InternetServicePipe2.h"
 
 
@@ -227,6 +228,7 @@ void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 
 bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
+	assert(buffer != NULL || bsize == 0);
 	const char *ptr=buffer;
 	size_t cbsize=bsize;
 	int64 starttime = Server->getTimeMS();

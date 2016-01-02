@@ -1317,6 +1317,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.select_sha_version=watoi(it->second);
 		}
+		it = params.find("CLIENT_BITMAP");
+		if (it != params.end())
+		{
+			protocol_versions.client_bitmap_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{
