@@ -8,4 +8,7 @@ public:
 	void update_client();
 
 	void update_server_version_info();
+
+private:
+	void read_update_location();
 };

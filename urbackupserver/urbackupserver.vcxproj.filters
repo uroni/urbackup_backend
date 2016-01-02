@@ -530,9 +530,6 @@
     <ClInclude Include="..\urbackupcommon\glob.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="FileMetadataDownloadThread.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h">
       <Filter>fileclient</Filter>
     </ClInclude>
@@ -563,11 +560,14 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipe2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="restore_client.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="apps\skiphash_copy.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="restore_client.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

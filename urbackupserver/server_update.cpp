@@ -25,7 +25,10 @@
 
 extern IUrlFactory *url_fak;
 
-const std::string urbackup_update_url = "http://update3.urbackup.org/";
+namespace
+{
+	std::string urbackup_update_url = "http://update3.urbackup.org/";
+}
 
 ServerUpdate::ServerUpdate(void)
 {
@@ -39,6 +42,7 @@ void ServerUpdate::update_client()
 		return;
 	}
 
+	read_update_location();
 
 	std::string http_proxy = Server->getServerParameter("http_proxy");
 
@@ -111,6 +115,8 @@ void ServerUpdate::update_server_version_info()
 		return;
 	}
 
+	read_update_location();
+
 	std::string http_proxy = Server->getServerParameter("http_proxy");
 
 	std::string errmsg;
@@ -130,4 +136,14 @@ void ServerUpdate::update_server_version_info()
 			Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
 		}
 	}	
+}
+
+void ServerUpdate::read_update_location()
+{
+	std::string read_update_location = trim(getFile("server_update_location.url"));
+
+	if (!read_update_location.empty())
+	{
+		urbackup_update_url = read_update_location;
+	}
 }
