@@ -2598,7 +2598,8 @@ g.settings_list=[
 "background_backups",
 "create_linked_user_views",
 "internet_incr_image_style",
-"internet_full_image_style"
+"internet_full_image_style",
+"max_running_jobs_per_client"
 ];
 g.general_settings_list=[
 "backupfolder",
