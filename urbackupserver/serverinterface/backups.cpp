@@ -417,7 +417,14 @@ namespace backupaccess
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
+
 		has_access = false;
+		
+		if (res.empty())
+		{
+			has_access = true;
+		}
+
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(fileaccesstokens!=NULL && !checkBackupTokens(*fileaccesstokens, backupfolder, clientname, res[i]["path"]) )
