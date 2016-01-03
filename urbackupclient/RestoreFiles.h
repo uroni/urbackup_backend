@@ -10,6 +10,10 @@
 #include <memory>
 #include <stack>
 
+namespace
+{
+	class ScopedRestoreUpdater;
+}
 
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
 {
@@ -37,7 +41,7 @@ private:
 
 	int64 calculateDownloadSize();
 
-	bool downloadFiles(FileClient& fc, int64 total_size);
+	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater);
 
 	bool removeFiles( std::string restore_path, std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue );
 

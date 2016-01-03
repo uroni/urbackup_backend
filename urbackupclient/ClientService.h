@@ -127,7 +127,7 @@ public:
 
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
 
-	static void updateRestorePc(int64 status_id, int nv, const std::string& identity);
+	static void updateRestorePc(int64 restore_id, int64 status_id, int nv, const std::string& identity);
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 

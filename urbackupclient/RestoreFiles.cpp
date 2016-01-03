@@ -34,103 +34,175 @@
 #include "database.h"
 #include "FileMetadataDownloadThread.h"
 
+namespace
+{
+	class RestoreUpdaterThread : public IThread
+	{
+	public:
+		RestoreUpdaterThread(int64 restore_id, int64 status_id, std::string server_token)
+			: update_mutex(Server->createMutex()), stopped(false),
+			update_cond(Server->createCondition()), curr_pc(-1),
+			restore_id(restore_id), status_id(status_id), server_token(server_token)
+		{}
+
+		void operator()()
+		{
+			IScopedLock lock(update_mutex.get());
+			while (!stopped)
+			{
+				ClientConnector::updateRestorePc(restore_id, status_id, curr_pc, server_token);
+				update_cond->wait(&lock, 60000);
+			}
+			delete this;
+		}
+
+		void stop()
+		{
+			IScopedLock lock(update_mutex.get());
+			stopped = true;
+			update_cond->notify_all();
+		}
+
+		void update_pc(int new_pc)
+		{
+			IScopedLock lock(update_mutex.get());
+			curr_pc = new_pc;
+			update_cond->notify_all();
+		}
+
+	private:
+		std::auto_ptr<IMutex> update_mutex;
+		std::auto_ptr<ICondition> update_cond;
+		bool stopped;
+		int curr_pc;
+		int64 restore_id;
+		int64 status_id;
+		std::string server_token;
+	};
+
+	class ScopedRestoreUpdater
+	{
+	public:
+		ScopedRestoreUpdater(int64 restore_id, int64 status_id, std::string server_token)
+			: restore_updater(new RestoreUpdaterThread(restore_id, status_id, server_token))
+		{
+			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater);
+		}
+
+		void update_pc(int new_pc)
+		{
+			restore_updater->update_pc(new_pc);
+		}
+
+		~ScopedRestoreUpdater()
+		{
+			restore_updater->stop();
+			Server->getThreadPool()->waitFor(restore_updater_ticket);
+		}
+
+	private:
+		RestoreUpdaterThread* restore_updater;
+		THREADPOOL_TICKET restore_updater_ticket;
+	};
+}
+
+
 void RestoreFiles::operator()()
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	FileClient fc(false, client_token, 3,
 		true, this, NULL);
 
-	
-
 	log("Starting restore...", LL_INFO);
 
-	ClientConnector::updateRestorePc(status_id, -1, server_token);
-	
-	if(!connectFileClient(fc))
 	{
-		log("Connecting for restore failed", LL_ERROR);
-		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
-		return;
-	}
+		ScopedRestoreUpdater restore_updater(restore_id, status_id, server_token);
 
-	log("Loading file list...", LL_INFO);
-
-	if(!downloadFilelist(fc))
-	{
-		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
-		return;
-	}
-
-	log("Calculating download size...", LL_INFO);
-
-	int64 total_size = calculateDownloadSize();
-	if(total_size==-1)
-	{
-		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
-		return;
-	}
-
-	FileClient fc_metadata(false, client_token, 3,
-		true, this, NULL);
-
-	if(!connectFileClient(fc_metadata))
-	{
-		log("Connecting for file metadata failed", LL_ERROR);
-		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
-		return;
-	}
-
-    std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token ));
-	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
-
-	int64 starttime=Server->getTimeMS();
-
-	while(Server->getTimeMS()-starttime<10000)
-	{
-		if(fc_metadata.isDownloading())
+		if (!connectFileClient(fc))
 		{
-			break;
-		}
-	}
-
-	if(!fc_metadata.isDownloading())
-	{
-		log("Error starting metadata download", LL_INFO);
-		restore_failed(fc, metadata_dl);
-		return;
-	}
-
-	log("Downloading necessary file data...", LL_INFO);
-
-	if(!downloadFiles(fc, total_size))
-	{
-		restore_failed(fc, metadata_dl);
-		return;
-	}
-
-	ClientConnector::updateRestorePc(status_id, 101, server_token);
-
-	do
-	{
-		if(fc.InformMetadataStreamEnd(client_token)==ERR_TIMEOUT)
-		{
-			fc.Reconnect();
-
-			fc.InformMetadataStreamEnd(client_token);
+			log("Connecting for restore failed", LL_ERROR);
+			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			return;
 		}
 
-		log("Waiting for metadata download stream to finish", LL_DEBUG);
+		log("Loading file list...", LL_INFO);
 
-		Server->wait(1000);
+		if (!downloadFilelist(fc))
+		{
+			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			return;
+		}
 
-		metadata_thread->shutdown();
-	}
-	while(!Server->getThreadPool()->waitFor(metadata_dl, 10000));
-	
-	if(!metadata_thread->applyMetadata())
-	{
-		restore_failed(fc, metadata_dl);
-		return;
+		log("Calculating download size...", LL_INFO);
+
+		int64 total_size = calculateDownloadSize();
+		if (total_size == -1)
+		{
+			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			return;
+		}
+
+		FileClient fc_metadata(false, client_token, 3,
+			true, this, NULL);
+
+		if (!connectFileClient(fc_metadata))
+		{
+			log("Connecting for file metadata failed", LL_ERROR);
+			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			return;
+		}
+
+		std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token));
+		THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
+
+		int64 starttime = Server->getTimeMS();
+
+		while (Server->getTimeMS() - starttime < 10000)
+		{
+			if (fc_metadata.isDownloading())
+			{
+				break;
+			}
+		}
+
+		if (!fc_metadata.isDownloading())
+		{
+			log("Error starting metadata download", LL_INFO);
+			restore_failed(fc, metadata_dl);
+			return;
+		}
+
+		log("Downloading necessary file data...", LL_INFO);
+
+		if (!downloadFiles(fc, total_size, restore_updater))
+		{
+			restore_failed(fc, metadata_dl);
+			return;
+		}
+
+		restore_updater.update_pc(101);
+
+		do
+		{
+			if (fc.InformMetadataStreamEnd(client_token) == ERR_TIMEOUT)
+			{
+				fc.Reconnect();
+
+				fc.InformMetadataStreamEnd(client_token);
+			}
+
+			log("Waiting for metadata download stream to finish", LL_DEBUG);
+
+			Server->wait(1000);
+
+			metadata_thread->shutdown();
+		} while (!Server->getThreadPool()->waitFor(metadata_dl, 10000));
+
+		if (!metadata_thread->applyMetadata())
+		{
+			restore_failed(fc, metadata_dl);
+			return;
+		}
 	}
 
 	log("Restore finished successfully.", LL_INFO);
@@ -214,7 +286,7 @@ int64 RestoreFiles::calculateDownloadSize()
 	return total_size;
 }
 
-bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
+bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater)
 {
 	std::vector<char> buffer;
 	buffer.resize(32768);
@@ -287,12 +359,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					laststatsupdate=ctime;
 					if(total_size==0)
 					{
-						ClientConnector::updateRestorePc(status_id, 100, server_token);
+						restore_updater.update_pc(100);
 					}
 					else
 					{
 						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
-						ClientConnector::updateRestorePc(status_id, pcdone, server_token);
+						restore_updater.update_pc(pcdone);
 					}
 				}
 
@@ -531,12 +603,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
     {
         if(total_size==0)
         {
-            ClientConnector::updateRestorePc(status_id, 100, server_token);
+			restore_updater.update_pc(100);
         }
         else
         {
             int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));
-            ClientConnector::updateRestorePc(status_id, pcdone, server_token);
+			restore_updater.update_pc(pcdone);
         }
     }
 

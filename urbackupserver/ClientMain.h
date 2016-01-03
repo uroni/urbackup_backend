@@ -76,6 +76,20 @@ struct SRunningBackup
 	std::string letter;
 };
 
+struct SRunningRestore
+{
+	SRunningRestore(std::string restore_identity, logid_t log_id, int64 status_id, int64 restore_id)
+		: restore_identity(restore_identity), log_id(log_id), status_id(status_id), restore_id(restore_id),
+		  last_active(Server->getTimeMS())
+	{}
+
+	std::string restore_identity;
+	logid_t log_id;
+	int64 status_id;
+	int64 restore_id;
+	int64 last_active;
+};
+
 struct SShareCleanup
 {
 	SShareCleanup(std::string name, std::string identity, bool cleanup_file, bool remove_callback)
@@ -179,6 +193,12 @@ public:
 
 	static void addShareToCleanup(int clientid, const SShareCleanup& cleanupData);
 
+	static void cleanupRestoreShare(int clientid, std::string restore_identity);
+
+	bool finishRestore(int64 restore_id);
+
+	bool updateRestoreRunning(int64 restore_id);
+
 	static bool startBackupBarrier(int64 timeout_seconds);
 
 	static void stopBackupBarrier();
@@ -216,7 +236,12 @@ private:
 
 	bool authenticatePubKey();
 
+	void timeoutRestores();
+
 	void cleanupShares();
+	static void cleanupShare(SShareCleanup& tocleanup);
+
+	void finishFailedRestore(std::string restore_identity, logid_t log_id, int64 status_id, int64 restore_id);
 
 	std::string curr_image_format;
 
@@ -309,4 +334,7 @@ private:
 
 	std::string curr_server_token;
 	bool needs_authentification;
+
+	std::auto_ptr<IMutex> restore_mutex;
+	std::vector<SRunningRestore> running_restores;
 };

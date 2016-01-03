@@ -101,7 +101,8 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
-	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false)
+	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false),
+	restore_mutex(Server->createMutex())
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -463,6 +464,8 @@ void ClientMain::operator ()(void)
 	{
 		if(!skip_checking)
 		{
+			timeoutRestores();
+
 			{
 				bool received_client_settings=true;
 				bool settings_updated=false;
@@ -787,10 +790,23 @@ void ClientMain::operator ()(void)
 			}
 			
 
-			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
+			std::string ret = sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
 				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token),
 				"Starting restore failed", 10000, 10, true, LL_ERROR);
+
+			if (ret != "ok")
+			{
+				ServerLogger::Log(log_id, "Starting restore failed: "+ret, LL_ERROR);
+
+				finishFailedRestore(restore_identity, log_id, status_id, restore_id);
+			}
+			else
+			{
+				IScopedLock lock(restore_mutex.get());
+
+				running_restores.push_back(SRunningRestore(restore_identity, log_id, status_id, restore_id));
+			}
 		}
 
 		if(!msg.empty())
@@ -2304,6 +2320,27 @@ bool ClientMain::authenticatePubKey()
 	}
 }
 
+void ClientMain::timeoutRestores()
+{
+	IScopedLock lock(restore_mutex.get());
+
+	for (size_t i = 0; i < running_restores.size();)
+	{
+		if (Server->getTimeMS() - running_restores[i].last_active > 5 * 60 * 1000) //5min
+		{
+			ServerLogger::Log(running_restores[i].log_id, "Restore was inactive for 5min. Timeout. Stopping restore...", LL_ERROR);
+
+			finishFailedRestore(running_restores[i].restore_identity, running_restores[i].log_id, running_restores[i].status_id, running_restores[i].restore_id);
+
+			running_restores.erase(running_restores.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
 void ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
 {
 #ifdef _WIN32
@@ -2473,6 +2510,58 @@ void ClientMain::addShareToCleanup( int clientid, const SShareCleanup& cleanupDa
 	tocleanup.push_back(cleanupData);
 }
 
+void ClientMain::cleanupRestoreShare(int clientid, std::string restore_identity)
+{
+	IScopedLock lock(cleanup_mutex);
+
+	std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
+
+	for (size_t i = 0; i < tocleanup.size();)
+	{
+		if (tocleanup[i].identity == restore_identity)
+		{
+			cleanupShare(tocleanup[i]);
+			tocleanup.erase(tocleanup.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
+bool ClientMain::finishRestore(int64 restore_id)
+{
+	IScopedLock lock(restore_mutex.get());
+
+	for (size_t i = 0; i < running_restores.size(); ++i)
+	{
+		if (running_restores[i].restore_id == restore_id)
+		{
+			running_restores.erase(running_restores.begin() + i);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ClientMain::updateRestoreRunning(int64 restore_id)
+{
+	IScopedLock lock(restore_mutex.get());
+
+	for (size_t i = 0; i < running_restores.size(); ++i)
+	{
+		if (running_restores[i].restore_id == restore_id)
+		{
+			running_restores[i].last_active = Server->getTimeMS();
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void ClientMain::cleanupShares()
 {
 	if(fileserv!=NULL)
@@ -2482,29 +2571,68 @@ void ClientMain::cleanupShares()
 
 		for(size_t i=0;i<tocleanup.size();++i)
 		{
-			if(tocleanup[i].cleanup_file)
-			{
-				std::string cleanupfile = fileserv->getShareDir((tocleanup[i].name), tocleanup[i].identity);
-				if(!cleanupfile.empty())
-				{
-					Server->deleteFile(cleanupfile);
-				}
-			}
-
-			if(tocleanup[i].remove_callback)
-			{
-				fileserv->removeMetadataCallback((tocleanup[i].name), tocleanup[i].identity);
-			}
-
-			fileserv->removeDir((tocleanup[i].name), tocleanup[i].identity);
-
-			if(!tocleanup[i].identity.empty())
-			{
-				fileserv->removeIdentity(tocleanup[i].identity);
-			}
+			cleanupShare(tocleanup[i]);
 		}
 
 		tocleanup.clear();
+	}
+}
+
+void ClientMain::cleanupShare(SShareCleanup & tocleanup)
+{
+	if (tocleanup.cleanup_file)
+	{
+		std::string cleanupfile = fileserv->getShareDir(tocleanup.name, tocleanup.identity);
+		if (!cleanupfile.empty())
+		{
+			Server->deleteFile(cleanupfile);
+		}
+	}
+
+	if (tocleanup.remove_callback)
+	{
+		fileserv->removeMetadataCallback(tocleanup.name, tocleanup.identity);
+	}
+
+	fileserv->removeDir(tocleanup.name, tocleanup.identity);
+
+	if (!tocleanup.identity.empty())
+	{
+		fileserv->removeIdentity(tocleanup.identity);
+	}
+}
+
+void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_id, int64 status_id, int64 restore_id)
+{
+	ServerStatus::stopProcess(clientname, status_id);
+
+	int errors = 0;
+	int warnings = 0;
+	int infos = 0;
+	std::string logdata = ServerLogger::getLogdata(log_id, errors, warnings, infos);
+
+	backup_dao->saveBackupLog(clientid, errors, warnings, infos, 0,
+		0, 0, 1);
+
+	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
+
+	backup_dao->setRestoreDone(0, restore_id);
+
+	IScopedLock lock(cleanup_mutex);
+
+	std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
+
+	for (size_t i = 0; i < tocleanup.size();)
+	{
+		if (tocleanup[i].identity == restore_identity)
+		{
+			cleanupShare(tocleanup[i]);
+			tocleanup.erase(tocleanup.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
 	}
 }
 

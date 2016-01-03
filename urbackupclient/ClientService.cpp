@@ -2715,7 +2715,7 @@ bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int log
 	return sendMessageToChannel("LOG "+convert(log_id)+"-"+convert(loglevel)+"-"+msg, 10000, identity);
 }
 
-void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string& identity )
+void ClientConnector::updateRestorePc(int64 restore_id, int64 status_id, int nv, const std::string& identity )
 {
 	IScopedLock lock(backup_mutex);
 
@@ -2734,7 +2734,7 @@ void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string
 		pcdone = nv;
 	}
 
-	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id),
+	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id)+"&id="+convert(restore_id),
 		0, identity);
 }
 

@@ -1109,7 +1109,10 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 void ServerChannelThread::RESTORE_PERCENT( str_map params )
 {
 	int64 status_id = watoi64(params["status_id"]);
+	int64 restore_id = watoi64(params["id"]);
 	int pc = watoi(params["pc"]);
+
+	client_main->updateRestoreRunning(restore_id);
 
 	ServerStatus::setProcessPcDone(clientname, status_id, pc);
 }
@@ -1147,6 +1150,9 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 		backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
 
 		backup_dao.setRestoreDone(success?1:0, restore_id);
+
+		client_main->finishRestore(restore_id);
+		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
 	}
 	
 }
