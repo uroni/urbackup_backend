@@ -1401,7 +1401,19 @@ function show_backups2(data)
 	{
 		g.session=data.session;
 	}
-	if(data.clients)
+	
+	if(data.err)
+	{
+		if(data.err=="access_denied")
+		{
+			ndata=dustRender("backups_access_denied");
+		}
+		else
+		{
+			ndata=dustRender("backups_error", {err: data.err});
+		}
+	}
+	else if(data.clients)
 	{
 		var rows="";
 		for(var i=0;i<data.clients.length;++i)

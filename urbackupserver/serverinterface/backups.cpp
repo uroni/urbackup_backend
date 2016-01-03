@@ -407,7 +407,7 @@ namespace backupaccess
 		return has_permission;
 	}
 
-	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::string clientname, std::string* fileaccesstokens, int backupid_offset)
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::string clientname, std::string* fileaccesstokens, int backupid_offset, bool& has_access)
 	{
 		std::string backupfolder = getBackupFolder(db);
 
@@ -417,12 +417,15 @@ namespace backupaccess
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
+		has_access = false;
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(fileaccesstokens!=NULL && !checkBackupTokens(*fileaccesstokens, backupfolder, clientname, res[i]["path"]) )
 			{
 				continue;
 			}
+
+			has_access = true;
 
 			JSON::Object obj;
 			obj.set("id", watoi(res[i]["id"])+backupid_offset);
@@ -932,8 +935,17 @@ ACTION_IMPL(backups)
 					}
 				}
 
+				bool has_access;
 				JSON::Array backups = backupaccess::get_backups_with_tokens(db, t_clientid, clientname,
-					token_authentication ? &fileaccesstokens : NULL, 0);
+					token_authentication ? &fileaccesstokens : NULL, 0, has_access);
+
+				if (!has_access)
+				{
+					JSON::Object err_ret;
+					err_ret.set("err", "access_denied");
+					helper.Write(err_ret.stringify(false));
+					return;
+				}
 
 				ret.set("backups", backups);
 				ret.set("can_archive", archive_ok);
@@ -996,6 +1008,9 @@ ACTION_IMPL(backups)
 
 						if(token_authentication && !path_info.can_access_path)
 						{
+							JSON::Object err_ret;
+							err_ret.set("err", "access_denied");
+							helper.Write(err_ret.stringify(false));
 							return;
 						}
 
@@ -1049,6 +1064,9 @@ ACTION_IMPL(backups)
 						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
                                 u_path, 0, ret))
 						{
+							JSON::Object err_ret;
+							err_ret.set("err", "access_denied");
+							helper.Write(err_ret.stringify(false));
 							return;
 						}
 

@@ -33,7 +33,7 @@ namespace backupaccess
 
 	std::string get_backup_path(IDatabase* db, int backupid, int t_clientid);
 
-	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::string clientname, std::string* fileaccesstokens, int backupid_offset);
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::string clientname, std::string* fileaccesstokens, int backupid_offset, bool& has_access);
 
 	struct SPathInfo
 	{

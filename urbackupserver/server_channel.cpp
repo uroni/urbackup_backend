@@ -739,9 +739,18 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 		local_id_offset = img_id_offset;
 	}
 
-	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &last_fileaccesstokens, local_id_offset);
+	bool has_access;
+	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &last_fileaccesstokens, local_id_offset, has_access);
 
-    tcpstack.Send(input, backups.stringify(false));
+	if (!has_access)
+	{
+		tcpstack.Send(input, "err");
+	}
+	else
+	{
+		tcpstack.Send(input, backups.stringify(false));
+	}
+    
 	db->destroyAllQueries();
 
 	ServerStatus::updateActive();
