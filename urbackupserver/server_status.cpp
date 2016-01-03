@@ -237,6 +237,24 @@ bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 	}
 }
 
+bool ServerStatus::changeProcess(const std::string & clientname, size_t id, SStatusAction action)
+{
+	IScopedLock lock(mutex);
+	SStatus *s = &status[clientname];
+
+	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none, std::string()));
+
+	if (it != s->processes.end())
+	{
+		it->action = action;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 SProcess* ServerStatus::getProcessInt( const std::string &clientname, size_t id )
 {
 	SStatus *s=&status[clientname];

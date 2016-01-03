@@ -99,7 +99,12 @@ bool IncrFileBackup::doFileBackup()
 
 		if(resumed_full)
 		{
-			r_incremental=false;	
+			r_incremental=false;
+			ServerStatus::changeProcess(clientname, status_id, sa_resume_full_file);
+		}
+		else
+		{
+			ServerStatus::changeProcess(clientname, status_id, sa_resume_incr_file);
 		}
 	}
 

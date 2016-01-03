@@ -125,6 +125,8 @@ public:
 	static size_t startProcess(const std::string &clientname, SStatusAction action, const std::string& details);
 	static bool stopProcess(const std::string &clientname, size_t id);
 
+	static bool changeProcess(const std::string &clientname, size_t id, SStatusAction action);
+
 	static void setProcessQueuesize(const std::string &clientname, size_t id,
 		unsigned int prepare_hashqueuesize,
 		unsigned int hashqueuesize);
