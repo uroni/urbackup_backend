@@ -907,7 +907,7 @@ SLDAPSettings ServerSettings::getLDAPSettings()
 {
 	createSettingsReaders();
 	SLDAPSettings ldap_settings;
-	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "true")=="true";
+	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "false")=="true";
 	
 	ldap_settings.server_name = settings_default->getValue("ldap_server_name", "example.com");
 	ldap_settings.server_port = settings_default->getValue("ldap_server_port", 3268);
