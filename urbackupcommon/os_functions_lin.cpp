@@ -716,19 +716,12 @@ bool copy_file(const std::string &src, const std::string &dst)
 		return false;
 	}
 
-	bool has_error = copy_file(fsrc, fdst);
+	bool copy_ok = copy_file(fsrc, fdst);
 
 	Server->destroy(fsrc);
 	Server->destroy(fdst);
 
-	if(has_error)
-	{
-		return false;
-	}
-	else
-	{
-		return true;
-	}
+	return copy_ok;
 }
 
 bool copy_file(IFile *fsrc, IFile *fdst)
