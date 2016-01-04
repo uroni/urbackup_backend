@@ -893,7 +893,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		{
 			std::string clientname = backup_dao.getClientnameByImageid(img_id).value;
 			ScopedProcess restore_process(clientname, sa_restore_image, res[0]["letter"]);
-			backup_dao.addRestore(backup_dao.getClientidByImageid(img_id).value, std::string(), std::string(), 1, res[0]["letter"]);
+			backup_dao.addRestore(watoi(res[0]["clientid"]), std::string(), std::string(), 1, res[0]["letter"]);
 			int64 restore_id = db->getLastInsertID();
 
 			int skip=1024*512;
