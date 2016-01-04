@@ -150,6 +150,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	Server->setTemporaryDirectory(w_tmp+os_file_sep()+"urbackup_client_tmp");
 #endif
 
+	str_map params;
+	crypto_fak = (ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+	if (crypto_fak == NULL)
+	{
+		Server->Log("Error loading Cryptoplugin", LL_ERROR);
+	}
+
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
 		Server->setServerParameter("max_worker_clients", "1");
@@ -307,14 +314,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport);
 
-	str_map params;
 	filesrv_pluginid=Server->StartPlugin("fileserv", params);
-
-	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if( crypto_fak==NULL )
-	{
-		Server->Log("Error loading Cryptoplugin", LL_ERROR);
-	}
 
 	IndexThread *it=new IndexThread();
 	if(!do_leak_check)
