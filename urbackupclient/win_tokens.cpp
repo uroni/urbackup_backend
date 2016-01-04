@@ -202,22 +202,42 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	std::wstring referenced_domain;
 	referenced_domain.resize(1);
 	DWORD referenced_domain_size = 1;
-	BOOL b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
-		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
-		&referenced_domain_size, &sid_name_use);
 
-	if(!b && GetLastError()==ERROR_INSUFFICIENT_BUFFER)
+	BOOL b = false;
+
+	bool lookup_user = is_user;
+	while (!b)
 	{
-		referenced_domain.resize(referenced_domain_size);
-		sid_buffer.resize(account_sid_size);
-		b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
+		BOOL b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
+
+		if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+		{
+			referenced_domain.resize(referenced_domain_size);
+			sid_buffer.resize(account_sid_size);
+			b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
+				&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+				&referenced_domain_size, &sid_name_use);
+		}
+
+		if (!b && lookup_user)
+		{
+			lookup_user = false;
+			sid_buffer.resize(sizeof(SID));
+			account_sid_size = sizeof(SID);
+		}
+		else
+		{
+			break;
+		}
 	}
 
 	if(!b)
 	{
-		Server->Log("Error getting accout SID. Errorcode: "+convert((int)GetLastError()), LL_ERROR);
+		std::string errmsg;
+		int64 err = os_last_error(errmsg);
+		Server->Log("Error getting account SID of user "+accountname + ". Code: " + convert(err) + " - " + errmsg, LL_ERROR);
 		return false;
 	}
 
@@ -306,17 +326,34 @@ bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string
 	std::wstring referenced_domain;
 	referenced_domain.resize(1);
 	DWORD referenced_domain_size = 1;
-	BOOL b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
-		&sid[0], &account_sid_size, &referenced_domain[0],
-		&referenced_domain_size, &sid_name_use);
 
-	if(!b && GetLastError()==ERROR_INSUFFICIENT_BUFFER)
+	BOOL b = FALSE;
+
+	while (!b)
 	{
-		referenced_domain.resize(referenced_domain_size);
-		sid.resize(account_sid_size);
-		b=LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user?hostname:"")+accountname)).c_str(),
+		BOOL b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
 			&sid[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
+
+		if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+		{
+			referenced_domain.resize(referenced_domain_size);
+			sid.resize(account_sid_size);
+			b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
+				&sid[0], &account_sid_size, &referenced_domain[0],
+				&referenced_domain_size, &sid_name_use);
+		}
+
+		if (!b && is_user)
+		{
+			is_user = false;
+			sid.resize(sizeof(SID));
+			account_sid_size = sizeof(SID);
+		}
+		else
+		{
+			break;
+		}
 	}
 
 	if(!b)
@@ -351,7 +388,9 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		std::vector<char> sid;
 		if(!read_account_sid(sid, hostname, users[i], true))
 		{
-			Server->Log("Cannot get account SID for user "+users[i], LL_ERROR);
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			Server->Log("Cannot get account SID for user "+users[i]+" code: "+convert(err)+" - "+errmsg, LL_ERROR);
 			continue;
 		}
 
@@ -378,7 +417,9 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 		std::vector<char> sid;
 		if(!read_account_sid(sid, hostname, groups[i], false))
 		{
-			Server->Log("Cannot get account SID for group "+groups[i], LL_ERROR);
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			Server->Log("Cannot get account SID for group "+groups[i] + " code: " + convert(err) + " - " + errmsg, LL_ERROR);
 			continue;
 		}
 

@@ -168,8 +168,6 @@ bool FSNTFSWIN::excludeSectors( int64 start, int64 count )
 
 bool FSNTFSWIN::excludeBlock( int64 block )
 {
-	int64 blocksize=getBlocksize();
-
 	size_t bitmap_byte=(size_t)(block/8);
 	size_t bitmap_bit=block%8;
 
