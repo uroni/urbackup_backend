@@ -320,8 +320,8 @@ int main(int argc, char* argv[])
 			"Image file to restore to out_device",
 			false, "", "path");
 
-		TCLAP::SwitchArg restore_wizard_arg("w", "restore-wizard", "Start restore wizard");
-		TCLAP::SwitchArg restore_client_arg("l", "restore-client", "Start restore client");
+		TCLAP::SwitchArg restore_wizard_arg("e", "restore-wizard", "Start restore wizard");
+		TCLAP::SwitchArg restore_client_arg("n", "restore-client", "Start restore client");
 
 		std::vector<TCLAP::Arg*> xorArgs;
 		xorArgs.push_back(&restore_mbr_arg);
@@ -366,11 +366,8 @@ int main(int argc, char* argv[])
 			real_args.push_back("--internet_only_mode");
 			real_args.push_back("true");
 		}
-		if (std::find(real_args.begin(), real_args.end(), "--allow_restore") == real_args.end())
-		{
-			real_args.push_back("--allow_restore");
-			real_args.push_back(restore_arg.getValue());
-		}
+		real_args.push_back("--allow_restore");
+		real_args.push_back("server-confirms");
 		if (restore_mbr_arg.isSet())
 		{
 			if (!out_device_arg.isSet())

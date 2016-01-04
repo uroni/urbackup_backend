@@ -5,24 +5,24 @@
 autoreconf --install
 
 set -e
+set -x
 
-./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT" LDFLAGS="-static" --enable-headless
+./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT -flto" CFLAGS="-flto" LDFLAGS="-static -flto /usr/local/lib/libcryptopp.a" --enable-headless --with-crypto-prefix=/usr/local
 
 make -j4
 
 LANG=en
 
-mkdir restore_cd/urbackup
-mkdir restore_cd/urbackup/restore
+mkdir -p restore_cd/urbackup/restore
 cp urbackupclient/backup_client.db restore_cd/urbackup/
 touch restore_cd/urbackup/new.txt
 
 cp urbackupclientbackend restore_cd/urbackuprestoreclient
 cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
-cp urbackupserver/restore/* restore_cd/urbackup/restore/
+cp urbackupserver/restore/* restore_cd/urbackup/restore/ || true
 chmod +x restore_cd/urbackup/restore/*.sh
 strip restore_cd/urbackuprestoreclient
 
 cd restore_cd
-tar -czf ../restore_cd_2.tgz *
-cp ../restore_cd.tgz /var/www/restore_cd_2.tgz
+tar -cJf ../restore_cd_2.tar.xz *
+cp ../restore_cd_2.tar.xz /var/www/restore_cd_2.tar.xz
