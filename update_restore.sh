@@ -6,7 +6,7 @@ autoreconf --install
 
 set -e
 
-./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT" --enable-static
+./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT" LDFLAGS="-static" --enable-headless
 
 make -j4
 
