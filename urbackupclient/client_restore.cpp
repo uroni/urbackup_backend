@@ -1387,7 +1387,7 @@ void restore_wizard(void)
 						break; 
 					}
 
-					if(clients.empty())
+					if(errmsg.empty() && clients.empty())
 					{
 						ec=3;
 						errmsg="`cat urbackup/restore/no_clients_found`";
