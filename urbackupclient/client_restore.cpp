@@ -298,6 +298,10 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		{
 			ret=true;
 		}
+		else if (r == "no channels available")
+		{
+			ret = true;
+		}
 		else
 		{
 			Server->Log("Error during login: "+r, LL_ERROR);
@@ -1190,7 +1194,7 @@ void ping_named_server(void)
 
 	if(!out.empty())
 	{
-		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\" &").c_str());
+		system(("./urbackuprestoreclient --ping-server \""+out+"\" &").c_str());
 	}
 }
 
@@ -1759,7 +1763,7 @@ void restore_wizard(void)
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{
-					system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
+					system(("./urbackuprestoreclient --image-download-progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
 					while(!rt.isDone() && !restore_retry_ok)
 					{
 						Server->wait(1000);

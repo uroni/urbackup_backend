@@ -323,11 +323,20 @@ int main(int argc, char* argv[])
 		TCLAP::SwitchArg restore_wizard_arg("e", "restore-wizard", "Start restore wizard");
 		TCLAP::SwitchArg restore_client_arg("n", "restore-client", "Start restore client");
 
+		TCLAP::ValueArg<std::string> ping_server_arg("p", "ping-server",
+			"Ping server to notify it of client",
+			false, "", "IP/hostname");
+
+		TCLAP::SwitchArg image_download_progress_arg("q", "image-download-progress",
+			"Return image download progress for piping to dialog");
+
 		std::vector<TCLAP::Arg*> xorArgs;
 		xorArgs.push_back(&restore_mbr_arg);
 		xorArgs.push_back(&restore_image_arg);
 		xorArgs.push_back(&restore_wizard_arg);
 		xorArgs.push_back(&restore_client_arg);
+		xorArgs.push_back(&ping_server_arg);
+		xorArgs.push_back(&image_download_progress_arg);
 
 		cmd.xorAdd(xorArgs);
 
@@ -405,6 +414,24 @@ int main(int argc, char* argv[])
 			real_args.push_back("--no-server");
 			real_args.push_back("--restore_mode");
 			real_args.push_back("true");
+		}
+		else if (ping_server_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			real_args.push_back("ping_server");
+			real_args.push_back("--ping_server");
+			real_args.push_back(ping_server_arg.getValue());
+		}
+		else if (image_download_progress_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			real_args.push_back("download_progress");
 		}
 
 		return run_real_main(real_args);
