@@ -173,7 +173,7 @@ bool FSNTFSWIN::excludeBlock( int64 block )
 
 	unsigned char b=bitmap[bitmap_byte];
 
-	b=b&(~(1<<(7-bitmap_bit)));
+	b=b & ( ~(1<<bitmap_bit) );
 
 	bitmap[bitmap_byte]=b;
 

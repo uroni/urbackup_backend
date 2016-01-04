@@ -94,7 +94,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 
 
 #ifdef _WIN32
-		/*if(next(orig_letter, 0, "C"))
+		if(next(orig_letter, 0, "C"))
 		{
 			fs->excludeFile(pDev+"\\HIBERFIL.SYS");
 		}
@@ -153,7 +153,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 		if(pDev.find("HarddiskVolumeShadowCopy") != std::string::npos)
 		{
 			fs->excludeFiles(pDev + "\\System Volume Information", "{3808876b-c176-4e48-b7ae-04046e6cc752}");
-		}*/
+		}
 #endif
 		
 		/*
