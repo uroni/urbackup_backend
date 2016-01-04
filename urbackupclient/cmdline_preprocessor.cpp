@@ -133,6 +133,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 #endif
 
 
+#ifndef RESTORE_CLIENT
 int main(int argc, char* argv[])
 {
 	if(argc==0)
@@ -250,3 +251,171 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 }
+#endif
+
+#ifdef RESTORE_CLIENT
+int main(int argc, char* argv[])
+{
+	if (argc == 0)
+	{
+		std::cout << "Not enough arguments (zero arguments) -- no program name" << std::endl;
+		return 1;
+	}
+
+	for (size_t i = 1; i<argc; ++i)
+	{
+		std::string arg = argv[i];
+
+		if (arg == "--version")
+		{
+			show_version();
+			return 0;
+		}
+	}
+
+	try
+	{
+		TCLAP::CmdLine cmd("Run UrBackup Restore Client", ' ', cmdline_version);
+
+		TCLAP::ValueArg<std::string> logfile_arg("l", "logfile",
+			"Specifies the log file name",
+			false, "/var/log/urbackup.log", "path", cmd);
+
+		std::vector<std::string> loglevels;
+		loglevels.push_back("debug");
+		loglevels.push_back("info");
+		loglevels.push_back("warn");
+		loglevels.push_back("error");
+
+		TCLAP::ValuesConstraint<std::string> loglevels_constraint(loglevels);
+		TCLAP::ValueArg<std::string> loglevel_arg("v", "loglevel",
+			"Specifies the log level",
+			false, "info", &loglevels_constraint, cmd);
+
+		TCLAP::SwitchArg daemon_arg("d", "daemon", "Daemonize process", cmd, false);
+
+		TCLAP::SwitchArg internet_only_arg("i", "internet-only", "Only connect to backup servers via internet", cmd, false);
+
+		TCLAP::ValueArg<std::string> pidfile_arg("w", "pidfile",
+			"Save pid of daemon in file",
+			false, "/var/run/urbackup_srv.pid", "path", cmd);
+
+		TCLAP::SwitchArg no_console_time_arg("t", "no-consoletime",
+			"Do not print time when logging to console",
+			cmd, false);
+
+		TCLAP::ValueArg<std::string> config_arg("c", "config",
+			"Read configuration parameters from config file",
+			false, "", "path", cmd);
+
+		TCLAP::ValueArg<std::string> restore_mbr_arg("m", "restore-mbr",
+			"MBR file to restore to out_device",
+			false, "", "path");
+
+		TCLAP::ValueArg<std::string> out_device_arg("o", "out-device",
+			"Device file to restore to",
+			false, "", "path", cmd);
+
+		TCLAP::ValueArg<std::string> restore_image_arg("r", "restore-image",
+			"Image file to restore to out_device",
+			false, "", "path");
+
+		TCLAP::SwitchArg restore_wizard_arg("w", "restore-wizard", "Start restore wizard");
+		TCLAP::SwitchArg restore_client_arg("l", "restore-client", "Start restore client");
+
+		std::vector<TCLAP::Arg*> xorArgs;
+		xorArgs.push_back(&restore_mbr_arg);
+		xorArgs.push_back(&restore_image_arg);
+		xorArgs.push_back(&restore_wizard_arg);
+		xorArgs.push_back(&restore_client_arg);
+
+		cmd.xorAdd(xorArgs);
+
+		cmd.parse(argc, argv);
+
+		std::vector<std::string> real_args;
+		real_args.push_back(argv[0]);
+
+		if (!config_arg.getValue().empty())
+		{
+			read_config_file(config_arg.getValue(), real_args);
+		}
+		
+		real_args.push_back("--pidfile");
+		real_args.push_back(pidfile_arg.getValue());
+		if (std::find(real_args.begin(), real_args.end(), "--logfile") == real_args.end())
+		{
+			real_args.push_back("--logfile");
+			real_args.push_back(logfile_arg.getValue());
+		}
+		if (std::find(real_args.begin(), real_args.end(), "--loglevel") == real_args.end())
+		{
+			real_args.push_back("--loglevel");
+			real_args.push_back(loglevel_arg.getValue());
+		}
+		if (daemon_arg.getValue())
+		{
+			real_args.push_back("--daemon");
+		}
+		if (no_console_time_arg.getValue())
+		{
+			real_args.push_back("--log_console_no_time");
+		}
+		if (internet_only_arg.getValue())
+		{
+			real_args.push_back("--internet_only_mode");
+			real_args.push_back("true");
+		}
+		if (std::find(real_args.begin(), real_args.end(), "--allow_restore") == real_args.end())
+		{
+			real_args.push_back("--allow_restore");
+			real_args.push_back(restore_arg.getValue());
+		}
+		if (restore_mbr_arg.isSet())
+		{
+			if (!out_device_arg.isSet())
+			{
+				std::cout << "You need to specify a device to which restore the MBR via --out-device" << std::endl;
+				return 1;
+			}
+			
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			real_args.push_back("write_mbr");
+			real_args.push_back("--mbr_filename");
+			real_args.push_back(restore_mbr_arg.getValue());
+			real_args.push_back("--out_device");
+			real_args.push_back(out_device_arg.getValue());
+		}
+		else if (restore_image_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--vhdcopy_in");
+			real_args.push_back(restore_image_arg.getValue());
+			real_args.push_back("--vhdcopy_out");
+			real_args.push_back(out_device_arg.getValue());
+		}
+		else if (restore_wizard_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore_wizard");
+			real_args.push_back("true");
+		}
+		else if (restore_client_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore_mode");
+			real_args.push_back("true");
+		}
+
+		return run_real_main(real_args);
+	}
+	catch (TCLAP::ArgException &e)
+	{
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+		return 1;
+	}
+}
+#endif

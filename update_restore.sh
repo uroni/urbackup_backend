@@ -3,25 +3,12 @@
 ./switch_build.sh client
 
 autoreconf --install
-./configure
+
+set -e
+
+./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT" --enable-static
 
 make -j4
-cd fileservplugin
-make -j4
-cd ..
-cd urbackupclient
-make -j4
-cd ..
-cd fsimageplugin
-make -j4
-cd ..
-
-./switch_build.sh server
-
-autoreconf --install
-./configure
-
-make
 
 LANG=en
 
@@ -30,18 +17,12 @@ mkdir restore_cd/urbackup/restore
 cp urbackupclient/backup_client.db restore_cd/urbackup/
 touch restore_cd/urbackup/new.txt
 
-cp urbackup_srv restore_cd/urbackup_client
-cp urbackupclient/.libs/liburbackupclient.so restore_cd/liburbackupclient.so
-cp fsimageplugin/.libs/liburbackupclient_fsimageplugin.so restore_cd/libfsimageplugin.so
-cp fileservplugin/.libs/liburbackupclient_fileservplugin.so restore_cd/libfileservplugin.so
+cp urbackupclientbackend restore_cd/urbackuprestoreclient
 cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
 cp urbackupserver/restore/* restore_cd/urbackup/restore/
 chmod +x restore_cd/urbackup/restore/*.sh
-strip restore_cd/urbackup_client
-strip restore_cd/liburbackupclient.so
-strip restore_cd/libfsimageplugin.so
-strip restore_cd/libfileservplugin.so
+strip restore_cd/urbackuprestoreclient
 
 cd restore_cd
-tar -czf ../restore_cd.tgz *
-cp ../restore_cd.tgz /var/www/restore_cd.tgz
+tar -czf ../restore_cd_2.tgz *
+cp ../restore_cd.tgz /var/www/restore_cd_2.tgz
