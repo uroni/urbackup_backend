@@ -179,6 +179,11 @@ public:
 	{
 		ServerStatus::stopProcess(clientname, status_id);
 	}
+
+	size_t getStatusId()
+	{
+		return status_id;
+	}
 private:
 	std::string clientname;
 	size_t status_id;

@@ -891,7 +891,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		}
 		else
 		{
-			ScopedProcess restore_process(backup_dao.getClientnameByImageid(img_id).value, sa_restore_image, res[0]["letter"]);
+			std::string clientname = backup_dao.getClientnameByImageid(img_id).value;
+			ScopedProcess restore_process(clientname, sa_restore_image, res[0]["letter"]);
 			backup_dao.addRestore(backup_dao.getClientidByImageid(img_id).value, std::string(), std::string(), 1, res[0]["letter"]);
 			int64 restore_id = db->getLastInsertID();
 
@@ -908,7 +909,6 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			uint64 currpos=offset;
 			_i64 currblock=(currpos+skip)%blocksize;
 
-			vhdfile->Seek(skip);
 			/*vhdfile->Read(buffer, 512, read);
 			if(read!=512)
 			{
@@ -921,6 +921,26 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			input->Write(buffer, (_u32)read);*/
 
 			int64 last_update_time=Server->getTimeMS();
+
+			int64 used_bytes = vhdfile->usedSize();
+			int64 used_transferred_bytes = 0;
+
+			ServerStatus::setProcessPcDone(clientname, restore_process.getStatusId(), 0);
+			int pcdone = 0;
+
+			vhdfile->Seek(0);
+
+			unsigned int vhd_blocksize = vhdfile->getBlocksize();
+			for (int64 pos = 0; pos < skip; pos += vhd_blocksize)
+			{
+				vhdfile->Seek(pos);
+				if (vhdfile->has_sector())
+				{
+					used_transferred_bytes += vhd_blocksize;
+				}
+			}
+
+			vhdfile->Seek(skip);
 
 			bool is_ok=true;
 			do
@@ -948,6 +968,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 						backup_dao.setRestoreDone(0, restore_id);
 						return;
 					}
+					used_transferred_bytes += read;
 					lasttime=Server->getTimeMS();
 				}
 				else
@@ -969,6 +990,16 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				{
 					last_update_time=Server->getTimeMS();
 					ServerStatus::updateActive();
+
+					if (used_bytes > 0)
+					{
+						int pcdone_new = static_cast<int>((used_transferred_bytes * 100) / used_bytes);
+						if (pcdone_new != pcdone)
+						{
+							pcdone = pcdone_new;
+							ServerStatus::setProcessPcDone(clientname, restore_process.getStatusId(), pcdone);
+						}
+					}					
 				}
 			}
 			while( is_ok && (_i64)currpos<r );
