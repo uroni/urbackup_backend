@@ -64,6 +64,23 @@ namespace
 			return 2*1024; //2MB
 		}
 	}
+
+	void errorLogCallback(void *pArg, int iErrCode, const char *zMsg)
+	{
+		switch (iErrCode)
+		{
+		case SQLITE_SCHEMA:
+			Server->Log(std::string(zMsg) + " errorcode: "+convert(iErrCode), LL_DEBUG);
+			break;
+		case SQLITE_NOTICE_RECOVER_ROLLBACK:
+		case SQLITE_NOTICE_RECOVER_WAL:
+			Server->Log("Database did not shutdown cleanly. Recovering via journal. ("+ std::string(zMsg) + " code: " + convert(iErrCode)+")", LL_INFO);
+			break;
+		default:
+			Server->Log(std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_DEBUG);
+			break;
+		}
+	}
 }
 
 
@@ -148,6 +165,8 @@ void CDatabase::initMutex(void)
 	lock_mutex=Server->createMutex();
 	unlock_cond=Server->createCondition();
 	single_user_mutex = Server->createSharedMutex();
+
+	sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL);
 }
 
 void CDatabase::destroyMutex(void)
