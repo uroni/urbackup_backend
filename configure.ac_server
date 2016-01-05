@@ -59,7 +59,7 @@ AC_STRUCT_TM
 AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 	
-AX_CHECK_LINK_FLAG(-Wl,-z,relro,
+AX_CHECK_LINK_FLAG([-Wl,-z,relro],
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 
 AX_LIB_SOCKET_NSL
