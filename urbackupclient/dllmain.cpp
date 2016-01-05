@@ -514,12 +514,17 @@ bool upgrade_client(void)
 			" This client version cannot run with this database", LL_ERROR);
 		return false;
 	}
+
+	if (ver == max_v)
+	{
+		return true;
+	}
 	
+	db->BeginWriteTransaction();
+
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
-		db->BeginWriteTransaction();
-
 		old_v=ver;
 		switch(ver)
 		{
@@ -609,10 +614,10 @@ bool upgrade_client(void)
 			q_update->Write();
 			q_update->Reset();
 		}
-
-		db->EndTransaction();
 	}
 	while(old_v<ver);
+
+	db->EndTransaction();
 	
 	db->destroyAllQueries();
 	return true;
