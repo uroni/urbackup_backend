@@ -350,40 +350,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		Server->destroy(hashfile);
 	}
 
-	bool full_backup = pParentvhd.empty();
+	
 
-	std::string imagefn=constructImagePath(sletter, image_file_format, full_backup);
-
-	if (!full_backup && image_file_format == image_file_format_cowraw)
-	{
-		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
-
-		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
-		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
-		{
-			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at "+parent_backuppath_single, LL_ERROR);
-			Server->destroy(cc);
-			return false;
-		}
-		else
-		{
-			Server->deleteFile(imagefn + ".hash");
-			Server->deleteFile(imagefn + ".cbitmap");
-			Server->deleteFile(imagefn + ".mbr");
-		}
-	}
-
-	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
-	if(free_space!=-1 && free_space<minfreespace_image)
-	{
-		ServerLogger::Log(logid, "Not enough free space. Cleaning up.", LL_INFO);
-		if(!ServerCleanupThread::cleanupSpace(minfreespace_image) )
-		{
-			ServerLogger::Log(logid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			Server->destroy(cc);
-			return false;
-		}
-	}
+	std::string imagefn;
 
 	{
 		std::string mbrd=getMBR(sletter);
@@ -396,6 +365,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		}
 		else
 		{
+			imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
+
+			if (imagefn.empty())
+			{
+				Server->destroy(cc);
+				return false;
+			}
+
 			IFile *mbr_file=Server->openFile(os_file_prefix(imagefn+".mbr"), MODE_WRITE);
 			if(mbr_file!=NULL)
 			{
@@ -418,14 +395,18 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		}
 	}
 
-	if(pParentvhd.empty())
+	if (!imagefn.empty())
 	{
-		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+		if (pParentvhd.empty())
+		{
+			backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+		}
+		else
+		{
+			backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
+		}
 	}
-	else
-	{
-		backup_dao->newImageBackup(clientid, imagefn, synthetic_full?0:incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
-	}
+
 	backupid=static_cast<int>(db->getLastInsertID());
 
 	std::string ret;
@@ -690,6 +671,25 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					zeroblockdata=new unsigned char[blocksize];
 					memset(zeroblockdata, 0, blocksize);
+
+					if (imagefn.empty())
+					{
+						imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
+
+						if (imagefn.empty())
+						{
+							goto do_image_cleanup;
+						}
+
+						if (pParentvhd.empty())
+						{
+							backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+						}
+						else
+						{
+							backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
+						}
+					}
 
 					IFSImageFactory::ImageFormat image_format;
 
@@ -1478,8 +1478,10 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 	return nextblock+1;
 }
 
-std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format, bool full_backup)
+std::string ImageBackup::constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd)
 {
+	bool full_backup = pParentvhd.empty();
+
 	if (!createDirectoryForClient())
 	{
 		return std::string();
@@ -1525,6 +1527,35 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	{
 		if (!os_create_dir(os_file_prefix(image_folder)))
 		{
+			return std::string();
+		}
+	}
+
+	if (!full_backup && image_file_format == image_file_format_cowraw)
+	{
+		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
+
+		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
+		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
+		{
+			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single, LL_ERROR);
+			return std::string();
+		}
+		else
+		{
+			Server->deleteFile(imgpath + ".hash");
+			Server->deleteFile(imgpath + ".cbitmap");
+			Server->deleteFile(imgpath + ".mbr");
+		}
+	}
+
+	int64 free_space = os_free_space(os_file_prefix(ExtractFilePath(imgpath)));
+	if (free_space != -1 && free_space<minfreespace_image)
+	{
+		ServerLogger::Log(logid, "Not enough free space. Cleaning up.", LL_INFO);
+		if (!ServerCleanupThread::cleanupSpace(minfreespace_image))
+		{
+			ServerLogger::Log(logid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
 			return std::string();
 		}
 	}
