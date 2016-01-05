@@ -30,6 +30,8 @@ then
 	exit 1
 fi
 
+AC_LANG([C++])
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -47,6 +49,9 @@ AC_STRUCT_TM
 AC_CXX_HAVE_SSTREAM
 AC_CXX_HAVE_STRSTREAM
 AC_CXX_HAVE_LONG_LONG
+
+AX_CHECK_COMPILE_FLAG(-fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security,
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 
 AC_MSG_CHECKING([for operating system])
 case "$host_os" in

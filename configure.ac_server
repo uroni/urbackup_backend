@@ -40,6 +40,8 @@ then
 	exit 1
 fi
 
+AC_LANG([C++])
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -53,6 +55,9 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+
+AX_CHECK_COMPILE_FLAG(-fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security,
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 
 AX_LIB_SOCKET_NSL
 
