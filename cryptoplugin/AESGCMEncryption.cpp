@@ -22,7 +22,7 @@
 #include <assert.h>
 
 const size_t iv_size = 12;
-const size_t end_marker_zeros=2;
+const size_t end_marker_zeros = 4;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0),

@@ -20,7 +20,7 @@
 #include "../stringtools.h"
 
 const size_t iv_size = 12;
-const size_t end_marker_zeros=2;
+const size_t end_marker_zeros = 4;
 
 AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_password )
 	: decryption(), decryption_filter(decryption), iv_done(false), end_marker_state(0),
