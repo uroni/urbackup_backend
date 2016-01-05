@@ -77,7 +77,7 @@ namespace
 			Server->Log("Database did not shutdown cleanly. Recovering via journal. ("+ std::string(zMsg) + " code: " + convert(iErrCode)+")", LL_INFO);
 			break;
 		default:
-			Server->Log(std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_DEBUG);
+			Server->Log(std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_WARNING);
 			break;
 		}
 	}
