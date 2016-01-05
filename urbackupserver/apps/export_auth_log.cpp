@@ -24,9 +24,8 @@
 
 int export_auth_log()
 {
-	bool use_berkeleydb;
-	open_server_database(use_berkeleydb, true);
-	open_settings_database(use_berkeleydb);
+	open_server_database(true);
+	open_settings_database();
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)

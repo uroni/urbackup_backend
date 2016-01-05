@@ -68,6 +68,29 @@ extern IServer* Server;
 #include <stdlib.h>
 #include "file_permissions.h"
 
+#define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
+
+namespace
+{
+#include "backup_client_db.h"
+
+	std::string get_backup_client_db_data()
+	{
+		size_t out_len;
+		void* cdata = tinfl_decompress_mem_to_heap(backup_client_db_z, backup_client_db_z_len, &out_len, 0);
+		if (cdata == NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+		mz_free(cdata);
+		return ret;
+	}
+}
+
 
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
@@ -213,10 +236,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		write_file_only_admin(Server->getSessionMgr()->GenerateSessionIDWithUser("",""), pw_change_file);
 	}
 
-	if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
+	if( !FileExists("urbackup/backup_client.db") )
 	{
-		//Copy file
-		copy_file("urbackup/backup_client.db.template", "urbackup/backup_client.db");
+		writestring(get_backup_client_db_data(), "urbackup/backup_client.db");
 	}
 
 #ifndef _DEBUG
@@ -226,7 +248,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
 		Server->Log("Couldn't open Database backup_client.db", LL_ERROR);
-		return;
+		exit(1);
 	}
 
 #ifdef _WIN32
@@ -263,45 +285,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		change_file_permissions_admin_only("debug.log");
 	}
-
-
-	if(FileExists(new_file) )
 #endif
+
+	if(!upgrade_client())
 	{
-		Server->Log("Upgrading...", LL_WARNING);
-		Server->deleteFile(new_file);
-		if(!upgrade_client())
-		{
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-			db->Write("DELETE FROM files");			
-			db->Write("CREATE TABLE IF NOT EXISTS logdata (id INTEGER PRIMARY KEY,logid INTEGER,loglevel INTEGER,message TEXT,idx INTEGER);");
-			db->Write("CREATE TABLE IF NOT EXISTS  logs ( id INTEGER PRIMARY KEY, ttime DATE DEFAULT CURRENT_TIMESTAMP);");
-			db->Write("CREATE TABLE IF NOT EXISTS shadowcopies ( id INTEGER PRIMARY KEY, vssid BLOB, ssetid BLOB, target TEXT, path TEXT);");
-			db->Write("CREATE TABLE IF NOT EXISTS mdirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE shadowcopies ADD tname TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD orig_target TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD filesrv INTEGER;");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_ids ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, last_record INTEGER);");
-			db->Write("ALTER TABLE journal_ids ADD index_done INTEGER;");
-			db->Write("UPDATE journal_ids SET index_done=0 WHERE index_done IS NULL");
-			db->Write("CREATE TABLE IF NOT EXISTS map_frn ( id INTEGER PRIMARY KEY, name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC )");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC )");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_data ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, usn INTEGER, reason INTEGER, filename TEXT, frn INTEGER, parent_frn INTEGER, next_usn INTEGER)");
-			db->Write("DELETE FROM journal_ids");
-			db->Write("DELETE FROM journal_data");
-			db->Write("DELETE FROM map_frn");
-			db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
-			db->Write("ALTER TABLE logdata ADD ltime DATE;");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
-			db->Write("ALTER TABLE backupdirs ADD server_default INTEGER;");
-			db->Write("UPDATE backupdirs SET server_default=0 WHERE server_default IS NULL");
-			db->Write("CREATE TABLE IF NOT EXISTS misc (tkey TEXT, tvalue TEXT);");
-			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('db_version', '1');");
-			upgrade_client();
-		}
+		Server->Log("Upgrading client database failed. Startup failed.", LL_ERROR);
+		exit(1);
 	}
 
 	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
@@ -517,6 +506,14 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
+	int max_v = 20;
+
+	if (ver > max_v)
+	{
+		Server->Log("Client database version (" + convert(ver) + ") bigger than latest known version (" + convert(max_v) + ")."
+			" This client version cannot run with this database", LL_ERROR);
+		return false;
+	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do

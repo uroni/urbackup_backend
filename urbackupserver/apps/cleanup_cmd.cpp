@@ -85,9 +85,8 @@ int cleanup_cmd(void)
 	Server->destroyAllDatabases();
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
-	bool use_bdb;
-	open_server_database(use_bdb, true);
-	open_settings_database(use_bdb);
+	open_server_database(true);
+	open_settings_database();
 
 	if(!create_files_index(startup_status))
 	{
@@ -154,8 +153,7 @@ int defrag_database(void)
 	Server->destroyAllDatabases();
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
-	bool use_bdb;
-	open_server_database(use_bdb, true);
+	open_server_database(true);
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)
@@ -212,9 +210,8 @@ int cleanup_database(void)
 	Server->destroyAllDatabases();
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
-	bool use_bdb;
-	open_server_database(use_bdb, true);
-	open_settings_database(use_bdb);
+	open_server_database(true);
+	open_settings_database();
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)

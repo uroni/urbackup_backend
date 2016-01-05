@@ -18,32 +18,19 @@
 
 #include "app.h"
 
-
-void open_settings_database_full(bool use_berkeleydb)
+void open_settings_database_full()
 {
-	if(!use_berkeleydb)
+	if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS, "sqlite") )
 	{
-		if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS, "sqlite") )
-		{
-			Server->Log("Couldn't open Database backup_server_settings.db. Exiting.", LL_ERROR);
-			exit(1);
-		}
-	}
-	else
-	{
-		if(! Server->openDatabase("urbackup/backup_server_settings.bdb", URBACKUPDB_SERVER_SETTINGS, "bdb") )
-		{
-			Server->Log("Couldn't open Database backup_server_settings.bdb. Exiting.", LL_ERROR);
-			exit(1);
-		}
+		Server->Log("Couldn't open Database backup_server_settings.db. Exiting.", LL_ERROR);
+		exit(1);
 	}
 }
 
 int repair_cmd(void)
 {
-	bool use_berkeleydb;
-	open_server_database(use_berkeleydb, true);
-	open_settings_database_full(use_berkeleydb);
+	open_server_database(true);
+	open_settings_database_full();
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)

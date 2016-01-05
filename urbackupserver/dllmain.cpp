@@ -91,6 +91,29 @@ SStartupStatus startup_status;
 #include "WalCheckpointThread.h"
 #include "FileMetadataDownloadThread.h"
 
+#define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
+
+namespace
+{
+#include "backup_server_db.h"
+
+	std::string get_backup_server_db_data()
+	{
+		size_t out_len;
+		void* cdata = tinfl_decompress_mem_to_heap(backup_server_db_z, backup_server_db_z_len, &out_len, 0);
+		if (cdata == NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+		mz_free(cdata);
+		return ret;
+	}
+}
+
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
@@ -118,7 +141,7 @@ bool test_amatch(void);
 bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
-void open_settings_database_full(bool use_berkeleydb);
+void open_settings_database_full();
 
 std::string lang="en";
 std::string time_format_str="%Y-%m-%d %H:%M";
@@ -136,103 +159,21 @@ const std::string new_file="new.txt";
 const std::string new_file="urbackup/new.txt";
 #endif
 
-void open_server_database(bool &use_berkeleydb, bool init_db)
+void open_server_database(bool init_db)
 {
-	std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 100000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 100000\r\nset_cachesize 0 104857600 1";
-	use_berkeleydb=false;
-
-	if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
+	if( !FileExists("urbackup/backup_server.db") && init_db )
 	{
-		if(init_db)
-		{
-			copy_file("urbackup/backup_server.db.template", "urbackup/backup_server.db");
-		}
+		writestring(get_backup_server_db_data(), "urbackup/backup_server.db");
 	}
 		
-	if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server_init.sql") )
+	if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
 	{
-		bool init=false;
-		std::string engine="sqlite";
-		std::string db_fn="urbackup/backup_server.db";
-		if(Server->hasDatabaseFactory("bdb") )
-		{
-			os_create_dir("urbackup/backup_server.bdb-journal");
-			writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
-			engine="bdb";
-			db_fn="urbackup/backup_server.bdb";
-			use_berkeleydb=true;
-		}
-			
-		if(! Server->openDatabase(db_fn, URBACKUPDB_SERVER, engine) )
-		{
-			Server->Log("Couldn't open Database "+db_fn+". Exiting.", LL_ERROR);
-			exit(1);
-		}
-
-		Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
-
-		if(init_db)
-		{
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-			db->Import("urbackup/backup_server_init.sql");
-		}
+		Server->Log("Couldn't open Database backup_server.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server.db\"", LL_ERROR);
+		exit(1);
 	}
-	else
-	{			
-		if(Server->hasDatabaseFactory("bdb") )
-		{
-			use_berkeleydb=true;
 
-			Server->Log("Warning: Switching to Berkley DB", LL_WARNING);
-			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER_TMP) )
-			{
-				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
-				exit(1);
-			}
-
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_TMP);
-			Server->deleteFile("urbackup/backup_server.dat");
-			if(db->Dump("urbackup/backup_server.dat"))
-			{
-				Server->destroyAllDatabases();
-
-				os_create_dir("urbackup/backup_server.bdb-journal");
-				writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
-
-				if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
-				{
-					Server->Log("Couldn't open Database backup_server.bdb. Exiting.", LL_ERROR);
-					exit(1);
-				}
-				db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-				if(db->Import("urbackup/backup_server.dat") )
-				{
-					Server->deleteFile("urbackup/backup_server.dat");
-					rename("urbackup/backup_server.db", "urbackup/backup_server_old_sqlite.db");
-				}
-				else
-				{
-					Server->Log("Importing data into new BerkleyDB database failed. Exiting.", LL_ERROR);
-					exit(1);
-				}
-			}
-			else
-			{
-				Server->Log("Dumping Database failed. Exiting", LL_ERROR);
-				exit(1);
-			}
-		}
-		else
-		{
-			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
-			{
-				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
-				exit(1);
-			}
-
-			Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
-		}
-	}
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
 
 	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
 	{
@@ -246,11 +187,9 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 	}
 }
 
-void open_settings_database(bool use_berkeleydb)
+void open_settings_database()
 {
 	std::string aname="urbackup/backup_server_settings.db";
-	if(use_berkeleydb)
-		aname="urbackup/backup_server_settings.bdb";
 
 	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
 }
@@ -471,16 +410,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	
-	bool use_berkeleydb;
-	open_server_database(use_berkeleydb, true);
+	open_server_database(true);
 	
 
 	ServerStatus::init_mutex();
 	ServerSettings::init_mutex();
 	ClientMain::init_mutex();
 
-	open_settings_database(use_berkeleydb);
-	open_settings_database_full(use_berkeleydb);
+	open_settings_database();
+	open_settings_database_full();
 	
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
@@ -510,11 +448,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		
 	upgrade();
 
-	if(!use_berkeleydb)
-	{
-		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db->Write("PRAGMA journal_mode=WAL");
-	}
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("PRAGMA journal_mode=WAL");
 
 	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
 	{
@@ -637,7 +572,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(shutdown);
 	}
 
-	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	{
 		ServerBackupDao backup_dao(db);
 		replay_directory_link_journal(backup_dao);
