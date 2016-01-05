@@ -25,6 +25,7 @@
 #include "IFileServ.h"
 #include <cstring>
 #include "FileServ.h"
+#include "PipeSessions.h"
 #include "../common/adler32.h"
 
 #ifndef _WIN32
@@ -128,6 +129,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					errpipe->Write("Error seeking to metadata in \"" + metadata_file->getFilename()+"\"");
 
 					read_bytes=0;
+					PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 					metadata_state = MetadataState_Wait;
 					return false;
 				}
@@ -235,6 +237,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(fn_off==sizeof(unsigned int))
 		{
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 			metadata_state = MetadataState_Wait;
 		}
 
@@ -277,6 +280,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(fn_off==sizeof(unsigned int))
 		{
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 			metadata_state = MetadataState_Wait;
 		}
 
@@ -310,11 +314,13 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			if(msg_data.getStr(&public_fn) &&
 				msg_data.getStr(&local_fn) &&
 				msg_data.getInt64(&folder_items) &&
-				msg_data.getInt64(&metadata_id) )
+				msg_data.getInt64(&metadata_id) &&
+				msg_data.getStr(&server_token) )
 			{
 				if(public_fn.empty() &&
 					local_fn.empty())
 				{
+					errpipe->shutdown();
 					read_bytes = 0;
 					return false;
 				}
@@ -431,6 +437,7 @@ void FileMetadataPipe::forceExitWait()
 	data.addString(std::string());
 	data.addInt64(0);
 	data.addInt64(0);
+	data.addString(std::string());
 	pipe->Write(data.getDataPtr(), data.getDataSize());
 
 	errpipe->shutdown();
@@ -513,7 +520,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 			return false;
 		}
 
-		if(read<metadata_id_size)
+		if(read!=metadata_id_size)
 		{
 			errpipe->Write("Error getting metadata stream structure.\n");
 			*buf=0;
@@ -529,6 +536,11 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		if(curr_stream->dwStreamNameSize>0)
 		{
+			if (3 + read + curr_stream->dwStreamNameSize > metadata_buffer.size())
+			{
+				metadata_buffer.resize(3 + read + curr_stream->dwStreamNameSize);
+			}
+
 			b = BackupRead(hFile, reinterpret_cast<LPBYTE>(metadata_buffer.data()+1) + read, curr_stream->dwStreamNameSize, &read, FALSE, TRUE, &backup_read_context);
 
 			if(b==FALSE)
@@ -539,7 +551,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 				return false;
 			}
 
-			if(read<curr_stream->dwStreamNameSize)
+			if(read!=curr_stream->dwStreamNameSize)
 			{
 				errpipe->Write("Error getting metadata stream structure (name).\n");
 				*buf=0;
@@ -547,7 +559,15 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 				return false;
 			}
 
+			curr_stream->cStreamName[curr_stream->dwStreamNameSize/sizeof(WCHAR)] = 0;
+
 			total_read += read;
+
+			stream_name = Server->ConvertFromWchar(curr_stream->cStreamName);
+		}
+		else
+		{
+			stream_name.clear();
 		}
 
 		if(curr_stream->dwStreamId==BACKUP_DATA)
@@ -577,8 +597,12 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 			return transmitCurrMetadata(buf, buf_avail, read_bytes);
 		}
 
-		backup_read_state = 1;
-		curr_stream_size = curr_stream->Size;
+		if (curr_stream->Size.QuadPart > 0)
+		{
+			backup_read_state = 1;
+			curr_stream_size = curr_stream->Size;
+		}
+
 		metadata_buffer_size = total_read + 1;
 		metadata_buffer_off = 0;
 		curr_pos = 0;
@@ -594,12 +618,14 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		if(b==FALSE)
 		{
-			errpipe->Write("Error reading metadata stream of file \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
+			errpipe->Write("Error reading metadata stream \""+stream_name+"\" of file \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
 			memset(buf, 0, toread);
 		}
 
 		read_bytes = read;
 		curr_pos+=read;
+
+		assert(curr_pos <= curr_stream_size.QuadPart);
 
 		if(curr_pos==curr_stream_size.QuadPart)
 		{

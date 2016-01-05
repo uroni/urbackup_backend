@@ -211,3 +211,7 @@ IFileServ::ITokenCallback* FileServ::newTokenCallback()
 	return token_callback_factory->getTokenCallback();
 }
 
+bool FileServ::hasActiveMetadataTransfers(const std::string& sharename, const std::string& server_token)
+{
+	return PipeSessions::isShareActive(sharename, server_token);
+}

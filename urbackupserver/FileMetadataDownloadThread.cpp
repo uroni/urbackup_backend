@@ -345,6 +345,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 						ServerLogger::Log(logid, "Could not truncate file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\" after error.", LL_ERROR);
 					}
 				}
+
+				std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
+
+				if (copy_file(metadata_f.get(), tmp.get()))
+				{
+					ServerLogger::Log(logid, "Copied metadata to " + tmp->getFilename() + " for error analysis", LL_INFO);
+				}
 				
 				return false;
 			}

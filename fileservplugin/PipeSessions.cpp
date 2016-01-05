@@ -31,7 +31,7 @@ IMutex* PipeSessions::mutex = NULL;
 std::map<std::string, SPipeSession> PipeSessions::pipe_files;
 std::map<std::string, SExitInformation> PipeSessions::exit_information;
 std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
-
+std::map<std::string, size_t> PipeSessions::active_shares;
 
 const int64 pipe_file_timeout = 1*60*60*1000;
 
@@ -258,12 +258,17 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	}
 
 	std::string sharename = getuntil("/", public_fn);
+	if (sharename.empty())
+	{
+		sharename = public_fn;
+	}
 
 	CWData data;
 	data.addString(public_fn);
 	data.addString(local_fn);
 	data.addInt64(folder_items);
 	data.addInt64(metadata_id);
+	data.addString(server_token);
 
 	IScopedLock lock(mutex);
 
@@ -275,12 +280,45 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 		data.addVoidPtr(iter_cb->second);
 	}
 
+	++active_shares[sharename + "|" + server_token];
+
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
 
 	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
 	{
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
+}
+
+void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::string& server_token)
+{
+	std::string sharename = getuntil("/", public_fn);
+	if (sharename.empty())
+	{
+		sharename = public_fn;
+	}
+
+	IScopedLock lock(mutex);
+
+	std::map<std::string, size_t>::iterator it = active_shares.find(sharename + "|" + server_token);
+
+	if (it != active_shares.end())
+	{
+		--it->second;
+		if (it->second == 0)
+		{
+			active_shares.erase(it);
+		}
+	}
+}
+
+bool PipeSessions::isShareActive(const std::string & sharename, const std::string& server_token)
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::string, size_t>::iterator it = active_shares.find(sharename + "|" + server_token);
+
+	return it != active_shares.end();
 }
 
 void PipeSessions::metadataStreamEnd( const std::string& server_token )
@@ -296,6 +334,7 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 		data.addString(std::string());
 		data.addInt64(0);
 		data.addInt64(0);
+		data.addString(std::string());
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}

@@ -208,7 +208,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	bool lookup_user = is_user;
 	while (!b)
 	{
-		BOOL b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
+		b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 
@@ -331,7 +331,7 @@ bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string
 
 	while (!b)
 	{
-		BOOL b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
+		b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
 			&sid[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 

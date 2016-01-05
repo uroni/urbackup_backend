@@ -638,6 +638,14 @@ void IndexThread::operator()(void)
 			int save_id=-1;
 			data.getInt(&save_id);
 
+			int64 starttime = Server->getTimeMS();
+			while (filesrv != NULL
+				&& filesrv->hasActiveMetadataTransfers(scdir, starttoken)
+				&& Server->getTimeMS() - starttime < 60 * 60 * 1000)
+			{
+				Server->wait(1000);
+			}
+
 			if(scd->running==false )
 			{				
 				if(!release_shadowcopy(scd, image_backup==1?true:false, save_id))

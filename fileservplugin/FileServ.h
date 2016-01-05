@@ -39,6 +39,8 @@ public:
 
 	static IFileServ::ITokenCallback* newTokenCallback();
 
+	bool hasActiveMetadataTransfers(const std::string& sharename, const std::string& server_token);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;

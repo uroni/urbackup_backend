@@ -42,6 +42,7 @@ private:
 	void* backup_read_context;
 	LARGE_INTEGER curr_stream_size;
 	int64 curr_pos;
+	std::string stream_name;
 #else
 	enum BackupState
 	{
@@ -80,6 +81,7 @@ private:
 	std::string local_fn;
 	int64 folder_items;
 	IFileServ::IMetadataCallback* callback;
+	std::string server_token;
 	IFile* metadata_file;
 	int64 metadata_file_off;
 	int64 metadata_file_size;

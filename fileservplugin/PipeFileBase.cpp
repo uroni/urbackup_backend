@@ -263,7 +263,7 @@ bool PipeFileBase::fillBuffer()
 		}
 	}
 
-	if(bsize_free==0 && buf_w_pos>buf_r_pos)
+	if(bsize_free==0 && buf_w_pos>=buf_r_pos)
 	{
 		if(buf_r_pos<buffer_keep_free)
 		{

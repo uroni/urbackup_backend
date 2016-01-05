@@ -43,6 +43,10 @@ public:
 	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
 		const std::string& server_token, const std::string& identity, int64 folder_items, int64 metadata_id);
 
+	static void fileMetadataDone(const std::string& public_fn, const std::string& server_token);
+
+	static bool isShareActive(const std::string& sharename, const std::string& server_token);
+
 	static void metadataStreamEnd(const std::string& server_token);
 
 	static void registerMetadataCallback(const std::string &name, const std::string& identity, IFileServ::IMetadataCallback* callback);
@@ -59,4 +63,5 @@ private:
 	static std::map<std::string, SPipeSession> pipe_files;
 	static std::map<std::string, SExitInformation> exit_information;
 	static std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> metadata_callbacks;
+	static std::map<std::string, size_t> active_shares;
 };
