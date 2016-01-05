@@ -38,7 +38,7 @@
 #else
 #include "lin_ver.h"
 std::string getSysVolumeCached(std::string &mpath){ return ""; }
-std::string getEspVolume(std::string &mpath){ return ""; }
+std::string getEspVolumeCached(std::string &mpath){ return ""; }
 #endif
 #include "../client_version.h"
 
@@ -996,7 +996,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 			else
 			{
-				sysvol=getEspVolume(mpath);
+				sysvol=getEspVolumeCached(mpath);
 			}
 			
 			if(!mpath.empty())
@@ -1183,7 +1183,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	else if(dl=="ESP")
 	{
 		std::string mpath;
-		dl=getEspVolume(mpath);
+		dl=getEspVolumeCached(mpath);
 	}
 
 	bool b=false;

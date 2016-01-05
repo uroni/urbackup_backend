@@ -329,7 +329,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	internetclient_ticket=InternetClient::start(do_leak_check);
 
 #ifdef _WIN32
-	cacheSysVolume();
+	cacheVolumes();
 #endif
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);

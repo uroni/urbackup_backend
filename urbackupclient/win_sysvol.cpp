@@ -550,6 +550,9 @@ namespace
 	std::string mpath_cached;
 	std::string sysvol_name_cached;
 
+	std::string esp_mpath_cached;
+	std::string esp_name_cached;
+
 	IMutex* mutex = NULL;
 
 	class SysvolCacheThread : public IThread
@@ -560,6 +563,7 @@ namespace
 			{
 				IScopedLock lock(mutex);
 				sysvol_name_cached = getSysVolume(mpath_cached);
+				esp_name_cached = getEspVolume(esp_mpath_cached);
 			}
 			delete this;
 		}
@@ -574,9 +578,16 @@ std::string getSysVolumeCached(std::string &mpath)
 	return sysvol_name_cached;
 }
 
-void cacheSysVolume()
+void cacheVolumes()
 {
 	mutex = Server->createMutex();
 	Server->createThread(new SysvolCacheThread);
 }
 
+std::string getEspVolumeCached(std::string &mpath)
+{
+	IScopedLock lock(mutex);
+
+	mpath = esp_mpath_cached;
+	return esp_name_cached;
+}
