@@ -56,7 +56,10 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
 
-AX_CHECK_COMPILE_FLAG(-fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security,
+AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
+	
+AX_CHECK_LINK_FLAG(-Wl,-z,relro,
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 
 AX_LIB_SOCKET_NSL

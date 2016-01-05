@@ -50,7 +50,10 @@ AC_CXX_HAVE_SSTREAM
 AC_CXX_HAVE_STRSTREAM
 AC_CXX_HAVE_LONG_LONG
 
-AX_CHECK_COMPILE_FLAG(-fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security,
+AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
+	
+AX_CHECK_LINK_FLAG(-Wl,-z,relro,
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
 
 AC_MSG_CHECKING([for operating system])

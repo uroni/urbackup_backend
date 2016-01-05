@@ -18,14 +18,15 @@ urbackupclientbackend_SOURCES += urbackupclient/dllmain.cpp urbackupclient/clien
 urbackupclientbackend_SOURCES += fileservplugin/dllmain.cpp fileservplugin/bufmgr.cpp fileservplugin/CClientThread.cpp fileservplugin/CriticalSection.cpp fileservplugin/CTCPFileServ.cpp fileservplugin/CUDPThread.cpp fileservplugin/FileServ.cpp fileservplugin/FileServFactory.cpp fileservplugin/log.cpp fileservplugin/main.cpp fileservplugin/map_buffer.cpp fileservplugin/pluginmgr.cpp fileservplugin/ChunkSendThread.cpp fileservplugin/PipeFile.cpp fileservplugin/PipeSessions.cpp fileservplugin/PipeFileUnix.cpp fileservplugin/PipeFileBase.cpp fileservplugin/FileMetadataPipe.cpp
 
 if WITH_FORTIFY
-FORTIFY_FLAGS = -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+FORTIFY_FLAGS = -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fPIE
+FORTIFY_LDFLAGS = -Wl,-z,relro
 endif
 
 urbackupclientbackend_LDADD = $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) 
 urbackupclientbackend_CPPFLAGS = $(FORTIFY_FLAGS) $(SUID_CFLAGS)
 urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"'
 urbackupclientbackend_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY 
-urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS)
+urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS) $(FORTIFY_LDFLAGS)
 
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp
 urbackupclientctl_LDADD = 
