@@ -1264,7 +1264,8 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			do 
 			{
 				deleted_key=false;
-				if(RegDeleteKeyW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str())==ERROR_SUCCESS)
+				if(RegDeleteKeyW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access." + convert(i)+"\\Command").c_str())==ERROR_SUCCESS
+					&& RegDeleteKeyW(HKEY_CLASSES_ROOT, Server->ConvertToWchar("AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str())==ERROR_SUCCESS)
 				{
 					deleted_key=true;
 				}
