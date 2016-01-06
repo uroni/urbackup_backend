@@ -2603,7 +2603,7 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 	if (!FileExists(script_name))
 	{
 		Server->Log("Script \"" + script_name + "\" does not exist", LL_DEBUG);
-		return true;
+		return 0;
 	}
 
 	server_token = greplace("\"", "", server_token);
