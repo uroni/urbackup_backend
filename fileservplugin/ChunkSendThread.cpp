@@ -63,7 +63,7 @@ void ChunkSendThread::operator()(void)
 	SChunk chunk;
 	while(parent->getNextChunk(&chunk, has_error))
 	{
-		if(chunk.msg != ID_ILLEGAL && chunk.msg!= ID_FREE_SERVER_FILE)
+		if(chunk.msg != ID_ILLEGAL && chunk.msg!= ID_FREE_SERVER_FILE && chunk.msg!= ID_FLUSH_SOCKET)
 		{
 			if(parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1, true)==SOCKET_ERROR)
 			{
@@ -81,6 +81,14 @@ void ChunkSendThread::operator()(void)
 				file = NULL;
 			}
 			pipe_file_user.reset();
+		}
+		else if (chunk.msg == ID_FLUSH_SOCKET)
+		{
+			Server->Log("Received flush.", LL_DEBUG);
+			if (!parent->FlushInt())
+			{
+				Server->Log("Error flushing output socket", LL_INFO);
+			}
 		}
 		else if(chunk.update_file!=NULL)
 		{

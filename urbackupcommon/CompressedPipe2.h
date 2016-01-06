@@ -3,9 +3,12 @@
 #include "../Interface/Pipe.h"
 #include "../Interface/Types.h"
 #include <vector>
+#include <memory>
 #define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
+
+class IMutex;
 
 class ICompressedPipe : public IPipe
 {
@@ -76,4 +79,6 @@ private:
 	
 	mz_stream inf_stream;
 	mz_stream def_stream;
+
+	std::auto_ptr<IMutex> mutex;
 };

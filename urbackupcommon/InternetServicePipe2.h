@@ -5,6 +5,7 @@
 
 class IAESGCMEncryption;
 class IAESGCMDecryption;
+class IMutex;
 
 #ifndef HAS_IINTERNET_SERVICE_PIPE
 #define HAS_IINTERNET_SERVICE_PIPE
@@ -81,4 +82,6 @@ private:
 
 	size_t curr_write_chunk_size;
 	int64 last_flush_time;
+
+	std::auto_ptr<IMutex> mutex;
 };
