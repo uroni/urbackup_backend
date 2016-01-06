@@ -79,6 +79,7 @@ void ChunkSendThread::operator()(void)
 			file=chunk.update_file;
 			curr_hash_size=chunk.hashsize;
 			curr_file_size=chunk.startpos;
+			pipe_file_user.reset(chunk.pipe_file_user);
 
 			CWData sdata;
 			sdata.addUChar(ID_FILESIZE);
@@ -100,6 +101,9 @@ void ChunkSendThread::operator()(void)
 			}
 		}
 	}
+
+	pipe_file_user.reset();
+
 	if(file!=NULL && curr_file_size!=-1)
 	{
 		PipeSessions::removeFile(file->getFilename());

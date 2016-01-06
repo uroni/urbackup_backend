@@ -28,6 +28,7 @@ class IPipe;
 class IFile;
 class IMutex;
 class ICondition;
+class ScopedPipeFileUser;
 
 #include "chunk_settings.h"
 #include "packet_ids.h"
@@ -47,13 +48,13 @@ struct SSendData
 struct SChunk
 {
 	SChunk()
-		: msg(ID_ILLEGAL), update_file(NULL)
+		: msg(ID_ILLEGAL), update_file(NULL), pipe_file_user(NULL)
 	{
 
 	}
 
 	explicit SChunk(char msg)
-		: msg(msg), update_file(NULL)
+		: msg(msg), update_file(NULL), pipe_file_user(NULL)
 	{
 
 	}
@@ -66,6 +67,7 @@ struct SChunk
 	IFile* update_file;
 	_i64 hashsize;
 	int64 requested_filesize;
+	ScopedPipeFileUser* pipe_file_user;
 };
 
 struct SLPData

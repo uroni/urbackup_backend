@@ -36,7 +36,7 @@ public:
 	static void init();
 	static void destroy();
 
-	static IFile* getFile(const std::string& cmd);
+	static IFile* getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user);
 	static void removeFile(const std::string& cmd);
 	static SExitInformation getExitInformation(const std::string& cmd);
 

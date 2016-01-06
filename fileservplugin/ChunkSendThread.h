@@ -6,6 +6,8 @@ struct SChunk;
 #include "../Interface/Types.h"
 #include "../md5.h"
 
+class ScopedPipeFileUser;
+
 class ChunkSendThread : public IThread
 {
 public:
@@ -22,6 +24,7 @@ private:
 
 	CClientThread *parent;
 	IFile *file;
+	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	_i64 curr_hash_size;
 	_i64 curr_file_size;
 

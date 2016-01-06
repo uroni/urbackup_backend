@@ -36,7 +36,7 @@ std::map<std::string, size_t> PipeSessions::active_shares;
 const int64 pipe_file_timeout = 1*60*60*1000;
 
 
-IFile* PipeSessions::getFile(const std::string& cmd)
+IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user)
 {
 	if(cmd.empty())
 	{
@@ -57,6 +57,7 @@ IFile* PipeSessions::getFile(const std::string& cmd)
 
 	if(it != pipe_files.end())
 	{
+		pipe_file_user.reset(it->second.file);
 		return it->second.file;
 	}
 	else
@@ -74,6 +75,7 @@ IFile* PipeSessions::getFile(const std::string& cmd)
 
 			pipe_files[session_key] = new_session;
 
+			pipe_file_user.reset(nf);
 			return nf;
 		}
 		else
@@ -99,6 +101,7 @@ IFile* PipeSessions::getFile(const std::string& cmd)
 			};
 			pipe_files[session_key] = new_session;
 
+			pipe_file_user.reset(nf);
 			return nf;
 		}		
 	}

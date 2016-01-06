@@ -43,6 +43,12 @@ public:
 
 	virtual bool Sync();
 
+	void addUser();
+
+	void removeUser();
+
+	bool hasUser();
+
 protected:
 
 	void init();
@@ -82,4 +88,41 @@ private:
 
 	THREADPOOL_TICKET stdout_thread;
 	THREADPOOL_TICKET stderr_thread;
+
+	size_t n_users;
+};
+
+class ScopedPipeFileUser
+{
+public:
+	ScopedPipeFileUser()
+		: pipe_file(NULL)
+	{}
+
+	ScopedPipeFileUser(PipeFileBase& p_pipe_file)
+		: pipe_file(&p_pipe_file)
+	{
+		pipe_file->addUser();
+	}
+
+	~ScopedPipeFileUser()
+	{
+		if (pipe_file != NULL)
+		{
+			pipe_file->removeUser();
+		}
+	}
+
+	PipeFileBase* get()
+	{
+		return pipe_file;
+	}
+
+	void reset(PipeFileBase* new_pipe_file)
+	{
+		pipe_file = new_pipe_file;
+	}
+
+private:
+	PipeFileBase* pipe_file;
 };

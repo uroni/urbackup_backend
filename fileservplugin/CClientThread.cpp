@@ -444,14 +444,15 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				if(is_script)
 				{
+					ScopedPipeFileUser pipe_file_user;
 					IFile* file;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
-						file = PipeSessions::getFile(o_filename);
+						file = PipeSessions::getFile(o_filename, pipe_file_user);
 					}
 					else
 					{
-						file = PipeSessions::getFile(filename);
+						file = PipeSessions::getFile(filename, pipe_file_user);
 					}					
 
 					if(!file)
@@ -1327,10 +1328,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 #endif
 
+	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	IFile* srv_file = NULL;
 	if(is_script)
 	{
-		srv_file = PipeSessions::getFile(filename);
+		srv_file = PipeSessions::getFile(filename, *pipe_file_user);
 
 		if(srv_file==NULL)
 		{
@@ -1429,6 +1431,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	chunk.startpos = curr_filesize;
 	chunk.hashsize = curr_hash_size;
 	chunk.requested_filesize = requested_filesize;
+	chunk.pipe_file_user = pipe_file_user.get();
+	pipe_file_user.release();
 
 	hFile=INVALID_HANDLE_VALUE;
 
@@ -1864,14 +1868,15 @@ bool CClientThread::FinishScript( CRData * data )
 		return false;
 	}
 
+	ScopedPipeFileUser pipe_file_user;
 	IFile* file;
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
-		file = PipeSessions::getFile(s_filename);
+		file = PipeSessions::getFile(s_filename, pipe_file_user);
 	}
 	else
 	{
-		file = PipeSessions::getFile(filename);
+		file = PipeSessions::getFile(filename, pipe_file_user);
 	}			
 
 	bool ret=false;

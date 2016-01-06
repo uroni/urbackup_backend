@@ -31,7 +31,8 @@ const _u32 buffer_keep_free = 1*1024*1024;
 PipeFileBase::PipeFileBase(const std::string& pCmd)
 	: curr_pos(0), has_error(false), cmd(pCmd), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
 	threadidx(0), has_eof(false), stream_size(-1),
-	buf_circle(false), stdout_thread(ILLEGAL_THREADPOOL_TICKET), stderr_thread(ILLEGAL_THREADPOOL_TICKET)
+	buf_circle(false), stdout_thread(ILLEGAL_THREADPOOL_TICKET), stderr_thread(ILLEGAL_THREADPOOL_TICKET),
+	n_users(0)
 {
 	last_read = Server->getTimeMS();
 
@@ -229,6 +230,11 @@ void PipeFileBase::operator()()
 		while(fillBuffer())
 		{
 
+		}
+
+		while (hasUser())
+		{
+			Server->wait(100);
 		}
 	}
 	else
@@ -447,4 +453,22 @@ bool PipeFileBase::PunchHole( _i64 spos, _i64 size )
 bool PipeFileBase::Sync()
 {
 	return false;
+}
+
+void PipeFileBase::addUser()
+{
+	IScopedLock lock(buffer_mutex.get());
+	n_users++;
+}
+
+void PipeFileBase::removeUser()
+{
+	IScopedLock lock(buffer_mutex.get());
+	--n_users;
+}
+
+bool PipeFileBase::hasUser()
+{
+	IScopedLock lock(buffer_mutex.get());
+	return n_users > 0;
 }
