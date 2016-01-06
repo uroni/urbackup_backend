@@ -50,7 +50,7 @@ public:
 	class QueueCallback
 	{
 	public:
-		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id) = 0;
+		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script) = 0;
 		virtual void unqueueFileChunked(const std::string& remotefn) = 0;
 		virtual void resetQueueChunked() = 0;
 	};
@@ -60,8 +60,8 @@ public:
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script);
 
 	bool hasError(void);
 
@@ -154,6 +154,8 @@ private:
 	void adjustOutputFilesizeOnFailure( _i64& filesize_out);
 
 	_u32 Flush(IPipe* fpipe);
+
+	_u32 freeFile();
 
 	std::string remote_filename;
 
@@ -255,6 +257,8 @@ private:
 	bool needs_flush;
 
 	int64 curr_file_id;
+
+	bool curr_is_script;
 };
 
 #endif //FILECLIENTCHUNKED_H

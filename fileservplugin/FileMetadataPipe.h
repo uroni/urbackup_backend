@@ -21,6 +21,7 @@ class FileMetadataPipe : public PipeFileBase
 {
 public:
 	FileMetadataPipe(IPipe* pipe, const std::string& cmd);
+	~FileMetadataPipe();
 
 	virtual bool getExitCode( int& exit_code );
 

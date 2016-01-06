@@ -645,7 +645,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	int64 script_start_time = Server->getTimeSeconds()-60;
 
-	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize, with_metadata ? (todl.id+1) : 0);
+	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script);
 
 	int64 download_filesize = todl.predicted_filesize;
 
@@ -669,7 +669,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
 		dlfiles.chunkhashes->Seek(0);
 		download_filesize = todl.predicted_filesize;
-		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize, with_metadata ? (todl.id+1) : 0);
+		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script);
 		--hash_retries;
 	} 
 
@@ -938,7 +938,7 @@ void ServerDownloadThread::resetQueueFull()
 	}
 }
 
-bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id )
+bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
 {
 	IScopedLock lock(mutex);
 	bool retry=true;
@@ -987,6 +987,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					hashoutput = it->patch_dl_files.hashoutput;
 					predicted_filesize = it->predicted_filesize;
 					file_id = with_metadata ? (it->id+1) : 0;
+					is_script = it->is_script;
 					return true;
 				}
 			}

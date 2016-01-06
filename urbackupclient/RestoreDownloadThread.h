@@ -82,7 +82,7 @@ public:
 
 	virtual void resetQueueFull();
 
-	virtual bool getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id );
+	virtual bool getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 
 	virtual void unqueueFileChunked( const std::string& remotefn );
 

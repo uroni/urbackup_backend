@@ -177,6 +177,7 @@ void CClientThread::operator()(void)
 			{
 				if(next_chunks.front().update_file!=NULL)
 				{
+					delete next_chunks.front().pipe_file_user;
 					Server->destroy(next_chunks.front().update_file);
 				}
 
@@ -925,6 +926,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 			} break;
+		case ID_FREE_SERVER_FILE:
+			{
+				if (chunk_send_thread_ticket != ILLEGAL_THREADPOOL_TICKET)
+				{
+					queueChunk(SChunk(ID_FREE_SERVER_FILE));
+				}
+			}break;
 		case ID_FLUSH_SOCKET:
 			{
 				Server->Log("Received flush.", LL_DEBUG);
@@ -1328,7 +1336,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 #endif
 
-	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
+	std::auto_ptr<ScopedPipeFileUser> pipe_file_user(new ScopedPipeFileUser);
 	IFile* srv_file = NULL;
 	if(is_script)
 	{
@@ -1870,12 +1878,15 @@ bool CClientThread::FinishScript( CRData * data )
 
 	ScopedPipeFileUser pipe_file_user;
 	IFile* file;
+	std::string f_name;
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
+		f_name = s_filename;
 		file = PipeSessions::getFile(s_filename, pipe_file_user);
 	}
 	else
 	{
+		f_name = filename;
 		file = PipeSessions::getFile(filename, pipe_file_user);
 	}			
 
@@ -1894,7 +1905,9 @@ bool CClientThread::FinishScript( CRData * data )
 	}
 	else
 	{
-		PipeSessions::removeFile(file->getFilename());
+		pipe_file_user.reset(NULL);
+
+		PipeSessions::removeFile(f_name);
 
 		char ch = ID_PONG;
 		int rc = SendInt(&ch, 1);

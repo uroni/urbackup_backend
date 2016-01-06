@@ -63,16 +63,28 @@ void ChunkSendThread::operator()(void)
 	SChunk chunk;
 	while(parent->getNextChunk(&chunk, has_error))
 	{
-		if(chunk.msg != ID_ILLEGAL)
+		if(chunk.msg != ID_ILLEGAL && chunk.msg!= ID_FREE_SERVER_FILE)
 		{
 			if(parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1, true)==SOCKET_ERROR)
 			{
 				has_error = true;
 			}
 		}
+		else if (chunk.msg == ID_FREE_SERVER_FILE)
+		{
+			if (pipe_file_user.get()==NULL && file != NULL)
+			{
+				Server->destroy(file);
+			}
+			else if (pipe_file_user.get() != NULL)
+			{
+				file = NULL;
+			}
+			pipe_file_user.reset();
+		}
 		else if(chunk.update_file!=NULL)
 		{
-			if(file!=NULL)
+			if(pipe_file_user.get() == NULL && file!=NULL)
 			{
 				Server->destroy(file);
 			}
@@ -102,11 +114,8 @@ void ChunkSendThread::operator()(void)
 		}
 	}
 
-	pipe_file_user.reset();
-
-	if(file!=NULL && curr_file_size!=-1)
+	if(pipe_file_user.get() == NULL && file!=NULL)
 	{
-		PipeSessions::removeFile(file->getFilename());
 		Server->destroy(file);
 		file=NULL;
 	}

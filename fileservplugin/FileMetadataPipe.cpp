@@ -54,6 +54,10 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	init();
 }
 
+FileMetadataPipe::~FileMetadataPipe()
+{
+}
+
 
 bool FileMetadataPipe::getExitCode( int& exit_code )
 {

@@ -5,6 +5,7 @@ struct SChunk;
 #include "../Interface/Thread.h"
 #include "../Interface/Types.h"
 #include "../md5.h"
+#include <memory>
 
 class ScopedPipeFileUser;
 

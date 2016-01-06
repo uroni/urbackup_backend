@@ -10,6 +10,7 @@ class PipeFileBase : public IFile, public IThread
 {
 public:
 	PipeFileBase(const std::string& pCmd);
+	~PipeFileBase();
 
 	virtual void operator()();
 
@@ -120,7 +121,17 @@ public:
 
 	void reset(PipeFileBase* new_pipe_file)
 	{
+		if (pipe_file != NULL)
+		{
+			pipe_file->removeUser();
+		}
+
 		pipe_file = new_pipe_file;
+
+		if (pipe_file != NULL)
+		{
+			pipe_file->addUser();
+		}
 	}
 
 private:

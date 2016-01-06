@@ -39,6 +39,10 @@ PipeFileBase::PipeFileBase(const std::string& pCmd)
 	buffer_mutex.reset(Server->createMutex());
 }
 
+PipeFileBase::~PipeFileBase()
+{
+}
+
 
 void PipeFileBase::init()
 {

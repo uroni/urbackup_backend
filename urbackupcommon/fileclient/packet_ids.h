@@ -30,7 +30,8 @@ const uchar ID_GET_FILE_HASH_AND_METADATA=10;
 		const uchar ID_FILE_HASH_AND_METADATA=17;
 const uchar ID_INFORM_METADATA_STREAM_END=11;
 const uchar ID_FLUSH_SOCKET=13;
-const uchar ID_SCRIPT_FINISH=14;
+const uchar ID_SCRIPT_FINISH = 14;
+const uchar ID_FREE_SERVER_FILE=18;
 
 //errors
 const unsigned int ERR_SEEKING_FAILED = 0;

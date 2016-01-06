@@ -98,7 +98,7 @@ FileClientChunked::~FileClientChunked(void)
 	Server->destroy(ofb_pipe);
 }
 
-_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id)
+_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script)
 {
 	m_file=NULL;
 	patch_mode=true;
@@ -112,11 +112,12 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	remote_filesize = predicted_filesize;
 	last_transferred_bytes=0;
 	curr_output_fsize=0;
+	curr_is_script = is_script;
 
 	return GetFile(remotefn, predicted_filesize, file_id);
 }
 
-_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id)
+_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script)
 {
 	patch_mode=false;
 	m_file=file;
@@ -125,6 +126,7 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	remote_filesize = predicted_filesize;
 	last_transferred_bytes=0;
 	curr_output_fsize=0;
+	curr_is_script = is_script;
 	
 	return GetFile(remotefn, predicted_filesize, file_id);
 }
@@ -350,10 +352,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					IFile* hashoutput;
 					_i64 predicted_filesize;
 					int64 file_id;
+					bool is_script;
 
 					if(queue_callback && 
 						getPipe()->isWritable() &&
-						queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id) )
+						queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script) )
 					{
 						if(prev==NULL)
 						{
@@ -381,7 +384,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 						next->setProgressLogCallback(progress_log_callback);
 
 						next->setQueueOnly(true);
-						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id)!=ERR_SUCCESS)
+						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script)!=ERR_SUCCESS)
 						{
 							std::deque<FileClientChunked*>::iterator iter;
 							if(parent)
@@ -492,8 +495,16 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			{
 				if(err==ERR_SUCCESS)
 				{
-					Server->Log("Successfull. Returning filesize "+convert(remote_filesize), LL_DEBUG);
-					filesize_out=remote_filesize;
+					if (curr_is_script)
+					{
+						err = freeFile();
+					}
+					
+					if (err == ERR_SUCCESS)
+					{
+						Server->Log("Successfull. Returning filesize " + convert(remote_filesize), LL_DEBUG);
+						filesize_out = remote_filesize;
+					}
 				}
 				else
 				{
@@ -1524,12 +1535,12 @@ _u32 FileClientChunked::loadFileOutOfBand()
 	if(patch_mode)
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id);
+		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script);
 	}
 	else
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id);
+		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script);
 	}
 }
 
@@ -1933,6 +1944,20 @@ _u32 FileClientChunked::Flush(IPipe* fpipe)
 	if(stack->Send( fpipe, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 	{
 		Server->Log("Error sending flush request", LL_ERROR);
+		return ERR_TIMEOUT;
+	}
+
+	return ERR_SUCCESS;
+}
+
+_u32 FileClientChunked::freeFile()
+{
+	CWData data;
+	data.addUChar(ID_FREE_SERVER_FILE);
+
+	if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
+	{
+		Server->Log("Timout during finish script request (3)", LL_ERROR);
 		return ERR_TIMEOUT;
 	}
 

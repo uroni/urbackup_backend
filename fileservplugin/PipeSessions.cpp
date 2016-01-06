@@ -154,6 +154,11 @@ void PipeSessions::removeFile(const std::string& cmd)
 
 		it->second.file->forceExitWait();
 
+		while (it->second.file->hasUser())
+		{
+			Server->wait(100);
+		}
+
 		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
