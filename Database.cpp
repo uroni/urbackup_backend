@@ -69,6 +69,9 @@ namespace
 	{
 		switch (iErrCode)
 		{
+		case SQLITE_LOCKED:
+		case SQLITE_BUSY:
+			return;
 		case SQLITE_SCHEMA:
 			Server->Log(std::string(zMsg) + " errorcode: "+convert(iErrCode), LL_DEBUG);
 			break;

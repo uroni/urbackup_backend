@@ -477,14 +477,20 @@ void IndexThread::operator()(void)
 				}
 			}
 #endif
-			execute_prebackup_hook();
-			if(!stop_index)
+			int e_rc;
+			if ( (e_rc=execute_prebackup_hook(true, starttoken, index_group))!=0 )
+			{
+				contractor->Write("error - prefilebackup script failed with error code "+convert(e_rc));
+			}
+			else if(!stop_index)
 			{
 				indexDirs();
 
-				execute_postindex_hook();
-
-				if(stop_index)
+				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
+				{
+					contractor->Write("error - postfileindex script failed with error code " + convert(e_rc));
+				}
+				else if(stop_index)
 				{
 					contractor->Write("error - stopped indexing 2");
 				}
@@ -531,23 +537,31 @@ void IndexThread::operator()(void)
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
 			}
-			execute_prebackup_hook();
-
-			indexDirs();
-
-			execute_postindex_hook();
-
-			if(stop_index)
+			int e_rc;
+			if ( (e_rc=execute_prebackup_hook(false, starttoken, index_group))!=0 )
 			{
-				contractor->Write("error - stopped indexing");
-			}
-			else if(index_error)
-			{
-				contractor->Write("error - index error");
+				contractor->Write("error - prefilebackup script failed with error code "+convert(e_rc));
 			}
 			else
 			{
-				contractor->Write("done");
+				indexDirs();
+
+				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
+				{
+					contractor->Write("error - postfileindex script failed with error code "+convert(e_rc));
+				}
+				else if (stop_index)
+				{
+					contractor->Write("error - stopped indexing");
+				}
+				else if (index_error)
+				{
+					contractor->Write("error - index error");
+				}
+				else
+				{
+					contractor->Write("done");
+				}
 			}
 		}
 		else if(action==2) // create shadowcopy
@@ -2584,22 +2598,53 @@ IFileServ *IndexThread::getFileSrv(void)
 	return filesrv;
 }
 
-void IndexThread::execute_prebackup_hook(void)
+int IndexThread::execute_hook(std::string script_name, bool incr, std::string server_token, int index_group)
 {
-#ifdef _WIN32
-	system(("\""+Server->getServerWorkingDir()+"\\prefilebackup.bat\"").c_str());
-#else
-	system("/etc/urbackup/prefilebackup");
-#endif
+	if (!FileExists(script_name))
+	{
+		return true;
+	}
+
+	server_token = greplace("\"", "", server_token);
+	server_token = greplace("\\", "", server_token);
+
+	std::string output;
+	int rc = os_popen("\"" + script_name + "\" " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group), output);
+
+	if (rc != 0 && !output.empty())
+	{
+		VSSLogLines(output, LL_ERROR);
+	}
+	else if (!output.empty())
+	{
+		VSSLogLines(output, LL_INFO);
+	}
+
+	return rc;
 }
 
-void IndexThread::execute_postindex_hook(void)
+int IndexThread::execute_prebackup_hook(bool incr, std::string server_token, int index_group)
 {
+	std::string script_name;
 #ifdef _WIN32
-	system(("\""+Server->getServerWorkingDir()+"\\postfileindex.bat\"").c_str());
+	script_name = Server->getServerWorkingDir() + "\\prefilebackup.bat";
 #else
-	system("/etc/urbackup/postfileindex");
+	script_name = "/etc/urbackup/prefilebackup";
 #endif
+
+	return execute_hook(script_name, incr, server_token, index_group);
+}
+
+int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int index_group)
+{
+	std::string script_name;
+#ifdef _WIN32
+	script_name = Server->getServerWorkingDir() + "\\postfileindex.bat";
+#else
+	script_name = "/etc/urbackup/postfileindex";
+#endif
+
+	return execute_hook(script_name, incr, server_token, index_group);
 }
 
 void IndexThread::execute_postbackup_hook(void)

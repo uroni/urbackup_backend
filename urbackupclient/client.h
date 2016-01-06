@@ -242,8 +242,9 @@ private:
 
 	SCDirs* getSCDir(const std::string path);
 
-	void execute_prebackup_hook(void);
-	void execute_postindex_hook(void);
+	int execute_hook(std::string script_name, bool incr, std::string server_token, int index_group);
+	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
+	int execute_postindex_hook(bool incr, std::string server_token, int index_group);
 	std::string execute_script(const std::string& cmd);
 
 	void start_filesrv(void);
