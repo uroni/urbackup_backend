@@ -89,7 +89,7 @@ int CServer::WriteDump(void* pExceptionPointers)
 		ExpParam.ClientPointers = TRUE;
 
 		bMiniDumpSuccessful = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
-						hDumpFile, MiniDumpWithDataSegs, &ExpParam, NULL, NULL);
+						hDumpFile, MiniDumpWithFullMemory, &ExpParam, NULL, NULL);
 
 		if(!bMiniDumpSuccessful)
 		{

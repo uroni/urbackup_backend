@@ -139,8 +139,9 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 		set_out=true;
 
-		int rc = mz_inflate(&inf_stream, MZ_SYNC_FLUSH);
+		int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
 
+		assert(bsize >= inf_stream.avail_out);
 		size_t used = bsize - inf_stream.avail_out;
 		uncompressed_received_bytes+=used;
 
@@ -172,7 +173,7 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 	}	
 
-	int rc = mz_inflate(&inf_stream, MZ_SYNC_FLUSH);
+	int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
 
 	size_t used = bsize - inf_stream.avail_out;
 	uncompressed_received_bytes+=used;
@@ -254,9 +255,9 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 		do 
 		{
 			def_stream.avail_out = static_cast<unsigned int>(comp_buffer.size());
-			def_stream.next_out = reinterpret_cast<unsigned char*>(&comp_buffer[0]);
+			def_stream.next_out = reinterpret_cast<unsigned char*>(comp_buffer.data());
 
-			int rc = mz_deflate(&def_stream, curr_flush ? MZ_SYNC_FLUSH : MZ_NO_FLUSH);
+			int rc = mz_deflate(&def_stream, curr_flush ? MZ_PARTIAL_FLUSH : MZ_NO_FLUSH);
 
 			if(rc!=MZ_OK && rc!=MZ_STREAM_END)
 			{
@@ -264,6 +265,8 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 				has_error=true;
 				return false;
 			}
+
+			assert(comp_buffer.size() >= def_stream.avail_out);
 
 			size_t used = comp_buffer.size() - def_stream.avail_out;
 
@@ -284,7 +287,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 			if(used>0)
 			{
-				bool b=cs->Write(&comp_buffer[0], used, curr_timeout, curr_flush);
+				bool b=cs->Write(comp_buffer.data(), used, curr_timeout, curr_flush);
 				if(!b)
 					return false;
 			}
