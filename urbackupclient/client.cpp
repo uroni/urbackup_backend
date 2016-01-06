@@ -2602,21 +2602,32 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 {
 	if (!FileExists(script_name))
 	{
+		Server->Log("Script \"" + script_name + "\" does not exist", LL_DEBUG);
 		return true;
 	}
 
 	server_token = greplace("\"", "", server_token);
 	server_token = greplace("\\", "", server_token);
 
+	
+#ifdef _WIN32
+	//I ... waaa ... even ... :(
+	std::string quoted_script_name = greplace(" ", "\" \"", script_name);
+#else
+	std::string quoted_script_name = "\"" + greplace("\"", "\\\"", script_name) + "\"";
+#endif
+
 	std::string output;
-	int rc = os_popen("\"" + script_name + "\" " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group), output);
+	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group), output);
 
 	if (rc != 0 && !output.empty())
 	{
+		Server->Log("Script \"" + script_name + "\" returned with error code " + convert(rc), LL_WARNING);
 		VSSLogLines(output, LL_ERROR);
 	}
 	else if (!output.empty())
 	{
+		Server->Log("Script \"" + script_name + "\" returned with success", LL_INFO);
 		VSSLogLines(output, LL_INFO);
 	}
 
