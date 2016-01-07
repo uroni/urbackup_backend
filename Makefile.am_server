@@ -27,21 +27,21 @@ endif
 
 if WITH_FORTIFY
 FORTIFY_FLAGS = -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2 -fPIE
-FORTIFY_LDFLAGS = -Wl,-z,relro
+FORTIFY_ldflags = -Wl,-z,relro
 endif
 
 urbackupsrv_LDADD = $(LIBCURL) $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) $(FUSE_LIBS)
 urbackupsrv_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN $(WITH_FUSEPLUGIN_CXXFLAGS) -DVARDIR='"$(localstatedir)"' -DBINDIR='"$(bindir)"' -DDATADIR='"$(datadir)"'
 urbackupsrv_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(LIBCURL_CPPFLAGS) $(FUSE_CFLAGS) $(FORTIFY_FLAGS)
 urbackupsrv_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
-urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_LDFLAGS)
+urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_ldflags)
 
 urbackup_snapshot_helper_SOURCES = snapshot_helper/main.cpp urbackupcommon/os_functions_lin_min.cpp stringtools.cpp
 urbackup_snapshot_helper_LDADD = 
 urbackup_snapshot_helper_CXXFLAGS=-DOS_FUNC_NO_NET -DOS_FUNC_NO_IFACE_SERVER -DLINUX
 urbackup_snapshot_helper_CFLAGS=$(SUID_CFLAGS)
 urbackup_snapshot_helper_CPPFLAGS=$(FORTIFY_FLAGS)
-urbackup_snapshot_helper_LDFLAGS=$(SUID_LDFLAGS) $(FORTIFY_LDFLAGS)
+urbackup_snapshot_helper_LDFLAGS=$(SUID_LDFLAGS) $(FORTIFY_ldflags)
 
 SUBDIRS=. $(P_SUBDIRS)
 install-exec-local: defaults_server init.d_server logrotate_urbackupsrv
