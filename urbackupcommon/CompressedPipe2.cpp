@@ -36,7 +36,7 @@ const size_t output_max_size=32*1024;
 CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 	: cs(cs), has_error(false),
 	uncompressed_sent_bytes(0), uncompressed_received_bytes(0), sent_flushes(0),
-	input_buffer_size(0), mutex(Server->createMutex())
+	input_buffer_size(0), read_mutex(Server->createMutex()), write_mutex(Server->createMutex())
 {
 	comp_buffer.resize(4096);
 	input_buffer.resize(16384);
@@ -68,7 +68,7 @@ CompressedPipe2::~CompressedPipe2(void)
 
 size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(read_mutex.get());
 
 	if(input_buffer_size>0)
 	{
@@ -232,7 +232,7 @@ void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 
 bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(write_mutex.get());
 
 	assert(buffer != NULL || bsize == 0);
 	const char *ptr=buffer;
@@ -312,7 +312,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(read_mutex.get());
 
 	if(input_buffer_size>0)
 	{

@@ -24,13 +24,13 @@
 extern ICryptoFactory *crypto_fak;
 
 InternetServicePipe2::InternetServicePipe2()
-	: mutex(Server->createMutex())
+	: read_mutex(Server->createMutex()), write_mutex(Server->createMutex())
 {
 	init(NULL, std::string());
 }
 
 InternetServicePipe2::InternetServicePipe2( IPipe *cs, const std::string &key )
-	: mutex(Server->createMutex())
+	: read_mutex(Server->createMutex()), write_mutex(Server->createMutex())
 {
 	init(cs, key);
 }
@@ -57,7 +57,7 @@ void InternetServicePipe2::init( IPipe *pcs, const std::string &key )
 
 size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-1 */ )
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(read_mutex.get());
 
 	size_t data_size = bsize;
 	if(!dec->get(buffer, data_size))
@@ -114,7 +114,7 @@ size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-
 
 size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(read_mutex.get());
 
 	bool l_has_error=false;
 	*ret = dec->get(l_has_error);
@@ -175,7 +175,7 @@ size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 
 bool InternetServicePipe2::Write( const char *buffer, size_t bsize, int timeoutms/*=-1*/, bool flush/*=true */ )
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(write_mutex.get());
 
 	if(buffer!=NULL)
 	{
@@ -219,8 +219,15 @@ bool InternetServicePipe2::isWritable( int timeoutms/*=0 */ )
 
 bool InternetServicePipe2::isReadable( int timeoutms/*=0 */ )
 {
-	IScopedLock lock(mutex.get());
-	return dec->hasData() || cs->isReadable(timeoutms);
+	{
+		IScopedLock lock(read_mutex.get());
+		if (dec->hasData())
+		{
+			return true;
+		}
+	}
+
+	return cs->isReadable(timeoutms);
 }
 
 bool InternetServicePipe2::hasError( void )
@@ -265,7 +272,7 @@ void InternetServicePipe2::resetTransferedBytes( void )
 
 std::string InternetServicePipe2::decrypt( const std::string &data )
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(read_mutex.get());
 
 	if(!dec->put(data.data(), data.size()))
 	{
@@ -286,7 +293,7 @@ std::string InternetServicePipe2::decrypt( const std::string &data )
 
 std::string InternetServicePipe2::encrypt( const std::string &data )
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock lock(write_mutex.get());
 
 	enc->put(data.data(), data.size());
 	enc->flush();
@@ -295,15 +302,11 @@ std::string InternetServicePipe2::encrypt( const std::string &data )
 
 void InternetServicePipe2::destroyBackendPipeOnDelete( bool b )
 {
-	IScopedLock lock(mutex.get());
-
 	destroy_cs = b;
 }
 
 void InternetServicePipe2::setBackendPipe( IPipe *pCS )
 {
-	IScopedLock lock(mutex.get());
-
 	cs = pCS;
 }
 
@@ -314,7 +317,8 @@ IPipe * InternetServicePipe2::getRealPipe()
 
 int64 InternetServicePipe2::getEncryptionOverheadBytes()
 {
-	IScopedLock lock(mutex.get());
+	IScopedLock r_lock(read_mutex.get());
+	IScopedLock w_lock(write_mutex.get());
 
 	return enc->getOverheadBytes() + dec->getOverheadBytes();
 }

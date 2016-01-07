@@ -83,5 +83,6 @@ private:
 	size_t curr_write_chunk_size;
 	int64 last_flush_time;
 
-	std::auto_ptr<IMutex> mutex;
+	std::auto_ptr<IMutex> read_mutex;
+	std::auto_ptr<IMutex> write_mutex;
 };
