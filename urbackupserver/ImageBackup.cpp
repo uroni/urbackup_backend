@@ -514,8 +514,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if (!internet_connection && client_main->isOnInternetConnection())
 					{
-						Server->wait(60000);
-						if(client_main->isOnInternetConnection())
+						int icount = 0;
+						while (icount < 4)
+						{
+							Server->wait(60000);
+							if (client_main->isOnInternetConnection())
+							{
+								++icount;
+							}
+							else
+							{
+								break;
+							}
+						}
+
+						if(icount>=4)
 						{
 							ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
 							goto do_image_cleanup;
