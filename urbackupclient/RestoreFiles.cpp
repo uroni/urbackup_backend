@@ -208,6 +208,8 @@ void RestoreFiles::operator()()
 	log("Restore finished successfully.", LL_INFO);
 
 	ClientConnector::restoreDone(log_id, status_id, restore_id, true, server_token);
+
+	delete this;
 }
 
 IPipe * RestoreFiles::new_fileclient_connection( )
