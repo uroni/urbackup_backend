@@ -80,12 +80,12 @@ install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserve
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/fonts"
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/images"
 if !PACKAGING
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/css"
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/js"
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/fonts"
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/images"
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www"
-	chmod u+x "$(DESTDIR)$(datadir)/urbackup"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/css"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/fonts"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/images"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup"
 endif
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/js/*.js "$(DESTDIR)$(datadir)/urbackup/www/js/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.htm "$(DESTDIR)$(datadir)/urbackup/www/"
