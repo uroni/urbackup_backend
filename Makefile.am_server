@@ -80,6 +80,10 @@ install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserve
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/fonts"
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/images"
 if !PACKAGING
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/css"
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/js"
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/fonts"
+	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www/images"
 	chmod u+x "$(DESTDIR)$(datadir)/urbackup/www"
 	chmod u+x "$(DESTDIR)$(datadir)/urbackup"
 endif
