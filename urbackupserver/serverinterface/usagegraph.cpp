@@ -113,20 +113,20 @@ ACTION_IMPL(usagegraph)
 		std::string date_fmt;
 		if(scale=="y")
 		{
-			back="-25 year";
-			n_items=10;
+			back="-40 year";
+			n_items=40;
 			date_fmt="%Y";
 		}
 		else if(scale=="m")
 		{
-			back="-2 year";
-			n_items=12;
+			back="-3 year";
+			n_items=40;
 			date_fmt="%Y-%m";
 		}
 		else
 		{
-			back="-1 month";
-			n_items=31;
+			back="-2 month";
+			n_items=40;
 			date_fmt="%Y-%m-%d";
 		}
 
