@@ -543,6 +543,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 					else
 					{
+						identity = client_main->getSessionIdentity().empty() ? server_identity : client_main->getSessionIdentity();
 						reconnected=true;
 						ServerStatus::setROnline(clientname, true);
 						Server->Log("Reconnected.", LL_DEBUG);
