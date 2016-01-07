@@ -145,9 +145,15 @@ namespace
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
 			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name),
-			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id)
+			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
+			single_file(false)
 		{
 			TokenizeMail(filter, filter_fns, "/");
+
+			if (filter_fns.size()==1)
+			{
+				single_file = true;
+			}
 		}
 
 		void operator()()
@@ -195,6 +201,7 @@ namespace
 			data.addUInt64(status_id);
 			data.addInt64(log_id.first);
 			data.addString(restore_token);
+			data.addChar(single_file ? 1 : 0);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(curr_clientname, msg);
@@ -241,6 +248,7 @@ namespace
 				if(file.isdir)
 				{
 					metadataname+=os_file_sep()+metadata_dir_fn;
+					single_file = false;
 				}
 
 				bool has_metadata = false;
@@ -319,6 +327,7 @@ namespace
 		logid_t log_id;
 		std::string restore_token;
 		std::string identity;
+		bool single_file;
 	};
 }
 

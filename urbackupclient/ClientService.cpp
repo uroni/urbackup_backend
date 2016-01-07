@@ -2703,9 +2703,7 @@ void ClientConnector::sendStatus()
 
 		if (restore_files != NULL)
 		{
-			int path_type = os_get_file_type(os_file_prefix(restore_files->get_restore_path()));
-
-			if (path_type & EFileType_File)
+			if (restore_files->is_single_file())
 			{
 				ret += "&restore_file=true";
 			}

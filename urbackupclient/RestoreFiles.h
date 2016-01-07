@@ -18,9 +18,9 @@ namespace
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
 {
 public:
-	RestoreFiles(int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path)
+	RestoreFiles(int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path, bool single_file)
 		: restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
-		log_id(log_id), restore_path(restore_path)
+		log_id(log_id), restore_path(restore_path), single_file(single_file)
 	{
 
 	}
@@ -34,6 +34,11 @@ public:
 	std::string get_restore_path()
 	{
 		return restore_path;
+	}
+
+	bool is_single_file()
+	{
+		return single_file;
 	}
 
 private:
@@ -75,5 +80,5 @@ private:
 	IDatabase* db;
 
 	std::string restore_path;
-
+	bool single_file;
 };

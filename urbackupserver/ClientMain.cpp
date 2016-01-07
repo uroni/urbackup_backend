@@ -771,6 +771,8 @@ void ClientMain::operator ()(void)
 			rdata.getInt64(&log_id.first);
 			std::string restore_token;
 			rdata.getStr(&restore_token);
+			char single_file = 0;
+			rdata.getChar(&single_file);
 
 			std::string restore_path = ServerStatus::getProcess(clientname, status_id).details;
 
@@ -795,7 +797,8 @@ void ClientMain::operator ()(void)
 			std::string ret = sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
 				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token)+
-				"&restore_path="+EscapeParamString(restore_path),
+				"&restore_path="+EscapeParamString(restore_path)+
+				"&single_file="+ convert(static_cast<int>(single_file)),
 				"Starting restore failed", 10000, 10, true, LL_ERROR);
 
 			if (ret != "ok")
