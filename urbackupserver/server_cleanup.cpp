@@ -1829,7 +1829,7 @@ void ServerCleanupThread::cleanup_client_hist()
 	Server->Log("Rewriting daily history...", LL_INFO);
 	rewrite_history("-2 days", "-2 month", "%Y-%m-%d");
 	Server->Log("Rewriting monthly history...", LL_INFO);
-	rewrite_history("-2 month", "-2 years", "%Y-%m");
+	rewrite_history("-2 month", "-4 years", "%Y-%m");
 	Server->Log("Rewriting yearly history...", LL_INFO);
 	rewrite_history("-2 years", "-1000 years", "%Y");
 }
