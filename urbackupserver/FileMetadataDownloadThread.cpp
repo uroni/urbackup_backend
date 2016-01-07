@@ -106,6 +106,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			{
 				ServerLogger::Log(logid, "Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
 			}
+			std::sort(last_metadata_ids.begin(), last_metadata_ids.end());
 			return true;
 		}
 
