@@ -499,10 +499,16 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 #ifndef LINUX
+				DWORD extra_flags = 0;
+				if (id == ID_GET_FILE_METADATA_ONLY)
+				{
+					extra_flags = FILE_FLAG_OPEN_REPARSE_POINT;
+				}
 #ifndef BACKUP_SEM
 				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+					FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|extra_flags, NULL);
 #endif
 
 				if(hFile == INVALID_HANDLE_VALUE)
