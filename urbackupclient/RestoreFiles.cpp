@@ -47,11 +47,13 @@ namespace
 
 		void operator()()
 		{
-			IScopedLock lock(update_mutex.get());
-			while (!stopped)
 			{
-				ClientConnector::updateRestorePc(restore_id, status_id, curr_pc, server_token);
-				update_cond->wait(&lock, 60000);
+				IScopedLock lock(update_mutex.get());
+				while (!stopped)
+				{
+					ClientConnector::updateRestorePc(restore_id, status_id, curr_pc, server_token);
+					update_cond->wait(&lock, 60000);
+				}
 			}
 			delete this;
 		}

@@ -87,7 +87,7 @@ std::string map_file(std::string fn, const std::string& identity)
 	if(i==mapbuffer.end() )
 	{
 		mapcs.Leave();
-		Log("Could not find share \""+ts+"\"", LL_WARNING);
+		Log("Could not find share \""+ts+"\"", LL_DEBUG);
 		return "";
 	}
 	else

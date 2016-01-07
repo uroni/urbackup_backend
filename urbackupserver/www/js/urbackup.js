@@ -1621,47 +1621,54 @@ function show_backups2(data)
 			
 			var cp="";
 			var folder_path="";
+
+			var els=path.split("/");
+			var curr_path="";
+			
+			var last_path="";
+			for(var i=0;i<els.length-1;++i)
+			{
+				if(els[i].length>0)
+				{
+					last_path+="/"+els[i];
+				}
+			}
+			
 			if(g.last_browse_backupid)
 			{
-				var els=path.split("/");
-				var curr_path="";
-				
-				var last_path="";
-				for(var i=0;i<els.length-1;++i)
-				{
-					if(els[i].length>0)
-					{
-						last_path+="/"+els[i];
-					}
-				}
-				
 				if(els.length>1 && (els[1].length>0 || els.length>2))
-				{
+				{	
 					cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+format_unix_timestamp(g.last_browse_backuptime)+"</a> > ";
 				}
 				else
 				{
 					cp+="<strong>"+format_unix_timestamp(g.last_browse_backuptime)+"</strong>"
 				}
-				
-				for(var i=0;i<els.length;++i)
+			}
+			
+			for(var i=0;i<els.length;++i)
+			{
+				if(els[i].length>0)
 				{
-					if(els[i].length>0)
+					curr_path+="/"+els[i];
+					if(i+1<els.length)
 					{
-						curr_path+="/"+els[i];
-						if(i+1<els.length)
+						folder_path+="/"+els[i];
+						var proc = "tabMouseClickFiles";
+						if(!g.last_browse_backupid)
 						{
-							folder_path+="/"+els[i];
-							cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
-							if(i!=0)
-							{
-								cp+=" > ";
-							}
+							proc = "tabMouseClickFilesAccess";
 						}
-						else
+						cp+="<a href=\"javascript: "+proc+"("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
+						
+						if(i!=0)
 						{
-							cp+="<strong>"+els[i]+"</strong>";
+							cp+=" > ";
 						}
+					}
+					else
+					{
+						cp+="<strong>"+els[i]+"</strong>";
 					}
 				}
 			}
