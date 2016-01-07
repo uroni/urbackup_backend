@@ -76,4 +76,6 @@ private:
 	std::string last_fileaccesstokens;
 
 	std::string server_token;
+
+	std::vector<THREADPOOL_TICKET> fileclient_threads;
 };

@@ -263,6 +263,12 @@ void ServerChannelThread::operator()(void)
 	{
 		keepalive_thread->doQuit();
 	}
+
+	if (!fileclient_threads.empty())
+	{
+		Server->Log(clientname+"/server_channel: Waiting for fileclient threads...", LL_DEBUG);
+		Server->getThreadPool()->waitFor(fileclient_threads);
+	}
 }
 
 void ServerChannelThread::doExit(void)
@@ -391,7 +397,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		if(fileserv!=NULL)
 		{
-			Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize()));
+			fileclient_threads.push_back(Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize())));
 			input=NULL;
 		}
 	}
