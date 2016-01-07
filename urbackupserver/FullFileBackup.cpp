@@ -600,7 +600,7 @@ bool FullFileBackup::doFileBackup()
 						{
 							has_all_metadata=false;
 
-							Server->Log("Metadata of \"" + cf.name + "\" missing", LL_DEBUG);
+							ServerLogger::Log(logid, "Metadata of \"" + cf.name + "\" missing", LL_DEBUG);
 
 							//go back to the directory entry and change the last modfied time
 							if(clientlist->Seek(last_modified_offsets.top()))
@@ -646,7 +646,7 @@ bool FullFileBackup::doFileBackup()
 
 					if(metadata_missing)
 					{
-						Server->Log("Metadata of \"" + cf.name + "\" is missing", LL_DEBUG);
+						ServerLogger::Log(logid, "Metadata of \"" + cf.name + "\" is missing", LL_DEBUG);
 
 						has_all_metadata=false;
 					}

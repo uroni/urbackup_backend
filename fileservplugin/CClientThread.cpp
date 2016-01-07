@@ -388,16 +388,16 @@ bool CClientThread::ProcessPacket(CRData *data)
                 {
                     if(!is_script)
                     {
-                        Log("Sending file (normal) "+o_filename, LL_DEBUG);
+                        Log("Sending file (normal) "+o_filename+" metadata_id="+convert(metadata_id), LL_DEBUG);
                     }
                     else
                     {
-                        Log("Sending script output (normal) "+o_filename, LL_DEBUG);
+                        Log("Sending script output (normal) "+o_filename + " metadata_id=" + convert(metadata_id), LL_DEBUG);
                     }
                 }
                 else
                 {
-                    Log("Sending meta data of "+o_filename, LL_DEBUG);
+                    Log("Sending meta data of "+o_filename +" metadata_id=" + convert(metadata_id) , LL_DEBUG);
 
 					assert(metadata_id!=0);
                 }
