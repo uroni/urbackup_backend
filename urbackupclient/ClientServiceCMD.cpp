@@ -2058,8 +2058,9 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	int64 restore_id=watoi64(params["id"]);
 	int64 status_id=watoi64(params["status_id"]);
 	int64 log_id=watoi64(params["log_id"]);
+	std::string restore_path = params["restore_path"];
 
-	RestoreFiles* local_restore_files = new RestoreFiles(restore_id, status_id, log_id, client_token, server_token);
+	RestoreFiles* local_restore_files = new RestoreFiles(restore_id, status_id, log_id, client_token, server_token, restore_path);
 
 
 	bool has_restore_token=false;

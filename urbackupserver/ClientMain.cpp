@@ -772,27 +772,30 @@ void ClientMain::operator ()(void)
 			std::string restore_token;
 			rdata.getStr(&restore_token);
 
+			std::string restore_path = ServerStatus::getProcess(clientname, status_id).details;
+
 			bool server_confirms;
 			if(ServerStatus::canRestore(clientname, server_confirms))
 			{
 				if(server_confirms || !restore_token.empty())
 				{
-					ServerLogger::Log(log_id, "Starting restore...", LL_INFO);
+					ServerLogger::Log(log_id, "Starting restore of path \""+ restore_path + "\"...", LL_INFO);
 				}
 				else
 				{
-					ServerLogger::Log(log_id, "Starting restore. Waiting for client confirmation...", LL_INFO);
+					ServerLogger::Log(log_id, "Starting restore of path \"" + restore_path + "\". Waiting for client confirmation...", LL_INFO);
 				}
 			}
 			else
 			{
-				ServerLogger::Log(log_id, "Starting restore. But client may be offline...", LL_INFO);
+				ServerLogger::Log(log_id, "Starting restore of path \"" + restore_path + "\". But client may be offline...", LL_INFO);
 			}
 			
 
 			std::string ret = sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
-				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token),
+				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token)+
+				"&restore_path="+EscapeParamString(restore_path),
 				"Starting restore failed", 10000, 10, true, LL_ERROR);
 
 			if (ret != "ok")

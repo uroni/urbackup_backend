@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "ClientService.h"
+#include "RestoreFiles.h"
 #include "client.h"
 #include "../Interface/Server.h"
 #include "../Interface/Database.h"
@@ -2699,6 +2700,22 @@ void ClientConnector::sendStatus()
 	if(restore_ok_status==RestoreOk_Wait)
 	{
 		ret+="&restore_ask=true";
+
+		if (restore_files != NULL)
+		{
+			int path_type = os_get_file_type(os_file_prefix(restore_files->get_restore_path()));
+
+			if (path_type & EFileType_File)
+			{
+				ret += "&restore_file=true";
+			}
+			else
+			{
+				ret += "&restore_file=false";
+			}
+
+			ret += "&restore_path=" + EscapeParamString(restore_files->get_restore_path());
+		}
 	}
 
 	if(needs_restore_restart>0)

@@ -546,6 +546,11 @@ function show_progress2(data)
 				data.progress[i].image=true;
 			}
 			
+			if(action==8)
+			{
+				data.progress[i].file_restore=true;
+			}
+			
 			if(action==10)
 			{
 				data.progress[i].client_update=true;

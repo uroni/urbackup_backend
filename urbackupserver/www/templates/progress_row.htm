@@ -8,7 +8,11 @@
 			{?client_update}
 				To version: {details}
 			{:else}
-				-
+				{?file_restore}
+					Path: {details|s}
+				{:else}
+					-
+				{/file_restore}
 			{/client_update}
 		{/image}
 	</td>
