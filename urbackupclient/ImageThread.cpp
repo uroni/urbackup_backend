@@ -828,6 +828,7 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 		data.addVoidPtr(NULL);
 		data.addString(image_inf->image_letter);
 		data.addInt(save_id);
+		data.addString(image_inf->clientsubname);
 
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}

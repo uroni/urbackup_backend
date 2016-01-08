@@ -199,6 +199,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	state=CCSTATE_NORMAL;
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
+	image_inf.clientsubname.clear();
 	if(mempipe==NULL)
 	{
 		mempipe=Server->createMemoryPipe();

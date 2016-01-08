@@ -1019,6 +1019,8 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 		image_inf.no_shadowcopy=false;
 
+		image_inf.clientsubname = params["clientsubname"];
+
 		if(image_inf.image_letter=="SYSVOL"
 			|| image_inf.image_letter=="ESP")
 		{
@@ -1053,7 +1055,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addString(server_token);
 			data.addUChar(1); //image backup
 			data.addUChar(0); //filesrv
-			data.addString(params["clientsubname"]);
+			data.addString(image_inf.clientsubname);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner=false;
 		}
@@ -1134,6 +1136,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 			
 			image_inf.no_shadowcopy=false;
+			image_inf.clientsubname = params["clientsubname"];
 
 			if(image_inf.startpos==0)
 			{
@@ -1144,7 +1147,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addString(server_token);
 				data.addUChar(1); //image backup
 				data.addUChar(0); //file serv?
-				data.addString(params["clientsubname"]);
+				data.addString(image_inf.clientsubname);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner=false;
 			}

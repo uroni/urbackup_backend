@@ -243,7 +243,7 @@ private:
 	void VSSLog(const std::string& msg, int loglevel);
 	void VSSLogLines(const std::string& msg, int loglevel);
 
-	SCDirs* getSCDir(const std::string path);
+	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname);
 
 	int execute_hook(std::string script_name, bool incr, std::string server_token, int index_group);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
@@ -311,7 +311,7 @@ private:
 	DirectoryWatcherThread *dwt;
 	THREADPOOL_TICKET dwt_ticket;
 
-	std::map<std::string, std::map<std::string, SCDirs*> > scdirs;
+	std::map<std::pair<std::string, std::string>, std::map<std::string, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
 
 	int index_c_db;

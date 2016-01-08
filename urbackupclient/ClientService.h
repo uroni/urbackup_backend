@@ -69,6 +69,7 @@ struct ImageInformation
 	ImageThread *image_thread;
 	bool with_checksum;
 	bool with_bitmap;
+	std::string clientsubname;
 };
 
 struct SChannel
