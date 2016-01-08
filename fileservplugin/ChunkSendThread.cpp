@@ -194,7 +194,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				while(r<toread)
 				{
 					_u32 r_add=file->Read(chunk_buf+off+r,  toread-r, &readerr);
-					if(r_add==0)
+					if(readerr)
+					{
+						sendError(ERR_READING_FAILED, getSystemErrorCode());
+					}
+					else if(r_add==0 && file->Size()!=-1)
 					{
 						if(curr_file_size==-1)
 						{
@@ -207,17 +211,13 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 							memset(chunk_buf+off+r, 0, toread-r);
 							r=toread;
 						}
-						else if(!readerr)
+						else
 						{
 							memset(chunk_buf+off+r, 0, toread-r);
 							r=toread;
 						}
-						else
-						{
-							sendError(ERR_READING_FAILED, getSystemErrorCode());
-						}
 					}
-					else
+					else if(r_add>0)
 					{
 						md5_hash.update((unsigned char*)chunk_buf+off+r, r_add);
 
@@ -302,7 +302,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		{
 			_u32 r_add = file->Read(cptr+r, to_read-r, &readerr);
 
-			if(r_add==0)
+			if (readerr)
+			{
+				sendError(ERR_READING_FAILED, getSystemErrorCode());
+			}
+			else if(r_add==0 && file->Size()!=-1)
 			{
 				if(curr_file_size==-1)
 				{
@@ -314,10 +318,6 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 					memset(cptr+r, 0, to_read-r);
 					r=to_read;
-				}
-				else if(readerr)
-				{
-					sendError(ERR_READING_FAILED, getSystemErrorCode());
 				}
 				else
 				{

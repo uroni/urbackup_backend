@@ -1756,7 +1756,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		
 		_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
 
-		if(rc==0 && curr_filesize==-1)
+		if(rc==0 && curr_filesize==-1 && file->Size()!=-1)
 		{
 			is_eof=true;
 		}

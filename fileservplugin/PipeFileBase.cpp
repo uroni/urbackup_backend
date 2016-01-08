@@ -112,7 +112,8 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 
 	int64 starttime = Server->getTimeMS();
 	size_t read_avail = getReadAvail();
-	while(read_avail<bsize && !has_eof && (read_avail==0 || Server->getTimeMS()-starttime<60000))
+	while(read_avail<bsize && !has_eof && ( (read_avail==0 && Server->getTimeMS() - starttime<120000)
+											|| Server->getTimeMS()-starttime<60000))
 	{
 		lock.relock(NULL);
 		Server->wait(100);
@@ -133,7 +134,10 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	else
 	{
 		size_t tr = (std::min)(read_avail, static_cast<size_t>(bsize));
-		readBuf(buffer, tr);
+		if (tr > 0)
+		{
+			readBuf(buffer, tr);
+		}
 		return static_cast<_u32>(tr);
 	}
 }
