@@ -285,7 +285,7 @@ bool IncrFileBackup::doFileBackup()
 	if(use_snapshots)
 	{
 		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size())+")", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false) )
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false) )
 		{
 			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -293,7 +293,7 @@ bool IncrFileBackup::doFileBackup()
 		}
 
 		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true))
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true, true))
 		{
 			ServerLogger::Log(logid, "Deleting files in hash snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -1354,7 +1354,7 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 	}
 }
 
-bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::string snapshot_path, bool no_error)
+bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::string snapshot_path, bool no_error, bool hash_dir)
 {
 	if(os_directory_exists(os_file_prefix(backuppath + os_file_sep() + "user_views")))
 	{
@@ -1411,7 +1411,20 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					{
 						if(curr_dir_exists)
 						{
-							if(!os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+							//In the hash snapshot a symlinked directory is represented by a file
+							if ( hash_dir && (os_get_file_type(os_file_prefix(curr_fn)) & EFileType_File) )
+							{
+								if (!Server->deleteFile(os_file_prefix(curr_fn)))
+								{
+									if (!no_error)
+									{
+										ServerLogger::Log(logid, "Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), LL_ERROR);
+										Server->destroy(tmp);
+										return false;
+									}
+								}
+							}
+							else if(!os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)
 								{
