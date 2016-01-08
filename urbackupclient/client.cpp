@@ -3915,7 +3915,10 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 {
 	if(!os_get_symlink_target(symlink, target))
 	{
-		VSSLog("Error getting symlink target of symlink "+symlink+". Not following symlink.", LL_WARNING);
+		if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
+		{
+			VSSLog("Error getting symlink target of symlink " + symlink + ". Not following symlink.", LL_WARNING);
+		}
 		return false;
 	}
 
