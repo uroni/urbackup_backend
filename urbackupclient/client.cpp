@@ -60,6 +60,8 @@ std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
+const char IndexThread::IndexThreadAction_CreateShadowcopy = 2;
+const char IndexThread::IndexThreadAction_ReleaseShadowcopy = 3;
 const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
@@ -570,7 +572,7 @@ void IndexThread::operator()(void)
 				}
 			}
 		}
-		else if(action==2) // create shadowcopy
+		else if(action==IndexThreadAction_CreateShadowcopy)
 		{
 			std::string scdir;
 			data.getStr(&scdir);
@@ -582,6 +584,12 @@ void IndexThread::operator()(void)
 
 			unsigned char fileserv;
 			bool hfs=data.getUChar(&fileserv);
+
+			index_clientsubname.clear();
+			if (hfs)
+			{
+				data.getStr(&index_clientsubname);
+			}
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
 			{
@@ -646,7 +654,7 @@ void IndexThread::operator()(void)
 				}
 			}
 		}
-		else if(action==3) // remove shadowcopy
+		else if(action==IndexThreadAction_ReleaseShadowcopy) // remove shadowcopy
 		{
 			std::string scdir;
 			data.getStr(&scdir);
@@ -657,6 +665,8 @@ void IndexThread::operator()(void)
 
 			int save_id=-1;
 			data.getInt(&save_id);
+			index_clientsubname.clear();
+			data.getStr(&index_clientsubname);
 
 			int64 starttime = Server->getTimeMS();
 			while (filesrv != NULL
@@ -2315,7 +2325,9 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		return false;
 	}
 
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target), loglines);
+	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
+		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target)
+		+ (index_clientsubname.empty() ? "" : (" " + escapeDirParam(index_clientsubname))), loglines);
 	if(rc!=0)
 	{
 		VSSLog("Error removing snapshot to "+scs.orig_target, LL_ERROR);
@@ -4308,7 +4320,9 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	GUID ssetid = randomGuid();
 
 	std::string loglines;
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->orig_target), loglines);
+	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
+		escapeDirParam(dir->dir)+" "+escapeDirParam(dir->orig_target)
+		+ (index_clientsubname.empty()?"":(" " + escapeDirParam(index_clientsubname))), loglines);
 
 	if(rc!=0)
 	{

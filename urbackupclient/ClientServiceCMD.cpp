@@ -406,7 +406,7 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 		state=CCSTATE_SHADOWCOPY;
 		std::string dir=cmd.substr(10, cmd.size()-11);
 		CWData data;
-		data.addChar(2);
+		data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
 		data.addVoidPtr(mempipe);
 		data.addString(dir);
 		data.addString(server_token);
@@ -427,7 +427,7 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		state=CCSTATE_SHADOWCOPY;
 		std::string dir=cmd.substr(9, cmd.size()-10);
 		CWData data;
-		data.addChar(3);
+		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
 		data.addVoidPtr(mempipe);
 		data.addString(dir);
 		data.addString(server_token);
@@ -1015,12 +1015,13 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
 		{
 			CWData data;
-			data.addChar(2);
+			data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
 			data.addVoidPtr(mempipe);
 			data.addString(image_inf.image_letter);
 			data.addString(server_token);
 			data.addUChar(1); //image backup
 			data.addUChar(0); //filesrv
+			data.addString(params["clientsubname"]);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner=false;
 		}
@@ -1105,12 +1106,13 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			if(image_inf.startpos==0)
 			{
 				CWData data;
-				data.addChar(2);
+				data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
 				data.addVoidPtr(mempipe);
 				data.addString(image_inf.image_letter);
 				data.addString(server_token);
 				data.addUChar(1); //image backup
 				data.addUChar(0); //file serv?
+				data.addString(params["clientsubname"]);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner=false;
 			}

@@ -314,6 +314,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		chksum_str+="&bitmap=1";
 	}
 
+	if (!clientsubname.empty())
+	{
+		chksum_str += "&clientsubname=" + EscapeParamString(clientsubname);
+	}
+
 	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 
 	if(pParentvhd.empty())
@@ -568,6 +573,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						cmd+="&checksum=1";
 					}
+					if (!clientsubname.empty())
+					{
+						cmd += "&clientsubname=" + EscapeParamString(clientsubname);
+					}
 					size_t sent = tcpstack.Send(cc, cmd);
 					if(sent==0)
 					{
@@ -589,6 +598,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					if(with_checksum)
 					{
 						ts+="&checksum=1";
+					}
+					if (!clientsubname.empty())
+					{
+						ts += "&clientsubname=" + EscapeParamString(clientsubname);
 					}
 					size_t sent=tcpstack.Send(cc, identity+ts);
 					if(sent==0)

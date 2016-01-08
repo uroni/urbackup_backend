@@ -151,6 +151,8 @@ class IndexThread : public IThread
 public:
 	static const char IndexThreadAction_StartFullFileBackup;
 	static const char IndexThreadAction_StartIncrFileBackup;
+	static const char IndexThreadAction_CreateShadowcopy;
+	static const char IndexThreadAction_ReleaseShadowcopy;
 	static const char IndexThreadAction_GetLog;
 	static const char IndexThreadAction_PingShadowCopy;
 	static const char IndexThreadAction_AddWatchdir;
