@@ -869,7 +869,7 @@ void ClientMain::prepareSQL(void)
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
-int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client)
+int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey)
 {
 	if(new_client!=NULL)
 		*new_client=false;
@@ -903,11 +903,17 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 			db->destroyQuery(q_insert_newclient);
 
 			IQuery *q_insert_authkey=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES ('internet_authkey',?,?)", false);
-			q_insert_authkey->Bind(ServerSettings::generateRandomAuthKey());
+			std::string new_authkey = ServerSettings::generateRandomAuthKey();
+			q_insert_authkey->Bind(new_authkey);
 			q_insert_authkey->Bind(rid);
 			q_insert_authkey->Write();
 			q_insert_authkey->Reset();
 			db->destroyQuery(q_insert_authkey);
+
+			if (authkey != NULL)
+			{
+				*authkey = new_authkey;
+			}
 
 			if(new_client!=NULL)
 				*new_client=true;

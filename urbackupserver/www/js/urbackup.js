@@ -1212,12 +1212,6 @@ function show_status2(data)
 		show_select_box=true;
 	}
 	
-	var internet_client_added="";
-	if(data.added_new_client)
-	{
-		internet_client_added="<strong>"+trans("internet_client_added")+"</strong>";
-	}
-	
 	var status_client_download="";
 	var has_client_download=false;
 	if(data.client_downloads)
@@ -1232,7 +1226,7 @@ function show_status2(data)
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
-		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
+		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: data.added_new_client, new_authkey: data.new_authkey, new_clientname: data.new_clientname,
 		status_client_download: status_client_download,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
 		has_client_download: has_client_download});

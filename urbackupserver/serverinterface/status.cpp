@@ -197,9 +197,12 @@ ACTION_IMPL(status)
 		if(POST.find("clientname")!=POST.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
-			int id=ClientMain::getClientID(db, POST["clientname"], NULL, &new_client);
+			std::string new_authkey;
+			int id=ClientMain::getClientID(db, POST["clientname"], NULL, &new_client, &new_authkey);
 			if(new_client)
 			{
+				ret.set("new_clientname", POST["clientname"]);
+				ret.set("new_authkey", new_authkey);
 				ret.set("added_new_client", true);
 			}
 		}

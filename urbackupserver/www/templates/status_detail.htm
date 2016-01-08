@@ -91,7 +91,15 @@
 	<div class="panel panel-default">
 		<div class="panel-heading">{tInternet clients}</div>
 		<div class="panel-body">
-			{internet_client_added|s}
+			<span>
+			<div class="alert alert-info" role="alert">
+			{?internet_client_added}
+				<strong>{tAdded new client.} {tAuthentication key:} {new_authkey} {tClient name:} {new_clientname}
+			{:else}
+				{tAfter you added the new Internet client you can configure the client name and authentication key on the client or download an installer here in order to connect the client with the server.}
+			{/internet_client_added}
+			</div>
+			</span>
 			<form class="form" action="#" onsubmit="addInternetClient(); return false;" role="form">
 				<div class="form-group">
 					<label for="clientname">{tAdd additional internet clients}:</label>
@@ -109,6 +117,9 @@
 			{tExtra clients}
 		</div>
 		<div class="panel-body">
+			<div class="alert alert-info" role="alert">
+				{tAutomatic UrBackup client discovery usually only works in local sub-networks. Add client IPs/hostnames here to discover clients across sub-network boundaries. If there is NAT between client and server you need to add the client as Internet client.}
+			</div>
 			<table class="table table-hover">
 				<thead>
 					<tr>			
@@ -145,7 +156,12 @@
 {/has_client_download}
 	<div class="panel panel-default">
 		<div class="panel-heading">{tServer identity}</div>
-		<div class="panel-body" style="word-wrap:break-word;">{server_identity}</div>
+		<div class="panel-body" style="word-wrap:break-word;">
+		<div class="alert alert-info" role="alert">
+			{tRandom value which the clients use to identify the server. Can be used to get the clients to connect only to a specific server.}
+		</div>
+		{server_identity}
+		</div>
 	</div>
 </div>
 
