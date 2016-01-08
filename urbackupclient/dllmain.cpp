@@ -488,8 +488,6 @@ void update_client18_19(IDatabase* db)
 
 void update_client19_20(IDatabase* db)
 {
-	db->Write("DROP TABLE mfiles");
-	db->Write("DROP TABLE mfiles_backup");
 	db->Write("ALTER TABLE backupdirs ADD symlinked INTEGER DEFAULT 0");
 	db->Write("UPDATE backupdirs SET symlinked=0 WHERE symlinked IS NULL");
 }
