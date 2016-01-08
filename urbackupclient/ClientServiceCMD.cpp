@@ -910,6 +910,8 @@ void ClientConnector::CMD_PAUSE(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 	std::string b=cmd.substr(6);
 	bool ok=false;
+	IScopedLock lock(backup_mutex);
+	status_updated = true;
 	if(b=="true")
 	{
 		ok=true;
