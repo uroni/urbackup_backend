@@ -384,6 +384,21 @@ bool os_directory_exists(const std::string &path)
 bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
     std::string upath=(path);
+
+	if(delete_root)
+	{
+		struct stat64 f_info;
+		int rc = lstat64(upath.c_str(), &f_info);
+		if(rc==0 && S_ISLNK(f_info.st_mode))
+		{
+			if(unlink(upath.c_str())!=0)
+			{
+				Log("Error deleting symlink \""+upath+"\"", LL_ERROR);
+			}
+			return true;
+		}
+	}
+
 	std::vector<SFile> tmp;
 	DIR *dp;
     struct dirent *dirp;
@@ -392,6 +407,7 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
         Log("No permission to access \""+upath+"\"", LL_ERROR);
         return false;
     }
+
 	
 	bool ok=true;
 	std::vector<std::string> subdirs;
@@ -490,7 +506,7 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
 	{
 		if(rmdir(upath.c_str())!=0)
 		{
-            Log("Error deleting directory \""+upath+"\"", LL_ERROR);
+        		Log("Error deleting directory \""+upath+"\"", LL_ERROR);
 		}
 	}
 	return ok;
