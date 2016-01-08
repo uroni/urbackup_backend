@@ -203,7 +203,7 @@ bool FullFileBackup::doFileBackup()
 	std::string last_backuppath_complete;
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, NULL, backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
-		hashed_transfer, save_incomplete_files, clientid, clientname,
+		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0, logid, with_hashes));
 

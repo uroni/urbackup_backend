@@ -46,8 +46,8 @@ void ClientDAO::prepareQueries()
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
-	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)", false);
-	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken FROM shadowcopies", false);
+	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken, clientsubname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)", false);
+	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken, clientsubname FROM shadowcopies", false);
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
 	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id, name FROM mdirs WHERE name GLOB ?", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
@@ -413,6 +413,7 @@ std::vector<SShadowCopy> ClientDAO::getShadowcopies(void)
 		sc.passedtime=watoi(r["passedtime"]);
 		sc.refs=watoi(r["refs"]);
 		sc.starttoken=r["starttoken"];
+		sc.clientsubname = r["clientsubname"];
 		ret.push_back(sc);
 	}
 	return ret;
@@ -430,6 +431,7 @@ int ClientDAO::addShadowcopy(const SShadowCopy &sc)
 	q_insert_shadowcopy->Bind(sc.vol);
 	q_insert_shadowcopy->Bind(sc.refs);
 	q_insert_shadowcopy->Bind(sc.starttoken);
+	q_insert_shadowcopy->Bind(sc.clientsubname);
 	q_insert_shadowcopy->Write();
 	q_insert_shadowcopy->Reset();
 	return (int)db->getLastInsertID();

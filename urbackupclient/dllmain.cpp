@@ -494,6 +494,12 @@ void update_client19_20(IDatabase* db)
 	db->Write("UPDATE backupdirs SET symlinked=0 WHERE symlinked IS NULL");
 }
 
+void update_client20_21(IDatabase* db)
+{
+	db->Write("ALTER TABLE shadowcopies ADD clientsubname TEXT");
+	db->Write("UPDATE shadowcopies SET clientsubname='' WHERE clientsubname IS NULL");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -506,7 +512,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 20;
+	int max_v = 21;
 
 	if (ver > max_v)
 	{
@@ -602,6 +608,10 @@ bool upgrade_client(void)
 				break;
 			case 19:
 				update_client19_20(db);
+				++ver;
+				break;
+			case 20:
+				update_client20_21(db);
 				++ver;
 				break;
 			default:

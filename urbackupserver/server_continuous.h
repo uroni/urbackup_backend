@@ -713,7 +713,7 @@ private:
 		server_download.reset(new ServerDownloadThread(*fileclient.get(),
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
-			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
+			false, clientid, clientname, std::string(), use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid, true));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get());

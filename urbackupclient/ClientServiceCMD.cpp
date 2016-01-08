@@ -405,11 +405,27 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 	{
 		state=CCSTATE_SHADOWCOPY;
 		std::string dir=cmd.substr(10, cmd.size()-11);
+
+		std::string clientsubname;
+		if (dir.find("/") != std::string::npos)
+		{
+			std::string str_params = getafter("/", dir);
+			dir = getuntil("/", dir);
+
+			str_map params;
+			ParseParamStrHttp(str_params, &params);
+
+			clientsubname = params["clientsubname"];
+		}
+
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
 		data.addVoidPtr(mempipe);
 		data.addString(dir);
 		data.addString(server_token);
+		data.addUChar(0);
+		data.addUChar(1);
+		data.addString(clientsubname);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
@@ -426,11 +442,27 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 	{
 		state=CCSTATE_SHADOWCOPY;
 		std::string dir=cmd.substr(9, cmd.size()-10);
+
+		std::string clientsubname;
+		if (dir.find("/") != std::string::npos)
+		{
+			std::string str_params = getafter("/", dir);
+			dir = getuntil("/", dir);
+
+			str_map params;
+			ParseParamStrHttp(str_params, &params);
+
+			clientsubname = params["clientsubname"];
+		}
+
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
 		data.addVoidPtr(mempipe);
 		data.addString(dir);
 		data.addString(server_token);
+		data.addUChar(0);
+		data.addUChar(1);
+		data.addString(clientsubname);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		mempipe_owner=false;
 		lasttime=Server->getTimeMS();

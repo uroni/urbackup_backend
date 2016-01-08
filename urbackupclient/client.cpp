@@ -1859,7 +1859,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 {
 	for(size_t i=sc_refs.size();i-- > 0;)
 	{
-		if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
+		if(sc_refs[i]->target==wpath && sc_refs[i]->ok && sc_refs[i]->clientsubname == index_clientsubname)
 		{
 			bool do_restart = std::find(no_restart_refs.begin(),
 				no_restart_refs.end(), sc_refs[i])==no_restart_refs.end();
@@ -2159,7 +2159,9 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 		return false;
 	}
 
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target), loglines);
+	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
+		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target)
+		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname))), loglines);
 	if(rc!=0)
 	{
 		VSSLog("Error removing snapshot to "+dir->target, LL_ERROR);
@@ -2338,7 +2340,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 
 	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
 		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target)
-		+ (index_clientsubname.empty() ? "" : (" " + escapeDirParam(index_clientsubname))), loglines);
+		+ (scs.clientsubname.empty() ? "" : (" " + escapeDirParam(scs.clientsubname))), loglines);
 	if(rc!=0)
 	{
 		VSSLog("Error removing snapshot to "+scs.orig_target, LL_ERROR);
@@ -4287,6 +4289,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool f
 	tsc.vol=wpath;
 	tsc.tname=dir->dir;
 	tsc.starttoken=starttoken;
+	tsc.clientsubname = index_clientsubname;
 	if(for_imagebackup)
 	{
 		tsc.refs=1;
@@ -4390,6 +4393,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	tsc.vol=wpath;
 	tsc.tname=dir->dir;
 	tsc.starttoken=starttoken;
+	tsc.clientsubname = index_clientsubname;
 	if(for_imagebackup)
 	{
 		tsc.refs=1;

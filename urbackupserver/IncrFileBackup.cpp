@@ -332,7 +332,7 @@ bool IncrFileBackup::doFileBackup()
 
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
-		hashed_transfer, intra_file_diffs, clientid, clientname,
+		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		incremental_num, logid, with_hashes));

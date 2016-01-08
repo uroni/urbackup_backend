@@ -80,6 +80,7 @@ struct SCRef
 	bool ok;
 	bool dontincrement;
 	std::vector<std::string> starttokens;
+	std::string clientsubname;
 };
 
 struct SCDirs

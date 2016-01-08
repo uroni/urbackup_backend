@@ -60,6 +60,7 @@ struct SShadowCopy
 	std::string orig_target;
 	std::string vol;
 	std::string starttoken;
+	std::string clientsubname;
 	bool filesrv;
 	int refs;
 	int passedtime;

@@ -39,11 +39,11 @@ namespace
 }
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
-	const std::string& clientname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
+	const std::string& clientname, const std::string& clientsubname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
-	clientname(clientname),
+	clientname(clientname), clientsubname(clientsubname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0)
@@ -1101,13 +1101,23 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 	return dlfiles;
 }
 
-void ServerDownloadThread::start_shadowcopy(const std::string &path)
+void ServerDownloadThread::start_shadowcopy(std::string path)
 {
+	if (!clientsubname.empty())
+	{
+		path += "/clientsubname=" + EscapeParamString(clientsubname);
+	}
+
 	client_main->sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", "Activating shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);
 }
 
-void ServerDownloadThread::stop_shadowcopy(const std::string &path)
+void ServerDownloadThread::stop_shadowcopy(std::string path)
 {
+	if (!clientsubname.empty())
+	{
+		path += "/clientsubname=" + EscapeParamString(clientsubname);
+	}
+
 	client_main->sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", "Removing shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);
 }
 
