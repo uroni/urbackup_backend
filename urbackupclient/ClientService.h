@@ -176,7 +176,7 @@ private:
 	static std::string getCurrRunningJob(bool reset_done);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
-	void CMD_GET_CHALLENGE(const std::string &identity);
+	void CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd);
 	void CMD_SIGNATURE(const std::string &identity, const std::string &cmd);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
 	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
@@ -270,7 +270,7 @@ private:
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;
-	static std::map<std::string, std::string> challenges;
+	static std::map<std::pair<std::string, std::string>, std::string> challenges;
 	static bool has_file_changes;
 	static std::vector<std::pair<std::string, IPipe*> > fileserv_connections;
 	static RestoreOkStatus restore_ok_status;

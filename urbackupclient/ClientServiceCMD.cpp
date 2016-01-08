@@ -105,7 +105,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	}
 }
 
-void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
+void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd)
 {
 	if(identity.empty())
 	{
@@ -113,9 +113,19 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
 		return;
 	}
 
+	std::string clientsubname;
+	if (cmd.size() > 14)
+	{
+		std::string s_params = cmd.substr(14);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		clientsubname = params["clientsubname"];
+	}
+
 	IScopedLock lock(ident_mutex);
 	std::string challenge = Server->secureRandomString(30)+"-"+convert(Server->getTimeSeconds())+"-"+convert(Server->getTimeMS());
-	challenges[identity]=challenge;
+	challenges[std::make_pair(identity, clientsubname)]=challenge;
 
 	tcpstack.Send(pipe, challenge);
 }
@@ -135,7 +145,20 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 		return;
 	}
 
-	str_map::iterator challenge_it = challenges.find(identity);
+	size_t hashpos = cmd.find("#");
+	if (hashpos == std::string::npos)
+	{
+		Server->Log("Signature error: No parameters", LL_ERROR);
+		tcpstack.Send(pipe, "no parameters");
+		return;
+	}
+
+	str_map params;
+	ParseParamStrHttp(cmd.substr(hashpos + 1), &params);
+
+	std::string clientsubname = params["clientsubname"];
+
+	std::map<std::pair<std::string, std::string>, std::string>::iterator challenge_it = challenges.find(std::make_pair(identity, clientsubname));
 
 	if(challenge_it==challenges.end() || challenge_it->second.empty())
 	{
@@ -145,17 +168,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	}
 
 	const std::string& challenge = challenge_it->second;
-
-	size_t hashpos = cmd.find("#");
-	if(hashpos==std::string::npos)
-	{
-		Server->Log("Signature error: No parameters", LL_ERROR);
-		tcpstack.Send(pipe, "no parameters");
-		return;
-	}
-
-	str_map params;
-	ParseParamStrHttp(cmd.substr(hashpos+1), &params);
+	
 
 	std::string pubkey = base64_decode_dash(params["pubkey"]);
 	std::string pubkey_ecdsa409k1 = base64_decode_dash(params["pubkey_ecdsa409k1"]);

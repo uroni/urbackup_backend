@@ -2252,7 +2252,14 @@ bool ClientMain::authenticatePubKey()
 		return false;
 	}
 
-	std::string challenge = sendClientMessageRetry("GET CHALLENGE", "Failed to get challenge from client", 10000, 10, false, LL_INFO);
+	std::string params;
+
+	if (!clientsubname.empty())
+	{
+		params = " clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	std::string challenge = sendClientMessageRetry("GET CHALLENGE" + params, "Failed to get challenge from client", 10000, 10, false, LL_INFO);
 
 	if(challenge=="ERR")
 	{
@@ -2317,7 +2324,8 @@ bool ClientMain::authenticatePubKey()
 			"&pubkey_ecdsa409k1="+base64_encode_dash(pubkey_ecdsa)+
 			"&signature="+base64_encode_dash(signature)+
 			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
-			"&session_identity="+identity, "ok", "Error sending server signature to client", 10000, 10, true);
+			"&session_identity="+identity +
+			(clientsubname.empty() ? "" : "&clientsubname="+clientsubname), "ok", "Error sending server signature to client", 10000, 10, true);
 
 		if(ret)
 		{

@@ -85,7 +85,7 @@ int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
-std::map<std::string, std::string> ClientConnector::challenges;
+std::map<std::pair<std::string, std::string>, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
 void* ClientConnector::backup_running_owner=NULL;
 std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
@@ -805,9 +805,9 @@ void ClientConnector::ReceivePackets(void)
 		{
 			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
 		}
-		else if(cmd=="GET CHALLENGE")
+		else if(next(cmd, 0, "GET CHALLENGE"))
 		{
-			CMD_GET_CHALLENGE(identity); continue;
+			CMD_GET_CHALLENGE(identity, cmd); continue;
 		}
 		else if(next(cmd, 0, "SIGNATURE"))
 		{
