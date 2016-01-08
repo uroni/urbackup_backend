@@ -46,8 +46,8 @@ namespace
 	class MetadataCallback : public IFileServ::IMetadataCallback
 	{
 	public:
-		MetadataCallback(const std::string& basedir)
-			: basedir(basedir)
+		MetadataCallback(const std::string& basedir, const std::vector < std::pair<std::string, std::string> >& map_paths)
+			: basedir(basedir), map_paths(map_paths)
 		{
 
 		}
@@ -93,6 +93,16 @@ namespace
 			}
 
 			orig_path = metadata.orig_path;
+
+			for (size_t j = 0; j < map_paths.size(); ++j)
+			{
+				if (next(orig_path, 0, map_paths[j].first))
+				{
+					orig_path.replace(orig_path.begin(), orig_path.begin() + map_paths[j].first.size(), map_paths[j].second);
+					break;
+				}
+			}
+
 			offset = os_metadata_offset(metadata_file.get());
 			length = metadata_file->Size() - offset;
 
@@ -131,6 +141,7 @@ namespace
 
 	private:
 		std::string basedir;
+		std::vector < std::pair<std::string, std::string> > map_paths;
 	};
 
 	class ClientDownloadThread : public IThread
@@ -140,13 +151,14 @@ namespace
 			const std::string& hashfoldername, const std::string& filter,
 			bool token_authentication,
 			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
-			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity)
+			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
+			const std::vector<std::pair<std::string, std::string> >& map_paths)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
 			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
-			single_file(false)
+			single_file(false), map_paths(map_paths)
 		{
 			TokenizeMail(filter, filter_fns, "/");
 
@@ -186,7 +198,7 @@ namespace
 
 			delete filelist_f;
 
-			MetadataCallback* callback = new MetadataCallback(hashfoldername);
+			MetadataCallback* callback = new MetadataCallback(hashfoldername, map_paths);
 			fileserv->shareDir("clientdl", foldername, identity);
 			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
@@ -280,6 +292,15 @@ namespace
 				if(!metadata.orig_path.empty() &&
 					(depth==0 || metadata.orig_path.find(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
+					for (size_t j = 0; j < map_paths.size(); ++j)
+					{
+						if (next(metadata.orig_path, 0, map_paths[j].first))
+						{
+							metadata.orig_path.replace(metadata.orig_path.begin(), metadata.orig_path.begin()+map_paths[j].first.size(), map_paths[j].second);
+							break;
+						}
+					}
+
                     extra="&orig_path="+EscapeParamString(metadata.orig_path);
 				}
 
@@ -328,12 +349,14 @@ namespace
 		std::string restore_token;
 		std::string identity;
 		bool single_file;
+		std::vector < std::pair<std::string, std::string> > map_paths;
 	};
 }
 
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
-	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token)
+	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
+	const std::vector<std::pair<std::string, std::string> >& map_paths)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -376,13 +399,14 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
 		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,
-		status_id, log_id, restore_token, identity));
+		status_id, log_id, restore_token, identity, map_paths));
 
 	return true;
 }
 
 bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid,
-	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token)
+	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
+	const std::vector<std::pair<std::string, std::string> >& map_paths)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -418,6 +442,6 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	std::vector<backupaccess::SToken> backup_tokens;
 	std::vector<std::string> tokens;
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(), false, backup_tokens,
-		tokens, true, "", restore_id, status_id, log_id, restore_token);
+		tokens, true, "", restore_id, status_id, log_id, restore_token, map_paths);
 }
 

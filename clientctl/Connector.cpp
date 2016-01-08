@@ -472,7 +472,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, bool
 	}
 }
 
-std::string Connector::startRestore( const std::string& path, int backupid, bool& no_server )
+std::string Connector::startRestore( const std::string& path, int backupid, const std::vector<SPathMap>& map_paths, bool& no_server )
 {
 	no_server=false;
 
@@ -484,6 +484,12 @@ std::string Connector::startRestore( const std::string& path, int backupid, bool
 	std::string params = "tokens="+tokens;
 	params+="&path="+EscapeParamString(path);
 	params+="&backupid="+convert(backupid);
+
+	for (size_t i = 0; i < map_paths.size(); ++i)
+	{
+		params += "&map_path_source"+convert(i)+"=" + EscapeParamString(map_paths[i].source);
+		params += "&map_path_target" + convert(i) + "=" + EscapeParamString(map_paths[i].target);
+	}
 
 	std::string res = getResponse("DOWNLOAD FILES TOKENS",
 		params, false);

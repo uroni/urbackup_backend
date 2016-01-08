@@ -242,7 +242,7 @@ int action_list(std::vector<std::string> args)
 
 int action_start_restore(std::vector<std::string> args)
 {
-	TCLAP::CmdLine cmd("List backups and files/folders in backups", ' ', cmdline_version);
+	TCLAP::CmdLine cmd("Restore files/folders from backup", ' ', cmdline_version);
 
 	PwClientCmd pw_client_cmd(cmd);
 
@@ -252,14 +252,37 @@ int action_start_restore(std::vector<std::string> args)
 
 	TCLAP::ValueArg<std::string> path_arg("d", "path",
 		"Path of folder/file to restore",
-		true, "", "path", cmd);
+		false, "", "path", cmd);
+
+	TCLAP::MultiArg<std::string> map_from_arg("m", "map-from",
+		"Map from local output path of folders/files to a different local path",
+		false, "path", cmd);
+
+	TCLAP::MultiArg<std::string> map_to_arg("t", "map-to",
+		"Map to local output path of folders/files to a different local path",
+		false, "path", cmd);
 
 	cmd.parse(args);
 
+	if (map_from_arg.getValue().size() != map_to_arg.getValue().size())
+	{
+		std::cerr << "There need to be an equal amount of -m/--map-from and -t/--map-to arguments" << std::endl;
+		return 2;
+	}
+
 	pw_client_cmd.set();
 
+	std::vector<SPathMap> path_map;
+	for (size_t i = 0; i < map_from_arg.getValue().size(); ++i)
+	{
+		SPathMap new_pm;
+		new_pm.source = map_from_arg.getValue()[i];
+		new_pm.target = map_to_arg.getValue()[i];
+		path_map.push_back(new_pm);
+	}
+
 	bool no_server;
-	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(), no_server);
+	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(), path_map, no_server);
 
 	if(!restore_info.empty())
 	{

@@ -1044,11 +1044,17 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 			return;
 		}
 
+		std::vector<std::pair<std::string, std::string> > map_paths;
+		for (size_t i = 0; params.find("map_path_source" + convert(i)) != params.end(); ++i)
+		{
+			map_paths.push_back(std::make_pair(params["map_path_source" + convert(i)], params["map_path_target" + convert(i)]));
+		}
+
 		int64 restore_id;
 		size_t status_id;
 		logid_t log_id;
 
-		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id, params["restore_token"]))
+		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id, params["restore_token"], map_paths))
 		{
 			tcpstack.Send(input, "ok");
 		}
@@ -1134,8 +1140,15 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 			filename = params["filter"];
 		}
 
+		std::vector<std::pair<std::string, std::string> > map_paths;
+		for (size_t i = 0; params.find("map_path_source" + convert(i)) != params.end(); ++i)
+		{
+			map_paths.push_back(std::make_pair(params["map_path_source" + convert(i)], params["map_path_target" + convert(i)]));
+		}
+
 		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, true,
-			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"]))
+			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"],
+			map_paths))
 		{
 			ret.set("err", 5);
 			break;
