@@ -652,16 +652,12 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 bool FileMetadataPipe::openFileHandle()
 {
-#ifdef _WIN32
 	hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ | ACCESS_SYSTEM_SECURITY | READ_CONTROL, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 	backup_read_state = -1;
 
 	return hFile != INVALID_HANDLE_VALUE;
-#else
-	return true;
-#endif
 }
 
 #else //_WIN32
@@ -907,6 +903,11 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 		}
 	}
 	
+}
+
+bool FileMetadataPipe::openFileHandle()
+{
+	return true;
 }
 
 #endif //_WIN32
