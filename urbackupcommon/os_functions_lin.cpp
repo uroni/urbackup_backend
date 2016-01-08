@@ -407,11 +407,7 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
 				int rc=lstat64((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
 				if(rc==0)
 				{
-					if(S_ISDIR(f_info.st_mode) )
-					{
-                        subdirs.push_back((dirp->d_name));
-					}
-					else if(S_ISLNK(f_info.st_mode))
+					if(S_ISLNK(f_info.st_mode))
 					{
 						if(symlink_callback!=NULL)
 						{
@@ -424,6 +420,10 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
                                 Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
 							}
 						}
+					}
+					else if(S_ISDIR(f_info.st_mode) )
+					{
+                        subdirs.push_back((dirp->d_name));
 					}
 					else
 					{
