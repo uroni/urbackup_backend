@@ -71,10 +71,8 @@ namespace
 		{
 		case SQLITE_LOCKED:
 		case SQLITE_BUSY:
-			return;
 		case SQLITE_SCHEMA:
-			Server->Log(std::string(zMsg) + " errorcode: "+convert(iErrCode), LL_DEBUG);
-			break;
+			return;
 		case SQLITE_NOTICE_RECOVER_ROLLBACK:
 		case SQLITE_NOTICE_RECOVER_WAL:
 			Server->Log("Database did not shutdown cleanly. Recovering via journal. ("+ std::string(zMsg) + " code: " + convert(iErrCode)+")", LL_INFO);
