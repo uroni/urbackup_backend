@@ -45,7 +45,7 @@ namespace
 		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig2");
 	}
 
-	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname)
+	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname, const std::string& authkey)
 	{
 		ServerSettings settings(helper.getDatabase(), clientid);
 		SSettings *settingsptr=settings.getSettings();
@@ -54,7 +54,7 @@ namespace
 		ret+="internet_mode_enabled="+convert(settingsptr->internet_mode_enabled)+"\r\n";
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
 		ret+="internet_server_port="+convert(settingsptr->internet_server_port)+"\r\n";
-		ret+="internet_authkey="+settingsptr->internet_authkey+"\r\n";
+		ret+="internet_authkey="+(authkey.empty() ? settingsptr->internet_authkey : authkey ) +"\r\n";
 		if(!clientname.empty())
 		{
 			ret+="computername="+clientname+"\r\n";
@@ -137,12 +137,14 @@ ACTION_IMPL(download_client)
 	bool all_client_rights;
 	std::vector<int> clientids = helper.clientRights(RIGHT_SETTINGS, all_client_rights);
 
+	std::string authkey = GET["authkey"];
+
 	std::string errstr;
-	if( session!=NULL && (all_client_rights || !clientids.empty() ) )
+	if( session!=NULL && (all_client_rights || !clientids.empty() || !authkey.empty()) )
 	{
 		int clientid=watoi(GET["clientid"]);
 
-		if(all_client_rights ||
+		if(!authkey.empty() || all_client_rights ||
 			std::find(clientids.begin(), clientids.end(), clientid)!=clientids.end() )
 		{
 			Server->Log("Verifying UrBackupUpdate.exe signature...", LL_INFO);
@@ -160,7 +162,7 @@ ACTION_IMPL(download_client)
 				}
 
 				std::string data=getFile("urbackup/UrBackupUpdate.exe");
-				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname), data) )
+				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey), data) )
 				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
