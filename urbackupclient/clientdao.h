@@ -33,7 +33,8 @@ enum EBackupDirFlag
 	EBackupDirFlag_Optional = 1,
 	EBackupDirFlag_FollowSymlinks = 2,
 	EBackupDirFlag_SymlinksOptional = 4,
-	EBackupDirFlag_OneFilesystem = 8
+	EBackupDirFlag_OneFilesystem = 8,
+	EBackupDirFlag_RequireSnapshot = 16
 };
 
 struct SBackupDir

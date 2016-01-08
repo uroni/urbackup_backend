@@ -957,7 +957,15 @@ void IndexThread::indexDirs(void)
 				{
 					VSSLog("Creating snapshot of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
-				shareDir(starttoken, scd->dir, scd->target);
+
+				if (backup_dirs[i].flags & EBackupDirFlag_RequireSnapshot)
+				{
+					index_error = true;
+				}
+				else
+				{
+					shareDir(starttoken, scd->dir, scd->target);
+				}
 			}
 			else
 			{
@@ -965,75 +973,78 @@ void IndexThread::indexDirs(void)
 				scd->running=true;
 			}
 
-			mod_path=removeDirectorySeparatorAtEnd(mod_path);
-			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
+			if (!index_error && !stop_index)
+			{
+				mod_path = removeDirectorySeparatorAtEnd(mod_path);
+				backup_dirs[i].path = removeDirectorySeparatorAtEnd(backup_dirs[i].path);
 
 #ifdef _WIN32
-			if(mod_path.size()==2) //e.g. C:
-			{
-				mod_path+=os_file_sep();
-			}
-#endif
-			std::string extra;
-
-#ifdef _WIN32
-			if(!shadowcopy_ok || !onlyref)
-			{
-				past_refs.push_back(scd->ref);
-				DirectoryWatcherThread::update_and_wait(open_files);
-				std::sort(open_files.begin(), open_files.end());
-				Server->wait(1000);
-				std::vector<std::string> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
-				for(size_t j=0;j<acd.size();++j)
+				if (mod_path.size() == 2) //e.g. C:
 				{
-					if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
+					mod_path += os_file_sep();
+				}
+#endif
+				std::string extra;
+
+#ifdef _WIN32
+				if (!shadowcopy_ok || !onlyref)
+				{
+					past_refs.push_back(scd->ref);
+					DirectoryWatcherThread::update_and_wait(open_files);
+					std::sort(open_files.begin(), open_files.end());
+					Server->wait(1000);
+					std::vector<std::string> acd = cd->getChangedDirs(strlower(backup_dirs[i].path), false);
+					for (size_t j = 0; j < acd.size(); ++j)
 					{
-						changed_dirs.push_back(acd[j]);
+						if (!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
+						{
+							changed_dirs.push_back(acd[j]);
+						}
+					}
+					std::sort(changed_dirs.begin(), changed_dirs.end());
+
+#if !defined(VSS_XP) && !defined(VSS_S03)
+					VSSLog("Scanning for changed hard links in \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
+					handleHardLinks(backup_dirs[i].path, mod_path);
+#endif
+
+					std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
+					for (size_t i = 0; i < deldirs.size(); ++i)
+					{
+						cd->removeDeletedDir(deldirs[i]);
 					}
 				}
-				std::sort(changed_dirs.begin(), changed_dirs.end());
-
-				#if !defined(VSS_XP) && !defined(VSS_S03)
-				VSSLog("Scanning for changed hard links in \""+backup_dirs[i].tname+"\"...", LL_DEBUG);
-				handleHardLinks(backup_dirs[i].path, mod_path);
-				#endif
-
-				std::vector<std::string> deldirs=cd->getDelDirs(strlower(backup_dirs[i].path), false);
-				for(size_t i=0;i<deldirs.size();++i)
-				{
-					cd->removeDeletedDir(deldirs[i]);
-				}
-			}
 #else
-			if(!onlyref)
-			{
-				past_refs.push_back(scd->ref);
-			}
+				if (!onlyref)
+				{
+					past_refs.push_back(scd->ref);
+				}
 #endif
 
-			for(size_t k=0;k<changed_dirs.size();++k)
-			{
-				VSSLog("Changed dir: " + changed_dirs[k], LL_DEBUG);
-			}
+				for (size_t k = 0; k < changed_dirs.size(); ++k)
+				{
+					VSSLog("Changed dir: " + changed_dirs[k], LL_DEBUG);
+				}
 
-			VSSLog("Indexing \""+backup_dirs[i].tname+"\"...", LL_DEBUG);
-			index_c_db=0;
-			index_c_fs=0;
-			index_c_db_update=0;
-			//db->BeginWriteTransaction();
-			last_transaction_start=Server->getTimeMS();
-			index_root_path=mod_path;
+				VSSLog("Indexing \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
+				index_c_db = 0;
+				index_c_fs = 0;
+				index_c_db_update = 0;
+				//db->BeginWriteTransaction();
+				last_transaction_start = Server->getTimeMS();
+				index_root_path = mod_path;
 #ifndef _WIN32
-			if(index_root_path.empty())
-			{
-				index_root_path=os_file_sep();
-			}
+				if (index_root_path.empty())
+				{
+					index_root_path = os_file_sep();
+				}
 #endif
-			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-				backup_dirs[i].flags, !patterns_changed, backup_dirs[i].symlinked);
+				initialCheck(backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+					backup_dirs[i].flags, !patterns_changed, backup_dirs[i].symlinked);
 
-			commitModifyFilesBuffer();
-			commitAddFilesBuffer();
+				commitModifyFilesBuffer();
+				commitAddFilesBuffer();
+			}
 
 			if(stop_index || index_error)
 			{

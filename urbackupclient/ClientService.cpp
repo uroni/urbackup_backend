@@ -1145,6 +1145,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					{
 						flags |= EBackupDirFlag_OneFilesystem;
 					}
+					else if (flag == "require_snapshot" || flag=="require_shadowcopy" )
+					{
+						flags |= EBackupDirFlag_RequireSnapshot;
+					}
 				}
 				name.resize(flags_off);
 			}
