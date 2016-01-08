@@ -44,6 +44,7 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	: PipeFileBase(cmd), pipe(pipe),
 #ifdef _WIN32
 	hFile(INVALID_HANDLE_VALUE),
+	backup_read_state(-1),
 #else
 	backup_state(BackupState_StatInit),
 #endif
@@ -227,6 +228,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			backup_state=BackupState_StatInit;
 #else
 			hFile = INVALID_HANDLE_VALUE;
+			backup_read_state = -1;
 #endif
 
 		}
@@ -351,6 +353,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return true;
 				}
 
+				if (!openFileHandle())
+				{
+					Server->Log("Error opening file handle to " + local_fn, LL_ERROR);
+					*buf = ID_METADATA_NOP;
+					read_bytes = 1;
+					return true;
+				}
+
 				std::string file_type;
 				if( (file_type_flags & EFileType_Directory) 
 					&& (file_type_flags & EFileType_Symlink) )
@@ -460,11 +470,8 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 		return true;
 	}
 
-	if(hFile == INVALID_HANDLE_VALUE)
+	if(backup_read_state==-1)
 	{
-		hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
-            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
-
 		if(hFile==INVALID_HANDLE_VALUE)
 		{
 			errpipe->Write("Error opening file \""+local_fn+"\" to read metadata. Last error: "+convert((int)GetLastError())+"\n");
@@ -518,6 +525,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 			
 			CloseHandle(hFile);
 			hFile = INVALID_HANDLE_VALUE;
+			backup_read_state = -1;
 
 			*buf=0;
 			read_bytes = 1;
@@ -640,6 +648,20 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 	}
 
 	return false;
+}
+
+bool FileMetadataPipe::openFileHandle()
+{
+#ifdef _WIN32
+	hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ | ACCESS_SYSTEM_SECURITY | READ_CONTROL, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+	backup_read_state = -1;
+
+	return hFile != INVALID_HANDLE_VALUE;
+#else
+	return true;
+#endif
 }
 
 #else //_WIN32

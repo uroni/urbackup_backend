@@ -37,6 +37,8 @@ private:
 
 	bool transmitCurrMetadata(char* buf, size_t buf_avail, size_t& read_bytes);
 
+	bool openFileHandle();
+
 #ifdef _WIN32
 	HANDLE hFile;
 	int backup_read_state;
