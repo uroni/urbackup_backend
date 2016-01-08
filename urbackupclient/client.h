@@ -282,6 +282,9 @@ private:
 
 	void writeDir(std::fstream& out, const std::string& name, bool with_change, int64 change_identicator, const std::string& extra=std::string());
 	bool addBackupScripts(std::fstream& outfile);
+
+	void monitor_disk_failures();
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;

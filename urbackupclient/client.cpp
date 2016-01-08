@@ -42,6 +42,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <sys\stat.h>
+#include "win_disk_mon.h"
 #else
 #include <mntent.h>
 #include <unistd.h>
@@ -477,6 +478,8 @@ void IndexThread::operator()(void)
 				}
 			}
 #endif
+			monitor_disk_failures();
+
 			int e_rc;
 			if ( (e_rc=execute_prebackup_hook(true, starttoken, index_group))!=0 )
 			{
@@ -537,6 +540,9 @@ void IndexThread::operator()(void)
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
 			}
+
+			monitor_disk_failures();
+
 			int e_rc;
 			if ( (e_rc=execute_prebackup_hook(false, starttoken, index_group))!=0 )
 			{
@@ -3854,6 +3860,19 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 	{
 		return false;
 	}
+}
+
+void IndexThread::monitor_disk_failures()
+{
+#ifdef _WIN32
+	std::vector<SFailedDisk> failed_disks = get_failed_disks();
+
+	for (size_t i = 0; i < failed_disks.size(); ++i)
+	{
+		VSSLog("Disk \"" + failed_disks[i].name + "\" has status \"" + failed_disks[i].status + "\" and may need replacement" +
+			(failed_disks[i].status_info.empty() ? "" : "(Further info: \"" + failed_disks[i].status_info + "\")"), LL_WARNING);
+	}
+#endif
 }
 
 void IndexThread::setFlags( unsigned int flags )
