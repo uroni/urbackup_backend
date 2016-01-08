@@ -111,6 +111,15 @@ namespace
 
 void RestoreFiles::operator()()
 {
+	if (!restore_declined)
+	{
+		log("Restore was declined by client", LL_ERROR);
+		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+		delete this;
+		return;
+	}
+
+
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	FileClient fc(false, client_token, 3,
 		true, this, NULL);

@@ -2109,6 +2109,13 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 	else
 	{
 		restore_ok_status = RestoreOk_Declined;
+
+		if (restore_files != NULL)
+		{
+			restore_files->set_restore_declined(true);
+			Server->getThreadPool()->execute(restore_files);
+			restore_files = NULL;
+		}
 	}
 
 	delete restore_files;
