@@ -2046,6 +2046,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	dir->ref->starttime=Server->getTimeSeconds();
 	dir->ref->target=wpath;
 	dir->ref->starttokens.push_back(starttoken);
+	dir->ref->clientsubname = index_clientsubname;
 	sc_refs.push_back(dir->ref);
 	
 
@@ -2389,7 +2390,7 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 		}
 		if(f2 && (scs[i].refs<=0
 			|| scs[i].passedtime>shadowcopy_timeout/1000
-			|| (start && !scs[i].filesrv && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==starttoken ) ) )
+			|| (start && !scs[i].filesrv && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==starttoken && scs[i].clientsubname==index_clientsubname ) ) )
 		{
 			ok = ok && deleteSavedShadowCopy(scs[i], context);
 		}
