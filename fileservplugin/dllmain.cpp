@@ -43,6 +43,7 @@ extern IServer* Server;
 #include "FileServ.h"
 #include "IFileServFactory.h"
 #include "IFileServ.h"
+#include "PipeSessions.h"
 #include "../stringtools.h"
 #include <stdlib.h>
 
@@ -53,6 +54,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	Server=pServer;
 
 	FileServ::init_mutex();
+	PipeSessions::init();
 
 	fileservpluginmgr=new CFileServPluginMgr;
 
@@ -88,6 +90,7 @@ DLLEXPORT void UnloadActions(void)
 	if(Server->getServerParameter("leak_check")=="true")
 	{
 		FileServ::destroy_mutex();
+		PipeSessions::destroy();
 	}
 }
 
