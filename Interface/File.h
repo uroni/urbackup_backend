@@ -35,6 +35,39 @@ public:
 	virtual std::string getFilename(void)=0;
 };
 
+class IFsFile : public IFile
+{
+public:
+#pragma pack(push)
+	struct SSparseExtent
+	{
+		SSparseExtent()
+			: offset(-1), size(-1)
+		{
+
+		}
+
+		SSparseExtent(int64 offset, int64 size)
+			: offset(offset), size(size)
+		{
+
+		}
+
+		bool operator<(const SSparseExtent& other) const
+		{
+			return offset < other.offset;
+		}
+		
+		int64 offset;
+		int64 size;
+	};
+#pragma pack(pop)
+
+	virtual void resetSparseExtentIter() = 0;
+	virtual SSparseExtent nextSparseExtent() = 0;
+	virtual bool Resize(int64 new_size) = 0;
+};
+
 class ScopedDeleteFile
 {
 public:

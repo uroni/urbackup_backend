@@ -50,7 +50,7 @@ bool FileDownload::copy_file_fd(IFile *fsrc, IFile *fdst)
 
 void FileDownload::filedownload(std::string remotefn, std::string dest, int method, int predicted_filesize, SQueueStatus queueStatus)
 {
-	IFile *dstfile;
+	IFsFile *dstfile;
 	if(queueStatus==SQueueStatus_Queue || queueStatus==SQueueStatus_NoQueue)
 	{
 		Server->Log("Opening destination file...");
@@ -157,7 +157,8 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 
 		if(queueStatus==SQueueStatus_NoQueue || queueStatus==SQueueStatus_IsQueued)
 		{
-			rc=fc_chunked->GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize, 0, false);
+
+			rc=fc_chunked->GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize, 0, false, NULL);
 
 			cleanup_tmpfile(hashfile);
 			cleanup_tmpfile(hashfile_output);
@@ -239,7 +240,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 		if(queueStatus==SQueueStatus_IsQueued || queueStatus==SQueueStatus_NoQueue)
 		{
 			Server->Log("Downloading file...");
-			rc=fc_chunked->GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize, 0, false);
+			rc=fc_chunked->GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize, 0, false, NULL);
 
 			IFile *tmpfile=Server->openTemporaryFile();
 			Server->Log("Copying to temporary...");
@@ -251,7 +252,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			patcher.setCallback(this);
 			chunk_patch_pos=0;
 			Server->Log("Patching temporary...");
-			patcher.ApplyPatch(dstfile, patchfile);
+			patcher.ApplyPatch(dstfile, patchfile, NULL);
 
 			Server->Log("Copying back...");
 			copy_file_fd(tmpfile, dstfile);
@@ -359,6 +360,10 @@ void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool 
 		}
 	}
 	chunk_patch_pos+=bsize;
+}
+
+void FileDownload::next_sparse_extent_bytes(const char * buf, size_t bsize)
+{
 }
 
 void FileDownload::cleanup_tmpfile(IFile *tmpfile)

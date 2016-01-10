@@ -306,7 +306,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 {
 	bool has_token_file=true;
 	
-	IFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties"), MODE_WRITE);
+	IFsFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties"), MODE_WRITE);
 	if(tokens_file==NULL)
 	{
 		ServerLogger::Log(logid, "Error opening "+backuppath_hashes+os_file_sep()+".urbackup_tokens.properties", LL_ERROR);
@@ -773,7 +773,7 @@ bool FileBackup::link_file(const std::string &fn, const std::string &short_fn, c
 	int64 next_entryid = 0;
 	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, filesize, std::string(), true,
 		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, true);
+		metadata, true, NULL);
 
 	if(ok && add_sql)
 	{
@@ -1726,7 +1726,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	Server->deleteFile(tmpdirname);
 	os_create_dir(tmpdirname);
 
-	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
+	std::auto_ptr<IFsFile> output_file(Server->openFile(tmpdirname+os_file_sep()+"verify_failed.file", MODE_WRITE));
 	rc = fc.GetFile((rfn), output_file.get(), true, false, 0, false, 0);
 
 	if(rc!=ERR_SUCCESS)

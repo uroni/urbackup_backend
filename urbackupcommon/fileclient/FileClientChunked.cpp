@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <limits.h>
 #include "../../common/adler32.h"
+#include "../chunk_hasher.h"
 
 #define VLOG(x) x
 
@@ -98,7 +99,7 @@ FileClientChunked::~FileClientChunked(void)
 	Server->destroy(ofb_pipe);
 }
 
-_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script)
+_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
 {
 	m_file=NULL;
 	patch_mode=true;
@@ -114,10 +115,10 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	curr_output_fsize=0;
 	curr_is_script = is_script;
 
-	return GetFile(remotefn, predicted_filesize, file_id);
+	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
 }
 
-_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script)
+_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
 {
 	patch_mode=false;
 	m_file=file;
@@ -128,10 +129,10 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	curr_output_fsize=0;
 	curr_is_script = is_script;
 	
-	return GetFile(remotefn, predicted_filesize, file_id);
+	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
 }
 
-_u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 file_id)
+_u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 file_id, IFile** sparse_extents_f)
 {
 	bool was_prepared = false;
 
@@ -144,7 +145,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		assert(next->remote_filename==remotefn);
 		assert(next->curr_file_id == file_id);
 
-		return next->GetFile(remotefn, filesize_out, file_id);
+		return next->GetFile(remotefn, filesize_out, file_id, sparse_extents_f);
 	}
 	else if(parent!=NULL && !queue_only)
 	{
@@ -203,6 +204,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		{
 			data.addChar(0);
 			data.addVarInt(file_id);
+			data.addChar(1);
 		}
 
 		data.addInt64( fileoffset );
@@ -259,6 +261,40 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 				if(!getPipe()->isWritable())
 				{
 					break;
+				}
+
+				while (curr_sparse_extent.offset!=-1
+					&& next_chunk*c_checkpoint_dist < curr_sparse_extent.offset)
+				{
+					curr_sparse_extent = extent_iterator->nextExtent();
+				}
+
+				if (curr_sparse_extent.offset != -1
+					&& next_chunk*c_checkpoint_dist >= curr_sparse_extent.offset
+					&& (next_chunk + 1)*c_checkpoint_dist <= curr_sparse_extent.offset + curr_sparse_extent.size)
+				{
+					_i64 num_chunks = ((curr_sparse_extent.offset + curr_sparse_extent.size) - next_chunk*c_checkpoint_dist)/c_checkpoint_dist;
+
+					if (m_hashoutput != NULL)
+					{
+						m_hashoutput->Seek(chunkhash_file_off + next_chunk*chunkhash_single_size);
+						for (_i64 i = 0; i < num_chunks; ++i)
+						{
+							std::string sparse_hashdata = get_sparse_extent_content();
+							writeFileRepeat(m_hashoutput, sparse_hashdata.data(), sparse_hashdata.size());
+						}
+					}
+
+					if (!patch_mode)
+					{
+						m_file->PunchHole(next_chunk*c_checkpoint_dist, num_chunks*c_checkpoint_dist);
+					}
+
+					curr_output_fsize = (std::max)(curr_output_fsize, curr_sparse_extent.offset + curr_sparse_extent.size);
+
+					next_chunk+= num_chunks;
+					
+					continue;
 				}
 
 				bool get_whole_block = false;
@@ -384,7 +420,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 						next->setProgressLogCallback(progress_log_callback);
 
 						next->setQueueOnly(true);
-						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script)!=ERR_SUCCESS)
+						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script, NULL)!=ERR_SUCCESS)
 						{
 							std::deque<FileClientChunked*>::iterator iter;
 							if(parent)
@@ -489,7 +525,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		{
 			starttime=Server->getTimeMS();
 
-			_u32 err = handle_data(buf, rc, false);
+			_u32 err = handle_data(buf, rc, false, sparse_extents_f);
 
 			if(err!=ERR_CONTINUE)
 			{
@@ -542,7 +578,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 }
 
 
-_u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesize )
+_u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesize, IFile** sparse_extents_f)
 {
 	reconnected=false;
 	bufptr=buf;
@@ -559,7 +595,7 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 			} //fallthrough
 		case CS_ID_ACC:
 			{
-				State_Acc(ignore_filesize);
+				State_Acc(ignore_filesize, sparse_extents_f);
 			}break;
 		case CS_BLOCK:
 			{
@@ -569,6 +605,10 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 			{
 				State_Chunk();
 			}break;
+		case CS_SPARSE_EXTENTS:
+			{
+				State_SparseExtents(sparse_extents_f);
+			} break;
 		}
 
 		bufptr+=bufptr_bytes_done;
@@ -623,6 +663,7 @@ void FileClientChunked::State_First(void)
 	switch(curr_id)
 	{
 	case ID_FILESIZE: need_bytes=sizeof(_i64); break;
+	case ID_FILESIZE_AND_EXTENTS: need_bytes=2*sizeof(_i64); break;
 	case ID_BASE_DIR_LOST: need_bytes=0; break;
 	case ID_COULDNT_OPEN: need_bytes=0; break;
 	case ID_WHOLE_BLOCK: need_bytes=sizeof(_i64)+sizeof(_u32); break;
@@ -641,7 +682,7 @@ void FileClientChunked::State_First(void)
 	total_need_bytes=need_bytes;
 }
 
-void FileClientChunked::State_Acc(bool ignore_filesize)
+void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f)
 {
 	if(need_bytes<=remaining_bufptr_bytes)
 	{
@@ -663,12 +704,19 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 		switch(curr_id)
 		{
 		case ID_FILESIZE:
+		case ID_FILESIZE_AND_EXTENTS:
 			{
-				if(!ignore_filesize)
+				_i64 new_remote_filesize;
+				msg.getInt64(&new_remote_filesize);
+
+				_i64 num_sparse_extents = 0;
+				if (curr_id == ID_FILESIZE_AND_EXTENTS)
 				{
-					_i64 new_remote_filesize;
-					msg.getInt64(&new_remote_filesize);
-					
+					msg.getInt64(&num_sparse_extents);
+				}
+
+				if(!ignore_filesize)
+				{					
 					if(new_remote_filesize>=0)
 					{
 						if(remote_filesize!=-1 && new_remote_filesize!=remote_filesize)
@@ -734,7 +782,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					{
 						writePatchSize(remote_filesize);
 					}
-					if(remote_filesize==0)
+					if(remote_filesize==0 && num_sparse_extents==0)
 					{
 						getfile_done=true;
 						retval=ERR_SUCCESS;
@@ -747,7 +795,45 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						_i64 endian_remote_filesize = little_endian(remote_filesize);
 						writeFileRepeat(m_hashoutput, (char*)&endian_remote_filesize, sizeof(_i64));
 					}					
-				}				
+				}		
+
+				if (num_sparse_extents > 0)
+				{
+					state = CS_SPARSE_EXTENTS;
+					whole_block_remaining = static_cast<_u32>(num_sparse_extents*sizeof(IFsFile::SSparseExtent) + big_hash_size);
+					md5_hash.init();
+
+					if (sparse_extents_f != NULL && *sparse_extents_f != NULL)
+					{
+						std::string tmp_fn = (*sparse_extents_f)->getFilename();
+						Server->destroy(*sparse_extents_f);
+						Server->deleteFile(tmp_fn);
+						*sparse_extents_f = NULL;
+					}
+
+					if (sparse_extents_f != NULL && *sparse_extents_f == NULL)
+					{
+						*sparse_extents_f = FileClient::temporaryFileRetry();
+					}
+
+					if (sparse_extents_f != NULL && *sparse_extents_f == NULL)
+					{
+						Server->Log("Got sparse extents but have no file to write them to", LL_ERROR);
+						retval = ERR_ERROR;
+						getfile_done = true;
+						return;
+					}
+
+					if (sparse_extents_f != NULL
+						&& !FileClient::writeFileRetry(*sparse_extents_f, reinterpret_cast<char*>(&num_sparse_extents), sizeof(num_sparse_extents)))
+					{
+						Server->Log("Error writing number of sparse extentd (blockdiff)", LL_ERROR);
+						retval = ERR_ERROR;
+						getfile_done = true;
+						return;
+					}
+				}
+
 			}break;
 		case ID_BASE_DIR_LOST:
 			{
@@ -1237,6 +1323,52 @@ void FileClientChunked::State_Chunk(void)
 	}
 }
 
+void FileClientChunked::State_SparseExtents(IFile** sparse_extents_f)
+{
+	if (whole_block_remaining > big_hash_size)
+	{
+		size_t hash_rbytes = (std::min)(remaining_bufptr_bytes, (size_t)(whole_block_remaining - big_hash_size));
+		md5_hash.update((unsigned char*)bufptr, (unsigned int)hash_rbytes);
+	}
+	
+	_u32 rbytes = (std::min)(static_cast<_u32>(remaining_bufptr_bytes), whole_block_remaining);
+
+	if (sparse_extents_f!=NULL
+		&& !FileClient::writeFileRetry(*sparse_extents_f, bufptr, rbytes))
+	{
+		Server->Log("Error writing to sparse extents file", LL_ERROR);
+		retval = ERR_HASH;
+		getfile_done = true;
+	}
+
+	remaining_bufptr_bytes -= rbytes;
+	bufptr_bytes_done += rbytes;
+	whole_block_remaining -= (unsigned int)rbytes;
+	
+	if (whole_block_remaining == 0)
+	{
+		md5_hash.finalize();
+
+		if (sparse_extents_f != NULL)
+		{
+			(*sparse_extents_f)->Seek((*sparse_extents_f)->Size() - 16);
+			std::string received_hash = (*sparse_extents_f)->Read(16);
+
+			if (memcmp(md5_hash.raw_digest_int(), received_hash.data(), 16) != 0)
+			{
+				Server->Log("Sparse extent hash wrong", LL_ERROR);
+				retval = ERR_HASH;
+				getfile_done = true;
+			}
+
+			extent_iterator.reset(new ExtentIterator(*sparse_extents_f));
+			curr_sparse_extent = extent_iterator->nextExtent();
+		}		
+
+		state = CS_ID_FIRST;
+	}
+}
+
 void FileClientChunked::writePatch(_i64 pos, unsigned int length, char *buf, bool last)
 {
 	if(length<=c_chunk_size-patch_buf_pos && (patch_buf_pos==0 || pos==patch_buf_start+patch_buf_pos) )
@@ -1418,6 +1550,7 @@ bool FileClientChunked::Reconnect(bool rerequest)
 				{
 					data.addChar(0);
 					data.addVarInt(curr_file_id);
+					data.addChar(1);
 				}
 
 				data.addInt64( fileoffset );
@@ -1520,7 +1653,7 @@ void FileClientChunked::calcTotalChunks()
 	num_total_chunks=remote_filesize/c_checkpoint_dist+((remote_filesize%c_checkpoint_dist!=0)?1:0);
 }
 
-_u32 FileClientChunked::loadFileOutOfBand()
+_u32 FileClientChunked::loadFileOutOfBand(IFile** sparse_extents_f)
 {
 	if(ofbPipe()==NULL)
 	{
@@ -1535,12 +1668,12 @@ _u32 FileClientChunked::loadFileOutOfBand()
 	if(patch_mode)
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script);
+		return tmp_fc.GetFilePatch(remote_filename, m_file, m_patchfile, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script, sparse_extents_f);
 	}
 	else
 	{
 		int64 filesize_out=-1;
-		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script);
+		return tmp_fc.GetFileChunked(remote_filename, m_file, m_chunkhashes, m_hashoutput, filesize_out, curr_file_id, curr_is_script, sparse_extents_f);
 	}
 }
 
@@ -1638,7 +1771,7 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 		{
 			starttime=Server->getTimeMS();
 
-			_u32 err = handle_data(stack_buf, rc, true);
+			_u32 err = handle_data(stack_buf, rc, true, NULL);
 
 			if(err!=ERR_CONTINUE)
 			{
@@ -1977,4 +2110,3 @@ _i64 FileClientChunked::getRealTransferredBytes()
 	}
 	return tbytes;
 }
-

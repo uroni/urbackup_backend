@@ -177,6 +177,20 @@ void BackupServerHash::operator()(void)
 				int64 t_filesize;
 				rd.getInt64(&t_filesize);
 
+				std::string sparse_extents_fn;
+				rd.getStr(&sparse_extents_fn);
+
+				std::auto_ptr<ExtentIterator> extent_iterator;
+				if (!sparse_extents_fn.empty())
+				{
+					IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
+
+					if (sparse_extents_f != NULL)
+					{
+						extent_iterator.reset(new ExtentIterator(sparse_extents_f));
+					}
+				}
+
 				FileMetadata metadata;
 				metadata.read(rd);
 				metadata.set_shahash(sha2);
@@ -191,7 +205,7 @@ void BackupServerHash::operator()(void)
 				else
 				{
 					addFile(backupid, incremental, tf, tfn, hashpath, sha2,
-						old_file_fn, hashoutput_fn, t_filesize, metadata, with_hashes!=0);
+						old_file_fn, hashoutput_fn, t_filesize, metadata, with_hashes!=0, extent_iterator.get());
 				}
 
 				if(!hashoutput_fn.empty())
@@ -221,13 +235,13 @@ void BackupServerHash::operator()(void)
 				metadata.read(rd);
 				
 				FileMetadata src_metadata;
-				if(read_metadata(os_file_prefix((hash_src)),
+				if(read_metadata(os_file_prefix(hash_src),
 					src_metadata))
 				{
 					metadata.set_shahash(src_metadata.shahash);
 				}
 
-				std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix((source)), MODE_READ_SEQUENTIAL));
+				std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix(source), MODE_READ_SEQUENTIAL));
 
 				if(!tf.get())
 				{
@@ -236,7 +250,7 @@ void BackupServerHash::operator()(void)
 				}
 				else
 				{
-					if(!copyFile(tf.get(), (dest)))
+					if(!copyFile(tf.get(), dest, NULL))
 					{
 						ServerLogger::Log(logid, "Error while copying file \""+source+"\" to \""+dest+"\"", LL_ERROR);
 						has_error=true;
@@ -244,10 +258,10 @@ void BackupServerHash::operator()(void)
 
 					if(!hash_src.empty())
 					{
-						std::auto_ptr<IFile> hashf(Server->openFile(os_file_prefix((hash_src)), MODE_READ_SEQUENTIAL));
+						std::auto_ptr<IFile> hashf(Server->openFile(os_file_prefix(hash_src), MODE_READ_SEQUENTIAL));
 						if(hashf.get())
 						{
-							copyFile(hashf.get(), hash_dest);
+							copyFile(hashf.get(), hash_dest, NULL);
 						}
 					}
 				}
@@ -459,7 +473,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::string hash_fn, const std::string &sha2,
 	_i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
 	bool &tries_once, std::string &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid
-	, int64& rsize, int64& next_entry, FileMetadata& metadata, bool detach_dbs)
+	, int64& rsize, int64& next_entry, FileMetadata& metadata, bool detach_dbs, ExtentIterator* extent_iterator)
 {
 	hardlink_limit=false;
 	copied_file=false;
@@ -518,7 +532,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					{
 						ServerLogger::Log(logid, "HT: Copying from file \""+existing_file.fullpath+"\"", LL_DEBUG);
 
-						if(!copyFile(ctf, tfn))
+						if(!copyFile(ctf, tfn, extent_iterator))
 						{
 							ServerLogger::Log(logid, "Error copying file to destination -3", LL_ERROR);
 							has_error=true;
@@ -539,7 +553,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 							if(ctf_hash)
 							{
-								if(!copyFile(ctf_hash, hash_fn))
+								if(!copyFile(ctf_hash, hash_fn, NULL))
 								{
 									ServerLogger::Log(logid, "Error copying hashfile to destination -3", LL_ERROR);
 									has_error=true;
@@ -595,7 +609,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 				IFile *src=openFileRetry((hashoutput_fn), MODE_READ);
 				if(src!=NULL)
 				{
-					if(!copyFile(src, hash_fn))
+					if(!copyFile(src, hash_fn, NULL))
 					{
 						ServerLogger::Log(logid, "Error copying hashoutput to destination -1", LL_ERROR);
 						has_error=true;
@@ -628,7 +642,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					assert(hashfilesize==-1 || hashfilesize==t_filesize);
 					if(hashfilesize!=-1)
 					{
-						if(!copyFile(ctf, hash_fn))
+						if(!copyFile(ctf, hash_fn, NULL))
 						{
 							ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
 							has_error=true;
@@ -668,7 +682,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
 	std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-	FileMetadata& metadata, bool with_hashes)
+	FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator)
 {
 	bool copy=true;
 	bool tries_once;
@@ -681,7 +695,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 rsize = 0;
 	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, false))
+		metadata, false, extent_iterator))
 	{
 		ServerLogger::Log(logid, "HT: Linked file: \""+tfn+"\"", LL_DEBUG);
 		copy=false;
@@ -786,11 +800,11 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 						{
 							if(use_tmpfiles)
 							{
-								r=copyFileWithHashoutput(tf, tfn, hash_fn);
+								r=copyFileWithHashoutput(tf, tfn, hash_fn, extent_iterator);
 							}
 							else
 							{
-								r=renameFileWithHashoutput(tf, tfn, hash_fn);
+								r=renameFileWithHashoutput(tf, tfn, hash_fn, extent_iterator);
 								tf=NULL;
 							}
 						}
@@ -798,7 +812,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 						{
 							if(use_tmpfiles)
 							{
-								r=copyFile(tf, tfn);
+								r=copyFile(tf, tfn, extent_iterator);
 							}
 							else
 							{
@@ -811,17 +825,17 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 					{
 						if(with_hashes)
 						{
-							r=replaceFileWithHashoutput(tf, tfn, hash_fn, orig_fn);
+							r=replaceFileWithHashoutput(tf, tfn, hash_fn, orig_fn, extent_iterator);
 						}
 						else
 						{
-							r=replaceFile(tf, tfn, orig_fn);
+							r=replaceFile(tf, tfn, orig_fn, extent_iterator);
 						}
 					}
 				}
 				else
 				{
-					r=patchFile(tf, orig_fn, tfn, hashoutput_fn, hash_fn, t_filesize);
+					r=patchFile(tf, orig_fn, tfn, hashoutput_fn, hash_fn, t_filesize, extent_iterator);
 				}
 				
 				if(!r)
@@ -1057,33 +1071,68 @@ IFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 	return dst;
 }
 
-bool BackupServerHash::copyFile(IFile *tf, const std::string &dest)
+bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator)
 {
-	IFile *dst=openFileRetry(dest, MODE_WRITE);
-	if(dst==NULL) return false;
+	std::auto_ptr<IFile> dst(openFileRetry(dest, MODE_WRITE));
+	if(dst.get()==NULL) return false;
 
 	tf->Seek(0);
 	_u32 read;
 	char buf[BUFFER_SIZE];
+	int64 fpos = 0;
+	IFsFile::SSparseExtent curr_extent;
+
+	if (extent_iterator != NULL)
+	{
+		curr_extent = extent_iterator->nextExtent();
+	}
+
 	do
 	{
+		while (curr_extent.offset != -1 && fpos >= curr_extent.offset)
+		{
+			int64 start_seek = fpos;
+			fpos = curr_extent.offset + curr_extent.size;
+				
+			if (!tf->Seek(fpos))
+			{
+				Server->Log("Error seeking in source file for sparse extent \"" + tf->getFilename() + "\" -2", LL_ERROR);
+				return false;
+			}
+
+			if (!dst->PunchHole(start_seek, fpos - start_seek))
+			{
+				Server->Log("Error adding sparse extent to \"" + dest + "\"", LL_ERROR);
+				return false;
+			}
+
+			if (!dst->Seek(fpos))
+			{
+				Server->Log("Error seeking in \"" + dest + "\" after adding sparse extent", LL_ERROR);
+				return false;
+			}
+
+			curr_extent = extent_iterator->nextExtent();
+		}
+
 		read=tf->Read(buf, BUFFER_SIZE);
-		bool b=writeRepeatFreeSpace(dst, buf, read, this);
+		bool b=writeRepeatFreeSpace(dst.get(), buf, read, this);
 		if(!b)
 		{
 			Server->Log("Error writing to file \""+dest+"\" -2", LL_ERROR);
-			Server->destroy(dst);
 			return false;
+		}
+		else
+		{
+			fpos += read;
 		}
 	}
 	while(read>0);
 
-	Server->destroy(dst);
-
 	return true;
 }
 
-bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest)
+bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
 	IFile *dst=openFileRetry(dest, MODE_WRITE);
 	if(dst==NULL) return false;
@@ -1098,7 +1147,7 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, false);
+		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, false, NULL, NULL, false, extent_iterator);
 		if(r=="")
 			return false;
 	}
@@ -1169,12 +1218,20 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 {
 	if(!has_reflink || changed )
 	{
-		chunk_output_fn->Seek(chunk_patch_pos);
-		bool b=writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
-		if(!b)
+		if (buf != NULL) //buf is NULL for sparse extents
 		{
-			Server->Log("Error writing to file \""+chunk_output_fn->getFilename()+"\" -3", LL_ERROR);
-			has_error=true;
+			chunk_output_fn->Seek(chunk_patch_pos);
+			bool b = writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
+			if (!b)
+			{
+				Server->Log("Error writing to file \"" + chunk_output_fn->getFilename() + "\" -3", LL_ERROR);
+				has_error = true;
+			}
+		}
+		else if(!enabled_sparse)
+		{
+			//Punch hole once to enable sparse file
+			chunk_output_fn->PunchHole(chunk_patch_pos, bsize);
 		}
 	}
 	chunk_patch_pos+=bsize;
@@ -1185,8 +1242,12 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 	}
 }
 
+void BackupServerHash::next_sparse_extent_bytes(const char * buf, size_t bsize)
+{
+}
+
 bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const std::string &dest,
-	const std::string hash_output, const std::string hash_dest, _i64 tfilesize)
+	const std::string hash_output, const std::string hash_dest, _i64 tfilesize, ExtentIterator* extent_iterator)
 {
 	_i64 dstfsize;
 	{
@@ -1212,11 +1273,23 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		ObjectScope f_source_s(f_source);
 
 		chunk_patch_pos=0;
+		enabled_sparse = false;
 		chunk_patcher.setRequireUnchanged(!has_reflink);
-		bool b=chunk_patcher.ApplyPatch(f_source, patch);
+		bool b=chunk_patcher.ApplyPatch(f_source, patch, extent_iterator);
 
-		dstfsize=chunk_output_fn->Size();
+		extent_iterator->reset();
 
+		IFsFile::SSparseExtent sparse_extent = extent_iterator->nextExtent();
+
+		dstfsize = chunk_output_fn->Size();
+
+		while (sparse_extent.offset != -1)
+		{
+			chunk_output_fn->PunchHole(sparse_extent.offset, sparse_extent.size);
+			dstfsize = (std::max)(dstfsize, sparse_extent.offset + sparse_extent.size);
+			sparse_extent = extent_iterator->nextExtent();			
+		}
+		
 		if(has_error || !b)
 		{
 			return false;
@@ -1242,7 +1315,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 	}
 	ObjectScope f_hash_output_s(f_hash_output);
 
-	if(!copyFile(f_hash_output, hash_dest))
+	if(!copyFile(f_hash_output, hash_dest, NULL))
 	{
 		Server->Log("Error copying hashoutput file to destination", LL_ERROR);
 		return false;
@@ -1253,13 +1326,13 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 
 const size_t RP_COPY_BLOCKSIZE=1024;
 
-bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn)
+bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
 	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		Server->Log("Reflinking file \""+dest+"\" failed -2", LL_ERROR);
 
-		return copyFile(tf, dest);
+		return copyFile(tf, dest, extent_iterator);
 	}
 
 	Server->Log("HT: Copying with reflink data from \""+orig_fn+"\"", LL_DEBUG);
@@ -1323,13 +1396,13 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 }
 
 bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &dest,
-	const std::string hash_dest, const std::string &orig_fn)
+	const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
 	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		Server->Log("Reflinking file \""+dest+"\" failed -3", LL_ERROR);
 
-		return copyFileWithHashoutput(tf, dest, hash_dest);
+		return copyFileWithHashoutput(tf, dest, hash_dest, extent_iterator);
 	}
 
 	Server->Log("HT: Copying with hashoutput with reflink data from \""+orig_fn+"\"", LL_DEBUG);
@@ -1347,7 +1420,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, true, &cow_filesize);
+		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, true, &cow_filesize, NULL, false, extent_iterator);
 		if(r=="")
 			return false;
 
@@ -1368,7 +1441,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 	return true;
 }
 
-bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest)
+bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
 	if(tf->Size()>0)
 	{
@@ -1379,7 +1452,7 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &de
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, NULL, false);
+		std::string r=build_chunk_hashs(tf, dst_hash, this, false, NULL, false, NULL, NULL, false, extent_iterator);
 		if(r=="")
 			return false;
 	}

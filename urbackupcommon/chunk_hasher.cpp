@@ -25,9 +25,53 @@
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include <memory.h>
 #include <memory>
+#include <assert.h>
+
+namespace
+{
+	std::string build_sparse_extent_content()
+	{
+		char buf[c_small_hash_dist] = {};
+		_u32 small_hash = urb_adler32(urb_adler32(0, NULL, 0), buf, c_small_hash_dist);
+		small_hash = little_endian(small_hash);
+
+		MD5 big_hash;
+		for (int64 i = 0; i<c_checkpoint_dist; i += c_small_hash_dist)
+		{
+			big_hash.update(reinterpret_cast<unsigned char*>(buf), c_small_hash_dist);
+		}
+		big_hash.finalize();
+
+		std::string ret;
+		ret.resize(chunkhash_single_size);
+		char* ptr = &ret[0];
+		memcpy(ptr, big_hash.raw_digest_int(), big_hash_size);
+		ptr += big_hash_size;
+		for (int64 i = 0; i < c_checkpoint_dist; i += c_small_hash_dist)
+		{
+			memcpy(ptr, &small_hash, sizeof(small_hash));
+			ptr += sizeof(small_hash);
+		}
+		return ret;
+	}
+
+	std::string sparse_extent_content;
+}
+
+std::string get_sparse_extent_content()
+{
+	assert(!sparse_extent_content.empty());
+	return sparse_extent_content;
+}
+
+void init_chunk_hasher()
+{
+	sparse_extent_content = build_sparse_extent_content();
+}
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
-	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput, bool show_pc)
+	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
+	bool show_pc, ExtentIterator* extent_iterator)
 {
 	f->Seek(0);
 
@@ -73,6 +117,13 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		Server->Log("0%", LL_INFO);
 	}
 
+	IFsFile::SSparseExtent curr_extent;
+
+	if (extent_iterator != NULL)
+	{
+		curr_extent = extent_iterator->nextExtent();
+	}
+
 	for(_i64 pos=0;pos<fsize;)
 	{
 		if(chunk_hashes.get())
@@ -92,6 +143,12 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			}
 		}
 
+		while (curr_extent.offset != -1
+			&& curr_extent.offset + curr_extent.size<pos)
+		{
+			curr_extent = extent_iterator->nextExtent();
+		}
+
 		if(show_pc)
 		{
 			int curr_pc = (int)( (100.f*pos)/fsize+0.5f );
@@ -102,7 +159,23 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			}
 		}
 
-		_i64 epos=pos+c_checkpoint_dist;
+		_i64 epos = pos + c_checkpoint_dist;
+
+		if (curr_extent.offset != -1
+			&& !ret_sha2
+			&& curr_extent.offset <= pos
+			&& curr_extent.offset + curr_extent.size >= epos)
+		{
+			std::string c = get_sparse_extent_content();
+			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
+				return "";
+
+			copy_write_pos += c_checkpoint_dist;
+			pos = epos;
+			continue;
+		}
+
+		
 		MD5 big_hash;
 		MD5 big_hash_copy_control;
 		_i64 hashoutputpos_start=hashoutputpos;

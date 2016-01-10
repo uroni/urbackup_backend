@@ -6,6 +6,7 @@
 #include "FileClient.h"
 #include "../../md5.h"
 #include "../../fileservplugin/chunk_settings.h"
+#include "../ExtentIterator.h"
 #include <map>
 #include <deque>
 
@@ -21,7 +22,8 @@ enum EChunkedState
 	CS_ID_FIRST,
 	CS_ID_ACC,
 	CS_BLOCK,
-	CS_CHUNK
+	CS_CHUNK,
+	CS_SPARSE_EXTENTS
 };
 
 struct SChunkHashes
@@ -60,8 +62,8 @@ public:
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
 
 	bool hasError(void);
 
@@ -99,14 +101,15 @@ private:
 
 	void setInitialBytes(const char* buf, size_t bsize);
 
-	_u32 GetFile(std::string remotefn, _i64& filesize_out, int64 file_id);
+	_u32 GetFile(std::string remotefn, _i64& filesize_out, int64 file_id, IFile** sparse_extents_f);
 
-	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize);
+	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize, IFile** sparse_extents_f);
 
 	void State_First(void);
-	void State_Acc(bool ignore_filesize);
+	void State_Acc(bool ignore_filesize, IFile** sparse_extents_f);
 	void State_Block(void);
 	void State_Chunk(void);
+	void State_SparseExtents(IFile** sparse_extents_f);
 
 	void Hash_finalize(_i64 curr_pos, const char *hash_from_client);
 	void Hash_upto(_i64 chunk_start, bool &new_block);
@@ -121,7 +124,7 @@ private:
 
 	void calcTotalChunks();
 
-	_u32 loadFileOutOfBand();
+	_u32 loadFileOutOfBand(IFile** sparse_extents_f);
 
 	bool constructOutOfBandPipe();
 
@@ -259,6 +262,9 @@ private:
 	int64 curr_file_id;
 
 	bool curr_is_script;
+
+	std::auto_ptr<ExtentIterator> extent_iterator;
+	IFsFile::SSparseExtent curr_sparse_extent;
 };
 
 #endif //FILECLIENTCHUNKED_H

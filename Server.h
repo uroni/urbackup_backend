@@ -131,9 +131,9 @@ public:
 	virtual unsigned int getNumRequests(void);
 	virtual void addRequest(void);
 
-	virtual IFile* openFile(std::string pFilename, int pMode=0);
-	virtual IFile* openFileFromHandle(void *handle);
-	virtual IFile* openTemporaryFile(void);
+	virtual IFsFile* openFile(std::string pFilename, int pMode=0);
+	virtual IFsFile* openFileFromHandle(void *handle);
+	virtual IFsFile* openTemporaryFile(void);
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);
 	virtual bool fileExists(std::string pFilename);

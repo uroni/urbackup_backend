@@ -268,6 +268,7 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
@@ -280,6 +281,7 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
@@ -361,6 +363,7 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe2.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
@@ -378,6 +381,7 @@
     <ClInclude Include="..\urbackupcommon\settings.h" />
     <ClInclude Include="..\urbackupcommon\settingslist.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="..\urbackupcommon\SparseFile.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="apps\app.h" />

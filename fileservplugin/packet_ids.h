@@ -13,6 +13,7 @@ const uchar ID_GET_FILE_BLOCKDIFF=8;
 const uchar ID_GET_FILE_BLOCKDIFF_WITH_METADATA=16;
 	const uchar ID_COULDNT_OPEN=0;
 	const uchar ID_FILESIZE=1;
+	const uchar ID_FILESIZE_AND_EXTENTS = 19;
 	const uchar ID_BASE_DIR_LOST=2;
 const uchar ID_GET_PACKET=1;
 const uchar ID_GET_100_PACKETS=2;

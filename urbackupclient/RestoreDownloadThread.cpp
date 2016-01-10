@@ -202,7 +202,7 @@ void RestoreDownloadThread::queueStop()
 
 bool RestoreDownloadThread::load_file( SQueueItem todl )
 {
-	std::auto_ptr<IFile> dest_f;
+	std::auto_ptr<IFsFile> dest_f;
 	
     if(!todl.metadata_only)
 	{
@@ -230,13 +230,13 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 		}
 	}
 
-	_u32 rc = fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items, false, todl.id+1);
+	_u32 rc = fc.GetFile(todl.remotefn, dest_f.get(), true, todl.metadata_only, todl.folder_items, false, todl.id+1);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		dest_f->Seek(0);
-		rc=fc.GetFile((todl.remotefn), dest_f.get(), true, todl.metadata_only, todl.folder_items, false, todl.id+1);
+		rc=fc.GetFile(todl.remotefn, dest_f.get(), true, todl.metadata_only, todl.folder_items, false, todl.id+1);
 		--hash_retries;
 	}
 
@@ -253,13 +253,13 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 {
 	ScopedDeleteFile del_3(todl.patch_dl_files.chunkhashes);
 
-	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script);
+	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, NULL);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		todl.patch_dl_files.orig_file->Seek(0);
-		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script);
+		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, NULL);
 		--hash_retries;
 	}
 

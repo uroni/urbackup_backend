@@ -74,7 +74,7 @@ private:
 	int64 status_id;
 	int64 log_id;
 
-	IFile* filelist;
+	IFsFile* filelist;
 	ScopedDeleteFile filelist_del;
 
 	std::string client_token;

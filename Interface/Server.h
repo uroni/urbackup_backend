@@ -23,6 +23,7 @@ class IThread;
 class ISettingsReader;
 class IPipe;
 class IFile;
+class IFsFile;
 class IOutputStream;
 class IThreadPool;
 class ICondition;
@@ -142,9 +143,9 @@ public:
 	virtual unsigned int getNumRequests(void)=0;
 	virtual void addRequest(void)=0;
 
-	virtual IFile* openFile(std::string pFilename, int pMode=0)=0;
-	virtual IFile* openFileFromHandle(void *handle)=0;
-	virtual IFile* openTemporaryFile(void)=0;
+	virtual IFsFile* openFile(std::string pFilename, int pMode=0)=0;
+	virtual IFsFile* openFileFromHandle(void *handle)=0;
+	virtual IFsFile* openTemporaryFile(void)=0;
 	virtual IFile* openMemoryFile(void)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
 	virtual bool fileExists(std::string pFilename)=0;

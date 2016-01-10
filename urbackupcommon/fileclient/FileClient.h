@@ -93,7 +93,7 @@ public:
 		void Shutdown();
 
         //---needs Connection
-        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script, size_t file_id);
+        _u32 GetFile(std::string remotefn, IFsFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script, size_t file_id);
 
 		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
 
@@ -123,13 +123,23 @@ public:
 		bool Reconnect(void);
 
 		bool isDownloading();
+
+		IFile* releaseSparseExtendsFile();
+
+		void resetSparseExtentsFile();
               
+		static IFile* temporaryFileRetry();
+
+		static bool writeFileRetry(IFile* f, const char* buf, _u32 bsize);
+
 private:
 		void bindToNewInterfaces();
 
 		void fillQueue();
 
 		void logProgress(const std::string& remotefn, _u64 filesize, _u64 received);
+
+		
 
         std::vector<SOCKET> udpsocks;
 		std::vector<sockaddr_in> broadcast_addrs;
@@ -208,6 +218,8 @@ private:
 		bool needs_flush;
 
 		bool is_downloading;
+
+		IFile* sparse_extends_f;
 };
 
 const _u32 ERR_CONTINUE=0;

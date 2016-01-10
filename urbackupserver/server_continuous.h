@@ -797,7 +797,7 @@ private:
 		FileMetadata metadata(permissions, modified, created, accessed, std::string());
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
-			entryclientid, rsize, next_entryid, metadata, true))
+			entryclientid, rsize, next_entryid, metadata, true, NULL))
 		{
 			local_hash->addFileSQL(backupid, clientid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1),
 				hash, filesize, rsize, entryid, entryclientid, next_entryid, copied_file);

@@ -173,7 +173,7 @@ public:
 	bool isOffline();
 
 	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
-		const FileMetadata& metadata, bool is_script, std::string sha_dig);
+		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 

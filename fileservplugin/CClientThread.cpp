@@ -345,6 +345,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				with_hashes = id==ID_GET_FILE_RESUME_HASH;
 
+				bool with_sparse = false;
+
 				if(id==ID_GET_FILE_WITH_METADATA)
 				{
 					char c_version;
@@ -370,6 +372,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						break;
 					}
+
+					char c_with_sparse_handling = 0;
+					if (!data->getChar(&c_with_sparse_handling))
+					{
+						break;
+					}
+
+					with_sparse = c_with_sparse_handling != 0;
 				}
 
 				_i64 start_offset=0;
@@ -553,6 +563,31 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				curr_filesize=filesize.QuadPart;
 
+				if (curr_filesize == 0)
+				{
+					with_sparse = false;
+				}
+
+				int64 n_sparse_extents;
+
+				if (with_sparse)
+				{
+					int64 new_fsize = getFileExtents(curr_filesize, n_sparse_extents);
+
+					if (new_fsize >= 0)
+					{
+						curr_filesize = new_fsize;
+					}
+					else
+					{
+						Log("Getting extents of file \"" + filename + "\" failed", LL_WARNING);
+					}
+				}
+				else
+				{
+					has_file_extents = false;
+				}
+
 				next_checkpoint=start_offset+c_checkpoint_dist;
 				if(next_checkpoint>curr_filesize)
 					next_checkpoint=curr_filesize;
@@ -565,8 +600,20 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 				CWData data;
-				data.addUChar(ID_FILESIZE);
-				data.addUInt64(little_endian(curr_filesize));
+				if (with_sparse && n_sparse_extents>0)
+				{
+					data.addUChar(ID_FILESIZE_AND_EXTENTS);
+				}
+				else
+				{
+					data.addUChar(ID_FILESIZE);
+				}
+				data.addUInt64(curr_filesize);
+
+				if (with_sparse && n_sparse_extents>0)
+				{
+					data.addInt64(n_sparse_extents);
+				}
 
 				int rc=SendInt(data.getDataPtr(), data.getDataSize());
 				if(rc==SOCKET_ERROR)
@@ -575,7 +622,22 @@ bool CClientThread::ProcessPacket(CRData *data)
 					CloseHandle(hFile);
 					hFile=INVALID_HANDLE_VALUE;
 					return false;
-				}		
+				}
+
+				if (with_sparse && n_sparse_extents>0)
+				{
+					if (!sendSparseExtents(filesize.QuadPart, n_sparse_extents))
+					{
+						Log("Error sending sparse extents", LL_DEBUG);
+						CloseHandle(hFile);
+						hFile = INVALID_HANDLE_VALUE;
+						return false;
+					}
+				}
+				else
+				{
+					has_file_extents = false;
+				}
 
 				if(curr_filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
@@ -586,14 +648,29 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				assert(!(GetFileAttributesW(Server->ConvertToWchar(filename).c_str()) & FILE_ATTRIBUTE_DIRECTORY));
 
-				for(_i64 i=start_offset;i<filesize.QuadPart && !stopped;i+=READSIZE)
+				size_t extent_pos = 0;
+
+				for(_i64 i=start_offset;i<filesize.QuadPart && !stopped;)
 				{
-					bool last;
-					if(i+READSIZE<filesize.QuadPart)
+					bool last = false;
+
+					_u32 toread;
+					if (has_file_extents)
 					{
-						last=false;
+						toread = (std::min)(static_cast<_u32>(file_extents[extent_pos].offset + file_extents[extent_pos].size - i), (_u32)READSIZE);
+
+						if (i + toread == file_extents[extent_pos].offset + file_extents[extent_pos].size
+							&& extent_pos + 1 >= file_extents.size())
+						{
+							last = true;
+						}
 					}
 					else
+					{
+						toread = READSIZE;
+					}
+
+					if(i+toread>=filesize.QuadPart)
 					{
 						last=true;
 						Log("Reading last file part", LL_DEBUG);
@@ -623,7 +700,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if( !stopped && hFile!=INVALID_HANDLE_VALUE)
 					{
-						if(!ReadFilePart(hFile, i, last))
+						if(!ReadFilePart(hFile, i, last, READSIZE))
 						{
 							Log("Reading from file failed. Last error is "+convert((unsigned int)GetLastError()), LL_ERROR);
 							stopped=true;
@@ -644,6 +721,23 @@ bool CClientThread::ProcessPacket(CRData *data)
 								stopped=true;
 
 							}
+						}
+					}
+
+					i += toread;
+
+					if (has_file_extents
+						&& i == file_extents[extent_pos].offset + file_extents[extent_pos].size)
+					{
+						++extent_pos;
+
+						if (extent_pos >= file_extents.size())
+						{
+							i = file_extents[extent_pos].offset;
+						}
+						else
+						{
+							break;
 						}
 					}
 				}
@@ -1055,7 +1149,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 #endif
 
 #ifndef LINUX
-bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
+bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 toread)
 {
 	LPOVERLAPPED overlap=new OVERLAPPED;
 	//memset(overlap, 0, sizeof(OVERLAPPED) );
@@ -1082,7 +1176,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 	ldata->errorcode=&errorcode;
 	overlap->hEvent=ldata;
 
-	BOOL b=ReadFileEx(hFile, ldata->buffer, READSIZE, overlap, FileIOCompletionRoutine);
+	BOOL b=ReadFileEx(hFile, ldata->buffer, toread, overlap, FileIOCompletionRoutine);
 
 	++currfilepart;
 
@@ -1282,6 +1376,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 	int64 metadata_id=0;
 
+	bool with_sparse = false;
+
 	if(with_metadata)
 	{
 		char c_version;
@@ -1299,6 +1395,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		{
 			return false;
 		}
+
+		char c_with_sparse;
+		if (!data->getChar(&c_with_sparse))
+		{
+			return false;
+		}
+
+		with_sparse = c_with_sparse == 1;
 	}
 
 	bool is_script=false;
@@ -1458,6 +1562,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	chunk.hashsize = curr_hash_size;
 	chunk.requested_filesize = requested_filesize;
 	chunk.pipe_file_user = pipe_file_user.get();
+	chunk.with_sparse = with_sparse;
 	pipe_file_user.release();
 
 	hFile=INVALID_HANDLE_VALUE;
@@ -1946,3 +2051,121 @@ bool CClientThread::FinishScript( CRData * data )
 
 	return ret;
 }
+
+int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents)
+{
+	file_extents.clear();
+	int64 real_fsize = 0;
+	n_sparse_extents = 0;
+#ifdef _WIN32
+	FILE_ALLOCATED_RANGE_BUFFER query_range;
+	query_range.FileOffset.QuadPart = 0;
+	query_range.Length.QuadPart = fsize;
+
+	int64 last_sparse_pos = 0;
+
+	std::vector<FILE_ALLOCATED_RANGE_BUFFER> res_buffer;
+	res_buffer.resize(1000);
+
+	while (true)
+	{
+		DWORD output_bytes;
+		BOOL b = DeviceIoControl(hFile, FSCTL_QUERY_ALLOCATED_RANGES,
+			&query_range, sizeof(query_range), res_buffer.data(), static_cast<DWORD>(res_buffer.size()*sizeof(FILE_ALLOCATED_RANGE_BUFFER)),
+			&output_bytes, NULL);
+
+		bool more_data = (!b && GetLastError() == ERROR_MORE_DATA);
+
+		if (more_data || b)
+		{
+			size_t res_size = output_bytes / sizeof(FILE_ALLOCATED_RANGE_BUFFER);
+			size_t start_off = file_extents.size();
+			file_extents.resize(start_off + res_size);
+			for (size_t i = start_off; i < start_off + res_size; ++i)
+			{
+				file_extents[i] = SExtent(res_buffer[i - start_off].FileOffset.QuadPart, res_buffer[i - start_off].Length.QuadPart);
+
+				if (file_extents[i].offset != last_sparse_pos)
+				{
+					++n_sparse_extents;
+				}
+
+				last_sparse_pos = file_extents[i].offset + file_extents[i].size;
+
+				if (i + 1 >= start_off + res_size)
+				{
+					query_range.FileOffset.QuadPart = res_buffer[i - start_off].FileOffset.QuadPart + res_buffer[i - start_off].Length.QuadPart;
+					query_range.Length.QuadPart = fsize - query_range.FileOffset.QuadPart;
+				}
+
+				real_fsize += file_extents[i].size;
+			}
+
+			if (!more_data)
+			{
+				has_file_extents = true;
+
+				if (last_sparse_pos != fsize)
+				{
+					++n_sparse_extents;
+				}
+
+				return real_fsize;
+			}
+		}
+
+		if (!b && !more_data)
+		{
+			has_file_extents = false;
+			return -1;
+		}
+	}
+#endif
+	return real_fsize;
+}
+
+bool CClientThread::sendSparseExtents(int64 fsize, int64 n_sparse_extents)
+{
+	std::vector<int64> send_buf;
+	send_buf.resize(n_sparse_extents*2+2);
+
+	int64 last_sparse_pos = 0;
+	size_t curr_sparse_ext = 0;
+
+	MD5 hash_func;
+
+	for (size_t i = 0; i < file_extents.size(); ++i)
+	{
+		if (file_extents[i].offset != last_sparse_pos)
+		{
+			send_buf[curr_sparse_ext * 2 + 0] = last_sparse_pos;
+			send_buf[curr_sparse_ext * 2 + 1] = file_extents[i].offset - last_sparse_pos;
+
+			++curr_sparse_ext;
+		}
+
+		last_sparse_pos = file_extents[i].offset + file_extents[i].size;
+	}
+
+	if (last_sparse_pos != fsize)
+	{
+		send_buf[curr_sparse_ext * 2 + 0] = last_sparse_pos;
+		send_buf[curr_sparse_ext * 2 + 1] = fsize - last_sparse_pos;
+
+		++curr_sparse_ext;
+	}
+
+	assert(curr_sparse_ext == n_sparse_extents);
+
+	hash_func.update(reinterpret_cast<unsigned char*>(send_buf.data()), static_cast<_u32>(n_sparse_extents * 2 * sizeof(int64)));
+
+	hash_func.finalize();
+
+	memcpy(&send_buf[n_sparse_extents * 2], hash_func.raw_digest_int(), 2 * sizeof(int64));
+
+	int rc = SendInt(reinterpret_cast<char*>(send_buf.data()), send_buf.size()*sizeof(int64));
+
+	return rc != SOCKET_ERROR;
+}
+
+

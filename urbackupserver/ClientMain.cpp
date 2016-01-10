@@ -1474,7 +1474,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		return false;
 	}
 	
-	IFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	IFsFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(tmp==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
@@ -2101,10 +2101,10 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 	return true;
 }
 
-IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid)
+IFsFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid)
 {
 	int tries=50;
-	IFile *pfd=NULL;
+	IFsFile *pfd=NULL;
 	while(pfd==NULL)
 	{
 		if(use_tmpfiles)

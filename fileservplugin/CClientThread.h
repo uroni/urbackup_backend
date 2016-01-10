@@ -26,6 +26,7 @@
 class CTCPFileServ;
 class IPipe;
 class IFile;
+class IFsFile;
 class IMutex;
 class ICondition;
 class ScopedPipeFileUser;
@@ -68,6 +69,7 @@ struct SChunk
 	_i64 hashsize;
 	int64 requested_filesize;
 	ScopedPipeFileUser* pipe_file_user;
+	bool with_sparse;
 };
 
 struct SLPData
@@ -115,7 +117,7 @@ private:
 
 	bool RecvMessage();
 	bool ProcessPacket(CRData *data);
-	bool ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
+	bool ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 toread);
 	int SendData();
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
@@ -128,6 +130,10 @@ private:
 	void queueChunk(SChunk chunk);
 	bool InformMetadataStreamEnd( CRData * data );
 	bool FinishScript( CRData * data );
+
+	int64 getFileExtents(int64 fsize, int64& n_sparse_extents);
+
+	bool sendSparseExtents(int64 fsize, int64 n_sparse_extents);
 
 	volatile bool stopped;
 	volatile bool killable;
@@ -170,4 +176,28 @@ private:
 	bool has_socket;
 
 	std::vector<char>* extra_buffer;
+
+	struct SExtent
+	{
+		SExtent()
+			: offset(-1), size(-1)
+		{
+
+		}
+
+		SExtent(int64 offset, int64 size)
+			: offset(offset), size(size)
+		{}
+
+		bool operator<(const SExtent& other) const
+		{
+			return offset < other.offset;
+		}
+
+		int64 offset;
+		int64 size;
+	};
+
+	bool has_file_extents;
+	std::vector<SExtent> file_extents;
 };

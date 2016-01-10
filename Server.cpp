@@ -1296,7 +1296,7 @@ void CServer::addRequest(void)
 	++num_requests;
 }
 
-IFile* CServer::openFile(std::string pFilename, int pMode)
+IFsFile* CServer::openFile(std::string pFilename, int pMode)
 {
 	File *file=new File;
 	if(!file->Open(pFilename, pMode) )
@@ -1307,7 +1307,7 @@ IFile* CServer::openFile(std::string pFilename, int pMode)
 	return file;
 }
 
-IFile* CServer::openFileFromHandle(void *handle)
+IFsFile* CServer::openFileFromHandle(void *handle)
 {
 	File *file=new File;
 	if(!file->Open(handle) )
@@ -1318,7 +1318,7 @@ IFile* CServer::openFileFromHandle(void *handle)
 	return file;
 }
 
-IFile* CServer::openTemporaryFile(void)
+IFsFile* CServer::openTemporaryFile(void)
 {
 	File *file=new File;
 	if(!file->OpenTemporaryFile(tmpdir) )

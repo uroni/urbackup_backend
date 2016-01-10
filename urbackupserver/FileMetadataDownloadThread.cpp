@@ -46,7 +46,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::string(), logid));
+	std::auto_ptr<IFsFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::string(), logid));
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
 

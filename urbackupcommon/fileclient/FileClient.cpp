@@ -26,6 +26,7 @@
 #include "../../stringtools.h"
 
 #include "../../md5.h"
+#include "../SparseFile.h"
 
 #include <iostream>
 #include <memory.h>
@@ -97,7 +98,7 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
 	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
 	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
-	real_transferred_bytes(0), is_downloading(false)
+	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -325,6 +326,13 @@ FileClient::~FileClient(void)
 	}
 
 	Server->destroy(mutex);
+
+	if (sparse_extends_f != NULL)
+	{
+		std::string tmpfn = sparse_extends_f->getFilename();
+		Server->destroy(sparse_extends_f);
+		Server->deleteFile(tmpfn);
+	}
 }
 
 std::vector<sockaddr_in> FileClient::getServers(void)
@@ -660,10 +668,12 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, size_t folder_items, bool is_script, size_t file_id)
+ _u32 FileClient::GetFile(std::string remotefn, IFsFile *backing_file, bool hashed, bool metadata_only, size_t folder_items, bool is_script, size_t file_id)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
+
+	resetSparseExtentsFile();
 
 	int tries=5000;
 
@@ -693,6 +703,7 @@ bool FileClient::Reconnect(void)
 			data.addChar(0);
 			data.addChar(hashed?1:0);
 			data.addVarInt(file_id);
+			data.addChar(1);
 		}
 
 		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
@@ -714,15 +725,26 @@ bool FileClient::Reconnect(void)
 	_u64 received=0;
 	_u64 next_checkpoint=c_checkpoint_dist;
 	_u64 last_checkpoint=0;
+	_u64 num_sparse_extends = 0;
 	bool firstpacket=true;
 	last_progress_log=0;
 
     starttime=Server->getTimeMS();
 
-	int state=0;
+
+	enum EReceiveState
+	{
+		EReceiveState_Data=0,
+		EReceiveState_Hash=1,
+		EReceiveState_SparseExtends=2
+	};
+
+	EReceiveState state = EReceiveState_Data;
 	char hash_buf[16];
 	_u32 hash_r;
 	MD5 hash_func;
+	IFile* file = backing_file;
+	std::auto_ptr<SparseFile> sparse_file;
 
 	char* buf = dl_buf;
 
@@ -783,6 +805,7 @@ bool FileClient::Reconnect(void)
 					data.addChar(0);
 					data.addChar(hashed?1:0);
 					data.addVarInt(file_id);
+					data.addChar(1);
 				}
 
 				if( protocol_version>1 )
@@ -809,7 +832,7 @@ bool FileClient::Reconnect(void)
 					firstpacket=true;
 
 				hash_func.init();
-				state=0;
+				state=EReceiveState_Data;
 				needs_flush=true;
 			}
 		}
@@ -841,9 +864,19 @@ bool FileClient::Reconnect(void)
 					}
 					return ERR_BASE_DIR_LOST;
 				}
-				else if(PID==ID_FILESIZE)
+				else if(PID==ID_FILESIZE || PID== ID_FILESIZE_AND_EXTENTS)
 				{
-					if(rc >= 1+sizeof(_u64))
+					size_t req_size;
+					if (PID == ID_FILESIZE)
+					{
+						req_size = 1 + sizeof(_u64);
+					}
+					else
+					{
+						req_size = 1 + 2 * sizeof(_u64);
+					}
+
+					if(rc >= req_size)
 					{
 						{
 							IScopedLock lock(mutex);
@@ -852,9 +885,20 @@ bool FileClient::Reconnect(void)
 
 						memcpy(&filesize, buf+1, sizeof(_u64) );
 						filesize=little_endian(filesize);
-						off=1+sizeof(_u64);
 
-						if( filesize==0 || metadata_only)
+						if (PID == ID_FILESIZE_AND_EXTENTS)
+						{
+							memcpy(&num_sparse_extends, buf + 1 + sizeof(_u64), sizeof(num_sparse_extends));
+							num_sparse_extends = little_endian(num_sparse_extends);
+						}
+						else
+						{
+							num_sparse_extends = 0;
+						}
+
+						off = static_cast<_u32>(req_size);
+
+						if( (filesize==0 && num_sparse_extends==0) || metadata_only)
 						{
 							if(rc>off)
 							{
@@ -867,7 +911,7 @@ bool FileClient::Reconnect(void)
 						{
 							filesize = LLONG_MAX;
 						}
-						else if(filesize==received)
+						else if(filesize==received && num_sparse_extends==0)
 						{
 							if(rc>off)
 							{
@@ -886,6 +930,24 @@ bool FileClient::Reconnect(void)
 						else
 						{
 							next_checkpoint=filesize;
+						}
+
+						if (num_sparse_extends > 0)
+						{
+							state = EReceiveState_SparseExtends;
+							hash_func.init();
+
+							resetSparseExtentsFile();
+
+							sparse_extends_f = temporaryFileRetry();
+
+							if (!writeFileRetry(sparse_extends_f, reinterpret_cast<char*>(&num_sparse_extends), sizeof(num_sparse_extends)))
+							{
+								Server->Log("Error while writing to temporary file -1", LL_ERROR);
+								Reconnect();
+								return ERR_ERROR;
+							}
+							hash_r = static_cast<_u32>(2*num_sparse_extends*sizeof(_u64) + 16);
 						}
 					}
 					else
@@ -906,7 +968,72 @@ bool FileClient::Reconnect(void)
 				}
             }
 
-			if( state==1 && (_u32) rc > off )
+			if (state == EReceiveState_SparseExtends && (_u32)rc > off)
+			{
+				if (hash_r > 16)
+				{
+					_u32 tc_hash = (std::min)((_u32)rc - off, hash_r - 16);
+
+					hash_func.update(reinterpret_cast<unsigned char*>(&buf[off]), tc_hash);
+				}
+
+				_u32 tc = (std::min)((_u32)rc - off, hash_r);
+
+				if (!writeFileRetry(sparse_extends_f, &buf[off], tc))
+				{
+					Server->Log("Error while writing to temporary file -2", LL_ERROR);
+					Reconnect();
+					return ERR_ERROR;
+				}
+
+				off += tc;
+				hash_r -= tc;
+
+				if (hash_r == 0)
+				{
+					hash_func.finalize();
+
+					sparse_extends_f->Seek(sparse_extends_f->Size() - 16);
+					std::string received_hash = sparse_extends_f->Read(16);
+
+					if (memcmp(hash_func.raw_digest_int(), received_hash.data(), 16) != 0)
+					{
+						Server->Log("Error while downloading file: sparse extends hash wrong", LL_ERROR);
+						Reconnect();
+						return ERR_HASH;
+					}
+
+					sparse_extends_f->Seek(0);
+
+					sparse_file.reset(new SparseFile(backing_file, sparse_extends_f, false, 1, false));
+					file = sparse_file.get();
+
+					if (sparse_file->hasError())
+					{
+						Server->Log("Error while creating sparse file view", LL_ERROR);
+						Reconnect();
+						return ERR_ERROR;
+					}
+
+					hash_func.init();
+
+					if (filesize == 0 || filesize == received)
+					{
+						if (rc>off)
+						{
+							memmove(dl_buf, dl_buf + off, rc - off);
+							dl_off = rc - off;
+						}
+						return ERR_SUCCESS;
+					}
+					else
+					{
+						state = EReceiveState_Data;
+					}
+				}
+			}
+
+			if( state==EReceiveState_Hash && (_u32) rc > off )
 			{
 				_u32 tc=(std::min)((_u32)rc-off, hash_r);
 				memcpy(&hash_buf[16-hash_r], &buf[off],  tc);
@@ -923,7 +1050,7 @@ bool FileClient::Reconnect(void)
 						return ERR_HASH;
 					}
 					hash_func.init();
-					state=0;
+					state=EReceiveState_Data;
 				}
 
 				if(received >= filesize && state==0)
@@ -938,7 +1065,7 @@ bool FileClient::Reconnect(void)
 				}
 			}
 
-            if( state==0 && (_u32) rc > off )
+            if( state==EReceiveState_Data && (_u32) rc > off )
             {
 				_u32 written=off;
 				_u64 write_remaining=next_checkpoint-received;
@@ -1017,7 +1144,7 @@ bool FileClient::Reconnect(void)
 						if(hash_r<16)
 						{
 							hash_r=16-hash_r;
-							state=1;
+							state=EReceiveState_Hash;
 						}
 						else
 						{
@@ -1081,6 +1208,7 @@ bool FileClient::Reconnect(void)
 					data.addChar(0);
 					data.addChar(hashed?1:0);
 					data.addVarInt(file_id);
+					data.addChar(1);
 				}
 
 				if( protocol_version>1 )
@@ -1107,7 +1235,7 @@ bool FileClient::Reconnect(void)
 					firstpacket=true;
 
 				hash_func.init();
-				state=0;
+				state=EReceiveState_Data;
 				needs_flush=true;
 			}
 		}
@@ -1251,6 +1379,7 @@ void FileClient::fillQueue()
 			data.addChar(0);
 			data.addChar(protocol_version>1);
 			data.addVarInt(file_id);
+			data.addChar(1);
 		}
 
 		needs_send_flush=true;
@@ -1302,6 +1431,46 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 		last_transferred_bytes = new_transferred;
 		last_progress_log = ct;
 	}	
+}
+
+IFile * FileClient::temporaryFileRetry()
+{
+	while (true)
+	{
+		IFile* ret = Server->openTemporaryFile();
+
+		if (ret == NULL)
+		{
+			Server->Log("Error opening temporary file in FileClient. Retrying...", LL_WARNING);
+			Server->wait(10000);
+		}
+		else
+		{
+			return ret;
+		}
+	}
+}
+
+bool FileClient::writeFileRetry(IFile * f, const char * buf, _u32 bsize)
+{
+	_u32 w = 0;
+	while (w < bsize)
+	{
+		bool has_error = false;
+		w += f->Write(buf + w, bsize - w, &has_error);
+
+		if (has_error)
+		{
+			return false;
+		}
+
+		if (w < bsize)
+		{
+			Server->Log("Error writing to file " + f->getFilename() + ". Retrying...", LL_WARNING);
+			Server->wait(10000);
+		}
+	}
+	return true;
 }
 
 void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
@@ -1701,5 +1870,23 @@ bool FileClient::isDownloading()
 {
 	IScopedLock lock(mutex);
 	return is_downloading;
+}
+
+IFile * FileClient::releaseSparseExtendsFile()
+{
+	IFile* ret = sparse_extends_f;
+	sparse_extends_f = NULL;
+	return ret;
+}
+
+void FileClient::resetSparseExtentsFile()
+{
+	if (sparse_extends_f != NULL)
+	{
+		std::string tmpfn = sparse_extends_f->getFilename();
+		Server->destroy(sparse_extends_f);
+		Server->deleteFile(tmpfn);
+		sparse_extends_f = NULL;
+	}
 }
 

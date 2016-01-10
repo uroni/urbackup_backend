@@ -60,6 +60,7 @@
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
@@ -71,6 +72,7 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
     <ClCompile Include="ChangeJournalWatcher.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientdao.cpp" />
@@ -110,6 +112,7 @@
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe2.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
@@ -122,6 +125,7 @@
     <ClInclude Include="..\urbackupcommon\mbrdata.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="..\urbackupcommon\SparseFile.h" />
     <ClInclude Include="ChangeJournalWatcher.h" />
     <ClInclude Include="client.h" />
     <ClInclude Include="clientdao.h" />

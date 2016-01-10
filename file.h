@@ -33,7 +33,7 @@ const int MODE_TEMP=4;
 #	define _unlink unlink
 #endif
 
-class File : public IFile
+class File : public IFsFile
 {
 public:
 	File();
@@ -51,6 +51,9 @@ public:
 	void Close();
 	bool PunchHole( _i64 spos, _i64 size );
 	bool Sync();
+	bool Resize(int64 new_size);
+	void resetSparseExtentIter();
+	SSparseExtent nextSparseExtent();
 
 #ifdef _WIN32
 	static void init_mutex();
@@ -73,10 +76,18 @@ private:
 	std::string fn;
 
 #ifdef _WIN32
+	bool setSparse();
+
 	static size_t tmp_file_index;
 	static IMutex* index_mutex;
 	static std::string random_prefix;
+
+	bool more_extents;
+	std::vector<FILE_ALLOCATED_RANGE_BUFFER> res_extent_buffer;
+	size_t curr_extent;
+	int64 last_sparse_pos;
 #endif
+	
 };
 
 

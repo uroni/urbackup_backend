@@ -412,7 +412,7 @@ size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni )
 bool ServerDownloadThread::load_file(SQueueItem todl)
 {
 	ServerLogger::Log(logid, "Loading file \""+todl.fn+"\"", LL_DEBUG);
-	IFile *fd=NULL;
+	IFsFile *fd=NULL;
     if(!todl.metadata_only)
 	{
 		fd = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
@@ -524,7 +524,11 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig);
+		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile());
+	}
+	else
+	{
+		fc.resetSparseExtentsFile();
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -582,7 +586,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig);
+			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL);
 			return true;
 		}
 		else
@@ -645,7 +649,9 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	int64 script_start_time = Server->getTimeSeconds()-60;
 
-	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script);
+	IFile* sparse_extents_f=NULL;
+	_u32 rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput,
+		todl.predicted_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script, &sparse_extents_f);
 
 	int64 download_filesize = todl.predicted_filesize;
 
@@ -669,9 +675,12 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
 		dlfiles.chunkhashes->Seek(0);
 		download_filesize = todl.predicted_filesize;
-		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script);
+		rc=fc_chunked->GetFilePatch((cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput,
+			download_filesize, with_metadata ? (todl.id+1) : 0, todl.is_script, &sparse_extents_f);
 		--hash_retries;
-	} 
+	}
+
+	ScopedDeleteFile sparse_extents_f_delete(sparse_extents_f);
 
 	if(download_filesize<0)
 	{
@@ -760,8 +769,9 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
+		sparse_extents_f_delete.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			(dlfiles.filepath_old), download_filesize, todl.metadata, todl.is_script, todl.sha_dig);
+			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -777,7 +787,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 }
 
 void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig)
+	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f)
 {
 	int l_backup_id=backupid;
 
@@ -800,11 +810,13 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 	data.addString(old_file);
 	data.addInt64(t_filesize);
 	data.addString(sha_dig);
+	data.addString(sparse_extents_f!=NULL ? sparse_extents_f->getFilename() : "");
 	metadata.serialize(data);
 
 	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName((dstpath))+"\"", LL_DEBUG);
 
 	Server->destroy(fd);
+	Server->destroy(sparse_extents_f);
 	if(hashoutput!=NULL)
 	{
 		if(!is_script)

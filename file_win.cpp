@@ -29,7 +29,7 @@ IMutex* File::index_mutex = NULL;
 std::string File::random_prefix;
 
 File::File()
-	: hfile(INVALID_HANDLE_VALUE), is_sparse(false)
+	: hfile(INVALID_HANDLE_VALUE), is_sparse(false), more_extents(true), curr_extent(0), last_sparse_pos(0)
 {
 
 }
@@ -292,20 +292,31 @@ void File::destroy_mutex()
 	Server->destroy(index_mutex);
 }
 
-bool File::PunchHole( _i64 spos, _i64 size )
+bool File::setSparse()
 {
-	if(!is_sparse)
+	if (!is_sparse)
 	{
-		FILE_SET_SPARSE_BUFFER buf = {TRUE};
+		FILE_SET_SPARSE_BUFFER buf = { TRUE };
+		DWORD ret_bytes;
 		BOOL b = DeviceIoControl(hfile, FSCTL_SET_SPARSE, &buf,
-			static_cast<DWORD>(sizeof(buf)), NULL, 0, NULL, NULL);
+			static_cast<DWORD>(sizeof(buf)), NULL, 0, &ret_bytes, NULL);
 
-		if(!b)
+		if (!b)
 		{
 			return false;
 		}
 
-		is_sparse=true;
+		is_sparse = true;
+	}
+
+	return true;
+}
+
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	if (!setSparse())
+	{
+		return false;
 	}
 	
 	FILE_ZERO_DATA_INFORMATION zdi;
@@ -313,8 +324,9 @@ bool File::PunchHole( _i64 spos, _i64 size )
 	zdi.FileOffset.QuadPart = spos;
 	zdi.BeyondFinalZero.QuadPart = spos + size;
 
+	DWORD ret_bytes;
 	BOOL b = DeviceIoControl(hfile, FSCTL_SET_ZERO_DATA, &zdi,
-		static_cast<DWORD>(sizeof(zdi)), NULL, 0, NULL, 0);
+		static_cast<DWORD>(sizeof(zdi)), NULL, 0, &ret_bytes, 0);
 
 	if(!b)
 	{
@@ -329,6 +341,111 @@ bool File::PunchHole( _i64 spos, _i64 size )
 bool File::Sync()
 {
 	return FlushFileBuffers(hfile)!=0;
+}
+
+bool File::Resize(int64 new_size)
+{
+	int64 fsize = Size();
+
+	if (new_size > fsize)
+	{
+		if (!setSparse())
+		{
+			return false;
+		}
+	}
+
+	LARGE_INTEGER tmp;
+	tmp.QuadPart = 0;
+	LARGE_INTEGER curr_pos;
+	if (SetFilePointerEx(hfile, tmp, &curr_pos, FILE_CURRENT) == FALSE)
+	{
+		return false;
+	}
+
+	tmp.QuadPart = new_size;
+	if (SetFilePointerEx(hfile, tmp, NULL, FILE_BEGIN) == FALSE)
+	{
+		return false;
+	}
+
+	BOOL ret = SetEndOfFile(hfile);
+
+	SetFilePointerEx(hfile, curr_pos, NULL, FILE_BEGIN);
+
+	return ret == TRUE;
+}
+
+void File::resetSparseExtentIter()
+{
+	res_extent_buffer.clear();
+	more_extents = true;
+	curr_extent = 0;
+}
+
+IFsFile::SSparseExtent File::nextSparseExtent()
+{
+	while (!res_extent_buffer.empty()
+		&& curr_extent<res_extent_buffer.size())
+	{
+		if (res_extent_buffer[curr_extent].FileOffset.QuadPart != last_sparse_pos)
+		{
+			last_sparse_pos = res_extent_buffer[curr_extent].FileOffset.QuadPart + res_extent_buffer[curr_extent].Length.QuadPart;
+			++curr_extent;
+			return IFsFile::SSparseExtent(last_sparse_pos, res_extent_buffer[curr_extent].FileOffset.QuadPart-last_sparse_pos);
+		}
+		++curr_extent;
+	}
+
+	if (!more_extents)
+	{
+		int64 fsize = Size();
+		if (last_sparse_pos!=-1 && last_sparse_pos != fsize)
+		{
+			IFsFile::SSparseExtent ret = IFsFile::SSparseExtent(last_sparse_pos, fsize - last_sparse_pos);
+			last_sparse_pos = fsize;
+			return ret;
+		}
+
+		return IFsFile::SSparseExtent();
+	}
+
+	int64 fsize = Size();
+
+	FILE_ALLOCATED_RANGE_BUFFER query_range;
+	query_range.FileOffset.QuadPart = last_sparse_pos;
+	query_range.Length.QuadPart = fsize- last_sparse_pos;
+	
+	if (res_extent_buffer.empty())
+	{
+		res_extent_buffer.resize(10);
+	}
+	else
+	{
+		res_extent_buffer.resize(100);
+	}
+
+	DWORD output_bytes;
+	BOOL b = DeviceIoControl(hfile, FSCTL_QUERY_ALLOCATED_RANGES,
+		&query_range, sizeof(query_range), res_extent_buffer.data(), static_cast<DWORD>(res_extent_buffer.size()*sizeof(FILE_ALLOCATED_RANGE_BUFFER)),
+		&output_bytes, NULL);
+
+	more_extents = (!b && GetLastError() == ERROR_MORE_DATA);
+
+	if (more_extents || b)
+	{
+		res_extent_buffer.resize(output_bytes / sizeof(FILE_ALLOCATED_RANGE_BUFFER));
+		curr_extent = 0;
+	}
+	else
+	{
+		res_extent_buffer.clear();
+		more_extents = false;
+		curr_extent = 0;
+		last_sparse_pos = -1;
+	}
+
+	return nextSparseExtent();
 }
 
 #endif

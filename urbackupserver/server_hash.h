@@ -13,7 +13,7 @@
 #include <vector>
 #include "../urbackupcommon/chunk_hasher.h"
 #include "server_log.h"
-
+#include "../urbackupcommon/ExtentIterator.h"
 
 class FileMetadata;
 
@@ -53,12 +53,14 @@ public:
 
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
+	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize);
+
 	void setupDatabase(void);
 	void deinitDatabase(void);
 
 	bool findFileAndLink(const std::string &tfn, IFile *tf, std::string hash_fn, const std::string &sha2, _i64 t_filesize, const std::string &hashoutput_fn, 
 		bool copy_from_hardlink_if_failed, bool &tries_once, std::string &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid, int64& rsize, int64& next_entry,
-		FileMetadata& metadata, bool datch_dbs);
+		FileMetadata& metadata, bool datch_dbs, ExtentIterator* extent_iterator);
 
 	void addFileSQL(int backupid, int clientid, int incremental, const std::string &fp, const std::string &hash_path,
 		const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex);
@@ -76,7 +78,7 @@ public:
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
 			std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-			FileMetadata& metadata, bool with_hashes);
+			FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator);
 			
 	struct SFindState
 	{
@@ -92,21 +94,21 @@ private:
 
 	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
 
-	bool copyFile(IFile *tf, const std::string &dest);
-	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest);
+	bool copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator);
+	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator);
 	bool freeSpace(int64 fs, const std::string &fp);
 	
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::string &dest, int mode);
 	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
-		_i64 tfilesize);
+		_i64 tfilesize, ExtentIterator* extent_iterator);
 
 	bool createChunkHashes(IFile *tf, const std::string hash_fn);
 	
-	bool replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn);
-	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn);
+	bool replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator);
+	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator);
 
-	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest);
+	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator);
 	bool renameFile(IFile *tf, const std::string &dest);
 
 	bool correctPath(std::string& ff, std::string& f_hashpath);
@@ -148,4 +150,5 @@ private:
 	logid_t logid;
 
 	bool detached_db;
+	bool enabled_sparse;
 };

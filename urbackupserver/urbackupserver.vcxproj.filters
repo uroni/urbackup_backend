@@ -312,6 +312,12 @@
     <ClCompile Include="cmdline_preprocessor.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -567,6 +573,12 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\SparseFile.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

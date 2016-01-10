@@ -3295,48 +3295,6 @@ std::string IndexThread::getSHA256(const std::string& fn)
 	return bytesToHex(dig, 32);
 }
 
-std::string IndexThread::getSHA512Binary(const std::string& fn)
-{
-	Server->Log("Calculating SHA512 Hash for file \""+fn+"\"", LL_DEBUG);
-	sha512_ctx ctx;
-	sha512_init(&ctx);
-
-	std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-
-	if(f.get()==NULL)
-	{
-		return std::string();
-	}
-
-	char buffer[32768];
-	unsigned int r;
-	bool r_has_error=false;
-	while( (r=f->Read(buffer, 32768, &r_has_error))>0)
-	{
-		if(r_has_error)
-		{
-			return std::string();
-		}
-	    
-		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
-
-		if(IdleCheckerThread::getPause())
-		{
-			Server->wait(5000);
-		}
-	}
-	
-	if(r_has_error)
-	{
-		return std::string();
-	}
-
-	std::string ret;
-	ret.resize(64);
-	sha512_final(&ctx, reinterpret_cast<unsigned char*>(const_cast<char*>(ret.c_str())));
-	return ret;
-}
-
 void IndexThread::VSSLog(const std::string& msg, int loglevel)
 {
 	Server->Log(msg, loglevel);
@@ -3648,49 +3606,209 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	return ret;
 }
 
+namespace
+{
+	class HashSha512 : public IndexThread::IHashFunc
+	{
+	public:
+		HashSha512()
+			: has_sparse(false)
+		{
+			sha512_init(&ctx);
+			sha512_init(&sparse_ctx);
+		}
+
+		virtual void hash(const char* buf, _u32 bsize)
+		{
+			sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
+		}
+
+		virtual void sparse_hash(const char* buf, _u32 bsize)
+		{
+			has_sparse = true;
+			sha512_update(&sparse_ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
+		}
+
+		std::string finalize()
+		{
+			std::string skip_hash;
+			skip_hash.resize(SHA512_DIGEST_SIZE);
+			
+			if (has_sparse)
+			{
+				sha512_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
+				sha512_update(&ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA512_DIGEST_SIZE);
+			}
+
+			sha512_final(&ctx, (unsigned char*)&skip_hash[0]);
+
+			return skip_hash;
+		}
+
+	private:
+		bool has_sparse;
+		sha512_ctx ctx;
+		sha512_ctx sparse_ctx;
+	};
+
+	class HashSha256 : public IndexThread::IHashFunc
+	{
+	public:
+		HashSha256()
+			: has_sparse(false)
+		{
+			sha256_init(&ctx);
+			sha256_init(&sparse_ctx);
+		}
+
+		virtual void hash(const char* buf, _u32 bsize)
+		{
+			sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
+		}
+
+		virtual void sparse_hash(const char* buf, _u32 bsize)
+		{
+			has_sparse = true;
+			sha256_update(&sparse_ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
+		}
+
+		std::string finalize()
+		{
+			std::string skip_hash;
+			skip_hash.resize(SHA256_DIGEST_SIZE);
+
+			if (has_sparse)
+			{
+				sha256_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
+				sha256_update(&ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA256_DIGEST_SIZE);
+			}
+
+			sha256_final(&ctx, (unsigned char*)&skip_hash[0]);
+
+			return skip_hash;
+		}
+
+	private:
+		bool has_sparse;
+		sha256_ctx ctx;
+		sha256_ctx sparse_ctx;
+	};
+}
+
 std::string IndexThread::getShaBinary( const std::string& fn )
 {
 	if(sha_version!=256)
 	{
-		return getSHA512Binary(fn);
+		HashSha512 hash_512;
+		if (!getShaBinary(fn, hash_512))
+		{
+			return std::string();
+		}
+		
+		return hash_512.finalize();
 	}
 	else
 	{
-		return getSHA256Binary(fn);
+		HashSha256 hash_256;
+		if (!getShaBinary(fn, hash_256))
+		{
+			return std::string();
+		}
+
+		return hash_256.finalize();
 	}
 }
 
-std::string IndexThread::getSHA256Binary( const std::string& fn )
+namespace
 {
-	Server->Log("Calculating SHA256 Hash for file \""+fn+"\"", LL_DEBUG);
-	sha256_ctx ctx;
-	sha256_init(&ctx);
-
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
-
-	if(f==NULL)
+	bool buf_is_zero(const char* buf, size_t bsize)
 	{
-		return std::string();
-	}
-
-	char buffer[32768];
-	unsigned int r;
-	while( (r=f->Read(buffer, 32768))>0)
-	{
-		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
-
-		if(IdleCheckerThread::getPause())
+		for (size_t i = 0; i < bsize; ++i)
 		{
-			Server->wait(5000);
+			if (buf[i] != 0)
+			{
+				return false;
+			}
 		}
+
+		return true;
+	}
+}
+
+bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
+{
+	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+
+	if(f.get()==NULL)
+	{
+		return false;
 	}
 
-	Server->destroy(f);
+	int64 skip_start = -1;
+	const size_t bsize = 32768;
+	int64 fpos = 0;
+	_u32 rc;
+	std::vector<char> buf;
+	buf.resize(bsize);
 
-	std::string ret;
-	ret.resize(32);
-	sha256_final(&ctx, reinterpret_cast<unsigned char*>(const_cast<char*>(ret.c_str())));
-	return ret;
+	IFsFile::SSparseExtent curr_sparse_extent = f->nextSparseExtent();
+
+	do
+	{
+		while (curr_sparse_extent.offset!=-1
+			&& curr_sparse_extent.offset+ curr_sparse_extent.size<fpos)
+		{
+			curr_sparse_extent = f->nextSparseExtent();
+		}
+
+		if (curr_sparse_extent.offset != -1
+			&& curr_sparse_extent.offset <= fpos
+			&& curr_sparse_extent.offset + curr_sparse_extent.size >= fpos + static_cast<int64>(bsize))
+		{
+			if (skip_start == -1)
+			{
+				skip_start = fpos;
+			}
+			fpos += bsize;
+			rc = bsize;
+			continue;
+		}
+
+		if (skip_start != -1)
+		{
+			f->Seek(fpos);
+		}
+
+		rc = f->Read(buf.data(), bsize);
+
+		if (rc == bsize && buf_is_zero(buf.data(), bsize))
+		{
+			if (skip_start == -1)
+			{
+				skip_start = fpos;
+			}
+			fpos += bsize;
+			rc = bsize;
+			continue;
+		}
+
+		if (skip_start != -1)
+		{
+			int64 skip[2];
+			skip[0] = skip_start;
+			skip[1] = fpos - skip_start;
+			hf.sparse_hash(reinterpret_cast<char*>(&skip), sizeof(int64) * 2);
+			skip_start = -1;
+		}
+
+		if (rc > 0)
+		{
+			hf.hash(buf.data(), rc);
+			fpos += rc;
+		}
+	} while (rc>0);
+
+	return true;
 }
 
 bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)

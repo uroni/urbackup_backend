@@ -101,12 +101,57 @@ void ChunkSendThread::operator()(void)
 			curr_file_size=chunk.startpos;
 			pipe_file_user.reset(chunk.pipe_file_user);
 
+			std::vector<IFsFile::SSparseExtent> sparse_extents;
+			if (chunk.with_sparse)
+			{
+				IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+				IFsFile::SSparseExtent new_extent;
+				do
+				{
+					new_extent = fs_file->nextSparseExtent();
+					if (new_extent.offset != -1)
+					{
+						sparse_extents.push_back(new_extent);
+					}
+
+				} while (new_extent.offset != -1);
+			}
+
 			CWData sdata;
-			sdata.addUChar(ID_FILESIZE);
-			sdata.addUInt64(little_endian(curr_file_size));
+			if (!sparse_extents.empty())
+			{
+				sdata.addUChar(ID_FILESIZE_AND_EXTENTS);
+			}
+			else
+			{
+				sdata.addUChar(ID_FILESIZE);
+			}
+			sdata.addUInt64(curr_file_size);
+
+			if (!sparse_extents.empty())
+			{
+				sdata.addUInt64(sparse_extents.size());
+			}
+
             if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize(), chunk.requested_filesize<0)!=sdata.getDataSize())
 			{
 				has_error = true;
+			}
+			else
+			{
+				MD5 sparse_hash;
+				sparse_hash.update(reinterpret_cast<unsigned char*>(sparse_extents.data()), static_cast<_u32>(sparse_extents.size()*sizeof(IFsFile::SSparseExtent)));
+				sparse_hash.finalize();
+
+				IFsFile::SSparseExtent hash_extent;
+				memcpy(&hash_extent, sparse_hash.raw_digest_int(), sizeof(hash_extent));
+
+				sparse_extents.push_back(hash_extent);
+
+				if (parent->SendInt(reinterpret_cast<char*>(sparse_extents.data()), sparse_extents.size()*sizeof(IFsFile::SSparseExtent)) != sparse_extents.size()*sizeof(IFsFile::SSparseExtent))
+				{
+					has_error = true;
+				}
 			}
 		}
 		else

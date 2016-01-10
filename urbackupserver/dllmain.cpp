@@ -90,6 +90,7 @@ SStartupStatus startup_status;
 #include "restore_client.h"
 #include "WalCheckpointThread.h"
 #include "FileMetadataDownloadThread.h"
+#include "../urbackupcommon/chunk_hasher.h"
 
 #define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
@@ -622,6 +623,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	init_chunk_hasher();
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());

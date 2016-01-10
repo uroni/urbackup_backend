@@ -31,6 +31,22 @@
 #include "../common/adler32.h"
 #include "../urbackupcommon/file_metadata.h"
 
+namespace
+{
+	bool buf_is_zero(const char* buf, size_t bsize)
+	{
+		for (size_t i = 0; i < bsize; ++i)
+		{
+			if (buf[i] != 0)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
+
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid)
 	: logid(logid)
 {
@@ -39,6 +55,7 @@ BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, i
 	clientid=pClientid;
 	working=false;
 	chunk_patcher.setCallback(this);
+	chunk_patcher.setWithSparse(true);
 	has_error=false;
 }
 
@@ -104,6 +121,20 @@ void BackupServerPrepareHash::operator()(void)
 			std::string client_sha_dig;
 			rd.getStr(&client_sha_dig);
 
+			std::string sparse_extents_fn;
+			rd.getStr(&sparse_extents_fn);
+
+			std::auto_ptr<ExtentIterator> extent_iterator;
+			if (!sparse_extents_fn.empty())
+			{
+				IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
+
+				if (sparse_extents_f != NULL)
+				{
+					extent_iterator.reset(new ExtentIterator(sparse_extents_f));
+				}
+			}
+			
 			FileMetadata metadata;
 			metadata.read(rd);
 
@@ -136,11 +167,12 @@ void BackupServerPrepareHash::operator()(void)
 				std::string h;
 				if(!diff_file)
 				{
-					h=hash_sha(tf);
+
+					h=hash_sha(tf, extent_iterator.get());
 				}
 				else
 				{
-					h=hash_with_patch(old_file, tf);
+					h=hash_with_patch(old_file, tf, extent_iterator.get());
 				}
 
 				if(!client_sha_dig.empty() && h!=client_sha_dig)
@@ -168,6 +200,7 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(hashoutput_fn);
 				data.addString(old_file_fn);
 				data.addInt64(t_filesize);
+				data.addString(sparse_extents_fn);
 				metadata.serialize(data);
 
 				output->Write(data.getDataPtr(), data.getDataSize() );
@@ -176,21 +209,94 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha(IFile *f)
+std::string BackupServerPrepareHash::hash_sha(IFile *f, ExtentIterator* extent_iterator)
 {
+	const size_t bsize = 32768;
 	f->Seek(0);
-	unsigned char buf[32768];
+	unsigned char buf[bsize];
 	_u32 rc;
 
 	sha_def_ctx local_ctx;
 	sha_def_init(&local_ctx);
+	int64 fpos = 0;
+	IFsFile::SSparseExtent curr_extent;
+
+
+	sha_def_ctx sparse_ctx;
+	sha_def_init(&sparse_ctx);
+
+	if (extent_iterator != NULL)
+	{
+		curr_extent = extent_iterator->nextExtent();
+	}
+
+	int64 skip_start = -1;
+	int64 skip_count = 0;
+
 	do
 	{
-		rc=f->Read((char*)buf, 32768);
-		if(rc>0)
+		while (curr_extent.offset != -1
+			&& curr_extent.offset + curr_extent.size<fpos)
+		{
+			curr_extent = extent_iterator->nextExtent();
+		}
+
+		if (curr_extent.offset != -1
+			&& curr_extent.offset <= fpos && curr_extent.offset + curr_extent.size>=fpos + static_cast<int64>(bsize))
+		{
+			if (skip_start == -1)
+			{
+				skip_start = fpos;
+			}
+			fpos += bsize;
+			rc = bsize;
+			continue;
+		}
+
+		if (skip_start != -1)
+		{
+			f->Seek(fpos);
+		}
+
+		rc=f->Read((char*)buf, bsize);
+
+		if (rc == bsize && buf_is_zero((char*)buf, bsize))
+		{
+			if (skip_start == -1)
+			{
+				skip_start = fpos;
+			}
+			fpos += bsize;
+			rc = bsize;
+			continue;
+		}
+
+		if (skip_start != -1)
+		{
+			++skip_count;
+			int64 skip[2];
+			skip[0] = skip_start;
+			skip[1] = fpos - skip_start;
+			sha_def_update(&sparse_ctx, reinterpret_cast<unsigned char*>(&skip), sizeof(int64) * 2);
+			skip_start = -1;
+		}
+
+		if (rc > 0)
+		{
 			sha_def_update(&local_ctx, buf, rc);
+			fpos += rc;
+		}
 	}
 	while(rc>0);
+
+	if (skip_count > 0)
+	{
+		std::string skip_hash;
+		skip_hash.resize(SHA_DEF_DIGEST_SIZE);
+		sha_def_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
+
+		sha_def_update(&local_ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA_DEF_DIGEST_SIZE);
+	}
 	
 	std::string ret;
 	ret.resize(SHA_DEF_DIGEST_SIZE);
@@ -198,16 +304,32 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f)
 	return ret;
 }
 
-std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch)
+std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator)
 {
 	sha_def_init(&ctx);
+	sha_def_init(&sparse_ctx);
+
+	has_sparse_extents = false;
 	
-	chunk_patcher.ApplyPatch(f, patch);
+	chunk_patcher.ApplyPatch(f, patch, extent_iterator);
 
 	std::string ret;
 	ret.resize(SHA_DEF_DIGEST_SIZE);
+
+	if (has_sparse_extents)
+	{
+		sha512_final(&sparse_ctx, (unsigned char*)&ret[0]);
+		sha512_update(&ctx, reinterpret_cast<unsigned char*>(&ret[0]), SHA_DEF_DIGEST_SIZE);
+	}
+
 	sha_def_final(&ctx, (unsigned char*)&ret[0]);
 	return ret;
+}
+
+void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t bsize)
+{
+	has_sparse_extents = true;
+	sha_def_update(&sparse_ctx, (const unsigned char*)buf, (unsigned int)bsize);
 }
 
 void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)

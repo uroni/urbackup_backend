@@ -54,7 +54,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(RestoreFiles& restore, Fi
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFile> tmp_f(Server->openTemporaryFile());
+	std::auto_ptr<IFsFile> tmp_f(Server->openTemporaryFile());
 
 	if(tmp_f.get()==NULL)
 	{

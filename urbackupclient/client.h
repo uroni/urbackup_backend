@@ -193,7 +193,13 @@ public:
 	static std::string mapScriptOutputName(const std::string& fn);
 
 	static std::string getSHA256(const std::string& fn);
-	static std::string getSHA512Binary(const std::string& fn);
+
+	class IHashFunc
+	{
+	public:
+		virtual void hash(const char* buf, _u32 bsize) = 0;
+		virtual void sparse_hash(const char* buf, _u32 bsize) = 0;
+	};
 
 private:
 
@@ -266,7 +272,9 @@ private:
 	std::string getShaBinary(const std::string& fn);
 
 	std::string removeDirectorySeparatorAtEnd(const std::string& path);
-	std::string getSHA256Binary(const std::string& fn);
+
+	bool getShaBinary(const std::string& fn, IHashFunc& hf);
+
 	std::string addDirectorySeparatorAtEnd(const std::string& path);
 
 	void resetFileEntries(void);

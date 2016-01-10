@@ -143,7 +143,7 @@ public:
 
 	virtual bool handle_not_enough_space(const std::string &path);
 
-	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
+	static IFsFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
 
 	static void destroyTemporaryFile(IFile *tmp);
 
