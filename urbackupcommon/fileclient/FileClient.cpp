@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <cstring>
+#include <memory>
 
 #ifndef _WIN32
 #include <errno.h>
@@ -98,7 +99,7 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
 	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
 	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
-	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL)
+	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL), sparse_bytes(0)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -1015,6 +1016,11 @@ bool FileClient::Reconnect(void)
 						return ERR_ERROR;
 					}
 
+					{
+						IScopedLock lock(mutex);
+						sparse_bytes += sparse_file->getSparseSize();
+					}
+
 					hash_func.init();
 
 					if (filesize == 0 || filesize == received)
@@ -1281,16 +1287,29 @@ void FileClient::setReconnectionTimeout(unsigned int t)
 	reconnection_timeout=t;
 }
 
-_i64 FileClient::getReceivedDataBytes( void )
+_i64 FileClient::getReceivedDataBytes( bool with_sparse )
 {
 	IScopedLock lock(mutex);
-	return received_data_bytes;
+
+	if (with_sparse)
+	{
+		return received_data_bytes + sparse_bytes;
+	}
+	else
+	{
+		return received_data_bytes;
+	}
 }
 
-void FileClient::resetReceivedDataBytes( void )
+void FileClient::resetReceivedDataBytes(bool with_sparse)
 {
 	IScopedLock lock(mutex);
 	received_data_bytes=0;
+
+	if (with_sparse)
+	{
+		sparse_bytes = 0;
+	}
 }
 
 void FileClient::setQueueCallback( QueueCallback* cb )

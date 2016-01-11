@@ -31,6 +31,9 @@ const int MODE_TEMP=4;
 #	include <stdlib.h>
 #	include <unistd.h>
 #	define _unlink unlink
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define off64_t off_t
+#endif
 #endif
 
 class File : public IFsFile
@@ -72,6 +75,7 @@ private:
 #endif
 #ifdef MODE_LIN
 	int fd;
+	int64 last_hole_end;
 #endif
 	std::string fn;
 
@@ -86,6 +90,8 @@ private:
 	std::vector<FILE_ALLOCATED_RANGE_BUFFER> res_extent_buffer;
 	size_t curr_extent;
 	int64 last_sparse_pos;
+#else
+	off64_t last_sparse_pos;
 #endif
 	
 };

@@ -185,6 +185,11 @@ std::string SparseFile::getFilename(void)
 	return backing_file->getFilename();
 }
 
+_i64 SparseFile::getSparseSize()
+{
+	return sparse_extents_size;
+}
+
 void SparseFile::initWithSparseExtents(const std::vector<IFsFile::SSparseExtent>& sparse_extents, bool read_only, int64 blocksize)
 {
 	int64 fpos = 0;
@@ -203,7 +208,7 @@ void SparseFile::initWithSparseExtents(const std::vector<IFsFile::SSparseExtent>
 			int64 extent_size = offset_end - offset;
 
 			fpos += offset - last_offset;
-			last_offset = offset;
+			last_offset = offset + extent_size;
 
 			sparse_extents_size += extent_size;
 
@@ -225,6 +230,12 @@ void SparseFile::initWithSparseExtents(const std::vector<IFsFile::SSparseExtent>
 			has_error = true;
 			return;
 		}
+	}
+
+	if (!backing_file->Seek(backing_pos))
+	{
+		has_error = true;
+		return;
 	}
 }
 

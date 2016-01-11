@@ -376,7 +376,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 					else
 					{
-						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
+						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + (float)fc_chunked->getReceivedDataBytes(true) + skipped_bytes)/((float)total_size/100.f)+0.5f));;
 						restore_updater.update_pc(pcdone);
 					}
 				}
@@ -620,7 +620,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
         }
         else
         {
-            int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));
+            int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + (float)fc_chunked->getReceivedDataBytes(true) + skipped_bytes)/((float)total_size/100.f)+0.5f));
 			restore_updater.update_pc(pcdone);
         }
     }

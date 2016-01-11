@@ -347,6 +347,7 @@ private:
 	int index_group;
 	int index_flags;
 	std::string index_clientsubname;
+	bool index_server_default;
 
 	SCDirs* index_scd;
 

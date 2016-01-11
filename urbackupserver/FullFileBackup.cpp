@@ -214,7 +214,7 @@ bool FullFileBackup::doFileBackup()
 
 	std::vector<size_t> diffs;
 	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);
-	fc.resetReceivedDataBytes();
+	fc.resetReceivedDataBytes(true);
 	tmp_filelist->Seek(0);
 
 	size_t line = 0;
@@ -275,7 +275,7 @@ bool FullFileBackup::doFileBackup()
 					else
 					{
 						ServerStatus::setProcessPcDone(clientname, status_id,
-							(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f)));
+							(std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + linked_bytes)/((float)files_size/100.f)+0.5f)));
 					}
 
 					ServerStatus::setProcessQueuesize(clientname, status_id,
@@ -511,7 +511,7 @@ bool FullFileBackup::doFileBackup()
 		else
 		{
 			ServerStatus::setProcessPcDone(clientname, status_id,
-				(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f)));
+				(std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + linked_bytes)/((float)files_size/100.f)+0.5f)));
 		}
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,

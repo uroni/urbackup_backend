@@ -131,9 +131,32 @@ private:
 	bool InformMetadataStreamEnd( CRData * data );
 	bool FinishScript( CRData * data );
 
-	int64 getFileExtents(int64 fsize, int64& n_sparse_extents);
+	struct SExtent
+	{
+		SExtent()
+			: offset(-1), size(-1)
+		{
 
-	bool sendSparseExtents(int64 fsize, int64 n_sparse_extents);
+		}
+
+		SExtent(int64 offset, int64 size)
+			: offset(offset), size(size)
+		{}
+
+		bool operator<(const SExtent& other) const
+		{
+			return offset < other.offset;
+		}
+
+		int64 offset;
+		int64 size;
+	};
+
+	int64 getFileExtents(int64 fsize, int64& n_sparse_extents, std::vector<SExtent>& file_extents, bool& has_file_extents, int64& start_offset);
+
+	bool sendExtents(const std::vector<SExtent>& file_extents, int64 fsize, int64 n_sparse_extents);
+
+	bool sendSparseExtents(const std::vector<SExtent>& file_extents);
 
 	volatile bool stopped;
 	volatile bool killable;
@@ -176,28 +199,4 @@ private:
 	bool has_socket;
 
 	std::vector<char>* extra_buffer;
-
-	struct SExtent
-	{
-		SExtent()
-			: offset(-1), size(-1)
-		{
-
-		}
-
-		SExtent(int64 offset, int64 size)
-			: offset(offset), size(size)
-		{}
-
-		bool operator<(const SExtent& other) const
-		{
-			return offset < other.offset;
-		}
-
-		int64 offset;
-		int64 size;
-	};
-
-	bool has_file_extents;
-	std::vector<SExtent> file_extents;
 };

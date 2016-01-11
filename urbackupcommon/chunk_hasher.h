@@ -16,7 +16,7 @@ std::string get_sparse_extent_content();
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written=NULL,
-	IFile* hashinput=NULL, bool show_pc=false, ExtentIterator* extent_iterator=NULL);
+	IFile* hashinput=NULL, bool show_pc=false, IExtentIterator* extent_iterator=NULL);
 
 bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
 

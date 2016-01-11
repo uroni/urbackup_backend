@@ -32,6 +32,8 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -43,6 +45,13 @@
 #define FALLOC_FL_PUNCH_HOLE   0x2
 #endif
 
+#ifndef SEEK_DATA
+#define SEEK_DATA 3
+#endif
+#ifndef SEEK_HOLE
+#define SEEK_HOLE 4
+#endif
+
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
 #define off64_t off_t
@@ -50,12 +59,13 @@
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
+#define ftruncate64 ftruncate
 #else
 #include <linux/fs.h>
 #endif
 
 File::File()
-	: fd(-1)
+	: fd(-1), last_hole_end(0)
 {
 
 }
@@ -252,19 +262,84 @@ bool File::PunchHole( _i64 spos, _i64 size )
 {
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
 
-	if(rc==0)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return rc == 0;
 }
 
 bool File::Sync()
 {
 	return fsync(fd)==0;
+}
+
+bool File::Resize(int64 new_size)
+{
+	return ftruncate64(fd, new_size) == 0;
+}
+
+void File::resetSparseExtentIter()
+{
+	last_hole_end = 0;
+}
+
+namespace
+{
+	class ResetCur
+	{
+	public:
+		ResetCur(int fd, off64_t pos)
+			: fd(fd), pos(pos)
+		{}
+
+		~ResetCur()
+		{
+			lseek64(fd, pos, SEEK_SET);
+		}
+
+	private:
+		int fd;
+		off64_t pos;
+	};
+}
+
+IFsFile::SSparseExtent File::nextSparseExtent()
+{
+	if (last_sparse_pos == -1)
+	{
+		return SSparseExtent();
+	}
+
+	off64_t curr_pos = lseek64(fd, 0, SEEK_CUR);
+
+	if (curr_pos == -1)
+	{
+		return SSparseExtent();
+	}
+
+	ResetCur reset_cur(fd, curr_pos);
+	
+	off64_t next_hole_start = lseek64(fd, last_sparse_pos, SEEK_HOLE);
+
+	if (next_hole_start == -1)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
+	_i64 fsize = Size();
+
+	if (next_hole_start == fsize)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
+	last_sparse_pos = lseek64(fd, next_hole_start, SEEK_DATA);
+
+	if (last_sparse_pos == -1)
+	{
+		return SSparseExtent(next_hole_start, fsize - next_hole_start);
+	}
+
+	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
 }
 
 #endif

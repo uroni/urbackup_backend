@@ -66,7 +66,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0),
 	  parent(prev), queue_only(false), queue_callback(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0),
 	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false), needs_flush(false),
-	  real_transferred_bytes(0), queue_next(false)
+	  real_transferred_bytes(0), queue_next(false), sparse_bytes(0)
 {
 	has_error=false;
 	if(parent==NULL)
@@ -82,7 +82,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 FileClientChunked::FileClientChunked(void)
 	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000), received_data_bytes(0),
 	  parent(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
-	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0), queue_next(false)
+	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0), queue_next(false), sparse_bytes(0)
 {
 	has_error=true;
 	mutex=NULL;
@@ -293,7 +293,9 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					curr_output_fsize = (std::max)(curr_output_fsize, curr_sparse_extent.offset + curr_sparse_extent.size);
 
 					next_chunk+= num_chunks;
-					
+
+					addSparseBytes(num_chunks*c_checkpoint_dist);
+
 					continue;
 				}
 
@@ -1361,7 +1363,7 @@ void FileClientChunked::State_SparseExtents(IFile** sparse_extents_f)
 				getfile_done = true;
 			}
 
-			extent_iterator.reset(new ExtentIterator(*sparse_extents_f));
+			extent_iterator.reset(new ExtentIterator(*sparse_extents_f, false));
 			curr_sparse_extent = extent_iterator->nextExtent();
 		}		
 
@@ -1621,16 +1623,28 @@ void FileClientChunked::setReconnectionTimeout(unsigned int t)
 	reconnection_timeout=t;
 }
 
-_i64 FileClientChunked::getReceivedDataBytes( void )
+_i64 FileClientChunked::getReceivedDataBytes(bool with_sparse)
 {
 	IScopedLock lock(mutex);
-	return received_data_bytes;
+	if (with_sparse)
+	{
+		return received_data_bytes + sparse_bytes;
+	}
+	else
+	{
+		return received_data_bytes;
+	}
 }
 
-void FileClientChunked::resetReceivedDataBytes( void )
+void FileClientChunked::resetReceivedDataBytes(bool with_sparse)
 {
 	IScopedLock lock(mutex);
 	received_data_bytes=0;
+
+	if (with_sparse)
+	{
+		sparse_bytes = 0;
+	}
 }
 
 void FileClientChunked::setQueueCallback( QueueCallback* cb )
@@ -1918,6 +1932,19 @@ void FileClientChunked::addReceivedBytes( size_t bytes )
 	{
 		IScopedLock lock(mutex);
 		received_data_bytes += bytes;
+	}
+}
+
+void FileClientChunked::addSparseBytes(_i64 bytes)
+{
+	if (parent)
+	{
+		parent->addSparseBytes(bytes);
+	}
+	else
+	{
+		IScopedLock lock(mutex);
+		sparse_bytes += bytes;
 	}
 }
 

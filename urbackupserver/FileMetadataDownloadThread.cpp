@@ -376,7 +376,22 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				last_metadata_ids.erase(last_metadata_ids.begin(), last_metadata_ids.begin()+4000);
 			}
 
-			if(!dry_run && !is_dir && !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
+			bool win_is_symlink = false;
+
+#ifdef _WIN32
+			if (!dry_run && !is_dir)
+			{
+				int ftype = os_get_file_type(os_file_prefix(backup_dir + os_file_sep() + os_path));
+
+				if (ftype &EFileType_Symlink)
+				{
+					win_is_symlink = true;
+				}
+			}
+#endif
+
+			if(!dry_run && !is_dir && !win_is_symlink
+				&& !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
 			{
 				ServerLogger::Log(logid, "Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
 			}
@@ -526,6 +541,12 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		if(cont==0)
 		{
 			break;
+		}
+
+		if (cont != 1)
+		{
+			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3", LL_ERROR);
+			return false;
 		}
 
 		WIN32_STREAM_ID_INT stream_id;

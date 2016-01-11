@@ -46,6 +46,7 @@ struct SBackupDir
 	int group;
 	bool symlinked;
 	bool symlinked_confirmed;
+	bool server_default;
 };
 
 struct SShadowCopy

@@ -466,7 +466,7 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 {
 	last_eta_update=ctime;
 
-	int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked?fc_chunked->getReceivedDataBytes():0) + linked_bytes;
+	int64 received_data_bytes = fc.getReceivedDataBytes(true) + (fc_chunked?fc_chunked->getReceivedDataBytes(true):0) + linked_bytes;
 
 	int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
 	int64 passed_time = Server->getTimeMS() - eta_set_time;

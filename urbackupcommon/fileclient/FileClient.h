@@ -107,8 +107,9 @@ public:
 
 		_i64 getRealTransferredBytes();
 
-		_i64 getReceivedDataBytes(void);
-		void resetReceivedDataBytes(void);
+		_i64 getReceivedDataBytes(bool with_sparse);
+
+		void resetReceivedDataBytes(bool with_sparse);
 
 		static std::string getErrorString(_u32 ec);
 
@@ -220,6 +221,8 @@ private:
 		bool is_downloading;
 
 		IFile* sparse_extends_f;
+
+		_i64 sparse_bytes;
 };
 
 const _u32 ERR_CONTINUE=0;

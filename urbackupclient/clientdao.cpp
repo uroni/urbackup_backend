@@ -40,7 +40,7 @@ void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
 	q_add_files=db->Prepare("INSERT INTO files (name, num, data) VALUES (?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked FROM backupdirs", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
@@ -333,6 +333,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.path=res[i]["path"];
 		dir.flags=watoi(res[i]["optional"]);
 		dir.group=watoi(res[i]["tgroup"]);
+		dir.server_default=(res[i]["server_default"] == "1");
 		dir.symlinked=(res[i]["symlinked"]=="1");
 		dir.symlinked_confirmed=false;
 

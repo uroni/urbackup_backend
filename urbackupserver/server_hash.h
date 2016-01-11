@@ -102,8 +102,6 @@ private:
 	IFile* openFileRetry(const std::string &dest, int mode);
 	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
 		_i64 tfilesize, ExtentIterator* extent_iterator);
-
-	bool createChunkHashes(IFile *tf, const std::string hash_fn);
 	
 	bool replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator);
 	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator);

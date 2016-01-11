@@ -58,6 +58,13 @@
 #define sendfile64(a, b, c, d) sendfile(a, b, c, d, NULL, 0)
 #endif
 
+#ifndef SEEK_DATA
+#define SEEK_DATA 3
+#endif
+#ifndef SEEK_HOLE
+#define SEEK_HOLE 4
+#endif
+
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
 #define SEND_TIMEOUT 300000
@@ -75,7 +82,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	parent=pParent;
 
 #ifdef _WIN32
-	bufmgr=new fileserv::CBufMgr(NBUFFERS,READSIZE);
+	bufmgr=new fileserv::CBufMgr(NBUFFERS, READSIZE);
 #else
 	bufmgr=NULL;
 #endif
@@ -436,6 +443,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 					hash_func.init();
 				}
 
+				bool has_file_extents = false;
+				std::vector<SExtent> file_extents;
+
 #ifdef _WIN32
 				if(!is_script)
 				{
@@ -572,7 +582,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if (with_sparse)
 				{
-					int64 new_fsize = getFileExtents(curr_filesize, n_sparse_extents);
+					int64 new_fsize = getFileExtents(curr_filesize, n_sparse_extents, file_extents, has_file_extents, start_offset);
 
 					if (new_fsize >= 0)
 					{
@@ -581,6 +591,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					else
 					{
 						Log("Getting extents of file \"" + filename + "\" failed", LL_WARNING);
+						start_offset = sent_bytes;
 					}
 				}
 				else
@@ -588,7 +599,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					has_file_extents = false;
 				}
 
-				next_checkpoint=start_offset+c_checkpoint_dist;
+				next_checkpoint= sent_bytes + c_checkpoint_dist;
 				if(next_checkpoint>curr_filesize)
 					next_checkpoint=curr_filesize;
 
@@ -626,7 +637,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if (with_sparse && n_sparse_extents>0)
 				{
-					if (!sendSparseExtents(filesize.QuadPart, n_sparse_extents))
+					if (!sendExtents(file_extents, filesize.QuadPart, n_sparse_extents))
 					{
 						Log("Error sending sparse extents", LL_DEBUG);
 						CloseHandle(hFile);
@@ -700,7 +711,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if( !stopped && hFile!=INVALID_HANDLE_VALUE)
 					{
-						if(!ReadFilePart(hFile, i, last, READSIZE))
+						if(!ReadFilePart(hFile, i, last, toread))
 						{
 							Log("Reading from file failed. Last error is "+convert((unsigned int)GetLastError()), LL_ERROR);
 							stopped=true;
@@ -731,7 +742,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						++extent_pos;
 
-						if (extent_pos >= file_extents.size())
+						if (extent_pos < file_extents.size())
 						{
 							i = file_extents[extent_pos].offset;
 						}
@@ -846,10 +857,37 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				off64_t filesize=stat_buf.st_size;
 				curr_filesize=filesize;
+
+				int64 send_filesize = curr_filesize;
+
+				int64 n_sparse_extents;
+				if (with_sparse)
+				{
+					send_filesize = getFileExtents(curr_filesize, n_sparse_extents, file_extents, has_file_extents, start_offset);
+
+					if (send_filesize<0)
+					{
+						Log("Error resetting file pointer", LL_DEBUG);
+						CloseHandle(hFile);
+						hFile = INVALID_HANDLE_VALUE;
+						return false;
+					}
+				}
 				
 				CWData data;
-				data.addUChar(ID_FILESIZE);
-				data.addUInt64(little_endian(static_cast<uint64>(filesize)));
+				if (has_file_extents)
+				{
+					data.addUChar(ID_FILESIZE_AND_EXTENTS);
+				}
+				else
+				{
+					data.addUChar(ID_FILESIZE);
+				}
+				data.addUInt64(little_endian(static_cast<uint64>(send_filesize)));
+				if (has_file_extents)
+				{
+					data.addInt64(n_sparse_extents);
+				}
 
 				int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
 				if(rc==SOCKET_ERROR)
@@ -858,7 +896,18 @@ bool CClientThread::ProcessPacket(CRData *data)
 					CloseHandle(hFile);
 					hFile=INVALID_HANDLE_VALUE;
 					return false;
-				}				
+				}			
+
+				if (has_file_extents)
+				{
+					if (!sendSparseExtents(file_extents))
+					{
+						Log("Error sending sparse extents", LL_DEBUG);
+						CloseHandle(hFile);
+						hFile = INVALID_HANDLE_VALUE;
+						return false;
+					}
+				}
 				
 				if(filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
@@ -893,14 +942,75 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 				}				
 
-				char *buf=new char[s_bsize];
+				std::vector<char> buf;
+				buf.resize(s_bsize);
 
 				bool has_error=false;
-				
-				while( foffset < filesize )
+				size_t extent_pos = 0;
+
+				if (has_file_extents)
 				{
+					while (extent_pos < file_extents.size()
+						&& foffset >= file_extents[extent_pos].offset+ file_extents[extent_pos].size)
+					{
+						++extent_pos;
+					}
+				}
+
+				bool last_sent_hash = false;
+
+				while (foffset < filesize)
+				{
+					if (has_file_extents)
+					{
+						bool is_finished = false;
+						while (extent_pos < file_extents.size()
+							&& foffset >= file_extents[extent_pos].offset)
+						{
+							foffset += file_extents[extent_pos].size;
+							next_checkpoint += file_extents[extent_pos].size;
+
+							if (next_checkpoint>curr_filesize)
+								next_checkpoint = curr_filesize;
+
+							if (clientpipe != NULL || with_hashes)
+							{
+								off64_t rc = lseek64(hFile, foffset, SEEK_SET);
+
+								if (rc != foffset)
+								{
+									Log("Error seeking after sparse extent", LL_ERROR);
+									CloseHandle(hFile);
+									return false;
+								}
+							}
+
+							if (foffset >= filesize
+								&& last_sent_hash)
+							{
+								is_finished = true;
+							}
+
+							++extent_pos;
+						}
+
+						if (is_finished)
+						{
+							break;
+						}
+					}
+				
 					size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
-					if( clientpipe==NULL && !with_hashes )
+
+					if (has_file_extents)
+					{
+						if (extent_pos < file_extents.size())
+						{
+							count = static_cast<size_t>((std::min)(file_extents[extent_pos].offset - foffset, static_cast<int64>(count)));
+						}
+					}
+
+					if( clientpipe==NULL && !with_hashes && count>0 )
 					{
 						#ifdef __APPLE__
 						ssize_t rc=sendfile64(int_socket, hFile, foffset, reinterpret_cast<off_t*>(&count));
@@ -916,20 +1026,18 @@ bool CClientThread::ProcessPacket(CRData *data)
 						{
 							Log("Error: Reading and sending from file failed. Errno: "+convert(errno), LL_DEBUG);
 							CloseHandle(hFile);
-							delete []buf;
 							return false;
 						}
-						else if(rc<count && foffset<filesize)
+						else if(rc==0 && foffset<filesize && errno == 0) //other process made the file smaller
 						{
-							memset(buf, 0, s_bsize);
+							memset(buf.data(), 0, s_bsize);
 							while(foffset<filesize)
 							{
-								rc=SendInt(buf, (std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset)));
+								rc=SendInt(buf.data(), (std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset)));
 								if(rc==SOCKET_ERROR)
 								{
 									Log("Error: Sending data failed");
 									CloseHandle(hFile);
-									delete []buf;
 									return false;
 								}
 							}
@@ -937,35 +1045,37 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					else
 					{
-						ssize_t rc=read(hFile, buf, count);
+						if (count > 0)
+						{
+							ssize_t rc = read(hFile, buf.data(), count);
 
-						if(rc>=0 && rc<count)
-						{
-							memset(buf+rc, 0, count-rc);
-							rc=count;
-						}
-						else if(rc<0)
-						{
-							Log("Error: Reading from file failed. Errno: "+convert(errno), LL_DEBUG);
-							CloseHandle(hFile);
-							delete []buf;
-							return false;
-						}
+							if (rc == 0 && rc < count && errno == 0)  //other process made the file smaller
+							{
+								memset(buf.data() + rc, 0, count - rc);
+								rc = count;
+							}
+							else if (rc < 0)
+							{
+								Log("Error: Reading from file failed. Errno: " + convert(errno), LL_DEBUG);
+								CloseHandle(hFile);
+								return false;
+							}
 
-						rc=SendInt(buf, rc);
-						if(rc==SOCKET_ERROR)
-						{
-							Log("Error: Sending data failed");
-							CloseHandle(hFile);
-							delete []buf;
-							return false;
-						}
-						else if(with_hashes)
-						{
-							hash_func.update((unsigned char*)buf, rc);
-						}
+							rc = SendInt(buf.data(), rc);
+							if (rc == SOCKET_ERROR)
+							{
+								Log("Error: Sending data failed");
+								CloseHandle(hFile);
+								return false;
+							}
+							else if (with_hashes)
+							{
+								hash_func.update((unsigned char*)buf.data(), rc);
+							}
 
-						foffset+=rc;
+							foffset += rc;
+							last_sent_hash = false;
+						}
 						
 						if(with_hashes && foffset==next_checkpoint)
 						{
@@ -976,6 +1086,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 								next_checkpoint=curr_filesize;
 							
 							hash_func.init();
+							last_sent_hash = true;
 						}
 					}
 					if(FileServ::isPause() )
@@ -985,7 +1096,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 				
 				CloseHandle(hFile);
-				delete []buf;
 				hFile=INVALID_HANDLE_VALUE;
 #endif
 
@@ -1191,7 +1301,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 tore
 	}
 }
 #else
-bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
+bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 toread)
 {
 	return false;
 }
@@ -2052,9 +2162,8 @@ bool CClientThread::FinishScript( CRData * data )
 	return ret;
 }
 
-int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents)
+int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents, std::vector<SExtent>& file_extents, bool& has_file_extents, int64& start_offset)
 {
-	file_extents.clear();
 	int64 real_fsize = 0;
 	n_sparse_extents = 0;
 #ifdef _WIN32
@@ -2087,6 +2196,11 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents)
 
 				if (file_extents[i].offset != last_sparse_pos)
 				{
+					if (last_sparse_pos <= start_offset)
+					{
+						start_offset += file_extents[i].offset - last_sparse_pos;
+					}
+
 					++n_sparse_extents;
 				}
 
@@ -2107,6 +2221,11 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents)
 
 				if (last_sparse_pos != fsize)
 				{
+					if (last_sparse_pos <= start_offset)
+					{
+						start_offset += fsize - last_sparse_pos;
+					}
+
 					++n_sparse_extents;
 				}
 
@@ -2120,11 +2239,71 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents)
 			return -1;
 		}
 	}
+#else
+	off64_t last_sparse_pos = 0;
+	has_file_extents = false;
+	real_fsize = fsize;
+	bool seek_suc = false;
+
+	while (true)
+	{
+		int64 sparse_hole_start = lseek64(hFile, last_sparse_pos, SEEK_HOLE);
+
+		if (sparse_hole_start == -1)
+		{
+			break;
+		}
+
+		seek_suc = true;
+
+		if (sparse_hole_start == fsize)
+		{
+			break;
+		}
+
+		last_sparse_pos = lseek64(hFile, sparse_hole_start, SEEK_DATA);
+
+		if (last_sparse_pos == -1)
+		{
+			if (sparse_hole_start <= start_offset)
+			{
+				start_offset += fsize - sparse_hole_start;
+			}
+
+			real_fsize -= fsize - sparse_hole_start;
+			file_extents.push_back(SExtent(sparse_hole_start, fsize - sparse_hole_start));
+			has_file_extents = true;
+			break;
+		}
+
+
+		if (sparse_hole_start <= start_offset)
+		{
+			start_offset += last_sparse_pos - sparse_hole_start;
+		}
+
+		real_fsize -= last_sparse_pos - sparse_hole_start;
+		file_extents.push_back(SExtent(sparse_hole_start, last_sparse_pos - sparse_hole_start));
+		has_file_extents = true;
+	}
+
+	if (seek_suc)
+	{
+		off64_t rc = lseek64(hFile, 0, SEEK_SET);
+
+		if (rc != 0)
+		{
+			return -1;
+		}
+	}
+
+	n_sparse_extents = file_extents.size();
+
 #endif
 	return real_fsize;
 }
 
-bool CClientThread::sendSparseExtents(int64 fsize, int64 n_sparse_extents)
+bool CClientThread::sendExtents(const std::vector<SExtent>& file_extents, int64 fsize, int64 n_sparse_extents)
 {
 	std::vector<int64> send_buf;
 	send_buf.resize(n_sparse_extents*2+2);
@@ -2162,6 +2341,33 @@ bool CClientThread::sendSparseExtents(int64 fsize, int64 n_sparse_extents)
 	hash_func.finalize();
 
 	memcpy(&send_buf[n_sparse_extents * 2], hash_func.raw_digest_int(), 2 * sizeof(int64));
+
+	int rc = SendInt(reinterpret_cast<char*>(send_buf.data()), send_buf.size()*sizeof(int64));
+
+	return rc != SOCKET_ERROR;
+}
+
+bool CClientThread::sendSparseExtents(const std::vector<SExtent>& file_extents)
+{
+	std::vector<int64> send_buf;
+	send_buf.resize(file_extents.size() * 2 + 2);
+
+	int64 last_sparse_pos = 0;
+	size_t curr_sparse_ext = 0;
+
+	MD5 hash_func;
+
+	for (size_t i = 0; i < file_extents.size(); ++i)
+	{
+		send_buf[i * 2 + 0] = little_endian(file_extents[i].offset);
+		send_buf[i * 2 + 1] = little_endian(file_extents[i].size);
+	}
+
+	hash_func.update(reinterpret_cast<unsigned char*>(send_buf.data()), static_cast<_u32>(file_extents.size() * 2 * sizeof(int64)));
+
+	hash_func.finalize();
+
+	memcpy(&send_buf[file_extents.size() * 2], hash_func.raw_digest_int(), 2 * sizeof(int64));
 
 	int rc = SendInt(reinterpret_cast<char*>(send_buf.data()), send_buf.size()*sizeof(int64));
 

@@ -71,7 +71,7 @@ void init_chunk_hasher()
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
-	bool show_pc, ExtentIterator* extent_iterator)
+	bool show_pc, IExtentIterator* extent_iterator)
 {
 	f->Seek(0);
 
@@ -94,8 +94,14 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	}
 
 	sha_def_ctx ctx;
-	if(ret_sha2)
+	sha_def_ctx extent_ctx;
+	bool has_sparse_extents = false;
+	if (ret_sha2)
+	{
+		//TODO: extent handling for hash for restore
 		sha_def_init(&ctx);
+		sha_def_init(&extent_ctx);
+	}
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
 	char buf[c_small_hash_dist];
@@ -162,7 +168,6 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		_i64 epos = pos + c_checkpoint_dist;
 
 		if (curr_extent.offset != -1
-			&& !ret_sha2
 			&& curr_extent.offset <= pos
 			&& curr_extent.offset + curr_extent.size >= epos)
 		{

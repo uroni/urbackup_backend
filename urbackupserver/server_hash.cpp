@@ -1167,17 +1167,6 @@ bool BackupServerHash::hasError(void)
 	return r;
 }
 
-bool BackupServerHash::createChunkHashes(IFile *tf, const std::string hash_fn)
-{
-	IFile *hashoutput=Server->openFile(os_file_prefix(hash_fn), MODE_WRITE);
-	if(hashoutput==NULL) return false;
-
-	bool b=build_chunk_hashs(tf, hashoutput, this, false, NULL, false)=="";
-
-	Server->destroy(hashoutput);
-	return !b;
-}
-
 bool BackupServerHash::handle_not_enough_space(const std::string &path)
 {
 	int64 available_space=os_free_space(ExtractFilePath(path));
@@ -1277,17 +1266,45 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		chunk_patcher.setRequireUnchanged(!has_reflink);
 		bool b=chunk_patcher.ApplyPatch(f_source, patch, extent_iterator);
 
-		extent_iterator->reset();
+		IFsFile::SSparseExtent sparse_extent;
 
-		IFsFile::SSparseExtent sparse_extent = extent_iterator->nextExtent();
+		if (extent_iterator != NULL)
+		{
+			extent_iterator->reset();
+
+			sparse_extent = extent_iterator->nextExtent();
+		}
 
 		dstfsize = chunk_output_fn->Size();
 
 		while (sparse_extent.offset != -1)
 		{
-			chunk_output_fn->PunchHole(sparse_extent.offset, sparse_extent.size);
+			if (!chunk_output_fn->PunchHole(sparse_extent.offset, sparse_extent.size))
+			{
+				std::vector<char> zero_buf;
+				zero_buf.resize(32768);
+
+				if (chunk_output_fn->Seek(sparse_extent.offset))
+				{
+					for (int64 written = 0; written < sparse_extent.size;)
+					{
+						_u32 towrite = static_cast<_u32>((std::min)(sparse_extent.size - written, static_cast<int64>(zero_buf.size())));
+						_u32 w = chunk_output_fn->Write(zero_buf.data(), towrite);
+						if (w != towrite)
+						{
+							Server->Log("Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -2", LL_ERROR);
+							has_error = true;
+						}
+					}
+				}
+				else
+				{
+					Server->Log("Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -1", LL_ERROR);
+					has_error = true;
+				}
+			}
 			dstfsize = (std::max)(dstfsize, sparse_extent.offset + sparse_extent.size);
-			sparse_extent = extent_iterator->nextExtent();			
+			sparse_extent = extent_iterator->nextExtent();
 		}
 		
 		if(has_error || !b)

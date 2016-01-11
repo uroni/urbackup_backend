@@ -28,6 +28,8 @@ public:
 	virtual bool Sync();
 	virtual std::string getFilename(void);
 
+	_i64 getSparseSize();
+
 	class IOrigOp
 	{
 	public:

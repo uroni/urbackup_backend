@@ -288,13 +288,17 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 		data.addVoidPtr(iter_cb->second);
 	}
 
-	++active_shares[sharename + "|" + server_token];
-
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
 
 	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
 	{
+		++active_shares[sharename + "|" + server_token];
+
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
+	}
+	else
+	{
+		int dbg = 43;
 	}
 }
 

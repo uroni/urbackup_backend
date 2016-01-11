@@ -1041,7 +1041,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 	std::string hashpath_old=last_backuppath+os_file_sep()+".hashes"+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 	std::string filepath_old=last_backuppath+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 
-	std::auto_ptr<IFile> file_old(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
+	std::auto_ptr<IFsFile> file_old(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
 
 	if(file_old.get()==NULL)
 	{
@@ -1095,7 +1095,8 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 			return dlfiles;
 		}
 		dlfiles.delete_chunkhashes=true;
-		build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false);
+		FsExtentIterator extent_iterator(file_old.get());
+		build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false, NULL, NULL, false, &extent_iterator);
 		hashfile_old->Seek(0);
 	}
 

@@ -73,9 +73,9 @@ public:
 
 	_i64 getRealTransferredBytes();
 
-	_i64 getReceivedDataBytes();
+	_i64 getReceivedDataBytes(bool with_sparse);
 
-	void resetReceivedDataBytes(void);
+	void resetReceivedDataBytes(bool with_sparse);
 
 	void addThrottler(IPipeThrottler *throttler);
 
@@ -144,6 +144,8 @@ private:
 	void resetQueuedChunks();
 
 	void addReceivedBytes(size_t bytes);
+
+	void addSparseBytes(_i64 bytes);
 
 	void addReceivedBlock(_i64 block_start);
 
@@ -230,6 +232,7 @@ private:
 	std::string identity;
 
 	_i64 received_data_bytes;
+	_i64 sparse_bytes;
 
 	IMutex* mutex;
 

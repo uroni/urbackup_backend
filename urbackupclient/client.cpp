@@ -906,6 +906,8 @@ void IndexThread::indexDirs(void)
 				continue;
 			}
 
+			index_server_default = backup_dirs[i].server_default;
+
 			SCDirs *scd=getSCDir(backup_dirs[i].tname, index_clientsubname);
 			if(!scd->running)
 			{
@@ -4115,7 +4117,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target )
 
 	SBackupDir backup_dir;
 
-	cd->addBackupDir(name, target, 0, index_flags, index_group, 1);
+	cd->addBackupDir(name, target, index_server_default ? 1: 0, index_flags, index_group, 1);
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
@@ -4134,6 +4136,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target )
 	backup_dir.tname=name;
 	backup_dir.symlinked=true;
 	backup_dir.symlinked_confirmed=true;
+	backup_dir.server_default = index_server_default;
 
 	backup_dirs.push_back(backup_dir);
 

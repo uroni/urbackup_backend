@@ -271,13 +271,24 @@ bool PipeFileBase::fillBuffer()
 			return true;
 		}
 
-		if(buf_r_pos-buf_w_pos<bsize_free)
+		if(buf_r_pos-buf_w_pos - 1 < bsize_free)
 		{
-			bsize_free = buf_r_pos - buf_w_pos;
+			bsize_free = buf_r_pos - buf_w_pos - 1;
 		}
 	}
 
-	if(bsize_free==0 && buf_w_pos>=buf_r_pos)
+	if (bsize_free==0
+		&& buf_w_pos == buf_r_pos
+		&& buf_w_pos == buffer_size)
+	{
+		buf_circle = true;
+		buf_w_pos = 0;
+		buf_w_reserved_pos = 0;
+
+		bsize_free = buffer_size-1;
+	}
+
+	if(bsize_free==0 && buf_w_pos>buf_r_pos)
 	{
 		if(buf_r_pos<buffer_keep_free)
 		{
@@ -290,7 +301,7 @@ bool PipeFileBase::fillBuffer()
 		buf_w_pos = 0;
 		buf_w_reserved_pos=0;
 
-		bsize_free = buf_r_pos;
+		bsize_free = buf_r_pos-1;
 	}
 
 	if(bsize_free==0)
