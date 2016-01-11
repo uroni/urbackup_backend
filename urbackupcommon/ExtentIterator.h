@@ -15,7 +15,7 @@ public:
 class ExtentIterator : public IExtentIterator
 {
 public:
-	ExtentIterator(IFile* sparse_extents_f, bool take_file_ownership=true);
+	ExtentIterator(IFile* sparse_extents_f, bool take_file_ownership=true, int64 blocksize = 1);
 	~ExtentIterator();
 
 	virtual IFsFile::SSparseExtent nextExtent();
@@ -27,12 +27,13 @@ private:
 	int64 num_sparse_extents;
 	int64 next_sparse_extent_num;
 	bool take_file_ownership;
+	int64 blocksize;
 };
 
 class FsExtentIterator : public IExtentIterator
 {
 public:
-	FsExtentIterator(IFsFile* backing_file);
+	FsExtentIterator(IFsFile* backing_file, int64 blocksize=1);
 
 	virtual IFsFile::SSparseExtent nextExtent();
 
@@ -40,4 +41,5 @@ public:
 
 private:
 	IFsFile* backing_file;
+	int64 blocksize;
 };

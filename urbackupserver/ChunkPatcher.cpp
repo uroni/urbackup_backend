@@ -20,6 +20,7 @@
 #include "../stringtools.h"
 #include <assert.h>
 #include "../urbackupcommon/ExtentIterator.h"
+#include <memory.h>
 
 #define VLOG(x)
 

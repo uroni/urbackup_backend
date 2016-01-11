@@ -253,14 +253,49 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 {
 	ScopedDeleteFile del_3(todl.patch_dl_files.chunkhashes);
 
-	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, NULL);
+
+	IFile* sparse_extents_f = NULL;
+	_u32 rc = fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		todl.patch_dl_files.orig_file->Seek(0);
-		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, NULL);
+		rc=fc_chunked.GetFileChunked((todl.remotefn), todl.patch_dl_files.orig_file, todl.patch_dl_files.chunkhashes, NULL, todl.predicted_filesize, todl.id+1, todl.is_script, &sparse_extents_f);
 		--hash_retries;
+	}
+
+	if (sparse_extents_f != NULL)
+	{
+		ExtentIterator extent_iterator(sparse_extents_f);
+		IFsFile::SSparseExtent sparse_extent;
+		while ((sparse_extent = extent_iterator.nextExtent()).offset != -1)
+		{
+			if (!todl.patch_dl_files.orig_file->PunchHole(sparse_extent.offset, sparse_extent.size))
+			{
+				std::vector<char> zero_buf;
+				zero_buf.resize(32768);
+
+				if (todl.patch_dl_files.orig_file->Seek(sparse_extent.offset))
+				{
+					for (int64 written = 0; written < sparse_extent.size;)
+					{
+						_u32 towrite = static_cast<_u32>((std::min)(sparse_extent.size - written, static_cast<int64>(zero_buf.size())));
+						_u32 w = todl.patch_dl_files.orig_file->Write(zero_buf.data(), towrite);
+						if (w != towrite)
+						{
+							Server->Log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -2", LL_ERROR);
+							rc = ERR_ERROR;
+						}
+					}
+				}
+				else
+				{
+					Server->Log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -1", LL_ERROR);
+					rc = ERR_ERROR;
+				}
+			}
+		}
 	}
 
 	int64 fsize = todl.patch_dl_files.orig_file->Size();

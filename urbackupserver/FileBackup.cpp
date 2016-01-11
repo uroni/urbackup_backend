@@ -875,7 +875,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
 				}
 
-				if( !cf.isdir )
+				if( !cf.isdir && remote_path!="urbackup_backup_scripts" )
 				{
 					std::string sha256hex=(extras["sha256_verify"]);
 
@@ -1035,30 +1035,15 @@ std::string FileBackup::getSHA512(const std::string& fn)
 
 std::string FileBackup::getSHADef(const std::string& fn)
 {
-	sha_def_ctx ctx;
-	sha_def_init(&ctx);
+	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fn), MODE_READ));
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
-
-	if(f==NULL)
+	if (f.get() == NULL)
 	{
 		return std::string();
 	}
 
-	char buffer[32768];
-	unsigned int r;
-	while( (r=f->Read(buffer, 32768))>0)
-	{
-		sha_def_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
-	}
-
-	Server->destroy(f);
-
-	std::string dig;
-	dig.resize(SHA_DEF_DIGEST_SIZE);
-	sha_def_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
-
-	return dig;
+	FsExtentIterator extent_iterator(f.get(), 32768);	
+	return BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator);
 }
 
 bool FileBackup::hasDiskError()

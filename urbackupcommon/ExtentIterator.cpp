@@ -1,6 +1,19 @@
 #include "ExtentIterator.h"
 
-ExtentIterator::ExtentIterator(IFile * sparse_extents_f, bool take_file_ownership)
+namespace
+{
+	int64 roundUp(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound + multiple - 1) / multiple) * multiple;
+	}
+
+	int64 roundDown(int64 numToRound, int64 multiple)
+	{
+		return ((numToRound / multiple) * multiple);
+	}
+}
+
+ExtentIterator::ExtentIterator(IFile * sparse_extents_f, bool take_file_ownership, int64 blocksize)
 	: sparse_extents_f(sparse_extents_f),
 	num_sparse_extents(-1),
 	next_sparse_extent_num(0),
@@ -22,7 +35,6 @@ ExtentIterator::~ExtentIterator()
 
 IFsFile::SSparseExtent ExtentIterator::nextExtent()
 {
-	IFsFile::SSparseExtent ret;
 	if (num_sparse_extents == -1)
 	{
 		if (sparse_extents_f.get() == NULL
@@ -32,20 +44,30 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 		}
 	}
 
-	if (next_sparse_extent_num < num_sparse_extents)
+	while (next_sparse_extent_num < num_sparse_extents)
 	{
+		IFsFile::SSparseExtent ret;
 		if (sparse_extents_f->Read(reinterpret_cast<char*>(&ret), sizeof(IFsFile::SSparseExtent)) != sizeof(IFsFile::SSparseExtent))
 		{
 			num_sparse_extents = 0;
-			ret = IFsFile::SSparseExtent();
+			return IFsFile::SSparseExtent();
 		}
 		else
 		{
 			++next_sparse_extent_num;
+
+			int64 ret_end = roundDown(ret.offset + ret.size, blocksize);
+			ret.offset = roundUp(ret.offset, blocksize);
+
+			if (ret.offset < ret_end)
+			{
+				ret.size = ret_end - ret.offset;
+				return ret;
+			}
 		}
 	}
 
-	return ret;
+	return IFsFile::SSparseExtent();
 }
 
 void ExtentIterator::reset()
@@ -54,15 +76,31 @@ void ExtentIterator::reset()
 	sparse_extents_f->Seek(sizeof(num_sparse_extents));
 }
 
-FsExtentIterator::FsExtentIterator(IFsFile * backing_file)
-	: backing_file(backing_file)
+FsExtentIterator::FsExtentIterator(IFsFile * backing_file, int64 blocksize)
+	: backing_file(backing_file), blocksize(blocksize)
 {
 	backing_file->resetSparseExtentIter();
 }
 
 IFsFile::SSparseExtent FsExtentIterator::nextExtent()
 {
-	return backing_file->nextSparseExtent();
+	while (true)
+	{
+		IFsFile::SSparseExtent next = backing_file->nextSparseExtent();
+
+		if (next.offset == -1)
+		{
+			return next;
+		}
+
+		int64 next_end = roundDown(next.offset + next.size, blocksize);
+		next.offset = roundUp(next.offset, blocksize);
+		if (next.offset < next_end)
+		{
+			next.size = next_end - next.offset;
+			return next;
+		}
+	}
 }
 
 void FsExtentIterator::reset()

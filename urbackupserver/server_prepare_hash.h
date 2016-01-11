@@ -28,7 +28,7 @@ public:
 
 	bool hasError(void);
 
-	static std::string hash_sha(IFile *f, ExtentIterator* extent_iterator);
+	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator);
 
 private:
 	

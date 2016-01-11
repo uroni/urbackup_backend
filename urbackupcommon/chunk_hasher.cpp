@@ -55,6 +55,25 @@ namespace
 		return ret;
 	}
 
+	bool buf_is_zero(const char* buf, size_t bsize)
+	{
+		for (size_t i = 0; i < bsize; ++i)
+		{
+			if (buf[i] != 0)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void add_extent(sha_def_ctx* ctx, int64 ext_start, int64 ext_size)
+	{
+		sha_def_update(ctx, reinterpret_cast<unsigned char*>(&ext_start), sizeof(ext_start));
+		sha_def_update(ctx, reinterpret_cast<unsigned char*>(&ext_size), sizeof(ext_size));
+	}
+
 	std::string sparse_extent_content;
 }
 
@@ -96,11 +115,12 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	sha_def_ctx ctx;
 	sha_def_ctx extent_ctx;
 	bool has_sparse_extents = false;
+	std::vector<char> sha_buf;
 	if (ret_sha2)
 	{
-		//TODO: extent handling for hash for restore
 		sha_def_init(&ctx);
 		sha_def_init(&extent_ctx);
+		sha_buf.resize(32768);
 	}
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
@@ -129,6 +149,9 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	{
 		curr_extent = extent_iterator->nextExtent();
 	}
+
+	int64 sparse_extent_start = -1;
+	bool has_sparse_extent = false;
 
 	for(_i64 pos=0;pos<fsize;)
 	{
@@ -169,14 +192,25 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 		if (curr_extent.offset != -1
 			&& curr_extent.offset <= pos
-			&& curr_extent.offset + curr_extent.size >= epos)
+			&& curr_extent.offset + curr_extent.size >= epos
+			&& epos<=fsize )
 		{
 			std::string c = get_sparse_extent_content();
 			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
 				return "";
 
 			copy_write_pos += c_checkpoint_dist;
-			pos = epos;
+
+			if (ret_sha2 && sparse_extent_start == -1)
+			{
+				sparse_extent_start = pos;
+			}
+
+			pos = epos;			
+			if (!f->Seek(pos))
+			{
+				return "";
+			}
 			continue;
 		}
 
@@ -201,7 +235,42 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 			if(ret_sha2)
 			{
-				sha_def_update(&ctx, (unsigned char*)buf, r);
+				int64 buf_offset = pos%sha_buf.size();
+				memcpy(sha_buf.data() + buf_offset, buf, r);
+
+				if (r < c_small_hash_dist)
+				{
+					if (sparse_extent_start != -1)
+					{
+						has_sparse_extent = true;
+						int64 end_pos = (pos / sha_buf.size())*sha_buf.size();
+						add_extent(&extent_ctx, sparse_extent_start, end_pos - sparse_extent_start);
+						sparse_extent_start = -1;
+					}
+					sha_def_update(&ctx, (unsigned char*)sha_buf.data(), static_cast<unsigned int>(buf_offset+r));
+				}
+				else if((pos+r)%sha_buf.size()==0)
+				{
+					if (buf_is_zero(sha_buf.data(), buf_offset + r))
+					{
+						if (sparse_extent_start == -1)
+						{
+							sparse_extent_start = (pos / sha_buf.size())*sha_buf.size();
+						}
+					}
+					else
+					{
+						if (sparse_extent_start != -1)
+						{
+							has_sparse_extent = true;
+							int64 end_pos = (pos / sha_buf.size())*sha_buf.size();
+							add_extent(&extent_ctx, sparse_extent_start, end_pos - sparse_extent_start);
+							sparse_extent_start = -1;
+						}
+
+						sha_def_update(&ctx, (unsigned char*)sha_buf.data(), static_cast<unsigned int>(sha_buf.size()));
+					}
+				}
 			}
 			if(copy!=NULL)
 			{
@@ -315,10 +384,25 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		hashoutput->Seek(hashoutputpos);
 	}
 
+	if (sparse_extent_start != -1)
+	{
+		assert(fsize%sha_buf.size()==0);
+		has_sparse_extent = true;
+		add_extent(&extent_ctx, sparse_extent_start, fsize - sparse_extent_start);
+		sparse_extent_start = -1;
+	}
+
 	if(ret_sha2)
 	{
 		std::string ret;
-		ret.resize(64);
+		ret.resize(SHA_DEF_DIGEST_SIZE);
+
+		if (has_sparse_extent)
+		{
+			sha_def_final(&extent_ctx, (unsigned char*)&ret[0]);
+			sha_def_update(&ctx, reinterpret_cast<unsigned char*>(&ret[0]), SHA_DEF_DIGEST_SIZE);
+		}
+
 		sha_def_final(&ctx, (unsigned char*)&ret[0]);
 		return ret;
 	}

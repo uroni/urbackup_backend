@@ -524,7 +524,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
-						IFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+						IFsFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
 
 #ifdef _WIN32
 						if(orig_file==NULL)
@@ -562,7 +562,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								if(shahash.empty())
 								{
 									log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
-									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL);
+									FsExtentIterator extent_iterator(orig_file, 32768);
+									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL,
+										NULL, false, &extent_iterator);
                                     calc_hashes = true;
 								}
 								
@@ -571,7 +573,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
                                     if(!calc_hashes)
                                     {
                                         log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
-                                        build_chunk_hashs(orig_file, chunkhashes, NULL, false, NULL, false, NULL);
+										FsExtentIterator extent_iterator(orig_file);
+                                        build_chunk_hashs(orig_file, chunkhashes, NULL, false, NULL, false, NULL,
+											NULL, false, &extent_iterator);
                                     }
 
 									restore_download->addToQueueChunked(line, server_fn, local_fn, 

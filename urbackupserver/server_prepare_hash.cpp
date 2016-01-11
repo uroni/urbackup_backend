@@ -45,6 +45,8 @@ namespace
 
 		return true;
 	}
+
+	const size_t hash_bsize = 32768;
 }
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid)
@@ -131,7 +133,7 @@ void BackupServerPrepareHash::operator()(void)
 
 				if (sparse_extents_f != NULL)
 				{
-					extent_iterator.reset(new ExtentIterator(sparse_extents_f));
+					extent_iterator.reset(new ExtentIterator(sparse_extents_f, true, hash_bsize));
 				}
 			}
 			
@@ -209,11 +211,11 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha(IFile *f, ExtentIterator* extent_iterator)
+std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator)
 {
-	const size_t bsize = 32768;
 	f->Seek(0);
-	unsigned char buf[bsize];
+	std::vector<char> buf;
+	buf.resize(hash_bsize);
 	_u32 rc;
 
 	sha_def_ctx local_ctx;
@@ -242,14 +244,14 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, ExtentIterator* extent_i
 		}
 
 		if (curr_extent.offset != -1
-			&& curr_extent.offset <= fpos && curr_extent.offset + curr_extent.size>=fpos + static_cast<int64>(bsize))
+			&& curr_extent.offset <= fpos && curr_extent.offset + curr_extent.size>=fpos + static_cast<int64>(hash_bsize))
 		{
 			if (skip_start == -1)
 			{
 				skip_start = fpos;
 			}
-			fpos += bsize;
-			rc = bsize;
+			fpos += hash_bsize;
+			rc = hash_bsize;
 			continue;
 		}
 
@@ -258,16 +260,16 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, ExtentIterator* extent_i
 			f->Seek(fpos);
 		}
 
-		rc=f->Read((char*)buf, bsize);
+		rc=f->Read(buf.data(), hash_bsize);
 
-		if (rc == bsize && buf_is_zero((char*)buf, bsize))
+		if (rc == hash_bsize && buf_is_zero(buf.data(), hash_bsize))
 		{
 			if (skip_start == -1)
 			{
 				skip_start = fpos;
 			}
-			fpos += bsize;
-			rc = bsize;
+			fpos += hash_bsize;
+			rc = hash_bsize;
 			continue;
 		}
 
@@ -283,7 +285,7 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, ExtentIterator* extent_i
 
 		if (rc > 0)
 		{
-			sha_def_update(&local_ctx, buf, rc);
+			sha_def_update(&local_ctx, reinterpret_cast<unsigned char*>(buf.data()), rc);
 			fpos += rc;
 		}
 	}

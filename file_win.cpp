@@ -390,10 +390,13 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 	{
 		if (res_extent_buffer[curr_extent].FileOffset.QuadPart != last_sparse_pos)
 		{
+			IFsFile::SSparseExtent ret(last_sparse_pos, res_extent_buffer[curr_extent].FileOffset.QuadPart - last_sparse_pos);
 			last_sparse_pos = res_extent_buffer[curr_extent].FileOffset.QuadPart + res_extent_buffer[curr_extent].Length.QuadPart;
 			++curr_extent;
-			return IFsFile::SSparseExtent(last_sparse_pos, res_extent_buffer[curr_extent].FileOffset.QuadPart-last_sparse_pos);
+			return ret;
 		}
+		
+		last_sparse_pos = res_extent_buffer[curr_extent].FileOffset.QuadPart + res_extent_buffer[curr_extent].Length.QuadPart;
 		++curr_extent;
 	}
 

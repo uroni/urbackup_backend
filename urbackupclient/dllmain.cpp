@@ -68,6 +68,8 @@ extern IServer* Server;
 #include <stdlib.h>
 #include "file_permissions.h"
 
+#include "../urbackupcommon/chunk_hasher.h"
+
 #define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
@@ -220,7 +222,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 #endif
 
-
+	init_chunk_hasher();
 
 	ServerIdentityMgr::init_mutex();
 #ifdef _WIN32

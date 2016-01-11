@@ -36,6 +36,8 @@
 #include <stdlib.h>
 #include "file_permissions.h"
 #include <memory>
+#include <assert.h>
+#include "../urbackupcommon/chunk_hasher.h"
 
 //For truncating files
 #ifdef _WIN32
@@ -3707,7 +3709,18 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 			return std::string();
 		}
 		
-		return hash_512.finalize();
+		std::string ret = hash_512.finalize();
+
+		//TODO: Perf remove verification
+		std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+		IFile* hashoutput = Server->openTemporaryFile();
+		ScopedDeleteFile hashoutput_delete(hashoutput);
+		FsExtentIterator extent_iterator(f.get(), 32768);
+		std::string other_sha = build_chunk_hashs(f.get(), hashoutput, NULL, true, NULL, false,
+			NULL, NULL, false, &extent_iterator);
+
+		assert(ret == other_sha);
+		return ret;
 	}
 	else
 	{
@@ -3746,6 +3759,8 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 		return false;
 	}
 
+	
+
 	int64 skip_start = -1;
 	const size_t bsize = 32768;
 	int64 fpos = 0;
@@ -3753,14 +3768,16 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 	std::vector<char> buf;
 	buf.resize(bsize);
 
-	IFsFile::SSparseExtent curr_sparse_extent = f->nextSparseExtent();
+	FsExtentIterator extent_iterator(f.get(), bsize);
+
+	IFsFile::SSparseExtent curr_sparse_extent = extent_iterator.nextExtent();
 
 	do
 	{
 		while (curr_sparse_extent.offset!=-1
 			&& curr_sparse_extent.offset+ curr_sparse_extent.size<fpos)
 		{
-			curr_sparse_extent = f->nextSparseExtent();
+			curr_sparse_extent = extent_iterator.nextExtent();
 		}
 
 		if (curr_sparse_extent.offset != -1
