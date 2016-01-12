@@ -88,8 +88,7 @@ bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
 size_t ClientConnector::needs_restore_restart = 0;
 int64 ClientConnector::service_starttime = 0;
-std::string ClientConnector::restore_token;
-int64 ClientConnector::restore_token_time = 0;
+SRestoreToken ClientConnector::restore_token;
 
 
 #ifdef _WIN32
@@ -2715,6 +2714,8 @@ void ClientConnector::sendStatus()
 			}
 
 			ret += "&restore_path=" + EscapeParamString(restore_files->get_restore_path());
+
+			ret += "&process_id=" + convert(restore_files->get_local_process_id());
 		}
 	}
 
@@ -3066,7 +3067,10 @@ std::string ClientConnector::actionToStr(RunningAction action)
 int64 ClientConnector::addNewProcess(SRunningProcess proc)
 {
 	IScopedLock lock(process_mutex);
-	proc.id = ++curr_backup_running_id;
+	if (proc.id == 0)
+	{
+		proc.id = ++curr_backup_running_id;
+	}	
 	running_processes.push_back(proc);
 	return proc.id;
 }

@@ -97,6 +97,17 @@ struct ImageInformation
 	int64 server_status_id;
 };
 
+struct SRestoreToken
+{
+	SRestoreToken()
+		: process_id(0), restore_token_time()
+	{}
+
+	int64 process_id;
+	std::string restore_token;
+	int64 restore_token_time;
+};
+
 struct SChannel
 {
 	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
@@ -309,8 +320,7 @@ private:
 	static bool status_updated;
 	static size_t needs_restore_restart;
 	static int64 service_starttime;
-	static int64 restore_token_time;
-	static std::string restore_token;
+	static SRestoreToken restore_token;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

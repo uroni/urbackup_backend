@@ -18,8 +18,8 @@ namespace
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback, FileClient::ProgressLogCallback
 {
 public:
-	RestoreFiles(int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path, bool single_file)
-		: restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
+	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path, bool single_file)
+		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL)
 	{
 
@@ -46,6 +46,11 @@ public:
 		restore_declined = b;
 	}
 
+	int64 get_local_process_id()
+	{
+		return local_process_id;
+	}
+
 	virtual void log_progress(const std::string & fn, int64 total, int64 downloaded, int64 speed_bps);
 
 private:
@@ -70,6 +75,8 @@ private:
 	bool renameFilesOnRestart(std::vector<std::pair<std::string, std::string> >& rename_queue);
 
 	std::auto_ptr<FileClientChunked> createFcChunked();
+
+	int64 local_process_id;
 
 	int64 restore_id;
 

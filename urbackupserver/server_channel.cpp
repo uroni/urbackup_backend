@@ -1033,14 +1033,18 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 	db_results res=q->Read();
 	if(res.empty())
 	{
-		tcpstack.Send(input, "Backup not found");
+		JSON::Object ret;
+		ret.set("err", 2);
+		tcpstack.Send(input, ret.stringify(false));
 	}
 	else
 	{
 		if( !all_client_rights &&
 			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
 		{
-			tcpstack.Send(input, "Insufficient rights");
+			JSON::Object ret;
+			ret.set("err", 4);
+			tcpstack.Send(input, ret.stringify(false));
 			return;
 		}
 
@@ -1056,11 +1060,18 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 
 		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id, params["restore_token"], map_paths))
 		{
-			tcpstack.Send(input, "ok");
+			JSON::Object ret;
+			ret.set("ok", true);
+			ret.set("restore_id", restore_id);
+			ret.set("status_id", status_id);
+			ret.set("log_id", log_id.first);
+			tcpstack.Send(input, ret.stringify(false));
 		}
 		else
 		{
-			tcpstack.Send(input, "err");
+			JSON::Object ret;
+			ret.set("err", 5);
+			tcpstack.Send(input, ret.stringify(false));
 		}
 	}
 }
@@ -1159,6 +1170,11 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		ret.set("status_id", status_id);
 		ret.set("log_id", log_id.first);
 
+		str_map::iterator it_process_id = params.find("process_id");
+		if (it_process_id != params.end())
+		{
+			ret.set("process_id", watoi64(it_process_id->second));
+		}
 	} while (false);
 
     tcpstack.Send(input, ret.stringify(false));

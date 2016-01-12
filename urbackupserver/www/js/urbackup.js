@@ -1507,7 +1507,6 @@ function show_backups2(data)
 		if(els.length>1 && (els[1].length>0 || els.length>2))
 		{
 			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+format_unix_timestamp(data.backuptime)+"</a> > ";
-			rows+=dustRender("backups_files_row", {size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
 		}
 		else
 		{

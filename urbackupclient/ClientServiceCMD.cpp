@@ -746,6 +746,9 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 			obj.set("detail_pc", running_processes[i].detail_pc);
 		}
 
+		obj.set("process_id", running_processes[i].id);
+		obj.set("server_status_id", running_processes[i].server_id);
+
 		j_running_processes.add(obj);
 	}
 
@@ -1642,10 +1645,15 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	restore_token_binary.resize(16);
 	Server->secureRandomFill(&restore_token_binary[0], restore_token_binary.size());
 
-	restore_token = bytesToHex(restore_token_binary);
-	restore_token_time = Server->getTimeMS();
+	restore_token.restore_token = bytesToHex(restore_token_binary);
+	restore_token.restore_token_time = Server->getTimeMS();
 
-	accessparams+="&restore_token="+restore_token;
+	{
+		IScopedLock process_lock(process_mutex);
+		restore_token.process_id = ++curr_backup_running_id;
+	}
+
+	accessparams+="&restore_token="+ restore_token.restore_token;
 
 	std::string filelist;
 
@@ -2174,16 +2182,29 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	std::string restore_path = params["restore_path"];
 	bool single_file = params["single_file"]=="1";
 
-	RestoreFiles* local_restore_files = new RestoreFiles(restore_id, status_id, log_id, client_token, server_token, restore_path, single_file);
 
+	int64 restore_process_id = 0;
 
-	bool has_restore_token=false;
-	if(params["restore_token"]==restore_token
-		&& Server->getTimeMS()-restore_token_time<120*1000)
+	bool has_restore_token = false;
+	if (params["restore_token"] == restore_token.restore_token
+		&& Server->getTimeMS() - restore_token.restore_token_time<120 * 1000)
 	{
-		restore_token="";
-		has_restore_token=true;
+		restore_token.restore_token = "";
+		has_restore_token = true;
+		restore_process_id = restore_token.process_id;
+		restore_token.process_id = 0;
 	}
+
+	if(restore_process_id==0)
+	{
+		IScopedLock lock(process_mutex);
+		restore_process_id = ++curr_backup_running_id;
+	}
+
+	RestoreFiles* local_restore_files = new RestoreFiles(restore_process_id, restore_id, status_id, log_id, client_token, server_token, restore_path, single_file);
+
+
+	
 
 	if(restore == "client-confirms" && !has_restore_token)
 	{
@@ -2209,9 +2230,14 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 void ClientConnector::CMD_RESTORE_OK( str_map &params )
 {
 	IScopedLock lock(backup_mutex);
+	JSON::Object ret;
 	if(params["ok"]=="true")
 	{
 		restore_ok_status = RestoreOk_Ok;
+
+		ret.set("accepted", true);
+
+		ret.set("process_id", restore_files->get_local_process_id());
 
 		if(restore_files!=NULL)
 		{
@@ -2234,5 +2260,6 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 	delete restore_files;
 	restore_files=NULL;
 
-	tcpstack.Send(pipe, "ok");
+	ret.set("ok", true);
+	tcpstack.Send(pipe, ret.stringify(false));
 }

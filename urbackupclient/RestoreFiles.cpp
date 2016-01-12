@@ -39,17 +39,18 @@ namespace
 	class RestoreUpdaterThread : public IThread
 	{
 	public:
-		RestoreUpdaterThread(int64 restore_id, int64 status_id, std::string server_token)
+		RestoreUpdaterThread(int64 local_process_id, int64 restore_id, int64 status_id, std::string server_token)
 			: update_mutex(Server->createMutex()), stopped(false),
 			update_cond(Server->createCondition()), curr_pc(-1),
 			restore_id(restore_id), status_id(status_id), server_token(server_token),
-			curr_fn_pc(-1)
+			curr_fn_pc(-1), local_process_id(local_process_id)
 		{
 			SRunningProcess new_proc;
+			new_proc.id = local_process_id;
 			new_proc.action = RUNNING_RESTORE_FILE;
 			new_proc.server_id = status_id;
 			new_proc.server_token = server_token;
-			local_restore_id = ClientConnector::addNewProcess(new_proc);
+			ClientConnector::addNewProcess(new_proc);
 		}
 
 		void operator()()
@@ -58,10 +59,11 @@ namespace
 				IScopedLock lock(update_mutex.get());
 				while (!stopped)
 				{
-					ClientConnector::updateRestorePc(local_restore_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc);
+					ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc);
 					update_cond->wait(&lock, 60000);
 				}
 			}
+			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1);
 			delete this;
 		}
 
@@ -97,14 +99,14 @@ namespace
 		int64 restore_id;
 		int64 status_id;
 		std::string server_token;
-		int64 local_restore_id;
+		int64 local_process_id;
 	};
 
 	class ScopedRestoreUpdater
 	{
 	public:
-		ScopedRestoreUpdater(int64 restore_id, int64 status_id, std::string server_token)
-			: restore_updater(new RestoreUpdaterThread(restore_id, status_id, server_token))
+		ScopedRestoreUpdater(int64 local_process_id, int64 restore_id, int64 status_id, std::string server_token)
+			: restore_updater(new RestoreUpdaterThread(local_process_id, restore_id, status_id, server_token))
 		{
 			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater);
 		}
@@ -150,7 +152,7 @@ void RestoreFiles::operator()()
 	log("Starting restore...", LL_INFO);
 
 	{
-		ScopedRestoreUpdater restore_updater(restore_id, status_id, server_token);
+		ScopedRestoreUpdater restore_updater(local_process_id, restore_id, status_id, server_token);
 		curr_restore_updater = &restore_updater;
 
 		if (!connectFileClient(fc))
@@ -210,6 +212,8 @@ void RestoreFiles::operator()()
 		log("Downloading necessary file data...", LL_INFO);
 
 		fc.setProgressLogCallback(this);
+
+		restore_updater.update_pc(0);
 
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
