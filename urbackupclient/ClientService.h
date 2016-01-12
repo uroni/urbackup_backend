@@ -44,7 +44,29 @@ enum RunningAction
 	RUNNING_INCR_IMAGE=4,
 	RUNNING_RESUME_INCR_FILE=5,
 	RUNNING_RESUME_FULL_FILE=6,
-	RUNNING_RESTORE_FILE=8
+	RUNNING_RESTORE_FILE=8,
+	RUNNING_RESTORE_IMAGE=9
+};
+
+struct SRunningProcess
+{
+	SRunningProcess()
+		: id(0), action(RUNNING_NONE),
+		pcdone(-1), eta_ms(-1),
+		server_id(0),
+		last_pingtime(Server->getTimeMS()),
+		detail_pc(-1)
+	{}
+
+	int64 id;
+	int64 server_id;
+	RunningAction action;
+	int pcdone;
+	int64 eta_ms;
+	std::string server_token;
+	int64 last_pingtime;
+	std::string details;
+	int detail_pc;
 };
 
 enum RestoreOkStatus
@@ -65,11 +87,14 @@ struct ImageInformation
 	uint64 startpos;
 	int shadow_id;
 	std::string image_letter;
+	std::string orig_image_letter;
 	bool no_shadowcopy;
 	ImageThread *image_thread;
 	bool with_checksum;
 	bool with_bitmap;
 	std::string clientsubname;
+	int64 running_process_id;
+	int64 server_status_id;
 };
 
 struct SChannel
@@ -97,6 +122,7 @@ const unsigned int x_pingtimeout=180000;
 
 class ClientConnector : public ICustomClient
 {
+	friend class ScopedRemoveRunningBackup;
 public:
 	ClientConnector(void);
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
@@ -116,9 +142,7 @@ public:
 
 	void doQuitClient(void);
 	bool isQuitting(void);
-	void updatePCDone2(int nv);
 	bool isHashdataOkay(void);
-	void resetImageBackupStatus(void* owner);
 
 	void setIsInternetConnection(void);
 
@@ -128,7 +152,8 @@ public:
 
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
 
-	static void updateRestorePc(int64 restore_id, int64 status_id, int nv, const std::string& identity);
+	static void updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
+		const std::string& fn, int fn_pc);
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
@@ -137,6 +162,10 @@ public:
 	static void requestRestoreRestart();
 
 	static void updateLastBackup(void);
+
+	static int64 addNewProcess(SRunningProcess proc);
+	static bool updateRunningPc(int64 id, int pcdone);
+	static bool removeRunningProcess(int64 id);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
@@ -173,7 +202,7 @@ private:
 
 	static std::string getHasNoRecentBackup();
 
-	static std::string getCurrRunningJob(bool reset_done);
+	static std::string getCurrRunningJob(bool reset_done, int& pcdone);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd);
@@ -186,6 +215,7 @@ private:
 	void CMD_GET_BACKUPDIRS(const std::string &cmd);
 	void CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params);
 	void CMD_DID_BACKUP(const std::string &cmd);
+	void CMD_DID_BACKUP2(const std::string &cmd);
 	void CMD_STATUS(const std::string &cmd);
 	void CMD_STATUS_DETAIL(const std::string &cmd);
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);
@@ -233,6 +263,13 @@ private:
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
+	static SRunningProcess* getRunningProcess(RunningAction action, std::string server_token);
+	static SRunningProcess* getRunningFileBackupProcess( std::string server_token, int64 server_id);
+	static SRunningProcess* getRunningBackupProcess(std::string server_token, int64 server_id);
+	static SRunningProcess* getRunningProcess(int64 id);
+	static SRunningProcess* getActiveProcess(int64 timeout);
+	static std::string actionToStr(RunningAction action);
+
 	IPipe *pipe;
 	IPipe *mempipe;
 	bool mempipe_owner;
@@ -244,27 +281,21 @@ private:
 	CTCPStack tcpstack;
 	volatile bool do_quit;
 	bool is_channel;
+	int64 local_backup_running_id;
 
-	static RunningAction backup_running;
-	static void* backup_running_owner;
-	static volatile bool backup_done;
+	static std::vector<SRunningProcess> running_processes;
+	static int64 curr_backup_running_id;
 	static IMutex *backup_mutex;
+	static IMutex *process_mutex;
 	static int backup_interval;
 	static int backup_alert_delay;
-	static int64 last_pingtime;
 	static SChannel channel_pipe;
 	static std::vector<SChannel> channel_pipes;
 	static std::vector<IPipe*> channel_exit;
 	static std::vector<IPipe*> channel_ping;
 	static std::vector<int> channel_capa;
 	int64 last_channel_ping;
-	static int pcdone;
-	static int64 eta_ms;
-	static int pcdone2;
-	static IMutex *progress_mutex;
-	static volatile bool img_download_running;
 	static db_results cached_status;
-	static std::string backup_source_token;
 	static std::map<std::string, int64> last_token_times;
 	static int last_capa;
 	static IMutex *ident_mutex;
@@ -303,4 +334,20 @@ private:
 #ifdef _WIN32
 	static SVolumesCache* volumes_cache;
 #endif
+};
+
+class ScopedRemoveRunningBackup
+{
+public:
+	ScopedRemoveRunningBackup(int64 id)
+		: id(id)
+	{}
+
+	~ScopedRemoveRunningBackup()
+	{
+		ClientConnector::removeRunningProcess(id);
+	}
+
+private:
+	int64 id;
 };

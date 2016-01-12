@@ -1350,6 +1350,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.client_bitmap_version = watoi(it->second);
 		}
+		it = params.find("CMD");
+		if (it != params.end())
+		{
+			protocol_versions.cmd_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{

@@ -1672,7 +1672,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	chunk.hashsize = curr_hash_size;
 	chunk.requested_filesize = requested_filesize;
 	chunk.pipe_file_user = pipe_file_user.get();
-	chunk.with_sparse = with_sparse;
+	chunk.with_sparse = is_script ? false : with_sparse;
 	pipe_file_user.release();
 
 	hFile=INVALID_HANDLE_VALUE;

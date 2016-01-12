@@ -43,6 +43,7 @@
 #include <limits.h>
 #include <memory>
 #include <algorithm>
+#include <assert.h>
 
 
 #ifndef _WIN32
@@ -62,24 +63,18 @@ void ClientService::destroyClient( ICustomClient * pClient)
 	delete ((ClientConnector*)pClient);
 }
 
-RunningAction ClientConnector::backup_running=RUNNING_NONE;
-volatile bool ClientConnector::backup_done=false;
+std::vector<SRunningProcess> ClientConnector::running_processes;
+int64 ClientConnector::curr_backup_running_id = 0;
 IMutex *ClientConnector::backup_mutex=NULL;
+IMutex *ClientConnector::process_mutex = NULL;
 int ClientConnector::backup_interval=0;
 int ClientConnector::backup_alert_delay=5*60;
-int64 ClientConnector::last_pingtime=0;
 SChannel ClientConnector::channel_pipe;
-int ClientConnector::pcdone=0;
-int64 ClientConnector::eta_ms=0;
-int ClientConnector::pcdone2=0;
 std::vector<SChannel> ClientConnector::channel_pipes;
 std::vector<IPipe*> ClientConnector::channel_exit;
 std::vector<IPipe*> ClientConnector::channel_ping;
 std::vector<int> ClientConnector::channel_capa;
-IMutex *ClientConnector::progress_mutex=NULL;
-volatile bool ClientConnector::img_download_running=false;
 db_results ClientConnector::cached_status;
-std::string ClientConnector::backup_source_token;
 std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
@@ -87,7 +82,6 @@ std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::pair<std::string, std::string>, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
-void* ClientConnector::backup_running_owner=NULL;
 std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
@@ -144,8 +138,8 @@ void ClientConnector::init_mutex(void)
 	if(backup_mutex==NULL)
 	{
 		backup_mutex=Server->createMutex();
-		progress_mutex=Server->createMutex();
 		ident_mutex=Server->createMutex();
+		process_mutex = Server->createMutex();
 	}
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
@@ -179,7 +173,7 @@ void ClientConnector::destroy_mutex(void)
 {
 	Server->destroy(backup_mutex);
 	Server->destroy(ident_mutex);
-	Server->destroy(progress_mutex);
+	Server->destroy(process_mutex);
 }
 
 ClientConnector::ClientConnector(void)
@@ -216,6 +210,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	last_update_time=lasttime;
 	endpoint_name = pEndpointName;
 	make_fileserv=false;
+	local_backup_running_id = 0;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -309,9 +304,7 @@ bool ClientConnector::Run(void)
 					return true;
 				}
 				IScopedLock lock(backup_mutex);
-				backup_running=RUNNING_NONE;
-				backup_running_owner=NULL;
-				backup_done=true;	
+				removeRunningProcess(local_backup_running_id);
 				return false;
 			}
 			else if(msg=="done")
@@ -332,9 +325,7 @@ bool ClientConnector::Run(void)
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
 				IScopedLock lock(backup_mutex);
-				backup_running=RUNNING_NONE;
-				backup_running_owner=NULL;
-				backup_done=true;
+				removeRunningProcess(local_backup_running_id);
 			}
 			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
 			{
@@ -847,6 +838,10 @@ void ClientConnector::ReceivePackets(void)
 			else if(cmd=="DID BACKUP" )
 			{
 				CMD_DID_BACKUP(cmd); continue;
+			}
+			else if (next(cmd, 0, "2DID BACKUP "))
+			{
+				CMD_DID_BACKUP2(cmd); continue;
 			}
 			else if(next(cmd, 0, "SETTINGS ") )
 			{
@@ -1778,11 +1773,17 @@ bool ClientConnector::sendFullImage(void)
 
 	IScopedLock lock(backup_mutex);
 
-	backup_running=RUNNING_FULL_IMAGE;
-	backup_running_owner = image_inf.image_thread;
-	pcdone=0;
-	backup_source_token=server_token;
+	SRunningProcess new_proc;
+	new_proc.action = RUNNING_FULL_IMAGE;
+	new_proc.server_token = server_token;
+	new_proc.pcdone = 0;
+	new_proc.details = image_inf.orig_image_letter;
+	new_proc.server_id = image_inf.server_status_id;
+
+	local_backup_running_id = addNewProcess(new_proc);
+
 	status_updated = true;
+	image_inf.running_process_id = local_backup_running_id;
 	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE;
 	
@@ -1797,13 +1798,18 @@ bool ClientConnector::sendIncrImage(void)
 	mempipe_owner=true;
 
 	IScopedLock lock(backup_mutex);
-	backup_running=RUNNING_INCR_IMAGE;
-	backup_running_owner = image_inf.image_thread;
-	pcdone=0;
-	pcdone2=0;
-	backup_source_token=server_token;
-	status_updated = true;
 
+	SRunningProcess new_proc;
+	new_proc.action = RUNNING_INCR_IMAGE;
+	new_proc.server_token = server_token;
+	new_proc.pcdone = 0;
+	new_proc.details = image_inf.orig_image_letter;
+	new_proc.server_id = image_inf.server_status_id;
+
+	local_backup_running_id = addNewProcess(new_proc);
+
+	status_updated = true;
+	image_inf.running_process_id = local_backup_running_id;
 	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE_HASHDATA;
 	
@@ -2226,10 +2232,21 @@ void ClientConnector::downloadImage(str_map params)
 	}
 
 	int l_pcdone=0;
+
 	{
-		IScopedLock lock(progress_mutex);
-		pcdone=0;
+		IScopedLock lock(backup_mutex);
+		SRunningProcess new_proc;
+		new_proc.action = RUNNING_RESTORE_IMAGE;
+		new_proc.id = curr_backup_running_id++;
+		new_proc.pcdone = 0;
+		
+		local_backup_running_id = new_proc.id;
+
+		running_processes.push_back(new_proc);
+		status_updated = true;
 	}
+
+	ScopedRemoveRunningBackup remove_running_backup(local_backup_running_id);
 
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
@@ -2360,8 +2377,7 @@ void ClientConnector::downloadImage(str_map params)
 			if(t_pcdone!=l_pcdone)
 			{
 				l_pcdone=t_pcdone;
-				IScopedLock lock(progress_mutex);
-				pcdone=l_pcdone;
+				updateRunningPc(local_backup_running_id, l_pcdone);
 			}
 
 			lasttime=Server->getTimeMS();
@@ -2416,8 +2432,10 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 
 	IScopedLock lock(backup_mutex);
 	lasttime=Server->getTimeMS();
-	if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout)
+	if (getActiveProcess(x_pingtimeout) != NULL)
+	{
 		tcpstack.Send(pipe, "RUNNING");
+	}
 	else
 	{
 		bool ok=false;
@@ -2450,16 +2468,6 @@ void ClientConnector::doQuitClient(void)
 	do_quit=true;
 }
 
-void ClientConnector::updatePCDone2(int nv)
-{
-	IScopedLock lock(backup_mutex);
-	if(nv!=pcdone2)
-	{
-		status_updated = true;
-	}
-	pcdone2=nv;
-}
-
 bool ClientConnector::isQuitting(void)
 {
 	return do_quit;
@@ -2468,16 +2476,6 @@ bool ClientConnector::isQuitting(void)
 bool ClientConnector::isHashdataOkay(void)
 {
 	return hashdataok;
-}
-
-void ClientConnector::resetImageBackupStatus(void* owner)
-{
-	IScopedLock lock(backup_mutex);
-	if( (backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
-		&& (backup_running_owner==NULL || backup_running_owner==owner) )
-	{
-		backup_running=RUNNING_NONE;
-	}
 }
 
 void ClientConnector::ImageErr(const std::string &msg)
@@ -2540,9 +2538,10 @@ bool ClientConnector::isBackupRunning()
 {
 	IScopedLock lock(backup_mutex);
 
-	std::string job = getCurrRunningJob(false);
+	int pcdone;
+	std::string job = getCurrRunningJob(false, pcdone);
 
-	return job!="NOA" && job!="DONE";
+	return job!="NOA";
 }
 
 bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_size)
@@ -2665,12 +2664,10 @@ void ClientConnector::sendStatus()
 
 	std::string ret = getLastBackupTime();
 
-	ret += "#" + getCurrRunningJob(true);
+	int pcdone = -1;
+	ret += "#" + getCurrRunningJob(true, pcdone);
 
-	if(backup_running!=RUNNING_INCR_IMAGE)
-		ret+="#"+convert(pcdone);
-	else
-		ret+="#"+convert(pcdone2);
+	ret+="#"+convert(pcdone);
 
 	if(IdleCheckerThread::getPause())
 	{
@@ -2736,23 +2733,30 @@ bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int log
 	return sendMessageToChannel("LOG "+convert(log_id)+"-"+convert(loglevel)+"-"+msg, 10000, identity);
 }
 
-void ClientConnector::updateRestorePc(int64 restore_id, int64 status_id, int nv, const std::string& identity )
+void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
+	const std::string& fn, int fn_pc)
 {
 	IScopedLock lock(backup_mutex);
 
-	if(backup_running==RUNNING_NONE)
 	{
-		backup_running=RUNNING_RESTORE_FILE;
-	}
+		IScopedLock lock_process(process_mutex);
 
-	if(backup_running==RUNNING_RESTORE_FILE)
-	{
-		if(nv>100)
+		SRunningProcess* proc = getRunningProcess(local_process_id);
+
+		if (proc != NULL)
 		{
-			backup_running = RUNNING_NONE;
+			if (nv > 100)
+			{
+				removeRunningProcess(local_process_id);
+			}
+			else
+			{
+				proc->pcdone = nv;
+				proc->last_pingtime = Server->getTimeMS();
+				proc->details = fn;
+				proc->detail_pc = fn_pc;
+			}
 		}
-
-		pcdone = nv;
 	}
 
 	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id)+"&id="+convert(restore_id),
@@ -2905,5 +2909,166 @@ std::string ClientConnector::getHasNoRecentBackup()
 }
 
 
+void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name)
+{
+	IScopedLock lock(backup_mutex);
+
+	for (size_t i = 0; i<channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].pipe == pipe)
+		{
+			if (!channel_pipes[i].server_identity.empty())
+			{
+				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
+			}
+			break;
+		}
+	}
+}
+
+SRunningProcess * ClientConnector::getRunningProcess(RunningAction action, std::string server_token)
+{
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if (curr.action == action
+			&& (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
+			&& curr.server_id == 0)
+		{
+			return &curr;
+		}
+	}
+
+	return NULL;
+}
+
+SRunningProcess * ClientConnector::getRunningFileBackupProcess(std::string server_token, int64 server_id)
+{
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if ((curr.action == RUNNING_FULL_FILE || curr.action == RUNNING_INCR_FILE || curr.action == RUNNING_RESUME_FULL_FILE || curr.action == RUNNING_RESUME_INCR_FILE)
+			&& (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
+			&& ((curr.server_id == 0 && server_id == 0) || curr.server_id == server_id))
+		{
+			return &curr;
+		}
+	}
+
+	return NULL;
+}
+
+SRunningProcess * ClientConnector::getRunningBackupProcess(std::string server_token, int64 server_id)
+{
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if ( (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
+			&& ((curr.server_id == 0 && server_id == 0) || curr.server_id == server_id))
+		{
+			return &curr;
+		}
+	}
+
+	return NULL;
+}
+
+SRunningProcess * ClientConnector::getRunningProcess(int64 id)
+{
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if (curr.id == id)
+		{
+			return &curr;
+		}
+	}
+
+	return NULL;
+}
+
+SRunningProcess * ClientConnector::getActiveProcess(int64 timeout)
+{
+	int64 ctime = Server->getTimeMS();
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if (ctime - curr.last_pingtime<timeout)
+		{
+			return &curr;
+		}
+	}
+
+	return NULL;
+}
+
+bool ClientConnector::removeRunningProcess(int64 id)
+{
+	IScopedLock lock(process_mutex);
+
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		SRunningProcess& curr = running_processes[i];
+		if (curr.id == id)
+		{
+			running_processes.erase(running_processes.begin() + i);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ClientConnector::updateRunningPc(int64 id, int pcdone)
+{
+	IScopedLock lock(process_mutex);
+
+	SRunningProcess* proc = getRunningProcess(id);
+	if (proc == NULL)
+	{
+		return false;
+	}
+
+	if (proc->pcdone != pcdone)
+	{
+		status_updated = true;
+	}
+	proc->pcdone = pcdone;
+
+	return true;
+}
+
+std::string ClientConnector::actionToStr(RunningAction action)
+{
+	switch (action)
+	{
+	case RUNNING_INCR_FILE:
+		return "INCR";
+	case RUNNING_FULL_FILE:
+		return "FULL";
+	case RUNNING_FULL_IMAGE:
+		return "FULLI";
+	case RUNNING_INCR_IMAGE:
+		return "INCRI";
+	case RUNNING_RESUME_INCR_FILE:
+		return "R_INCR";
+	case RUNNING_RESUME_FULL_FILE:
+		return "R_FULL";
+	case RUNNING_RESTORE_IMAGE:
+		return "RESTORE_IMAGE";
+	case RUNNING_RESTORE_FILE:
+		return "RESTORE_FILES";
+	default:
+		return "";
+	}
+}
+
+int64 ClientConnector::addNewProcess(SRunningProcess proc)
+{
+	IScopedLock lock(process_mutex);
+	proc.id = ++curr_backup_running_id;
+	running_processes.push_back(proc);
+	return proc.id;
+}
 
 

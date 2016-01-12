@@ -136,7 +136,7 @@ bool ImageBackup::doBackup()
 			}
 		}
 
-		if(letter=="ESP")
+		if(letter=="ESP" || letter=="SYSVOL")
 		{
 			synthetic_full=false;
 		}
@@ -318,6 +318,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	{
 		chksum_str += "&clientsubname=" + EscapeParamString(clientsubname);
 	}
+
+	chksum_str += "&status_id=" + convert(status_id);
 
 	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 
@@ -564,7 +566,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 				if(pParentvhd.empty())
 				{
-					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id);
+					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id)+ "&status_id=" + convert(status_id);
 					if(transfer_bitmap)
 					{
 						cmd+="&bitmap=1";
@@ -590,7 +592,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				}
 				else
 				{
-					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id)+"&hashsize="+convert(parenthashfile->Size());
+					std::string ts = "INCR IMAGE letter=C:&shadowdrive=" + shadowdrive + "&start=" + convert(continue_block) + "&shadowid=" + convert(shadow_id) + "&hashsize=" + convert(parenthashfile->Size()) + "&status_id=" + convert(status_id);
 					if(transfer_bitmap)
 					{
 						ts+="&bitmap=1";
@@ -669,10 +671,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
+							int loglevel = LL_WARNING;
+
+							if (err == "Not found")
+							{
+								loglevel = LL_DEBUG;
+							}
+
 							if(pLetter=="SYSVOL")
-								ServerLogger::Log(logid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", LL_INFO);
+								ServerLogger::Log(logid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", loglevel);
 							else
-								ServerLogger::Log(logid, "Request of EFI System Partition failed. Reason: "+err+". This probably just means the Computer does not have a EFI System Partition which UrBackup can backup.", LL_INFO);
+								ServerLogger::Log(logid, "Request of EFI System Partition failed. Reason: "+err+". This probably just means the Computer does not have a EFI System Partition which UrBackup can backup.", loglevel);
 						}
 					}
 					else
@@ -985,6 +994,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							int64 ctime=Server->getTimeMS();
 							if(ctime-last_status_update>status_update_intervall)
 							{
+								last_status_update = ctime;
 								if(blockcnt!=0)
 								{
 									if(has_parent)
@@ -1000,22 +1010,25 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								}
 							}
 
-							if(ctime-last_status_update>eta_update_intervall)
+							if(ctime- last_eta_update>eta_update_intervall)
 							{
-								if(blockcnt!=0)
-								{
-									int64 rel_blocks = has_parent?currblock:numblocks;
-									int64 new_blocks = rel_blocks - last_eta_update_blocks;
-									if(new_blocks>0)
-									{
-										last_eta_update_blocks = rel_blocks;
+								last_eta_update = ctime;
 
-										int64 currtime = Server->getTimeMS();
-										int64 passed_time = currtime - eta_set_time;
+								int64 rel_blocks = has_parent ? currblock : numblocks;
+								if (rel_blocks > 1000)
+								{									
+									int64 new_blocks = rel_blocks - last_eta_update_blocks;
+									int64 passed_time = ctime - eta_set_time;
+
+									if(new_blocks>0 && passed_time>0)
+									{
+										last_eta_update_blocks = rel_blocks;										
+										
 										eta_set_time = Server->getTimeMS();
 
 										double speed_bpms = static_cast<double>(new_blocks) / passed_time;
 
+										bool set_eta = false;
 										if(eta_estimated_speed==0)
 										{
 											eta_estimated_speed = speed_bpms;
@@ -1027,11 +1040,15 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 										else
 										{
 											eta_estimated_speed = 0.99*eta_estimated_speed + 0.01*speed_bpms;
+											set_eta = true;
 										}
 
-										int64 remaining_blocks = (has_parent?totalblocks:blockcnt)-rel_blocks;
-										ServerStatus::setProcessEta(clientname, status_id,
-											static_cast<int64>(remaining_blocks/speed_bpms+0.5), eta_set_time);
+										if (set_eta)
+										{
+											int64 remaining_blocks = (has_parent ? totalblocks : blockcnt) - rel_blocks;
+											ServerStatus::setProcessEta(clientname, status_id,
+												static_cast<int64>(remaining_blocks / speed_bpms + 0.5), eta_set_time);
+										}
 									}									
 								}
 							}

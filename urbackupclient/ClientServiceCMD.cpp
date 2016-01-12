@@ -218,6 +218,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		ParseParamStrHttp(s_params, &params);
 	}
 
+	int64 server_id = watoi64(params["status_id"]);
 	std::string resume = params["resume"];
 	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
@@ -291,26 +292,42 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	lasttime=Server->getTimeMS();
 
+	RunningAction action = RUNNING_NONE;
 	if(resume.empty())
 	{
-		backup_running=RUNNING_INCR_FILE;
+		action =RUNNING_INCR_FILE;
 	}
 	else if(resume=="full")
 	{
-		backup_running=RUNNING_RESUME_FULL_FILE;
+		action =RUNNING_RESUME_FULL_FILE;
 	}
 	else if(resume=="incr")
 	{
-		backup_running=RUNNING_RESUME_INCR_FILE;
+		action =RUNNING_RESUME_INCR_FILE;
 	}
+
+	IScopedLock process_lock(process_mutex);
+
+	SRunningProcess* proc = getRunningProcess(action, server_token);
+
+	if (proc == NULL)
+	{
+		running_processes.push_back(SRunningProcess());
+		proc = &running_processes.back();
+	}
+
+	proc->action = action;
+	proc->server_id = server_id;
+	if (proc->id == 0)
+	{
+		++curr_backup_running_id;
+		proc->id = curr_backup_running_id;
+	}
+	proc->server_token = server_token;
 
 	status_updated = true;
 
 	end_to_end_file_backup_verification_enabled=false;
-	
-	last_pingtime=Server->getTimeMS();
-	pcdone=-1;
-	backup_source_token=server_token;
 }
 
 void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
@@ -341,6 +358,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	int64 server_id = watoi64(params["status_id"]);
 	std::string sha_version_str = params["sha"];
 	int sha_version = 512;
 	if(!sha_version_str.empty())
@@ -405,11 +423,16 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	end_to_end_file_backup_verification_enabled=false;
 
-	backup_running=RUNNING_FULL_FILE;
+	SRunningProcess new_proc;
+
+	new_proc.action = RUNNING_FULL_FILE;
+	new_proc.server_id = server_id;
+	new_proc.id = curr_backup_running_id++;
+	new_proc.server_token = server_token;
+
+	running_processes.push_back(new_proc);
+
 	status_updated = true;
-	last_pingtime=Server->getTimeMS();
-	pcdone=-1;
-	backup_source_token=server_token;
 }
 
 void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
@@ -597,18 +620,52 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 
 	{
 		IScopedLock lock(backup_mutex);
-		if(backup_running==RUNNING_INCR_FILE || backup_running==RUNNING_FULL_FILE ||
-			backup_running==RUNNING_RESUME_INCR_FILE || backup_running==RUNNING_RESUME_FULL_FILE )
+		IScopedLock process_lock(process_mutex);
+
+		SRunningProcess* proc = getRunningFileBackupProcess(std::string(), 0);
+
+		if (proc != NULL)
 		{
-			backup_running=RUNNING_NONE;
-			backup_running_owner=NULL;
-			backup_done=true;
+			removeRunningProcess(proc->id);
 		}
+
 		lasttime=Server->getTimeMS();
+		status_updated = true;
+	}
+			
+	IndexThread::execute_postbackup_hook();
+}
+
+void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
+{
+	std::string params_str = cmd.substr(12);
+	str_map params;
+	ParseParamStrHttp(params_str, &params);
+
+	updateLastBackup();
+	tcpstack.Send(pipe, "OK");
+
+	std::string server_token = params["server_token"];
+	if (server_token.empty())
+	{
+		return;
 	}
 
-	status_updated = true;
-			
+	{
+		IScopedLock lock(backup_mutex);
+		IScopedLock process_lock(process_mutex);
+
+		SRunningProcess* proc = getRunningFileBackupProcess(server_token, watoi64(params["status_id"]));
+
+		if (proc != NULL)
+		{
+			removeRunningProcess(proc->id);
+		}
+
+		lasttime = Server->getTimeMS();
+		status_updated = true;
+	}
+
 	IndexThread::execute_postbackup_hook();
 }
 
@@ -640,55 +697,19 @@ std::string ClientConnector::getLastBackupTime()
 	}
 }
 
-std::string ClientConnector::getCurrRunningJob(bool reset_done)
+std::string ClientConnector::getCurrRunningJob(bool reset_done, int& pcdone)
 {
-	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
+	SRunningProcess* proc = getActiveProcess(x_pingtimeout);
+
+	if(proc==NULL )
 	{
 		return getHasNoRecentBackup();
 	}
-
-	if(backup_running==RUNNING_NONE)
+	else
 	{
-		if(backup_done)
-		{
-			return "DONE";
-		}
-		else
-		{
-			return getHasNoRecentBackup();
-		}
-		
-		if(reset_done)
-		{
-			backup_done=false;
-		}
+		pcdone = proc->pcdone;
+		return actionToStr(proc->action);
 	}
-	else if(backup_running==RUNNING_INCR_FILE)
-	{
-		return "INCR";
-	}
-	else if(backup_running==RUNNING_FULL_FILE)
-	{
-		return "FULL";
-	}
-	else if(backup_running==RUNNING_FULL_IMAGE)
-	{
-		return "FULLI";
-	}
-	else if(backup_running==RUNNING_INCR_IMAGE)
-	{
-		return "INCRI";
-	}
-	else if(backup_running==RUNNING_RESUME_INCR_FILE)
-	{
-		return "R_INCR";
-	}
-	else if(backup_running==RUNNING_RESUME_FULL_FILE)
-	{
-		return "R_FULL";
-	}
-
-	return std::string();
 }
 
 void ClientConnector::CMD_STATUS(const std::string &cmd)
@@ -706,14 +727,29 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("last_backup_time", getLastBackupTime());
 
-	if(backup_running!=RUNNING_INCR_IMAGE)
-		ret.set("percent_done", pcdone);
-	else
-		ret.set("percent_done", pcdone2);
+	JSON::Array j_running_processes;
 
-	ret.set("eta_ms", eta_ms);
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		JSON::Object obj;
+		obj.set("percent_done", running_processes[i].pcdone);
+		obj.set("action", actionToStr(running_processes[i].action));
+		obj.set("eta_ms", running_processes[i].eta_ms);
 
-	ret.set("currently_running", getCurrRunningJob(false));
+		if (!running_processes[i].details.empty())
+		{
+			obj.set("details", running_processes[i].details);
+		}
+
+		if (running_processes[i].detail_pc != -1)
+		{
+			obj.set("detail_pc", running_processes[i].detail_pc);
+		}
+
+		j_running_processes.add(obj);
+	}
+
+	ret.set("running_processes", j_running_processes);
 
 	JSON::Array servers;
 
@@ -755,27 +791,36 @@ void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
 void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 {
 	tcpstack.Send(pipe, "OK");
+
 	IScopedLock lock(backup_mutex);
+	IScopedLock process_lock(process_mutex);
+
 	lasttime=Server->getTimeMS();
-	last_pingtime=Server->getTimeMS();
-	std::string pcdone_new=getbetween("-","-", cmd);
-	if(backup_source_token.empty() || backup_source_token==server_token )
+	std::string pcdone_new = getbetween("-", "-", cmd);
+
+	last_token_times[server_token] = Server->getTimeSeconds();
+
+	SRunningProcess* proc = getRunningFileBackupProcess(server_token, 0);
+
+	if (proc == NULL)
 	{
-		int pcdone_old=pcdone;
-
-		if(pcdone_new.empty())
-			pcdone=-1;
-		else
-			pcdone=atoi(pcdone_new.c_str());
-
-		if(pcdone_old!=pcdone)
-		{
-			status_updated = true;
-		}
-
-		eta_ms = 0;
+		return;
 	}
-	last_token_times[server_token]=Server->getTimeSeconds();
+
+	int pcdone_old = proc->pcdone;
+
+	if (pcdone_new.empty())
+		proc->pcdone = -1;
+	else
+		proc->pcdone = atoi(pcdone_new.c_str());
+
+	if (pcdone_old != proc->pcdone)
+	{
+		status_updated = true;
+	}
+
+	proc->eta_ms = 0;
+	proc->last_pingtime = Server->getTimeMS();	
 
 #ifdef _WIN32
 	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
@@ -790,28 +835,34 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	tcpstack.Send(pipe, "OK");
 
 	IScopedLock lock(backup_mutex);
+	IScopedLock process_lock(process_mutex);
+
+	last_token_times[server_token] = Server->getTimeSeconds();
 	lasttime=Server->getTimeMS();
-	last_pingtime=Server->getTimeMS();
+	
+	SRunningProcess* proc = getRunningBackupProcess(server_token, watoi64(params["status_id"]));
 
-	if(backup_source_token.empty() || backup_source_token==server_token )
+	if (proc == NULL)
 	{
-		std::string pcdone_new=params["pc_done"];
-
-		int pcdone_old = pcdone;
-
-		if(pcdone_new.empty())
-			pcdone=-1;
-		else
-			pcdone=watoi(pcdone_new);
-
-		if(pcdone_old!=pcdone)
-		{
-			status_updated = true;
-		}
-
-		eta_ms = watoi64(params["eta_ms"]);
+		return;
 	}
-	last_token_times[server_token]=Server->getTimeSeconds();
+
+	std::string pcdone_new=params["pc_done"];
+
+	int pcdone_old = proc->pcdone;
+
+	if(pcdone_new.empty())
+		proc->pcdone =-1;
+	else
+		proc->pcdone =watoi(pcdone_new);
+
+	if(pcdone_old!= proc->pcdone)
+	{
+		status_updated = true;
+	}
+
+	proc->eta_ms = watoi64(params["eta_ms"]);
+
 
 #ifdef _WIN32
 	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
@@ -820,6 +871,15 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 
 void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity)
 {
+	bool img_download_running = false;
+	{
+		IScopedLock lock(process_mutex);
+
+		SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
+
+		img_download_running = proc != NULL;
+	}
+
 	if(!img_download_running)
 	{
 		g_lock->relock(backup_mutex);
@@ -858,23 +918,6 @@ void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd, const std::string
 	}
 
 	refreshSessionFromChannel(endpoint_name);
-}
-
-void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name)
-{
-	IScopedLock lock(backup_mutex);
-
-	for (size_t i = 0; i<channel_pipes.size(); ++i)
-	{
-		if (channel_pipes[i].pipe == pipe)
-		{
-			if (!channel_pipes[i].server_identity.empty())
-			{
-				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
-			}
-			break;
-		}
-	}
 }
 
 void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name)
@@ -1000,6 +1043,8 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 		server_token=(params["token"]);
 		image_inf.image_letter=(params["letter"]);
+		image_inf.orig_image_letter = image_inf.image_letter;
+		image_inf.server_status_id = watoi(params["status_id"]);
 		image_inf.shadowdrive=(params["shadowdrive"]);
 		if(params.find("start")!=params.end())
 		{
@@ -1050,12 +1095,17 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			
 			if(!mpath.empty())
 			{
-				image_inf.image_letter=(mpath);
+				image_inf.image_letter=mpath;
+			}
+			else if(!sysvol.empty())
+			{
+				image_inf.image_letter=sysvol;
+				image_inf.no_shadowcopy=true;
 			}
 			else
 			{
-				image_inf.image_letter=(sysvol);
-				image_inf.no_shadowcopy=true;
+				ImageErr("Not found");
+				return;
 			}
 		}
 
@@ -1119,6 +1169,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			hashdataleft=watoi(f_hashsize->second);
 			image_inf.image_letter=(params["letter"]);
 			image_inf.shadowdrive=(params["shadowdrive"]);
+			image_inf.server_status_id = watoi(params["status_id"]);
 			if(params.find("start")!=params.end())
 			{
 				image_inf.startpos=(uint64)_atoi64((params["start"]).c_str());
@@ -1664,9 +1715,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	IScopedLock lock(backup_mutex);
 	waitForPings(&lock);
 	Server->Log("In mutex...",LL_DEBUG);
-	img_download_running=true;
 	downloadImage(params);
-	img_download_running=false;
 	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
 }
@@ -1741,6 +1790,14 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 {
 	Server->Log("Sending progress...", LL_DEBUG);
 	lasttime=Server->getTimeMS();
+
+	bool img_download_running = false;
+	{
+		IScopedLock lock(process_mutex);
+		SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
+		img_download_running = proc != NULL;
+	}
+
 	if(img_download_running==false)
 	{
 		pipe->Write("100");
@@ -1753,8 +1810,12 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 			{
 				int progress=0;
 				{
-					IScopedLock lock(progress_mutex);
-					progress=pcdone;
+					IScopedLock lock(process_mutex);
+					SRunningProcess* proc = getRunningProcess(RUNNING_RESTORE_IMAGE, std::string());
+					if (proc != NULL)
+					{
+						progress = proc->pcdone;
+					}
 				}
 				if(!pipe->Write(convert(progress)+"\n", 10000))
 				{
@@ -1975,12 +2036,12 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1");
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore);
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CMD=1");
 #endif
 }
 

@@ -42,8 +42,15 @@ namespace
 		RestoreUpdaterThread(int64 restore_id, int64 status_id, std::string server_token)
 			: update_mutex(Server->createMutex()), stopped(false),
 			update_cond(Server->createCondition()), curr_pc(-1),
-			restore_id(restore_id), status_id(status_id), server_token(server_token)
-		{}
+			restore_id(restore_id), status_id(status_id), server_token(server_token),
+			curr_fn_pc(-1)
+		{
+			SRunningProcess new_proc;
+			new_proc.action = RUNNING_RESTORE_FILE;
+			new_proc.server_id = status_id;
+			new_proc.server_token = server_token;
+			local_restore_id = ClientConnector::addNewProcess(new_proc);
+		}
 
 		void operator()()
 		{
@@ -51,7 +58,7 @@ namespace
 				IScopedLock lock(update_mutex.get());
 				while (!stopped)
 				{
-					ClientConnector::updateRestorePc(restore_id, status_id, curr_pc, server_token);
+					ClientConnector::updateRestorePc(local_restore_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc);
 					update_cond->wait(&lock, 60000);
 				}
 			}
@@ -68,7 +75,15 @@ namespace
 		void update_pc(int new_pc)
 		{
 			IScopedLock lock(update_mutex.get());
-			curr_pc = new_pc;
+			curr_pc = new_pc;		
+			update_cond->notify_all();
+		}
+
+		void update_fn(const std::string& fn, int fn_pc)
+		{
+			IScopedLock lock(update_mutex.get());
+			curr_fn = fn;
+			curr_fn_pc = fn_pc;
 			update_cond->notify_all();
 		}
 
@@ -77,9 +92,12 @@ namespace
 		std::auto_ptr<ICondition> update_cond;
 		bool stopped;
 		int curr_pc;
+		std::string curr_fn;
+		int curr_fn_pc;
 		int64 restore_id;
 		int64 status_id;
 		std::string server_token;
+		int64 local_restore_id;
 	};
 
 	class ScopedRestoreUpdater
@@ -94,6 +112,11 @@ namespace
 		void update_pc(int new_pc)
 		{
 			restore_updater->update_pc(new_pc);
+		}
+
+		void update_fn(const std::string& fn, int fn_pc)
+		{
+			restore_updater->update_fn(fn, fn_pc);
 		}
 
 		~ScopedRestoreUpdater()
@@ -128,6 +151,7 @@ void RestoreFiles::operator()()
 
 	{
 		ScopedRestoreUpdater restore_updater(restore_id, status_id, server_token);
+		curr_restore_updater = &restore_updater;
 
 		if (!connectFileClient(fc))
 		{
@@ -185,12 +209,15 @@ void RestoreFiles::operator()()
 
 		log("Downloading necessary file data...", LL_INFO);
 
+		fc.setProgressLogCallback(this);
+
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
 			restore_failed(fc, metadata_dl);
 			return;
 		}
 
+		curr_restore_updater = NULL;
 		restore_updater.update_pc(101);
 
 		do
@@ -312,6 +339,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	{
 		return false;
 	}
+
+	fc_chunked->setProgressLogCallback(this);
 
 	_u32 read;
 	SFile data;
@@ -699,6 +728,14 @@ std::auto_ptr<FileClientChunked> RestoreFiles::createFcChunked()
 
 	return std::auto_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
 		NULL, client_token, NULL));
+}
+
+void RestoreFiles::log_progress(const std::string & fn, int64 total, int64 downloaded, int64 speed_bps)
+{
+	if (total > 0)
+	{
+		curr_restore_updater->update_fn(fn, (int)(((downloaded*100.f) / total) + 0.5f));
+	}
 }
 
 void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)

@@ -137,7 +137,7 @@ void ChunkSendThread::operator()(void)
 			{
 				has_error = true;
 			}
-			else
+			else if (!sparse_extents.empty())
 			{
 				MD5 sparse_hash;
 				sparse_hash.update(reinterpret_cast<unsigned char*>(sparse_extents.data()), static_cast<_u32>(sparse_extents.size()*sizeof(IFsFile::SSparseExtent)));

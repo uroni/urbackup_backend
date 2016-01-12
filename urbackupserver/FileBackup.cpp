@@ -166,12 +166,17 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		start_backup_cmd+="&sha=512";
 	}
 
-	start_backup_cmd+="&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1&with_proper_symlinks=1";
+	if (client_main->getProtocolVersions().file_protocol_version_v2 >= 1)
+	{
+		start_backup_cmd += "&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1&with_proper_symlinks=1";
+		start_backup_cmd += "&status_id=" + convert(status_id);
+	}
 
 	if(with_token)
 	{
 		start_backup_cmd+="#token="+server_token;
 	}
+
 
 	tcpstack.Send(cc, start_backup_cmd);
 
@@ -471,26 +476,29 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 	int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
 	int64 passed_time = Server->getTimeMS() - eta_set_time;
 
-	eta_set_time = Server->getTimeMS();
-
-	double speed_bpms = static_cast<double>(new_bytes)/passed_time;
-
-	if(eta_estimated_speed==0)
+	if (passed_time > 0)
 	{
-		eta_estimated_speed = speed_bpms;
-	}
-	else
-	{
-		eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
-	}
+		eta_set_time = Server->getTimeMS();
 
-	if(last_eta_received_bytes>0)
-	{
-		ServerStatus::setProcessEta(clientname, status_id,
-			static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5));
-	}
+		double speed_bpms = static_cast<double>(new_bytes) / passed_time;
 
-	last_eta_received_bytes = received_data_bytes;
+		if (eta_estimated_speed == 0)
+		{
+			eta_estimated_speed = speed_bpms;
+		}
+		else
+		{
+			eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
+		}
+
+		if (last_eta_received_bytes > 0 && eta_estimated_speed > 0)
+		{
+			ServerStatus::setProcessEta(clientname, status_id,
+				static_cast<int64>((files_size - received_data_bytes) / eta_estimated_speed + 0.5));
+		}
+
+		last_eta_received_bytes = received_data_bytes;
+	}
 }
 
 bool FileBackup::doBackup()
@@ -816,7 +824,16 @@ void FileBackup::sendBackupOkay(bool b_okay)
 
 void FileBackup::notifyClientBackupSuccessfull(void)
 {
-	client_main->sendClientMessageRetry("DID BACKUP", "OK", "Sending status (DID BACKUP) to client failed", 10000, 5);
+	if (client_main->getProtocolVersions().cmd_version == 0)
+	{
+		client_main->sendClientMessageRetry("DID BACKUP", "OK", "Sending status (DID BACKUP) to client failed", 10000, 5);
+	}
+	else
+	{
+		std::string params = " status_id="+convert(status_id)+"&server_token="+EscapeParamString(server_token);
+
+		client_main->sendClientMessageRetry("2DID BACKUP "+ params, "OK", "Sending status (2DID BACKUP) to client failed", 10000, 5);
+	}
 }
 
 void FileBackup::waitForFileThreads(void)

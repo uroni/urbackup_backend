@@ -15,12 +15,12 @@ namespace
 	class ScopedRestoreUpdater;
 }
 
-class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
+class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback, FileClient::ProgressLogCallback
 {
 public:
 	RestoreFiles(int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path, bool single_file)
 		: restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
-		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false)
+		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL)
 	{
 
 	}
@@ -45,6 +45,8 @@ public:
 	{
 		restore_declined = b;
 	}
+
+	virtual void log_progress(const std::string & fn, int64 total, int64 downloaded, int64 speed_bps);
 
 private:
 	
@@ -88,4 +90,6 @@ private:
 	bool single_file;
 
 	bool restore_declined;
+
+	ScopedRestoreUpdater* curr_restore_updater;
 };

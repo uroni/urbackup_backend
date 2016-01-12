@@ -552,7 +552,7 @@ void ImageThread::sendIncrImageThread(void)
 				++update_cnt;
 				if(update_cnt>10)
 				{
-					client->updatePCDone2((int)(((float)i/(float)blocks)*100.f+0.5f));
+					ClientConnector::updateRunningPc(image_inf->running_process_id, (int)(((float)i / (float)blocks)*100.f + 0.5f));
 					update_cnt=0;
 				}
 				currvhdblock=i/vhdblocks;
@@ -811,7 +811,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	client->resetImageBackupStatus(this);
+	ClientConnector::removeRunningProcess(image_inf->running_process_id);
 #ifdef _WIN32
 #ifdef THREAD_MODE_BACKGROUND_END
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
