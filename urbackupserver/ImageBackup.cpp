@@ -893,8 +893,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 				if(issmall)
 				{
-					ServerLogger::Log(logid, "First packet to small", LL_ERROR);
-					goto do_image_cleanup;
+					ServerLogger::Log(logid, "First packet too small", LL_WARNING);
+					off = off_start + static_cast<_u32>(r);
+					continue;
 				}
 
 				curr_image_recv_timeout=image_recv_timeout_after_first;
@@ -1019,9 +1020,13 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 										{
 											eta_estimated_speed = speed_bpms;
 										}
-										else
+										else if (eta_set_time - image_backup_starttime < 5 * 60 * 1000)
 										{
 											eta_estimated_speed = 0.9*eta_estimated_speed + 0.1*speed_bpms;
+										}
+										else
+										{
+											eta_estimated_speed = 0.99*eta_estimated_speed + 0.01*speed_bpms;
 										}
 
 										int64 remaining_blocks = (has_parent?totalblocks:blockcnt)-rel_blocks;
