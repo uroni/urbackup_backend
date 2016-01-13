@@ -107,6 +107,10 @@ void ServerCleanupThread::operator()(void)
 			break;
 		}
 		
+		cleanupdao.reset();
+		backupdao.reset();
+		filesdao.reset();
+		fileindex.reset();
 
 		Server->destroyDatabases(Server->getThreadID());
 		delete this;
