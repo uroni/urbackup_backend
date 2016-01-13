@@ -75,10 +75,10 @@ namespace
 			return;
 		case SQLITE_NOTICE_RECOVER_ROLLBACK:
 		case SQLITE_NOTICE_RECOVER_WAL:
-			Server->Log("Database did not shutdown cleanly. Recovering via journal. ("+ std::string(zMsg) + " code: " + convert(iErrCode)+")", LL_INFO);
+			Server->Log("SQLite: "+ std::string(zMsg) + " code: " + convert(iErrCode), LL_INFO);
 			break;
 		default:
-			Server->Log(std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_WARNING);
+			Server->Log("SQLite: " + std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_WARNING);
 			break;
 		}
 	}

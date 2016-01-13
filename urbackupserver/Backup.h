@@ -77,7 +77,7 @@ protected:
 
 	IDatabase* db;
 	std::auto_ptr<ServerSettings> server_settings;
-	std::auto_ptr<ServerBackupDao> backup_dao;
+	ServerBackupDao* backup_dao;
 
 	bool log_backup;
 	bool has_early_error;

@@ -40,17 +40,25 @@ extern std::string server_identity;
 
 const int64 c_readd_size_limit=4096;
 
+namespace
+{
+	
+}
+
 IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token, std::string details)
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details), 
-	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL)
+	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL), filesdao(NULL), link_dao(NULL), link_journal_dao(NULL)
 {
 
 }
 
 bool IncrFileBackup::doFileBackup()
 {
-	filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
+	ScopedFreeObjRef<ServerFilesDao*> free_filesdao(filesdao);
+	filesdao = new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES));
+	ScopedFreeObjRef<ServerLinkDao*> free_link_dao(link_dao);
+	ScopedFreeObjRef<ServerLinkJournalDao*> free_link_journal_dao(link_journal_dao);
 
 	ServerLogger::Log(logid, "Starting incremental file backup...", LL_INFO);
 
@@ -272,7 +280,7 @@ bool IncrFileBackup::doFileBackup()
 				return false;
 			}
 
-			if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
+			if(!os_create_dir(os_file_prefix(backuppath_hashes)))
 			{
 				ServerLogger::Log(logid, "Cannot create hash path (Server error)", LL_ERROR);
 				has_early_error=true;

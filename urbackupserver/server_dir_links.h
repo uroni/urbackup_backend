@@ -12,7 +12,7 @@ void destroy_dir_link_mutex();
 std::string escape_glob_sql(const std::string& glob);
 
 bool link_directory_pool(int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction,
-	std::auto_ptr<ServerLinkDao>& link_dao, std::auto_ptr<ServerLinkJournalDao>& link_journal_dao);
+	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao);
 
 bool replay_directory_link_journal();
 

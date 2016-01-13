@@ -73,19 +73,19 @@ std::string escape_glob_sql(const std::string& glob)
 
 
 bool link_directory_pool( int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction,
-	std::auto_ptr<ServerLinkDao>& link_dao, std::auto_ptr<ServerLinkJournalDao>& link_journal_dao)
+	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao)
 {
-	if (link_dao.get() == NULL)
+	if (link_dao == NULL)
 	{
-		link_dao.reset(new ServerLinkDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS)));
+		link_dao=new ServerLinkDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
 	}
 
 	DBScopedSynchronous synchonous_link_journal(NULL);
 
-	if (!with_transaction && link_journal_dao.get() == NULL)
+	if (!with_transaction && link_journal_dao == NULL)
 	{
 		IDatabase* link_journal_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL);
-		link_journal_dao.reset(new ServerLinkJournalDao(link_journal_db));
+		link_journal_dao = new ServerLinkJournalDao(link_journal_db);
 		synchonous_link_journal.reset(link_journal_db);
 	}
 
@@ -114,7 +114,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 		}
 
 		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
-		reference_all_sublinks(*link_dao.get(), clientid, src_dir, target_dir);
+		reference_all_sublinks(*link_dao, clientid, src_dir, target_dir);
 		refcount_bigger_one=true;
 	}
 	else if(os_directory_exists(os_file_prefix(src_dir)))
@@ -134,7 +134,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 		}
 
 		link_dao->addDirectoryLink(clientid, pool_name, src_dir);
-		reference_all_sublinks(*link_dao.get(), clientid, src_dir, target_dir);
+		reference_all_sublinks(*link_dao, clientid, src_dir, target_dir);
 		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
 				
 

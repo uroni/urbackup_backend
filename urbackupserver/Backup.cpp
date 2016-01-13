@@ -45,7 +45,8 @@ void Backup::operator()()
 	logid = ServerLogger::getLogId(clientid);
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	server_settings.reset(new ServerSettings(db, clientid));
-	backup_dao.reset(new ServerBackupDao(db));
+	ScopedFreeObjRef<ServerBackupDao*> backup_dao_free(backup_dao);
+	backup_dao = new ServerBackupDao(db);
 
 	ScopedActiveThread sat;
 	active_thread=sat.get();
@@ -123,7 +124,6 @@ void Backup::operator()()
 	ServerStatus::stopProcess(clientname, status_id);
 
 	server_settings.reset();
-	backup_dao.reset();
 	db=NULL;
 
 	client_main->getInternalCommandPipe()->Write("WAKEUP");

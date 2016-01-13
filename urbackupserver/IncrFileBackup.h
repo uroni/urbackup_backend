@@ -30,7 +30,7 @@ protected:
 
 	IMutex* hash_existing_mutex;
 
-	std::auto_ptr<ServerFilesDao> filesdao;
-	std::auto_ptr<ServerLinkDao> link_dao;
-	std::auto_ptr<ServerLinkJournalDao> link_journal_dao;
+	ServerFilesDao* filesdao;
+	ServerLinkDao* link_dao;
+	ServerLinkJournalDao* link_journal_dao;
 };
