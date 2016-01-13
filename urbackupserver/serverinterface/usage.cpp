@@ -22,6 +22,7 @@
 #include "../server_cleanup.h"
 #include "../../Interface/ThreadPool.h"
 #include "../create_files_index.h"
+#include "../dao/ServerFilesDao.h"
 #include "../database.h"
 
 namespace 
@@ -35,12 +36,8 @@ namespace
 
 		void operator()(void)
 		{
-			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-			db->DetachDBs();
-			db->BeginWriteTransaction();
-			db->Write("UPDATE clients SET bytes_used_files=0");
-
-			ServerBackupDao backupdao(db);
+			IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+			ServerFilesDao filesdao(db);
 			
 			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
@@ -56,7 +53,7 @@ namespace
 
 				if(!entries.empty())
 				{
-					ServerBackupDao::SStatFileEntry fentry = backupdao.getStatFileEntry(entries.begin()->second);
+					ServerFilesDao::SStatFileEntry fentry = filesdao.getStatFileEntry(entries.begin()->second);
 
 					if(fentry.exists)
 					{
@@ -76,6 +73,15 @@ namespace
 			fileindex->stop_iteration();
 			fileindex->commit_transaction();
 
+
+			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+			ServerBackupDao backupdao(db);
+
+			db->BeginWriteTransaction();
+
+			db->Write("UPDATE clients SET bytes_used_files=0");
+
 			for(std::map<int, int64>::iterator it=client_sizes.begin();
 				it!=client_sizes.end();++it)
 			{
@@ -83,7 +89,7 @@ namespace
 			}
 
 			db->EndTransaction();
-			db->AttachDBs();
+
 			ServerCleanupThread::updateStats(false);
 			delete this;
 		}

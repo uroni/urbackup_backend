@@ -318,6 +318,18 @@
     <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\add_client.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerFilesDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerLinkDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerLinkJournalDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -580,6 +592,15 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\ExtentIterator.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerFilesDao.h">
+      <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerLinkDao.h">
+      <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerLinkJournalDao.h">
+      <Filter>dao</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

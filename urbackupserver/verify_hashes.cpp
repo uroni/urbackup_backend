@@ -28,7 +28,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include <memory.h>
 #include <memory>
-#include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include "FileIndex.h"
 #include "create_files_index.h"
 #include "server_hash.h"
@@ -368,7 +368,7 @@ bool verify_hashes(std::string arg)
 		}
 		else
 		{
-			ServerBackupDao backupdao(db);
+			ServerFilesDao backupdao(db);
 			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
 			if(fileindex.get()==NULL)

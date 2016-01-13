@@ -35,6 +35,8 @@
 #include "snapshot_helper.h"
 #include "apps/cleanup_cmd.h"
 #include "dao/ServerCleanupDao.h"
+#include "dao/ServerLinkDao.h"
+#include "dao/ServerFilesDao.h"
 #include "server_dir_links.h"
 #include <stdio.h>
 #include <algorithm>
@@ -81,8 +83,9 @@ void ServerCleanupThread::operator()(void)
 
 	if(cleanup_action.action!=ECleanupAction_None)
 	{
-		cleanupdao=new ServerCleanupDao(db);
-		backupdao=new ServerBackupDao(db);
+		cleanupdao.reset(new ServerCleanupDao(db));
+		backupdao.reset(new ServerBackupDao(db));
+		filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 		fileindex.reset(create_lmdb_files_index());
 
 		switch(cleanup_action.action)
@@ -104,8 +107,7 @@ void ServerCleanupThread::operator()(void)
 			break;
 		}
 		
-		delete cleanupdao;
-		delete backupdao;
+
 		Server->destroyDatabases(Server->getThreadID());
 		delete this;
 		return;
@@ -131,17 +133,17 @@ void ServerCleanupThread::operator()(void)
 		{
 			IScopedLock lock(a_mutex);
 
-			cleanupdao=new ServerCleanupDao(db);
-			backupdao=new ServerBackupDao(db);
+			cleanupdao.reset(new ServerCleanupDao(db));
+			backupdao.reset(new ServerBackupDao(db));
+			filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 			fileindex.reset(create_lmdb_files_index());
 
 			deletePendingClients();
 			do_cleanup();
 			
-			delete cleanupdao;
-			delete backupdao;
-			cleanupdao=NULL;
-			backupdao=NULL;
+			cleanupdao.reset();
+			backupdao.reset();
+			filesdao.reset();
 			fileindex.reset();
 
 			backup_database();
@@ -232,8 +234,9 @@ void ServerCleanupThread::operator()(void)
 					upd.update_server_version_info();
 				}
 
-				cleanupdao=new ServerCleanupDao(db);
-				backupdao=new ServerBackupDao(db);
+				cleanupdao.reset(new ServerCleanupDao(db));
+				backupdao.reset(new ServerBackupDao(db));
+				filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 				fileindex.reset(create_lmdb_files_index());
 
 				deletePendingClients();
@@ -241,8 +244,9 @@ void ServerCleanupThread::operator()(void)
 
 				enforce_quotas();
 
-				delete cleanupdao; cleanupdao=NULL;
-				delete backupdao; backupdao=NULL;
+				cleanupdao.reset();
+				backupdao.reset();
+				filesdao.reset();
 				fileindex.reset();
 
 				backup_database();
@@ -384,7 +388,9 @@ void ServerCleanupThread::do_remove_unknown(void)
 {
 	ServerSettings settings(db);
 
-	replay_directory_link_journal(*backupdao);
+	replay_directory_link_journal();
+
+	ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
 
 	std::string backupfolder=settings.getSettings()->backupfolder;
 
@@ -487,7 +493,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 						if (remove_folder)
 						{
 							std::string rm_dir = backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name;
-							if (!remove_directory_link_dir(rm_dir, *backupdao, clientid))
+							if (!remove_directory_link_dir(rm_dir, link_dao, clientid))
 							{
 								Server->Log("Could not delete directory \"" + rm_dir + "\"", LL_ERROR);
 							}
@@ -583,7 +589,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
-	cleanupdao->removeDanglingFiles();
+	filesdao->removeDanglingFiles();
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
@@ -1164,7 +1170,9 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 		if(!b)
 		{
-			b=remove_directory_link_dir(path, *backupdao, clientid);
+			ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
+
+			b=remove_directory_link_dir(path, link_dao, clientid);
 
 			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
 			{
@@ -1173,14 +1181,16 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 				if(b)
 				{
-					b=remove_directory_link_dir(path, *backupdao, clientid);
+					b=remove_directory_link_dir(path, link_dao, clientid);
 				}
 			}
 		}
 	}
 	else
 	{
-		b=remove_directory_link_dir(path, *backupdao, clientid);
+		ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
+
+		b=remove_directory_link_dir(path, link_dao, clientid);
 	}
 
 	bool del=true;
@@ -1337,6 +1347,8 @@ int64 ServerCleanupThread::getImageSize(int backupid)
 	return -1;
 }
 
+bool attach_other_dbs(IDatabase* db);
+void detach_other_dbs(IDatabase* db);
 
 void ServerCleanupThread::backup_database(void)
 {
@@ -1358,11 +1370,27 @@ void ServerCleanupThread::backup_database(void)
 			{
 				rename((bfolder+os_file_sep()+"backup_server.db").c_str(), (bfolder+os_file_sep()+"backup_server.db~").c_str() );
 				rename((bfolder+os_file_sep()+"backup_server_settings.db").c_str(), (bfolder+os_file_sep()+"backup_server_settings.db~").c_str() );
+				rename((bfolder + os_file_sep() + "backup_server_files.db").c_str(), (bfolder + os_file_sep() + "backup_server_files.db~").c_str());
+				rename((bfolder + os_file_sep() + "backup_server_links.db").c_str(), (bfolder + os_file_sep() + "backup_server_links.db~").c_str());
+				rename((bfolder + os_file_sep() + "backup_server_link_journal.db").c_str(), (bfolder + os_file_sep() + "backup_server_link_journal.db~").c_str());
+
 			}
 
 			Server->Log("Starting database backup...", LL_INFO);
+
+			if (!attach_other_dbs(db))
+			{
+				Server->Log("Attaching other databases failed", LL_ERROR);
+			}
+
+			DBScopedWriteTransaction scoped_transaction(db);
+
 			bool b=db->Backup((bfolder+os_file_sep()+"backup_server.db"));
+
+			detach_other_dbs(db);
+
 			Server->Log("Database backup done.", LL_INFO);
+
 			if(!b)
 			{
 				Server->Log("Backing up database failed", LL_ERROR);
@@ -1371,6 +1399,9 @@ void ServerCleanupThread::backup_database(void)
 			{
 				Server->deleteFile(bfolder+os_file_sep()+"backup_server.db~");
 				Server->deleteFile(bfolder+os_file_sep()+"backup_server_settings.db~");
+				Server->deleteFile(bfolder + os_file_sep() + "backup_server_files.db~");
+				Server->deleteFile(bfolder + os_file_sep() + "backup_server_links.db~");
+				Server->deleteFile(bfolder + os_file_sep() + "backup_server_link_journal.db~");
 			}
 		}
 		else
@@ -1622,6 +1653,7 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 	const int clientid=client_info.id;
 	const std::string& clientname=client_info.name;
 	const std::string pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + ".directory_pool";
+	ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
 
 	std::vector<int64> del_ids;
 	std::vector<std::pair<int64, std::string> > target_adjustments;
@@ -1687,12 +1719,12 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 
 	for(size_t i=0;i<del_ids.size();++i)
 	{
-		backupdao->deleteLinkReferenceEntry(del_ids[i]);
+		link_dao.deleteLinkReferenceEntry(del_ids[i]);
 	}
 
 	for(size_t i=0;i<target_adjustments.size();++i)
 	{
-		backupdao->updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
+		link_dao.updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
 	}
 
 	if(os_directory_exists(pool_root))
@@ -1717,10 +1749,10 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 
 				std::string pool_path = curr_path + os_file_sep() + pool_files[i].name;
 
-				if(backupdao->getDirectoryRefcount(clientid, pool_files[i].name)==0)
+				if(link_dao.getDirectoryRefcount(clientid, pool_files[i].name)==0)
 				{
 					Server->Log("Refcount of \""+pool_path+"\" is zero. Deleting pool folder.");
-					if(!remove_directory_link_dir(pool_path, *backupdao, clientid))
+					if(!remove_directory_link_dir(pool_path, link_dao, clientid))
 					{
 						Server->Log("Could not remove pool folder \""+pool_path+"\"", LL_ERROR);
 					}
@@ -1856,10 +1888,10 @@ void ServerCleanupThread::cleanup_other()
 
 void ServerCleanupThread::removeFileBackupSql( int backupid )
 {
-	db->DetachDBs();
-	db->BeginWriteTransaction();
+	DBScopedSynchronous synchronous_files(filesdao->getDatabase());
+	filesdao->BeginWriteTransaction();
 
-	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
+	IQuery* q_iterate = filesdao->getDatabase()->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
 	q_iterate->Bind(backupid);
 	IDatabaseCursor* cursor = q_iterate->Cursor();
 
@@ -1876,18 +1908,18 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		int64 prev_entry = watoi64(res["prev_entry"]);
 		int pointed_to = watoi(res["pointed_to"]);
 
-		BackupServerHash::deleteFileSQL(*backupdao, *fileindex.get(), reinterpret_cast<const char*>(res["shahash"].c_str()),
+		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), reinterpret_cast<const char*>(res["shahash"].c_str()),
 			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true);
 	}
 
 
-	cleanupdao->deleteFiles(backupid);
+	filesdao->deleteFiles(backupid);
+
+	filesdao->endTransaction();
+
 	cleanupdao->removeFileBackup(backupid);
 
-	db->EndTransaction();
-	db->AttachDBs();
-
-	db->destroyQuery(q_iterate);
+	filesdao->getDatabase()->destroyQuery(q_iterate);
 }
 
 bool ServerCleanupThread::backup_clientlists()
@@ -1940,6 +1972,9 @@ void ServerCleanupThread::ren_files_backupfolder()
 	{
 		if(!files[i].isdir && files[i].name!="backup_server.db" &&
 			files[i].name!="backup_server_settings.db" &&
+			files[i].name != "backup_server_files.db" &&
+			files[i].name != "backup_server_links.db" &&
+			files[i].name != "backup_server_link_journal.db" &&
 			!files[i].name.empty() &&
 			files[i].name[files[i].name.size()-1]!='~')
 		{
@@ -1960,6 +1995,9 @@ void ServerCleanupThread::clear_backupfolder()
 	{
 		if(!files[i].isdir && files[i].name!="backup_server.db" &&
 			files[i].name!="backup_server_settings.db" &&
+			files[i].name != "backup_server_files.db" &&
+			files[i].name != "backup_server_links.db" &&
+			files[i].name != "backup_server_link_journal.db" &&
 			!files[i].name.empty() &&
 			files[i].name[files[i].name.size()-1]=='~')
 		{

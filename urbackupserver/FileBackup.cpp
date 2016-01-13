@@ -1576,12 +1576,14 @@ void FileBackup::deleteBackup()
 		{
 			if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
 			{
-				remove_directory_link_dir(backuppath, *backup_dao, clientid);
+				ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
+				remove_directory_link_dir(backuppath, link_dao, clientid);
 			}
 		}
 		else
 		{
-			remove_directory_link_dir(backuppath, *backup_dao, clientid);
+			ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
+			remove_directory_link_dir(backuppath, link_dao, clientid);
 		}	
 	}
 	else

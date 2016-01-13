@@ -391,23 +391,6 @@ ServerCleanupDao::CondString ServerCleanupDao::getFileBackupPath(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDao::deleteFiles
-* @sql
-*	DELETE FROM files WHERE backupid=:backupid(int)
-*/
-void ServerCleanupDao::deleteFiles(int backupid)
-{
-	if(q_deleteFiles==NULL)
-	{
-		q_deleteFiles=db->Prepare("DELETE FROM files WHERE backupid=?", false);
-	}
-	q_deleteFiles->Bind(backupid);
-	q_deleteFiles->Write();
-	q_deleteFiles->Reset();
-}
-
-/**
-* @-SQLGenAccess
 * @func void ServerCleanupDao::removeFileBackup
 * @sql
 *	DELETE FROM backups WHERE id=:backupid(int)
@@ -786,21 +769,6 @@ ServerCleanupDao::CondInt ServerCleanupDao::findFileBackup(int clientid, const s
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDao::removeDanglingFiles
-* @sql
-*	DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)
-*/
-void ServerCleanupDao::removeDanglingFiles(void)
-{
-	if(q_removeDanglingFiles==NULL)
-	{
-		q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
-	}
-	q_removeDanglingFiles->Write();
-}
-
-/**
-* @-SQLGenAccess
 * @func int64 ServerCleanupDao::getUsedStorage
 * @return int64 used_storage
 * @sql
@@ -1057,7 +1025,6 @@ void ServerCleanupDao::createQueries(void)
 	q_getIncrNumFiles=NULL;
 	q_getClientName=NULL;
 	q_getFileBackupPath=NULL;
-	q_deleteFiles=NULL;
 	q_removeFileBackup=NULL;
 	q_getFileBackupInfo=NULL;
 	q_getImageBackupInfo=NULL;
@@ -1073,7 +1040,6 @@ void ServerCleanupDao::createQueries(void)
 	q_getFileBackupsOfClient=NULL;
 	q_getImageBackupsOfClient=NULL;
 	q_findFileBackup=NULL;
-	q_removeDanglingFiles=NULL;
 	q_getUsedStorage=NULL;
 	q_cleanupBackupLogs=NULL;
 	q_cleanupAuthLog=NULL;
@@ -1103,7 +1069,6 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getIncrNumFiles);
 	db->destroyQuery(q_getClientName);
 	db->destroyQuery(q_getFileBackupPath);
-	db->destroyQuery(q_deleteFiles);
 	db->destroyQuery(q_removeFileBackup);
 	db->destroyQuery(q_getFileBackupInfo);
 	db->destroyQuery(q_getImageBackupInfo);
@@ -1119,7 +1084,6 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getFileBackupsOfClient);
 	db->destroyQuery(q_getImageBackupsOfClient);
 	db->destroyQuery(q_findFileBackup);
-	db->destroyQuery(q_removeDanglingFiles);
 	db->destroyQuery(q_getUsedStorage);
 	db->destroyQuery(q_cleanupBackupLogs);
 	db->destroyQuery(q_cleanupAuthLog);

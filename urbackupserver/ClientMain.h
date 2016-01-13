@@ -29,6 +29,7 @@ class IPipeThrottler;
 class BackupServerContinuous;
 class ContinuousBackup;
 class Backup;
+class ServerBackupDao;
 
 const int c_group_default = 0;
 const int c_group_continuous = 1;

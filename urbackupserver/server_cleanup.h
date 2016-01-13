@@ -6,6 +6,7 @@
 #include <vector>
 #include "dao/ServerCleanupDao.h"
 #include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include <sstream>
 #include <memory>
 #include "FileIndex.h"
@@ -162,7 +163,8 @@ private:
 
 	CleanupAction cleanup_action;
 
-	ServerCleanupDao* cleanupdao;
-	ServerBackupDao* backupdao;
+	std::auto_ptr<ServerCleanupDao> cleanupdao;
+	std::auto_ptr<ServerBackupDao> backupdao;
+	std::auto_ptr<ServerFilesDao> filesdao;
 	std::auto_ptr<FileIndex> fileindex;
 };

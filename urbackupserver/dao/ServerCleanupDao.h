@@ -97,7 +97,6 @@ public:
 	std::vector<int> getIncrNumFiles(int clientid);
 	CondString getClientName(int clientid);
 	CondString getFileBackupPath(int backupid);
-	void deleteFiles(int backupid);
 	void removeFileBackup(int backupid);
 	SFileBackupInfo getFileBackupInfo(int backupid);
 	SImageBackupInfo getImageBackupInfo(int backupid);
@@ -113,7 +112,6 @@ public:
 	std::vector<SFileBackupInfo> getFileBackupsOfClient(int clientid);
 	std::vector<SImageBackupInfo> getImageBackupsOfClient(int clientid);
 	CondInt findFileBackup(int clientid, const std::string& path);
-	void removeDanglingFiles(void);
 	CondInt64 getUsedStorage(int clientid);
 	void cleanupBackupLogs(void);
 	void cleanupAuthLog(void);
@@ -147,7 +145,6 @@ private:
 	IQuery* q_getIncrNumFiles;
 	IQuery* q_getClientName;
 	IQuery* q_getFileBackupPath;
-	IQuery* q_deleteFiles;
 	IQuery* q_removeFileBackup;
 	IQuery* q_getFileBackupInfo;
 	IQuery* q_getImageBackupInfo;
@@ -163,7 +160,6 @@ private:
 	IQuery* q_getFileBackupsOfClient;
 	IQuery* q_getImageBackupsOfClient;
 	IQuery* q_findFileBackup;
-	IQuery* q_removeDanglingFiles;
 	IQuery* q_getUsedStorage;
 	IQuery* q_cleanupBackupLogs;
 	IQuery* q_cleanupAuthLog;

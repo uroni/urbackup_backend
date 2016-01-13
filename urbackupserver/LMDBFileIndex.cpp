@@ -23,7 +23,7 @@
 #include "../common/data.h"
 #include "../urbackupcommon/os_functions.h"
 #include "database.h"
-#include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include <assert.h>
 #include "../Interface/Types.h"
 #include "../Interface/File.h"
@@ -105,9 +105,9 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 {
 	begin_txn(0);
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
-	ServerBackupDao backupdao(db);
+	ServerFilesDao filesdao(db);
 
 	size_t n_done=0;
 	size_t n_rows=0;
@@ -138,18 +138,18 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			{
 				if(last_prev_entry==0)
 				{
-					backupdao.setPrevEntry(id, last_id);
+					filesdao.setPrevEntry(id, last_id);
 				}
 
 				if(next_entry==0
 					&& (last_prev_entry==0 || last_prev_entry==id) )
 				{
-					backupdao.setNextEntry(last_id, id);
+					filesdao.setNextEntry(last_id, id);
 				}
 
 				if(pointed_to)
 				{
-					backupdao.setPointedTo(0, id);
+					filesdao.setPointedTo(0, id);
 				}
 
 				last=key;
@@ -162,7 +162,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			{
 				if(!pointed_to)
 				{
-					backupdao.setPointedTo(1, id);
+					filesdao.setPointedTo(1, id);
 				}
 			}
 			

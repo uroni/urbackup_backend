@@ -22,20 +22,23 @@
 #include "../stringtools.h"
 #include "server_settings.h"
 #include "../Interface/Mutex.h"
+#include "../Interface/Database.h"
+#include "../Interface/File.h"
+#include "database.h"
 
 namespace
 {
-	void reference_all_sublinks(ServerBackupDao& backup_dao, int clientid, const std::string& target, const std::string& new_target)
+	void reference_all_sublinks(ServerLinkDao& link_dao, int clientid, const std::string& target, const std::string& new_target)
 	{
 		std::string escaped_target = escape_glob_sql(target);
 
-		std::vector<ServerBackupDao::DirectoryLinkEntry> entries = backup_dao.getLinksInDirectory(clientid, escaped_target+os_file_sep()+"*");
+		std::vector<ServerLinkDao::DirectoryLinkEntry> entries = link_dao.getLinksInDirectory(clientid, escaped_target+os_file_sep()+"*");
 
 		for(size_t i=0;i<entries.size();++i)
 		{
 			std::string subpath = entries[i].target.substr(target.size());
 			std::string new_link_path = new_target + subpath;
-			backup_dao.addDirectoryLink(clientid, entries[i].name, new_link_path);
+			link_dao.addDirectoryLink(clientid, entries[i].name, new_link_path);
 		}
 	}
 
@@ -69,8 +72,26 @@ std::string escape_glob_sql(const std::string& glob)
 }
 
 
-bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction )
+bool link_directory_pool( int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction,
+	std::auto_ptr<ServerLinkDao>& link_dao, std::auto_ptr<ServerLinkJournalDao>& link_journal_dao)
 {
+	if (link_dao.get() == NULL)
+	{
+		link_dao.reset(new ServerLinkDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS)));
+	}
+
+	DBScopedSynchronous synchonous_link_journal(NULL);
+
+	if (!with_transaction && link_journal_dao.get() == NULL)
+	{
+		IDatabase* link_journal_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL);
+		link_journal_dao.reset(new ServerLinkJournalDao(link_journal_db));
+		synchonous_link_journal.reset(link_journal_db);
+	}
+
+	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
+	DBScopedSynchronous synchonous_link(link_dao->getDatabase());
+
 	IScopedLock lock(dir_link_mutex);
 
 	std::string link_src_dir;
@@ -92,9 +113,8 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 			return false;
 		}
 
-		backup_dao.addDirectoryLink(clientid, pool_name, target_dir);
-		reference_all_sublinks(backup_dao, clientid, src_dir, target_dir);
-		backup_dao.commit();
+		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
+		reference_all_sublinks(*link_dao.get(), clientid, src_dir, target_dir);
 		refcount_bigger_one=true;
 	}
 	else if(os_directory_exists(os_file_prefix(src_dir)))
@@ -113,19 +133,19 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 			return false;
 		}
 
-		backup_dao.addDirectoryLink(clientid, pool_name, src_dir);
-		reference_all_sublinks(backup_dao, clientid, src_dir, target_dir);
-		backup_dao.addDirectoryLink(clientid, pool_name, target_dir);
+		link_dao->addDirectoryLink(clientid, pool_name, src_dir);
+		reference_all_sublinks(*link_dao.get(), clientid, src_dir, target_dir);
+		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
 				
 
 		int64 replay_entry_id;
 		if(!with_transaction)
 		{
-			backup_dao.addDirectoryLinkJournalEntry(src_dir, link_src_dir);
-			replay_entry_id = backup_dao.getLastId(); 
+			link_journal_dao->addDirectoryLinkJournalEntry(src_dir, link_src_dir);
+			replay_entry_id = link_dao->getLastId(); 
 		}
 
-		backup_dao.commit();	
+		link_transaction.end();
 
 		void* transaction=NULL;
 		if(with_transaction)
@@ -135,8 +155,8 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 			if(!transaction)
 			{
 				Server->Log("Error starting filesystem transaction", LL_ERROR);
-				backup_dao.removeDirectoryLink(clientid, src_dir);
-				backup_dao.removeDirectoryLink(clientid, target_dir);
+				link_dao->removeDirectoryLink(clientid, src_dir);
+				link_dao->removeDirectoryLink(clientid, target_dir);
 				return false;
 			}
 		}
@@ -145,8 +165,8 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 		{
 			Server->Log("Could not rename folder \""+src_dir+"\" to \""+link_src_dir+"\"", LL_ERROR);
 			os_finish_transaction(transaction);
-			backup_dao.removeDirectoryLink(clientid, src_dir);
-			backup_dao.removeDirectoryLink(clientid, target_dir);
+			link_dao->removeDirectoryLink(clientid, src_dir);
+			link_dao->removeDirectoryLink(clientid, target_dir);
 			return false;
 		}
 
@@ -155,8 +175,8 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 			Server->Log("Could not create a symbolic link at \""+src_dir+"\" to \""+link_src_dir+"\"", LL_ERROR);
 			os_rename_file(link_src_dir, src_dir, transaction);
 			os_finish_transaction(transaction);
-			backup_dao.removeDirectoryLink(clientid, src_dir);
-			backup_dao.removeDirectoryLink(clientid, target_dir);
+			link_dao->removeDirectoryLink(clientid, src_dir);
+			link_dao->removeDirectoryLink(clientid, target_dir);
 			return false;
 		}
 
@@ -165,14 +185,14 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 			if(!os_finish_transaction(transaction))
 			{
 				Server->Log("Error finishing filesystem transaction", LL_ERROR);
-				backup_dao.removeDirectoryLink(clientid, src_dir);
-				backup_dao.removeDirectoryLink(clientid, target_dir);
+				link_dao->removeDirectoryLink(clientid, src_dir);
+				link_dao->removeDirectoryLink(clientid, target_dir);
 				return false;
 			}
 		}
 		else
 		{
-			backup_dao.removeDirectoryLinkJournalEntry(replay_entry_id);
+			link_journal_dao->removeDirectoryLinkJournalEntry(replay_entry_id);
 		}
 	}
 	else
@@ -185,11 +205,11 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 		Server->Log("Error creating symbolic link from \"" + link_src_dir +"\" to \"" +
 			target_dir+"\" -2", LL_ERROR);
 
-		backup_dao.removeDirectoryLink(clientid, target_dir);
+		link_dao->removeDirectoryLink(clientid, target_dir);
 
 		if(refcount_bigger_one)
 		{
-			backup_dao.removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir)+os_file_sep()+"*");
+			link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir)+os_file_sep()+"*");
 		}
 
 		return false;
@@ -198,17 +218,19 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 	return true;
 }
 
-bool replay_directory_link_journal( ServerBackupDao& backup_dao )
+bool replay_directory_link_journal( )
 {
 	IScopedLock lock(dir_link_mutex);
 
-	std::vector<ServerBackupDao::JournalEntry> journal_entries = backup_dao.getDirectoryLinkJournalEntries();
+	ServerLinkJournalDao link_journal_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL));
+
+	std::vector<ServerLinkJournalDao::JournalEntry> journal_entries = link_journal_dao.getDirectoryLinkJournalEntries();
 
 	bool has_error=false;
 
 	for(size_t i=0;i<journal_entries.size();++i)
 	{
-		const ServerBackupDao::JournalEntry& je = journal_entries[i];
+		const ServerLinkJournalDao::JournalEntry& je = journal_entries[i];
 
 		std::string symlink_real_target;
 
@@ -227,7 +249,7 @@ bool replay_directory_link_journal( ServerBackupDao& backup_dao )
 		}
 	}
 
-	backup_dao.removeDirectoryLinkJournalEntries();
+	link_journal_dao.removeDirectoryLinkJournalEntries();
 
 	return has_error;
 }
@@ -236,15 +258,16 @@ namespace
 {
 	struct SSymlinkCallbackData
 	{
-		SSymlinkCallbackData(ServerBackupDao* backup_dao,
+		SSymlinkCallbackData(ServerLinkDao* link_dao,
 			int clientid, bool with_transaction)
-			: backup_dao(backup_dao), clientid(clientid),
+			: link_dao(link_dao), clientid(clientid),
 			with_transaction(with_transaction)
 		{
 
 		}
 
-		ServerBackupDao* backup_dao;
+		ServerLinkDao* link_dao;
+		std::auto_ptr<DBScopedSynchronous> synchronous_link_dao;
 		int clientid;
 		bool with_transaction;
 	};
@@ -292,17 +315,18 @@ namespace
 
 		if(data->with_transaction)
 		{
-			data->backup_dao->BeginWriteTransaction();
+			data->synchronous_link_dao.reset(new DBScopedSynchronous(data->link_dao->getDatabase()));
+			data->link_dao->getDatabase()->BeginWriteTransaction();
 		}		
 
-		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
+		data->link_dao->removeDirectoryLink(data->clientid, target_raw);
 
-		if(data->backup_dao->getLastChanges()>0)
+		if(data->link_dao->getLastChanges()>0)
 		{
 			bool ret = true;
-			if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
+			if(data->link_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 			{
-				ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false, false);
+				ret = remove_directory_link_dir(path, *data->link_dao, data->clientid, false, false);
 				ret = ret && os_remove_dir(os_file_prefix(pool_path));
 
 				if(!ret)
@@ -312,7 +336,7 @@ namespace
 			}
 			else
 			{
-				data->backup_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+"*");
+				data->link_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+"*");
 			}
 		}
 		else
@@ -326,20 +350,29 @@ namespace
 			Server->Log("Error removing symlink dir \""+path+"\"", LL_ERROR);
 		}
 
+		{
+			std::auto_ptr<IFile> dir_f(Server->openFile(os_file_prefix(ExtractFilePath(path, os_file_sep())), MODE_READ_SEQUENTIAL_BACKUP));
+			if (dir_f.get() != NULL)
+			{
+				dir_f->Sync();
+			}
+		}
+
 		if(data->with_transaction)
 		{
-			data->backup_dao->endTransaction();
+			data->link_dao->getDatabase()->EndTransaction();;
+			data->synchronous_link_dao.reset();
 		}
 
 		return true;
 	}
 }
 
-bool remove_directory_link_dir(const std::string &path, ServerBackupDao& backup_dao, int clientid, bool delete_root, bool with_transaction)
+bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao, int clientid, bool delete_root, bool with_transaction)
 {
 	IScopedLock lock(dir_link_mutex);
 
-	SSymlinkCallbackData userdata(&backup_dao, clientid, with_transaction);
+	SSymlinkCallbackData userdata(&link_dao, clientid, with_transaction);
 	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 

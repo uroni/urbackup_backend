@@ -21,10 +21,6 @@
 #include <assert.h>
 #include <string.h>
 
-const int ServerBackupDao::c_direction_incoming = 0;
-const int ServerBackupDao::c_direction_outgoing = 1;
-const int ServerBackupDao::c_direction_outgoing_nobackupstat = 2;
-
 /**
 * @-SQLGenTempSetup
 * @sql
@@ -40,237 +36,6 @@ ServerBackupDao::ServerBackupDao( IDatabase *db )
 ServerBackupDao::~ServerBackupDao()
 {
 	destroyQueries();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::addDirectoryLink
-* @sql
-*	INSERT INTO directory_links 
-*		(clientid, name, target)
-*	VALUES
-*		(:clientid(int),
-*		 :name(string),
-*		 :target(string))
-*/
-void ServerBackupDao::addDirectoryLink(int clientid, const std::string& name, const std::string& target)
-{
-	if(q_addDirectoryLink==NULL)
-	{
-		q_addDirectoryLink=db->Prepare("INSERT INTO directory_links  (clientid, name, target) VALUES (?, ?, ?)", false);
-	}
-	q_addDirectoryLink->Bind(clientid);
-	q_addDirectoryLink->Bind(name);
-	q_addDirectoryLink->Bind(target);
-	q_addDirectoryLink->Write();
-	q_addDirectoryLink->Reset();
-}
-
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::removeDirectoryLink
-* @sql
-*     DELETE FROM directory_links
-*          WHERE clientid=:clientid(int)
-*			   AND target=:target(string)
-*/
-void ServerBackupDao::removeDirectoryLink(int clientid, const std::string& target)
-{
-	if(q_removeDirectoryLink==NULL)
-	{
-		q_removeDirectoryLink=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND target=?", false);
-	}
-	q_removeDirectoryLink->Bind(clientid);
-	q_removeDirectoryLink->Bind(target);
-	q_removeDirectoryLink->Write();
-	q_removeDirectoryLink->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::removeDirectoryLinkGlob
-* @sql
-*     DELETE FROM directory_links
-*          WHERE clientid=:clientid(int)
-*			   AND target GLOB :target(string)
-*/
-void ServerBackupDao::removeDirectoryLinkGlob(int clientid, const std::string& target)
-{
-	if(q_removeDirectoryLinkGlob==NULL)
-	{
-		q_removeDirectoryLinkGlob=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND target GLOB ?", false);
-	}
-	q_removeDirectoryLinkGlob->Bind(clientid);
-	q_removeDirectoryLinkGlob->Bind(target);
-	q_removeDirectoryLinkGlob->Write();
-	q_removeDirectoryLinkGlob->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func int ServerBackupDao::getDirectoryRefcount
-* @return int_raw c
-* @sql
-*    SELECT COUNT(*) AS c FROM directory_links
-*        WHERE clientid=:clientid(int)
-*              AND name=:name(string)
-*        LIMIT 1
-*/
-int ServerBackupDao::getDirectoryRefcount(int clientid, const std::string& name)
-{
-	if(q_getDirectoryRefcount==NULL)
-	{
-		q_getDirectoryRefcount=db->Prepare("SELECT COUNT(*) AS c FROM directory_links WHERE clientid=? AND name=? LIMIT 1", false);
-	}
-	q_getDirectoryRefcount->Bind(clientid);
-	q_getDirectoryRefcount->Bind(name);
-	db_results res=q_getDirectoryRefcount->Read();
-	q_getDirectoryRefcount->Reset();
-	assert(!res.empty());
-	return watoi(res[0]["c"]);
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::addDirectoryLinkJournalEntry
-* @sql
-*    INSERT INTO directory_link_journal (linkname, linktarget)
-*     VALUES (:linkname(string), :linktarget(string))
-*/
-void ServerBackupDao::addDirectoryLinkJournalEntry(const std::string& linkname, const std::string& linktarget)
-{
-	if(q_addDirectoryLinkJournalEntry==NULL)
-	{
-		q_addDirectoryLinkJournalEntry=db->Prepare("INSERT INTO directory_link_journal (linkname, linktarget) VALUES (?, ?)", false);
-	}
-	q_addDirectoryLinkJournalEntry->Bind(linkname);
-	q_addDirectoryLinkJournalEntry->Bind(linktarget);
-	q_addDirectoryLinkJournalEntry->Write();
-	q_addDirectoryLinkJournalEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::removeDirectoryLinkJournalEntry
-* @sql
-*     DELETE FROM directory_link_journal WHERE
-*             id = :entry_id(int64)
-*/
-void ServerBackupDao::removeDirectoryLinkJournalEntry(int64 entry_id)
-{
-	if(q_removeDirectoryLinkJournalEntry==NULL)
-	{
-		q_removeDirectoryLinkJournalEntry=db->Prepare("DELETE FROM directory_link_journal WHERE id = ?", false);
-	}
-	q_removeDirectoryLinkJournalEntry->Bind(entry_id);
-	q_removeDirectoryLinkJournalEntry->Write();
-	q_removeDirectoryLinkJournalEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func vector<JournalEntry> ServerBackupDao::getDirectoryLinkJournalEntries
-* @return string linkname, string linktarget
-* @sql
-*     SELECT linkname, linktarget FROM directory_link_journal
-*/
-std::vector<ServerBackupDao::JournalEntry> ServerBackupDao::getDirectoryLinkJournalEntries(void)
-{
-	if(q_getDirectoryLinkJournalEntries==NULL)
-	{
-		q_getDirectoryLinkJournalEntries=db->Prepare("SELECT linkname, linktarget FROM directory_link_journal", false);
-	}
-	db_results res=q_getDirectoryLinkJournalEntries->Read();
-	std::vector<ServerBackupDao::JournalEntry> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i].linkname=res[i]["linkname"];
-		ret[i].linktarget=res[i]["linktarget"];
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::removeDirectoryLinkJournalEntries
-* @sql
-*     DELETE FROM directory_link_journal
-*/
-void ServerBackupDao::removeDirectoryLinkJournalEntries(void)
-{
-	if(q_removeDirectoryLinkJournalEntries==NULL)
-	{
-		q_removeDirectoryLinkJournalEntries=db->Prepare("DELETE FROM directory_link_journal", false);
-	}
-	q_removeDirectoryLinkJournalEntries->Write();
-}
-
-/**
-* @-SQLGenAccess
-* @func vector<DirectoryLinkEntry> ServerBackupDao::getLinksInDirectory
-* @return string name, string target
-* @sql
-*     SELECT name, target FROM directory_links
-*            WHERE clientid=:clientid(int) AND
-*                  target GLOB :dir(string)
-*/
-std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDirectory(int clientid, const std::string& dir)
-{
-	if(q_getLinksInDirectory==NULL)
-	{
-		q_getLinksInDirectory=db->Prepare("SELECT name, target FROM directory_links WHERE clientid=? AND target GLOB ?", false);
-	}
-	q_getLinksInDirectory->Bind(clientid);
-	q_getLinksInDirectory->Bind(dir);
-	db_results res=q_getLinksInDirectory->Read();
-	q_getLinksInDirectory->Reset();
-	std::vector<ServerBackupDao::DirectoryLinkEntry> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i].name=res[i]["name"];
-		ret[i].target=res[i]["target"];
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::deleteLinkReferenceEntry
-* @sql
-*     DELETE FROM directory_links
-*            WHERE id=:id(int64)
-*/
-void ServerBackupDao::deleteLinkReferenceEntry(int64 id)
-{
-	if(q_deleteLinkReferenceEntry==NULL)
-	{
-		q_deleteLinkReferenceEntry=db->Prepare("DELETE FROM directory_links WHERE id=?", false);
-	}
-	q_deleteLinkReferenceEntry->Bind(id);
-	q_deleteLinkReferenceEntry->Write();
-	q_deleteLinkReferenceEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::updateLinkReferenceTarget
-* @sql
-*     UPDATE directory_links SET target=:new_target(string)
-*            WHERE id=:id(int64)
-*/
-void ServerBackupDao::updateLinkReferenceTarget(const std::string& new_target, int64 id)
-{
-	if(q_updateLinkReferenceTarget==NULL)
-	{
-		q_updateLinkReferenceTarget=db->Prepare("UPDATE directory_links SET target=? WHERE id=?", false);
-	}
-	q_updateLinkReferenceTarget->Bind(new_target);
-	q_updateLinkReferenceTarget->Bind(id);
-	q_updateLinkReferenceTarget->Write();
-	q_updateLinkReferenceTarget->Reset();
 }
 
 
@@ -466,60 +231,6 @@ std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastFullDurations(in
 	return ret;
 }
 
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::setNextEntry
-* @sql
-*      UPDATE files SET next_entry=:next_entry(int64) WHERE id=:id(int64)
-*/
-void ServerBackupDao::setNextEntry(int64 next_entry, int64 id)
-{
-	if(q_setNextEntry==NULL)
-	{
-		q_setNextEntry=db->Prepare("UPDATE files SET next_entry=? WHERE id=?", false);
-	}
-	q_setNextEntry->Bind(next_entry);
-	q_setNextEntry->Bind(id);
-	q_setNextEntry->Write();
-	q_setNextEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::setPrevEntry
-* @sql
-*      UPDATE files SET prev_entry=:prev_entry(int64) WHERE id=:id(int64)
-*/
-void ServerBackupDao::setPrevEntry(int64 prev_entry, int64 id)
-{
-	if(q_setPrevEntry==NULL)
-	{
-		q_setPrevEntry=db->Prepare("UPDATE files SET prev_entry=? WHERE id=?", false);
-	}
-	q_setPrevEntry->Bind(prev_entry);
-	q_setPrevEntry->Bind(id);
-	q_setPrevEntry->Write();
-	q_setPrevEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::setPointedTo
-* @sql
-*      UPDATE files SET pointed_to=:pointed_to(int64) WHERE id=:id(int64)
-*/
-void ServerBackupDao::setPointedTo(int64 pointed_to, int64 id)
-{
-	if(q_setPointedTo==NULL)
-	{
-		q_setPointedTo=db->Prepare("UPDATE files SET pointed_to=? WHERE id=?", false);
-	}
-	q_setPointedTo->Bind(pointed_to);
-	q_setPointedTo->Bind(id);
-	q_setPointedTo->Write();
-	q_setPointedTo->Reset();
-}
-
 
 /**
 * @-SQLGenAccess
@@ -567,31 +278,6 @@ std::vector<int> ServerBackupDao::getClientIds(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret[i]=watoi(res[i]["id"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func int64 ServerBackupDao::getPointedTo
-* @return int64 pointed_to
-* @sql
-*      SELECT pointed_to FROM files WHERE id=:id(int64)
-*/
-ServerBackupDao::CondInt64 ServerBackupDao::getPointedTo(int64 id)
-{
-	if(q_getPointedTo==NULL)
-	{
-		q_getPointedTo=db->Prepare("SELECT pointed_to FROM files WHERE id=?", false);
-	}
-	q_getPointedTo->Bind(id);
-	db_results res=q_getPointedTo->Read();
-	q_getPointedTo->Reset();
-	CondInt64 ret = { false, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.value=watoi64(res[0]["pointed_to"]);
 	}
 	return ret;
 }
@@ -691,187 +377,6 @@ void ServerBackupDao::updateSetting(const std::string& value, const std::string&
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::delFileEntry
-* @sql
-*	   DELETE FROM files WHERE id=:id(int64)
-*/
-void ServerBackupDao::delFileEntry(int64 id)
-{
-	if(q_delFileEntry==NULL)
-	{
-		q_delFileEntry=db->Prepare("DELETE FROM files WHERE id=?", false);
-	}
-	q_delFileEntry->Bind(id);
-	q_delFileEntry->Write();
-	q_delFileEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func SFindFileEntry ServerBackupDao::getFileEntry
-* @return int64 id, string shahash, int backupid, int clientid, string fullpath, string hashpath, int64 filesize, int64 next_entry, int64 prev_entry, int64 rsize, int incremental, int pointed_to
-* @sql
-*	   SELECT id, shahash, backupid, clientid, fullpath, hashpath, filesize, next_entry, prev_entry, rsize, incremental, pointed_to
-*      FROM files WHERE id=:id(int64)
-*/
-ServerBackupDao::SFindFileEntry ServerBackupDao::getFileEntry(int64 id)
-{
-	if(q_getFileEntry==NULL)
-	{
-		q_getFileEntry=db->Prepare("SELECT id, shahash, backupid, clientid, fullpath, hashpath, filesize, next_entry, prev_entry, rsize, incremental, pointed_to FROM files WHERE id=?", false);
-	}
-	q_getFileEntry->Bind(id);
-	db_results res=q_getFileEntry->Read();
-	q_getFileEntry->Reset();
-	SFindFileEntry ret = { false, 0, "", 0, 0, "", "", 0, 0, 0, 0, 0, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.id=watoi64(res[0]["id"]);
-		ret.shahash=res[0]["shahash"];
-		ret.backupid=watoi(res[0]["backupid"]);
-		ret.clientid=watoi(res[0]["clientid"]);
-		ret.fullpath=res[0]["fullpath"];
-		ret.hashpath=res[0]["hashpath"];
-		ret.filesize=watoi64(res[0]["filesize"]);
-		ret.next_entry=watoi64(res[0]["next_entry"]);
-		ret.prev_entry=watoi64(res[0]["prev_entry"]);
-		ret.rsize=watoi64(res[0]["rsize"]);
-		ret.incremental=watoi(res[0]["incremental"]);
-		ret.pointed_to=watoi(res[0]["pointed_to"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func SStatFileEntry ServerBackupDao::getStatFileEntry
-* @return int64 id, int backupid, int clientid, int64 filesize, int64 rsize, string shahash, int64 next_entry, int64 prev_entry
-* @sql
-*	   SELECT id, backupid, clientid, filesize, rsize, shahash, next_entry, prev_entry
-*      FROM files WHERE id=:id(int64)
-*/
-ServerBackupDao::SStatFileEntry ServerBackupDao::getStatFileEntry(int64 id)
-{
-	if(q_getStatFileEntry==NULL)
-	{
-		q_getStatFileEntry=db->Prepare("SELECT id, backupid, clientid, filesize, rsize, shahash, next_entry, prev_entry FROM files WHERE id=?", false);
-	}
-	q_getStatFileEntry->Bind(id);
-	db_results res=q_getStatFileEntry->Read();
-	q_getStatFileEntry->Reset();
-	SStatFileEntry ret = { false, 0, 0, 0, 0, 0, "", 0, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.id=watoi64(res[0]["id"]);
-		ret.backupid=watoi(res[0]["backupid"]);
-		ret.clientid=watoi(res[0]["clientid"]);
-		ret.filesize=watoi64(res[0]["filesize"]);
-		ret.rsize=watoi64(res[0]["rsize"]);
-		ret.shahash=res[0]["shahash"];
-		ret.next_entry=watoi64(res[0]["next_entry"]);
-		ret.prev_entry=watoi64(res[0]["prev_entry"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::addIncomingFile
-* @sql
-*       INSERT INTO files_incoming_stat (filesize, clientid, backupid, existing_clients, direction, incremental)
-*       VALUES (:filesize(int64), :clientid(int), :backupid(int), :existing_clients(string), :direction(int), :incremental(int))
-*/
-void ServerBackupDao::addIncomingFile(int64 filesize, int clientid, int backupid, const std::string& existing_clients, int direction, int incremental)
-{
-	if(q_addIncomingFile==NULL)
-	{
-		q_addIncomingFile=db->Prepare("INSERT INTO files_incoming_stat (filesize, clientid, backupid, existing_clients, direction, incremental) VALUES (?, ?, ?, ?, ?, ?)", false);
-	}
-	q_addIncomingFile->Bind(filesize);
-	q_addIncomingFile->Bind(clientid);
-	q_addIncomingFile->Bind(backupid);
-	q_addIncomingFile->Bind(existing_clients);
-	q_addIncomingFile->Bind(direction);
-	q_addIncomingFile->Bind(incremental);
-	q_addIncomingFile->Write();
-	q_addIncomingFile->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func vector<SIncomingStat> ServerBackupDao::getIncomingStats
-* @return int64 id, int64 filesize, int clientid, int backupid, string existing_clients, int direction, int incremental
-* @sql
-*       SELECT id, filesize, clientid, backupid, existing_clients, direction, incremental
-*       FROM files_incoming_stat LIMIT 10000
-*/
-std::vector<ServerBackupDao::SIncomingStat> ServerBackupDao::getIncomingStats(void)
-{
-	if(q_getIncomingStats==NULL)
-	{
-		q_getIncomingStats=db->Prepare("SELECT id, filesize, clientid, backupid, existing_clients, direction, incremental FROM files_incoming_stat LIMIT 10000", false);
-	}
-	db_results res=q_getIncomingStats->Read();
-	std::vector<ServerBackupDao::SIncomingStat> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i].id=watoi64(res[i]["id"]);
-		ret[i].filesize=watoi64(res[i]["filesize"]);
-		ret[i].clientid=watoi(res[i]["clientid"]);
-		ret[i].backupid=watoi(res[i]["backupid"]);
-		ret[i].existing_clients=res[i]["existing_clients"];
-		ret[i].direction=watoi(res[i]["direction"]);
-		ret[i].incremental=watoi(res[i]["incremental"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func int64 ServerBackupDao::getIncomingStatsCount
-* @return int64 c
-* @sql
-*       SELECT COUNT(*) AS c
-*       FROM files_incoming_stat
-*/
-ServerBackupDao::CondInt64 ServerBackupDao::getIncomingStatsCount(void)
-{
-	if(q_getIncomingStatsCount==NULL)
-	{
-		q_getIncomingStatsCount=db->Prepare("SELECT COUNT(*) AS c FROM files_incoming_stat", false);
-	}
-	db_results res=q_getIncomingStatsCount->Read();
-	CondInt64 ret = { false, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.value=watoi64(res[0]["c"]);
-	}
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::delIncomingStatEntry
-* @sql
-*       DELETE FROM files_incoming_stat WHERE id=:id(int64)
-*/
-void ServerBackupDao::delIncomingStatEntry(int64 id)
-{
-	if(q_delIncomingStatEntry==NULL)
-	{
-		q_delIncomingStatEntry=db->Prepare("DELETE FROM files_incoming_stat WHERE id=?", false);
-	}
-	q_delIncomingStatEntry->Bind(id);
-	q_delIncomingStatEntry->Write();
-	q_delIncomingStatEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
 * @func string ServerBackupDao::getMiscValue
 * @return string tvalue
 * @sql
@@ -946,111 +451,6 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 	q_setClientUsedFilebackupSize->Bind(id);
 	q_setClientUsedFilebackupSize->Write();
 	q_setClientUsedFilebackupSize->Reset();
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::createTemporaryPathLookupTable
-* @sql
-*      CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);
-*/
-bool ServerBackupDao::createTemporaryPathLookupTable(void)
-{
-	if(q_createTemporaryPathLookupTable==NULL)
-	{
-		q_createTemporaryPathLookupTable=db->Prepare("CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);", false);
-	}
-	bool ret = q_createTemporaryPathLookupTable->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::dropTemporaryPathLookupTable
-* @sql
-*      DROP TABLE files_cont_path_lookup
-*/
-void ServerBackupDao::dropTemporaryPathLookupTable(void)
-{
-	if(q_dropTemporaryPathLookupTable==NULL)
-	{
-		q_dropTemporaryPathLookupTable=db->Prepare("DROP TABLE files_cont_path_lookup", false);
-	}
-	q_dropTemporaryPathLookupTable->Write();
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::dropTemporaryPathLookupIndex
-* @sql
-*      DROP INDEX files_cont_path_lookup_idx
-*/
-void ServerBackupDao::dropTemporaryPathLookupIndex(void)
-{
-	if(q_dropTemporaryPathLookupIndex==NULL)
-	{
-		q_dropTemporaryPathLookupIndex=db->Prepare("DROP INDEX files_cont_path_lookup_idx", false);
-	}
-	q_dropTemporaryPathLookupIndex->Write();
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::populateTemporaryPathLookupTable
-* @sql
-*      INSERT INTO files_cont_path_lookup (fullpath, entryid)
-*		 SELECT fullpath, id AS entryid FROM files WHERE backupid=:backupid(int)
-*/
-void ServerBackupDao::populateTemporaryPathLookupTable(int backupid)
-{
-	if(q_populateTemporaryPathLookupTable==NULL)
-	{
-		q_populateTemporaryPathLookupTable=db->Prepare("INSERT INTO files_cont_path_lookup (fullpath, entryid) SELECT fullpath, id AS entryid FROM files WHERE backupid=?", false);
-	}
-	q_populateTemporaryPathLookupTable->Bind(backupid);
-	q_populateTemporaryPathLookupTable->Write();
-	q_populateTemporaryPathLookupTable->Reset();
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::createTemporaryPathLookupIndex
-* @sql
-*      CREATE INDEX files_cont_path_lookup_idx ON files_cont_path_lookup ( fullpath );
-*/
-bool ServerBackupDao::createTemporaryPathLookupIndex(void)
-{
-	if(q_createTemporaryPathLookupIndex==NULL)
-	{
-		q_createTemporaryPathLookupIndex=db->Prepare("CREATE INDEX files_cont_path_lookup_idx ON files_cont_path_lookup ( fullpath );", false);
-	}
-	bool ret = q_createTemporaryPathLookupIndex->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccess
-* @func int64 ServerBackupDao::lookupEntryIdByPath
-* @return int64 entryid
-* @sql
-*       SELECT entryid FROM files_cont_path_lookup WHERE fullpath=:fullpath(string)
-*/
-ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::string& fullpath)
-{
-	if(q_lookupEntryIdByPath==NULL)
-	{
-		q_lookupEntryIdByPath=db->Prepare("SELECT entryid FROM files_cont_path_lookup WHERE fullpath=?", false);
-	}
-	q_lookupEntryIdByPath->Bind(fullpath);
-	db_results res=q_lookupEntryIdByPath->Read();
-	q_lookupEntryIdByPath->Reset();
-	CondInt64 ret = { false, 0 };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.value=watoi64(res[0]["entryid"]);
-	}
-	return ret;
 }
 
 /**
@@ -1984,17 +1384,6 @@ ServerBackupDao::CondInt ServerBackupDao::getClientidByImageid(int backupid)
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
-	q_addDirectoryLink=NULL;
-	q_removeDirectoryLink=NULL;
-	q_removeDirectoryLinkGlob=NULL;
-	q_getDirectoryRefcount=NULL;
-	q_addDirectoryLinkJournalEntry=NULL;
-	q_removeDirectoryLinkJournalEntry=NULL;
-	q_getDirectoryLinkJournalEntries=NULL;
-	q_removeDirectoryLinkJournalEntries=NULL;
-	q_getLinksInDirectory=NULL;
-	q_deleteLinkReferenceEntry=NULL;
-	q_updateLinkReferenceTarget=NULL;
 	q_addToOldBackupfolders=NULL;
 	q_getOldBackupfolders=NULL;
 	q_getDeletePendingClientNames=NULL;
@@ -2003,33 +1392,16 @@ void ServerBackupDao::prepareQueries( void )
 	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
 	q_getLastFullDurations=NULL;
-	q_setNextEntry=NULL;
-	q_setPrevEntry=NULL;
-	q_setPointedTo=NULL;
 	q_getClientSetting=NULL;
 	q_getClientIds=NULL;
-	q_getPointedTo=NULL;
 	q_addFileEntry=NULL;
 	q_getSetting=NULL;
 	q_insertSetting=NULL;
 	q_updateSetting=NULL;
-	q_delFileEntry=NULL;
-	q_getFileEntry=NULL;
-	q_getStatFileEntry=NULL;
-	q_addIncomingFile=NULL;
-	q_getIncomingStats=NULL;
-	q_getIncomingStatsCount=NULL;
-	q_delIncomingStatEntry=NULL;
 	q_getMiscValue=NULL;
 	q_addMiscValue=NULL;
 	q_delMiscValue=NULL;
 	q_setClientUsedFilebackupSize=NULL;
-	q_createTemporaryPathLookupTable=NULL;
-	q_dropTemporaryPathLookupTable=NULL;
-	q_dropTemporaryPathLookupIndex=NULL;
-	q_populateTemporaryPathLookupTable=NULL;
-	q_createTemporaryPathLookupIndex=NULL;
-	q_lookupEntryIdByPath=NULL;
 	q_newFileBackup=NULL;
 	q_updateFileBackupRunning=NULL;
 	q_setFileBackupDone=NULL;
@@ -2075,17 +1447,6 @@ void ServerBackupDao::prepareQueries( void )
 //@-SQLGenDestruction
 void ServerBackupDao::destroyQueries( void )
 {
-	db->destroyQuery(q_addDirectoryLink);
-	db->destroyQuery(q_removeDirectoryLink);
-	db->destroyQuery(q_removeDirectoryLinkGlob);
-	db->destroyQuery(q_getDirectoryRefcount);
-	db->destroyQuery(q_addDirectoryLinkJournalEntry);
-	db->destroyQuery(q_removeDirectoryLinkJournalEntry);
-	db->destroyQuery(q_getDirectoryLinkJournalEntries);
-	db->destroyQuery(q_removeDirectoryLinkJournalEntries);
-	db->destroyQuery(q_getLinksInDirectory);
-	db->destroyQuery(q_deleteLinkReferenceEntry);
-	db->destroyQuery(q_updateLinkReferenceTarget);
 	db->destroyQuery(q_addToOldBackupfolders);
 	db->destroyQuery(q_getOldBackupfolders);
 	db->destroyQuery(q_getDeletePendingClientNames);
@@ -2094,33 +1455,16 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);
 	db->destroyQuery(q_getLastFullDurations);
-	db->destroyQuery(q_setNextEntry);
-	db->destroyQuery(q_setPrevEntry);
-	db->destroyQuery(q_setPointedTo);
 	db->destroyQuery(q_getClientSetting);
 	db->destroyQuery(q_getClientIds);
-	db->destroyQuery(q_getPointedTo);
 	db->destroyQuery(q_addFileEntry);
 	db->destroyQuery(q_getSetting);
 	db->destroyQuery(q_insertSetting);
 	db->destroyQuery(q_updateSetting);
-	db->destroyQuery(q_delFileEntry);
-	db->destroyQuery(q_getFileEntry);
-	db->destroyQuery(q_getStatFileEntry);
-	db->destroyQuery(q_addIncomingFile);
-	db->destroyQuery(q_getIncomingStats);
-	db->destroyQuery(q_getIncomingStatsCount);
-	db->destroyQuery(q_delIncomingStatEntry);
 	db->destroyQuery(q_getMiscValue);
 	db->destroyQuery(q_addMiscValue);
 	db->destroyQuery(q_delMiscValue);
 	db->destroyQuery(q_setClientUsedFilebackupSize);
-	db->destroyQuery(q_createTemporaryPathLookupTable);
-	db->destroyQuery(q_dropTemporaryPathLookupTable);
-	db->destroyQuery(q_dropTemporaryPathLookupIndex);
-	db->destroyQuery(q_populateTemporaryPathLookupTable);
-	db->destroyQuery(q_createTemporaryPathLookupIndex);
-	db->destroyQuery(q_lookupEntryIdByPath);
 	db->destroyQuery(q_newFileBackup);
 	db->destroyQuery(q_updateFileBackupRunning);
 	db->destroyQuery(q_setFileBackupDone);
@@ -2163,15 +1507,6 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getClientidByImageid);
 }
 
-void ServerBackupDao::commit()
-{
-	db->Write("PRAGMA wal_checkpoint");
-}
-
-int64 ServerBackupDao::getLastId()
-{
-	return db->getLastInsertID();
-}
 
 void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& key, const std::string& value )
 {
@@ -2183,48 +1518,4 @@ void ServerBackupDao::updateOrInsertSetting( int clientid, const std::string& ke
 	{
 		insertSetting(key, value, clientid);
 	}
-}
-
-void ServerBackupDao::BeginWriteTransaction()
-{
-	db->BeginWriteTransaction();
-}
-
-void ServerBackupDao::endTransaction()
-{
-	db->EndTransaction();
-}
-
-int64 ServerBackupDao::addFileEntryExternal( int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to )
-{
-	addFileEntry(backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to);
-
-	int64 id = db->getLastInsertID();
-
-	if(prev_entry!=0)
-	{
-		setNextEntry(id, prev_entry);
-	}
-
-	if(next_entry!=0)
-	{
-		setPrevEntry(id, next_entry);
-	}
-
-	return id;
-}
-
-void ServerBackupDao::detachDbs()
-{
-	db->DetachDBs();
-}
-
-void ServerBackupDao::attachDbs()
-{
-	db->AttachDBs();
-}
-
-int ServerBackupDao::getLastChanges()
-{
-	return db->getLastChanges();
 }

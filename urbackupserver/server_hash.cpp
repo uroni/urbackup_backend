@@ -53,8 +53,8 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid)
-	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), backupdao(NULL), old_backupfolders_loaded(false),
-	  logid(logid), detached_db(false)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), filesdao(NULL), old_backupfolders_loaded(false),
+	  logid(logid)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -81,9 +81,9 @@ BackupServerHash::~BackupServerHash(void)
 
 void BackupServerHash::setupDatabase(void)
 {
-	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
-	backupdao = new ServerBackupDao(db);
+	filesdao = new ServerFilesDao(db);
 
 	fileindex=create_lmdb_files_index(); 
 }
@@ -95,16 +95,13 @@ void BackupServerHash::deinitDatabase(void)
 	delete fileindex;
 	fileindex=NULL;
 
-	delete backupdao;
-	backupdao=NULL;
+	delete filesdao;
+	filesdao =NULL;
 }
 
 void BackupServerHash::operator()(void)
 {
 	setupDatabase();
-
-	DBScopedDetach detachDbs(db);
-	detached_db=true;
 
 	while(true)
 	{
@@ -123,7 +120,6 @@ void BackupServerHash::operator()(void)
 		{
 			deinitDatabase();
 			Server->Log("server_hash Thread finished - normal");
-			detachDbs.attach();
 			Server->destroyDatabases(Server->getThreadID());
 			delete this;
 			return;
@@ -272,10 +268,10 @@ void BackupServerHash::operator()(void)
 
 void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, const std::string &fp, const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex)
 {
-	addFileSQL(*backupdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, prev_entry_clientid, next_entry, update_fileindex);
+	addFileSQL(*filesdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, prev_entry_clientid, next_entry, update_fileindex);
 }
 
-void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, const int clientid, int incremental, const std::string &fp,
+void BackupServerHash::addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int backupid, const int clientid, int incremental, const std::string &fp,
 	const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex)
 {
 	bool new_for_client=false;
@@ -318,11 +314,11 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		
 		if(prev_entry==0)
 		{
-			backupdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
+			filesdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerFilesDao::c_direction_incoming, incremental);
 		}
 		else
 		{
-			ServerBackupDao::SFindFileEntry fentry = backupdao.getFileEntry(prev_entry);
+			ServerFilesDao::SFindFileEntry fentry = filesdao.getFileEntry(prev_entry);
 			
 			if(fentry.exists)
 			{
@@ -345,24 +341,24 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		//and pointed_to does not need to be updated
 		if(prev_entry!=0)
 		{
-			ServerBackupDao::CondInt64 fentry = backupdao.getPointedTo(prev_entry);
+			ServerFilesDao::CondInt64 fentry = filesdao.getPointedTo(prev_entry);
 
 			if(fentry.exists && fentry.value!=0)
 			{
-				backupdao.setPointedTo(0, prev_entry);
+				filesdao.setPointedTo(0, prev_entry);
 			}
 			else
 			{
 				int64 client_entryid = fileindex.get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
 				if(client_entryid!=0)
 				{
-					backupdao.setPointedTo(0, client_entryid);
+					filesdao.setPointedTo(0, client_entryid);
 				}
 			}
 		}
 	}
 
-	int64 entryid = backupdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, (new_for_client || update_fileindex)?1:0);
+	int64 entryid = filesdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, (new_for_client || update_fileindex)?1:0);
 
 	if(new_for_client || update_fileindex)
 	{
@@ -370,28 +366,24 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 	}
 }
 
-void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int64 id)
+void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int64 id)
 {
-	ServerBackupDao::SFindFileEntry entry = backupdao.getFileEntry(id);
+	ServerFilesDao::SFindFileEntry entry = filesdao.getFileEntry(id);
 	
 	if(entry.exists)
 	{
-		deleteFileSQL(backupdao, fileindex, reinterpret_cast<const char*>(entry.shahash.c_str()),
+		deleteFileSQL(filesdao, fileindex, reinterpret_cast<const char*>(entry.shahash.c_str()),
 				entry.filesize, entry.rsize, entry.clientid, entry.backupid, entry.incremental,
 				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true, true, false);
 	}
 }
 
-void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, const int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
+void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, const int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
 	bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat)
 {
 	if(use_transaction)
 	{
-		if(detach_dbs)
-		{
-			backupdao.detachDbs();
-		}
-		backupdao.BeginWriteTransaction();
+		filesdao.BeginWriteTransaction();
 	}
 
 	if(prev_id==0 && next_id==0)
@@ -422,8 +414,8 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 		}
 		
 
-		backupdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients,
-			with_backupstat?ServerBackupDao::c_direction_outgoing:ServerBackupDao::c_direction_outgoing_nobackupstat,
+		filesdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients,
+			with_backupstat? ServerFilesDao::c_direction_outgoing : ServerFilesDao::c_direction_outgoing_nobackupstat,
 			incremental);
 
 		if(pointed_to)
@@ -435,38 +427,34 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 	{
 		if(next_id!=0)
 		{
-			backupdao.setPointedTo(1, next_id);
+			filesdao.setPointedTo(1, next_id);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
 		}
 		else
 		{
-			backupdao.setPointedTo(1, prev_id);
+			filesdao.setPointedTo(1, prev_id);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
 		}
 	}
 
 	if(next_id!=0)
 	{
-		backupdao.setPrevEntry(prev_id, next_id);
+		filesdao.setPrevEntry(prev_id, next_id);
 	}
 
 	if(prev_id!=0)
 	{
-		backupdao.setNextEntry(next_id, prev_id);
+		filesdao.setNextEntry(next_id, prev_id);
 	}
 
 	if(del_entry)
 	{
-		backupdao.delFileEntry(id);
+		filesdao.delFileEntry(id);
 	}
 
 	if(use_transaction)
 	{
-		backupdao.endTransaction();
-		if(detach_dbs)
-		{
-			backupdao.attachDbs();
-		}
+		filesdao.endTransaction();
 	}
 }
 
@@ -484,7 +472,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 	bool copy=true;
 
 	SFindState find_state;
-	ServerBackupDao::SFindFileEntry existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
+	ServerFilesDao::SFindFileEntry existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
 
 	while(existing_file.exists)
 	{
@@ -519,7 +507,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					}
 					first_logmsg=true;
 
-					deleteFileSQL(*backupdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, existing_file.clientid, existing_file.backupid, existing_file.incremental,
+					deleteFileSQL(*filesdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, existing_file.clientid, existing_file.backupid, existing_file.incremental,
 						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true, detach_dbs, false);
 
 					existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
@@ -905,7 +893,7 @@ bool BackupServerHash::freeSpace(int64 fs, const std::string &fp)
 	return b;
 }
 
-ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state)
+ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state)
 {
 	int64 entryid;
 	
@@ -1011,17 +999,17 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 
 	if(entryid==0)
 	{
-		ServerBackupDao::SFindFileEntry ret;
+		ServerFilesDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
 	}
 
-	state.prev = backupdao->getFileEntry(entryid);
+	state.prev = filesdao->getFileEntry(entryid);
 
 	if(!state.prev.exists)
 	{
 		Server->Log("Entry from file entry index not found. File entry index probably out of sync. Needs to be regenerated.", LL_WARNING);
-		ServerBackupDao::SFindFileEntry ret;
+		ServerFilesDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
 	}
@@ -1030,7 +1018,7 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 	{
 		Server->Log("Hash of file entry differs from file entry index result. Something may be wrong with the file entry index or this is a hash collision. Ignoring existing file and downloading anew.", LL_WARNING);
 		Server->Log("While searching for file with size "+convert(filesize)+" and clientid "+convert(clientid)+". Resulting file path is \""+state.prev.fullpath+"\"", LL_WARNING);
-		ServerBackupDao::SFindFileEntry ret;
+		ServerFilesDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
 	}
@@ -1526,14 +1514,13 @@ bool BackupServerHash::correctPath( std::string& ff, std::string& f_hashpath )
 	if(!old_backupfolders_loaded)
 	{
 		old_backupfolders_loaded=true;
-		DBScopedAttach attachDbs(detached_db ? db : NULL);
-		old_backupfolders=backupdao->getOldBackupfolders();
+		ServerBackupDao backupdao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		old_backupfolders= backupdao.getOldBackupfolders();
 	}
 
 	if(backupfolder.empty())
 	{
-		DBScopedAttach attachDbs(detached_db ? db : NULL);
-		ServerSettings settings(db);
+		ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
 		backupfolder = settings.getSettings()->backupfolder;
 	}
 

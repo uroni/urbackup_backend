@@ -22,7 +22,7 @@
 #include <memory>
 #include "../FileIndex.h"
 #include "../create_files_index.h"
-#include "../dao/ServerBackupDao.h"
+#include "../dao/ServerFilesDao.h"
 #include "../server_settings.h"
 
 
@@ -33,10 +33,10 @@ int check_files_index()
 	open_server_database(true);
 	open_settings_database();
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 	if(db==NULL)
 	{
-		Server->Log("Could not open main database", LL_ERROR);
+		Server->Log("Could not open files database", LL_ERROR);
 		return 1;
 	}
 
@@ -68,7 +68,7 @@ int check_files_index()
 		return 2;
 	}
 
-	ServerBackupDao backupdao(db);
+	ServerFilesDao filesdao(db);
 
 	int64 n_checked = 0;
 
@@ -100,7 +100,7 @@ int check_files_index()
 		int64 prev_entryid=0;
 		while(entryid!=0)
 		{
-			ServerBackupDao::SFindFileEntry fileentry = backupdao.getFileEntry(entryid);
+			ServerFilesDao::SFindFileEntry fileentry = filesdao.getFileEntry(entryid);
 			
 			//Server->Log("Current entry id="+convert(fileentry.id));
 
@@ -164,7 +164,7 @@ int check_files_index()
 			prev_entryid = 0;
 			while(entryid!=0)
 			{
-				ServerBackupDao::SFindFileEntry fileentry = backupdao.getFileEntry(entryid);
+				ServerFilesDao::SFindFileEntry fileentry = filesdao.getFileEntry(entryid);
 
 				if(fileentry.id == id)
 				{

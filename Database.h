@@ -26,6 +26,7 @@ public:
 	virtual bool BeginReadTransaction();
 	virtual bool BeginWriteTransaction();
 	virtual bool EndTransaction(void);
+	virtual bool RollbackTransaction();
 
 	virtual IQuery* Prepare(std::string pQuery, bool autodestroy=true);
 	virtual IQuery* Prepare(int id, std::string pQuery);

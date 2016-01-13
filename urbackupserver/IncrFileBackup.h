@@ -1,6 +1,10 @@
 #pragma once
 
 #include "FileBackup.h"
+#include "dao/ServerFilesDao.h"
+#include "dao/ServerLinkDao.h"
+#include "dao/ServerLinkJournalDao.h"
+
 struct SFile;
 class FileMetadata;
 
@@ -25,4 +29,8 @@ protected:
 	bool intra_file_diffs;
 
 	IMutex* hash_existing_mutex;
+
+	std::auto_ptr<ServerFilesDao> filesdao;
+	std::auto_ptr<ServerLinkDao> link_dao;
+	std::auto_ptr<ServerLinkJournalDao> link_journal_dao;
 };

@@ -9,7 +9,7 @@
 #include "ChunkPatcher.h"
 #include "server_prepare_hash.h"
 #include "FileIndex.h"
-#include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include <vector>
 #include "../urbackupcommon/chunk_hasher.h"
 #include "server_log.h"
@@ -65,14 +65,14 @@ public:
 	void addFileSQL(int backupid, int clientid, int incremental, const std::string &fp, const std::string &hash_path,
 		const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex);
 
-	static void addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::string &fp,
+	static void addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::string &fp,
 		const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid,
 		int64 next_entry, bool update_fileindex);
 		
 		
-	static void deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int64 id);
+	static void deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int64 id);
 
-	static void deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
+	static void deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
 		bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat);
 
 private:
@@ -87,12 +87,12 @@ private:
 
 		int state;
 		int64 orig_prev;
-		ServerBackupDao::SFindFileEntry prev;
+		ServerFilesDao::SFindFileEntry prev;
 		std::map<int, int64> entryids;
 		std::map<int, int64>::iterator client;
 	};
 
-	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
+	ServerFilesDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
 
 	bool copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator);
 	bool copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator);
@@ -113,7 +113,7 @@ private:
 
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
-	ServerBackupDao* backupdao;
+	ServerFilesDao* filesdao;
 
 	IPipe *pipe;
 
@@ -147,6 +147,5 @@ private:
 
 	logid_t logid;
 
-	bool detached_db;
 	bool enabled_sparse;
 };

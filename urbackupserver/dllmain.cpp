@@ -182,17 +182,84 @@ void open_server_database(bool init_db)
 			Server->getServerWorkingDir()+os_file_sep()+"urbackup"+os_file_sep()+"backup_server.db\"", LL_ERROR);
 		exit(1);
 	}
-	else
+
+	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES))
 	{
-		Server->destroyDatabases(Server->getThreadID());
+		Server->Log("Couldn't open Database backup_server_files.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
+		exit(1);
 	}
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!Server->openDatabase("urbackup/backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL))
+	{
+		Server->Log("Couldn't open Database backup_server_link_journal.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!Server->openDatabase("urbackup/backup_server_links.db", URBACKUPDB_SERVER_LINKS))
+	{
+		Server->Log("Couldn't open Database backup_server_links.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
+		exit(1);
+	}
+	
+	Server->destroyDatabases(Server->getThreadID());
 }
 
 void open_settings_database()
 {
 	std::string aname="urbackup/backup_server_settings.db";
 
-	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
+	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);	
+}
+
+bool attach_other_dbs(IDatabase* db)
+{
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_files.db' AS files_db"))
+	{
+		return false;
+	}
+
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_link_journal.db' AS link_journal_db"))
+	{
+		return false;
+	}
+
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_links.db' AS links_db"))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void detach_other_dbs(IDatabase* db)
+{
+	db->Write("DETACH DATABASE files_db");
+	db->Write("DETACH DATABASE link_journal_db");
+	db->Write("DETACH DATABASE links_db");
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
@@ -449,14 +516,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		
 	upgrade();
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("PRAGMA journal_mode=WAL");
 
-	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
+	std::vector<DATABASE_ID> dbs;
+	dbs.push_back(URBACKUPDB_SERVER);
+	dbs.push_back(URBACKUPDB_SERVER_FILES);
+	dbs.push_back(URBACKUPDB_SERVER_LINKS);
+	dbs.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
+	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		Server->Log("Couldn't open backup server settings database. Exiting. Expecting database at \""+
-			Server->getServerWorkingDir()+os_file_sep()+"urbackup"+os_file_sep()+"backup_server_settings.db\"", LL_ERROR);
-		exit(1);
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), dbs[i]);
+		db->Write("PRAGMA journal_mode=WAL");
 	}
 		
 	if( FileExists("urbackup/backupfolder") )
@@ -573,11 +643,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(shutdown);
 	}
 
-	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	{
-		ServerBackupDao backup_dao(db);
-		replay_directory_link_journal(backup_dao);
-	}
+	replay_directory_link_journal();
 
 	Server->Log("Started UrBackup...", LL_INFO);
 
@@ -591,6 +657,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
     ServerChannelThread::initOffset();
 
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(crypto_fak==NULL 
 		&& db->Read("SELECT * FROM settings_db.si_users WHERE pbkdf2_rounds>0").size()>0)
 	{
@@ -1249,7 +1316,7 @@ bool upgrade35_36()
 		return false;
 	}
 
-	if(!db->Write("CREATE TABLE files ("
+	if (!db->Write("CREATE TABLE files_db.files ("
 		"id INTEGER PRIMARY KEY,"
 		"backupid INTEGER,"
 		"fullpath TEXT,"
@@ -1261,7 +1328,28 @@ bool upgrade35_36()
 		return false;
 	}
 
-	if(!db->Write("INSERT INTO files SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry, 0 AS pointed_to FROM files_bck"))
+	IDatabaseCursor* cur = db->Prepare("SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files_bck")->Cursor();
+
+	IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
+		"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
+	db_single_result res;
+	while (cur->next(res))
+	{
+		q_insert_file->Bind(res["rowid"]);
+		q_insert_file->Bind(res["backupid"]);
+		q_insert_file->Bind(res["fullpath"]);
+		q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
+		q_insert_file->Bind(res["filesize"]);
+		q_insert_file->Bind(res["created"]);
+		q_insert_file->Bind(res["rsize"]);
+		q_insert_file->Bind(res["clientid"]);
+		q_insert_file->Bind(res["incremental"]);
+		q_insert_file->Bind(res["hashpath"]);
+		q_insert_file->Write();
+		q_insert_file->Reset();
+	}
+
+	if (cur->has_error())
 	{
 		return false;
 	}
@@ -1271,7 +1359,7 @@ bool upgrade35_36()
 		return false;
 	}
 
-	if(!db->Write("CREATE INDEX files_backupid ON files (backupid)"))
+	if(!db->Write("CREATE INDEX files_db.files_backupid ON files (backupid)"))
 	{
 		return false;
 	}
@@ -1412,7 +1500,7 @@ bool upgrade42_43()
 	return b;
 }
 
-bool update43_44()
+bool upgrade43_44()
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -1423,6 +1511,128 @@ bool update43_44()
 	b &= db->Write("ALTER TABLE restores ADD letter TEXT DEFAULT ''");
 
 	return b;
+}
+
+bool upgrade44_45()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if (!db->Read("SELECT * FROM sqlite_master WHERE name = 'files' AND type = 'table'").empty())
+	{
+		db->Write("DROP TABLE IF EXISTS files_db.files");
+
+		if (!db->Write("CREATE TABLE files_db.files ("
+			"id INTEGER PRIMARY KEY,"
+			"backupid INTEGER,"
+			"fullpath TEXT,"
+			"shahash BLOB,"
+			"filesize INTEGER,"
+			"created DATE DEFAULT CURRENT_TIMESTAMP"
+			", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
+		{
+			return false;
+		}
+
+		IDatabaseCursor* cur = db->Prepare("SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files")->Cursor();
+
+		IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
+			"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
+		db_single_result res;
+		while (cur->next(res))
+		{
+			q_insert_file->Bind(res["id"]);
+			q_insert_file->Bind(res["backupid"]);
+			q_insert_file->Bind(res["fullpath"]);
+			q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
+			q_insert_file->Bind(res["filesize"]);
+			q_insert_file->Bind(res["created"]);
+			q_insert_file->Bind(res["rsize"]);
+			q_insert_file->Bind(res["clientid"]);
+			q_insert_file->Bind(res["incremental"]);
+			q_insert_file->Bind(res["hashpath"]);
+			q_insert_file->Write();
+			q_insert_file->Reset();
+		}
+
+		if (cur->has_error())
+		{
+			return false;
+		}
+
+		if (!db->Write("DROP TABLE files"))
+		{
+			return false;
+		}
+
+		if (!db->Write("CREATE INDEX files_db.files_backupid ON files (backupid)"))
+		{
+			return false;
+		}
+	}
+
+	if (!db->Write("CREATE TABLE files_db.files_incoming_stat (id INTEGER PRIMARY KEY, filesize INTEGER, clientid INTEGER, backupid INTEGER, existing_clients TEXT, direction INTEGER, incremental INTEGER)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE files_incoming_stat"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE TABLE links_db.directory_links ("
+		"id INTEGER PRIMARY KEY,"
+		"clientid INTGER,"
+		"name TEXT,"
+		"target TEXT)"))
+	{
+		return false;
+	}
+
+	IDatabaseCursor* cur = db->Prepare("SELECT id, clientid, name, target FROM directory_links")->Cursor();
+
+	IQuery* q_insert_link = db->Prepare("INSERT INTO links_db.directory_links (id, clientid, name, target) "
+		"VALUES (?, ?, ?, ?)");
+	db_single_result res;
+	while (cur->next(res))
+	{
+		q_insert_link->Bind(res["id"]);
+		q_insert_link->Bind(res["clientid"]);
+		q_insert_link->Bind(res["name"]);
+		q_insert_link->Bind(res["target"]);
+		q_insert_link->Write();
+		q_insert_link->Reset();
+	}
+
+	if (!db->Write("CREATE INDEX links_db.directory_links_idx ON directory_links (clientid, name)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE INDEX links_db.directory_links_target_idx ON directory_links (clientid, target)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE TABLE link_journal_db.directory_link_journal ("
+		"id INTEGER PRIMARY KEY,"
+		"linkname TEXT,"
+		"linktarget TEXT)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE directory_links"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE directory_link_journal"))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -1447,7 +1657,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=44;
+	int max_v=45;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1459,6 +1669,13 @@ void upgrade(void)
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
 		Server->Log("Converting database to delete journal mode...", LL_WARNING);
+
+		if (!attach_other_dbs(db))
+		{
+			Server->Log("Attaching other databases failed", LL_ERROR);
+			return;
+		}
+
 		db->Write("PRAGMA journal_mode=DELETE");
 	}
 
@@ -1652,36 +1869,49 @@ void upgrade(void)
 					has_error=true;
 				}
 				++ver;
+				break;
 			case 39:
 				if(!update39_40())
 				{
 					has_error=true;
 				}
 				++ver;
+				break;
 			case 40:
 				if(!upgrade40_41())
 				{
 					has_error=true;
 				}
 				++ver;
+				break;
 			case 41:
 				if(!upgrade41_42())
 				{
 					has_error=true;
 				}
 				++ver;
+				break;
 			case 42:
 				if(!upgrade42_43())
 				{
 					has_error=true;
 				}
 				++ver;
+				break;
 			case 43:
-				if (!update43_44())
+				if (!upgrade43_44())
 				{
 					has_error = true;
 				}
 				++ver;
+				break;
+			case 44:
+				if (!upgrade44_45())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
 			default:
 				break;
 		}
@@ -1729,6 +1959,7 @@ void upgrade(void)
 	
 	if(do_upgrade)
 	{
+		detach_other_dbs(db);
 		Server->Log("Done.", LL_WARNING);
 	}
 

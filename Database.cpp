@@ -210,6 +210,8 @@ bool CDatabase::Write(std::string pQuery)
 
 bool CDatabase::BeginReadTransaction()
 {
+	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+
 	if(Write("BEGIN"))
 	{
 		in_transaction=true;
@@ -248,6 +250,25 @@ bool CDatabase::EndTransaction(void)
 		waited=true;
 	}
 	if(waited)
+	{
+		Server->wait(50);
+	}
+	transaction_read_lock.reset();
+	return true;
+}
+
+bool CDatabase::RollbackTransaction()
+{
+	Write("ROLLBACK;");
+	in_transaction = false;
+	IScopedLock lock(lock_mutex);
+	bool waited = false;
+	while (lock_count>0)
+	{
+		unlock_cond->wait(&lock);
+		waited = true;
+	}
+	if (waited)
 	{
 		Server->wait(50);
 	}

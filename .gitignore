@@ -241,3 +241,4 @@ backup_scripts/*
 clientctl/x64/*
 UrBackupBackend.VC.opendb
 deps/
+urbackup/backup_server_*.db*

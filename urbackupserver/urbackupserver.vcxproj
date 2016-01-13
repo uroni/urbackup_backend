@@ -294,6 +294,9 @@
     <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
+    <ClCompile Include="dao\ServerFilesDao.cpp" />
+    <ClCompile Include="dao\ServerLinkDao.cpp" />
+    <ClCompile Include="dao\ServerLinkJournalDao.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileBackup.cpp" />
     <ClCompile Include="FileMetadataDownloadThread.cpp" />
@@ -308,6 +311,7 @@
     <ClCompile Include="LMDBFileIndex.cpp" />
     <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
+    <ClCompile Include="serverinterface\add_client.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\create_zip.cpp" />
     <ClCompile Include="serverinterface\download_client.cpp" />
@@ -396,6 +400,9 @@
     <ClInclude Include="create_files_cache.h" />
     <ClInclude Include="dao\ServerBackupDao.h" />
     <ClInclude Include="dao\ServerCleanupDAO.h" />
+    <ClInclude Include="dao\ServerFilesDao.h" />
+    <ClInclude Include="dao\ServerLinkDao.h" />
+    <ClInclude Include="dao\ServerLinkJournalDao.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="FileBackup.h" />
     <ClInclude Include="FileMetadataDownloadThread.h" />

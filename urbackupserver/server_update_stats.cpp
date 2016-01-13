@@ -29,6 +29,7 @@
 #include "ClientMain.h"
 #include "../Interface/DatabaseCursor.h"
 #include "create_files_index.h"
+#include "dao/ServerFilesDao.h"
 #include <algorithm>
 
 ServerUpdateStats::ServerUpdateStats(bool image_repair_mode, bool interruptible)
@@ -211,18 +212,24 @@ void ServerUpdateStats::update_files(void)
 	num_updated_files=0;
 	
 	Server->Log("Updating file statistics...");
+
+	IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	ServerFilesDao filesdao(files_db);
 	
-	size_t total_num = static_cast<size_t>(backupdao->getIncomingStatsCount().value);
+	size_t total_num = static_cast<size_t>(filesdao.getIncomingStatsCount().value);
 	size_t total_i=0;
 
 	std::map<int, _i64> size_data_clients=getFilebackupSizesClients();
 	std::map<int, _i64> size_data_backups;
 	std::map<int, SDelInfo> del_sizes;
 
-	bool interrupted = false;
+	DBScopedSynchronous synchonous_db(db);
+	DBScopedSynchronous synchonous_files_db(files_db);
+
+	DBScopedWriteTransaction files_db_transaction(NULL);
 	bool started_transaction = false;
 	
-	std::vector<ServerBackupDao::SIncomingStat> stat_entries;
+	std::vector<ServerFilesDao::SIncomingStat> stat_entries;
 
 	int last_pc=0;
 	do
@@ -231,20 +238,19 @@ void ServerUpdateStats::update_files(void)
 		{
 			if( ClientMain::getNumberOfRunningFileBackups()>0 )
 			{
-				interrupted=true;
-				break;
+				files_db_transaction.rollback();
+				return;
 			}
 		}
 
 		ServerStatus::updateActive();
 
-		stat_entries = backupdao->getIncomingStats();
+		stat_entries = filesdao.getIncomingStats();
 
-		if(!started_transaction)
+		if(!started_transaction && !stat_entries.empty())
 		{
-			started_transaction=true;
-			db->DetachDBs();
-			db->BeginWriteTransaction();
+			files_db_transaction.reset(files_db);
+			started_transaction = true;
 		}
 
 		for(size_t i=0;i<stat_entries.size();++i,++total_i)
@@ -260,16 +266,9 @@ void ServerUpdateStats::update_files(void)
 					Server->Log( "Updating file statistics: "+convert(pc)+"%", LL_INFO);
 					last_pc=pc;
 				}
-
-				updateSizes(size_data_clients);
-				updateDels(del_sizes);
-				updateBackups(size_data_backups);
-
-				db->EndTransaction();
-				db->BeginWriteTransaction();
 			}
 
-			ServerBackupDao::SIncomingStat& entry = stat_entries[i];
+			ServerFilesDao::SIncomingStat& entry = stat_entries[i];
 
 			std::vector<int> clients;
 			std::vector<std::string> s_clients;
@@ -281,7 +280,7 @@ void ServerUpdateStats::update_files(void)
 			}
 
 			
-			if(entry.direction==ServerBackupDao::c_direction_incoming)
+			if(entry.direction== ServerFilesDao::c_direction_incoming)
 			{
 				int64 current_size_per_client = 0; 
 				if(!clients.empty())
@@ -298,8 +297,8 @@ void ServerUpdateStats::update_files(void)
 
 				add(size_data_backups, entry.backupid, entry.filesize);
 			}
-			else if(entry.direction==ServerBackupDao::c_direction_outgoing ||
-				entry.direction==ServerBackupDao::c_direction_outgoing_nobackupstat)
+			else if(entry.direction== ServerFilesDao::c_direction_outgoing ||
+				entry.direction== ServerFilesDao::c_direction_outgoing_nobackupstat)
 			{
 				int64 current_size_per_client = entry.filesize;
 				
@@ -323,7 +322,7 @@ void ServerUpdateStats::update_files(void)
 					add(clients, current_size_per_client, size_data_clients);
 				}				
 
-				if(entry.direction!=ServerBackupDao::c_direction_outgoing_nobackupstat)
+				if(entry.direction!= ServerFilesDao::c_direction_outgoing_nobackupstat)
 				{
 					add_del(del_sizes, entry.backupid, entry.filesize, entry.clientid, entry.incremental);
 				}
@@ -333,27 +332,19 @@ void ServerUpdateStats::update_files(void)
 				assert(false);
 			}
 
-			backupdao->delIncomingStatEntry(entry.id);
+			filesdao.delIncomingStatEntry(entry.id);
 		}
 	}
 	while(!stat_entries.empty());
+
+
+	DBScopedWriteTransaction db_transaction(db);
 
 	updateSizes(size_data_clients);
 	updateDels(del_sizes);
 	updateBackups(size_data_backups);
 
-	if(started_transaction)
-	{
-		db->EndTransaction();
-		db->AttachDBs();	
-	}
-
-	backupdao->commit();
-
-	if(!interrupted)
-	{
-		db->Write("UPDATE backups SET size_calculated=1 WHERE size_calculated=0 AND done=1");
-	}
+	db->Write("UPDATE backups SET size_calculated=1 WHERE size_calculated=0 AND done=1");
 }
 
 std::map<int, _i64> ServerUpdateStats::getFilebackupSizesClients(void)

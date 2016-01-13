@@ -33,6 +33,7 @@
 #include "../common/data.h"
 #include "FullFileBackup.h"
 #include "FileMetadataDownloadThread.h"
+#include "database.h"
 #include <algorithm>
 
 extern std::string server_identity;
@@ -49,6 +50,8 @@ IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::stri
 
 bool IncrFileBackup::doFileBackup()
 {
+	filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
+
 	ServerLogger::Log(logid, "Starting incremental file backup...", LL_INFO);
 
 	if(with_hashes)
@@ -583,11 +586,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							std::string srcpath=last_backuppath+local_curr_os_path;
 							std::string src_hashpath = last_backuppath_hashes+local_curr_os_path;
-							if(link_directory_pool(*backup_dao, clientid, backuppath+local_curr_os_path,
-								srcpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled())
+							if(link_directory_pool(clientid, backuppath+local_curr_os_path, srcpath, dir_pool_path,
+								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao)
 								&&
-								link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
-								src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled()))
+								link_directory_pool(clientid, backuppath_hashes+local_curr_os_path, src_hashpath, dir_pool_path,
+								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao))
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
@@ -1223,8 +1226,8 @@ bool IncrFileBackup::doFileBackup()
 			clientlist_delete.release();
 			clientlist->Sync();
 			Server->destroy(clientlist);
+			DBScopedSynchronous synchronous(db);
 			backup_dao->setFileBackupDone(backupid);
-			backup_dao->commit();
 			Server->deleteFile(clientlist_name);
 		}
 
@@ -1279,8 +1282,8 @@ bool IncrFileBackup::doFileBackup()
 		clientlist_delete.release();
 		clientlist->Sync();
 		Server->destroy(clientlist);
+		DBScopedSynchronous synchronous(db);
 		backup_dao->setFileBackupDone(backupid);
-		backup_dao->commit();
 		Server->deleteFile(clientlist_name);
 	}
 	else
@@ -1489,7 +1492,7 @@ void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const s
 		return;
 	}
 
-	ServerBackupDao::SFindFileEntry fentry = backup_dao->getFileEntry(entryid);
+	ServerFilesDao::SFindFileEntry fentry = filesdao->getFileEntry(entryid);
 	if(!fentry.exists)
 	{
 		Server->Log("File entry in database with id " +convert(entryid)+" and filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not.", LL_WARNING);
@@ -1501,7 +1504,7 @@ void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const s
 		rsize=fentry.rsize;
 	}
 
-	BackupServerHash::addFileSQL(*backup_dao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
+	BackupServerHash::addFileSQL(*filesdao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
 		shahash, filesize, rsize, entryid, clientid, fentry.next_entry, false);
 }
 

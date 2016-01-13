@@ -16,6 +16,7 @@ public:
 	virtual bool BeginReadTransaction()=0;
 	virtual bool BeginWriteTransaction()=0;
 	virtual bool EndTransaction(void)=0;
+	virtual bool RollbackTransaction(void) = 0;
 
 	virtual IQuery* Prepare(std::string pQuery, bool autodestroy=true)=0;
 	virtual void destroyQuery(IQuery *q)=0;
@@ -103,10 +104,27 @@ public:
 		if(db!=NULL) db->EndTransaction();
 	}
 
+	void reset(IDatabase* pdb)
+	{
+		if (db != NULL) {
+			db->EndTransaction();
+		}
+		db = pdb;
+		if (db != NULL) {
+			db->BeginWriteTransaction();
+		}
+	}
+
 	void restart() {
 		if(db!=NULL) {
 			db->EndTransaction();
 			db->BeginWriteTransaction();
+		}
+	}
+
+	void rollback() {
+		if (db != NULL) {
+			db->RollbackTransaction();
 		}
 	}
 
@@ -116,6 +134,42 @@ public:
 	}
 private:
 	IDatabase* db;
+};
+
+class DBScopedSynchronous
+{
+public:
+	DBScopedSynchronous(IDatabase* pdb)
+		:db(NULL)
+	{
+		reset(pdb);
+	}
+
+	~DBScopedSynchronous()
+	{
+		if (db != NULL)
+		{
+			db->Write("PRAGMA synchronous = " + synchronous);
+		}
+	}
+
+	void reset(IDatabase* pdb)
+	{
+		if (db != NULL)
+		{
+			db->Write("PRAGMA synchronous = " + synchronous);
+		}
+		db = pdb;
+		if (db != NULL)
+		{
+			synchronous = db->Read("PRAGMA synchronous")[0]["synchronous"];
+			db->Write("PRAGMA synchronous=FULL");
+		}
+	}
+
+private:
+	IDatabase* db;
+	std::string synchronous;
 };
 
 #endif

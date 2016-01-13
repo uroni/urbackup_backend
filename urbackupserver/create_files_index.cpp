@@ -128,12 +128,6 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		db->Write("PRAGMA journal_mode = WAL");
 	}
 
-	ServerBackupDao backupdao(db);
-
-	Server->Log("Committing to database...", LL_INFO);
-	backupdao.commit();
-	Server->Log("Committing done.", LL_INFO);
-
 	status.creating_filesindex=false;
 
 	if(data.cur->has_error())
@@ -177,9 +171,12 @@ bool create_files_index(SStartupStatus& status)
 	{
 		delete_file_index();
 
-		backupdao.delMiscValue("creating_file_entry_index");
-		backupdao.addMiscValue("creating_file_entry_index", "true");
-		backupdao.commit();
+		{
+			DBScopedSynchronous synchronous_db(db);
+
+			backupdao.delMiscValue("creating_file_entry_index");
+			backupdao.addMiscValue("creating_file_entry_index", "true");
+		}
 
 		status.upgrading_database=false;
 		status.creating_filesindex=true;

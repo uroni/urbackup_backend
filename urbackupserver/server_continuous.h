@@ -17,6 +17,7 @@
 #include "ServerDownloadThread.h"
 #include "server_log.h"
 #include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include "FileIndex.h"
 #include "create_files_index.h"
 
@@ -88,6 +89,7 @@ public:
 	{
 		server_settings.reset(new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
 		backupdao.reset(new ServerBackupDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
+		filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 		fileindex.reset(create_lmdb_files_index());
 
 		hashed_transfer_full = true;
@@ -139,9 +141,9 @@ public:
 
 			if(!collect_only && !has_fullpath_entryid_mapping_table)
 			{
-				backupdao->createTemporaryPathLookupTable();
-				backupdao->populateTemporaryPathLookupTable(backupid);
-				backupdao->createTemporaryPathLookupIndex();
+				filesdao->createTemporaryPathLookupTable();
+				filesdao->populateTemporaryPathLookupTable(backupid);
+				filesdao->createTemporaryPathLookupIndex();
 
 				has_fullpath_entryid_mapping_table=true;
 			}
@@ -171,7 +173,7 @@ public:
 
 		if(has_fullpath_entryid_mapping_table)
 		{
-			backupdao->dropTemporaryPathLookupTable();
+			filesdao->dropTemporaryPathLookupTable();
 		}
 
 		delete this;
@@ -772,13 +774,13 @@ private:
 		}
 
 		{
-			ServerBackupDao::CondInt64 entryid = backupdao->lookupEntryIdByPath(getFullpath(change.fn1));
+			ServerFilesDao::CondInt64 entryid = filesdao->lookupEntryIdByPath(getFullpath(change.fn1));
 			if(entryid.exists)
 			{
-				ServerBackupDao::SFindFileEntry fentry = backupdao->getFileEntry(entryid.value);
+				ServerFilesDao::SFindFileEntry fentry = filesdao->getFileEntry(entryid.value);
 				if(fentry.exists)
 				{
-					local_hash->deleteFileSQL(*backupdao, *fileindex, reinterpret_cast<const char*>(fentry.shahash.c_str()),
+					local_hash->deleteFileSQL(*filesdao, *fileindex, reinterpret_cast<const char*>(fentry.shahash.c_str()),
 						fentry.filesize, fentry.rsize, fentry.clientid,
 						fentry.backupid, fentry.incremental, fentry.id, fentry.prev_entry, fentry.next_entry, fentry.pointed_to,
 						true, true, true, false);
@@ -945,6 +947,7 @@ private:
 
 	bool has_fullpath_entryid_mapping_table;
 	std::auto_ptr<ServerBackupDao> backupdao;
+	std::auto_ptr<ServerFilesDao> filesdao;
 	std::auto_ptr<FileIndex> fileindex;
 
 	logid_t logid;

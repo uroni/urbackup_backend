@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "app.h"
+#include "../../stringtools.h"
 
 void open_settings_database_full()
 {
@@ -32,78 +33,65 @@ int repair_cmd(void)
 	open_server_database(true);
 	open_settings_database_full();
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	if(db==NULL)
-	{
-		Server->Log("Could not open main database", LL_ERROR);
-		return 1;
-	}
+	std::vector<DATABASE_ID> dbs;
+	dbs.push_back(URBACKUPDB_SERVER);
+	dbs.push_back(URBACKUPDB_SERVER_SETTINGS);
+	dbs.push_back(URBACKUPDB_SERVER_FILES);
+	dbs.push_back(URBACKUPDB_SERVER_LINKS);
+	dbs.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
 
-	Server->Log("Exporting main database...", LL_INFO);
-	if(!db->Dump("urbackup/server_database_export_main.sql"))
+	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		Server->Log("Exporting main database failed", LL_ERROR);
-		return 1;
-	}
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), dbs[i]);
+		if (db == NULL)
+		{
+			Server->Log("Could not open database with id "+convert(dbs[i]), LL_ERROR);
+			return 1;
+		}
 
-	IDatabase *db_settings=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_SETTINGS);
-	if(db_settings==NULL)
-	{
-		Server->Log("Could not open settings database", LL_ERROR);
-		return 1;
+		Server->Log("Exporting database with id " + convert(dbs[i])+"...", LL_INFO);
+		if (!db->Dump("urbackup/server_database_export_"+ convert(dbs[i])+".sql"))
+		{
+			Server->Log("Exporting database failed", LL_ERROR);
+			return 1;
+		}
 	}
-
-	Server->Log("Exporting settings database...", LL_INFO);
-	if(!db_settings->Dump("urbackup/server_database_export_settings.sql"))
-	{
-		Server->Log("Exporting settings database failed", LL_ERROR);
-		return 1;
-	}
+	
 
 	Server->destroyAllDatabases();
-	db=NULL;
 
-	Server->deleteFile("urbackup/backup_server.db");
-	Server->deleteFile("urbackup/backup_server.db-wal");
-	Server->deleteFile("urbackup/backup_server.db-shm");
+	std::vector<std::string> db_names;
+	db_names.push_back("");
+	db_names.push_back("settings");
+	db_names.push_back("files");
+	db_names.push_back("links");
+	db_names.push_back("link_journal");
 
-	Server->deleteFile("urbackup/backup_server_settings.db");
-	Server->deleteFile("urbackup/backup_server_settings.db-wal");
-	Server->deleteFile("urbackup/backup_server_settings.db-shm");
-
-
-	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	if(db==NULL)
+	for (size_t i = 0; i < db_names.size(); ++i)
 	{
-		Server->Log("Could not open main database", LL_ERROR);
-		return 1;
+		Server->deleteFile("urbackup/backup_server"+db_names[i]+".db");
+		Server->deleteFile("urbackup/backup_server" + db_names[i] + ".db-wal");
+		Server->deleteFile("urbackup/backup_server" + db_names[i] + ".db-shm");
 	}
 
-	Server->Log("Importing main database...", LL_INFO);
-	if(!db->Import("urbackup/server_database_export_main.sql"))
+	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		Server->Log("Importing main database failed", LL_ERROR);
-		return 1;
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		if (db == NULL)
+		{
+			Server->Log("Could not open database with id " + convert(dbs[i]), LL_ERROR);
+			return 1;
+		}
+
+		Server->Log("Importing database with id " + convert(dbs[i]) + "...", LL_INFO);
+		if (!db->Import("urbackup/server_database_export_" + convert(dbs[i]) + ".sql"))
+		{
+			Server->Log("Importing database failed", LL_ERROR);
+			return 1;
+		}
+
+		Server->deleteFile("urbackup/server_database_export_" + convert(dbs[i]) + ".sql");
 	}
-
-	db_settings=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_SETTINGS);
-	if(db_settings==NULL)
-	{
-		Server->Log("Could not open settings database", LL_ERROR);
-		return 1;
-	}
-
-	Server->Log("Importing settings database...", LL_INFO);
-	if(!db_settings->Import("urbackup/server_database_export_settings.sql"))
-	{
-		Server->Log("Importing settings database failed", LL_ERROR);
-		return 1;
-	}
-
-	Server->deleteFile("urbackup/server_database_export_main.sql");
-	Server->deleteFile("urbackup/server_database_export_settings.sql");
-
-	Server->Log("Completed sucessfully.", LL_INFO);
 
 	return 0;
 }
