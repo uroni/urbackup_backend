@@ -731,6 +731,11 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	for (size_t i = 0; i < running_processes.size(); ++i)
 	{
+		if (Server->getTimeMS() - running_processes[i].last_pingtime > x_pingtimeout)
+		{
+			continue;
+		}
+
 		JSON::Object obj;
 		obj.set("percent_done", running_processes[i].pcdone);
 		obj.set("action", actionToStr(running_processes[i].action));
@@ -865,7 +870,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	}
 
 	proc->eta_ms = watoi64(params["eta_ms"]);
-
+	proc->last_pingtime = Server->getTimeMS();
 
 #ifdef _WIN32
 	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
