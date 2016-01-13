@@ -1159,21 +1159,24 @@ function show_status2(data)
 			extra_clients_rows+=dustRender("status_detail_extra_row", obj);
 		}
 	}
-	else
-	{
-		extra_clients_rows=dustRender("status_detail_extra_empty");
-	}
 	
 	var status_can_show_all=false;
 	var status_extra_clients=false;
 	
-	if(data.allow_extra_clients)
+	if(data.allow_extra_clients
+		&& data.extra_clients.length>0)
 	{
 		if(!g.status_show_all)
 		{
 			status_can_show_all=true;
 		}
 		status_extra_clients=true;
+	}
+	
+	var allow_add_client=false;
+	if(data.allow_add_client)
+	{
+		allow_add_client=true;
 	}
 
 	var modify_clients="";
@@ -1231,7 +1234,7 @@ function show_status2(data)
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: data.added_new_client, new_authkey: data.new_authkey, new_clientname: data.new_clientname,
 		status_client_download: status_client_download,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
-		has_client_download: has_client_download});
+		has_client_download: has_client_download, allow_add_client:allow_add_client});
 	
 	if(g.data_f!=ndata)
 	{
@@ -1317,6 +1320,8 @@ function show_status2(data)
 		};
 		
 		$("#status_table").dataTable(datatable_config);
+		
+		$("#download_client").selectpicker();
 	}
 	
 	if(data.curr_version_num)
@@ -1340,8 +1345,14 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 
 function downloadClient(clientid, authkey)
 {
-	var selidx=I('download_client').selectedIndex;
-	if(selidx!=-1)
+	var selidx=-1;
+	
+	if(I('download_client'))
+	{
+		selidx = I('download_client').selectedIndex;
+	}
+	
+	if(selidx!=-1 || clientid!=-1)
 	{
 		if(authkey)
 		{
@@ -1351,7 +1362,15 @@ function downloadClient(clientid, authkey)
 		{
 			authkey = "";
 		}
-		location.href=getURL("download_client", "clientid="+I('download_client').value+authkey);
+		
+		if(clientid==-1)
+		{
+			clientid = I('download_client').value;
+		}
+		
+		$("#download_client").prop('selectedIndex', -1);
+		
+		location.href=getURL("download_client", "clientid="+clientid+authkey);
 	}
 }
 
@@ -4204,7 +4223,7 @@ function addNewClient2()
 		}
 		
 		if(!startLoading()) return;
-		new getJSON("new_client", "clientname="+getPar("internet_client_name"), addNewClient3);
+		new getJSON("add_client", "clientname="+encodeURIComponent(I("internet_client_name").value), addNewClient3);
 	}
 	else
 	{
@@ -4214,6 +4233,8 @@ function addNewClient2()
 
 function addNewClient3(data)
 {
+	stopLoading();
+	
 	if(data.already_exists)
 	{
 		alert(trans("client_exists"));

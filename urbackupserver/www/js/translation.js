@@ -788,6 +788,8 @@ translations.en = {
 "Maximize": "Maximize",
 "ldap_settings": "LDAP/AD",
 "client_exists": "A client with this name already exists",
+"validate_err_empty_internet_client_name": "Please enter a name of new Internet client/client behind NAT",
+"validate_err_empty_hostname": "Please enter an IP/hostname of client to be discovered",
 "all_clients": "All clients",
 "client_settings": "Client settings",
 "action_8": "File restore",

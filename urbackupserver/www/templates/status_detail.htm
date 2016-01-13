@@ -52,8 +52,15 @@
 			{/status_can_show_all}
 			{modify_clients|s}
 			{?has_client_download}
-				{status_client_download|s}
+				<div class="btn-group">
+					{status_client_download|s}
+				</div>
 			{/has_client_download}
+			{?allow_add_client}
+				<div class="btn-group">
+					<a class="btn btn-sm btn-primary" href="javascript: addNewClient1();"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {tAdd new client}</a>
+				</div>
+			{/allow_add_client}
 		</div>
 		
 		{?removed_clients_table}
@@ -82,12 +89,9 @@
 {?status_extra_clients}
 	<div class="panel panel-default">
 		<div class="panel-heading">
-			{tExtra clients}
+			{tClient discovery hints}
 		</div>
 		<div class="panel-body">
-			<div class="alert alert-info" role="alert">
-				{tAutomatic UrBackup client discovery usually only works in local sub-networks. Add client IPs/hostnames here to discover clients across sub-network boundaries. If there is NAT between client and server you need to add the client as Internet client.}
-			</div>
 			<table class="table table-hover">
 				<thead>
 					<tr>			
@@ -103,7 +107,7 @@
 
 			<form class="form" action="#" onsubmit="addExtraClient(); return false;" role="form">
 				<div class="form-group">
-					<label for="hostname">{tAdd extra client}:</label>
+					<label for="hostname">{tAdd hostname/IP as client discovery hint}:</label>
 					<input type="text" class="form-control" id="hostname" value="" placeholder="{tHostname/IP}"/>
 				</div>
 				<input type="submit" class="btn btn-default" value="{tAdd}"/>

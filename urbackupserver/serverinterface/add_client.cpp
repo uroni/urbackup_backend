@@ -10,6 +10,11 @@ ACTION_IMPL(add_client)
 	if (session != NULL && session->id == SESSION_ID_INVALID) return;
 	if (session != NULL && helper.getRights("add_client")=="all")
 	{
+		if (POST["clientname"].empty())
+		{
+			return;
+		}
+
 		bool new_client = false;
 		std::string new_authkey;
 		int id = ClientMain::getClientID(helper.getDatabase(), POST["clientname"], NULL, &new_client, &new_authkey);

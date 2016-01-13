@@ -1,12 +1,3 @@
-<div class="panel-heading">{tClient download}</div>
-<div class="panel-body">
-	<div class="alert alert-info" role="alert">
-		{tYou can download preconfigured client installers for specific clients here. Add new clients with the 'Internet clients' panel.}
-	</div>
-	<div class="form-group">
-		<select class="form-control" id="download_client">
-			{download_clients|s}
-		</select>
-	</div>
-	<input type="button" class="btn btn-default" value="{tDownload}" onclick="downloadClient({clientid})" />
-</div>
+<select class="form-control" id="download_client" class="selectpicker" data-live-search="true" onChange="downloadClient(-1)" data-title="{tDownload client for Windows}" data-style="btn btn-sm btn-default">
+	{download_clients|s}
+</select>

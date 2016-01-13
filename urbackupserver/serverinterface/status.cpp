@@ -451,6 +451,11 @@ ACTION_IMPL(status)
 			ret.set("allow_modify_clients", true);
 		}
 
+		if (helper.getRights("add_client") == "all")
+		{
+			ret.set("allow_add_client", true);
+		}
+
 		JSON::Array client_downloads;
 		if(client_download(helper, client_downloads))
 		{
