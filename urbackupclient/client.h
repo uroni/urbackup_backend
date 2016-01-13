@@ -220,7 +220,7 @@ private:
 	void updateDirs(void);
 
 	static std::string sanitizePattern(const std::string &p);
-	void readPatterns(bool &pattern_changed, bool update_saved_patterns);	
+	void readPatterns();	
 
 	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter);
 

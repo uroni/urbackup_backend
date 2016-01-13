@@ -808,13 +808,7 @@ const char * filelist_fn="urbackup/data/filelist_new.ub";
 
 void IndexThread::indexDirs(void)
 {
-	bool patterns_changed=false;
-	readPatterns(patterns_changed, false);
-
-	if(patterns_changed)
-	{
-		VSSLog("Include/exclude pattern changed. Not using db...", LL_INFO);
-	}
+	readPatterns();
 
 	updateDirs();
 
@@ -1045,7 +1039,7 @@ void IndexThread::indexDirs(void)
 				}
 #endif
 				initialCheck(backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-					backup_dirs[i].flags, !patterns_changed, backup_dirs[i].symlinked);
+					backup_dirs[i].flags, true, backup_dirs[i].symlinked);
 
 				commitModifyFilesBuffer();
 				commitAddFilesBuffer();
@@ -1159,10 +1153,6 @@ void IndexThread::indexDirs(void)
 		}
 	}
 
-	if(patterns_changed)
-	{
-		readPatterns(patterns_changed, true);
-	}
 	share_dirs();
 
 	changed_dirs.clear();
@@ -2787,7 +2777,7 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns)
+void IndexThread::readPatterns()
 {
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";
@@ -2811,16 +2801,6 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 		std::string val;
 		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+"_def", &val) )
 		{
-			if(index_group==c_group_default
-				&& val!=cd->getOldExcludePattern())
-			{
-				pattern_changed=true;
-				if(update_saved_patterns)
-				{
-					cd->updateOldExcludePattern(val);
-				}
-			}
-
 			exlude_dirs = parseExcludePatterns(val);
 		}
 		else
@@ -2830,16 +2810,6 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 
 		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
 		{
-			if(index_group==c_group_default
-				&& val!=cd->getOldIncludePattern())
-			{
-				pattern_changed=true;
-				if(update_saved_patterns)
-				{
-					cd->updateOldIncludePattern(val);
-				}
-			}
-
 			include_dirs = parseIncludePatterns(val, include_depth, include_prefix);
 		}
 		Server->destroy(curr_settings);
