@@ -6,7 +6,7 @@
 	
     <Package Description='UrBackup Server'
              Comments='UrBackup Server for file and image backups'
-             Manufacturer='Martin Raiber' InstallerVersion='300' Compressed='yes' Platform='$(var.Platform)'/>
+             Manufacturer='Martin Raiber' InstallerVersion='301' Compressed='yes' Platform='$(var.Platform)'/>
 	
 	<MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
 	
