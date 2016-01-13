@@ -1221,6 +1221,8 @@ function show_status2(data)
 		has_client_download=true;
 	}
 	
+	g.server_identity = data.server_identity;
+	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
@@ -1336,12 +1338,20 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 }
 
 
-function downloadClient(clientid)
+function downloadClient(clientid, authkey)
 {
 	var selidx=I('download_client').selectedIndex;
 	if(selidx!=-1)
 	{
-		location.href=getURL("download_client", "clientid="+I('download_client').value);
+		if(authkey)
+		{
+			authkey = "&authkey="+encodeURIComponent(authkey);
+		}
+		else
+		{
+			authkey = "";
+		}
+		location.href=getURL("download_client", "clientid="+I('download_client').value+authkey);
 	}
 }
 
@@ -4167,5 +4177,55 @@ g.maximize_or_minimize = function(refresh)
 	if(refresh)
 	{
 		refresh_page();
+	}
+}
+
+function addNewClient1()
+{
+	if(!startLoading()) return;
+	stopLoading();
+	
+	var ndata=dustRender("add_client", {server_identity: g.server_identity});
+	
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
+}
+
+function addNewClient2()
+{	
+	if(I("choice_internet_client").checked)
+	{
+		if(!validate_text_nonempty(['internet_client_name']) )
+		{
+			return;
+		}
+		
+		if(!startLoading()) return;
+		new getJSON("new_client", "clientname="+getPar("internet_client_name"), addNewClient3);
+	}
+	else
+	{
+		addExtraClient();
+	}
+}
+
+function addNewClient3(data)
+{
+	if(data.already_exists)
+	{
+		alert(trans("client_exists"));
+	}
+	else
+	{
+		var ndata=dustRender("client_added", data);
+	
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
 	}
 }

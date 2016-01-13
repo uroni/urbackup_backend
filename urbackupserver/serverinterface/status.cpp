@@ -22,7 +22,6 @@
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
-#include "../ClientMain.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server.h"
 
@@ -194,18 +193,7 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(POST.find("clientname")!=POST.end() && helper.getRights("add_client")=="all" )
-		{
-			bool new_client=false;
-			std::string new_authkey;
-			int id=ClientMain::getClientID(db, POST["clientname"], NULL, &new_client, &new_authkey);
-			if(new_client)
-			{
-				ret.set("new_clientname", POST["clientname"]);
-				ret.set("new_authkey", new_authkey);
-				ret.set("added_new_client", true);
-			}
-		}
+		
 		std::string s_remove_client=POST["remove_client"];
 		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
 		{

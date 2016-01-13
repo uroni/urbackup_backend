@@ -787,6 +787,7 @@ translations.en = {
 "Minimize": "Minimize",
 "Maximize": "Maximize",
 "ldap_settings": "LDAP/AD",
+"client_exists": "A client with this name already exists",
 "all_clients": "All clients",
 "client_settings": "Client settings",
 "action_8": "File restore",

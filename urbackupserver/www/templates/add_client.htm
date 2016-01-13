@@ -1,0 +1,35 @@
+<div class="panel panel-default">
+	<div class="panel-heading">{tAdd client}</div>
+	<div class="panel-body">
+		<div class="alert alert-info" role="alert">
+				<p>
+					{tUrBackup automatically discovers client in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered.}
+				</p>
+				<p>
+					{tDownload the client from:} <a href="https://www.urbackup.org/download.html">www.urbackup.org</a>
+				</p>
+				<p>
+					{tIf you want a client to use multiple backup servers this server's identity is:} {server_identity}
+				</p>
+		</div>
+		
+		<form class="form-horizontal" action="#" onsubmit="addNewClient2(); return false;">
+			<div class="radio">
+			  <label><input type="radio" name="new_client" value="internet_client" id="choice_internet_client">{tAdd new Internet client/client behind NAT}</label>
+			</div>
+			<div class="form-group">
+				<label for="internet_client_name" class="control-label">{tName of new Internet client/client behind NAT}</label>
+				<input class="form-control" value="" type="text" name="internet_client_name" id="internet_client_name"/><br/>
+			</div>
+			<div class="radio">
+			  <label><input type="radio" name="new_client" value="ip_hint" id="choice_ip_hint">{tDiscover new client via IP/hostname hint}</label>
+			</div>
+			<div class="form-group">
+				<label for="hostname" class="control-label">{tIP/hostname of client to be discovered}</label>
+				<input class="form-control" value="" type="text" name="hostname" id="hostname"/><br/>
+			</div>
+			
+			<input type="button" class="btn btn-default" value="{tCancel}" onclick="show_status1()"> <input type="submit" class="btn btn-default" value="{tAdd client}" />
+		</form>
+	</div>
+</div>
