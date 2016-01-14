@@ -111,6 +111,8 @@ private:
 
 	bool correctPath(std::string& ff, std::string& f_hashpath);
 
+	bool punchHoleOrZero(IFile *tf, int64 offset, int64 size);
+
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
 	ServerFilesDao* filesdao;

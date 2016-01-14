@@ -55,7 +55,7 @@ namespace
 const int64 sparse_blocksize = 32768;
 
 ChunkPatcher::ChunkPatcher(void)
-	: cb(NULL), require_unchanged(true)
+	: cb(NULL), require_unchanged(true), with_sparse(false)
 {
 }
 
@@ -105,7 +105,12 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	{
 		if(has_header && next_header.patch_off==-1)
 		{
-			has_header=readNextValidPatch(patch, patchf_pos, &next_header);
+			bool has_read_error = false;
+			has_header=readNextValidPatch(patch, patchf_pos, &next_header, has_read_error);
+			if (has_read_error)
+			{
+				return false;
+			}
 		}
 
 		if(!has_header && (file_pos>=filesize || file_pos>=size) )
@@ -144,7 +149,14 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 			while(next_header.patch_size>0)
 			{
-				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)buffer_size, next_header.patch_size));
+				bool has_read_error = false;
+				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)buffer_size, next_header.patch_size), &has_read_error);
+
+				if (has_read_error)
+				{
+					return false;
+				}
+
 				patchf_pos+=r;
 				if (with_sparse)
 				{
@@ -198,7 +210,13 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			{
 				if(require_unchanged)
 				{
-					_u32 r=file->Read((char*)buf, tr);
+					bool has_read_error = false;
+					_u32 r=file->Read((char*)buf, tr, &has_read_error);
+
+					if (has_read_error)
+					{
+						return false;
+					}
 					
 					if (with_sparse)
 					{
@@ -248,12 +266,12 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	return true;
 }
 
-bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header)
+bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header, bool& has_read_error)
 {
 	const unsigned int to_read=sizeof(_i64)+sizeof(unsigned int);
 	do
 	{
-		_u32 r=patchf->Read((char*)&patch_header->patch_off, to_read);
+		_u32 r=patchf->Read((char*)&patch_header->patch_off, to_read, &has_read_error);
 		patchf_pos+=r;
 		if(r!=to_read)
 		{

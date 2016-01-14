@@ -30,7 +30,7 @@ public:
 	_i64 getFilesize(void);
 
 private:
-	bool readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header);
+	bool readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header, bool& has_read_error);
 	void nextChunkPatcherBytes(int64 pos, const char *buf, size_t bsize, bool changed, bool sparse);
 	void finishChunkPatcher(int64 pos);
 	void finishSparse(int64 pos);

@@ -151,6 +151,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	}
 
 	int64 sparse_extent_start = -1;
+	int64 copy_sparse_extent_start = -1;
 	bool has_sparse_extent = false;
 
 	for(_i64 pos=0;pos<fsize;)
@@ -198,13 +199,39 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			std::string c = get_sparse_extent_content();
 			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
 				return "";
-
-			copy_write_pos += c_checkpoint_dist;
+			
 
 			if (ret_sha2 && sparse_extent_start == -1)
 			{
 				sparse_extent_start = pos;
 			}
+
+			if (copy_sparse_extent_start == -1)
+			{
+				copy_sparse_extent_start = pos;
+
+				if (!copy->PunchHole(curr_extent.offset, curr_extent.size))
+				{
+					std::vector<char> zero_buf;
+					zero_buf.resize(32768);
+
+					if (copy->Seek(curr_extent.offset))
+					{
+						for (int64 written = 0; written < curr_extent.size;)
+						{
+							_u32 towrite = static_cast<_u32>((std::min)(curr_extent.size - written, static_cast<int64>(zero_buf.size())));
+							if (!writeRepeatFreeSpace(copy, zero_buf.data(), towrite, cb))
+								return "";
+						}
+					}
+					else
+					{
+						return "";
+					}
+				}
+			}
+
+			copy_write_pos += c_checkpoint_dist;
 
 			pos = epos;			
 			if (!f->Seek(pos))
@@ -213,6 +240,8 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			}
 			continue;
 		}
+
+		copy_sparse_extent_start = -1;
 
 		
 		MD5 big_hash;
