@@ -238,7 +238,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 				int64 buf_offset = pos%sha_buf.size();
 				memcpy(sha_buf.data() + buf_offset, buf, r);
 
-				if (r < c_small_hash_dist)
+				if (r < c_small_hash_dist || pos+r==fsize)
 				{
 					if (sparse_extent_start != -1)
 					{
