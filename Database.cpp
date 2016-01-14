@@ -44,10 +44,6 @@ extern "C"
 #include "Database.h"
 #include "stringtools.h"
 
-IMutex * CDatabase::lock_mutex=NULL;
-int CDatabase::lock_count=0;
-ICondition *CDatabase::unlock_cond=NULL;
-ISharedMutex* CDatabase::single_user_mutex = NULL;
 
 namespace
 {
@@ -116,8 +112,14 @@ CDatabase::~CDatabase()
 }
 
 bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
-	size_t allocation_chunk_size)
+	size_t allocation_chunk_size, ISharedMutex* p_single_user_mutex, IMutex* p_lock_mutex,
+	int* p_lock_count, ICondition *p_unlock_cond)
 {
+	single_user_mutex = p_single_user_mutex;
+	lock_mutex = p_lock_mutex;
+	lock_count = p_lock_count;
+	unlock_cond = p_unlock_cond;
+
 	attached_dbs=attach;
 	in_transaction=false;
 	if( sqlite3_open(pFile.c_str(), &db) )
@@ -163,18 +165,11 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 
 void CDatabase::initMutex(void)
 {
-	lock_mutex=Server->createMutex();
-	unlock_cond=Server->createCondition();
-	single_user_mutex = Server->createSharedMutex();
-
 	sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL);
 }
 
 void CDatabase::destroyMutex(void)
 {
-	Server->destroy(lock_mutex);
-	Server->destroy(unlock_cond);
-	Server->destroy(single_user_mutex);
 }
 
 db_results CDatabase::Read(std::string pQuery)
@@ -212,13 +207,14 @@ bool CDatabase::BeginReadTransaction()
 {
 	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
 
+	in_transaction = true;
 	if(Write("BEGIN"))
 	{
-		in_transaction=true;
 		return true;
 	}
 	else
 	{
+		in_transaction = false;
 		return false;
 	}
 }
@@ -227,13 +223,14 @@ bool CDatabase::BeginWriteTransaction()
 {
 	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
 
+	in_transaction = true;
 	if(Write("BEGIN IMMEDIATE;"))
 	{
-		in_transaction=true;
 		return true;
 	}
 	else
 	{
+		in_transaction = false;
 		return false;
 	}
 }
@@ -244,7 +241,7 @@ bool CDatabase::EndTransaction(void)
 	in_transaction=false;
 	IScopedLock lock(lock_mutex);
 	bool waited=false;
-	while(lock_count>0)
+	while(*lock_count>0)
 	{
 		unlock_cond->wait(&lock);
 		waited=true;
@@ -263,7 +260,7 @@ bool CDatabase::RollbackTransaction()
 	in_transaction = false;
 	IScopedLock lock(lock_mutex);
 	bool waited = false;
-	while (lock_count>0)
+	while (*lock_count>0)
 	{
 		unlock_cond->wait(&lock);
 		waited = true;
@@ -443,13 +440,13 @@ sqlite3 *CDatabase::getDatabase(void)
 bool CDatabase::LockForTransaction(void)
 {
 	lock_mutex->Lock();
-	++lock_count;
+	++*lock_count;
 	return true;
 }
 
 void CDatabase::UnlockForTransaction(void)
 {
-	--lock_count;
+	--*lock_count;
 	unlock_cond->notify_all();
 	lock_mutex->Unlock();
 }

@@ -15,7 +15,7 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
+#define __ICondition_INTERFACE_DEFINED__
 #include "vld.h"
 #include "Server.h"
 #include "stringtools.h"

@@ -89,8 +89,8 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 		synchonous_link_journal.reset(link_journal_db);
 	}
 
-	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
 	DBScopedSynchronous synchonous_link(link_dao->getDatabase());
+	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
 
 	IScopedLock lock(dir_link_mutex);
 

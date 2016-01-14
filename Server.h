@@ -9,6 +9,9 @@
 
 #include "Interface/Server.h"
 #include "Interface/Action.h"
+#include "Interface/Mutex.h"
+#include "Interface/Condition.h"
+#include "Interface/SharedMutex.h"
 #include <vector>
 #include <fstream>
 
@@ -32,13 +35,18 @@ class IOutputStream;
 struct SDatabase
 {
 	SDatabase(IDatabaseFactory *factory, const std::string &file)
-		: factory(factory), file(file), allocation_chunk_size(std::string::npos) {}
+		: factory(factory), file(file), allocation_chunk_size(std::string::npos)
+	{}
 
 	IDatabaseFactory *factory;
 	std::string file;
 	std::map<THREAD_ID, IDatabaseInt*> tmap;
 	std::vector<std::pair<std::string,std::string> > attach;
 	size_t allocation_chunk_size;
+	std::auto_ptr<ISharedMutex> single_user_mutex;
+	std::auto_ptr<IMutex> lock_mutex;
+	std::auto_ptr<int> lock_count;
+	std::auto_ptr<ICondition> unlock_cond;
 };
 
 

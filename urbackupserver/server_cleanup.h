@@ -128,7 +128,7 @@ private:
 
 	void deletePendingClients(void);
 
-	void backup_database(void);
+	bool backup_database(void);
 
 	bool deleteAndTruncateFile(std::string path);
 	bool deleteImage(std::string clientname, std::string path);
@@ -146,7 +146,7 @@ private:
 	bool backup_clientlists();
 	bool backup_ident();
 	void ren_files_backupfolder();
-	void clear_backupfolder();
+
 	IDatabase *db;
 
 	static IMutex *mutex;

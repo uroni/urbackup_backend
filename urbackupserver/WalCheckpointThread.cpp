@@ -30,7 +30,7 @@ void WalCheckpointThread::checkpoint()
 #ifdef _WIN32
 	mode=MODE_READ_DEVICE;
 #endif
-	std::auto_ptr<IFile> wal_file(Server->openFile("urbackup" + os_file_sep() + "backup_server.db-wal", mode));
+	std::auto_ptr<IFile> wal_file(Server->openFile("urbackup" + os_file_sep() + "backup_server_files.db-wal", mode));
 
 	if(wal_file.get()!=NULL)
 	{
@@ -38,9 +38,9 @@ void WalCheckpointThread::checkpoint()
 		{
 			wal_file.reset();
 
-			Server->Log("WAL file greater than 1GiB. Doing WAL checkpoint...", LL_INFO);
+			Server->Log("Files WAL file greater than 1GiB. Doing WAL checkpoint...", LL_INFO);
 
-			IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
 			db->lockForSingleUse();
 			db->Write("PRAGMA wal_checkpoint(TRUNCATE)");

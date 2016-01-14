@@ -1160,7 +1160,7 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool copy_file(const std::string &src, const std::string &dst)
+bool copy_file(const std::string &src, const std::string &dst, bool flush)
 {
 	IFile *fsrc=Server->openFile(src, MODE_READ);
 	if(fsrc==NULL) return false;
@@ -1172,6 +1172,11 @@ bool copy_file(const std::string &src, const std::string &dst)
 	}
 
 	bool copy_ok = copy_file(fsrc, fdst);
+
+	if (copy_ok && flush)
+	{
+		copy_ok = fdst->Sync();
+	}
 
 	Server->destroy(fsrc);
 	Server->destroy(fdst);

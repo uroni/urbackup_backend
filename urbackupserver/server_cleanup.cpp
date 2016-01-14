@@ -119,6 +119,7 @@ void ServerCleanupThread::operator()(void)
 
 	int64 last_cleanup=0;
 
+#ifndef _DEBUG
 	{
 		IScopedLock lock(mutex);
 		cond->wait(&lock, 60000);
@@ -129,6 +130,7 @@ void ServerCleanupThread::operator()(void)
 			return;
 		}
 	}
+#endif
 
 	{
 		ScopedActiveThread sat;
@@ -150,13 +152,9 @@ void ServerCleanupThread::operator()(void)
 			filesdao.reset();
 			fileindex.reset();
 
-			backup_database();
-
-			ren_files_backupfolder();
-
-			if(	backup_clientlists() && backup_ident() )
+			if(backup_database() && backup_clientlists() && backup_ident() )
 			{
-				clear_backupfolder();
+				ren_files_backupfolder();
 			}
 		}
 
@@ -253,13 +251,9 @@ void ServerCleanupThread::operator()(void)
 				filesdao.reset();
 				fileindex.reset();
 
-				backup_database();
-
-				ren_files_backupfolder();
-
-				if(	backup_clientlists() && backup_ident() )
+				if(backup_database() && backup_clientlists() && backup_ident() )
 				{
-					clear_backupfolder();
+					ren_files_backupfolder();
 				}
 
 				Server->destroy(settings);
@@ -1351,70 +1345,152 @@ int64 ServerCleanupThread::getImageSize(int backupid)
 	return -1;
 }
 
-bool attach_other_dbs(IDatabase* db);
-void detach_other_dbs(IDatabase* db);
+namespace
+{
+	bool copy_db_file(std::string src, std::string dst)
+	{
+		std::auto_ptr<IFile> src_file(Server->openFile(os_file_prefix(src), MODE_READ_DEVICE));
+		std::auto_ptr<IFile> dst_file(Server->openFile(os_file_prefix(dst), MODE_WRITE));
 
-void ServerCleanupThread::backup_database(void)
+		bool copy_ok = true;
+		if (src_file.get() != NULL
+			&& dst_file.get() != NULL)
+		{
+			copy_ok = copy_file(src_file.get(), dst_file.get());
+
+			if (copy_ok)
+			{
+				copy_ok = dst_file->Sync();
+			}
+		}
+		else
+		{
+			copy_ok = false;
+		}
+
+		return copy_ok;
+	}
+}
+
+bool ServerCleanupThread::backup_database(void)
 {
 	ServerSettings settings(db);
 
 	if(settings.getSettings()->backup_database)
 	{
+		std::vector<DATABASE_ID> copy_backup_ids;
+		copy_backup_ids.push_back(URBACKUPDB_SERVER_FILES);
+		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINKS);
+		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
 		Server->Log("Checking database integrity...", LL_INFO);
 		db_results res = db->Read("PRAGMA quick_check");
 
-		if(!res.empty() && res[0]["integrity_check"]=="ok")
+		bool integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
+
+		if (integrity_ok)
 		{
+			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
+			{
+				if (integrity_ok)
+				{
+					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
+					db_results res = copy_db->Read("PRAGMA quick_check");
+
+					integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
+				}
+			}
+		}
+
+		if(integrity_ok)
+		{
+			std::vector<std::string> normal_backup;
+			normal_backup.push_back("backup_server.db");
+			normal_backup.push_back("backup_server_settings.db");
+
+			std::vector<std::string> copy_backup;
+			copy_backup.push_back("backup_server_files.db");
+			copy_backup.push_back("backup_server_links.db");
+			copy_backup.push_back("backup_server_link_journal.db");
+
+			copy_backup.push_back("backup_server_files.db-wal");
+			copy_backup.push_back("backup_server_links.db-wal");
+			copy_backup.push_back("backup_server_link_journal.db-wal");
+
+			std::vector<std::string> all_backup;
+			all_backup.insert(all_backup.end(), normal_backup.begin(), normal_backup.end());
+			all_backup.insert(all_backup.end(), copy_backup.begin(), copy_backup.end());
+
+
 			std::string bfolder=settings.getSettings()->backupfolder+os_file_sep()+"urbackup";
 			if(!os_directory_exists(bfolder) )
 			{
 				os_create_dir(bfolder);
 			}
+
+			Server->Log("Starting database backup of main db...", LL_INFO);
+
+			for (size_t i = 0; i < normal_backup.size(); ++i)
+			{
+				Server->deleteFile(bfolder + os_file_sep() + normal_backup[i]+"~");
+				Server->deleteFile(bfolder + os_file_sep() + normal_backup[i] + "~-journal");
+			}
+
+			//Using this method the database can be written to during backup
+			// (but it causes the backup to restart)
+			bool b=db->Backup((bfolder+os_file_sep()+"backup_server.db~"));
+
+			if (b)
+			{
+				Server->Log("Database backup done.", LL_INFO);
+
+				for (size_t i = 0; i < copy_backup_ids.size(); ++i)
+				{
+					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
+					Server->Log("Starting database backup of " + copy_backup[i]+"...", LL_INFO);
+
+					DBScopedWriteTransaction copy_db_transaction(copy_db);
+
+					b = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~");
+
+					if (b)
+					{
+						b = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~");
+
+						if (!b)
+						{
+							Server->Log("Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
+						}
+						else
+						{
+							Server->Log("Backup of " + copy_backup[i] + " done.", LL_INFO);
+						}
+					}
+					else
+					{
+						Server->Log("Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
+					}
+				}
+			}
 			else
 			{
-				rename((bfolder+os_file_sep()+"backup_server.db").c_str(), (bfolder+os_file_sep()+"backup_server.db~").c_str() );
-				rename((bfolder+os_file_sep()+"backup_server_settings.db").c_str(), (bfolder+os_file_sep()+"backup_server_settings.db~").c_str() );
-				rename((bfolder + os_file_sep() + "backup_server_files.db").c_str(), (bfolder + os_file_sep() + "backup_server_files.db~").c_str());
-				rename((bfolder + os_file_sep() + "backup_server_links.db").c_str(), (bfolder + os_file_sep() + "backup_server_links.db~").c_str());
-				rename((bfolder + os_file_sep() + "backup_server_link_journal.db").c_str(), (bfolder + os_file_sep() + "backup_server_link_journal.db~").c_str());
-
+				Server->Log("Backing up main database failed", LL_ERROR);
 			}
 
-			Server->Log("Starting database backup...", LL_INFO);
-
-			if (!attach_other_dbs(db))
-			{
-				Server->Log("Attaching other databases failed", LL_ERROR);
-			}
-
-			DBScopedWriteTransaction scoped_transaction(db);
-
-			bool b=db->Backup((bfolder+os_file_sep()+"backup_server.db"));
-
-			detach_other_dbs(db);
-
-			Server->Log("Database backup done.", LL_INFO);
-
-			if(!b)
-			{
-				Server->Log("Backing up database failed", LL_ERROR);
-			}
-			else
-			{
-				Server->deleteFile(bfolder+os_file_sep()+"backup_server.db~");
-				Server->deleteFile(bfolder+os_file_sep()+"backup_server_settings.db~");
-				Server->deleteFile(bfolder + os_file_sep() + "backup_server_files.db~");
-				Server->deleteFile(bfolder + os_file_sep() + "backup_server_links.db~");
-				Server->deleteFile(bfolder + os_file_sep() + "backup_server_link_journal.db~");
-			}
+			return b;
 		}
 		else
 		{
 			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
 			ClientMain::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
+			return false;
 		}
 	}
+
+	return true;
 }
 
 void ServerCleanupThread::doQuit(void)
@@ -1940,9 +2016,9 @@ bool ServerCleanupThread::backup_clientlists()
 		bool has_error=false;
 		for(size_t i=0;i<files.size();++i)
 		{
-			if(files[i].name.find("clientlist")==0)
+			if(files[i].name.find("clientlist_b_")==0)
 			{
-				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name), os_file_prefix(bfolder + os_file_sep() + files[i].name)))
+				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name), os_file_prefix(bfolder + os_file_sep() + files[i].name+"~"), true))
 				{
 					Server->Log("Error backing up "+files[i].name, LL_ERROR);
 					has_error=true;
@@ -1972,40 +2048,23 @@ void ServerCleanupThread::ren_files_backupfolder()
 
 	std::vector<SFile> files = getFiles(bfolder);
 
-	for(size_t i=0;i<files.size();++i)
+	for (size_t i = 0; i < files.size(); ++i)
 	{
-		if(!files[i].isdir && files[i].name!="backup_server.db" &&
-			files[i].name!="backup_server_settings.db" &&
-			files[i].name != "backup_server_files.db" &&
-			files[i].name != "backup_server_links.db" &&
-			files[i].name != "backup_server_link_journal.db" &&
+		if (!files[i].isdir && 
 			!files[i].name.empty() &&
-			files[i].name[files[i].name.size()-1]!='~')
+			files[i].name[files[i].name.size() - 1] != '~')
 		{
-			os_rename_file(os_file_prefix(bfolder+os_file_sep()+files[i].name), os_file_prefix(bfolder+os_file_sep()+files[i].name+"~"));
+			Server->deleteFile(os_file_prefix(bfolder + os_file_sep() + files[i].name));
 		}
 	}
-}
-
-void ServerCleanupThread::clear_backupfolder()
-{
-	ServerSettings settings(db);
-
-	std::string bfolder=settings.getSettings()->backupfolder+os_file_sep()+"urbackup";
-
-	std::vector<SFile> files = getFiles(bfolder);
 
 	for(size_t i=0;i<files.size();++i)
 	{
-		if(!files[i].isdir && files[i].name!="backup_server.db" &&
-			files[i].name!="backup_server_settings.db" &&
-			files[i].name != "backup_server_files.db" &&
-			files[i].name != "backup_server_links.db" &&
-			files[i].name != "backup_server_link_journal.db" &&
+		if(!files[i].isdir &&
 			!files[i].name.empty() &&
 			files[i].name[files[i].name.size()-1]=='~')
 		{
-			Server->deleteFile(bfolder+os_file_sep()+files[i].name);
+			os_rename_file(os_file_prefix(bfolder+os_file_sep()+files[i].name), os_file_prefix(bfolder+os_file_sep()+files[i].name.substr(0, files[i].name.size()-1)));
 		}
 	}
 }
@@ -2016,8 +2075,12 @@ bool ServerCleanupThread::backup_ident()
 
 	std::string bfolder=settings.getSettings()->backupfolder+os_file_sep()+"urbackup";
 
+	if (!os_directory_exists(bfolder))
+	{
+		os_create_dir(bfolder);
+	}
+
 	std::string srcfolder = Server->getServerWorkingDir()+os_file_sep()+"urbackup";
-	std::vector<SFile> files = getFiles(srcfolder);
 
 	std::vector<std::string> filelist;
 
@@ -2028,7 +2091,7 @@ bool ServerCleanupThread::backup_ident()
 	bool has_error=false;
 	for(size_t i=0;i<filelist.size();++i)
 	{
-		if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + filelist[i]), os_file_prefix(bfolder + os_file_sep() + filelist[i])))
+		if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + filelist[i]), os_file_prefix(bfolder + os_file_sep() + filelist[i]+"~"), true))
 		{
 			Server->Log("Error backing up "+filelist[i], LL_ERROR);
 			has_error=true;

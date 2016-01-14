@@ -17,7 +17,8 @@ class CDatabase : public IDatabaseInt
 {
 public:
 	bool Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
-		size_t allocation_chunk_size);
+		size_t allocation_chunk_size, ISharedMutex* single_user_mutex, IMutex* lock_mutex,
+		int* lock_count, ICondition *unlock_cond);
 	~CDatabase();
 
 	virtual db_results Read(std::string pQuery); 
@@ -69,6 +70,8 @@ public:
 
 	ISharedMutex* getSingleUseMutex();
 private:
+
+	DATABASE_ID database_id;
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);
 
@@ -78,10 +81,10 @@ private:
 	std::vector<CQuery*> queries;
 	std::map<int, IQuery*> prepared_queries;
 
-	static IMutex* lock_mutex;
-	static int lock_count;
-	static ICondition *unlock_cond;
-	static ISharedMutex* single_user_mutex;
+	IMutex* lock_mutex;
+	int* lock_count;
+	ICondition *unlock_cond;
+	ISharedMutex* single_user_mutex;
 
 	std::auto_ptr<IScopedReadLock> transaction_read_lock;
 	std::auto_ptr<IScopedWriteLock> write_lock;

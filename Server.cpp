@@ -826,6 +826,11 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 	}
 
 	SDatabase ndb(iter2->second, pFile);
+	ndb.single_user_mutex.reset(createSharedMutex());
+	ndb.lock_mutex.reset(createMutex());
+	ndb.lock_count.reset(new int);
+	*ndb.lock_count = 0;
+	ndb.unlock_cond.reset(createCondition());
 	databases.insert( std::pair<DATABASE_ID, SDatabase >(pIdentifier, ndb)  );
 
 	return true;
@@ -846,7 +851,10 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	if( thread_iter==database_iter->second.tmap.end() )
 	{
 		IDatabaseInt *db=database_iter->second.factory->createDatabase();
-		if(db->Open(database_iter->second.file, database_iter->second.attach, database_iter->second.allocation_chunk_size)==false )
+		SDatabase& params = database_iter->second;
+		if(db->Open(params.file, params.attach,
+			params.allocation_chunk_size, params.single_user_mutex.get(),
+			params.lock_mutex.get(), params.lock_count.get(), params.unlock_cond.get())==false )
 		{
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
