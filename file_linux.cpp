@@ -110,6 +110,9 @@ bool File::Open(std::string pfn, int mode)
 			return false;
 	}
 	
+#if defined(O_CLOEXEC)
+	flags |= O_CLOEXEC;
+#endif
 	
 	fd=open64((fn).c_str(), flags|O_LARGEFILE, imode);
 

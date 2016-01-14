@@ -117,7 +117,11 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 		pw=trim(getFile(pwfile_change));
 	}
 
-	SOCKET p=socket(AF_INET, SOCK_STREAM, 0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	SOCKET p=socket(AF_INET, type, 0);
 	sockaddr_in addr;
 	memset(&addr,0,sizeof(sockaddr_in));
 	if(!LookupBlocking(client, &addr.sin_addr))

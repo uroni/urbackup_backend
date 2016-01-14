@@ -69,7 +69,11 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
-	s=socket(AF_INET,SOCK_STREAM,0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s=socket(AF_INET, type, 0);
 	if(s<1)
 	{
 		Server->Log("Creating SOCKET failed. Port "+convert((int)uPort)+" may already be in use",LL_ERROR);

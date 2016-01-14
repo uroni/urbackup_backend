@@ -815,7 +815,11 @@ bool CClientThread::ProcessPacket(CRData *data)
                     break;
                 }
 
-				hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
+				int flags = O_RDONLY | O_LARGEFILE;
+#if defined(O_CLOEXEC)
+				flags |= O_CLOEXEC;
+#endif
+				hFile=open64(filename.c_str(), flags);
 				
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
@@ -1601,7 +1605,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 #else //_WIN32
-		hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
+		int flags = O_RDONLY | O_LARGEFILE;
+#if defined(O_CLOEXEC)
+		flags |= O_CLOEXEC;
+#endif
+		hFile=open64(filename.c_str(), flags);
 #endif //_WIN32
 
 		if(hFile == INVALID_HANDLE_VALUE)
@@ -1817,7 +1825,11 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 #else //_WIN32
-	hFile=open64(filename.c_str(), O_RDONLY|O_LARGEFILE);
+	int flags = O_RDONLY | O_LARGEFILE;
+#if defined(O_CLOEXEC)
+	flags |= O_CLOEXEC;
+#endif
+	hFile=open64(filename.c_str(), flags);
 #endif //_WIN32
 
 	if(hFile == INVALID_HANDLE_VALUE)

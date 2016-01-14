@@ -48,7 +48,11 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	if(rc == SOCKET_ERROR)	return;
 #endif
 
-	s=socket(AF_INET,SOCK_STREAM,0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s=socket(AF_INET,type,0);
 	if(s<1)
 	{
 		Server->Log(name+": Creating SOCKET failed",LL_ERROR);

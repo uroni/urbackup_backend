@@ -156,7 +156,11 @@ void FileClient::bindToNewInterfaces()
 				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
 					continue;
 
-				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+				int type = SOCK_DGRAM;
+#if defined(SOCK_CLOEXEC)
+				type |= SOCK_CLOEXEC;
+#endif
+				SOCKET udpsock=socket(AF_INET, type,0);
 				if(udpsock==-1)
 				{
 					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
@@ -210,7 +214,11 @@ void FileClient::bindToNewInterfaces()
 		Server->Log("Getting interface ips failed. errno="+convert(errno)+
 			". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
 
-		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		int type = SOCK_DGRAM;
+#if defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		SOCKET udpsock=socket(AF_INET, type,0);
 		if(udpsock==-1)
 		{
 			Server->Log("Error creating socket", LL_ERROR);

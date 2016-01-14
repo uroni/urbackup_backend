@@ -2157,7 +2157,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 
 	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
 		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target)
-		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname))), loglines);
+		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname)))+" 2>&1", loglines);
 	if(rc!=0)
 	{
 		VSSLog("Error removing snapshot to "+dir->target, LL_ERROR);
@@ -2645,7 +2645,7 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 #endif
 
 	std::string output;
-	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group), output);
+	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group)+" 2>&1", output);
 
 	if (rc != 0 && !output.empty())
 	{
@@ -4449,7 +4449,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	std::string loglines;
 	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
 		escapeDirParam(dir->dir)+" "+escapeDirParam(dir->orig_target)
-		+ (index_clientsubname.empty()?"":(" " + escapeDirParam(index_clientsubname))), loglines);
+		+ (index_clientsubname.empty()?"":(" " + escapeDirParam(index_clientsubname)))+" 2>&1", loglines);
 
 	if(rc!=0)
 	{

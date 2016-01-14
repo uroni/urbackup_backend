@@ -766,7 +766,11 @@ namespace
 
 	bool ping_server(void)
 	{
-		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		SOCKET udpsock=socket(AF_INET, type,0);
 
 		std::string server=Server->getServerParameter("ping_server");
 
@@ -1143,8 +1147,12 @@ bool has_network_device(void)
 	int           nInterfaces;
 	int           i;
 
+	int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
 /* Get a socket handle. */
-	sck = socket(AF_INET, SOCK_DGRAM, 0);
+	sck = socket(AF_INET, type, 0);
 	if(sck < 0)
 	{
 		return true;

@@ -110,7 +110,11 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 	use_fqdn_=use_fqdn;
 
 	{
-		udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		udpsock=socket(AF_INET, type, 0);
 
 		int optval=1;
 		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));

@@ -973,7 +973,12 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	server.sin_port=htons(pPort);
 	server.sin_family=AF_INET;
 
-	SOCKET s=socket(AF_INET, SOCK_STREAM, 0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+
+	SOCKET s=socket(AF_INET, type, 0);
 	if(s==SOCKET_ERROR)
 	{
 		return NULL;

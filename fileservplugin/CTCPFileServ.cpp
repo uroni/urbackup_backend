@@ -113,7 +113,11 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 
 	if(tcpport!=0)
 	{
-		mSocket=socket(AF_INET,SOCK_STREAM,0);
+		int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		mSocket=socket(AF_INET, type, 0);
 		if(mSocket<1) return false;
 
 #ifndef DISABLE_WINDOW_SIZE
