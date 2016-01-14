@@ -210,7 +210,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			{
 				copy_sparse_extent_start = pos;
 
-				if (!copy->PunchHole(curr_extent.offset, curr_extent.size))
+				if (copy != NULL && !copy->PunchHole(curr_extent.offset, curr_extent.size))
 				{
 					std::vector<char> zero_buf;
 					zero_buf.resize(32768);
