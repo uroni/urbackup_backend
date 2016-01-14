@@ -1572,10 +1572,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 #endif
 
-	std::auto_ptr<ScopedPipeFileUser> pipe_file_user(new ScopedPipeFileUser);
+	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	IFile* srv_file = NULL;
 	if(is_script)
 	{
+		pipe_file_user.reset(new ScopedPipeFileUser);
 		srv_file = PipeSessions::getFile(filename, *pipe_file_user);
 
 		if(srv_file==NULL)
