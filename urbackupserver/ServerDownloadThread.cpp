@@ -605,7 +605,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(todl.is_script)
 	{
-		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(Server->getRandomNumber());
+		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random);
 	}
 
 	bool full_dl=false;
