@@ -497,7 +497,7 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		data.addString(dir);
 		data.addString(server_token);
 		data.addUChar(0);
-		data.addUChar(1);
+		data.addInt(-1);
 		data.addString(clientsubname);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		mempipe_owner=false;

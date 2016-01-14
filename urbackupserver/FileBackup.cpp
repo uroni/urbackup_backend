@@ -830,7 +830,7 @@ void FileBackup::notifyClientBackupSuccessfull(void)
 	}
 	else
 	{
-		std::string params = " status_id="+convert(status_id)+"&server_token="+EscapeParamString(server_token);
+		std::string params = "status_id="+convert(status_id)+"&server_token="+EscapeParamString(server_token);
 
 		client_main->sendClientMessageRetry("2DID BACKUP "+ params, "OK", "Sending status (2DID BACKUP) to client failed", 10000, 5);
 	}

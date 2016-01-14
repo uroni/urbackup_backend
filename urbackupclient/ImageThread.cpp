@@ -382,7 +382,7 @@ void ImageThread::removeShadowCopyThread(int save_id)
 		IPipe* local_pipe=Server->createMemoryPipe();
 
 		CWData data;
-		data.addChar(3);
+		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
 		data.addVoidPtr(local_pipe);
 		data.addString(image_inf->image_letter);
 		data.addString(server_token);
