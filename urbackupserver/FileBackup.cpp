@@ -1096,7 +1096,10 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs)
 	{
 		if(create_fs)
 		{
-			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && os_create_dir(os_file_prefix(backuppath_hashes));
+			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)
+				&& (os_create_dir(os_file_prefix(backuppath_hashes))
+					|| (os_directory_exists(os_file_prefix(backuppath_hashes))
+						&& getFiles(os_file_prefix(backuppath_hashes)).empty()));
 		}
 		else
 		{
