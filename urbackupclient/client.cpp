@@ -4513,6 +4513,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	}
 	dir->ref->save_id=cd->addShadowcopy(tsc);
 	dir->ref->ok=true;
+	dir->ref->ssetid = ssetid;
 
 	VSSLog("Shadowcopy path: "+tsc.path, LL_DEBUG);
 
