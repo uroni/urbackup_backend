@@ -2112,6 +2112,12 @@ _u32 FileClientChunked::Flush(IPipe* fpipe)
 
 _u32 FileClientChunked::freeFile()
 {
+	if ( (parent!=NULL && !parent->queued_fcs.empty())
+		|| (parent==NULL && !queued_fcs.empty()) )
+	{
+		return ERR_SUCCESS;
+	}
+
 	CWData data;
 	data.addUChar(ID_FREE_SERVER_FILE);
 

@@ -174,12 +174,12 @@ void ServerDownloadThread::operator()( void )
 
 		if(curr.action==EQueueAction_StartShadowcopy)
 		{
-			start_shadowcopy((curr.fn));
+			start_shadowcopy(curr.fn);
 			continue;
 		}
 		else if(curr.action==EQueueAction_StopShadowcopy)
 		{
-			stop_shadowcopy((curr.fn));
+			stop_shadowcopy(curr.fn);
 			continue;
 		}		
 
@@ -1129,6 +1129,11 @@ void ServerDownloadThread::stop_shadowcopy(std::string path)
 	if (!clientsubname.empty())
 	{
 		path += "/clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	if (fc_chunked != NULL)
+	{
+		fc_chunked->freeFile();
 	}
 
 	client_main->sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", "Removing shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);

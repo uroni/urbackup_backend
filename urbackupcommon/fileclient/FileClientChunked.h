@@ -93,6 +93,8 @@ public:
 
 	std::string getErrorcodeString();
 
+	_u32 freeFile();
+
 private:
 	FileClientChunked(const FileClientChunked& other) {};
 	void operator=(const FileClientChunked& other) {}
@@ -159,8 +161,6 @@ private:
 	void adjustOutputFilesizeOnFailure( _i64& filesize_out);
 
 	_u32 Flush(IPipe* fpipe);
-
-	_u32 freeFile();
 
 	std::string remote_filename;
 
