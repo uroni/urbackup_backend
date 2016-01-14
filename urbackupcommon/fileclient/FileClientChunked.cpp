@@ -2121,9 +2121,9 @@ _u32 FileClientChunked::freeFile()
 	CWData data;
 	data.addUChar(ID_FREE_SERVER_FILE);
 
-	if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
+	if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize()) != data.getDataSize())
 	{
-		Server->Log("Timout during finish script request (3)", LL_ERROR);
+		Server->Log("Timout during free file request (4)", LL_ERROR);
 		return ERR_TIMEOUT;
 	}
 
