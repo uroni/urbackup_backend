@@ -50,6 +50,8 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
 
+	fc->setProgressLogCallback(NULL);
+
 	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false, true, 0);
 
 	if(rc!=ERR_SUCCESS)
