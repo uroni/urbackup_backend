@@ -38,14 +38,14 @@ ClientDAO::~ClientDAO()
 
 void ClientDAO::prepareQueries()
 {
-	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
-	q_add_files=db->Prepare("INSERT INTO files (name, num, data) VALUES (?,?,?)", false);
+	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=? AND tgroup=?", false);
+	q_add_files=db->Prepare("INSERT INTO files (name, tgroup, num, data) VALUES (?,?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
-	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
-	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
+	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=? AND tgroup=?", false);
+	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=? AND tgroup=?", false);
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken, clientsubname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)", false);
 	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken, clientsubname FROM shadowcopies", false);
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
@@ -56,7 +56,7 @@ void ClientDAO::prepareQueries()
 	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs WHERE name GLOB ?", false);
 	q_copy_del_dirs=db->Prepare("INSERT INTO del_dirs_backup SELECT name FROM del_dirs WHERE name GLOB ?", false);
 	q_del_del_dirs_copy=db->Prepare("DELETE FROM del_dirs_backup", false);
-	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
+	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ? AND tgroup=?", false);
 	q_get_shadowcopy_refcount=db->Prepare("SELECT refs FROM shadowcopies WHERE id=?", false);
 	q_set_shadowcopy_refcount=db->Prepare("UPDATE shadowcopies SET refs=? WHERE id=?", false);
 	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
@@ -128,9 +128,10 @@ void ClientDAO::restartQueries(void)
 	prepareQueries();
 }
 
-bool ClientDAO::getFiles(std::string path, std::vector<SFileAndHash> &data)
+bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data)
 {
 	q_get_files->Bind(path);
+	q_get_files->Bind(tgroup);
 	db_results res=q_get_files->Read();
 	q_get_files->Reset();
 	if(res.size()==0)
@@ -283,11 +284,12 @@ GUID randomGuid()
 	return ret;
 }
 
-void ClientDAO::addFiles(std::string path, const std::vector<SFileAndHash> &data)
+void ClientDAO::addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
 	q_add_files->Bind(path);
+	q_add_files->Bind(tgroup);
 	q_add_files->Bind(ds);
 	q_add_files->Bind(buffer, (_u32)ds);
 	q_add_files->Write();
@@ -295,21 +297,23 @@ void ClientDAO::addFiles(std::string path, const std::vector<SFileAndHash> &data
 	delete []buffer;
 }
 
-void ClientDAO::modifyFiles(std::string path, const std::vector<SFileAndHash> &data)
+void ClientDAO::modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
 	q_modify_files->Bind(buffer, (_u32)ds);
 	q_modify_files->Bind(ds);
 	q_modify_files->Bind(path);
+	q_modify_files->Bind(tgroup);
 	q_modify_files->Write();
 	q_modify_files->Reset();
 	delete []buffer;
 }
 
-bool ClientDAO::hasFiles(std::string path)
+bool ClientDAO::hasFiles(std::string path, int tgroup)
 {
 	q_has_files->Bind(path);
+	q_has_files->Bind(tgroup);
 	db_results res=q_has_files->Read();
 	q_has_files->Reset();
 	if(res.size()>0)
@@ -536,9 +540,10 @@ void ClientDAO::deleteSavedDelDirs(void)
 	q_del_del_dirs_copy->Reset();
 }
 
-void ClientDAO::removeDeletedDir(const std::string &dir)
+void ClientDAO::removeDeletedDir(const std::string &dir, int tgroup)
 {
 	q_remove_del_dir->Bind(dir+"*");
+	q_remove_del_dir->Bind(tgroup);
 	q_remove_del_dir->Write();
 	q_remove_del_dir->Reset();
 }

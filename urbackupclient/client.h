@@ -262,12 +262,12 @@ private:
 
 	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path, const std::string& filepath, const std::string& namedpath);
 
-	void modifyFilesInt(std::string path, const std::vector<SFileAndHash> &data);
+	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
 
 	void commitModifyFilesBuffer();
 
-	void addFilesInt(std::string path, const std::vector<SFileAndHash> &data);
+	void addFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
 	void commitAddFilesBuffer();
 	std::string getShaBinary(const std::string& fn);
 
@@ -295,6 +295,8 @@ private:
 	bool addBackupScripts(std::fstream& outfile);
 
 	void monitor_disk_failures();
+
+	int get_db_tgroup();
 
 	std::string starttoken;
 
@@ -337,9 +339,20 @@ private:
 
 	static std::map<std::string, std::string> filesrv_share_dirs;
 
-	std::vector< std::pair<std::string, std::vector<SFileAndHash> > > modify_file_buffer;
+	struct SBufferItem
+	{
+		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files)
+			: path(path), tgroup(tgroup), files(files)
+		{}
+
+		std::string path;
+		int tgroup;
+		std::vector<SFileAndHash> files;
+	};
+
+	std::vector< SBufferItem > modify_file_buffer;
 	size_t modify_file_buffer_size;
-	std::vector< std::pair<std::string, std::vector<SFileAndHash> > > add_file_buffer;
+	std::vector< SBufferItem > add_file_buffer;
 	size_t add_file_buffer_size;
 
 	int64 last_file_buffer_commit_time;

@@ -1112,7 +1112,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			if(group_arg!=args.end() && !group_arg->second.empty())
 				group=group_offset + watoi(group_arg->second);
 
-			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional; //default flags
+			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional | EBackupDirFlag_ShareHashes; //default flags
 			size_t flags_off = name.find("/");
 			if(flags_off!=std::string::npos)
 			{
@@ -1143,6 +1143,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					else if (flag == "require_snapshot" || flag=="require_shadowcopy" )
 					{
 						flags |= EBackupDirFlag_RequireSnapshot;
+					}
+					else if (flag == "share_hashes")
+					{
+						flags |= EBackupDirFlag_ShareHashes;
 					}
 				}
 				name.resize(flags_off);

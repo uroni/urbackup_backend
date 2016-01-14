@@ -34,7 +34,8 @@ enum EBackupDirFlag
 	EBackupDirFlag_FollowSymlinks = 2,
 	EBackupDirFlag_SymlinksOptional = 4,
 	EBackupDirFlag_OneFilesystem = 8,
-	EBackupDirFlag_RequireSnapshot = 16
+	EBackupDirFlag_RequireSnapshot = 16,
+	EBackupDirFlag_ShareHashes = 32
 };
 
 struct SBackupDir
@@ -106,11 +107,11 @@ public:
 	void prepareQueriesGen(void);
 	void destroyQueriesGen(void);
 
-	bool getFiles(std::string path, std::vector<SFileAndHash> &data);
+	bool getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data);
 
-	void addFiles(std::string path, const std::vector<SFileAndHash> &data);
-	void modifyFiles(std::string path, const std::vector<SFileAndHash> &data);
-	bool hasFiles(std::string path);
+	void addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	void modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	bool hasFiles(std::string path, int tgroup);
 	
 	void removeAllFiles(void);
 
@@ -134,7 +135,7 @@ public:
 	std::vector<std::string> getDelDirs(const std::string& path, bool del=true);
 	void deleteSavedDelDirs(void);
 
-	void removeDeletedDir(const std::string &dir);
+	void removeDeletedDir(const std::string &dir, int tgroup);
 
 	std::string getOldExcludePattern(void);
 	void updateOldExcludePattern(const std::string &pattern);

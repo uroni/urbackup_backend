@@ -817,6 +817,7 @@ void IndexThread::indexDirs(void)
 	token_cache.reset();
 
 	std::vector<std::string> selected_dirs;
+	std::vector<int> selected_dir_db_tgroup;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		if(backup_dirs[i].group==index_group)
@@ -825,6 +826,14 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 			selected_dirs[selected_dirs.size()-1]=strlower(selected_dirs[selected_dirs.size()-1]);
 #endif
+			if (backup_dirs[i].flags&EBackupDirFlag_ShareHashes)
+			{
+				selected_dir_db_tgroup.push_back(0);
+			}
+			else
+			{
+				selected_dir_db_tgroup.push_back(index_group + 1);
+			}
 		}
 	}
 
@@ -852,7 +861,7 @@ void IndexThread::indexDirs(void)
 		std::vector<std::string> deldirs=cd->getDelDirs(selected_dirs[i]);
 		for(size_t i=0;i<deldirs.size();++i)
 		{
-			cd->removeDeletedDir(deldirs[i]);
+			cd->removeDeletedDir(deldirs[i], selected_dir_db_tgroup[i]);
 		}
 	}
 
@@ -1007,10 +1016,12 @@ void IndexThread::indexDirs(void)
 					handleHardLinks(backup_dirs[i].path, mod_path);
 #endif
 
+					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
+					
 					std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
 					for (size_t i = 0; i < deldirs.size(); ++i)
 					{
-						cd->removeDeletedDir(deldirs[i]);
+						cd->removeDeletedDir(deldirs[i], db_tgroup);
 					}
 				}
 #else
@@ -1697,7 +1708,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		if(calculate_filehashes_on_client)
 		{
 #endif
-			has_files = cd->getFiles(path_lower, db_files);
+			has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files);
 #ifndef _WIN32
 		}
 #endif
@@ -1737,7 +1748,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if(fs_files!=db_files)
 			{
 				++index_c_db_update;
-				modifyFilesInt(path_lower, fs_files);
+				modifyFilesInt(path_lower, get_db_tgroup(), fs_files);
 			}
 		}
 		else
@@ -1746,7 +1757,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if(calculate_filehashes_on_client)
 			{
 #endif
-				addFilesInt(path_lower, fs_files);
+				addFilesInt(path_lower, get_db_tgroup(), fs_files);
 #ifndef _WIN32
 			}
 #endif
@@ -1757,7 +1768,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 #ifdef _WIN32
 	else
 	{	
-		if( cd->getFiles(path_lower, fs_files) )
+		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files) )
 		{
 			++index_c_db;
 
@@ -1766,7 +1777,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path))
 				{
 					++index_c_db_update;
-					modifyFilesInt(path_lower, fs_files);
+					modifyFilesInt(path_lower, get_db_tgroup(), fs_files);
 				}
 			}
 
@@ -1798,7 +1809,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 				addMissingHashes(NULL, &fs_files, orig_path, path, named_path);
 			}
 
-			addFilesInt(path_lower, fs_files);
+			addFilesInt(path_lower, get_db_tgroup(), fs_files);
 			return fs_files;
 		}
 	}
@@ -3138,7 +3149,7 @@ void IndexThread::doStop(void)
 
 size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data )
 {
-	size_t add_size=path.size()+sizeof(std::string);
+	size_t add_size=path.size()+sizeof(std::string)+sizeof(int);
 	for(size_t i=0;i<data.size();++i)
 	{
 		add_size+=data[i].name.size();
@@ -3151,11 +3162,11 @@ size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAn
 }
 
 
-void IndexThread::modifyFilesInt(std::string path, const std::vector<SFileAndHash> &data)
+void IndexThread::modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
 {
 	modify_file_buffer_size+=calcBufferSize(path, data);
 
-	modify_file_buffer.push_back(std::make_pair(path, data) );
+	modify_file_buffer.push_back(SBufferItem(path, tgroup, data));
 
 	if(last_file_buffer_commit_time==0)
 	{
@@ -3174,7 +3185,7 @@ void IndexThread::commitModifyFilesBuffer(void)
 	db->BeginWriteTransaction();
 	for(size_t i=0;i<modify_file_buffer.size();++i)
 	{
-		cd->modifyFiles(modify_file_buffer[i].first, modify_file_buffer[i].second);
+		cd->modifyFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup, modify_file_buffer[i].files);
 	}
 	db->EndTransaction();
 
@@ -3183,11 +3194,11 @@ void IndexThread::commitModifyFilesBuffer(void)
 	last_file_buffer_commit_time=Server->getTimeMS();
 }
 
-void IndexThread::addFilesInt( std::string path, const std::vector<SFileAndHash> &data )
+void IndexThread::addFilesInt( std::string path, int tgroup, const std::vector<SFileAndHash> &data )
 {
 	add_file_buffer_size+=calcBufferSize(path, data);
 
-	add_file_buffer.push_back(std::make_pair(path, data));
+	add_file_buffer.push_back(SBufferItem(path, tgroup, data));
 
 	if(last_file_buffer_commit_time==0)
 	{
@@ -3207,7 +3218,7 @@ void IndexThread::commitAddFilesBuffer()
 	db->BeginWriteTransaction();
 	for(size_t i=0;i<add_file_buffer.size();++i)
 	{
-		cd->addFiles(add_file_buffer[i].first, add_file_buffer[i].second);
+		cd->addFiles(add_file_buffer[i].path, add_file_buffer[i].tgroup, add_file_buffer[i].files);
 	}
 	db->EndTransaction();
 
@@ -4007,6 +4018,18 @@ void IndexThread::monitor_disk_failures()
 			(failed_disks[i].status_info.empty() ? "" : "(Further info: \"" + failed_disks[i].status_info + "\")"), LL_WARNING);
 	}
 #endif
+}
+
+int IndexThread::get_db_tgroup()
+{
+	if (index_flags & EBackupDirFlag_ShareHashes)
+	{
+		return 0;
+	}
+	else
+	{
+		return index_group + 1;
+	}
 }
 
 void IndexThread::setFlags( unsigned int flags )

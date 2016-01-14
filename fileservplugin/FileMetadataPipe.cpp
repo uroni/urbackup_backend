@@ -331,11 +331,6 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return false;
 				}
 
-				if (public_fn.find("sparse_test") == 0)
-				{
-					int abc = 5;
-				}
-
 				if(std::find(last_public_fns.begin(), last_public_fns.end(), public_fn)!=last_public_fns.end())
 				{
 					PipeSessions::fileMetadataDone(public_fn, server_token);

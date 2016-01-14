@@ -500,6 +500,12 @@ void update_client20_21(IDatabase* db)
 	db->Write("UPDATE shadowcopies SET clientsubname='' WHERE clientsubname IS NULL");
 }
 
+void update_client21_22(IDatabase* db)
+{
+	db->Write("ALTER TABLE files ADD tgroup INTEGER");
+	db->Write("UPDATE files SET tgroup=0 WHERE tgroup IS NULL");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -512,7 +518,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 21;
+	int max_v = 22;
 
 	if (ver > max_v)
 	{
@@ -612,6 +618,10 @@ bool upgrade_client(void)
 				break;
 			case 20:
 				update_client20_21(db);
+				++ver;
+				break;
+			case 21:
+				update_client21_22(db);
 				++ver;
 				break;
 			default:

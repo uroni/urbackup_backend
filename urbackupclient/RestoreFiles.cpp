@@ -525,7 +525,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							std::string restore_path_lower = strlower(restore_path);
 #endif
 
-							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), curr_files))
+							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), 0, curr_files))
 							{
 								curr_files.clear();
 							}
