@@ -272,10 +272,10 @@ int action_run(std::vector<std::string> args)
 		false, "", "path", cmd);
 #endif
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
 
 #ifndef _WIN32
 	if(!config_arg.getValue().empty())
@@ -382,10 +382,11 @@ int action_verify_hashes(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -421,10 +422,11 @@ int action_remove_unknown(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -446,10 +448,11 @@ int action_defrag_database(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -471,10 +474,11 @@ int action_repair_database(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -504,10 +508,11 @@ int action_reset_admin_pw(std::vector<std::string> args)
 		"Admin account user name",
 		false, "admin", "user account name", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -535,10 +540,11 @@ int action_cleanup(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -558,10 +564,11 @@ int action_export_auth_log(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Export authentication log to csv file", ' ', cmdline_version);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
@@ -610,10 +617,11 @@ int action_decompress_file(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
@@ -646,10 +654,11 @@ int action_mount_vhd(std::vector<std::string> args)
 		"Specifies the log file name for the background VHD-reading process",
 		false, "/var/log/urbackup-fuse.log", "path", cmd);
 
-	cmd.parse(args);
-
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
 	real_args.push_back("--no-server");
 	real_args.push_back("--logfile");
 	real_args.push_back(logfile_arg.getValue());
@@ -763,6 +772,9 @@ int action_assemble(std::vector<std::string> args)
 		"Location where disk VHD is written when assembling",
 		true, "", "path", cmd);
 
+	std::vector<std::string> real_args;
+	real_args.push_back(args[0]);
+
 	cmd.parse(args);
 
 	std::string assemble_input;
@@ -775,8 +787,6 @@ int action_assemble(std::vector<std::string> args)
 		assemble_input+=make_absolute(assemble_in_arg.getValue()[i]);
 	}
 
-	std::vector<std::string> real_args;
-	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
 	real_args.push_back("--loglevel");
 	real_args.push_back("debug");

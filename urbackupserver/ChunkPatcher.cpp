@@ -310,6 +310,9 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 
 			cb->next_chunk_patcher_bytes(buf, bsize, changed);
 
+			curr_only_zeros = true;
+			curr_changed = false;
+
 			return;
 		}
 
@@ -348,7 +351,10 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 				finishSparse(pos);
 			}
 
-			cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_blocksize, curr_changed);
+			if (!curr_only_zeros)
+			{
+				cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_blocksize, curr_changed);
+			}
 
 			curr_only_zeros = true;
 			curr_changed = false;
@@ -373,9 +379,12 @@ void ChunkPatcher::finishChunkPatcher(int64 pos)
 
 void ChunkPatcher::finishSparse(int64 pos)
 {
-	IFsFile::SSparseExtent ext(last_sparse_start, pos - last_sparse_start);
-	cb->next_sparse_extent_bytes(reinterpret_cast<char*>(&ext), sizeof(IFsFile::SSparseExtent));
-	last_sparse_start = -1;
+	if (pos > last_sparse_start)
+	{
+		IFsFile::SSparseExtent ext(last_sparse_start, pos - last_sparse_start);
+		cb->next_sparse_extent_bytes(reinterpret_cast<char*>(&ext), sizeof(IFsFile::SSparseExtent));
+		last_sparse_start = -1;
+	}
 }
 
 _i64 ChunkPatcher::getFilesize(void)

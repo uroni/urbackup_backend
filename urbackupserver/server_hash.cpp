@@ -1197,7 +1197,11 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 	{
 		if (buf != NULL) //buf is NULL for sparse extents
 		{
-			chunk_output_fn->Seek(chunk_patch_pos);
+			if (!chunk_output_fn->Seek(chunk_patch_pos))
+			{
+				Server->Log("Error seeking to offset "+convert(chunk_patch_pos)+" in \"" + chunk_output_fn->getFilename() + "\" -3", LL_ERROR);
+				has_error = true;
+			}
 			bool b = writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
 			if (!b)
 			{
@@ -1205,15 +1209,21 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 				has_error = true;
 			}
 		}
-		else if(!enabled_sparse)
+		else
 		{
-			//Punch hole once to enable sparse file
-			chunk_output_fn->PunchHole(chunk_patch_pos, bsize);
+#ifdef _WIN32
+			if (!enabled_sparse)
+			{
+				//Punch hole once to enable sparse file on Windows
+				chunk_output_fn->PunchHole(chunk_patch_pos, bsize);
+				enabled_sparse = true;
+			}
+#endif
 		}
 	}
 	chunk_patch_pos+=bsize;
 
-	if(has_reflink)
+	if(has_reflink && changed)
 	{
 		cow_filesize+=bsize;
 	}
@@ -1309,6 +1319,10 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 	}
 	else
 	{
+		if (dstfsize != tfilesize)
+		{
+			Server->Log("dstfsize="+convert(dstfsize)+" tfilesize="+convert(tfilesize), LL_ERROR);
+		}
 		assert(dstfsize==tfilesize);
 	}
 

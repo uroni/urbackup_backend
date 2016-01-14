@@ -180,14 +180,14 @@ void CServer::destroyAllDatabases(void)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		for( std::map<THREAD_ID, IDatabaseInt*>::iterator j=i->second.tmap.begin();j!=i->second.tmap.end();++j)
+		for( std::map<THREAD_ID, IDatabaseInt*>::iterator j=i->second->tmap.begin();j!=i->second->tmap.end();++j)
 		{
 			delete j->second;
 		}
-		i->second.tmap.clear();
+		i->second->tmap.clear();
 	}
 }
 
@@ -195,14 +195,14 @@ void CServer::destroyDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
-		if(iter!=i->second.tmap.end())
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second->tmap.find(tid);
+		if(iter!=i->second->tmap.end())
 		{
 			delete iter->second;
-			i->second.tmap.erase(iter);
+			i->second->tmap.erase(iter);
 		}
 	}
 }
@@ -811,7 +811,7 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
 	if( iter!=databases.end() )
 	{
 		Log("Database already openend", LL_ERROR);
@@ -825,13 +825,13 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 		return false;
 	}
 
-	SDatabase ndb(iter2->second, pFile);
-	ndb.single_user_mutex.reset(createSharedMutex());
-	ndb.lock_mutex.reset(createMutex());
-	ndb.lock_count.reset(new int);
-	*ndb.lock_count = 0;
-	ndb.unlock_cond.reset(createCondition());
-	databases.insert( std::pair<DATABASE_ID, SDatabase >(pIdentifier, ndb)  );
+	SDatabase* ndb= new SDatabase(iter2->second, pFile);
+	ndb->single_user_mutex.reset(createSharedMutex());
+	ndb->lock_mutex.reset(createMutex());
+	ndb->lock_count.reset(new int);
+	*ndb->lock_count = 0;
+	ndb->unlock_cond.reset(createCondition());
+	databases.insert( std::pair<DATABASE_ID, SDatabase* >(pIdentifier, ndb)  );
 
 	return true;
 }
@@ -840,27 +840,27 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator database_iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator database_iter=databases.find(pIdentifier);
 	if( database_iter==databases.end() )
 	{
 		Log("Database with identifier \""+convert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
 		return NULL;
 	}
 
-	std::map<THREAD_ID, IDatabaseInt*>::iterator thread_iter=database_iter->second.tmap.find( tid );
-	if( thread_iter==database_iter->second.tmap.end() )
+	std::map<THREAD_ID, IDatabaseInt*>::iterator thread_iter=database_iter->second->tmap.find( tid );
+	if( thread_iter==database_iter->second->tmap.end() )
 	{
-		IDatabaseInt *db=database_iter->second.factory->createDatabase();
-		SDatabase& params = database_iter->second;
-		if(db->Open(params.file, params.attach,
-			params.allocation_chunk_size, params.single_user_mutex.get(),
-			params.lock_mutex.get(), params.lock_count.get(), params.unlock_cond.get())==false )
+		IDatabaseInt *db=database_iter->second->factory->createDatabase();
+		SDatabase* params = database_iter->second;
+		if(db->Open(params->file, params->attach,
+			params->allocation_chunk_size, params->single_user_mutex.get(),
+			params->lock_mutex.get(), params->lock_count.get(), params->unlock_cond.get())==false )
 		{
-			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
+			Log("Database \""+database_iter->second->file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
 
-		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
+		database_iter->second->tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
 		return db;
 	}
@@ -874,11 +874,11 @@ void CServer::clearDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
-		if( iter!=i->second.tmap.end() )
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second->tmap.find(tid);
+		if( iter!=i->second->tmap.end() )
 		{
 			iter->second->destroyAllQueries();
 		}
@@ -1554,15 +1554,15 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
 	if( iter==databases.end() )
 	{
 		return false;
 	}
 
-	if(std::find(iter->second.attach.begin(), iter->second.attach.end(), std::pair<std::string,std::string>(pFile, pName))==iter->second.attach.end())
+	if(std::find(iter->second->attach.begin(), iter->second->attach.end(), std::pair<std::string,std::string>(pFile, pName))==iter->second->attach.end())
 	{
-		iter->second.attach.push_back(std::pair<std::string,std::string>(pFile, pName));
+		iter->second->attach.push_back(std::pair<std::string,std::string>(pFile, pName));
 	}
 
 	return true;
@@ -1572,13 +1572,13 @@ bool CServer::setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t all
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
 	if( iter==databases.end() )
 	{
 		return false;
 	}
 
-	iter->second.allocation_chunk_size = allocation_chunk_size;
+	iter->second->allocation_chunk_size = allocation_chunk_size;
 
 	return true;
 }

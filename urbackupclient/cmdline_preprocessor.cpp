@@ -200,10 +200,11 @@ int main(int argc, char* argv[])
 			"Specifies if restores are allowed and where they have to be confirmed",
 			false, "client-confirms", &restore_arg_constraint, cmd);
 
-		cmd.parse(argc, argv);
-
 		std::vector<std::string> real_args;
 		real_args.push_back(argv[0]);
+
+		cmd.parse(argc, argv);
+
 
 #ifndef _WIN32
 		if(!config_arg.getValue().empty())

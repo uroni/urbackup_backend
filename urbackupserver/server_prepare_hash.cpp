@@ -336,7 +336,10 @@ void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t 
 
 void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	sha_def_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
+	if (buf != NULL)
+	{
+		sha_def_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
+	}
 }
 
 bool BackupServerPrepareHash::isWorking(void)

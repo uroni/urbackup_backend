@@ -14,6 +14,7 @@
 #include "Interface/SharedMutex.h"
 #include <vector>
 #include <fstream>
+#include <memory>
 
 typedef void(*LOADACTIONS)(IServer*);
 typedef void(*UNLOADACTIONS)(void);
@@ -47,6 +48,10 @@ struct SDatabase
 	std::auto_ptr<IMutex> lock_mutex;
 	std::auto_ptr<int> lock_count;
 	std::auto_ptr<ICondition> unlock_cond;
+
+private:
+	SDatabase(const SDatabase& other) {}
+	void operator=(const SDatabase& other){}
 };
 
 
@@ -238,7 +243,7 @@ private:
 	std::map<pthread_t, THREAD_ID> threads;
 #endif
 
-	std::map<DATABASE_ID, SDatabase > databases;
+	std::map<DATABASE_ID, SDatabase*> databases;
 
 	CSessionMgr *sessmgr;
 
