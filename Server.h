@@ -48,6 +48,7 @@ struct SDatabase
 	std::auto_ptr<IMutex> lock_mutex;
 	std::auto_ptr<int> lock_count;
 	std::auto_ptr<ICondition> unlock_cond;
+	str_map params;
 
 private:
 	SDatabase(const SDatabase& other) {}
@@ -101,7 +102,8 @@ public:
 	virtual ISharedMutex* createSharedMutex();
 	virtual ICondition* createCondition(void);
 	virtual IPipe *createMemoryPipe(void);
-	virtual void createThread(IThread *thread);
+	virtual void createThread(IThread *thread, const std::string& name = std::string());
+	virtual void setCurrentThreadName(const std::string& name);
 	virtual IThreadPool *getThreadPool(void);
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
@@ -109,7 +111,7 @@ public:
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
 	virtual IPipeThrottler* createPipeThrottler(size_t bps, IPipeThrottlerUpdater* updater=NULL);
 
-	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite");
+	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params = str_map(), std::string pEngine="sqlite");
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier);
 	virtual void destroyAllDatabases(void);
 	virtual void destroyDatabases(THREAD_ID tid);

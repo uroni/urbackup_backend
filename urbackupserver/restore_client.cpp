@@ -399,7 +399,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
 		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,
-		status_id, log_id, restore_token, identity, map_paths));
+		status_id, log_id, restore_token, identity, map_paths), "file restore preparation");
 
 	return true;
 }

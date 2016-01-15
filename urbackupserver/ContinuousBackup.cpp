@@ -56,7 +56,7 @@ bool ContinuousBackup::doFileBackup()
 		continuous_update = new BackupServerContinuous(client_main,
 			backuppath, backuppath_hashes, backuppath, tmpfile_path, use_tmpfiles,
 			clientid, clientname, backupid, use_snapshots, use_reflink, hashpipe_prepare);
-		continuous_thread_ticket = Server->getThreadPool()->execute(continuous_update);
+		continuous_thread_ticket = Server->getThreadPool()->execute(continuous_update, "backup continuous main");
 		client_main->setContinuousBackup(continuous_update);
 	}
 

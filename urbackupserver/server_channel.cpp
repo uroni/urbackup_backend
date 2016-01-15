@@ -397,7 +397,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		if(fileserv!=NULL)
 		{
-			fileclient_threads.push_back(Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize())));
+			fileclient_threads.push_back(Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize()), "fileserver"));
 			input=NULL;
 		}
 	}
@@ -507,7 +507,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 				keepalive_thread->doQuit();
 			}
 			keepalive_thread = new SessionKeepaliveThread(session);
-			Server->getThreadPool()->execute(keepalive_thread);
+			Server->getThreadPool()->execute(keepalive_thread, "restore keepalive");
 		}
 
 		helper.getSession()->mStr["rnd"]=salt;

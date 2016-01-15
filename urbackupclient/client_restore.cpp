@@ -1768,7 +1768,7 @@ void restore_wizard(void)
 					windows_partition=selpart;
 				}
 				RestoreThread rt(selimage.id, convert(selimage.time_s), selpart);
-				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
+				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt, "image restore");
 				while(true)
 				{
 					system(("./urbackuprestoreclient --image-download-progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());

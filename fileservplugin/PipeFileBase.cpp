@@ -51,8 +51,8 @@ void PipeFileBase::init()
 		sha_def_init(&sha_ctx);
 
 		buffer.resize(buffer_size);
-		stdout_thread = Server->getThreadPool()->execute(this);
-		stderr_thread = Server->getThreadPool()->execute(this);
+		stdout_thread = Server->getThreadPool()->execute(this, "PipeFile: stdout");
+		stderr_thread = Server->getThreadPool()->execute(this, "PipeFile: stderr");
 	}
 }
 

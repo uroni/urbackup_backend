@@ -105,6 +105,34 @@ namespace
 		}
 	}
 #endif
+
+	//from https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+	const DWORD MS_VC_EXCEPTION = 0x406D1388;
+#pragma pack(push,8)
+	typedef struct tagTHREADNAME_INFO
+	{
+		DWORD dwType; // Must be 0x1000.
+		LPCSTR szName; // Pointer to name (in user addr space).
+		DWORD dwThreadID; // Thread ID (-1=caller thread).
+		DWORD dwFlags; // Reserved for future use, must be zero.
+	} THREADNAME_INFO;
+#pragma pack(pop)
+	void SetThreadName(DWORD dwThreadID, const char* threadName) {
+		THREADNAME_INFO info;
+		info.dwType = 0x1000;
+		info.szName = threadName;
+		info.dwThreadID = dwThreadID;
+		info.dwFlags = 0;
+#pragma warning(push)
+#pragma warning(disable: 6320 6322)
+		__try {
+			RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {
+		}
+#pragma warning(pop)
+	}
+
 		
 }
 
@@ -807,7 +835,7 @@ THREAD_ID CServer::getThreadID(void)
 #endif //_WIN32
 }
 
-bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine)
+bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params, std::string pEngine)
 {
 	IScopedLock lock(db_mutex);
 
@@ -831,6 +859,7 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 	ndb->lock_count.reset(new int);
 	*ndb->lock_count = 0;
 	ndb->unlock_cond.reset(createCondition());
+	ndb->params = params;
 	databases.insert( std::pair<DATABASE_ID, SDatabase* >(pIdentifier, ndb)  );
 
 	return true;
@@ -854,7 +883,8 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 		SDatabase* params = database_iter->second;
 		if(db->Open(params->file, params->attach,
 			params->allocation_chunk_size, params->single_user_mutex.get(),
-			params->lock_mutex.get(), params->lock_count.get(), params->unlock_cond.get())==false )
+			params->lock_mutex.get(), params->lock_count.get(), params->unlock_cond.get(),
+			params->params)==false )
 		{
 			Log("Database \""+database_iter->second->file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
@@ -960,7 +990,7 @@ std::string CServer::GenerateBinaryMD5(const std::string &input)
 void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 {
 	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort, pMaxClientsPerThread, bindTarget);
-	Server->createThread(acc);
+	Server->createThread(acc, pServiceName+": accept");
 
 	stream_services.push_back( acc );
 }
@@ -1216,8 +1246,12 @@ IPipe *CServer::createMemoryPipe(void)
 }
 
 #ifdef _WIN32
-void thread_helper_f(IThread *t)
+void thread_helper_f(IThread *t, const std::string& name)
 {
+#if defined(_WIN32) && defined(_DEBUG)
+	SetThreadName(-1, name.c_str());
+#endif
+
 #ifndef _DEBUG
 	__try
 	{
@@ -1240,10 +1274,10 @@ void* thread_helper_f(void * t)
 }
 #endif //_WIN32
 
-void CServer::createThread(IThread *thread)
+void CServer::createThread(IThread *thread, const std::string& name)
 {
 #ifdef _WIN32
-	std::thread tr(thread_helper_f, thread);
+	std::thread tr(thread_helper_f, thread, name);
 	tr.detach();
 #else
 	pthread_attr_t attr;
@@ -1257,7 +1291,36 @@ void CServer::createThread(IThread *thread)
 	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
 	pthread_detach(t);
 
+	if (!name.empty())
+	{
+		if (name.size() > 15)
+		{
+			name = name.substr(0, 15);
+		}
+
+		pthread_setname_np(t, name.c_str());
+	}
+
 	pthread_attr_destroy(&attr);
+#endif
+}
+
+void CServer::setCurrentThreadName(const std::string& name)
+{
+#if defined(_WIN32) && defined(_DEBUG)
+	SetThreadName(-1, name.c_str());
+#else
+	if (!name.empty())
+	{
+		pthread_t ct = pthread_self();
+
+		if (name.size() > 15)
+		{
+			name = name.substr(0, 15);
+		}
+
+		pthread_setname_np(ct, name.c_str());
+	}
 #endif
 }
 

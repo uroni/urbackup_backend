@@ -173,7 +173,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		udpthread=new CUDPThread(udpport,pServername, use_fqdn);
 		if(!udpthread->hasError())
 		{
-			udpticket=Server->getThreadPool()->execute(udpthread);
+			udpticket=Server->getThreadPool()->execute(udpthread, "filesrv: broadcast response");
 		}
 		else
 		{
@@ -231,7 +231,7 @@ bool CTCPFileServ::TcpStep(void)
 			cs.Enter();
 			//Log("New Connection incomming", LL_DEBUG);
 			CClientThread *clientthread=new CClientThread(ns, this);
-			Server->createThread(clientthread);
+			Server->createThread(clientthread, "file server");
 			clientthreads.push_back(clientthread);
 			cs.Leave();
 		}

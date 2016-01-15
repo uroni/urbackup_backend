@@ -108,7 +108,7 @@ namespace
 		ScopedRestoreUpdater(int64 local_process_id, int64 restore_id, int64 status_id, std::string server_token)
 			: restore_updater(new RestoreUpdaterThread(local_process_id, restore_id, status_id, server_token))
 		{
-			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater);
+			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater, "restore progress");
 		}
 
 		void update_pc(int new_pc)
@@ -190,7 +190,7 @@ void RestoreFiles::operator()()
 		}
 
 		std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token));
-		THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
+		THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get(), "file restore metadata download");
 
 		int64 starttime = Server->getTimeMS();
 
@@ -356,7 +356,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string server_path = "clientdl";
 
 	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
-    THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download);
+    THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download, "file restore download");
 
 	std::string curr_files_dir;
 	std::vector<SFileAndHash> curr_files;

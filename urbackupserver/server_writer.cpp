@@ -55,7 +55,7 @@ ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigne
 	{
 		filebuf=new CFileBufMgr(false);
 		filebuf_writer=new ServerFileBufferWriter(this, blocksize);
-		filebuf_writer_ticket=Server->getThreadPool()->execute(filebuf_writer);
+		filebuf_writer_ticket=Server->getThreadPool()->execute(filebuf_writer, "image buffered writer");
 		currfile=filebuf->getBuffer();
 		currfile_size=0;
 	}

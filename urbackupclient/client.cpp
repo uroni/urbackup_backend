@@ -343,7 +343,7 @@ void IndexThread::updateDirs(void)
 	if(dwt==NULL)
 	{
 		dwt=new DirectoryWatcherThread(watching, continuous_watch);
-		dwt_ticket=Server->getThreadPool()->execute(dwt);
+		dwt_ticket=Server->getThreadPool()->execute(dwt, "directory watcher");
 	}
 	else
 	{

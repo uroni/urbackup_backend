@@ -2226,7 +2226,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	}
 	else
 	{
-		Server->getThreadPool()->execute(local_restore_files);
+		Server->getThreadPool()->execute(local_restore_files, "file restore");
 	}
 
 	tcpstack.Send(pipe, "ok");
@@ -2246,7 +2246,7 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 
 		if(restore_files!=NULL)
 		{
-			Server->getThreadPool()->execute(restore_files);
+			Server->getThreadPool()->execute(restore_files, "file restore");
 			restore_files=NULL;
 		}
 	}
@@ -2257,7 +2257,7 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 		if (restore_files != NULL)
 		{
 			restore_files->set_restore_declined(true);
-			Server->getThreadPool()->execute(restore_files);
+			Server->getThreadPool()->execute(restore_files, "file restore");
 			restore_files = NULL;
 		}
 	}

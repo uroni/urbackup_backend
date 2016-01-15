@@ -215,7 +215,7 @@ void CServiceAcceptor::AddToWorker(SOCKET pSocket, const std::string& endpoint)
 	CServiceWorker *nw=new CServiceWorker(service, name, exitpipe, maxClientsPerThread);
 	workers.push_back(nw);
 
-	Server->createThread(nw);
+	Server->createThread(nw, name+": worker");
 
 	nw->AddClient( pSocket, endpoint );
 }	

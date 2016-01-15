@@ -219,7 +219,7 @@ void ImageThread::sendFullImageThread(void)
 			}
 			
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "full image transfer");
 
 			unsigned int needed_bufs=64;
 			int64 last_hash_block=-1;
@@ -544,7 +544,7 @@ void ImageThread::sendIncrImageThread(void)
 			memset(zeroblockbuf, 0, blocksize);
 
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
 
 
 			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=vhdblocks)

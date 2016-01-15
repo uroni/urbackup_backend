@@ -183,7 +183,10 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
-	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES))
+	str_map params;
+	params["wal_autocheckpoint"] = "0";
+
+	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES, params))
 	{
 		Server->Log("Couldn't open Database backup_server_files.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
@@ -668,7 +671,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	server_exit_pipe=Server->createMemoryPipe();
 	BackupServer *backup_server=new BackupServer(server_exit_pipe);
-	Server->createThread(backup_server);
+	Server->createThread(backup_server, "client discovery");
 	Server->wait(500);
 
 	InternetServiceConnector::init_mutex();
@@ -700,13 +703,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(is_leak_check)
 	{
-		tt_cleanup_thread=Server->getThreadPool()->execute(server_cleanup);
-		tt_automatic_archive_thread=Server->getThreadPool()->execute(new ServerAutomaticArchive);
+		tt_cleanup_thread=Server->getThreadPool()->execute(server_cleanup, "backup cleanup");
+		tt_automatic_archive_thread=Server->getThreadPool()->execute(new ServerAutomaticArchive, "backup archival");
 	}
 	else
 	{
-		Server->createThread(server_cleanup);
-		Server->createThread(new ServerAutomaticArchive);
+		Server->createThread(server_cleanup, "backup cleanup");
+		Server->createThread(new ServerAutomaticArchive, "backup archival");
 	}
 
 	Server->setLogCircularBufferSize(20);
@@ -714,7 +717,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread();
 	wal_checkpoint_thread->checkpoint();
 
-	Server->createThread(wal_checkpoint_thread);
+	Server->createThread(wal_checkpoint_thread, "WAL checkpoint");
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }

@@ -365,7 +365,7 @@ void BackupServer::startClients(FileClient &fc)
 #endif
 			ClientMain *client=new ClientMain(np, curr_info.addr, curr_info.name, curr_info.subname, curr_info.mainname,
 				curr_info.filebackup_group_offset, curr_info.internetclient, snapshots_enabled, use_reflink);
-			Server->getThreadPool()->execute(client);
+			Server->getThreadPool()->execute(client, "client main");
 
 			SClient c;
 			c.pipe=np;

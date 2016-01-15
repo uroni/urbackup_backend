@@ -215,7 +215,7 @@ public:
 	ScopedActiveThread(void)
 	{
 		at=new ActiveThread;
-		at_ticket=Server->getThreadPool()->execute(at);
+		at_ticket=Server->getThreadPool()->execute(at, "backup active");
 	}
 
 	~ScopedActiveThread(void)

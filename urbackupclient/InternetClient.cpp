@@ -194,7 +194,7 @@ void InternetClient::operator()(void)
 			{
 				if(n_connections<spare_connections)
 				{
-					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings));
+					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings), "internet client");
 					newConnection();
 				}
 				else
@@ -363,7 +363,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 			server_settings.selected_server=i;
 			Server->Log("Successfully connected.", LL_DEBUG);
 			setStatusMsg("connected");
-			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
+			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings), "internet client");
 			newConnection();
 			return true;
 		}
@@ -379,12 +379,12 @@ THREADPOOL_TICKET InternetClient::start(bool use_pool)
 	init_mutex();
 	if(!use_pool)
 	{
-		Server->createThread(new InternetClient);
+		Server->createThread(new InternetClient, "internet client main");
 		return ILLEGAL_THREADPOOL_TICKET;
 	}
 	else
 	{
-		return Server->getThreadPool()->execute(new InternetClient);
+		return Server->getThreadPool()->execute(new InternetClient, "internet client main");
 	}
 }
 

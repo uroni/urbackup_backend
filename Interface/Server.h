@@ -94,7 +94,8 @@ public:
 	virtual IMutex* createMutex(void)=0;
 	virtual ISharedMutex* createSharedMutex()=0;
 	virtual ICondition* createCondition(void)=0;
-	virtual void createThread(IThread *thread)=0;
+	virtual void createThread(IThread *thread, const std::string& name=std::string())=0;
+	virtual void setCurrentThreadName(const std::string& name) = 0;
 	virtual IPipe *createMemoryPipe(void)=0;
 	virtual IThreadPool *getThreadPool(void)=0;
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile)=0;
@@ -103,7 +104,7 @@ public:
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
 	virtual IPipeThrottler* createPipeThrottler(size_t bps, IPipeThrottlerUpdater* updater=NULL)=0;
 
-	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite")=0;
+	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params = str_map(), std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;
 	virtual void destroyAllDatabases(void)=0;
 	virtual void destroyDatabases(THREAD_ID tid)=0;

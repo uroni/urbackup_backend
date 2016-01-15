@@ -310,11 +310,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	IndexThread *it=new IndexThread();
 	if(!do_leak_check)
 	{
-		Server->createThread(it);
+		Server->createThread(it, "file indexing");
 	}
 	else
 	{
-		indexthread_ticket=Server->getThreadPool()->execute(it);
+		indexthread_ticket=Server->getThreadPool()->execute(it, "file indexing");
 	}
 
 	internetclient_ticket=InternetClient::start(do_leak_check);

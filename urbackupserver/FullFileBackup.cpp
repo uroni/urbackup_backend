@@ -195,7 +195,7 @@ bool FullFileBackup::doFileBackup()
 	int64 last_eta_received_bytes=0;
 	double eta_estimated_speed=0;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
-	Server->getThreadPool()->execute(running_updater);
+	Server->getThreadPool()->execute(running_updater, "backup progress update");
 
 	ServerLogger::Log(logid, clientname+": Started loading files...", LL_INFO);
 
@@ -210,7 +210,7 @@ bool FullFileBackup::doFileBackup()
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get());
+		Server->getThreadPool()->execute(server_download.get(), "file backup download");
 
 	std::vector<size_t> diffs;
 	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);

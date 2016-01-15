@@ -218,7 +218,7 @@ void CAcceptThread::AddToSelectThread(CClient *client)
 
 	SelectThreads.push_back( nt );
 
-	Server->createThread(nt);
+	Server->createThread(nt, "fastcgi: accept");
 }
 
 bool CAcceptThread::has_error(void)

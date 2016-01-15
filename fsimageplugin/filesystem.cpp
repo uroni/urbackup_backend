@@ -263,7 +263,7 @@ Filesystem::Filesystem(const std::string &pDev, bool read_ahead, bool background
 	if(read_ahead)
 	{
 		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
 	}
 }
 
@@ -276,7 +276,7 @@ Filesystem::Filesystem(IFile *pDev, bool read_ahead, bool background_priority)
 	if(read_ahead)
 	{
 		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
 	}
 }
 

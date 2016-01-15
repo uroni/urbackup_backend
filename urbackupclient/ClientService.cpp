@@ -1787,7 +1787,7 @@ bool ClientConnector::sendFullImage(void)
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread, "full image upload");
 	state=CCSTATE_IMAGE;
 	
 	return true;
@@ -1813,7 +1813,7 @@ bool ClientConnector::sendIncrImage(void)
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread, "incr image upload");
 	state=CCSTATE_IMAGE_HASHDATA;
 	
 	return true;
@@ -2505,7 +2505,7 @@ void ClientConnector::setIsInternetConnection(void)
 void ClientConnector::update_silent(void)
 {
 #ifdef _WIN32
-	Server->getThreadPool()->execute(new UpdateSilentThread());
+	Server->getThreadPool()->execute(new UpdateSilentThread(), "silent client update");
 #endif
 }
 

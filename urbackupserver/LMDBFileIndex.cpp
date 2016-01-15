@@ -45,7 +45,7 @@ void LMDBFileIndex::initFileIndex()
 	mutex = Server->createSharedMutex();
 
 	fileindex=new LMDBFileIndex;
-	fileindex_ticket = Server->getThreadPool()->execute(fileindex);
+	fileindex_ticket = Server->getThreadPool()->execute(fileindex, "fileindex writer");
 }
 
 

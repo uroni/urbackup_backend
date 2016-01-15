@@ -718,7 +718,7 @@ private:
 			false, clientid, clientname, std::string(), use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid, true));
 
-		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
+		server_download_ticket = Server->getThreadPool()->execute(server_download.get(), "backup download");
 	}
 
 	bool execMod(SChange& change)

@@ -23,14 +23,13 @@ private:
 	CThreadPool* mgr;
 };
 
-
 class CThreadPool : public IThreadPool
 {
 public:
 	CThreadPool();
 	~CThreadPool();
 
-	THREADPOOL_TICKET execute(IThread *runnable);
+	THREADPOOL_TICKET execute(IThread *runnable, const std::string& name = std::string());
 	void executeWait(IThread *runnable);
 	bool isRunning(THREADPOOL_TICKET ticket);
 	bool waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems=-1);
@@ -40,7 +39,7 @@ public:
 	void Shutdown(void);
 
 private:
-	IThread * getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop);
+	IThread * getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop, std::string& name);
 
 	bool isRunningInt(THREADPOOL_TICKET ticket);
 
@@ -48,7 +47,19 @@ private:
 	unsigned int nRunning;
 
 	std::vector<CPoolThread*> threads;
-	std::deque<std::pair<IThread*, THREADPOOL_TICKET> > toexecute;
+
+	struct SNewTask
+	{
+		SNewTask(IThread* runnable, THREADPOOL_TICKET ticket, std::string name)
+			: runnable(runnable), ticket(ticket), name(name)
+		{}
+
+		IThread* runnable;
+		THREADPOOL_TICKET ticket;
+		std::string name;
+	};
+
+	std::deque<SNewTask> toexecute;
 	IMutex* mutex;
 	ICondition* cond;
 	std::map<THREADPOOL_TICKET, ICondition*> running;

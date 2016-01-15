@@ -131,7 +131,7 @@ ACTION_IMPL(usage)
 
 			if(POST["recalculate"]=="true")
 			{
-				Server->getThreadPool()->execute(new RecalculateStatistics);
+				Server->getThreadPool()->execute(new RecalculateStatistics, "statistics recalculation");
 			}
 		}
 	}

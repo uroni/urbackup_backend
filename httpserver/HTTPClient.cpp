@@ -545,7 +545,7 @@ bool CHTTPClient::processRequest(void)
 		pl=NULL;
 		http_params["REMOTE_ADDR"]=endpoint;
 		CHTTPAction *action_handler=new CHTTPAction(name,context,gparams, http_content, http_params, pipe);
-		request_ticket=Server->getThreadPool()->execute(action_handler);
+		request_ticket=Server->getThreadPool()->execute(action_handler, "http dynamic request");
 		request_handler=action_handler;
 		return true;
 	}

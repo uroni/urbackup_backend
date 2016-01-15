@@ -113,7 +113,7 @@ CDatabase::~CDatabase()
 
 bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
 	size_t allocation_chunk_size, ISharedMutex* p_single_user_mutex, IMutex* p_lock_mutex,
-	int* p_lock_count, ICondition *p_unlock_cond)
+	int* p_lock_count, ICondition *p_unlock_cond, const str_map& params)
 {
 	single_user_mutex = p_single_user_mutex;
 	lock_mutex = p_lock_mutex;
@@ -131,20 +131,15 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 	else
 	{
 		
-		#ifdef BDBPLUGIN
-		/*db_results res=Read("PRAGMA multiversion");
-		if(!res.empty() && res[0][L"multiversion"]!=L"1")
-		{
-		    Write("PRAGMA multiversion=ON");
-		}*/
-		Write("PRAGMA synchronous=ON");
-		//Write("PRAGMA snapshot_isolation=ON");
-		//Write("PRAGMA bdbsql_error_file='urbackup/bdb_errors.log'");
-		#else
 		Write("PRAGMA synchronous=NORMAL");
-		#endif
 		Write("PRAGMA foreign_keys = ON");
 		Write("PRAGMA threads = 2");
+
+		str_map::const_iterator it = params.find("wal_autocheckpoint");
+		if (it != params.end())
+		{
+			Write("PRAGMA wal_autocheckpoint=" + it->second);
+		}
 
 		if(allocation_chunk_size!=std::string::npos)
 		{

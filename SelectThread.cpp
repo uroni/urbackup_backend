@@ -64,7 +64,7 @@ CSelectThread::CSelectThread(_u32 pWorkerThreadsPerMaster)
 	
 			workers.push_back( wt );
 	
-			Server->createThread(wt);
+			Server->createThread(wt, "fastcgi: worker");
 		}
 	}
 	run=true;

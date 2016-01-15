@@ -254,7 +254,7 @@ void ClientMain::operator ()(void)
 		}
 
 		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity, curr_server_token);
-		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
 		{
@@ -401,7 +401,7 @@ void ClientMain::operator ()(void)
 	}
 
 	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity, curr_server_token);
-	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;
 	ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
@@ -706,7 +706,7 @@ void ClientMain::operator ()(void)
 							ServerStatus::addRunningJob(clientmainname);
 							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client)
 							{
-								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup);
+								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, "backup main");
 								started_job=true;
 							}
 							else

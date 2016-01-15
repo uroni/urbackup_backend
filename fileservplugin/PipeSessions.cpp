@@ -111,7 +111,7 @@ void PipeSessions::init()
 {
 	mutex = Server->createMutex();
 
-	Server->getThreadPool()->execute(new PipeSessions);
+	Server->getThreadPool()->execute(new PipeSessions, "PipeSession: timeout");
 }
 
 void PipeSessions::destroy()

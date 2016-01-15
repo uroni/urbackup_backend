@@ -87,7 +87,7 @@ CSessionMgr::~CSessionMgr()
 void CSessionMgr::startTimeoutSessionThread()
 {
     run=true;
-    Server->createThread(this);
+    Server->createThread(this, "session timeouts");
 }
 
 std::string CSessionMgr::GenerateSessionIDWithUser(const std::string &pUsername, const std::string &pIdentData, bool update_user)

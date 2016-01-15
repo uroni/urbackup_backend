@@ -581,7 +581,7 @@ std::string getSysVolumeCached(std::string &mpath)
 void cacheVolumes()
 {
 	mutex = Server->createMutex();
-	Server->createThread(new SysvolCacheThread);
+	Server->createThread(new SysvolCacheThread, "sysvol cache");
 }
 
 std::string getEspVolumeCached(std::string &mpath)

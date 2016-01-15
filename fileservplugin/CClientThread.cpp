@@ -1757,7 +1757,7 @@ void CClientThread::queueChunk( SChunk chunk )
 
 		next_chunks.push(chunk);
 
-		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this) );
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this), "filesrv: chunk send");
 	}
 	else
 	{

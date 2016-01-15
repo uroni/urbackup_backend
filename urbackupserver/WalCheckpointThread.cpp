@@ -24,6 +24,11 @@
 #include "../Interface/Database.h"
 #include <memory>
 
+WalCheckpointThread::WalCheckpointThread()
+	: last_checkpoint_wal_size(0)
+{
+}
+
 void WalCheckpointThread::checkpoint()
 {
 	int mode = MODE_READ;
@@ -34,22 +39,38 @@ void WalCheckpointThread::checkpoint()
 
 	if(wal_file.get()!=NULL)
 	{
-		if(wal_file->Size()>1*1024*1024*1024) //>1GiB
+		int64 wal_size = wal_file->Size();
+		if (wal_size > 1 * 1024 * 1024 * 1024) //>1GiB
 		{
 			wal_file.reset();
 
-			Server->Log("Files WAL file greater than 1GiB. Doing WAL checkpoint...", LL_INFO);
+			Server->Log("Files WAL file greater than 1GiB. Doing full WAL checkpoint...", LL_INFO);
 
-			IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
 			db->lockForSingleUse();
 			db->Write("PRAGMA wal_checkpoint(TRUNCATE)");
 			db->unlockForSingleUse();
-		}		
+
+			last_checkpoint_wal_size = 0;
+		}
+		else if (wal_size - last_checkpoint_wal_size > 100 * 1024 * 1024) //100MB
+		{
+			last_checkpoint_wal_size = wal_size;
+
+			wal_file.reset();
+
+			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+			db->Write("PRAGMA wal_checkpoint(PASSIVE)");
+		}
+		else if (wal_size < last_checkpoint_wal_size)
+		{
+			last_checkpoint_wal_size = 0;
+		}
 	}
 	else
 	{
-		Server->Log("Could not open WAL file (checking for WAL file size)", LL_DEBUG);
+		Server->Log("Could not open WAL file (wal checkpoint thread)", LL_WARNING);
 	}
 }
 
@@ -57,7 +78,7 @@ void WalCheckpointThread::operator()()
 {
 	while(true)
 	{
-		Server->wait(1*60*1000); //every min
+		Server->wait(10000); //every 10s
 		checkpoint();
 	}
 }

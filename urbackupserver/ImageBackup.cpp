@@ -189,7 +189,7 @@ bool ImageBackup::doBackup()
 	}
 
 	pingthread = new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token);
-	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
+	pingthread_ticket=Server->getThreadPool()->execute(pingthread, "backup progress update");
 
 	bool ret = false;
 	std::string parent_image;
@@ -446,7 +446,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 last_verified_block=0;
 	int64 vhd_blocksize=(1024*1024)/2;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
-	Server->getThreadPool()->execute(running_updater);
+	Server->getThreadPool()->execute(running_updater, "backup active update");
 	unsigned char verify_checksum[sha_size];
 	bool warned_about_parenthashfile_error=false;
 	bool internet_connection = client_main->isOnInternetConnection();
@@ -783,7 +783,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 
 					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset, hashfile, vhd_blocksize*blocksize, logid);
-					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
+					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile, "image backup writer");
 
 					blockdata=vhdfile->getBuffer();
 

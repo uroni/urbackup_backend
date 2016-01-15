@@ -339,7 +339,7 @@ bool IncrFileBackup::doFileBackup()
 	tmp_filelist_delete.reset(tmp_filelist);
 
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
-	Server->getThreadPool()->execute(running_updater);
+	Server->getThreadPool()->execute(running_updater, "backup active updater");
 
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
@@ -351,7 +351,7 @@ bool IncrFileBackup::doFileBackup()
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get());
+		Server->getThreadPool()->execute(server_download.get(), "file backup download");
 
 	char buffer[4096];
 	_u32 read;

@@ -35,11 +35,16 @@ void CPoolThread::operator()(void)
 	THREAD_ID tid = Server->getThreadID();
 	THREADPOOL_TICKET ticket;
 	bool stop=false;
-	IThread *tr=mgr->getRunnable(&ticket, false, stop);
+	std::string name;
+	IThread *tr=mgr->getRunnable(&ticket, false, stop, name);
 	if(tr!=NULL)
 	{
-	  (*tr)();
-	  Server->clearDatabases(tid);
+		if (!name.empty())
+		{
+			Server->setCurrentThreadName(name);
+		}
+		(*tr)();
+		Server->clearDatabases(tid);
 	}
 
 	if(!stop)
@@ -47,11 +52,16 @@ void CPoolThread::operator()(void)
 		while(dexit==false)
 		{
 			stop=false;
-			IThread *tr=mgr->getRunnable(&ticket, true, stop);
+			std::string name;
+			IThread *tr=mgr->getRunnable(&ticket, true, stop, name);
 			if(tr!=NULL)
 			{
-			  (*tr)();
-			  Server->clearDatabases(tid);
+				if (!name.empty())
+				{
+					Server->setCurrentThreadName(name);
+				}
+				(*tr)();
+				Server->clearDatabases(tid);
 			}
 			else if(stop)
 			{
@@ -69,7 +79,7 @@ void CPoolThread::shutdown(void)
 	dexit=true;
 }
 
-IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop)
+IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop, std::string& name)
 {
 	IScopedLock lock(mutex);
 
@@ -96,12 +106,14 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& sto
 				stop=true;
 				return NULL;
 			}
+			Server->setCurrentThreadName("idle pool thread");
 			cond->wait(&lock);
 		}
 		else
 		{
-			ret=toexecute[0].first;
-			*todel=toexecute[0].second;
+			ret=toexecute[0].runnable;
+			*todel=toexecute[0].ticket;
+			name = toexecute[0].name;
 			toexecute.erase( toexecute.begin() );
 		}
 	}
@@ -251,7 +263,7 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 	return ret;
 }
 
-THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
+THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& name)
 {
 	IScopedLock lock(mutex);
 	if( nThreads-nRunning==0 )
@@ -262,7 +274,7 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
 		threads.push_back(nt);
 	}
 
-	toexecute.push_back(std::pair<IThread*, THREADPOOL_TICKET>(runnable, ++currticket) );
+	toexecute.push_back(SNewTask(runnable, ++currticket, name));
 	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, (ICondition*)NULL) );
 	++nRunning;
 	cond->notify_one();

@@ -21,7 +21,7 @@
 
 void open_settings_database_full()
 {
-	if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS, "sqlite") )
+	if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS) )
 	{
 		Server->Log("Couldn't open Database backup_server_settings.db. Exiting.", LL_ERROR);
 		exit(1);
