@@ -165,7 +165,7 @@ bool remove_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "delete", subvolume_folder.c_str(), NULL);
+	int rc=exec_wait(btrfs_cmd, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
 	return rc==0;
 #endif
 }	
