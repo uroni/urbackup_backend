@@ -224,7 +224,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool with_sleep_on_full, bool at_front_postpone_quitstop)
+    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -263,10 +263,6 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	cond->notify_one();
 
 	queue_size+=queue_items_full;
-	if(with_sleep_on_full)
-	{
-		sleepQueue(lock);
-	}
 }
 
 
@@ -300,7 +296,6 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, c
 	cond->notify_one();
 
 	queue_size+=queue_items_chunked;
-	sleepQueue(lock);
 }
 
 void ServerDownloadThread::addToQueueStartShadowcopy(const std::string& fn)
@@ -315,8 +310,6 @@ void ServerDownloadThread::addToQueueStartShadowcopy(const std::string& fn)
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
 	cond->notify_one();
-
-	sleepQueue(lock);
 }
 
 void ServerDownloadThread::addToQueueStopShadowcopy(const std::string& fn)
@@ -331,8 +324,6 @@ void ServerDownloadThread::addToQueueStopShadowcopy(const std::string& fn)
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
 	cond->notify_one();
-
-	sleepQueue(lock);
 }
 
 void ServerDownloadThread::queueScriptEnd(const std::string &fn)
@@ -617,7 +608,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
             addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path,
-				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, false, true);
+				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, true);
 			return true;
 		}
 	}
@@ -878,11 +869,13 @@ size_t ServerDownloadThread::getMaxOkId()
 std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items, bool& finish_script, int64& file_id)
 {
 	IScopedLock lock(mutex);
+	int max_prepare = 1;
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 		it!=dl_queue.end();++it)
 	{
 		if (it->action == EQueueAction_Fileclient &&
-			!it->queued && it->fileclient == EFileClient_Chunked)
+			!it->queued && it->fileclient == EFileClient_Chunked
+			&& max_prepare>0)
 		{
 			if (it->patch_dl_files.prepare_error)
 			{
@@ -891,6 +884,8 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 
 			if (!it->patch_dl_files.prepared)
 			{
+				--max_prepare;
+
 				bool full_dl;
 				it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
 
@@ -1139,14 +1134,16 @@ void ServerDownloadThread::stop_shadowcopy(std::string path)
 	client_main->sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", "Removing shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);
 }
 
-void ServerDownloadThread::sleepQueue(IScopedLock& lock)
+bool ServerDownloadThread::sleepQueue()
 {
-	while(queue_size>max_queue_size)
+	IScopedLock lock(mutex);
+	if(queue_size>max_queue_size)
 	{
 		lock.relock(NULL);
 		Server->wait(1000);
-		lock.relock(mutex);
+		return true;
 	}
+	return false;
 }
 
 void ServerDownloadThread::queueSkip()

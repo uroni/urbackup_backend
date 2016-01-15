@@ -254,38 +254,40 @@ bool FullFileBackup::doFileBackup()
 					if(orig_sep.empty()) orig_sep="\\";
 				}
 
-
-				int64 ctime=Server->getTimeMS();
-				if(ctime-laststatsupdate>status_update_intervall)
+				do
 				{
-					if(ServerStatus::getProcess(clientname, status_id).stop)
+					int64 ctime = Server->getTimeMS();
+					if (ctime - laststatsupdate > status_update_intervall)
 					{
-						r_offline=true;
-						should_backoff=false;
-						ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
-						server_download->queueSkip();
-						break;
+						if (ServerStatus::getProcess(clientname, status_id).stop)
+						{
+							r_offline = true;
+							should_backoff = false;
+							ServerLogger::Log(logid, "Server admin stopped backup.", LL_ERROR);
+							server_download->queueSkip();
+							break;
+						}
+
+						laststatsupdate = ctime;
+						if (files_size == 0)
+						{
+							ServerStatus::setProcessPcDone(clientname, status_id, 100);
+						}
+						else
+						{
+							ServerStatus::setProcessPcDone(clientname, status_id,
+								(std::min)(100, (int)(((float)fc.getReceivedDataBytes(true) + linked_bytes) / ((float)files_size / 100.f) + 0.5f)));
+						}
+
+						ServerStatus::setProcessQueuesize(clientname, status_id,
+							(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 					}
 
-					laststatsupdate=ctime;
-					if(files_size==0)
+					if (ctime - last_eta_update > eta_update_intervall)
 					{
-						ServerStatus::setProcessPcDone(clientname, status_id, 100);
+						calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 					}
-					else
-					{
-						ServerStatus::setProcessPcDone(clientname, status_id,
-							(std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + linked_bytes)/((float)files_size/100.f)+0.5f)));
-					}
-
-					ServerStatus::setProcessQueuesize(clientname, status_id,
-						(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
-				}
-
-				if(ctime-last_eta_update>eta_update_intervall)
-				{
-					calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
-				}
+				} while (server_download->sleepQueue());
 
 				if(server_download->isOffline())
 				{

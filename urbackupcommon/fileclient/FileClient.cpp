@@ -1346,8 +1346,10 @@ void FileClient::fillQueue()
 	bool needs_send_flush=false;
 
 	std::vector<SQueueItem> queued_files;
+	int64 queue_starttime = Server->getTimeMS();
 
-	while(queued.size()<maxQueuedFiles)
+	while(queued.size()<maxQueuedFiles
+		&& Server->getTimeMS()-queue_starttime<10000)
 	{
 		if(!tcpsock->isWritable())
 		{

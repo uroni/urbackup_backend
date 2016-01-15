@@ -17,7 +17,8 @@ ExtentIterator::ExtentIterator(IFile * sparse_extents_f, bool take_file_ownershi
 	: sparse_extents_f(sparse_extents_f),
 	num_sparse_extents(-1),
 	next_sparse_extent_num(0),
-	take_file_ownership(take_file_ownership)
+	take_file_ownership(take_file_ownership),
+	blocksize(blocksize)
 {
 	if (sparse_extents_f != NULL)
 	{

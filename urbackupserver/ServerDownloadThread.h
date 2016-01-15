@@ -141,7 +141,7 @@ public:
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
         _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig,
-		bool with_sleep_on_full=true, bool at_front_postpone_quitstop=false);
+		bool at_front_postpone_quitstop=false);
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig);
@@ -189,9 +189,9 @@ public:
 
 	bool hasTimeout();
 
-private:
-	void sleepQueue(IScopedLock& lock);
+	bool sleepQueue();
 
+private:
 	std::string getDLPath(SQueueItem todl);
 
 	SPatchDownloadFiles preparePatchDownloadFiles(SQueueItem todl, bool& full_dl);

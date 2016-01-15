@@ -377,9 +377,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			}
 			else
 			{
+				int64 queue_start_time = Server->getTimeMS();
 				FileClientChunked* prev=NULL;
 				bool has_next=true;
-				while(has_next)
+				while(has_next && Server->getTimeMS()-queue_start_time<10000)
 				{
 					has_next=false;
 
