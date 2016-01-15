@@ -58,7 +58,8 @@ namespace
 			action(EQueueAction_Fileclient),
 			is_script(false),
 			folder_items(0),
-			script_end(false)
+			script_end(false),
+			switched(false)
 		{
 		}
 
@@ -79,6 +80,7 @@ namespace
 		bool script_end;
 		std::string sha_dig;
 		unsigned int script_random;
+		bool switched;
 	};
 	
 	
@@ -203,7 +205,8 @@ private:
 	
 	bool link_or_copy_file(SQueueItem todl);
 
-	size_t insertFullQueueEarliest(SQueueItem ni);
+	size_t insertFullQueueEarliest(SQueueItem ni, bool after_switched);
+	bool hasFullQueuedAfter(std::deque<SQueueItem>::iterator it);
 
 	void postponeQuitStop(size_t idx);
 

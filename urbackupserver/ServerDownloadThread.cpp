@@ -256,7 +256,8 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	}
 	else
 	{
-		size_t idx = insertFullQueueEarliest(ni);
+		ni.switched = true;
+		size_t idx = insertFullQueueEarliest(ni, true);
 		postponeQuitStop(idx);
 	}
 
@@ -340,13 +341,13 @@ void ServerDownloadThread::queueScriptEnd(const std::string &fn)
 
 	IScopedLock lock(mutex);
 
-	insertFullQueueEarliest(ni);
+	insertFullQueueEarliest(ni, false);
 
 	cond->notify_one();
 }
 
 
-size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni )
+size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni, bool after_switched)
 {
 	size_t idx=0;
 	size_t earlies_other_idx;
@@ -357,18 +358,26 @@ size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni )
 		if(it->action == EQueueAction_Fileclient
 			&& it->fileclient == EFileClient_Full)
 		{
-			if(!it->queued)
+			if(!it->queued )
 			{
-				if(earliest_other!=dl_queue.end())
+				if (!after_switched || !it->switched)
 				{
-					dl_queue.insert(earliest_other, ni);
-					return earlies_other_idx;
+					if (earliest_other != dl_queue.end())
+					{
+						dl_queue.insert(earliest_other, ni);
+						return earlies_other_idx;
+					}
+					else
+					{
+						dl_queue.insert(it, ni);
+						return idx;
+					}
 				}
 				else
 				{
-					dl_queue.insert(it, ni);
-					return idx;
-				}				
+					earliest_other = it + 1;
+					earlies_other_idx = idx+1;
+				}
 			}
 			else
 			{
@@ -396,6 +405,22 @@ size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni )
 		dl_queue.push_back(ni);
 		return dl_queue.size();
 	}
+}
+
+bool ServerDownloadThread::hasFullQueuedAfter(std::deque<SQueueItem>::iterator it)
+{
+	for (; it != dl_queue.end(); ++it)
+	{
+		if (it->action == EQueueAction_Fileclient
+			&& it->fileclient == EFileClient_Full)
+		{
+			if (it->queued)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 
@@ -870,43 +895,64 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 {
 	IScopedLock lock(mutex);
 	int max_prepare = 1;
-	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
-		it!=dl_queue.end();++it)
+	bool retry = true;
+	while (retry)
 	{
-		if (it->action == EQueueAction_Fileclient &&
-			!it->queued && it->fileclient == EFileClient_Chunked
-			&& max_prepare>0)
+		retry = false;
+		for (std::deque<SQueueItem>::iterator it = dl_queue.begin();
+				it != dl_queue.end(); ++it)
 		{
-			if (it->patch_dl_files.prepare_error)
+			if (it->action == EQueueAction_Fileclient &&
+				!it->queued && it->fileclient == EFileClient_Chunked
+				&& max_prepare > 0)
 			{
-				continue;
-			}
-
-			if (!it->patch_dl_files.prepared)
-			{
-				--max_prepare;
-
-				bool full_dl;
-				it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
-
-				if (it->patch_dl_files.orig_file == NULL &&
-					full_dl)
+				if (it->patch_dl_files.prepare_error)
 				{
-					it->fileclient = EFileClient_Full;
-					queue_size -= queue_items_chunked - queue_items_full;
+					continue;
+				}
+
+				if (!it->patch_dl_files.prepared)
+				{
+					--max_prepare;
+
+					bool full_dl;
+					it->patch_dl_files = preparePatchDownloadFiles(*it, full_dl);
+
+					if (it->patch_dl_files.orig_file == NULL &&
+						full_dl)
+					{
+						if (hasFullQueuedAfter(it))
+						{
+							SQueueItem item = *it;
+							dl_queue.erase(it);
+							item.fileclient = EFileClient_Full;
+							item.switched = true;
+							size_t new_idx = insertFullQueueEarliest(item, true);
+							postponeQuitStop(new_idx);
+							queue_size -= queue_items_chunked - queue_items_full;
+							retry = true;
+							break;
+						}
+						else
+						{
+							it->fileclient = EFileClient_Full;
+							it->switched = true;
+							queue_size -= queue_items_chunked - queue_items_full;
+						}						
+					}
 				}
 			}
-		}
 
-		if(it->action==EQueueAction_Fileclient && 
-			!it->queued && it->fileclient==EFileClient_Full )
-		{
-			it->queued=true;
-			file_id=with_metadata ? (it->id+1) : 0;
-			metadata=it->metadata_only? FileClient::MetadataQueue_Metadata : FileClient::MetadataQueue_Data;
-			folder_items = it->folder_items;
-			finish_script = it->script_end;
-			return (getDLPath(*it));
+			if (it->action == EQueueAction_Fileclient &&
+				!it->queued && it->fileclient == EFileClient_Full)
+			{
+				it->queued = true;
+				file_id = with_metadata ? (it->id + 1) : 0;
+				metadata = it->metadata_only ? FileClient::MetadataQueue_Metadata : FileClient::MetadataQueue_Data;
+				folder_items = it->folder_items;
+				finish_script = it->script_end;
+				return (getDLPath(*it));
+			}
 		}
 	}
 
@@ -974,14 +1020,24 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					if(it->patch_dl_files.orig_file==NULL &&
 						full_dl)
 					{
-						SQueueItem item = *it;
-						dl_queue.erase(it);
-						item.fileclient=EFileClient_Full;
-						size_t new_idx = insertFullQueueEarliest(item);
-						postponeQuitStop(new_idx);
-						queue_size-=queue_items_chunked-queue_items_full;
-						retry=true;
-						break;
+						if (hasFullQueuedAfter(it))
+						{
+							SQueueItem item = *it;
+							dl_queue.erase(it);
+							item.fileclient = EFileClient_Full;
+							item.switched = true;
+							size_t new_idx = insertFullQueueEarliest(item, true);
+							postponeQuitStop(new_idx);
+							queue_size -= queue_items_chunked - queue_items_full;
+							retry = true;
+							break;
+						}
+						else
+						{
+							it->fileclient = EFileClient_Full;
+							it->switched = true;
+							queue_size -= queue_items_chunked - queue_items_full;
+						}
 					}
 				}
 
