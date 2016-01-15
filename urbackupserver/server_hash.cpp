@@ -1033,9 +1033,9 @@ ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string 
 	return state.prev;
 }
 
-IFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
+IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 {
-	IFile *dst=NULL;
+	IFsFile *dst=NULL;
 	int count_t=0;
 	while(dst==NULL)
 	{
@@ -1292,14 +1292,29 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 
 		dstfsize = chunk_output_fn->Size();
 
+		bool sparse_resize = false;
+
 		while (sparse_extent.offset != -1)
 		{
 			if (!punchHoleOrZero(chunk_output_fn, sparse_extent.offset, sparse_extent.size))
 			{
 				has_error = true;
 			}
-			dstfsize = (std::max)(dstfsize, sparse_extent.offset + sparse_extent.size);
+			if (sparse_extent.offset + sparse_extent.size > dstfsize)
+			{
+				sparse_resize = true;
+				dstfsize = sparse_extent.offset + sparse_extent.size;
+			}
 			sparse_extent = extent_iterator->nextExtent();
+		}
+
+		if (sparse_resize)
+		{
+			if (!chunk_output_fn->Resize(dstfsize))
+			{
+				ServerLogger::Log(logid, "Error resizing \"" + dest + "\" to " + convert(dstfsize), LL_ERROR);
+				return false;
+			}
 		}
 		
 		if(has_error || !b)
@@ -1312,7 +1327,11 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 
 	if( dstfsize > chunk_patcher.getFilesize() )
 	{
-		os_file_truncate(dest, chunk_patcher.getFilesize());
+		if (!os_file_truncate(dest, chunk_patcher.getFilesize()))
+		{
+			ServerLogger::Log(logid, "Error truncating \""+dest+"\" to "+convert(chunk_patcher.getFilesize()), LL_ERROR);
+			return false;
+		}
 	}
 	else
 	{

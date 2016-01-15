@@ -229,6 +229,7 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 
 	if (extent_iterator != NULL)
 	{
+		extent_iterator->reset();
 		curr_extent = extent_iterator->nextExtent();
 	}
 
@@ -244,7 +245,8 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 		}
 
 		if (curr_extent.offset != -1
-			&& curr_extent.offset <= fpos && curr_extent.offset + curr_extent.size>=fpos + static_cast<int64>(hash_bsize))
+			&& curr_extent.offset <= fpos
+			&& curr_extent.offset + curr_extent.size>=fpos + static_cast<int64>(hash_bsize))
 		{
 			if (skip_start == -1)
 			{

@@ -21,6 +21,7 @@
 #include <assert.h>
 #include "../urbackupcommon/ExtentIterator.h"
 #include <memory.h>
+#include <limits.h>
 
 #define VLOG(x)
 
@@ -118,7 +119,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			break;
 		}
 
-		unsigned int tr=buffer_size;
+		unsigned int tr = UINT32_MAX;
 		if(next_header.patch_off!=-1)
 		{
 			_i64 hoff=next_header.patch_off-file_pos;
@@ -197,17 +198,20 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				{
 					nextChunkPatcherBytes(file_pos, NULL, tr, false, true);
 					file_pos += tr;
-					was_sparse = true;
 				}
 				else
 				{
 					cb->next_chunk_patcher_bytes(NULL, tr, false);
+					file_pos += tr;
 				}
+				was_sparse = true;
 			}
 
 			while(!was_sparse
 				&& tr>0 && file_pos<size && file_pos<filesize)
 			{
+				tr = (std::min)(tr, buffer_size);
+
 				if(require_unchanged)
 				{
 					bool has_read_error = false;
@@ -339,12 +343,15 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 		size_t bsize_to_checkpoint = (std::min)(bsize, static_cast<size_t>(next_checkpoint - pos));
 		int64 sparse_buf_used = pos%sparse_blocksize;
 
-		for (size_t i = 0; i < bsize_to_checkpoint; ++i)
+		if (curr_only_zeros)
 		{
-			if (buf[i] != 0)
+			for (size_t i = 0; i < bsize_to_checkpoint; ++i)
 			{
-				curr_only_zeros = false;
-				break;
+				if (buf[i] != 0)
+				{
+					curr_only_zeros = false;
+					break;
+				}
 			}
 		}
 
@@ -397,9 +404,9 @@ void ChunkPatcher::finishChunkPatcher(int64 pos)
 
 void ChunkPatcher::finishSparse(int64 pos)
 {
-	if (pos > last_sparse_start)
+	if (last_sparse_start!=-1 && roundDown(pos, sparse_blocksize) > last_sparse_start)
 	{
-		IFsFile::SSparseExtent ext(last_sparse_start, pos - last_sparse_start);
+		IFsFile::SSparseExtent ext(last_sparse_start, roundDown(pos, sparse_blocksize) - last_sparse_start);
 		cb->next_sparse_extent_bytes(reinterpret_cast<char*>(&ext), sizeof(IFsFile::SSparseExtent));
 		last_sparse_start = -1;
 	}

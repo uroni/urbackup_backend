@@ -99,7 +99,7 @@ private:
 	bool freeSpace(int64 fs, const std::string &fp);
 	
 	int countFilesInTmp(void);
-	IFile* openFileRetry(const std::string &dest, int mode);
+	IFsFile* openFileRetry(const std::string &dest, int mode);
 	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
 		_i64 tfilesize, ExtentIterator* extent_iterator);
 	
@@ -130,7 +130,7 @@ private:
 	volatile bool working;
 	volatile bool has_error;
 
-	IFile *chunk_output_fn;
+	IFsFile *chunk_output_fn;
 	ChunkPatcher chunk_patcher;
 
 	bool use_snapshots;

@@ -419,13 +419,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	int64 script_start_time = Server->getTimeSeconds()-60;
 
-    _u32 rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, with_metadata ? (todl.id+1) : 0);
+    _u32 rc=fc.GetFile(cfn, fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, with_metadata ? (todl.id+1) : 0);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-        rc=fc.GetFile((cfn), fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, with_metadata ? (todl.id+1) : 0);
+        rc=fc.GetFile(cfn, fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, with_metadata ? (todl.id+1) : 0);
 		--hash_retries;
 	}
 
