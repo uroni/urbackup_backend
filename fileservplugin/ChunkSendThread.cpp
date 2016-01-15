@@ -75,6 +75,7 @@ void ChunkSendThread::operator()(void)
 			if (pipe_file_user.get()==NULL && file != NULL)
 			{
 				Server->destroy(file);
+				file = NULL;
 			}
 			else if (pipe_file_user.get() != NULL)
 			{
