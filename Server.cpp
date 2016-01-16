@@ -1329,8 +1329,10 @@ void CServer::createThread(IThread *thread, const std::string& name)
 
 void CServer::setCurrentThreadName(const std::string& name)
 {
-#if defined(_WIN32) && defined(_DEBUG)
+#if defined(_WIN32)
+#if defined(_DEBUG)
 	SetThreadName(-1, name.c_str());
+#endif
 #elif !defined(__APPLE__)
 	if (!name.empty())
 	{
