@@ -4001,7 +4001,7 @@ void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with
 std::string IndexThread::execute_script(const std::string& cmd)
 {
 	std::string output;
-	int rc = os_popen((cmd), output);
+	int rc = os_popen("\""+cmd+"\"", output);
 
 	if(rc!=0)
 	{
