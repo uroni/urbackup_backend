@@ -119,7 +119,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			break;
 		}
 
-		unsigned int tr = UINT32_MAX;
+		unsigned int tr = UINT_MAX;
 		if(next_header.patch_off!=-1)
 		{
 			_i64 hoff=next_header.patch_off-file_pos;
