@@ -36,7 +36,7 @@ AC_LANG([C++])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h mntent.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -51,10 +51,10 @@ AC_CXX_HAVE_STRSTREAM
 AC_CXX_HAVE_LONG_LONG
 
 AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
-	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
 	
 AX_CHECK_LINK_FLAG([-Wl,-z,relro],
-	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes != xno)])
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
 
 AC_MSG_CHECKING([for operating system])
 case "$host_os" in
@@ -106,9 +106,12 @@ AS_IF([test "x$enable_headless" != "xyes"],
 	fi
 ])
 
-AC_SEARCH_LIBS([clock_gettime], [rt posix4],
-	[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
-	[AC_MSG_FAILURE([No library for clock_gettime found])] )
+AS_IF([test "x$opsys" != "xosx"],
+[
+	AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+		[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
+		[AC_MSG_FAILURE([No library for clock_gettime found])] )
+])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

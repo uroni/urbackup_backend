@@ -33,6 +33,12 @@
 #endif
 #include <memory>
 
+#ifdef __APPLE__
+#define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
+#define lremovexattr(path, name) removexattr(path, name, XATTR_NOFOLLOW)
+#define lsetxattr(path, name, value, size, flags) setxattr(path, name, value, size, 0, XATTR_NOFOLLOW|flags)
+#endif
+
 namespace client {
 
 const _u32 ID_METADATA_OS_WIN = 1<<0;
@@ -458,12 +464,21 @@ namespace
         SET_STAT_MEM(st_uid);
         SET_STAT_MEM(st_gid);
         SET_STAT_MEM(st_rdev);
-        SET_STAT_MEM(st_atime);
+#ifdef __APPLE__
+		SET_STAT_MEM(st_atimespec.tv_sec);
+		SET_STAT_MEM32(st_atimespec.tv_nsec);
+		SET_STAT_MEM(st_mtimespec.tv_sec);
+		SET_STAT_MEM32(st_mtimespec.tv_nsec);
+		SET_STAT_MEM(st_ctimespec.tv_sec);
+		SET_STAT_MEM32(st_ctimespec.tv_nsec);
+#else
+		SET_STAT_MEM(st_atime);
         SET_STAT_MEM32(st_atim.tv_nsec);
         SET_STAT_MEM(st_mtime);
         SET_STAT_MEM32(st_mtim.tv_nsec);
         SET_STAT_MEM(st_ctime);
         SET_STAT_MEM32(st_ctim.tv_nsec);
+#endif
 
 #undef SET_STAT_MEM
 #undef SET_STAT_MEM32
@@ -487,6 +502,29 @@ namespace
 			if(lutimes(fn.c_str(), tvs)!=0)
 			*/
 
+#ifdef __APPLE__
+			int fd = open(fn.c_str(), O_WRONLY | O_NOFOLLOW | O_SYMLINK | O_CLOEXEC);
+			if (fd == -1)
+			{
+				restore.log("Error setting access and modification time of symlink \"" + fn + "\" -1 errno: " + convert(errno), LL_ERROR);
+				ret = false;
+			}
+			else
+			{
+				struct timeval tv[2];
+				tv[0].tv_sec = statbuf.st_atimespec.tv_sec;
+				tv[0].tv_usec = statbuf.st_atimespec.tv_nsec/1000;
+				tv[1].tv_sec = statbuf.st_mtimespec.tv_sec;
+				tv[1].tv_usec = statbuf.st_mtimespec.tv_nsec/1000;
+				int rc = futimes(fd, tv);
+				close(fd);
+				if (rc != 0)
+				{
+					restore.log("Error setting access and modification time of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+					ret = false;
+				}
+			}
+#else
 			timespec tss[2];
 			tss[0]=statbuf.st_atim;
 			tss[1]=statbuf.st_mtim;
@@ -496,6 +534,7 @@ namespace
                 restore.log("Error setting access and modification time of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
             }
+#endif
 
             return ret;
         }
@@ -541,6 +580,18 @@ namespace
 		if(utimes(fn.c_str(), tvs)!=0)
 		*/
 
+#ifdef __APPLE__
+		struct timeval tv[2];
+		tv[0].tv_sec = statbuf.st_atimespec.tv_sec;
+		tv[0].tv_usec = statbuf.st_atimespec.tv_nsec / 1000;
+		tv[1].tv_sec = statbuf.st_mtimespec.tv_sec;
+		tv[1].tv_usec = statbuf.st_mtimespec.tv_nsec / 1000;
+		if (utimes(fn.c_str(), tv) != 0)
+		{
+			restore.log("Error setting access and modification time of file \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
+			ret = false;
+		}
+#else
 		timespec tss[2];
 		tss[0]=statbuf.st_atim;
 		tss[1]=statbuf.st_mtim;
@@ -550,6 +601,7 @@ namespace
             restore.log("Error setting access and modification time of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
             ret = false;
         }
+#endif
 
         return ret;
     }

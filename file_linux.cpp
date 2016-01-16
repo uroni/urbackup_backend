@@ -60,6 +60,7 @@
 #define stat64 stat
 #define fstat64 fstat
 #define ftruncate64 ftruncate
+#define fallocate64 fallocate
 #else
 #include <linux/fs.h>
 #endif
@@ -226,6 +227,7 @@ _i64 File::Size(void)
 	
 	if(rc==0)
 	{
+#ifndef __APPLE__
 		if(S_ISBLK(stat_buf.st_mode))
 		{
 			_i64 ret;
@@ -235,6 +237,7 @@ _i64 File::Size(void)
 				return ret;
 			}
 		}
+#endif
 		
 		return stat_buf.st_size;	
 	}
@@ -263,9 +266,13 @@ void File::Close()
 
 bool File::PunchHole( _i64 spos, _i64 size )
 {
+#ifdef __APPLE__
+	return false;
+#else
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
 
 	return rc == 0;
+#endif
 }
 
 bool File::Sync()

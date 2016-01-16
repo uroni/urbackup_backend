@@ -6,11 +6,11 @@
     <string>org.urbackup.client.frontend</string>
     <key>ProgramArguments</key>
     <array>
-    	<string>/Applications/UrBackup Client.app/Contents/MacOS/urbackup_client_gui</string>
+    	<string>/Applications/UrBackup Client.app/Contents/MacOS/urbackupclientgui</string>
     </array>
     <key>KeepAlive</key>
     <true/>
     <key>WorkingDirectory</key>
-    <string>/usr/var</string>
+    <string>Applications/UrBackup Client.app/Contents/MacOS/var</string>
 </dict>
 </plist>

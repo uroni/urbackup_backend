@@ -10,6 +10,8 @@
 #else
 #define PACKAGE_VERSION "unknown"
 #define VARDIR ""
+#define SYSCONFDIR ""
+#define DATADIR ""
 #endif
 
 const std::string cmdline_version = PACKAGE_VERSION;
@@ -184,6 +186,12 @@ int main(int argc, char* argv[])
 			"Do not print time when logging to console",
 			cmd, false);
 
+#if defined(__APPLE__)
+		TCLAP::ValueArg<int> rotate_filesize_arg("g", "rotate-filesize",
+			"Maximum size of log file before rotation",
+			false, 20971520, "bytes", cmd);
+#endif
+
 #ifndef _WIN32
 		TCLAP::ValueArg<std::string> config_arg("c", "config",
 			"Read configuration parameters from config file",
@@ -214,6 +222,8 @@ int main(int argc, char* argv[])
 #endif
 		real_args.push_back("--workingdir");
 		real_args.push_back(VARDIR);
+		real_args.push_back("--script_path");
+		real_args.push_back( DATADIR "/urbackup/scripts:" SYSCONFDIR "/urbackup/scripts");
 		real_args.push_back("--pidfile");
 		real_args.push_back(pidfile_arg.getValue());
 		if(std::find(real_args.begin(), real_args.end(), "--logfile")==real_args.end())
@@ -244,6 +254,10 @@ int main(int argc, char* argv[])
 			real_args.push_back("--allow_restore");
 			real_args.push_back(restore_arg.getValue());
 		}
+#if defined(__APPLE__)
+		real_args.push_back("--rotate-filesize");
+		real_args.push_back(convert(rotate_filesize_arg.getValue()));
+#endif
 		return run_real_main(real_args);
 	}
 	catch (TCLAP::ArgException &e)

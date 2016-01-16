@@ -37,6 +37,13 @@
 #include <errno.h>
 #endif
 
+#ifdef __APPLE__
+#define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
+#define lgetxattr(path, name, value, size) getxattr(path, name, value, size, 0, XATTR_NOFOLLOW)
+#define stat64 stat
+#define lstat64 lstat
+#endif
+
 const size_t metadata_id_size = 4+4+8+4;
 
 
@@ -676,12 +683,21 @@ namespace
 		data.addVarInt(buf.st_uid);
 		data.addVarInt(buf.st_gid);
 		data.addVarInt(buf.st_rdev);
+#ifdef __APPLE__
+		data.addVarInt(buf.st_atimespec.tv_sec);
+		data.addUInt(buf.st_atimespec.tv_nsec);
+		data.addVarInt(buf.st_mtimespec.tv_sec);
+		data.addUInt(buf.st_mtimespec.tv_nsec);
+		data.addVarInt(buf.st_ctimespec.tv_sec);
+		data.addUInt(buf.st_ctimespec.tv_nsec);
+#else
 		data.addVarInt(buf.st_atime);
         data.addUInt(buf.st_atim.tv_nsec);
 		data.addVarInt(buf.st_mtime);
         data.addUInt(buf.st_mtim.tv_nsec);
 		data.addVarInt(buf.st_ctime);
         data.addUInt(buf.st_ctim.tv_nsec);
+#endif
 	}
 
     bool get_xattr_keys(const std::string& fn, std::vector<std::string>& keys)
@@ -880,33 +896,34 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 			return true;
 		}
 	}
-	else if(backup_state==BackupState_EAttr_Vals_Val)
+	else if (backup_state == BackupState_EAttr_Vals_Val)
 	{
-		if(eattr_val.size()-eattr_val_off>0)
+		if (eattr_val.size() - eattr_val_off > 0)
 		{
-			read_bytes = (std::min)(eattr_val.size()-eattr_val_off, buf_avail);
-			memcpy(buf, eattr_val.data()+eattr_val_off, read_bytes);
-			eattr_val_off+=read_bytes;
+			read_bytes = (std::min)(eattr_val.size() - eattr_val_off, buf_avail);
+			memcpy(buf, eattr_val.data() + eattr_val_off, read_bytes);
+			eattr_val_off += read_bytes;
 		}
 
-		if(eattr_val.size()-eattr_val_off==0)
+		if (eattr_val.size() - eattr_val_off == 0)
 		{
-			if(eattr_idx+1<eattr_keys.size())
+			if (eattr_idx + 1 < eattr_keys.size())
 			{
 				++eattr_idx;
-				backup_state=BackupState_EAttr_Vals_Key;
-				eattr_key_off=0;
+				backup_state = BackupState_EAttr_Vals_Key;
+				eattr_key_off = 0;
 
 				return true;
 			}
 			else
 			{
-                //finished
-                return false;
+				//finished
+				return false;
 			}
 		}
 	}
-	
+
+	return false;
 }
 
 bool FileMetadataPipe::openFileHandle()

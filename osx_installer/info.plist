@@ -5,7 +5,7 @@
   <key>CFBundleGetInfoString</key>
   <string>UrBackup Client Tray Icon GUI</string>
   <key>CFBundleExecutable</key>
-  <string>urbackup_client_gui</string>
+  <string>urbackupclientgui</string>
   <key>CFBundleIdentifier</key>
   <string>org.urbackup.client.frontend.bundle2</string>
   <key>CFBundleName</key>
@@ -13,7 +13,7 @@
   <key>CFBundleIconFile</key>
   <string>urbackup.icns</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.5</string>
+  <string>2.0</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>

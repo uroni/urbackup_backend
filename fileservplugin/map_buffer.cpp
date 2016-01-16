@@ -26,6 +26,7 @@
 #include "log.h"
 #include "settings.h"
 #include "../Interface/Server.h"
+#include "map_buffer.h"
 
 struct s_mapl
 {
@@ -37,6 +38,7 @@ namespace
 {
 	std::map<std::pair<std::string, std::string>, s_mapl> mapbuffer;
 	CriticalSection mapcs;
+	std::map<std::string, std::string> fn_redirects;
 }
 
 
@@ -97,6 +99,12 @@ std::string map_file(std::string fn, const std::string& identity)
 	            ret = i->second.value + getOsDir(fn);
 	        else
 	    	    ret = getOsDir(fn);
+
+		std::map<std::string, std::string>::iterator redir_it = fn_redirects.find(ret);
+		if (redir_it != fn_redirects.end())
+		{
+			ret = redir_it->second;
+		}
 	    	
 		mapcs.Leave();
         return ret;
@@ -122,6 +130,15 @@ void remove_share_path(const std::string &name, const std::string& identity)
 	{
 		mapbuffer.erase(it);
 	}
+
+	mapcs.Leave();
+}
+
+void register_fn_redirect(const std::string & source_fn, const std::string & target_fn)
+{
+	mapcs.Enter();
+
+	fn_redirects[source_fn] = target_fn;
 
 	mapcs.Leave();
 }

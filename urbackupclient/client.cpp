@@ -46,7 +46,10 @@
 #include <sys\stat.h>
 #include "win_disk_mon.h"
 #else
+#include "../config.h"
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -219,6 +222,9 @@ namespace
 #ifndef _WIN32
 	std::string getFolderMount(const std::string& path)
 	{		
+#ifndef HAVE_MNTENT_H
+		return std::string();
+#else
 		FILE *aFile;
 
 		aFile = setmntent("/proc/mounts", "r");
@@ -238,6 +244,7 @@ namespace
 		endmntent(aFile);
 
 		return maxmount;
+#endif //HAVE_MNTENT_H
 	}
 #endif //!_WIN32
 
@@ -1491,78 +1498,98 @@ bool IndexThread::readBackupScripts()
 #endif
 	}
 
+	std::vector<std::string> script_paths;
+	TokenizeMail(script_path, script_paths, ":");
+
+	std::string first_script_path;
+	for (size_t j = 0; j < script_paths.size(); ++j)
+	{
+		std::string curr_script_path = script_paths[j];
+
+		if (j == 0)
+		{
+			first_script_path = curr_script_path;
+		}
+
 #ifdef _WIN32
-	script_cmd = script_path + os_file_sep() + "list.bat";
+		script_cmd = curr_script_path + os_file_sep() + "list.bat";
 #else
-	script_cmd = script_path + os_file_sep() + "list";
+		script_cmd = curr_script_path + os_file_sep() + "list";
 #endif
 
-	std::string output = execute_script(script_cmd);
+		std::string output = execute_script(script_cmd);
 
-	std::vector<std::string> lines;
-	Tokenize(output, lines, "\n");
+		std::vector<std::string> lines;
+		Tokenize(output, lines, "\n");
 
-	IScopedLock lock(filesrv_mutex);
+		IScopedLock lock(filesrv_mutex);
 
-	if(!lines.empty())
-	{
-		for(size_t i=0;i<lines.size();++i)
+		if (!lines.empty())
 		{
-			std::string line = trim(lines[i]);
-			if(!line.empty())
+			for (size_t i = 0; i < lines.size(); ++i)
 			{
-				if(line[0]=='#')
+				std::string line = trim(lines[i]);
+				if (!line.empty())
 				{
-					continue;
-				}
+					if (line[0] == '#')
+					{
+						continue;
+					}
 
-				SBackupScript new_script;
+					SBackupScript new_script;
 
-				str_map params;
-				ParseParamStrHttp(line, &params);
+					str_map params;
+					ParseParamStrHttp(line, &params);
 
-				str_map::iterator it = params.find("scriptname");
-				if(it==params.end())
-				{
-					continue;
-				}
+					str_map::iterator it = params.find("scriptname");
+					if (it == params.end())
+					{
+						continue;
+					}
 
-				new_script.scriptname = it->second;
+					new_script.scriptname = it->second;
 
-				it=params.find("outputname");
-				if(it!=params.end())
-				{
-					new_script.outputname = it->second;
-				}
-				else
-				{
-					new_script.outputname = new_script.scriptname;
-				}
+					it = params.find("outputname");
+					if (it != params.end())
+					{
+						new_script.outputname = it->second;
+					}
+					else
+					{
+						new_script.outputname = new_script.scriptname;
+					}
 
-				it=params.find("size");
-				if(it!=params.end())
-				{
-					new_script.size = watoi64(it->second);
-				}
-				else
-				{
-					new_script.size = -1;
-				}
+					it = params.find("size");
+					if (it != params.end())
+					{
+						new_script.size = watoi64(it->second);
+					}
+					else
+					{
+						new_script.size = -1;
+					}
 
-				scripts.push_back(new_script);
-				
-				if(filesrv!=NULL)
-				{
-					filesrv->addScriptOutputFilenameMapping(new_script.outputname,
-						new_script.scriptname);
+					scripts.push_back(new_script);
+
+					if (filesrv != NULL)
+					{
+						filesrv->addScriptOutputFilenameMapping(new_script.outputname,
+							new_script.scriptname);
+
+						if (j > 0)
+						{
+							filesrv->registerFnRedirect(first_script_path + os_file_sep() + new_script.scriptname,
+								curr_script_path + os_file_sep() + new_script.scriptname);
+						}
+					}
 				}
 			}
 		}
+	}
 
-		if(filesrv!=NULL && !scripts.empty())
-		{
-			filesrv->shareDir("urbackup_backup_scripts", script_path, std::string());
-		}
+	if (filesrv != NULL && !scripts.empty() && !first_script_path.empty())
+	{
+		filesrv->shareDir("urbackup_backup_scripts", first_script_path, std::string());
 	}
 
 	std::sort(scripts.begin(), scripts.end());

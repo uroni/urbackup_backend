@@ -41,6 +41,8 @@ public:
 
 	bool hasActiveMetadataTransfers(const std::string& sharename, const std::string& server_token);
 
+	bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;

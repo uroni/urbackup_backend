@@ -6,21 +6,7 @@
     <string>org.urbackup.client.backend</string>
     <key>ProgramArguments</key>
     <array>
-    	<string>/usr/sbin/urbackup_client</string>
-    	<string>--no_daemon</string>
-    	<string>--no-server</string>
-
-        <string>--plugin</string>
-        <string>liburbackupclient_cryptoplugin.dylib</string>
-
-        <string>--plugin</string>
-        <string>liburbackupclient_fsimageplugin.dylib</string>
-
-        <string>--plugin</string>
-        <string>liburbackupclient_fileservplugin.dylib</string>
-
-        <string>--plugin</string>
-        <string>liburbackupclient.dylib</string>
+    	<string>/Applications/UrBackup Client.app/Contents/MacOS/sbin/urbackupclientbackend</string>
 
         <string>--logfile</string>
         <string>/Library/Logs/urbackup_client_backend.log</string>
@@ -30,14 +16,11 @@
 
         <string>--rotate-filesize</string>
         <string>20971520</string>
-
-        <string>--workingdir</string>
-        <string>/usr/var</string>
     </array>
     <key>KeepAlive</key>
     <true/>
     <key>WorkingDirectory</key>
-    <string>/usr/var</string>
+    <string>/Applications/UrBackup Client.app/Contents/MacOS/var/</string>
     <key>HardResourceLimits</key>
     <dict>
         <key>NumberOfFiles</key>

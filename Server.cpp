@@ -85,6 +85,11 @@
 #endif
 #include "StaticPluginRegistration.h"
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 const size_t SEND_BLOCKSIZE=8192;
 const size_t MAX_THREAD_ID=std::string::npos;
 
@@ -106,6 +111,7 @@ namespace
 	}
 #endif
 
+#ifdef _WIN32
 	//from https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
 	const DWORD MS_VC_EXCEPTION = 0x406D1388;
 #pragma pack(push,8)
@@ -132,7 +138,7 @@ namespace
 		}
 #pragma warning(pop)
 	}
-
+#endif
 		
 }
 
@@ -639,6 +645,14 @@ int64 CServer::getTimeMS(void)
 	tp.tv_sec-=start_t;
 	return tp.tv_sec*1000+tp.tv_usec/1000;
 */
+#ifdef __APPLE__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	return static_cast<int64>(mts.tv_sec) * 1000 + mts.tv_nsec / 1000000;
+#else
 	timespec tp;
 	if(clock_gettime(CLOCK_MONOTONIC, &tp)!=0)
 	{
@@ -649,6 +663,7 @@ int64 CServer::getTimeMS(void)
 		return tv.tv_sec*1000+tv.tv_usec/1000;
 	}
 	return static_cast<int64>(tp.tv_sec)*1000+tp.tv_nsec/1000000;
+#endif //__APPLE__
 #endif
 }
 
@@ -1291,15 +1306,22 @@ void CServer::createThread(IThread *thread, const std::string& name)
 	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
 	pthread_detach(t);
 
+#ifndef __APPLE__
 	if (!name.empty())
 	{
+		std::string thread_name;
 		if (name.size() > 15)
 		{
-			name = name.substr(0, 15);
+			thread_name = name.substr(0, 15);
+		}
+		else
+		{
+			thread_name = name;
 		}
 
-		pthread_setname_np(t, name.c_str());
+		pthread_setname_np(t, thread_name.c_str());
 	}
+#endif //__APPLE__
 
 	pthread_attr_destroy(&attr);
 #endif
@@ -1309,17 +1331,22 @@ void CServer::setCurrentThreadName(const std::string& name)
 {
 #if defined(_WIN32) && defined(_DEBUG)
 	SetThreadName(-1, name.c_str());
-#else
+#elif !defined(__APPLE__)
 	if (!name.empty())
 	{
 		pthread_t ct = pthread_self();
 
+		std::string thread_name;
 		if (name.size() > 15)
 		{
-			name = name.substr(0, 15);
+			thread_name = name.substr(0, 15);
+		}
+		else
+		{
+			thread_name = name;
 		}
 
-		pthread_setname_np(ct, name.c_str());
+		pthread_setname_np(ct, thread_name.c_str());
 	}
 #endif
 }

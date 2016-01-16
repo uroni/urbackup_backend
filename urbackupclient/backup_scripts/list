@@ -2,6 +2,6 @@
 
 CDIR=`dirname $0`
 
-. $CDIR/mariadb.conf
+. "SYSCONFDIR/mariadb.conf"
 
 if [ "x$MARIADB_ENABLED" != "x0" ]; then echo "scriptname=mariadb&outputname=mariadb_dump.sql"; fi

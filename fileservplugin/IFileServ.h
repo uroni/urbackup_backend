@@ -49,6 +49,7 @@ public:
 	virtual void removeMetadataCallback(const std::string &name, const std::string& identity) = 0;
 	virtual void registerTokenCallbackFactory(ITokenCallbackFactory* callback_factory) = 0;
 	virtual bool hasActiveMetadataTransfers(const std::string& sharename, const std::string& server_token) = 0;
+	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 };
 
 #endif //IFILESERV_H

@@ -215,3 +215,8 @@ bool FileServ::hasActiveMetadataTransfers(const std::string& sharename, const st
 {
 	return PipeSessions::isShareActive(sharename, server_token);
 }
+
+bool FileServ::registerFnRedirect(const std::string & source_fn, const std::string & target_fn)
+{
+	return false;
+}
