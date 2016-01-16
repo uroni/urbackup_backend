@@ -49,6 +49,12 @@ std::string get_lin_os_version()
 {
 	std::string kernel = trim(run_cmd("uname -r"));
 	std::string arch = trim(run_cmd("uname -m"));
+	std::string description;
+#ifndef __APPLE__
 	std::map<std::string, std::string> m = read_kv("lsb_release -a");
-	return m["description"] + (kernel.empty()?"":("; Kernel " + kernel + (arch.empty()?"":(" " + arch))));
+	description = m["description"];
+#else
+	description = "Mac OS X "+trim(run_cmd("sw_vers -productVersion"));
+#endif
+	return  description + (kernel.empty()?"":("; Kernel " + kernel + (arch.empty()?"":(" " + arch))));
 }
