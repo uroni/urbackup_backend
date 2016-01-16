@@ -4,5 +4,8 @@ set -e
 
 /bin/launchctl load "/Library/LaunchDaemons/org.urbackup.client.plist"
 /bin/launchctl start "org.urbackup.client.backend"
-/bin/launchctl load "/Library/LaunchAgents/org.urbackup.client.plist"
-/bin/launchctl start "org.urbackup.client.frontend"
+
+"$2/Contents/MacOS/urbackupclientgui" register_login_item
+
+CONSOLE_USER=$(ps aux | grep "CoreServices/Installer" | grep -v grep | awk '{print $1;}')
+sudo -u $CONSOLE_USER "$2/Contents/MacOS/urbackupclientgui" daemon

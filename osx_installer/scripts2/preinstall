@@ -7,7 +7,4 @@ if /bin/launchctl list "org.urbackup.client.backend" &> /dev/null; then
     /bin/launchctl unload "/Library/LaunchDaemons/org.urbackup.client.plist"
 fi
 
-if /bin/launchctl list "org.urbackup.client.frontend" &> /dev/null; then
-	/bin/launchctl stop "org.urbackup.client.frontend" 
-    /bin/launchctl unload "/Library/LaunchAgents/org.urbackup.client.plist"
-fi
+killall urbackupclientgui || true

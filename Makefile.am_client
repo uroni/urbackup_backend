@@ -22,7 +22,7 @@ FORTIFY_FLAGS = -fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Wer
 FORTIFY_ldflags = -Wl,-z,relro
 endif
 
-urbackupclientbackend_LDADD = $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) 
+urbackupclientbackend_LDADD = $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS)
 urbackupclientbackend_CPPFLAGS = $(FORTIFY_FLAGS) $(SUID_CFLAGS)
 urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"'
 urbackupclientbackend_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY 
@@ -43,6 +43,10 @@ urbackupclientgui_CXXFLAGS = -DLINUX $(WX_CXXFLAGS_ONLY) -DDATADIR='"$(datadir)"
 urbackupclientgui_CFLAGS = $(WX_CFLAGS_ONLY)
 urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS)
 urbackupclientgui_LDADD = $(WX_LIBS)
+
+if MACOSX
+urbackupclientgui_LDFLAGS = -framework ServiceManagement -framework CoreServices -framework Security
+endif
 
 install-exec-local: defaults_client init.d_client
 if INSTALL_INITD

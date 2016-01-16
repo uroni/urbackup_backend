@@ -17,8 +17,8 @@ mkdir -p osx-pkg/Library/LaunchDaemons
 cp osx_installer/daemon.plist osx-pkg/Library/LaunchDaemons/org.urbackup.client.plist
 mkdir -p osx-pkg/Library/LaunchAgents
 cp osx_installer/agent.plist osx-pkg/Library/LaunchAgents/org.urbackup.client.plist
-./configure --with-crypto-prefix=$PWD/../cryptopp562 CXXFLAGS="-mmacosx-version-min=10.6 -DNDEBUG" CFLAGS="-DNDEBUG" LDFLAGS="-mmacosx-version-min=10.6" --prefix="/Applications/UrBackup Client.app/Contents/MacOS"
-make clean
+#./configure --with-crypto-prefix=$PWD/../cryptopp562 CXXFLAGS="-mmacosx-version-min=10.6 -DNDEBUG" CFLAGS="-DNDEBUG" LDFLAGS="-mmacosx-version-min=10.6" --prefix="/Applications/UrBackup Client.app/Contents/MacOS"
+#make clean
 make -j5
 make install DESTDIR=$PWD/osx-pkg2
 mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/bin"

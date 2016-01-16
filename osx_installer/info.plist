@@ -7,7 +7,7 @@
   <key>CFBundleExecutable</key>
   <string>urbackupclientgui</string>
   <key>CFBundleIdentifier</key>
-  <string>org.urbackup.client.frontend.bundle2</string>
+  <string>org.urbackup.client.frontend</string>
   <key>CFBundleName</key>
   <string>UrBackup Client</string>
   <key>CFBundleIconFile</key>
