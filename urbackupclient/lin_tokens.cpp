@@ -85,8 +85,15 @@ std::vector<std::string> get_users()
 	std::vector<std::string> ret;
 	for(std::string line; std::getline(passwd, line);)
 	{
-		std::string user = getuntil(":", line);
-		ret.push_back((user));
+		if(line.empty() || line[0]=='#')
+		{
+			continue;
+		}
+		std::string user = trim(getuntil(":", line));
+		if(!user.empty())
+		{
+			ret.push_back(user);
+		}
 	}
 
 	return ret;
@@ -104,8 +111,16 @@ std::vector<std::string> get_groups()
 	std::vector<std::string> ret;
 	for(std::string line; std::getline(group, line);)
 	{
-		std::string cgroup = getuntil(":", line);
-		ret.push_back((cgroup));
+		if(line.empty() || line[0]=='#')
+		{
+			continue;
+		}
+		
+		std::string cgroup = trim(getuntil(":", line));
+		if(!cgroup.empty())
+		{
+			ret.push_back(cgroup);
+		}
 	}
 
 	return ret;
