@@ -664,7 +664,7 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
 	}
 
-	DWORD rc;
+	BOOL rc;
 	if(transaction==NULL)
 	{
 		rc=CreateSymbolicLink(ConvertToWchar(lname).c_str(), ConvertToWchar(target).c_str(), flags);
@@ -677,7 +677,7 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 	{
 		Log("Creating symbolic link from \""+lname+"\" to \""+target+"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
 	}
-	return rc!=0;
+	return rc==TRUE;
 #else
 	return false;
 #endif
