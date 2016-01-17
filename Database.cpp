@@ -200,7 +200,10 @@ bool CDatabase::Write(std::string pQuery)
 
 bool CDatabase::BeginReadTransaction()
 {
-	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	if (write_lock.get() == NULL)
+	{
+		transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	}
 
 	in_transaction = true;
 	if(Write("BEGIN"))
@@ -216,7 +219,10 @@ bool CDatabase::BeginReadTransaction()
 
 bool CDatabase::BeginWriteTransaction()
 {
-	transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	if (write_lock.get() == NULL)
+	{
+		transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	}
 
 	in_transaction = true;
 	if(Write("BEGIN IMMEDIATE;"))
@@ -234,6 +240,7 @@ bool CDatabase::EndTransaction(void)
 {
 	Write("END;");
 	in_transaction=false;
+	transaction_read_lock.reset();
 	IScopedLock lock(lock_mutex);
 	bool waited=false;
 	while(*lock_count>0)
@@ -245,7 +252,6 @@ bool CDatabase::EndTransaction(void)
 	{
 		Server->wait(50);
 	}
-	transaction_read_lock.reset();
 	return true;
 }
 
@@ -253,6 +259,7 @@ bool CDatabase::RollbackTransaction()
 {
 	Write("ROLLBACK;");
 	in_transaction = false;
+	transaction_read_lock.reset();
 	IScopedLock lock(lock_mutex);
 	bool waited = false;
 	while (*lock_count>0)
@@ -264,7 +271,6 @@ bool CDatabase::RollbackTransaction()
 	{
 		Server->wait(50);
 	}
-	transaction_read_lock.reset();
 	return true;
 }
 
@@ -272,7 +278,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 {
 	IScopedReadLock lock(NULL);
 
-	if (!in_transaction)
+	if (!in_transaction && write_lock.get()==NULL)
 	{
 		lock.relock(single_user_mutex);
 	}
@@ -343,7 +349,7 @@ IQuery* CDatabase::Prepare(int id, std::string pQuery)
 {
 	IScopedReadLock lock(NULL);
 
-	if (!in_transaction)
+	if (!in_transaction && write_lock.get()==NULL)
 	{
 		lock.relock(single_user_mutex);
 	}
@@ -541,7 +547,7 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
 {
 	IScopedReadLock lock(NULL);
 
-	if (!in_transaction)
+	if (!in_transaction && write_lock.get()==NULL)
 	{
 		lock.relock(single_user_mutex);
 	}
@@ -644,7 +650,14 @@ void CDatabase::unlockForSingleUse()
 
 ISharedMutex* CDatabase::getSingleUseMutex()
 {
-	return single_user_mutex;
+	if (write_lock.get() == NULL)
+	{
+		return single_user_mutex;
+	}
+	else
+	{
+		return NULL;
+	}	
 }
 
 #endif //NO_SQLITE

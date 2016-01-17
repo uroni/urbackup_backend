@@ -58,7 +58,7 @@ ReadLock::ReadLock( pthread_rwlock_t* read_lock )
 	int rc = pthread_rwlock_rdlock(read_lock);
 	if(rc)
 	{
-		Server->Log("Error locking rwlock rc="+convert(rc), LL_ERROR);
+		Server->Log("Error locking rwlock_rdlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
@@ -79,7 +79,7 @@ WriteLock::WriteLock( pthread_rwlock_t* write_lock )
 	int rc = pthread_rwlock_wrlock(write_lock);
 	if(rc)
 	{
-		Server->Log("Error locking rwlock rc="+convert(rc), LL_ERROR);
+		Server->Log("Error locking rwlock_wrlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
