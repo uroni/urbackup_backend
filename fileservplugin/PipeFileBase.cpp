@@ -167,8 +167,7 @@ bool PipeFileBase::Seek(_i64 spos)
 
 	if(buf_r_pos<=buf_w_pos)
 	{
-		if(seeked_r_pos>=0
-			&& static_cast<size_t>(seeked_r_pos)<=buf_w_pos)
+		if(seeked_r_pos>=0)
 		{
 			curr_pos = spos;
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
@@ -260,7 +259,14 @@ bool PipeFileBase::fillBuffer()
 {
 	IScopedLock lock(buffer_mutex.get());
 
-	size_t bsize_free = buffer_size - buf_w_pos;
+	size_t bsize_free = 0;
+
+	if (buf_w_pos == buffer_size)
+	{
+		buf_circle = true;
+		buf_w_pos = 0;
+		buf_w_reserved_pos = 0;
+	}
 
 	if(buf_r_pos>buf_w_pos)
 	{
@@ -271,37 +277,11 @@ bool PipeFileBase::fillBuffer()
 			return true;
 		}
 
-		if(buf_r_pos-buf_w_pos - 1 < bsize_free)
-		{
-			bsize_free = buf_r_pos - buf_w_pos - 1;
-		}
+		bsize_free = buf_r_pos - buf_w_pos - buffer_keep_free;
 	}
-
-	if (bsize_free==0
-		&& buf_w_pos == buf_r_pos
-		&& buf_w_pos == buffer_size)
+	else
 	{
-		buf_circle = true;
-		buf_w_pos = 0;
-		buf_w_reserved_pos = 0;
-
-		bsize_free = buffer_size-1;
-	}
-
-	if(bsize_free==0 && buf_w_pos>buf_r_pos)
-	{
-		if(buf_r_pos<buffer_keep_free)
-		{
-			lock.relock(NULL);
-			Server->wait(10);
-			return true;
-		}
-
-		buf_circle=true;
-		buf_w_pos = 0;
-		buf_w_reserved_pos=0;
-
-		bsize_free = buf_r_pos-1;
+		bsize_free = buffer_size - buf_w_pos;
 	}
 
 	if(bsize_free==0)
