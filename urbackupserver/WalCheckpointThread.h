@@ -12,5 +12,8 @@ public:
 	void operator()();
 
 private:
+
+	void passive_checkpoint();
+
 	int64 last_checkpoint_wal_size;
 };

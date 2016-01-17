@@ -20,52 +20,9 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
-#include "../Interface/Mutex.h"
-#include "../Interface/Condition.h"
-#include "../Interface/ThreadPool.h"
 #include "database.h"
 #include "../Interface/Database.h"
 #include <memory>
-
-namespace
-{
-	class TimedDbLock : public IThread
-	{
-	public:
-		TimedDbLock()
-			: mutex(Server->createMutex()), cond(Server->createCondition()), has_lock(false)
-		{
-
-		}
-
-		void operator()()
-		{
-			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
-			db->lockForSingleUse();
-			{
-				IScopedLock lock(mutex.get());
-				has_lock = true;
-				cond->notify_all();
-			}			
-			Server->wait(1000);
-			db->unlockForSingleUse();
-		}
-
-		void waitForLock()
-		{
-			IScopedLock lock(mutex.get());
-			while (!has_lock)
-			{
-				cond->wait(&lock);
-			}
-		}
-
-	private:
-		std::auto_ptr<IMutex> mutex;
-		std::auto_ptr<ICondition> cond;
-		bool has_lock;
-	};
-}
 
 WalCheckpointThread::WalCheckpointThread()
 	: last_checkpoint_wal_size(0)
@@ -87,19 +44,11 @@ void WalCheckpointThread::checkpoint()
 		{
 			wal_file.reset();
 
+			passive_checkpoint();
+
 			Server->Log("Files WAL file greater than 1GiB. Doing full WAL checkpoint...", LL_INFO);
 
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
-
-			//Get rid of writers for a second
-			TimedDbLock timed_db_lock;
-			THREADPOOL_TICKET ticket = Server->getThreadPool()->execute(&timed_db_lock);
-			timed_db_lock.waitForLock();
-
-			db->Write("PRAGMA wal_checkpoint(PASSIVE)");
-
-			Server->getThreadPool()->waitFor(ticket);
-
 			db->lockForSingleUse();
 			db->Write("PRAGMA wal_checkpoint(TRUNCATE)");
 			db->unlockForSingleUse();
@@ -112,16 +61,7 @@ void WalCheckpointThread::checkpoint()
 
 			wal_file.reset();
 
-			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
-
-			//Get rid of writers for a second
-			TimedDbLock timed_db_lock;
-			THREADPOOL_TICKET ticket = Server->getThreadPool()->execute(&timed_db_lock);
-			timed_db_lock.waitForLock();
-
-			db->Write("PRAGMA wal_checkpoint(PASSIVE)");
-
-			Server->getThreadPool()->waitFor(ticket);
+			passive_checkpoint();
 		}
 		else if (wal_size < last_checkpoint_wal_size)
 		{
@@ -141,4 +81,14 @@ void WalCheckpointThread::operator()()
 		Server->wait(10000); //every 10s
 		checkpoint();
 	}
+}
+
+void WalCheckpointThread::passive_checkpoint()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	db_results res = db->Read("PRAGMA wal_checkpoint(PASSIVE)");
+	if (!res.empty())
+	{
+		Server->Log("Passive WAL checkpoint completed busy=" + res[0]["busy"] + " checkpointed=" + res[0]["checkpointed"] + " log=" + res[0]["log"]);
+	}	
 }
