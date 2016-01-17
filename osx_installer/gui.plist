@@ -6,11 +6,11 @@
 		<key>BundleHasStrictIdentifier</key>
 		<true/>
 		<key>BundleIsRelocatable</key>
-		<true/>
+		<false/>
 		<key>BundleIsVersionChecked</key>
 		<true/>
 		<key>BundleOverwriteAction</key>
-		<string>upgrade</string>
+		<string>update</string>
 		<key>RootRelativeBundlePath</key>
 		<string>Applications/UrBackup Client.app</string>
 	</dict>

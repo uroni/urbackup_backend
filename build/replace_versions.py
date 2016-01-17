@@ -106,11 +106,20 @@ if os.path.exists("client"):
 						  "client/urbackup.nsi",
 						  "client/urbackup_update.nsi",
 						  "client/urbackup_notray.nsi",
-						  "client/build_msi.bat"]
+						  "client/build_msi.bat",
+						  "osx_installer/resources/welcome.html"]
 
 	for short_file in client_short_files:
 		replace_in_file(short_file, "$version_short$", version["client"]["short"])
 
+	version_maj = version["client"]["full_numeric"].split(".")[0]
+	version_min = int(version["client"]["full_numeric"].split(".")[1])*1000+int(version["client"]["full_numeric"].split(".")[2])
+	
+	version_num_short = version["client"]["full_numeric"].split(".")[0] + "." + version["client"]["full_numeric"].split(".")[1] + "." + version["client"]["full_numeric"].split(".")[2]
+	replace_in_file("osx_installer/info.plist", "$version_num_short$", version_num_short)
+	
+	replace_in_file("osx_installer/info.plist", "$version_maj$", version_maj)
+	replace_in_file("osx_installer/info.plist", "$version_min$", str(version_min))
 
 	replace_in_file("client/urbackup.wxs", "$version_full_numeric$", version["client"]["full_numeric"])
 	replace_in_file("client/urbackup.wxi", "$product_id$", str(uuid.uuid1()))

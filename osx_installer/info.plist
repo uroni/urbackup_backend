@@ -12,16 +12,18 @@
   <string>UrBackup Client</string>
   <key>CFBundleIconFile</key>
   <string>urbackup.icns</string>
+  <key>CFBundleVersion</key>
+  <string>$version_num_short$</string>
   <key>CFBundleShortVersionString</key>
-  <string>2.0</string>
+  <string>$version_num_short$</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>IFMajorVersion</key>
-  <integer>0</integer>
+  <integer>$version_maj$</integer>
   <key>IFMinorVersion</key>
-  <integer>1</integer>
+  <integer>$version_min$</integer>
   <key>LSUIElement</key>
   <string>1</string>
   <key>LSMultipleInstancesProhibited</key>
