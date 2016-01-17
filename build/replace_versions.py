@@ -107,7 +107,8 @@ if os.path.exists("client"):
 						  "client/urbackup_update.nsi",
 						  "client/urbackup_notray.nsi",
 						  "client/build_msi.bat",
-						  "osx_installer/resources/welcome.html"]
+						  "osx_installer/resources/welcome.html",
+						  "create_osx_installer.sh"]
 
 	for short_file in client_short_files:
 		replace_in_file(short_file, "$version_short$", version["client"]["short"])
@@ -117,6 +118,7 @@ if os.path.exists("client"):
 	
 	version_num_short = version["client"]["full_numeric"].split(".")[0] + "." + version["client"]["full_numeric"].split(".")[1] + "." + version["client"]["full_numeric"].split(".")[2]
 	replace_in_file("osx_installer/info.plist", "$version_num_short$", version_num_short)
+	replace_in_file("create_osx_installer.sh", "$version_num_short$", version_num_short)
 	
 	replace_in_file("osx_installer/info.plist", "$version_maj$", version_maj)
 	replace_in_file("osx_installer/info.plist", "$version_min$", str(version_min))
