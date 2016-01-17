@@ -972,6 +972,10 @@ void IndexThread::indexDirs(void)
 				{
 					VSSLog("Creating snapshot of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
+				else
+				{
+					VSSLog("Backing up \"" + scd->dir + "\" without snapshot.", LL_INFO);
+				}
 
 				if (backup_dirs[i].flags & EBackupDirFlag_RequireSnapshot)
 				{
@@ -979,7 +983,7 @@ void IndexThread::indexDirs(void)
 				}
 				else
 				{
-					shareDir(starttoken, scd->dir, scd->target);
+					shareDir(starttoken, backup_dirs[i].tname, removeDirectorySeparatorAtEnd(backup_dirs[i].path));
 				}
 			}
 			else
@@ -1499,7 +1503,11 @@ bool IndexThread::readBackupScripts()
 	}
 
 	std::vector<std::string> script_paths;
+#ifndef _WIN32
 	TokenizeMail(script_path, script_paths, ":");
+#else
+	script_paths.push_back(script_path);
+#endif
 
 	std::string first_script_path;
 	for (size_t j = 0; j < script_paths.size(); ++j)
@@ -4201,6 +4209,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 		{
 			if(!backup_dirs[i].symlinked_confirmed)
 			{
+				VSSLog("Not backing up unconfirmed symbolic link \"" + backup_dirs[i].tname + "\" to \"" + backup_dirs[i].path, LL_INFO);
 #ifdef _WIN32
 				if(dwt!=NULL)
 				{
@@ -4540,7 +4549,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	dir->ref->volpath=(snapshot_target);
 	dir->starttime=Server->getTimeSeconds();
-	dir->target=dir->ref->volpath+ (dir->target.empty()? "" : dir->target);
+	dir->target= removeDirectorySeparatorAtEnd(dir->ref->volpath+ (dir->target.empty()? "" : dir->target));
 	if(dir->fileserv)
 	{
 		shareDir(starttoken, dir->dir, dir->target);
