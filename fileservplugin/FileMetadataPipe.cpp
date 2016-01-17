@@ -831,8 +831,8 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 		if(metadata_buffer_size-metadata_buffer_off==0)
 		{
 			backup_state=BackupState_EAttrInit;
-			return true;
 		}
+		return true;
 	}
 	else if(backup_state==BackupState_EAttrInit)
 	{
@@ -867,13 +867,13 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 				eattr_idx=0;
 				backup_state=BackupState_EAttr_Vals_Key;
 				eattr_key_off=0;
-				return true;
 			}
 			else
 			{
 				return false;
 			}
 		}
+		return true;
 	}
 	else if(backup_state==BackupState_EAttr_Vals_Key)
 	{
@@ -893,8 +893,8 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 				return false;
 			}
 			eattr_val_off=0;
-			return true;
 		}
+		return true;
 	}
 	else if (backup_state == BackupState_EAttr_Vals_Val)
 	{
@@ -912,8 +912,6 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 				++eattr_idx;
 				backup_state = BackupState_EAttr_Vals_Key;
 				eattr_key_off = 0;
-
-				return true;
 			}
 			else
 			{
@@ -921,6 +919,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 				return false;
 			}
 		}
+		return true;
 	}
 
 	return false;
