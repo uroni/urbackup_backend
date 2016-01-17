@@ -346,7 +346,7 @@ bool IncrFileBackup::doFileBackup()
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num, logid, with_hashes));
+		incremental_num, logid, with_hashes, shares_without_snapshot));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -418,7 +418,7 @@ bool IncrFileBackup::doFileBackup()
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true);
 				}
 
 				if(skip_dir_completely>0)
@@ -1415,7 +1415,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 
 				if(!curr_file.isdir || curr_file.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path);
+					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path, false);
 				}
 
 				if( hasChange(line, deleted_ids) )

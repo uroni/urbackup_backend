@@ -205,7 +205,8 @@ bool FullFileBackup::doFileBackup()
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
-		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0, logid, with_hashes));
+		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
+		0, logid, with_hashes, shares_without_snapshot));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -300,7 +301,7 @@ bool FullFileBackup::doFileBackup()
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true);
 
 					for(size_t j=0;j<folder_items.size();++j)
 					{

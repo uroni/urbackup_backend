@@ -135,7 +135,7 @@ public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes);
+		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot);
 
 	~ServerDownloadThread();
 
@@ -175,7 +175,7 @@ public:
 	bool isOffline();
 
 	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
-		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f);
+		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 
@@ -209,6 +209,8 @@ private:
 	bool hasFullQueuedAfter(std::deque<SQueueItem>::iterator it);
 
 	void postponeQuitStop(size_t idx);
+
+	bool fileHasSnapshot(const std::string& remote_fn);
 
 
 	FileClient& fc;
@@ -253,4 +255,6 @@ private:
 	ICondition* cond;
 
 	logid_t logid;
+
+	std::vector<std::string> shares_without_snapshot;
 };

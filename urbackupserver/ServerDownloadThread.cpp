@@ -40,13 +40,13 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, const std::string& clientsubname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes)
+	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname), clientsubname(clientsubname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0)
+	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -491,6 +491,12 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			ret=false;
 			has_timeout = true;
 		}
+
+		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn))
+		{
+			ret = false;
+			has_timeout = true;
+		}
 	}
 	else
 	{
@@ -540,7 +546,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile());
+		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(), true);
 	}
 	else
 	{
@@ -602,7 +608,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL);
+			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL, true);
 			return true;
 		}
 		else
@@ -722,6 +728,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			has_timeout=true;
 		}
 
+		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn))
+		{
+			has_timeout = true;
+		}
+
 		{
 			IScopedLock lock(mutex);
 			all_downloads_ok=false;
@@ -787,7 +798,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.release();
 		sparse_extents_f_delete.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f);
+			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f, true);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -796,14 +807,15 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
-		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST )
+		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST
+		|| (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn) ) )
 		return false;
 	else
 		return true;
 }
 
 void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f)
+	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse)
 {
 	int l_backup_id=backupid;
 
@@ -827,6 +839,7 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 	data.addInt64(t_filesize);
 	data.addString(sha_dig);
 	data.addString(sparse_extents_f!=NULL ? sparse_extents_f->getFilename() : "");
+	data.addChar(hash_with_sparse ? 1 : 0);
 	metadata.serialize(data);
 
 	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName((dstpath))+"\"", LL_DEBUG);
@@ -1348,7 +1361,7 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 
 			if(retval!=0)
 			{
-				ServerLogger::Log(logid, "Script \""+todl.fn+"\" return a nun-null value "+convert(retval)+". Failing backup.", LL_ERROR);
+				ServerLogger::Log(logid, "Script \""+todl.fn+"\" returned a nun-null value "+convert(retval)+". Failing backup.", LL_ERROR);
 				return false;
 			}
 		}		
@@ -1356,6 +1369,11 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 	else
 	{
 		return false;
+	}
+
+	if (sha_dig.empty())
+	{
+		ServerLogger::Log(logid, "Missing checksum for script output for command \"" + todl.fn + "\"", LL_WARNING);
 	}
 	
 	return true;
@@ -1409,4 +1427,20 @@ void ServerDownloadThread::postponeQuitStop( size_t idx )
 			dl_queue.push_back(postpone_item);
 		}
 	}
+}
+
+bool ServerDownloadThread::fileHasSnapshot(const std::string & remote_fn)
+{
+	std::string share = getuntil("/", remote_fn);
+	if (share.empty())
+	{
+		share = remote_fn;
+	}
+
+	if (share.find("|") != std::string::npos)
+	{
+		share = getafter("|", share);
+	}
+
+	return std::find(shares_without_snapshot.begin(), shares_without_snapshot.end(), share) == shares_without_snapshot.end();
 }
