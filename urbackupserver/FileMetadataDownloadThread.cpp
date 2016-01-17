@@ -86,6 +86,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 		return false;
 	}
 
+	int64 metadataf_pos = 0;
 	ServerLogger::Log(logid, "Saving file metadata...", LL_INFO);
 
 	last_metadata_ids.reserve(8000);
@@ -112,6 +113,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			return true;
 		}
 
+		metadataf_pos += 1;
+
 		if(ch==ID_METADATA_NOP)
 		{
 			continue;
@@ -126,6 +129,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				return false;
 			}
 			
+			metadataf_pos += sizeof(curr_fn_size);
 			unsigned int path_checksum = urb_adler32(urb_adler32(0, NULL, 0), reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size));
 
 			curr_fn_size = little_endian(curr_fn_size);
@@ -141,6 +145,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 					return false;
 				}
 
+				metadataf_pos += curr_fn.size();
 				path_checksum = urb_adler32(path_checksum, &curr_fn[0], static_cast<_u32>(curr_fn.size()));
 			}
 			else
@@ -149,12 +154,19 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				return false;
 			}
 
+			if (curr_fn == "fmartin/wxWidgets-3.0.2/samples/help/doc.chm")
+			{
+				int abc = 5;
+			}
+
 			unsigned int read_path_checksum =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&read_path_checksum), sizeof(read_path_checksum))!=sizeof(read_path_checksum))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Path checksum could not be read.", LL_ERROR);
 				return false;
 			}
+
+			metadataf_pos += sizeof(read_path_checksum);
 
 			if(little_endian(read_path_checksum)!=path_checksum)
 			{
@@ -237,6 +249,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				return false;
 			}
 
+			metadataf_pos += sizeof(common_metadata_size);
+
 			unsigned int common_metadata_checksum = urb_adler32(urb_adler32(0, NULL, 0), reinterpret_cast<char*>(&common_metadata_size), sizeof(common_metadata_size));
 			
 			common_metadata_size = little_endian(common_metadata_size);
@@ -250,6 +264,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				return false;
 			}
 
+			metadataf_pos += common_metadata.size();
+
 			common_metadata_checksum = urb_adler32(common_metadata_checksum, &common_metadata[0], static_cast<_u32>(common_metadata.size()));
 
 			unsigned int read_common_metadata_checksum =0;
@@ -258,6 +274,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata checksum could not be read.", LL_ERROR);
 				return false;
 			}
+
+			metadataf_pos += sizeof(read_common_metadata_checksum);
 
 			if(little_endian(read_common_metadata_checksum)!=common_metadata_checksum)
 			{
@@ -328,11 +346,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			bool ok=false;
 			if(ch & ID_METADATA_OS_WIN)
 			{
-				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset);
+				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, metadataf_pos);
 			}
             else if(ch & ID_METADATA_OS_UNIX)
             {
-                ok = applyUnixMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset);
+                ok = applyUnixMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, metadataf_pos);
             }
 
 			if(!ok)
@@ -440,7 +458,7 @@ namespace
     const int64 unix_meta_magic =  little_endian(0xFE4378A3467647F0ULL);
 }
 
-bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset)
+bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, int64& metadataf_pos)
 {
 	int64 win32_magic_and_size[2];
 	win32_magic_and_size[1]=win32_meta_magic;
@@ -461,6 +479,8 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
+
+	metadataf_pos += sizeof(stat_data_size);
 
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size));
 
@@ -487,6 +507,8 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		return false;
 	}
 
+	metadataf_pos += 1;
+
 	data_checksum = urb_adler32(data_checksum, &version, 1);
 
 	if(version!=1)
@@ -512,6 +534,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		return false;
 	}
 
+	metadataf_pos += static_cast<_u32>(stat_data.size());
 	data_checksum = urb_adler32(data_checksum, stat_data.data(), static_cast<_u32>(stat_data.size()));
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
@@ -531,6 +554,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			return false;
 		}
 
+		metadataf_pos += sizeof(cont);
 		data_checksum = urb_adler32(data_checksum, &cont, 1);
 
 		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&cont), sizeof(cont), cb))
@@ -559,6 +583,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			return false;
 		}
 
+		metadataf_pos += metadata_id_size;
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stream_id), metadata_id_size);
 
 		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stream_id), metadata_id_size, cb))
@@ -580,6 +605,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 				return false;
 			}
 
+			metadataf_pos += stream_name.size();
 			data_checksum = urb_adler32(data_checksum, stream_name.data(), static_cast<_u32>(stream_name.size()));
 
 			if(!dry_run && !writeRepeatFreeSpace(output_f, stream_name.data(), stream_name.size(), cb))
@@ -603,6 +629,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 				return false;
 			}
 
+			metadataf_pos += toread;
 			data_checksum = urb_adler32(data_checksum, buffer.data(), toread);
 
 			if(!dry_run && !writeRepeatFreeSpace(output_f, buffer.data(), toread, cb))
@@ -624,6 +651,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		return false;
 	}
 
+	metadataf_pos += sizeof(read_data_checksum);
 	if(little_endian(read_data_checksum)!=data_checksum)
 	{
 		ServerLogger::Log(logid, "Error saving metadata. Stat data checksum wrong.", LL_ERROR);
@@ -647,7 +675,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	return true;
 }
 
-bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback* cb, int64 output_offset)
+bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback* cb, int64 output_offset, int64& metadataf_pos)
 {
     int64 unix_magic_and_size[2];
     unix_magic_and_size[1]=unix_meta_magic;
@@ -669,6 +697,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		return false;
 	}
 
+	metadataf_pos += sizeof(stat_data_size);
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size));
 
 	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
@@ -700,6 +729,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         return false;
     }
 
+	metadataf_pos += 1;
 	data_checksum = urb_adler32(data_checksum, &version, 1);
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
@@ -719,6 +749,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         return false;
     }
 
+	metadataf_pos += static_cast<_u32>(stat_data.size());
 	data_checksum = urb_adler32(data_checksum, stat_data.data(), static_cast<_u32>(stat_data.size()));
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
@@ -736,6 +767,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         return false;
     }
 
+	metadataf_pos += sizeof(num_eattr_keys);
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys));
 
     if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys), cb))
@@ -757,6 +789,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
             return false;
         }
 
+		metadataf_pos += sizeof(key_size);
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&key_size), sizeof(key_size));
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&key_size), sizeof(key_size), cb))
@@ -777,6 +810,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
             return false;
         }
 
+		metadataf_pos += key_size;
 		data_checksum = urb_adler32(data_checksum, &eattr_key[0], key_size);
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_key.data(), eattr_key.size(), cb))
@@ -794,6 +828,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
             return false;
         }
 
+		metadataf_pos += sizeof(val_size);
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&val_size), sizeof(val_size));
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&val_size), sizeof(val_size), cb))
@@ -814,6 +849,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
             return false;
         }
 
+		metadataf_pos += val_size;
 		data_checksum = urb_adler32(data_checksum, &eattr_val[0], val_size);
 
         if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_val.data(), eattr_val.size(), cb))
@@ -832,6 +868,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		return false;
 	}
 
+	metadataf_pos += sizeof(read_data_checksum);
 	if(little_endian(read_data_checksum)!=data_checksum)
 	{
 		ServerLogger::Log(logid, "Error saving metadata. Stat data checksum wrong.", LL_ERROR);
