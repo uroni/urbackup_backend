@@ -69,6 +69,11 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 		return;
 	}
 
+#ifdef __APPLE__
+	optval = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+
 	sockaddr_in addr;
 
 	memset(&addr, 0, sizeof(sockaddr_in));
@@ -176,6 +181,10 @@ void CServiceAcceptor::operator()(void)
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 				if(ns!=SOCKET_ERROR)
 				{
+#ifdef __APPLE__
+					int optval = 1;
+					setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 					//Server->Log(name+": New Connection incomming "+convert(Server->getTimeMS())+" s: "+convert((int)ns), LL_DEBUG);
 
 	#ifdef _WIN32

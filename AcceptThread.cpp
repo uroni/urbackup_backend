@@ -89,6 +89,10 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 		error=true;
 		return;
 	}
+#ifdef __APPLE__
+	optval = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 
 	sockaddr_in addr;
 
@@ -180,6 +184,11 @@ void CAcceptThread::operator()(bool single)
 			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 			if(ns!=SOCKET_ERROR)
 			{
+
+#ifdef __APPLE__
+				int optval = 1;
+				setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 				//Server->Log("New Connection incomming", LL_INFO);
 
 				OutputCallback *output=new OutputCallback(ns);

@@ -122,6 +122,12 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	type |= SOCK_CLOEXEC;
 #endif
 	SOCKET p=socket(AF_INET, type, 0);
+
+#ifdef __APPLE__
+	int optval = 1;
+	setsockopt(p, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+
 	sockaddr_in addr;
 	memset(&addr,0,sizeof(sockaddr_in));
 	if(!LookupBlocking(client, &addr.sin_addr))

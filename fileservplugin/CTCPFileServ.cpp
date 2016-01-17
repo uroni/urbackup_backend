@@ -141,6 +141,10 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start", LL_ERROR);
 			return false;
 		}
+#ifdef __APPLE__
+		optval = 1;
+		setsockopt(mSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 
 		sockaddr_in addr;
 
@@ -228,6 +232,10 @@ bool CTCPFileServ::TcpStep(void)
 		SOCKET ns=accept(mSocket, (sockaddr*)&naddr, &addrsize);
 		if(ns>0)
 		{
+#ifdef __APPLE__
+			int optval = 1;
+			setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 			cs.Enter();
 			//Log("New Connection incomming", LL_DEBUG);
 			CClientThread *clientthread=new CClientThread(ns, this);

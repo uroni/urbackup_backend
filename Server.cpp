@@ -1036,6 +1036,11 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	fcntl(s,F_SETFL,fcntl(s, F_GETFL, 0) | O_NONBLOCK);
 #endif
 
+#ifdef __APPLE__
+	int val = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val));
+#endif
+
 	int rc=connect(s, (sockaddr*)&server, sizeof(sockaddr_in) );
 #ifndef _WIN32
 	if(rc==SOCKET_ERROR)
