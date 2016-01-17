@@ -46,6 +46,31 @@ void WalCheckpointThread::checkpoint()
 
 			passive_checkpoint();
 
+			Server->Log("Syncing database...", LL_DEBUG);
+
+			int rw_mode = MODE_RW;
+#ifdef _WIN32
+			rw_mode = MODE_RW_DEVICE;
+#endif
+			{
+				std::auto_ptr<IFile> db_file(Server->openFile("urbackup" + os_file_sep() + "backup_server_files.db", rw_mode));
+				if (db_file.get() != NULL)
+				{
+					db_file->Sync();
+				}
+			}
+
+			Server->Log("Syncing wal file...", LL_DEBUG);
+
+			{
+				std::auto_ptr<IFile> rw_wal_file(Server->openFile("urbackup" + os_file_sep() + "backup_server_files.db-wal", rw_mode));
+				if (rw_wal_file.get() != NULL)
+				{
+					rw_wal_file->Sync();
+				}
+			}
+
+
 			Server->Log("Files WAL file greater than 1GiB. Doing full WAL checkpoint...", LL_INFO);
 
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);

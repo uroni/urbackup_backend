@@ -95,7 +95,8 @@ bool File::Open(std::string pfn, int mode)
 	else if( mode==MODE_RW
 		|| mode==MODE_RW_SEQUENTIAL
 		|| mode==MODE_RW_CREATE
-		|| mode==MODE_RW_READNONE )
+		|| mode==MODE_RW_READNONE
+		|| mode==MODE_RW_DEVICE)
 	{
 		flags=O_RDWR;
 		if( mode==MODE_RW_CREATE )

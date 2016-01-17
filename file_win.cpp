@@ -67,11 +67,13 @@ bool File::Open(std::string pfn, int mode)
 	else if( mode==MODE_RW 
 		|| mode==MODE_RW_SEQUENTIAL
 		|| mode==MODE_RW_CREATE
-		|| mode==MODE_RW_READNONE)
+		|| mode==MODE_RW_READNONE
+		|| mode== MODE_RW_DEVICE)
 	{
 		if(mode==MODE_RW
 			|| mode==MODE_RW_SEQUENTIAL
-			|| mode==MODE_RW_READNONE)
+			|| mode==MODE_RW_READNONE
+			|| mode== MODE_RW_DEVICE)
 		{
 			dwCreationDisposition=OPEN_EXISTING;
 		}
@@ -82,7 +84,8 @@ bool File::Open(std::string pfn, int mode)
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
 
-	if(mode==MODE_READ_DEVICE)
+	if(mode==MODE_READ_DEVICE
+		|| mode== MODE_RW_DEVICE)
 	{
 		dwShareMode|=FILE_SHARE_WRITE;
 	}
