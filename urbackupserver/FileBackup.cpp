@@ -53,7 +53,6 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clien
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET)
 {
-	createHashThreads(use_reflink);
 }
 
 
@@ -549,6 +548,7 @@ bool FileBackup::doBackup()
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
 	local_hash->setupDatabase();
 
+	createHashThreads(use_reflink);
 	
 
 	bool backup_result = doFileBackup();
@@ -658,15 +658,23 @@ std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::st
 		modified_filename=true;
 	}
 
-
-	if( (modified_filename && ret.size()>=MAX_PATH-15) || (!modified_filename && ret.size()>=MAX_PATH-15))
+	const size_t ntfs_name_max = 255 - 22;
+	if(tmp.size()>ntfs_name_max)
 	{
 		if(!modified_filename)
 		{
 			ret=fn;
 		}
 		ServerLogger::Log(logid, "Filename \""+ret+"\" too long. Shortening it and appending hash.", LL_WARNING);
-		ret.resize(MAX_PATH-15);
+		tmp.resize(ntfs_name_max);
+		ret.clear();
+		try
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(ret));
+		}
+		catch (...)
+		{
+		}
 		modified_filename=true;
 	}
 
@@ -709,7 +717,7 @@ std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::st
 	if(modified_filename)
 	{
 		std::string hex_md5=Server->GenerateHexMD5(fn);
-		ret = ret+"-"+hex_md5.substr(0, 10);
+		ret = ret+hex_md5.substr(0, 11);
 	}
 	else
 	{
@@ -1624,7 +1632,7 @@ bool FileBackup::createSymlink(const std::string& name, size_t depth, const std:
 		}
 	}
 
-	return os_link_symbolic(target, name, NULL, &isdir);
+	return os_link_symbolic(target, os_file_prefix(name), NULL, &isdir);
 }
 
 bool FileBackup::startFileMetadataDownloadThread()
