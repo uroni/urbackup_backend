@@ -126,6 +126,11 @@ void BackupServerPrepareHash::operator()(void)
 			std::string sparse_extents_fn;
 			rd.getStr(&sparse_extents_fn);
 
+			char c_hash_with_sparse;
+			rd.getChar(&c_hash_with_sparse);
+
+			bool hash_with_sparse = c_hash_with_sparse==1;
+
 			std::auto_ptr<ExtentIterator> extent_iterator;
 			if (!sparse_extents_fn.empty())
 			{
@@ -170,11 +175,11 @@ void BackupServerPrepareHash::operator()(void)
 				if(!diff_file)
 				{
 
-					h=hash_sha(tf, extent_iterator.get());
+					h=hash_sha(tf, extent_iterator.get(), hash_with_sparse);
 				}
 				else
 				{
-					h=hash_with_patch(old_file, tf, extent_iterator.get());
+					h=hash_with_patch(old_file, tf, extent_iterator.get(), hash_with_sparse);
 				}
 
 				if(!client_sha_dig.empty() && h!=client_sha_dig)
@@ -211,7 +216,7 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator)
+std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse)
 {
 	f->Seek(0);
 	std::vector<char> buf;
@@ -264,7 +269,9 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 
 		rc=f->Read(buf.data(), hash_bsize);
 
-		if (rc == hash_bsize && buf_is_zero(buf.data(), hash_bsize))
+		if (hash_with_sparse
+			&& rc == hash_bsize
+			&& buf_is_zero(buf.data(), hash_bsize))
 		{
 			if (skip_start == -1)
 			{
@@ -308,13 +315,14 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 	return ret;
 }
 
-std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator)
+std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse)
 {
 	sha_def_init(&ctx);
 	sha_def_init(&sparse_ctx);
 
 	has_sparse_extents = false;
-	
+
+	chunk_patcher.setWithSparse(hash_with_sparse);
 	chunk_patcher.ApplyPatch(f, patch, extent_iterator);
 
 	std::string ret;

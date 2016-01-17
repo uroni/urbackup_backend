@@ -28,11 +28,11 @@ public:
 
 	bool hasError(void);
 
-	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator);
+	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse);
 
 private:
 	
-	std::string hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator);
+	std::string hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse);
 
 	void readNextExtent();
 
