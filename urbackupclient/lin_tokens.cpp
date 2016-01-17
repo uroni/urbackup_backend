@@ -1,6 +1,7 @@
 #include "tokens.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <map>
 #include <grp.h>
 #include <pwd.h>
@@ -15,6 +16,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 
 namespace tokens
 {
@@ -73,8 +75,61 @@ std::string get_hostname()
 	return hostname;
 }
 
+std::vector<std::map<std::string, std::string> > read_kv(const std::string& cmd)
+{
+	std::string data;
+	int rc = os_popen(cmd, data);
+	std::vector<std::map<std::string, std::string> >  ret;	
+	if(rc!=0)
+	{
+		return ret;
+	}
+
+	std::map<std::string, std::string> cur;
+	std::istringstream iss(data);
+	for(std::string line; std::getline(iss, line);)
+	{	
+		if(trim(line).empty())
+		{
+			if(!cur.empty())
+			{
+				ret.push_back(cur);
+			}
+			cur.clear();
+		}
+
+		std::string key = strlower(trim(getuntil(":", line)));
+		std::string value = trim(getafter(":", line));
+
+		cur[key]=value;
+	}
+	
+	if(!cur.empty())
+	{
+		ret.push_back(cur);
+	}
+	
+	return ret;
+}
+
+std::vector<std::string> read_single_k(const std::string& col, const std::string& cmd)
+{
+	std::vector<std::map<std::string, std::string> > res = read_kv(cmd);
+	std::vector<std::string> ret;
+	for(size_t i=0;i<res.size();++i)
+	{
+		std::string single = trim(res[i][col]);
+		if(!single.empty())
+		{
+			ret.push_back(single);
+		}
+	}
+	return ret;
+}
+
 std::vector<std::string> get_users()
 {
+#ifndef __APPLE__
 	std::ifstream passwd("/etc/passwd");
 
 	if(!passwd.is_open())
@@ -97,10 +152,14 @@ std::vector<std::string> get_users()
 	}
 
 	return ret;
+#else
+	return read_single_k("name", "dscacheutil -q user");
+#endif
 }
 
 std::vector<std::string> get_groups()
 {
+#ifndef __APPLE__
 	std::ifstream group("/etc/group");
 
 	if(!group.is_open())
@@ -124,6 +183,9 @@ std::vector<std::string> get_groups()
 	}
 
 	return ret;
+#else
+	return read_single_k("name", "dscacheutil -q group");
+#endif
 }
 
 std::vector<std::string> get_user_groups(const std::string& username)
@@ -208,8 +270,13 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		struct passwd* pw = getpwnam((accountname).c_str());
 		if(pw!=NULL)
 		{
+	#ifndef __APPLE__
 			static int uid_min = read_val("UID_MIN");
 			static int uid_max = read_val("UID_MAX");
+	#else
+			static int uid_min = 500;
+			static int uid_max = INT_MAX;
+	#endif
 
 			if( uid_min!=-1 && uid_max!=-1 && (
 				pw->pw_uid < uid_min ||
@@ -242,7 +309,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 
 	if(is_user)
 	{
-		struct passwd* pw = getpwnam((accountname).c_str());
+		struct passwd* pw = getpwnam(accountname.c_str());
 		if(pw==NULL)
 		{
 			Server->Log("Error getting passwd structure for user with name \""+ accountname + "\"", LL_ERROR);
@@ -259,7 +326,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	}
 	else
 	{
-		struct group* gr = getgrnam((accountname).c_str());
+		struct group* gr = getgrnam(accountname.c_str());
 		if(gr==NULL)
 		{
 			Server->Log("Error getting group structure for group with name \""+ accountname + "\"", LL_ERROR);
@@ -288,7 +355,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 	for(size_t i=0;i<users.size();++i)
 	{
-		struct passwd* pw = getpwnam((users[i]).c_str());
+		struct passwd* pw = getpwnam(users[i].c_str());
 
 		if(pw==NULL)
 		{
@@ -311,7 +378,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 	for(size_t i=0;i<groups.size();++i)
 	{
-		struct group* gr = getgrnam((groups[i]).c_str());
+		struct group* gr = getgrnam(groups[i].c_str());
 
 		if(gr==NULL)
 		{
