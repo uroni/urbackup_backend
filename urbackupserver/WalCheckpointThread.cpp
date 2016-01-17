@@ -85,10 +85,11 @@ void WalCheckpointThread::operator()()
 
 void WalCheckpointThread::passive_checkpoint()
 {
+	Server->Log("Starting passive WAL checkpoint...", LL_DEBUG);
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 	db_results res = db->Read("PRAGMA wal_checkpoint(PASSIVE)");
 	if (!res.empty())
 	{
-		Server->Log("Passive WAL checkpoint completed busy=" + res[0]["busy"] + " checkpointed=" + res[0]["checkpointed"] + " log=" + res[0]["log"]);
+		Server->Log("Passive WAL checkpoint completed busy=" + res[0]["busy"] + " checkpointed=" + res[0]["checkpointed"] + " log=" + res[0]["log"], LL_DEBUG);
 	}	
 }
