@@ -300,7 +300,7 @@ void FileBackup::logVssLogdata(int64 vss_duration_s)
 				msg = lines[i].substr(s1+1);
 			}
 
-			std::string data=getafter("-", lines[i]);
+			parseSnapshotFailed(msg);
 			ServerLogger::Log(logid, msg, loglevel);
 		}
 	}
@@ -368,9 +368,14 @@ void FileBackup::createHashThreads(bool use_reflink)
 
 void FileBackup::destroyHashThreads()
 {
-	hashpipe_prepare->Write("exit");
-	Server->getThreadPool()->waitFor(bsh_ticket);
-	Server->getThreadPool()->waitFor(bsh_prepare_ticket);
+	if (hashpipe_prepare != NULL)
+	{
+		assert(bsh_ticket != ILLEGAL_THREADPOOL_TICKET);
+		assert(bsh_prepare_ticket != ILLEGAL_THREADPOOL_TICKET);
+		hashpipe_prepare->Write("exit");
+		Server->getThreadPool()->waitFor(bsh_ticket);
+		Server->getThreadPool()->waitFor(bsh_prepare_ticket);
+	}
 
 	bsh_ticket=ILLEGAL_THREADPOOL_TICKET;
 	bsh_prepare_ticket=ILLEGAL_THREADPOOL_TICKET;
@@ -596,10 +601,11 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::string>& samedir_filenames, const std::string& curr_path)
+std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings)
 {
-	std::string ret;
-	bool modified_filename=false;
+	std::string orig_fn = fn;
+
+	bool append_hash = false;
 #ifdef _WIN32
 	std::string disallowed_chars = "\\:*?\"<>|/";
 	for(char ch=1;ch<=31;++ch)
@@ -612,91 +618,23 @@ std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::st
 		fn=="LPT2" || fn=="LPT3" || fn=="LPT4" || fn=="LPT5" || fn=="LPT6" || fn=="LPT7" || fn=="LPT8" || fn=="LPT9")
 	{
 		ServerLogger::Log(logid, "Filename \""+fn+"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
-		ret = "_" + fn;
-		modified_filename=true;
+		fn = "_" + fn;
+		append_hash =true;
 	}
 
 	if(next(fn, 0, "CON.") || next(fn, 0, "PRN.") || next(fn, 0, "AUX.") || next(fn, 0, "NUL.") || next(fn, 0, "COM1.") || next(fn, 0, "COM2.") || next(fn, 0, "COM3.") ||
 		next(fn, 0, "COM4.") || next(fn, 0, "COM5.") || next(fn, 0, "COM6.") || next(fn, 0, "COM7.") || next(fn, 0, "COM8.") || next(fn, 0, "COM9.") || next(fn, 0, "LPT1.") ||
 		next(fn, 0, "LPT2.") || next(fn, 0, "LPT3.") || next(fn, 0, "LPT4.") || next(fn, 0, "LPT5.") || next(fn, 0, "LPT6.") || next(fn, 0, "LPT7.") || next(fn, 0, "LPT8.") || next(fn, 0, "LPT9.") )
 	{
-		ServerLogger::Log(logid, "Filename \""+fn+"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
-		ret = "_" + fn;
-		modified_filename=true;
+		if (log_warnings)
+		{
+			ServerLogger::Log(logid, "Filename \"" + fn + "\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
+		}
+		fn = "_" + fn;
+		append_hash =true;
 	}
-
-	std::vector<utf8::uint16_t> tmp;
-	bool unicode_err=false;
-	try
-	{		
-		if(modified_filename)
-		{
-			utf8::utf8to16(ret.begin(), ret.end(), back_inserter(tmp) );
-		}
-		else
-		{
-			utf8::utf8to16(fn.begin(), fn.end(), back_inserter(tmp) );
-		}
-	}
-	catch (...)
-	{	
-		unicode_err=true;
-	}
-
-	if(unicode_err)
-	{
-		ServerLogger::Log(logid, "Filename \""+fn+"\" has encoding problems (assuming UTF-8 encoding). Mangling filename.", LL_WARNING);
-
-		ret.clear();
-		try
-		{
-			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(ret));
-		}
-		catch (...)
-		{
-		}		
-		modified_filename=true;
-	}
-
-	const size_t ntfs_name_max = 255 - 22;
-	if(tmp.size()>ntfs_name_max)
-	{
-		if(!modified_filename)
-		{
-			ret=fn;
-		}
-		ServerLogger::Log(logid, "Filename \""+ret+"\" too long. Shortening it and appending hash.", LL_WARNING);
-		tmp.resize(ntfs_name_max);
-		ret.clear();
-		try
-		{
-			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(ret));
-		}
-		catch (...)
-		{
-		}
-		modified_filename=true;
-	}
-
 #else
-	if((fn).size()>=NAME_MAX-11)
-	{
-		ret=fn;
-		bool log_msg=true;
-		do
-		{
-			if( log_msg )
-			{
-				ServerLogger::Log(logid, "Filename \""+fn+"\" too long. Shortening it.", LL_WARNING);
-				log_msg=false;
-			}
-			ret.resize(ret.size()-1);
-			modified_filename=true;
-		}
-		while( (ret).size()>=NAME_MAX-11 );
-	}
-
-	std::string disallowed_chars = "/";	
+	std::string disallowed_chars = "/";
 #endif
 
 	for(size_t i=0;i<disallowed_chars.size();++i)
@@ -704,52 +642,135 @@ std::string FileBackup::fixFilenameForOS(const std::string& fn, std::set<std::st
 		char ch = disallowed_chars[i];
 		if(fn.find(ch)!=std::string::npos)
 		{
-			if(!modified_filename)
+			if (log_warnings)
 			{
-				ret = fn;
-				modified_filename=true;
+				ServerLogger::Log(logid, "Filename \"" + fn + "\" contains '" + std::string(1, ch) + "' which the operating system does not allow in paths. Replacing '" + std::string(1, ch) + "' with '_' and appending hash.", LL_WARNING);
 			}
-			ServerLogger::Log(logid, "Filename \""+fn+"\" contains '"+std::string(1, ch)+"' which the operating system does not allow in paths. Replacing '"+std::string(1, ch)+"' with '_' and appending hash.", LL_WARNING);
-			ret = ReplaceChar(ret, ch, '_');
+			fn = ReplaceChar(fn, ch, '_');
+			append_hash = true;
 		}
 	}
 
-	if(modified_filename)
+#ifdef _WIN32
+	std::vector<utf8::uint16_t> tmp;
+	bool unicode_err = false;
+	try
 	{
-		std::string hex_md5=Server->GenerateHexMD5(fn);
-		ret = ret+hex_md5.substr(0, 11);
+		utf8::utf8to16(fn.begin(), fn.end(), back_inserter(tmp));
 	}
-	else
+	catch (...)
 	{
-		ret = fn;
+		unicode_err = true;
+	}
+
+	if (unicode_err)
+	{
+		if (log_warnings)
+		{
+			ServerLogger::Log(logid, "Filename \"" + fn + "\" has encoding problems (assuming UTF-8 encoding). Mangling filename.", LL_WARNING);
+		}
+
+		fn.clear();
+		try
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(fn));
+		}
+		catch (...)
+		{
+		}
+		append_hash = true;
+	}
+
+	size_t ntfs_name_max = 255;
+
+	if (append_hash)
+	{
+		ntfs_name_max -= 11;
+	}
+
+	if (tmp.size() > ntfs_name_max)
+	{
+		if (!append_hash)
+		{
+			ntfs_name_max -= 11;
+		}
+		if (log_warnings)
+		{
+			ServerLogger::Log(logid, "Filename \"" + fn + "\" too long. Shortening it and appending hash.", LL_WARNING);
+		}
+		tmp.resize(ntfs_name_max);
+		fn.clear();
+		try
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(fn));
+		}
+		catch (...)
+		{
+		}
+		append_hash = true;
+	}
+#else
+	size_t name_max = NAME_MAX-1;
+
+	if (append_hash)
+	{
+		name_max -= 11;
+	}
+
+	if (fn.size() > name_max)
+	{
+		if (!append_hash)
+		{
+			name_max -= 11;
+		}
+		if (log_warnings)
+		{
+			ServerLogger::Log(logid, "Filename \"" + fn + "\" too long. Shortening it and appending hash.", LL_WARNING);
+		}
+		fn.resize(name_max);
+		append_hash = true;
+	}
+#endif
+
+	if(append_hash)
+	{
+		std::string hex_md5 = Server->GenerateHexMD5(orig_fn);
+		size_t dot_pos = fn.find_last_of('.');
+		if (dot_pos != std::string::npos)
+		{
+			fn.insert(dot_pos, "-" + hex_md5.substr(0, 10));
+		}
+		else
+		{
+			fn = fn + "-" + hex_md5.substr(0, 10);
+		}
 	}
 
 #ifdef _WIN32
 	size_t idx=0;
-	std::string base=ret;
-	while(samedir_filenames.find(strlower(ret))!=samedir_filenames.end())
+	std::string base=fn;
+	while(samedir_filenames.find(strlower(fn))!=samedir_filenames.end())
 	{
-		ret = base + "_" + convert(idx);
+		fn = base + "_" + convert(idx);
 		++idx;
-		modified_filename=true;
 	}
 
-	samedir_filenames.insert(strlower(ret));
+	samedir_filenames.insert(strlower(fn));
 #endif
 
-	if(modified_filename)
+	if(fn!= orig_fn)
 	{
 		if(curr_path.empty())
 		{
-			filepath_corrections[fn] = ret;
+			filepath_corrections[orig_fn] = fn;
 		}
 		else
 		{
-			filepath_corrections[curr_path+"/"+fn] = ret;
+			filepath_corrections[curr_path+"/"+ orig_fn] = fn;
 		}
 	}
 
-	return ret;
+	return fn;
 }
 
 std::string FileBackup::convertToOSPathFromFileClient(std::string path)
@@ -897,7 +918,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
+					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path, false);
 				}
 
 				if( !cf.isdir && remote_path!="urbackup_backup_scripts" )
@@ -1068,7 +1089,7 @@ std::string FileBackup::getSHADef(const std::string& fn)
 	}
 
 	FsExtentIterator extent_iterator(f.get(), 32768);	
-	return BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator);
+	return BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true);
 }
 
 bool FileBackup::hasDiskError()
@@ -1225,7 +1246,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 				if(!data.isdir || data.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false);
 				}
 
 				if(data.isdir)
@@ -1238,9 +1259,8 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 					else
 					{
 						folder_files.push(std::set<std::string>());
-						curr_path += os_file_sep() + osspecific_name;
 
-						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
+						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + osspecific_name + os_file_sep() + metadata_dir_fn;
 
 						str_map::iterator sym_target = extra.find("sym_target");
 						if(sym_target!=extra.end())
@@ -1257,6 +1277,8 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 						{
 							permissions = metadata.file_permissions;
 						}
+
+						curr_path += os_file_sep() + osspecific_name;
 					}
 				}
 				else
@@ -1407,11 +1429,10 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 				}
 
 				std::string osspecific_name;
-				std::string permissions;
 
 				if(!data.isdir || data.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false);
 				}
 
 				if(data.isdir)
@@ -1424,9 +1445,8 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 					else
 					{
 						folder_files.push(std::set<std::string>());
-						curr_path += os_file_sep() + osspecific_name;
 
-						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + metadata_dir_fn;
+						std::string metadata_fn=metadata_home_path + curr_path + os_file_sep() + osspecific_name + os_file_sep() + metadata_dir_fn;
 
 						str_map::iterator sym_target = extra.find("sym_target");
 						if(sym_target!=extra.end())
@@ -1439,6 +1459,8 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						{
 							ServerLogger::Log(logid, "Error reading metadata of "+curr_path, LL_WARNING);
 						}
+
+						curr_path += os_file_sep() + osspecific_name;
 
 						bool has_perm = false;
 						for(size_t j=0;j<ids.size();++j)
@@ -1489,7 +1511,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 					for(size_t j=0;j<ids.size();++j)
 					{
 						bool denied=false;
-						if(FileMetadata::hasPermission(permissions, ids[j], denied))
+						if(FileMetadata::hasPermission(metadata.file_permissions, ids[j], denied))
 						{
 							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
 								os_file_prefix(user_view_home_path + filename)))
@@ -1619,7 +1641,7 @@ bool FileBackup::createSymlink(const std::string& name, size_t depth, const std:
 	{
 		std::set<std::string> emptyset;
 		std::string emptypath;
-		std::string component = fixFilenameForOS(toks[i], emptyset, emptypath);
+		std::string component = fixFilenameForOS(toks[i], emptyset, emptypath, true);
 
 		if(component==".." || component==".")
 			continue;
@@ -1717,6 +1739,21 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 	}
 
 	return true;
+}
+
+void FileBackup::parseSnapshotFailed(const std::string & logline)
+{
+	std::string share = getbetween("Creating snapshot of \"", "\" failed.", logline);
+	if (!share.empty())
+	{
+		shares_without_snapshot.push_back(share);
+	}
+
+	share = getbetween("Backing up \"", "\" without snapshot.", logline);
+	if (!share.empty())
+	{
+		shares_without_snapshot.push_back(share);
+	}
 }
 
 void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)
