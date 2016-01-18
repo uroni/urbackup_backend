@@ -10,8 +10,32 @@
 		<p>
 			<ul>
 				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
-				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'mac')">{tDownload preconfigured client installer for Mac OS X}</a></li>
-				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a></li>
+				<li>
+					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'mac')">{tDownload preconfigured client installer for Mac OS X}</a>
+					<p>
+						{tInstall it directly in the terminal via:}
+						<blockquote>
+							<p>
+								<code>
+									curl "{mac_url}" | bash
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
+				<li>
+					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a>
+					<p>
+						{tInstall it directly in the terminal via:}
+						<blockquote>
+							<p>
+								<code>
+									sudo wget -O - "{linux_url}" | sh
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
 			</ul>
 		</p>
 	</div>

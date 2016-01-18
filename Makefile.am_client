@@ -48,10 +48,15 @@ if MACOSX
 urbackupclientgui_LDFLAGS = -framework ServiceManagement -framework CoreServices -framework Security
 endif
 
-install-exec-local: defaults_client init.d_client
-if INSTALL_INITD
+install-exec-local: defaults_client init.d_client init.d_client_rh
+if INSTALL_DEBIAN_INITD
 	$(INSTALL) -D "$(srcdir)/init.d_client" "$(sysconfdir)/init.d/urbackupclientbackend"
 	if ! test -e "$(sysconfdir)/default/urbackupclientbackend"; then $(INSTALL) -D "$(srcdir)/defaults_client" "$(sysconfdir)/default/urbackupclientbackend"; fi
+endif
+
+if INSTALL_REDHAT_INITD
+	$(INSTALL) -D "$(srcdir)/init.d_client_rh" "$(sysconfdir)/init.d/urbackupclientbackend"
+	if ! test -e "$(sysconfdir)/sysconfig/urbackupclientbackend"; then $(INSTALL) -D "$(srcdir)/defaults_client" "$(sysconfdir)/sysconfig/urbackupclientbackend"; fi
 endif
 
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup"
@@ -174,4 +179,4 @@ noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h 
 
 EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h
 
-EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackup-client-backend.service urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb
+EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client init.d_client_rh defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackup-client-backend.service urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb client/version.txt

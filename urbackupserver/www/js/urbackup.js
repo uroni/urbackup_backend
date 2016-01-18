@@ -1348,6 +1348,29 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 	}
 }
 
+function downloadClientURL(clientid, authkey, os)
+{
+	var site_url = location.protocol+'//'+location.host+location.pathname;
+	
+	if(site_url.substr(site_url.length-1)!="/")
+	{
+		site_url+="/";
+	}
+
+	if(authkey)
+	{
+		authkey = "&authkey="+encodeURIComponent(authkey);
+	}
+	else
+	{
+		authkey = "";
+	}
+	var ses = g.session;
+	g.session=null;
+	var ret = site_url + getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
+	g.session = ses;
+	return ret;
+}
 
 function downloadClient(clientid, authkey, os)
 {
@@ -4246,6 +4269,8 @@ function addNewClient3(data)
 	}
 	else
 	{
+		data.linux_url = downloadClientURL(data.new_clientid, data.new_authkey, "linux");
+		data.mac_url = downloadClientURL(data.new_clientid, data.new_authkey, "mac");
 		var ndata=dustRender("client_added", data);
 	
 		if(g.data_f!=ndata)
