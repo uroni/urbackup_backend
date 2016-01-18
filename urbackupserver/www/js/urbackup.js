@@ -1215,12 +1215,16 @@ function show_status2(data)
 		show_select_box=true;
 	}
 	
-	var status_client_download="";
+	var status_client_download_windows="";
+	var status_client_download_linux="";
+	var status_client_download_mac="";
 	var has_client_download=false;
 	if(data.client_downloads)
 	{
 		var client_download_data=build_client_download_select(data.client_downloads);
-		status_client_download=dustRender("status_client_download", {download_clients: client_download_data});
+		status_client_download_windows=dustRender("status_client_download", {download_clients: client_download_data, os: "windows", os_windows: true});
+		status_client_download_linux=dustRender("status_client_download", {download_clients: client_download_data, os: "linux", os_linux: true});
+		status_client_download_mac=dustRender("status_client_download", {download_clients: client_download_data, os: "mac", os_mac: true});
 		has_client_download=true;
 	}
 	
@@ -1232,7 +1236,7 @@ function show_status2(data)
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: data.added_new_client, new_authkey: data.new_authkey, new_clientname: data.new_clientname,
-		status_client_download: status_client_download,
+		status_client_download_windows: status_client_download_windows, status_client_download_linux: status_client_download_linux, status_client_download_mac: status_client_download_mac,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
 		has_client_download: has_client_download, allow_add_client:allow_add_client});
 	
@@ -1321,7 +1325,9 @@ function show_status2(data)
 		
 		$("#status_table").dataTable(datatable_config);
 		
-		$("#download_client").selectpicker();
+		$("#download_client_windows").selectpicker();
+		$("#download_client_mac").selectpicker();
+		$("#download_client_linux").selectpicker();
 	}
 	
 	if(data.curr_version_num)
@@ -1343,13 +1349,13 @@ g.checkForNewVersion = function(curr_version_num, curr_version_str)
 }
 
 
-function downloadClient(clientid, authkey)
+function downloadClient(clientid, authkey, os)
 {
 	var selidx=-1;
 	
-	if(I('download_client'))
+	if(os && I('download_client_'+os))
 	{
-		selidx = I('download_client').selectedIndex;
+		selidx = I('download_client_'+os).selectedIndex;
 	}
 	
 	if(selidx!=-1 || clientid!=-1)
@@ -1365,12 +1371,11 @@ function downloadClient(clientid, authkey)
 		
 		if(clientid==-1)
 		{
-			clientid = I('download_client').value;
+			clientid = I('download_client_'+os).value;
+			$("#download_client_"+os).prop('selectedIndex', -1);
 		}
 		
-		$("#download_client").prop('selectedIndex', -1);
-		
-		location.href=getURL("download_client", "clientid="+clientid+authkey);
+		location.href=getURL("download_client", "clientid="+clientid+authkey+"&os="+os);
 	}
 }
 

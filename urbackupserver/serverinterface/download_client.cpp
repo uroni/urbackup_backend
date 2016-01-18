@@ -25,7 +25,7 @@ extern ICryptoFactory *crypto_fak;
 
 namespace
 {
-	bool verify_signature(void)
+	bool verify_signature(const std::string& exe_extension, const std::string& basename)
 	{
 		if(crypto_fak==NULL)
 			return false;
@@ -42,7 +42,7 @@ namespace
 			pubkey_fn = p_pubkey_fn;
 		}
 
-		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig2");
+		return crypto_fak->verifyFile(pubkey_fn, "urbackup/"+basename+"."+ exe_extension, "urbackup/"+ basename+".sig2");
 	}
 
 	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname, const std::string& authkey)
@@ -147,8 +147,24 @@ ACTION_IMPL(download_client)
 		if(!authkey.empty() || all_client_rights ||
 			std::find(clientids.begin(), clientids.end(), clientid)!=clientids.end() )
 		{
-			Server->Log("Verifying UrBackupUpdate.exe signature...", LL_INFO);
-			if(verify_signature())
+			std::string os = GET["os"];
+
+			std::string exe_extension = "exe";
+			std::string basename = "UrBackupUpdate";
+
+			if (os == "osx")
+			{
+				exe_extension = "sh";
+				basename = "UrBackupUpdateMac";
+			}
+			else if (os == "linux")
+			{
+				exe_extension = "sh";
+				basename = "UrBackupUpdateLinux";
+			}
+
+			Server->Log("Verifying "+ basename +"."+exe_extension+" signature...", LL_INFO);
+			if(verify_signature(exe_extension, basename))
 			{
 				IQuery *q=helper.getDatabase()->Prepare("SELECT name FROM clients WHERE id=?");
 				q->Bind(clientid);
@@ -161,11 +177,11 @@ ACTION_IMPL(download_client)
 					clientname=(res[0]["name"]);
 				}
 
-				std::string data=getFile("urbackup/UrBackupUpdate.exe");
+				std::string data=getFile("urbackup/"+basename+"."+ exe_extension);
 				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey), data) )
 				{
 					Server->setContentType(tid, "application/octet-stream");
-					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
+					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+")."+exe_extension+"\"");
 					Server->addHeader(tid, "Content-Length: "+convert(data.size()) );
 					Server->WriteRaw(tid, data.c_str(), data.size(), false);
 				}

@@ -8,7 +8,11 @@
 			{tDefault authentication key:} {new_authkey}
 		</p>
 		<p>
-			<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}')">{tDownload preconfigured client installer for Windows}</a>
+			<ul>
+				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
+				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'mac')">{tDownload preconfigured client installer for Mac OS X}</a></li>
+				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a></li>
+			</ul>
 		</p>
 	</div>
 </div>

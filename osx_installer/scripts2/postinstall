@@ -2,10 +2,26 @@
 
 set -e
 
+cp "$1.cfg" "$2/Contents/MacOS/var/initial_settings.cfg"
+
+if test ! -e "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+then
+	cp "$1.ident" "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+fi
+
 /bin/launchctl load "/Library/LaunchDaemons/org.urbackup.client.plist"
 /bin/launchctl start "org.urbackup.client.backend"
 
-"$2/Contents/MacOS/urbackupclientgui" register_login_item
+#There is user interaction required here :(
+if test ! -e "$1.silent"
+then
+	"$2/Contents/MacOS/urbackupclientgui" register_login_item
+fi
 
-CONSOLE_USER=$(ps aux | grep "CoreServices/Installer" | grep -v grep | awk '{print $1;}')
-sudo -u $CONSOLE_USER "$2/Contents/MacOS/urbackupclientgui" daemon
+for console_user in $(ps aux | grep "loginwindow" | grep -v grep | awk '{print $1;}')
+do
+	if [ "$console_user" != "root" ]
+	then
+		sudo -u "$console_user" "$2/Contents/MacOS/urbackupclientgui" daemon
+	fi
+done

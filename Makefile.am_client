@@ -64,15 +64,15 @@ if MACOSX
 install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb \
 					client/info.txt client/data/backup-bad.ico client/data/backup-ok.ico client/data/backup-progress.ico \
 					client/data/backup-progress-pause.ico client/data/backup-no-server.ico client/data/backup-no-recent.ico client/data/backup-indexing.ico \
-					client/data/logo1.png client/data/lang/*/*.mo
+					client/data/logo1.png client/data/lang/*/*.mo client/version.txt
 else
 install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb \
 					client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm \
 					client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm \
-					client/data/logo1.png client/data/lang/*/*.mo
+					client/data/logo1.png client/data/lang/*/*.mo client/version.txt
 endif
 else
-install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb
+install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb client/version.txt
 endif
 
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/urbackup/"
@@ -85,6 +85,7 @@ endif
 	$(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/mariadb" "$(DESTDIR)$(datadir)/urbackup/scripts/mariadb"
 	chmod 700 "$(DESTDIR)$(datadir)/urbackup/scripts/"*
 	chmod 700 "$(DESTDIR)$(sysconfdir)/urbackup/"*
+	$(INSTALL_DATA) "$(srcdir)/client/version.txt" "$(DESTDIR)$(localstatedir)/urbackup/version.txt"
 	
 if WITH_GUI_CLIENT
 	$(MKDIR_P) "$(DESTDIR)$(datadir)/urbackup"

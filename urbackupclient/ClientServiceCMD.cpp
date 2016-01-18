@@ -1950,23 +1950,33 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 {
 	int n_version=atoi(cmd.substr(8).c_str());
-	std::string version_1=getFile("version.txt");
-	std::string version_2=getFile("curr_version.txt");
+
+#ifdef _WIN32
+#define VERSION_FILE_PREFIX ""
+#else
+#define VERSION_FILE_PREFIX "urbackup/"
+
+	if (n_version < 200)
+	{
+		tcpstack.Send(pipe, "noop");
+		return;
+	}
+#endif
+
+	std::string version_1=getFile(VERSION_FILE_PREFIX "version.txt");
+	std::string version_2=getFile(VERSION_FILE_PREFIX "curr_version.txt");
 	if(version_1.empty() ) version_1="0";
 	if(version_2.empty() ) version_2="0";
 
-	#ifdef _WIN32
 	if( atoi(version_1.c_str())<n_version && atoi(version_2.c_str())<n_version )
 	{
 		tcpstack.Send(pipe, "update");
 	}
 	else
 	{
-	#endif
 		tcpstack.Send(pipe, "noop");
-	#ifdef _WIN32
 	}
-	#endif
+#undef VERSION_FILE_PREFIX
 }
 
 void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
@@ -2049,12 +2059,22 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1");
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&OS_SIMPLE=windows");
 #else
+
+#ifdef __APPLE__
+	std::string os_simple = "osx";
+#elif __linux__
+	std::string os_simple = "linux";
+#else
+	std::string os_simple = "unknown";
+#endif
+
+
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CMD=1");
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CMD=1&OS_SIMPLE="+os_simple);
 #endif
 }
 

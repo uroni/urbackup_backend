@@ -61,45 +61,57 @@ void ServerUpdate::update_client()
 	{
 		Server->Log("Downloading signature...", LL_INFO);
 
-		IFile* sig_file = Server->openFile("urbackup/UrBackupUpdate.sig2", MODE_WRITE);
-		if(sig_file==NULL)
+		std::vector<std::pair<std::string, std::string> > update_files;
+
+		update_files.push_back(std::make_pair(std::string("exe"), std::string("UrBackupUpdate")));
+		update_files.push_back(std::make_pair(std::string("sh"), std::string("UrBackupUpdateMac")));
+		update_files.push_back(std::make_pair(std::string("sh"), std::string("UrBackupUpdateLinux")));
+
+		for (size_t i = 0; i < update_files.size(); ++i)
 		{
-			Server->Log("Error opening signature output file urbackup/UrBackupUpdate.sig2", LL_ERROR);
-			return;
-		}
-		ObjectScope sig_file_scope(sig_file);
+			std::string basename = update_files[i].second;
+			std::string exe_extension = update_files[i].first;
 
-		bool b = url_fak->downloadFile(urbackup_update_url+"UrBackupUpdate.sig2", sig_file, http_proxy, &errmsg);
+			IFile* sig_file = Server->openFile("urbackup/"+basename+".sig2", MODE_WRITE);
+			if (sig_file == NULL)
+			{
+				Server->Log("Error opening signature output file urbackup/"+ basename+".sig2", LL_ERROR);
+				return;
+			}
+			ObjectScope sig_file_scope(sig_file);
 
-		if(!b)
-		{
-			Server->Log("Error while downloading update signature from "+urbackup_update_url+"UrBackupUpdate.sig2: " + errmsg, LL_ERROR);
-		}
+			bool b = url_fak->downloadFile(urbackup_update_url + basename + ".sig2", sig_file, http_proxy, &errmsg);
 
-		Server->Log("Getting update file URL...", LL_INFO);
-		std::string update_url = url_fak->downloadString(urbackup_update_url+"UrBackupUpdate.url", http_proxy, &errmsg);
+			if (!b)
+			{
+				Server->Log("Error while downloading update signature from " + urbackup_update_url + basename + ".sig2: " + errmsg, LL_ERROR);
+			}
 
-		if(update_url.empty())
-		{
-			Server->Log("Error while downloading update url from "+urbackup_update_url+"UrBackupUpdate.url: " + errmsg, LL_ERROR);
-			return;
-		}
+			Server->Log("Getting update file URL...", LL_INFO);
+			std::string update_url = url_fak->downloadString(urbackup_update_url + basename + ".url", http_proxy, &errmsg);
 
-		IFile* update_file = Server->openFile("urbackup/UrBackupUpdate.exe", MODE_WRITE);
-		if(update_file==NULL)
-		{
-			Server->Log("Error opening update output file urbackup/UrBackupUpdate.exe", LL_ERROR);
-			return;
-		}
-		ObjectScope update_file_scope(update_file);
+			if (update_url.empty())
+			{
+				Server->Log("Error while downloading update url from " + urbackup_update_url + basename + ".url: " + errmsg, LL_ERROR);
+				return;
+			}
 
-		Server->Log("Downloading update file...", LL_INFO);
-		b = url_fak->downloadFile(update_url, update_file, http_proxy, &errmsg);
+			IFile* update_file = Server->openFile("urbackup/"+ basename+"." + exe_extension, MODE_WRITE);
+			if (update_file == NULL)
+			{
+				Server->Log("Error opening update output file urbackup/"+basename+"." + exe_extension, LL_ERROR);
+				return;
+			}
+			ObjectScope update_file_scope(update_file);
 
-		if(!b)
-		{
-			Server->Log("Error while downloading update file from "+update_url+": " + errmsg, LL_ERROR);
-			return;
+			Server->Log("Downloading update file...", LL_INFO);
+			b = url_fak->downloadFile(update_url, update_file, http_proxy, &errmsg);
+
+			if (!b)
+			{
+				Server->Log("Error while downloading update file from " + update_url + ": " + errmsg, LL_ERROR);
+				return;
+			}
 		}
 
 		Server->Log("Successfully downloaded update file.", LL_INFO);

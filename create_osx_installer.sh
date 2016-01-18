@@ -58,6 +58,13 @@ productbuild --distribution osx_installer/distribution.xml --resources osx_insta
 
 cp final.pkg "UrBackup Client $VERSION_SHORT.pkg"
 
+mkdir -p update_installer
+
+cp final.pkg update_installer/final.pkg
+cp osx_installer/update_install.sh update_installer/update_install.sh
+chmod +x update_installer/update_install.sh
+makeself update_installer "UrBackupUpdateMac.sh" "UrBackup Client Installer for Mac OS X" ./update_install.sh
+
 #Uncomment for development
 #sudo pkgutil --forget org.urbackup.client.service || true
 #sudo pkgutil --forget org.urbackup.client || true

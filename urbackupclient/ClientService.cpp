@@ -50,6 +50,12 @@
 #define _atoi64 atoll
 #endif
 
+#ifdef _WIN32
+#define UPDATE_FILE_PREFIX ""
+#else
+#define UPDATE_FILE_PREFIX "urbackup/"
+#endif
+
 extern ICryptoFactory *crypto_fak;
 extern std::string time_format_str;
 
@@ -104,7 +110,6 @@ const std::string pw_file="urbackup/pw.txt";
 const std::string pw_change_file="urbackup/pw_change.txt";
 #endif
 
-#ifdef _WIN32
 class UpdateSilentThread : public IThread
 {
 public:
@@ -112,6 +117,7 @@ public:
 	{
 		Server->wait(2*60*1000); //2min
 
+#ifdef _WIN32
 		STARTUPINFOW si;
 		PROCESS_INFORMATION pi;
 		memset(&si, 0, sizeof(STARTUPINFO) );
@@ -126,11 +132,13 @@ public:
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 		}
+#else
+		system("/bin/sh urbackup/UrBackupUpdate.sh -- silent");
+#endif
 
 		delete this;
 	}
 };
-#endif
 
 void ClientConnector::init_mutex(void)
 {
@@ -482,9 +490,9 @@ bool ClientConnector::Run(void)
 				if(hashdataok)
 				{
 					hashdatafile->Seek(0);
-					writeUpdateFile(hashdatafile, "version_new.txt");
-					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig2");
-					writeUpdateFile(hashdatafile, "UrBackupUpdate_untested.exe");
+					writeUpdateFile(hashdatafile, UPDATE_FILE_PREFIX "version_new.txt");
+					writeUpdateFile(hashdatafile, UPDATE_FILE_PREFIX "UrBackupUpdate.sig2");
+					writeUpdateFile(hashdatafile, UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
 
 					std::string hashdatafile_fn=hashdatafile->getFilename();
 					Server->destroy(hashdatafile);
@@ -492,16 +500,22 @@ bool ClientConnector::Run(void)
 
 					if(crypto_fak!=NULL)
 					{
-						IFile *updatefile=Server->openFile("UrBackupUpdate_untested.exe");
+						IFile *updatefile=Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
 						if(updatefile!=NULL)
 						{
 							if(checkHash(getSha512Hash(updatefile)))
 							{
 								Server->destroy(updatefile);
-								if(crypto_fak->verifyFile("urbackup_ecdsa409k1.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig2"))
+								if(crypto_fak->verifyFile(UPDATE_FILE_PREFIX "urbackup_ecdsa409k1.pub",
+									UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 								{
-									Server->deleteFile("UrBackupUpdate.exe");
-									moveFile("UrBackupUpdate_untested.exe", "UrBackupUpdate.exe");
+#ifdef _WIN32
+									Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate.exe");
+									moveFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.exe");
+#else
+									Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate.sh");
+									moveFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sh");
+#endif
 									
 									tcpstack.Send(pipe, "ok");
 
@@ -511,29 +525,29 @@ bool ClientConnector::Run(void)
 									}
 									else
 									{
-										Server->deleteFile("version.txt");
-										moveFile("version_new.txt", "version.txt");
+										Server->deleteFile(UPDATE_FILE_PREFIX "version.txt");
+										moveFile(UPDATE_FILE_PREFIX "version_new.txt", UPDATE_FILE_PREFIX "version.txt");
 									}
 								}
 								else
 								{									
 									Server->Log("Verifying update file failed. Signature did not match", LL_ERROR);
-									Server->deleteFile("UrBackupUpdate_untested.exe");
+									Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
 									tcpstack.Send(pipe, "verify_sig_err");
 								}
 							}
 							else
 							{
 								Server->destroy(updatefile);
-								Server->Log("Verifing update file failed. Update was installed previously", LL_ERROR);
-								Server->deleteFile("UrBackupUpdate_untested.exe");
+								Server->Log("Verifying update file failed. Update was installed previously", LL_ERROR);
+								Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
 								tcpstack.Send(pipe, "verify_sig_already_used_err");
 							}
 						}
 					}
 					else
 					{
-						Server->Log("Verifing update file failed. Cryptomodule not present", LL_ERROR);
+						Server->Log("Verifying update file failed. Cryptomodule not present", LL_ERROR);
 						tcpstack.Send(pipe, "verify_cryptmodule_err");
 					}
 
@@ -2504,9 +2518,7 @@ void ClientConnector::setIsInternetConnection(void)
 
 void ClientConnector::update_silent(void)
 {
-#ifdef _WIN32
 	Server->getThreadPool()->execute(new UpdateSilentThread(), "silent client update");
-#endif
 }
 
 bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubname)

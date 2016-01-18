@@ -1355,6 +1355,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.cmd_version = watoi(it->second);
 		}
+		it = params.find("OS_SIMPLE");
+		if (it != params.end())
+		{
+			protocol_versions.os_simple = it->second;
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{
@@ -1704,13 +1709,28 @@ void ClientMain::checkClientVersion(void)
 		{
 			ScopedProcess process(clientname, sa_update, version);
 
-			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig2", MODE_READ);
+			std::string signature_file = "urbackup/UrBackupUpdate.sig2";
+			std::string installer_file = "urbackup/UrBackupUpdate.exe";
+
+			if (protocol_versions.os_simple == "osx")
+			{
+				signature_file = "urbackup/UrBackupUpdateMac.sig2";
+				installer_file = "urbackup/UrBackupUpdateMac.sh";
+			}
+			else if (protocol_versions.os_simple == "linux")
+			{
+				signature_file = "urbackup/UrBackupUpdateLinux.sig2";
+				installer_file = "urbackup/UrBackupUpdateLinux.sh";
+			}
+
+
+			IFile *sigfile=Server->openFile(signature_file, MODE_READ);
 			if(sigfile==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening sigfile", LL_ERROR);
 				return;
 			}
-			IFile *updatefile=Server->openFile("urbackup/UrBackupUpdate.exe", MODE_READ);
+			IFile *updatefile=Server->openFile(installer_file, MODE_READ);
 			if(updatefile==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening updatefile", LL_ERROR);
