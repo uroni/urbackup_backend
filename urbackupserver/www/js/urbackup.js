@@ -324,7 +324,7 @@ function startLoading()
 	if(g.loading)
 		return false;
 	
-	I('loading_div').style.visibility="visible";
+	NProgress.start();
 	g.loading=true;
 	SetLoadingCursor();
 	return true;
@@ -332,7 +332,7 @@ function startLoading()
 
 function stopLoading()
 {
-	I('loading_div').style.visibility="hidden";
+	NProgress.done();
 	g.loading=false;
 	ResetCursor();
 }

@@ -13,3 +13,7 @@ margin-bottom: 0px;
     width: 1200px;
   }
 }
+/* Make the entire page show a busy cursor */
+.nprogress-busy body {
+  cursor: wait;
+}
