@@ -166,8 +166,11 @@ void open_server_database(bool init_db)
 	{
 		writestring(get_backup_server_db_data(), "urbackup/backup_server.db");
 	}
+
+	str_map params;
+	params["wal_autocheckpoint"] = "0";
 		
-	if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
+	if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER, params) )
 	{
 		Server->Log("Couldn't open Database backup_server.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server.db\"", LL_ERROR);
@@ -183,8 +186,6 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
-	str_map params;
-	params["wal_autocheckpoint"] = "0";
 
 	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES, params))
 	{
@@ -193,6 +194,8 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES, sqlite_data_allocation_chunk_size);
+
 	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES))
 	{
 		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
@@ -200,12 +203,14 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
-	if (!Server->openDatabase("urbackup/backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL))
+	if (!Server->openDatabase("urbackup/backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL, params))
 	{
 		Server->Log("Couldn't open Database backup_server_link_journal.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
 		exit(1);
 	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINK_JOURNAL, sqlite_data_allocation_chunk_size);
 
 	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL))
 	{
@@ -214,12 +219,14 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
-	if (!Server->openDatabase("urbackup/backup_server_links.db", URBACKUPDB_SERVER_LINKS))
+	if (!Server->openDatabase("urbackup/backup_server_links.db", URBACKUPDB_SERVER_LINKS, params))
 	{
 		Server->Log("Couldn't open Database backup_server_links.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
 		exit(1);
 	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINKS, sqlite_data_allocation_chunk_size);
 
 	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS))
 	{
@@ -714,10 +721,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	Server->setLogCircularBufferSize(20);
 
-	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread();
-	wal_checkpoint_thread->checkpoint();
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(100*1024*1024, 1000*1024*1024,
+		"urbackup"+os_file_sep()+"backup_server_files.db", URBACKUPDB_SERVER_FILES);
+	Server->createThread(wal_checkpoint_thread, "files checkpoint");
 
-	Server->createThread(wal_checkpoint_thread, "WAL checkpoint");
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER);
+	Server->createThread(wal_checkpoint_thread, "main checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
+	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
+	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
