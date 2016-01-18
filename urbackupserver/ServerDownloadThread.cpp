@@ -492,7 +492,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			has_timeout = true;
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn))
+		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
 		{
 			ret = false;
 			has_timeout = true;
@@ -546,7 +546,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(), true);
+		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(),
+			true, fileHasSnapshot(todl));
 	}
 	else
 	{
@@ -608,7 +609,8 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL, true);
+			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL,
+				true, fileHasSnapshot(todl));
 			return true;
 		}
 		else
@@ -728,7 +730,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			has_timeout=true;
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn))
+		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
 		{
 			has_timeout = true;
 		}
@@ -798,7 +800,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.release();
 		sparse_extents_f_delete.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f, true);
+			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f,
+			true, fileHasSnapshot(todl));
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -808,14 +811,15 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
 		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST
-		|| (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(cfn) ) )
+		|| (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl) ) )
 		return false;
 	else
 		return true;
 }
 
 void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse)
+	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse,
+	bool has_snapshot)
 {
 	int l_backup_id=backupid;
 
@@ -840,6 +844,7 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 	data.addString(sha_dig);
 	data.addString(sparse_extents_f!=NULL ? sparse_extents_f->getFilename() : "");
 	data.addChar(hash_with_sparse ? 1 : 0);
+	data.addChar(has_snapshot ? 1 : 0);
 	metadata.serialize(data);
 
 	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName((dstpath))+"\"", LL_DEBUG);
@@ -1429,17 +1434,16 @@ void ServerDownloadThread::postponeQuitStop( size_t idx )
 	}
 }
 
-bool ServerDownloadThread::fileHasSnapshot(const std::string & remote_fn)
+bool ServerDownloadThread::fileHasSnapshot(const SQueueItem& todl)
 {
-	std::string share = getuntil("/", remote_fn);
+	std::string cfn = todl.curr_path + "/" + todl.fn;
+	if (cfn[0] == '/')
+		cfn.erase(0, 1);
+
+	std::string share = getuntil("/", cfn);
 	if (share.empty())
 	{
-		share = remote_fn;
-	}
-
-	if (share.find("|") != std::string::npos)
-	{
-		share = getafter("|", share);
+		share = cfn;
 	}
 
 	return std::find(shares_without_snapshot.begin(), shares_without_snapshot.end(), share) == shares_without_snapshot.end();

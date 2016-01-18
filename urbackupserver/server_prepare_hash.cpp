@@ -141,6 +141,11 @@ void BackupServerPrepareHash::operator()(void)
 					extent_iterator.reset(new ExtentIterator(sparse_extents_f, true, hash_bsize));
 				}
 			}
+
+			char c_has_snapshot;
+			rd.getChar(&c_has_snapshot);
+
+			bool has_snapshot = c_has_snapshot == 1;
 			
 			FileMetadata metadata;
 			metadata.read(rd);
@@ -174,7 +179,6 @@ void BackupServerPrepareHash::operator()(void)
 				std::string h;
 				if(!diff_file)
 				{
-
 					h=hash_sha(tf, extent_iterator.get(), hash_with_sparse);
 				}
 				else
@@ -182,11 +186,25 @@ void BackupServerPrepareHash::operator()(void)
 					h=hash_with_patch(old_file, tf, extent_iterator.get(), hash_with_sparse);
 				}
 
-				if(!client_sha_dig.empty() && h!=client_sha_dig)
+				if (h.empty())
 				{
-					ServerLogger::Log(logid, "Client calculated hash of \""+tfn+"\" differs from server calculated hash. "
-						"This may be caused by a bug, when a file changes while it is being backed up (backing up without snapshots) or by random bit flips on hard disks. "
-						"This message will most likely disappear if you run a full backup.", LL_WARNING);
+					ServerLogger::Log(logid, "Error while hashing file \"" + tf->getFilename() + "\" (destination: \""+ tfn+"\"). Failing backup.", LL_ERROR);
+					has_error = true;
+				}
+				else if(!client_sha_dig.empty() && h!=client_sha_dig)
+				{
+					if (has_snapshot)
+					{
+						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
+							"This may be caused by a bug or by random bit flips on the client or server hard disk. Failing backup.", LL_ERROR);
+						has_error = true;
+					}
+					else
+					{
+						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
+							"The file is being backed up without a snapshot so this is most likely caused by the file changing during the backup. "
+							"This means the backed up file is most likely corrupted and not a valid, consistent backup.", LL_WARNING);
+					}
 				}
 
 				Server->destroy(tf);
@@ -267,7 +285,14 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 			f->Seek(fpos);
 		}
 
-		rc=f->Read(buf.data(), hash_bsize);
+		bool has_read_error = false;
+		rc=f->Read(buf.data(), hash_bsize, &has_read_error);
+
+		if (has_read_error)
+		{
+			Server->Log("Error reading from file \"" + f->getFilename() + "\" while hashing", LL_ERROR);
+			return std::string();
+		}
 
 		if (hash_with_sparse
 			&& rc == hash_bsize
@@ -323,7 +348,10 @@ std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, Ext
 	has_sparse_extents = false;
 
 	chunk_patcher.setWithSparse(hash_with_sparse);
-	chunk_patcher.ApplyPatch(f, patch, extent_iterator);
+	if (!chunk_patcher.ApplyPatch(f, patch, extent_iterator))
+	{
+		return std::string();
+	}
 
 	std::string ret;
 	ret.resize(SHA_DEF_DIGEST_SIZE);
@@ -359,9 +387,7 @@ bool BackupServerPrepareHash::isWorking(void)
 
 bool BackupServerPrepareHash::hasError(void)
 {
-	volatile bool r=has_error;
-	has_error=false;
-	return r;
+	return has_error;
 }
 
 #endif //CLIENT_ONLY
