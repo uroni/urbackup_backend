@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/os_functions.h"
 #include <memory.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -65,16 +66,11 @@ namespace
 
 		void operator()()
 		{
-#ifdef _WIN32
+			ScopedBackgroundPrio background_prio(false);
 			if(background_priority)
 			{
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#else
-				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#endif //THREAD_MODE_BACKGROUND_BEGIN
+				background_prio.enable();
 			}
-#endif
 
 			IScopedLock lock(mutex.get());
 			while(!do_stop)
@@ -128,17 +124,6 @@ namespace
 					}
 				}
 			}
-
-#ifdef _WIN32
-			if(background_priority)
-			{
-#ifdef THREAD_MODE_BACKGROUND_END
-				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-#else
-				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-#endif
-			}
-#endif
 		}
 
 		char* getBlock(int64 block)

@@ -373,23 +373,12 @@ void IndexThread::operator()(void)
 	CHECK_COM_RESULT(CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IDENTIFY, NULL, EOAC_NONE, NULL));
 #endif
 #endif
-#ifdef _WIN32
 
+	ScopedBackgroundPrio background_prio;
 	if(backgroundBackupsEnabled(std::string()))
 	{
-#ifndef _DEBUG
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-#if defined(VSS_XP) || defined(VSS_S03)
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#endif
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#endif //THREAD_MODE_BACKGROUND_BEGIN
-#endif //_DEBUG
+		background_prio.enable();
 	}
-#endif
 	
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

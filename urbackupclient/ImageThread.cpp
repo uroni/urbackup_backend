@@ -25,6 +25,7 @@
 
 #include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../urbackupcommon/os_functions.h"
 
 #include "ClientService.h"
 #include "ImageThread.h"
@@ -765,22 +766,12 @@ void ImageThread::sendIncrImageThread(void)
 
 void ImageThread::operator()(void)
 {
-#ifdef _WIN32
-#ifndef _DEBUG
+	ScopedBackgroundPrio background_prio(false);
 	if(IndexThread::backgroundBackupsEnabled(std::string()))
 	{
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-#if defined(VSS_XP) || defined(VSS_S03)
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#endif
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#endif //THREAD_MODE_BACKGROUND_BEGIN
+		background_prio.enable();
 	}
-#endif _DEBUG
-#endif
+
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{
 		sendFullImageThread();
@@ -812,11 +803,6 @@ void ImageThread::operator()(void)
 		}
 	}
 	ClientConnector::removeRunningProcess(image_inf->running_process_id);
-#ifdef _WIN32
-#ifdef THREAD_MODE_BACKGROUND_END
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-#endif
-#endif
 }
 
 void ImageThread::updateShadowCopyStarttime( int save_id )

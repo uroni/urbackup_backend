@@ -39,6 +39,11 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <sys/time.h>
+#ifdef __linux__
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#endif
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define lstat64 lstat
@@ -900,3 +905,133 @@ int os_popen(const std::string& cmd, std::string& ret)
 	return _pclose(in);
 }
 
+#ifdef __linux__
+#if defined(__i386__)
+#define __NR_ioprio_set		289
+#define __NR_ioprio_get		290
+#elif defined(__ppc__)
+#define __NR_ioprio_set		273
+#define __NR_ioprio_get		274
+#elif defined(__x86_64__)
+#define __NR_ioprio_set		251
+#define __NR_ioprio_get		252
+#elif defined(__ia64__)
+#define __NR_ioprio_set		1274
+#define __NR_ioprio_get		1275
+#endif
+#endif //__linux__
+
+#ifdef __NR_ioprio_set
+
+static inline int ioprio_set(int which, int who, int ioprio)
+{
+	return syscall(__NR_ioprio_set, which, who, ioprio);
+}
+
+static inline int ioprio_get(int which, int who)
+{
+	return syscall(__NR_ioprio_get, which, who);
+}
+
+enum {
+	IOPRIO_CLASS_NONE,
+	IOPRIO_CLASS_RT,
+	IOPRIO_CLASS_BE,
+	IOPRIO_CLASS_IDLE,
+};
+
+enum {
+	IOPRIO_WHO_PROCESS = 1,
+	IOPRIO_WHO_PGRP,
+	IOPRIO_WHO_USER,
+};
+
+#define IOPRIO_CLASS_SHIFT	13
+
+struct SPrioInfoInt
+{
+	int io_prio;
+	int cpu_prio;
+};
+
+
+SPrioInfo::SPrioInfo()
+ : prio_info(new SPrioInfoInt)
+{
+}
+
+SPrioInfo::~SPrioInfo()
+{
+	delete prio_info;
+}
+
+pid_t gettid()
+{
+	return (pid_t) syscall (SYS_gettid);
+}
+
+bool os_enable_background_priority(SPrioInfo& prio_info)
+{	
+	pid_t tid = gettid();
+	
+	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
+	prio_info.prio_info->cpu_prio = getpriority(IOPRIO_WHO_PROCESS, tid);
+	
+	int ioprio = 7;
+	int ioprio_class = IOPRIO_CLASS_IDLE;
+	
+	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
+	{
+		return false;
+	}
+	int cpuprio = 19;
+	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+bool os_disable_background_priority(SPrioInfo& prio_info)
+{
+	if(prio_info.prio_info==NULL)
+	{
+		return false;
+	}
+	
+	pid_t tid = gettid();
+	
+	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, prio_info.prio_info->io_prio)==-1)
+	{
+		return false;
+	}
+	
+	if(setpriority(PRIO_PROCESS, tid, prio_info.prio_info->cpu_prio)==-1)
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+#else //__NR_ioprio_set
+
+SPrioInfo::SPrioInfo()
+{
+}
+
+SPrioInfo::~SPrioInfo()
+{
+}
+
+bool os_enable_background_priority(SPrioInfo& prio_info)
+{
+	return false;
+}
+
+bool os_disable_background_priority(SPrioInfo& prio_info)
+{
+	return false;
+}
+#endif //__NR_ioprio_set

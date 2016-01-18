@@ -14,7 +14,6 @@ const uchar VERSION=36;
 const _i32 WINDOW_SIZE=512*1024; // 128 kbyte
 
 #define DISABLE_WINDOW_SIZE
-//#define HIGH_PRIORITY
 //#define LOG_FILE
 //#define LOG_CONSOLE
 //#define LOG_OFF

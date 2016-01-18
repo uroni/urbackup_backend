@@ -1291,3 +1291,31 @@ int64 os_last_error(std::string& message)
 
 	return last_error;
 }
+
+bool os_enable_background_priority(SPrioInfo& prio_info)
+{
+#ifdef THREAD_MODE_BACKGROUND_BEGIN
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+	return SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) == TRUE;
+#else
+	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST)==TRUE;
+#endif
+}
+
+bool os_disable_background_priority(SPrioInfo& prio_info)
+{
+#ifdef THREAD_MODE_BACKGROUND_BEGIN
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+	return SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END) == TRUE;
+#else
+	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL)==TRUE;
+#endif
+}
+
+SPrioInfo::SPrioInfo()
+{
+}
+
+SPrioInfo::~SPrioInfo()
+{
+}

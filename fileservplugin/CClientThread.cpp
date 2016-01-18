@@ -146,22 +146,12 @@ CClientThread::~CClientThread()
 
 void CClientThread::operator()(void)
 {
-#ifdef _WIN32
-#ifndef _DEBUG
+#ifdef BACKGROUND_PRIORITY
+	ScopedBackgroundPrio background_prio(false);
 	if(FileServFactory::backgroundBackupsEnabled())
 	{
-#ifdef BACKGROUND_PRIORITY
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#endif
-#endif // BACKGROUND_PRIORITY
+		background_prio.enable();
 	}
-#endif //_DEBUG
-#endif // _WIN32
-
-#ifdef HIGH_PRIORITY
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 #endif
 
 	while( RecvMessage() && !stopped )

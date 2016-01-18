@@ -127,4 +127,54 @@ int os_popen(const std::string& cmd, std::string& ret);
 
 int64 os_last_error(std::string& message);
 
+struct SPrioInfoInt;
+
+struct SPrioInfo
+{
+	SPrioInfo();
+	~SPrioInfo();
+
+	SPrioInfoInt* prio_info;
+};
+
+bool os_enable_background_priority(SPrioInfo& prio_info);
+
+bool os_disable_background_priority(SPrioInfo& prio_info);
+
+class ScopedBackgroundPrio
+{
+public:
+	ScopedBackgroundPrio(bool enabled=true)
+	{
+		if (enabled)
+		{
+			background_prio = os_enable_background_priority(prio_info);
+		}
+		else
+		{
+			background_prio = false;
+		}
+	}
+
+	void enable()
+	{
+		if (!background_prio)
+		{
+			background_prio = os_enable_background_priority(prio_info);
+		}
+	}
+
+	~ScopedBackgroundPrio()
+	{
+		if (background_prio)
+		{
+			os_disable_background_priority(prio_info);
+		}
+	}
+private:
+	bool background_prio;
+	SPrioInfo prio_info;
+};
+
+
 #endif //OS_FUNCTIONS_H
