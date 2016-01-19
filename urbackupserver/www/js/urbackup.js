@@ -245,6 +245,11 @@ function try_anonymous_login(data)
 		}
 	}
 	
+	if(trans("about") && I("about_link"))
+	{
+		I("about_link").innerHTML = trans("about");
+	}
+	
 	var params;
 	if(window.location.hash.length>0)
 	{
@@ -4279,4 +4284,17 @@ function addNewClient3(data)
 			g.data_f=ndata;
 		}
 	}
+}
+function aboutUrBackup()
+{
+	if(!startLoading()) return;
+	stopLoading();
+	
+	var ndata=dustRender("about_urbackup", {version: I('server_version_full').innerHTML.trim()});
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
+	I('nav_pos').innerHTML="";
 }

@@ -791,6 +791,7 @@ translations.en = {
 "validate_err_empty_internet_client_name": "Please enter a name of new Internet client/client behind NAT",
 "validate_err_empty_hostname": "Please enter an IP/hostname of client to be discovered",
 "creating_filesindex_text": "UrBackup is creating the file entry index. This might take a while.",
+"about": "About",
 "all_clients": "All clients",
 "client_settings": "Client settings",
 "action_8": "File restore",

@@ -6,6 +6,9 @@ git reset --hard
 python build\replace_versions.py
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
+copy /Y "%~dp0server-license.txt" "%~dp0urbackupserver_installer_win\data_common\server-license.txt"
+if %errorlevel% neq 0 exit /b %errorlevel% 
+
 msbuild UrBackupBackend.sln /p:Configuration=Release /p:Platform="win32"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 

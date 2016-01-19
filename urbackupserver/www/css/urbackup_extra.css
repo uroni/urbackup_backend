@@ -17,3 +17,6 @@ margin-bottom: 0px;
 .nprogress-busy body {
   cursor: wait;
 }
+.panel-body blockquote {	
+	font-size: 14px !important;
+}
