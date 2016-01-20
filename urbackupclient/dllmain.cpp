@@ -316,7 +316,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		serviceport_bind_target = IServer::BindTarget_Localhost;
 	}
 
-	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, serviceport_bind_target);
+	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, -1, serviceport_bind_target);
 
 	filesrv_pluginid=Server->StartPlugin("fileserv", params);
 
