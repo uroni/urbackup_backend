@@ -16,7 +16,7 @@ USER=`whoami`
 if [ "x$USER" != "xroot" ]
 then
 	echo "Sorry, you must be super user to install UrBackup Client. Try again with sudo?"
-	exit 1
+	exit 6
 fi
 
 if [ $SILENT = no ]
@@ -25,7 +25,7 @@ then
 	read yn
 	if [ "x$yn" = xn ]
 	then
-		exit 1
+		exit 5
 	fi
 else
 	echo "Installation of UrBackup Client $version_short$..."
@@ -77,17 +77,34 @@ arch=`uname -m`
 case "$arch" in
     i?86) TARGET=i386-linux-eng ;;
     x86_64) TARGET=x86_64-linux-eng ;;
-    armv6*) TARGET=arm-linux-engeabihf ;;
-	armv7*) TARGET=arm-linux-engeabihf ;;
-	armv8*) TARGET=arm-linux-engeabihf ;;
+    armv6*) TARGET=armv6-linux-engeabihf ;;
+	armv7*) TARGET=armv6-linux-engeabihf ;;
+	armv8*) TARGET=armv6-linux-engeabihf ;;
 esac
+
+if [ $TARGET = armv6-linux-engeabihf ]
+then
+	$TARGET/urbackupclientctl --version > /dev/null 2>&1
+	if [ $? != 0 ]
+	then
+		echo "Using floating point emulation on ARMv6 (soft float)"
+		TARGET=armv6-linux-engeabi
+	fi
+fi
 
 if [ $TARGET = no ]
 then
 	echo "Cannot run UrBackup client on this server. CPU architecture $arch not supported. Stopping installation."
-	exit 1
+	exit 3
 else
 	echo "Detected architecture $TARGET"
+fi
+
+$TARGET/urbackupclientctl --version > /dev/null 2>&1
+if [ $? != 0 ]
+then
+	echo "Error running executable on this system ($arch). Stopping installation."
+	exit 2
 fi
 
 install -c -m 744 -d "$PREFIX/var/urbackup"
