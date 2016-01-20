@@ -1993,7 +1993,9 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			return false;
 		}
 
-		rc=SendInt(buf.data(), rc);
+		bool curr_flush = rc<count;
+
+		rc=SendInt(buf.data(), rc, curr_flush);
 		if(rc==SOCKET_ERROR)
 		{
 			Log("Error: Sending data failed");
