@@ -51,7 +51,8 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clien
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
-	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET)
+	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET),
+	last_speed_received_bytes(0), speed_set_time(0)
 {
 }
 
@@ -468,6 +469,34 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 	}
 
 	return rsize;
+}
+
+void FileBackup::calculateDownloadSpeed(int64 ctime, FileClient & fc, FileClientChunked * fc_chunked)
+{
+	if (speed_set_time == 0)
+	{
+		speed_set_time = ctime;
+	}
+
+	int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked!=NULL ? fc_chunked->getTransferredBytes() : 0);
+
+	int64 new_bytes = received_data_bytes - last_speed_received_bytes;
+	int64 passed_time = ctime - speed_set_time;
+
+	if (passed_time > 0)
+	{
+		speed_set_time = ctime;
+
+		double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+		if (last_speed_received_bytes > 0)
+		{
+			ServerStatus::setProcessSpeed(clientname, status_id,
+				speed_bpms);
+		}
+
+		last_speed_received_bytes = received_data_bytes;
+	}
 }
 
 void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,

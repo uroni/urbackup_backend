@@ -288,6 +288,9 @@ bool FullFileBackup::doFileBackup()
 					{
 						calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 					}
+
+					calculateDownloadSpeed(ctime, fc, NULL);
+
 				} while (server_download->sleepQueue());
 
 				if(server_download->isOffline())
@@ -525,7 +528,11 @@ bool FullFileBackup::doFileBackup()
 		{
 			calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
+
+		calculateDownloadSpeed(ctime, fc, NULL);
 	}
+
+	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 
 	if(server_download->isOffline() && !r_offline)
 	{

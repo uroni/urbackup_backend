@@ -1473,6 +1473,7 @@ void FileClientChunked::setDestroyPipe(bool b)
 
 _i64 FileClientChunked::getTransferredBytes(void)
 {
+	IScopedLock lock(mutex);
 	if(getPipe()!=NULL)
 	{
 		transferred_bytes+=getPipe()->getTransferedBytes();
@@ -1507,11 +1508,17 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			if(getPipe()!=NULL &&
 				( destroy_pipe || (parent && parent->destroy_pipe) ) )
 			{
+				IScopedLock lock(mutex);
 				transferred_bytes+=getPipe()->getTransferedBytes();
 				real_transferred_bytes+=getPipe()->getRealTransferredBytes();
 				Server->destroy(getPipe());
+				setPipe(nc);
 			}
-			setPipe(nc);
+			else
+			{
+				IScopedLock lock(mutex);
+				setPipe(nc);
+			}
 			for(size_t i=0;i<throttlers.size();++i)
 			{
 				getPipe()->addThrottler(throttlers[i]);
@@ -1701,6 +1708,7 @@ bool FileClientChunked::constructOutOfBandPipe()
 
 	if(ofbPipe())
 	{
+		IScopedLock lock(mutex);
 		transferred_bytes+=ofbPipe()->getTransferedBytes();
 		real_transferred_bytes+=ofbPipe()->getRealTransferredBytes();
 		Server->destroy(ofbPipe());
@@ -2133,6 +2141,7 @@ _u32 FileClientChunked::freeFile()
 
 _i64 FileClientChunked::getRealTransferredBytes()
 {
+	IScopedLock lock(mutex);
 	_i64 tbytes=real_transferred_bytes;
 	if(getPipe()!=NULL)
 	{

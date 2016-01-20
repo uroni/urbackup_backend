@@ -46,7 +46,8 @@ struct SProcess
 	SProcess(size_t id, SStatusAction action, std::string details)
 		: id(id), action(action), prepare_hashqueuesize(0),
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
-		 eta_set_time(0), stop(false), details(details)
+		 eta_set_time(0), stop(false), details(details),
+		speed_bpms(0)
 	{
 
 	}
@@ -61,6 +62,7 @@ struct SProcess
 	int64 eta_set_time;
 	bool stop;
 	std::string details;
+	double speed_bpms;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -136,6 +138,9 @@ public:
 
 	static void setProcessEta(const std::string &clientname, size_t id,
 		int64 eta_ms, int64 eta_set_time);
+
+	static void setProcessSpeed(const std::string &clientname, size_t id,
+		double speed_bpms);
 
 	static void setProcessEta(const std::string &clientname, size_t id,
 		int64 eta_ms);

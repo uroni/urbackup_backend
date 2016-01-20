@@ -509,6 +509,36 @@ function format_size(s)
 	return s+" "+suffix;
 }
 
+function format_size_bits(s)
+{
+	var suffix="bits";
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="KBit";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="MBit";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="GBit";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="TBit";
+	}
+	
+	s*=100;
+	s=Math.round(s);
+	s/=100.0;
+	return s+" "+suffix;
+}
+
 function format_time_seconds(t, s)
 {
 	var ret="";

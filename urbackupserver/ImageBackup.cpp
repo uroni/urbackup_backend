@@ -469,6 +469,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 last_eta_update_blocks=0;
 	double eta_estimated_speed = 0;
 	int64 eta_set_time = Server->getTimeMS();
+	int64 speed_set_time = eta_set_time;
+	int64 last_speed_received_bytes = 0;
 	ServerStatus::setProcessEtaSetTime(clientname, status_id, eta_set_time);
 	ETransferState transfer_state = ETransferState_First;
 	unsigned char image_flags=0;
@@ -1053,6 +1055,30 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								}
 							}
 
+							if (ctime - speed_set_time > 1000)
+							{
+								transferred_bytes += cc->getTransferedBytes();
+								cc->resetTransferedBytes();
+
+								int64 new_bytes = transferred_bytes - last_speed_received_bytes;
+								int64 passed_time = ctime - speed_set_time;
+
+								if (passed_time > 0)
+								{
+									speed_set_time = ctime;
+
+									double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+									if (last_speed_received_bytes > 0)
+									{
+										ServerStatus::setProcessSpeed(clientname, status_id,
+											speed_bpms);
+									}
+
+									last_speed_received_bytes = transferred_bytes;
+								}
+							}
+
 							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata,
 								has_parent, vhdfile, hashfile, parenthashfile,
 								blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error, -1);
@@ -1344,7 +1370,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		}
 	}
 	ServerLogger::Log(logid, "Timeout while transfering image data", LL_ERROR);
+
 do_image_cleanup:
+
+	ServerStatus::setProcessSpeed(clientname, status_id, 0);
+
 	if(cc!=NULL)
 	{
 		transferred_bytes+=cc->getTransferedBytes();

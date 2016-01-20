@@ -141,7 +141,7 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 
 		addr_udp.sin_family=AF_INET;
 		addr_udp.sin_port=htons(udpport);
-		addr_udp.sin_addr.s_addr=INADDR_ANY;
+		addr_udp.sin_addr.s_addr= htonl(INADDR_ANY);
 
 		Log("Binding udp socket at port "+convert(udpport)+"...", LL_DEBUG);
 		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));

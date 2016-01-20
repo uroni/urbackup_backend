@@ -151,7 +151,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		memset(&addr, 0, sizeof(sockaddr_in));
 		addr.sin_family=AF_INET;
 		addr.sin_port=htons(tcpport);
-		addr.sin_addr.s_addr=INADDR_ANY;
+		addr.sin_addr.s_addr=htonl(INADDR_ANY);
 
 		rc=bind(mSocket,(sockaddr*)&addr,sizeof(addr));
 		if(rc==SOCKET_ERROR)

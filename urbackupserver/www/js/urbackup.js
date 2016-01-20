@@ -570,6 +570,25 @@ function show_progress2(data)
 			{
 				data.progress[i].indexing=true;
 			}
+			
+			if(data.progress[i].eta_ms>1000)
+			{
+				data.progress[i].eta = format_time_seconds(data.progress[i].eta_ms/1000);
+			}
+			else
+			{
+				data.progress[i].eta = "-";
+			}
+			
+			if(data.progress[i].speed_bpms>1)
+			{
+				data.progress[i].speed = format_size_bits(data.progress[i].speed_bpms*8) + "/s";
+			}
+			else
+			{
+				data.progress[i].speed = "-";
+			}
+			
 			rows+=dustRender("progress_row", data.progress[i]);
 		}
 		tdata=dustRender("progress_table", {"rows": rows});

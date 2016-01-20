@@ -535,6 +535,8 @@ bool IncrFileBackup::doFileBackup()
 					{
 						calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 					}
+
+					calculateDownloadSpeed(ctime, fc, fc_chunked.get());
 				} while (server_download->sleepQueue());
 
 				if(server_download->isOffline() && !r_offline)
@@ -1042,7 +1044,11 @@ bool IncrFileBackup::doFileBackup()
 		{
 			calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
+
+		calculateDownloadSpeed(ctime, fc, fc_chunked.get());
 	}
+
+	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 
 	if(server_download->isOffline() && !r_offline)
 	{

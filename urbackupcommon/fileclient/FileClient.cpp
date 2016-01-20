@@ -234,7 +234,7 @@ void FileClient::bindToNewInterfaces()
 
 			sockaddr_in source_addr;
 			memset(&source_addr, 0, sizeof(source_addr));
-			source_addr.sin_addr.s_addr = INADDR_ANY;
+			source_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 			source_addr.sin_family = AF_INET;
 			source_addr.sin_port = htons(broadcast_source_port);
 
@@ -636,9 +636,9 @@ bool FileClient::Reconnect(void)
 
 	if(tcpsock!=NULL)
 	{
+		IScopedLock lock(mutex);
 		transferred_bytes+=tcpsock->getTransferedBytes();
 		real_transferred_bytes+=tcpsock->getRealTransferredBytes();
-		IScopedLock lock(mutex);
 		Server->destroy(tcpsock);
 		tcpsock=NULL;
 	}
@@ -1260,6 +1260,7 @@ bool FileClient::Reconnect(void)
         
 _i64 FileClient::getTransferredBytes(void)
 {
+	IScopedLock lock(mutex);
 	if(tcpsock!=NULL)
 	{
 		transferred_bytes+=tcpsock->getTransferedBytes();

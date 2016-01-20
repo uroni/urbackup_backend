@@ -108,6 +108,16 @@ ACTION_IMPL(progress)
 						clients[i].processes[j].hashqueuesize));
 					obj.set("id", JSON::Value(clients[i].processes[j].id));
 					obj.set("details", clients[i].processes[j].details);
+
+					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
+					int64 etams = clients[i].processes[j].eta_ms - add_time;
+					if (etams>0 && etams<60 * 1000)
+					{
+						etams = 61 * 1000;
+					}
+
+					obj.set("eta_ms", etams);
+					obj.set("speed_bpms", clients[i].processes[j].speed_bpms);
 					pg.add(obj);
 				}
 			}

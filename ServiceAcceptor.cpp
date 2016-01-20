@@ -82,10 +82,10 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	switch(bindTarget)
 	{
 	case IServer::BindTarget_All:
-		addr.sin_addr.s_addr=INADDR_ANY;
+		addr.sin_addr.s_addr= htonl(INADDR_ANY);
 		break;
 	case IServer::BindTarget_Localhost:
-		addr.sin_addr.s_addr=INADDR_LOOPBACK;
+		addr.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
 		break;
 	}
 

@@ -99,7 +99,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(uPort);
-	addr.sin_addr.s_addr=INADDR_ANY;
+	addr.sin_addr.s_addr= htonl(INADDR_ANY);
 
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)

@@ -22,7 +22,9 @@
 			{?percent}{pcdone}%{/percent}
 		  </div>
 		  {?indexing}{tIndexing...}{/indexing}
-		</div>		
+		</div>
+	<td class="tabFLeft">{eta}</td>
+	<td class="tabFLeft">{speed}</td>
 	<td class="tabFLeft">{queue}</td>
 	<td class="tabFRight"><input type="button" value="Stop" class="btn btn-xs btn-danger" onclick="stopBackup({clientid}, {id})"/></td>
 </tr>

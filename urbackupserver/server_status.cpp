@@ -317,6 +317,17 @@ void ServerStatus::setProcessEta( const std::string &clientname, size_t id, int6
 	}
 }
 
+void ServerStatus::setProcessSpeed(const std::string &clientname, size_t id, double speed_bpms)
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if (proc != NULL)
+	{
+		proc->speed_bpms = speed_bpms;
+	}
+}
+
 bool ServerStatus::removeStatus( const std::string &clientname )
 {
 	IScopedLock lock(mutex);
