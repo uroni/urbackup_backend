@@ -31,23 +31,18 @@ PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 prog=urbackupclientbackend
 
-if [ -x $DAEMON ]; then
-    exec=urbackupclientbackend
-else
+if [ ! -x $DAEMON ]
+then
     exit 5
 fi
 
 lockfile=/var/lock/subsys/$NAME
 
-# Define LSB log_* functions.
-# Depend on redhat-lsb-core to ensure that this file is present.
-. /lib/lsb/init-functions
-
 # Function that starts the daemon/service
 start()
 {
     echo -n $"Starting Urbackup client: "
-    daemon $exec --daemon --config "/etc/sysconfig/$NAME" --pidfile $PIDFILE
+    daemon $DAEMON --daemon --config "/etc/sysconfig/$NAME" --pidfile $PIDFILE
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile

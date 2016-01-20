@@ -59,7 +59,7 @@ then
 	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
 	then
 		echo "Stopping currently running client service..."
-		systemctl stop urbackupclientbackend.service
+		systemctl stop urbackupclientbackend.service || true
 	fi
 else
 	if [ -e /etc/init.d/urbackupclientbackend ]
@@ -67,7 +67,7 @@ else
 		if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
 		then
 			echo "Stopping currently running client service..."
-			/etc/init.d/urbackupclientbackend stop
+			/etc/init.d/urbackupclientbackend stop || true
 		fi
 	fi
 fi

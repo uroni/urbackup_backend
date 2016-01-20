@@ -1614,7 +1614,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 void ClientConnector::replaceSettings(const std::string &pData)
 {
-	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
+	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::string ncname=new_settings->getValue("computername", "");
 	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
@@ -1634,11 +1634,11 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
 	}
 
-	ISettingsReader* old_settings=Server->createFileSettingsReader(settings_fn);
+	std::auto_ptr<ISettingsReader> old_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::string> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
-	if(old_settings!=NULL)
+	if(old_settings.get()!=NULL)
 	{
 		modified_settings=false;
 		std::vector<std::string> old_keys = old_settings->getKeys();
@@ -1668,8 +1668,6 @@ void ClientConnector::replaceSettings(const std::string &pData)
 				}
 			}
 		}
-
-		Server->destroy(old_settings);
 	}
 
 	if(modified_settings)
@@ -1690,7 +1688,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 			}
 		}
 
-		if (keep_old_settings)
+		if (keep_old_settings && old_settings.get() != NULL)
 		{
 			std::vector<std::string> old_keys = old_settings->getKeys();
 
@@ -1714,8 +1712,6 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 		writestring(new_data, settings_fn);
 	}
-
-	Server->destroy(new_settings);
 }
 
 void ClientConnector::saveLogdata(const std::string &created, const std::string &pData)
