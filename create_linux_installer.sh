@@ -39,7 +39,10 @@ cp defaults_client install-data/
 rm -R linux-installer || true
 mkdir -p linux-installer
 
-tar -C install-data czf linux-installer/install-data.tar.gz *
+cd install-data
+tar czf ../linux-installer/install-data.tar.gz *
+cd ..
+
 cp install_client_linux.sh linux-installer/
 
 makeself --nocomp --nomd5 --nocrc linux-installer "UrBackupUpdateLinux.sh" "UrBackup Client Installer for Linux" ./install_client_linux.sh
