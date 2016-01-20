@@ -3734,6 +3734,11 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 		std::string other_sha = build_chunk_hashs(f.get(), hashoutput, NULL, true, NULL, false,
 			NULL, NULL, false, &extent_iterator);
 
+		if (ret != other_sha)
+		{
+			Server->Log("SHA calc error at file " + fn, LL_ERROR);
+		}
+
 		assert(ret == other_sha);
 		return ret;
 	}
