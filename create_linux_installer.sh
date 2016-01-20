@@ -2,6 +2,12 @@
 
 set -e
 
+git reset --hard
+cd client
+git reset --hard
+cd ..
+python3 build/replace_versions.py
+
 ./switch_build.sh client
 
 autoreconf --install
@@ -11,7 +17,7 @@ mkdir -p install-data
 for arch in i386-linux-eng x86_64-linux-eng arm-linux-engeabihf aarch64-linux-eng
 do
 	echo "Compiling for architecture $arch..."
-    ./configure --enable-headless CPPFLAGS="-target i386-linux-eng" LDFLAGS="-target i386-linux-eng" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
+    ./configure --enable-headless CPPFLAGS="-target $arch" LDFLAGS="-target $arch" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
     make clean
     make -j4
     rm -R install-data/$arch || true
@@ -33,7 +39,7 @@ cp defaults_client install-data/
 rm -R linux-installer || true
 mkdir -p linux-installer
 
-tar czf linux-installer/install-data.tar.gz install-data/*
+tar -C install-data czf linux-installer/install-data.tar.gz *
 cp install_client_linux.sh linux-installer/
 
 makeself --nocomp --nomd5 --nocrc linux-installer "UrBackupUpdateLinux.sh" "UrBackup Client Installer for Linux" ./install_client_linux.sh

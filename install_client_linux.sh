@@ -11,13 +11,27 @@ then
 	SILENT=yes
 fi
 
-echo "Installation of UrBackup Client $version_short$"
+USER=`whoami`
 
-if [ SILENT = no ]
+if [ "x$USER" != "xroot" ]
 then
-	read -rsp $'Press any key to continue...\n' -n1 key
+	echo "Sorry, you must be super user to install UrBackup Client. Try again with sudo?"
+	exit 1
 fi
 
+if [ $SILENT = no ]
+then
+	echo "Installation of UrBackup Client $version_short$... Proceed ? [Y/n]"
+	read yn
+	if [ "x$yn" = xn ]
+	then
+		exit 1
+	fi
+else
+	echo "Installation of UrBackup Client $version_short$..."
+fi
+
+echo "Uncompressing install data..."
 tar xzf install-data.tar.gz
 
 DEBIAN=no
@@ -29,7 +43,7 @@ then
 	mv urbackupclientbackend-debian.service urbackupclientbackend.service
 	mv init.d_client init.d
 else
-	echo "Assuming RedHat like system"
+	echo "Assuming RedHat (derivative) system"
 	mv urbackupclientbackend-redhat.service urbackupclientbackend.service
 	mv init.d_client_rh init.d
 fi
@@ -40,6 +54,21 @@ if command -v systemctl >/dev/null 2>&1
 then
 	echo "Detected systemd"
 	SYSTEMD=yes
+	
+	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
+	then
+		echo "Stopping currently running client service..."
+		systemctl stop urbackupclientbackend.service
+	fi
+else
+	if [ -e /etc/init.d/urbackupclientbackend ]
+	then
+		if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
+		then
+			echo "Stopping currently running client service..."
+			/etc/init.d/urbackupclientbackend stop
+		fi
+	fi
 fi
 
 TARGET=no
@@ -53,9 +82,9 @@ case "$arch" in
 	armv8*) TARGET=aarch64-linux-eng ;;
 esac
 
-if [ TARGET = no ]
+if [ $TARGET = no ]
 then
-	echo "Cannot run UrBackup client on this server. CPU Architecture/dependency issues. Stopping installation."
+	echo "Cannot run UrBackup client on this server. CPU architecture $arch not supported. Stopping installation."
 	exit 1
 else
 	echo "Detected architecture $TARGET"
@@ -98,14 +127,14 @@ then
 c71b9d17069d4d03bd7f6b75f36ba5ff
 fi
 
-if [ DEBIAN = yes ]
+if [ $DEBIAN = yes ]
 then
-	[ ! test -e /etc/defaults ] || install -c defaults_client /etc/defaults/urbackupclientbackend
+	[ ! -e /etc/defaults ] || install -c defaults_client /etc/defaults/urbackupclientbackend
 else
-	[ ! test -e /etc/sysconfig ] || install -c defaults_client /etc/sysconfig/urbackupclientbackend
+	[ ! -e /etc/sysconfig ] || install -c defaults_client /etc/sysconfig/urbackupclientbackend
 fi
 
-if [ SYSTEMD = yes ]
+if [ $SYSTEMD = yes ]
 then
 	echo "Installing systemd unit..."
 	SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
@@ -121,12 +150,21 @@ then
 	
 	echo "Starting UrBackup Client service..."
 	systemctl start urbackupclientbackend.service
+	
+	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
+	then
+		echo "Successfully started client service. Installation complete."
+		exit 0
+	else
+		echo "Starting client service failed. Please investigate."
+		exit 1
+	fi
 else
 	echo "Installing System V init script..."
 	
 	install -c init.d /etc/init.d/urbackupclientbackend
 	
-	if [ DEBIAN = yes ]
+	if [ $DEBIAN = yes ]
 	then
 		update-rc.d urbackupclientbackend defaults
 	else
@@ -136,4 +174,13 @@ else
 	
 	echo "Starting UrBackup Client service..."
 	/etc/init.d/urbackupclientbackend start
+	
+	if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
+	then
+		echo "Successfully started client service. Installation complete."
+		exit 0
+	else
+		echo "Starting client service failed. Please investigate."
+		exit 1
+	fi
 fi

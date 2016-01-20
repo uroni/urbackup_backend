@@ -13,12 +13,11 @@
 
 # Author: Martin Raiber <martin@urbackup.org>
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="UrBackup server deamon"             # Introduce a short description here
-NAME="urbackupsrv"             # Introduce the short server's name here
+DESC="UrBackup server deamon"
+NAME="urbackupsrv"
 PREFIX="/usr"
-DAEMON=$PREFIX/sbin/urbackupsrv # Introduce the server's location here
+DAEMON=$PREFIX/sbin/urbackupsrv
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_ARGS="run --config /etc/default/$NAME --daemon --pidfile $PIDFILE"
