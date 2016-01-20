@@ -63,6 +63,11 @@
 #define fallocate64 fallocate
 #else
 #include <linux/fs.h>
+
+#if !defined(BLKGETSIZE64) && defined(__i386__) && defined(__x86_64__)
+#define BLKGETSIZE64 _IOR(0x12,114,size_t)
+#endif
+
 #endif
 
 File::File()
@@ -228,7 +233,7 @@ _i64 File::Size(void)
 	
 	if(rc==0)
 	{
-#ifndef __APPLE__
+#if defined(BLKGETSIZE64)
 		if(S_ISBLK(stat_buf.st_mode))
 		{
 			_i64 ret;

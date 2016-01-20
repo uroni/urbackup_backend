@@ -1,12 +1,10 @@
 # Defaults for urbackup_client initscript
-# sourced by /etc/init.d/urbackup_client
-# installed at /etc/default/urbackup_client by the maintainer scripts
+# sourced by /etc/init.d/urbackupclientbackend
+# installed at /etc/default/urbackupclientbackend by the maintainer scripts
 
 #
-# This is a POSIX shell fragment
+# This is parsed as a key=value file
 #
-
-# Additional options that are passed to the Daemon.
 
 #logfile name
 LOGFILE="/var/log/urbackup_client.log"
@@ -14,5 +12,18 @@ LOGFILE="/var/log/urbackup_client.log"
 #Either debug,warn,info or error
 LOGLEVEL="warn"
 
-#Tmp file directory - be carefull this can get very large
+#Tmp file directory
 DAEMON_TMPDIR="/tmp"
+
+# Valid settings:
+#
+# "client-confirms": If you have the GUI component the currently active user
+#                    will need to confirm restores from the web interface.
+#                    If you have no GUI component this will cause restores
+#                    from the server web interface to not work
+# "server-confirms": The server will ask the user starting the restore on 
+#                    the web interface for confirmation
+# "disabled":        Restores via web interface are disabled.
+#                    Restores via urbackupclientctl still work
+#
+RESTORE="disabled"

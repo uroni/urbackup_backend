@@ -2,11 +2,14 @@
 
 set -e
 
-cp "$1.cfg" "$2/Contents/MacOS/var/initial_settings.cfg"
-
-if test ! -e "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+if test -e "$1.cfg"
 then
-	cp "$1.ident" "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+	cp "$1.cfg" "$2/Contents/MacOS/var/urbackup/initial_settings.cfg"
+
+	if test ! -e "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+	then
+		cp "$1.ident" "$2/Contents/MacOS/var/urbackup/server_idents.txt"
+	fi
 fi
 
 /bin/launchctl load "/Library/LaunchDaemons/org.urbackup.client.plist"

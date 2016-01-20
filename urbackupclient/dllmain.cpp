@@ -261,10 +261,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 #endif
 
-	if( !FileExists("urbackup/data/settings.cfg") && FileExists("initial_settings.cfg") )
+#ifdef _WIN32
+#define INITIAL_SETTINGS_PREFIX ""
+#else
+#define INITIAL_SETTINGS_PREFIX "urbackup/"
+#endif
+
+	if( !FileExists("urbackup/data/settings.cfg") && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
 	{
-		copy_file("initial_settings.cfg", "urbackup/data/settings.cfg");
-		Server->deleteFile("initial_settings.cfg");
+		copy_file(INITIAL_SETTINGS_PREFIX "initial_settings.cfg", "urbackup/data/settings.cfg");
+		Server->deleteFile(INITIAL_SETTINGS_PREFIX "initial_settings.cfg");
 	}
 
 #ifndef _DEBUG

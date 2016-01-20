@@ -2451,6 +2451,16 @@ void ClientMain::run_script( std::string name, const std::string& params, logid_
 
 void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
 {
+	std::string fn_wo_token = fn;
+	std::string share = getuntil("/", fn);
+	if (!share.empty())
+	{
+		if (share.find("|") != std::string::npos)
+		{
+			fn_wo_token = getafter("|", fn);
+		}
+	}
+
 	if(total>0 && total!=LLONG_MAX)
 	{
 		int pc_complete = 0;
@@ -2458,11 +2468,11 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
 		}
-		ServerLogger::Log(logid, "Loading \""+fn+"\". "+convert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". "+convert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 	else
 	{
-		ServerLogger::Log(logid, "Loading \""+fn+"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+ fn_wo_token +"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 }
 

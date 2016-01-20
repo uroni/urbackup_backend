@@ -2,16 +2,19 @@
 # sourced by /etc/init.d/urbackupsrv and /lib/systemd/system/urbackup-server.service
 # installed at /etc/default/urbackupsrv by the maintainer scripts
 
-# Additional options that are passed to the Daemon.
+#
+# This is parsed as a key=value file
+#
 
 #Port for FastCGI requests
 FASTCGI_PORT=55413
 
-#Port for the web interface
-HTTP_PORT=55414
-
 #Enable internal HTTP server
 HTTP_SERVER="true"
+
+#Port for the web interface
+#(if internal HTTP server is enabled)
+HTTP_PORT=55414
 
 #log file name
 LOGFILE="/var/log/urbackup.log"
@@ -19,7 +22,8 @@ LOGFILE="/var/log/urbackup.log"
 #Either debug,warn,info or error
 LOGLEVEL="warn"
 
-#Temporary file directory - this may get very large
+#Temporary file directory
+# -- this may get very large depending on the advanced settings
 DAEMON_TMPDIR="/tmp"
 
 #Tmp file directory for sqlite temporary tables.
@@ -27,6 +31,6 @@ DAEMON_TMPDIR="/tmp"
 #Default is the same as DAEMON_TMPDIR
 SQLITE_TMPDIR=""
 
-#Interfaces from which to send broadcasts. (Default: all)
+#Interfaces from which to send broadcasts. (Default: all).
+#Comma separated -- e.g. "eth0,eth1"
 BROADCAST_INTERFACES=""
-

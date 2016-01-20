@@ -25,6 +25,7 @@
 #include "../common/data.h"
 #include "PipeFile.h"
 #include <string>
+#include <stdlib.h>
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;

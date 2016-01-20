@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/time.h>
 #ifdef __linux__
 #include <sys/resource.h>
@@ -54,9 +55,6 @@
 #define dirent64 dirent
 #endif
 
-#ifdef __APPLE__
-#include <sys/time.h>
-#endif
 
 void getMousePos(int &x, int &y)
 {

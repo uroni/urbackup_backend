@@ -63,7 +63,7 @@ mkdir -p update_installer
 cp final.pkg update_installer/final.pkg
 cp osx_installer/update_install.sh update_installer/update_install.sh
 chmod +x update_installer/update_install.sh
-makeself update_installer "UrBackupUpdateMac.sh" "UrBackup Client Installer for Mac OS X" ./update_install.sh
+makeself --nocomp --nomd5 --nocrc update_installer "UrBackupUpdateMac.sh" "UrBackup Client Installer for Mac OS X" ./update_install.sh
 
 #Uncomment for development
 #sudo pkgutil --forget org.urbackup.client.service || true

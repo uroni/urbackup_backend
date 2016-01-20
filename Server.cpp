@@ -82,6 +82,7 @@
 #	include <unistd.h>
 #	include <sys/types.h>
 #	include <pwd.h>
+#	include "config.h"
 #endif
 #include "StaticPluginRegistration.h"
 
@@ -1311,7 +1312,7 @@ void CServer::createThread(IThread *thread, const std::string& name)
 	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
 	pthread_detach(t);
 
-#ifndef __APPLE__
+#ifdef HAVE_PTHREAD_SETNAME_NP
 	if (!name.empty())
 	{
 		std::string thread_name;
@@ -1326,7 +1327,7 @@ void CServer::createThread(IThread *thread, const std::string& name)
 
 		pthread_setname_np(t, thread_name.c_str());
 	}
-#endif //__APPLE__
+#endif //HAVE_PTHREAD_SETNAME_NP
 
 	pthread_attr_destroy(&attr);
 #endif
@@ -1338,7 +1339,7 @@ void CServer::setCurrentThreadName(const std::string& name)
 #if defined(_DEBUG)
 	SetThreadName(-1, name.c_str());
 #endif
-#elif !defined(__APPLE__)
+#elif defined(HAVE_PTHREAD_SETNAME_NP)
 	if (!name.empty())
 	{
 		pthread_t ct = pthread_self();
