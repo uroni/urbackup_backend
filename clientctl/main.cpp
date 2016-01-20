@@ -377,11 +377,21 @@ int action_set_settings(std::vector<std::string> args)
 		s_settings += key_arg.getValue()[i] + "=" + value_arg.getValue()[i] + "\n";
 	}
 
-	bool b = Connector::updateSettings(s_settings);
+	s_settings += "keep_old_settings=true\n";
+
+	bool no_perm;
+	bool b = Connector::updateSettings(s_settings, no_perm);
 
 	if (!b)
 	{
-		std::cerr << "Error setting settings." << std::endl;
+		if (no_perm)
+		{
+			std::cerr << "Error setting settings. Client is not allowed to change settings." << std::endl;
+		}
+		else
+		{
+			std::cerr << "Error setting settings." << std::endl;
+		}
 		return 1;
 	}
 	else

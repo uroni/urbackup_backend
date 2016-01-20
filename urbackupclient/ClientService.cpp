@@ -1625,6 +1625,8 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
+	bool keep_old_settings = (new_settings->getValue("keep_old_settings", "")=="true");
+
 	std::string settings_fn="urbackup/data/settings.cfg";
 	std::string clientsubname;
 	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
@@ -1677,13 +1679,31 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		for(size_t i=0;i<new_keys.size();++i)
 		{
 			if(new_keys[i]=="client_set_settings" ||
-				new_keys[i]=="client_set_settings_time")
+				new_keys[i]=="client_set_settings_time" ||
+				new_keys[i]=="keep_old_settings" )
 				continue;
 
 			std::string val;
 			if(new_settings->getValue(new_keys[i], &val))
 			{
-				new_data+=(new_keys[i])+"="+(val)+"\n";
+				new_data+=new_keys[i]+"="+val+"\n";
+			}
+		}
+
+		if (keep_old_settings)
+		{
+			std::vector<std::string> old_keys = old_settings->getKeys();
+
+			for (size_t i = 0; i < old_keys.size(); ++i)
+			{
+				if (std::find(new_keys.begin(), new_keys.end(), old_keys[i]) == new_keys.end())
+				{
+					std::string val;
+					if (old_settings->getValue(old_keys[i], &val))
+					{
+						new_data += old_keys[i] + "=" + val + "\n";
+					}					
+				}
 			}
 		}
 

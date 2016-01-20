@@ -983,7 +983,7 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 	}
 	if(!ok)
 	{
-		tcpstack.Send(pipe, "FAILED");
+		tcpstack.Send(pipe, "NOSERVER");
 	}
 	else
 	{

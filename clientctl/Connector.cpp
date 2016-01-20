@@ -296,16 +296,27 @@ int Connector::startImage(bool full)
 		return 1;
 }
 
-bool Connector::updateSettings(const std::string &ndata)
+bool Connector::updateSettings(const std::string &ndata, bool& no_perm)
 {
+	no_perm = false;
+
 	std::string data=ndata;
 	escapeClientMessage(data);
 	std::string d=getResponse("UPDATE SETTINGS "+data,"", true);
 
-	if(d!="OK")
+	if (d != "OK" && d != "NOSERVER")
+	{
+		if (d == "FAILED")
+		{
+			no_perm = true;
+		}
+
 		return false;
+	}
 	else
+	{
 		return true;
+	}
 }
 
 std::vector<SLogEntry> Connector::getLogEntries(void)
