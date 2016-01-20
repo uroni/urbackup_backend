@@ -14,10 +14,10 @@ autoreconf --install
 
 mkdir -p install-data
 
-for arch in i386-linux-eng x86_64-linux-eng arm-linux-engeabihf
+for arch in i386-linux-eng x86_64-linux-eng arm-linux-engeabihf aarch64-linux-eng
 do
 	echo "Compiling for architecture $arch..."
-    ./configure --enable-headless CPPFLAGS="-target $arch" LDFLAGS="-target $arch" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
+    ./configure --enable-headless CFLAGS="-target $arch" CPPFLAGS="-target $arch" LDFLAGS="-target $arch" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
     make clean
     make -j4
     rm -R install-data/$arch || true
