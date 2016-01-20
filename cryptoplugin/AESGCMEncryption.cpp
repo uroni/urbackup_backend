@@ -121,7 +121,7 @@ std::string AESGCMEncryption::get()
 		overhead_size+=end_marker_zeros+1;
 		message_size+=end_marker_zeros+1;
 		encryption_filter.GetNextMessage();
-		Server->Log("New message. Size: "+convert(message_size));
+		Server->Log("New message. Size: "+convert(message_size), LL_DEBUG);
 		message_size=0;
 	}
 
@@ -157,7 +157,7 @@ void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size, size_t off
 				ret.insert(ret.begin()+i+1, ich);
 				++i;
 				end_marker_state=0;
-				Server->Log("Escaped something at "+convert(i));
+				Server->Log("Escaped something at "+convert(i), LL_DEBUG);
 				++overhead_size;
 			}
 		}

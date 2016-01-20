@@ -122,7 +122,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 					decryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
 				}
 
-				Server->Log("Data without end: "+convert(data_size));
+				Server->Log("Data without end: "+convert(data_size), LL_DEBUG);
 			}
 		}
 		else
@@ -146,7 +146,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 			}
 			try
 			{
-				Server->Log("Message end. Size: "+convert(decryption_filter.MaxRetrievable()));
+				Server->Log("Message end. Size: "+convert(decryption_filter.MaxRetrievable()), LL_DEBUG);
 				decryption_filter.MessageEnd();
 			}
 			catch (CryptoPP::Exception&)
@@ -259,7 +259,7 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data
 					data_copy.insert(data_copy.begin(), data, data+data_size);
 				}
 				data_copy.erase(data_copy.begin()+i-escaped_zeros);
-				Server->Log("Unescaped something at "+convert(i));
+				Server->Log("Unescaped something at "+convert(i), LL_DEBUG);
 				++escaped_zeros;
 				++overhead_bytes;
 				has_copy=true;
