@@ -12,6 +12,7 @@ python3 build/replace_versions.py
 
 autoreconf --install
 
+rm -R install-data || true
 mkdir -p install-data
 
 for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf armv6-linux-engeabi
@@ -23,7 +24,9 @@ do
     rm -R install-data/$arch || true
     mkdir -p install-data/$arch
     cp urbackupclientbackend install-data/$arch/
-	cp urbackupclientctl install-data/$arch/        
+	ecc-strip install-data/$arch/urbackupclientbackend
+	cp urbackupclientctl install-data/$arch/
+	ecc-strip install-data/$arch/urbackupclientctl
 done
 
 mkdir -p install-data/backup_scripts

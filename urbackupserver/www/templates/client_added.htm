@@ -36,6 +36,30 @@
 						</blockquote>
 					</p>
 				</li>
+				<li>
+					<p>
+						{tAlternativly after you installed the client from:} <a href="https://www.urbackup.org/download.html" target="_blank">https://www.urbackup.org/download.html</a>
+					</p>
+					<p>
+						<ul>
+							<li>{tEnable the internet mode on the client}</li>
+							<li>{tSet the internet server to:} {internet_server}</li>
+							<li>{tSet the internet server port to:} {internet_server_port}</li>
+							<li>{tSet the computer name to:} {new_clientname}</li>
+							<li>{tSet the authentication key to:} {new_authkey}</li>
+						</ul>
+					</p>
+					<p>
+						{tWith the command line:}
+						<blockquote>
+							<p>
+								<code>
+									urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
 			</ul>
 		</p>
 	</div>

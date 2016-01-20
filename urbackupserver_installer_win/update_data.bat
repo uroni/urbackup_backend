@@ -15,6 +15,10 @@ copy /Y "..\release\fsimageplugin.dll" "data\fsimageplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 mkdir data_common
+
+copy /Y "..\server-license.txt" "data_common\license.txt"
+if %errorlevel% neq 0 exit /b %errorlevel% 
+
 mkdir data_common\urbackup
 mkdir data_common\urbackup\www
 mkdir data_common\urbackup\www\js

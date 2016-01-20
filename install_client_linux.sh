@@ -2,6 +2,7 @@
 
 set -e
 
+#Cannot be changed as paths are compiled into the binaries
 PREFIX=/usr/local
 
 SILENT=no
@@ -84,8 +85,8 @@ esac
 
 if [ $TARGET = armv6-linux-engeabihf ]
 then
-	$TARGET/urbackupclientctl --version > /dev/null 2>&1
-	if [ $? != 0 ]
+	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
+	if [ $?RET != 1 ]
 	then
 		echo "Using floating point emulation on ARMv6 (soft float)"
 		TARGET=armv6-linux-engeabi
@@ -100,14 +101,14 @@ else
 	echo "Detected architecture $TARGET"
 fi
 
-$TARGET/urbackupclientctl --version > /dev/null 2>&1
-if [ $? != 0 ]
+$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
+if [ $RET != 1 ]
 then
 	echo "Error running executable on this system ($arch). Stopping installation."
 	exit 2
 fi
 
-install -c -m 744 -d "$PREFIX/var/urbackup"
+install -c -m 744 -d "$PREFIX/var/urbackup/data"
 install -c -m 744 -d "$PREFIX/sbin"
 install -c -m 744 -d "$PREFIX/bin"
 install -c -m 744 -d "$PREFIX/share/urbackup/scripts"

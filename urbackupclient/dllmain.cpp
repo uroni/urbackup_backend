@@ -413,7 +413,7 @@ void upgrade_client9_10(IDatabase *db)
 void update_client10_11(IDatabase *db)
 {
 	db->Write("DROP TABLE filehashes");
-	db->Write("DROP INDEX filehashes_idx");
+	db->Write("DROP INDEX IF EXISTS filehashes_idx");
 	db->Write("DELETE FROM files");
 }
 

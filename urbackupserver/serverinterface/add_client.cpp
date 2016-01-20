@@ -20,9 +20,15 @@ ACTION_IMPL(add_client)
 		int id = ClientMain::getClientID(helper.getDatabase(), POST["clientname"], NULL, &new_client, &new_authkey);
 		if (new_client)
 		{
+			ServerSettings settings(helper.getDatabase());
+
+			SSettings* s = settings.getSettings();
+
 			ret.set("new_clientid", id);
 			ret.set("new_clientname", POST["clientname"]);
 			ret.set("new_authkey", new_authkey);
+			ret.set("internet_server", s->internet_server);
+			ret.set("internet_sever_port", s->internet_server_port);
 			ret.set("added_new_client", true);
 		}
 		else

@@ -19,6 +19,8 @@
 #include <iostream>
 #include <string>
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 #include "Connector.h"
 #include "../stringtools.h"
 #include "../tclap/CmdLine.h"
@@ -26,10 +28,12 @@
 #ifndef _WIN32
 #include "../config.h"
 #define PWFILE VARDIR "/urbackup/pw.txt"
+#define PWFILE_CHANGE VARDIR "/urbackup/pw_change.txt"
 #else
 #define PACKAGE_VERSION "$version_full_numeric$"
 #define VARDIR ""
 #define PWFILE "pw.txt"
+#define PWFILE_CHANGE "pw_change.txt"
 #endif
 
 const std::string cmdline_version = PACKAGE_VERSION;
@@ -67,27 +71,51 @@ typedef int(*action_fun)(std::vector<std::string> args);
 class PwClientCmd
 {
 public:
-	PwClientCmd(TCLAP::CmdLine& cmd)
+	PwClientCmd(TCLAP::CmdLine& cmd, bool change)
 		: cmd(cmd),
 		pw_file_arg("p", "pw-file",
 		"Use password in file",
-		false, PWFILE, "path", cmd),
+		false, change ? PWFILE_CHANGE : PWFILE, "path", cmd),
 		client_arg("c", "client",
 		"Start backup on this client",
-		false, "127.0.0.1", "hostname/IP", cmd)
+		false, "127.0.0.1", "hostname/IP", cmd),
+		change(change)
 	{
 
 	}
 
-	void set()
+	bool set()
 	{
-		Connector::setPWFile(pw_file_arg.getValue());
+		if (change)
+		{
+			Connector::setPWFileChange(pw_file_arg.getValue());
+		}
+		else
+		{
+			Connector::setPWFile(pw_file_arg.getValue());
+		}
+		
 		Connector::setClient(client_arg.getValue());
+
+		if (trim(getFile(pw_file_arg.getValue())).empty())
+		{
+			if (errno != 0)
+			{
+				perror("urbackupclientctl");
+			}
+			std::cerr << "Cannot read backend password from " << pw_file_arg.getValue() << std::endl;
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 
 private:
 	TCLAP::CmdLine& cmd;
-
+	
+	bool change;
 	TCLAP::ValueArg<std::string> pw_file_arg;
 	TCLAP::ValueArg<std::string> client_arg;
 };
@@ -106,11 +134,14 @@ int action_start(std::vector<std::string> args)
 
 	cmd.xorAdd(file_backup, image_backup);
 
-	PwClientCmd pw_client_cmd(cmd);
+	PwClientCmd pw_client_cmd(cmd, false);
 
 	cmd.parse(args);
 
-	pw_client_cmd.set();
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
 
 	int rc;
 	if(file_backup.getValue())
@@ -124,7 +155,7 @@ int action_start(std::vector<std::string> args)
 
 	if(rc==2)
 	{
-		std::cout << "Backup is already running" << std::endl;
+		std::cerr << "Backup is already running" << std::endl;
 		return 2;
 	}
 	else if(rc==1)
@@ -134,7 +165,7 @@ int action_start(std::vector<std::string> args)
 	}
 	else if(rc==3)
 	{
-		std::cout << "Error starting backup. No backup server found." << std::endl;
+		std::cerr << "Error starting backup. No backup server found." << std::endl;
 		return 3;
 	}
 	else
@@ -148,11 +179,14 @@ int action_status(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Get current backup status", ' ', cmdline_version);
 
-	PwClientCmd pw_client_cmd(cmd);
+	PwClientCmd pw_client_cmd(cmd, false);
 
 	cmd.parse(args);
 
-	pw_client_cmd.set();
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
 
 	std::string status = Connector::getStatusDetail();
 	if(!status.empty())
@@ -171,7 +205,7 @@ int action_list(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("List backups and files/folders in backups", ' ', cmdline_version);
 
-	PwClientCmd pw_client_cmd(cmd);
+	PwClientCmd pw_client_cmd(cmd, false);
 
 	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
 		"Backupid of backup from which to list files/folders",
@@ -183,7 +217,10 @@ int action_list(std::vector<std::string> args)
 
 	cmd.parse(args);
 
-	pw_client_cmd.set();
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
 
 	if(path_arg.getValue().empty() && !backupid_arg.isSet())
 	{
@@ -244,7 +281,7 @@ int action_start_restore(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Restore files/folders from backup", ' ', cmdline_version);
 
-	PwClientCmd pw_client_cmd(cmd);
+	PwClientCmd pw_client_cmd(cmd, false);
 
 	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
 		"Backupid of backup from which to restore files/folders",
@@ -270,7 +307,10 @@ int action_start_restore(std::vector<std::string> args)
 		return 2;
 	}
 
-	pw_client_cmd.set();
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
 
 	std::vector<SPathMap> path_map;
 	for (size_t i = 0; i < map_from_arg.getValue().size(); ++i)
@@ -304,11 +344,57 @@ int action_start_restore(std::vector<std::string> args)
 	}
 }
 
+int action_set_settings(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Set a backup setting", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::MultiArg<std::string> key_arg("k", "key",
+		"Key of the setting to set",
+		false, "setting key", cmd);
+
+	TCLAP::MultiArg<std::string> value_arg("v", "value",
+		"New value to set the setting to",
+		false, "setting value", cmd);
+
+	cmd.parse(args);
+
+	if (key_arg.getValue().size() != value_arg.getValue().size())
+	{
+		std::cerr << "There need to be an equal amount of -k/--key and -v/--value arguments" << std::endl;
+		return 2;
+	}
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string s_settings;
+	for (size_t i = 0; i < key_arg.getValue().size(); ++i)
+	{
+		s_settings += key_arg.getValue()[i] + "=" + value_arg.getValue()[i] + "\n";
+	}
+
+	bool b = Connector::updateSettings(s_settings);
+
+	if (!b)
+	{
+		std::cerr << "Error setting settings." << std::endl;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc==0)
 	{
-		std::cout << "Not enough arguments (zero arguments) -- no program name" << std::endl;
+		std::cerr << "Not enough arguments (zero arguments) -- no program name" << std::endl;
 		return 1;
 	}
 
@@ -322,6 +408,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_list);
 	actions.push_back("restore-start");
 	action_funs.push_back(action_start_restore);
+	actions.push_back("set-settings");
+	action_funs.push_back(action_set_settings);
 
 	bool has_help=false;
 	bool has_version=false;
@@ -397,3 +485,4 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 }
+
