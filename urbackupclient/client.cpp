@@ -374,10 +374,12 @@ void IndexThread::operator()(void)
 #endif
 #endif
 
-	ScopedBackgroundPrio background_prio;
+	ScopedBackgroundPrio background_prio(false);
 	if(backgroundBackupsEnabled(std::string()))
 	{
+#ifndef _DEBUG
 		background_prio.enable();
+#endif
 	}
 	
 
@@ -3716,6 +3718,8 @@ namespace
 
 std::string IndexThread::getShaBinary( const std::string& fn )
 {
+	VSSLog("Hashing file \"" + fn + "\"", LL_DEBUG);
+
 	if(sha_version!=256)
 	{
 		HashSha512 hash_512;
@@ -3784,7 +3788,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 	int64 skip_start = -1;
 	const size_t bsize = 32768;
 	int64 fpos = 0;
-	_u32 rc;
+	_u32 rc = 1;
 	std::vector<char> buf;
 	buf.resize(bsize);
 
@@ -3792,7 +3796,9 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 
 	IFsFile::SSparseExtent curr_sparse_extent = extent_iterator.nextExtent();
 
-	do
+	int64 fsize = f->Size();
+
+	while(fpos<=fsize && rc>0)
 	{
 		while (curr_sparse_extent.offset!=-1
 			&& curr_sparse_extent.offset+ curr_sparse_extent.size<fpos)
@@ -3818,7 +3824,29 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 			f->Seek(fpos);
 		}
 
-		rc = f->Read(buf.data(), bsize);
+		size_t curr_bsize = bsize;
+		if (fpos + static_cast<int64>(curr_bsize) > fsize)
+		{
+			curr_bsize = static_cast<size_t>(fsize - fpos);
+		}
+
+		if (curr_bsize > 0)
+		{
+			bool has_read_error = false;
+			rc = f->Read(buf.data(), static_cast<_u32>(curr_bsize), &has_read_error);
+
+			if (has_read_error)
+			{
+				std::string msg;
+				int64 code = os_last_error(msg);
+				VSSLog("Read error while hashing \"" + fn + "\". "+ msg+" (code: "+convert(code)+")", LL_ERROR);
+				return false;
+			}
+		}
+		else
+		{
+			rc = 0;
+		}
 
 		if (rc == bsize && buf_is_zero(buf.data(), bsize))
 		{
@@ -3845,7 +3873,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 			hf.hash(buf.data(), rc);
 			fpos += rc;
 		}
-	} while (rc>0);
+	}
 
 	return true;
 }

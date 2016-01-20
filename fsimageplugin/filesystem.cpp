@@ -69,7 +69,9 @@ namespace
 			ScopedBackgroundPrio background_prio(false);
 			if(background_priority)
 			{
+#ifndef _DEBUG
 				background_prio.enable();
+#endif
 			}
 
 			IScopedLock lock(mutex.get());

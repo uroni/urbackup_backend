@@ -150,7 +150,9 @@ void CClientThread::operator()(void)
 	ScopedBackgroundPrio background_prio(false);
 	if(FileServFactory::backgroundBackupsEnabled())
 	{
+#ifndef _DEBUG
 		background_prio.enable();
+#endif
 	}
 #endif
 
@@ -1202,7 +1204,8 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 		*ldata->errorcode = dwErrorCode;
 	}
 
-	if( dwNumberOfBytesTransfered > 0)
+	if(*ldata->errorcode==0
+		&& dwNumberOfBytesTransfered > 0)
 	{
 		ldata->bsize=dwNumberOfBytesTransfered;
 
