@@ -618,7 +618,17 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		std::string args=getFile("args.txt");
+		std::string args=trim(getFile("args.txt"));
+
+		for (size_t i = 0; i < 10; ++i)
+		{
+			std::string extra_args = trim(getFile("extra_args_" + convert(i) + ".txt"));
+			if (!extra_args.empty())
+			{
+				args += "\n" + extra_args;
+			}
+		}
+
 		int lc=linecount(args);
 		srv_argv=new char*[lc+1];
 		srv_argv[0]=new char[strlen(argv[0])+1];

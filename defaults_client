@@ -27,3 +27,6 @@ DAEMON_TMPDIR="/tmp"
 #                    Restores via urbackupclientctl still work
 #
 RESTORE="disabled"
+
+#If true client will not bind to any external network ports (either true or false)
+INTERNET_ONLY=false

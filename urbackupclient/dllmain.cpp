@@ -309,7 +309,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		urbackup_serviceport = static_cast<unsigned short>(atoi(Server->getServerParameter("urbackup_serviceport").c_str()));
 	}
-	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport);
+
+	IServer::BindTarget serviceport_bind_target = IServer::BindTarget_All;
+	if (Server->getServerParameter("internet_only_mode") == "true")
+	{
+		serviceport_bind_target = IServer::BindTarget_Localhost;
+	}
+
+	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, serviceport_bind_target);
 
 	filesrv_pluginid=Server->StartPlugin("fileserv", params);
 

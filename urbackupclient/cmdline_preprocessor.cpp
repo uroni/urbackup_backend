@@ -100,7 +100,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 			if(!val.empty())
 			{
 				real_args.push_back("--loglevel");
-				real_args.push_back(unquote_value(val));
+				real_args.push_back(val);
 			}
 		}
 		if(settings->getValue("DAEMON_TMPDIR", &val))
@@ -122,9 +122,19 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 			if(!val.empty())
 			{
 				real_args.push_back("--allow_restore");
-				real_args.push_back(strlower(unquote_value(val)));
+				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("INTERNET_ONLY", &val))
+		{
+			val = unquote_value(val);
+
+			if (!val.empty())
+			{
+				real_args.push_back("--internet_only_mode");
+				real_args.push_back(strlower(val));
+			}
+		}		
 	}	
 
 	if(destroy_server)
@@ -244,7 +254,8 @@ int main(int argc, char* argv[])
 		{
 			real_args.push_back("--log_console_no_time");
 		}
-		if(internet_only_arg.getValue())
+		if(std::find(real_args.begin(), real_args.end(), "--internet_only_mode") == real_args.end()
+			&& internet_only_arg.getValue())
 		{
 			real_args.push_back("--internet_only_mode");
 			real_args.push_back("true");

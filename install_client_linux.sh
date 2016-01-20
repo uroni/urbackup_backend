@@ -145,11 +145,30 @@ then
 c71b9d17069d4d03bd7f6b75f36ba5ff
 fi
 
+CONFIG_FILE=no
 if [ $DEBIAN = yes ]
 then
-	[ ! -e /etc/defaults ] || install -c defaults_client /etc/defaults/urbackupclientbackend
+	if [ -e /etc/default ]
+	then
+		CONFIG_FILE=/etc/default/urbackupclient
+		install -c defaults_client /etc/default/urbackupclient
+	fi
 else
-	[ ! -e /etc/sysconfig ] || install -c defaults_client /etc/sysconfig/urbackupclientbackend
+	if [ -e /etc/sysconfig ]
+	then
+		CONFIG_FILE=/etc/sysconfig/urbackupclient
+		install -c defaults_client /etc/sysconfig/urbackupclient
+	fi
+fi
+
+if [ $CONFIG_FILE != no ]
+then
+	if grep "internet_mode_enabled=true" "$PREFIX/var/urbackup/initial_settings.cfg" > /dev/null 2>&1
+	then
+		echo "Enabling internet only mode"
+		sed 's/INTERNET_ONLY=false/INTERNET_ONLY=true/g' "$CONFIG_FILE.new"
+		mv "$CONFIG_FILE.new" "$CONFIG_FILE"
+	fi
 fi
 
 if [ $SYSTEMD = yes ]
