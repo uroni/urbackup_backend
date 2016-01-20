@@ -24,9 +24,9 @@ do
     rm -R install-data/$arch || true
     mkdir -p install-data/$arch
     cp urbackupclientbackend install-data/$arch/
-	ecc-strip install-data/$arch/urbackupclientbackend
+	#ecc-strip install-data/$arch/urbackupclientbackend
 	cp urbackupclientctl install-data/$arch/
-	ecc-strip install-data/$arch/urbackupclientctl
+	#ecc-strip install-data/$arch/urbackupclientctl
 done
 
 mkdir -p install-data/backup_scripts
