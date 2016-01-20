@@ -1707,6 +1707,8 @@ void ClientConnector::replaceSettings(const std::string &pData)
 			}
 		}
 
+		InternetClient::updateSettings();
+
 		new_data+="client_set_settings=true\n";
 		new_data+="client_set_settings_time="+convert(Server->getTimeSeconds())+"\n";
 
