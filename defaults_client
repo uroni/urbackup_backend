@@ -1,6 +1,6 @@
 # Defaults for urbackup_client initscript
 # sourced by /etc/init.d/urbackupclientbackend
-# installed at /etc/default/urbackupclientbackend by the maintainer scripts
+# installed at /etc/default/urbackupclient by the maintainer scripts
 
 #
 # This is parsed as a key=value file

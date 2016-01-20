@@ -110,6 +110,12 @@ std::string unquote_value(std::string val)
 #ifndef _WIN32
 void read_config_file(std::string fn, std::vector<std::string>& real_args)
 {
+	if (!FileExists(fn))
+	{
+		std::cout << "Config file at " << fn << " does not exist. Ignoring." << std::endl;
+		return;
+	}
+
 	bool destroy_server=false;
 	if(Server==NULL)
 	{

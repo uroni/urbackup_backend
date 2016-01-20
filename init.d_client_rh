@@ -2,7 +2,7 @@
 #
 # chkconfig: 345 85 15
 # description: Urbackup client daemon
-# config: /etc/sysconfig/urbackupclientbackend
+# config: /etc/sysconfig/urbackupclient
 #
 
 ### BEGIN INIT INFO
@@ -42,7 +42,7 @@ lockfile=/var/lock/subsys/$NAME
 start()
 {
     echo -n $"Starting Urbackup client: "
-    daemon $DAEMON --daemon --config "/etc/sysconfig/$NAME" --pidfile $PIDFILE
+    daemon $DAEMON --daemon --config "/etc/sysconfig/urbackupclient" --pidfile $PIDFILE
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
