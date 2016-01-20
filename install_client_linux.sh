@@ -79,7 +79,7 @@ case "$arch" in
     x86_64) TARGET=x86_64-linux-eng ;;
     armv6*) TARGET=arm-linux-engeabihf ;;
 	armv7*) TARGET=arm-linux-engeabihf ;;
-	armv8*) TARGET=aarch64-linux-eng ;;
+	armv8*) TARGET=arm-linux-engeabihf ;;
 esac
 
 if [ $TARGET = no ]
