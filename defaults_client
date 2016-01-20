@@ -7,7 +7,7 @@
 #
 
 #logfile name
-LOGFILE="/var/log/urbackup_client.log"
+LOGFILE="/var/log/urbackupclient.log"
 
 #Either debug,warn,info or error
 LOGLEVEL="warn"

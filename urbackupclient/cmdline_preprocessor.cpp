@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
 
 		TCLAP::ValueArg<std::string> logfile_arg("l", "logfile",
 			"Specifies the log file name",
-			false, "/var/log/urbackup.log", "path", cmd);
+			false, "/var/log/urbackupclient.log", "path", cmd);
 
 		std::vector<std::string> loglevels;
 		loglevels.push_back("debug");

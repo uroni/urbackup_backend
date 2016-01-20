@@ -148,13 +148,13 @@ fi
 CONFIG_FILE=no
 if [ $DEBIAN = yes ]
 then
-	if [ -e /etc/default ]
+	if [ -e /etc/default ] && [ ! -e /etc/default/urbackupclient ]
 	then
 		CONFIG_FILE=/etc/default/urbackupclient
 		install -c defaults_client /etc/default/urbackupclient
 	fi
 else
-	if [ -e /etc/sysconfig ]
+	if [ -e /etc/sysconfig ] && [ ! -e /etc/sysconfig/urbackupclient ]
 	then
 		CONFIG_FILE=/etc/sysconfig/urbackupclient
 		install -c defaults_client /etc/sysconfig/urbackupclient
