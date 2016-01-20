@@ -41,7 +41,7 @@ lockfile=/var/lock/subsys/$NAME
 # Function that starts the daemon/service
 start()
 {
-    echo -n $"Starting Urbackup client: "
+    echo -n $"Starting UrBackup client: "
     daemon $DAEMON --daemon --config "/etc/sysconfig/urbackupclient" --pidfile $PIDFILE
     retval=$?
     echo
@@ -51,7 +51,7 @@ start()
 
 stop()
 {
-    echo -n $"Shutting down Urbackup client: "
+    echo -n $"Shutting down UrBackup client: "
     killproc $prog
     retval=$?
     echo

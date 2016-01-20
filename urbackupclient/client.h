@@ -279,7 +279,9 @@ private:
 
 	void resetFileEntries(void);
 
-	static void addFileExceptions(std::vector<std::string>& exlude_dirs);
+	static void addFileExceptions(std::vector<std::string>& exclude_dirs);
+
+	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
 
 	void handleHardLinks(const std::string& bpath, const std::string& vsspath);
 

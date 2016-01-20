@@ -2857,36 +2857,37 @@ void IndexThread::readPatterns()
 
 std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
 {
-	std::vector<std::string> exlude_dirs;
+	std::vector<std::string> exclude_dirs;
 	if(!val.empty())
 	{
 		std::vector<std::string> toks;
 		Tokenize(val, toks, ";");
-		exlude_dirs=toks;
+		exclude_dirs =toks;
 #ifdef _WIN32
-		for(size_t i=0;i<exlude_dirs.size();++i)
+		for(size_t i=0;i<exclude_dirs.size();++i)
 		{
-			strupper(&exlude_dirs[i]);
+			strupper(&exclude_dirs[i]);
 		}
 #endif
-		for(size_t i=0;i<exlude_dirs.size();++i)
+		for(size_t i=0;i<exclude_dirs.size();++i)
 		{
-			if(exlude_dirs[i].find('\\')==std::string::npos
-				&& exlude_dirs[i].find('/')==std::string::npos
-				&& exlude_dirs[i].find('*')==std::string::npos )
+			if(exclude_dirs[i].find('\\')==std::string::npos
+				&& exclude_dirs[i].find('/')==std::string::npos
+				&& exclude_dirs[i].find('*')==std::string::npos )
 			{
-				exlude_dirs[i]="*/"+trim(exlude_dirs[i]);
+				exclude_dirs[i]="*/"+trim(exclude_dirs[i]);
 			}
 		}
-		for(size_t i=0;i<exlude_dirs.size();++i)
+		for(size_t i=0;i<exclude_dirs.size();++i)
 		{
-			exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
+			exclude_dirs[i]=sanitizePattern(exclude_dirs[i]);
 		}
 	}	
 
-	addFileExceptions(exlude_dirs);
+	addFileExceptions(exclude_dirs);
+	addHardExcludes(exclude_dirs);
 
-	return exlude_dirs;
+	return exclude_dirs;
 }
 
 std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& val, std::vector<int>& include_depth,
@@ -3355,10 +3356,10 @@ namespace
 }
 #endif
 
-void IndexThread::addFileExceptions(std::vector<std::string>& exlude_dirs)
+void IndexThread::addFileExceptions(std::vector<std::string>& exclude_dirs)
 {
 #ifdef _WIN32
-	exlude_dirs.push_back(sanitizePattern("C:\\HIBERFIL.SYS"));
+	exclude_dirs.push_back(sanitizePattern("C:\\HIBERFIL.SYS"));
 
 	HKEY hKey;
 	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
@@ -3391,8 +3392,17 @@ void IndexThread::addFileExceptions(std::vector<std::string>& exlude_dirs)
 
 		strupper(&toks[i]);
 
-		exlude_dirs.push_back(sanitizePattern(toks[i]));
+		exclude_dirs.push_back(sanitizePattern(toks[i]));
 	}
+#endif
+}
+
+void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
+{
+#ifdef __linux__
+	exclude_dirs.push_back("/proc/*");
+	exclude_dirs.push_back("/dev/*");
+	exclude_dirs.push_back("/sys/*");
 #endif
 }
 
