@@ -196,7 +196,7 @@ void BackupServerHash::operator()(void)
 
 						if (sparse_extents_f != NULL)
 						{
-							extent_iterator.reset(new ExtentIterator(sparse_extents_f, tf->Size()));
+							extent_iterator.reset(new ExtentIterator(sparse_extents_f));
 						}
 					}
 

@@ -39,6 +39,7 @@ cp init.d_client install-data/
 cp init.d_client_rh install-data/
 cp defaults_client install-data/
 cp linux_snapshot/* install-data/
+chmod +x install-data/*_filesystem_snapshot
 
 rm -R linux-installer || true
 mkdir -p linux-installer
