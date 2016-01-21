@@ -199,6 +199,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			std::string c = get_sparse_extent_content();
 			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
 				return "";
+			hashoutputpos += c.size();
 			
 
 			if (ret_sha2 && sparse_extent_start == -1)

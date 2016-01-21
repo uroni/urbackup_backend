@@ -4,10 +4,13 @@ set -e
 
 SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
+SNAP_ORIG_PATH="$5"
 
 if ! test -e $SNAP_MOUNTPOINT
 then
     echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+	[ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
+	[ ! -e "${SNAP_MOUNTPOINT}-num" ] || rm "${SNAP_MOUNTPOINT}-num"
     exit 0
 fi
 
@@ -16,6 +19,7 @@ then
 	echo "Snapshot is not mounted. Already removed"
 	rm "${SNAP_MOUNTPOINT}-num"
 	rmdir "${SNAP_MOUNTPOINT}"
+	[ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
 	exit 0
 fi
 

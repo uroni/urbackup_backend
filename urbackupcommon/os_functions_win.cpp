@@ -1122,16 +1122,22 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 
 	if(hFile!=INVALID_HANDLE_VALUE)
 	{
-		LARGE_INTEGER li;
-		li.QuadPart=os_to_windows_filetime(created);
-
+		FILETIME* pcreation_time = NULL;
 		FILETIME creation_time;
-		creation_time.dwHighDateTime=li.HighPart;
-		creation_time.dwLowDateTime=li.LowPart;
+		if (created != 0)
+		{
+			LARGE_INTEGER li;
+			li.QuadPart=os_to_windows_filetime(created);
 
+			
+			creation_time.dwHighDateTime=li.HighPart;
+			creation_time.dwLowDateTime=li.LowPart;	
 
-		li.QuadPart=os_to_windows_filetime(last_modified);
-
+			pcreation_time = &creation_time;
+		}
+		
+		LARGE_INTEGER li;
+		li.QuadPart = os_to_windows_filetime(last_modified);
 		FILETIME modified_time;
 		modified_time.dwHighDateTime=li.HighPart;
 		modified_time.dwLowDateTime=li.LowPart;
@@ -1142,7 +1148,7 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 		accessed_time.dwHighDateTime = li.HighPart;
 		accessed_time.dwLowDateTime = li.LowPart;
 
-		if(SetFileTime(hFile, &creation_time, &accessed_time, &modified_time))
+		if(SetFileTime(hFile, pcreation_time, &accessed_time, &modified_time))
 		{
 			CloseHandle(hFile);
 			return true;
