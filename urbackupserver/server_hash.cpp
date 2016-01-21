@@ -492,6 +492,9 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 			{
 				hardlink_limit = false;
 
+				std::string errmsg;
+				int64 errcode = os_last_error(errmsg);
+
 				IFile *ctf=Server->openFile(os_file_prefix(existing_file.fullpath), MODE_READ);
 				if(ctf==NULL)
 				{
@@ -514,7 +517,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 				}
 				else
 				{
-					ServerLogger::Log(logid, "HT: Hardlinking failed (unkown error) Source=\""+existing_file.fullpath+"\" Destination=\""+tfn+"\"", LL_DEBUG);
+					ServerLogger::Log(logid, "HT: Hardlinking failed (unkown error) Source=\""+existing_file.fullpath+"\" Destination=\""+tfn+"\" -- "+errmsg+" (code: "+convert(errcode)+")", LL_DEBUG);
 
 					if(copy_from_hardlink_if_failed)
 					{
@@ -537,28 +540,40 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 						if(!existing_file.hashpath.empty())
 						{
-							IFile *ctf_hash=Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ);
+							std::auto_ptr<IFile> ctf_hash(Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ));
 
-							if(ctf_hash)
+							bool write_metadata = true;
+
+							if(ctf_hash.get()!=NULL)
 							{
-								if(!copyFile(ctf_hash, hash_fn, NULL))
+								int64 hashfilesize = read_hashdata_size(ctf_hash.get());
+								assert(hashfilesize == -1 || hashfilesize == t_filesize);
+								if (hashfilesize != -1)
 								{
-									ServerLogger::Log(logid, "Error copying hashfile to destination -3", LL_ERROR);
-									has_error=true;
-								}
-								else
-								{
-									if(!write_file_metadata(hash_fn, this, metadata, false))
+									if (!copyFile(ctf_hash.get(), hash_fn, NULL))
 									{
-										ServerLogger::Log(logid, "Error writing file metadata -2", LL_ERROR);
-										has_error=true;
+										ServerLogger::Log(logid, "Error copying hashfile to destination -3", LL_ERROR);
+										has_error = true;
+										write_metadata = false;
+									}
+									else
+									{
+										if (!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
+										{
+											ServerLogger::Log(logid, "Error truncating hashdata file -2", LL_ERROR);
+										}
 									}
 								}
-								Server->destroy(ctf_hash);
 							}
 							else
 							{
 								ServerLogger::Log(logid, "Error opening hash source file \""+existing_file.hashpath+"\"", LL_ERROR);
+							}
+
+							if (write_metadata && !write_file_metadata(hash_fn, this, metadata, false))
+							{
+								ServerLogger::Log(logid, "Error writing file metadata -2", LL_ERROR);
+								has_error = true;
 							}
 						}
 
