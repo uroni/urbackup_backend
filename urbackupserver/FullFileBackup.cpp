@@ -616,7 +616,7 @@ bool FullFileBackup::doFileBackup()
 							if(clientlist->Seek(last_modified_offsets.top()))
 							{
 								char ch;
-								if(clientlist->Read(&ch, 1)!=1)
+								if(clientlist->Read(&ch, 1)==1)
 								{
 									ch = (ch=='0' ? '1' : '0');
 									if(!clientlist->Seek(last_modified_offsets.top())
