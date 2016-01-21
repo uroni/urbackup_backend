@@ -222,6 +222,11 @@ fi
 
 if [ $SILENT = no ]
 then
+	if [ -e $PREFIX/etc/urbackup/create_filesystem_snapshot ] || [ -e $PREFIX/etc/urbackup/no_filesystem_snapshot ]
+	then
+		exit 0
+	fi
+
     CENTOS=no
 
     DATTO=no
@@ -342,4 +347,9 @@ then
         cp datto_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
         echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
     fi
+	
+	if [ $snapn = 4 ]
+	then
+		touch $PREFIX/etc/urbackup/no_filesystem_snapshot
+	fi
 fi
