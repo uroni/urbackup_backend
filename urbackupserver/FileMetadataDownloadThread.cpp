@@ -126,6 +126,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size))!=sizeof(curr_fn_size))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Filename size could not be read.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 			
@@ -142,6 +143,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
 					ServerLogger::Log(logid, "Error saving metadata. Filename could not be read. Size: "+convert(curr_fn_size), LL_ERROR);
+					copyForAnalysis(metadata_f.get());
 					return false;
 				}
 
@@ -151,18 +153,15 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			else
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Filename is empty.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
-			}
-
-			if (curr_fn == "fmartin/wxWidgets-3.0.2/samples/help/doc.chm")
-			{
-				int abc = 5;
 			}
 
 			unsigned int read_path_checksum =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&read_path_checksum), sizeof(read_path_checksum))!=sizeof(read_path_checksum))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Path checksum could not be read.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -171,6 +170,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(little_endian(read_path_checksum)!=path_checksum)
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Path checksum wrong.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -246,6 +246,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&common_metadata_size), sizeof(common_metadata_size))!=sizeof(common_metadata_size))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata size could not be read.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -261,6 +262,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(&common_metadata[0], static_cast<_u32>(common_metadata.size()))!=common_metadata.size())
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata could not be read.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -272,6 +274,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&read_common_metadata_checksum), sizeof(read_common_metadata_checksum))!=sizeof(read_common_metadata_checksum))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata checksum could not be read.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -280,6 +283,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(little_endian(read_common_metadata_checksum)!=common_metadata_checksum)
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata checksum wrong.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -301,6 +305,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				|| !common_data.getStr(&permissions) )
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Cannot parse common metadata.", LL_ERROR);
+				copyForAnalysis(metadata_f.get());
 				return false;
 			}
 
@@ -367,12 +372,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 					}
 				}
 
-				std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
-
-				if (copy_file(metadata_f.get(), tmp.get()))
-				{
-					ServerLogger::Log(logid, "Copied metadata to " + tmp->getFilename() + " for error analysis", LL_INFO);
-				}
+				copyForAnalysis(metadata_f.get());
 				
 				return false;
 			}
@@ -962,6 +962,16 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::stri
 		}
 	}
 	
+}
+
+void FileMetadataDownloadThread::copyForAnalysis(IFile* metadata_f)
+{
+	std::auto_ptr<IFile> tmp(Server->openTemporaryFile());
+
+	if (copy_file(metadata_f, tmp.get()))
+	{
+		ServerLogger::Log(logid, "Copied metadata to " + tmp->getFilename() + " for error analysis", LL_INFO);
+	}
 }
 
 void FileMetadataDownloadThread::addSingleFileItem( std::string dir_path )

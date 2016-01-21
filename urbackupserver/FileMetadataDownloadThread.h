@@ -57,6 +57,8 @@ public:
 
 private:
 
+	void copyForAnalysis(IFile* metadata_f);
+
 	void addSingleFileItem(std::string dir_path);
 	void addFolderItem(std::string path, const std::string& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items);
 
