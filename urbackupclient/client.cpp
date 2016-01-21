@@ -2386,6 +2386,9 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		VSSLogLines(loglines, LL_INFO);
 	}
 	return true;
+#else
+	cd->deleteShadowcopy(scs.id);
+	return true;
 #endif
 }
 
