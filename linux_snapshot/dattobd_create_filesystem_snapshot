@@ -1,0 +1,57 @@
+#!/bin/sh
+
+set -e
+
+mkdir -p /mnt/urbackup_snaps
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+
+DEVICE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+
+if [ "x$DEVICE" = "x" ]
+then
+        echo "Cannot get device for filesystem $SNAP_MOUNTPOINT"
+        exit 1
+fi
+
+echo "Snapshotting device $DEVICE via dattobd..."
+
+NUM=0
+
+while [ -e "/dev/datto$NUM" ]
+do
+        NUM=`expr $NUM + 1`
+done
+
+echo "Using /dev/datto$NUM..."
+
+dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_$SNAP_ID" $NUM
+
+echo $NUM > ${SNAP_DEST}-num
+
+echo "Mounting /dev/datto$NUM..."
+
+mkdir -p $SNAP_DEST
+
+MOUNTOPTS="ro"
+
+if [ $TYPE = "xfs" ]
+then
+        MOUNTOPTS="ro,nouuid,norecovery"
+fi
+
+if ! mount -o $MOUNTOPTS /dev/datto$NUM $SNAP_DEST 
+then
+	echo "Mounting filesystem failed"
+	rmdir "$SNAP_DEST"
+	rm "${SNAP_DEST}-num"
+	dbdctl destroy $NUM
+	exit 1
+fi
+
+echo "SNAPSHOT=$SNAP_DEST"
+
+exit 0

@@ -24,9 +24,9 @@ do
     rm -R install-data/$arch || true
     mkdir -p install-data/$arch
     cp urbackupclientbackend install-data/$arch/
-	#ecc-strip install-data/$arch/urbackupclientbackend
+	ecc-strip install-data/$arch/urbackupclientbackend
 	cp urbackupclientctl install-data/$arch/
-	#ecc-strip install-data/$arch/urbackupclientctl
+	ecc-strip install-data/$arch/urbackupclientctl
 done
 
 mkdir -p install-data/backup_scripts
@@ -38,6 +38,7 @@ cp urbackupclientbackend-redhat.service install-data/
 cp init.d_client install-data/
 cp init.d_client_rh install-data/
 cp defaults_client install-data/
+cp linux_snapshot/* install-data/
 
 rm -R linux-installer || true
 mkdir -p linux-installer

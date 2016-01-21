@@ -1,0 +1,45 @@
+#!/bin/sh
+
+set -e
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+
+if ! test -e $SNAP_MOUNTPOINT
+then
+    echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+    exit 0
+fi
+
+if ! df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1
+then
+	echo "Snapshot is not mounted. Already removed"
+	rm "${SNAP_MOUNTPOINT}-num"
+	rmdir "${SNAP_MOUNTPOINT}"
+	exit 0
+fi
+
+NUM=`cat "${SNAP_MOUNTPOINT}-num"` || true
+
+if [ "x$NUM" = "x" ]
+then
+        echo "Cannot get device number from ${SNAP_MOUNTPOINT}-num"
+        exit 1
+fi
+
+echo "Unmounting /dev/datto$NUM at /mnt/urbackup_snaps/$SNAP_ID..."
+
+if ! umount /mnt/urbackup_snaps/$SNAP_ID
+then
+	echo "Unmounting /mnt/urbackup_snaps/$SNAP_ID failed. Retrying in 10s..."
+    sleep 10
+    umount /mnt/urbackup_snaps/$SNAP_ID
+fi
+
+
+rm "${SNAP_MOUNTPOINT}-num"
+rmdir "${SNAP_MOUNTPOINT}"
+
+echo "Destroying dattobd snapshot /dev/datto$NUM..."
+
+dbdctl destroy $NUM

@@ -191,7 +191,6 @@ then
 	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
 	then
 		echo "Successfully started client service. Installation complete."
-		exit 0
 	else
 		echo "Starting client service failed. Please investigate."
 		exit 1
@@ -215,9 +214,132 @@ else
 	if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
 	then
 		echo "Successfully started client service. Installation complete."
-		exit 0
 	else
 		echo "Starting client service failed. Please investigate."
 		exit 1
 	fi
+fi
+
+if [ $SILENT = no ]
+then
+    CENTOS=no
+
+    DATTO=no
+    LVM=no
+    BTRFS=no
+
+    if [ $DEBIAN = no ]
+    then
+        if grep "release 6" /etc/redhat-release > /dev/null 2>&1
+        then
+            CENTOS=6
+        fi
+
+        if grep "release 7" /etc/redhat-release > /dev/null 2>&1
+        then
+            CENTOS=7
+        fi
+    fi
+
+
+    if [ $CENTOS != no ]
+    then
+        echo "+Detected EL/RH $CENTOS. Dattobd supported"
+        DATTO=yes
+    fi
+
+    if [ $DATTO = no ]
+    then
+        echo "-dattobd not supported on this system"
+    fi
+
+    if df -T -P | tr -s " " | cut -d" " -f2 | grep "btrfs" > /dev/null 2>&1
+    then
+        echo "+Detected btrfs filesystem"
+        BTRFS=yes
+    else
+		echo "-Detected no btrfs filesystem"
+	fi
+
+    LVM_VOLS=`lvs | wc -l`
+    if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS > 1 ]
+    then
+        echo "+Detected LVM volumes"
+        LVM=yes
+    else
+		echo "-Detected no LVM volumes"
+	fi
+
+    while true
+    do
+        echo "Please select the snapshot mechanism to be used for backups:"
+        if [ $DATTO != no ]
+        then
+            echo "1) dattobd volume snapshot kernel module from https://github.com/datto/dattobd"
+        fi
+
+        if [ $LVM != no ]
+        then
+            echo "2) LVM - Logical Volume Manager snapshots"
+        fi
+
+        if [ $BTRFS != no ]
+        then
+            echo "3) btrfs filesystem snapshots"
+        fi
+
+        echo "4) Use no snapshot mechanism"
+
+        read snapn
+
+        if [ "x$snapn" = x1 ]
+        then
+            break
+        fi
+
+        if [ "x$snapn" = x2 ]
+        then
+            break
+        fi
+
+        if [ "x$snapn" = x3 ]
+        then
+            break
+        fi
+
+        if [ "x$snapn" = x4 ]
+        then
+            break
+        fi
+    done
+
+    mkdir -p $PREFIX/etc/urbackup
+
+    if [ $snapn = 3 ]
+    then
+        cp btrfs_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
+        cp btrfs_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
+        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+    fi
+
+    if [ $snapn = 2 ]
+    then
+        cp lvm_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
+        cp lvm_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
+        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+    fi
+
+    if [ $snapn = 1 ]
+    then
+        if [ $CENTOS != no ]
+        then
+            curl -O https://cpkg.datto.com/datto-rpm/EnterpriseLinux/7/x86_64/datto-el-rpm-release-1.0.0-1.noarch.rpm
+            yum localinstall datto-el-rpm-release-1.0.0-1.noarch.rpm
+            yum install dkms-dattobd dattobd-utils
+        fi
+
+        cp datto_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
+        cp datto_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
+        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+    fi
 fi
