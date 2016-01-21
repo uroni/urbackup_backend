@@ -95,10 +95,21 @@ std::string map_file(std::string fn, const std::string& identity)
 	else
 	{
 		std::string ret;
-		if(i->second.value!="/" || fn.empty() || fn[0]!='/')
-	            ret = i->second.value + getOsDir(fn);
-	        else
-	    	    ret = getOsDir(fn);
+		if (i->second.value != "/" || fn.empty() || fn[0] != '/')
+		{
+			ret = i->second.value + getOsDir(fn);
+		}
+		else
+		{
+			ret = getOsDir(fn);
+		}
+
+#ifndef _WIN32
+		if (ret.empty())
+		{
+			ret = "/";
+		}
+#endif
 
 		std::map<std::string, std::string>::iterator redir_it = fn_redirects.find(ret);
 		if (redir_it != fn_redirects.end())
