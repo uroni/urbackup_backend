@@ -351,7 +351,7 @@ bool IncrFileBackup::doFileBackup()
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get(), "file backup download");
+		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
 
 	char buffer[4096];
 	_u32 read;

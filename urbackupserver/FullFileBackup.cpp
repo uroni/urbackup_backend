@@ -211,7 +211,7 @@ bool FullFileBackup::doFileBackup()
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
-		Server->getThreadPool()->execute(server_download.get(), "file backup download");
+		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
 
 	std::vector<size_t> diffs;
 	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);

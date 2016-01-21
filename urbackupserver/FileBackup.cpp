@@ -362,8 +362,8 @@ void FileBackup::createHashThreads(bool use_reflink)
 
 	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid);
 	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid);
-	bsh_ticket = Server->getThreadPool()->execute(bsh, "file backup writing");
-	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare, "file backup hashing");
+	bsh_ticket = Server->getThreadPool()->execute(bsh, "fbackup write");
+	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare, "fbackup hash");
 }
 
 
@@ -1706,7 +1706,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 
         metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid));
 
-		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get(), "file backup metadata");
+		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get(), "fbackup meta");
 
 		int64 starttime=Server->getTimeMS();
 

@@ -706,7 +706,17 @@ void ClientMain::operator ()(void)
 							ServerStatus::addRunningJob(clientmainname);
 							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client)
 							{
-								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, "backup main");
+								std::string tname = "backup main";
+								if (dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL)
+								{
+									tname = "fbackup main";
+								}
+								else if (dynamic_cast<ImageBackup*>(backup_queue[i].backup) != NULL)
+								{
+									tname = "ibackup main";
+								}
+
+								backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup, tname);
 								started_job=true;
 							}
 							else
