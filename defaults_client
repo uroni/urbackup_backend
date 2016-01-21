@@ -10,7 +10,15 @@
 LOGFILE="/var/log/urbackupclient.log"
 
 #Either debug,warn,info or error
-LOGLEVEL="warn"
+LOGLEVEL=warn
+
+#Max size of the log file before rotation
+#Disable if you are using logrotate for
+#more advanced configurations (e.g. with compression)
+LOG_ROTATE_FILESIZE=20971520
+
+#Max number of log files during rotation
+LOG_ROTATE_NUM=10
 
 #Tmp file directory
 DAEMON_TMPDIR="/tmp"
@@ -26,7 +34,7 @@ DAEMON_TMPDIR="/tmp"
 # "disabled":        Restores via web interface are disabled.
 #                    Restores via urbackupclientctl still work
 #
-RESTORE="disabled"
+RESTORE=disabled
 
 #If true client will not bind to any external network ports (either true or false)
 INTERNET_ONLY=false

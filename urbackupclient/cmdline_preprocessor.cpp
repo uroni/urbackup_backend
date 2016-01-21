@@ -101,7 +101,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 		}
 		if(settings->getValue("LOGLEVEL", &val))
 		{
-			val = unquote_value(val);
+			val = trim(unquote_value(val));
 
 			if(!val.empty())
 			{
@@ -123,7 +123,7 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 		}
 		if(settings->getValue("RESTORE", &val))
 		{
-			val = unquote_value(val);
+			val = trim(unquote_value(val));
 
 			if(!val.empty())
 			{
@@ -133,14 +133,34 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 		}
 		if (settings->getValue("INTERNET_ONLY", &val))
 		{
-			val = unquote_value(val);
+			val = trim(unquote_value(val));
 
 			if (!val.empty())
 			{
 				real_args.push_back("--internet_only_mode");
 				real_args.push_back(strlower(val));
 			}
-		}		
+		}
+		if (settings->getValue("LOG_ROTATE_FILESIZE", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--rotate-filesize");
+				real_args.push_back(strlower(val));
+			}
+		}
+		if (settings->getValue("LOG_ROTATE_NUM", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--rotate-numfiles");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -203,10 +223,20 @@ int main(int argc, char* argv[])
 			cmd, false);
 
 #if defined(__APPLE__)
+		int default_rotate_filesize = 20971520;
+		int default_rotate_numfiles = 10;
+#else
+		int default_rotate_filesize = 0;
+		int default_rotate_numfiles = 0;
+#endif
+
 		TCLAP::ValueArg<int> rotate_filesize_arg("g", "rotate-filesize",
 			"Maximum size of log file before rotation",
-			false, 20971520, "bytes", cmd);
-#endif
+			false, default_rotate_filesize, "bytes", cmd);
+
+		TCLAP::ValueArg<int> rotate_num_files_arg("j", "rotate-num-files",
+			"Max number of log files during rotation",
+			false, default_rotate_numfiles, "num", cmd);
 
 #ifndef _WIN32
 		TCLAP::ValueArg<std::string> config_arg("c", "config",
@@ -271,10 +301,19 @@ int main(int argc, char* argv[])
 			real_args.push_back("--allow_restore");
 			real_args.push_back(restore_arg.getValue());
 		}
-#if defined(__APPLE__)
-		real_args.push_back("--rotate-filesize");
-		real_args.push_back(convert(rotate_filesize_arg.getValue()));
-#endif
+		if (rotate_filesize_arg.getValue() > 0
+			&& std::find(real_args.begin(), real_args.end(), "--rotate-filesize") == real_args.end())
+		{
+			real_args.push_back("--rotate-filesize");
+			real_args.push_back(convert(rotate_filesize_arg.getValue()));
+		}
+		if(rotate_num_files_arg.getValue() > 0
+			&& std::find(real_args.begin(), real_args.end(), "--rotate-numfiles") == real_args.end())
+		{
+			real_args.push_back("--rotate-numfiles");
+			real_args.push_back(convert(rotate_num_files_arg.getValue()));
+		}
+		
 		return run_real_main(real_args);
 	}
 	catch (TCLAP::ArgException &e)
