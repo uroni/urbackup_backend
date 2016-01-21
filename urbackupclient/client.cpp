@@ -1324,7 +1324,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				}
 			}
 				
-			if(end_to_end_file_backup_verification)
+			if(end_to_end_file_backup_verification && (!files[i].isspecial && with_proper_symlinks) )
 			{
 				extra+="&sha256_verify=" + getSHA256(dir+os_file_sep()+files[i].name);
 			}
@@ -2187,12 +2187,12 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 		scriptname = "remove_device_snapshot";
 	}
 
-	if(!FileExists("/etc/urbackup/"+scriptname))
+	if(!FileExists(SYSCONFDIR "/etc/urbackup/"+scriptname))
 	{
 		return false;
 	}
 
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
+	int rc = os_popen(SYSCONFDIR "/etc/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
 		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target)
 		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname)))+" 2>&1", loglines);
 	if(rc!=0)
@@ -2366,12 +2366,12 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		scriptname = "remove_device_snapshot";
 	}
 
-	if(!FileExists("/etc/urbackup/"+scriptname))
+	if(!FileExists(SYSCONFDIR "/etc/urbackup/"+scriptname))
 	{
 		return false;
 	}
 
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
+	int rc = os_popen(SYSCONFDIR "/etc/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
 		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target)
 		+ (scs.clientsubname.empty() ? "" : (" " + escapeDirParam(scs.clientsubname))), loglines);
 	if(rc!=0)
@@ -2704,7 +2704,7 @@ int IndexThread::execute_prebackup_hook(bool incr, std::string server_token, int
 #ifdef _WIN32
 	script_name = Server->getServerWorkingDir() + "\\prefilebackup.bat";
 #else
-	script_name = "/etc/urbackup/prefilebackup";
+	script_name = SYSCONFDIR "/etc/urbackup/prefilebackup";
 #endif
 
 	return execute_hook(script_name, incr, server_token, index_group);
@@ -2716,7 +2716,7 @@ int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int
 #ifdef _WIN32
 	script_name = Server->getServerWorkingDir() + "\\postfileindex.bat";
 #else
-	script_name = "/etc/urbackup/postfileindex";
+	script_name = SYSCONFDIR "/etc/urbackup/postfileindex";
 #endif
 
 	return execute_hook(script_name, incr, server_token, index_group);
@@ -2749,7 +2749,8 @@ void IndexThread::execute_postbackup_hook(void)
 		pid2 = fork();
 		if(pid2==0)
 		{
-			char *a1=(char*)"/etc/urbackup/postfilebackup";
+			const char* a1c = SYSCONFDIR "/etc/urbackup/postfilebackup";
+			char *a1=(char*)a1c;
 			char* const argv[]={ a1, NULL };
 			execv(a1, argv);
 			Server->Log("Error in execv /etc/urbackup/postfilebackup: "+convert(errno), LL_INFO);
@@ -4540,7 +4541,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		scriptname="create_volume_snapshot";
 	}
 
-	if(!FileExists("/etc/urbackup/"+scriptname))
+	if(!FileExists(SYSCONFDIR "/etc/urbackup/"+scriptname))
 	{
 		return false;
 	}
@@ -4548,7 +4549,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	GUID ssetid = randomGuid();
 
 	std::string loglines;
-	int rc = os_popen("/etc/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
+	int rc = os_popen(SYSCONFDIR "/etc/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
 		escapeDirParam(dir->dir)+" "+escapeDirParam(dir->orig_target)
 		+ (index_clientsubname.empty()?"":(" " + escapeDirParam(index_clientsubname)))+" 2>&1", loglines);
 

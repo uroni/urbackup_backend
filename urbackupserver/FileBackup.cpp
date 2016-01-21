@@ -527,7 +527,8 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 		if (last_eta_received_bytes > 0 && eta_estimated_speed > 0)
 		{
 			ServerStatus::setProcessEta(clientname, status_id,
-				static_cast<int64>((files_size - received_data_bytes) / eta_estimated_speed + 0.5));
+				static_cast<int64>((files_size - received_data_bytes) / eta_estimated_speed + 0.5),
+				eta_set_time);
 		}
 
 		last_eta_received_bytes = received_data_bytes;
@@ -955,6 +956,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					std::string sha256hex=(extras["sha256_verify"]);
 
 					bool is_symlink = extras.find("sym_target")!=extras.end();
+					bool is_special = extras.find("special") != extras.end();
 
 					if(sha256hex.empty() && SHA_DEF_DIGEST_SIZE == 64)
 					{
@@ -978,10 +980,13 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 						std::string shabase64 = extras[sha_def_identifier];
 						if(shabase64.empty())
 						{
-							std::string msg="No hash for file \""+(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
-							verify_ok=false;
-							ServerLogger::Log(logid, msg, LL_ERROR);
-							log << msg << std::endl;
+							if (!is_special)
+							{
+								std::string msg = "No hash for file \"" + (curr_path + os_file_sep() + cf.name) + "\" found. Verification failed.";
+								verify_ok = false;
+								ServerLogger::Log(logid, msg, LL_ERROR);
+								log << msg << std::endl;
+							}
 						}
 						else
 						{

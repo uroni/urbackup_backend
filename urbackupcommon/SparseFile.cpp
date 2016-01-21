@@ -271,15 +271,15 @@ _u32 SparseFile::mappedOrigOp(IOrigOp * orig_op, _u32 op_size, bool * has_error)
 	while (op_size > 0)
 	{
 		SPosMap next = nextBackingOffset();
-		_u32 max_op = -1;
+		_u32 max_size = static_cast<_u32>(op_size);
 		if (next.offset != -1)
 		{
-			max_op = static_cast<_u32>((std::min)(static_cast<int64>(op_size), next.offset - seek_pos));
+			max_size = static_cast<_u32>((std::min)(static_cast<int64>(op_size), next.offset - seek_pos));
 		}
 
 		_u32 buffer_offset = op_size_orig - op_size;
 
-		_u32 backing_op_size = orig_op->origOp(buffer_offset, op_size, has_error);
+		_u32 backing_op_size = orig_op->origOp(buffer_offset, max_size, has_error);
 
 		seek_pos += backing_op_size;
 		op_size -= backing_op_size;

@@ -45,9 +45,10 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 		}
 	}
 
-	while (next_sparse_extent_num < num_sparse_extents)
+	IFsFile::SSparseExtent ret;
+	while (next_sparse_extent_num < num_sparse_extents
+		&& ret.offset==-1)
 	{
-		IFsFile::SSparseExtent ret;
 		if (sparse_extents_f->Read(reinterpret_cast<char*>(&ret), sizeof(IFsFile::SSparseExtent)) != sizeof(IFsFile::SSparseExtent))
 		{
 			num_sparse_extents = 0;
@@ -73,8 +74,8 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 
 void ExtentIterator::reset()
 {
-	next_sparse_extent_num = 0;
-	sparse_extents_f->Seek(sizeof(num_sparse_extents));
+	num_sparse_extents = -1;
+	sparse_extents_f->Seek(0);
 }
 
 FsExtentIterator::FsExtentIterator(IFsFile * backing_file, int64 blocksize)

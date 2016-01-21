@@ -131,17 +131,6 @@ void BackupServerPrepareHash::operator()(void)
 
 			bool hash_with_sparse = c_hash_with_sparse==1;
 
-			std::auto_ptr<ExtentIterator> extent_iterator;
-			if (!sparse_extents_fn.empty())
-			{
-				IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
-
-				if (sparse_extents_f != NULL)
-				{
-					extent_iterator.reset(new ExtentIterator(sparse_extents_f, true, hash_bsize));
-				}
-			}
-
 			char c_has_snapshot;
 			rd.getChar(&c_has_snapshot);
 
@@ -175,6 +164,17 @@ void BackupServerPrepareHash::operator()(void)
 			}
 			else
 			{
+				std::auto_ptr<ExtentIterator> extent_iterator;
+				if (!sparse_extents_fn.empty())
+				{
+					IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
+
+					if (sparse_extents_f != NULL)
+					{
+						extent_iterator.reset(new ExtentIterator(sparse_extents_f, tf->Size(), true, hash_bsize));
+					}
+				}
+
 				ServerLogger::Log(logid, "PT: Hashing file \""+ExtractFileName(tfn)+"\"", LL_DEBUG);
 				std::string h;
 				if(!diff_file)

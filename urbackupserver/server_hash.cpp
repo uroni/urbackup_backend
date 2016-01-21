@@ -176,17 +176,6 @@ void BackupServerHash::operator()(void)
 				std::string sparse_extents_fn;
 				rd.getStr(&sparse_extents_fn);
 
-				std::auto_ptr<ExtentIterator> extent_iterator;
-				if (!sparse_extents_fn.empty())
-				{
-					IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
-
-					if (sparse_extents_f != NULL)
-					{
-						extent_iterator.reset(new ExtentIterator(sparse_extents_f));
-					}
-				}
-
 				FileMetadata metadata;
 				metadata.read(rd);
 				metadata.set_shahash(sha2);
@@ -200,6 +189,17 @@ void BackupServerHash::operator()(void)
 				}
 				else
 				{
+					std::auto_ptr<ExtentIterator> extent_iterator;
+					if (!sparse_extents_fn.empty())
+					{
+						IFile* sparse_extents_f = Server->openFile(sparse_extents_fn, MODE_READ);
+
+						if (sparse_extents_f != NULL)
+						{
+							extent_iterator.reset(new ExtentIterator(sparse_extents_f, tf->Size()));
+						}
+					}
+
 					addFile(backupid, incremental, tf, tfn, hashpath, sha2,
 						old_file_fn, hashoutput_fn, t_filesize, metadata, with_hashes!=0, extent_iterator.get());
 				}

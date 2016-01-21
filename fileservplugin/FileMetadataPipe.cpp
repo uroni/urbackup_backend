@@ -197,23 +197,23 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			else
 			{
 				Server->Log("File metadata of "+local_fn+" too large ("+convert((size_t)meta_data.getDataSize())+")", LL_ERROR);
+				return false;
 			}
 			
 		}
 
-		if(metadata_buffer_size-metadata_buffer_off>0)
+		if (metadata_buffer_size - metadata_buffer_off>0)
 		{
-			read_bytes = (std::min)(metadata_buffer_size-metadata_buffer_off, buf_avail);
-			memcpy(buf, metadata_buffer.data()+metadata_buffer_off, read_bytes);
-			metadata_buffer_off+=read_bytes;
-
-			if(metadata_buffer_size-metadata_buffer_off == 0)
-			{
-				metadata_buffer_size = 0;
-				metadata_buffer_off = 0;
-				curr_checksum = urb_adler32(0, NULL, 0);
-				metadata_state=MetadataState_Os;
-			}
+			read_bytes = (std::min)(metadata_buffer_size - metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data() + metadata_buffer_off, read_bytes);
+			metadata_buffer_off += read_bytes;
+		}
+		if (metadata_buffer_size - metadata_buffer_off == 0)
+		{
+			metadata_buffer_size = 0;
+			metadata_buffer_off = 0;
+			curr_checksum = urb_adler32(0, NULL, 0);
+			metadata_state = MetadataState_Os;
 		}
 		return true;
 	}
@@ -885,13 +885,12 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 		}
 
         if(eattr_keys[eattr_idx].size()-eattr_key_off==0)
-		{
-			backup_state= BackupState_EAttr_Vals_Val;
-			
+		{			
             if(!get_xattr(local_fn, eattr_keys[eattr_idx], eattr_val))
 			{
 				return false;
 			}
+			backup_state = BackupState_EAttr_Vals_Val;
 			eattr_val_off=0;
 		}
 		return true;
