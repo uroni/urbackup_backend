@@ -2353,7 +2353,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 	{
 		return false;
 	}
-#else
+#elif !defined(_WIN32)
 	std::string loglines;
 
 	std::string scriptname;
