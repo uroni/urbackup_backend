@@ -3722,6 +3722,15 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 
 	if(sha_version!=256)
 	{
+		int64 fsize1=0;
+		{
+			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+			if (f.get() != NULL)
+			{
+				fsize1 = f->Size();
+			}
+		}
+
 		HashSha512 hash_512;
 		if (!getShaBinary(fn, hash_512))
 		{
@@ -3735,15 +3744,16 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 		IFile* hashoutput = Server->openTemporaryFile();
 		ScopedDeleteFile hashoutput_delete(hashoutput);
 		FsExtentIterator extent_iterator(f.get(), 32768);
+		int64 fsize2 = f->Size();
 		std::string other_sha = build_chunk_hashs(f.get(), hashoutput, NULL, true, NULL, false,
 			NULL, NULL, false, &extent_iterator);
 
-		if (ret != other_sha)
+		if (ret != other_sha && fsize1== fsize2)
 		{
 			Server->Log("SHA calc error at file " + fn, LL_ERROR);
 		}
 
-		assert(ret == other_sha);
+		assert(fsize1!=fsize2 || ret == other_sha);
 		return ret;
 	}
 	else
