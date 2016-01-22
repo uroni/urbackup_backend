@@ -478,24 +478,27 @@ void FileBackup::calculateDownloadSpeed(int64 ctime, FileClient & fc, FileClient
 		speed_set_time = ctime;
 	}
 
-	int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked!=NULL ? fc_chunked->getTransferredBytes() : 0);
-
-	int64 new_bytes = received_data_bytes - last_speed_received_bytes;
-	int64 passed_time = ctime - speed_set_time;
-
-	if (passed_time > 0)
+	if (ctime - speed_set_time>10000)
 	{
-		speed_set_time = ctime;
+		int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked != NULL ? fc_chunked->getTransferredBytes() : 0);
 
-		double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+		int64 new_bytes = received_data_bytes - last_speed_received_bytes;
+		int64 passed_time = ctime - speed_set_time;
 
-		if (last_speed_received_bytes > 0)
+		if (passed_time > 0)
 		{
-			ServerStatus::setProcessSpeed(clientname, status_id,
-				speed_bpms);
-		}
+			speed_set_time = ctime;
 
-		last_speed_received_bytes = received_data_bytes;
+			double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+			if (last_speed_received_bytes > 0)
+			{
+				ServerStatus::setProcessSpeed(clientname, status_id,
+					speed_bpms);
+			}
+
+			last_speed_received_bytes = received_data_bytes;
+		}
 	}
 }
 

@@ -1055,7 +1055,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								}
 							}
 
-							if (ctime - speed_set_time > 1000)
+							if (ctime - speed_set_time > 10000)
 							{
 								transferred_bytes += cc->getTransferedBytes();
 								cc->resetTransferedBytes();
