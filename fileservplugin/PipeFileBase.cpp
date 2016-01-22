@@ -167,10 +167,12 @@ bool PipeFileBase::Seek(_i64 spos)
 
 	if(buf_r_pos<=buf_w_pos)
 	{
-		if(seeked_r_pos>=0)
+		if(seeked_r_pos>=0
+			&& static_cast<size_t>(seeked_r_pos)<=buf_w_pos)
 		{
 			curr_pos = spos;
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
+			assert(buf_r_pos <= buffer_size);
 			return true;
 		}
 		else if(seeked_r_pos<0 &&
@@ -178,6 +180,7 @@ bool PipeFileBase::Seek(_i64 spos)
 			buf_circle)
 		{
 			buf_r_pos = buffer_size + seeked_r_pos;
+			assert(buf_r_pos <= buffer_size);
 			curr_pos = spos;
 			return true;
 		}
@@ -192,6 +195,7 @@ bool PipeFileBase::Seek(_i64 spos)
 			seeked_r_pos < static_cast<_i64>(buffer_size))
 		{
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
+			assert(buf_r_pos <= buffer_size);
 			curr_pos = spos;
 			return true;
 		}
@@ -199,6 +203,7 @@ bool PipeFileBase::Seek(_i64 spos)
 			seeked_r_pos-buffer_size<=buf_w_pos)
 		{
 			buf_r_pos=static_cast<size_t>(seeked_r_pos - buffer_size);
+			assert(buf_r_pos <= buffer_size);
 			curr_pos = spos;
 			return true;
 		}
@@ -375,14 +380,18 @@ bool PipeFileBase::readStderr()
 
 size_t PipeFileBase::getReadAvail()
 {
-	if(buf_w_pos>=buf_r_pos)
+	size_t avail;
+	if (buf_w_pos >= buf_r_pos)
 	{
-		return buf_w_pos-buf_r_pos;
+		avail = buf_w_pos-buf_r_pos;
+		assert(buf_r_pos + avail <= buffer_size);
 	}
 	else
 	{
-		return buffer_size - buf_r_pos + buf_w_pos;
+		avail = buffer_size - buf_r_pos + buf_w_pos;
+		assert(buf_r_pos + avail <= buffer_size+buf_w_pos);
 	}
+	return avail;
 }
 
 void PipeFileBase::readBuf(char* buf, size_t toread)
@@ -395,6 +404,7 @@ void PipeFileBase::readBuf(char* buf, size_t toread)
 		memcpy(buf, &buffer[buf_r_pos], toread);
 		buf_r_pos+=toread;
 		curr_pos+=toread;
+		assert(buf_r_pos <= buffer_size);
 	}
 	else
 	{
@@ -403,6 +413,7 @@ void PipeFileBase::readBuf(char* buf, size_t toread)
 			memcpy(buf, &buffer[buf_r_pos], toread);
 			buf_r_pos += toread;
 			curr_pos+=toread;
+			assert(buf_r_pos <= buffer_size);
 		}
 		else
 		{
