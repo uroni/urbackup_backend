@@ -266,6 +266,7 @@ int main(int argc, char* argv[])
 			read_config_file(config_arg.getValue(), real_args);
 		}
 #endif
+		real_args.push_back("--no-server");
 		real_args.push_back("--workingdir");
 		real_args.push_back(VARDIR);
 		real_args.push_back("--script_path");

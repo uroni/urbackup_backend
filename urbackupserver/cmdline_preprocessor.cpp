@@ -302,7 +302,6 @@ int action_run(std::vector<std::string> args)
 		real_args.push_back(convert(http_port_arg.getValue()));
 	}
 
-	real_args.push_back("--no-server");
 	real_args.push_back("--pidfile");
 	real_args.push_back(pidfile_arg.getValue());
 	real_args.push_back("--workingdir");
