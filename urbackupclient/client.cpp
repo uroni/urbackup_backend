@@ -1516,6 +1516,12 @@ bool IndexThread::readBackupScripts()
 		script_cmd = curr_script_path + os_file_sep() + "list";
 #endif
 
+		if (!FileExists(script_cmd))
+		{
+			Server->Log("Script list at \"" + script_cmd + "\" does not exist. Skipping.", LL_INFO);
+			continue;
+		}
+
 		std::string output = execute_script(script_cmd);
 
 		std::vector<std::string> lines;
@@ -4059,7 +4065,7 @@ std::string IndexThread::execute_script(const std::string& cmd)
 
 	if(rc!=0)
 	{
-		Server->Log("Script "+cmd+" had error (code "+convert(rc)+"). Not using script list.", LL_ERROR);
+		Server->Log("Script "+cmd+" had error (code "+convert(rc)+"). Not using this script list.", LL_ERROR);
 		return std::string();
 	}
 
