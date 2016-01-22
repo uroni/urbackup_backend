@@ -266,14 +266,20 @@ then
 		echo "-Detected no btrfs filesystem"
 	fi
 
-    LVM_VOLS=`lvs | wc -l`
-    if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS > 1 ]
-    then
-        echo "+Detected LVM volumes"
-        LVM=yes
-    else
-		echo "-Detected no LVM volumes"
+	if command -v lvs >/dev/null 2>&1
+	then
+		LVM_VOLS=`lvs | wc -l`
+		if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS > 1 ]
+		then
+			echo "+Detected LVM volumes"
+			LVM=yes
+		else
+			echo "-Detected no LVM volumes"
+		fi
+	else
+		echo "-LVM not installed"
 	fi
+	
 
     while true
     do
@@ -343,8 +349,8 @@ then
             yum install dkms-dattobd dattobd-utils
         fi
 
-        cp datto_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
-        cp datto_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
+        cp dattobd_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
+        cp dattobd_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
         echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
     fi
 	

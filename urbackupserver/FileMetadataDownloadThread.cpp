@@ -932,7 +932,11 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::stri
 		{
 			if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
 			{
-				ServerLogger::Log(logid, "Error setting file time of "+os_path, LL_WARNING);
+				int ftype = os_get_file_type(os_file_prefix(os_path));
+				if (!(ftype & EFileType_Symlink))
+				{
+					ServerLogger::Log(logid, "Error setting file time of " + os_path, LL_WARNING);
+				}
 			}
 			return;
 		}
