@@ -44,7 +44,7 @@ MOUNTOPTS="ro"
 
 if [ $TYPE = "xfs" ]
 then
-    MOUNTOPTS="ro,nouuid,norecovery"
+    MOUNTOPTS="ro,nouuid"
 fi
 
 if ! mount -o $MOUNTOPTS /dev/$VGNAME/$SNAP_ID /mnt/urbackup_snaps/$SNAP_ID
