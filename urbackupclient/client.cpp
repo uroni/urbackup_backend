@@ -3297,16 +3297,29 @@ std::string IndexThread::getSHA256(const std::string& fn)
 		return std::string();
 	}
 
+	int64 fsize = f->Size();
+	int64 fpos = 0;
+
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 32768))>0)
+	while(fpos<fsize)
 	{
+		_u32 max_read = static_cast<_u32>((std::min)(static_cast<int64>(32768), fsize - fpos));
+		r = f->Read(buffer, max_read);
+
+		if (r == 0)
+		{
+			break;
+		}
+
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
 		if(IdleCheckerThread::getPause())
 		{
 			Server->wait(5000);
 		}
+
+		fpos += r;
 	}
 
 	Server->destroy(f);
