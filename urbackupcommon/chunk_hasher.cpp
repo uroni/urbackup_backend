@@ -89,7 +89,7 @@ void init_chunk_hasher()
 }
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
-	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
+	bool ret_sha2, IFsFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
 	bool show_pc, IExtentIterator* extent_iterator)
 {
 	f->Seek(0);
@@ -152,6 +152,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 	int64 sparse_extent_start = -1;
 	int64 copy_sparse_extent_start = -1;
+	int64 copy_max_sparse = -1;
 	bool has_sparse_extent = false;
 
 	for(_i64 pos=0;pos<fsize;)
@@ -229,6 +230,10 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 					{
 						return "";
 					}
+				}
+				else
+				{
+					copy_max_sparse = curr_extent.offset + curr_extent.size;
 				}
 			}
 
@@ -421,6 +426,16 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		has_sparse_extent = true;
 		add_extent(&extent_ctx, sparse_extent_start, fsize - sparse_extent_start);
 		sparse_extent_start = -1;
+	}
+
+	if (copy != NULL
+		&& copy_max_sparse!=-1
+		&& copy_max_sparse > copy->Size())
+	{
+		if (!copy->Resize(copy_max_sparse))
+		{
+			return "";
+		}
 	}
 
 	if(ret_sha2)

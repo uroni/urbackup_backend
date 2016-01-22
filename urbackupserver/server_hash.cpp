@@ -1076,7 +1076,7 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 
 bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator)
 {
-	std::auto_ptr<IFile> dst(openFileRetry(dest, MODE_WRITE));
+	std::auto_ptr<IFsFile> dst(openFileRetry(dest, MODE_WRITE));
 	if(dst.get()==NULL) return false;
 
 	tf->Seek(0);
@@ -1090,6 +1090,8 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 		curr_extent = extent_iterator->nextExtent();
 	}
 
+	int64 sparse_max = -1;
+
 	do
 	{
 		while (curr_extent.offset != -1
@@ -1097,6 +1099,8 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 			&& fpos <= curr_extent.offset+ curr_extent.size)
 		{
 			fpos = curr_extent.offset + curr_extent.size;
+
+			sparse_max = fpos;
 				
 			if (!tf->Seek(fpos))
 			{
@@ -1149,12 +1153,22 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 	}
 	while(read>0);
 
+	if (sparse_max!=-1
+		&& sparse_max > dst->Size())
+	{
+		if (!dst->Resize(sparse_max))
+		{
+			ServerLogger::Log(logid, "Error resizing file \""+dest+"\" to max sparse size "+convert(sparse_max), LL_ERROR);
+			return false;
+		}
+	}
+
 	return true;
 }
 
 bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
-	IFile *dst=openFileRetry(dest, MODE_WRITE);
+	IFsFile *dst=openFileRetry(dest, MODE_WRITE);
 	if(dst==NULL) return false;
 	ObjectScope dst_s(dst);
 
@@ -1492,7 +1506,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 
 	ServerLogger::Log(logid, "HT: Copying with hashoutput with reflink data from \""+orig_fn+"\"", LL_DEBUG);
 
-	IFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW);
+	IFsFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW);
 	if(dst==NULL) return false;
 	ObjectScope dst_s(dst);
 

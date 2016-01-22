@@ -27,7 +27,7 @@ bool skiphash_copy(const std::string& src_path,
 
 	bool dst_exists = Server->fileExists(dst_path);
 
-	std::auto_ptr<IFile> dst(Server->openFile(os_file_prefix(dst_path), MODE_RW));
+	std::auto_ptr<IFsFile> dst(Server->openFile(os_file_prefix(dst_path), MODE_RW));
 
 	if(!dst.get())
 	{
