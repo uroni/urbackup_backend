@@ -1613,6 +1613,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	if (!full_backup && image_file_format == image_file_format_cowraw)
 	{
 		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
+		std::string parent_fn = ExtractFileName(pParentvhd);
 
 		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
 		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
@@ -1622,9 +1623,15 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		}
 		else
 		{
-			Server->deleteFile(imgpath + ".hash");
-			Server->deleteFile(imgpath + ".cbitmap");
-			Server->deleteFile(imgpath + ".mbr");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.hash");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.cbitmap");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.mbr");
+			os_rename_file(image_folder + os_file_sep() + parent_fn + ".raw.bitmap", imgpath+".bitmap");
+			if (!os_rename_file(image_folder + os_file_sep() + parent_fn + ".raw", imgpath))
+			{
+				ServerLogger::Log(logid, "Error renaming in snapshot (\"" + image_folder + os_file_sep() + parent_fn + ".raw\" to \""+imgpath+"\")", LL_ERROR);
+				return std::string();
+			}
 		}
 	}
 
