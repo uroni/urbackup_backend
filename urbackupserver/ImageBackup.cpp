@@ -1623,13 +1623,13 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		}
 		else
 		{
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.hash");
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.cbitmap");
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".raw.mbr");
-			os_rename_file(image_folder + os_file_sep() + parent_fn + ".raw.bitmap", imgpath+".bitmap");
-			if (!os_rename_file(image_folder + os_file_sep() + parent_fn + ".raw", imgpath))
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".hash");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".cbitmap");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".mbr");
+			os_rename_file(image_folder + os_file_sep() + parent_fn + ".bitmap", imgpath+".bitmap");
+			if (!os_rename_file(image_folder + os_file_sep() + parent_fn, imgpath))
 			{
-				ServerLogger::Log(logid, "Error renaming in snapshot (\"" + image_folder + os_file_sep() + parent_fn + ".raw\" to \""+imgpath+"\")", LL_ERROR);
+				ServerLogger::Log(logid, "Error renaming in snapshot (\"" + image_folder + os_file_sep() + parent_fn + "\" to \""+imgpath+"\")", LL_ERROR);
 				return std::string();
 			}
 		}
