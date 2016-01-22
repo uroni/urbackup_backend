@@ -117,8 +117,12 @@ install -c -m 744 -d "$PREFIX/etc/urbackup"
 install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
 install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 
-sed "s|SYSCONFDIR|$PREFIX/etc/urbackup|g" "backup_scripts/list" > "backup_scripts/list.r"
-mv "backup_scripts/list.r" "backup_scripts/list"
+for script in backup_scripts/*
+do
+	sed "s|SYSCONFDIR|$PREFIX/etc/urbackup|g" "$script" > "$script.r"
+	mv "$script.r" "$script"
+done
+
 install -c "backup_scripts/list" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadb" "$PREFIX/share/urbackup/scripts"
 

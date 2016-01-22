@@ -2,9 +2,7 @@
 
 set -e
 
-CDIR=`dirname $0`
-
-. $CDIR/mariadb.conf
+. $SYSCONFDIR/mariadb.conf
 
 alias errcho='>&2 echo'
 
