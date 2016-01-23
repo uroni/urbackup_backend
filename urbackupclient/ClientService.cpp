@@ -2695,7 +2695,13 @@ void ClientConnector::sendStatus()
 
 	state = CCSTATE_STATUS;
 
-	std::string ret = getLastBackupTime();
+	int64 last_backup_time = getLastBackupTime();
+
+	std::string ret;
+	if (last_backup_time > 0)
+	{
+		ret += convert(last_backup_time);
+	}
 
 	int pcdone = -1;
 	ret += "#" + getCurrRunningJob(true, pcdone);
@@ -2923,9 +2929,9 @@ std::string ClientConnector::getHasNoRecentBackup()
 {
 	IScopedLock lock(backup_mutex);
 
-	std::string last_backup_time = getLastBackupTime();
+	int64 last_backup_time = getLastBackupTime();
 
-	if(last_backup_time.empty())
+	if(last_backup_time==0)
 	{
 		return "NO_RECENT";
 	}
@@ -2935,7 +2941,7 @@ std::string ClientConnector::getHasNoRecentBackup()
 		return "NOA";
 	}
 
-	if(Server->getTimeSeconds()-watoi64(last_backup_time)<=backup_interval)
+	if(Server->getTimeSeconds()-last_backup_time<=backup_interval)
 	{
 		return "NOA";
 	}

@@ -209,7 +209,7 @@ private:
 
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 
-	static std::string getLastBackupTime();
+	static int64 getLastBackupTime();
 
 	static std::string getHasNoRecentBackup();
 

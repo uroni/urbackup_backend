@@ -669,12 +669,12 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	IndexThread::execute_postbackup_hook();
 }
 
-std::string ClientConnector::getLastBackupTime()
+int64 ClientConnector::getLastBackupTime()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT strftime('%s',last_backup) AS last_backup FROM status");
-	if(q==NULL)
-		return std::string();
+	if (q == NULL)
+		return 0;
 
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
@@ -689,11 +689,11 @@ std::string ClientConnector::getLastBackupTime()
 
 	if(res.size()>0)
 	{
-		return (res[0]["last_backup"]);
+		return watoi64(res[0]["last_backup"]);
 	}
 	else
 	{
-		return std::string();
+		return 0;
 	}
 }
 
