@@ -24,13 +24,13 @@ namespace
 {
 	const unsigned int max_wait_time=10000;
 
-	void wait_for_new_data(Helper &helper, int clientid, size_t lastid, std::vector<SCircularLogEntry>& entries)
+	void wait_for_new_data(Helper &helper, int clientid, size_t lastid, std::vector<SCircularLogEntry>& entries, logid_t logid)
 	{
 		int64 starttime=Server->getTimeMS();
 
 		do
 		{
-			entries=ServerLogger::getCircularLogdata(clientid, lastid);
+			entries=ServerLogger::getCircularLogdata(clientid, lastid, logid);
 
 			if(!entries.empty())
 				return;
@@ -99,16 +99,26 @@ ACTION_IMPL(livelog)
 		lastid=watoi(s_lastid);
 	}
 
+	logid_t logid = logid_t();
+	str_map::iterator logid_it = POST.find("logid");
+	if (logid_it != POST.end())
+	{
+		logid.first = watoi64(logid_it->second);
+	}
+
 	std::vector<SCircularLogEntry> logdata;
 
-	std::vector<int> right_ids;
-	if(clientid==0 && helper.getRights("logs")=="all")
+	bool all_log_rights = false;
+	std::vector<int> right_ids = helper.clientRights("logs", all_log_rights);
+	if(clientid==0 && all_log_rights)
 	{
 		wait_for_new_data(helper, lastid, logdata);
 	}
-	else if(clientid!=0 && helper.hasRights(clientid, helper.getRights("logs"), right_ids) )
+	else if(clientid!=0 
+		&& (all_log_rights 
+			|| std::find(right_ids.begin(), right_ids.end(), clientid)!=right_ids.end() ) )
 	{
-		wait_for_new_data(helper, clientid, lastid, logdata);
+		wait_for_new_data(helper, clientid, lastid, logdata, logid);
 	}
 
 	time_sort(logdata);

@@ -28,21 +28,19 @@ ACTION_IMPL(progress)
 	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 
-	std::vector<int> clientids;
-	std::string rights=helper.getRights("progress");
-	if(rights!="none" && rights!="all")
-	{
-		std::vector<std::string> s_cid;
-		Tokenize(rights, s_cid, ",");
-		for(size_t i=0;i<s_cid.size();++i)
-		{
-			clientids.push_back(atoi(s_cid[i].c_str()));
-		}
-	}
+	bool all_progress_rights = false;
+	std::vector<int> progress_clientids = helper.clientRights("progress", all_progress_rights);
+
+	bool all_stop_rights = false;
+	std::vector<int> stop_clientids = helper.clientRights("stop_backup", all_stop_rights);
+
+	bool all_log_rights = false;
+	std::vector<int> log_clientids = helper.clientRights("logs", all_log_rights);
+
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
-	if(session!=NULL && (rights=="all" || !clientids.empty()) )
+	if(session!=NULL && (all_progress_rights || !progress_clientids.empty()) )
 	{
 		if(POST.find("stop_clientid")!=POST.end() &&
 			POST.find("stop_id")!=POST.end())
@@ -50,26 +48,8 @@ ACTION_IMPL(progress)
 			int stop_clientid=watoi(POST["stop_clientid"]);
 			int stop_id=watoi(POST["stop_id"]);
 
-			std::string stop_rights=helper.getRights("stop_backup");
-			bool stop_ok=false;
-			if(stop_rights=="all")
-			{
-				stop_ok=true;
-			}
-			else
-			{
-				std::vector<std::string> s_cid;
-				Tokenize(stop_rights, s_cid, ",");
-				for(size_t i=0;i<s_cid.size();++i)
-				{
-					if(atoi(s_cid[i].c_str())==stop_clientid)
-					{
-						stop_ok=true;
-					}
-				}
-			}
-
-			if(stop_ok)
+			if(all_stop_rights
+				|| std::find(stop_clientids.begin(), stop_clientids.end(), stop_clientid)!=stop_clientids.end())
 			{
 				IDatabase *db=helper.getDatabase();
 				IQuery *q_get_name=db->Prepare("SELECT name FROM clients WHERE id=?");
@@ -86,16 +66,9 @@ ACTION_IMPL(progress)
 		std::vector<SStatus> clients=ServerStatus::getStatus();
 		for(size_t i=0;i<clients.size();++i)
 		{
-			bool found=false;
-			for(size_t j=0;j<clientids.size();++j)
-			{
-				if(clientids[j]==clients[i].clientid)
-				{
-					found=true;
-					break;
-				}
-			}
-			if(rights=="all" || found==true)
+			int curr_clientid = clients[i].clientid;
+			if(all_progress_rights
+				|| std::find(progress_clientids.begin(), progress_clientids.end(), curr_clientid)!= progress_clientids.end() )
 			{
 				for(size_t j=0;j<clients[i].processes.size();++j)
 				{
@@ -107,6 +80,7 @@ ACTION_IMPL(progress)
 					obj.set("queue", JSON::Value(clients[i].processes[j].prepare_hashqueuesize+
 						clients[i].processes[j].hashqueuesize));
 					obj.set("id", JSON::Value(clients[i].processes[j].id));
+					obj.set("logid", JSON::Value(clients[i].processes[j].logid.first));
 					obj.set("details", clients[i].processes[j].details);
 
 					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
@@ -118,6 +92,21 @@ ACTION_IMPL(progress)
 
 					obj.set("eta_ms", etams);
 					obj.set("speed_bpms", clients[i].processes[j].speed_bpms);
+
+					if (clients[i].processes[j].can_stop 
+						&& (all_stop_rights
+							|| std::find(stop_clientids.begin(), stop_clientids.end(), curr_clientid) != stop_clientids.end() ) )
+					{
+						obj.set("can_stop_backup", true);
+					}
+
+					if (clients[i].processes[j].logid!=logid_t()
+						&& (all_log_rights
+							|| std::find(log_clientids.begin(), log_clientids.end(), curr_clientid) != log_clientids.end() ) )
+					{
+						obj.set("can_show_backup_log", true);
+					}				
+
 					pg.add(obj);
 				}
 			}
@@ -129,22 +118,16 @@ ACTION_IMPL(progress)
 		ret.set("error", JSON::Value(1));
 	}
 
-	clientids.clear();
-	rights=helper.getRights("lastacts");
-	if(rights!="none" && rights!="all")
+	if (POST["with_lastacts"] != "false")
 	{
-		std::vector<std::string> s_cid;
-		Tokenize(rights, s_cid, ",");
-		for(size_t i=0;i<s_cid.size();++i)
-		{
-			clientids.push_back(atoi(s_cid[i].c_str()));
-		}
-	}
+		bool all_lastacts_rights = false;
+		std::vector<int> lastacts_clientids = helper.clientRights("lastacts", all_lastacts_rights);
 
-	if(session!=NULL && (rights=="all" || !clientids.empty()) )
-	{
-		getLastActs(helper, ret, clientids);
-	}
+		if (session != NULL && (all_lastacts_rights || !lastacts_clientids.empty()))
+		{
+			getLastActs(helper, ret, lastacts_clientids);
+		}
+	}	
 	
     helper.Write(ret.stringify(false));
 }

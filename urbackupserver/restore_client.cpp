@@ -393,9 +393,8 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	backup_dao.addRestore(restore_clientid, full_log_name, identity, 0, std::string());
 
 	restore_id = db->getLastInsertID();
-	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file, full_log_name);
-
 	log_id = ServerLogger::getLogId(restore_clientid);
+	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file, full_log_name, log_id, false);
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
 		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,

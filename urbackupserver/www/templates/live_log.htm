@@ -13,6 +13,9 @@ if(!window.g)
 g.session="{session}";
 g.max_log_id=-1;
 g.clientid={clientid};
+{?logid}
+g.logid={logid};
+{/logid}
 g.live_log_rows=0;
 g.max_live_log_rows=500;
 
@@ -23,7 +26,12 @@ g.refresh_log = function()
 	{
 		lastid="&lastid="+g.max_log_id;
 	}
-	new getJSON("livelog", "clientid="+g.clientid+lastid, refresh_log2);
+	var logid="";
+	if(g.logid)
+	{
+		logid="&logid="+g.logid;
+	}
+	new getJSON("livelog", "clientid="+g.clientid+lastid+logid, refresh_log2);
 };
 
 function refresh_log2(data)

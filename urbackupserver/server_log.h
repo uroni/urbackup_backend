@@ -11,14 +11,29 @@ struct SLogEntry
 	int64 time;
 };
 
+typedef std::pair<int64, int> logid_t;
+
+struct SCircularLogEntryWithId
+{
+	SCircularLogEntryWithId(void)
+		: loglevel(LL_DEBUG), id(std::string::npos), time(0),
+		 logid()
+	{
+	}
+
+	std::string utf8_msg;
+	int loglevel;
+	size_t id;
+	int64 time;
+	logid_t logid;
+};
+
 struct SCircularData
 {
-	std::vector<SCircularLogEntry> data;
+	std::vector<SCircularLogEntryWithId> data;
 	size_t idx;
 	size_t id;
 };
-
-typedef std::pair<int64, int> logid_t;
 
 class ServerLogger
 {
@@ -36,7 +51,7 @@ public:
 
 	static void reset(int clientid);
 
-	static std::vector<SCircularLogEntry> getCircularLogdata(int clientid, size_t minid);
+	static std::vector<SCircularLogEntry> getCircularLogdata(int clientid, size_t minid, logid_t logid);
 
 	static logid_t getLogId(int clientid);
 	
@@ -44,8 +59,10 @@ public:
 
 private:
 
-	static void logCircular(int clientid, const std::string &pStr, int LogLevel);
+	static void logCircular(int clientid, logid_t logid, const std::string &pStr, int LogLevel);
 	static void logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel);
+
+	static std::vector<SCircularLogEntry> stripLogIdFilter(const std::vector<SCircularLogEntryWithId>& data, logid_t logid);
 
 	static std::map<logid_t, std::vector<SLogEntry> > logdata;
 	static std::map<int, SCircularData> circular_logdata;

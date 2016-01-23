@@ -38,7 +38,7 @@ void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 
 	IScopedLock lock(mutex);
 
-	logCircular(logid_client[logid], pStr, LogLevel);
+	logCircular(logid_client[logid], logid, pStr, LogLevel);
 
 	if(LogLevel<0)
 		return;
@@ -52,7 +52,7 @@ void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int 
 
 	IScopedLock lock(mutex);
 
-	logCircular(logid_client[logid], pStr, LogLevel);
+	logCircular(logid_client[logid], logid, pStr, LogLevel);
 
 	if(LogLevel<0)
 		return;
@@ -80,7 +80,27 @@ void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr
 	}
 }
 
-void ServerLogger::logCircular(int clientid, const std::string &pStr, int LogLevel)
+std::vector<SCircularLogEntry> ServerLogger::stripLogIdFilter(const std::vector<SCircularLogEntryWithId>& data, logid_t logid)
+{
+	std::vector<SCircularLogEntry> ret;
+	ret.reserve(data.size());
+	for (size_t i = 0; i < data.size(); ++i)
+	{
+		if (logid == logid_t()
+			|| logid == data[i].logid)
+		{
+			SCircularLogEntry ne;
+			ne.id = data[i].id;
+			ne.loglevel = data[i].loglevel;
+			ne.time = data[i].time;
+			ne.utf8_msg = data[i].utf8_msg;
+			ret.push_back(ne);
+		}		
+	}
+	return ret;
+}
+
+void ServerLogger::logCircular(int clientid, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	std::map<int, SCircularData>::iterator iter=circular_logdata.find(clientid);
 	SCircularData *data;
@@ -96,11 +116,12 @@ void ServerLogger::logCircular(int clientid, const std::string &pStr, int LogLev
 		data=&iter->second;
 	}
 
-	SCircularLogEntry& entry=data->data[data->idx];
+	SCircularLogEntryWithId& entry=data->data[data->idx];
 	entry.id=data->id++;
 	entry.loglevel=LogLevel;
 	entry.time=Server->getTimeSeconds();
 	entry.utf8_msg=pStr;
+	entry.logid = logid;
 
 	data->idx=(data->idx+1)%circular_logdata_buffersize;
 }
@@ -208,7 +229,7 @@ void ServerLogger::reset( int clientid )
 	}
 }
 
-std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, size_t minid )
+std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, size_t minid, logid_t logid)
 {
 	IScopedLock lock(mutex);
 
@@ -216,13 +237,13 @@ std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, s
 	if(iter!=circular_logdata.end())
 	{
 		if(minid==std::string::npos)
-			return iter->second.data;
+			return stripLogIdFilter(iter->second.data, logid);
 
 		for(size_t i=0;i<iter->second.data.size();++i)
 		{
 			if(iter->second.data[i].id>minid &&
 				iter->second.data[i].id!=std::string::npos)
-				return iter->second.data;
+				return stripLogIdFilter(iter->second.data, logid);
 		}
 		return std::vector<SCircularLogEntry>();
 	}
@@ -247,7 +268,7 @@ logid_t ServerLogger::getLogId( int clientid )
 {
 	IScopedLock lock(mutex);
 
-	logid_t ret= std::make_pair(logid_gen.first++, 0);
+	logid_t ret= std::make_pair(++logid_gen.first, 0);
 
 	logid_client[ret] = clientid;
 

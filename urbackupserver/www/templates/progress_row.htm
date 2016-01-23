@@ -26,5 +26,17 @@
 	<td class="tabFLeft">{eta}</td>
 	<td class="tabFLeft">{speed}</td>
 	<td class="tabFLeft">{queue}</td>
-	<td class="tabFRight"><input type="button" value="Stop" class="btn btn-xs btn-danger" onclick="stopBackup({clientid}, {id})"/></td>
+	<td class="tabFRight">
+		{?can_stop_backup}
+		<input type="button" value="{tStop}" class="btn btn-xs btn-danger" onclick="stopBackup({clientid}, {id})"/>
+		{/can_stop_backup}
+		{?can_stop_backup}
+			{?can_show_backup_log}
+				&nbsp;
+			{/can_show_backup_log}
+		{/can_stop_backup}
+		{?can_show_backup_log}
+		<input type="button" value="{tShow log}" class="btn btn-xs btn-default" onclick="showBackupLiveLog({clientid}, '{name|j}', {logid})"/>
+		{/can_show_backup_log}
+	</td>
 </tr>

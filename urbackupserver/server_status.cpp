@@ -208,12 +208,15 @@ bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::str
 	return true;
 }
 
-size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action, const std::string& details)
+size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action,
+	const std::string& details, logid_t logid, bool can_stop)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
-	SProcess new_proc(curr_process_id++, action, details);
+	SProcess new_proc(++curr_process_id, action, details);
+	new_proc.logid = logid;
+	new_proc.can_stop = can_stop;
 	s->processes.push_back(new_proc);
 
 	return new_proc.id;

@@ -57,22 +57,22 @@ void Backup::operator()()
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file, details);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file, details, logid, true);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_incr_file, details);
+				status_id = ServerStatus::startProcess(clientname, sa_incr_file, details, logid, true);
 			}
 		}
 		else
 		{
 			if(r_resumed)
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file, details);
+				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file, details, logid, true);
 			}
 			else
 			{
-				status_id = ServerStatus::startProcess(clientname, sa_full_file, details);
+				status_id = ServerStatus::startProcess(clientname, sa_full_file, details, logid, true);
 			}
 		}
 	}
@@ -80,11 +80,11 @@ void Backup::operator()()
 	{
 		if(r_incremental)
 		{
-			status_id = ServerStatus::startProcess(clientname, sa_incr_image, details);
+			status_id = ServerStatus::startProcess(clientname, sa_incr_image, details, logid, true);
 		}
 		else
 		{
-			status_id = ServerStatus::startProcess(clientname, sa_full_image, details);
+			status_id = ServerStatus::startProcess(clientname, sa_full_image, details, logid, true);
 		}
 		ServerStatus::setProcessPcDone(clientname, status_id, 0);
 	}

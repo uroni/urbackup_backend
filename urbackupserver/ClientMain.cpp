@@ -1717,7 +1717,7 @@ void ClientMain::checkClientVersion(void)
 		std::string r=sendClientMessage("VERSION "+version, "Sending version to client failed", 10000);
 		if(r=="update")
 		{
-			ScopedProcess process(clientname, sa_update, version);
+			ScopedProcess process(clientname, sa_update, version, logid_t(), false);
 
 			std::string signature_file = "urbackup/UrBackupUpdate.sig2";
 			std::string installer_file = "urbackup/UrBackupUpdate.exe";

@@ -9,6 +9,8 @@
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 
+#include "server_log.h"
+
 enum SStatusAction
 {
 	sa_none=0,
@@ -47,7 +49,7 @@ struct SProcess
 		: id(id), action(action), prepare_hashqueuesize(0),
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
-		speed_bpms(0)
+		speed_bpms(0), can_stop(false)
 	{
 
 	}
@@ -63,6 +65,8 @@ struct SProcess
 	bool stop;
 	std::string details;
 	double speed_bpms;
+	logid_t logid;
+	bool can_stop;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -124,7 +128,8 @@ public:
 	static int getServerNospcStalled(void);
 	static bool getServerNospcFatal(void);
 
-	static size_t startProcess(const std::string &clientname, SStatusAction action, const std::string& details);
+	static size_t startProcess(const std::string &clientname, SStatusAction action,
+		const std::string& details, logid_t logid, bool can_stop);
 	static bool stopProcess(const std::string &clientname, size_t id);
 
 	static bool changeProcess(const std::string &clientname, size_t id, SStatusAction action);
@@ -174,10 +179,10 @@ private:
 class ScopedProcess
 {
 public:
-	ScopedProcess(std::string clientname, SStatusAction action, const std::string& details)
+	ScopedProcess(std::string clientname, SStatusAction action, const std::string& details, logid_t logid, bool can_stop)
 		: clientname(clientname)
 	{
-		status_id = ServerStatus::startProcess(clientname, action, details);
+		status_id = ServerStatus::startProcess(clientname, action, details, logid, can_stop);
 	}
 	
 	~ScopedProcess()
