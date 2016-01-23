@@ -556,7 +556,7 @@ namespace
                 ret = false;
             }
         }
-        else
+        else if(S_ISBLK(statbuf.st_mode) || S_ISCHR(statbuf.st_mode) )
         {
             unlink(fn.c_str());
 
@@ -566,6 +566,11 @@ namespace
                 ret = false;
             }
         }
+		else
+		{
+			assert(S_ISSOCK(statbuf.st_mode));
+			restore.log("Not creating unix socket at \"" + fn + "\"", LL_INFO);
+		}
 
         if(chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
         {
