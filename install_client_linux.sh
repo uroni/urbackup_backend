@@ -83,16 +83,6 @@ case "$arch" in
 	armv8*) TARGET=armv6-linux-engeabihf ;;
 esac
 
-if [ $TARGET = armv6-linux-engeabihf ]
-then
-	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
-	if [ $RET != 1 ]
-	then
-		echo "Using floating point emulation on ARMv6 (soft float)"
-		TARGET=armv6-linux-engeabi
-	fi
-fi
-
 if [ $TARGET = no ]
 then
 	echo "Cannot run UrBackup client on this server. CPU architecture $arch not supported. Stopping installation."
