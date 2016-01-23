@@ -214,6 +214,7 @@ getJSON = function(action, parameters, callback)
 	{ url: getURL(action),
 	  dataType: "json",
 	  method: "POST",
+	  contentType:"application/json; charset=utf-8",
 	  data: parameters
 	}
 	).done(function(data)
@@ -818,6 +819,12 @@ function show_hide_column(table_id, col_no, do_show)
 }
 String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, "");
+};
+String.prototype.trimLeft = String.prototype.trimLeft || function () {
+    return String(this).replace(/^\s+/, '');
+  };
+String.prototype.trimRight = String.prototype.trimRight || function () {
+    return String(this).replace(/\s+$/, '');
 };
 
 function dustCompileRender(template, data)
