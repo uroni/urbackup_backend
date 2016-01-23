@@ -118,7 +118,7 @@ ACTION_IMPL(progress)
 		ret.set("error", JSON::Value(1));
 	}
 
-	if (POST["with_lastacts"] != "false")
+	if (POST["with_lastacts"] != "0")
 	{
 		bool all_lastacts_rights = false;
 		std::vector<int> lastacts_clientids = helper.clientRights("lastacts", all_lastacts_rights);

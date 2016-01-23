@@ -491,12 +491,32 @@ function show_progress11(manual_click)
 	clearTimeout(g.refresh_timeout);
 	g.refresh_timeout=setTimeout(show_progress11, 10000);
 	
+	if(manual_click)
+	{
+		g.progress_cnt = 0;
+	}
+	else
+	{
+		g.progress_cnt += 1;
+		
+		if(g.progress_cnt>10)
+		{
+			g.progress_cnt = 0;
+		}
+	}	
+	
 	var pars="";
 	if( g.progress_stop_id!=-1)
 	{
 		//alert(stop_clientid);
 		pars="stop_clientid="+g.progress_stop_client_id+"&stop_id="+g.progress_stop_id;
 		g.progress_stop_id=-1;
+	}
+	
+	if(g.progress_cnt!=0)
+	{
+		if(pars.length>0) pars+="&";
+		pars+="with_lastacts=0";
 	}
 	
 	g.progress_first=true;
@@ -512,9 +532,15 @@ function show_progress11(manual_click)
 
 function show_progress21(data)
 {
-	if(I("lastacts_visible") && !g.loading)
+	if(I("show_progress") && !g.loading)
 	{
 		data.from_timeout=true;
+		
+		if(!data.lastacts)
+		{
+			data.lastacts = jQuery.extend(true, [], g.cached_lastacts);
+		}
+		
 		show_progress2(data);
 	}
 }
@@ -526,7 +552,7 @@ function show_progress2(data)
 		return;
 	}
 	if(g.main_nav_pos!=5) return;
-	if(!I('lastacts_visible') && !g.progress_first)
+	if(!I('show_progress') && !g.progress_first)
 	{
 		return;
 	}
@@ -596,10 +622,12 @@ function show_progress2(data)
 	else
 	{
 		tdata=dustRender("progress_table_none");
-	}	
+	}
 	
-	if(data.lastacts.length>0)
+	if(data.lastacts && data.lastacts.length>0)
 	{
+		g.cached_lastacts = jQuery.extend(true, [], data.lastacts);
+		
 		rows="";
 		for(var i=0;i<data.lastacts.length;++i)
 		{
@@ -674,6 +702,8 @@ function show_progress2(data)
 		}
 		tdata+=dustRender("lastacts_table", {rows: rows});
 	}
+	
+	tdata+="<span id='show_progress' style='display:none'></span>";
 	
 	if(g.data_f!=tdata)
 	{
