@@ -211,10 +211,17 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 		lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
 		f.created=os_windows_to_unix_time(lwt.QuadPart);
 
-		if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
+		if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT
+			&& wfd.dwReserved0== IO_REPARSE_TAG_SYMLINK)
 		{
 			f.issym=true;
 			f.isspecial=true;
+		}
+		else if ( ignore_other_fs
+			&& wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+			&& wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT)
+		{
+			continue;
 		}
 		else
 		{

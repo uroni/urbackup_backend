@@ -493,7 +493,9 @@ std::string Connector::getFileList( const std::string& path, int* backupid, bool
 	}
 }
 
-std::string Connector::startRestore( const std::string& path, int backupid, const std::vector<SPathMap>& map_paths, bool& no_server )
+std::string Connector::startRestore( const std::string& path, int backupid,
+	const std::vector<SPathMap>& map_paths, bool& no_server, bool clean_other,
+	bool ignore_other_fs)
 {
 	no_server=false;
 
@@ -511,6 +513,9 @@ std::string Connector::startRestore( const std::string& path, int backupid, cons
 		params += "&map_path_source"+convert(i)+"=" + EscapeParamString(map_paths[i].source);
 		params += "&map_path_target" + convert(i) + "=" + EscapeParamString(map_paths[i].target);
 	}
+
+	params += std::string("&clean_other=") + (clean_other ? "1" : "0");
+	params += std::string("&ignore_other_fs=") + (ignore_other_fs ? "1" : "0");
 
 	std::string res = getResponse("DOWNLOAD FILES TOKENS",
 		params, false);

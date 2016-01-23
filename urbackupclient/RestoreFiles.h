@@ -18,9 +18,13 @@ namespace
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback, FileClient::ProgressLogCallback
 {
 public:
-	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token, std::string restore_path, bool single_file)
-		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
-		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL)
+	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id,
+		std::string client_token, std::string server_token, std::string restore_path, bool single_file,
+		bool clean_other, bool ignore_other_fs)
+		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
+		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
+		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
+		clean_other(clean_other), ignore_other_fs(ignore_other_fs)
 	{
 
 	}
@@ -99,4 +103,7 @@ private:
 	bool restore_declined;
 
 	ScopedRestoreUpdater* curr_restore_updater;
+
+	bool clean_other;
+	bool ignore_other_fs;
 };

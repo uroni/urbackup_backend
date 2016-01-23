@@ -783,6 +783,10 @@ void ClientMain::operator ()(void)
 			rdata.getStr(&restore_token);
 			char single_file = 0;
 			rdata.getChar(&single_file);
+			char clean_other = 0;
+			rdata.getChar(&clean_other);
+			char ignore_other_fs = 0;
+			rdata.getChar(&ignore_other_fs);
 
 			std::string restore_path = ServerStatus::getProcess(clientname, status_id).details;
 
@@ -808,7 +812,9 @@ void ClientMain::operator ()(void)
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+
 				"&log_id="+convert(log_id.first)+(restore_token.empty()?"":"&restore_token="+restore_token)+
 				"&restore_path="+EscapeParamString(restore_path)+
-				"&single_file="+ convert(static_cast<int>(single_file)),
+				"&single_file="+ convert(static_cast<int>(single_file))+
+				"&clean_other=" + convert(static_cast<int>(clean_other))+
+				"&ignore_other_fs=" + convert(static_cast<int>(ignore_other_fs)),
 				"Starting restore failed", 10000, 10, true, LL_ERROR);
 
 			if (ret != "ok")

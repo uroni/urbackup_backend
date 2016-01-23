@@ -70,7 +70,9 @@ public:
 
 	static std::string getFileBackupsList(bool& no_server);
 	static std::string getFileList(const std::string& path, int* backupid, bool& no_server);
-	static std::string startRestore( const std::string& path, int backupid, const std::vector<SPathMap>& map_paths, bool& no_server);
+	static std::string startRestore( const std::string& path, int backupid,
+		const std::vector<SPathMap>& map_paths, bool& no_server, bool clean_other,
+		bool ignore_other_fs);
 
 	static void setPWFile(const std::string &pPWFile);
 	static void setPWFileChange(const std::string &pPWFile);

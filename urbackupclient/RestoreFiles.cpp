@@ -479,7 +479,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					{
 						--depth;
 
-						if(!removeFiles(restore_path, folder_files, deletion_queue))
+						if(clean_other
+							&& !removeFiles(restore_path, folder_files, deletion_queue))
 						{
 							has_error=true;
 						}
@@ -639,7 +640,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	} while (read>0 && !has_error);
 
-	if(!single_item)
+	if(!single_item && clean_other)
 	{
 		if(!removeFiles(restore_path, folder_files, deletion_queue))
 		{
@@ -759,7 +760,7 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 	bool ret=true;
 
 	bool get_files_error;
-	std::vector<SFile> files = getFiles(os_file_prefix(restore_path), &get_files_error);
+	std::vector<SFile> files = getFiles(os_file_prefix(restore_path), &get_files_error, ignore_other_fs);
 
 	if(get_files_error)
 	{
@@ -850,7 +851,7 @@ bool RestoreFiles::deleteFileOnRestart( const std::string& fpath )
 
 bool RestoreFiles::deleteFolderOnRestart( const std::string& fpath )
 {
-	std::vector<SFile> files = getFiles(os_file_prefix(fpath));
+	std::vector<SFile> files = getFiles(os_file_prefix(fpath), NULL, ignore_other_fs);
 
 	for(size_t i=0;i<files.size();++i)
 	{

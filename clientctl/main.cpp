@@ -64,6 +64,12 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " list" << std::endl;
 	std::cout << "\t\t" "List backups and files/folders in backups" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " restore-start" << std::endl;
+	std::cout << "\t\t" "Restore files/folders from backup" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " set-settings" << std::endl;
+	std::cout << "\t\t" "Set backup settings" << std::endl;
+	std::cout << std::endl;
 }
 
 typedef int(*action_fun)(std::vector<std::string> args);
@@ -299,6 +305,12 @@ int action_start_restore(std::vector<std::string> args)
 		"Map to local output path of folders/files to a different local path",
 		false, "path", cmd);
 
+	TCLAP::SwitchArg no_remove_arg("n", "no-remove",
+		"Do not remove files/directories not in backup", cmd);
+
+	TCLAP::SwitchArg consider_other_fs_arg("o", "consider-other-fs",
+		"Consider other file systems when removing files/directories not in backup", cmd);
+
 	cmd.parse(args);
 
 	if (map_from_arg.getValue().size() != map_to_arg.getValue().size())
@@ -322,7 +334,8 @@ int action_start_restore(std::vector<std::string> args)
 	}
 
 	bool no_server;
-	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(), path_map, no_server);
+	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(),
+		path_map, no_server, !no_remove_arg.getValue(), consider_other_fs_arg.getValue());
 
 	if(!restore_info.empty())
 	{
@@ -346,7 +359,7 @@ int action_start_restore(std::vector<std::string> args)
 
 int action_set_settings(std::vector<std::string> args)
 {
-	TCLAP::CmdLine cmd("Set a backup setting", ' ', cmdline_version);
+	TCLAP::CmdLine cmd("Set backup settings", ' ', cmdline_version);
 
 	PwClientCmd pw_client_cmd(cmd, true);
 
