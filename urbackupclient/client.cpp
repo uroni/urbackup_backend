@@ -3767,9 +3767,10 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 		IFile* hashoutput = Server->openTemporaryFile();
 		ScopedDeleteFile hashoutput_delete(hashoutput);
 		FsExtentIterator extent_iterator(f.get(), 32768);
-		int64 fsize2 = f->Size();
 		std::string other_sha = build_chunk_hashs(f.get(), hashoutput, NULL, true, NULL, false,
 			NULL, NULL, false, &extent_iterator);
+
+		int64 fsize2 = f->Size();
 
 		if (ret != other_sha && fsize1== fsize2)
 		{
