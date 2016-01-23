@@ -86,7 +86,7 @@ esac
 if [ $TARGET = armv6-linux-engeabihf ]
 then
 	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
-	if [ $?RET != 1 ]
+	if [ $RET != 1 ]
 	then
 		echo "Using floating point emulation on ARMv6 (soft float)"
 		TARGET=armv6-linux-engeabi
@@ -232,6 +232,7 @@ then
 	fi
 
     CENTOS=no
+	UBUNTU=no
 
     DATTO=no
     LVM=no
@@ -248,7 +249,14 @@ then
         then
             CENTOS=7
         fi
-    fi
+    else
+		if grep 'NAME="Ubuntu"' /etc/os-release > /dev/null 2>&1
+		then
+			echo "+Detected Ubuntu. Dattobd supported"
+			UBUNTU=yes
+			DATTO=yes
+		fi
+	fi
 
 
     if [ $CENTOS != no ]
@@ -351,7 +359,14 @@ then
             curl -O https://cpkg.datto.com/datto-rpm/EnterpriseLinux/7/x86_64/datto-el-rpm-release-1.0.0-1.noarch.rpm
             yum localinstall datto-el-rpm-release-1.0.0-1.noarch.rpm
             yum install dkms-dattobd dattobd-utils
-        fi
+        elif [ $UBUNTU != no ]
+		then
+			apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 29FF164C
+			CODENAME=`lsb_release -sc`
+			echo "deb https://cpkg.datto.com/repositories $CODENAME main" > /etc/apt/sources.list.d/datto-linux-agent.list
+			apt-get update
+			apt-get install dattobd-dkms dattobd-utils
+		fi
 
         cp dattobd_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
         cp dattobd_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
