@@ -1303,9 +1303,21 @@ void CServer::createThread(IThread *thread, const std::string& name)
 #else
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
+#if !defined(URB_THREAD_STACKSIZE64) || !defined(URB_THREAD_STACKSIZE32)
+
 #ifndef _LP64
 	//Only on 32bit architectures
 	pthread_attr_setstacksize(&attr, 1*1024*1024);
+#endif
+
+#else
+
+#ifdef _LP64
+	pthread_attr_setstacksize(&attr, (URB_THREAD_STACKSIZE64));
+#else
+	pthread_attr_setstacksize(&attr, (URB_THREAD_STACKSIZE32));
+#endif
+
 #endif
 
 	pthread_t t;

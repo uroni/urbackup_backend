@@ -18,7 +18,7 @@ mkdir -p install-data
 for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf
 do
 	echo "Compiling for architecture $arch..."
-    ./configure --enable-headless CFLAGS="-target $arch" CPPFLAGS="-target $arch" LDFLAGS="-target $arch" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
+    ./configure --enable-headless CFLAGS="-target $arch" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576" LDFLAGS="-target $arch" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
     make clean
     make -j4
     rm -R install-data/$arch || true

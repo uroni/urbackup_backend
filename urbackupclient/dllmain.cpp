@@ -247,7 +247,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	change_file_permissions_admin_only("urbackup/backup_client.db");
 #endif
 
-	if(! Server->openDatabase(Server->getServerWorkingDir() + "/urbackup/backup_client.db", URBACKUPDB_CLIENT) )
+	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
 		Server->Log("Couldn't open Database backup_client.db", LL_ERROR);
 		exit(1);
