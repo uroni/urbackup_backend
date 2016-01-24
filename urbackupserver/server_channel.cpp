@@ -1193,10 +1193,19 @@ void ServerChannelThread::RESTORE_PERCENT( str_map params )
 	int64 status_id = watoi64(params["status_id"]);
 	int64 restore_id = watoi64(params["id"]);
 	int pc = watoi(params["pc"]);
+	double speed_bpms = atof(params["speed_bpms"].c_str());
+	std::string details = params["details"];
+	int64 total_bytes = watoi64(params["total_bytes"]);
+	int64 done_bytes = watoi64(params["done_bytes"]);
+	int detail_pc = watoi(params["detail_pc"]);
 
 	client_main->updateRestoreRunning(restore_id);
 
 	ServerStatus::setProcessPcDone(clientname, status_id, pc);
+	ServerStatus::setProcessSpeed(clientname, status_id, speed_bpms);
+	ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
+	ServerStatus::setProcessTotalBytes(clientname, status_id, total_bytes);
+	ServerStatus::setProcessDetails(clientname, status_id, details, detail_pc);
 }
 
 void ServerChannelThread::RESTORE_DONE( str_map params )

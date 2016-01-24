@@ -23,6 +23,9 @@
 		  </div>
 		  {?indexing}{tIndexing...}{/indexing}
 		</div>
+		{?f_total_bytes}
+			{f_done_bytes} / {f_total_bytes}
+		{/f_total_bytes}
 	<td class="tabFLeft">{eta}</td>
 	<td class="tabFLeft">{speed}</td>
 	<td class="tabFLeft">{queue}</td>

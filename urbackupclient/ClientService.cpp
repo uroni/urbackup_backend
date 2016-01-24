@@ -2775,7 +2775,7 @@ bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int log
 }
 
 void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
-	const std::string& fn, int fn_pc)
+	const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms)
 {
 	IScopedLock lock(backup_mutex);
 
@@ -2796,11 +2796,16 @@ void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, 
 				proc->last_pingtime = Server->getTimeMS();
 				proc->details = fn;
 				proc->detail_pc = fn_pc;
+				proc->total_bytes = total_bytes;
+				proc->done_bytes = done_bytes;
+				proc->speed_bpms = speed_bpms;
 			}
 		}
 	}
 
-	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id)+"&id="+convert(restore_id),
+	sendMessageToChannel("RESTORE PERCENT pc="+convert(nv)+"&status_id="+convert(status_id)+"&id="+convert(restore_id)
+		+"&details="+EscapeParamString(fn)+"&detail_pc="+convert(fn_pc)+"&total_bytes="+convert(total_bytes)+"&done_bytes="+convert(done_bytes)
+		+"&speed_bpms="+convert(speed_bpms),
 		0, identity);
 }
 

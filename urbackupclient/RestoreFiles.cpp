@@ -43,7 +43,7 @@ namespace
 			: update_mutex(Server->createMutex()), stopped(false),
 			update_cond(Server->createCondition()), curr_pc(-1),
 			restore_id(restore_id), status_id(status_id), server_token(server_token),
-			curr_fn_pc(-1), local_process_id(local_process_id)
+			curr_fn_pc(-1), local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0)
 		{
 			SRunningProcess new_proc;
 			new_proc.id = local_process_id;
@@ -59,11 +59,11 @@ namespace
 				IScopedLock lock(update_mutex.get());
 				while (!stopped)
 				{
-					ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc);
+					ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc, total_bytes, done_bytes, speed_bpms);
 					update_cond->wait(&lock, 60000);
 				}
 			}
-			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1);
+			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1, total_bytes, total_bytes, 0);
 			delete this;
 		}
 
@@ -74,10 +74,12 @@ namespace
 			update_cond->notify_all();
 		}
 
-		void update_pc(int new_pc)
+		void update_pc(int new_pc, int64 total_bytes, int64 done_bytes)
 		{
 			IScopedLock lock(update_mutex.get());
-			curr_pc = new_pc;		
+			curr_pc = new_pc;
+			total_bytes = total_bytes;
+			done_bytes = done_bytes;
 			update_cond->notify_all();
 		}
 
@@ -86,6 +88,13 @@ namespace
 			IScopedLock lock(update_mutex.get());
 			curr_fn = fn;
 			curr_fn_pc = fn_pc;
+			update_cond->notify_all();
+		}
+
+		void update_speed(double n_speed_bpms)
+		{
+			IScopedLock lock(update_mutex.get());
+			speed_bpms = n_speed_bpms;
 			update_cond->notify_all();
 		}
 
@@ -100,6 +109,9 @@ namespace
 		int64 status_id;
 		std::string server_token;
 		int64 local_process_id;
+		int64 total_bytes;
+		int64 done_bytes;
+		double speed_bpms;
 	};
 
 	class ScopedRestoreUpdater
@@ -111,14 +123,19 @@ namespace
 			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater, "restore progress");
 		}
 
-		void update_pc(int new_pc)
+		void update_pc(int new_pc, int64 total_bytes, int64 done_bytes)
 		{
-			restore_updater->update_pc(new_pc);
+			restore_updater->update_pc(new_pc, total_bytes, done_bytes);
 		}
 
 		void update_fn(const std::string& fn, int fn_pc)
 		{
 			restore_updater->update_fn(fn, fn_pc);
+		}
+
+		void update_speed(double speed_bpms)
+		{
+			restore_updater->update_speed(speed_bpms);
 		}
 
 		~ScopedRestoreUpdater()
@@ -213,7 +230,7 @@ void RestoreFiles::operator()()
 
 		fc.setProgressLogCallback(this);
 
-		restore_updater.update_pc(0);
+		restore_updater.update_pc(0, total_size, 0);
 
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
@@ -222,7 +239,7 @@ void RestoreFiles::operator()()
 		}
 
 		curr_restore_updater = NULL;
-		restore_updater.update_pc(101);
+		restore_updater.update_pc(101, total_size, total_size);
 
 		do
 		{
@@ -405,13 +422,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					laststatsupdate=ctime;
 					if(total_size==0)
 					{
-						restore_updater.update_pc(100);
+						restore_updater.update_pc(100, total_size, total_size);
 					}
 					else
 					{
-						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + (float)fc_chunked->getReceivedDataBytes(true) + skipped_bytes)/((float)total_size/100.f)+0.5f));;
-						restore_updater.update_pc(pcdone);
+						int64 done_bytes = fc.getReceivedDataBytes(true) + fc_chunked->getReceivedDataBytes(true) + skipped_bytes;
+						int pcdone = (std::min)(100,(int)(((float)done_bytes)/((float)total_size/100.f)+0.5f));
+						restore_updater.update_pc(pcdone, total_size, done_bytes);
 					}
+
+					calculateDownloadSpeed(fc, fc_chunked.get());
 				}
 
 				if(!data.isdir || data.name!="..")
@@ -654,13 +674,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
     {
         if(total_size==0)
         {
-			restore_updater.update_pc(100);
+			restore_updater.update_pc(100, total_size, total_size);
         }
         else
         {
-            int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes(true) + (float)fc_chunked->getReceivedDataBytes(true) + skipped_bytes)/((float)total_size/100.f)+0.5f));
-			restore_updater.update_pc(pcdone);
+			int64 done_bytes = fc.getReceivedDataBytes(true) + fc_chunked->getReceivedDataBytes(true) + skipped_bytes;
+            int pcdone = (std::min)(100,(int)(((float)done_bytes)/((float)total_size/100.f)+0.5f));
+			restore_updater.update_pc(pcdone, total_size, done_bytes);
         }
+
+		calculateDownloadSpeed(fc, fc_chunked.get());
     }
 
 #ifdef _WIN32
@@ -902,3 +925,33 @@ bool RestoreFiles::renameFilesOnRestart( std::vector<std::pair<std::string, std:
 #endif
 }
 
+void RestoreFiles::calculateDownloadSpeed(FileClient & fc, FileClientChunked * fc_chunked)
+{
+	int64 ctime = Server->getTimeMS();
+	if (speed_set_time == 0)
+	{
+		speed_set_time = ctime;
+	}
+
+	if (ctime - speed_set_time>10000)
+	{
+		int64 received_data_bytes = fc.getTransferredBytes() + (fc_chunked != NULL ? fc_chunked->getTransferredBytes() : 0);
+
+		int64 new_bytes = received_data_bytes - last_speed_received_bytes;
+		int64 passed_time = ctime - speed_set_time;
+
+		if (passed_time > 0)
+		{
+			speed_set_time = ctime;
+
+			double speed_bpms = static_cast<double>(new_bytes) / passed_time;
+
+			if (last_speed_received_bytes > 0)
+			{
+				curr_restore_updater->update_speed(speed_bpms);
+			}
+
+			last_speed_received_bytes = received_data_bytes;
+		}
+	}
+}

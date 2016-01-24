@@ -379,6 +379,9 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, clientname+": Calculating tree difference size...", LL_INFO);
 	_i64 files_size=getIncrementalSize(tmp_filelist, diffs);
+
+	ServerStatus::setProcessTotalBytes(clientname, status_id, files_size);
+
 	tmp_filelist->Seek(0);
 
 	int64 laststatsupdate=0;
@@ -522,9 +525,11 @@ bool IncrFileBackup::doFileBackup()
 						}
 						else
 						{
+							int64 done_bytes = fc.getReceivedDataBytes(true)
+								+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0) + linked_bytes;
+							ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 							ServerStatus::setProcessPcDone(clientname, status_id,
-								(std::min)(100, (int)(((float)(fc.getReceivedDataBytes(true)
-									+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0) + linked_bytes)) / ((float)files_size / 100.f) + 0.5f)));
+								(std::min)(100, (int)(((float)done_bytes) / ((float)files_size / 100.f) + 0.5f)));
 						}
 
 						ServerStatus::setProcessQueuesize(clientname, status_id,
@@ -1031,9 +1036,11 @@ bool IncrFileBackup::doFileBackup()
 		}
 		else
 		{
+			int64 done_bytes = fc.getReceivedDataBytes(true)
+				+ (fc_chunked.get() ? fc_chunked->getReceivedDataBytes(true) : 0) + linked_bytes;
+			ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 			ServerStatus::setProcessPcDone(clientname, status_id,
-				(std::min)(100,(int)(((float)(fc.getReceivedDataBytes(true)
-				+ (fc_chunked.get()?fc_chunked->getReceivedDataBytes(true):0) + linked_bytes))/((float)files_size/100.f)+0.5f)) );
+				(std::min)(100,(int)(((float)done_bytes)/((float)files_size/100.f)+0.5f)) );
 		}
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,

@@ -615,6 +615,12 @@ function show_progress2(data)
 				data.progress[i].speed = "-";
 			}
 			
+			if(data.progress[i].total_bytes>=0)
+			{
+				data.progress[i].f_done_bytes = format_size(data.progress[i].done_bytes);
+				data.progress[i].f_total_bytes = format_size(data.progress[i].total_bytes);
+			}
+			
 			rows+=dustRender("progress_row", data.progress[i]);
 		}
 		tdata=dustRender("progress_table", {"rows": rows});

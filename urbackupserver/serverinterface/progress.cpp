@@ -82,6 +82,9 @@ ACTION_IMPL(progress)
 					obj.set("id", JSON::Value(clients[i].processes[j].id));
 					obj.set("logid", JSON::Value(clients[i].processes[j].logid.first));
 					obj.set("details", clients[i].processes[j].details);
+					obj.set("total_bytes", clients[i].processes[j].total_bytes);
+					obj.set("done_bytes", clients[i].processes[j].done_bytes);
+					obj.set("detail_pc", clients[i].processes[j].detail_pc);
 
 					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
 					int64 etams = clients[i].processes[j].eta_ms - add_time;

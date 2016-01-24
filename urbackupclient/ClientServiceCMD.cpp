@@ -751,8 +751,16 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 			obj.set("detail_pc", running_processes[i].detail_pc);
 		}
 
+		if (running_processes[i].total_bytes >= 0)
+		{
+			obj.set("total_bytes", running_processes[i].total_bytes);
+			obj.set("done_bytes", running_processes[i].done_bytes);
+		}
+
 		obj.set("process_id", running_processes[i].id);
 		obj.set("server_status_id", running_processes[i].server_id);
+
+		obj.set("speed_bpms", running_processes[i].speed_bpms);
 
 		j_running_processes.add(obj);
 	}

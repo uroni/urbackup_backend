@@ -24,7 +24,7 @@ public:
 		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
 		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
-		clean_other(clean_other), ignore_other_fs(ignore_other_fs)
+		clean_other(clean_other), ignore_other_fs(ignore_other_fs), last_speed_received_bytes(0), speed_set_time(0)
 	{
 
 	}
@@ -80,6 +80,8 @@ private:
 
 	std::auto_ptr<FileClientChunked> createFcChunked();
 
+	void calculateDownloadSpeed(FileClient & fc, FileClientChunked * fc_chunked);
+
 	int64 local_process_id;
 
 	int64 restore_id;
@@ -106,4 +108,7 @@ private:
 
 	bool clean_other;
 	bool ignore_other_fs;
+
+	int64 last_speed_received_bytes;
+	int64 speed_set_time;
 };

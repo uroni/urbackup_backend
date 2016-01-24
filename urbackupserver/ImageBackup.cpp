@@ -497,6 +497,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		off=0;
 		if(r==0 )
 		{
+			ServerStatus::setProcessSpeed(clientname, status_id, 0);
 			if(persistent && nextblock!=0)
 			{
 				int64 continue_block=nextblock;
@@ -797,6 +798,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							ServerLogger::Log(logid, "Error opening Parenthashfile \""+pParentvhd+".hash\"", LL_ERROR);
 							goto do_image_cleanup;
 						}
+						ServerStatus::setProcessTotalBytes(clientname, status_id, totalblocks*blocksize);
+					}
+					else
+					{
+						ServerStatus::setProcessTotalBytes(clientname, status_id, blockcnt*blocksize);
 					}
 
 					mbr_offset=writeMBR(vhdfile, drivesize);
@@ -1001,12 +1007,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								{
 									if(has_parent)
 									{
+										ServerStatus::setProcessDoneBytes(clientname, status_id, currblock*blocksize);
 										ServerStatus::setProcessPcDone(clientname, status_id, 
 											(int)(((double)currblock/(double)totalblocks)*100.0+0.5) );
 									}
 									else
 									{
-										ServerStatus::setProcessPcDone(clientname, status_id, 
+										ServerStatus::setProcessDoneBytes(clientname, status_id, numblocks*blocksize);
+										ServerStatus::setProcessPcDone(clientname, status_id,
 											(int)(((double)numblocks/(double)blockcnt)*100.0+0.5) );
 									}
 								}

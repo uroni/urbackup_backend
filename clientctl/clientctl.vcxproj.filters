@@ -36,6 +36,9 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="jsoncpp.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Connector.h">

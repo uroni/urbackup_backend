@@ -55,7 +55,10 @@ struct SRunningProcess
 		pcdone(-1), eta_ms(-1),
 		server_id(0),
 		last_pingtime(Server->getTimeMS()),
-		detail_pc(-1)
+		detail_pc(-1),
+		total_bytes(-1),
+		done_bytes(0),
+		speed_bpms(0)
 	{}
 
 	int64 id;
@@ -67,6 +70,9 @@ struct SRunningProcess
 	int64 last_pingtime;
 	std::string details;
 	int detail_pc;
+	int64 total_bytes;
+	int64 done_bytes;
+	double speed_bpms;
 };
 
 enum RestoreOkStatus
@@ -164,7 +170,7 @@ public:
 	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
 
 	static void updateRestorePc(int64 local_process_id, int64 restore_id, int64 status_id, int nv, const std::string& identity,
-		const std::string& fn, int fn_pc);
+		const std::string& fn, int fn_pc, int64 total_bytes, int64 done_bytes, double speed_bpms);
 
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 

@@ -147,6 +147,7 @@
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="Connector.cpp" />
+    <ClCompile Include="jsoncpp.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tcpstack.cpp" />
   </ItemGroup>

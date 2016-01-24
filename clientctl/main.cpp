@@ -24,17 +24,30 @@
 #include "Connector.h"
 #include "../stringtools.h"
 #include "../tclap/CmdLine.h"
+#include "json/json.h"
 
 #ifndef _WIN32
+#include <sys/ioctl.h>
+#include <unistd.h>
 #include "../config.h"
 #define PWFILE VARDIR "/urbackup/pw.txt"
 #define PWFILE_CHANGE VARDIR "/urbackup/pw_change.txt"
 #else
+#include <Windows.h>
 #define PACKAGE_VERSION "$version_full_numeric$"
 #define VARDIR ""
 #define PWFILE "pw.txt"
 #define PWFILE_CHANGE "pw_change.txt"
 #endif
+
+void wait(unsigned int ms)
+{
+#ifdef _WIN32
+	Sleep(ms);
+#else
+	usleep(ms * 1000);
+#endif
+}
 
 const std::string cmdline_version = PACKAGE_VERSION;
 
@@ -194,7 +207,7 @@ int action_status(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::string status = Connector::getStatusDetail();
+	std::string status = Connector::getStatusDetailsRaw();
 	if(!status.empty())
 	{
 		std::cout << status << std::endl;
@@ -283,6 +296,157 @@ int action_list(std::vector<std::string> args)
 	}
 }
 
+const size_t c_speed_size = 15;
+const size_t c_max_l_length = 80;
+
+size_t get_terminal_width()
+{
+#ifndef _WIN32
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0)
+	{
+		return c_max_l_length;
+	}
+	else
+	{
+		return w.ws_col;
+	}
+#else
+	return c_max_l_length;
+#endif
+}
+
+void draw_progress(int pc_done, double speed_bpms, int64 done_bytes, int64 total_bytes, std::string details, int detail_pc)
+{
+	static size_t max_line_length = 0;
+
+	size_t term_width = get_terminal_width();
+	size_t draw_segments = term_width / 3;
+
+	size_t segments = (size_t)(pc_done*draw_segments);
+
+	std::string toc = "\r[";
+	for (size_t i = 0; i<draw_segments; ++i)
+	{
+		if (i<segments)
+		{
+			toc += "=";
+		}
+		else if (i == segments)
+		{
+			toc += ">";
+		}
+		else
+		{
+			toc += " ";
+		}
+	}
+	std::string speed_str = PrettyPrintSpeed(static_cast<size_t>(speed_bpms*8000.0));
+	while (speed_str.size()<c_speed_size)
+		speed_str += " ";
+	std::string pcdone = convert((int)(pc_done*100.f));
+	if (pcdone.size() == 1)
+		pcdone = " " + pcdone;
+
+	if (detail_pc >= 0)
+	{
+		std::string detailpc_s = convert(detail_pc);
+		if (detailpc_s.size() == 1)
+			detailpc_s = " " + detailpc_s;
+
+		details += " " + detailpc_s + "%";
+	}
+
+	toc += "] " + pcdone + "% " + PrettyPrintBytes(done_bytes)+"/"+PrettyPrintBytes(total_bytes)
+		+ speed_str + " " + details;
+
+	
+
+	if (toc.size() >= term_width)
+		toc = toc.substr(0, term_width);
+
+	if (toc.size()>max_line_length)
+		max_line_length = toc.size();
+
+	max_line_length = (std::min)(max_line_length, term_width);
+
+	while (toc.size()<max_line_length)
+		toc += " ";
+
+	std::cout << toc;
+	std::cout.flush();
+}
+
+int wait_for_restore(std::string restore_info)
+{
+	Json::Value root;
+	Json::Reader reader;
+
+	if (!reader.parse(restore_info, root, false))
+	{
+		return 1;
+	}
+
+	if (root.get("ok", false) == false)
+	{
+		return 2;
+	}
+
+	int64 process_id = root["process_id"].asInt64();
+
+	bool preparing_restore = false;
+
+	while (true)
+	{
+		int tries = 20;
+		SStatusDetails status = Connector::getStatusDetails();
+
+		while (!status.ok && tries>0)
+		{
+			--tries;
+			wait(100);
+			status = Connector::getStatusDetails();
+		}
+
+		if (!status.ok)
+		{
+			std::cerr << "Could not get restore status from backend" << std::endl;
+			return 3;
+		}
+
+		bool found = false;
+
+		for (size_t i = 0; i < status.running_processes.size(); ++i)
+		{
+			SRunningProcess& proc = status.running_processes[i];
+			if (status.running_processes[i].process_id == process_id)
+			{
+				if (proc.percent_done < 0)
+				{
+					if (!preparing_restore)
+					{
+						std::cout << "Preparing restore..." << std::endl;
+					}
+				}
+				else
+				{
+					draw_progress(proc.percent_done, proc.speed_bpms, proc.done_bytes, proc.total_bytes, proc.details, proc.detail_pc);
+				}
+
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			return 0;
+		}
+
+		wait(1000);
+	}
+}
+
 int action_start_restore(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Restore files/folders from backup", ' ', cmdline_version);
@@ -310,6 +474,9 @@ int action_start_restore(std::vector<std::string> args)
 
 	TCLAP::SwitchArg consider_other_fs_arg("o", "consider-other-fs",
 		"Consider other file systems when removing files/directories not in backup", cmd);
+
+	TCLAP::SwitchArg non_blocking_arg("l", "non-blocking",
+		"Restore does not block till it is finished but returns immediately after starting it", cmd);
 
 	cmd.parse(args);
 
@@ -339,8 +506,15 @@ int action_start_restore(std::vector<std::string> args)
 
 	if(!restore_info.empty())
 	{
-		std::cout << restore_info << std::endl;
-		return 0;
+		if (non_blocking_arg.getValue())
+		{
+			std::cout << restore_info << std::endl;
+			return 0;
+		}
+		else
+		{
+			return wait_for_restore(restore_info);
+		}
 	}
 	else
 	{

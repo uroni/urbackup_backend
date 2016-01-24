@@ -49,7 +49,8 @@ struct SProcess
 		: id(id), action(action), prepare_hashqueuesize(0),
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
-		speed_bpms(0), can_stop(false)
+		speed_bpms(0), can_stop(false), total_bytes(-1),
+		done_bytes(0), detail_pc(-1)
 	{
 
 	}
@@ -64,9 +65,12 @@ struct SProcess
 	int64 eta_set_time;
 	bool stop;
 	std::string details;
+	int detail_pc;
 	double speed_bpms;
 	logid_t logid;
 	bool can_stop;
+	int64 total_bytes;
+	int64 done_bytes;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -155,6 +159,15 @@ public:
 
 	static void setProcessPcDone(const std::string &clientname, size_t id,
 		int pcdone);
+
+	static void setProcessTotalBytes(const std::string &clientname, size_t id,
+		int64 total_bytes);
+
+	static void setProcessDoneBytes(const std::string &clientname, size_t id,
+		int64 done_bytes);
+
+	static void setProcessDetails(const std::string &clientname, size_t id,
+		std::string details, int detail_pc);
 
 	static void addRunningJob(const std::string &clientname);
 
