@@ -74,12 +74,12 @@ namespace
 			update_cond->notify_all();
 		}
 
-		void update_pc(int new_pc, int64 total_bytes, int64 done_bytes)
+		void update_pc(int new_pc, int64 p_total_bytes, int64 p_done_bytes)
 		{
 			IScopedLock lock(update_mutex.get());
 			curr_pc = new_pc;
-			total_bytes = total_bytes;
-			done_bytes = done_bytes;
+			total_bytes = p_total_bytes;
+			done_bytes = p_done_bytes;
 			update_cond->notify_all();
 		}
 
