@@ -71,7 +71,11 @@ void ServerPingThread::operator()(void)
 				etams=61*1000;
 			}
 			if(client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+(etams>0?"&eta_ms="+convert(etams):"")
-							+"&status_id="+convert(status_id)+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
+							+"&status_id="+convert(status_id)
+							+"&speed_bpms="+convert(proc.speed_bpms)
+							+"&total_bytes="+convert(proc.total_bytes)
+							+"&done_bytes="+convert(proc.done_bytes)
+							+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}

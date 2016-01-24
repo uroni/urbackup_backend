@@ -19,8 +19,8 @@ private:
 	void ImageErr(const std::string &msg, int loglevel=LL_ERROR);
 	void ImageErrRunning(std::string msg);
 
-	void sendFullImageThread(void);
-	void sendIncrImageThread(void);
+	bool sendFullImageThread(void);
+	bool sendIncrImageThread(void);
 
 	void removeShadowCopyThread(int save_id);
 	void updateShadowCopyStarttime(int save_id);

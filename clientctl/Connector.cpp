@@ -563,27 +563,33 @@ SStatusDetails Connector::getStatusDetails()
 	{
 		ret.last_backup_time = root["last_backup_time"].asInt64();
 
-		std::vector<SRunningProcess> running_processes;
 		Json::Value json_running_processes = root["running_processes"];
-		running_processes.resize(json_running_processes.size());
+		ret.running_processes.resize(json_running_processes.size());
 		for (unsigned int i = 0; i<json_running_processes.size(); ++i)
 		{
-			running_processes[i].action = json_running_processes[i]["action"].asString();
-			running_processes[i].percent_done = json_running_processes[i]["percent_done"].asInt();
-			running_processes[i].eta_ms = json_running_processes[i]["eta_ms"].asInt64();
+			ret.running_processes[i].action = json_running_processes[i]["action"].asString();
+			ret.running_processes[i].percent_done = json_running_processes[i]["percent_done"].asInt();
+			ret.running_processes[i].eta_ms = json_running_processes[i]["eta_ms"].asInt64();
 
-			running_processes[i].details = json_running_processes[i].get("details", std::string()).asString();
-			running_processes[i].detail_pc = json_running_processes[i].get("detail_pc", -1).asInt();
+			ret.running_processes[i].details = json_running_processes[i].get("details", std::string()).asString();
+			ret.running_processes[i].detail_pc = json_running_processes[i].get("detail_pc", -1).asInt();
 
-			running_processes[i].total_bytes = json_running_processes[i].get("total_bytes", -1).asInt64();
-			running_processes[i].done_bytes = json_running_processes[i].get("done_bytes", 0).asInt64();
+			ret.running_processes[i].total_bytes = json_running_processes[i].get("total_bytes", -1).asInt64();
+			ret.running_processes[i].done_bytes = json_running_processes[i].get("done_bytes", 0).asInt64();
 
-			running_processes[i].process_id = json_running_processes[i].get("process_id", 0).asInt64();
-			running_processes[i].server_status_id = json_running_processes[i].get("server_status_id", 0).asInt64();
+			ret.running_processes[i].process_id = json_running_processes[i].get("process_id", 0).asInt64();
+			ret.running_processes[i].server_status_id = json_running_processes[i].get("server_status_id", 0).asInt64();
 
-			running_processes[i].speed_bpms = json_running_processes[i].get("speed_bpms", 0).asDouble();
+			ret.running_processes[i].speed_bpms = json_running_processes[i].get("speed_bpms", 0).asDouble();
 		}
-		ret.running_processes = running_processes;
+
+		Json::Value json_finished_processes = root["finished_processes"];
+		ret.finished_processes.resize(json_finished_processes.size());
+		for (unsigned int i = 0; i < json_finished_processes.size(); ++i)
+		{
+			ret.finished_processes[i].id = json_finished_processes[i]["process_id"].asInt64();
+			ret.finished_processes[i].success = json_finished_processes[i]["success"].asBool();
+		}
 
 		std::vector<SUrBackupServer> servers;
 		Json::Value json_servers = root["servers"];

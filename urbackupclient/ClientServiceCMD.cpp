@@ -306,24 +306,16 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		action =RUNNING_RESUME_INCR_FILE;
 	}
 
+	SRunningProcess new_proc;
+
+	new_proc.action = action;
+	new_proc.server_id = server_id;
+	new_proc.id = ++curr_backup_running_id;
+	new_proc.server_token = server_token;
+
 	IScopedLock process_lock(process_mutex);
 
-	SRunningProcess* proc = getRunningProcess(action, server_token);
-
-	if (proc == NULL)
-	{
-		running_processes.push_back(SRunningProcess());
-		proc = &running_processes.back();
-	}
-
-	proc->action = action;
-	proc->server_id = server_id;
-	if (proc->id == 0)
-	{
-		++curr_backup_running_id;
-		proc->id = curr_backup_running_id;
-	}
-	proc->server_token = server_token;
+	running_processes.push_back(new_proc);
 
 	status_updated = true;
 
@@ -427,8 +419,10 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	new_proc.action = RUNNING_FULL_FILE;
 	new_proc.server_id = server_id;
-	new_proc.id = curr_backup_running_id++;
+	new_proc.id = ++curr_backup_running_id;
 	new_proc.server_token = server_token;
+
+	IScopedLock process_lock(process_mutex);
 
 	running_processes.push_back(new_proc);
 
@@ -626,7 +620,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 
 		if (proc != NULL)
 		{
-			removeRunningProcess(proc->id);
+			removeRunningProcess(proc->id, true);
 		}
 
 		lasttime=Server->getTimeMS();
@@ -659,7 +653,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 
 		if (proc != NULL)
 		{
-			removeRunningProcess(proc->id);
+			removeRunningProcess(proc->id, true);
 		}
 
 		lasttime = Server->getTimeMS();
@@ -766,6 +760,17 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	}
 
 	ret.set("running_processes", j_running_processes);
+
+	JSON::Array j_finished_processes;
+	for (size_t i = 0; i < finished_processes.size(); ++i)
+	{
+		JSON::Object obj;
+		obj.set("process_id", finished_processes[i].id);
+		obj.set("success", finished_processes[i].success);
+		j_finished_processes.add(obj);
+	}
+
+	ret.set("finished_processes", j_finished_processes);
 
 	JSON::Array servers;
 
@@ -879,6 +884,10 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 
 	proc->eta_ms = watoi64(params["eta_ms"]);
 	proc->last_pingtime = Server->getTimeMS();
+
+	proc->speed_bpms = atof(params["speed_bpms"].c_str());
+	proc->total_bytes = watoi64(params["total_bytes"]);
+	proc->done_bytes = watoi64(params["done_bytes"]);
 
 #ifdef _WIN32
 	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
@@ -1666,7 +1675,7 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 		restore_token.process_id = ++curr_backup_running_id;
 	}
 
-	accessparams+="&restore_token="+ restore_token.restore_token;
+	accessparams+="&restore_token="+ restore_token.restore_token+"&process_id="+convert(restore_token.process_id);
 
 	std::string filelist;
 

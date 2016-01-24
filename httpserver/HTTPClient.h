@@ -22,8 +22,8 @@ class CHTTPClient : public ICustomClient
 public:
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint);
 
-	virtual void ReceivePackets(void);
-	virtual bool Run(void);
+	virtual void ReceivePackets(IRunOtherCallback* run_other);
+	virtual bool Run(IRunOtherCallback* run_other);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

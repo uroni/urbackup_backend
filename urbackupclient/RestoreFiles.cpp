@@ -43,7 +43,7 @@ namespace
 			: update_mutex(Server->createMutex()), stopped(false),
 			update_cond(Server->createCondition()), curr_pc(-1),
 			restore_id(restore_id), status_id(status_id), server_token(server_token),
-			curr_fn_pc(-1), local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0)
+			curr_fn_pc(-1), local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0), success(false)
 		{
 			SRunningProcess new_proc;
 			new_proc.id = local_process_id;
@@ -63,7 +63,7 @@ namespace
 					update_cond->wait(&lock, 60000);
 				}
 			}
-			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1, total_bytes, total_bytes, 0);
+			ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, 101, server_token, std::string(), -1, total_bytes, success ? total_bytes : -2, 0);
 			delete this;
 		}
 
@@ -98,6 +98,12 @@ namespace
 			update_cond->notify_all();
 		}
 
+		void set_success(bool b)
+		{
+			IScopedLock lock(update_mutex.get());
+			success = b;
+		}
+
 	private:
 		std::auto_ptr<IMutex> update_mutex;
 		std::auto_ptr<ICondition> update_cond;
@@ -112,6 +118,7 @@ namespace
 		int64 total_bytes;
 		int64 done_bytes;
 		double speed_bpms;
+		bool success;
 	};
 
 	class ScopedRestoreUpdater
@@ -136,6 +143,11 @@ namespace
 		void update_speed(double speed_bpms)
 		{
 			restore_updater->update_speed(speed_bpms);
+		}
+
+		void set_success(bool b)
+		{
+			restore_updater->set_success(b);
 		}
 
 		~ScopedRestoreUpdater()
@@ -239,7 +251,6 @@ void RestoreFiles::operator()()
 		}
 
 		curr_restore_updater = NULL;
-		restore_updater.update_pc(101, total_size, total_size);
 
 		do
 		{
@@ -262,6 +273,8 @@ void RestoreFiles::operator()()
 			restore_failed(fc, metadata_dl);
 			return;
 		}
+
+		restore_updater.set_success(true);
 	}
 
 	log("Restore finished successfully.", LL_INFO);

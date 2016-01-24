@@ -81,7 +81,7 @@ void ImageThread::ImageErrRunning(std::string msg)
 const unsigned int c_vhdblocksize=(1024*1024/2);
 const unsigned int c_hashsize=32;
 
-void ImageThread::sendFullImageThread(void)
+bool ImageThread::sendFullImageThread(void)
 {
 	bool has_error=true;
 
@@ -362,6 +362,8 @@ void ImageThread::sendFullImageThread(void)
 
 	Server->Log("Sending full image done", LL_INFO);
 
+	bool success = !has_error;
+
 #ifdef VSS_XP //persistence
 	has_error=false;
 #endif
@@ -374,6 +376,7 @@ void ImageThread::sendFullImageThread(void)
 		removeShadowCopyThread(save_id);
 	}
 	client->doQuitClient();
+	return success;
 }
 
 void ImageThread::removeShadowCopyThread(int save_id)
@@ -402,7 +405,7 @@ void ImageThread::removeShadowCopyThread(int save_id)
 	}
 }
 
-void ImageThread::sendIncrImageThread(void)
+bool ImageThread::sendIncrImageThread(void)
 {
 	char *zeroblockbuf=NULL;
 	std::vector<char*> blockbufs;
@@ -750,6 +753,8 @@ void ImageThread::sendIncrImageThread(void)
 
 	Server->Log("Sending image done", LL_INFO);
 
+	bool success = !has_error;
+
 #ifdef VSS_XP //persistence
 	has_error=false;
 #endif
@@ -762,6 +767,8 @@ void ImageThread::sendIncrImageThread(void)
 		removeShadowCopyThread(save_id);
 	}
 	client->doQuitClient();
+
+	return success;
 }
 
 void ImageThread::operator()(void)
@@ -772,9 +779,11 @@ void ImageThread::operator()(void)
 		background_prio.enable();
 	}
 
+	bool success = false;
+
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{
-		sendFullImageThread();
+		success = sendFullImageThread();
 	}
 	else if(image_inf->thread_action==TA_INCR_IMAGE)
 	{
@@ -790,7 +799,7 @@ void ImageThread::operator()(void)
 		}
 		if(timeouts>0 && client->isQuitting()==false )
 		{
-			sendIncrImageThread();
+			success = sendIncrImageThread();
 		}
 		else
 		{
@@ -802,7 +811,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	ClientConnector::removeRunningProcess(image_inf->running_process_id);
+	ClientConnector::removeRunningProcess(image_inf->running_process_id, success);
 }
 
 void ImageThread::updateShadowCopyStarttime( int save_id )

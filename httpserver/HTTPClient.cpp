@@ -68,7 +68,7 @@ void CHTTPClient::destroy_mutex(void)
 	Server->destroy(share_mutex);
 }
 
-void CHTTPClient::ReceivePackets(void)
+void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
 {
 	std::string data;
 	size_t rc=pipe->Read(&data);
@@ -114,7 +114,7 @@ void CHTTPClient::ReceivePackets(void)
 	}
 }
 
-bool CHTTPClient::Run(void)
+bool CHTTPClient::Run(IRunOtherCallback* run_other)
 {
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
 	{

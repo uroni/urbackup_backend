@@ -162,7 +162,7 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 	}
 }
 
-bool InternetServiceConnector::Run(void)
+bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 {
 	if(stop_connecting)
 	{
@@ -229,7 +229,7 @@ bool InternetServiceConnector::Run(void)
 	return true;
 }
 
-void InternetServiceConnector::ReceivePackets(void)
+void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 {
 	if(state==ISS_USED || has_timeout)
 	{

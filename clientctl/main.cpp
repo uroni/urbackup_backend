@@ -85,6 +85,99 @@ void action_help(std::string cmd)
 	std::cout << std::endl;
 }
 
+const size_t c_speed_size = 15;
+const size_t c_max_l_length = 80;
+
+size_t get_terminal_width()
+{
+#ifndef _WIN32
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0)
+	{
+		return c_max_l_length;
+	}
+	else
+	{
+		return w.ws_col;
+	}
+#else
+	return c_max_l_length;
+#endif
+}
+
+void draw_progress(int pc_done, double speed_bpms, int64 done_bytes, int64 total_bytes, std::string details, int detail_pc)
+{
+	static size_t max_line_length = 0;
+
+	size_t term_width = get_terminal_width();
+	size_t draw_segments = term_width / 3;
+
+	size_t segments = (size_t)(pc_done / 100.*draw_segments);
+
+	std::string toc = "\r[";
+	for (size_t i = 0; i<draw_segments; ++i)
+	{
+		if (i<segments)
+		{
+			toc += "=";
+		}
+		else if (i == segments)
+		{
+			toc += ">";
+		}
+		else
+		{
+			toc += " ";
+		}
+	}
+	std::string speed_str = PrettyPrintSpeed(static_cast<size_t>(speed_bpms*1000.0));
+	while (speed_str.size()<c_speed_size)
+		speed_str += " ";
+	std::string pcdone = convert(pc_done);
+	if (pcdone.size() == 1)
+		pcdone = " " + pcdone;
+
+	if (!details.empty() && detail_pc >= 0)
+	{
+		std::string detailpc_s = convert(detail_pc);
+		if (detailpc_s.size() == 1)
+			detailpc_s = " " + detailpc_s;
+
+		details += " " + detailpc_s + "%";
+	}
+
+	toc += "] " + pcdone + "% ";
+	if (total_bytes >= 0)
+	{
+		toc += PrettyPrintBytes(done_bytes) + "/" + PrettyPrintBytes(total_bytes) + " ";
+	}
+
+	if (speed_bpms > 0)
+	{
+		toc += "at " + speed_str + " ";
+	}
+
+	if (!details.empty())
+	{
+		toc += speed_str;
+	}
+
+
+	if (toc.size() >= term_width)
+		toc = toc.substr(0, term_width);
+
+	if (toc.size()>max_line_length)
+		max_line_length = toc.size();
+
+	max_line_length = (std::min)(max_line_length, term_width);
+
+	while (toc.size()<max_line_length)
+		toc += " ";
+
+	std::cout << toc;
+	std::cout.flush();
+}
+
 typedef int(*action_fun)(std::vector<std::string> args);
 
 class PwClientCmd
@@ -194,11 +287,123 @@ int action_start(std::vector<std::string> args)
 	}
 }
 
+int follow_status(bool restore, int64 process_id)
+{
+	bool waiting_for_id = false;
+	bool preparing = false;
+
+	while (true)
+	{
+		int tries = 20;
+		SStatusDetails status = Connector::getStatusDetails();
+
+		while (!status.ok && tries>0)
+		{
+			--tries;
+			wait(100);
+			status = Connector::getStatusDetails();
+		}
+
+		if (!status.ok)
+		{
+			std::cerr << "Could not get status from backend" << std::endl;
+			return 3;
+		}
+
+		bool found = false;
+
+		for (size_t i = 0; i < status.running_processes.size(); ++i)
+		{
+			SRunningProcess& proc = status.running_processes[i];
+			if (status.running_processes[i].process_id == process_id)
+			{
+				if (proc.percent_done < 0)
+				{
+					if (!preparing)
+					{
+						preparing = true;
+						if (restore)
+						{
+							std::cout << "Preparing restore..." << std::endl;
+						}
+						else
+						{
+							std::cout << "Preparing..." << std::endl;
+						}
+					}
+				}
+				else
+				{
+					draw_progress(proc.percent_done, proc.speed_bpms, proc.done_bytes, proc.total_bytes, proc.details, proc.detail_pc);
+				}
+
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			for (size_t i = 0; i < status.finished_processes.size(); ++i)
+			{
+				if (status.finished_processes[i].id == process_id)
+				{
+					if (status.finished_processes[i].success)
+					{
+						std::cout << std::endl;
+						if (restore)
+						{
+							std::cout << "Restore completed successfully." << std::endl;
+						}
+						else
+						{
+							std::cout << "Completed successfully." << std::endl;
+						}
+						return 0;
+					}
+					else
+					{
+						std::cout << std::endl;
+						if (restore)
+						{
+
+						}
+						else
+						{
+							std::cerr << "Failed." << std::endl;
+						}
+						return 4;
+					}
+				}
+			}
+
+			if (!waiting_for_id)
+			{
+				waiting_for_id = true;
+				if (restore)
+				{
+					std::cout << "Starting restore. Waiting for backup server..." << std::endl;
+				}
+				else
+				{
+					std::cout << "Waiting for process to become available..." << std::endl;
+				}
+			}
+		}
+
+		wait(1000);
+	}
+}
+
 int action_status(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Get current backup status", ' ', cmdline_version);
 
 	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::ValueArg<int> follow_arg("f", "follow",
+		"Follow proccess status",
+		false, 0, "process id", cmd);
 
 	cmd.parse(args);
 
@@ -207,17 +412,24 @@ int action_status(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::string status = Connector::getStatusDetailsRaw();
-	if(!status.empty())
+	if (follow_arg.getValue() == 0)
 	{
-		std::cout << status << std::endl;
-		return 0;
+		std::string status = Connector::getStatusDetailsRaw();
+		if (!status.empty())
+		{
+			std::cout << status << std::endl;
+			return 0;
+		}
+		else
+		{
+			std::cerr << "Error getting status" << std::endl;
+			return 1;
+		}
 	}
 	else
 	{
-		std::cerr << "Error getting status" << std::endl;
-		return 1;
-	}
+		return follow_status(false, follow_arg.getValue());
+	}	
 }
 
 int action_list(std::vector<std::string> args)
@@ -296,87 +508,6 @@ int action_list(std::vector<std::string> args)
 	}
 }
 
-const size_t c_speed_size = 15;
-const size_t c_max_l_length = 80;
-
-size_t get_terminal_width()
-{
-#ifndef _WIN32
-	struct winsize w;
-	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0)
-	{
-		return c_max_l_length;
-	}
-	else
-	{
-		return w.ws_col;
-	}
-#else
-	return c_max_l_length;
-#endif
-}
-
-void draw_progress(int pc_done, double speed_bpms, int64 done_bytes, int64 total_bytes, std::string details, int detail_pc)
-{
-	static size_t max_line_length = 0;
-
-	size_t term_width = get_terminal_width();
-	size_t draw_segments = term_width / 3;
-
-	size_t segments = (size_t)(pc_done*draw_segments);
-
-	std::string toc = "\r[";
-	for (size_t i = 0; i<draw_segments; ++i)
-	{
-		if (i<segments)
-		{
-			toc += "=";
-		}
-		else if (i == segments)
-		{
-			toc += ">";
-		}
-		else
-		{
-			toc += " ";
-		}
-	}
-	std::string speed_str = PrettyPrintSpeed(static_cast<size_t>(speed_bpms*8000.0));
-	while (speed_str.size()<c_speed_size)
-		speed_str += " ";
-	std::string pcdone = convert((int)(pc_done*100.f));
-	if (pcdone.size() == 1)
-		pcdone = " " + pcdone;
-
-	if (detail_pc >= 0)
-	{
-		std::string detailpc_s = convert(detail_pc);
-		if (detailpc_s.size() == 1)
-			detailpc_s = " " + detailpc_s;
-
-		details += " " + detailpc_s + "%";
-	}
-
-	toc += "] " + pcdone + "% " + PrettyPrintBytes(done_bytes)+"/"+PrettyPrintBytes(total_bytes)
-		+ speed_str + " " + details;
-
-	
-
-	if (toc.size() >= term_width)
-		toc = toc.substr(0, term_width);
-
-	if (toc.size()>max_line_length)
-		max_line_length = toc.size();
-
-	max_line_length = (std::min)(max_line_length, term_width);
-
-	while (toc.size()<max_line_length)
-		toc += " ";
-
-	std::cout << toc;
-	std::cout.flush();
-}
-
 int wait_for_restore(std::string restore_info)
 {
 	Json::Value root;
@@ -395,57 +526,7 @@ int wait_for_restore(std::string restore_info)
 
 	int64 process_id = root["process_id"].asInt64();
 
-	bool preparing_restore = false;
-
-	while (true)
-	{
-		int tries = 20;
-		SStatusDetails status = Connector::getStatusDetails();
-
-		while (!status.ok && tries>0)
-		{
-			--tries;
-			wait(100);
-			status = Connector::getStatusDetails();
-		}
-
-		if (!status.ok)
-		{
-			std::cerr << "Could not get restore status from backend" << std::endl;
-			return 3;
-		}
-
-		bool found = false;
-
-		for (size_t i = 0; i < status.running_processes.size(); ++i)
-		{
-			SRunningProcess& proc = status.running_processes[i];
-			if (status.running_processes[i].process_id == process_id)
-			{
-				if (proc.percent_done < 0)
-				{
-					if (!preparing_restore)
-					{
-						std::cout << "Preparing restore..." << std::endl;
-					}
-				}
-				else
-				{
-					draw_progress(proc.percent_done, proc.speed_bpms, proc.done_bytes, proc.total_bytes, proc.details, proc.detail_pc);
-				}
-
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			return 0;
-		}
-
-		wait(1000);
-	}
+	return follow_status(true, process_id);
 }
 
 int action_start_restore(std::vector<std::string> args)
@@ -503,7 +584,7 @@ int action_start_restore(std::vector<std::string> args)
 
 	bool no_server;
 	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(),
-		path_map, no_server, !no_remove_arg.getValue(), consider_other_fs_arg.getValue());
+		path_map, no_server, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue());
 
 	if(!restore_info.empty())
 	{

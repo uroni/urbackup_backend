@@ -70,6 +70,7 @@ void ClientService::destroyClient( ICustomClient * pClient)
 }
 
 std::vector<SRunningProcess> ClientConnector::running_processes;
+std::vector<SFinishedProcess> ClientConnector::finished_processes;
 int64 ClientConnector::curr_backup_running_id = 0;
 IMutex *ClientConnector::backup_mutex=NULL;
 IMutex *ClientConnector::process_mutex = NULL;
@@ -218,6 +219,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	endpoint_name = pEndpointName;
 	make_fileserv=false;
 	local_backup_running_id = 0;
+	run_other = NULL;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -235,8 +237,10 @@ ClientConnector::~ClientConnector(void)
 	}
 }
 
-bool ClientConnector::Run(void)
+bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 {
+	run_other = p_run_other;
+
 	if(do_quit)
 	{
 		if(state!=CCSTATE_START_FILEBACKUP && state!=CCSTATE_SHADOWCOPY && state!=CCSTATE_WAIT_FOR_CONTRACTORS)
@@ -311,7 +315,7 @@ bool ClientConnector::Run(void)
 					return true;
 				}
 				IScopedLock lock(backup_mutex);
-				removeRunningProcess(local_backup_running_id);
+				removeRunningProcess(local_backup_running_id, false);
 				return false;
 			}
 			else if(msg=="done")
@@ -332,7 +336,7 @@ bool ClientConnector::Run(void)
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
 				IScopedLock lock(backup_mutex);
-				removeRunningProcess(local_backup_running_id);
+				removeRunningProcess(local_backup_running_id, false);
 			}
 			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
 			{
@@ -378,7 +382,12 @@ bool ClientConnector::Run(void)
 	case CCSTATE_CHANNEL: //Channel
 		{		
 			IScopedLock lock(backup_mutex);
-			if(Server->getTimeMS()-lasttime>180000)
+
+			bool has_ping= std::find(channel_ping.begin(), channel_ping.end(), pipe) != channel_ping.end();
+
+			int64 timeout_interval = has_ping ? 10000 : 180000;
+
+			if(Server->getTimeMS()-lasttime>timeout_interval)
 			{
 				Server->Log("Client timeout in ClientConnector::Run - Channel", LL_DEBUG);
 				{
@@ -421,8 +430,7 @@ bool ClientConnector::Run(void)
 			}
 			if(Server->getTimeMS()-last_channel_ping>60000)
 			{
-				bool found = std::find(channel_ping.begin(), channel_ping.end(), pipe)!=channel_ping.end();
-				if(!found)
+				if(!has_ping)
 				{
 					channel_ping.push_back(pipe);
 				}
@@ -664,8 +672,10 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 	return true;
 }
 
-void ClientConnector::ReceivePackets(void)
+void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 {
+	run_other = p_run_other;
+
 	if(state==CCSTATE_WAIT_FOR_CONTRACTORS || state==CCSTATE_UPDATE_FINISH)
 	{
 		return;
@@ -2272,7 +2282,7 @@ void ClientConnector::downloadImage(str_map params)
 		IScopedLock lock(backup_mutex);
 		SRunningProcess new_proc;
 		new_proc.action = RUNNING_RESTORE_IMAGE;
-		new_proc.id = curr_backup_running_id++;
+		new_proc.id = ++curr_backup_running_id;
 		new_proc.pcdone = 0;
 		
 		local_backup_running_id = new_proc.id;
@@ -2417,6 +2427,7 @@ void ClientConnector::downloadImage(str_map params)
 
 			lasttime=Server->getTimeMS();
 		}
+		remove_running_backup.setSuccess(true);
 		Server->Log("Downloading image done", LL_DEBUG);
 		return;
 	}
@@ -2431,6 +2442,10 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 	{
 		lock->relock(NULL);
 		Server->wait(10);
+		if (run_other != NULL)
+		{
+			run_other->runOther();
+		}
 		lock->relock(backup_mutex);
 	}
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);
@@ -2788,7 +2803,7 @@ void ClientConnector::updateRestorePc(int64 local_process_id, int64 restore_id, 
 		{
 			if (nv > 100)
 			{
-				removeRunningProcess(local_process_id);
+				removeRunningProcess(local_process_id, total_bytes==done_bytes);
 			}
 			else
 			{
@@ -3048,7 +3063,7 @@ SRunningProcess * ClientConnector::getActiveProcess(int64 timeout)
 	return NULL;
 }
 
-bool ClientConnector::removeRunningProcess(int64 id)
+bool ClientConnector::removeRunningProcess(int64 id, bool success)
 {
 	IScopedLock lock(process_mutex);
 
@@ -3057,6 +3072,11 @@ bool ClientConnector::removeRunningProcess(int64 id)
 		SRunningProcess& curr = running_processes[i];
 		if (curr.id == id)
 		{
+			finished_processes.push_back(SFinishedProcess(id, success));
+			while (finished_processes.size() > 20)
+			{
+				finished_processes.erase(finished_processes.begin());
+			}
 			running_processes.erase(running_processes.begin() + i);
 			return true;
 		}

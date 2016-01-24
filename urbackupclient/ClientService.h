@@ -75,6 +75,21 @@ struct SRunningProcess
 	double speed_bpms;
 };
 
+struct SFinishedProcess
+{
+	SFinishedProcess()
+		:id(0), success(false)
+	{
+	}
+
+	SFinishedProcess(int64 id, bool success)
+		: id(id), success(success)
+	{}
+
+	int64 id;
+	bool success;
+};
+
 enum RestoreOkStatus
 {
 	RestoreOk_None,
@@ -145,8 +160,8 @@ public:
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 	~ClientConnector(void);
 
-	virtual bool Run(void);
-	virtual void ReceivePackets(void);
+	virtual bool Run(IRunOtherCallback* run_other);
+	virtual void ReceivePackets(IRunOtherCallback* run_other);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -182,7 +197,7 @@ public:
 
 	static int64 addNewProcess(SRunningProcess proc);
 	static bool updateRunningPc(int64 id, int pcdone);
-	static bool removeRunningProcess(int64 id);
+	static bool removeRunningProcess(int64 id, bool success);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
@@ -301,6 +316,7 @@ private:
 	int64 local_backup_running_id;
 
 	static std::vector<SRunningProcess> running_processes;
+	static std::vector<SFinishedProcess> finished_processes;
 	static int64 curr_backup_running_id;
 	static IMutex *backup_mutex;
 	static IMutex *process_mutex;
@@ -350,20 +366,27 @@ private:
 #ifdef _WIN32
 	static SVolumesCache* volumes_cache;
 #endif
+	IRunOtherCallback* run_other;
 };
 
 class ScopedRemoveRunningBackup
 {
 public:
 	ScopedRemoveRunningBackup(int64 id)
-		: id(id)
+		: id(id), success(false)
 	{}
+
+	void setSuccess(bool b)
+	{
+		success = b;
+	}
 
 	~ScopedRemoveRunningBackup()
 	{
-		ClientConnector::removeRunningProcess(id);
+		ClientConnector::removeRunningProcess(id, success);
 	}
 
 private:
 	int64 id;
+	bool success;
 };

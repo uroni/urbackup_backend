@@ -75,6 +75,191 @@ void CServiceWorker::stop(void)
 	cond->notify_all();
 }
 
+
+namespace
+{
+	class ScopedWorkStack
+	{
+	public:
+		ScopedWorkStack(std::stack<CServiceWorker::SCurrWork>& curr_work)
+			: curr_work(curr_work)
+		{
+
+		}
+
+		~ScopedWorkStack()
+		{
+			curr_work.pop();
+		}
+	private:
+		std::stack<CServiceWorker::SCurrWork>& curr_work;
+	};
+}
+
+void CServiceWorker::work(ICustomClient * skip_client)
+{
+#ifdef _WIN32
+	fd_set fdset;
+	int max;
+#else
+	std::vector<pollfd> conn;
+	std::vector<ICustomClient*> conn_clients;
+#endif
+	SCurrWork curr_work_c = {};
+	curr_work.push(curr_work_c);
+	ScopedWorkStack work_stack(curr_work);
+
+	bool has_select_client = false;
+	{
+		{
+			if (clients.empty())
+			{
+				IScopedLock lock(mutex);
+				if (new_clients.empty() && !do_stop)
+				{
+					//Server->Log(name+": Sleeping..."+convert(Server->getTimeMS()), LL_DEBUG);
+					cond->wait(&lock);
+					//Server->Log(name+": Waking up..."+convert(Server->getTimeMS()), LL_DEBUG);
+					return;
+				}
+				else
+				{
+					return;
+				}
+			}
+		}
+
+		for (size_t i = 0; i<clients.size();)
+		{
+			if (clients[i].first == skip_client)
+			{
+				++i;
+				continue;
+			}
+
+			curr_work.top().client = clients[i].first;
+
+			bool b = clients[i].first->Run(this);
+
+			if (b == false)
+			{
+				IScopedLock lock(mutex);
+				//Server->Log(name+": Removing user"+convert(Server->getTimeMS()), LL_DEBUG);
+				if (clients[i].first->closeSocket())
+				{
+					delete clients[i].second;
+				}
+				service->destroyClient(clients[i].first);
+				clients.erase(clients.begin() + i);
+				IScopedLock lock2(nc_mutex);
+				--nClients;
+			}
+			else
+			{
+				++i;
+			}
+
+			if (curr_work.top().did_other_work)
+			{
+				return;
+			}
+		}
+
+#ifdef _WIN32
+		FD_ZERO(&fdset);
+		max = 0;
+#else
+		conn.clear();
+		conn_clients.clear();
+#endif
+
+		for (size_t i = 0; i<clients.size(); ++i)
+		{
+			if (clients[i].first == skip_client)
+			{
+				continue;
+			}
+
+			if (clients[i].first->wantReceive())
+			{
+				SOCKET s = clients[i].second->getSocket();
+#ifdef _WIN32
+				if ((_i32)s>max)
+					max = (_i32)s;
+				FD_SET(s, &fdset);
+#else
+				pollfd nconn;
+				nconn.fd = s;
+				nconn.events = POLLIN;
+				nconn.revents = 0;
+				conn.push_back(nconn);
+				conn_clients.push_back(clients[i].first);
+#endif
+				has_select_client = true;
+			}
+		}
+	}
+
+
+	if (has_select_client)
+	{
+#ifdef _WIN32
+		timeval lon;
+		lon.tv_sec = 0;
+		lon.tv_usec = 10000;
+
+		_i32 rc = select(max + 1, &fdset, 0, 0, &lon);
+#else
+		int rc = poll(&conn[0], conn.size(), 10);
+#endif
+		if (rc>0)
+		{
+#ifdef _WIN32
+			for (size_t i = 0; i<clients.size(); ++i)
+			{
+				if (clients[i].first == skip_client)
+				{
+					continue;
+				}
+
+				curr_work.top().client = clients[i].first;
+
+				SOCKET s = clients[i].second->getSocket();
+				if (FD_ISSET(s, &fdset))
+				{
+					//Server->Log("Incoming data for client..", LL_DEBUG);
+					clients[i].first->ReceivePackets(this);
+
+					if (curr_work.top().did_other_work)
+					{
+						return;
+					}
+				}
+			}
+#else
+			for (size_t i = 0; i<conn.size(); ++i)
+			{
+				if (conn[i].revents != 0)
+				{
+					curr_work.top().client = clients[i].first;
+
+					conn_clients[i]->ReceivePackets(this);
+
+					if (curr_work.top().did_other_work)
+					{
+						return;
+					}
+				}
+			}
+#endif
+		}
+	}
+	else if(skip_client==NULL)
+	{
+		Server->wait(10);
+	}
+}
+
 void CServiceWorker::addNewClients(void)
 {
     for(size_t i=0;i<new_clients.size();++i)
@@ -85,19 +270,16 @@ void CServiceWorker::addNewClients(void)
 		clients.push_back( std::pair<ICustomClient*, CStreamPipe*>(nc, pipe) );
     }
     new_clients.clear();
-}    
+}
+
+void CServiceWorker::runOther()
+{
+	work(curr_work.top().client);
+}
 
 void CServiceWorker::operator()(void)
 {
 	tid=Server->getThreadID();
-
-#ifdef _WIN32
-	fd_set fdset;
-	int max;
-#else
-	std::vector<pollfd> conn;
-	std::vector<ICustomClient*> conn_clients;
-#endif
 	
 	while(!do_stop)
 	{
@@ -106,118 +288,7 @@ void CServiceWorker::operator()(void)
 			addNewClients();
 		}
 
-		bool has_select_client=false;
-		{
-			{
-				if( clients.empty() )
-				{
-					IScopedLock lock(mutex);
-					if(new_clients.empty() && !do_stop)
-					{
-						//Server->Log(name+": Sleeping..."+convert(Server->getTimeMS()), LL_DEBUG);
-						cond->wait(&lock);
-						//Server->Log(name+": Waking up..."+convert(Server->getTimeMS()), LL_DEBUG);
-						continue;
-					}
-					else
-					{
-						continue;
-					}
-				}
-			}
-
-			for(size_t i=0;i<clients.size();)
-			{
-				bool b=clients[i].first->Run();
-
-				if( b==false )
-				{
-					IScopedLock lock(mutex);
-					//Server->Log(name+": Removing user"+convert(Server->getTimeMS()), LL_DEBUG);
-					if(clients[i].first->closeSocket())
-					{
-						delete clients[i].second;
-					}
-					service->destroyClient( clients[i].first );					
-					clients.erase( clients.begin()+i );
-					IScopedLock lock2(nc_mutex);
-					--nClients;
-				}
-				else
-				{
-					++i;
-				}
-			}
-
-#ifdef _WIN32
-			FD_ZERO(&fdset);
-			max=0;
-#else
-			conn.clear();
-			conn_clients.clear();
-#endif
-
-			for(size_t i=0;i<clients.size();++i)
-			{
-				if(clients[i].first->wantReceive())
-				{
-					SOCKET s=clients[i].second->getSocket();
-#ifdef _WIN32
-					if((_i32)s>max)
-						max=(_i32)s;
-					FD_SET(s, &fdset);
-#else
-					pollfd nconn;
-					nconn.fd=s;
-					nconn.events=POLLIN;
-					nconn.revents=0;
-					conn.push_back(nconn);
-					conn_clients.push_back(clients[i].first);
-#endif
-					has_select_client=true;
-				}
-			}
-		}
-
-
-		if(has_select_client)
-		{
-#ifdef _WIN32
-			timeval lon;
-			lon.tv_sec=0;
-			lon.tv_usec=10000;
-
-			_i32 rc = select(max+1, &fdset, 0, 0, &lon);
-#else
-			int rc = poll(&conn[0], conn.size(), 10);
-#endif
-			if( rc>0 )
-			{
-#ifdef _WIN32
-				for(size_t i=0;i<clients.size();++i)
-				{
-					SOCKET s=clients[i].second->getSocket();
-					if( FD_ISSET(s,&fdset) )
-					{
-						//Server->Log("Incoming data for client..", LL_DEBUG);
-						clients[i].first->ReceivePackets();					
-					}
-				}
-#else
-				for(size_t i=0;i<conn.size();++i)
-				{
-					if(conn[i].revents!=0)
-					{
-						conn_clients[i]->ReceivePackets();
-					}
-				}
-#endif
-			}		
-		}
-		else
-		{
-			Server->wait(10);
-		}
+		work(NULL);
 	}
 	Server->Log("ServiceWorker finished", LL_DEBUG);
 	exit->Write("ok");

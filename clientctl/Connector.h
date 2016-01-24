@@ -84,6 +84,23 @@ struct SRunningProcess
 	}
 };
 
+struct SFinishedProcess
+{
+	SFinishedProcess()
+		:id(0), success(false)
+	{
+	}
+
+	bool operator==(const SFinishedProcess& other) const
+	{
+		return id == other.id
+			&& success == other.success;
+	}
+
+	int64 id;
+	bool success;
+};
+
 struct SUrBackupServer
 {
 	bool internet_connection;
@@ -102,6 +119,7 @@ struct SStatusDetails
 	int64 last_backup_time;
 
 	std::vector<SRunningProcess> running_processes;
+	std::vector<SFinishedProcess> finished_processes;
 	std::vector<SUrBackupServer> servers;
 	unsigned int time_since_last_lan_connection;
 	bool internet_connected;
@@ -114,6 +132,7 @@ struct SStatusDetails
 		return ok == other.ok
 			&& last_backup_time == other.last_backup_time
 			&& running_processes == other.running_processes
+			&& finished_processes == other.finished_processes
 			&& servers == other.servers
 			&& time_since_last_lan_connection / 1000 / 60 == other.time_since_last_lan_connection / 1000 / 60
 			&& internet_connected == other.internet_connected

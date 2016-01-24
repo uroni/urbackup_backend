@@ -399,6 +399,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		{
 			fileclient_threads.push_back(Server->getThreadPool()->execute(new FileservClientThread(input, tcpstack.getBuffer(), tcpstack.getBuffersize()), "fileserver"));
 			input=NULL;
+			tcpstack.reset();
 		}
 	}
 	else if(next(msg, 0, "RESTORE PERCENT "))
@@ -1209,7 +1210,6 @@ void ServerChannelThread::RESTORE_PERCENT( str_map params )
 	ServerStatus::setProcessSpeed(clientname, status_id, speed_bpms);
 	ServerStatus::setProcessDoneBytes(clientname, status_id, done_bytes);
 	ServerStatus::setProcessTotalBytes(clientname, status_id, total_bytes);
-	ServerStatus::setProcessDetails(clientname, status_id, details, detail_pc);
 }
 
 void ServerChannelThread::RESTORE_DONE( str_map params )

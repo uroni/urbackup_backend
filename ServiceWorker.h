@@ -1,5 +1,7 @@
+#pragma once
 #include <vector>
 #include <utility>
+#include <stack>
 #include "Interface/Thread.h"
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
@@ -12,7 +14,7 @@ const int MAX_CLIENTS=20;
 class IService;
 class CStreamPipe;
 
-class CServiceWorker : public IThread
+class CServiceWorker : public IThread, IRunOtherCallback
 {
 public:
 	CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread);
@@ -25,7 +27,17 @@ public:
 
 	void stop(void);
 
+	virtual void runOther();
+
+	struct SCurrWork
+	{
+		ICustomClient* client;
+		bool did_other_work;
+	};
+
 private:
+
+	void work(ICustomClient* skip_client);
     
 	void addNewClients(void);
 
@@ -46,5 +58,7 @@ private:
 
 	IService *service;
 
-	volatile bool do_stop;
+	volatile bool do_stop;	
+
+	std::stack<SCurrWork> curr_work;
 };

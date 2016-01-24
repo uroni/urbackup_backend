@@ -60,8 +60,8 @@ public:
 	~InternetServiceConnector(void);
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 
-	virtual bool Run(void);
-	virtual void ReceivePackets(void);
+	virtual bool Run(IRunOtherCallback* run_other);
+	virtual void ReceivePackets(IRunOtherCallback* run_other);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

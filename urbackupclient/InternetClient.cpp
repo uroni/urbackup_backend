@@ -846,7 +846,7 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 	}
 	while(true)
 	{
-		bool b=client->Run();
+		bool b=client->Run(NULL);
 		if(!b)
 		{
 			printInfo(pipe);
@@ -857,11 +857,11 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		{
 			if(pipe->isReadable(10))
 			{
-				client->ReceivePackets();
+				client->ReceivePackets(NULL);
 			}
 			else if(pipe->hasError())
 			{
-				client->ReceivePackets();
+				client->ReceivePackets(NULL);
 				Server->wait(20);
 			}
 		}
