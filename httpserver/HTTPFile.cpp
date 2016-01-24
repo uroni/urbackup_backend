@@ -70,7 +70,7 @@ void CHTTPFile::operator ()(void)
 
 	std::string status="HTTP/1.1 200 ok\r\n";
 
-	std::string header="Server: CS\r\nContent-Type: "+ct+"\r\nCache-Control: max-age=3600\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=15, max=95\r\nContent-Length: "+convert(fp->Size())+"\r\n\r\n";
+	std::string header="Server: CS\r\nContent-Type: "+ct+"\r\nCache-Control: no-cache\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=15, max=95\r\nContent-Length: "+convert(fp->Size())+"\r\n\r\n";
 
 	Server->Log("Sending file: "+filename, LL_INFO);
 	output->Write(status+header);
