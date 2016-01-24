@@ -2191,6 +2191,22 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 
 void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 {
+	str_map params;
+	ParseParamStrHttp(cmd, &params);
+
+	int64 restore_process_id = 0;
+
+	bool has_restore_token = false;
+	if (!restore_token.restore_token.empty()
+		&& params["restore_token"] == restore_token.restore_token
+		&& Server->getTimeMS() - restore_token.restore_token_time<120 * 1000)
+	{
+		restore_token.restore_token = "";
+		has_restore_token = true;
+		restore_process_id = restore_token.process_id;
+		restore_token.process_id = 0;
+	}
+
 	std::string restore=Server->getServerParameter("allow_restore");
 
 	if(restore=="default")
@@ -2198,14 +2214,12 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		restore="client-confirms";
 	}
 
-	if(restore!="client-confirms" && restore!="server-confirms")
+	if(restore!="client-confirms" && restore!="server-confirms"
+		&& !has_restore_token)
 	{
 		tcpstack.Send(pipe, "disabled");
 		return;
 	}
-
-	str_map params;
-	ParseParamStrHttp(cmd, &params);
 
 	std::string client_token = (params["client_token"]);
 	std::string server_token=params["server_token"];
@@ -2216,18 +2230,6 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	bool single_file = params["single_file"]=="1";
 	bool clean_other = params["clean_other"] == "1";
 	bool ignore_other_fs = params["ignore_other_fs"] != "0";
-
-	int64 restore_process_id = 0;
-
-	bool has_restore_token = false;
-	if (params["restore_token"] == restore_token.restore_token
-		&& Server->getTimeMS() - restore_token.restore_token_time<120 * 1000)
-	{
-		restore_token.restore_token = "";
-		has_restore_token = true;
-		restore_process_id = restore_token.process_id;
-		restore_token.process_id = 0;
-	}
 
 	if(restore_process_id==0)
 	{
