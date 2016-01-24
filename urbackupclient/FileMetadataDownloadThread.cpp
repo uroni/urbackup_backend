@@ -487,11 +487,15 @@ namespace
 
     bool restore_stat_buf(RestoreFiles& restore, struct stat64& statbuf, const std::string& fn)
     {
+#ifndef __linux__
+
 #ifdef __APPLE__
 		int64 chflags_mask = UF_NODUMP | UF_IMMUTABLE | UF_APPEND | UF_OPAQUE | UF_HIDDEN | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND;
 #else
 		int64 chflags_mask = SF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_NOUNLINK | UF_APPEND | UF_ARCHIVE | UF_HIDDEN | UF_IMMUTABLE | UF_NODUMP | UF_NOUNLINK | UF_OFFLINE | UF_OPAQUE | UF_READONLY | UF_REPARSE | UF_SPARSE | UF_SYSTEM;
 #endif
+
+#endif //__linux__
 
         bool ret=true;
         if(S_ISLNK(statbuf.st_mode))
