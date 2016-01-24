@@ -690,6 +690,7 @@ namespace
 		data.addUInt(buf.st_mtimespec.tv_nsec);
 		data.addVarInt(buf.st_ctimespec.tv_sec);
 		data.addUInt(buf.st_ctimespec.tv_nsec);
+		data.addVarInt(buf.st_flags);
 #else
 		data.addVarInt(buf.st_atime);
         data.addUInt(buf.st_atim.tv_nsec);
@@ -697,6 +698,7 @@ namespace
         data.addUInt(buf.st_mtim.tv_nsec);
 		data.addVarInt(buf.st_ctime);
         data.addUInt(buf.st_ctim.tv_nsec);
+		data.addVarInt(0);
 #endif
 	}
 

@@ -471,6 +471,7 @@ namespace
 		SET_STAT_MEM32(st_mtimespec.tv_nsec);
 		SET_STAT_MEM(st_ctimespec.tv_sec);
 		SET_STAT_MEM32(st_ctimespec.tv_nsec);
+		SET_STAT_MEM(st_ctimespec.st_flags);
 #else
 		SET_STAT_MEM(st_atime);
         SET_STAT_MEM32(st_atim.tv_nsec);
@@ -486,6 +487,12 @@ namespace
 
     bool restore_stat_buf(RestoreFiles& restore, struct stat64& statbuf, const std::string& fn)
     {
+#ifdef __APPLE__
+		int64 chflags_mask = UF_NODUMP | UF_IMMUTABLE | UF_APPEND | UF_OPAQUE | UF_HIDDEN | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND;
+#else
+		int64 chflags_mask = SF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_NOUNLINK | UF_APPEND | UF_ARCHIVE | UF_HIDDEN | UF_IMMUTABLE | UF_NODUMP | UF_NOUNLINK | UF_OFFLINE | UF_OPAQUE | UF_READONLY | UF_REPARSE | UF_SPARSE | UF_SYSTEM;
+#endif
+
         bool ret=true;
         if(S_ISLNK(statbuf.st_mode))
         {
@@ -516,13 +523,23 @@ namespace
 				tv[0].tv_usec = statbuf.st_atimespec.tv_nsec/1000;
 				tv[1].tv_sec = statbuf.st_mtimespec.tv_sec;
 				tv[1].tv_usec = statbuf.st_mtimespec.tv_nsec/1000;
-				int rc = futimes(fd, tv);
-				close(fd);
-				if (rc != 0)
+				int rc1 = futimes(fd, tv);
+
+				if (rc1 != 0)
 				{
 					restore.log("Error setting access and modification time of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
 					ret = false;
 				}
+
+				int rc2 = fchflags(fd, statbuf.st_flags & chflags_mask);
+
+				if (rc2 != 0)
+				{
+					restore.log("Error setting BSD flags of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+					ret = false;
+				}
+
+				close(fd);
 			}
 #else
 			timespec tss[2];
@@ -594,6 +611,12 @@ namespace
 		if (utimes(fn.c_str(), tv) != 0)
 		{
 			restore.log("Error setting access and modification time of file \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
+			ret = false;
+		}
+
+		if (chflags(fn.c_str(), statbuf.st_flags & chflags_mask)!=0)
+		{
+			restore.log("Error setting BSD flags of file \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
 			ret = false;
 		}
 #else
