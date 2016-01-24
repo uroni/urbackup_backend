@@ -29,6 +29,7 @@
 #include <iostream>
 #include <memory.h>
 #include <stdlib.h>
+#include <stdexcept>
 
 std::string Connector::pw;
 bool Connector::error=false;
