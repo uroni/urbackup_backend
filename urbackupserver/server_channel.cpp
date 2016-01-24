@@ -1083,12 +1083,16 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
+
+	if (params.find("token_data") != params.end())
+	{
+		last_fileaccesstokens = backupaccess::decryptTokens(db, params);
+	}
 
 	JSON::Object ret;
 	do 
 	{
-		if(fileaccesstokens.empty())
+		if(last_fileaccesstokens.empty())
 		{
 			ret.set("err", 1);
 			break;
@@ -1117,7 +1121,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 			break;
 		}
 
-		backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, &fileaccesstokens,
+		backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, &last_fileaccesstokens,
 			clientname, backupfolder, &backupid, backuppath);
 
 		if(!path_info.can_access_path)
@@ -1127,7 +1131,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		}
 
 		std::vector<std::string> tokens;
-		Tokenize(fileaccesstokens, tokens, ";");
+		Tokenize(last_fileaccesstokens, tokens, ";");
 
 		int64 restore_id;
 		size_t status_id;

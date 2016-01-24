@@ -389,6 +389,7 @@ int wait_for_restore(std::string restore_info)
 
 	if (root.get("ok", false) == false)
 	{
+		std::cerr << "Error starting restore. Errorcode: " + root.get("err", -1).asInt() << std::endl;
 		return 2;
 	}
 
