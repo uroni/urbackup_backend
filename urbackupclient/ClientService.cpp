@@ -947,10 +947,6 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 				{
 					CMD_NEW_SERVER(params); continue;
 				}
-				else if( cmd=="RESTORE OK")
-				{
-					CMD_RESTORE_OK(params); continue;
-				}
 			}
 			
 			if( cmd=="GET BACKUP DIRS" )
@@ -1033,6 +1029,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_GET_ACCESS_PARAMS(params); continue;
 			}
+			else if( cmd=="RESTORE OK")
+				{
+					CMD_RESTORE_OK(params); continue;
+				}
 		}
 		if(is_channel) //Channel commands from server
 		{

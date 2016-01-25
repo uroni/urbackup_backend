@@ -807,7 +807,11 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 	{
 		for(size_t j=0;j<files.size();++j)
 		{
+#ifdef _WIN32
 			std::string fn_lower = strlower(files[j].name);
+#else
+			std::string fn_lower = files[j].name;
+#endif
 
 			if(std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
 			{
