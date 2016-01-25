@@ -427,7 +427,7 @@ bool ServerDownloadThread::hasFullQueuedAfter(std::deque<SQueueItem>::iterator i
 
 bool ServerDownloadThread::load_file(SQueueItem todl)
 {
-	ServerLogger::Log(logid, "Loading file \""+todl.fn+"\"", LL_DEBUG);
+	ServerLogger::Log(logid, "Loading file \""+todl.fn+"\"" + (todl.metadata_only ? " (metadata only)" : ""), LL_DEBUG);
 	IFsFile *fd=NULL;
     if(!todl.metadata_only)
 	{
