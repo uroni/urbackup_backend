@@ -291,6 +291,7 @@ int follow_status(bool restore, int64 process_id)
 {
 	bool waiting_for_id = false;
 	bool preparing = false;
+	bool found_once = false;
 
 	while (true)
 	{
@@ -317,6 +318,8 @@ int follow_status(bool restore, int64 process_id)
 			SRunningProcess& proc = status.running_processes[i];
 			if (status.running_processes[i].process_id == process_id)
 			{
+				found_once = true;
+
 				if (proc.percent_done < 0)
 				{
 					if (!preparing)
@@ -377,7 +380,7 @@ int follow_status(bool restore, int64 process_id)
 				}
 			}
 
-			if (!waiting_for_id)
+			if (!found_once && !waiting_for_id)
 			{
 				waiting_for_id = true;
 				if (restore)
