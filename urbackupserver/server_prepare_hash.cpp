@@ -203,7 +203,7 @@ void BackupServerPrepareHash::operator()(void)
 					{
 						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
 							"The file is being backed up without a snapshot so this is most likely caused by the file changing during the backup. "
-							"This means the backed up file is most likely corrupted and not a valid, consistent backup.", LL_WARNING);
+							"The backed up file may be corrupt and not a valid, consistent backup.", LL_WARNING);
 					}
 				}
 
