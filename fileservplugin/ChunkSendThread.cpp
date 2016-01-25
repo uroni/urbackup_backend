@@ -183,18 +183,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		return false;
 	}
 
-	if(!file->Seek(chunk->startpos))
+	int64 spos = chunk->startpos;
+	if(!file->Seek(spos))
 	{
-		_i64 nsize = file->Size();
-		if(nsize==curr_file_size)
-		{
-			sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
-			return false;
-		}
-		else
-		{
-			file->Seek(nsize);
-		}
+		sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
+		return false;
 	}
 
 	if(chunk->transfer_all)
@@ -239,7 +232,9 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 				while(r<toread)
 				{
-					_u32 r_add=file->Read(chunk_buf+off+r,  toread-r, &readerr);
+					_u32 r_add=file->Read(spos, chunk_buf+off+r,  toread-r, &readerr);
+					spos += r_add;
+
 					if(readerr)
 					{
 						sendError(ERR_READING_FAILED, getSystemErrorCode());
@@ -341,12 +336,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		bool readerr=false;
 
-		r=file->Read(cptr, to_read, &readerr);
+		r=file->Read(spos, cptr, to_read, &readerr);
+		spos += r;
 		real_r=r;
 
 		while(r<to_read)
 		{
-			_u32 r_add = file->Read(cptr+r, to_read-r, &readerr);
+			_u32 r_add = file->Read(spos, cptr+r, to_read-r, &readerr);
+			spos += r_add;
 
 			if (readerr)
 			{

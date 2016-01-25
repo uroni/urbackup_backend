@@ -1914,6 +1914,26 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 {
 	curr_filesize = file->Size();
 
+	if (start_offset != 0)
+	{
+		Log("Sending pipe file from offset " + convert(start_offset), LL_DEBUG);
+	}
+
+	if (!file->Seek(start_offset))
+	{
+		Log("Error: Seeking in file failed (5044) to " + convert(start_offset) + " file size is " + convert(file->Size()), LL_ERROR);
+
+		char ch = ID_BASE_DIR_LOST;
+		int rc = SendInt(&ch, 1);
+
+		if (rc == SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -3", LL_DEBUG);
+		}
+
+		return false;
+	}
+
 	CWData data;
 	data.addUChar(ID_FILESIZE);
 	data.addUInt64(little_endian(static_cast<uint64>(curr_filesize)));
@@ -1950,17 +1970,6 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			next_checkpoint=curr_filesize;
 	}
 
-	if(start_offset!=0)
-	{
-		Log("Sending pipe file from offset "+convert(start_offset), LL_DEBUG);
-	}
-
-	if(!file->Seek(start_offset))
-	{
-		Log("Error: Seeking in file failed (5044) to "+convert(start_offset)+" file size is "+convert(file->Size()), LL_ERROR);
-		return false;
-	}
-
 	std::vector<char> buf;
 	buf.resize(s_bsize);
 
@@ -1975,7 +1984,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			
 		bool has_error = false;
 		
-		_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
+		_u32 rc = file->Read(foffset, &buf[0], static_cast<_u32>(count), &has_error);
 
 		if(rc==0 && curr_filesize==-1 && file->Size()!=-1)
 		{
