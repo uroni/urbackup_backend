@@ -301,8 +301,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings->use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
 	settings->use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
 	settings->tmpdir=settings_default->getValue("tmpdir","");
-	settings->local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "raw");
-	settings->internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "hashed");
+	settings->local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
+	settings->internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "raw");
 	settings->local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
 	settings->internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
 	settings->local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
