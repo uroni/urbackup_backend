@@ -1677,6 +1677,18 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 
 	accessparams+="&restore_token="+ restore_token.restore_token+"&process_id="+convert(restore_token.process_id);
 
+	str_map::iterator it_clean_other = params.find("clean_other");
+	if (it_clean_other != params.end())
+	{
+		accessparams += "&clean_other=" + EscapeParamString(it_clean_other->second);
+	}
+
+	str_map::iterator it_ignore_other_fs = params.find("ignore_other_fs");
+	if (it_clean_other != params.end())
+	{
+		accessparams += "&ignore_other_fs=" + EscapeParamString(it_ignore_other_fs->second);
+	}
+
 	std::string filelist;
 
 	accessparams[0]=' ';
