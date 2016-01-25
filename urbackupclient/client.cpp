@@ -1014,13 +1014,15 @@ void IndexThread::indexDirs(void)
 					std::sort(changed_dirs.begin(), changed_dirs.end());
 
 #if !defined(VSS_XP) && !defined(VSS_S03)
-					VSSLog("Scanning for changed hard links in \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
+					VSSLog("Scanning for changed hard links in \"" + backup_dirs[i].tname + "\"...", LL_INFO);
 					handleHardLinks(backup_dirs[i].path, mod_path);
 #endif
 
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
 					
+					VSSLog("Removing deleted directories from index for \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
 					std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
+					DBScopedWriteTransaction write_transaction(db);
 					for (size_t i = 0; i < deldirs.size(); ++i)
 					{
 						cd->removeDeletedDir(deldirs[i], db_tgroup);
@@ -4306,6 +4308,9 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 
 std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter)
 {
+	const int64 symlink_mask = 0x7000000000000000LL;
+	const int64 special_mask = 0x3000000000000000LL;
+
 	std::vector<SFileAndHash> ret;
 	if(fn_filter.empty())
 	{
@@ -4346,6 +4351,16 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		curr->size=files[i].size;
 		curr->issym=files[i].issym;
 		curr->isspecial=files[i].isspecial;
+
+		if (curr->issym)
+		{
+			curr->change_indicator |= symlink_mask;
+		}
+
+		if (curr->isspecial)
+		{
+			curr->change_indicator |= special_mask;
+		}
 
 		if(curr->issym && with_proper_symlinks)
 		{

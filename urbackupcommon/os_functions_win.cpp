@@ -149,6 +149,24 @@ std::wstring os_file_prefix(std::wstring path)
 		return L"\\\\?\\"+path;
 }
 
+bool is_volume(std::string target)
+{
+	if (next(target, 0, "\\??\\"))
+	{
+		target = target.substr(4);
+	}
+
+	target = strlower(target);
+
+	if (next(target, 0, "volume")
+		&& getafter("\\", target).empty())
+	{
+		return true;
+	}
+
+	return false;
+}
+
 std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 	bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
@@ -211,22 +229,26 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 		lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
 		f.created=os_windows_to_unix_time(lwt.QuadPart);
 
-		if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT
-			&& wfd.dwReserved0== IO_REPARSE_TAG_SYMLINK)
+		std::string reparse_target;
+		if (ignore_other_fs
+			&& wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+			&& wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT
+			&& os_get_symlink_target(os_file_prefix(path + os_file_sep() + f.name), reparse_target)
+			&& is_volume(reparse_target) )
+		{
+			continue;
+		}
+		else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+			&& (wfd.dwReserved0== IO_REPARSE_TAG_SYMLINK
+				|| wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT) )
 		{
 			f.issym=true;
 			f.isspecial=true;
 		}
-		else if ( ignore_other_fs
-			&& wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
-			&& wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT)
-		{
-			continue;
-		}
-		else
+		else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 		{
 			f.issym=false;
-			f.isspecial=false;
+			f.isspecial=true;
 		}
 
 		if( (exact_filesize || with_usn ) && !f.issym && !f.isdir)
