@@ -922,6 +922,8 @@ void FileBackup::waitForFileThreads(void)
 
 bool FileBackup::verify_file_backup(IFile *fileentries)
 {
+	ServerLogger::Log(logid, "Backup verification is enabled. Verifying file backup...", LL_INFO);
+
 	bool verify_ok=true;
 
 	std::ostringstream log;
