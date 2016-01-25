@@ -524,7 +524,7 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_
 		}
 		else
 		{
-			eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
+			eta_estimated_speed = eta_estimated_speed*0.9 + speed_bpms*0.1;
 		}
 
 		if (last_eta_received_bytes > 0 && eta_estimated_speed > 0)
