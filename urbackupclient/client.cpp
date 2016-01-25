@@ -857,6 +857,7 @@ void IndexThread::indexDirs(void)
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
 		std::vector<std::string> deldirs=cd->getDelDirs(selected_dirs[i]);
+		VSSLog("Removing deleted directories from index...", LL_DEBUG);
 		for(size_t i=0;i<deldirs.size();++i)
 		{
 			cd->removeDeletedDir(deldirs[i], selected_dir_db_tgroup[i]);
@@ -1014,7 +1015,7 @@ void IndexThread::indexDirs(void)
 					std::sort(changed_dirs.begin(), changed_dirs.end());
 
 #if !defined(VSS_XP) && !defined(VSS_S03)
-					VSSLog("Scanning for changed hard links in \"" + backup_dirs[i].tname + "\"...", LL_INFO);
+					VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
 					handleHardLinks(backup_dirs[i].path, mod_path);
 #endif
 
