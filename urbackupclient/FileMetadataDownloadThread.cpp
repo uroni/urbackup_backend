@@ -479,6 +479,8 @@ namespace
         SET_STAT_MEM32(st_mtim.tv_nsec);
         SET_STAT_MEM(st_ctime);
         SET_STAT_MEM32(st_ctim.tv_nsec);
+		int64 dummy;
+		SET_STAT_MEM(dummy);
 #endif
 
 #undef SET_STAT_MEM
