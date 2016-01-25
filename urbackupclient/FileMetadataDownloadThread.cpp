@@ -456,8 +456,8 @@ namespace
 
     void unserialize_stat_buf(CRData& data, struct stat64& statbuf)
     {
-#define SET_STAT_MEM(x)  {int64 tmp; assert(data.getVarInt(&tmp)); statbuf.x = tmp;}
-#define SET_STAT_MEM32(x)  {_u32 tmp; assert(data.getUInt(&tmp)); statbuf.x = tmp;}
+#define SET_STAT_MEM(x)  {int64 tmp; bool b = data.getVarInt(&tmp); assert(b); statbuf.x = tmp;}
+#define SET_STAT_MEM32(x)  {_u32 tmp; bool b = data.getUInt(&tmp); assert(b); statbuf.x = tmp;}
 
         SET_STAT_MEM(st_dev);
         SET_STAT_MEM(st_mode);
@@ -480,7 +480,8 @@ namespace
         SET_STAT_MEM(st_ctime);
         SET_STAT_MEM32(st_ctim.tv_nsec);
 		int64 dummy;
-		assert(data.getVarInt(&dummy));
+		bool b = data.getVarInt(&dummy);
+		assert(b);
 #endif
 
 #undef SET_STAT_MEM
