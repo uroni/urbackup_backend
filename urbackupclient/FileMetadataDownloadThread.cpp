@@ -471,7 +471,7 @@ namespace
 		SET_STAT_MEM32(st_mtimespec.tv_nsec);
 		SET_STAT_MEM(st_ctimespec.tv_sec);
 		SET_STAT_MEM32(st_ctimespec.tv_nsec);
-		SET_STAT_MEM(st_ctimespec.st_flags);
+		SET_STAT_MEM(st_flags);
 #else
 		SET_STAT_MEM(st_atime);
         SET_STAT_MEM32(st_atim.tv_nsec);
