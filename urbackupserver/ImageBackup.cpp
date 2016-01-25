@@ -498,6 +498,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		if(r==0 )
 		{
 			ServerStatus::setProcessSpeed(clientname, status_id, 0);
+			ServerStatus::setProcessEta(clientname, status_id, -1);
 			if(persistent && nextblock!=0)
 			{
 				int64 continue_block=nextblock;
