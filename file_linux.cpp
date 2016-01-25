@@ -61,8 +61,8 @@
 #define fstat64 fstat
 #define ftruncate64 ftruncate
 #define fallocate64 fallocate
-#define pwrite pwrite64
-#define pread pread64
+#define pwrite64 pwrite
+#define pread64 pread
 #else
 #include <linux/fs.h>
 
