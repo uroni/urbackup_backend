@@ -87,7 +87,7 @@ void ClientSend::operator()(void)
 		{
 			if(!has_error)
 			{
-				bool b=pipe->Write(item.buf, item.bsize, -1, false);
+				bool b=pipe->Write(item.buf, item.bsize, 60000, false);
 				if(!b)
 				{
 					print_last_error();
