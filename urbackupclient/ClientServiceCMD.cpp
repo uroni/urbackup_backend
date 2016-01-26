@@ -706,6 +706,18 @@ std::string ClientConnector::getCurrRunningJob(bool reset_done, int& pcdone)
 	}
 }
 
+SChannel * ClientConnector::getCurrChannel()
+{
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].pipe == pipe)
+		{
+			return &channel_pipes[i];
+		}
+	}
+	return NULL;
+}
+
 void ClientConnector::CMD_STATUS(const std::string &cmd)
 {
 	state=CCSTATE_STATUS;
@@ -917,10 +929,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		int capa=watoi(params["capa"]);
 		token=params["token"];
 
-		channel_capa.push_back(capa);
-
-		channel_pipe=SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv, identity);
-		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv, identity));
+		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
+			&make_fileserv, identity, capa));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -933,15 +943,11 @@ void ClientConnector::CMD_CHANNEL_PONG(const std::string &cmd, const std::string
 {
 	lasttime=Server->getTimeMS();
 	IScopedLock lock(backup_mutex);
-	for(size_t i=0;i<channel_ping.size();++i)
+	SChannel* chan = getCurrChannel();
+	if (chan != NULL && chan->state == SChannel::EChannelState_Pinging)
 	{
-		if(channel_ping[i]==pipe)
-		{
-			channel_ping.erase(channel_ping.begin()+i);
-			break;
-		}
+		chan->state = SChannel::EChannelState_Idle;
 	}
-
 	refreshSessionFromChannel(endpoint_name);
 }
 

@@ -98,6 +98,62 @@ namespace
 
 void CServiceWorker::work(ICustomClient * skip_client)
 {
+	if (clients.empty())
+	{
+		IScopedLock lock(mutex);
+		if (new_clients.empty() && !do_stop)
+		{
+			//Server->Log(name+": Sleeping..."+convert(Server->getTimeMS()), LL_DEBUG);
+			cond->wait(&lock);
+			//Server->Log(name+": Waking up..."+convert(Server->getTimeMS()), LL_DEBUG);
+			return;
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	SCurrWork curr_work_c = { NULL, false };
+	curr_work.push(curr_work_c);
+	ScopedWorkStack work_stack(curr_work);
+
+	for (size_t i = 0; i<clients.size();)
+	{
+		if (clients[i].first == skip_client)
+		{
+			++i;
+			continue;
+		}
+
+		curr_work.top().client = clients[i].first;
+
+		bool b = clients[i].first->Run(this);
+
+		if (b == false)
+		{
+			IScopedLock lock(mutex);
+			//Server->Log(name+": Removing user"+convert(Server->getTimeMS()), LL_DEBUG);
+			if (clients[i].first->closeSocket())
+			{
+				delete clients[i].second;
+			}
+			service->destroyClient(clients[i].first);
+			clients.erase(clients.begin() + i);
+			IScopedLock lock2(nc_mutex);
+			--nClients;
+		}
+		else
+		{
+			++i;
+		}
+
+		if (curr_work.top().did_other_work)
+		{
+			return;
+		}
+	}
+
 #ifdef _WIN32
 	fd_set fdset;
 	int max;
@@ -105,98 +161,41 @@ void CServiceWorker::work(ICustomClient * skip_client)
 	std::vector<pollfd> conn;
 	std::vector<ICustomClient*> conn_clients;
 #endif
-	SCurrWork curr_work_c = {};
-	curr_work.push(curr_work_c);
-	ScopedWorkStack work_stack(curr_work);
+
+
+#ifdef _WIN32
+	FD_ZERO(&fdset);
+	max = 0;
+#else
+	conn.clear();
+	conn_clients.clear();
+#endif
 
 	bool has_select_client = false;
+
+	for (size_t i = 0; i<clients.size(); ++i)
 	{
+		if (clients[i].first == skip_client)
 		{
-			if (clients.empty())
-			{
-				IScopedLock lock(mutex);
-				if (new_clients.empty() && !do_stop)
-				{
-					//Server->Log(name+": Sleeping..."+convert(Server->getTimeMS()), LL_DEBUG);
-					cond->wait(&lock);
-					//Server->Log(name+": Waking up..."+convert(Server->getTimeMS()), LL_DEBUG);
-					return;
-				}
-				else
-				{
-					return;
-				}
-			}
+			continue;
 		}
 
-		for (size_t i = 0; i<clients.size();)
+		if (clients[i].first->wantReceive())
 		{
-			if (clients[i].first == skip_client)
-			{
-				++i;
-				continue;
-			}
-
-			curr_work.top().client = clients[i].first;
-
-			bool b = clients[i].first->Run(this);
-
-			if (b == false)
-			{
-				IScopedLock lock(mutex);
-				//Server->Log(name+": Removing user"+convert(Server->getTimeMS()), LL_DEBUG);
-				if (clients[i].first->closeSocket())
-				{
-					delete clients[i].second;
-				}
-				service->destroyClient(clients[i].first);
-				clients.erase(clients.begin() + i);
-				IScopedLock lock2(nc_mutex);
-				--nClients;
-			}
-			else
-			{
-				++i;
-			}
-
-			if (curr_work.top().did_other_work)
-			{
-				return;
-			}
-		}
-
+			SOCKET s = clients[i].second->getSocket();
 #ifdef _WIN32
-		FD_ZERO(&fdset);
-		max = 0;
+			if ((_i32)s>max)
+				max = (_i32)s;
+			FD_SET(s, &fdset);
 #else
-		conn.clear();
-		conn_clients.clear();
+			pollfd nconn;
+			nconn.fd = s;
+			nconn.events = POLLIN;
+			nconn.revents = 0;
+			conn.push_back(nconn);
+			conn_clients.push_back(clients[i].first);
 #endif
-
-		for (size_t i = 0; i<clients.size(); ++i)
-		{
-			if (clients[i].first == skip_client)
-			{
-				continue;
-			}
-
-			if (clients[i].first->wantReceive())
-			{
-				SOCKET s = clients[i].second->getSocket();
-#ifdef _WIN32
-				if ((_i32)s>max)
-					max = (_i32)s;
-				FD_SET(s, &fdset);
-#else
-				pollfd nconn;
-				nconn.fd = s;
-				nconn.events = POLLIN;
-				nconn.revents = 0;
-				conn.push_back(nconn);
-				conn_clients.push_back(clients[i].first);
-#endif
-				has_select_client = true;
-			}
+			has_select_client = true;
 		}
 	}
 
@@ -222,11 +221,11 @@ void CServiceWorker::work(ICustomClient * skip_client)
 					continue;
 				}
 
-				curr_work.top().client = clients[i].first;
-
 				SOCKET s = clients[i].second->getSocket();
 				if (FD_ISSET(s, &fdset))
 				{
+					curr_work.top().client = clients[i].first;
+
 					//Server->Log("Incoming data for client..", LL_DEBUG);
 					clients[i].first->ReceivePackets(this);
 
@@ -274,6 +273,7 @@ void CServiceWorker::addNewClients(void)
 
 void CServiceWorker::runOther()
 {
+	curr_work.top().did_other_work = true;
 	work(curr_work.top().client);
 }
 

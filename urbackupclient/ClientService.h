@@ -132,11 +132,14 @@ struct SRestoreToken
 struct SChannel
 {
 	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
-		std::string token, bool* make_fileserv, std::string server_identity)
+		std::string token, bool* make_fileserv, std::string server_identity,
+		int capa)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
-		  token(token), make_fileserv(make_fileserv), server_identity(server_identity) {}
+		  token(token), make_fileserv(make_fileserv), server_identity(server_identity),
+		state(EChannelState_Idle), capa(capa) {}
 	SChannel(void)
-		: pipe(NULL), internet_connection(false), make_fileserv(NULL) {}
+		: pipe(NULL), internet_connection(false), make_fileserv(NULL),
+		state(EChannelState_Idle), capa(0) {}
 
 	IPipe *pipe;
 	bool internet_connection;
@@ -145,6 +148,16 @@ struct SChannel
 	bool* make_fileserv;
 	std::string last_tokens;
 	std::string server_identity;
+
+	enum EChannelState
+	{
+		EChannelState_Idle,
+		EChannelState_Pinging,
+		EChannelState_Exit
+	};
+
+	EChannelState state;
+	int capa;
 };
 
 struct SVolumesCache;
@@ -216,6 +229,7 @@ private:
 	void downloadImage(str_map params);
 	void removeChannelpipe(IPipe *cp);
 	void waitForPings(IScopedLock *lock);
+	bool hasChannelPing();
 	bool writeUpdateFile(IFile *datafile, std::string outfn);
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
@@ -235,6 +249,8 @@ private:
 	static std::string getHasNoRecentBackup();
 
 	static std::string getCurrRunningJob(bool reset_done, int& pcdone);
+
+	SChannel* getCurrChannel();
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd);
@@ -322,11 +338,7 @@ private:
 	static IMutex *process_mutex;
 	static int backup_interval;
 	static int backup_alert_delay;
-	static SChannel channel_pipe;
 	static std::vector<SChannel> channel_pipes;
-	static std::vector<IPipe*> channel_exit;
-	static std::vector<IPipe*> channel_ping;
-	static std::vector<int> channel_capa;
 	int64 last_channel_ping;
 	static db_results cached_status;
 	static std::map<std::string, int64> last_token_times;

@@ -76,11 +76,7 @@ IMutex *ClientConnector::backup_mutex=NULL;
 IMutex *ClientConnector::process_mutex = NULL;
 int ClientConnector::backup_interval=0;
 int ClientConnector::backup_alert_delay=5*60;
-SChannel ClientConnector::channel_pipe;
 std::vector<SChannel> ClientConnector::channel_pipes;
-std::vector<IPipe*> ClientConnector::channel_exit;
-std::vector<IPipe*> ClientConnector::channel_ping;
-std::vector<int> ClientConnector::channel_capa;
 db_results ClientConnector::cached_status;
 std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
@@ -248,32 +244,18 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			if(is_channel)
 			{
 				IScopedLock lock(backup_mutex);
-				if(channel_pipe.pipe==pipe)
-				{
-					channel_pipe=SChannel();
-				}
 				for(size_t i=0;i<channel_pipes.size();++i)
 				{
 					if(channel_pipes[i].pipe==pipe)
 					{
 						channel_pipes.erase(channel_pipes.begin()+i);
-						channel_capa.erase(channel_capa.begin()+i);
-						break;
-					}
-				}
-				for(size_t i=0;i<channel_ping.size();++i)
-				{
-					if(channel_ping[i]==pipe)
-					{
-						channel_ping.erase(channel_ping.begin()+i);
 						break;
 					}
 				}
 			}
 			if(waitForThread())
 			{
-				Server->wait(10);
-				do_quit=true;
+				want_receive = false;
 				return true;
 			}
 			delete image_inf.image_thread;
@@ -383,33 +365,21 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 		{		
 			IScopedLock lock(backup_mutex);
 
-			bool has_ping= std::find(channel_ping.begin(), channel_ping.end(), pipe) != channel_ping.end();
+			SChannel* chan = getCurrChannel();
+
+			bool has_ping = chan != NULL && chan->state == SChannel::EChannelState_Pinging;
 
 			int64 timeout_interval = has_ping ? 10000 : 180000;
 
 			if(Server->getTimeMS()-lasttime>timeout_interval)
 			{
 				Server->Log("Client timeout in ClientConnector::Run - Channel", LL_DEBUG);
+				for(size_t i=0;i<channel_pipes.size();++i)
 				{
-					if(channel_pipe.pipe==pipe)
-						channel_pipe=SChannel();
-
-					for(size_t i=0;i<channel_pipes.size();++i)
+					if(channel_pipes[i].pipe==pipe)
 					{
-						if(channel_pipes[i].pipe==pipe)
-						{
-							channel_pipes.erase(channel_pipes.begin()+i);
-							channel_capa.erase(channel_capa.begin()+i);
-							break;
-						}
-					}
-					for(size_t i=0;i<channel_ping.size();++i)
-					{
-						if(channel_ping[i]==pipe)
-						{
-							channel_ping.erase(channel_ping.begin()+i);
-							break;
-						}
+						channel_pipes.erase(channel_pipes.begin()+i);
+						break;
 					}
 				}
 				if(waitForThread())
@@ -419,54 +389,41 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 				return false;
 			}
-			for(size_t i=0;i<channel_exit.size();++i)
+			if(chan!=NULL && chan->state==SChannel::EChannelState_Exit)
 			{
-				if(channel_exit[i]==pipe)
-				{
-					do_quit=true;
-					channel_exit.erase(channel_exit.begin()+i);
-					break;
-				}
+				do_quit=true;
+				break;
 			}
-			if(Server->getTimeMS()-last_channel_ping>60000)
+			if(Server->getTimeMS()-last_channel_ping>60000
+				&& chan->state==SChannel::EChannelState_Idle)
 			{
-				if(!has_ping)
-				{
-					channel_ping.push_back(pipe);
-				}
 				tcpstack.Send(pipe, "PING");
 				last_channel_ping=Server->getTimeMS();
+				chan->state = SChannel::EChannelState_Pinging;
 			}
-			if(make_fileserv)
+			if(make_fileserv
+				&& SChannel::EChannelState_Idle)
 			{
-				bool found = std::find(channel_ping.begin(), channel_ping.end(), pipe)!=channel_ping.end();
-				if(!found)
+				size_t idx=std::string::npos;
+				for(size_t i=0;i<channel_pipes.size();++i)
 				{
-					size_t idx=std::string::npos;
-					for(size_t i=0;i<channel_pipes.size();++i)
+					if(channel_pipes[i].pipe==pipe)
 					{
-						if(channel_pipes[i].pipe==pipe)
-						{
-							idx=i;
-							break;
-						}
+						idx=i;
+						break;
 					}
-
-					if(idx!=std::string::npos)
-					{
-						tcpstack.Send(pipe, "FILESERV");
-						state=CCSTATE_FILESERV;
-						fileserv_connections.push_back(std::make_pair(channel_pipes[idx].token, pipe));
-
-						channel_pipes.erase(channel_pipes.begin()+idx);
-						channel_capa.erase(channel_capa.begin()+idx);
-
-						if(channel_pipe.pipe==pipe)
-							channel_pipe=SChannel();
-					}				
-
-					return false;
 				}
+
+				if(idx!=std::string::npos)
+				{
+					tcpstack.Send(pipe, "FILESERV");
+					state=CCSTATE_FILESERV;
+					fileserv_connections.push_back(std::make_pair(channel_pipes[idx].token, pipe));
+
+					channel_pipes.erase(channel_pipes.begin()+idx);
+				}				
+
+				return false;
 			}
 		}break;
 	case CCSTATE_IMAGE:
@@ -2262,7 +2219,13 @@ std::string ClientConnector::receivePacket(const SChannel& channel)
 
 void ClientConnector::removeChannelpipe(IPipe *cp)
 {
-	channel_exit.push_back(cp);
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].pipe == cp)
+		{
+			channel_pipes[i].state = SChannel::EChannelState_Exit;
+		}
+	}
 }
 
 void ClientConnector::downloadImage(str_map params)
@@ -2438,7 +2401,7 @@ void ClientConnector::downloadImage(str_map params)
 void ClientConnector::waitForPings(IScopedLock *lock)
 {
 	Server->Log("Waiting for pings...", LL_DEBUG);
-	while(!channel_ping.empty())
+	while(hasChannelPing())
 	{
 		lock->relock(NULL);
 		Server->wait(10);
@@ -2449,6 +2412,18 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 		lock->relock(backup_mutex);
 	}
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);
+}
+
+bool ClientConnector::hasChannelPing()
+{
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		if (channel_pipes[i].state == SChannel::EChannelState_Pinging)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 int64 ClientConnector::getLastTokenTime(const std::string & tok)
@@ -2489,10 +2464,10 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 	else
 	{
 		bool ok=false;
-		if(channel_pipe.pipe!=NULL)
+		if(!channel_pipes.empty())
 		{
-			CTCPStack tmpstack(channel_pipe.internet_connection);
-			_u32 rc=(_u32)tmpstack.Send(channel_pipe.pipe, ts);
+			CTCPStack tmpstack(channel_pipes.front().internet_connection);
+			_u32 rc=(_u32)tmpstack.Send(channel_pipes.front().pipe, ts);
 			if(rc!=0)
 				ok=true;
 
@@ -2596,7 +2571,7 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 {
 	IScopedLock lock(backup_mutex);
 
-	if(channel_pipe.pipe==NULL)
+	if(channel_pipes.empty())
 	{
 		has_file_changes = true;
 		return false;
@@ -2604,8 +2579,8 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 
 	std::string changes_str = "CHANGES "+std::string(changes, changes+changes_size);
 
-	CTCPStack tmpstack(channel_pipe.internet_connection);
-	if(tmpstack.Send(channel_pipe.pipe, changes_str)!=changes_str.size())
+	CTCPStack tmpstack(channel_pipes.front().internet_connection);
+	if(tmpstack.Send(channel_pipes.front().pipe, changes_str)!=changes_str.size())
 	{
 		has_file_changes = true;
 		return false;
@@ -2618,7 +2593,7 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 int ClientConnector::getCapabilities()
 {
 	int capa=0;
-	if(channel_capa.size()==0)
+	if(channel_pipes.size()==0)
 	{
 		capa=last_capa;
 		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
@@ -2627,9 +2602,9 @@ int ClientConnector::getCapabilities()
 	else
 	{
 		capa=INT_MAX;
-		for(size_t i=0;i<channel_capa.size();++i)
+		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			capa=capa & channel_capa[i];
+			capa=capa & channel_pipes[i].capa;
 		}
 
 		if(capa!=last_capa)
