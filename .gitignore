@@ -242,3 +242,8 @@ clientctl/x64/*
 UrBackupBackend.VC.opendb
 deps/
 urbackup/backup_server_*.db*
+urbackup_ecdsa409k1.pub
+urbackup/UrBackupUpdateLinux.sh
+urbackup/UrBackupUpdateLinux.sig2
+urbackup/UrBackupUpdateMac.sh
+urbackup/UrBackupUpdateMac.sig2

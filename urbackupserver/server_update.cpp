@@ -59,8 +59,6 @@ void ServerUpdate::update_client()
 	
 	if(atoi(version.c_str())>atoi(curr_version.c_str()))
 	{
-		Server->Log("Downloading signature...", LL_INFO);
-
 		std::vector<std::pair<std::string, std::string> > update_files;
 
 		update_files.push_back(std::make_pair(std::string("exe"), std::string("UrBackupUpdate")));
@@ -71,6 +69,8 @@ void ServerUpdate::update_client()
 		{
 			std::string basename = update_files[i].second;
 			std::string exe_extension = update_files[i].first;
+
+			Server->Log("Downloading signature...", LL_INFO);
 
 			IFile* sig_file = Server->openFile("urbackup/"+basename+".sig2", MODE_WRITE);
 			if (sig_file == NULL)
