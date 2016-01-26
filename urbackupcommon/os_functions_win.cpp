@@ -182,7 +182,7 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
 	std::wstring tpath=ConvertToWchar(path);
-	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
+	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(tpath.size()-1, 1);
 	fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 	if(fHandle==INVALID_HANDLE_VALUE)
 	{
