@@ -780,6 +780,9 @@ ACTION_IMPL(backups)
 
 		if(fileaccesstokens.empty())
 		{
+			JSON::Object err_ret;
+			err_ret.set("err", "access_denied");
+			helper.Write(err_ret.stringify(false));
 			return;
 		}
 		else
@@ -804,6 +807,9 @@ ACTION_IMPL(backups)
 		}
 		else
 		{
+			JSON::Object err_ret;
+			err_ret.set("err", "access_denied");
+			helper.Write(err_ret.stringify(false));
 			return;
 		}
 	}
