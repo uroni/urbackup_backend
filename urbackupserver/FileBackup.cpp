@@ -610,6 +610,7 @@ bool FileBackup::doBackup()
 	if((!has_early_error && !backup_result) || disk_error)
 	{
 		sendBackupOkay(false);
+		backup_result = false;
 	}
 	else if(has_early_error)
 	{
