@@ -216,6 +216,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	make_fileserv=false;
 	local_backup_running_id = 0;
 	run_other = NULL;
+	idle_timeout = 10000;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -271,7 +272,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 	switch(state)
 	{
 	case CCSTATE_NORMAL:
-		if(Server->getTimeMS()-lasttime>10000)
+		if(Server->getTimeMS()-lasttime>idle_timeout)
 		{
 			Server->Log("Client timeout in ClientConnector::Run", LL_DEBUG);
 			if(waitForThread())

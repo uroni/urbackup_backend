@@ -379,6 +379,8 @@ private:
 	static SVolumesCache* volumes_cache;
 #endif
 	IRunOtherCallback* run_other;
+
+	int64 idle_timeout;
 };
 
 class ScopedRemoveRunningBackup

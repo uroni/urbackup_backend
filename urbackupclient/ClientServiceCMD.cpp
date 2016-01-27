@@ -825,6 +825,8 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 {
 	tcpstack.Send(pipe, "OK");
 
+	idle_timeout = 120000;
+
 	IScopedLock lock(backup_mutex);
 	IScopedLock process_lock(process_mutex);
 
@@ -866,6 +868,8 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	str_map params;
 	ParseParamStrHttp(params_str, &params);
 	tcpstack.Send(pipe, "OK");
+
+	idle_timeout = 120000;
 
 	IScopedLock lock(backup_mutex);
 	IScopedLock process_lock(process_mutex);

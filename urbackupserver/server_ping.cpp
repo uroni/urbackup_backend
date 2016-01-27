@@ -36,6 +36,7 @@ ServerPingThread::ServerPingThread(ClientMain *client_main, const std::string& c
 
 void ServerPingThread::operator()(void)
 {
+	ClientMain::SConnection connection;
 	int64 last_ping_ok=Server->getTimeMS();
 	while(!stop)
 	{
@@ -59,7 +60,9 @@ void ServerPingThread::operator()(void)
 
 		if(!with_eta)
 		{
-			if(client_main->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", "Error sending 'running' ping to client", 30000, false, LL_DEBUG))
+			if(client_main->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token,
+				"OK", "Error sending 'running' ping to client", 30000, false, LL_DEBUG,
+				NULL, NULL, &connection))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}
@@ -75,7 +78,8 @@ void ServerPingThread::operator()(void)
 							+"&speed_bpms="+convert(proc.speed_bpms)
 							+"&total_bytes="+convert(proc.total_bytes)
 							+"&done_bytes="+convert(proc.done_bytes)
-							+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
+							+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client",
+						30000, false, LL_DEBUG, NULL, NULL, &connection))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}

@@ -1056,7 +1056,8 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 	return res;
 }
 
-std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
+std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg,
+	unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -1152,17 +1153,36 @@ bool ClientMain::sendClientMessageRetry(const std::string &msg, const std::strin
 	return res;
 }
 
-bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
+bool ClientMain::sendClientMessage(const std::string &msg, const std::string &retok,
+	const std::string &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err,
+	std::string* retok_str, SConnection* conn)
 {
 	CTCPStack tcpstack(internet_connection);
-	IPipe *cc=getClientCommandConnection(10000);
-	if(cc==NULL)
+
+	std::auto_ptr<IPipe> cc;
+	if (conn != NULL
+		&& conn->conn.get() != NULL
+		&& conn->internet_connection == internet_connection)
 	{
-		if(logerr)
-			ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
-		else
-			Server->Log("Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
-		return false;
+		cc.reset(conn->conn.release());
+	}
+	else
+	{
+		cc.reset(getClientCommandConnection(10000));
+		if (cc.get() == NULL)
+		{
+			if (logerr)
+				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+			else
+				Server->Log("Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+
+			return false;
+		}
+	}
+
+	if (conn != NULL)
+	{
+		conn->conn.reset();
 	}
 
 	std::string identity;
@@ -1175,7 +1195,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 		identity=server_identity;
 	}
 
-	tcpstack.Send(cc, identity+msg);
+	tcpstack.Send(cc.get(), identity+msg);
 
 	std::string ret;
 	int64 starttime=Server->getTimeMS();
@@ -1231,7 +1251,11 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 			Server->Log("Timeout: "+errmsg, max_loglevel);
 	}
 
-	Server->destroy(cc);
+	if (conn!=NULL && (ok || herr) )
+	{
+		conn->conn.reset(cc.release());
+		conn->internet_connection = internet_connection;
+	}
 
 	return ok;
 }
