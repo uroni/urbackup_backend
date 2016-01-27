@@ -341,12 +341,14 @@ bool IncrFileBackup::doFileBackup()
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater, "backup active updater");
 
+	bool with_sparse_hashing = client_main->getProtocolVersions().select_sha_version > 0;
+
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num, logid, with_hashes, shares_without_snapshot));
+		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 

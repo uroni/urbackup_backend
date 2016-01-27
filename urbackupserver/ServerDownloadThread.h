@@ -135,7 +135,8 @@ public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot);
+		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot,
+		bool with_sparse_hashing);
 
 	~ServerDownloadThread();
 
@@ -257,4 +258,6 @@ private:
 	logid_t logid;
 
 	std::vector<std::string> shares_without_snapshot;
+
+	bool with_sparse_hashing;
 };

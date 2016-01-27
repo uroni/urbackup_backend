@@ -199,6 +199,8 @@ bool FullFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, clientname+": Started loading files...", LL_INFO);
 
+	bool with_sparse_hashing = client_main->getProtocolVersions().select_sha_version > 0;
+
 	std::string last_backuppath;
 	std::string last_backuppath_complete;
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, NULL, backuppath,
@@ -206,7 +208,7 @@ bool FullFileBackup::doFileBackup()
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		0, logid, with_hashes, shares_without_snapshot));
+		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
