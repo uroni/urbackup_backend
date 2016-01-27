@@ -76,6 +76,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 	if(patch->Read((char*)&filesize, sizeof(_i64))!=sizeof(_i64))
 	{
+		Server->Log("Error reading patched file size", LL_DEBUG);
 		return false;
 	}
 
@@ -110,6 +111,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			has_header=readNextValidPatch(patch, patchf_pos, &next_header, has_read_error);
 			if (has_read_error)
 			{
+				Server->Log("Read error while reading next patch", LL_DEBUG);
 				return false;
 			}
 		}
@@ -155,6 +157,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 				if (has_read_error)
 				{
+					Server->Log("Read error while reading patch data", LL_DEBUG);
 					return false;
 				}
 
@@ -219,6 +222,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 					if (has_read_error)
 					{
+						Server->Log("Read error while reading unchanged data", LL_DEBUG);
 						return false;
 					}
 					
