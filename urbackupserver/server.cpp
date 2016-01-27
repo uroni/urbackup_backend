@@ -370,6 +370,7 @@ void BackupServer::startClients(FileClient &fc)
 			SClient c;
 			c.pipe=np;
 			c.offlinecount=0;
+			c.changecount = 0;
 			c.addr=curr_info.addr;
 			c.internet_connection=curr_info.internetclient;
 
@@ -394,7 +395,8 @@ void BackupServer::startClients(FileClient &fc)
 
 			if(it->second.addr.sin_addr.s_addr==curr_info.addr.sin_addr.s_addr && !found_lan)
 			{
-				it->second.offlinecount=0;
+				it->second.offlinecount = 0;
+				it->second.changecount = 0;
 			}
 			else
 			{
@@ -408,7 +410,9 @@ void BackupServer::startClients(FileClient &fc)
 						break;
 					}
 				}
-				if(none_fits || found_lan)
+				++it->second.changecount;
+				if( (it->second.changecount>5 && none_fits)
+					|| found_lan)
 				{
 					it->second.addr=curr_info.addr;
 					it->second.internet_connection=curr_info.internetclient;

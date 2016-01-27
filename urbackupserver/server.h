@@ -15,6 +15,7 @@ struct SClient
 {
 	IPipe *pipe;
 	int offlinecount;
+	int changecount;
 	sockaddr_in addr;
 	bool internet_connection;
 };
