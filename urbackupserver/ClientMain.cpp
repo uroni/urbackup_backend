@@ -1201,11 +1201,13 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	int64 starttime=Server->getTimeMS();
 	bool ok=false;
 	bool herr=false;
+	bool broken = false;
 	while(Server->getTimeMS()-starttime<=timeout)
 	{
 		size_t rc=cc->Read(&ret, timeout);
 		if(rc==0)
 		{
+			broken = true;
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -1223,9 +1225,10 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 			if(ret!=retok)
 			{
 				herr=true;
-				if(logerr)
+				if (logerr)
 					ServerLogger::Log(logid, errmsg, max_loglevel);
 				else
+					Server->Log(errmsg, max_loglevel);
 
 				if(retok_err!=NULL)
 					*retok_err=true;
@@ -1245,10 +1248,12 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	}
 	if(!ok && !herr)
 	{
+		std::string reason = (broken ? "Connection broken: " : "Timeout: ");
+
 		if(logerr)
-			ServerLogger::Log(logid, "Timeout: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, reason+errmsg, max_loglevel);
 		else
-			Server->Log("Timeout: "+errmsg, max_loglevel);
+			Server->Log(reason +errmsg, max_loglevel);
 	}
 
 	if (conn!=NULL && (ok || herr) )
