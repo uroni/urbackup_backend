@@ -1112,6 +1112,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						currblock = little_endian(currblock);
 						if(currblock==-123)
 						{
+							ServerStatus::setProcessPcDone(clientname, status_id,
+								100);
+							ServerStatus::setProcessEta(clientname, status_id, -1);
+							ServerStatus::setProcessSpeed(clientname, status_id, 0);
+
 							if(nextblock<=totalblocks)
 							{
 								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
