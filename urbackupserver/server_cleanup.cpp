@@ -611,6 +611,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 	if (ok)
 	{
 		filesdao->removeDanglingFiles();
+		Server->Log("Deleted " + convert(files_db->getLastChanges()) + " file entries", LL_INFO);
 	}
 
 	files_db->Write("DROP TABLE backups");
