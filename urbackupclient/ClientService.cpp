@@ -370,11 +370,22 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 			bool has_ping = chan != NULL && chan->state == SChannel::EChannelState_Pinging;
 
-			int64 timeout_interval = has_ping ? 10000 : 180000;
+			int64 timeout_interval = 180000;
 
-			if(Server->getTimeMS()-lasttime>timeout_interval)
+			int64 ctime = Server->getTimeMS();
+			if(ctime-lasttime>timeout_interval
+				|| (has_ping && ctime-last_channel_ping>10000) )
 			{
-				Server->Log("Client timeout in ClientConnector::Run - Channel", LL_DEBUG);
+				std::string extra;
+				if (has_ping && ctime - last_channel_ping > 10000)
+				{
+					extra = " (ping timeout)";
+				}
+				else
+				{
+					extra = " (total timeout)";
+				}
+				Server->Log("Client timeout in ClientConnector::Run - Channel"+extra, LL_DEBUG);
 				for(size_t i=0;i<channel_pipes.size();++i)
 				{
 					if(channel_pipes[i].pipe==pipe)
