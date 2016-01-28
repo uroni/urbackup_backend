@@ -40,7 +40,7 @@ private:
 	char* buf;
 };
 
-class IReadOnlyBitmap
+class IReadOnlyBitmap : public IObject
 {
 public:
 	virtual int64 getBlocksize() = 0;
@@ -48,7 +48,7 @@ public:
 	virtual bool hasError(void) = 0;
 };
 
-class IFilesystem : public IObject, public IReadOnlyBitmap
+class IFilesystem : public IReadOnlyBitmap
 {
 public:
 	virtual int64 getBlocksize(void)=0;
