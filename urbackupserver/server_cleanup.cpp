@@ -594,7 +594,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 	IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
-	files_db->Write("CREATE TEMPORARY TABLE backups (id INTEGER)");
+	files_db->Write("CREATE TEMPORARY TABLE backups (id INTEGER PRIMARY KEY)");
 
 	IQuery* q_insert = files_db->Prepare("INSERT INTO backups (id) VALUES (?)", false);
 
