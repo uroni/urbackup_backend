@@ -438,13 +438,13 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 		for(size_t j=0;j<res_image_backups.size();++j)
 		{
-			if(res_image_backups[i].letter=="SYSVOL"
-				|| res_image_backups[i].letter=="ESP")
+			if(res_image_backups[j].letter=="SYSVOL"
+				|| res_image_backups[j].letter=="ESP")
 			{
-				if(!cleanupdao->getParentImageBackup(res_image_backups[i].id).exists)
+				if(!cleanupdao->getParentImageBackup(res_image_backups[j].id).exists)
 				{
 					Server->Log("Image backup [id="+convert(res_image_backups[j].id)+" path="+res_image_backups[j].path+" clientname="+clientname+"] is a system reserved or EFI system partition image and has no parent image. Deleting it.", LL_WARNING);
-					if(!removeImage(res_image_backups[i].id, &settings, false, false, true, false))
+					if(!removeImage(res_image_backups[j].id, &settings, false, false, true, false))
 					{
 						Server->Log("Could not remove image backup [id="+convert(res_image_backups[j].id)+" path="+res_image_backups[j].path+" clientname="+clientname+"]", LL_ERROR);
 					}
