@@ -1735,12 +1735,13 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 	const int clientid=client_info.id;
 	const std::string& clientname=client_info.name;
 	const std::string pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + ".directory_pool";
-	ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
+	IDatabase* db_links = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS);
+	ServerLinkDao link_dao(db_links);
 
 	std::vector<int64> del_ids;
 	std::vector<std::pair<int64, std::string> > target_adjustments;
 
-	IQuery* q = db->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?");
+	IQuery* q = db_links->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?");
 	q->Bind(clientid);
 
 	IDatabaseCursor* cursor = q->Cursor();
