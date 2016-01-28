@@ -587,7 +587,33 @@ void ServerCleanupThread::do_remove_unknown(void)
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
-	filesdao->removeDanglingFiles();
+
+	IQuery* q_backup_ids = db->Prepare("SELECT id FROM backups");
+	IDatabaseCursor* cur = q_backup_ids->Cursor();
+	db_single_result res;
+
+	IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+
+	files_db->Write("CREATE TEMPORARY TABLE backups (id INTEGER)");
+
+	IQuery* q_insert = files_db->Prepare("INSERT INTO backups (id) VALUES (?)", false);
+
+	bool ok = true;
+	while (cur->next(res))
+	{
+		q_insert->Bind(res["id"]);
+		ok &= q_insert->Write();
+		q_insert->Reset();
+	}
+
+	files_db->destroyQuery(q_insert);
+
+	if (ok)
+	{
+		filesdao->removeDanglingFiles();
+	}
+
+	files_db->Write("DROP TABLE backups");
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
