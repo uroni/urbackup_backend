@@ -442,6 +442,8 @@ int action_remove_unknown(std::vector<std::string> args)
 	real_args.push_back("debug");
 	real_args.push_back("--app");
 	real_args.push_back("remove_unknown");
+	real_args.push_back("--snapshot_helper");
+	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 
 	return run_real_main(real_args);
 }
@@ -556,6 +558,8 @@ int action_cleanup(std::vector<std::string> args)
 	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
+	real_args.push_back("--snapshot_helper");
+	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 	real_args.push_back("--loglevel");
 	real_args.push_back("debug");
 	real_args.push_back("--app");

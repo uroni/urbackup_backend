@@ -24,6 +24,7 @@
 #include "../server.h"
 #include "../serverinterface/helper.h"
 #include "../create_files_index.h"
+#include "../WalCheckpointThread.h"
 
 extern SStartupStatus startup_status;
 
@@ -101,10 +102,26 @@ int cleanup_cmd(void)
 		return 1;
 	}
 
+	IDatabase *db_files = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	if (db_files == NULL)
+	{
+		Server->Log("Could not open files database", LL_ERROR);
+		return 1;
+	}
+
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
+	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
+	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
+
 	BackupServer::testSnapshotAvailability(db);
 
 	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
 	db->Write("PRAGMA journal_mode = DELETE");
+	db_files->Write("PRAGMA journal_mode = DELETE");
 
 	std::string cleanup_pc=Server->getServerParameter("cleanup_amount");
 
