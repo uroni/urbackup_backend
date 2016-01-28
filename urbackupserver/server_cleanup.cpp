@@ -1529,13 +1529,15 @@ bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 bool ServerCleanupThread::cleanupSpace(int64 minspace, bool switch_to_wal)
 {
 	bool result;
-	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, switch_to_wal)));
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, switch_to_wal)),
+		"free space");
 	return result;
 }
 
 void ServerCleanupThread::removeUnknown(void)
 {
-	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(ECleanupAction_RemoveUnknown)));
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(ECleanupAction_RemoveUnknown)),
+		"remove unknown");
 }
 
 void ServerCleanupThread::enforce_quotas(void)

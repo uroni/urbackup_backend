@@ -1661,7 +1661,9 @@ void FileBackup::deleteBackup()
 	}
 	else
 	{				
-		Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
+		Server->getThreadPool()->executeWait(
+			new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ),
+			"delete fbackup");
 	}
 }
 

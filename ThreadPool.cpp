@@ -43,6 +43,10 @@ void CPoolThread::operator()(void)
 		{
 			Server->setCurrentThreadName(name);
 		}
+		else
+		{
+			Server->setCurrentThreadName("unnamed");
+		}
 		(*tr)();
 		Server->clearDatabases(tid);
 	}
@@ -59,6 +63,10 @@ void CPoolThread::operator()(void)
 				if (!name.empty())
 				{
 					Server->setCurrentThreadName(name);
+				}
+				else
+				{
+					Server->setCurrentThreadName("unnamed");
 				}
 				(*tr)();
 				Server->clearDatabases(tid);
@@ -281,9 +289,9 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& nam
 	return currticket;
 }
 
-void CThreadPool::executeWait(IThread *runnable)
+void CThreadPool::executeWait(IThread *runnable, const std::string& name)
 {
-	THREADPOOL_TICKET ticket=execute(runnable);
+	THREADPOOL_TICKET ticket=execute(runnable, name);
 	waitFor(ticket);
 }
 

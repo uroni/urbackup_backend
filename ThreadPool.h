@@ -30,7 +30,7 @@ public:
 	~CThreadPool();
 
 	THREADPOOL_TICKET execute(IThread *runnable, const std::string& name = std::string());
-	void executeWait(IThread *runnable);
+	void executeWait(IThread *runnable, const std::string& name = std::string());
 	bool isRunning(THREADPOOL_TICKET ticket);
 	bool waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems=-1);
 	bool waitFor(THREADPOOL_TICKET ticket, int timems=-1);
