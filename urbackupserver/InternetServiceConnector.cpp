@@ -40,6 +40,7 @@ const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
+const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
@@ -47,7 +48,7 @@ IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
 std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
-std::vector<IECDHKeyExchange*> InternetServiceConnector::ecdh_key_exchange_buffer;
+std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
 
 
 extern ICryptoFactory *crypto_fak;
@@ -78,9 +79,14 @@ InternetServiceConnector::~InternetServiceConnector(void)
 	}
 	Server->destroy(local_mutex);
 
-	if(ecdh_key_exchange!=NULL)
+	if(ecdh_key_exchange!=NULL
+		&& Server->getTimeMS()-ecdh_key_exchange_age<max_ecdh_key_age)
 	{
-		ecdh_key_exchange_buffer.push_back(ecdh_key_exchange);
+		ecdh_key_exchange_buffer.push_back(std::make_pair(ecdh_key_exchange, ecdh_key_exchange_age));
+	}
+	else
+	{
+		Server->destroy(ecdh_key_exchange);
 	}
 }
 
@@ -128,13 +134,15 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 			IScopedLock lock(mutex);
 			if(!ecdh_key_exchange_buffer.empty())
 			{
-				ecdh_key_exchange = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size()-1];
+				ecdh_key_exchange = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size()-1].first;
+				ecdh_key_exchange_age = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size() - 1].second;
 				ecdh_key_exchange_buffer.pop_back();
 			}
 		}
 		if(ecdh_key_exchange==NULL)
 		{
-			ecdh_key_exchange=crypto_fak->createECDHKeyExchange();
+			ecdh_key_exchange = crypto_fak->createECDHKeyExchange();
+			ecdh_key_exchange_age = Server->getTimeMS();
 		}
 
 		data.addString(ecdh_key_exchange->getPublicKey());

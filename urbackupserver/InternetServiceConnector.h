@@ -109,6 +109,7 @@ private:
 	IMutex *local_mutex;
 	ICondition* connection_done_cond;
 	IECDHKeyExchange* ecdh_key_exchange;
+	int64 ecdh_key_exchange_age;
 
 	CTCPStack tcpstack;
 
@@ -138,7 +139,7 @@ private:
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
 	static unsigned int onetime_token_id;
-	static std::vector<IECDHKeyExchange*> ecdh_key_exchange_buffer;
+	static std::vector<std::pair<IECDHKeyExchange*, int64> > ecdh_key_exchange_buffer;
 
 	static int64 last_token_remove;
 };
