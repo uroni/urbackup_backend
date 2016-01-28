@@ -23,4 +23,6 @@ private:
 	int64 full_checkpoint_size;
 	std::string db_fn;
 	DATABASE_ID db_id;
+
+	bool cannot_open;
 };

@@ -27,7 +27,7 @@
 
 WalCheckpointThread::WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id)
 	: last_checkpoint_wal_size(0), passive_checkpoint_size(passive_checkpoint_size),
-	full_checkpoint_size(full_checkpoint_size), db_fn(db_fn), db_id(db_id)
+	full_checkpoint_size(full_checkpoint_size), db_fn(db_fn), db_id(db_id), cannot_open(false)
 {
 }
 
@@ -41,6 +41,8 @@ void WalCheckpointThread::checkpoint()
 
 	if(wal_file.get()!=NULL)
 	{
+		cannot_open = false;
+
 		int64 wal_size = wal_file->Size();
 		if (wal_size > full_checkpoint_size)
 		{
@@ -74,7 +76,11 @@ void WalCheckpointThread::checkpoint()
 	}
 	else
 	{
-		Server->Log("Could not open WAL file (wal checkpoint thread)", LL_WARNING);
+		if (!cannot_open)
+		{
+			Server->Log("Could not open WAL file " + db_fn + "-wal" + " (wal checkpoint thread)", LL_DEBUG);
+		}
+		cannot_open = true;
 	}
 }
 
