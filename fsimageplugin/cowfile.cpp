@@ -441,6 +441,20 @@ void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 	}
 }
 
+bool CowFile::hasBitmapRange(uint64 offset_start, uint64 offset_end)
+{
+	uint64 block_start = offset_start/blocksize;
+	uint64 block_end = offset_end/blocksize;
+	for(;block_start<block_end;++block_start)
+	{
+		if(isBitmapSet(block_start*blocksize))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, unused_start, unused_end-unused_start);
@@ -493,15 +507,18 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 		{
 			int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
 			int64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
-			setBitmapRange(unused_start, unused_end, false);
-			if(!setUnused(unused_start, unused_end))
+			if(hasBitmapRange(unused_start, unused_end))
 			{
-				Server->Log("Trimming syscall failed. Stopping trimming.", LL_WARNING);
-				return false;
-			}
-			if(trim_callback!=NULL)
-			{
-				trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
+				setBitmapRange(unused_start, unused_end, false);
+				if(!setUnused(unused_start, unused_end))
+				{
+					Server->Log("Trimming syscall failed. Stopping trimming.", LL_WARNING);
+					return false;
+				}
+				if(trim_callback!=NULL)
+				{
+					trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
+				}
 			}
 			unused_start_block=-1;
 		}

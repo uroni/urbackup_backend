@@ -32,6 +32,7 @@ private:
 	bool isBitmapSet(uint64 offset);
 	void setBitmapBit(uint64 offset, bool v);
 	void setBitmapRange(uint64 offset_start, uint64 offset_end, bool v);
+	bool hasBitmapRange(uint64 offset_start, uint64 offset_end);
 	bool saveBitmap();
 	bool loadBitmap(const std::string& bitmap_fn);
 	void resizeBitmap();
