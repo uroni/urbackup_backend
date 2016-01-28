@@ -525,41 +525,26 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if (!internet_connection && client_main->isOnInternetConnection())
 					{
-						int icount = 0;
-						while (icount < 4)
-						{
-							Server->wait(60000);
-							if (client_main->isOnInternetConnection())
-							{
-								++icount;
-							}
-							else
-							{
-								break;
-							}
-						}
-
-						if(icount>=4)
-						{
-							ServerLogger::Log(logid, "Stopped image backup because client is connected via Internet now", LL_WARNING);
-							goto do_image_cleanup;
-						}						
-					}
-
-					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
-					cc=client_main->getClientCommandConnection(10000);
-					if(cc==NULL)
-					{
+						Server->Log("Image client is connected via Internet now. Waiting for client to return to local network...", LL_DEBUG);
 						Server->wait(60000);
 					}
 					else
 					{
-						identity = client_main->getSessionIdentity().empty() ? server_identity : client_main->getSessionIdentity();
-						reconnected=true;
-						ServerStatus::setROnline(clientname, true);
-						Server->Log("Reconnected.", LL_DEBUG);
-						break;
-					}
+						Server->Log("Trying to reconnect in doImage", LL_DEBUG);
+						cc = client_main->getClientCommandConnection(10000);
+						if (cc == NULL)
+						{
+							Server->wait(60000);
+						}
+						else
+						{
+							identity = client_main->getSessionIdentity().empty() ? server_identity : client_main->getSessionIdentity();
+							reconnected = true;
+							ServerStatus::setROnline(clientname, true);
+							Server->Log("Reconnected.", LL_DEBUG);
+							break;
+						}
+					}					
 				}
 
 				if(!reconnected)
