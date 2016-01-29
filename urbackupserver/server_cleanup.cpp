@@ -379,6 +379,8 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 		db->Write("PRAGMA shrink_memory");
 	}
 
+	FileIndex::flush();
+
 	return success;
 }
 
@@ -615,6 +617,8 @@ void ServerCleanupThread::do_remove_unknown(void)
 	}
 
 	files_db->Write("DROP TABLE backups");
+
+	FileIndex::flush();
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
