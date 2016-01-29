@@ -466,6 +466,59 @@ void ClientMain::operator ()(void)
 		{
 			timeoutRestores();
 
+			bool send_logdata = false;
+
+			for (size_t i = 0; i<backup_queue.size();)
+			{
+				if (backup_queue[i].ticket != ILLEGAL_THREADPOOL_TICKET)
+				{
+					if (Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0))
+					{
+						ServerStatus::subRunningJob(clientmainname);
+
+						if (!backup_queue[i].backup->getResult() &&
+							backup_queue[i].backup->shouldBackoff())
+						{
+							if (backup_queue[i].backup->isFileBackup())
+							{
+								last_file_backup_try = Server->getTimeSeconds();
+								++count_file_backup_try;
+								ServerLogger::Log(logid, "Exponential backoff: Waiting at least " + PrettyPrintTime(exponentialBackoffTimeFile() * 1000) + " before next file backup", LL_WARNING);
+							}
+							else
+							{
+								last_image_backup_try = Server->getTimeSeconds();
+								++count_image_backup_try;
+								ServerLogger::Log(logid, "Exponential backoff: Waiting at least " + PrettyPrintTime(exponentialBackoffTimeImage() * 1000) + " before next image backup", LL_WARNING);
+							}
+						}
+						else if (backup_queue[i].backup->getResult())
+						{
+							if (backup_queue[i].backup->isFileBackup())
+							{
+								count_file_backup_try = 0;
+							}
+							else
+							{
+								count_image_backup_try = 0;
+							}
+						}
+
+						delete backup_queue[i].backup;
+						send_logdata = true;
+						backup_queue.erase(backup_queue.begin() + i);
+						continue;
+					}
+				}
+
+				++i;
+			}
+
+			if (send_logdata)
+			{
+				sendClientLogdata();
+			}
+
 			{
 				bool received_client_settings=true;
 				bool settings_updated=false;
@@ -629,59 +682,6 @@ void ClientMain::operator ()(void)
 				backup.group=filebackup_group_offset + c_group_continuous;
 
 				backup_queue.push_back(backup);
-			}
-
-			bool send_logdata=false;
-
-			for(size_t i=0;i<backup_queue.size();)
-			{
-				if(backup_queue[i].ticket!=ILLEGAL_THREADPOOL_TICKET)
-				{
-					if(Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0))
-					{
-						ServerStatus::subRunningJob(clientmainname);
-
-						if(!backup_queue[i].backup->getResult() &&
-							backup_queue[i].backup->shouldBackoff())
-						{
-							if(backup_queue[i].backup->isFileBackup())
-							{
-								last_file_backup_try=Server->getTimeSeconds();
-								++count_file_backup_try;
-								ServerLogger::Log(logid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
-							}
-							else
-							{
-								last_image_backup_try=Server->getTimeSeconds();
-								++count_image_backup_try;
-								ServerLogger::Log(logid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()*1000) + " before next image backup", LL_WARNING);				
-							}
-						}
-						else if(backup_queue[i].backup->getResult())
-						{
-							if(backup_queue[i].backup->isFileBackup())
-							{
-								count_file_backup_try=0;
-							}
-							else
-							{
-								count_image_backup_try=0;
-							}
-						}
-
-						delete backup_queue[i].backup;						
-						send_logdata=true;
-						backup_queue.erase(backup_queue.begin()+i);
-						continue;
-					}
-				}
-
-				++i;
-			}
-
-			if(send_logdata)
-			{
-				sendClientLogdata();
 			}
 
 			bool can_start=false;
