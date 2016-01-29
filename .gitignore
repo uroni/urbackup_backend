@@ -247,3 +247,4 @@ urbackup/UrBackupUpdateLinux.sh
 urbackup/UrBackupUpdateLinux.sig2
 urbackup/UrBackupUpdateMac.sh
 urbackup/UrBackupUpdateMac.sig2
+urbackupserver/www/templates/node_modules/.bin/dustc

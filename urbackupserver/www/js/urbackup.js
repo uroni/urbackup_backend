@@ -1522,7 +1522,7 @@ function show_backups2(data)
 	{
 		if(data.err=="access_denied")
 		{
-			ndata=dustRender("backups_access_denied");
+			ndata=dustRender("backups_access_denied", data);
 		}
 		else
 		{

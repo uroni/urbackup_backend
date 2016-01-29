@@ -782,6 +782,7 @@ ACTION_IMPL(backups)
 		{
 			JSON::Object err_ret;
 			err_ret.set("err", "access_denied");
+			err_ret.set("errcode", "token_decryption_failed");
 			helper.Write(err_ret.stringify(false));
 			return;
 		}
@@ -809,6 +810,7 @@ ACTION_IMPL(backups)
 		{
 			JSON::Object err_ret;
 			err_ret.set("err", "access_denied");
+			err_ret.set("errcode", "token_not_in_session");
 			helper.Write(err_ret.stringify(false));
 			return;
 		}
@@ -956,6 +958,7 @@ ACTION_IMPL(backups)
 				{
 					JSON::Object err_ret;
 					err_ret.set("err", "access_denied");
+					err_ret.set("errcode", "backups_access_denied");
 					helper.Write(err_ret.stringify(false));
 					return;
 				}
@@ -1023,6 +1026,7 @@ ACTION_IMPL(backups)
 						{
 							JSON::Object err_ret;
 							err_ret.set("err", "access_denied");
+							err_ret.set("errcode", "path_dl_access_denied");
 							helper.Write(err_ret.stringify(false));
 							return;
 						}
@@ -1080,6 +1084,7 @@ ACTION_IMPL(backups)
 						{
 							JSON::Object err_ret;
 							err_ret.set("err", "access_denied");
+							err_ret.set("errcode", "path_browse_access_denied");
 							helper.Write(err_ret.stringify(false));
 							return;
 						}
