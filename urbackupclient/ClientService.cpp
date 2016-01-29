@@ -74,7 +74,7 @@ std::vector<SFinishedProcess> ClientConnector::finished_processes;
 int64 ClientConnector::curr_backup_running_id = 0;
 IMutex *ClientConnector::backup_mutex=NULL;
 IMutex *ClientConnector::process_mutex = NULL;
-int ClientConnector::backup_interval=0;
+int ClientConnector::backup_interval=6*60*60;
 int ClientConnector::backup_alert_delay=5*60;
 std::vector<SChannel> ClientConnector::channel_pipes;
 db_results ClientConnector::cached_status;
@@ -2936,6 +2936,24 @@ std::string ClientConnector::getHasNoRecentBackup()
 {
 	IScopedLock lock(backup_mutex);
 
+	static int64 last_monotonic_time = Server->getTimeMS();
+	static int64 last_nonmonotonic_time = Server->getTimeSeconds();
+
+	int64 cmontime = Server->getTimeMS();
+	int64 cnmontime = Server->getTimeSeconds();
+
+	int64 monotonic_passed_time = cmontime - last_monotonic_time;
+	int64 nonmonotonic_passed_time = cnmontime - last_nonmonotonic_time;
+
+	last_monotonic_time = cmontime;
+	last_nonmonotonic_time = cnmontime;
+
+	if (monotonic_passed_time+60000 < nonmonotonic_passed_time * 1000)
+	{
+		Server->Log("Detected forward time jump. Resetting system start time.");
+		service_starttime = cmontime;
+	}
+
 	int64 last_backup_time = getLastBackupTime();
 
 	if(last_backup_time==0)
@@ -2948,7 +2966,7 @@ std::string ClientConnector::getHasNoRecentBackup()
 		return "NOA";
 	}
 
-	if(Server->getTimeSeconds()-last_backup_time<=backup_interval)
+	if(Server->getTimeSeconds()-last_backup_time<= backup_interval)
 	{
 		return "NOA";
 	}

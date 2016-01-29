@@ -531,7 +531,7 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 		}
 
 		int new_interval=atoi(intervall.c_str());
-		if(backup_interval==0 || new_interval<backup_interval)
+		if(new_interval!=0 && new_interval!=backup_interval)
 		{			
 			update_db=true;
 			backup_interval = new_interval;
