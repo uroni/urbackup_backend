@@ -158,11 +158,37 @@ void InternetClient::operator()(void)
 	Server->waitForStartupComplete();
 
 	setStatusMsg("wait_local");
+	doUpdateSettings();
+
 	if(Server->getServerParameter("internet_only_mode")!="true")
 	{
-		const size_t wait_time_ms=180000;
-		Server->Log("Internet only mode not enabled. Waiting for local server for "+FormatTime(wait_time_ms/1000)+"...", LL_DEBUG);
-		Server->wait(wait_time_ms);
+		const int64 wait_time_ms=180000;
+
+		bool has_server = !server_settings.servers.empty();
+
+		if (has_server)
+		{
+			Server->Log("Internet only mode not enabled. Waiting for local server for " + FormatTime(wait_time_ms / 1000) + "...", LL_DEBUG);
+		}
+		int64 wait_starttime = Server->getTimeMS();
+		while (Server->getTimeMS() - wait_starttime < wait_time_ms)
+		{
+			Server->wait(1000);
+			{
+				IScopedLock lock(mutex);
+				if (update_settings)
+				{
+					doUpdateSettings();
+					update_settings = false;
+
+					if (!has_server
+						&& !server_settings.servers.empty())
+					{
+						break;
+					}
+				}
+			}	
+		}
 	}
 	else
 	{
