@@ -152,7 +152,7 @@ ACTION_IMPL(download_client)
 			std::string exe_extension = "exe";
 			std::string basename = "UrBackupUpdate";
 
-			if (os == "osx")
+			if (os == "osx" || os=="mac")
 			{
 				exe_extension = "sh";
 				basename = "UrBackupUpdateMac";
