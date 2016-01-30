@@ -132,8 +132,12 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	if(data.cur->has_error())
 	{
+		db->destroyAllQueries();
+
 		return false;
 	}
+
+	db->destroyAllQueries();
 
 	return true;
 }

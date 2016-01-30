@@ -737,6 +737,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
 	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
 
+	Server->clearDatabases(Server->getThreadID());
+
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
 
@@ -1991,5 +1993,5 @@ void upgrade(void)
 		db->freeMemory();
 	}
 	
-	db->destroyAllQueries();
+	Server->clearDatabases(Server->getThreadID());
 }

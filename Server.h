@@ -192,7 +192,7 @@ public:
 	virtual void clearFailBit(size_t failbit);
 	virtual size_t getFailBits(void);
 
-	void clearDatabases(THREAD_ID tid);
+	virtual void clearDatabases(THREAD_ID tid);
 
 	void setLogRotationFilesize(size_t filesize);
 

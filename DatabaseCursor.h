@@ -15,7 +15,9 @@ public:
 
 	bool next(db_single_result &res);
 
-	bool has_error(void);
+	bool has_error();
+
+	virtual void shutdown();
 
 private:
 	CQuery *query;
@@ -25,6 +27,7 @@ private:
 	int *timeoutms;
 	int lastErr;
 	bool _has_error;
+	bool is_shutdown;
 
 #ifdef DEBUG_QUERIES
 	ScopedAddActiveQuery *active_query;

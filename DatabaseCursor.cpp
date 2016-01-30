@@ -22,7 +22,8 @@
 #include "Server.h"
 
 DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
-	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms), lastErr(SQLITE_OK), _has_error(false)
+	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms),
+	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
 {
 	query->setupStepping(timeoutms);
 
@@ -33,11 +34,7 @@ DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 
 DatabaseCursor::~DatabaseCursor(void)
 {
-	query->shutdownStepping(lastErr, timeoutms, transaction_lock);
-
-#ifdef LOG_READ_QUERIES
-	delete active_query;
-#endif
+	shutdown();
 }
 
 bool DatabaseCursor::next(db_single_result &res)
@@ -67,4 +64,17 @@ bool DatabaseCursor::next(db_single_result &res)
 bool DatabaseCursor::has_error(void)
 {
 	return _has_error;
+}
+
+void DatabaseCursor::shutdown()
+{
+	if (!is_shutdown)
+	{
+		is_shutdown = true;
+		query->shutdownStepping(lastErr, timeoutms, transaction_lock);
+
+#ifdef LOG_READ_QUERIES
+		delete active_query;
+#endif
+	}
 }

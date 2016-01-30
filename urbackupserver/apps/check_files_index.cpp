@@ -220,6 +220,8 @@ int check_files_index()
 
 	Server->Log("Check complete");
 
+	db->destroyAllQueries();
+
 	if(has_error)
 	{
 		Server->Log("There were errors.", LL_ERROR);

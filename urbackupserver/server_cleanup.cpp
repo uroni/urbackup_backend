@@ -177,6 +177,8 @@ void ServerCleanupThread::operator()(void)
 
 	while(true)
 	{
+		Server->clearDatabases(Server->getThreadID());
+
 		{
 			IScopedLock lock(mutex);
 			if(!update_stats)
@@ -257,6 +259,8 @@ void ServerCleanupThread::operator()(void)
 				}
 
 				Server->destroy(settings);
+
+				Server->clearDatabases(Server->getThreadID());
 
 				last_cleanup=Server->getTimeSeconds();
 			}
@@ -590,7 +594,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
 
-	IQuery* q_backup_ids = db->Prepare("SELECT id FROM backups");
+	IQuery* q_backup_ids = db->Prepare("SELECT id FROM backups", false);
 	IDatabaseCursor* cur = q_backup_ids->Cursor();
 	db_single_result res;
 
@@ -608,6 +612,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 		q_insert->Reset();
 	}
 
+	db->destroyQuery(q_backup_ids);
 	files_db->destroyQuery(q_insert);
 
 	if (ok)
@@ -1772,10 +1777,10 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 	std::vector<int64> del_ids;
 	std::vector<std::pair<int64, std::string> > target_adjustments;
 
-	IQuery* q = db_links->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?");
-	q->Bind(clientid);
+	IQuery* q_directory_links = db_links->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?", false);
+	q_directory_links->Bind(clientid);
 
-	IDatabaseCursor* cursor = q->Cursor();
+	IDatabaseCursor* cursor = q_directory_links->Cursor();
 
 	db_single_result res;
 	while(cursor->next(res))
@@ -1829,7 +1834,7 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 			}
 		}
 	}
-	q->Reset();
+	db_links->destroyQuery(q_directory_links);
 
 	for(size_t i=0;i<del_ids.size();++i)
 	{
@@ -2025,15 +2030,13 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), reinterpret_cast<const char*>(res["shahash"].c_str()),
 			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true);
 	}
-
+	filesdao->getDatabase()->destroyQuery(q_iterate);
 
 	filesdao->deleteFiles(backupid);
 
 	filesdao->endTransaction();
 
 	cleanupdao->removeFileBackup(backupid);
-
-	filesdao->getDatabase()->destroyQuery(q_iterate);
 }
 
 bool ServerCleanupThread::backup_clientlists()
