@@ -1085,11 +1085,8 @@ void IndexThread::indexDirs(void)
 				VSSLog("Indexing of \""+backup_dirs[i].tname+"\" done. "+convert(index_c_fs)+" filesystem lookups "+convert(index_c_db)+" db lookups and "+convert(index_c_db_update)+" db updates" , LL_INFO);
 			}
 
-			if(i+1<backup_dirs.size() && backup_dirs[i+1].symlinked)
-			{
-				//Remove unreferenced symlinks now
-				removeUnconfirmedSymlinkDirs();
-			}
+			//Remove unreferenced symlinks now
+			removeUnconfirmedSymlinkDirs(i+1);
 		}
 		std::streampos pos=outfile.tellp();
 		outfile.seekg(0, std::ios::end);
@@ -4269,14 +4266,14 @@ bool IndexThread::backupNameInUse( const std::string& name )
 	return false;
 }
 
-void IndexThread::removeUnconfirmedSymlinkDirs()
+void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 {
-	for(size_t i=0;i<backup_dirs.size();)
+	for(size_t i=off;i<backup_dirs.size();)
 	{
-		if(backup_dirs[i].symlinked
-			&& index_group == backup_dirs[i].group)
+		if(index_group == backup_dirs[i].group)
 		{
-			if(!backup_dirs[i].symlinked_confirmed)
+			if(backup_dirs[i].symlinked
+				&& !backup_dirs[i].symlinked_confirmed)
 			{
 				VSSLog("Not backing up unconfirmed symbolic link \"" + backup_dirs[i].tname + "\" to \"" + backup_dirs[i].path, LL_INFO);
 #ifdef _WIN32
@@ -4301,6 +4298,10 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 				}
 
 				continue;
+			}
+			else
+			{
+				break;
 			}
 		}
 		++i;

@@ -209,7 +209,7 @@ private:
     bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target);
 	void addSymlinkBackupDir(const std::string& target);
 	bool backupNameInUse(const std::string& name);
-	void removeUnconfirmedSymlinkDirs();
+	void removeUnconfirmedSymlinkDirs(size_t off);
 
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 
