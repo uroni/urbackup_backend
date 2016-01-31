@@ -17,7 +17,7 @@
 						<blockquote>
 							<p>
 								<code>
-									curl "{mac_url}" | bash
+									TF=`mktemp` && curl "{mac_url}" > $TF && bash $TF; rm $TF
 								</code>
 							</p>
 						</blockquote>
@@ -30,7 +30,7 @@
 						<blockquote>
 							<p>
 								<code>
-									sudo wget -O - "{linux_url}" | sh
+									TF=`mktemp` && wget "{linux_url}" -O $TF && sh $TF; rm $TF
 								</code>
 							</p>
 						</blockquote>
