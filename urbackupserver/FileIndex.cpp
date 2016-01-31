@@ -19,13 +19,13 @@
 #include "FileIndex.h"
 #include "../Interface/Server.h"
 
-const size_t max_buffer_size=1000;
+const size_t max_buffer_size=100000;
 #ifdef _DEBUG
 const unsigned int max_wait_time=1000;
 #else
-const unsigned int max_wait_time=120000;
+const unsigned int max_wait_time=30000;
 #endif
-const size_t min_size_no_wait=100;
+const size_t min_size_no_wait=10000;
 
 std::map<FileIndex::SIndexKey, int64> FileIndex::cache_buffer_1;
 std::map<FileIndex::SIndexKey, int64> FileIndex::cache_buffer_2;
@@ -120,7 +120,7 @@ void FileIndex::put_delayed(const SIndexKey& key, int64 value)
 	while(active_cache_buffer->size()>=max_buffer_size)
 	{
 		lock.relock(NULL);
-		Server->wait(1000);
+		Server->wait(10);
 		lock.relock(mutex);
 	}
 
