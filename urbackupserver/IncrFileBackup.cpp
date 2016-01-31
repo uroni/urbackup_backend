@@ -827,7 +827,7 @@ bool IncrFileBackup::doFileBackup()
                             download_metadata=true;
                         }
 					}
-					else if(extra_params.find("special")!=extra_params.end() && (indirchange || file_changed) )
+					else if(extra_params.find("special")!=extra_params.end() && (indirchange || file_changed || !use_snapshots) )
 					{
 						std::string touch_path = backuppath+local_curr_os_path;
 						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
@@ -1117,7 +1117,8 @@ bool IncrFileBackup::doFileBackup()
 		{
 			for(size_t i=0;i<read;++i)
 			{
-				bool b=list_parser.nextEntry(buffer[i], cf, NULL);
+				str_map extra_params;
+				bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 				if(b)
 				{
 					if(cf.isdir)
@@ -1173,8 +1174,10 @@ bool IncrFileBackup::doFileBackup()
 
 						writeFileItem(clientlist, cf);
 					}
-					else if(server_download->isDownloadOk(line)
-						&& !download_nok_ids.hasId(line))
+					else if( (extra_params.find("special") != extra_params.end()
+								|| extra_params.find("sym_target") != extra_params.end() )
+						|| ( server_download->isDownloadOk(line)
+							 && !download_nok_ids.hasId(line) ) )
 					{
 						bool metadata_missing = (!script_dir
 							&& metadata_download_thread.get()!=NULL
