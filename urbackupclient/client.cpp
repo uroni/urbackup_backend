@@ -2193,12 +2193,14 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 		scriptname = "remove_device_snapshot";
 	}
 
-	if(!FileExists(SYSCONFDIR "/urbackup/"+scriptname))
+	std::string scriptlocation = get_snapshot_script_location(scriptname);
+
+	if (scriptlocation.empty())
 	{
 		return false;
 	}
 
-	int rc = os_popen(SYSCONFDIR "/urbackup/"+scriptname+" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
+	int rc = os_popen(scriptlocation +" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
 		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target)
 		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname)))+" 2>&1", loglines);
 	if(rc!=0)
@@ -2372,7 +2374,9 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		scriptname = "remove_device_snapshot";
 	}
 
-	if(!FileExists(SYSCONFDIR "/urbackup/"+scriptname))
+	std::string scriptlocation = get_snapshot_script_location(scriptname);
+
+	if (scriptlocation.empty())
 	{
 		return false;
 	}
@@ -2838,7 +2842,7 @@ void IndexThread::readPatterns()
 	std::string settings_fn = "urbackup/data/settings.cfg";
 	if(!index_clientsubname.empty())
 	{
-		settings_fn = "urbackup/data/settings_"+index_clientsubname+".cfg";
+		settings_fn = "urbackup/data/settings_"+conv_filename(index_clientsubname)+".cfg";
 	}
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
@@ -4581,7 +4585,9 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		scriptname="create_volume_snapshot";
 	}
 
-	if(!FileExists(SYSCONFDIR "/urbackup/"+scriptname))
+	std::string scriptlocation = get_snapshot_script_location(scriptname);
+
+	if (scriptlocation.empty())
 	{
 		return false;
 	}
@@ -4589,7 +4595,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	GUID ssetid = randomGuid();
 
 	std::string loglines;
-	int rc = os_popen(SYSCONFDIR "/urbackup/"+scriptname+" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
+	int rc = os_popen(scriptlocation +" "+guidToString(ssetid)+" "+escapeDirParam(dir->ref->target)+" "+
 		escapeDirParam(dir->dir)+" "+escapeDirParam(dir->orig_target)
 		+ (index_clientsubname.empty()?"":(" " + escapeDirParam(index_clientsubname)))+" 2>&1", loglines);
 
@@ -4665,6 +4671,32 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	}
 	return true;
 }
+
+std::string IndexThread::get_snapshot_script_location(const std::string & name)
+{
+	std::string conffile = SYSCONFDIR "/urbackup/snapshot.cfg";
+	if (!FileExists(conffile))
+	{
+		return std::string();
+	}
+	std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(conffile));
+
+	std::string ret;
+	if (!index_clientsubname.empty()
+		&& settings->getValue(conv_filename(index_clientsubname) + "_" + name, &ret))
+	{
+		return ret;
+	}
+
+	if (settings->getValue(name, &ret))
+	{
+		return ret;
+	}
+
+	return std::string();
+}
+
+
 #endif //!_WIN32
 
 std::string IndexThread::escapeDirParam( const std::string& dir )

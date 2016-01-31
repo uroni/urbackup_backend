@@ -239,6 +239,7 @@ private:
 	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
+	std::string get_snapshot_script_location(const std::string& name);
 #endif
 
 	bool deleteShadowcopy(SCDirs *dir);

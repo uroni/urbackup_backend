@@ -115,6 +115,12 @@ done
 
 install -c "backup_scripts/list" "$PREFIX/share/urbackup/scripts"
 install -c "backup_scripts/mariadb" "$PREFIX/share/urbackup/scripts"
+install -c "btrfs_create_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "btrfs_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "lvm_create_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "lvm_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "dattobd_create_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "dattobd_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadb.conf" || install -c "backup_scripts/mariadb.conf" "$PREFIX/etc/urbackup"
 
@@ -216,7 +222,7 @@ fi
 
 if [ $SILENT = no ]
 then
-	if [ -e $PREFIX/etc/urbackup/create_filesystem_snapshot ] || [ -e $PREFIX/etc/urbackup/no_filesystem_snapshot ]
+	if [ -e $PREFIX/etc/urbackup/snapshot.cfg ] || [ -e $PREFIX/etc/urbackup/no_filesystem_snapshot ]
 	then
 		exit 0
 	fi
@@ -328,18 +334,18 @@ then
 
     mkdir -p $PREFIX/etc/urbackup
 
+	CREATE_SNAPSHOT_SCRIPT=""
+	REMOVE_SNAPSHOT_SCRIPT=""
     if [ $snapn = 3 ]
     then
-        cp btrfs_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
-        cp btrfs_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
-        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/btrfs_create_filesystem_snapshot"
+		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/btrfs_remove_filesystem_snapshot"
     fi
 
     if [ $snapn = 2 ]
     then
-        cp lvm_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
-        cp lvm_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
-        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/lvm_create_filesystem_snapshot"
+		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/lvm_remove_filesystem_snapshot"
     fi
 
     if [ $snapn = 1 ]
@@ -358,13 +364,22 @@ then
 			apt-get install dattobd-dkms dattobd-utils
 		fi
 
-        cp dattobd_create_filesystem_snapshot $PREFIX/etc/urbackup/create_filesystem_snapshot
-        cp dattobd_remove_filesystem_snapshot $PREFIX/etc/urbackup/remove_filesystem_snapshot
-        echo "Installed snapshot scripts into $PREFIX/etc/urbackup"
+		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_create_filesystem_snapshot"
+		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_remove_filesystem_snapshot"
     fi
 	
 	if [ $snapn = 4 ]
 	then
 		touch $PREFIX/etc/urbackup/no_filesystem_snapshot
+		echo "Configured no snapshot mechanism"
+	fi
+	
+	if [ "x$CREATE_SNAPSHOT_SCRIPT" != "x" ]
+	then
+		echo "#This is a key=value config file for determining the scripts/programs to create snapshots" > $PREFIX/etc/urbackup/snapshot.cfg
+		echo "" >> $PREFIX/etc/urbackup/snapshot.cfg
+		echo "create_filesystem_snapshot=$CREATE_SNAPSHOT_SCRIPT" >> $PREFIX/etc/urbackup/snapshot.cfg
+		echo "remove_filesystem_snapshot=$REMOVE_SNAPSHOT_SCRIPT" >> $PREFIX/etc/urbackup/snapshot.cfg
+		echo "Configured snapshot mechanism via $PREFIX/etc/urbackup/snapshot.cfg"
 	fi
 fi
