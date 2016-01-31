@@ -140,7 +140,8 @@ ACTION_IMPL(download_client)
 	std::string authkey = GET["authkey"];
 
 	std::string errstr;
-	if( session!=NULL && (all_client_rights || !clientids.empty() || !authkey.empty()) )
+	if( !authkey.empty()
+		|| (session!=NULL && (all_client_rights || !clientids.empty()) ) )
 	{
 		int clientid=watoi(GET["clientid"]);
 
