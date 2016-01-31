@@ -849,6 +849,8 @@ void ClientMain::operator ()(void)
 		delete backup_queue[i].backup;
 	}
 
+	Server->wait(2000);
+
 
 	ServerStatus::setCommPipe(clientname, NULL);
 

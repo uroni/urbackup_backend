@@ -30,6 +30,29 @@
 
 extern IUrlFactory *url_fak;
 
+namespace
+{
+	class DelayedWakeup : public IThread
+	{
+	public:
+		DelayedWakeup(ClientMain* client_main)
+			: client_main(client_main)
+		{
+
+		}
+
+		void operator()()
+		{
+			Server->wait(1000);
+			client_main->getInternalCommandPipe()->Write("WAKEUP");
+			delete this;
+		}
+
+	private:
+		ClientMain* client_main;
+	};
+}
+
 Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
 	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
@@ -126,7 +149,7 @@ void Backup::operator()()
 	server_settings.reset();
 	db=NULL;
 
-	client_main->getInternalCommandPipe()->Write("WAKEUP");
+	Server->getThreadPool()->execute(new DelayedWakeup(client_main));
 }
 
 bool Backup::createDirectoryForClient(void)
