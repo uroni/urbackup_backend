@@ -234,7 +234,7 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse)
+std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashProgressCallback* progress_callback)
 {
 	f->Seek(0);
 	std::vector<char> buf;
@@ -304,6 +304,12 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 			}
 			fpos += hash_bsize;
 			rc = hash_bsize;
+
+			if (progress_callback != NULL)
+			{
+				progress_callback->hash_progress(fpos);
+			}
+
 			continue;
 		}
 
@@ -321,9 +327,20 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 		{
 			sha_def_update(&local_ctx, reinterpret_cast<unsigned char*>(buf.data()), rc);
 			fpos += rc;
+
+			if (progress_callback != NULL)
+			{
+				progress_callback->hash_progress(fpos);
+			}
+
 		}
 	}
 	while(rc>0);
+
+	if (progress_callback != NULL)
+	{
+		progress_callback->hash_progress(fpos);
+	}
 
 	if (skip_count > 0)
 	{

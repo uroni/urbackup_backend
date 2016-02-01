@@ -96,6 +96,31 @@ void draw_progress(std::string curr_fn, _i64 curr_verified, _i64 verify_size)
 	}
 }
 
+class VerifyProgressCallback : public BackupServerPrepareHash::IHashProgressCallback
+{
+public:
+	VerifyProgressCallback(std::string curr_fn, _i64& curr_verified, _i64 verify_size)
+		: curr_fn(curr_fn), curr_verified(curr_verified), verify_size(verify_size),
+		curr_last(0)
+	{
+
+	}
+
+	virtual void hash_progress(int64 curr)
+	{
+		int64 add = curr - curr_last;
+		curr_last = curr;
+		curr_verified += add;
+		draw_progress(curr_fn, curr_verified, verify_size);
+	}
+
+private:
+	std::string curr_fn;
+	_i64& curr_verified;
+	_i64 verify_size;
+	_i64 curr_last;	
+};
+
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
 {
 	std::string fp=res["fullpath"];
@@ -115,8 +140,9 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 
 	std::string f_name=ExtractFileName(fp);
 	
+	VerifyProgressCallback progress_callback(f_name, curr_verified, verify_size);
 	FsExtentIterator extent_iterator(f, 32768);
-	std::string calc_dig = BackupServerPrepareHash::hash_sha(f, &extent_iterator, true);
+	std::string calc_dig = BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, &progress_callback);
 	curr_verified += f->Size();
 
 	if(calc_dig.empty())

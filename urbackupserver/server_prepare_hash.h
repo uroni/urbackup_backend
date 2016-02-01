@@ -28,7 +28,13 @@ public:
 
 	bool hasError(void);
 
-	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse);
+	class IHashProgressCallback
+	{
+	public:
+		virtual void hash_progress(int64 curr) = 0;
+	};
+
+	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashProgressCallback* progress_callback=NULL);
 
 private:
 	
