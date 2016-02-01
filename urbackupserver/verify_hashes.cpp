@@ -278,7 +278,7 @@ bool verify_hashes(std::string arg)
 
 	
 	std::cout << "Calculating filesize..." << std::endl;
-	IQuery *q_num_files=db->Prepare("SELECT SUM(filesize) AS c FROM files"+filter);
+	IQuery *q_num_files = files_db->Prepare("SELECT SUM(filesize) AS c FROM files"+filter);
 	db_results res=q_num_files->Read();
 	if(res.empty())
 	{
@@ -293,7 +293,7 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter, false);
+	IQuery *q_get_files = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter, false);
 
 	bool is_okay=true;
 
@@ -331,9 +331,9 @@ bool verify_hashes(std::string arg)
 		Server->deleteFile(v_output_fn);
 	}
 
-	db->destroyQuery(q_get_files);
+	files_db->destroyQuery(q_get_files);
 
-	IQuery* q_get_file = db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE id=?");
+	IQuery* q_get_file = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE id=?");
 
 	std::cout << missing_files.size() << " could not be opened during verification. Checking now if they have been deleted from the database..." << std::endl;
 
@@ -373,7 +373,7 @@ bool verify_hashes(std::string arg)
 		}
 		else
 		{
-			ServerFilesDao backupdao(db);
+			ServerFilesDao backupdao(files_db);
 			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
 			if(fileindex.get()==NULL)
