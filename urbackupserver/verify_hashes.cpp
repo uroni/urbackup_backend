@@ -99,7 +99,7 @@ void draw_progress(std::string curr_fn, _i64 curr_verified, _i64 verify_size)
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
 {
 	std::string fp=res["fullpath"];
-	IFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
+	IFsFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
 	if( f==NULL )
 	{
 		Server->Log("Error opening file \""+fp+"\"", LL_ERROR);
@@ -114,39 +114,18 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	}
 
 	std::string f_name=ExtractFileName(fp);
-
-	sha_def_ctx shactx;
-	sha_def_init(&shactx);
-
-	_u32 r;
-	char buf[c_read_blocksize];
-	int64 curr_verified_start=curr_verified;
-	do
-	{
-		r=f->Read(buf, c_read_blocksize);
-		if(r>0)
-		{
-			sha_def_update(&shactx, (unsigned char*) buf, r);
-		}
-		curr_verified+=r;
-
-		draw_progress(f_name, curr_verified, verify_size);
-	}
-	while(r>0);
 	
-	Server->destroy(f);
+	FsExtentIterator extent_iterator(f, 32768);
+	std::string calc_dig = BackupServerPrepareHash::hash_sha(f, &extent_iterator, true);
+	curr_verified += f->Size();
 
-	if(curr_verified-curr_verified_start!=watoi64(res["filesize"]))
+	if(calc_dig.empty())
 	{
 		Server->Log("Could not read all bytes of file \""+fp+"\"", LL_ERROR);
 		return false;
 	}
 
-	const unsigned char * db_sha=(unsigned char*)res["shahash"].c_str();
-	unsigned char calc_dig[SHA_DEF_DIGEST_SIZE];
-	sha_def_final(&shactx, calc_dig);
-
-	if(memcmp(db_sha, calc_dig, SHA_DEF_DIGEST_SIZE)!=0)
+	if(res["shahash"]!=calc_dig)
 	{
 		Server->Log("Hash of \""+fp+"\" is wrong", LL_ERROR);
 		return false;
@@ -191,6 +170,8 @@ bool verify_hashes(std::string arg)
 	int backupid=0;
 	std::string filter;
 
+	IDatabase *files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
 	if(!clientname.empty())
 	{
 		if(clientname!="*")
@@ -219,6 +200,7 @@ bool verify_hashes(std::string arg)
 		if(!backupname.empty())
 		{
 			std::string backupid_filter;
+			std::string temp_create_query;
 			if(backupname=="last")
 			{
 				if(clientname!="*")
@@ -239,13 +221,15 @@ bool verify_hashes(std::string arg)
 				}
 				else
 				{
-					backupid_filter=" IN (SELECT id FROM backups b WHERE NOT EXISTS (SELECT id FROM backups c WHERE complete=1 AND c.backuptime > b.backuptime AND b.clientid=c.clientid))";
+					backupid_filter = " IN (SELECT id FROM backups)";
+					temp_create_query = "SELECT id FROM backups b WHERE NOT EXISTS (SELECT id FROM backups c WHERE complete=1 AND c.backuptime > b.backuptime AND b.clientid=c.clientid)";
 				}
 				
 			}
 			else if(backupname=="*")
 			{
-				backupid_filter=" IN (SELECT id FROM backups WHERE clientid="+convert(cid)+")";
+				backupid_filter=" IN (SELECT id FROM backups)";
+				temp_create_query = "SELECT id FROM backups WHERE clientid=" + convert(cid);				
 			}
 			else
 			{		
@@ -269,9 +253,30 @@ bool verify_hashes(std::string arg)
 			{
 				filter+=" AND backupid "+backupid_filter;
 			}
+
+			if (!temp_create_query.empty())
+			{
+				files_db->Write("CREATE TEMPORARY TABLE backups (id INTEGER PRIMARY KEY)");
+
+				IQuery* q_insert = files_db->Prepare("INSERT INTO backups (id) VALUES (?)", false);
+				IQuery* q_backup_ids = db->Prepare(temp_create_query, false);
+				IDatabaseCursor* cur = q_backup_ids->Cursor();
+
+				db_single_result res;
+				while (cur->next(res))
+				{
+					q_insert->Bind(res["id"]);
+					q_insert->Write();
+					q_insert->Reset();
+				}
+
+				db->destroyQuery(q_backup_ids);
+				files_db->destroyQuery(q_insert);
+			}
 		}
 	}
 
+	
 	std::cout << "Calculating filesize..." << std::endl;
 	IQuery *q_num_files=db->Prepare("SELECT SUM(filesize) AS c FROM files"+filter);
 	db_results res=q_num_files->Read();
