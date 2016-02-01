@@ -805,12 +805,26 @@ DLLEXPORT void UnloadActions(void)
 		ClientMain::destroy_mutex();
 	}
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("PRAGMA wal_checkpoint");
-	if(!shutdown_ok)
-		db->BeginWriteTransaction();
+	std::vector<DATABASE_ID> db_ids;
+	db_ids.push_back(URBACKUPDB_SERVER);
+	db_ids.push_back(URBACKUPDB_SERVER_FILES);
+	db_ids.push_back(URBACKUPDB_SERVER_LINKS);
+	db_ids.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
+	if (!shutdown_ok)
+	{
+		for (size_t i = 0; i < db_ids.size(); ++i)
+		{
+			IDatabase *db = Server->getDatabase(Server->getThreadID(), db_ids[i]);
+			db->BeginWriteTransaction();
+		}
+	}
 	else
+	{
 		Server->destroyAllDatabases();
+	}
+	FileIndex::stop_accept();
+	FileIndex::flush();
 }
 
 #ifdef STATIC_PLUGIN

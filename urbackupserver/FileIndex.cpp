@@ -38,6 +38,7 @@ IMutex *FileIndex::mutex=NULL;
 ICondition *FileIndex::cond=NULL;
 bool FileIndex::do_shutdown=false;
 bool FileIndex::do_flush=false;
+bool FileIndex::do_accept = true;
 
 
 void FileIndex::operator()(void)
@@ -117,7 +118,7 @@ void FileIndex::put_delayed(const SIndexKey& key, int64 value)
 {
 	IScopedLock lock(mutex);
 
-	while(active_cache_buffer->size()>=max_buffer_size)
+	while(active_cache_buffer->size()>=max_buffer_size || !do_accept)
 	{
 		lock.relock(NULL);
 		Server->wait(10);
@@ -312,4 +313,10 @@ void FileIndex::flush()
 		Server->wait(100);
 		lock.relock(mutex);
 	}
+}
+
+void FileIndex::stop_accept()
+{
+	IScopedLock lock(mutex);
+	do_accept = false;
 }

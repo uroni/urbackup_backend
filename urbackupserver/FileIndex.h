@@ -138,6 +138,8 @@ public:
 
 	static void flush();
 
+	static void stop_accept();
+
 private:
 
 	bool get_from_cache( const FileIndex::SIndexKey &key, const std::map<SIndexKey, int64>& cache, int64& res );
@@ -158,4 +160,5 @@ private:
 	static bool do_shutdown;
 
 	static bool do_flush;
+	static bool do_accept;
 };
