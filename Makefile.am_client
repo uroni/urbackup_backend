@@ -28,6 +28,10 @@ urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVAR
 urbackupclientbackend_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY 
 urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS) $(FORTIFY_ldflags)
 
+if CLIENT_UPDATE
+urbackupclientbackend_CXXFLAGS += -DURB_WITH_CLIENTUPDATE
+endif
+
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp clientctl/jsoncpp.cpp
 urbackupclientctl_LDADD = 
 urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'

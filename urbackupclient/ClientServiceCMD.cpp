@@ -2002,6 +2002,7 @@ void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 	}
 #endif
 
+#if defined(_WIN32) || defined(URB_WITH_CLIENTUPDATE)
 	std::string version_1=getFile(VERSION_FILE_PREFIX "version.txt");
 	std::string version_2=getFile(VERSION_FILE_PREFIX "curr_version.txt");
 	if(version_1.empty() ) version_1="0";
@@ -2015,6 +2016,11 @@ void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 	{
 		tcpstack.Send(pipe, "noop");
 	}
+#else
+	tcpstack.Send(pipe, "noop");
+	return;
+#endif
+
 #undef VERSION_FILE_PREFIX
 }
 
