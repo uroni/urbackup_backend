@@ -15,7 +15,7 @@ autoreconf --install
 rm -R install-data || true
 mkdir -p install-data
 
-for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
+for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf
 do
 	echo "Compiling for architecture $arch..."
     ./configure --enable-headless CFLAGS="-target $arch" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" --with-crypto-prefix=/usr/local/ellcc/libecc
