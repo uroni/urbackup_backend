@@ -437,9 +437,11 @@ void ClientMain::operator ()(void)
 	ServerLogger::Log(logid, "Sending backup incr intervall...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
 
+	int64 last_client_update_check = 0;
 	if(server_settings->getSettings()->autoupdate_clients)
 	{
 		checkClientVersion();
+		last_client_update_check = Server->getTimeMS();
 	}
 
 	sendClientLogdata();
@@ -564,6 +566,13 @@ void ClientMain::operator ()(void)
 			{
 				updateCapabilities();
 				client_updated_time=0;
+			}
+
+			if (Server->getTimeMS()- last_client_update_check > 24*60*60*1000
+				&& server_settings->getSettings()->autoupdate_clients)
+			{
+				checkClientVersion();
+				last_client_update_check = Server->getTimeMS();
 			}
 
 			curr_image_format = server_settings->getImageFileFormat();
@@ -1769,6 +1778,10 @@ void ClientMain::checkClientVersion(void)
 				signature_file = "urbackup/UrBackupUpdateLinux.sig2";
 				installer_file = "urbackup/UrBackupUpdateLinux.sh";
 			}
+			else if (update_version < 2)
+			{
+				signature_file = "urbackup/UrBackupUpdate.sig";
+			}
 
 
 			IFile *sigfile=Server->openFile(signature_file, MODE_READ);
@@ -1793,15 +1806,8 @@ void ClientMain::checkClientVersion(void)
 				return;
 			}
 
-			std::string msg;
-			if(update_version>0)
-			{
-				msg="1CLIENTUPDATE size="+convert(datasize)+"&silent_update="+convert(server_settings->getSettings()->silent_update);
-			}
-			else
-			{
-				msg="CLIENTUPDATE "+convert(datasize);
-			}
+			std::string msg="1CLIENTUPDATE size="+convert(datasize)+"&silent_update="+convert(server_settings->getSettings()->silent_update);
+
 			std::string identity= session_identity.empty()?server_identity:session_identity;
 			tcpstack.Send(cc, identity+msg);
 
@@ -1904,6 +1910,8 @@ void ClientMain::checkClientVersion(void)
 			{
 				ServerLogger::Log(logid, "Updated client successfully", LL_INFO);
 			}
+
+			updateCapabilities();
 		}
 	}
 }

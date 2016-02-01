@@ -864,7 +864,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_VERSION_UPDATE(cmd); continue;
 			}
-			else if( next(cmd, 0, "CLIENTUPDATE ") || next(cmd, 0, "1CLIENTUPDATE ") )
+			else if( next(cmd, 0, "1CLIENTUPDATE ") )
 			{
 				CMD_CLIENT_UPDATE(cmd); continue;
 			}

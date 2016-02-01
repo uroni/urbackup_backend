@@ -87,6 +87,26 @@ void ServerUpdate::update_client()
 				Server->Log("Error while downloading update signature from " + urbackup_update_url + basename + ".sig2: " + errmsg, LL_ERROR);
 			}
 
+			if (update_files[i].first == "exe")
+			{
+				Server->Log("Downloading old signature...", LL_INFO);
+
+				IFile* old_sig_file = Server->openFile("urbackup/" + basename + ".sig", MODE_WRITE);
+				if (old_sig_file == NULL)
+				{
+					Server->Log("Error opening signature output file urbackup/" + basename + ".sig", LL_ERROR);
+					return;
+				}
+				ObjectScope old_sig_file_scope(old_sig_file);
+
+				bool b = url_fak->downloadFile(urbackup_update_url + basename + ".sig", old_sig_file, http_proxy, &errmsg);
+
+				if (!b)
+				{
+					Server->Log("Error while downloading old update signature from " + urbackup_update_url + basename + ".sig: " + errmsg, LL_ERROR);
+				}
+			}
+
 			Server->Log("Getting update file URL...", LL_INFO);
 			std::string update_url = url_fak->downloadString(urbackup_update_url + basename + ".url", http_proxy, &errmsg);
 
