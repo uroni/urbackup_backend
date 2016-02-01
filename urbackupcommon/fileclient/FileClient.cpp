@@ -1341,6 +1341,12 @@ void FileClient::fillQueue()
 
 	if(queued.size()>queuedFilesLow)
 	{
+		if (needs_flush)
+		{
+			needs_flush = false;
+			Flush();
+		}
+
 		return;
 	}
 
@@ -1354,6 +1360,12 @@ void FileClient::fillQueue()
 	{
 		if(!tcpsock->isWritable())
 		{
+			if (needs_flush)
+			{
+				needs_flush = false;
+				Flush();
+			}
+
 			return;
 		}
 
@@ -1417,6 +1429,13 @@ void FileClient::fillQueue()
 		{
 			Server->Log("Queueing file failed", LL_DEBUG);
 			queue_callback->unqueueFileFull(queue_fn, finish_script);
+
+			if (needs_flush)
+			{
+				needs_flush = false;
+				Flush();
+			}
+
 			return;
 		}
 
