@@ -1444,7 +1444,12 @@ void FileClient::fillQueue()
 		needs_flush=true;
 	}
 
-	if(needs_send_flush)
+	if (needs_flush)
+	{
+		needs_flush = false;
+		Flush();
+	}
+	else if(needs_send_flush)
 	{
 		if(!tcpsock->Flush(c_default_timeout))
 		{
