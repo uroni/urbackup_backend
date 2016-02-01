@@ -33,6 +33,7 @@ mkdir -p install-data/backup_scripts
 cp urbackupclient/backup_scripts/* install-data/backup_scripts/
 cp client/version.txt install-data/
 cp client/data/urbackup_ecdsa409k1.pub install-data/
+cp client/data/updates_h.dat install-data/
 cp urbackupclientbackend-debian.service install-data/
 cp urbackupclientbackend-redhat.service install-data/
 cp init.d_client install-data/

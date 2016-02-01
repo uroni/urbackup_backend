@@ -591,12 +591,13 @@ std::string ClientConnector::getSha512Hash(IFile *fn)
 
 bool ClientConnector::checkHash(std::string shah)
 {
-	std::string prev_h=getFile("updates_h.dat");
-	int lc=linecount(prev_h);
-	for(int i=0;i<lc;++i)
+	std::string prev_h=getFile(UPDATE_FILE_PREFIX "updates_h.dat");
+	std::vector<std::string> lines;
+	TokenizeMail(prev_h, lines, "\n");
+	for(size_t i=0;i<lines.size();++i)
 	{
-		std::string l=strlower(trim(getline(i, prev_h)));
-		if(l==shah)
+		std::string l=strlower(trim(lines[i]));
+		if(!l.empty() && next(shah, 0, l))
 		{
 			return false;
 		}

@@ -128,6 +128,8 @@ chmod 700 "$PREFIX/share/urbackup/scripts"*
 chmod 700 "$PREFIX/etc/urbackup/"*
 
 /usr/bin/install -c -m 644 "version.txt" "$PREFIX/var/urbackup"
+/usr/bin/install -c -m 644 "urbackup_ecdsa409k1.pub" "$PREFIX/var/urbackup"
+/usr/bin/install -c -m 644 "updates_h.dat" "$PREFIX/var/urbackup"
 
 cat << c71b9d17069d4d03bd7f6b75f36ba5ff > "$PREFIX/var/urbackup/initial_settings.cfg"
 #Initial Settings. Changes will not be respected.
