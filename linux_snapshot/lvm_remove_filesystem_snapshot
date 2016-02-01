@@ -18,7 +18,7 @@ then
 	exit 0
 fi
 
-VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$ | head -n 1 | tr -s " " | cut -d" " -f1"`
+VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
 if [ "x$VOLNAME" = x ]
 then
     echo "Could not find LVM volume for mountpoint ${SNAP_MOUNTPOINT}"

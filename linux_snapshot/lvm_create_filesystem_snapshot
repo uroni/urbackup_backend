@@ -12,8 +12,8 @@ SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
 
-VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$ | head -n 1 | tr -s " " | cut -d" " -f1"`
-TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+TYPE=`df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
 
 if [ "x$VOLNAME" = x ]
 then
@@ -21,14 +21,14 @@ then
     exit 1
 fi
 
-VGNAME=`lvdisplay /dev/mapper/centos-root | grep "VG Name" | tr -s " " | cut -d" " -f4`
+VGNAME=`lvdisplay "$VOLNAME" | grep "VG Name" | tr -s " " | cut -d" " -f4`
 if [ "x$VGNAME" = x ]
 then
 	echo "Could not find LVM volume group of volume $VOLNAME"
     exit 1
 fi
 
-if [ "x$SNAP_ID = "" ]
+if [ "x$SNAP_ID" = x ]
 then
     echo "No snapshot id specified"
     exit 1
@@ -36,7 +36,7 @@ fi
 
 export LVM_SUPPRESS_FD_WARNINGS=1
 
-lvcreate $SNAP_SIZE -s -n $SNAP_ID $VOLNAME
+lvcreate $SNAP_SIZE -s -n urbackup_snap_$SNAP_ID "$VOLNAME"
 
 mkdir -p /mnt/urbackup_snaps/$SNAP_ID
 
@@ -47,11 +47,11 @@ then
     MOUNTOPTS="ro,nouuid"
 fi
 
-if ! mount -o $MOUNTOPTS /dev/$VGNAME/$SNAP_ID /mnt/urbackup_snaps/$SNAP_ID
+if ! mount -o $MOUNTOPTS /dev/$VGNAME/urbackup_snap_$SNAP_ID /mnt/urbackup_snaps/$SNAP_ID
 then
 	echo "Mounting filesystem failed"
 	rmdir /mnt/urbackup_snaps/$SNAP_ID
-	lvremove -f /dev/$VGNAME/$SNAP_ID
+	lvremove -f /dev/$VGNAME/urbackup_snap_$SNAP_ID
 	exit 1
 fi
 
