@@ -170,7 +170,7 @@ bool verify_hashes(std::string arg)
 	int backupid=0;
 	std::string filter;
 
-	IDatabase *files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	IDatabase *files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
 	if(!clientname.empty())
 	{
