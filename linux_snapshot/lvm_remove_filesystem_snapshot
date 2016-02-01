@@ -37,4 +37,6 @@ rmdir "${SNAP_MOUNTPOINT}"
 
 echo "Destroying LVM snapshot $VOLNAME..."
 
+export LVM_SUPPRESS_FD_WARNINGS=1
+
 lvremove -f "$VOLNAME"

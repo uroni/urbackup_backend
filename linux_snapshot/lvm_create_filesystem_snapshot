@@ -21,6 +21,8 @@ then
     exit 1
 fi
 
+export LVM_SUPPRESS_FD_WARNINGS=1
+
 VGNAME=`lvdisplay "$VOLNAME" | grep "VG Name" | tr -s " " | cut -d" " -f4`
 if [ "x$VGNAME" = x ]
 then
@@ -33,8 +35,6 @@ then
     echo "No snapshot id specified"
     exit 1
 fi
-
-export LVM_SUPPRESS_FD_WARNINGS=1
 
 lvcreate $SNAP_SIZE -s -n urbackup_snap_$SNAP_ID "$VOLNAME"
 
