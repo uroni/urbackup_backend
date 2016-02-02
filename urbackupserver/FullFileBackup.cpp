@@ -452,6 +452,11 @@ bool FullFileBackup::doFileBackup()
                         }
                         else
                         {
+							if (line>max_ok_id)
+							{
+								max_ok_id = line;
+							}
+
                             file_ok=true;
                         }
                     }
@@ -467,6 +472,11 @@ bool FullFileBackup::doFileBackup()
 						}
 						else
 						{
+							if (line>max_ok_id)
+							{
+								max_ok_id = line;
+							}
+
 							file_ok=true;
 						}
 					}
