@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include <deque>
 
 #include "../Interface/Mutex.h"
 #include "../Interface/Thread.h"
@@ -67,6 +68,7 @@ struct SProcess
 	std::string details;
 	int detail_pc;
 	double speed_bpms;
+	std::deque<double> past_speed_bpms;
 	logid_t logid;
 	bool can_stop;
 	int64 total_bytes;

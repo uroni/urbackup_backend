@@ -327,6 +327,11 @@ void ServerStatus::setProcessSpeed(const std::string &clientname, size_t id, dou
 
 	if (proc != NULL)
 	{
+		proc->past_speed_bpms.push_back(proc->speed_bpms);
+		while (proc->past_speed_bpms.size() >= 20)
+		{
+			proc->past_speed_bpms.pop_front();
+		}
 		proc->speed_bpms = speed_bpms;
 	}
 }

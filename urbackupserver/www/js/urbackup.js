@@ -717,6 +717,19 @@ function show_progress2(data)
 		g.data_f=tdata;
 	}
 	
+	if(data.progress.length>0)
+	{
+		for(var i=0;i<data.progress.length;++i)
+		{
+			if(data.progress[i].past_speed_bpms.length>0)
+			{
+				data.progress[i].past_speed_bpms.push(data.progress[i].speed_bpms);
+				$("#speed_sparkline_"+data.progress[i].id).sparkline(data.progress[i].past_speed_bpms,
+					{disableTooltips: true});
+			}
+		}
+	}
+	
 	I('nav_pos').innerHTML="";
 	
 	clearTimeout(g.refresh_timeout);

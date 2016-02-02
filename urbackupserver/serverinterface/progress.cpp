@@ -96,6 +96,15 @@ ACTION_IMPL(progress)
 					obj.set("eta_ms", etams);
 					obj.set("speed_bpms", clients[i].processes[j].speed_bpms);
 
+					JSON::Array past_speed_bpms;
+					for (std::deque<double>::iterator it = clients[i].processes[j].past_speed_bpms.begin();
+					it != clients[i].processes[j].past_speed_bpms.end(); ++it)
+					{
+						past_speed_bpms.add(*it);
+					}
+
+					obj.set("past_speed_bpms", past_speed_bpms);
+
 					if (clients[i].processes[j].can_stop 
 						&& (all_stop_rights
 							|| std::find(stop_clientids.begin(), stop_clientids.end(), curr_clientid) != stop_clientids.end() ) )
