@@ -7,6 +7,8 @@ httpserver.dll
 --plugin
 cryptoplugin.dll
 --plugin
+fileservplugin.dll
+--plugin
 urbackupserver.dll
 --logfile
 urbackup.log
