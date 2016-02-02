@@ -67,6 +67,7 @@ Section "install"
 		ExecWait '"$TEMP\vc_redist_2015.x64.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
+		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
@@ -77,6 +78,7 @@ Section "install"
 				Quit
 			${EndIf}
 			${EndIf}
+		${EndIf}
 		${EndIf}
 		${EndIf}
 		${EndIf}
@@ -98,6 +100,7 @@ Section "install"
 		ExecWait '"$TEMP\vc_redist_2015.x86.exe" /q /norestart' $0
 		${If} $0 != '0'
 		${If} $0 != '3010'
+		${If} $0 != '1638'
 		${If} $0 != '8192'
 		${If} $0 != '1641'
 		${If} $0 != '1046'
@@ -108,6 +111,7 @@ Section "install"
 				Quit
 			${EndIf}
 			${EndIf}
+		${EndIf}
 		${EndIf}
 		${EndIf}
 		${EndIf}
