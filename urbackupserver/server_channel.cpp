@@ -227,6 +227,7 @@ void ServerChannelThread::operator()(void)
 					settings->getSettings(&was_updated);
 					if(input!=NULL && was_updated)
 					{
+						Server->Log("Settings changed. Capabilities may have changed. Reconnecting channel...", LL_DEBUG);
 						IScopedLock lock(mutex);
 						Server->destroy(input);
 						input=NULL;
