@@ -362,6 +362,7 @@ void BackupServerHash::addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex
 
 	if(new_for_client || update_fileindex)
 	{
+		Server->Log("New fileindex entry for \"" + fp + "\" id=" + convert(entryid), LL_DEBUG);
 		fileindex.put_delayed(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid), entryid);
 	}
 }
@@ -420,6 +421,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 
 		if(pointed_to)
 		{
+			Server->Log("Delete file index entry " + convert(id), LL_DEBUG);
 			fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));
 		}
 	}
@@ -428,11 +430,13 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		if(next_id!=0)
 		{
 			filesdao.setPointedTo(1, next_id);
+			Server->Log("Changed file index entry from "+convert(id)+" to "+convert(next_id), LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
 		}
 		else
 		{
 			filesdao.setPointedTo(1, prev_id);
+			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id), LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
 		}
 	}
@@ -1023,7 +1027,7 @@ ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string 
 
 	if(!state.prev.exists)
 	{
-		ServerLogger::Log(logid, "Entry from file entry index not found. File entry index probably out of sync. Needs to be regenerated.", LL_WARNING);
+		ServerLogger::Log(logid, "Entry from file entry index not found. File entry index probably out of sync. Needs to be regenerated. (id="+convert(entryid)+")", LL_WARNING);
 		ServerFilesDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
@@ -1032,7 +1036,7 @@ ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string 
 	if(memcmp(state.prev.shahash.data(), pHash.data(), pHash.size())!=0)
 	{
 		ServerLogger::Log(logid, "Hash of file entry differs from file entry index result. Something may be wrong with the file entry index or this is a hash collision. Ignoring existing file and downloading anew.", LL_WARNING);
-		ServerLogger::Log(logid, "While searching for file with size "+convert(filesize)+" and clientid "+convert(clientid)+". Resulting file path is \""+state.prev.fullpath+"\"", LL_WARNING);
+		ServerLogger::Log(logid, "While searching for file with size "+convert(filesize)+" and clientid "+convert(clientid)+". Resulting file path is \""+state.prev.fullpath+"\". (id="+convert(entryid)+")", LL_WARNING);
 		ServerFilesDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
