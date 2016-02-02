@@ -58,9 +58,6 @@ mkdir data_x64
 copy /Y "..\x64\Release Server\urbackupserver.dll" "data_x64\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-copy /Y "..\x64\Release Server PreVista\urbackupserver.dll" "data_x64\urbackupserver_prevista.dll"
-if %errorlevel% neq 0 exit /b %errorlevel%
-
 copy /Y "..\x64\release\fsimageplugin.dll" "data_x64\fsimageplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
