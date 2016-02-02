@@ -8,11 +8,11 @@ mkdir data
 copy /Y "..\Release Server\urbackupserver.dll" "data\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
-copy /Y "..\Release Server PreVista\urbackupserver.dll" "data\urbackupserver_prevista.dll"
-if %errorlevel% neq 0 exit /b %errorlevel% 
-
 copy /Y "..\release\fsimageplugin.dll" "data\fsimageplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
+
+copy /Y "..\release\fileservplugin.dll" "data\fileservplugin.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 mkdir data_common
 
@@ -71,4 +71,7 @@ copy /Y "..\x64\release\urlplugin.dll" "data_x64\urlplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\Release\cryptoplugin.dll" "data_x64\cryptoplugin.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+copy /Y "..\x64\release\fileservplugin.dll" "data_x64\fileservplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%

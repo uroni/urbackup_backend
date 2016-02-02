@@ -135,14 +135,13 @@ Section "install"
 	
 	SetOutPath "$INSTDIR"
 	File "data_common\args.txt"
-	File "data_common\args_prevista.txt"
 	File "data_common\license.txt"
 	File "data_common\cleanup.bat"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
 	File "data_common\cleanup_database.bat"
 	File "data_common\defrag_database.bat"
-	File "data_common\urbackup_dsa.pub"
+	File "data_common\urbackup_ecdsa409k1.pub"
 	File "data_common\repair_database.bat"
 	File "data_common\export_auth_log.bat"
 	File "data_common\uncompress_image.bat"
@@ -184,49 +183,11 @@ Section "install"
 	SetOutPath "$INSTDIR\urbackup\www\js"
 	File "data_common\urbackup\www\js\*.js"
 	
-	
-	
-	${IfNot} ${RunningX64}
-		${If} ${IsWinXP}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-		${If} ${IsWin2003}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-	${Else}
-		${If} ${IsWin2003}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-	${EndIf}
-	
 	CreateDirectory "$SMPROGRAMS\UrBackup Server"
 	CreateShortCut "$SMPROGRAMS\UrBackup Server\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
 	CreateShortCut "$SMPROGRAMS\UrBackup Server\UrBackup Server Interface.lnk" "http://localhost:55414" "" "$INSTDIR\urbackup\www\favico.ico" 0
-	;SetOutPath "$SMPROGRAMS\UrBackup Server"
-	;File "data_common\UrBackup Server Interface.htm"
 	
-	${If} ${IsWinXP}
-		nsisFirewallW::AddAuthorizedApplication "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${ElseIf} ${IsWin2003}
-		nsisFirewallW::AddAuthorizedApplication "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${Else}
-		liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${EndIf}
+	liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
 	Pop $0
 	
 	
