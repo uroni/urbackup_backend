@@ -1179,9 +1179,12 @@ bool IncrFileBackup::doFileBackup()
 						|| ( server_download->isDownloadOk(line)
 							 && !download_nok_ids.hasId(line) ) )
 					{
+						bool is_special = (extra_params.find("special") != extra_params.end()
+							|| extra_params.find("sym_target") != extra_params.end());
+
 						bool metadata_missing = (!script_dir
 							&& metadata_download_thread.get()!=NULL
-							&& (indirchange || hasChange(line, diffs) )
+							&& (indirchange || hasChange(line, diffs) || (is_special && !use_snapshots) )
 							&& !metadata_download_thread->hasMetadataId(line+1));
 
 						if(metadata_missing)
