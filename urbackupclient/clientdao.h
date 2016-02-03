@@ -80,6 +80,8 @@ struct SFileAndHash
 
 	std::string symlink_target;
 
+	std::string output_symlink_target;
+
 	bool operator<(const SFileAndHash &other) const
 	{
 		return name < other.name;
@@ -91,7 +93,10 @@ struct SFileAndHash
 			size == other.size &&
 			change_indicator == other.change_indicator &&
 			isdir == other.isdir &&
-			hash == other.hash;
+			hash == other.hash &&
+			issym == other.issym &&
+			isspecial == other.isspecial &&
+			symlink_target == other.symlink_target;
 	}
 };
 

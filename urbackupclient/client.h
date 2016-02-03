@@ -206,12 +206,13 @@ private:
 	bool readBackupDirs(void);
 	bool readBackupScripts();
 
-    bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target);
+	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target, std::string& output_target);
 	void addSymlinkBackupDir(const std::string& target);
 	bool backupNameInUse(const std::string& name);
 	void removeUnconfirmedSymlinkDirs(size_t off);
 
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
+	void handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files);
 
 	bool initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked);
 

@@ -1331,7 +1331,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 
 			if(files[i].issym && with_proper_symlinks)
 			{
-				extra+="&sym_target="+EscapeParamString((files[i].symlink_target));
+				extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
 			}
 			
 			if(files[i].isspecial && with_proper_symlinks)
@@ -1380,7 +1380,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 
 				if(files[i].issym && with_proper_symlinks)
 				{
-					extra+="&sym_target="+EscapeParamString((files[i].symlink_target));
+					extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
 				}
 
 				if(files[i].isspecial && with_proper_symlinks)
@@ -1803,6 +1803,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files) )
 		{
 			++index_c_db;
+
+			handleSymlinks(orig_path, fs_files);
 
 			if(calculate_filehashes_on_client)
 			{
@@ -4147,25 +4149,36 @@ void IndexThread::setFlags( unsigned int flags )
 	with_proper_symlinks = (flags & flag_with_proper_symlinks)>0;
 }
 
-bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::string& orig_path, std::string& target)
+bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::string& orig_path,
+	std::string& target, std::string& output_target)
 {
-	if(!os_get_symlink_target(symlink, target))
+	if (target.empty())
 	{
-		if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
+		if (!os_get_symlink_target(symlink, target))
 		{
-			VSSLog("Error getting symlink target of symlink " + symlink + ". Not following symlink.", LL_WARNING);
+			if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
+			{
+				VSSLog("Error getting symlink target of symlink " + symlink + ". Not following symlink.", LL_WARNING);
+			}
+			return false;
 		}
-		return false;
+
+		std::string orig_target = target;
+
+		if (!os_path_absolute(target))
+		{
+			target = orig_path + os_file_sep() + target;
+		}
+
+		target = os_get_final_path(target);
 	}
 
-	std::string orig_target = target;
-
-	if(!os_path_absolute(target))
-	{
-		target = orig_path + os_file_sep() + target;
-	}
-
-	target = os_get_final_path(target);
+	std::string lower_target;
+#ifdef _WIN32
+	lower_target = strlower(target);
+#else
+	lower_target = target;
+#endif
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
@@ -4177,23 +4190,28 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 			continue;
 
 		std::string bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
+		std::string bpath_wo_slash;
 		
 		#ifndef _WIN32
+		bpath_wo_slash = removeDirectorySeparatorAtEnd(bpath);
 		if(bpath.empty())
 		{
 			bpath="/";
 		}
+		#else
+		bpath = strlower(bpath);
+		bpath_wo_slash = removeDirectorySeparatorAtEnd(bpath);
 		#endif
 		
-		if(removeDirectorySeparatorAtEnd(target)==removeDirectorySeparatorAtEnd(backup_dirs[i].path)
-			|| next(target, 0, bpath))
+		if(removeDirectorySeparatorAtEnd(lower_target) == bpath_wo_slash
+			|| next(lower_target, 0, bpath))
 		{
-			target.erase(0, bpath.size());
-			target = backup_dirs[i].tname + (target.empty() ? "" : (os_file_sep() + target));
+			output_target = target.substr(bpath.size());
+			output_target = backup_dirs[i].tname + (output_target.empty() ? "" : (os_file_sep() + output_target));
 
 			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
-				VSSLog("Following symbolic link at \""+symlink+"\" to \""+orig_target+"\" confirms symlink backup target \""+backup_dirs[i].tname+"\" to \""+backup_dirs[i].path+"\"", LL_INFO);
+				VSSLog("Following symbolic link at \""+symlink+"\" to \""+ target +"\" confirms symlink backup target \""+backup_dirs[i].tname+"\" to \""+backup_dirs[i].path+"\"", LL_INFO);
 				backup_dirs[i].symlinked_confirmed=true;
 			}
 
@@ -4360,17 +4378,17 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 
 		if (curr->issym)
 		{
-			curr->change_indicator |= symlink_mask;
+			curr->change_indicator += symlink_mask;
 		}
 
 		if (curr->isspecial)
 		{
-			curr->change_indicator |= special_mask;
+			curr->change_indicator += special_mask;
 		}
 
 		if(curr->issym && with_proper_symlinks)
 		{
-			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target))
+			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target, ret[i].output_symlink_target))
 			{
 				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
 				{
@@ -4380,6 +4398,23 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		}
 	}
 	return ret;
+}
+
+void IndexThread::handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files)
+{
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].issym)
+		{
+			if (!getAbsSymlinkTarget(orig_dir + os_file_sep() + files[i].name, orig_dir, files[i].symlink_target, files[i].output_symlink_target))
+			{
+				if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
+				{
+					VSSLog("Error getting symlink target of symlink " + orig_dir + os_file_sep() + files[i].name, LL_ERROR);
+				}
+			}
+		}
+	}
 }
 
 #ifdef _WIN32
