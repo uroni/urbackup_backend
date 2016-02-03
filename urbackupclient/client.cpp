@@ -4163,8 +4163,6 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 			return false;
 		}
 
-		std::string orig_target = target;
-
 		if (!os_path_absolute(target))
 		{
 			target = orig_path + os_file_sep() + target;
@@ -4206,8 +4204,11 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 		if(removeDirectorySeparatorAtEnd(lower_target) == bpath_wo_slash
 			|| next(lower_target, 0, bpath))
 		{
-			output_target = target.substr(bpath.size());
-			output_target = backup_dirs[i].tname + (output_target.empty() ? "" : (os_file_sep() + output_target));
+			if (target.size() > bpath.size())
+			{
+				output_target = target.substr(bpath.size());
+			}
+			output_target = backup_dirs[i].tname + (output_target.empty() ? "" : (os_file_sep() + removeDirectorySeparatorAtEnd(output_target)));
 
 			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
