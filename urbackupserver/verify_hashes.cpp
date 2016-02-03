@@ -215,11 +215,11 @@ bool verify_hashes(std::string arg)
 				return false;
 			}
 
-			filter=" WHERE clientid="+convert(cid);
+			filter="clientid="+convert(cid);
 		}
 		else
 		{
-			filter+=" WHERE 1=1";
+			filter+="1=1";
 		}
 		
 
@@ -304,7 +304,7 @@ bool verify_hashes(std::string arg)
 
 	
 	std::cout << "Calculating filesize..." << std::endl;
-	IQuery *q_num_files = files_db->Prepare("SELECT SUM(filesize) AS c FROM files"+filter);
+	IQuery *q_num_files = files_db->Prepare("SELECT SUM(filesize) AS c FROM files WHERE filesize>0 AND "+filter);
 	db_results res=q_num_files->Read();
 	if(res.empty())
 	{
@@ -319,7 +319,7 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter, false);
+	IQuery *q_get_files = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE "+filter, false);
 
 	bool is_okay=true;
 
