@@ -327,6 +327,7 @@ void strupper(std::string *pStr)
 		if (ch < 0)
 		{
 			strupper_utf8(pStr);
+			return;
 		}
 		else
 		{
