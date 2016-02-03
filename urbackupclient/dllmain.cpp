@@ -522,6 +522,7 @@ void update_client21_22(IDatabase* db)
 void update_client22_23(IDatabase* db)
 {
 	db->Write("DROP INDEX files_idx");
+	db->Write("DELETE FROM files");
 	db->Write("CREATE UNIQUE INDEX files_idx ON files (name ASC, tgroup)");
 	db->Write("UPDATE backupdirs SET optional=38 WHERE optional=0");
 }
