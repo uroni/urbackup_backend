@@ -519,6 +519,13 @@ void update_client21_22(IDatabase* db)
 	db->Write("UPDATE files SET tgroup=0 WHERE tgroup IS NULL");
 }
 
+void update_client22_23(IDatabase* db)
+{
+	db->Write("DROP INDEX files_idx");
+	db->Write("CREATE UNIQUE INDEX files_idx ON files (name ASC, tgroup)");
+	db->Write("UPDATE backupdirs SET optional=38 WHERE optional=0");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -531,7 +538,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 22;
+	int max_v = 23;
 
 	if (ver > max_v)
 	{
@@ -635,6 +642,10 @@ bool upgrade_client(void)
 				break;
 			case 21:
 				update_client21_22(db);
+				++ver;
+				break;
+			case 22:
+				update_client22_23(db);
 				++ver;
 				break;
 			default:
