@@ -28,6 +28,8 @@
 #ifndef _WIN32
 #include <memory.h>
 #include <stdlib.h>
+#else
+#include <Windows.h>
 #endif
 
 #include "utf8/utf8.h"
@@ -216,47 +218,120 @@ std::string getFile(std::string filename)
         return ret;
 }
 
-//--------------------------------------------------------------------
-/**
-*	string in großbuchstaben umwandeln
-*/
-void strupper(char *string)
+void strupper_utf8(std::string *pStr)
 {
-   for(; *string != '\0'; string++ )
-      if(*string >= 'a' && *string <='z')
-         *string -= 32;   /* siehe ASCII-Tabelle */
+	std::wstring tmp;
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf8to16(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+		else
+		{
+			utf8::utf8to32(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+	}
+	catch (...) {}
+	
+#ifdef _WIN32
+	CharUpperBuffW(&tmp[0], static_cast<DWORD>(tmp.size()));
+#else
+	for (size_t i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] = towupper(tmp[i]);
+	}
+#endif
+
+	pStr->clear();
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+		else
+		{
+			utf8::utf32to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+	}
+	catch (...) {}
 }
 
-//--------------------------------------------------------------------
-/**
-*	string in kleinbuchstaben umwandeln
-*/
-void strlower(char *string)
+void strlower_utf8(std::string *pStr)
 {
-   for(; *string != '\0'; string++ )
-      if(*string >= 'A' && *string <='Z')
-         *string += 32;
+	std::wstring tmp;
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf8to16(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+		else
+		{
+			utf8::utf8to32(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+	}
+	catch (...) {}
+
+#ifdef _WIN32
+	CharLowerBuffW(&tmp[0], static_cast<DWORD>(tmp.size()));
+#else
+	for (size_t i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] = towlower(tmp[i]);
+	}
+#endif
+
+	pStr->clear();
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+		else
+		{
+			utf8::utf32to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+	}
+	catch (...) {}
 }
 
 std::string strlower(const std::string &str)
 {
-	std::string ret=str;
-   for(size_t i=0; i<str.size();++i)
-      if(str[i] >= 'A' && str[i] <='Z')
-         ret[i] += 32;
+	std::string ret;
+	ret.resize(str.size());
+	for (size_t i = 0; i < str.size(); ++i)
+	{
+		if (str[i] < 0)
+		{
+			ret = str;
+			strlower_utf8(&ret);
+			return ret;
+		}
+		else
+		{
+			ret[i] = tolower(str[i]);
+		}
+	}
 
-   return ret;
+	return ret;
 }
 
-//--------------------------------------------------------------------
-/**
-*	string in großbuchstaben umwandeln
-*/
 void strupper(std::string *pStr)
 {
 	for(size_t i=0;i<pStr->size();++i)
 	{
-		(*pStr)[i]=toupper((*pStr)[i] );
+		char ch = (*pStr)[i];
+		if (ch < 0)
+		{
+			strupper_utf8(pStr);
+		}
+		else
+		{
+			(*pStr)[i] = toupper((*pStr)[i]);
+		}
 	}
 }
 

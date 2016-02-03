@@ -72,7 +72,6 @@ std::string base64_decode_dash(std::string s);
 bool CheckForIllegalChars(const std::string &str);
 int watoi(std::string str);
 _i64 watoi64(std::string str);
-std::string strlower(const std::string &str);
 std::string trim(const std::string &str);
 void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
