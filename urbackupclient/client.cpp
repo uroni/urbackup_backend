@@ -858,9 +858,9 @@ void IndexThread::indexDirs(void)
 	{
 		std::vector<std::string> deldirs=cd->getDelDirs(selected_dirs[i]);
 		VSSLog("Removing deleted directories from index...", LL_DEBUG);
-		for(size_t i=0;i<deldirs.size();++i)
+		for(size_t j=0;j<deldirs.size();++j)
 		{
-			cd->removeDeletedDir(deldirs[i], selected_dir_db_tgroup[i]);
+			cd->removeDeletedDir(deldirs[j], selected_dir_db_tgroup[i]);
 		}
 	}
 
@@ -1024,9 +1024,9 @@ void IndexThread::indexDirs(void)
 					VSSLog("Removing deleted directories from index for \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
 					std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
 					DBScopedWriteTransaction write_transaction(db);
-					for (size_t i = 0; i < deldirs.size(); ++i)
+					for (size_t j = 0; j < deldirs.size(); ++j)
 					{
-						cd->removeDeletedDir(deldirs[i], db_tgroup);
+						cd->removeDeletedDir(deldirs[j], db_tgroup);
 					}
 				}
 #else
