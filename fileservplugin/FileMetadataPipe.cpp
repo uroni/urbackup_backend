@@ -675,7 +675,7 @@ bool FileMetadataPipe::openFileHandle()
 
 namespace
 {
-    void serialize_stat_buf(const struct stat64& buf, CWData& data)
+    void serialize_stat_buf(const struct stat64& buf, const std::string& symlink_target, CWData& data)
 	{
 		data.addChar(1);
 		data.addVarInt(buf.st_dev);
@@ -700,6 +700,7 @@ namespace
         data.addUInt(buf.st_ctim.tv_nsec);
 		data.addVarInt(0);
 #endif
+		data.addString(symlink_target);
 	}
 
     bool get_xattr_keys(const std::string& fn, std::vector<std::string>& keys)
@@ -804,7 +805,17 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 			return false;
 		}
 
-        serialize_stat_buf(statbuf, data);
+		std::string symlink_target;
+		if (S_ISLNK(statbuf.st_mode))
+		{
+			if (!os_get_symlink_target(local_fn, symlink_target))
+			{
+				Server->Log("Error getting symlink target of " + local_fn + " errorcode: " + convert(errno), LL_ERROR);
+				return false;
+			}
+		}
+
+        serialize_stat_buf(statbuf, symlink_target, data);
 
 		if(data.getDataSize()+sizeof(_u32)>metadata_buffer.size())
 		{

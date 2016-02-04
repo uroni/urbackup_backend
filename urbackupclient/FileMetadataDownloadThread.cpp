@@ -454,16 +454,16 @@ namespace
 {
     const int64 unix_meta_magic =  little_endian(0xFE4378A3467647F0ULL);
 
-    void unserialize_stat_buf(CRData& data, struct stat64& statbuf)
-    {
+	void unserialize_stat_buf(CRData& data, struct stat64& statbuf, std::string& symlink_target)
+	{
 #define SET_STAT_MEM(x)  {int64 tmp; bool b = data.getVarInt(&tmp); assert(b); statbuf.x = tmp;}
 #define SET_STAT_MEM32(x)  {_u32 tmp; bool b = data.getUInt(&tmp); assert(b); statbuf.x = tmp;}
 
-        SET_STAT_MEM(st_dev);
-        SET_STAT_MEM(st_mode);
-        SET_STAT_MEM(st_uid);
-        SET_STAT_MEM(st_gid);
-        SET_STAT_MEM(st_rdev);
+		SET_STAT_MEM(st_dev);
+		SET_STAT_MEM(st_mode);
+		SET_STAT_MEM(st_uid);
+		SET_STAT_MEM(st_gid);
+		SET_STAT_MEM(st_rdev);
 #ifdef __APPLE__
 		SET_STAT_MEM(st_atimespec.tv_sec);
 		SET_STAT_MEM32(st_atimespec.tv_nsec);
@@ -474,21 +474,25 @@ namespace
 		SET_STAT_MEM(st_flags);
 #else
 		SET_STAT_MEM(st_atime);
-        SET_STAT_MEM32(st_atim.tv_nsec);
-        SET_STAT_MEM(st_mtime);
-        SET_STAT_MEM32(st_mtim.tv_nsec);
-        SET_STAT_MEM(st_ctime);
-        SET_STAT_MEM32(st_ctim.tv_nsec);
-		int64 dummy;
-		bool b = data.getVarInt(&dummy);
-		assert(b);
+		SET_STAT_MEM32(st_atim.tv_nsec);
+		SET_STAT_MEM(st_mtime);
+		SET_STAT_MEM32(st_mtim.tv_nsec);
+		SET_STAT_MEM(st_ctime);
+		SET_STAT_MEM32(st_ctim.tv_nsec);
+		{
+			int64 dummy;
+			bool b = data.getVarInt(&dummy);
+			assert(b);
+		}
 #endif
+		bool b = data.getStr(&symlink_target);
+		assert(b);
 
 #undef SET_STAT_MEM
 #undef SET_STAT_MEM32
     }
 
-    bool restore_stat_buf(RestoreFiles& restore, struct stat64& statbuf, const std::string& fn)
+    bool restore_stat_buf(RestoreFiles& restore, struct stat64& statbuf, const std::string& fn, const std::string& symlink_target)
     {
 #ifndef __linux__
 
@@ -503,62 +507,72 @@ namespace
         bool ret=true;
         if(S_ISLNK(statbuf.st_mode))
         {
-            if(lchown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
-            {
-                restore.log("Error setting owner of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
-                ret = false;
-            }
+			unlink(fn.c_str());
 
-            /* for utimes
-			struct timeval tvs[2];
-            TIMESPEC_TO_TIMEVAL(&tvs[0], &(statbuf.st_atim));
-            TIMESPEC_TO_TIMEVAL(&tvs[1], &(statbuf.st_mtim));
-			if(lutimes(fn.c_str(), tvs)!=0)
-			*/
-
-#ifdef __APPLE__
-			int fd = open(fn.c_str(), O_WRONLY | O_NOFOLLOW | O_SYMLINK | O_CLOEXEC);
-			if (fd == -1)
+			if (symlink(symlink_target.c_str(), fn.c_str() != 0)
 			{
-				restore.log("Error setting access and modification time of symlink \"" + fn + "\" -1 errno: " + convert(errno), LL_ERROR);
+				restore.log("Error creating symlink \"" + fn + "\" (to \""+symlink_target+"\") errno: " + convert(errno), LL_ERROR);
 				ret = false;
 			}
 			else
 			{
-				struct timeval tv[2];
-				tv[0].tv_sec = statbuf.st_atimespec.tv_sec;
-				tv[0].tv_usec = statbuf.st_atimespec.tv_nsec/1000;
-				tv[1].tv_sec = statbuf.st_mtimespec.tv_sec;
-				tv[1].tv_usec = statbuf.st_mtimespec.tv_nsec/1000;
-				int rc1 = futimes(fd, tv);
-
-				if (rc1 != 0)
+				if (lchown(fn.c_str(), statbuf.st_uid, statbuf.st_gid) != 0)
 				{
-					restore.log("Error setting access and modification time of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+					restore.log("Error setting owner of symlink \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
 					ret = false;
 				}
 
-				int rc2 = fchflags(fd, statbuf.st_flags & chflags_mask);
+				/* for utimes
+				struct timeval tvs[2];
+				TIMESPEC_TO_TIMEVAL(&tvs[0], &(statbuf.st_atim));
+				TIMESPEC_TO_TIMEVAL(&tvs[1], &(statbuf.st_mtim));
+				if(lutimes(fn.c_str(), tvs)!=0)
+				*/
 
-				if (rc2 != 0)
+#ifdef __APPLE__
+				int fd = open(fn.c_str(), O_WRONLY | O_NOFOLLOW | O_SYMLINK | O_CLOEXEC);
+				if (fd == -1)
 				{
-					restore.log("Error setting BSD flags of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+					restore.log("Error setting access and modification time of symlink \"" + fn + "\" -1 errno: " + convert(errno), LL_ERROR);
 					ret = false;
 				}
+				else
+				{
+					struct timeval tv[2];
+					tv[0].tv_sec = statbuf.st_atimespec.tv_sec;
+					tv[0].tv_usec = statbuf.st_atimespec.tv_nsec / 1000;
+					tv[1].tv_sec = statbuf.st_mtimespec.tv_sec;
+					tv[1].tv_usec = statbuf.st_mtimespec.tv_nsec / 1000;
+					int rc1 = futimes(fd, tv);
 
-				close(fd);
-			}
+					if (rc1 != 0)
+					{
+						restore.log("Error setting access and modification time of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+						ret = false;
+					}
+
+					int rc2 = fchflags(fd, statbuf.st_flags & chflags_mask);
+
+					if (rc2 != 0)
+					{
+						restore.log("Error setting BSD flags of symlink \"" + fn + "\" -2 errno: " + convert(errno), LL_ERROR);
+						ret = false;
+					}
+
+					close(fd);
+				}
 #else
-			timespec tss[2];
-			tss[0]=statbuf.st_atim;
-			tss[1]=statbuf.st_mtim;
+				timespec tss[2];
+				tss[0] = statbuf.st_atim;
+				tss[1] = statbuf.st_mtim;
 
-            if(utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW)!=0)
-            {
-                restore.log("Error setting access and modification time of symlink \""+fn+"\" errno: "+convert(errno), LL_ERROR);
-                ret = false;
-            }
+				if (utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW) != 0)
+				{
+					restore.log("Error setting access and modification time of symlink \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
+					ret = false;
+				}
 #endif
+			}
 
             return ret;
         }
@@ -756,12 +770,13 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		return false;
 	}
 
+	std::string symlink_target;
 	struct stat64 statbuf;
-    unserialize_stat_buf(read_stat, statbuf);
+    unserialize_stat_buf(read_stat, statbuf, symlink_target);
 
     std::string utf8fn = (output_fn);
 
-    if(!restore_stat_buf(restore, statbuf, utf8fn))
+    if(!restore_stat_buf(restore, statbuf, utf8fn, symlink_target))
     {
         restore.log("Error setting unix metadata of "+output_fn, LL_ERROR);
     }
