@@ -509,7 +509,7 @@ namespace
         {
 			unlink(fn.c_str());
 
-			if (symlink(symlink_target.c_str(), fn.c_str() != 0)
+			if (symlink(symlink_target.c_str(), fn.c_str()) != 0)
 			{
 				restore.log("Error creating symlink \"" + fn + "\" (to \""+symlink_target+"\") errno: " + convert(errno), LL_ERROR);
 				ret = false;
