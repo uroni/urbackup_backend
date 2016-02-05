@@ -311,7 +311,7 @@ bool FullFileBackup::doFileBackup()
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true);
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true, logid, filepath_corrections);
 
 					for(size_t j=0;j<folder_items.size();++j)
 					{
@@ -550,6 +550,8 @@ bool FullFileBackup::doFileBackup()
 
 		calculateDownloadSpeed(ctime, fc, NULL);
 	}
+
+	addFilePathCorrections(server_download->getFilePathCorrections());
 
 	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 

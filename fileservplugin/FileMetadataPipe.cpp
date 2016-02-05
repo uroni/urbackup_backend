@@ -299,6 +299,21 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		return true;
 	}
+	else if (metadata_state == MetadataState_Raw)
+	{
+		if (raw_metadata.size() - metadata_buffer_off > 0)
+		{
+			read_bytes = (std::min)(raw_metadata.size() - metadata_buffer_off, buf_avail);
+			memcpy(buf, raw_metadata.data() + metadata_buffer_off, read_bytes);
+			metadata_buffer_off += read_bytes;
+		}
+		if (raw_metadata.size() - metadata_buffer_off == 0)
+		{
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			metadata_state = MetadataState_Wait;
+		}
+		return true;
+	}
 
 
 	while(true)
@@ -324,104 +339,123 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		{
 			CRData msg_data(&msg);
 
-			if(msg_data.getStr(&public_fn) &&
-				msg_data.getStr(&local_fn) &&
-				msg_data.getInt64(&folder_items) &&
-				msg_data.getInt64(&metadata_id) &&
-				msg_data.getStr(&server_token) )
+			char id;
+			if (msg_data.getChar(&id))
 			{
-				if(public_fn.empty() &&
-					local_fn.empty())
+				if (id == METADATA_PIPE_SEND_FILE &&
+					msg_data.getStr(&public_fn) &&
+					msg_data.getStr(&local_fn) &&
+					msg_data.getInt64(&folder_items) &&
+					msg_data.getInt64(&metadata_id) &&
+					msg_data.getStr(&server_token))
+				{
+					assert(!public_fn.empty() || !local_fn.empty());
+
+					if (std::find(last_public_fns.begin(), last_public_fns.end(), public_fn) != last_public_fns.end())
+					{
+						PipeSessions::fileMetadataDone(public_fn, server_token);
+						continue;
+					}
+
+					last_public_fns.push_back(public_fn);
+
+					if (last_public_fns.size() > 10)
+					{
+						last_public_fns.pop_front();
+					}
+
+					int file_type_flags = os_get_file_type(os_file_prefix(local_fn));
+
+					if (file_type_flags == 0)
+					{
+						Server->Log("Error getting file type of " + local_fn, LL_ERROR);
+						*buf = ID_METADATA_NOP;
+						read_bytes = 1;
+						PipeSessions::fileMetadataDone(public_fn, server_token);
+						return true;
+					}
+
+					if (!openFileHandle())
+					{
+						Server->Log("Error opening file handle to " + local_fn, LL_ERROR);
+						*buf = ID_METADATA_NOP;
+						read_bytes = 1;
+						PipeSessions::fileMetadataDone(public_fn, server_token);
+						return true;
+					}
+
+					std::string file_type;
+					if ((file_type_flags & EFileType_Directory)
+						&& (file_type_flags & EFileType_Symlink))
+					{
+						file_type = "l";
+					}
+					else if (file_type_flags & EFileType_Directory)
+					{
+						file_type = "d";
+					}
+					else
+					{
+						file_type = "f";
+					}
+
+					public_fn = file_type + public_fn;
+
+					metadata_state = MetadataState_FnSize;
+					*buf = ID_METADATA_V1;
+					read_bytes = 1;
+					fn_off = 0;
+					curr_checksum = urb_adler32(0, NULL, 0);
+
+					if (!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
+					{
+						callback = NULL;
+					}
+					else
+					{
+						std::string orig_path;
+						_u32 version = 0;
+						metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version);
+
+						if (metadata_file == NULL)
+						{
+							errpipe->Write("Error opening metadata file for \"" + public_fn + "\"");
+
+							read_bytes = 0;
+							metadata_state = MetadataState_Wait;
+							PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+							return false;
+						}
+
+						if (version != 0)
+						{
+							*buf = version;
+						}
+						public_fn = file_type + orig_path;
+					}
+
+					return true;
+				}
+				else if (id == METADATA_PIPE_SEND_RAW
+					&& msg_data.getStr(&public_fn)
+					&& msg_data.getStr(&raw_metadata)
+					&& msg_data.getStr(&server_token))
+				{
+					metadata_state = MetadataState_Raw;
+					metadata_buffer_off = 0;
+					return readStdoutIntoBuffer(buf, buf_avail, read_bytes);
+				}
+				else if (id == METADATA_PIPE_EXIT)
 				{
 					errpipe->shutdown();
 					read_bytes = 0;
 					return false;
 				}
-
-				if(std::find(last_public_fns.begin(), last_public_fns.end(), public_fn)!=last_public_fns.end())
-				{
-					PipeSessions::fileMetadataDone(public_fn, server_token);
-					continue;
-				}
-
-				last_public_fns.push_back(public_fn);
-
-				if(last_public_fns.size()>10)
-				{
-					last_public_fns.pop_front();
-				}
-
-				int file_type_flags = os_get_file_type(os_file_prefix(local_fn));
-
-				if(file_type_flags==0)
-				{
-					Server->Log("Error getting file type of "+local_fn, LL_ERROR);
-					*buf = ID_METADATA_NOP;
-					read_bytes = 1;
-					PipeSessions::fileMetadataDone(public_fn, server_token);
-					return true;
-				}
-
-				if (!openFileHandle())
-				{
-					Server->Log("Error opening file handle to " + local_fn, LL_ERROR);
-					*buf = ID_METADATA_NOP;
-					read_bytes = 1;
-					PipeSessions::fileMetadataDone(public_fn, server_token);
-					return true;
-				}
-
-				std::string file_type;
-				if( (file_type_flags & EFileType_Directory) 
-					&& (file_type_flags & EFileType_Symlink) )
-				{
-					file_type="l";
-				}
-				else if(file_type_flags & EFileType_Directory)
-				{
-					file_type="d";
-				}
 				else
 				{
-					file_type="f";
+					assert(false);
+					return false;
 				}
-
-				public_fn = file_type + public_fn;
-
-				metadata_state = MetadataState_FnSize;
-				*buf = ID_METADATA_V1;
-				read_bytes = 1;
-				fn_off = 0;
-				curr_checksum = urb_adler32(0, NULL, 0);
-
-				if(!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
-				{
-					callback=NULL;
-				}
-				else
-				{
-					std::string orig_path;
-					_u32 version=0;
-					metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version);
-
-					if(metadata_file==NULL)
-					{
-						errpipe->Write("Error opening metadata file for \""+public_fn+"\"");
-
-						read_bytes=0;
-						metadata_state = MetadataState_Wait;
-						PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
-						return false;
-					}
-
-					if(version!=0)
-					{
-						*buf=version;
-					}
-					public_fn = file_type + orig_path;
-				}
-
-				return true;
 			}
 			else
 			{
@@ -458,11 +492,7 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 void FileMetadataPipe::forceExitWait()
 {
 	CWData data;
-	data.addString(std::string());
-	data.addString(std::string());
-	data.addInt64(0);
-	data.addInt64(0);
-	data.addString(std::string());
+	data.addChar(METADATA_PIPE_EXIT);
 	pipe->Write(data.getDataPtr(), data.getDataSize());
 
 	errpipe->shutdown();
@@ -673,36 +703,36 @@ bool FileMetadataPipe::openFileHandle()
 
 #else //_WIN32
 
+void serialize_stat_buf(const struct stat64& buf, const std::string& symlink_target, CWData& data)
+{
+	data.addChar(1);
+	data.addVarInt(buf.st_dev);
+	data.addVarInt(buf.st_mode);
+	data.addVarInt(buf.st_uid);
+	data.addVarInt(buf.st_gid);
+	data.addVarInt(buf.st_rdev);
+#ifdef __APPLE__
+	data.addVarInt(buf.st_atimespec.tv_sec);
+	data.addUInt(buf.st_atimespec.tv_nsec);
+	data.addVarInt(buf.st_mtimespec.tv_sec);
+	data.addUInt(buf.st_mtimespec.tv_nsec);
+	data.addVarInt(buf.st_ctimespec.tv_sec);
+	data.addUInt(buf.st_ctimespec.tv_nsec);
+	data.addVarInt(buf.st_flags);
+#else
+	data.addVarInt(buf.st_atime);
+	data.addUInt(buf.st_atim.tv_nsec);
+	data.addVarInt(buf.st_mtime);
+	data.addUInt(buf.st_mtim.tv_nsec);
+	data.addVarInt(buf.st_ctime);
+	data.addUInt(buf.st_ctim.tv_nsec);
+	data.addVarInt(0);
+#endif
+	data.addString(symlink_target);
+}
+
 namespace
 {
-    void serialize_stat_buf(const struct stat64& buf, const std::string& symlink_target, CWData& data)
-	{
-		data.addChar(1);
-		data.addVarInt(buf.st_dev);
-		data.addVarInt(buf.st_mode);
-		data.addVarInt(buf.st_uid);
-		data.addVarInt(buf.st_gid);
-		data.addVarInt(buf.st_rdev);
-#ifdef __APPLE__
-		data.addVarInt(buf.st_atimespec.tv_sec);
-		data.addUInt(buf.st_atimespec.tv_nsec);
-		data.addVarInt(buf.st_mtimespec.tv_sec);
-		data.addUInt(buf.st_mtimespec.tv_nsec);
-		data.addVarInt(buf.st_ctimespec.tv_sec);
-		data.addUInt(buf.st_ctimespec.tv_nsec);
-		data.addVarInt(buf.st_flags);
-#else
-		data.addVarInt(buf.st_atime);
-        data.addUInt(buf.st_atim.tv_nsec);
-		data.addVarInt(buf.st_mtime);
-        data.addUInt(buf.st_mtim.tv_nsec);
-		data.addVarInt(buf.st_ctime);
-        data.addUInt(buf.st_ctim.tv_nsec);
-		data.addVarInt(0);
-#endif
-		data.addString(symlink_target);
-	}
-
     bool get_xattr_keys(const std::string& fn, std::vector<std::string>& keys)
 	{
 		while(true)

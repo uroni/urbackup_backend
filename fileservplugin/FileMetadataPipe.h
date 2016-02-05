@@ -17,6 +17,10 @@ const _u32 ID_METADATA_OS = 1<<2;
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = ID_METADATA_OS | 1<<3;
 
+const char METADATA_PIPE_SEND_FILE = 0;
+const char METADATA_PIPE_SEND_RAW = 1;
+const char METADATA_PIPE_EXIT = 2;
+
 class FileMetadataPipe : public PipeFileBase
 {
 public:
@@ -75,7 +79,8 @@ private:
 		MetadataState_Os,
 		MetadataState_OsChecksum,
 		MetadataState_File,
-		MetadataState_FileChecksum
+		MetadataState_FileChecksum,
+		MetadataState_Raw
 	};
 
 	size_t fn_off;
@@ -100,7 +105,16 @@ private:
 	size_t metadata_buffer_off;
 	std::vector<char> metadata_buffer;
 
+	std::string raw_metadata;
+
 	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
 
 	unsigned int curr_checksum;
 };
+
+#ifndef _WIN32
+#include <sys/stat.h>
+#include "../common/data.h"
+
+void serialize_stat_buf(const struct stat64& buf, const std::string& symlink_target, CWData& data);
+#endif

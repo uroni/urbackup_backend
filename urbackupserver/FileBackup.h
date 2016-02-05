@@ -67,6 +67,8 @@ public:
 
 	static std::string convertToOSPathFromFileClient(std::string path);
 
+	static std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, std::map<std::string, std::string>& filepath_corrections);
+
 protected:
 	virtual bool doBackup();
 
@@ -85,7 +87,6 @@ protected:
 	void calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 		int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
-	std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings);	
 	bool link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
@@ -108,6 +109,7 @@ protected:
 	bool startFileMetadataDownloadThread();
 	bool stopFileMetadataDownloadThread(bool stopped);
 	void parseSnapshotFailed(const std::string& logline);
+	void addFilePathCorrections(const std::map<std::string, std::string>& c);
 
 	int group;
 	bool use_tmpfiles;

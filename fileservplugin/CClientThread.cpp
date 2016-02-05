@@ -464,22 +464,38 @@ bool CClientThread::ProcessPacket(CRData *data)
 				{
 					ScopedPipeFileUser pipe_file_user;
 					IFile* file;
+					bool sent_metadata = false;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
-						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident);
+						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident, NULL);
 					}
 					else if (next(s_filename, 0, "urbackup/TAR|"))
 					{
 						std::string server_token = getbetween("|", "|", s_filename);
-						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, std::string(), ident);
+						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, std::string(), ident, &sent_metadata);
 					}
 					else
 					{
-						file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident);
+						file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
 					}					
 
 					if(!file)
 					{
+						if (sent_metadata)
+						{
+							CWData data;
+							data.addUChar(ID_FILESIZE);
+							data.addUInt64(0);
+
+							int rc = SendInt(data.getDataPtr(), data.getDataSize());
+							if (rc == SOCKET_ERROR)
+							{
+								Log("Error: Socket Error - DBG: SendSize (script metadata)", LL_DEBUG);
+								return false;
+							}
+							break;
+						}
+
 						char ch=ID_COULDNT_OPEN;
 						int rc=SendInt(&ch, 1);
 						if(rc==SOCKET_ERROR)
@@ -1579,11 +1595,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		if (next(s_filename, 0, "urbackup/TAR|"))
 		{
 			std::string server_token = getbetween("|", "|", s_filename);
-			srv_file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), *pipe_file_user, server_token, ident);
+			srv_file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), *pipe_file_user, server_token, ident, NULL);
 		}
 		else
 		{
-			srv_file = PipeSessions::getFile(filename, *pipe_file_user, std::string(), ident);
+			srv_file = PipeSessions::getFile(filename, *pipe_file_user, std::string(), ident, NULL);
 		}
 
 		if(srv_file==NULL)
@@ -2143,26 +2159,27 @@ bool CClientThread::FinishScript( CRData * data )
 	ScopedPipeFileUser pipe_file_user;
 	IFile* file;
 	std::string f_name;
+	bool sent_metadata = false;
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
 		f_name = s_filename;
-		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident);
+		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident, NULL);
 	}
 	else if (next(s_filename, 0, "urbackup/TAR|"))
 	{
 		std::string server_token = getbetween("|", "|", s_filename);
 		f_name = getafter("urbackup/TAR|" + server_token + "|", s_filename);
-		file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident);
+		file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata);
 	}
 	else
 	{
 		f_name = filename;
-		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident);
+		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
 	}			
 
 	bool ret=false;
 
-	if(!file)
+	if(!file && !sent_metadata)
 	{
 		char ch=ID_COULDNT_OPEN;
 		int rc=SendInt(&ch, 1);

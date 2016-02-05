@@ -1574,12 +1574,21 @@ bool IndexThread::readBackupScripts()
 						new_script.size = -1;
 					}
 
+					bool tar_file = false;
+					it = params.find("tar");
+					if (it != params.end()
+						&& it->second == "1")
+					{
+						new_script.size = 0;
+						tar_file = true;
+					}
+
 					scripts.push_back(new_script);
 
 					if (filesrv != NULL)
 					{
 						filesrv->addScriptOutputFilenameMapping(new_script.outputname,
-							new_script.scriptname);
+							new_script.scriptname, tar_file);
 
 						if (j > 0)
 						{

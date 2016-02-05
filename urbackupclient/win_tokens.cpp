@@ -549,15 +549,22 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 
 	LocalFree(sec_desc);
 
-	std::string ret;
-	ret.resize(token_info.getDataSize());
-	memcpy(&ret[0], token_info.getDataPtr(), token_info.getDataSize());
-	return ret;
+	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
 void free_tokencache( TokenCacheInt* cache )
 {
 	delete cache;
+}
+
+std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache)
+{
+	CWData token_info;
+	//allow to all
+	token_info.addChar(ID_GRANT_ACCESS);
+	token_info.addVarInt(0);
+
+	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
 } //namespace tokens

@@ -29,6 +29,7 @@
 #include "server_settings.h"
 #include "server_cleanup.h"
 #include "FileBackup.h"
+#include "../urbackupcommon/os_functions.h"
 
 namespace
 {
@@ -225,7 +226,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop)
+    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop, unsigned int p_script_random)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -246,7 +247,14 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 
 	if(is_script)
 	{
-		ni.script_random = Server->getRandomNumber();
+		if (p_script_random != 0)
+		{
+			ni.script_random = p_script_random;
+		}
+		else
+		{
+			ni.script_random = Server->getRandomNumber();
+		}
 	}
 
 	IScopedLock lock(mutex);
@@ -270,7 +278,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 
 void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn,
 	const std::string &curr_path, const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	bool is_script, const std::string& sha_dig)
+	bool is_script, const std::string& sha_dig, unsigned int p_script_random)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -290,7 +298,14 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, c
 
 	if(is_script)
 	{
-		ni.script_random = Server->getRandomNumber();
+		if (p_script_random != 0)
+		{
+			ni.script_random = p_script_random;
+		}
+		else
+		{
+			ni.script_random = Server->getRandomNumber();
+		}
 	}
 
 	IScopedLock lock(mutex);
@@ -501,15 +516,18 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	}
 	else
 	{
+		hash_file = true;
 		if(todl.is_script)
 		{
 			queueScriptEnd(cfn);
 
-			script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time);
+			if (!todl.metadata_only)
+			{
+				script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time, hash_file);
+			}
 		}
 
 		max_ok_id = (std::max)(max_ok_id, todl.id);
-		hash_file=true;
 	}
 
     if(hash_file && !todl.metadata_only)
@@ -642,7 +660,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
             addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path,
-				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, true);
+				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, true, todl.script_random);
 			return true;
 		}
 	}
@@ -781,15 +799,19 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 	else
 	{
+		hash_file = true;
+
 		if(todl.is_script)
 		{
 			queueScriptEnd(cfn);
 
-			script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time);
+			if (!todl.metadata_only)
+			{
+				script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time, hash_file);
+			}
 		}
 
 		max_ok_id = (std::max)(max_ok_id, todl.id);
-		hash_file=true;
 	}
 
 	if(hash_file)
@@ -1221,6 +1243,11 @@ bool ServerDownloadThread::sleepQueue()
 	return false;
 }
 
+std::map<std::string, std::string>& ServerDownloadThread::getFilePathCorrections()
+{
+	return filepath_corrections;
+}
+
 void ServerDownloadThread::queueSkip()
 {
 	SQueueItem ni;
@@ -1270,7 +1297,7 @@ bool ServerDownloadThread::isAllDownloadsOk()
 	return all_downloads_ok;
 }
 
-bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times)
+bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times, bool& hash_file)
 {
 	std::string script_output = client_main->sendClientMessageRetry("SCRIPT STDERR "+cfn,
 		"Error getting script output for command \""+todl.fn+"\"", 10000, 10, true);
@@ -1344,13 +1371,129 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 					i+=1+sizeof(timems)+sizeof(msgsize)+msgsize;
 				}
 				else if(script_output[i]==1)
-				{
-					if(i+SHA_DEF_DIGEST_SIZE+1==script_output.size())
+				{					
+					if(i+SHA_DEF_DIGEST_SIZE+1<=script_output.size())
 					{
-						sha_dig.assign(script_output.begin()+i+1, script_output.end());
+						if (sha_dig.empty())
+						{
+							sha_dig.assign(script_output.begin() + i + 1, script_output.begin() + i + 1 + SHA_DEF_DIGEST_SIZE);
+						}						
+					}
+					else
+					{
+						ServerLogger::Log(logid, "Error parsing script output for command \"" + todl.fn + "\" -3", LL_ERROR);
+						break;
 					}
 
 					i+=SHA_DEF_DIGEST_SIZE+1;
+				}
+				else if (script_output[i] == 2)
+				{
+					if (i + 1 + sizeof(_u32) <= script_output.size())
+					{
+						_u32 data_size;
+						memcpy(&data_size, &script_output[i + 1], sizeof(data_size));
+						data_size = little_endian(data_size);
+
+						if (i + 1 + sizeof(_u32) + data_size <= script_output.size()
+							&& data_size<1*1024*1024)
+						{
+							if (!next(cfn, 0, "SCRIPT|urbackup/TAR"))
+							{
+								hash_file = false;
+							}
+
+							CRData fdata(&script_output[i + 1 + sizeof(_u32)], data_size);
+							std::string fn;
+							char is_dir;
+							char is_symlink;
+							char is_special;
+							std::string symlink_target;
+							int64 fsize;
+							unsigned int script_random;
+							bool b = fdata.getStr(&fn);
+							b &= fdata.getChar(&is_dir);
+							b &= fdata.getChar(&is_symlink);
+							b &= fdata.getChar(&is_special);
+							b &= fdata.getStr(&symlink_target);
+							b &= fdata.getVarInt(&fsize);
+							b &= fdata.getUInt(&script_random);
+
+							if (!b)
+							{
+								ServerLogger::Log(logid, "Error parsing script output (tar file) for command \"" + todl.fn + "\"", LL_ERROR);
+								break;
+							}
+
+							std::string os_path = os_file_sep() + "urbackup_backup_scripts"+ os_file_sep() + tarFnToOsPath(fn);
+							FileMetadata metadata;
+
+							std::string remote_fn = "urbackup/TAR|" + server_token + "|" + fn;
+							if (is_dir == 0 && is_symlink == 0 && is_special == 0)
+							{
+								if (fc_chunked != NULL)
+								{
+									addToQueueChunked(0, ExtractFileName(remote_fn, "/"),
+										ExtractFileName(os_path, os_file_sep()),
+										ExtractFilePath(remote_fn, "/"),
+										ExtractFilePath(os_path, os_file_sep()),
+										fsize, metadata, true, std::string(), script_random);
+								}
+								else
+								{
+									addToQueueFull(0, ExtractFileName(remote_fn, "/"),
+										ExtractFileName(os_path, os_file_sep()),
+										ExtractFilePath(remote_fn, "/"),
+										ExtractFilePath(os_path, os_file_sep()),
+										fsize, metadata, true, false, 0, std::string(), false, script_random);
+								}
+							}
+							else
+							{
+								if (is_dir != 0)
+								{
+									if (!os_create_dir(os_file_prefix(backuppath + os_path) ) )
+									{
+										ServerLogger::Log(logid, "Error creating TAR dir at \""+ backuppath + os_path + "\"", LL_ERROR);
+										break;
+									}
+
+									if (!os_create_dir(os_file_prefix(backuppath_hashes + os_path)))
+									{
+										ServerLogger::Log(logid, "Error creating TAR dir at \"" + backuppath_hashes + os_path + "\"", LL_ERROR);
+										break;
+									}
+								}
+								else
+								{
+									std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(backuppath + os_path), MODE_WRITE));
+									if (touch_file.get() == NULL)
+									{
+										ServerLogger::Log(logid, "Error touching TAR special file at \"" + backuppath + os_path + "\"", LL_ERROR);
+										break;
+									}
+								}
+
+								addToQueueFull(0, ExtractFileName(remote_fn, "/"),
+									ExtractFileName(os_path, os_file_sep()),
+									ExtractFilePath(remote_fn, "/"),
+									ExtractFilePath(os_path, os_file_sep()), 0, metadata, true, true, 0, std::string(),
+									false, script_random);
+							}
+
+							i += 1 + sizeof(_u32) + data_size;
+						}
+						else
+						{
+							ServerLogger::Log(logid, "Error parsing script output for command \"" + todl.fn + "\" -5", LL_ERROR);
+							break;
+						}
+					}
+					else
+					{
+						ServerLogger::Log(logid, "Error parsing script output for command \"" + todl.fn + "\" -4", LL_ERROR);
+						break;
+					}
 				}
 				else
 				{
@@ -1448,4 +1591,57 @@ bool ServerDownloadThread::fileHasSnapshot(const SQueueItem& todl)
 	}
 
 	return std::find(shares_without_snapshot.begin(), shares_without_snapshot.end(), share) == shares_without_snapshot.end();
+}
+
+std::string ServerDownloadThread::tarFnToOsPath(const std::string & tar_path)
+{
+	std::vector<std::string> toks;
+	TokenizeMail(tar_path, toks, "/");
+
+	std::string ret;
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		toks[i] = greplace(os_file_sep(), "", toks[i]);
+
+		if (toks[i] == "." || toks[i] == "..")
+		{
+			continue;
+		}
+
+		if (toks[i].empty())
+			continue;
+		
+		if (i + 1 >= toks.size())
+		{
+			std::set<std::string>& dir_tar_fns = tar_filenames[ret];
+
+			std::string corr_fn = FileBackup::fixFilenameForOS(toks[i], dir_tar_fns, ret, true, logid, filepath_corrections);
+
+			if (!ret.empty())
+			{
+				ret += os_file_sep();
+			}
+			ret += corr_fn;
+		}
+		else
+		{
+			if (!ret.empty())
+			{
+				ret += os_file_sep();
+			}
+			std::string tmp_ret = ret + toks[i];
+
+			std::map<std::string, std::string>::iterator it = filepath_corrections.find(tmp_ret);
+			if (it != filepath_corrections.end())
+			{
+				ret += it->second;
+			}
+			else
+			{
+				ret += toks[i];
+			}
+		}		
+	}
+
+	return ret;
 }

@@ -635,7 +635,7 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings)
+std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, std::map<std::string, std::string>& filepath_corrections)
 {
 	std::string orig_fn = fn;
 
@@ -954,7 +954,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path, false);
+					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
 				if( !cf.isdir && remote_path!="urbackup_backup_scripts" )
@@ -1286,7 +1286,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 
 				if(!data.isdir || data.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false);
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
 				if(data.isdir)
@@ -1472,7 +1472,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 
 				if(!data.isdir || data.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false);
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
 				if(data.isdir)
@@ -1683,7 +1683,7 @@ bool FileBackup::createSymlink(const std::string& name, size_t depth, const std:
 	{
 		std::set<std::string> emptyset;
 		std::string emptypath;
-		std::string component = fixFilenameForOS(toks[i], emptyset, emptypath, true);
+		std::string component = fixFilenameForOS(toks[i], emptyset, emptypath, true, logid, filepath_corrections);
 
 		if(component==".." || component==".")
 			continue;
@@ -1795,6 +1795,19 @@ void FileBackup::parseSnapshotFailed(const std::string & logline)
 	if (!share.empty())
 	{
 		shares_without_snapshot.push_back(share);
+	}
+}
+
+void FileBackup::addFilePathCorrections(const std::map<std::string, std::string>& c)
+{
+	for (std::map<std::string, std::string>::const_iterator it = c.begin();
+		it != c.end(); ++it)
+	{
+		std::map<std::string, std::string>::iterator curr_it = filepath_corrections.find(it->first);
+		if (curr_it == filepath_corrections.end())
+		{
+			filepath_corrections.insert(std::make_pair(it->first, it->second));
+		}
 	}
 }
 

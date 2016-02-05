@@ -4,6 +4,7 @@
 #include <deque>
 #include <algorithm>
 #include <assert.h>
+#include <set>
 
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -144,10 +145,10 @@ public:
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
         _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig,
-		bool at_front_postpone_quitstop=false);
+		bool at_front_postpone_quitstop=false, unsigned int p_script_random=0);
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig);
+		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig, unsigned int p_script_random = 0);
 
 	void addToQueueStartShadowcopy(const std::string& fn);
 
@@ -163,7 +164,7 @@ public:
 		
 	bool load_file_patch(SQueueItem todl);
 
-	bool logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times);
+	bool logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times, bool& hash_file);
 
 	bool isDownloadOk(size_t id);
 
@@ -194,6 +195,8 @@ public:
 
 	bool sleepQueue();
 
+	std::map<std::string, std::string>& getFilePathCorrections();
+
 private:
 	std::string getDLPath(SQueueItem todl);
 
@@ -212,6 +215,8 @@ private:
 	void postponeQuitStop(size_t idx);
 
 	bool fileHasSnapshot(const SQueueItem& todl);
+
+	std::string tarFnToOsPath(const std::string& tar_path);
 
 
 	FileClient& fc;
@@ -260,4 +265,7 @@ private:
 	std::vector<std::string> shares_without_snapshot;
 
 	bool with_sparse_hashing;
+
+	std::map<std::string, std::string> filepath_corrections;
+	std::map<std::string, std::set<std::string> > tar_filenames;
 };

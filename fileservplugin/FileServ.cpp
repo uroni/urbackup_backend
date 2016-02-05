@@ -145,7 +145,18 @@ bool FileServ::removeIdentity( const std::string &pIdentity )
 
 bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code)
 {
-	SExitInformation exit_info = PipeSessions::getExitInformation(map_file(cmd, std::string()));
+	std::string pcmd;
+	if (next(cmd, 0, "urbackup/TAR"))
+	{
+		std::string server_ident = getbetween("|", "|", cmd);
+		pcmd = getafter("urbackup/TAR|" + server_ident + "|", cmd);
+	}
+	else
+	{
+		pcmd = map_file(cmd, std::string());
+	}
+
+	SExitInformation exit_info = PipeSessions::getExitInformation(pcmd);
 
 	if(exit_info.created==0)
 	{

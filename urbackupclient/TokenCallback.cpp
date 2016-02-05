@@ -37,9 +37,14 @@ namespace
 			return tokens::get_file_tokens(fn, &client_dao, token_cache);
 		}
 
+		virtual std::string translateTokens(int64 uid, int64 gid, int64 mode)
+		{
+			return std::string();
+		}
+
 	private:
 		tokens::TokenCache token_cache;
-		ClientDAO client_dao;
+		ClientDAO client_dao;	
 	};
 
 	class TokenCallbackFactory : public IFileServ::ITokenCallbackFactory

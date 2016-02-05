@@ -423,7 +423,7 @@ bool IncrFileBackup::doFileBackup()
 
 				if(!cf.isdir || cf.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true);
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path, true, logid, filepath_corrections);
 				}
 
 				if(skip_dir_completely>0)
@@ -1057,6 +1057,8 @@ bool IncrFileBackup::doFileBackup()
 		calculateDownloadSpeed(ctime, fc, fc_chunked.get());
 	}
 
+	addFilePathCorrections(server_download->getFilePathCorrections());
+
 	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 
 	if(server_download->isOffline() && !r_offline)
@@ -1440,7 +1442,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 
 				if(!curr_file.isdir || curr_file.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path, false);
+					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
 				if( hasChange(line, deleted_ids) )

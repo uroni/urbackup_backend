@@ -24,6 +24,7 @@ public:
 	{
 	public:
 		virtual std::string getFileTokens(const std::string& fn) = 0;
+		virtual std::string translateTokens(int64 uid, int64 gid, int64 mode) = 0;
 	};
 
 	class ITokenCallbackFactory

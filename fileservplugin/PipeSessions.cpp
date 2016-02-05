@@ -38,7 +38,7 @@ std::map<std::string, size_t> PipeSessions::active_shares;
 const int64 pipe_file_timeout = 1*60*60*1000;
 
 
-IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident)
+IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident, bool* sent_metadata)
 {
 	if(cmd.empty())
 	{
@@ -48,7 +48,8 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 	IScopedLock lock(mutex);
 
 	int backupnum;
-	std::string session_key = getKey(cmd, backupnum);
+	int64 fn_random = 0;
+	std::string session_key = getKey(cmd, backupnum, fn_random);
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
 
 	if(it!=pipe_files.end() && it->second.backupnum!=backupnum)
@@ -59,13 +60,22 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 
 	if(it != pipe_files.end())
 	{
-		pipe_file_user.reset(it->second.file);
-
 		if (!it->second.metadata.empty())
 		{
 			transmitFileMetadata(cmd, it->second.metadata, server_token, ident);
 			it->second.metadata.clear();
 		}
+
+		if (it->second.file == NULL)
+		{
+			if (sent_metadata != NULL)
+			{
+				*sent_metadata = true;
+			}
+			return NULL;
+		}
+
+		pipe_file_user.reset(it->second.file);
 
 		return it->second.file;
 	}
@@ -79,7 +89,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			FileMetadataPipe* nf = new FileMetadataPipe(cmd_pipe, cmd);
 
 			SPipeSession new_session = {
-				nf, false, cmd_pipe, backupnum, std::string()
+				nf, false, cmd_pipe, backupnum, std::string(), Server->getTimeMS()
 			};
 
 			pipe_files[session_key] = new_session;
@@ -106,7 +116,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			}
 			else
 			{
-				nf = new PipeFileTar(script_cmd, backupnum);
+				nf = new PipeFileTar(script_cmd, backupnum, fn_random, output_filename);
 			}
 
 			if(nf->getHasError())
@@ -116,7 +126,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			}
 
 			SPipeSession new_session = {
-				nf, false, NULL, backupnum, std::string()
+				nf, false, NULL, backupnum, std::string(), Server->getTimeMS()
 			};
 			pipe_files[session_key] = new_session;
 
@@ -143,7 +153,7 @@ void PipeSessions::injectPipeSession(const std::string & session_key, int backup
 	}
 
 	SPipeSession new_session = {
-		pipe_file, false, NULL, backupnum, metadata
+		pipe_file, false, NULL, backupnum, metadata, Server->getTimeMS()
 	};
 	pipe_files[session_key] = new_session;
 }
@@ -172,14 +182,16 @@ void PipeSessions::removeFile(const std::string& cmd)
 	IScopedLock lock(mutex);
 
 	int backupnum;
-	std::string session_key = getKey(cmd, backupnum);
+	int64 fn_random = 0;
+	std::string session_key = getKey(cmd, backupnum, fn_random);
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
 	if(it != pipe_files.end())
 	{
 		Server->Log("Removing pipe file "+cmd, LL_DEBUG);
 
-		if(!it->second.retrieved_exit_info)
+		if(!it->second.retrieved_exit_info
+			&& it->second.file!=NULL)
 		{
 			int exit_code = -1;
 			it->second.file->getExitCode(exit_code);
@@ -193,14 +205,18 @@ void PipeSessions::removeFile(const std::string& cmd)
 			Server->Log("Pipe file has exit code "+convert(exit_code), LL_DEBUG);
 		}		
 
-		it->second.file->forceExitWait();
+		if(it->second.file!=NULL)
+		{ 
+			it->second.file->forceExitWait();
 
-		while (it->second.file->hasUser())
-		{
-			Server->wait(100);
+			while (it->second.file->hasUser())
+			{	
+				Server->wait(100);
+			}
+
+			delete it->second.file;
 		}
 
-		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
 	}
@@ -215,7 +231,8 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 	IScopedLock lock(mutex);
 
 	int backupnum;
-	std::string session_key = getKey(cmd, backupnum);
+	int64 fn_random = 0;
+	std::string session_key = getKey(cmd, backupnum, fn_random);
 
 	{
 		std::map<std::string, SExitInformation>::iterator it=exit_information.find(session_key);
@@ -233,10 +250,11 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 		if(it != pipe_files.end() && !it->second.retrieved_exit_info)
 		{
 			int exit_code = -1;
+			std::string stderr_output = it->second.file->getStdErr();
 			it->second.file->getExitCode(exit_code);
 			SExitInformation exit_info(
 				exit_code,
-				it->second.file->getStdErr(),
+				stderr_output,
 				Server->getTimeMS() );
 
 			it->second.retrieved_exit_info=true;
@@ -266,10 +284,14 @@ void PipeSessions::operator()()
 		for(std::map<std::string, SPipeSession>::iterator it=pipe_files.begin();
 			it!=pipe_files.end();)
 		{
-			if(currtime - it->second.file->getLastRead() > pipe_file_timeout)
+			if( (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_timeout)
+				|| (it->second.file==NULL && currtime - it->second.addtime > pipe_file_timeout) )
 			{
-				it->second.file->forceExitWait();
-				delete it->second.file;
+				if (it->second.file != NULL)
+				{
+					it->second.file->forceExitWait();
+					delete it->second.file;
+				}
 				delete it->second.input_pipe;
 				std::map<std::string, SPipeSession>::iterator del_it = it;
 				++it;
@@ -313,8 +335,8 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	}
 
 	CWData data;
+	data.addChar(METADATA_PIPE_SEND_FILE);
 	data.addString(public_fn);
-	data.addChar(0);
 	data.addString(local_fn);
 	data.addInt64(folder_items);
 	data.addInt64(metadata_id);
@@ -358,8 +380,8 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 	}
 
 	CWData data;
+	data.addChar(METADATA_PIPE_SEND_RAW);
 	data.addString(public_fn);
-	data.addChar(1);
 	data.addString(metadata);
 	data.addString(server_token);
 
@@ -413,11 +435,7 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 	if(it!=pipe_files.end() && it->second.input_pipe!=NULL)
 	{
 		CWData data;
-		data.addString(std::string());
-		data.addString(std::string());
-		data.addInt64(0);
-		data.addInt64(0);
-		data.addString(std::string());
+		data.addChar(METADATA_PIPE_EXIT);
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
@@ -452,7 +470,7 @@ void PipeSessions::removeMetadataCallback( const std::string &name, const std::s
 	}
 }
 
-std::string PipeSessions::getKey( const std::string& cmd, int& backupnum )
+std::string PipeSessions::getKey( const std::string& cmd, int& backupnum, int64& fn_random)
 {
 	if(cmd.empty())
 	{
@@ -476,9 +494,13 @@ std::string PipeSessions::getKey( const std::string& cmd, int& backupnum )
 	}
 	else
 	{
-		if(cmd_toks.size()>2)
+		if(cmd_toks.size()>1)
 		{
-			backupnum = atoi(cmd_toks[2].c_str());
+			backupnum = atoi(cmd_toks[1].c_str());
+		}
+		if (cmd_toks.size()>2)
+		{
+			fn_random = watoi64(cmd_toks[2].c_str());
 		}
 
 		return cmd;

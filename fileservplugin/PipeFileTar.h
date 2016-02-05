@@ -49,8 +49,8 @@ public:
 		std::auto_ptr<IMutex> mutex;
 	};
 
-	PipeFileTar(const std::string& pCmd, int backupnum);
-	PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum);
+	PipeFileTar(const std::string& pCmd, int backupnum, int64 fn_random, std::string output_fn);
+	PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn);
 	~PipeFileTar();
 
 	virtual std::string Read(_u32 tr, bool *has_error = NULL);
@@ -87,6 +87,8 @@ public:
 
 private:
 
+	std::string buildCurrMetadata();
+
 	bool readHeader(bool* has_error);
 
 	int64 file_offset;	
@@ -100,7 +102,11 @@ private:
 	PipeFileStore* pipe_file;
 
 	int backupnum;
+	int64 fn_random;
 
 	bool free_pipe_file;
+	bool has_next;
+
+	std::string output_fn;
 };
 
