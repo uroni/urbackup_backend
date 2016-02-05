@@ -8,10 +8,11 @@
 
 struct SPipeSession
 {
-	PipeFileBase* file;
+	IPipeFile* file;
 	bool retrieved_exit_info;
 	IPipe* input_pipe;
 	int backupnum;
+	std::string metadata;
 };
 
 struct SExitInformation
@@ -36,12 +37,16 @@ public:
 	static void init();
 	static void destroy();
 
-	static IFile* getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user);
+	static IFile* getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident);
+	static void injectPipeSession(const std::string& session_key, int backupnum, IPipeFile* pipe_file, const std::string& metadata);
 	static void removeFile(const std::string& cmd);
 	static SExitInformation getExitInformation(const std::string& cmd);
 
 	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
 		const std::string& server_token, const std::string& identity, int64 folder_items, int64 metadata_id);
+
+	static void transmitFileMetadata(const std::string& public_fn, const std::string& metadata,
+		const std::string& server_token, const std::string& identity);
 
 	static void fileMetadataDone(const std::string& public_fn, const std::string& server_token);
 

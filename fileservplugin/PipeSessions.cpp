@@ -24,6 +24,7 @@
 #include "FileMetadataPipe.h"
 #include "../common/data.h"
 #include "PipeFile.h"
+#include "PipeFileTar.h"
 #include <string>
 #include <stdlib.h>
 
@@ -37,7 +38,7 @@ std::map<std::string, size_t> PipeSessions::active_shares;
 const int64 pipe_file_timeout = 1*60*60*1000;
 
 
-IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user)
+IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident)
 {
 	if(cmd.empty())
 	{
@@ -59,6 +60,13 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 	if(it != pipe_files.end())
 	{
 		pipe_file_user.reset(it->second.file);
+
+		if (!it->second.metadata.empty())
+		{
+			transmitFileMetadata(cmd, it->second.metadata, server_token, ident);
+			it->second.metadata.clear();
+		}
+
 		return it->second.file;
 	}
 	else
@@ -71,7 +79,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			FileMetadataPipe* nf = new FileMetadataPipe(cmd_pipe, cmd);
 
 			SPipeSession new_session = {
-				nf, false, cmd_pipe, backupnum
+				nf, false, cmd_pipe, backupnum, std::string()
 			};
 
 			pipe_files[session_key] = new_session;
@@ -85,12 +93,22 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 
 			script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
 
-			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename);
+			bool tar_file = false;
+			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, tar_file);
 
 			script_cmd = "\"" + script_cmd + script_filename +
 				"\" \"" + output_filename + "\" "+convert(backupnum);
 
-			PipeFile* nf = new PipeFile(script_cmd);
+			IPipeFile* nf;
+			if (!tar_file)
+			{
+				nf = new PipeFile(script_cmd);
+			}
+			else
+			{
+				nf = new PipeFileTar(script_cmd, backupnum);
+			}
+
 			if(nf->getHasError())
 			{
 				delete nf;
@@ -98,7 +116,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			}
 
 			SPipeSession new_session = {
-				nf, false, NULL, backupnum
+				nf, false, NULL, backupnum, std::string()
 			};
 			pipe_files[session_key] = new_session;
 
@@ -106,6 +124,28 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			return nf;
 		}		
 	}
+}
+
+void PipeSessions::injectPipeSession(const std::string & session_key, int backupnum, IPipeFile * pipe_file, const std::string& metadata)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
+
+	if (it != pipe_files.end() && it->second.backupnum != backupnum)
+	{
+		removeFile(session_key+ (backupnum>0 ? ("|"+convert(backupnum)) : ""));
+		it = pipe_files.end();
+	}
+
+	if (it != pipe_files.end())
+	{
+		return;
+	}
+
+	SPipeSession new_session = {
+		pipe_file, false, NULL, backupnum, metadata
+	};
+	pipe_files[session_key] = new_session;
 }
 
 void PipeSessions::init()
@@ -274,6 +314,7 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 
 	CWData data;
 	data.addString(public_fn);
+	data.addChar(0);
 	data.addString(local_fn);
 	data.addInt64(folder_items);
 	data.addInt64(metadata_id);
@@ -300,6 +341,35 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	else
 	{
 		int dbg = 43;
+	}
+}
+
+void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std::string& metadata, const std::string & server_token, const std::string & identity)
+{
+	if (public_fn.empty() || next(public_fn, 0, "urbackup/"))
+	{
+		return;
+	}
+
+	std::string sharename = getuntil("/", public_fn);
+	if (sharename.empty())
+	{
+		sharename = public_fn;
+	}
+
+	CWData data;
+	data.addString(public_fn);
+	data.addChar(1);
+	data.addString(metadata);
+	data.addString(server_token);
+
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|" + server_token);
+
+	if (it != pipe_files.end() && it->second.input_pipe != NULL)
+	{
+		++active_shares[sharename + "|" + server_token];
+
+		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
 }
 

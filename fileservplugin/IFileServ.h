@@ -44,7 +44,7 @@ public:
 	virtual bool getPause(void)=0;
 	virtual void runClient(IPipe *cp, std::vector<char>* extra_buffer)=0;
 	virtual bool getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code) = 0;
-	virtual void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn) = 0;
+	virtual void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn, bool tar_file) = 0;
 	virtual void registerMetadataCallback(const std::string &name, const std::string& identity, IMetadataCallback* callback) = 0;
 	virtual void removeMetadataCallback(const std::string &name, const std::string& identity) = 0;
 	virtual void registerTokenCallbackFactory(ITokenCallbackFactory* callback_factory) = 0;

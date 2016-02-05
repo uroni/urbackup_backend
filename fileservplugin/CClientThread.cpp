@@ -466,11 +466,16 @@ bool CClientThread::ProcessPacket(CRData *data)
 					IFile* file;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
-						file = PipeSessions::getFile(o_filename, pipe_file_user);
+						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident);
+					}
+					else if (next(s_filename, 0, "urbackup/TAR|"))
+					{
+						std::string server_token = getbetween("|", "|", s_filename);
+						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, std::string(), ident);
 					}
 					else
 					{
-						file = PipeSessions::getFile(filename, pipe_file_user);
+						file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident);
 					}					
 
 					if(!file)
@@ -1570,7 +1575,16 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	if(is_script)
 	{
 		pipe_file_user.reset(new ScopedPipeFileUser);
-		srv_file = PipeSessions::getFile(filename, *pipe_file_user);
+
+		if (next(s_filename, 0, "urbackup/TAR|"))
+		{
+			std::string server_token = getbetween("|", "|", s_filename);
+			srv_file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), *pipe_file_user, server_token, ident);
+		}
+		else
+		{
+			srv_file = PipeSessions::getFile(filename, *pipe_file_user, std::string(), ident);
+		}
 
 		if(srv_file==NULL)
 		{
@@ -2132,12 +2146,18 @@ bool CClientThread::FinishScript( CRData * data )
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
 		f_name = s_filename;
-		file = PipeSessions::getFile(s_filename, pipe_file_user);
+		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident);
+	}
+	else if (next(s_filename, 0, "urbackup/TAR|"))
+	{
+		std::string server_token = getbetween("|", "|", s_filename);
+		f_name = getafter("urbackup/TAR|" + server_token + "|", s_filename);
+		file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident);
 	}
 	else
 	{
 		f_name = filename;
-		file = PipeSessions::getFile(filename, pipe_file_user);
+		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident);
 	}			
 
 	bool ret=false;

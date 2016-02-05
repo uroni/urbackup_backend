@@ -90,6 +90,9 @@
     <ClCompile Include="FileMetadataPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PipeFileTar.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -171,6 +174,9 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="FileMetadataPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFileTar.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

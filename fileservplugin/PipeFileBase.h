@@ -6,7 +6,20 @@
 #include "../urbackupcommon/sha2/sha2.h"
 #include <memory>
 
-class PipeFileBase : public IFile, public IThread
+class IPipeFile : public IFile
+{
+public:
+	virtual int64 getLastRead() = 0;
+	virtual bool getHasError() = 0;
+	virtual std::string getStdErr() = 0;
+	virtual bool getExitCode(int& exit_code) = 0;
+	virtual void forceExitWait() = 0;
+	virtual void addUser() = 0;
+	virtual void removeUser() = 0;
+	virtual bool hasUser() = 0;
+};
+
+class PipeFileBase : public IPipeFile, public IThread
 {
 public:
 	PipeFileBase(const std::string& pCmd);
@@ -42,21 +55,17 @@ public:
 
 	bool getHasError();
 
-	virtual bool getExitCode(int& exit_code) = 0;
-
 	std::string getStdErr();
-
-	virtual void forceExitWait() = 0;
 
 	virtual bool PunchHole( _i64 spos, _i64 size );
 
 	virtual bool Sync();
 
-	void addUser();
+	virtual void addUser();
 
-	void removeUser();
+	virtual void removeUser();
 
-	bool hasUser();
+	virtual bool hasUser();
 
 protected:
 
@@ -110,7 +119,7 @@ public:
 		: pipe_file(NULL)
 	{}
 
-	ScopedPipeFileUser(PipeFileBase& p_pipe_file)
+	ScopedPipeFileUser(IPipeFile& p_pipe_file)
 		: pipe_file(&p_pipe_file)
 	{
 		pipe_file->addUser();
@@ -124,12 +133,12 @@ public:
 		}
 	}
 
-	PipeFileBase* get()
+	IPipeFile* get()
 	{
 		return pipe_file;
 	}
 
-	void reset(PipeFileBase* new_pipe_file)
+	void reset(IPipeFile* new_pipe_file)
 	{
 		if (pipe_file != NULL)
 		{
@@ -145,5 +154,5 @@ public:
 	}
 
 private:
-	PipeFileBase* pipe_file;
+	IPipeFile* pipe_file;
 };

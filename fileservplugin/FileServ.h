@@ -18,7 +18,7 @@ public:
 	void setPause(bool b);
 	bool getPause(void);
 	bool getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code);
-	void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn);
+	void addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn, bool tar_file);
 
 	virtual void registerMetadataCallback(const std::string &name, const std::string& identity, IMetadataCallback* callback);
 
@@ -33,7 +33,7 @@ public:
 
 	static bool checkIdentity(const std::string &pIdentity);
 
-	static std::string mapScriptOutputNameToScript(const std::string& script_fn);
+	static std::string mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file);
 
 	virtual void registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory );
 
@@ -50,7 +50,25 @@ private:
 
 	static std::vector<std::string> identities;
 	static bool pause;
-	static std::map<std::string, std::string> script_output_names;
+
+	struct SScriptMapping
+	{
+		SScriptMapping()
+			: tar_file(false)
+		{
+
+		}
+
+		SScriptMapping(std::string script_fn,
+			bool tar_file)
+			: script_fn(script_fn), tar_file(tar_file)
+		{}
+
+		std::string script_fn;
+		bool tar_file;
+	};
+
+	static std::map<std::string, SScriptMapping> script_mappings;
 	
 	static IMutex *mutex;
 

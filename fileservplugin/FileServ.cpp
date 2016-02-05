@@ -29,7 +29,7 @@
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
-std::map<std::string, std::string> FileServ::script_output_names;
+std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 
 
@@ -160,24 +160,26 @@ bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_da
 	}
 }
 
-void FileServ::addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn)
+void FileServ::addScriptOutputFilenameMapping(const std::string& script_output_fn, const std::string& script_fn, bool tar_file)
 {
 	IScopedLock lock(mutex);
 
-	script_output_names[script_output_fn] = script_fn;
+	script_mappings[script_output_fn] = SScriptMapping(script_fn, tar_file);
 }
 
-std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn)
+std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file)
 {
 	IScopedLock lock(mutex);
 
-	std::map<std::string, std::string>::iterator it = script_output_names.find(script_fn);
-	if(it!=script_output_names.end())
+	std::map<std::string, SScriptMapping>::iterator it = script_mappings.find(script_fn);
+	if(it!= script_mappings.end())
 	{
-		return it->second;
+		tar_file = it->second.tar_file;
+		return it->second.script_fn;
 	}
 	else
 	{
+		tar_file = false;
 		return script_fn;
 	}
 }
