@@ -33,6 +33,15 @@
 #include "FileWrapper.h"
 #include "ClientBitmap.h"
 
+#ifdef __FreeBSD__
+#define open64 open
+#define O_LARGEFILE 0
+#define ftruncate64 ftruncate
+#define lseek64 lseek
+#define stat64 stat
+#define fstat64 fstat
+#endif
+
 const unsigned int blocksize = 4096;
 
 CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
@@ -457,6 +466,7 @@ bool CowFile::hasBitmapRange(uint64 offset_start, uint64 offset_end)
 
 bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
+#ifndef __FreeBSD__
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, unused_start, unused_end-unused_start);
 	if(rc==0)
 	{
@@ -467,6 +477,9 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		Server->Log("fallocate failed (setting unused image range) with errno "+convert((int)errno), LL_WARNING);
 		return false;
 	}
+#else
+	return false;
+#endif
 }
 
 bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)

@@ -717,7 +717,7 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 	time_t atime = static_cast<time_t>(accessed);
 	time_t mtime = static_cast<time_t>(last_modified);
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 	timespec tss[2];
 	tss[0].tv_sec = atime;
 	tss[0].tv_nsec = 0;
@@ -727,6 +727,10 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 	int rc = utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW);
 	return rc==0;
 #else
+	#if defined(__FreeBSD__)
+	#define O_SYMLINK 0
+	#endif
+
 	int fd = open(fn.c_str(), O_WRONLY|O_NOFOLLOW|O_SYMLINK|O_CLOEXEC);
 	if(fd==-1)
 	{

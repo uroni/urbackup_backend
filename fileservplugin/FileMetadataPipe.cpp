@@ -30,16 +30,29 @@
 
 #ifndef _WIN32
 #include <sys/types.h>
+
+#ifndef __FreeBSD__
 #include <sys/xattr.h>
+#else
+#include <sys/extattr.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
 #define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
 #define lgetxattr(path, name, value, size) getxattr(path, name, value, size, 0, XATTR_NOFOLLOW)
+#define stat64 stat
+#define lstat64 lstat
+#endif
+
+#if defined(__FreeBSD__)
+#define llistxattr(path, list, size) extattr_list_link(path, EXTATTR_NAMESPACE_USER, list, size)
+#define lgetxattr(path, name, value, size) extattr_get_link(path, EXTATTR_NAMESPACE_USER, name, value, size)
 #define stat64 stat
 #define lstat64 lstat
 #endif
@@ -711,7 +724,7 @@ void serialize_stat_buf(const struct stat64& buf, const std::string& symlink_tar
 	data.addVarInt(buf.st_uid);
 	data.addVarInt(buf.st_gid);
 	data.addVarInt(buf.st_rdev);
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 	data.addVarInt(buf.st_atimespec.tv_sec);
 	data.addUInt(buf.st_atimespec.tv_nsec);
 	data.addVarInt(buf.st_mtimespec.tv_sec);

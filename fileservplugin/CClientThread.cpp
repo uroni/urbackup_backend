@@ -47,7 +47,7 @@
 #endif
 #include <assert.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/uio.h>
 #define open64 open
 #define off64_t off_t
@@ -55,7 +55,13 @@
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
-#define sendfile64(a, b, c, d) sendfile(a, b, c, d, NULL, 0)
+
+#if defined(__FreeBSD__)
+#define sendfile64(a, b, c, d, e) sendfile(a, b, c, d, NULL, e, 0)
+#else
+#define sendfile64(a, b, c, d, e) sendfile(a, b, c, e, NULL, 0)
+#endif
+
 #endif
 
 #ifndef SEEK_DATA
@@ -1029,8 +1035,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if( clientpipe==NULL && !with_hashes && count>0 )
 					{
-						#ifdef __APPLE__
-						ssize_t rc=sendfile64(int_socket, hFile, foffset, reinterpret_cast<off_t*>(&count));
+						#if defined(__APPLE__) || defined(__FreeBSD__)
+						ssize_t rc=sendfile64(int_socket, hFile, foffset, count, reinterpret_cast<off_t*>(&count));
 						if(rc==0)
 						{
 							foffset+=count;

@@ -14,7 +14,7 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #	include <sys/sendfile.h>
 #else
 #   include <sys/uio.h>
