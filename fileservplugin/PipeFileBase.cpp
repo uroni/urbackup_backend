@@ -147,6 +147,13 @@ std::string PipeFileBase::Read(int64 spos, _u32 tr, bool * has_error)
 		lock.relock(NULL);
 		Server->wait(100);
 		lock.relock(buffer_mutex.get());
+
+		if (!SeekInt(spos))
+		{
+			if (has_error) *has_error = true;
+			return std::string();
+		}
+
 		read_avail = getReadAvail();
 	}
 
@@ -202,6 +209,13 @@ _u32 PipeFileBase::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 		lock.relock(NULL);
 		Server->wait(100);
 		lock.relock(buffer_mutex.get());
+
+		if (!SeekInt(spos))
+		{
+			if (has_error) *has_error = true;
+			return 0;
+		}
+
 		read_avail = getReadAvail();
 	}
 

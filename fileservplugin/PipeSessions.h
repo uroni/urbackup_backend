@@ -1,15 +1,34 @@
 #pragma once
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Server.h"
+#include "../Interface/Condition.h"
 #include "PipeFileBase.h"
 #include <map>
 #include <string>
+#include <memory>
 #include "IFileServ.h"
 
 struct SPipeSession
 {
+	SPipeSession()
+		: file(NULL), retrieved_exit_info(false), retrieving_exit_info(false),
+		input_pipe(NULL), backupnum(0), metadata(), addtime(Server->getTimeMS()), retrieval_cond(NULL)
+	{}
+
+	SPipeSession(IPipeFile* file, IPipe* input_pipe, int backupnum, std::string metadata)
+		: file(file), retrieved_exit_info(false), retrieving_exit_info(false),
+		input_pipe(input_pipe), backupnum(backupnum), metadata(metadata), addtime(Server->getTimeMS()),
+		retrieval_cond(NULL)
+	{
+
+	}
+
 	IPipeFile* file;
 	bool retrieved_exit_info;
+	bool retrieving_exit_info;
+	ICondition* retrieval_cond;
 	IPipe* input_pipe;
 	int backupnum;
 	std::string metadata;

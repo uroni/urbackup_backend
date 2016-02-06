@@ -472,7 +472,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					else if (next(s_filename, 0, "urbackup/TAR|"))
 					{
 						std::string server_token = getbetween("|", "|", s_filename);
-						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, std::string(), ident, &sent_metadata);
+						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, server_token, ident, &sent_metadata);
 					}
 					else
 					{

@@ -87,12 +87,8 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 		{
 			IPipe* cmd_pipe = Server->createMemoryPipe();
 			FileMetadataPipe* nf = new FileMetadataPipe(cmd_pipe, cmd);
-
-			SPipeSession new_session = {
-				nf, false, cmd_pipe, backupnum, std::string(), Server->getTimeMS()
-			};
-
-			pipe_files[session_key] = new_session;
+			
+			pipe_files.insert(std::make_pair(session_key, SPipeSession(nf, cmd_pipe, backupnum, std::string()) ));
 
 			pipe_file_user.reset(nf);
 			return nf;
@@ -125,10 +121,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 				return NULL;
 			}
 
-			SPipeSession new_session = {
-				nf, false, NULL, backupnum, std::string(), Server->getTimeMS()
-			};
-			pipe_files[session_key] = new_session;
+			pipe_files.insert(std::make_pair(session_key, SPipeSession(nf, NULL, backupnum, std::string())));
 
 			pipe_file_user.reset(nf);
 			return nf;
@@ -152,10 +145,7 @@ void PipeSessions::injectPipeSession(const std::string & session_key, int backup
 		return;
 	}
 
-	SPipeSession new_session = {
-		pipe_file, false, NULL, backupnum, metadata, Server->getTimeMS()
-	};
-	pipe_files[session_key] = new_session;
+	pipe_files.insert(std::make_pair(session_key, SPipeSession(pipe_file, NULL, backupnum, metadata)));
 }
 
 void PipeSessions::init()
@@ -190,6 +180,15 @@ void PipeSessions::removeFile(const std::string& cmd)
 	{
 		Server->Log("Removing pipe file "+cmd, LL_DEBUG);
 
+		while (it->second.retrieving_exit_info)
+		{
+			if (it->second.retrieval_cond == NULL)
+			{
+				it->second.retrieval_cond = Server->createCondition();
+			}
+			it->second.retrieval_cond->wait(&lock);
+		}
+
 		if(!it->second.retrieved_exit_info
 			&& it->second.file!=NULL)
 		{
@@ -218,6 +217,7 @@ void PipeSessions::removeFile(const std::string& cmd)
 		}
 
 		delete it->second.input_pipe;
+		delete it->second.retrieval_cond;
 		pipe_files.erase(it);
 	}
 	else
@@ -234,6 +234,20 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 	int64 fn_random = 0;
 	std::string session_key = getKey(cmd, backupnum, fn_random);
 
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
+
+	if (it != pipe_files.end())
+	{
+		while (it->second.retrieving_exit_info)
+		{
+			if (it->second.retrieval_cond== NULL)
+			{
+				it->second.retrieval_cond = Server->createCondition();
+			}
+			it->second.retrieval_cond->wait(&lock);
+		}
+	}
+
 	{
 		std::map<std::string, SExitInformation>::iterator it=exit_information.find(session_key);
 
@@ -246,11 +260,26 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 	}
 
 	{
-		std::map<std::string, SPipeSession>::iterator it = pipe_files.find(session_key);
-		if(it != pipe_files.end() && !it->second.retrieved_exit_info)
+		if(it != pipe_files.end()
+			&& !it->second.retrieved_exit_info)
 		{
+			it->second.retrieving_exit_info = true;
+
 			int exit_code = -1;
-			std::string stderr_output = it->second.file->getStdErr();
+			IPipeFile* f = it->second.file;
+
+			lock.relock(NULL);
+
+			std::string stderr_output = f->getStdErr();
+
+			lock.relock(mutex);
+
+			it->second.retrieving_exit_info = false;
+			if (it->second.retrieval_cond!= NULL)
+			{
+				it->second.retrieval_cond->notify_all();
+			}
+
 			it->second.file->getExitCode(exit_code);
 			SExitInformation exit_info(
 				exit_code,
@@ -258,6 +287,8 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 				Server->getTimeMS() );
 
 			it->second.retrieved_exit_info=true;
+
+			exit_information[session_key] = exit_info;
 
 			return exit_info;
 		}
@@ -284,8 +315,9 @@ void PipeSessions::operator()()
 		for(std::map<std::string, SPipeSession>::iterator it=pipe_files.begin();
 			it!=pipe_files.end();)
 		{
-			if( (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_timeout)
-				|| (it->second.file==NULL && currtime - it->second.addtime > pipe_file_timeout) )
+			if( !it->second.retrieving_exit_info
+				 && (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_timeout)
+					 || (it->second.file==NULL && currtime - it->second.addtime > pipe_file_timeout) )
 			{
 				if (it->second.file != NULL)
 				{
@@ -293,6 +325,7 @@ void PipeSessions::operator()()
 					delete it->second.file;
 				}
 				delete it->second.input_pipe;
+				delete it->second.retrieval_cond;
 				std::map<std::string, SPipeSession>::iterator del_it = it;
 				++it;
 				pipe_files.erase(del_it);
@@ -381,7 +414,7 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 
 	CWData data;
 	data.addChar(METADATA_PIPE_SEND_RAW);
-	data.addString(public_fn);
+	data.addString("f" + public_fn);
 	data.addString(metadata);
 	data.addString(server_token);
 

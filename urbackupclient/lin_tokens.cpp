@@ -400,11 +400,6 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
 {
-	if(token_cache.get()==NULL)
-	{
-		read_all_tokens(dao, token_cache);
-	}
-
 	struct stat stat_data;
 
 	if(stat(fn.c_str(), &stat_data)!=0)
@@ -412,10 +407,20 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 		Server->Log("Error stating file \"" + fn + "\" to get file tokens. Errno: "+convert(errno), LL_ERROR);
 		return std::string();
 	}
+	
+	return translate_tokens(stat_data.st_uid, stat_data.st_gid, stat_data.st_mode, dao, token_cache);
+}
 
+std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache)
+{
+	if(cache.get()==NULL)
+	{
+		read_all_tokens(dao, cache);
+	}
+	
 	CWData token_info;
-
-	if(stat_data.st_mode & S_IROTH)
+	
+	if(mode & S_IROTH)
 	{
 		//Allow all
 		token_info.addChar(ID_GRANT_ACCESS);
@@ -425,8 +430,8 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 	{
 		//Allow root
 		{
-			std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(0);
-			if(it!=token_cache.get()->uid_map.end())
+			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(0);
+			if(it!=cache.get()->uid_map.end())
 			{
 				assert(it->second!=0);
 			
@@ -435,12 +440,12 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 			}
 		}
 	
-		if(stat_data.st_mode & S_IRUSR)
+		if(mode & S_IRUSR)
 		{
-			std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(stat_data.st_uid);
-			if(it==token_cache.get()->uid_map.end())
+			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(uid);
+			if(it==cache.get()->uid_map.end())
 			{
-				Server->Log("Error getting internal id for user with id "+convert(stat_data.st_uid), LL_ERROR);
+				Server->Log("Error getting internal id for user with id "+convert(uid), LL_ERROR);
 			}
 			else
 			{
@@ -451,12 +456,12 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 			}
 		}
 
-		if(stat_data.st_mode & S_IRGRP)
+		if(mode & S_IRGRP)
 		{
-			std::map<gid_t, int64>::iterator it = token_cache.get()->gid_map.find(stat_data.st_gid);
-			if(it==token_cache.get()->gid_map.end())
+			std::map<gid_t, int64>::iterator it = cache.get()->gid_map.find(gid);
+			if(it==cache.get()->gid_map.end())
 			{
-				Server->Log("Error getting internal id for group with id "+convert(stat_data.st_gid), LL_ERROR);
+				Server->Log("Error getting internal id for group with id "+convert(gid), LL_ERROR);
 			}
 			else
 			{

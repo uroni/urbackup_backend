@@ -1300,7 +1300,7 @@ bool ServerDownloadThread::isAllDownloadsOk()
 bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &todl, std::string& sha_dig, int64 script_start_times, bool& hash_file)
 {
 	std::string script_output = client_main->sendClientMessageRetry("SCRIPT STDERR "+cfn,
-		"Error getting script output for command \""+todl.fn+"\"", 10000, 10, true);
+		"Error getting script output for command \""+todl.fn+"\"", 120000, 10, true);
 
 	if(script_output=="err")
 	{
@@ -1425,7 +1425,7 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 								break;
 							}
 
-							std::string os_path = os_file_sep() + "urbackup_backup_scripts"+ os_file_sep() + tarFnToOsPath(fn);
+							std::string os_path = os_file_sep() + tarFnToOsPath(fn);
 							FileMetadata metadata;
 
 							std::string remote_fn = "urbackup/TAR|" + server_token + "|" + fn;

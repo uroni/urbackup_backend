@@ -3,6 +3,11 @@
 #include "../Interface/Mutex.h"
 #include "PipeFile.h"
 #include <memory>
+#include <sys/stat.h>
+
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+#define stat64 stat
+#endif
 
 class PipeFileTar : public IPipeFile
 {
@@ -23,7 +28,7 @@ public:
 		bool is_special;
 		bool is_symlink;
 
-		struct stat buf;
+		struct stat64 buf;
 	};
 
 	struct PipeFileStore
@@ -108,5 +113,7 @@ private:
 	bool has_next;
 
 	std::string output_fn;
+
+	bool reading_header;
 };
 

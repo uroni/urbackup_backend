@@ -7,6 +7,8 @@
 #include "../urbackupcommon/os_functions.h"
 #include "FileMetadataPipe.h"
 #include "../stringtools.h"
+#include <memory.h>
+#include <cstring>
 
 #ifndef _S_IFIFO
 #define	_S_IFIFO 0x1000
@@ -288,9 +290,22 @@ std::string PipeFileTar::buildCurrMetadata()
 		type = "f";
 	}
 
-	data.addString(type + tar_file.fn);
+	std::string fn = tar_file.fn;
+
+	if (fn == ".")
+	{
+		fn.clear();
+	}
+
+	if (next(fn, 0, "./"))
+	{
+		fn = fn.substr(2);
+	}
+
+	data.addString(type + "urbackup_backup_scripts/"+ output_fn + (fn.empty() ? "" : "/"+ fn) );
 	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr()+ fn_start, static_cast<_u32>(data.getDataSize())- fn_start));
 	_u32 common_start = data.getDataSize();
+	data.addUInt(0);
 	data.addChar(1);
 	data.addVarInt(0);
 	data.addVarInt(tar_file.buf.st_mtime);
@@ -306,16 +321,21 @@ std::string PipeFileTar::buildCurrMetadata()
 	{
 		data.addString(std::string());
 	}
+	_u32 common_metadata_size = little_endian(static_cast<_u32>(data.getDataSize() - common_start - sizeof(_u32)));
+	memcpy(data.getDataPtr() + common_start, &common_metadata_size, sizeof(common_metadata_size));
 	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr()+ common_start, static_cast<_u32>(data.getDataSize())- common_start));
 	_u32 os_start = data.getDataSize();
 
 #ifdef _WIN32
+	data.addUInt(0);
 	data.addChar(1);
 	data.addUInt(0); //atributes
 	data.addVarInt(0); //creation time
 	data.addVarInt(0); //last access time
 	data.addVarInt(os_to_windows_filetime(tar_file.buf.st_mtime)); //modify time
 	data.addVarInt(os_to_windows_filetime(tar_file.buf.st_mtime)); //ctime
+	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize()) - os_start - sizeof(_u32));
+	memcpy(data.getDataPtr() + os_start, &stat_data_size, sizeof(stat_data_size));
 	data.addChar(0);
 	//TODO: Symlink etc.
 #else
@@ -477,6 +497,8 @@ bool PipeFileTar::getHasError()
 
 std::string PipeFileTar::getStdErr()
 {
+	IScopedLock lock(mutex.get());
+
 	std::string stderr_ret;
 
 	unsigned char dig[SHA_DEF_DIGEST_SIZE];
@@ -515,7 +537,7 @@ std::string PipeFileTar::getStdErr()
 			}
 
 			CWData data;
-			data.addString(output_fn + (fn.empty() ? "" : ("/" + fn)));
+			data.addString("urbackup_backup_scripts/"+output_fn + (fn.empty() ? "" : ("/" + fn)));
 			data.addChar(is_dir ? 1 : 0);
 			data.addChar(is_symlink ? 1 : 0);
 			data.addChar(is_special ? 1 : 0);
@@ -530,7 +552,7 @@ std::string PipeFileTar::getStdErr()
 			stderr_ret.append(header.getDataPtr(), header.getDataSize());
 			stderr_ret.append(data.getDataPtr(), data.getDataSize());
 
-			std::string remote_fn = output_fn + (fn.empty() ? "" : ("/" + fn)) + "|" + convert(backupnum) + "|" + convert(fn_random);
+			std::string remote_fn = "urbackup_backup_scripts/" + output_fn + (fn.empty() ? "" : ("/" + fn)) + "|" + convert(backupnum) + "|" + convert(fn_random);
 
 			if (!is_dir && !is_symlink && !is_special)
 			{
