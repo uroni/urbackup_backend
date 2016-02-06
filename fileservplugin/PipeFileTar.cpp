@@ -9,6 +9,7 @@
 #include "../stringtools.h"
 #include <memory.h>
 #include <cstring>
+#include <stdlib.h>
 
 #ifndef _S_IFIFO
 #define	_S_IFIFO 0x1000

@@ -316,6 +316,13 @@ bool File::PunchHole( _i64 spos, _i64 size )
 {
 #ifdef __APPLE__
 	return false;
+#elif __FreeBSD__
+	struct flock64 s;
+	s.l_whence = SEEK_SET;
+	s.l_start = spos;
+	s.l_len = size;
+	int rc = fcntl(fd, F_FREESP64, &s);
+	return rc == 0;
 #else
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
 
