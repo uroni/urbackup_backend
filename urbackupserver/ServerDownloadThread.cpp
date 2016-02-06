@@ -48,7 +48,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -506,12 +506,18 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		{
 			ret=false;
 			has_timeout = true;
+
+			if (rc == ERR_BASE_DIR_LOST)
+			{
+				exp_backoff = true;
+			}
 		}
 
 		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
 		{
 			ret = false;
 			has_timeout = true;
+			exp_backoff = true;
 		}
 	}
 	else
@@ -747,11 +753,17 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR || rc==ERR_BASE_DIR_LOST)
 		{
 			has_timeout=true;
+
+			if (rc == ERR_BASE_DIR_LOST)
+			{
+				exp_backoff = true;
+			}
 		}
 
 		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
 		{
 			has_timeout = true;
+			exp_backoff = true;
 		}
 
 		{
@@ -1531,6 +1543,11 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 bool ServerDownloadThread::hasTimeout()
 {
 	return has_timeout;
+}
+
+bool ServerDownloadThread::shouldBackoff()
+{
+	return exp_backoff;
 }
 
 void ServerDownloadThread::postponeQuitStop( size_t idx )

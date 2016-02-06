@@ -193,6 +193,8 @@ public:
 
 	bool hasTimeout();
 
+	bool shouldBackoff();
+
 	bool sleepQueue();
 
 	std::map<std::string, std::string>& getFilePathCorrections();
@@ -244,6 +246,7 @@ private:
 
 	bool is_offline;
 	bool has_timeout;
+	bool exp_backoff;
 
 	std::deque<SQueueItem> dl_queue;
 	size_t queue_size;

@@ -1074,7 +1074,7 @@ bool IncrFileBackup::doFileBackup()
 
 	sendBackupOkay(!r_offline && !c_has_error);
 
-	if(r_offline && server_download->hasTimeout())
+	if(r_offline && server_download->hasTimeout() && !server_download->shouldBackoff() )
 	{
 		ServerLogger::Log(logid, "Client had timeout. Retrying backup soon...", LL_INFO);
 		should_backoff=false;
