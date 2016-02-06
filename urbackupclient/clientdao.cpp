@@ -182,9 +182,9 @@ bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash>
 		++ptr;
 		f.issym=issym==0?false:true;
 
-		char isspecial=*ptr;
+		char isspecialf=*ptr;
 		++ptr;
-		f.isspecial=isspecial==0?false:true;
+		f.isspecialf= isspecialf ==0?false:true;
 
 
 		if(f.issym)
@@ -253,8 +253,8 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		char issym = data[i].issym?1:0;
 		*ptr=issym;
 		++ptr;
-		char isspecial = data[i].isspecial?1:0;
-		*ptr=isspecial?1:0;
+		char isspecialf = data[i].isspecialf?1:0;
+		*ptr= isspecialf ?1:0;
 		++ptr;
 		if(data[i].issym)
 		{

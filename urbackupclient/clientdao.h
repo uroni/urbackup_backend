@@ -76,7 +76,7 @@ struct SFileAndHash
 	bool isdir;
 	std::string hash;
 	bool issym;
-	bool isspecial;
+	bool isspecialf;
 
 	std::string symlink_target;
 
@@ -95,7 +95,7 @@ struct SFileAndHash
 			isdir == other.isdir &&
 			hash == other.hash &&
 			issym == other.issym &&
-			isspecial == other.isspecial &&
+			isspecialf == other.isspecialf &&
 			symlink_target == other.symlink_target;
 	}
 };

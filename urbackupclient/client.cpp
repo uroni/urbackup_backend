@@ -1292,7 +1292,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 		if( !files[i].isdir )
 		{
 			if( (files[i].issym && !with_proper_symlinks && !(flags & EBackupDirFlag_FollowSymlinks)) 
-				|| (files[i].isspecial && !with_proper_symlinks) )
+				|| (files[i].isspecialf && !with_proper_symlinks) )
 			{
 				continue;
 			}
@@ -1324,7 +1324,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				}
 			}
 				
-			if(end_to_end_file_backup_verification && !files[i].isspecial )
+			if(end_to_end_file_backup_verification && !files[i].isspecialf)
 			{
 				extra+="&sha256_verify=" + getSHA256(dir+os_file_sep()+files[i].name);
 			}
@@ -1334,7 +1334,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
 			}
 			
-			if(files[i].isspecial && with_proper_symlinks)
+			if(files[i].isspecialf && with_proper_symlinks)
 			{
 				extra+="&special=1";
 			}
@@ -1355,7 +1355,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 		if( files[i].isdir )
 		{
 			if( (files[i].issym && !with_proper_symlinks && !(flags & EBackupDirFlag_FollowSymlinks) ) 
-				|| (files[i].isspecial && !with_proper_symlinks) )
+				|| (files[i].isspecialf && !with_proper_symlinks) )
 			{
 				continue;
 			}
@@ -1383,7 +1383,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 					extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
 				}
 
-				if(files[i].isspecial && with_proper_symlinks)
+				if(files[i].isspecialf && with_proper_symlinks)
 				{
 					extra+="&special=1";
 				}
@@ -1620,7 +1620,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 		for(size_t i=0;i<fsfiles->size();++i)
 		{
 			SFileAndHash& fsfile = fsfiles->at(i);
-			if( fsfile.isdir || fsfile.isspecial )
+			if( fsfile.isdir || fsfile.isspecialf)
 				continue;
 
 			if(!fsfile.hash.empty())
@@ -1659,7 +1659,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 		for(size_t i=0;i<dbfiles->size();++i)
 		{
 			SFileAndHash& dbfile = dbfiles->at(i);
-			if( dbfile.isdir || dbfile.isspecial)
+			if( dbfile.isdir || dbfile.isspecialf)
 				continue;
 
 			if(!dbfile.hash.empty())
@@ -4384,14 +4384,14 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		curr->name=files[i].name;
 		curr->size=files[i].size;
 		curr->issym=files[i].issym;
-		curr->isspecial=files[i].isspecial;
+		curr->isspecialf=files[i].isspecialf;
 
 		if (curr->issym)
 		{
 			curr->change_indicator += symlink_mask;
 		}
 
-		if (curr->isspecial)
+		if (curr->isspecialf)
 		{
 			curr->change_indicator += special_mask;
 		}

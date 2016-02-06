@@ -129,7 +129,7 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			if(S_ISLNK(f_info.st_mode))
 			{
 				f.issym=true;
-				f.isspecial=true;
+				f.isspecialf=true;
 				struct stat64 l_info;
 				int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
 				
@@ -150,7 +150,7 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			{
 				if(!S_ISREG(f_info.st_mode) )
 				{
-					f.isspecial=true;
+					f.isspecialf=true;
 				}			
 				
 				f.size=f_info.st_size;

@@ -14,7 +14,7 @@ struct SFile
 		size(0), last_modified(0), 
 		usn(0), created(0), accessed(0),
 		isdir(false), issym(false),
-		isspecial(false)
+		isspecialf(false)
 	{
 
 	}
@@ -27,7 +27,7 @@ struct SFile
 	int64 accessed;
 	bool isdir;
 	bool issym;
-	bool isspecial;
+	bool isspecialf;
 
 	bool operator<(const SFile &other) const
 	{
