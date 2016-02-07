@@ -342,7 +342,7 @@ std::string PipeFileTar::buildCurrMetadata()
 #else
 	data.addUInt(0);
 	serialize_stat_buf(tar_file.buf, tar_file.symlink_target, data);
-	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize()) - os_start - sizeof(_u32));
+	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize() - os_start - sizeof(_u32)));
 	memcpy(data.getDataPtr() + os_start, &stat_data_size, sizeof(stat_data_size));
 	data.addInt64(0);
 #endif
