@@ -34,7 +34,7 @@ public:
 	};
 
 
-	virtual void shareDir(const std::string &name, const std::string &path, const std::string& identity)=0;
+	virtual void shareDir(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec)=0;
 	virtual void removeDir(const std::string &name, const std::string& identity)=0;
 	virtual std::string getServerName(void)=0;
 	virtual void stopServer(void)=0;

@@ -31,7 +31,7 @@
 struct s_mapl
 {
 	std::string value;
-	_u32 lastmaptime;
+	bool allow_exec;
 };
 
 namespace
@@ -54,8 +54,10 @@ std::string getOsDir(std::string input)
 	return input;
 }
 
-std::string map_file(std::string fn, const std::string& identity)
+std::string map_file(std::string fn, const std::string& identity, bool& allow_exec)
 {
+	allow_exec = false;
+
 	std::string ts=getuntil("/",fn);
 	if(ts.empty())
 		ts=fn;
@@ -116,16 +118,19 @@ std::string map_file(std::string fn, const std::string& identity)
 		{
 			ret = redir_it->second;
 		}
+
+		allow_exec = i->second.allow_exec;
 	    	
 		mapcs.Leave();
         return ret;
 	}
 }
 
-void add_share_path(const std::string &name, const std::string &path, const std::string& identity)
+void add_share_path(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec)
 {
 	s_mapl m;
 	m.value=getOsDir(path);
+	m.allow_exec = allow_exec;
 	
 	mapcs.Enter();
 	mapbuffer[std::make_pair(name, identity)]=m;

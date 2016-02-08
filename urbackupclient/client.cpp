@@ -1603,7 +1603,7 @@ bool IndexThread::readBackupScripts()
 
 	if (filesrv != NULL && !scripts.empty() && !first_script_path.empty())
 	{
-		filesrv->shareDir("urbackup_backup_scripts", first_script_path, std::string());
+		filesrv->shareDir("urbackup_backup_scripts", first_script_path, std::string(), true);
 	}
 
 	std::sort(scripts.begin(), scripts.end());
@@ -3134,7 +3134,7 @@ void IndexThread::start_filesrv(void)
 
 	filesrv=filesrv_fak->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
 		backgroundBackupsEnabled(std::string()));
-	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data", std::string());
+	filesrv->shareDir("urbackup", Server->getServerWorkingDir()+"/urbackup/data", std::string(), false);
 
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
@@ -3176,7 +3176,7 @@ void IndexThread::share_dirs()
 	for(std::map<std::string, std::string>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
 		std::string dir=it->first;
-		filesrv->shareDir(dir, it->second, std::string());
+		filesrv->shareDir(dir, it->second, std::string(), false);
 	}
 }
 

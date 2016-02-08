@@ -48,9 +48,9 @@ FileServ::~FileServ(void)
 	delete dostop;
 }
 
-void FileServ::shareDir(const std::string &name, const std::string &path, const std::string& identity)
+void FileServ::shareDir(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec)
 {
-	add_share_path(name, path, identity);
+	add_share_path(name, path, identity, allow_exec);
 }
 
 void FileServ::removeDir(const std::string &name, const std::string& identity)
@@ -66,7 +66,8 @@ void FileServ::stopServer(void)
 
 std::string FileServ::getShareDir(const std::string &name, const std::string& identity)
 {
-	return map_file(name, identity);
+	bool allow_exec;
+	return map_file(name, identity, allow_exec);
 }
 
 void FileServ::addIdentity(const std::string &pIdentity)
@@ -146,14 +147,26 @@ bool FileServ::removeIdentity( const std::string &pIdentity )
 bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_data, int& exit_code)
 {
 	std::string pcmd;
+	bool allow_exec;
 	if (next(cmd, 0, "urbackup/TAR"))
 	{
 		std::string server_ident = getbetween("|", "|", cmd);
 		pcmd = getafter("urbackup/TAR|" + server_ident + "|", cmd);
+
+		std::string map_res = map_file(pcmd, std::string(), allow_exec);
+		if (map_res.empty())
+		{
+			return false;
+		}
 	}
 	else
 	{
-		pcmd = map_file(cmd, std::string());
+		pcmd = map_file(cmd, std::string(), allow_exec);
+	}
+
+	if (!allow_exec)
+	{
+		return false;
 	}
 
 	SExitInformation exit_info = PipeSessions::getExitInformation(pcmd);

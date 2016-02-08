@@ -168,7 +168,7 @@ then
 	if grep "internet_mode_enabled=true" "$PREFIX/var/urbackup/initial_settings.cfg" > /dev/null 2>&1
 	then
 		echo "Enabling internet only mode"
-		sed 's/INTERNET_ONLY=false/INTERNET_ONLY=true/g' "$CONFIG_FILE.new"
+		sed 's/INTERNET_ONLY=false/INTERNET_ONLY=true/g' "$CONFIG_FILE" > "$CONFIG_FILE.new"
 		mv "$CONFIG_FILE.new" "$CONFIG_FILE"
 	fi
 fi

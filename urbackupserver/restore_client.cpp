@@ -194,14 +194,14 @@ namespace
 			}		
 
 			fileserv->addIdentity(identity);
-			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity);
+			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity, false);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl_filelist", identity, true, false));
 
 			delete filelist_f;
 
 			MetadataCallback* callback = new MetadataCallback(hashfoldername, map_paths);
-			fileserv->shareDir("clientdl", foldername, identity);
-			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity);
+			fileserv->shareDir("clientdl", foldername, identity, false);
+			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity, false);
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("urbackup", identity, false, false));
 			fileserv->registerMetadataCallback("clientdl", identity, callback);

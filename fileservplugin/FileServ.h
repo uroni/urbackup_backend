@@ -8,7 +8,7 @@ class FileServ : public IFileServ
 public:
 	FileServ(bool *pDostop, const std::string &servername, THREADPOOL_TICKET serverticket, bool use_fqdn);
 	~FileServ(void);
-	void shareDir(const std::string &name, const std::string &path, const std::string& identity);
+	void shareDir(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec);
 	void removeDir(const std::string &name, const std::string& identity);
 	void stopServer(void);
 	std::string getServerName(void);

@@ -418,7 +418,8 @@ bool CClientThread::ProcessPacket(CRData *data)
                 }
 				
 
-				std::string filename=map_file(o_filename, ident);
+				bool allow_exec;
+				std::string filename=map_file(o_filename, ident, allow_exec);
 
 				Log("Mapped name: "+filename, LL_DEBUG);
 
@@ -478,9 +479,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					else if (next(s_filename, 0, "urbackup/TAR|"))
 					{
 						std::string server_token = getbetween("|", "|", s_filename);
-						file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), pipe_file_user, server_token, ident, &sent_metadata);
+						std::string tar_fn = getafter("urbackup/TAR|" + server_token + "|", s_filename);
+						std::string map_res = map_file(tar_fn, ident, allow_exec);
+						if (!map_res.empty() && allow_exec)
+						{
+							file = PipeSessions::getFile(tar_fn, pipe_file_user, server_token, ident, &sent_metadata);
+						}
 					}
-					else
+					else if(allow_exec)
 					{
 						file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
 					}					
@@ -556,7 +562,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 					std::string share_name = getuntil("/",o_filename);
 					if(!share_name.empty())
 					{
-						std::string basePath=map_file(share_name+"/", ident);
+						bool allow_exec;
+						std::string basePath=map_file(share_name+"/", ident, allow_exec);
 						if(!isDirectory(basePath))
 						{
 							char ch=ID_BASE_DIR_LOST;
@@ -1560,7 +1567,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 	Log("Sending file (chunked) "+o_filename, LL_DEBUG);
 
-	std::string filename=map_file(o_filename, ident);
+	bool allow_exec;
+	std::string filename=map_file(o_filename, ident, allow_exec);
 
 	Log("Mapped name: "+filename, LL_DEBUG);
 
@@ -1601,9 +1609,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		if (next(s_filename, 0, "urbackup/TAR|"))
 		{
 			std::string server_token = getbetween("|", "|", s_filename);
-			srv_file = PipeSessions::getFile(getafter("urbackup/TAR|" + server_token + "|", s_filename), *pipe_file_user, server_token, ident, NULL);
+			std::string tar_fn = getafter("urbackup/TAR|" + server_token + "|", s_filename);
+			std::string map_res = map_file(tar_fn, ident, allow_exec);
+			if (!map_res.empty() && allow_exec)
+			{
+				srv_file = PipeSessions::getFile(tar_fn, *pipe_file_user, server_token, ident, NULL);
+			}
 		}
-		else
+		else if(allow_exec)
 		{
 			srv_file = PipeSessions::getFile(filename, *pipe_file_user, std::string(), ident, NULL);
 		}
@@ -1648,7 +1661,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			std::string share_name = getuntil("/",o_filename);
 			if(!share_name.empty())
 			{
-				std::string basePath=map_file(share_name+"/", ident);
+				bool allow_exec;
+				std::string basePath=map_file(share_name+"/", ident, allow_exec);
 				if(!isDirectory(basePath))
 				{
 					queueChunk(SChunk(ID_BASE_DIR_LOST));
@@ -1817,7 +1831,8 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 
 	Log("Calculating hash of file "+o_filename, LL_DEBUG);
 
-	std::string filename=map_file(o_filename, ident);
+	bool allow_exec;
+	std::string filename=map_file(o_filename, ident, allow_exec);
 
 	Log("Mapped name: "+filename, LL_DEBUG);
 
@@ -1866,7 +1881,8 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	{
 #ifdef CHECK_BASE_PATH
 		std::string share_name = getuntil("/",o_filename);
-		std::string basePath=map_file(share_name + "/", ident);
+		bool allow_exec;
+		std::string basePath=map_file(share_name + "/", ident, allow_exec);
 		if(!isDirectory(basePath))
 		{
 			char ch=ID_BASE_DIR_LOST;
@@ -2143,7 +2159,8 @@ bool CClientThread::FinishScript( CRData * data )
 
 	Log("Finishing script "+s_filename, LL_DEBUG);
 
-	std::string filename=map_file(s_filename, ident);
+	bool allow_exec;
+	std::string filename=map_file(s_filename, ident, allow_exec);
 
 	Log("Mapped name: "+filename, LL_DEBUG);
 
@@ -2175,9 +2192,13 @@ bool CClientThread::FinishScript( CRData * data )
 	{
 		std::string server_token = getbetween("|", "|", s_filename);
 		f_name = getafter("urbackup/TAR|" + server_token + "|", s_filename);
-		file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata);
+		std::string map_res = map_file(f_name, ident, allow_exec);
+		if (!map_res.empty() && allow_exec)
+		{
+			file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata);
+		}
 	}
-	else
+	else if(allow_exec)
 	{
 		f_name = filename;
 		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
