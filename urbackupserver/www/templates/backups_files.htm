@@ -29,8 +29,8 @@
 					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{mod}</td>
 					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{access}</td>
 					<td style="white-space: nowrap;">
-						{?list_items}<a class="btn btn-default" href="javascript: tabMouseClick{proc}Access({clientid},{backupid},'{path|j}')">{tList}</a>{/list_items}
-						{?can_restore}<a class="btn btn-default" href="javascript: restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}')">{tRestore}</a>{/can_restore}</td>
+						{?list_items}<a class="btn btn-default" href="#" onClick="tabMouseClick{proc}Access({clientid},{backupid},'{path|j}'); return false">{tList}</a>{/list_items}
+						{?can_restore}<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}'); return false">{tRestore}</a>{/can_restore}</td>
 					<td>
 				</tr>
 			{/files}
@@ -38,10 +38,10 @@
 		</table>
 
 		{?download_zip}
-		<a class="btn btn-default" href="javascript: downloadZIP({clientid}, {backupid}, '{path|j}')">{tDownload folder as ZIP}</a>
+		<a class="btn btn-default" href="#" onClick="downloadZIP({clientid}, {backupid}, '{path|j}'); return false">{tDownload folder as ZIP}</a>
 		{/download_zip}
 		{?can_restore}
-		<a class="btn btn-default" href="javascript: restoreFiles({clientid}, {backupid},'{path|j}', {server_confirms_restore})">{tRestore folder to client}</a>
+		<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid},'{path|j}', {server_confirms_restore}); return false">{tRestore folder to client}</a>
 		{/can_restore}
 	</div>
 </div>

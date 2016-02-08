@@ -1005,7 +1005,7 @@ ACTION_IMPL(backups)
 				{
 					backupid=watoi(CURRP["backupid"]);
 				}
-				std::string u_path=UnescapeHTML(CURRP["path"]);
+				std::string u_path=UnescapeHTML(UnescapeSQLString(CURRP["path"]));
 
 				if(!clientname.empty() )
 				{

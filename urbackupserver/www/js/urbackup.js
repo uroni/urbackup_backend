@@ -1699,7 +1699,7 @@ function show_backups2(data)
 				curr_path+="/"+els[i];
 				if(i+1<els.length)
 				{
-					cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+data.backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
+					cp+="<a href=\"#\" onClick=\"tabMouseClickFiles("+data.clientid+","+data.backupid+",'"+(curr_path==""?"/":encodeURIComponent(curr_path).replace(/'/g,"%27"))+"'); return false\">"+els[i]+"</a>";
 					if(i!=0)
 					{
 						cp+=" > ";
@@ -1782,7 +1782,7 @@ function show_backups2(data)
 						{
 							proc = "tabMouseClickFilesAccess";
 						}
-						cp+="<a href=\"javascript: "+proc+"("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
+						cp+="<a href=\"#\" onClick=\""+proc+"("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":encodeURIComponent(curr_path).replace(/'/g,"%27"))+"'); return false\">"+els[i]+"</a>";
 						
 						if(i!=0)
 						{
