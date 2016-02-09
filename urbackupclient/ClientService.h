@@ -213,6 +213,8 @@ public:
 	static bool updateRunningPc(int64 id, int pcdone);
 	static bool removeRunningProcess(int64 id, bool success);
 
+	static void timeoutFilesrvConnections();
+
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
@@ -349,7 +351,23 @@ private:
 	static bool end_to_end_file_backup_verification_enabled;
 	static std::map<std::pair<std::string, std::string>, std::string> challenges;
 	static bool has_file_changes;
-	static std::vector<std::pair<std::string, IPipe*> > fileserv_connections;
+
+	struct SFilesrvConnection
+	{
+		SFilesrvConnection()
+			: starttime(Server->getTimeMS()), pipe(NULL)
+		{}
+
+		SFilesrvConnection(std::string token, IPipe* pipe)
+			: token(token), starttime(Server->getTimeMS()), pipe(pipe)
+		{}
+
+		std::string token;
+		int64 starttime;
+		IPipe* pipe;
+	};
+
+	static std::vector<SFilesrvConnection> fileserv_connections;
 	static RestoreOkStatus restore_ok_status;
 	static RestoreFiles* restore_files;
 	static bool status_updated;

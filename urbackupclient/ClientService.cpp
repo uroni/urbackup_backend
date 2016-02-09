@@ -85,7 +85,7 @@ std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::pair<std::string, std::string>, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
-std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
+std::vector < ClientConnector::SFilesrvConnection > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
@@ -108,35 +108,51 @@ const std::string pw_file="urbackup/pw.txt";
 const std::string pw_change_file="urbackup/pw_change.txt";
 #endif
 
-class UpdateSilentThread : public IThread
+namespace
 {
-public:
-	void operator()(void)
+	class UpdateSilentThread : public IThread
 	{
-		Server->wait(2*60*1000); //2min
+	public:
+		void operator()(void)
+		{
+			Server->wait(2 * 60 * 1000); //2min
 
 #ifdef _WIN32
-		STARTUPINFOW si;
-		PROCESS_INFORMATION pi;
-		memset(&si, 0, sizeof(STARTUPINFO) );
-		memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
-		si.cb=sizeof(STARTUPINFO);
-		if(!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
-		{
-			Server->Log("Executing silent update failed: "+convert((int)GetLastError()), LL_ERROR);
-		}
-		else
-		{
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-		}
+			STARTUPINFOW si;
+			PROCESS_INFORMATION pi;
+			memset(&si, 0, sizeof(STARTUPINFO));
+			memset(&pi, 0, sizeof(PROCESS_INFORMATION));
+			si.cb = sizeof(STARTUPINFO);
+			if (!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+			{
+				Server->Log("Executing silent update failed: " + convert((int)GetLastError()), LL_ERROR);
+			}
+			else
+			{
+				CloseHandle(pi.hProcess);
+				CloseHandle(pi.hThread);
+			}
 #else
-		system("/bin/sh urbackup/UrBackupUpdate.sh -- silent");
+			system("/bin/sh urbackup/UrBackupUpdate.sh -- silent");
 #endif
 
-		delete this;
-	}
-};
+			delete this;
+		}
+	};
+
+	class TimeoutFilesrvThread : public IThread
+	{
+	public:
+		void operator()()
+		{
+			while (true)
+			{
+				Server->wait(600000);
+				ClientConnector::timeoutFilesrvConnections();
+			}
+		}
+	};
+}
 
 void ClientConnector::init_mutex(void)
 {
@@ -145,6 +161,8 @@ void ClientConnector::init_mutex(void)
 		backup_mutex=Server->createMutex();
 		ident_mutex=Server->createMutex();
 		process_mutex = Server->createMutex();
+
+		Server->createThread(new TimeoutFilesrvThread, "filesrv timeout");
 	}
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
@@ -431,7 +449,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				{
 					tcpstack.Send(pipe, "FILESERV");
 					state=CCSTATE_FILESERV;
-					fileserv_connections.push_back(std::make_pair(channel_pipes[idx].token, pipe));
+					fileserv_connections.push_back(SFilesrvConnection(channel_pipes[idx].token, pipe));
 
 					channel_pipes.erase(channel_pipes.begin()+idx);
 				}				
@@ -2689,9 +2707,9 @@ IPipe* ClientConnector::getFileServConnection(const std::string& server_token, u
 
 		for(size_t i=0;i<fileserv_connections.size();++i)
 		{
-			if(fileserv_connections[i].first==server_token )
+			if(fileserv_connections[i].token==server_token )
 			{
-				IPipe* ret = fileserv_connections[i].second;
+				IPipe* ret = fileserv_connections[i].pipe;
 				fileserv_connections.erase(fileserv_connections.begin()+i);
 				return ret;
 			}
@@ -3115,6 +3133,24 @@ bool ClientConnector::removeRunningProcess(int64 id, bool success)
 	}
 
 	return false;
+}
+
+void ClientConnector::timeoutFilesrvConnections()
+{
+	IScopedLock lock(backup_mutex);
+
+	for (size_t i = 0; i < fileserv_connections.size();)
+	{
+		if (Server->getTimeMS() - fileserv_connections[i].starttime>60000)
+		{
+			Server->destroy(fileserv_connections[i].pipe);
+			fileserv_connections.erase(fileserv_connections.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
+	}
 }
 
 bool ClientConnector::updateRunningPc(int64 id, int pcdone)
