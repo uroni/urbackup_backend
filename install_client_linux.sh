@@ -45,8 +45,15 @@ then
 	mv init.d_client init.d
 else
 	echo "Assuming RedHat (derivative) system"
-	mv urbackupclientbackend-redhat.service urbackupclientbackend.service
-	mv init.d_client_rh init.d
+	if [ -e /etc/sysconfig ]
+	then
+		mv urbackupclientbackend-redhat.service urbackupclientbackend.service
+		mv init.d_client_rh init.d
+	else
+		echo "/etc/sysconfig does not exist. Putting daemon configuration into /etc/default"
+		mv urbackupclientbackend-debian.service urbackupclientbackend.service
+		mv init.d_client init.d
+	fi	
 fi
 
 SYSTEMD=no
@@ -156,10 +163,20 @@ then
 		install -c defaults_client /etc/default/urbackupclient
 	fi
 else
-	if [ -e /etc/sysconfig ] && [ ! -e /etc/sysconfig/urbackupclient ]
+	if [ -e /etc/sysconfig ]
 	then
-		CONFIG_FILE=/etc/sysconfig/urbackupclient
-		install -c defaults_client /etc/sysconfig/urbackupclient
+		if [ ! -e /etc/sysconfig/urbackupclient ]
+		then
+			CONFIG_FILE=/etc/sysconfig/urbackupclient
+			install -c defaults_client /etc/sysconfig/urbackupclient
+		fi
+	elif [ -e /etc/default ]
+	then
+		if [ ! -e /etc/default/urbackupclient ]
+		then
+			CONFIG_FILE=/etc/default/urbackupclient
+			install -c defaults_client /etc/default/urbackupclient
+		fi	
 	fi
 fi
 
@@ -171,6 +188,7 @@ then
 		sed 's/INTERNET_ONLY=false/INTERNET_ONLY=true/g' "$CONFIG_FILE" > "$CONFIG_FILE.new"
 		mv "$CONFIG_FILE.new" "$CONFIG_FILE"
 	fi
+	echo "Installed daemon configuration at $CONFIG_FILE..."
 fi
 
 if [ $SYSTEMD = yes ]
