@@ -97,6 +97,10 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		n_files=watoi64(res[0]["c"]);
 	}
 
+	Server->Log("Dropping index...", LL_INFO);
+
+	db->Write("DROP INDEX IF EXISTS files_backupid");
+
 	db->BeginWriteTransaction();
 	
 	Server->Log("Starting creating files index...", LL_INFO);
@@ -118,6 +122,12 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 	}
 	else
 	{
+		Server->Log("Creating backupid index...", LL_INFO);
+
+		db->Write("CREATE INDEX files_backupid ON files (backupid)");
+
+		Server->Log("Committing changes...", LL_INFO);
+
 		db->EndTransaction();
 	}
 
