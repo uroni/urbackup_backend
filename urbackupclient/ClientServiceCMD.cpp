@@ -2301,10 +2301,10 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 
 		ret.set("accepted", true);
 
-		ret.set("process_id", restore_files->get_local_process_id());
-
 		if(restore_files!=NULL)
 		{
+			ret.set("process_id", restore_files->get_local_process_id());
+
 			Server->getThreadPool()->execute(restore_files, "file restore");
 			restore_files=NULL;
 		}
