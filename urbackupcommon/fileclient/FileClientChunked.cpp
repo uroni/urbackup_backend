@@ -1779,7 +1779,10 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 
 	char stack_buf[BUFFERSIZE];
 
-	while(pending_chunks.find(chunk_pos)!=pending_chunks.end())
+	int64 total_starttime = Server->getTimeMS();
+
+	while(pending_chunks.find(chunk_pos)!=pending_chunks.end()
+		&& Server->getTimeMS()-total_starttime<20*60*1000)
 	{
 		size_t rc = ofbPipe()->Read(stack_buf, BUFFERSIZE, 100);
 
@@ -1831,7 +1834,15 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 		}
 	}
 
-	return ERR_SUCCESS;
+	if(pending_chunks.find(chunk_pos)==pending_chunks.end())
+	{
+		return ERR_SUCCESS;
+	}
+	else
+	{
+		Server->Log("OFB-Block download timed out", LL_WARNING);
+		return ERR_TIMEOUT;
+	}
 }
 
 FileClientChunked* FileClientChunked::getNextFileClient()
