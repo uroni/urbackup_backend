@@ -811,6 +811,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					memcpy(&blockcnt, &buffer[off], sizeof(int64) );
 					blockcnt=little_endian(blockcnt);
+
+					if (!has_parent)
+					{
+						ServerStatus::setProcessTotalBytes(clientname, status_id, blockcnt*blocksize);
+					}
+
 					off+=sizeof(int64);
 				}
 				else
