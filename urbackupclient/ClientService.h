@@ -353,6 +353,7 @@ private:
 	static RestoreFiles* restore_files;
 	static bool status_updated;
 	static size_t needs_restore_restart;
+	static size_t ask_restore_ok;
 	static int64 service_starttime;
 	static SRestoreToken restore_token;
 

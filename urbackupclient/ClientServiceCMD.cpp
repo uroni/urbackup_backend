@@ -2274,6 +2274,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	{
 		IScopedLock lock(backup_mutex);
 		restore_ok_status = RestoreOk_Wait;
+		++ask_restore_ok;
 		status_updated = true;
 
 		if(restore_files!=NULL)

@@ -90,6 +90,7 @@ RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
 RestoreFiles* ClientConnector::restore_files = NULL;
 size_t ClientConnector::needs_restore_restart = 0;
+size_t ClientConnector::ask_restore_ok = 0;
 int64 ClientConnector::service_starttime = 0;
 SRestoreToken ClientConnector::restore_token;
 
@@ -2743,7 +2744,7 @@ void ClientConnector::sendStatus()
 
 	if(restore_ok_status==RestoreOk_Wait)
 	{
-		ret+="&restore_ask=true";
+		ret+="&restore_ask="+convert(ask_restore_ok);
 
 		if (restore_files != NULL)
 		{
