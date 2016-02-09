@@ -415,7 +415,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				chan->state = SChannel::EChannelState_Pinging;
 			}
 			if(make_fileserv
-				&& SChannel::EChannelState_Idle)
+				&& chan->state == SChannel::EChannelState_Idle)
 			{
 				size_t idx=std::string::npos;
 				for(size_t i=0;i<channel_pipes.size();++i)
