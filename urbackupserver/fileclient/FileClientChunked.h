@@ -114,6 +114,8 @@ private:
 
 	bool constructOutOfBandPipe();
 
+	void requestOfbChunk(_i64 chunk_pos);
+
 	_u32 loadChunkOutOfBand(_i64 chunk_pos);
 
 	bool Reconnect(bool rerequest);

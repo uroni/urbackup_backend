@@ -1328,6 +1328,7 @@ bool FileClientChunked::constructOutOfBandPipe()
 	if(ofbPipe())
 	{
 		Server->destroy(ofbPipe());
+		setOfbPipe(NULL);
 	}
 
 	int64 reconnect_starttime=Server->getTimeMS();
@@ -1353,16 +1354,8 @@ bool FileClientChunked::constructOutOfBandPipe()
 	return false;
 }
 
-_u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
+void FileClientChunked::requestOfbChunk(_i64 chunk_pos)
 {
-	if(ofbPipe()==NULL)
-	{
-		if(!constructOutOfBandPipe())
-		{
-			return ERR_CONN_LOST;
-		}
-	}
-
 	{
 		CWData data;
 		data.addUChar( ID_GET_FILE_BLOCKDIFF );
@@ -1382,12 +1375,25 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 
 		stack->Send( ofbPipe(), data.getDataPtr(), data.getDataSize());
 	}	
+}
+
+_u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
+{
+	if(ofbPipe()==NULL)
+	{
+		if(!constructOutOfBandPipe())
+		{
+			return ERR_CONN_LOST;
+		}
+	}
+
+	requestOfbChunk(chunk_pos);
 
 	char stack_buf[BUFFERSIZE];
 
 	while(pending_chunks.find(chunk_pos)!=pending_chunks.end())
 	{
-		size_t rc = ofbPipe()->Read(stack_buf, BUFFERSIZE, 0);
+		size_t rc = ofbPipe()->Read(stack_buf, BUFFERSIZE, 100);
 
 		if(rc==0)
 		{
@@ -1400,6 +1406,7 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 				}
 				else
 				{
+					requestOfbChunk(chunk_pos);
 					starttime=Server->getTimeMS();
 				}
 			}
@@ -1426,6 +1433,7 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 			}
 			else
 			{
+				requestOfbChunk(chunk_pos);
 				starttime=Server->getTimeMS();
 			}
 		}
