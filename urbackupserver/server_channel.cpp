@@ -891,7 +891,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 		lasttime=Server->getTimeMS();
 
-		std::string file_extension = findextension(res[0]["path"]);
+		std::string file_extension = strlower(findextension(res[0]["path"]));
 
 		IVHDFile *vhdfile;
 		if (file_extension == "raw")
@@ -918,7 +918,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 			int skip=1024*512;
 
-			if(img_version==0)
+			if(img_version==0
+				&& file_extension!="raw")
 				skip=512*512;
 
 			_i64 r=little_endian((_i64)vhdfile->getSize()-skip);
