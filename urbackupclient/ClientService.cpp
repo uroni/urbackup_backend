@@ -2299,26 +2299,7 @@ void ClientConnector::downloadImage(str_map params)
 				return;
 			}
 		}
-		_i64 used_bytes = imgsize;
-		if (channel_pipes[i].restore_version > 0)
-		{
-			if (!c->Read((char*)&used_bytes, sizeof(_i64), 60000))
-			{
-				Server->Log("Error getting used bytes", LL_ERROR);
-				if (i + 1<channel_pipes.size())
-				{
-					continue;
-				}
-				else
-				{
-					imgsize = -1;
-					pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
-					removeChannelpipe(c);
-					return;
-				}
-			}
-		}
-		Server->Log("Used bytes " + convert(used_bytes), LL_DEBUG);
+		
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
 			Server->Log("Could not write to pipe! downloadImage-1", LL_ERROR);
@@ -2352,6 +2333,25 @@ void ClientConnector::downloadImage(str_map params)
 			}
 			Server->Log("Downloading MBR done");
 			return;
+		}
+
+		_i64 used_bytes = imgsize;
+		if (channel_pipes[i].restore_version > 0)
+		{
+			if (!c->Read((char*)&used_bytes, sizeof(_i64), 60000))
+			{
+				Server->Log("Error getting used bytes", LL_ERROR);
+				if (i + 1<channel_pipes.size())
+				{
+					continue;
+				}
+				else
+				{
+					removeChannelpipe(c);
+					return;
+				}
+			}
+			Server->Log("Used bytes " + convert(used_bytes), LL_DEBUG);
 		}
 
 		unsigned int blockleft=0;
