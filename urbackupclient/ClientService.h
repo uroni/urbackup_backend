@@ -136,7 +136,7 @@ struct SChannel
 		int capa, int restore_version)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
 		  token(token), make_fileserv(make_fileserv), server_identity(server_identity),
-		state(EChannelState_Idle), capa(capa), restore_version(0) {}
+		state(EChannelState_Idle), capa(capa), restore_version(restore_version) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_fileserv(NULL),
 		state(EChannelState_Idle), capa(0), restore_version(0) {}
