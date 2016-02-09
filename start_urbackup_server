@@ -124,7 +124,7 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Server v1.4.12"
+	echo "UrBackup Server v1.4.13"
 	echo "Copyright (C) 2011-2015 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
