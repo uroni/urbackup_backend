@@ -168,7 +168,8 @@ ACTION_IMPL(status)
 			}
 
 			if( (Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
-				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) )
+				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+				(Server->getFailBits() & IServer::FAIL_DATABASE_FULL) )
 			{
 				ret.set("database_error", true);
 			}

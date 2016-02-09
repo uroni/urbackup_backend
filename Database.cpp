@@ -333,6 +333,10 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		{
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 		}
+		if (err ==SQLITE_FULL)
+		{
+			Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+		}
 
 		return NULL;
 	}

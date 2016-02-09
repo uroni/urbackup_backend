@@ -75,6 +75,12 @@ LMDBFileIndex::~LMDBFileIndex(void)
 
 bool LMDBFileIndex::has_error(void)
 {
+	if ((Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+		(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+		(Server->getFailBits() & IServer::FAIL_DATABASE_FULL))
+	{
+		return false;
+	}
 	return _has_error;
 }
 
@@ -176,6 +182,13 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 			if(n_done % 1000 == 0 && n_done>0)
 			{
+				if ((Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+					(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+					(Server->getFailBits() & IServer::FAIL_DATABASE_FULL))
+				{
+					Server->Log("Database error. Stopping.", LL_ERROR);
+					return;
+				}
 				Server->Log("File entry index contains "+convert(n_done)+" entries now.", LL_INFO);
 			}
 

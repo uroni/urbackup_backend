@@ -1954,7 +1954,10 @@ void upgrade(void)
 				break;
 		}
 
-		if(has_error)
+		if(has_error ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_FULL) )
 		{
 			db->Write("ROLLBACK");
 			Server->Log("Upgrading database failed. Shutting down server.", LL_ERROR);

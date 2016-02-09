@@ -182,6 +182,7 @@ public:
 	 
 	static const size_t FAIL_DATABASE_CORRUPTED=1;
 	static const size_t FAIL_DATABASE_IOERR=2;
+	static const size_t FAIL_DATABASE_FULL = 4;
 
 	virtual void setFailBit(size_t failbit)=0;
 	virtual void clearFailBit(size_t failbit)=0;

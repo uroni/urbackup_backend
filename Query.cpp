@@ -63,6 +63,11 @@ CQuery::~CQuery()
 		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
 	}
 
+	if (err == SQLITE_FULL)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+	}
+
 	delete cursor;
 }
 
@@ -235,6 +240,10 @@ bool CQuery::Execute(int timeoutms)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 	}
+	if (err == SQLITE_FULL)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+	}
 
 	if( err!=SQLITE_DONE )
 	{
@@ -289,6 +298,10 @@ void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
 	if(err==SQLITE_CORRUPT)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
+	}
+	if (err == SQLITE_FULL)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
 	}
 
 	single_use_lock.reset();
