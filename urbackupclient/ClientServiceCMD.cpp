@@ -1850,14 +1850,14 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 		img_download_running = proc != NULL;
 	}
 
-	if(img_download_running==false)
+	if(!img_download_running)
 	{
 		pipe->Write("100");
 		do_quit=true;
 	}
 	else
 	{
-		while(img_download_running)
+		while(true)
 		{
 			{
 				int progress=0;
@@ -1867,6 +1867,10 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 					if (proc != NULL)
 					{
 						progress = proc->pcdone;
+					}
+					else
+					{
+						break;
 					}
 				}
 				if(!pipe->Write(convert(progress)+"\n", 10000))

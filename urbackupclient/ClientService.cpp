@@ -2357,6 +2357,7 @@ void ClientConnector::downloadImage(str_map params)
 		unsigned int blockleft=0;
 		unsigned int off=0;
 		_i64 pos=0;
+		_i64 received_bytes = 0;
 		while(pos<imgsize)
 		{
 			size_t r=c->Read(&buf[off], c_buffer_size-off, 180000);
@@ -2384,7 +2385,8 @@ void ClientConnector::downloadImage(str_map params)
 						blockleft=c_blocksize;
 						_i64 s;
 						memcpy((char*)&s, &buf[off], sizeof(_i64) );
-						if(s>imgsize)
+						if(s>imgsize
+							&& s!= 0x7fffffffffffffffLL)
 						{
 							Server->Log("invalid seek value: "+convert(s), LL_ERROR);
 						}
@@ -2409,6 +2411,7 @@ void ClientConnector::downloadImage(str_map params)
 					read+=available;
 					blockleft-=available;
 					off+=available;
+					received_bytes += available;
 					if(off>=r)
 					{
 						off=0;
@@ -2417,7 +2420,7 @@ void ClientConnector::downloadImage(str_map params)
 				}
 			}
 
-			int t_pcdone=(int)(((float)pos/(float)used_bytes)*100.f+0.5f);
+			int t_pcdone=(std::min)((int)100, (int)(((float)received_bytes/(float)used_bytes)*100.f+0.5f));
 			if(t_pcdone!=l_pcdone)
 			{
 				l_pcdone=t_pcdone;
