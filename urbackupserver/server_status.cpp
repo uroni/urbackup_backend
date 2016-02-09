@@ -209,10 +209,20 @@ bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::str
 }
 
 size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action,
-	const std::string& details, logid_t logid, bool can_stop)
+	const std::string& details, logid_t logid, bool can_stop, int clientid)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
+
+	if (s->client.empty())
+	{
+		s->client = clientname;
+	}
+
+	if (s->clientid == 0)
+	{
+		s->clientid = clientid;
+	}
 
 	SProcess new_proc(++curr_process_id, action, details);
 	new_proc.logid = logid;

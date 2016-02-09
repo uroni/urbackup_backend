@@ -572,7 +572,7 @@ function show_progress2(data)
 		{
 			var action = data.progress[i].action;
 			
-			if(action==3 || action==4)
+			if(action==3 || action==4 || action==9)
 			{
 				data.progress[i].image=true;
 			}

@@ -135,7 +135,8 @@ public:
 	static bool getServerNospcFatal(void);
 
 	static size_t startProcess(const std::string &clientname, SStatusAction action,
-		const std::string& details, logid_t logid, bool can_stop);
+		const std::string& details, logid_t logid, bool can_stop, int clientid=0);
+
 	static bool stopProcess(const std::string &clientname, size_t id);
 
 	static bool changeProcess(const std::string &clientname, size_t id, SStatusAction action);
@@ -194,10 +195,10 @@ private:
 class ScopedProcess
 {
 public:
-	ScopedProcess(std::string clientname, SStatusAction action, const std::string& details, logid_t logid, bool can_stop)
+	ScopedProcess(std::string clientname, SStatusAction action, const std::string& details, logid_t logid, bool can_stop, int clientid=0)
 		: clientname(clientname)
 	{
-		status_id = ServerStatus::startProcess(clientname, action, details, logid, can_stop);
+		status_id = ServerStatus::startProcess(clientname, action, details, logid, can_stop, clientid);
 	}
 	
 	~ScopedProcess()
