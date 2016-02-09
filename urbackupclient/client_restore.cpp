@@ -593,10 +593,16 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						_u32 woff=0;
 						do
 						{
-							_u32 w=out_file->Write(&blockdata[woff], tw-woff);
+							bool has_write_error = false;
+							_u32 w=out_file->Write(&blockdata[woff], tw-woff, &has_write_error);
 							if(w==0)
 							{
 								Server->Log("Writing to output file failed", LL_ERROR);
+								return 6;
+							}
+							if (has_write_error)
+							{
+								Server->Log("Writing to output file failed -2", LL_ERROR);
 								return 6;
 							}
 							woff+=w;
@@ -619,9 +625,16 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 					{
 						blockleft=c_block_size;
 						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
+						if (*s == 0x7fffffffffffffffLL)
+						{
+							Server->Log("Restore finished", LL_INFO);
+							pos = *s;
+							break;
+						}
 						if(*s>imgsize)
 						{
-							Server->Log("invalid seek value: "+convert(*s), LL_ERROR);
+							Server->Log("Invalid seek value: "+convert(*s), LL_ERROR);
+							//TODO return error code here after deprecation period
 							pos=*s;
 							break;
 						}
@@ -631,7 +644,11 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						}
 						else
 						{
-							out_file->Seek(*s);
+							if (!out_file->Seek(*s))
+							{
+								Server->Log("Seeking in output file failed (to position "+convert(*s)+")", LL_ERROR);
+								return 6;
+							}
 							pos=*s;
 						}
 						off+=sizeof(_i64);

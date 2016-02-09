@@ -922,7 +922,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				&& file_extension!="raw")
 				skip=512*512;
 
-			_i64 r=little_endian((_i64)vhdfile->getSize()-skip);
+			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
+			_i64 r=little_endian(imgsize);
 			input->Write((char*)&r, sizeof(_i64));
 			unsigned int blocksize=vhdfile->getBlocksize();
 			char buffer[4096];
@@ -951,7 +952,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 			vhdfile->Seek(0);
 
-			for (int64 pos = skip; pos < skip + currpos; pos += blocksize)
+			for (uint64 pos = skip; pos < skip + currpos; pos += blocksize)
 			{
 				vhdfile->Seek(pos);
 				if (vhdfile->has_sector())
@@ -1029,11 +1030,11 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					}					
 				}
 			}
-			while( is_ok && (_i64)currpos<r );
-			if((_i64)currpos>=r)
+			while( is_ok && (_i64)currpos<imgsize);
+			if((_i64)currpos>=imgsize)
 			{
-				uint64 currpos_endian = little_endian(currpos);
-				input->Write((char*)&currpos_endian, sizeof(uint64));
+				r = little_endian(0x7fffffffffffffffLL);
+				input->Write((char*)&r, sizeof(int64));
 			}
 
 			backup_dao.setRestoreDone(is_ok ? 1 : 0, restore_id);
