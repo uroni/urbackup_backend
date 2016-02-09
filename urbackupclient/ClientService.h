@@ -133,13 +133,13 @@ struct SChannel
 {
 	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
 		std::string token, bool* make_fileserv, std::string server_identity,
-		int capa)
+		int capa, int restore_version)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
 		  token(token), make_fileserv(make_fileserv), server_identity(server_identity),
-		state(EChannelState_Idle), capa(capa) {}
+		state(EChannelState_Idle), capa(capa), restore_version(0) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_fileserv(NULL),
-		state(EChannelState_Idle), capa(0) {}
+		state(EChannelState_Idle), capa(0), restore_version(0) {}
 
 	IPipe *pipe;
 	bool internet_connection;
@@ -148,6 +148,7 @@ struct SChannel
 	bool* make_fileserv;
 	std::string last_tokens;
 	std::string server_identity;
+	int restore_version;
 
 	enum EChannelState
 	{

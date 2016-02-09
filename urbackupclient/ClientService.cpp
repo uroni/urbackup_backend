@@ -2278,7 +2278,7 @@ void ClientConnector::downloadImage(str_map params)
 		{
 			offset="&offset="+params["offset"];
 		}
-		tcpstack.Send(c, "DOWNLOAD IMAGE img_id="+params["img_id"]+"&time="+params["time"]+"&mbr="+params["mbr"]+offset);
+		tcpstack.Send(c, "DOWNLOAD IMAGE with_used_bytes=1&img_id="+params["img_id"]+"&time="+params["time"]+"&mbr="+params["mbr"]+offset);
 
 		Server->Log("Downloading from channel "+convert((int)i), LL_DEBUG);
 
@@ -2295,8 +2295,30 @@ void ClientConnector::downloadImage(str_map params)
 			else
 			{
 				pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
+				removeChannelpipe(c);
+				return;
 			}
 		}
+		_i64 used_bytes = imgsize;
+		if (channel_pipes[i].restore_version > 0)
+		{
+			if (!c->Read((char*)&used_bytes, sizeof(_i64), 60000))
+			{
+				Server->Log("Error getting used bytes", LL_ERROR);
+				if (i + 1<channel_pipes.size())
+				{
+					continue;
+				}
+				else
+				{
+					imgsize = -1;
+					pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
+					removeChannelpipe(c);
+					return;
+				}
+			}
+		}
+		Server->Log("Used bytes " + convert(used_bytes), LL_DEBUG);
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
 			Server->Log("Could not write to pipe! downloadImage-1", LL_ERROR);
@@ -2395,7 +2417,7 @@ void ClientConnector::downloadImage(str_map params)
 				}
 			}
 
-			int t_pcdone=(int)(((float)pos/(float)imgsize)*100.f+0.5f);
+			int t_pcdone=(int)(((float)pos/(float)used_bytes)*100.f+0.5f);
 			if(t_pcdone!=l_pcdone)
 			{
 				l_pcdone=t_pcdone;

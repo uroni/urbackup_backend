@@ -934,7 +934,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		token=params["token"];
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
-			&make_fileserv, identity, capa));
+			&make_fileserv, identity, capa, watoi(params["restore_version"])));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();

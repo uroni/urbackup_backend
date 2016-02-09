@@ -186,7 +186,7 @@ void ServerChannelThread::operator()(void)
 					input=np;
 				}
 
-				tcpstack.Send(input, identity+"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token);
+				tcpstack.Send(input, identity+"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1");
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -951,14 +951,20 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 			vhdfile->Seek(0);
 
-			unsigned int vhd_blocksize = vhdfile->getBlocksize();
-			for (int64 pos = 0; pos < skip; pos += vhd_blocksize)
+			for (int64 pos = skip; pos < skip + currpos; pos += blocksize)
 			{
 				vhdfile->Seek(pos);
 				if (vhdfile->has_sector())
 				{
-					used_transferred_bytes += vhd_blocksize;
+					used_transferred_bytes += blocksize;
 				}
+			}
+
+
+			if (params["with_used_bytes"] == "1")
+			{
+				_i64 r = little_endian(used_bytes - skip);
+				input->Write((char*)&r, sizeof(_i64));
 			}
 
 			vhdfile->Seek(skip);
