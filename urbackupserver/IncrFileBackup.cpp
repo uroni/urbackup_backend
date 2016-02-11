@@ -330,6 +330,14 @@ bool IncrFileBackup::doFileBackup()
 
 	int copy_file_entries_sparse_modulo = server_settings->getSettings()->min_file_incr;
 
+	if (copy_last_file_entries)
+	{
+		ServerLogger::Log(logid, clientname + ": Indexing file entries from last backup...", LL_INFO);
+		copy_last_file_entries = copy_last_file_entries && filesdao->createTemporaryLastFilesTable();
+		copy_last_file_entries = copy_last_file_entries && filesdao->copyToTemporaryLastFilesTable(last.backupid);
+		filesdao->createTemporaryLastFilesTableIndex();
+	}
+
 	if(copy_last_file_entries && resumed_full)
 	{
 		readd_file_entries_sparse=false;
@@ -400,6 +408,7 @@ bool IncrFileBackup::doFileBackup()
 	bool c_has_error=false;
 	bool backup_stopped=false;
 	size_t skip_dir_completely=0;
+	bool skip_dir_copy_sparse = false;
 	bool script_dir=false;
 	std::stack<std::set<std::string> > folder_files;
 	folder_files.push(std::set<std::string>());
@@ -450,30 +459,7 @@ bool IncrFileBackup::doFileBackup()
 							dir_ids.push(line);
 						}
 					}
-					else if(copy_last_file_entries)
-					{
-						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
-
-						FileMetadata metadata;
-						std::auto_ptr<IFile> last_file(Server->openFile(os_file_prefix(backuppath+local_curr_os_path), MODE_READ));
-						if(read_metadata(backuppath_hashes+local_curr_os_path, metadata) && last_file.get()!=NULL)
-						{
-							if(!metadata.shahash.empty())
-							{
-								addFileEntrySQLWithExisting(backuppath + local_curr_os_path, backuppath_hashes + local_curr_os_path,
-									metadata.shahash, last_file->Size(), metadata.rsize, incremental_num);
-							}
-							else
-							{
-								ServerLogger::Log(logid, "Error adding file entry from last backup. Hash is empty. (read from "+last_backuppath_hashes+local_curr_os_path+")", LL_WARNING);
-							}							
-						}
-						else
-						{
-							ServerLogger::Log(logid, "Error adding file entry from last backup. Could not read metadata from "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
-						}						
-					}
-					else if(readd_file_entries_sparse)
+					else if(skip_dir_copy_sparse)
 					{
 						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
 						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num,
@@ -614,6 +600,33 @@ bool IncrFileBackup::doFileBackup()
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
+
+								if (copy_last_file_entries)
+								{
+									std::vector<ServerFilesDao::SFileEntry> file_entries = filesdao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath) + os_file_sep() + "*");
+									for (size_t i = 0; i<file_entries.size(); ++i)
+									{
+										if (file_entries[i].fullpath.size()>srcpath.size())
+										{
+											std::string entry_hashpath;
+											if (next(file_entries[i].hashpath, 0, src_hashpath))
+											{
+												entry_hashpath = backuppath_hashes + local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
+											}
+											
+											addFileEntrySQLWithExisting(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
+												file_entries[i].shahash, file_entries[i].filesize, file_entries[i].filesize, incremental_num);
+
+											++num_copied_file_entries;
+										}
+									}
+
+									skip_dir_copy_sparse = false;
+								}
+								else
+								{
+									skip_dir_copy_sparse = readd_file_entries_sparse;
+								}
 							}
 						}
 						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
@@ -974,27 +987,15 @@ bool IncrFileBackup::doFileBackup()
 
 					if(copy_curr_file_entry)
 					{
-						FileMetadata last_metadata;
-						std::auto_ptr<IFile> last_file(Server->openFile(os_file_prefix(backuppath+local_curr_os_path), MODE_READ));
-						if(!read_metadata(backuppath_hashes+local_curr_os_path, last_metadata) || last_file.get()==NULL)
-						{
-							ServerLogger::Log(logid, "Error while copying file entry from last backup. Could not read metadata from "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
-						}
-						else
-						{
-							if(last_metadata.shahash.empty())
-							{
-								ServerLogger::Log(logid, "Error while copying file entry from last backup. Hash is empty at "+last_backuppath_hashes+local_curr_os_path, LL_WARNING);
-							}
-							else
-							{
-								addFileEntrySQLWithExisting(backuppath+local_curr_os_path, backuppath_hashes+local_curr_os_path,
-									last_metadata.shahash, last_file->Size(), last_metadata.rsize, incremental_num);
+						ServerFilesDao::SFileEntry fileEntry = filesdao->getFileEntryFromTemporaryTable(srcpath);
 
-								++num_copied_file_entries;
+						if (fileEntry.exists)
+						{
+							addFileEntrySQLWithExisting(backuppath + local_curr_os_path, backuppath_hashes + local_curr_os_path,
+								fileEntry.shahash, fileEntry.filesize, fileEntry.filesize, incremental_num);
+							++num_copied_file_entries;
 
-								readd_curr_file_entry_sparse=false;
-							}
+							readd_curr_file_entry_sparse = false;
 						}
 					}
 
@@ -1233,6 +1234,12 @@ bool IncrFileBackup::doFileBackup()
 		if(num_copied_file_entries>0)
 		{
 			ServerLogger::Log(logid, "Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
+		}
+
+		if (copy_last_file_entries)
+		{
+			filesdao->dropTemporaryLastFilesTableIndex();
+			filesdao->dropTemporaryLastFilesTable();
 		}
 	}
 

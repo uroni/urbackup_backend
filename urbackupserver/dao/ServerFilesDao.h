@@ -25,6 +25,14 @@ public:
 		bool exists;
 		int64 value;
 	};
+	struct SFileEntry
+	{
+		bool exists;
+		std::string fullpath;
+		std::string hashpath;
+		std::string shahash;
+		int64 filesize;
+	};
 	struct SFindFileEntry
 	{
 		bool exists;
@@ -85,6 +93,13 @@ public:
 	std::vector<SIncomingStat> getIncomingStats(void);
 	void deleteFiles(int backupid);
 	void removeDanglingFiles(void);
+	bool createTemporaryLastFilesTable(void);
+	void dropTemporaryLastFilesTable(void);
+	bool createTemporaryLastFilesTableIndex(void);
+	bool dropTemporaryLastFilesTableIndex(void);
+	bool copyToTemporaryLastFilesTable(int backupid);
+	SFileEntry getFileEntryFromTemporaryTable(const std::string& fullpath);
+	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -117,6 +132,13 @@ private:
 	IQuery* q_getIncomingStats;
 	IQuery* q_deleteFiles;
 	IQuery* q_removeDanglingFiles;
+	IQuery* q_createTemporaryLastFilesTable;
+	IQuery* q_dropTemporaryLastFilesTable;
+	IQuery* q_createTemporaryLastFilesTableIndex;
+	IQuery* q_dropTemporaryLastFilesTableIndex;
+	IQuery* q_copyToTemporaryLastFilesTable;
+	IQuery* q_getFileEntryFromTemporaryTable;
+	IQuery* q_getFileEntriesFromTemporaryTableGlob;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;
