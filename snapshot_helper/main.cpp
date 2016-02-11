@@ -143,7 +143,12 @@ std::string find_btrfs_cmd()()
 		return btrfs_cmd;
 	}
 	
-	if(exec_wait("/sbin/btrfs", "--version", NULL)==0)
+	if(exec_wait("btrfs", "--version", NULL)==0)
+	{
+		btrfs_cmd="btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/sbin/btrfs", "--version", NULL)==0)
 	{
 		btrfs_cmd="/sbin/btrfs";
 		return btrfs_cmd;
