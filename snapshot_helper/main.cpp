@@ -17,8 +17,6 @@ extern char **environ;
 #include "../Server.h"
 
 
-const std::string btrfs_cmd="/sbin/btrfs";
-
 CServer *Server;
 
 #ifdef _WIN32
@@ -135,15 +133,50 @@ bool chown_dir(const std::string& dir)
 	}
 	return false;
 }
-#endif
 
+std::string find_btrfs_cmd()()
+{
+	static std::string btrfs_cmd;
+	
+	if(!btrfs_cmd.empty())
+	{
+		return btrfs_cmd;
+	}
+	
+	if(exec_wait("/sbin/btrfs", "--version", NULL)==0)
+	{
+		btrfs_cmd="/sbin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/bin/btrfs", "--version", NULL)==0)
+	{
+		btrfs_cmd="/bin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/usr/sbin/btrfs", "--version", NULL)==0)
+	{
+		btrfs_cmd="/usr/sbin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/usr/bin/btrfs", "--version", NULL)==0)
+	{
+		btrfs_cmd="/usr/bin/btrfs";
+		return btrfs_cmd;
+	}
+	else
+	{
+		btrfs_cmd="btrfs";
+		return btrfs_cmd;
+	}
+}
+#endif
 
 bool create_subvolume(std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return os_create_dir(subvolume_folder);
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "create", subvolume_folder.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), "subvolume", "create", subvolume_folder.c_str(), NULL);
 	chown_dir(subvolume_folder);
 	return rc==0;
 #endif
@@ -154,7 +187,7 @@ bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
 #ifdef _WIN32
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
 	chown_dir(snapshot_dst);
 	return rc==0;
 #endif
@@ -165,7 +198,17 @@ bool remove_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
+	int compat_rc = exec_wait(find_btrfs_cmd(), "subvolume", "delete", "-c", NULL);
+	
+	int rc;
+	if(compat_rc==12)
+	{
+		rc=exec_wait(find_btrfs_cmd(), "subvolume", "delete", subvolume_folder.c_str(), NULL);
+	}
+	else
+	{
+		rc=exec_wait(find_btrfs_cmd(), "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
+	}
 	return rc==0;
 #endif
 }	
@@ -175,7 +218,7 @@ bool is_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return true;
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "list", subvolume_folder.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), "subvolume", "list", subvolume_folder.c_str(), NULL);
 	return rc==0;
 #endif
 }	
