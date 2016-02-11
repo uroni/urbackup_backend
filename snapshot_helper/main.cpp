@@ -134,7 +134,7 @@ bool chown_dir(const std::string& dir)
 	return false;
 }
 
-std::string find_btrfs_cmd()()
+std::string find_btrfs_cmd()
 {
 	static std::string btrfs_cmd;
 	
