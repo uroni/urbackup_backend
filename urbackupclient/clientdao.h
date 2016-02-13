@@ -35,7 +35,8 @@ enum EBackupDirFlag
 	EBackupDirFlag_SymlinksOptional = 4,
 	EBackupDirFlag_OneFilesystem = 8,
 	EBackupDirFlag_RequireSnapshot = 16,
-	EBackupDirFlag_ShareHashes = 32
+	EBackupDirFlag_ShareHashes = 32,
+	EBackupDirFlag_KeepFiles = 64,
 };
 
 struct SBackupDir
@@ -48,6 +49,7 @@ struct SBackupDir
 	bool symlinked;
 	bool symlinked_confirmed;
 	bool server_default;
+	bool reset_keep;
 };
 
 struct SShadowCopy
@@ -179,6 +181,7 @@ public:
 	std::vector<int> getGroupMembership(int uid);
 	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
 	void delBackupDir(int64 id);
+	void setResetKeep(int val, int64 id);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -221,6 +224,7 @@ private:
 	IQuery* q_getGroupMembership;
 	IQuery* q_addBackupDir;
 	IQuery* q_delBackupDir;
+	IQuery* q_setResetKeep;
 	//@-SQLGenVariablesEnd
 
 	bool with_files_tmp;

@@ -927,6 +927,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 				{
 					CMD_NEW_SERVER(params); continue;
 				}
+				else if (cmd == "RESET KEEP")
+				{
+					CMD_RESET_KEEP(params); continue;
+				}
 			}
 			
 			if( cmd=="GET BACKUP DIRS" )
@@ -1151,6 +1155,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					else if (flag == "share_hashes")
 					{
 						flags |= EBackupDirFlag_ShareHashes;
+					}
+					else if (flag == "keep" || flag == "keep_files")
+					{
+						flags |= EBackupDirFlag_KeepFiles;
 					}
 				}
 				name.resize(flags_off);
@@ -1388,6 +1396,7 @@ std::vector<std::string> getSettingsList(void);
 
 void ClientConnector::updateSettings(const std::string &pData)
 {
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::string settings_fn="urbackup/data/settings.cfg";
@@ -1401,6 +1410,13 @@ void ClientConnector::updateSettings(const std::string &pData)
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
 		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+server_token+".cfg";
 		group_offset = atoi(str_group_offset.c_str());
+
+		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset) VALUES (?,?)", false);
+		q->Bind(clientsubname);
+		q->Bind(group_offset);
+		q->Write();
+		q->Reset();
+		db->destroyQuery(q);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -1508,7 +1524,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 		}
 	}
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0 AND tgroup=?", false);
 	q->Bind(group_offset);
 	db_results res=q->Read();

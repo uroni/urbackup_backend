@@ -527,6 +527,13 @@ void update_client22_23(IDatabase* db)
 	db->Write("UPDATE backupdirs SET optional=38 WHERE optional=0");
 }
 
+void update_client23_24(IDatabase* db)
+{
+	db->Write("ALTER TABLE backupdirs ADD reset_keep INTEGER DEFAULT 0");
+	db->Write("UPDATE backupdirs SET reset_keep=0 WHERE reset_keep IS NULL");
+	db->Write("CREATE TABLE virtual_client_group_offsets (id INTEGER PRIMARY KEY, virtual_client TEXT UNIQUE, group_offset INTEGER)");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -539,7 +546,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 23;
+	int max_v = 24;
 
 	if (ver > max_v)
 	{
@@ -647,6 +654,10 @@ bool upgrade_client(void)
 				break;
 			case 22:
 				update_client22_23(db);
+				++ver;
+				break;
+			case 23:
+				update_client23_24(db);
 				++ver;
 				break;
 			default:

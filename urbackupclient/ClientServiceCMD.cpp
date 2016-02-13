@@ -2136,6 +2136,53 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	}
 }
 
+void ClientConnector::CMD_RESET_KEEP(str_map &params)
+{
+	std::string virtual_client = params["virtual_client"];
+	std::string folder_name = params["folder_name"];
+	int tgroup = watoi(params["tgroup"]);
+
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	int group_offset = 0;
+	if (!virtual_client.empty())
+	{
+		IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?", false);
+		q->Bind(virtual_client);
+		db_results res = q->Read();
+		db->destroyQuery(q);
+		
+		if (res.empty())
+		{
+			tcpstack.Send(pipe, "err_virtual_client_not_found");
+			return;
+		}
+
+		group_offset = watoi(res[0]["group_offset"]);
+	}
+
+	IQuery* q = db->Prepare(std::string("UPDATE backupdirs SET reset_keep=1 WHERE tgroup=?")
+		+ (folder_name.empty() ? "" : " AND name=?"), false);
+	q->Bind(tgroup + group_offset);
+	if (!folder_name.empty())
+	{
+		q->Bind(folder_name);
+	}
+	q->Write();
+	q->Reset();
+
+	if (db->getLastChanges() > 0)
+	{
+		tcpstack.Send(pipe, "OK");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "err_backup_folder_not_found");
+	}
+
+	db->destroyQuery(q);
+}
+
 void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd)
 {
 	IScopedLock lock(backup_mutex);

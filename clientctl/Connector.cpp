@@ -615,3 +615,28 @@ SStatusDetails Connector::getStatusDetails()
 		return ret;
 	}
 }
+
+std::string Connector::resetKeep(const std::string & virtualClient, const std::string & folderName, int tgroup)
+{
+	std::string params;
+
+	if (!virtualClient.empty())
+	{
+		params += "virtual_client=" + EscapeParamString(virtualClient);
+	}
+
+	if (!folderName.empty())
+	{
+		if (!params.empty()) params += "&";
+
+		params += "folder_name=" + EscapeParamString(folderName);
+	}
+
+	if (!params.empty()) params += "&";
+
+	params += "tgroup=" + convert(tgroup);
+
+	std::string d = getResponse("RESET KEEP", params, true);
+
+	return d;
+}

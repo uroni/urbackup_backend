@@ -83,6 +83,9 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " set-settings" << std::endl;
 	std::cout << "\t\t" "Set backup settings" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " reset-keep" << std::endl;
+	std::cout << "\t\t" "Reset keeping files during incremental backups" << std::endl;
+	std::cout << std::endl;
 }
 
 const size_t c_speed_size = 15;
@@ -672,6 +675,54 @@ int action_set_settings(std::vector<std::string> args)
 	}
 }
 
+int action_reset_keep(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Reset keeping files during incremental backups", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
+	TCLAP::ValueArg<std::string> backup_folder_arg("b", "backup-folder",
+		"Backup folder name",
+		false, "", "folder name", cmd);
+
+	TCLAP::ValueArg<int> group_arg("g", "backup-group",
+		"Backup group index",
+		false, 0, "group index", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string ret = Connector::resetKeep(virtual_client_arg.getValue(), backup_folder_arg.getValue(), group_arg.getValue());
+
+	if (ret == "OK")
+	{
+		return 0;
+	}
+	else if (ret == "err_virtual_client_not_found")
+	{
+		std::cerr << "Error: Virtual client not found" << std::endl;
+		return 4;
+	}
+	else if (ret == "err_backup_folder_not_found")
+	{
+		std::cerr << "Error: Backup folder not found" << std::endl;
+		return 5;
+	}
+	else
+	{
+		std::cerr << "Error: " << ret << std::endl;
+		return 6;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc==0)
@@ -692,6 +743,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_start_restore);
 	actions.push_back("set-settings");
 	action_funs.push_back(action_set_settings);
+	actions.push_back("reset-keep");
+	action_funs.push_back(action_reset_keep);
 
 	bool has_help=false;
 	bool has_version=false;

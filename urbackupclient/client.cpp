@@ -489,7 +489,7 @@ void IndexThread::operator()(void)
 			}
 			else if(!stop_index)
 			{
-				indexDirs();
+				indexDirs(false);
 
 				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
 				{
@@ -552,7 +552,7 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
-				indexDirs();
+				indexDirs(true);
 
 				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
 				{
@@ -804,7 +804,7 @@ void IndexThread::operator()(void)
 
 const char * filelist_fn="urbackup/data/filelist_new.ub";
 
-void IndexThread::indexDirs(void)
+void IndexThread::indexDirs(bool full_backup)
 {
 	readPatterns();
 
@@ -813,6 +813,8 @@ void IndexThread::indexDirs(void)
 	writeTokens();
 
 	token_cache.reset();
+
+	index_follow_last = false;
 
 	std::vector<std::string> selected_dirs;
 	std::vector<int> selected_dir_db_tgroup;
@@ -831,6 +833,13 @@ void IndexThread::indexDirs(void)
 			else
 			{
 				selected_dir_db_tgroup.push_back(index_group + 1);
+			}
+
+			if (backup_dirs[i].flags & EBackupDirFlag_KeepFiles
+				&& !full_backup
+				&& !backup_dirs[i].reset_keep)
+			{
+				index_follow_last = true;
 			}
 		}
 	}
@@ -894,6 +903,21 @@ void IndexThread::indexDirs(void)
 
 	last_tmp_update_time=Server->getTimeMS();
 	index_error=false;
+
+	IFile* last_filelist_f = NULL;
+	ScopedFreeObjRef<IFile*> last_filelist_f_scope(last_filelist_f);
+	if (index_follow_last)
+	{
+		last_filelist_f = Server->openFile("urbackup/data/filelist.ub", MODE_READ);
+
+		if (last_filelist_f == NULL)
+		{
+			index_follow_last = false;
+		}
+
+		last_filelist.reset(new SLastFileList);
+		last_filelist->f = last_filelist_f;
+	}
 
 	{
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
@@ -1048,6 +1072,9 @@ void IndexThread::indexDirs(void)
 				//db->BeginWriteTransaction();
 				last_transaction_start = Server->getTimeMS();
 				index_root_path = mod_path;
+				index_keep_files = (backup_dirs[i].flags & EBackupDirFlag_KeepFiles) > 0
+					&& !backup_dirs[i].reset_keep;
+
 #ifndef _WIN32
 				if (index_root_path.empty())
 				{
@@ -1055,7 +1082,7 @@ void IndexThread::indexDirs(void)
 				}
 #endif
 				initialCheck(backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-					backup_dirs[i].flags, true, backup_dirs[i].symlinked);
+					backup_dirs[i].flags, true, backup_dirs[i].symlinked, 0);
 
 				commitModifyFilesBuffer();
 				commitAddFilesBuffer();
@@ -1088,6 +1115,12 @@ void IndexThread::indexDirs(void)
 			//Remove unreferenced symlinks now
 			removeUnconfirmedSymlinkDirs(i+1);
 		}
+
+		if (index_keep_files)
+		{
+			addFromLastUpto(std::string(), false, 0, true, outfile);
+		}
+
 		std::streampos pos=outfile.tellp();
 		outfile.seekg(0, std::ios::end);
 		if(pos!=outfile.tellg())
@@ -1152,6 +1185,13 @@ void IndexThread::indexDirs(void)
 	
 #endif
 
+	if (index_follow_last)
+	{
+		Server->destroy(last_filelist_f);
+		last_filelist_f = NULL;
+		last_filelist.reset();
+	}
+
 	{
 		IScopedLock lock(filelist_mutex);
 		if(index_group==c_group_default)
@@ -1163,6 +1203,15 @@ void IndexThread::indexDirs(void)
 		{
 			removeFile("urbackup/data/filelist_"+convert(index_group)+".ub");
 			moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist_"+convert(index_group)+".ub");
+		}
+	}
+
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].reset_keep)
+		{
+			cd->setResetKeep(0, backup_dirs[i].id);
 		}
 	}
 
@@ -1194,7 +1243,7 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 }
 
 bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
-	bool first, int flags, bool use_db, bool symlinked)
+	bool first, int flags, bool use_db, bool symlinked, size_t depth)
 {
 	bool has_include=false;
 	index_flags=flags;
@@ -1274,9 +1323,12 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			{
 				metadata.usn = metadata.last_modified;
 			}
-
+			
+			addFromLastUpto(named_path, true, depth, false, outfile);
 			writeDir(outfile, named_path, with_orig_path, metadata.usn, extra);
 			extra.clear();
+
+			++depth;
 		}
 	}
 
@@ -1301,6 +1353,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			{
 				continue;
 			}
+
 			has_include=true;
 
 			std::string listname = files[i].name;
@@ -1309,6 +1362,8 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			{
 				listname = named_path;
 			}
+			
+			addFromLastUpto(listname, false, depth, false, outfile);
 
 			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
@@ -1378,6 +1433,8 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			{
 				std::streampos pos=outfile.tellp();
 
+				SLastFileList backup = *last_filelist.get();
+
 				if(files[i].issym && with_proper_symlinks)
 				{
 					extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
@@ -1394,7 +1451,8 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				{
 					listname = named_path;
 				}
-				
+
+				addFromLastUpto(listname, true, depth, false, outfile);
 				writeDir(outfile, listname, with_orig_path, files[i].change_indicator, extra);
 				extra.clear();
 
@@ -1403,7 +1461,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				if(!files[i].issym || !with_proper_symlinks)
 				{
 					b = initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
-							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false);
+							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1);
 				}
 
 				if(!with_proper_symlinks)
@@ -1420,6 +1478,11 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 				{
 					if(!curr_included)
 					{
+						if (index_follow_last)
+						{
+							last_filelist->reset_to(backup);
+						}
+
 						outfile.seekp(pos);
 					}
 				}
@@ -4146,6 +4209,188 @@ int IndexThread::get_db_tgroup()
 	{
 		return index_group + 1;
 	}
+}
+
+bool IndexThread::nextLastFilelistItem(SFile& data, str_map* extra, bool with_up)
+{
+	if (last_filelist.get() == NULL
+		|| last_filelist->f==NULL)
+	{
+		return false;
+	}
+
+	if (last_filelist->buf.empty())
+	{
+		last_filelist->buf.resize(4096);
+		last_filelist->buf_pos = std::string::npos;
+	}
+
+	while (true)
+	{
+		if (last_filelist->buf_pos == last_filelist->buf.size()
+			|| last_filelist->buf_pos==std::string::npos)
+		{
+			if (last_filelist->buf_pos == last_filelist->buf.size())
+			{
+				last_filelist->read_pos += last_filelist->buf.size();
+			}
+
+			last_filelist->buf_pos = 0;
+			bool has_read_error = false;
+			_u32 read = last_filelist->f->Read(last_filelist->buf.data(),
+				static_cast<_u32>(last_filelist->buf.size()), &has_read_error);
+			if (has_read_error)
+			{
+				Server->Log("Error reading from last file list", LL_ERROR);
+
+				last_filelist.reset();
+				return false;
+			}
+
+			if (read == 0)
+			{
+				last_filelist.reset();
+				return false;
+			}
+
+			if (read < last_filelist->buf.size())
+			{
+				last_filelist->buf.resize(read);
+			}
+		}
+		else
+		{
+			if (last_filelist->parser.nextEntry(last_filelist->buf[last_filelist->buf_pos++], data, extra))
+			{
+				handleLastFilelistDepth(data);
+				last_filelist->item_pos = last_filelist->read_pos + last_filelist->buf_pos;
+
+				if (!with_up && data.isdir && data.name == "..")
+				{
+					return nextLastFilelistItem(data, extra, with_up);
+				}
+
+				return true;
+			}
+		}
+	}
+}
+
+void IndexThread::addFromLastUpto(const std::string& fname, bool isdir, size_t depth, bool finish, std::fstream &outfile)
+{
+	if (!index_follow_last)
+	{
+		return;
+	}
+
+	if (last_filelist->item.name.empty())
+	{
+		if (!nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false))
+		{
+			return;
+		}
+	}
+
+	assert(depth >= last_filelist->depth);
+	
+	do
+	{
+		if (!finish
+			&& ((last_filelist->item.name > fname
+				&& last_filelist->item.isdir == isdir
+				&& depth == last_filelist->depth)
+				|| depth > last_filelist->depth))
+		{
+			return;
+		}
+
+		if (!finish
+			&& last_filelist->item.name == fname
+			&& last_filelist->item.isdir == isdir
+			&& depth == last_filelist->depth)
+		{
+			nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false);
+			return;
+		}
+
+		if (index_keep_files)
+		{
+			if (last_filelist->item.isdir)
+			{
+				addDirFromLast(outfile);
+			}
+			else
+			{
+				addFileFromLast(outfile);
+			}
+		}
+	} while (nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false));
+}
+
+void IndexThread::addDirFromLast(std::fstream & outfile)
+{
+	size_t curr_depth = last_filelist->depth;
+	do
+	{
+		if (last_filelist->item.isdir)
+		{
+			std::string str_extra;
+			for (str_map::iterator it = last_filelist->extra.begin(); it != last_filelist->extra.end(); ++it)
+			{
+				str_extra += "&" + it->first + "=" + EscapeParamString(it->second);
+			}
+
+			writeDir(outfile, last_filelist->item.name, with_orig_path, last_filelist->item.last_modified, str_extra);
+		}
+		else
+		{
+			addFileFromLast(outfile);
+		}		
+	} while (last_filelist->depth_next > curr_depth
+		&& nextLastFilelistItem(last_filelist->item, &last_filelist->extra, true));
+}
+
+void IndexThread::addFileFromLast(std::fstream & outfile)
+{
+	std::string str_extra;
+	for (str_map::iterator it = last_filelist->extra.begin(); it != last_filelist->extra.end(); ++it)
+	{
+		str_extra += "&" + it->first + "=" + EscapeParamString(it->second);
+	}
+
+	outfile << "f\"" << escapeListName(last_filelist->item.name) << "\" " << last_filelist->item.size << " " << last_filelist->item.last_modified;
+
+	if (!str_extra.empty())
+	{
+		str_extra[0] = '#';
+		outfile << str_extra;
+	}
+
+	outfile << "\n";
+}
+
+bool IndexThread::handleLastFilelistDepth(SFile& data)
+{
+	last_filelist->depth = last_filelist->depth_next;
+
+	if (data.isdir)
+	{
+		if (data.name == "..")
+		{
+			if (last_filelist->depth_next == 0)
+			{
+				return false;
+			}
+
+			--last_filelist->depth_next;
+		}
+		else
+		{
+			++last_filelist->depth_next;
+		}
+	}
+
+	return true;
 }
 
 void IndexThread::setFlags( unsigned int flags )

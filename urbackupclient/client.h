@@ -4,6 +4,7 @@
 #include "../Interface/Database.h"
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../urbackupcommon/filelist_utils.h"
 #include "clientdao.h"
 #include <map>
 #include "tokens.h"
@@ -214,9 +215,9 @@ private:
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 	void handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files);
 
-	bool initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked);
+	bool initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth);
 
-	void indexDirs(void);
+	void indexDirs(bool full_backup);
 
 	void updateDirs(void);
 
@@ -302,6 +303,15 @@ private:
 
 	int get_db_tgroup();
 
+	bool nextLastFilelistItem(SFile& data, str_map* extra, bool with_up);
+
+	void addFromLastUpto(const std::string& fname, bool isdir, size_t depth, bool finish, std::fstream &outfile);
+
+	void addDirFromLast(std::fstream &outfile);
+	void addFileFromLast(std::fstream &outfile);
+
+	bool handleLastFilelistDepth(SFile& data);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -365,6 +375,8 @@ private:
 	int index_flags;
 	std::string index_clientsubname;
 	bool index_server_default;
+	bool index_follow_last;
+	bool index_keep_files;
 
 	SCDirs* index_scd;
 
@@ -388,6 +400,62 @@ private:
 
 	tokens::TokenCache token_cache;
 	int sha_version;
+
+	struct SLastFileList
+	{
+		SLastFileList()
+			: f(NULL), buf_pos(0), depth(0), depth_next(0),
+			  item_pos(0), read_pos(0)
+		{}
+
+		SLastFileList(const SLastFileList& other)
+		{
+			*this = other;
+		}
+
+		IFile* f;
+		FileListParser parser;
+		std::vector<char> buf;
+		size_t buf_pos;
+		size_t depth;
+		size_t depth_next;
+		int64 item_pos;
+		int64 read_pos;
+		SFile item;
+		str_map extra;
+
+		SLastFileList& operator=(const SLastFileList& other)
+		{
+			f = other.f;
+			depth = other.depth;
+			depth_next = other.depth_next;
+			item_pos = other.item_pos;
+			read_pos = other.read_pos;
+			item = other.item;
+			extra = other.extra;
+			return *this;
+		}
+
+		void reset_to(SLastFileList& other)
+		{
+			buf_pos = 0;
+			parser.reset();
+			depth = other.depth;
+			item_pos = other.item_pos;
+			read_pos = other.item_pos;
+			item = other.item;
+			extra = other.extra;
+			depth_next = other.depth_next;
+			buf.clear();
+
+			if (f != NULL)
+			{
+				f->Seek(read_pos);
+			}
+		}
+	};
+
+	std::auto_ptr<SLastFileList> last_filelist;
 };
 
 std::string add_trailing_slash(const std::string &strDirName);

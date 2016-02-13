@@ -163,6 +163,8 @@ public:
 	static std::string getStatusDetailsRaw();
 	static SStatusDetails getStatusDetails();
 
+	static std::string resetKeep(const std::string& virtualClient, const std::string& folderName, int tgroup);
+
 	static void setPWFile(const std::string &pPWFile);
 	static void setPWFileChange(const std::string &pPWFile);
 	static void setClient(const std::string &pClient);
