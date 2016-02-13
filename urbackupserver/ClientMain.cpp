@@ -1784,23 +1784,23 @@ void ClientMain::checkClientVersion(void)
 			}
 
 
-			IFile *sigfile=Server->openFile(signature_file, MODE_READ);
-			if(sigfile==NULL)
+			std::auto_ptr<IFile> sigfile(Server->openFile(signature_file, MODE_READ));
+			if(sigfile.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening sigfile", LL_ERROR);
 				return;
 			}
-			IFile *updatefile=Server->openFile(installer_file, MODE_READ);
-			if(updatefile==NULL)
+			std::auto_ptr<IFile> updatefile(Server->openFile(installer_file, MODE_READ));
+			if(updatefile.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening updatefile", LL_ERROR);
 				return;
 			}			
-			size_t datasize=3*sizeof(unsigned int)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
+			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			IPipe *cc=getClientCommandConnection(10000);
-			if(cc==NULL)
+			std::auto_ptr<IPipe> cc(getClientCommandConnection(10000));
+			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
 				return;
@@ -1809,59 +1809,40 @@ void ClientMain::checkClientVersion(void)
 			std::string msg="1CLIENTUPDATE size="+convert(datasize)+"&silent_update="+convert(server_settings->getSettings()->silent_update);
 
 			std::string identity= session_identity.empty()?server_identity:session_identity;
-			tcpstack.Send(cc, identity+msg);
+			tcpstack.Send(cc.get(), identity+msg);
 
 			int timeout=5*60*1000;
 
-			unsigned int c_size=(unsigned int)version.size();
-			if(!cc->Write((char*)&c_size, sizeof(unsigned int), timeout) )
+			_u32 c_size=little_endian((_u32)version.size());
+			if(!cc->Write((char*)&c_size, sizeof(c_size), timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
 			if(!cc->Write(version, timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
-			c_size=(unsigned int)sigfile->Size();
-			if(!cc->Write((char*)&c_size, sizeof(unsigned int), timeout) )
+			c_size= little_endian((_u32)sigfile->Size());
+			if(!cc->Write((char*)&c_size, sizeof(c_size), timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
-			if(!sendFile(cc, sigfile, timeout) )
+			if(!sendFile(cc.get(), sigfile.get(), timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
-			c_size=(unsigned int)updatefile->Size();
-			if(!cc->Write((char*)&c_size, sizeof(unsigned int), timeout) )
+			c_size= little_endian((_u32)updatefile->Size());
+			if(!cc->Write((char*)&c_size, sizeof(c_size), timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
-			if(!sendFile(cc, updatefile, timeout) )
+			if(!sendFile(cc.get(), updatefile.get(), timeout) )
 			{
-				Server->destroy(cc);
-				Server->destroy(sigfile);
-				Server->destroy(updatefile);
 				return;
 			}
 
-			Server->destroy(sigfile);
-			Server->destroy(updatefile);
-
+			sigfile.reset();
+			updatefile.reset();
 
 			std::string ret;
 			int64 starttime=Server->getTimeMS();
@@ -1876,14 +1857,10 @@ void ClientMain::checkClientVersion(void)
 				}
 				tcpstack.AddData((char*)ret.c_str(), ret.size());
 
-				size_t packetsize;
-				char *pck=tcpstack.getPacket(&packetsize);
-				if(pck!=NULL && packetsize>0)
+				std::string msg;
+				if(tcpstack.getPacket(msg))
 				{
-					ret.resize(packetsize);
-					memcpy(&ret[0], pck, packetsize);
-					delete [] pck;
-					if(ret=="ok")
+					if(msg =="ok")
 					{
 						ok=true;
 						break;
@@ -1891,7 +1868,7 @@ void ClientMain::checkClientVersion(void)
 					else
 					{
 						ok=false;
-						ServerLogger::Log(logid, "Error in update: "+ret, LL_ERROR);
+						ServerLogger::Log(logid, "Error in update: "+ msg, LL_ERROR);
 						break;
 					}
 				}
@@ -1902,7 +1879,7 @@ void ClientMain::checkClientVersion(void)
 				ServerLogger::Log(logid, "Timeout: In client update", LL_ERROR);
 			}
 
-			Server->destroy(cc);
+			cc.reset();
 
 			client_updated_time = Server->getTimeSeconds();
 

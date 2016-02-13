@@ -2064,6 +2064,8 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 			Server->Log("Too much hashdata - error -1update", LL_ERROR);
 		}
 
+		tcpstack.reset();
+
 		if(hashdataleft==0)
 		{
 			hashdataok=true;

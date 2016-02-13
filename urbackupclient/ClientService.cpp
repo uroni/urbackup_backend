@@ -739,17 +739,8 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 
 	tcpstack.AddData((char*)cmd.c_str(), cmd.size());
 
-	size_t packetsize;
-	char *ccstr;
-	while( (ccstr=tcpstack.getPacket(&packetsize))!=NULL)
+	while( tcpstack.getPacket(cmd) && !cmd.empty())
 	{
-		cmd.resize(packetsize);
-		if(packetsize>0)
-		{
-			memcpy(&cmd[0], ccstr, packetsize);
-		}
-		delete [] ccstr;
-		
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
