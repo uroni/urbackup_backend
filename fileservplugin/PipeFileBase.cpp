@@ -318,7 +318,8 @@ bool PipeFileBase::fillBuffer()
 
 	size_t bsize_free = 0;
 
-	if (buf_w_pos == buffer_size)
+	if (buf_w_pos == buffer_size
+		&& buf_r_pos>buffer_keep_free)
 	{
 		buf_circle = true;
 		buf_w_pos = 0;
