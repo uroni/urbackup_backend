@@ -1302,17 +1302,30 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		}
 
 		chunk_output_fn=openFileRetry(dest, has_reflink?MODE_RW:MODE_WRITE);
-		if(chunk_output_fn==NULL) return false;
+		if (chunk_output_fn == NULL)
+		{
+			ServerLogger::Log(logid, "Error opening chunk output file \"" + dest + "\"", LL_ERROR);
+			return false;
+		}
 		ObjectScope dst_s(chunk_output_fn);
 
 		IFile *f_source=openFileRetry(source, MODE_READ);
-		if(f_source==NULL) return false;
+		if (f_source == NULL)
+		{
+			ServerLogger::Log(logid, "Error opening patch source file \"" + source + "\"", LL_ERROR);
+			return false;
+		}
 		ObjectScope f_source_s(f_source);
 
 		chunk_patch_pos=0;
 		enabled_sparse = false;
 		chunk_patcher.setRequireUnchanged(!has_reflink);
 		bool b=chunk_patcher.ApplyPatch(f_source, patch, extent_iterator);
+
+		if (!b)
+		{
+			ServerLogger::Log(logid, "Error applying patch to \"" + dest + "\" with source \"" + source + "\"", LL_ERROR);
+		}
 
 		IFsFile::SSparseExtent sparse_extent;
 
@@ -1331,6 +1344,11 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		{
 			if (!punchHoleOrZero(chunk_output_fn, sparse_extent.offset, sparse_extent.size))
 			{
+				if (!has_error)
+				{
+					ServerLogger::Log(logid, "Error punching hole into \"" + dest + "\"", LL_ERROR);
+				}
+
 				has_error = true;
 			}
 			if (sparse_extent.offset + sparse_extent.size > dstfsize)
