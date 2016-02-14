@@ -589,7 +589,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(res.empty())
 		{
-			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?)");
+			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?,?)");
 			q->Bind(set_admin_username);
 			q->Bind(password_md5);
 			q->Bind(new_salt);
