@@ -224,18 +224,27 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			std::auto_ptr<IFile> output_f;
 			bool new_metadata_file=false;
 
+			int ftype = 0;
+
 			if(!dry_run)
 			{
+				ftype = os_get_file_type(os_file_prefix(backup_dir + os_file_sep() + os_path));
+
 				output_f.reset(Server->openFile(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata), MODE_RW));
 
-				
-				if(output_f.get()==NULL)
+				if (output_f.get() == NULL
+					&& ftype == 0)
+				{
+					ServerLogger::Log(logid, "Metadata file and \"" + backup_dir + os_file_sep() + os_path + "\" do not exist. Skipping applying metdata for this file.", LL_INFO);
+				}				
+				else if(output_f.get()==NULL)
 				{
 					output_f.reset(Server->openFile(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata), MODE_RW_CREATE));
 					new_metadata_file=true;
 				}
 
-				if(output_f.get()==NULL)
+				if(output_f.get()==NULL
+					&& ftype!=0)
 				{
 					ServerLogger::Log(logid, "Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
@@ -310,7 +319,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			}
 
 			FileMetadata curr_metadata;
-			if(!dry_run && !new_metadata_file && !read_metadata(output_f.get(), curr_metadata))
+			if(!dry_run && output_f.get() != NULL && !new_metadata_file && !read_metadata(output_f.get(), curr_metadata))
 			{
 				ServerLogger::Log(logid, "Error reading current metadata", LL_WARNING);
 			}
@@ -323,7 +332,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 
 			int64 offset = 0;
 
-			if(!dry_run)
+			if(!dry_run && output_f.get() != NULL)
 			{
 				int64 truncate_to_bytes;
 				if(!write_file_metadata(output_f.get(), cb, curr_metadata, true, truncate_to_bytes))
@@ -362,7 +371,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 
-				if(!dry_run)
+				if(!dry_run && output_f.get() != NULL)
 				{
 					output_f.reset();
 					if(!os_file_truncate(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata),
@@ -376,7 +385,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				
 				return false;
 			}
-			else if(!dry_run && offset+metadata_size<output_f->Size())
+			else if(!dry_run && output_f.get() != NULL && offset+metadata_size<output_f->Size())
 			{
 				output_f.reset();
 				if(!os_file_truncate(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata),
@@ -399,10 +408,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			bool win_is_symlink = false;
 
 #ifdef _WIN32
-			if (!dry_run && !is_dir)
+			if (!is_dir)
 			{
-				int ftype = os_get_file_type(os_file_prefix(backup_dir + os_file_sep() + os_path));
-
 				if (ftype &EFileType_Symlink)
 				{
 					win_is_symlink = true;
@@ -410,13 +417,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			}
 #endif
 
-			if(!dry_run && !is_dir && !win_is_symlink
+			if(!dry_run && output_f.get() != NULL && !is_dir && !win_is_symlink
 				&& !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
 			{
 				ServerLogger::Log(logid, "Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
 			}
 
-			if(!dry_run)
+			if(!dry_run && output_f.get() != NULL)
 			{
 				addFolderItem(curr_fn.substr(1), backup_dir+os_file_sep()+os_path, is_dir, created, modified, accessed, folder_items);
 			}
@@ -463,7 +470,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	int64 win32_magic_and_size[2];
 	win32_magic_and_size[1]=win32_meta_magic;
 	
-	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (beg)", LL_ERROR);
 		return false;
@@ -484,7 +491,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size));
 
-	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data_size)", LL_ERROR);
 		return false;
@@ -513,11 +520,11 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(version!=1)
 	{
-		ServerLogger::Log(logid, "Unknown windows metadata version +"+convert((int)version)+" in \"" + output_f->getFilename() + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Unknown windows metadata version +"+convert((int)version)+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
 
-	if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (ver)", LL_ERROR);
 		return false;
@@ -537,7 +544,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	metadataf_pos += static_cast<_u32>(stat_data.size());
 	data_checksum = urb_adler32(data_checksum, stat_data.data(), static_cast<_u32>(stat_data.size()));
 
-	if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data)", LL_ERROR);
 		return false;
@@ -557,7 +564,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		metadataf_pos += sizeof(cont);
 		data_checksum = urb_adler32(data_checksum, &cont, 1);
 
-		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&cont), sizeof(cont), cb))
+		if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&cont), sizeof(cont), cb))
 		{
 			ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (cont)", LL_ERROR);
 			return false;
@@ -586,7 +593,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		metadataf_pos += metadata_id_size;
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stream_id), metadata_id_size);
 
-		if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stream_id), metadata_id_size, cb))
+		if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stream_id), metadata_id_size, cb))
 		{
 			ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\"", LL_ERROR);
 			return false;
@@ -608,7 +615,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			metadataf_pos += stream_name.size();
 			data_checksum = urb_adler32(data_checksum, stream_name.data(), static_cast<_u32>(stream_name.size()));
 
-			if(!dry_run && !writeRepeatFreeSpace(output_f, stream_name.data(), stream_name.size(), cb))
+			if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, stream_name.data(), stream_name.size(), cb))
 			{
 				ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" -2", LL_ERROR);
 				return false;
@@ -632,7 +639,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			metadataf_pos += toread;
 			data_checksum = urb_adler32(data_checksum, buffer.data(), toread);
 
-			if(!dry_run && !writeRepeatFreeSpace(output_f, buffer.data(), toread, cb))
+			if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, buffer.data(), toread, cb))
 			{
 				ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" -3", LL_ERROR);
 				return false;
@@ -658,7 +665,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		return false;
 	}
 
-	if(!dry_run && !output_f->Seek(output_offset))
+	if(!dry_run && output_f != NULL && !output_f->Seek(output_offset))
 	{
 		ServerLogger::Log(logid, "Error seeking to  \"" + convert(output_offset) + "\" -5 in output_f", LL_ERROR);
 		return false;
@@ -666,7 +673,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	win32_magic_and_size[0]=little_endian(metadata_size);
 
-	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&win32_magic_and_size[0]), sizeof(win32_magic_and_size[0]), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&win32_magic_and_size[0]), sizeof(win32_magic_and_size[0]), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (end)", LL_ERROR);
 		return false;
@@ -680,7 +687,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     int64 unix_magic_and_size[2];
     unix_magic_and_size[1]=unix_meta_magic;
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size), cb))
+    if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size), cb))
     {
         ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (beg, unix)", LL_ERROR);
         return false;
@@ -700,7 +707,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	metadataf_pos += sizeof(stat_data_size);
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size));
 
-	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
+	if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
 	{
 		ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data_size)", LL_ERROR);
 		return false;
@@ -725,14 +732,14 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(version!=1)
     {
-        ServerLogger::Log(logid, "Unknown unix metadata version +"+convert((int)version)+" in \"" + output_f->getFilename() + "\"", LL_ERROR);
+        ServerLogger::Log(logid, "Unknown unix metadata version +"+convert((int)version)+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
         return false;
     }
 
 	metadataf_pos += 1;
 	data_checksum = urb_adler32(data_checksum, &version, 1);
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
+    if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
     {
         ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (ver)", LL_ERROR);
         return false;
@@ -752,7 +759,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	metadataf_pos += static_cast<_u32>(stat_data.size());
 	data_checksum = urb_adler32(data_checksum, stat_data.data(), static_cast<_u32>(stat_data.size()));
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
+    if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
     {
         ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (stat_data)", LL_ERROR);
         return false;
@@ -770,7 +777,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	metadataf_pos += sizeof(num_eattr_keys);
 	data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys));
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys), cb))
+    if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys), cb))
     {
         ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (num_eattr_keys)", LL_ERROR);
         return false;
@@ -792,7 +799,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		metadataf_pos += sizeof(key_size);
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&key_size), sizeof(key_size));
 
-        if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&key_size), sizeof(key_size), cb))
+        if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&key_size), sizeof(key_size), cb))
         {
             ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (key_size)", LL_ERROR);
             return false;
@@ -813,7 +820,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		metadataf_pos += key_size;
 		data_checksum = urb_adler32(data_checksum, &eattr_key[0], key_size);
 
-        if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_key.data(), eattr_key.size(), cb))
+        if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, eattr_key.data(), eattr_key.size(), cb))
         {
             ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (eattr_key)", LL_ERROR);
             return false;
@@ -831,7 +838,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		metadataf_pos += sizeof(val_size);
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&val_size), sizeof(val_size));
 
-        if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&val_size), sizeof(val_size), cb))
+        if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&val_size), sizeof(val_size), cb))
         {
             ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (val_size)", LL_ERROR);
             return false;
@@ -852,7 +859,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		metadataf_pos += val_size;
 		data_checksum = urb_adler32(data_checksum, &eattr_val[0], val_size);
 
-        if(!dry_run && !writeRepeatFreeSpace(output_f, eattr_val.data(), eattr_val.size(), cb))
+        if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, eattr_val.data(), eattr_val.size(), cb))
         {
             ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (eattr_val)", LL_ERROR);
             return false;
@@ -875,7 +882,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 		return false;
 	}
 
-    if(!dry_run && !output_f->Seek(output_offset))
+    if(!dry_run && output_f != NULL && !output_f->Seek(output_offset))
     {
         ServerLogger::Log(logid, "Error seeking to  \"" + convert(output_offset) + "\" -6 in output_f", LL_ERROR);
         return false;
@@ -883,7 +890,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     unix_magic_and_size[0]=little_endian(metadata_size);
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&unix_magic_and_size[0]), sizeof(unix_magic_and_size[0]), cb))
+    if(!dry_run && output_f != NULL && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&unix_magic_and_size[0]), sizeof(unix_magic_and_size[0]), cb))
     {
         ServerLogger::Log(logid, "Error writing to  \"" + output_f->getFilename() + "\" (end,unix)", LL_ERROR);
         return false;
