@@ -609,7 +609,6 @@ bool FileBackup::doBackup()
 
 	if((!has_early_error && !backup_result) || disk_error)
 	{
-		sendBackupOkay(false);
 		backup_result = false;
 	}
 	else if(has_early_error)
@@ -621,7 +620,6 @@ bool FileBackup::doBackup()
 	}
 	else
 	{
-		sendBackupOkay(true);
 		backup_dao->updateClientLastFileBackup(backupid, clientid);
 		backup_dao->updateFileBackupSetComplete(backupid);
 	}
