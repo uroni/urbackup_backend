@@ -627,7 +627,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		db->destroyAllQueries();
 
-		exit(1);
+		exit(0);
 	}
 		
 
