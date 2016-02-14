@@ -1250,13 +1250,13 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 			if (!chunk_output_fn->Seek(chunk_patch_pos))
 			{
 				ServerLogger::Log(logid, "Error seeking to offset "+convert(chunk_patch_pos)+" in \"" + chunk_output_fn->getFilename() + "\" -3", LL_ERROR);
-				has_error = true;
+				chunk_patcher_has_error = true;
 			}
 			bool b = writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
 			if (!b)
 			{
 				ServerLogger::Log(logid, "Error writing to file \"" + chunk_output_fn->getFilename() + "\" -3", LL_ERROR);
-				has_error = true;
+				chunk_patcher_has_error = true;
 			}
 		}
 		else
@@ -1319,6 +1319,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 
 		chunk_patch_pos=0;
 		enabled_sparse = false;
+		chunk_patcher_has_error = false;
 		chunk_patcher.setRequireUnchanged(!has_reflink);
 		bool b=chunk_patcher.ApplyPatch(f_source, patch, extent_iterator);
 
@@ -1339,17 +1340,19 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		dstfsize = chunk_output_fn->Size();
 
 		bool sparse_resize = false;
+		bool has_punch_error = false;
 
 		while (sparse_extent.offset != -1)
 		{
 			if (!punchHoleOrZero(chunk_output_fn, sparse_extent.offset, sparse_extent.size))
 			{
-				if (!has_error)
+				if (!has_punch_error)
 				{
 					ServerLogger::Log(logid, "Error punching hole into \"" + dest + "\"", LL_ERROR);
 				}
 
-				has_error = true;
+				has_punch_error = true;
+				chunk_patcher_has_error = true;
 			}
 			if (sparse_extent.offset + sparse_extent.size > dstfsize)
 			{
@@ -1368,7 +1371,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 			}
 		}
 		
-		if(has_error || !b)
+		if(chunk_patcher_has_error || !b)
 		{
 			return false;
 		}
@@ -1424,7 +1427,11 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 	ServerLogger::Log(logid, "HT: Copying with reflink data from \""+orig_fn+"\"", LL_DEBUG);
 
 	std::auto_ptr<IFile> dst(openFileRetry(dest, MODE_RW));
-	if(dst.get()==NULL) return false;
+	if (dst.get() == NULL)
+	{
+		ServerLogger::Log(logid, "Error opening destination file at \"" + dest + "\"", LL_ERROR);
+		return false;
+	}
 
 
 	IFsFile::SSparseExtent curr_extent;
@@ -1450,6 +1457,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 		{
 			if (!punchHoleOrZero(dst.get(), curr_extent.offset, curr_extent.size))
 			{
+				ServerLogger::Log(logid, "Error punching hole into \""+dest+"\"", LL_ERROR);
 				return false;
 			}
 
@@ -1529,7 +1537,11 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 	ServerLogger::Log(logid, "HT: Copying with hashoutput with reflink data from \""+orig_fn+"\"", LL_DEBUG);
 
 	IFsFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW);
-	if(dst==NULL) return false;
+	if (dst == NULL)
+	{
+		ServerLogger::Log(logid, "Error opening dest file at \"" + dest + "\"", LL_ERROR);
+		return false;
+	}
 	ObjectScope dst_s(dst);
 
 	if(tf->Size()>0)
@@ -1537,13 +1549,17 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 		IFile *dst_hash=openFileRetry(os_file_prefix(hash_dest), MODE_WRITE);
 		if(dst_hash==NULL)
 		{
+			ServerLogger::Log(logid, "Error opening dest hash file at \"" + hash_dest + "\"", LL_ERROR);
 			return false;
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
 		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, true, &cow_filesize, NULL, false, extent_iterator);
-		if(r=="")
+		if (r == "")
+		{
+			ServerLogger::Log(logid, "Error copying file with chunk hashes to \""+dest+"\"", LL_ERROR);
 			return false;
+		}
 
 		_i64 dst_size=dst->Size();
 

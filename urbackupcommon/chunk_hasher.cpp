@@ -97,8 +97,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	hashoutput->Seek(0);
 	_i64 fsize=f->Size();
 	_i64 fsize_endian = little_endian(fsize);
-	if(!writeRepeatFreeSpace(hashoutput, (char*)&fsize_endian, sizeof(_i64), cb))
+	if (!writeRepeatFreeSpace(hashoutput, (char*)&fsize_endian, sizeof(_i64), cb))
+	{
+		Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ")", LL_DEBUG);
 		return "";
+	}
 
 	_i64 input_size;
 	if(hashinput!=NULL)
@@ -106,6 +109,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		hashinput->Seek(0);
 		if(hashinput->Read(reinterpret_cast<char*>(&input_size), sizeof(input_size))!=sizeof(input_size))
 		{
+			Server->Log("Error reading from hashinput file (" + hashinput->getFilename() + ")", LL_DEBUG);
 			return "";
 		}
 
@@ -199,7 +203,10 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		{
 			std::string c = get_sparse_extent_content();
 			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
+			{
+				Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -2", LL_DEBUG);
 				return "";
+			}
 			hashoutputpos += c.size();
 			
 
@@ -223,11 +230,15 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 						{
 							_u32 towrite = static_cast<_u32>((std::min)(curr_extent.size - written, static_cast<int64>(zero_buf.size())));
 							if (!writeRepeatFreeSpace(copy, zero_buf.data(), towrite, cb))
+							{
+								Server->Log("Error writing to copy file (" + copy->getFilename() + ")", LL_DEBUG);
 								return "";
+							}
 						}
 					}
 					else
 					{
+						Server->Log("Error seeking in copy file (" + copy->getFilename() + ")", LL_DEBUG);
 						return "";
 					}
 				}
@@ -242,6 +253,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			pos = epos;			
 			if (!f->Seek(pos))
 			{
+				Server->Log("Error seeking in input file (" + f->getFilename() + ")", LL_DEBUG);
 				return "";
 			}
 			continue;
@@ -263,8 +275,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			_u32 small_hash=urb_adler32(urb_adler32(0, NULL, 0), buf, r);
 			big_hash.update((unsigned char*)buf, r);
 			small_hash = little_endian(small_hash);
-			if(!writeRepeatFreeSpace(hashoutput, (char*)&small_hash, small_hash_size, cb))
+			if (!writeRepeatFreeSpace(hashoutput, (char*)&small_hash, small_hash_size, cb))
+			{
+				Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -3", LL_DEBUG);
 				return "";
+			}
 
 			hashoutputpos+=small_hash_size;
 
@@ -332,8 +347,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 							//write new data
 							copy->Seek(copy_write_pos);
-							if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+							if (!writeRepeatFreeSpace(copy, buf, r, cb))
+							{
+								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -2", LL_DEBUG);
 								return "";
+							}
 
 							if(inplace_written!=NULL)
 							{
@@ -364,8 +382,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 						if(copy_read_eof || copy_r!=r || memcmp(copy_buf, buf, r)!=0)
 						{
 							copy->Seek(copy_write_pos);
-							if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+							if (!writeRepeatFreeSpace(copy, buf, r, cb))
+							{
+								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -3", LL_DEBUG);
 								return "";
+							}
 
 							if(inplace_written!=NULL)
 							{
@@ -379,16 +400,22 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 				}
 				else
 				{
-					if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+					if (!writeRepeatFreeSpace(copy, buf, r, cb))
+					{
+						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -4", LL_DEBUG);
 						return "";
+					}
 				}
 			}
 		}
 
 		hashoutput->Seek(hashoutputpos_start);
 		big_hash.finalize();
-		if(!writeRepeatFreeSpace(hashoutput, (const char*)big_hash.raw_digest_int(),  big_hash_size, cb))
+		if (!writeRepeatFreeSpace(hashoutput, (const char*)big_hash.raw_digest_int(), big_hash_size, cb))
+		{
+			Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -4", LL_DEBUG);
 			return "";
+		}
 
 		if(copy!=NULL && chunk_hashes.get() && modify_inplace)
 		{
@@ -404,8 +431,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 					_u32 r=f->Read(buf, c_small_hash_dist);
 
 					copy->Seek(copy_write_pos);
-					if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+					if (!writeRepeatFreeSpace(copy, buf, r, cb))
+					{
+						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -5", LL_DEBUG);
 						return "";
+					}
 
 					if(inplace_written!=NULL)
 					{
@@ -434,6 +464,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	{
 		if (!copy->Resize(copy_max_sparse))
 		{
+			Server->Log("Error resizing copy file (" + copy->getFilename() + ")", LL_DEBUG);
 			return "";
 		}
 	}

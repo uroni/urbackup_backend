@@ -132,6 +132,7 @@ private:
 
 	IFsFile *chunk_output_fn;
 	ChunkPatcher chunk_patcher;
+	bool chunk_patcher_has_error;
 
 	bool use_snapshots;
 	bool use_reflink;
