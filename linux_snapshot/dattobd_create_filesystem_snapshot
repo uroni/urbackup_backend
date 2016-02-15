@@ -40,6 +40,15 @@ truncate -s100M $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
 
 LODEV=`losetup -f`
 
+if [ "x$LODEV" = x ]
+then
+	rm "${SNAP_DEST}-num"
+	rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+	dbdctl destroy $NUM
+    exit 1
+fi
+	
+
 losetup $LODEV $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
 
 echo "0 $DEV_SIZE snapshot /dev/datto$NUM $LODEV N 8" | dmsetup create "wsnap-$SNAP_ID"
@@ -61,6 +70,7 @@ then
     rmdir "$SNAP_DEST"
     rm "${SNAP_DEST}-num"
     dmsetup remove "wsnap-$SNAP_ID"
+	losetup -d $LODEV
     rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
     dbdctl destroy $NUM
     exit 1

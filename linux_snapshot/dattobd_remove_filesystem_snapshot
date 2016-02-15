@@ -6,12 +6,24 @@ SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_ORIG_PATH="$5"
 
+remove_overlay() {
+	if test -e "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+	then
+		LODEV=`losetup -j "$SNAP_ORIG_PATH/.overlay_$SNAP_ID" | cut -d':' -f1`
+		if [ "x$LODEV" != x ]
+		then
+			losetup -d $LODEV
+		fi
+		rm "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+	fi
+}
+
 if ! test -e $SNAP_MOUNTPOINT
 then
     echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
     [ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
     [ ! -e "${SNAP_MOUNTPOINT}-num" ] || rm "${SNAP_MOUNTPOINT}-num"
-    [ ! -e "$SNAP_ORIG_PATH/.overlay_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+	remove_overlay
     exit 0
 fi
 
@@ -21,7 +33,7 @@ then
     rm "${SNAP_MOUNTPOINT}-num"
     rmdir "${SNAP_MOUNTPOINT}"
     [ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
-    [ ! -e "$SNAP_ORIG_PATH/.overlay_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+    remove_overlay
     exit 0
 fi
 
@@ -50,7 +62,7 @@ echo "Removing devicemapper snapshot..."
 
 dmsetup remove "wsnap-$SNAP_ID"
 
-rm "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+remove_overlay
 
 echo "Destroying dattobd snapshot /dev/datto$NUM..."
 
