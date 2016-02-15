@@ -1433,7 +1433,11 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			{
 				std::streampos pos=outfile.tellp();
 
-				SLastFileList backup = *last_filelist.get();
+				SLastFileList backup;
+				if (index_follow_last)
+				{
+					backup = *last_filelist.get();
+				}
 
 				if(files[i].issym && with_proper_symlinks)
 				{
