@@ -2455,7 +2455,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		return false;
 	}
 
-	int rc = os_popen(SYSCONFDIR "/urbackup/"+scriptname+" "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
+	int rc = os_popen(scriptlocation + " "+guidToString(scs.ssetid)+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.tname)
 		+" "+escapeDirParam(scs.path)+" "+escapeDirParam(scs.orig_target)
 		+ (scs.clientsubname.empty() ? "" : (" " + escapeDirParam(scs.clientsubname))), loglines);
 	if(rc!=0)
