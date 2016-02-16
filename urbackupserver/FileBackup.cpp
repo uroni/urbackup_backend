@@ -36,6 +36,8 @@
 #include <limits.h>
 #include "FileMetadataDownloadThread.h"
 #include "../utf8/utf8.h"
+#include "server.h"
+#include "../urbackupcommon/TreeHash.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -163,7 +165,14 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 	if(client_main->getProtocolVersions().select_sha_version>0)
 	{
-		start_backup_cmd+="&sha=512";
+		if (BackupServer::useTreeHashing())
+		{
+			start_backup_cmd += "&sha=528";
+		}
+		else
+		{
+			start_backup_cmd += "&sha=512";
+		}
 	}
 
 	if (client_main->getProtocolVersions().file_protocol_version_v2 >= 1)
@@ -982,6 +991,12 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					if(sha256hex.empty())
 					{
 						std::string shabase64 = extras[sha_def_identifier];
+
+						if (shabase64.empty())
+						{
+							shabase64 = extras["thash"];
+						}
+
 						if(shabase64.empty())
 						{
 							if (!is_special)
@@ -1126,8 +1141,26 @@ std::string FileBackup::getSHADef(const std::string& fn)
 		return std::string();
 	}
 
-	FsExtentIterator extent_iterator(f.get(), 32768);	
-	return BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true);
+	FsExtentIterator extent_iterator(f.get(), 512*1024);	
+
+	if (BackupServer::useTreeHashing())
+	{
+		TreeHash treehash;
+		if (!BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, treehash))
+		{
+			return std::string();
+		}
+		return treehash.finalize();
+	}
+	else
+	{
+		HashSha512 shahash;
+		if (!BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, shahash))
+		{
+			return std::string();
+		}
+		return shahash.finalize();
+	}	
 }
 
 bool FileBackup::hasDiskError()

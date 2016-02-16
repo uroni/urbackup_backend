@@ -23,6 +23,7 @@
 #include "../md5.h"
 #include "../common/adler32.h"
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
+#include "TreeHash.h"
 #include <memory.h>
 #include <memory>
 #include <assert.h>
@@ -68,12 +69,6 @@ namespace
 		return true;
 	}
 
-	void add_extent(sha_def_ctx* ctx, int64 ext_start, int64 ext_size)
-	{
-		sha_def_update(ctx, reinterpret_cast<unsigned char*>(&ext_start), sizeof(ext_start));
-		sha_def_update(ctx, reinterpret_cast<unsigned char*>(&ext_size), sizeof(ext_size));
-	}
-
 	std::string sparse_extent_content;
 }
 
@@ -88,9 +83,9 @@ void init_chunk_hasher()
 	sparse_extent_content = build_sparse_extent_content();
 }
 
-std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
-	bool ret_sha2, IFsFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
-	bool show_pc, IExtentIterator* extent_iterator)
+bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
+	IFsFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
+	bool show_pc, IHashFunc* hashf, IExtentIterator* extent_iterator)
 {
 	f->Seek(0);
 
@@ -100,7 +95,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	if (!writeRepeatFreeSpace(hashoutput, (char*)&fsize_endian, sizeof(_i64), cb))
 	{
 		Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ")", LL_DEBUG);
-		return "";
+		return false;
 	}
 
 	_i64 input_size;
@@ -110,21 +105,17 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		if(hashinput->Read(reinterpret_cast<char*>(&input_size), sizeof(input_size))!=sizeof(input_size))
 		{
 			Server->Log("Error reading from hashinput file (" + hashinput->getFilename() + ")", LL_DEBUG);
-			return "";
+			return false;
 		}
 
 		input_size = little_endian(input_size);
 	}
 
-	sha_def_ctx ctx;
-	sha_def_ctx extent_ctx;
-	bool has_sparse_extents = false;
 	std::vector<char> sha_buf;
-	if (ret_sha2)
+	TreeHash* treehash = reinterpret_cast<TreeHash*>(hashf);
+	if (hashf!=NULL && treehash==NULL)
 	{
-		sha_def_init(&ctx);
-		sha_def_init(&extent_ctx);
-		sha_buf.resize(32768);
+		sha_buf.resize(c_checkpoint_dist);
 	}
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
@@ -132,7 +123,6 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	char copy_buf[c_small_hash_dist];
 	_i64 copy_write_pos=0;
 	bool copy_read_eof=false;
-	char zbuf[big_hash_size]={};
 	_i64 hashoutputpos=sizeof(_i64);
 
 	std::auto_ptr<SChunkHashes> chunk_hashes;
@@ -205,12 +195,12 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			if (!writeRepeatFreeSpace(hashoutput, c.data(), c.size(), cb))
 			{
 				Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -2", LL_DEBUG);
-				return "";
+				return false;
 			}
 			hashoutputpos += c.size();
 			
 
-			if (ret_sha2 && sparse_extent_start == -1)
+			if (hashf!=NULL && sparse_extent_start == -1)
 			{
 				sparse_extent_start = pos;
 			}
@@ -232,14 +222,14 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 							if (!writeRepeatFreeSpace(copy, zero_buf.data(), towrite, cb))
 							{
 								Server->Log("Error writing to copy file (" + copy->getFilename() + ")", LL_DEBUG);
-								return "";
+								return false;
 							}
 						}
 					}
 					else
 					{
 						Server->Log("Error seeking in copy file (" + copy->getFilename() + ")", LL_DEBUG);
-						return "";
+						return false;
 					}
 				}
 				else
@@ -254,7 +244,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			if (!f->Seek(pos))
 			{
 				Server->Log("Error seeking in input file (" + f->getFilename() + ")", LL_DEBUG);
-				return "";
+				return false;
 			}
 			continue;
 		}
@@ -264,63 +254,35 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		
 		MD5 big_hash;
 		MD5 big_hash_copy_control;
-		_i64 hashoutputpos_start=hashoutputpos;
-		writeRepeatFreeSpace(hashoutput, zbuf, big_hash_size, cb);
-		hashoutputpos+=big_hash_size;
 		size_t chunkidx=0;
 		_i64 copy_write_pos_start = copy_write_pos;
+		SChunkHashes new_chunk;
+		_u32 buf_read = 0;
+		bool all_zeros = true;
 		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist,++chunkidx)
 		{
-			_u32 r=f->Read(buf, c_small_hash_dist);
-			_u32 small_hash=urb_adler32(urb_adler32(0, NULL, 0), buf, r);
-			big_hash.update((unsigned char*)buf, r);
-			small_hash = little_endian(small_hash);
-			if (!writeRepeatFreeSpace(hashoutput, (char*)&small_hash, small_hash_size, cb))
+			bool has_read_error = false;
+			_u32 r=f->Read(buf, c_small_hash_dist, &has_read_error);
+
+			if (has_read_error)
 			{
-				Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -3", LL_DEBUG);
-				return "";
+				Server->Log("Error while reading from file \"" + f->getFilename() + "\"", LL_DEBUG);
+				return false;
 			}
 
-			hashoutputpos+=small_hash_size;
+			if (treehash!=NULL && !buf_is_zero(buf, r))
+			{
+				all_zeros = false;
+			}
 
-			if(ret_sha2)
+			new_chunk.small_hash[chunkidx] = urb_adler32(urb_adler32(0, NULL, 0), buf, r);
+			big_hash.update((unsigned char*)buf, r);
+			buf_read += r;
+
+			if(hashf!=NULL && treehash==NULL)
 			{
 				int64 buf_offset = pos%sha_buf.size();
 				memcpy(sha_buf.data() + buf_offset, buf, r);
-
-				if ((pos + r) % sha_buf.size() == 0)
-				{
-					if (buf_is_zero(sha_buf.data(), sha_buf.size()))
-					{
-						if (sparse_extent_start == -1)
-						{
-							sparse_extent_start = (pos / sha_buf.size())*sha_buf.size();
-						}
-					}
-					else
-					{
-						if (sparse_extent_start != -1)
-						{
-							has_sparse_extent = true;
-							int64 end_pos = (pos / sha_buf.size())*sha_buf.size();
-							add_extent(&extent_ctx, sparse_extent_start, end_pos - sparse_extent_start);
-							sparse_extent_start = -1;
-						}
-
-						sha_def_update(&ctx, (unsigned char*)sha_buf.data(), static_cast<unsigned int>(sha_buf.size()));
-					}
-				}
-				else if (r < c_small_hash_dist || pos+r==fsize)
-				{
-					if (sparse_extent_start != -1)
-					{
-						has_sparse_extent = true;
-						int64 end_pos = (pos / sha_buf.size())*sha_buf.size();
-						add_extent(&extent_ctx, sparse_extent_start, end_pos - sparse_extent_start);
-						sparse_extent_start = -1;
-					}
-					sha_def_update(&ctx, (unsigned char*)sha_buf.data(), static_cast<unsigned int>(buf_offset+r));
-				}
 			}
 			if(copy!=NULL)
 			{
@@ -328,7 +290,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 				{
 					if(chunk_hashes.get())
 					{
-						if(memcmp(&small_hash, &chunk_hashes->small_hash[chunkidx*small_hash_size], sizeof(small_hash))==0)
+						if(memcmp(&new_chunk.small_hash[chunkidx], &chunk_hashes->small_hash[chunkidx*small_hash_size], sizeof(new_chunk.small_hash[chunkidx]))==0)
 						{
 							big_hash_copy_control.update((unsigned char*)buf, r);
 						}
@@ -350,7 +312,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 							if (!writeRepeatFreeSpace(copy, buf, r, cb))
 							{
 								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -2", LL_DEBUG);
-								return "";
+								return false;
 							}
 
 							if(inplace_written!=NULL)
@@ -385,7 +347,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 							if (!writeRepeatFreeSpace(copy, buf, r, cb))
 							{
 								Server->Log("Error writing to copy file (" + copy->getFilename() + ") -3", LL_DEBUG);
-								return "";
+								return false;
 							}
 
 							if(inplace_written!=NULL)
@@ -403,18 +365,75 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 					if (!writeRepeatFreeSpace(copy, buf, r, cb))
 					{
 						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -4", LL_DEBUG);
-						return "";
+						return false;
 					}
 				}
 			}
 		}
 
-		hashoutput->Seek(hashoutputpos_start);
 		big_hash.finalize();
-		if (!writeRepeatFreeSpace(hashoutput, (const char*)big_hash.raw_digest_int(), big_hash_size, cb))
+		memcpy(new_chunk.big_hash, big_hash.raw_digest_int(), 16);
+
+		if (hashf != NULL)
 		{
-			Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -4", LL_DEBUG);
-			return "";
+			if (buf_read == c_checkpoint_dist)
+			{
+				if ( (treehash!=NULL && all_zeros ) 
+					|| (treehash==NULL && buf_is_zero(sha_buf.data(), sha_buf.size())) )
+				{
+					if (sparse_extent_start == -1)
+					{
+						sparse_extent_start = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+					}
+				}
+				else
+				{
+					if (sparse_extent_start != -1)
+					{
+						has_sparse_extent = true;
+						int64 end_pos = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+						int64 ext_pos[2] = { sparse_extent_start, end_pos - sparse_extent_start };
+						hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
+						sparse_extent_start = -1;
+					}
+
+					if (treehash != NULL)
+					{
+						treehash->addHashAllAdler(new_chunk.big_hash, chunkhash_single_size);
+					}
+					else
+					{
+						hashf->hash(sha_buf.data(), static_cast<unsigned int>(sha_buf.size()));
+					}
+				}
+			}
+			else
+			{
+				if (sparse_extent_start != -1)
+				{
+					has_sparse_extent = true;
+					int64 end_pos = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+
+					int64 ext_pos[2] = { sparse_extent_start, end_pos - sparse_extent_start };
+					hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
+
+					sparse_extent_start = -1;
+				}
+
+				hashf->hash(sha_buf.data(), buf_read);
+			}
+		}
+		else 
+
+		for (size_t i = 0; i < chunkidx; ++i)
+		{
+			new_chunk.small_hash[i] = little_endian(new_chunk.small_hash[i]);
+		}
+
+		if (!writeRepeatFreeSpace(hashoutput, new_chunk.big_hash, big_hash_size+chunkidx*small_hash_size, cb))
+		{
+			Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -3", LL_DEBUG);
+			return false;
 		}
 
 		if(copy!=NULL && chunk_hashes.get() && modify_inplace)
@@ -434,7 +453,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 					if (!writeRepeatFreeSpace(copy, buf, r, cb))
 					{
 						Server->Log("Error writing to copy file (" + copy->getFilename() + ") -5", LL_DEBUG);
-						return "";
+						return false;
 					}
 
 					if(inplace_written!=NULL)
@@ -446,15 +465,14 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 				}
 			}
 		}
-
-		hashoutput->Seek(hashoutputpos);
 	}
 
 	if (sparse_extent_start != -1)
 	{
 		assert(fsize%sha_buf.size()==0);
 		has_sparse_extent = true;
-		add_extent(&extent_ctx, sparse_extent_start, fsize - sparse_extent_start);
+		int64 ext_pos[2] = { sparse_extent_start, fsize - sparse_extent_start };
+		hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
 		sparse_extent_start = -1;
 	}
 
@@ -465,28 +483,11 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		if (!copy->Resize(copy_max_sparse))
 		{
 			Server->Log("Error resizing copy file (" + copy->getFilename() + ")", LL_DEBUG);
-			return "";
+			return false;
 		}
 	}
 
-	if(ret_sha2)
-	{
-		std::string ret;
-		ret.resize(SHA_DEF_DIGEST_SIZE);
-
-		if (has_sparse_extent)
-		{
-			sha_def_final(&extent_ctx, (unsigned char*)&ret[0]);
-			sha_def_update(&ctx, reinterpret_cast<unsigned char*>(&ret[0]), SHA_DEF_DIGEST_SIZE);
-		}
-
-		sha_def_final(&ctx, (unsigned char*)&ret[0]);
-		return ret;
-	}
-	else
-	{
-		return "k";
-	}
+	return true;
 }
 
 bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb)

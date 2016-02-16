@@ -454,10 +454,6 @@ void MD5::transform (uint1 block[64]){
   state[1] += b;
   state[2] += c;
   state[3] += d;
-
-  // Zeroize sensitive information.
-  memset ( (uint1 *) x, 0, sizeof(x));
-
 }
 
 

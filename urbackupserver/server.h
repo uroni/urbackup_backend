@@ -45,6 +45,10 @@ public:
 
 	static void setVirtualClients(const std::string& clientname, const std::string& virtual_clients);
 
+	static bool useTreeHashing();
+
+	static void setupUseTreeHashing();
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
@@ -74,6 +78,7 @@ private:
 
 	static bool snapshots_enabled;
 	static bool filesystem_transactions_enabled;
+	static bool use_tree_hashing;
 
 	static volatile bool update_delete_pending_clients;
 	std::vector<std::string> delete_pending_clients;

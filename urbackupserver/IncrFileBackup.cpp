@@ -813,7 +813,13 @@ bool IncrFileBackup::doFileBackup()
 					std::string curr_sha2;
 					{
 						std::map<std::string, std::string>::iterator hash_it = 
-							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier) );					
+							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier) );
+
+						if (local_hash.get() != NULL && hash_it == extra_params.end())
+						{
+							hash_it = extra_params.find("thash");
+						}
+
 						if(hash_it!=extra_params.end())
 						{
 							curr_sha2 = base64_decode_dash(hash_it->second);

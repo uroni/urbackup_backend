@@ -40,6 +40,7 @@ IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
 bool BackupServer::filesystem_transactions_enabled = false;
+bool BackupServer::use_tree_hashing = false;
 volatile bool BackupServer::update_delete_pending_clients=true;
 IMutex* BackupServer::force_offline_mutex=NULL;
 std::vector<std::string> BackupServer::force_offline_clients;
@@ -72,6 +73,8 @@ void BackupServer::operator()(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
+
+	setupUseTreeHashing();
 
 #ifdef _WIN32
 	std::string tmpdir;
@@ -791,6 +794,42 @@ void BackupServer::fixClientnameCase( std::string& clientname )
 	}
 }
 
+void BackupServer::setupUseTreeHashing()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='hashing'");
+
+	if (res.empty())
+	{
+		db_results res_c = db->Read("SELECT COUNT(*) AS c FROM backups");
+		
+		if (!res_c.empty() && watoi(res_c[0]["c"]) == 0)
+		{
+			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('hashing', 'treehash')");
+			use_tree_hashing = true;
+		}
+		else
+		{
+			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('hashing', 'sha512')");
+			use_tree_hashing = false;
+		}
+	}
+	else
+	{
+		std::string val = res[0]["tvalue"];
+
+		if (val == "treehash")
+		{
+			use_tree_hashing = true;
+		}
+		else
+		{
+			use_tree_hashing = false;
+		}
+	}
+}
+
 void BackupServer::setVirtualClients( const std::string& clientname, const std::string& new_virtual_clients )
 {
 	std::vector<std::string> toks;
@@ -798,5 +837,10 @@ void BackupServer::setVirtualClients( const std::string& clientname, const std::
 
 	IScopedLock lock(virtual_clients_mutex);
 	virtual_clients[clientname] = toks;
+}
+
+bool BackupServer::useTreeHashing()
+{
+	return use_tree_hashing;
 }
 

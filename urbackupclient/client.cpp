@@ -38,6 +38,7 @@
 #include <memory>
 #include <assert.h>
 #include "../urbackupcommon/chunk_hasher.h"
+#include "../urbackupcommon/TreeHash.h"
 
 //For truncating files
 #ifdef _WIN32
@@ -1369,13 +1370,17 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 		
 			if(calculate_filehashes_on_client)
 			{
-				if(sha_version!=256)
+				if(sha_version==256)
 				{
-					extra+="&sha512="+base64_encode_dash(files[i].hash);
+					extra+="&sha256="+base64_encode_dash(files[i].hash);
+				}
+				else if (sha_version == 528)
+				{
+					extra += "&thash=" + base64_encode_dash(files[i].hash);
 				}
 				else
 				{
-					extra+="&sha256="+base64_encode_dash(files[i].hash);
+					extra += "&sha512=" + base64_encode_dash(files[i].hash);
 				}
 			}
 				
@@ -3732,102 +3737,64 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	return ret;
 }
 
-namespace
-{
-	class HashSha512 : public IndexThread::IHashFunc
-	{
-	public:
-		HashSha512()
-			: has_sparse(false)
-		{
-			sha512_init(&ctx);
-			sha512_init(&sparse_ctx);
-		}
-
-		virtual void hash(const char* buf, _u32 bsize)
-		{
-			sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
-		}
-
-		virtual void sparse_hash(const char* buf, _u32 bsize)
-		{
-			has_sparse = true;
-			sha512_update(&sparse_ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
-		}
-
-		std::string finalize()
-		{
-			std::string skip_hash;
-			skip_hash.resize(SHA512_DIGEST_SIZE);
-			
-			if (has_sparse)
-			{
-				sha512_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
-				sha512_update(&ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA512_DIGEST_SIZE);
-			}
-
-			sha512_final(&ctx, (unsigned char*)&skip_hash[0]);
-
-			return skip_hash;
-		}
-
-	private:
-		bool has_sparse;
-		sha512_ctx ctx;
-		sha512_ctx sparse_ctx;
-	};
-
-	class HashSha256 : public IndexThread::IHashFunc
-	{
-	public:
-		HashSha256()
-			: has_sparse(false)
-		{
-			sha256_init(&ctx);
-			sha256_init(&sparse_ctx);
-		}
-
-		virtual void hash(const char* buf, _u32 bsize)
-		{
-			sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
-		}
-
-		virtual void sparse_hash(const char* buf, _u32 bsize)
-		{
-			has_sparse = true;
-			sha256_update(&sparse_ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
-		}
-
-		std::string finalize()
-		{
-			std::string skip_hash;
-			skip_hash.resize(SHA256_DIGEST_SIZE);
-
-			if (has_sparse)
-			{
-				sha256_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
-				sha256_update(&ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA256_DIGEST_SIZE);
-			}
-
-			sha256_final(&ctx, (unsigned char*)&skip_hash[0]);
-
-			return skip_hash;
-		}
-
-	private:
-		bool has_sparse;
-		sha256_ctx ctx;
-		sha256_ctx sparse_ctx;
-	};
-}
-
 std::string IndexThread::getShaBinary( const std::string& fn )
 {
 	VSSLog("Hashing file \"" + fn + "\"", LL_DEBUG);
 
-	if(sha_version!=256)
+	if(sha_version==256)
 	{
-		int64 fsize1=0;
+		HashSha256 hash_256;
+		if (!getShaBinary(fn, hash_256))
+		{
+			return std::string();
+		}
+
+		return hash_256.finalize();
+	}
+	else if (sha_version == 528)
+	{
+		int64 fsize1 = 0;
+		{
+			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+			if (f.get() != NULL)
+			{
+				fsize1 = f->Size();
+			}
+		}
+
+		TreeHash treehash;
+		if (!getShaBinary(fn, treehash))
+		{
+			return std::string();
+		}
+
+		std::string ret = treehash.finalize();
+
+		//TODO: Perf remove verification
+		std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+		IFile* hashoutput = Server->openTemporaryFile();
+		ScopedDeleteFile hashoutput_delete(hashoutput);
+		FsExtentIterator extent_iterator(f.get(), 512*1024);
+		TreeHash treehash2;
+		build_chunk_hashs(f.get(), hashoutput, NULL, NULL, false,
+			NULL, NULL, false, &treehash2, &extent_iterator);
+
+		int64 fsize2 = f->Size();
+
+		std::string other_ret = treehash2.finalize();
+		if (ret != other_ret  && fsize1 == fsize2)
+		{
+			Server->Log("Tree hash calc error at file " + fn, LL_ERROR);
+		}
+
+		assert(fsize1 != fsize2 || ret == other_ret);
+		return ret;
+
+		return treehash.finalize();
+	}
+	else
+	{
+		int64 fsize1 = 0;
 		{
 			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
 			if (f.get() != NULL)
@@ -3841,36 +3808,27 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 		{
 			return std::string();
 		}
-		
+
 		std::string ret = hash_512.finalize();
 
 		//TODO: Perf remove verification
 		std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
 		IFile* hashoutput = Server->openTemporaryFile();
 		ScopedDeleteFile hashoutput_delete(hashoutput);
-		FsExtentIterator extent_iterator(f.get(), 32768);
-		std::string other_sha = build_chunk_hashs(f.get(), hashoutput, NULL, true, NULL, false,
-			NULL, NULL, false, &extent_iterator);
+		FsExtentIterator extent_iterator(f.get(), 512*1024);
+		HashSha512 hash_512_other;
+		build_chunk_hashs(f.get(), hashoutput, NULL, NULL, false,
+			NULL, NULL, false, &hash_512_other, &extent_iterator);
 
 		int64 fsize2 = f->Size();
-
-		if (ret != other_sha && fsize1== fsize2)
+		std::string other_sha = hash_512_other.finalize();
+		if (ret != other_sha && fsize1 == fsize2)
 		{
 			Server->Log("SHA calc error at file " + fn, LL_ERROR);
 		}
 
-		assert(fsize1!=fsize2 || ret == other_sha);
+		assert(fsize1 != fsize2 || ret == other_sha);
 		return ret;
-	}
-	else
-	{
-		HashSha256 hash_256;
-		if (!getShaBinary(fn, hash_256))
-		{
-			return std::string();
-		}
-
-		return hash_256.finalize();
 	}
 }
 

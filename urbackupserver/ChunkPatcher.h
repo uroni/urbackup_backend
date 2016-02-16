@@ -25,6 +25,7 @@ public:
 
 	void setCallback(IChunkPatcherCallback *pCb);
 	void setRequireUnchanged(bool b);
+	void setUnchangedAlign(int64 a);
 	void setWithSparse(bool b);
 	bool ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_iterator);
 	_i64 getFilesize(void);
@@ -43,7 +44,10 @@ private:
 	int64 last_sparse_start;
 	bool curr_only_zeros;
 	bool curr_changed;
+	int64 unchanged_align;
 	std::vector<char> sparse_buf;
+	int64 unchanged_align_start;
+	int64 unchanged_align_end;
 };
 
 #endif //CHUNK_PATCHER_H

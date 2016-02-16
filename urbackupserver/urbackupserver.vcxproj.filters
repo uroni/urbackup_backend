@@ -330,6 +330,9 @@
     <ClCompile Include="dao\ServerLinkJournalDao.cpp">
       <Filter>dao</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -601,6 +604,9 @@
     </ClInclude>
     <ClInclude Include="dao\ServerLinkJournalDao.h">
       <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\TreeHash.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

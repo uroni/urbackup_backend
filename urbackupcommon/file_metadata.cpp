@@ -535,6 +535,12 @@ bool FileMetadata::read( str_map& extra_params )
         shahash = base64_decode_dash(it_shahash->second);
     }
 
+	it_shahash = extra_params.find("thash");
+	if (it_shahash != extra_params.end())
+	{
+		shahash = base64_decode_dash(it_shahash->second);
+	}
+
 	if(has_orig_path || !shahash.empty())
 	{
 		exist=true;

@@ -9,8 +9,11 @@
 #include "../urbackupcommon/sha2/sha2.h"
 #include "server_log.h"
 #include "../urbackupcommon/ExtentIterator.h"
+#include "../urbackupcommon/TreeHash.h"
 
-
+const char HASH_FUNC_SHA512_NO_SPARSE = 0;
+const char HASH_FUNC_SHA512 = 1;
+const char HASH_FUNC_TREE = 2;
 
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
@@ -34,21 +37,26 @@ public:
 		virtual void hash_progress(int64 curr) = 0;
 	};
 
-	static std::string hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashProgressCallback* progress_callback=NULL);
+	static bool hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashFunc& hashf, IHashProgressCallback* progress_callback=NULL);
 
 private:
 	
-	std::string hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse);
+	bool hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse);
 
 	void readNextExtent();
+
+	void addUnchangedHashes(int64 stop, bool finish);
 
 	IPipe *pipe;
 	IPipe *output;
 
 	int clientid;
 
-	sha_def_ctx ctx;
-	sha_def_ctx sparse_ctx;
+	IHashFunc* hashf;
+	IFile* hashoutput_f;
+
+	int64 file_pos;
+	int64 add_hashes_start;
 
 	bool has_sparse_extents;
 

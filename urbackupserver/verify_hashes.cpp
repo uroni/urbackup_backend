@@ -33,6 +33,8 @@
 #include "create_files_index.h"
 #include "server_hash.h"
 #include "serverinterface/helper.h"
+#include "server.h"
+#include "../urbackupcommon/TreeHash.h"
 
 const _u32 c_read_blocksize=4096;
 const size_t draw_segments=30;
@@ -141,8 +143,26 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	std::string f_name=ExtractFileName(fp);
 	
 	VerifyProgressCallback progress_callback(f_name, curr_verified, verify_size);
-	FsExtentIterator extent_iterator(f, 32768);
-	std::string calc_dig = BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, &progress_callback);
+	FsExtentIterator extent_iterator(f, 512*1024);
+
+	std::string calc_dig;
+	if (BackupServer::useTreeHashing())
+	{
+		TreeHash treehash;
+		if (BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, treehash, &progress_callback))
+		{
+			calc_dig = treehash.finalize();
+		}
+	}
+	else
+	{
+		HashSha512 shahash;
+		if (BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, shahash, &progress_callback))
+		{
+			calc_dig = shahash.finalize();
+		}
+	}
+	
 	curr_verified += f->Size();
 
 	if(calc_dig.empty())
@@ -172,6 +192,8 @@ bool verify_hashes(std::string arg)
 		Server->Log("Could not open \""+v_output_fn+"\" for writing", LL_ERROR);
 	else
 		Server->Log("Writing verification results to \""+v_output_fn+"\"", LL_INFO);
+
+	BackupServer::setupUseTreeHashing();
 
 	std::string clientname;
 	std::string backupname;

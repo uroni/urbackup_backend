@@ -46,7 +46,7 @@ namespace
 		return true;
 	}
 
-	const size_t hash_bsize = 32768;
+	const size_t hash_bsize = 512*1024;
 }
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid)
@@ -126,10 +126,8 @@ void BackupServerPrepareHash::operator()(void)
 			std::string sparse_extents_fn;
 			rd.getStr(&sparse_extents_fn);
 
-			char c_hash_with_sparse;
-			rd.getChar(&c_hash_with_sparse);
-
-			bool hash_with_sparse = c_hash_with_sparse==1;
+			char c_hash_func;
+			rd.getChar(&c_hash_func);
 
 			char c_has_snapshot;
 			rd.getChar(&c_has_snapshot);
@@ -179,11 +177,49 @@ void BackupServerPrepareHash::operator()(void)
 				std::string h;
 				if(!diff_file)
 				{
-					h=hash_sha(tf, extent_iterator.get(), hash_with_sparse);
+					if (c_hash_func == HASH_FUNC_SHA512_NO_SPARSE
+						|| c_hash_func == HASH_FUNC_SHA512)
+					{
+						HashSha512 hashsha;
+						if (hash_sha(tf, extent_iterator.get(), c_hash_func != HASH_FUNC_SHA512_NO_SPARSE, hashsha))
+						{
+							h = hashsha.finalize();
+						}
+					}
+					else
+					{
+						TreeHash treehash;
+						if (hash_sha(tf, extent_iterator.get(), true, treehash))
+						{
+							h = treehash.finalize();
+						}
+					}
+					
 				}
 				else
 				{
-					h=hash_with_patch(old_file, tf, extent_iterator.get(), hash_with_sparse);
+					if (c_hash_func == HASH_FUNC_SHA512_NO_SPARSE
+						|| c_hash_func == HASH_FUNC_SHA512)
+					{
+						hashoutput_f = NULL;
+						HashSha512 hashsha;
+						hashf = &hashsha;
+						if (hash_with_patch(old_file, tf, extent_iterator.get(), c_hash_func != HASH_FUNC_SHA512_NO_SPARSE))
+						{
+							h = hashsha.finalize();
+						}
+					}
+					else
+					{
+						std::auto_ptr<IFile> l_hashoutput_f(Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ));
+						hashoutput_f = l_hashoutput_f.get();
+						TreeHash treehash;
+						hashf = &treehash;
+						if (hash_with_patch(old_file, tf, extent_iterator.get(), true))
+						{
+							h = treehash.finalize();
+						}
+					}
 				}
 
 				if (h.empty())
@@ -234,21 +270,15 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashProgressCallback* progress_callback)
+bool BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashFunc& hashf, IHashProgressCallback* progress_callback)
 {
 	f->Seek(0);
 	std::vector<char> buf;
 	buf.resize(hash_bsize);
 	_u32 rc;
 
-	sha_def_ctx local_ctx;
-	sha_def_init(&local_ctx);
 	int64 fpos = 0;
 	IFsFile::SSparseExtent curr_extent;
-
-
-	sha_def_ctx sparse_ctx;
-	sha_def_init(&sparse_ctx);
 
 	if (extent_iterator != NULL)
 	{
@@ -291,7 +321,7 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 		if (has_read_error)
 		{
 			Server->Log("Error reading from file \"" + f->getFilename() + "\" while hashing", LL_ERROR);
-			return std::string();
+			return false;
 		}
 
 		if (hash_with_sparse
@@ -319,13 +349,14 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 			int64 skip[2];
 			skip[0] = skip_start;
 			skip[1] = fpos - skip_start;
-			sha_def_update(&sparse_ctx, reinterpret_cast<unsigned char*>(&skip), sizeof(int64) * 2);
+			hashf.sparse_hash(reinterpret_cast<char*>(&skip), sizeof(int64) * 2);
 			skip_start = -1;
 		}
 
 		if (rc > 0)
 		{
-			sha_def_update(&local_ctx, reinterpret_cast<unsigned char*>(buf.data()), rc);
+			hashf.hash(buf.data(), rc);
+
 			fpos += rc;
 
 			if (progress_callback != NULL)
@@ -342,59 +373,92 @@ std::string BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_
 		progress_callback->hash_progress(fpos);
 	}
 
-	if (skip_count > 0)
-	{
-		std::string skip_hash;
-		skip_hash.resize(SHA_DEF_DIGEST_SIZE);
-		sha_def_final(&sparse_ctx, (unsigned char*)&skip_hash[0]);
-
-		sha_def_update(&local_ctx, reinterpret_cast<unsigned char*>(&skip_hash[0]), SHA_DEF_DIGEST_SIZE);
-	}
-	
-	std::string ret;
-	ret.resize(SHA_DEF_DIGEST_SIZE);
-	sha_def_final(&local_ctx, (unsigned char*)&ret[0]);
-	return ret;
+	return true;
 }
 
-std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse)
+bool BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse)
 {
-	sha_def_init(&ctx);
-	sha_def_init(&sparse_ctx);
-
 	has_sparse_extents = false;
 
+	if (hashoutput_f == NULL)
+	{
+		chunk_patcher.setRequireUnchanged(true);
+		chunk_patcher.setUnchangedAlign(0);
+	}
+	else
+	{
+		chunk_patcher.setRequireUnchanged(false);
+		chunk_patcher.setUnchangedAlign(hash_bsize);
+	}
+
+	file_pos = 0;
+	add_hashes_start = -1;
 	chunk_patcher.setWithSparse(hash_with_sparse);
-	if (!chunk_patcher.ApplyPatch(f, patch, extent_iterator))
+	bool b = chunk_patcher.ApplyPatch(f, patch, extent_iterator);
+	addUnchangedHashes(file_pos, true);
+	return b;
+}
+
+void BackupServerPrepareHash::addUnchangedHashes(int64 stop, bool finish)
+{
+	if (add_hashes_start != -1 && hashoutput_f!=NULL)
 	{
-		return std::string();
+		assert(add_hashes_start%hash_bsize == 0);
+		assert(stop%hash_bsize == 0 || finish);
+
+		if (!hashoutput_f->Seek(sizeof(_i64) + (add_hashes_start / hash_bsize)*chunkhash_single_size))
+		{
+			Server->Log("Error seeking in hashoutput file " + hashoutput_f->getFilename(), LL_ERROR);
+			has_error = true;
+		}
+
+		int64 num = (stop - add_hashes_start) / chunkhash_single_size;
+
+		if ((stop - add_hashes_start) % chunkhash_single_size != 0)
+		{
+			++num;
+		}
+
+		for (int64 i = 0; i < num; ++i)
+		{
+			bool has_read_error = false;
+			char chunkhashes[chunkhash_single_size];
+			_u32 r = hashoutput_f->Read(chunkhashes, chunkhash_single_size, &has_read_error);
+
+			if (has_read_error)
+			{
+				Server->Log("Error reading from " + hashoutput_f->getFilename(), LL_ERROR);
+				has_error = true;
+			}
+
+			assert(r == chunkhash_single_size || finish);
+
+			reinterpret_cast<TreeHash*>(hashf)->addHashAllAdler(chunkhashes, r);
+		}
+
+		add_hashes_start = -1;
 	}
-
-	std::string ret;
-	ret.resize(SHA_DEF_DIGEST_SIZE);
-
-	if (has_sparse_extents)
-	{
-		sha512_final(&sparse_ctx, (unsigned char*)&ret[0]);
-		sha512_update(&ctx, reinterpret_cast<unsigned char*>(&ret[0]), SHA_DEF_DIGEST_SIZE);
-	}
-
-	sha_def_final(&ctx, (unsigned char*)&ret[0]);
-	return ret;
 }
 
 void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t bsize)
 {
-	has_sparse_extents = true;
-	sha_def_update(&sparse_ctx, (const unsigned char*)buf, (unsigned int)bsize);
+	hashf->sparse_hash(buf, (unsigned int)bsize);
 }
 
 void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
 	if (buf != NULL)
 	{
-		sha_def_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
+		addUnchangedHashes(file_pos, false);
+
+		hashf->hash(buf, (unsigned int)bsize);
 	}
+	else if(add_hashes_start==-1)
+	{
+		add_hashes_start = file_pos;
+	}
+
+	file_pos += bsize;
 }
 
 bool BackupServerPrepareHash::isWorking(void)

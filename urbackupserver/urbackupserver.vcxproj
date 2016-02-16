@@ -282,6 +282,7 @@
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
@@ -386,6 +387,7 @@
     <ClInclude Include="..\urbackupcommon\settingslist.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="..\urbackupcommon\SparseFile.h" />
+    <ClInclude Include="..\urbackupcommon\TreeHash.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="apps\app.h" />

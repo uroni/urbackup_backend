@@ -1185,9 +1185,7 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, false, NULL, NULL, false, extent_iterator);
-		if(r=="")
-			return false;
+		return build_chunk_hashs(tf, dst_hash, this, dst, false, NULL, NULL, false, NULL, extent_iterator);
 	}
 	
 	return true;
@@ -1554,8 +1552,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, dst, true, &cow_filesize, NULL, false, extent_iterator);
-		if (r == "")
+		if (!build_chunk_hashs(tf, dst_hash, this, dst, true, &cow_filesize, NULL, false, NULL, extent_iterator))
 		{
 			ServerLogger::Log(logid, "Error copying file with chunk hashes to \""+dest+"\"", LL_ERROR);
 			return false;
@@ -1589,9 +1586,11 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &de
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=build_chunk_hashs(tf, dst_hash, this, false, NULL, false, NULL, NULL, false, extent_iterator);
-		if(r=="")
+		//TODO: Already build hashes during hashing stage
+		if (!build_chunk_hashs(tf, dst_hash, this, NULL, false, NULL, NULL, false, NULL, extent_iterator))
+		{
 			return false;
+		}
 	}
 
 	std::string tf_fn=tf->getFilename();

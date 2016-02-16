@@ -53,10 +53,11 @@ namespace
 }
 
 
-const int64 sparse_blocksize = 32768;
+const int64 sparse_blocksize = 512*1024;
 
 ChunkPatcher::ChunkPatcher(void)
-	: cb(NULL), require_unchanged(true), with_sparse(false)
+	: cb(NULL), require_unchanged(true), with_sparse(false),
+	unchanged_align(0), unchanged_align_start(-1), unchanged_align_end(-1)
 {
 }
 
@@ -113,6 +114,13 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			{
 				Server->Log("Read error while reading next patch from \""+patch->getFilename()+"\"", LL_ERROR);
 				return false;
+			}
+
+			if (next_header.patch_off != -1
+				&& unchanged_align != 0)
+			{
+				unchanged_align_start = roundDown(next_header.patch_off, unchanged_align);
+				unchanged_align_end = roundUp(next_header.patch_off + next_header.patch_size, unchanged_align);
 			}
 		}
 
@@ -215,7 +223,32 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			{
 				tr = (std::min)(tr, buffer_size);
 
-				if(require_unchanged)
+				bool curr_require_unchaged = require_unchanged;
+
+				if (unchanged_align != 0)
+				{
+					if (unchanged_align_start != -1
+						&& file_pos + tr > unchanged_align_start)
+					{
+						tr = static_cast<_u32>(unchanged_align_start - file_pos);
+					}
+					else if (unchanged_align_end!= -1
+						&& file_pos + tr > unchanged_align_end)
+					{
+						tr = static_cast<_u32>(unchanged_align_end - file_pos);
+					}
+					
+					if (unchanged_align_start != -1
+						&& unchanged_align_end != -1
+						&& file_pos >= unchanged_align_start
+						&& file_pos < unchanged_align_end)
+					{
+						curr_require_unchaged = true;
+						file->Seek(file_pos);
+					}
+				}
+
+				if(curr_require_unchaged)
 				{
 					bool has_read_error = false;
 					_u32 r=file->Read((char*)buf, tr, &has_read_error);
@@ -248,8 +281,17 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					file_pos+=tr;
 					cb->next_chunk_patcher_bytes(NULL, tr, false);
 					tr=0;
-				}				
-			}			
+				}
+
+				if (unchanged_align != 0)
+				{
+					if (file_pos == unchanged_align_end)
+					{
+						unchanged_align_end = -1;
+						unchanged_align_start = -1;
+					}
+				}
+			}
 		}
 		else
 		{
@@ -312,6 +354,9 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 		{
 			last_sparse_start = roundUp(pos, sparse_blocksize);
 		}
+
+		cb->next_chunk_patcher_bytes(NULL, bsize, changed);
+
 		return;
 	}
 
@@ -327,6 +372,9 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 				{
 					last_sparse_start = pos;
 				}
+
+				cb->next_chunk_patcher_bytes(NULL, bsize, changed);
+
 				return;
 			}
 			else if (last_sparse_start != -1)
@@ -384,6 +432,10 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 			{
 				cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_blocksize, curr_changed);
 			}
+			else
+			{
+				cb->next_chunk_patcher_bytes(NULL, sparse_blocksize, curr_changed);
+			}
 
 			curr_only_zeros = true;
 			curr_changed = false;
@@ -424,6 +476,11 @@ _i64 ChunkPatcher::getFilesize(void)
 void ChunkPatcher::setRequireUnchanged( bool b )
 {
 	require_unchanged=b;
+}
+
+void ChunkPatcher::setUnchangedAlign(int64 a)
+{
+	unchanged_align = a;
 }
 
 void ChunkPatcher::setWithSparse(bool b)

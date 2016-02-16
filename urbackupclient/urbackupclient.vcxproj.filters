@@ -171,6 +171,9 @@
     <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -312,6 +315,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\ExtentIterator.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\TreeHash.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

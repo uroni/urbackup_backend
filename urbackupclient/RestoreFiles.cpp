@@ -625,17 +625,36 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}
 							else
 							{
+								std::auto_ptr<IHashFunc> hashf;
+
+								std::string hash_key;
+
+								if (extra.find("shahash") != extra.end())
+								{
+									hashf.reset(new HashSha512);
+									hash_key = "shahash";
+								}
+								else
+								{
+									hashf.reset(new TreeHash);
+									hash_key = "thash";
+								}
+
                                 bool calc_hashes=false;
 								if(shahash.empty())
 								{
 									log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
-									FsExtentIterator extent_iterator(orig_file, 32768);
-									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL,
-										NULL, false, &extent_iterator);
-                                    calc_hashes = true;
+									FsExtentIterator extent_iterator(orig_file, 512*1024);
+
+									if (build_chunk_hashs(orig_file, chunkhashes, NULL, NULL, false, NULL,
+										NULL, false, hashf.get(), &extent_iterator))
+									{
+										calc_hashes = true;
+										shahash = hashf->finalize();
+									}
 								}
 								
-								if(shahash!=base64_decode_dash(extra["shahash"]))
+								if(shahash!=base64_decode_dash(extra[hash_key]))
 								{
                                     if(!calc_hashes)
                                     {
