@@ -1725,6 +1725,7 @@ bool BackupServerHash::punchHoleOrZero(IFile * tf, int64 offset, int64 size)
 					ServerLogger::Log(logid, "Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -2", LL_ERROR);
 					return false;
 				}
+				written += towrite;
 			}
 		}
 		else

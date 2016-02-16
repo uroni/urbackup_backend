@@ -289,6 +289,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 							Server->Log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -2", LL_ERROR);
 							rc = ERR_ERROR;
 						}
+						written += w;
 					}
 				}
 				else

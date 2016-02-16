@@ -233,6 +233,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 									return false;
 								}
 							}
+							written += towrite;
 						}
 						else
 						{
