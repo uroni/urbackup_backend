@@ -16,8 +16,8 @@ namespace
 }
 
 
-SparseFile::SparseFile(IFsFile * backing_file, IFile * sparse_extends_f, bool read_only, int64 blocksize, bool take_file_ownership)
-	: backing_file(backing_file), has_error(false), seek_pos(0), backing_pos(0), take_file_ownership(take_file_ownership)
+SparseFile::SparseFile(IFsFile * backing_file, IFile * sparse_extends_f, bool read_only, int64 blocksize, bool take_file_ownership, int64 max_size)
+	: backing_file(backing_file), has_error(false), seek_pos(0), backing_pos(0), take_file_ownership(take_file_ownership), max_size(max_size)
 {
 	int64 n_extents;
 	sparse_extends_f->Seek(0);
@@ -40,8 +40,8 @@ SparseFile::SparseFile(IFsFile * backing_file, IFile * sparse_extends_f, bool re
 	initWithSparseExtents(sparse_extents, read_only, blocksize);
 }
 
-SparseFile::SparseFile(IFsFile * backing_file, const std::vector<IFsFile::SSparseExtent>& sparse_extents, bool read_only, int64 blocksize, bool take_file_ownership)
-	: backing_file(backing_file), has_error(false), seek_pos(0), backing_pos(0), take_file_ownership(take_file_ownership)
+SparseFile::SparseFile(IFsFile * backing_file, const std::vector<IFsFile::SSparseExtent>& sparse_extents, bool read_only, int64 blocksize, bool take_file_ownership, int64 max_size)
+	: backing_file(backing_file), has_error(false), seek_pos(0), backing_pos(0), take_file_ownership(take_file_ownership), max_size(max_size)
 {
 	initWithSparseExtents(sparse_extents, read_only, blocksize);
 }
@@ -262,6 +262,8 @@ void SparseFile::initWithSparseExtents(const std::vector<IFsFile::SSparseExtent>
 			max_offset = (std::max)(max_offset, curr_extent.offset + curr_extent.size);
 		}
 	}
+
+	max_offset = (std::min)(max_size, max_offset);
 
 	if (!sparse_offsets.empty() && sparse_offsets[0].offset == 0)
 	{

@@ -209,32 +209,41 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 			{
 				copy_sparse_extent_start = pos;
 
-				if (copy != NULL && !copy->PunchHole(curr_extent.offset, curr_extent.size))
+				if (curr_extent.offset < fsize)
 				{
-					std::vector<char> zero_buf;
-					zero_buf.resize(32768);
-
-					if (copy->Seek(curr_extent.offset))
+					int64 extent_size = curr_extent.size;
+					if (curr_extent.offset + extent_size>fsize)
 					{
-						for (int64 written = 0; written < curr_extent.size;)
+						extent_size = fsize - curr_extent.offset;
+					}
+
+					if (copy != NULL && !copy->PunchHole(curr_extent.offset, extent_size))
+					{
+						std::vector<char> zero_buf;
+						zero_buf.resize(32768);
+
+						if (copy->Seek(curr_extent.offset))
 						{
-							_u32 towrite = static_cast<_u32>((std::min)(curr_extent.size - written, static_cast<int64>(zero_buf.size())));
-							if (!writeRepeatFreeSpace(copy, zero_buf.data(), towrite, cb))
+							for (int64 written = 0; written < extent_size;)
 							{
-								Server->Log("Error writing to copy file (" + copy->getFilename() + ")", LL_DEBUG);
-								return false;
+								_u32 towrite = static_cast<_u32>((std::min)(extent_size - written, static_cast<int64>(zero_buf.size())));
+								if (!writeRepeatFreeSpace(copy, zero_buf.data(), towrite, cb))
+								{
+									Server->Log("Error writing to copy file (" + copy->getFilename() + ")", LL_DEBUG);
+									return false;
+								}
 							}
+						}
+						else
+						{
+							Server->Log("Error seeking in copy file (" + copy->getFilename() + ")", LL_DEBUG);
+							return false;
 						}
 					}
 					else
 					{
-						Server->Log("Error seeking in copy file (" + copy->getFilename() + ")", LL_DEBUG);
-						return false;
+						copy_max_sparse = (std::min)(fsize, curr_extent.offset + curr_extent.size);
 					}
-				}
-				else
-				{
-					copy_max_sparse = curr_extent.offset + curr_extent.size;
 				}
 			}
 

@@ -1160,9 +1160,10 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 	if (sparse_max!=-1
 		&& sparse_max > dst->Size())
 	{
+		sparse_max = (std::min)(tf->Size(), sparse_max);
 		if (!dst->Resize(sparse_max))
 		{
-			ServerLogger::Log(logid, "Error resizing file \""+dest+"\" to max sparse size "+convert(sparse_max), LL_ERROR);
+			ServerLogger::Log(logid, "Error resizing file \"" + dest + "\" to max sparse size " + convert(sparse_max), LL_ERROR);
 			return false;
 		}
 	}

@@ -9,8 +9,8 @@ class SparseFile : public IFsFile
 {
 public:
 
-	SparseFile(IFsFile* backing_file, IFile* sparse_extends_f, bool read_only, int64 blocksize, bool take_file_ownership);
-	SparseFile(IFsFile* backing_file, const std::vector<IFsFile::SSparseExtent>& sparse_extents, bool read_only, int64 blocksize, bool take_file_ownership);
+	SparseFile(IFsFile* backing_file, IFile* sparse_extends_f, bool read_only, int64 blocksize, bool take_file_ownership, int64 max_size);
+	SparseFile(IFsFile* backing_file, const std::vector<IFsFile::SSparseExtent>& sparse_extents, bool read_only, int64 blocksize, bool take_file_ownership, int64 max_size);
 
 	~SparseFile();
 
@@ -87,4 +87,5 @@ private:
 	int64 backing_pos;
 	int64 sparse_extents_size;
 	bool take_file_ownership;
+	int64 max_size;
 };
