@@ -26,6 +26,12 @@ do
         NUM=`expr $NUM + 1`
 done
 
+if ! modprobe dattobd
+then
+	echo "Dattobd kernel module not available"
+	exit 1
+fi
+
 echo "Using /dev/datto$NUM..."
 
 sync
