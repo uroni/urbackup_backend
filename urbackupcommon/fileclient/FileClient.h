@@ -133,7 +133,11 @@ public:
 
 		static bool writeFileRetry(IFile* f, const char* buf, _u32 bsize);
 
+		void setReconnectTries(int tries);
+
 private:
+		int getReconnectTriesDecr();
+
 		void bindToNewInterfaces();
 
 		void fillQueue();
@@ -223,6 +227,8 @@ private:
 		IFile* sparse_extends_f;
 
 		_i64 sparse_bytes;
+
+		int reconnect_tries;
 };
 
 const _u32 ERR_CONTINUE=0;

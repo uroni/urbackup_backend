@@ -114,6 +114,12 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	mutex = Server->createMutex();
 }
 
+int FileClient::getReconnectTriesDecr()
+{
+	IScopedLock lock(mutex);
+	return reconnect_tries--;
+}
+
 void FileClient::bindToNewInterfaces()
 {
 	std::string s_broadcast_source_port = Server->getServerParameter("broadcast_source_port");
@@ -684,7 +690,7 @@ bool FileClient::Reconnect(void)
 
 	resetSparseExtentsFile();
 
-	int tries=5000;
+	setReconnectTries(50);
 
 	if(!hashed && protocol_version>1)
 	{
@@ -787,9 +793,13 @@ bool FileClient::Reconnect(void)
         if( rc==0 )
         {
 			Server->Log("Server timeout (2) in FileClient", LL_DEBUG);
-			bool b=Reconnect();
-			--tries;
-			if(!b || tries<=0 )
+			bool b = false;
+			int tries = getReconnectTriesDecr();
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if(!b )
 			{
 				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 				return ERR_TIMEOUT;
@@ -1195,9 +1205,13 @@ bool FileClient::Reconnect(void)
 	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
 			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
-			bool b=Reconnect();
-			--tries;
-			if(!b || tries<=0 )
+			bool b = false;
+			int tries = getReconnectTriesDecr();
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if(!b)
 			{
 				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 				return ERR_TIMEOUT;
@@ -1527,6 +1541,12 @@ bool FileClient::writeFileRetry(IFile * f, const char * buf, _u32 bsize)
 	return true;
 }
 
+void FileClient::setReconnectTries(int tries)
+{
+	IScopedLock lock(mutex);
+	reconnect_tries = tries;
+}
+
 void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
 {
 	progress_log_callback = cb;
@@ -1556,7 +1576,7 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 
 
 	bool firstpacket=true;
-	int tries=5000;
+	setReconnectTries(50);
 	unsigned short metadata_size;
 	std::string metadata;
 	size_t metadata_pos=0;
@@ -1580,9 +1600,13 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 		if( rc==0 )
 		{
 			Server->Log("Server timeout (2) in FileClient while getting hash and metadata", LL_DEBUG);
-			bool b=Reconnect();
-			--tries;
-			if(!b || tries<=0 )
+			int tries = getReconnectTriesDecr();
+			bool b = false;
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if(!b )
 			{
 				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 				return ERR_TIMEOUT;
@@ -1726,9 +1750,13 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 		if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
 			Server->Log("Server timeout in FileClient while downloading hash and metadata. Trying to reconnect...", LL_INFO);
-			bool b=Reconnect();
-			--tries;
-			if(!b || tries<=0 )
+			int tries = getReconnectTriesDecr();
+			bool b = false;
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}			
+			if(!b)
 			{
 				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 				return ERR_TIMEOUT;
@@ -1918,6 +1946,7 @@ void FileClient::Shutdown()
 	{
 		tcpsock->shutdown();
 	}
+	reconnect_tries = 0;
 }
 
 bool FileClient::isDownloading()

@@ -1044,6 +1044,11 @@ bool FileMetadataDownloadThread::hasMetadataId( int64 id )
 	}
 }
 
+int64 FileMetadataDownloadThread::getTransferredBytes()
+{
+	return fc->getTransferredBytes();
+}
+
 int check_metadata()
 {
 	std::string metadata_file = Server->getServerParameter("metadata_file");

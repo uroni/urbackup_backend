@@ -1784,6 +1784,8 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 		{
 			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
 
+			int64 transferred_bytes = metadata_download_thread->getTransferredBytes();
+
 			do
 			{
 				std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
@@ -1799,10 +1801,15 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
 				Server->wait(1000);
 
-				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0))
+				int64 new_transferred_bytes = metadata_download_thread->getTransferredBytes();
+
+				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0)
+					&& new_transferred_bytes<=transferred_bytes)
 				{
 					metadata_download_thread->shutdown();
 				}
+
+				transferred_bytes = new_transferred_bytes;
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	

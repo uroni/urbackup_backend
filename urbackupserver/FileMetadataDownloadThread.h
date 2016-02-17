@@ -55,6 +55,8 @@ public:
 
 	bool hasMetadataId(int64 id);
 
+	int64 getTransferredBytes();
+
 private:
 
 	void copyForAnalysis(IFile* metadata_f);

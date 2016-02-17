@@ -18,6 +18,8 @@ public:
 
 	void shutdown();
 
+	int64 getTransferredBytes();
+
 private:
 	RestoreFiles& restore;
 	FileClient& fc;

@@ -874,6 +874,12 @@ void FileMetadataDownloadThread::shutdown()
 }
 
 
+int64 FileMetadataDownloadThread::getTransferredBytes()
+{
+	return fc.getTransferredBytes();
+}
+
+
 
 } //namespace client
 
