@@ -1658,7 +1658,7 @@ void FileBackup::saveUsersOnClient()
 
 		for(size_t j=0;j<gids.size();++j)
 		{
-			std::string groupname = (base64_decode_dash(urbackup_tokens->getValue(gids[i] + ".accountname", std::string())));
+			std::string groupname = (base64_decode_dash(urbackup_tokens->getValue(gids[j] + ".accountname", std::string())));
 
 			backup_dao->addUserTokenWithGroup(accountname, clientid, urbackup_tokens->getValue(gids[j]+".token", std::string()), groupname);
 		}
