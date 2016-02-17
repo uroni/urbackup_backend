@@ -29,7 +29,7 @@ private:
 	bool _has_error;
 	bool is_shutdown;
 
-#ifdef DEBUG_QUERIES
+#ifdef LOG_READ_QUERIES
 	ScopedAddActiveQuery *active_query;
 #endif
 };
