@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "../stringtools.h"
 #include <limits.h>
+#include <memory.h>
 
 TreeHash::TreeHash()
 	: offset(0), has_sparse(false)
