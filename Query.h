@@ -13,7 +13,7 @@ class CDatabase;
 class DatabaseCursor;
 
 #define LOG_WRITE_QUERIES
-//#define LOG_READ_QUERIES
+#define LOG_READ_QUERIES
 
 #if defined(LOG_WRITE_QUERIES) || defined(LOG_READ_QUERIES)
 #define LOG_QUERIES
