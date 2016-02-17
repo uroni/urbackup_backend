@@ -126,8 +126,8 @@ private:
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
 {
 	std::string fp=res["fullpath"];
-	IFsFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
-	if( f==NULL )
+	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fp), MODE_READ));
+	if( f.get()==NULL )
 	{
 		Server->Log("Error opening file \""+fp+"\"", LL_ERROR);
 		missing = true;
@@ -143,13 +143,13 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	std::string f_name=ExtractFileName(fp);
 	
 	VerifyProgressCallback progress_callback(f_name, curr_verified, verify_size);
-	FsExtentIterator extent_iterator(f, 512*1024);
+	FsExtentIterator extent_iterator(f.get(), 512*1024);
 
 	std::string calc_dig;
 	if (BackupServer::useTreeHashing())
 	{
 		TreeHash treehash;
-		if (BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, treehash, &progress_callback))
+		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, treehash, &progress_callback))
 		{
 			calc_dig = treehash.finalize();
 		}
@@ -157,13 +157,11 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	else
 	{
 		HashSha512 shahash;
-		if (BackupServerPrepareHash::hash_sha(f, &extent_iterator, true, shahash, &progress_callback))
+		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, shahash, &progress_callback))
 		{
 			calc_dig = shahash.finalize();
 		}
 	}
-	
-	curr_verified += f->Size();
 
 	if(calc_dig.empty())
 	{
