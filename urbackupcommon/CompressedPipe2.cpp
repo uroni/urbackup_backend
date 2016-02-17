@@ -282,6 +282,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 				int64 time_elapsed = Server->getTimeMS()-starttime;
 				if(time_elapsed>curr_timeout)
 				{
+					Server->Log("Timeout after compression", LL_DEBUG);
 					return false;
 				}
 				else
