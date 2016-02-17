@@ -28,12 +28,6 @@
 namespace tokens
 {
 
-#ifdef _WIN32
-const char* tokens_path = "tokens";
-#else
-const char* tokens_path = "urbackup/tokens";
-#endif
-
 bool write_tokens()
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

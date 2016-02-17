@@ -49,11 +49,13 @@ extern IServer* Server;
 #include "../Interface/Query.h"
 #include "../Interface/Thread.h"
 #include "../Interface/File.h"
+#include "../Interface/SettingsReader.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 
 #include "database.h"
+#include "tokens.h"
 
 #include "ClientService.h"
 #include "client.h"
@@ -253,6 +255,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(1);
 	}
 
+	if (!upgrade_client())
+	{
+		Server->Log("Upgrading client database failed. Startup failed.", LL_ERROR);
+		exit(1);
+	}
+
 #ifdef _WIN32
 	if( !FileExists("prefilebackup.bat") && FileExists("prefilebackup_new.bat") )
 	{
@@ -269,6 +277,38 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if( !FileExists("urbackup/data/settings.cfg") && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
 	{
+		std::auto_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
+		std::string access_keys;
+		if (settings_reader->getValue("access_keys", &access_keys) && !access_keys.empty())
+		{
+			ClientDAO cd(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
+			std::vector<std::string> toks;
+			TokenizeMail(access_keys, toks, ";");
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				std::string username = getuntil(":", toks[i]);
+				std::string access_key = getafter(":", toks[i]);
+				if (username.size() > 1
+					&& !access_key.empty())
+				{
+					bool is_user = username[0] == 'u';
+					username = username.substr(1);
+
+					std::string token_path;
+					if (is_user)
+					{
+						token_path = std::string(tokens::tokens_path) + os_file_sep() + "user_" + bytesToHex(username);
+					}
+					else
+					{
+						token_path = std::string(tokens::tokens_path) + os_file_sep() + "group_" + bytesToHex(username);
+					}
+
+					tokens::write_token(tokens::get_hostname(), is_user, username, token_path, cd, access_key);
+				}				
+			}
+		}
+
 		copy_file(INITIAL_SETTINGS_PREFIX "initial_settings.cfg", "urbackup/data/settings.cfg");
 		Server->deleteFile(INITIAL_SETTINGS_PREFIX "initial_settings.cfg");
 	}
@@ -294,12 +334,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		change_file_permissions_admin_only("debug.log");
 	}
 #endif
-
-	if(!upgrade_client())
-	{
-		Server->Log("Upgrading client database failed. Startup failed.", LL_ERROR);
-		exit(1);
-	}
 
 	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
 

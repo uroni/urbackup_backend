@@ -90,7 +90,6 @@ public:
 	std::vector<SDuration> getLastFullDurations(int clientid);
 	CondString getClientSetting(const std::string& key, int clientid);
 	std::vector<int> getClientIds(void);
-	void addFileEntry(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
 	CondString getSetting(int clientid, const std::string& key);
 	void insertSetting(const std::string& key, const std::string& value, int clientid);
 	void updateSetting(const std::string& value, const std::string& key, int clientid);
@@ -123,7 +122,8 @@ public:
 	void deleteAllUsersOnClient(int clientid);
 	void addUserOnClient(int clientid, const std::string& username);
 	void addClientToken(int clientid, const std::string& token);
-	void addUserToken(const std::string& username, const std::string& token);
+	void addUserToken(const std::string& username, int clientid, const std::string& token);
+	void addUserTokenWithGroup(const std::string& username, int clientid, const std::string& token, const std::string& tgroup);
 	CondInt64 hasRecentFullOrIncrFileBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int tgroup);
 	CondInt64 hasRecentIncrFileBackup(const std::string& backup_interval, int clientid, int tgroup);
 	CondInt64 hasRecentFullOrIncrImageBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int image_version, const std::string& letter);
@@ -160,7 +160,6 @@ private:
 	IQuery* q_getLastFullDurations;
 	IQuery* q_getClientSetting;
 	IQuery* q_getClientIds;
-	IQuery* q_addFileEntry;
 	IQuery* q_getSetting;
 	IQuery* q_insertSetting;
 	IQuery* q_updateSetting;
@@ -194,6 +193,7 @@ private:
 	IQuery* q_addUserOnClient;
 	IQuery* q_addClientToken;
 	IQuery* q_addUserToken;
+	IQuery* q_addUserTokenWithGroup;
 	IQuery* q_hasRecentFullOrIncrFileBackup;
 	IQuery* q_hasRecentIncrFileBackup;
 	IQuery* q_hasRecentFullOrIncrImageBackup;

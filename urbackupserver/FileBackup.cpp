@@ -1650,7 +1650,7 @@ void FileBackup::saveUsersOnClient()
 		std::string accountname = (base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string())));
 		backup_dao->addUserOnClient(clientid, accountname);
 
-		backup_dao->addUserToken(accountname, urbackup_tokens->getValue(uids[i]+".token", std::string()));
+		backup_dao->addUserToken(accountname, clientid, urbackup_tokens->getValue(uids[i]+".token", std::string()));
 
 		std::string s_gids = urbackup_tokens->getValue(uids[i]+".gids", "");
 		std::vector<std::string> gids;
@@ -1658,7 +1658,9 @@ void FileBackup::saveUsersOnClient()
 
 		for(size_t j=0;j<gids.size();++j)
 		{
-			backup_dao->addUserToken(accountname, urbackup_tokens->getValue(gids[j]+".token", std::string()));
+			std::string groupname = (base64_decode_dash(urbackup_tokens->getValue(gids[i] + ".accountname", std::string())));
+
+			backup_dao->addUserTokenWithGroup(accountname, clientid, urbackup_tokens->getValue(gids[j]+".token", std::string()), groupname);
 		}
 	}
 

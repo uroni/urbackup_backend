@@ -253,7 +253,7 @@ int read_val(std::string val_name)
 }
 
 
-bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao )
+bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token)
 {
 	int token_fd = creat((token_fn).c_str(), is_user?S_IRWXU:S_IRWXG);
 
@@ -287,7 +287,16 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		}
 	}
 
-	std::string token = Server->secureRandomString(20);
+	std::string token;
+	if(ext_token.empty())
+	{
+		token = Server->secureRandomString(20);
+	}
+	else
+	{
+		token = ext_token;
+	}
+	
 	dao.updateFileAccessToken(accountname, token,
 			is_user ? (is_system_user ? ClientDAO::c_is_system_user : ClientDAO::c_is_user) : ClientDAO::c_is_group  );
 

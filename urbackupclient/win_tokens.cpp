@@ -192,7 +192,7 @@ std::vector<std::string> get_groups()
 }
 
 
-bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao )
+bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token)
 {
 	std::vector<char> sid_buffer;
 	sid_buffer.resize(sizeof(SID));
@@ -283,7 +283,16 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		return false;
 	}
 
-	std::string token = Server->secureRandomString(20);
+	std::string token;
+	if (ext_token.empty())
+	{
+		token = Server->secureRandomString(20);
+	}
+	else
+	{
+		token = ext_token;
+	}
+
 	dao.updateFileAccessToken(accountname, token, is_user?1:0);
 
 	DWORD written=0;

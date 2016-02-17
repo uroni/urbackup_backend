@@ -45,7 +45,7 @@ namespace
 		return crypto_fak->verifyFile(pubkey_fn, "urbackup/"+basename+"."+ exe_extension, "urbackup/"+ basename+".sig2");
 	}
 
-	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname, const std::string& authkey)
+	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname, const std::string& authkey, const std::string& access_keys)
 	{
 		ServerSettings settings(helper.getDatabase(), clientid);
 		SSettings *settingsptr=settings.getSettings();
@@ -58,6 +58,10 @@ namespace
 		if(!clientname.empty())
 		{
 			ret+="computername="+clientname+"\r\n";
+		}
+		if (!access_keys.empty())
+		{
+			ret += "access_keys=" + access_keys + "\r\n";
 		}
 		return ret;
 	}
@@ -178,8 +182,29 @@ ACTION_IMPL(download_client)
 					clientname=(res[0]["name"]);
 				}
 
+				std::string access_keys;
+				if (os == "linux" || os == "osx" || os=="mac")
+				{
+					bool all_browse_backups;
+					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
+					if (all_browse_backups
+						|| std::find(browse_backups_rights.begin(), browse_backups_rights.end(), clientid) != browse_backups_rights.end() )
+					{
+						//There is only ~4KB available space. Add only root for now
+						IQuery* q_root_token = helper.getDatabase()->Prepare("SELECT token FROM user_tokens WHERE username='root' AND tgroup IS NULL AND clientid = ? ORDER BY created DESC");
+						q_root_token->Bind(clientid);
+						db_results res_root_token = q_root_token->Read();
+						q_root_token->Reset();
+
+						if (!res_root_token.empty())
+						{
+							access_keys = "uroot:"+res_root_token[0]["token"];
+						}
+					}
+				}
+
 				std::string data=getFile("urbackup/"+basename+"."+ exe_extension);
-				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey), data) )
+				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname, authkey, access_keys), data) )
 				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+")."+exe_extension+"\"");

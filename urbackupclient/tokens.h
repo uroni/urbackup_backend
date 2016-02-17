@@ -4,6 +4,14 @@
 
 namespace tokens
 {
+	namespace
+	{
+#ifdef _WIN32
+		const char* tokens_path = "tokens";
+#else
+		const char* tokens_path = "urbackup/tokens";
+#endif
+	}
 
 	bool write_tokens();
 
@@ -41,6 +49,6 @@ namespace tokens
 
 	std::vector<std::string> get_user_groups(const std::string& username);
 
-	bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao );
+	bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token=std::string());
 
 }

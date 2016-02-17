@@ -284,35 +284,6 @@ std::vector<int> ServerBackupDao::getClientIds(void)
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::addFileEntry
-* @sql
-*	   INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to)
-*      VALUES (:backupid(int), :fullpath(string), :hashpath(string), :shahash(blob),
-*				:filesize(int64), :rsize(int64), :clientid(int), :incremental(int), :next_entry(int64), :prev_entry(int64), :pointed_to(int))
-*/
-void ServerBackupDao::addFileEntry(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to)
-{
-	if(q_addFileEntry==NULL)
-	{
-		q_addFileEntry=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", false);
-	}
-	q_addFileEntry->Bind(backupid);
-	q_addFileEntry->Bind(fullpath);
-	q_addFileEntry->Bind(hashpath);
-	q_addFileEntry->Bind(shahash.c_str(), (_u32)shahash.size());
-	q_addFileEntry->Bind(filesize);
-	q_addFileEntry->Bind(rsize);
-	q_addFileEntry->Bind(clientid);
-	q_addFileEntry->Bind(incremental);
-	q_addFileEntry->Bind(next_entry);
-	q_addFileEntry->Bind(prev_entry);
-	q_addFileEntry->Bind(pointed_to);
-	q_addFileEntry->Write();
-	q_addFileEntry->Reset();
-}
-
-/**
-* @-SQLGenAccess
 * @func string ServerBackupDao::getSetting
 * @return string value
 * @sql
@@ -964,13 +935,13 @@ void ServerBackupDao::deleteAllUsersOnClient(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::addUserOnClient
 * @sql
-*       INSERT INTO users_on_client (clientid, username) VALUES (:clientid(int), :username(string))
+*       INSERT OR IGNORE INTO users_on_client (clientid, username) VALUES (:clientid(int), :username(string))
 */
 void ServerBackupDao::addUserOnClient(int clientid, const std::string& username)
 {
 	if(q_addUserOnClient==NULL)
 	{
-		q_addUserOnClient=db->Prepare("INSERT INTO users_on_client (clientid, username) VALUES (?, ?)", false);
+		q_addUserOnClient=db->Prepare("INSERT OR IGNORE INTO users_on_client (clientid, username) VALUES (?, ?)", false);
 	}
 	q_addUserOnClient->Bind(clientid);
 	q_addUserOnClient->Bind(username);
@@ -982,13 +953,13 @@ void ServerBackupDao::addUserOnClient(int clientid, const std::string& username)
 * @-SQLGenAccess
 * @func void ServerBackupDao::addClientToken
 * @sql
-*       INSERT OR IGNORE INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
+*       INSERT OR REPLACE INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
 */
 void ServerBackupDao::addClientToken(int clientid, const std::string& token)
 {
 	if(q_addClientToken==NULL)
 	{
-		q_addClientToken=db->Prepare("INSERT OR IGNORE INTO tokens_on_client (clientid, token) VALUES (?, ?)", false);
+		q_addClientToken=db->Prepare("INSERT OR REPLACE INTO tokens_on_client (clientid, token) VALUES (?, ?)", false);
 	}
 	q_addClientToken->Bind(clientid);
 	q_addClientToken->Bind(token);
@@ -1000,18 +971,39 @@ void ServerBackupDao::addClientToken(int clientid, const std::string& token)
 * @-SQLGenAccess
 * @func void ServerBackupDao::addUserToken
 * @sql
-*       INSERT OR IGNORE INTO user_tokens (username, token) VALUES (:username(string), :token(string))
+*       INSERT OR REPLACE INTO user_tokens (username, clientid, token) VALUES (:username(string), :clientid(int), :token(string))
 */
-void ServerBackupDao::addUserToken(const std::string& username, const std::string& token)
+void ServerBackupDao::addUserToken(const std::string& username, int clientid, const std::string& token)
 {
 	if(q_addUserToken==NULL)
 	{
-		q_addUserToken=db->Prepare("INSERT OR IGNORE INTO user_tokens (username, token) VALUES (?, ?)", false);
+		q_addUserToken=db->Prepare("INSERT OR REPLACE INTO user_tokens (username, clientid, token) VALUES (?, ?, ?)", false);
 	}
 	q_addUserToken->Bind(username);
+	q_addUserToken->Bind(clientid);
 	q_addUserToken->Bind(token);
 	q_addUserToken->Write();
 	q_addUserToken->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addUserTokenWithGroup
+* @sql
+*       INSERT OR REPLACE INTO user_tokens (username, clientid, token, tgroup) VALUES (:username(string), :clientid(int), :token(string), :tgroup(string) )
+*/
+void ServerBackupDao::addUserTokenWithGroup(const std::string& username, int clientid, const std::string& token, const std::string& tgroup)
+{
+	if(q_addUserTokenWithGroup==NULL)
+	{
+		q_addUserTokenWithGroup=db->Prepare("INSERT OR REPLACE INTO user_tokens (username, clientid, token, tgroup) VALUES (?, ?, ?, ? )", false);
+	}
+	q_addUserTokenWithGroup->Bind(username);
+	q_addUserTokenWithGroup->Bind(clientid);
+	q_addUserTokenWithGroup->Bind(token);
+	q_addUserTokenWithGroup->Bind(tgroup);
+	q_addUserTokenWithGroup->Write();
+	q_addUserTokenWithGroup->Reset();
 }
 
 /**
@@ -1394,7 +1386,6 @@ void ServerBackupDao::prepareQueries( void )
 	q_getLastFullDurations=NULL;
 	q_getClientSetting=NULL;
 	q_getClientIds=NULL;
-	q_addFileEntry=NULL;
 	q_getSetting=NULL;
 	q_insertSetting=NULL;
 	q_updateSetting=NULL;
@@ -1428,6 +1419,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_addUserOnClient=NULL;
 	q_addClientToken=NULL;
 	q_addUserToken=NULL;
+	q_addUserTokenWithGroup=NULL;
 	q_hasRecentFullOrIncrFileBackup=NULL;
 	q_hasRecentIncrFileBackup=NULL;
 	q_hasRecentFullOrIncrImageBackup=NULL;
@@ -1457,7 +1449,6 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getLastFullDurations);
 	db->destroyQuery(q_getClientSetting);
 	db->destroyQuery(q_getClientIds);
-	db->destroyQuery(q_addFileEntry);
 	db->destroyQuery(q_getSetting);
 	db->destroyQuery(q_insertSetting);
 	db->destroyQuery(q_updateSetting);
@@ -1491,6 +1482,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addUserOnClient);
 	db->destroyQuery(q_addClientToken);
 	db->destroyQuery(q_addUserToken);
+	db->destroyQuery(q_addUserTokenWithGroup);
 	db->destroyQuery(q_hasRecentFullOrIncrFileBackup);
 	db->destroyQuery(q_hasRecentIncrFileBackup);
 	db->destroyQuery(q_hasRecentFullOrIncrImageBackup);

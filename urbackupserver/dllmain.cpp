@@ -1673,6 +1673,20 @@ bool upgrade44_45()
 	return true;
 }
 
+bool upgrade45_46()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("DROP TABLE user_tokens");
+
+	b &= db->Write("CREATE TABLE user_tokens (id INTEGER PRIMARY KEY, username TEXT, tgroup TEXT, clientid INTEGER DEFAULT 0, token TEXT, created DATE DEFAULT CURRENT_TIMESTAMP)");
+	b &= db->Write("CREATE UNIQUE INDEX user_tokens_unique ON user_tokens(username, clientid, token, tgroup)");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1695,7 +1709,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=45;
+	int max_v=46;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1950,6 +1964,12 @@ void upgrade(void)
 				}
 				++ver;
 				break;
+			case 45:
+				if (!upgrade45_46())
+				{
+					has_error = true;
+				}
+				++ver;
 			default:
 				break;
 		}
