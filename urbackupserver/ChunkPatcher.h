@@ -48,6 +48,7 @@ private:
 	std::vector<char> sparse_buf;
 	int64 unchanged_align_start;
 	int64 unchanged_align_end;
+	bool last_unchanged;
 };
 
 #endif //CHUNK_PATCHER_H

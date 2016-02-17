@@ -30,6 +30,7 @@
 #include "server_cleanup.h"
 #include "FileBackup.h"
 #include "../urbackupcommon/os_functions.h"
+#include "server.h"
 
 namespace
 {
@@ -52,6 +53,15 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
+
+	if (BackupServer::useTreeHashing())
+	{
+		default_hashing_method = HASH_FUNC_TREE;
+	}
+	else
+	{
+		default_hashing_method = HASH_FUNC_SHA512;
+	}
 }
 
 ServerDownloadThread::~ServerDownloadThread()
@@ -572,7 +582,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		}
 
 		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(),
-			true, fileHasSnapshot(todl));
+			default_hashing_method, fileHasSnapshot(todl));
 	}
 	else
 	{
@@ -635,7 +645,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
 			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL,
-				true, fileHasSnapshot(todl));
+				default_hashing_method, fileHasSnapshot(todl));
 			return true;
 		}
 		else
@@ -836,7 +846,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		sparse_extents_f_delete.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
 			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f,
-			true, fileHasSnapshot(todl));
+			default_hashing_method, fileHasSnapshot(todl));
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -853,7 +863,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 }
 
 void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse,
+	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, char hashing_method,
 	bool has_snapshot)
 {
 	int l_backup_id=backupid;
@@ -878,7 +888,7 @@ void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, I
 	data.addInt64(t_filesize);
 	data.addString(with_sparse_hashing ? sha_dig : std::string());
 	data.addString(sparse_extents_f!=NULL ? sparse_extents_f->getFilename() : "");
-	data.addChar(hash_with_sparse ? 1 : 0);
+	data.addChar(hashing_method);
 	data.addChar(has_snapshot ? 1 : 0);
 	metadata.serialize(data);
 

@@ -412,9 +412,9 @@ void BackupServerPrepareHash::addUnchangedHashes(int64 stop, bool finish)
 			has_error = true;
 		}
 
-		int64 num = (stop - add_hashes_start) / chunkhash_single_size;
+		int64 num = (stop - add_hashes_start) / hash_bsize;
 
-		if ((stop - add_hashes_start) % chunkhash_single_size != 0)
+		if ((stop - add_hashes_start) % hash_bsize != 0)
 		{
 			++num;
 		}
@@ -433,7 +433,14 @@ void BackupServerPrepareHash::addUnchangedHashes(int64 stop, bool finish)
 
 			assert(r == chunkhash_single_size || finish);
 
-			reinterpret_cast<TreeHash*>(hashf)->addHashAllAdler(chunkhashes, r);
+			size_t curr_size = hash_bsize;
+
+			if (i + 1 == num && stop%hash_bsize != 0)
+			{
+				curr_size = stop%hash_bsize;
+			}
+
+			reinterpret_cast<TreeHash*>(hashf)->addHashAllAdler(chunkhashes, r, curr_size);
 		}
 
 		add_hashes_start = -1;

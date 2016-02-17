@@ -112,7 +112,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	}
 
 	std::vector<char> sha_buf;
-	TreeHash* treehash = reinterpret_cast<TreeHash*>(hashf);
+	TreeHash* treehash = dynamic_cast<TreeHash*>(hashf);
 	if (hashf!=NULL && treehash==NULL)
 	{
 		sha_buf.resize(c_checkpoint_dist);
@@ -259,6 +259,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 		SChunkHashes new_chunk;
 		_u32 buf_read = 0;
 		bool all_zeros = true;
+		_i64 start_pos = pos;
 		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist,++chunkidx)
 		{
 			bool has_read_error = false;
@@ -275,7 +276,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				all_zeros = false;
 			}
 
-			new_chunk.small_hash[chunkidx] = urb_adler32(urb_adler32(0, NULL, 0), buf, r);
+			*reinterpret_cast<unsigned int*>(&new_chunk.small_hash[chunkidx*small_hash_size]) = urb_adler32(urb_adler32(0, NULL, 0), buf, r);
 			big_hash.update((unsigned char*)buf, r);
 			buf_read += r;
 
@@ -290,7 +291,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				{
 					if(chunk_hashes.get())
 					{
-						if(memcmp(&new_chunk.small_hash[chunkidx], &chunk_hashes->small_hash[chunkidx*small_hash_size], sizeof(new_chunk.small_hash[chunkidx]))==0)
+						if(memcmp(&new_chunk.small_hash[chunkidx*small_hash_size], &chunk_hashes->small_hash[chunkidx*small_hash_size], small_hash_size)==0)
 						{
 							big_hash_copy_control.update((unsigned char*)buf, r);
 						}
@@ -383,7 +384,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				{
 					if (sparse_extent_start == -1)
 					{
-						sparse_extent_start = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+						sparse_extent_start = (start_pos / c_checkpoint_dist)*c_checkpoint_dist;
 					}
 				}
 				else
@@ -391,7 +392,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 					if (sparse_extent_start != -1)
 					{
 						has_sparse_extent = true;
-						int64 end_pos = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+						int64 end_pos = (start_pos / c_checkpoint_dist)*c_checkpoint_dist;
 						int64 ext_pos[2] = { sparse_extent_start, end_pos - sparse_extent_start };
 						hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
 						sparse_extent_start = -1;
@@ -399,7 +400,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 
 					if (treehash != NULL)
 					{
-						treehash->addHashAllAdler(new_chunk.big_hash, chunkhash_single_size);
+						treehash->addHashAllAdler(new_chunk.big_hash, chunkhash_single_size, c_checkpoint_dist);
 					}
 					else
 					{
@@ -412,7 +413,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				if (sparse_extent_start != -1)
 				{
 					has_sparse_extent = true;
-					int64 end_pos = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+					int64 end_pos = (start_pos / c_checkpoint_dist)*c_checkpoint_dist;
 
 					int64 ext_pos[2] = { sparse_extent_start, end_pos - sparse_extent_start };
 					hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
@@ -420,10 +421,16 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 					sparse_extent_start = -1;
 				}
 
-				hashf->hash(sha_buf.data(), buf_read);
+				if (treehash != NULL)
+				{
+					treehash->addHashAllAdler(new_chunk.big_hash, big_hash_size + chunkidx*small_hash_size, buf_read);
+				}
+				else
+				{
+					hashf->hash(sha_buf.data(), buf_read);
+				}
 			}
 		}
-		else 
 
 		for (size_t i = 0; i < chunkidx; ++i)
 		{
@@ -469,7 +476,7 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 
 	if (sparse_extent_start != -1)
 	{
-		assert(fsize%sha_buf.size()==0);
+		assert(fsize%c_checkpoint_dist ==0);
 		has_sparse_extent = true;
 		int64 ext_pos[2] = { sparse_extent_start, fsize - sparse_extent_start };
 		hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));

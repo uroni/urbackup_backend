@@ -57,7 +57,7 @@ const int64 sparse_blocksize = 512*1024;
 
 ChunkPatcher::ChunkPatcher(void)
 	: cb(NULL), require_unchanged(true), with_sparse(false),
-	unchanged_align(0), unchanged_align_start(-1), unchanged_align_end(-1)
+	unchanged_align(0), unchanged_align_start(-1), unchanged_align_end(-1), last_unchanged(false)
 {
 }
 
@@ -72,8 +72,9 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	file->Seek(0);
 	_i64 patchf_pos=0;
 
-	const unsigned int buffer_size=32768;
-	char buf[buffer_size];
+	const unsigned int buffer_size=512*1024;
+	std::vector<char> buf;
+	buf.resize(buffer_size);
 
 	if(patch->Read((char*)&filesize, sizeof(_i64))!=sizeof(_i64))
 	{
@@ -161,7 +162,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			while(next_header.patch_size>0)
 			{
 				bool has_read_error = false;
-				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)buffer_size, next_header.patch_size), &has_read_error);
+				_u32 r=patch->Read(buf.data(), (std::min)((unsigned int)buffer_size, next_header.patch_size), &has_read_error);
 
 				if (has_read_error)
 				{
@@ -172,11 +173,11 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				patchf_pos+=r;
 				if (with_sparse)
 				{
-					nextChunkPatcherBytes(file_pos, buf, r, true, false);
+					nextChunkPatcherBytes(file_pos, buf.data(), r, true, false);
 				}
 				else
 				{
-					cb->next_chunk_patcher_bytes(buf, r, true);
+					cb->next_chunk_patcher_bytes(buf.data(), r, true);
 				}				
 				next_header.patch_size-=r;
 				file_pos += r;
@@ -228,6 +229,16 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				if (unchanged_align != 0)
 				{
 					if (unchanged_align_start != -1
+						&& unchanged_align_end != -1
+						&& file_pos >= unchanged_align_start
+						&& file_pos < unchanged_align_end)
+					{
+						curr_require_unchaged = true;
+						file->Seek(file_pos);
+					}
+
+					if (!curr_require_unchaged 
+						&& unchanged_align_start != -1
 						&& file_pos + tr > unchanged_align_start)
 					{
 						tr = static_cast<_u32>(unchanged_align_start - file_pos);
@@ -237,21 +248,12 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					{
 						tr = static_cast<_u32>(unchanged_align_end - file_pos);
 					}
-					
-					if (unchanged_align_start != -1
-						&& unchanged_align_end != -1
-						&& file_pos >= unchanged_align_start
-						&& file_pos < unchanged_align_end)
-					{
-						curr_require_unchaged = true;
-						file->Seek(file_pos);
-					}
 				}
 
 				if(curr_require_unchaged)
 				{
 					bool has_read_error = false;
-					_u32 r=file->Read((char*)buf, tr, &has_read_error);
+					_u32 r=file->Read(buf.data(), tr, &has_read_error);
 
 					if (has_read_error)
 					{
@@ -261,11 +263,11 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					
 					if (with_sparse)
 					{
-						nextChunkPatcherBytes(file_pos, buf, r, false, false);
+						nextChunkPatcherBytes(file_pos, buf.data(), r, false, false);
 					}
 					else
 					{
-						cb->next_chunk_patcher_bytes(buf, r, false);
+						cb->next_chunk_patcher_bytes(buf.data(), r, false);
 					}
 					
 					file_pos += r;
@@ -280,6 +282,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 					file_pos+=tr;
 					cb->next_chunk_patcher_bytes(NULL, tr, false);
+					last_unchanged = true;
+					
 					tr=0;
 				}
 
@@ -348,6 +352,8 @@ bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHea
 
 void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsize, bool changed, bool sparse)
 {
+	last_unchanged = false;
+
 	if (sparse)
 	{
 		if (last_sparse_start == -1)
@@ -452,7 +458,7 @@ void ChunkPatcher::finishChunkPatcher(int64 pos)
 	finishSparse(pos);
 
 	int64 sparse_buf_used = pos%sparse_blocksize;
-	if (sparse_buf_used > 0)
+	if (sparse_buf_used > 0 && !last_unchanged)
 	{
 		cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_buf_used, curr_changed);
 	}

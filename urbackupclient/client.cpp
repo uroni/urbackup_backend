@@ -3789,8 +3789,6 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 
 		assert(fsize1 != fsize2 || ret == other_ret);
 		return ret;
-
-		return treehash.finalize();
 	}
 	else
 	{
@@ -3860,7 +3858,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf)
 	
 
 	int64 skip_start = -1;
-	const size_t bsize = 32768;
+	const size_t bsize = 512*1024;
 	int64 fpos = 0;
 	_u32 rc = 1;
 	std::vector<char> buf;

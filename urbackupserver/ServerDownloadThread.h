@@ -177,7 +177,7 @@ public:
 	bool isOffline();
 
 	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
-		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, bool hash_with_sparse, bool has_snapshot);
+		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, char hashing_method, bool has_snapshot);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 
@@ -268,6 +268,7 @@ private:
 	std::vector<std::string> shares_without_snapshot;
 
 	bool with_sparse_hashing;
+	char default_hashing_method;
 
 	std::map<std::string, std::string> filepath_corrections;
 	std::map<std::string, std::set<std::string> > tar_filenames;

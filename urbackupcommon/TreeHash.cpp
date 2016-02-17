@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "../stringtools.h"
+#include <limits.h>
 
 TreeHash::TreeHash()
 	: offset(0), has_sparse(false)
@@ -19,14 +20,24 @@ TreeHash::TreeHash()
 
 void TreeHash::hash(const char * buf, _u32 bsize)
 {
+	assert(offset != UINT_MAX);
+
 	_u32 offset_end = offset + bsize;
+	_u32 buf_off = 0;
 	for (_u32 i = offset; i < offset_end; i += treehash_smallblock)
 	{
 		_u32 adler_idx = (i / treehash_smallblock) % 12;
-		_u32 tohash = (std::min)(treehash_smallblock, bsize - i);
-		adlers[adler_idx] = urb_adler32(adlers[adler_idx], buf, tohash);
-		md5sum.update(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(buf)), bsize);
+		_u32 tohash = (std::min)(treehash_smallblock, offset_end - i);
+
+		if (offset%treehash_smallblock != 0)
+		{
+			tohash = (std::min)(tohash, treehash_smallblock - offset%treehash_smallblock);
+		}
+
+		adlers[adler_idx] = urb_adler32(adlers[adler_idx], buf + buf_off, tohash);
+		md5sum.update(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(buf + buf_off)), tohash);
 		offset += tohash;
+		buf_off += tohash;
 
 		assert(offset <= treehash_blocksize);
 		if (offset == treehash_blocksize)
@@ -44,6 +55,8 @@ void TreeHash::hash(const char * buf, _u32 bsize)
 
 void TreeHash::sparse_hash(const char * buf, _u32 bsize)
 {
+	assert(offset != UINT_MAX);
+
 	has_sparse = true;
 	sha512_update(&sparse_ctx, reinterpret_cast<const unsigned char*>(buf), bsize);
 }
@@ -52,8 +65,11 @@ std::string TreeHash::finalize()
 {
 	if (offset != 0)
 	{
+		offset = 0;
 		finalize_curr();
 	}
+
+	offset = UINT_MAX;
 
 	for (size_t i = 0; i < level_hash.size()-1; ++i)
 	{
@@ -63,7 +79,7 @@ std::string TreeHash::finalize()
 		}
 	}
 
-	if (level_hash.size() == 1)
+	if (level_hash.size() == 1 && level_hash[0].empty())
 	{
 		sha512_ctx c;
 		sha512_init(&c);
@@ -111,7 +127,7 @@ void TreeHash::addHash(const char* h)
 	}
 }
 
-void TreeHash::addHashAllAdler(const char * h, size_t size)
+void TreeHash::addHashAllAdler(const char * h, size_t size, size_t hashed_size)
 {
 	assert(offset == 0);
 
@@ -139,7 +155,15 @@ void TreeHash::addHashAllAdler(const char * h, size_t size)
 	for (size_t i = 12; i < num_adlers; ++i)
 	{
 		size_t adler_idx = i % 12;
-		n_adlers[adler_idx] = urb_adler32_combine(n_adlers[adler_idx], input_adler[i], treehash_smallblock);
+
+		_u32 curr_len2 = treehash_smallblock;
+		if (i + 1 == num_adlers
+			&& hashed_size%treehash_smallblock != 0)
+		{
+			curr_len2 = hashed_size%treehash_smallblock;
+		}
+
+		n_adlers[adler_idx] = urb_adler32_combine(n_adlers[adler_idx], input_adler[i], curr_len2);
 	}
 
 	for (size_t j = 0; j < 12; ++j)

@@ -120,7 +120,7 @@ public:
 	virtual void addHash(const char* h);
 
 	//528 bytes
-	virtual void addHashAllAdler(const char* h, size_t size);
+	virtual void addHashAllAdler(const char* h, size_t size, size_t hashed_size);
 
 private:
 	void finalize_curr();
