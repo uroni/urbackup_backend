@@ -4,7 +4,10 @@ set -e
 
 git reset --hard
 python3.3 build/replace_versions.py
-sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
+if [ "x$STATIC_CRYPTOPP" != "x" ]
+then
+	sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
+fi
 
 wget http://buildserver.urbackup.org/urbackup-debian_dev.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
@@ -12,11 +15,8 @@ tar xzf urbackup-debian.tar.gz
 if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
-	autoreconf || true
-	automake --add-missing || true
-	libtoolize || true
 	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd
+	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS"
 	touch build_server_debian_ok
 fi
 
