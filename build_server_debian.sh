@@ -4,6 +4,7 @@ set -e
 
 git reset --hard
 python3.3 build/replace_versions.py
+sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
 
 wget http://buildserver.urbackup.org/urbackup-debian_dev.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
