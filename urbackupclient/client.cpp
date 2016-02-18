@@ -2849,7 +2849,6 @@ void IndexThread::execute_postbackup_hook(void)
 			char *a1=(char*)a1c;
 			char* const argv[]={ a1, NULL };
 			execv(a1, argv);
-			Server->Log("Error in execv " SYSCONFDIR "/urbackup/postfilebackup: "+convert(errno), LL_INFO);
 			exit(1);
 		}
 		else
