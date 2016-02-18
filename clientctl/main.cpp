@@ -356,6 +356,7 @@ int follow_status(bool restore, int64 process_id)
 					if (preparing_idx > 0)
 					{
 						std::cout << std::endl;
+						preparing_idx = 0;
 					}
 					draw_progress(proc.percent_done, proc.speed_bpms, proc.done_bytes, proc.total_bytes, proc.details, proc.detail_pc);
 				}
