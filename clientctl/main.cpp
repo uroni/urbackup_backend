@@ -270,7 +270,7 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 
 		std::string spinner = "|/-\\";
 
-		std::cout << "\\rWaiting for server to start backup... " << spinner[i%spinner.size()];
+		std::cout << "\rWaiting for server to start backup... " << spinner[i%spinner.size()];
 		std::cout.flush();
 
 		wait(1000);
