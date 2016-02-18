@@ -263,6 +263,10 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 			{
 				if (std::find(current_processes.begin(), current_processes.end(), sd.running_processes[j].process_id) == current_processes.end())
 				{
+					if (i > 0)
+					{
+						std::cout << std::endl;
+					}
 					return sd.running_processes[j].process_id;
 				}
 			}
@@ -276,6 +280,7 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 		wait(1000);
 	}
 
+	std::cout << std::endl;
 	return 0;
 }
 
