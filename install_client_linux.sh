@@ -189,6 +189,7 @@ then
 		mv "$CONFIG_FILE.new" "$CONFIG_FILE"
 	fi
 	echo "Installed daemon configuration at $CONFIG_FILE..."
+	echo "Info: Restoring from web interface is disabled per default. Enable by modifying $CONFIG_FILE."
 fi
 
 if [ $SYSTEMD = yes ]

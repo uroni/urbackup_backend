@@ -235,59 +235,48 @@ private:
 	TCLAP::ValueArg<std::string> client_arg;
 };
 
-int action_start(std::vector<std::string> args)
+std::vector<int64> get_current_processes()
 {
-	TCLAP::CmdLine cmd("Start an incremental/full image/file backup", ' ', cmdline_version);
+	SStatusDetails sd = Connector::getStatusDetails();
 
-	TCLAP::SwitchArg incr_backup("i", "incremental", "Start incremental backup");
-	TCLAP::SwitchArg full_backup("f", "full", "Start full backup");
+	std::vector<int64> ret;
 
-	cmd.xorAdd(incr_backup, full_backup);
-
-	TCLAP::SwitchArg file_backup("l", "file", "Start file backup");
-	TCLAP::SwitchArg image_backup("m", "image", "Start image backup");
-
-	cmd.xorAdd(file_backup, image_backup);
-
-	PwClientCmd pw_client_cmd(cmd, false);
-
-	cmd.parse(args);
-
-	if (!pw_client_cmd.set())
+	for (size_t i = 0; i < sd.running_processes.size(); ++i)
 	{
-		return 3;
+		ret.push_back(sd.running_processes[i].process_id);
 	}
 
-	int rc;
-	if(file_backup.getValue())
+	return ret;
+}
+
+int64 wait_for_new_process(std::string type, const std::vector<int64>& current_processes)
+{
+	int tries = 60;
+
+	for (int i = 0; i < tries; ++i)
 	{
-		rc = Connector::startBackup(full_backup.getValue());
-	}
-	else
-	{
-		rc = Connector::startImage(full_backup.getValue());
+		SStatusDetails sd = Connector::getStatusDetails();
+
+		for (size_t j = 0; j < sd.running_processes.size(); ++j)
+		{
+			if (sd.running_processes[j].action == type)
+			{
+				if (std::find(current_processes.begin(), current_processes.end(), sd.running_processes[j].process_id) == current_processes.end())
+				{
+					return sd.running_processes[j].process_id;
+				}
+			}
+		}
+
+		std::string spinner = "|/-\\";
+
+		std::cout << "\\rWaiting for server to start backup... " << spinner[i%spinner.size()];
+		std::cout.flush();
+
+		wait(1000);
 	}
 
-	if(rc==2)
-	{
-		std::cerr << "Backup is already running" << std::endl;
-		return 2;
-	}
-	else if(rc==1)
-	{
-		std::cout << "Backup started" << std::endl;
-		return 0;
-	}
-	else if(rc==3)
-	{
-		std::cerr << "Error starting backup. No backup server found." << std::endl;
-		return 3;
-	}
-	else
-	{
-		std::cerr << "Error starting backup." << std::endl;
-		return 1;		
-	}
+	return 0;
 }
 
 int follow_status(bool restore, int64 process_id)
@@ -398,6 +387,86 @@ int follow_status(bool restore, int64 process_id)
 		}
 
 		wait(1000);
+	}
+}
+
+int action_start(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Start an incremental/full image/file backup", ' ', cmdline_version);
+
+	TCLAP::SwitchArg incr_backup("i", "incremental", "Start incremental backup");
+	TCLAP::SwitchArg full_backup("f", "full", "Start full backup");
+
+	cmd.xorAdd(incr_backup, full_backup);
+
+	TCLAP::SwitchArg file_backup("l", "file", "Start file backup");
+	TCLAP::SwitchArg image_backup("m", "image", "Start image backup");
+
+	cmd.xorAdd(file_backup, image_backup);
+
+	TCLAP::SwitchArg non_blocking_arg("b", "non-blocking",
+		"Do not show backup progress and block till the backup is finished but return immediately after starting it", cmd);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::vector<int64> current_processes = get_current_processes();
+
+	std::string type;
+	int rc;
+	if(file_backup.getValue())
+	{
+		type = full_backup.getValue() ? "FULL" : "INCR";
+
+		rc = Connector::startBackup(full_backup.getValue());
+	}
+	else
+	{
+		type = full_backup.getValue() ? "FULLI" : "INCRI";
+
+		rc = Connector::startImage(full_backup.getValue());
+	}
+
+	if(rc==2)
+	{
+		std::cerr << "Backup is already running" << std::endl;
+		return 2;
+	}
+	else if(rc==1)
+	{
+		if (non_blocking_arg.getValue())
+		{
+			std::cout << "Backup started" << std::endl;
+			return 0;
+		}
+		else
+		{
+			int64 new_process = wait_for_new_process(type, current_processes);
+
+			if (new_process == 0)
+			{
+				std::cerr << "Timeout while waiting for server to start backup" << std::endl;
+				return 4;
+			}
+
+			return follow_status(false, new_process);
+		}
+	}
+	else if(rc==3)
+	{
+		std::cerr << "Error starting backup. No backup server found." << std::endl;
+		return 3;
+	}
+	else
+	{
+		std::cerr << "Error starting backup." << std::endl;
+		return 1;		
 	}
 }
 
@@ -564,7 +633,7 @@ int action_start_restore(std::vector<std::string> args)
 		"Consider other file systems when removing files/directories not in backup", cmd);
 
 	TCLAP::SwitchArg non_blocking_arg("l", "non-blocking",
-		"Restore does not block till it is finished but returns immediately after starting it", cmd);
+		"Do not show restore progress and block till the restore is finished but return immediately after starting it", cmd);
 
 	cmd.parse(args);
 
