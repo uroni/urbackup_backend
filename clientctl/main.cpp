@@ -255,6 +255,8 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 {
 	int tries = 60;
 
+	std::string message  = "Waiting for server to start backup... ";
+
 	for (int i = 0; i < tries; ++i)
 	{
 		int tries = 20;
@@ -280,20 +282,20 @@ int64 wait_for_new_process(std::string type, const std::vector<int64>& current_p
 				{
 					if (i > 0)
 					{
-						std::cout << std::endl;
+						std::cout << "\r" << message << "done" << std::endl;
 					}
 					return sd.running_processes[j].process_id;
 				}
 			}
 		}
 
-		std::cout << "\rWaiting for server to start backup... " << spinner[i%spinner.size()];
+		std::cout << "\r" << message << spinner[i%spinner.size()];
 		std::cout.flush();
 
 		wait(1000);
 	}
 
-	std::cout << std::endl;
+	std::cout << "\r" << message << "done" << std::endl;
 	return 0;
 }
 
@@ -303,6 +305,9 @@ int follow_status(bool restore, int64 process_id)
 
 	size_t preparing_idx = 0;
 	size_t waiting_for_id_idx = 0;
+
+	std::string waiting_msg;
+	std::string preparing_msg;
 
 	while (true)
 	{
@@ -331,7 +336,7 @@ int follow_status(bool restore, int64 process_id)
 			{
 				if (!found_once && waiting_for_id_idx>0)
 				{
-					std::cout << std::endl;
+					std::cout << "\r" << waiting_msg << "done" << std::endl;
 				}
 
 				found_once = true;
@@ -340,11 +345,13 @@ int follow_status(bool restore, int64 process_id)
 				{
 					if (restore)
 					{
-						std::cout << "\rPreparing restore... " << spinner[preparing_idx%spinner.size()];
+						preparing_msg = "Preparing restore... ";
+						std::cout << "\r" << preparing_msg << spinner[preparing_idx%spinner.size()];
 					}
 					else
 					{
-						std::cout << "\rPreparing... " << spinner[preparing_idx%spinner.size()];
+						preparing_msg = "Preparing... ";
+						std::cout << "\r" << preparing_msg << spinner[preparing_idx%spinner.size()];
 					}
 
 					std::cout.flush();					
@@ -355,7 +362,7 @@ int follow_status(bool restore, int64 process_id)
 				{
 					if (preparing_idx > 0)
 					{
-						std::cout << std::endl;
+						std::cout << "\r" << preparing_msg << "done" << std::endl;
 						preparing_idx = 0;
 					}
 					draw_progress(proc.percent_done, proc.speed_bpms, proc.done_bytes, proc.total_bytes, proc.details, proc.detail_pc);
@@ -405,11 +412,13 @@ int follow_status(bool restore, int64 process_id)
 			{
 				if (restore)
 				{
-					std::cout << "\rStarting restore. Waiting for backup server... " << spinner[waiting_for_id_idx%spinner.size()];;
+					waiting_msg = "Starting restore.Waiting for backup server...";
+					std::cout << "\r" << waiting_msg << spinner[waiting_for_id_idx%spinner.size()];;
 				}
 				else
 				{
-					std::cout << "\rWaiting for process to become available... " << spinner[waiting_for_id_idx%spinner.size()];;
+					waiting_msg = "Waiting for process to become available... ";
+					std::cout << "\r" << waiting_msg << spinner[waiting_for_id_idx%spinner.size()];;
 				}
 
 				++waiting_for_id_idx;
