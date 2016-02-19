@@ -1278,7 +1278,7 @@ void thread_helper_f(IThread *t, const std::string& name)
 	{
 #endif
 		(*t)();
-		Server->clearDatabases(Server->getThreadID());
+		Server->destroyDatabases(Server->getThreadID());
 #ifndef _DEBUG
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
@@ -1292,7 +1292,7 @@ void* thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();
-	Server->clearDatabases(Server->getThreadID());
+	Server->destroyDatabases(Server->getThreadID());
 	return NULL;
 }
 #endif //_WIN32
