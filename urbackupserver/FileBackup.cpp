@@ -1778,6 +1778,8 @@ bool FileBackup::startFileMetadataDownloadThread()
 
 bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 {
+	const int64 stalled_bytes_per_second = 4096;
+
 	if(metadata_download_thread.get()!=NULL)
 	{
 		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 1000))
@@ -1804,7 +1806,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 				int64 new_transferred_bytes = metadata_download_thread->getTransferredBytes();
 
 				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0)
-					&& new_transferred_bytes<=transferred_bytes)
+					&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes )
 				{
 					metadata_download_thread->shutdown();
 				}
