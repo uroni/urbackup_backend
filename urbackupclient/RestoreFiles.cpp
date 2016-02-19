@@ -254,11 +254,11 @@ void RestoreFiles::operator()()
 
 		do
 		{
-			if (fc.InformMetadataStreamEnd(client_token) == ERR_TIMEOUT)
+			if (fc.InformMetadataStreamEnd(client_token, 0) == ERR_TIMEOUT)
 			{
 				fc.Reconnect();
 
-				fc.InformMetadataStreamEnd(client_token);
+				fc.InformMetadataStreamEnd(client_token, 0);
 			}
 
 			log("Waiting for metadata download stream to finish", LL_DEBUG);
@@ -802,7 +802,7 @@ void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
 {
 	log("Restore failed.", LL_INFO);
 
-	fc.InformMetadataStreamEnd(client_token);
+	fc.InformMetadataStreamEnd(client_token, 3);
 
 	Server->getThreadPool()->waitFor(metadata_dl);
 

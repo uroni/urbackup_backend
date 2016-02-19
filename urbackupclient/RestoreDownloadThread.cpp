@@ -122,7 +122,7 @@ void RestoreDownloadThread::operator()()
 
 	if(!is_offline && !skipping)
 	{
-		_u32 rc = fc.InformMetadataStreamEnd(client_token);
+		_u32 rc = fc.InformMetadataStreamEnd(client_token, 3);
 
 		if(rc!=ERR_SUCCESS)
 		{

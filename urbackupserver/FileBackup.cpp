@@ -1795,7 +1795,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 				_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
 				if(rc==ERR_CONNECTED)
 				{
-					fc_metadata_stream_end->InformMetadataStreamEnd(server_token);
+					fc_metadata_stream_end->InformMetadataStreamEnd(server_token, 0);
 				}
 
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);

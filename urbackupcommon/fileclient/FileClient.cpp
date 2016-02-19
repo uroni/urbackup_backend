@@ -99,7 +99,8 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
 	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
 	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
-	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL), sparse_bytes(0)
+	real_transferred_bytes(0), is_downloading(false), sparse_extends_f(NULL), sparse_bytes(0),
+	reconnect_tries(50)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -1782,16 +1783,16 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 	}
 }
 
-_u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
+_u32 FileClient::InformMetadataStreamEnd( const std::string& server_token, int tries)
 {
 	assert(queued.empty());
+
+	setReconnectTries(tries);
 
 	CWData data;
 	data.addUChar( ID_INFORM_METADATA_STREAM_END );
 	data.addString( identity );
 	data.addString(server_token);
-
-	int tries=5000;
 
 	if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 	{
@@ -1806,9 +1807,13 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
 		if(rc==0)
 		{
 			Server->Log("Server timeout (2) in FileClient sending metadata stream end", LL_DEBUG);
-			bool b=Reconnect();
-			--tries;
-			if(!b || tries<=0 )
+			int tries = getReconnectTriesDecr();
+			bool b = false;
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if(!b)
 			{
 				Server->Log("FileClient: ERR_TIMEOUT (metadata stream)", LL_INFO);
 				return ERR_TIMEOUT;

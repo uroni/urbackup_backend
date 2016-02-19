@@ -222,7 +222,7 @@ void ServerDownloadThread::operator()( void )
 
 	if(!is_offline && !skipping && client_main->getProtocolVersions().file_meta>0)
 	{
-		_u32 rc = fc.InformMetadataStreamEnd(server_token);
+		_u32 rc = fc.InformMetadataStreamEnd(server_token, 3);
 
 		if(rc!=ERR_SUCCESS)
 		{
