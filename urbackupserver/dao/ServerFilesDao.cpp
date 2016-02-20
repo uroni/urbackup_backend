@@ -511,13 +511,13 @@ void ServerFilesDao::removeDanglingFiles(void)
 * @-SQLGenAccessNoCheck
 * @func bool ServerFilesDao::createTemporaryLastFilesTable
 * @sql
-*      CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE, rsize INTEGER );
+*      CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, rsize INTEGER );
 */
 bool ServerFilesDao::createTemporaryLastFilesTable(void)
 {
 	if(q_createTemporaryLastFilesTable==NULL)
 	{
-		q_createTemporaryLastFilesTable=db->Prepare("CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE, rsize INTEGER );", false);
+		q_createTemporaryLastFilesTable=db->Prepare("CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, rsize INTEGER );", false);
 	}
 	bool ret = q_createTemporaryLastFilesTable->Write();
 	return ret;

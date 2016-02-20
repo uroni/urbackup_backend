@@ -1360,28 +1360,28 @@ bool upgrade35_36()
 		"fullpath TEXT,"
 		"shahash BLOB,"
 		"filesize INTEGER,"
-		"created DATE DEFAULT CURRENT_TIMESTAMP"
-		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
+		"created INTEGER DEFAULT (CAST(strftime('%s','now') as INTEGER)),"
+		"rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
 	{
 		return false;
 	}
 
-	IDatabaseCursor* cur = db->Prepare("SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files_bck")->Cursor();
+	IDatabaseCursor* cur = db->Prepare("SELECT rowid, backupid, fullpath, shahash, filesize, strftime('%s', created) AS created, rsize, clientid, incremental, hashpath FROM files_bck")->Cursor();
 
 	IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
 		"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
 	db_single_result res;
 	while (cur->next(res))
 	{
-		q_insert_file->Bind(res["rowid"]);
-		q_insert_file->Bind(res["backupid"]);
+		q_insert_file->Bind(watoi64(res["rowid"]));
+		q_insert_file->Bind(watoi(res["backupid"]));
 		q_insert_file->Bind(res["fullpath"]);
 		q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
-		q_insert_file->Bind(res["filesize"]);
-		q_insert_file->Bind(res["created"]);
-		q_insert_file->Bind(res["rsize"]);
-		q_insert_file->Bind(res["clientid"]);
-		q_insert_file->Bind(res["incremental"]);
+		q_insert_file->Bind(watoi64(res["filesize"]));
+		q_insert_file->Bind(watoi64(res["created"]));
+		q_insert_file->Bind(watoi64(res["rsize"]));
+		q_insert_file->Bind(watoi(res["clientid"]));
+		q_insert_file->Bind(watoi(res["incremental"]));
 		q_insert_file->Bind(res["hashpath"]);
 		q_insert_file->Write();
 		q_insert_file->Reset();
@@ -1565,28 +1565,28 @@ bool upgrade44_45()
 			"fullpath TEXT,"
 			"shahash BLOB,"
 			"filesize INTEGER,"
-			"created DATE DEFAULT CURRENT_TIMESTAMP"
-			", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
+			"created INTEGER DEFAULT (CAST(strftime('%s','now') as INTEGER)),"
+			"rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
 		{
 			return false;
 		}
 
-		IDatabaseCursor* cur = db->Prepare("SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files")->Cursor();
+		IDatabaseCursor* cur = db->Prepare("SELECT id, backupid, fullpath, shahash, filesize, strftime('%s', created) AS created, rsize, clientid, incremental, hashpath FROM files")->Cursor();
 
 		IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
 			"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
 		db_single_result res;
 		while (cur->next(res))
 		{
-			q_insert_file->Bind(res["id"]);
-			q_insert_file->Bind(res["backupid"]);
+			q_insert_file->Bind(watoi64(res["id"]));
+			q_insert_file->Bind(watoi(res["backupid"]));
 			q_insert_file->Bind(res["fullpath"]);
 			q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
-			q_insert_file->Bind(res["filesize"]);
-			q_insert_file->Bind(res["created"]);
-			q_insert_file->Bind(res["rsize"]);
-			q_insert_file->Bind(res["clientid"]);
-			q_insert_file->Bind(res["incremental"]);
+			q_insert_file->Bind(watoi64(res["filesize"]));
+			q_insert_file->Bind(watoi64(res["created"]));
+			q_insert_file->Bind(watoi64(res["rsize"]));
+			q_insert_file->Bind(watoi(res["clientid"]));
+			q_insert_file->Bind(watoi(res["incremental"]));
 			q_insert_file->Bind(res["hashpath"]);
 			q_insert_file->Write();
 			q_insert_file->Reset();
