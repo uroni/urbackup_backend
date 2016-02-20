@@ -250,6 +250,15 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 
 			copy_write_pos += c_checkpoint_dist;
 
+			if (copy != NULL)
+			{
+				if (!copy->Seek(copy_write_pos))
+				{
+					Server->Log("Error seeking in copy file (" + copy->getFilename() + ")", LL_DEBUG);
+					return false;
+				}
+			}
+
 			pos = epos;			
 			if (!f->Seek(pos))
 			{
