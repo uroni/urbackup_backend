@@ -11,6 +11,7 @@
 #include "FileIndex.h"
 #include "dao/ServerFilesDao.h"
 #include <vector>
+#include <map>
 #include "../urbackupcommon/chunk_hasher.h"
 #include "server_log.h"
 #include "../urbackupcommon/ExtentIterator.h"
@@ -72,8 +73,22 @@ public:
 		
 	static void deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int64 id);
 
+	struct SInMemCorrection
+	{
+		std::map<int64, int64> next_entries;
+		std::map<int64, int64> prev_entries;
+		std::map<int64, int> pointed_to;
+		int64 max_correct;
+		int64 min_correct;
+
+		bool needs_correction(int64 id)
+		{
+			return id >= min_correct && id <= max_correct;
+		}
+	};
+
 	static void deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
-		bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat);
+		bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat, SInMemCorrection* correction);
 
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,

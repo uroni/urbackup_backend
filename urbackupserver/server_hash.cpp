@@ -375,12 +375,12 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 	{
 		deleteFileSQL(filesdao, fileindex, reinterpret_cast<const char*>(entry.shahash.c_str()),
 				entry.filesize, entry.rsize, entry.clientid, entry.backupid, entry.incremental,
-				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true, true, false);
+				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true, true, false, NULL);
 	}
 }
 
 void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, const int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
-	bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat)
+	bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat, SInMemCorrection* correction)
 {
 	if(use_transaction)
 	{
@@ -432,23 +432,47 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 			filesdao.setPointedTo(1, next_id);
 			Server->Log("Changed file index entry from "+convert(id)+" to "+convert(next_id)+" (next)", LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
+
+			if (correction != NULL
+				&& correction->needs_correction(next_id))
+			{
+				correction->pointed_to[next_id] = 1;
+			}
 		}
 		else
 		{
 			filesdao.setPointedTo(1, prev_id);
 			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id) + " (prev)", LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
+
+			if (correction != NULL
+				&& correction->needs_correction(prev_id))
+			{
+				correction->pointed_to[prev_id] = 1;
+			}
 		}
 	}
 
 	if(next_id!=0)
 	{
 		filesdao.setPrevEntry(prev_id, next_id);
+
+		if (correction!=NULL
+			&& correction->needs_correction(next_id))
+		{
+			correction->prev_entries[next_id] = prev_id;
+		}
 	}
 
 	if(prev_id!=0)
 	{
 		filesdao.setNextEntry(next_id, prev_id);
+
+		if (correction != NULL
+			&& correction->needs_correction(prev_id))
+		{
+			correction->prev_entries[prev_id] = next_id;
+		}
 	}
 
 	if(del_entry)
@@ -515,7 +539,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					first_logmsg=true;
 
 					deleteFileSQL(*filesdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, existing_file.clientid, existing_file.backupid, existing_file.incremental,
-						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true, detach_dbs, false);
+						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true, detach_dbs, false, NULL);
 
 					existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
 				}

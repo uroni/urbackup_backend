@@ -18,12 +18,17 @@ public:
 	static const int c_direction_outgoing_nobackupstat;
 	static const int c_direction_incoming;
 
-
 	//@-SQLGenFunctionsBegin
 	struct CondInt64
 	{
 		bool exists;
 		int64 value;
+	};
+	struct SBackupIdMinMax
+	{
+		bool exists;
+		int64 tmin;
+		int64 tmax;
 	};
 	struct SFileEntry
 	{
@@ -100,6 +105,7 @@ public:
 	bool copyToTemporaryLastFilesTable(int backupid);
 	SFileEntry getFileEntryFromTemporaryTable(const std::string& fullpath);
 	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::string& fullpath_glob);
+	SBackupIdMinMax getBackupIdMinMax(int backupid);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -139,6 +145,7 @@ private:
 	IQuery* q_copyToTemporaryLastFilesTable;
 	IQuery* q_getFileEntryFromTemporaryTable;
 	IQuery* q_getFileEntriesFromTemporaryTableGlob;
+	IQuery* q_getBackupIdMinMax;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

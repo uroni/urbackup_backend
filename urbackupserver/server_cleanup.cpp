@@ -42,6 +42,7 @@
 #include <algorithm>
 #include "create_files_index.h"
 #include <assert.h>
+#include <set>
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
@@ -2010,14 +2011,29 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	DBScopedSynchronous synchronous_files(filesdao->getDatabase());
 	filesdao->BeginWriteTransaction();
 
+	BackupServerHash::SInMemCorrection correction;
+
+	ServerFilesDao::SBackupIdMinMax minmax = filesdao->getBackupIdMinMax(backupid);
+
+	correction.max_correct = minmax.tmax;
+	correction.min_correct = minmax.tmin;
+
 	IQuery* q_iterate = filesdao->getDatabase()->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
 	q_iterate->Bind(backupid);
 	IDatabaseCursor* cursor = q_iterate->Cursor();
+
+	std::set<int64> finished_rows;
 
 	db_single_result res;
 	while(cursor->next(res))
 	{
 		int64 id = watoi64(res["id"]);
+
+		if (finished_rows.find(id)!=finished_rows.end())
+		{
+			continue;
+		}
+
 		int64 filesize = watoi64(res["filesize"]);
 		int64 rsize = watoi64(res["rsize"]);
 		int clientid = watoi(res["clientid"]);
@@ -2027,8 +2043,43 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		int64 prev_entry = watoi64(res["prev_entry"]);
 		int pointed_to = watoi(res["pointed_to"]);
 
+		std::map<int64, int64>::iterator it_next = correction.next_entries.find(id);
+		if (it_next != correction.next_entries.end())
+		{
+			if (it_next->second != next_entry)
+			{
+				int abc = 5;
+			}
+
+			next_entry = it_next->second;
+		}
+
+		std::map<int64, int64>::iterator it_prev= correction.prev_entries.find(id);
+		if (it_prev != correction.prev_entries.end())
+		{
+			if (it_prev->second != prev_entry)
+			{
+				int abc = 5;
+			}
+
+			prev_entry = it_prev->second;
+		}
+
+		std::map<int64, int>::iterator it_pointed_to = correction.pointed_to.find(id);
+		if (it_pointed_to != correction.pointed_to.end())
+		{
+			if (it_pointed_to->second != pointed_to)
+			{
+				int abc = 5;
+			}
+
+			pointed_to = it_pointed_to->second;
+		}
+
 		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), res["shahash"].c_str(),
-			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true);
+			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true, &correction);
+
+		finished_rows.insert(id);
 	}
 	filesdao->getDatabase()->destroyQuery(q_iterate);
 

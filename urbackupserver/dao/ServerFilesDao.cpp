@@ -650,6 +650,32 @@ std::vector<ServerFilesDao::SFileEntry> ServerFilesDao::getFileEntriesFromTempor
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func SBackupIdMinMax ServerFilesDao::getBackupIdMinMax
+* @return int64 tmin, int64 tmax
+* @sql
+*      SELECT MIN(id) AS tmin, MAX(id) AS tmax FROM files WHERE backupid=:backupid(int)
+*/
+ServerFilesDao::SBackupIdMinMax ServerFilesDao::getBackupIdMinMax(int backupid)
+{
+	if(q_getBackupIdMinMax==NULL)
+	{
+		q_getBackupIdMinMax=db->Prepare("SELECT MIN(id) AS tmin, MAX(id) AS tmax FROM files WHERE backupid=?", false);
+	}
+	q_getBackupIdMinMax->Bind(backupid);
+	db_results res=q_getBackupIdMinMax->Read();
+	q_getBackupIdMinMax->Reset();
+	SBackupIdMinMax ret = { false, 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.tmin=watoi64(res[0]["tmin"]);
+		ret.tmax=watoi64(res[0]["tmax"]);
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerFilesDao::prepareQueries()
 {
@@ -680,6 +706,7 @@ void ServerFilesDao::prepareQueries()
 	q_copyToTemporaryLastFilesTable=NULL;
 	q_getFileEntryFromTemporaryTable=NULL;
 	q_getFileEntriesFromTemporaryTableGlob=NULL;
+	q_getBackupIdMinMax=NULL;
 }
 
 //@-SQLGenDestruction
@@ -712,6 +739,7 @@ void ServerFilesDao::destroyQueries()
 	db->destroyQuery(q_copyToTemporaryLastFilesTable);
 	db->destroyQuery(q_getFileEntryFromTemporaryTable);
 	db->destroyQuery(q_getFileEntriesFromTemporaryTableGlob);
+	db->destroyQuery(q_getBackupIdMinMax);
 }
 
 int64 ServerFilesDao::addFileEntryExternal(int backupid, const std::string& fullpath, const std::string& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to)

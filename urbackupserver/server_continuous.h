@@ -785,7 +785,7 @@ private:
 					local_hash->deleteFileSQL(*filesdao, *fileindex, reinterpret_cast<const char*>(fentry.shahash.c_str()),
 						fentry.filesize, fentry.rsize, fentry.clientid,
 						fentry.backupid, fentry.incremental, fentry.id, fentry.prev_entry, fentry.next_entry, fentry.pointed_to,
-						true, true, true, false);
+						true, true, true, false, NULL);
 				}
 			}
 		}
