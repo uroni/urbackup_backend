@@ -232,8 +232,8 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 									Server->Log("Error writing to copy file (" + copy->getFilename() + ")", LL_DEBUG);
 									return false;
 								}
+								written += towrite;
 							}
-							written += towrite;
 						}
 						else
 						{
