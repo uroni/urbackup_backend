@@ -263,7 +263,10 @@ void SparseFile::initWithSparseExtents(const std::vector<IFsFile::SSparseExtent>
 		}
 	}
 
-	max_offset = (std::min)(max_size, max_offset);
+	if (max_size > 0)
+	{
+		max_offset = (std::min)(max_size, max_offset);
+	}
 
 	if (!sparse_offsets.empty() && sparse_offsets[0].offset == 0)
 	{

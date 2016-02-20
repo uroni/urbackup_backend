@@ -1025,7 +1025,7 @@ bool FileClient::Reconnect(void)
 
 					sparse_extends_f->Seek(0);
 
-					sparse_file.reset(new SparseFile(backing_file, sparse_extends_f, false, 1, false, filesize));
+					sparse_file.reset(new SparseFile(backing_file, sparse_extends_f, false, 1, false, -1));
 					file = sparse_file.get();
 
 					if (sparse_file->hasError())

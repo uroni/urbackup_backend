@@ -4237,7 +4237,7 @@ bool IndexThread::nextLastFilelistItem(SFile& data, str_map* extra, bool with_up
 
 void IndexThread::addFromLastUpto(const std::string& fname, bool isdir, size_t depth, bool finish, std::fstream &outfile)
 {
-	if (!index_follow_last)
+	if (!index_follow_last || last_filelist.get()==NULL)
 	{
 		return;
 	}
