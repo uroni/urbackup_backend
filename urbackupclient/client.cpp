@@ -4522,8 +4522,6 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 
 				cd->delBackupDir(backup_dirs[i].id);
 
-				backup_dirs.erase(backup_dirs.begin()+i);
-
 				removeDir(starttoken, backup_dirs[i].tname);
 				removeDir(std::string(), backup_dirs[i].tname);
 
@@ -4532,6 +4530,8 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 					filesrv->removeDir(backup_dirs[i].tname, starttoken);
 					filesrv->removeDir(backup_dirs[i].tname, std::string());
 				}
+
+				backup_dirs.erase(backup_dirs.begin() + i);
 
 				continue;
 			}

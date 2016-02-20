@@ -42,7 +42,7 @@ int check_files_index()
 
 	if(db->getEngineName()=="sqlite")
 	{
-		ServerSettings server_settings(db);
+		ServerSettings server_settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
 		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 	}
 

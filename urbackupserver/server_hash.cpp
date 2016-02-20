@@ -314,7 +314,7 @@ void BackupServerHash::addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex
 		
 		if(prev_entry==0)
 		{
-			filesdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerFilesDao::c_direction_incoming, incremental);
+			filesdao.addIncomingFile(filesize, clientid, backupid, clients, ServerFilesDao::c_direction_incoming, incremental);
 		}
 		else
 		{
@@ -415,7 +415,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		}
 		
 
-		filesdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients,
+		filesdao.addIncomingFile(filesize, clientid, backupid, clients,
 			with_backupstat? ServerFilesDao::c_direction_outgoing : ServerFilesDao::c_direction_outgoing_nobackupstat,
 			incremental);
 
@@ -430,13 +430,13 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		if(next_id!=0)
 		{
 			filesdao.setPointedTo(1, next_id);
-			Server->Log("Changed file index entry from "+convert(id)+" to "+convert(next_id), LL_DEBUG);
+			Server->Log("Changed file index entry from "+convert(id)+" to "+convert(next_id)+" (next)", LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
 		}
 		else
 		{
 			filesdao.setPointedTo(1, prev_id);
-			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id), LL_DEBUG);
+			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id) + " (prev)", LL_DEBUG);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
 		}
 	}

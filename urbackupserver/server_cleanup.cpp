@@ -2027,7 +2027,7 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		int64 prev_entry = watoi64(res["prev_entry"]);
 		int pointed_to = watoi(res["pointed_to"]);
 
-		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), reinterpret_cast<const char*>(res["shahash"].c_str()),
+		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), res["shahash"].c_str(),
 			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true);
 	}
 	filesdao->getDatabase()->destroyQuery(q_iterate);
