@@ -15,9 +15,12 @@
 				{/file_restore}
 			{/client_update}
 		{/image}
-		{show_details}
+		{?show_details}
 			{details}
 		{/show_details}
+		{?backups_interrupted}
+			<br />{tBackups interrupted}
+		{/backups_interrupted}
 	</td>
 	<td class="tabFLeft" style="text-align: center;">
 		<div class="progress">

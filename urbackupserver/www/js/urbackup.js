@@ -591,6 +591,11 @@ function show_progress2(data)
 			{
 				data.progress[i].show_details=true;
 			}
+			
+			if(action==12) //backup database
+			{
+				data.progress[i].backups_interrupted=true;
+			}
 		
 			data.progress[i].action=trans("action_"+data.progress[i].action);
 			if(data.progress[i].pcdone>=0)
