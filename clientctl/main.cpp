@@ -1129,7 +1129,7 @@ int action_list_backupdirs(std::vector<std::string> args)
 		{
 			has_virtual_client = true;
 		}
-		if (!backup_dirs[i].group != 0)
+		if (backup_dirs[i].group != 0)
 		{
 			has_group = true;
 		}

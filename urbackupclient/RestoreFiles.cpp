@@ -660,8 +660,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
                                     {
                                         log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
 										FsExtentIterator extent_iterator(orig_file);
-                                        build_chunk_hashs(orig_file, chunkhashes, NULL, false, NULL, false, NULL,
-											NULL, false, &extent_iterator);
+                                        build_chunk_hashs(orig_file, chunkhashes, NULL, NULL, false, NULL, NULL,
+											false, NULL, &extent_iterator);
                                     }
 
 									restore_download->addToQueueChunked(line, server_fn, local_fn, 
