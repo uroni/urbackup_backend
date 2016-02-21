@@ -27,7 +27,11 @@ typedef long long int int64;
 struct SBackupDir
 {
 	std::string path;
+	std::string name;
 	int id;
+	int group;
+	std::string virtual_client;
+	std::string flags;
 };
 
 struct SStatus
@@ -173,7 +177,7 @@ public:
 	static bool isBusy(void);
 
 private:
-
+	static std::string escapeParam(const std::string &name);
 	static bool readTokens();
 
 	static std::string getResponse(const std::string &cmd, const std::string &args, bool change_command);

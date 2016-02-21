@@ -1096,6 +1096,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	}
 	*/
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
+	IQuery* q_get_virtual_client_offset = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?");
 	std::string dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
@@ -1114,11 +1115,25 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 			else
 				name=ExtractFileName(dir);
 
-			int group = group_offset + c_group_default;
+			int curr_offset = group_offset;
+
+			str_map::iterator virtual_client_arg = args.find("dir_" + convert(i) + "_virtual_client");
+			if (virtual_client_arg != args.end() && !virtual_client_arg->second.empty())
+			{
+				q_get_virtual_client_offset->Bind(virtual_client_arg->second);
+				db_results res_offset = q_get_virtual_client_offset->Read();
+				q_get_virtual_client_offset->Reset();
+				if (!res_offset.empty())
+				{
+					curr_offset = watoi(res_offset[0]["group_offset"]);
+				}
+			}
+
+			int group = curr_offset + c_group_default;
 
 			str_map::iterator group_arg=args.find("dir_"+convert(i)+"_group");
 			if(group_arg!=args.end() && !group_arg->second.empty())
-				group=group_offset + watoi(group_arg->second);
+				group= curr_offset + watoi(group_arg->second);
 
 			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional | EBackupDirFlag_ShareHashes; //default flags
 			size_t flags_off = name.find("/");

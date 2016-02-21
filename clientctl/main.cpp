@@ -86,6 +86,15 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " reset-keep" << std::endl;
 	std::cout << "\t\t" "Reset keeping files during incremental backups" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " add-backupdir" << std::endl;
+	std::cout << "\t\t" "Add new directory to backup set" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " list-backupdirs" << std::endl;
+	std::cout << "\t\t" "List directories that are being backed up" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " remove-backupdir" << std::endl;
+	std::cout << "\t\t" "Remove directory from backup set" << std::endl;
+	std::cout << std::endl;
 }
 
 const size_t c_speed_size = 15;
@@ -831,6 +840,427 @@ int action_reset_keep(std::vector<std::string> args)
 	}
 }
 
+std::string removeChars(std::string in)
+{
+	char illegalchars[] = { '*', ':', '/' , '\\' };
+	std::string ret;
+	for (size_t i = 0; i<in.size(); ++i)
+	{
+		bool found = false;
+		for (size_t j = 0; j<sizeof(illegalchars) / sizeof(illegalchars[0]); ++j)
+		{
+			if (illegalchars[j] == in[i])
+			{
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			ret += in[i];
+		}
+	}
+	return ret;
+}
+
+bool findPathName(const std::vector<SBackupDir>& dirs, const std::string &pn)
+{
+	for (size_t i = 0; i<dirs.size(); ++i)
+	{
+		if (dirs[i].name == pn)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+std::string getDefaultDirname(const std::vector<SBackupDir>& dirs, const std::string &path)
+{
+	std::string dirname = removeChars(ExtractFileName(path));
+
+	if (dirname.empty())
+		dirname = "root";
+
+	if (findPathName(dirs, dirname))
+	{
+		for (int k = 0; k<100; ++k)
+		{
+			if (!findPathName(dirs, dirname + "_" + convert(k)))
+			{
+				dirname = dirname + "_" + convert(k);
+				break;
+			}
+		}
+	}
+
+	return dirname;
+}
+
+int action_add_backupdir(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Add new directory to backup set", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
+	TCLAP::ValueArg<std::string> name_arg("n", "name",
+		"Backup directory name",
+		false, "", "name", cmd);
+
+	TCLAP::ValueArg<std::string> path_arg("p", "path",
+		"Backup path",
+		true, "", "path", cmd);
+
+	TCLAP::ValueArg<int> group_arg("g", "backup-group",
+		"Backup group index",
+		false, 0, "group index", cmd);
+
+	TCLAP::SwitchArg optional_arg("o", "optional",
+		"Do not fail backup if path does not exist",
+		cmd);
+
+	TCLAP::SwitchArg no_follow_symlinks_arg("f", "no-follow-symlinks",
+		"Do not follow symbolic links outside of backup path",
+		cmd);
+
+	TCLAP::SwitchArg symlinks_required_arg("r", "require-symlinks",
+		"Fail backup if symbolic link targets do not exist",
+		cmd);
+
+	TCLAP::SwitchArg one_filesystem_arg("x", "one-filesystem",
+		"Do not cross filesystem boundary during backup",
+		cmd);
+
+	TCLAP::SwitchArg require_snapshot_arg("s", "require-snapshot",
+		"Fail backup if snapshot of backup path cannot be created",
+		cmd);
+
+	TCLAP::SwitchArg separate_hashes_arg("h", "separate-hashes",
+		"Do not share local hashes with other virtual clients",
+		cmd);
+
+	TCLAP::SwitchArg keep_arg("k", "keep",
+		"Keep deleted files and directories during incremental backups",
+		cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::string flags;
+
+	if (optional_arg.getValue())
+	{
+		flags += ",optional";
+	}
+
+	if (!no_follow_symlinks_arg.getValue())
+	{
+		flags += ",follow_symlinks";
+	}
+
+	if (!symlinks_required_arg.getValue())
+	{
+		flags += ",symlinks_optional";
+	}
+
+	if (one_filesystem_arg.getValue())
+	{
+		flags += ",one_filesystem";
+	}
+
+	if (require_snapshot_arg.getValue())
+	{
+		flags += ",require_snapshot";
+	}
+
+	if (!separate_hashes_arg.getValue())
+	{
+		flags += ",share_hashes";
+	}
+
+	if (keep_arg.getValue())
+	{
+		flags += ",keep";
+	}
+
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+
+	if (Connector::hasError())
+	{
+		std::cerr << "Error retrieving current backup directories from backend" << std::endl;
+		return 1;
+	}
+
+	SBackupDir new_dir;
+	new_dir.path = path_arg.getValue();
+	if (!name_arg.getValue().empty())
+	{
+		new_dir.name = getDefaultDirname(backup_dirs, new_dir.path);
+	}
+	else
+	{
+		new_dir.name = name_arg.getValue();
+	}
+
+	flags[0] = '/';
+
+	new_dir.name += flags;
+
+	new_dir.group = group_arg.getValue();
+
+	new_dir.virtual_client = virtual_client_arg.getValue();
+	
+	backup_dirs.push_back(new_dir);
+	
+	if (!Connector::saveSharedPaths(backup_dirs))
+	{
+		std::cerr << "Error adding new backup path via backend" << std::endl;
+		return 2;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void ouput_val(std::string val, size_t max_size)
+{
+	if (val.size() > max_size)
+	{
+		val = val.substr(0, max_size);
+	}
+	std::cout << val;
+	for (size_t i = val.size(); i < max_size; ++i)
+	{
+		std::cout << ' ';
+	}
+}
+
+void display_table(const std::vector<std::vector<std::string> >& rows)
+{
+	if (rows.empty())
+	{
+		return;
+	}
+
+	const size_t val_gap = 1;
+
+	std::vector<size_t> max_size;
+	max_size.resize(rows[0].size());
+
+	for (size_t i = 0; i < rows[0].size(); ++i)
+	{
+		for (size_t j = 0; j < rows.size(); ++j)
+		{
+			max_size[j] = (std::max)(rows[j][i].size(), max_size[j]);
+		}
+	}
+
+	for (size_t i = 0; i < rows[0].size(); ++i)
+	{
+		ouput_val(rows[0][i], max_size[i]+ val_gap);
+	}
+
+	std::cout << std::endl;
+
+	for (size_t i = 0; i < rows[0].size(); ++i)
+	{
+		std::cout << std::string(max_size[i], '-');
+		std::cout << std::string(val_gap, ' ');
+	}
+
+	std::cout << std::endl;
+
+	for (size_t i = 1; i < rows.size(); ++i)
+	{
+		for (size_t j = 0; j < rows[i].size(); ++j)
+		{
+			ouput_val(rows[i][j], max_size[j] + val_gap);
+		}
+		std::cout << std::endl;
+	}
+}
+
+int action_list_backupdirs(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List directories that are being backed up", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, false);
+
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Display only for virtual with name",
+		false, "", "client name", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+
+	if (Connector::hasError())
+	{
+		std::cerr << "Error retrieving current backup directories from backend" << std::endl;
+		return 1;
+	}
+
+	if (backup_dirs.empty())
+	{
+		std::cout << "No directories are being backed up" << std::endl;
+		return 0;
+	}
+
+	bool has_virtual_client = false;
+	bool has_group = false;
+
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		if (!backup_dirs[i].virtual_client.empty())
+		{
+			has_virtual_client = true;
+		}
+		if (!backup_dirs[i].group != 0)
+		{
+			has_group = true;
+		}
+	}
+
+	std::vector<std::vector<std::string> > tab;
+
+	std::vector<std::string> tab_header;
+	tab_header.push_back("PATH");
+	tab_header.push_back("NAME");
+	if (has_group)
+	{
+		tab_header.push_back("GROUP");
+	}
+	if (has_virtual_client)
+	{
+		tab_header.push_back("VIRTUAL CLIENT");
+	}
+	tab_header.push_back("FLAGS");
+
+	tab.push_back(tab_header);
+
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		std::vector<std::string> row;
+		row.push_back(backup_dirs[i].path);
+
+		if (backup_dirs[i].name.empty())
+		{
+			backup_dirs[i].name = getDefaultDirname(backup_dirs, backup_dirs[i].path);
+		}
+
+		row.push_back(backup_dirs[i].name);
+
+		if (has_group)
+		{
+			row.push_back(convert(backup_dirs[i].group));
+		}
+
+		if (has_virtual_client)
+		{
+			if (backup_dirs[i].virtual_client.empty())
+			{
+				row.push_back("-");
+			}
+			else
+			{
+				row.push_back(backup_dirs[i].virtual_client);
+			}
+		}
+
+		row.push_back(backup_dirs[i].flags);
+
+		tab.push_back(row);
+	}
+
+	display_table(tab);
+
+	return 0;
+}
+
+int action_remove_backupdir(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Remove directory from backup set", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::ValueArg<std::string> name_arg("n", "name",
+		"Backup directory name",
+		false, "", "name");
+
+	TCLAP::ValueArg<std::string> path_arg("p", "path",
+		"Backup path",
+		true, "", "path");
+
+	cmd.xorAdd(name_arg, path_arg);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+
+	if (Connector::hasError())
+	{
+		std::cerr << "Error retrieving current backup directories from backend" << std::endl;
+		return 1;
+	}
+
+	bool del_ok = false;
+
+	for (size_t i = 0; i < backup_dirs.size();)
+	{
+		if (!name_arg.getValue().empty()
+			&& backup_dirs[i].name == name_arg.getValue())
+		{
+			backup_dirs.erase(backup_dirs.begin() + i);
+			del_ok = true;
+		}
+		else if (!path_arg.getValue().empty()
+			&& backup_dirs[i].path == path_arg.getValue())
+		{
+			backup_dirs.erase(backup_dirs.begin() + i);
+			del_ok = true;
+		}
+		else
+		{
+			++i;
+		}
+	}
+
+	if (!del_ok)
+	{
+		std::cerr << "Backup directory to remove not found" << std::endl;
+		return 1;
+	}
+
+	if (!Connector::saveSharedPaths(backup_dirs))
+	{
+		std::cerr << "Error removing backup directory via backend" << std::endl;
+		return 2;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc==0)
@@ -853,6 +1283,12 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_set_settings);
 	actions.push_back("reset-keep");
 	action_funs.push_back(action_reset_keep);
+	actions.push_back("add-backupdir");
+	action_funs.push_back(action_add_backupdir);
+	actions.push_back("list-backupdirs");
+	action_funs.push_back(action_list_backupdirs);
+	actions.push_back("remove-backupdir");
+	action_funs.push_back(action_remove_backupdir);
 
 	bool has_help=false;
 	bool has_version=false;

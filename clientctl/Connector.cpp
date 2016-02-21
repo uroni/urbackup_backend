@@ -200,32 +200,85 @@ bool Connector::hasError(void)
 std::vector<SBackupDir> Connector::getSharedPaths(void)
 {
 	std::vector<SBackupDir> ret;
-	std::string d=getResponse("GET BACKUP DIRS","",false);
-	int lc=linecount(d);
-	for(int i=0;i<lc;i+=2)
+	std::string d = getResponse("GET BACKUP DIRS", "", false);
+
+	if (d.empty())
 	{
-		SBackupDir bd;
-		bd.id=atoi(getline(i, d).c_str() );
-		bd.path=getline(i+1, d);
-		ret.push_back( bd );
+		error = true;
+		return ret;
 	}
+
+	Json::Value root;
+	Json::Reader reader;
+
+	if (!reader.parse(d, root, false))
+	{
+		return ret;
+	}
+
+	try
+	{
+		Json::Value dirs = root["dirs"];
+
+		for (Json::Value::ArrayIndex i = 0; i<dirs.size(); ++i)
+		{
+			Json::Value dir = dirs[i];
+
+			std::string virtual_client = dir.get("virtual_client", std::string()).asString();
+
+			SBackupDir rdir =
+			{
+				dir["path"].asString(),
+				dir["name"].asString(),
+				dir["id"].asInt(),
+				dir["group"].asInt(),
+				virtual_client,
+				dir["flags"].asString()
+			};
+
+			ret.push_back(rdir);
+		}
+	}
+	catch (std::runtime_error&)
+	{
+	}
+
 	return ret;
+}
+
+std::string Connector::escapeParam(const std::string &name)
+{
+	std::string tmp = greplace("%", "%25", name);
+	tmp = greplace("=", "%3D", tmp);
+	tmp = greplace("&", "%26", tmp);
+	tmp = greplace("$", "%24", tmp);
+	return tmp;
 }
 
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
 	std::string args;
-	for(size_t i=0;i<res.size();++i)
+	for (size_t i = 0; i<res.size(); ++i)
 	{
-		if(i!=0)
-			args+="&";
+		if (i != 0)
+			args += "&";
 
-		args+="dir_"+convert(i)+"="+(std::string)res[i].path;
+		std::string path = escapeParam(res[i].path);
+		std::string name = escapeParam(res[i].name);
+
+		args += "dir_" + convert(i) + "=" + path;
+		args += "&dir_" + convert(i) + "_name=" + name;
+		args += "&dir_" + convert(i) + "_group=" + convert(res[i].group);
+
+		if (!res[i].virtual_client.empty())
+		{
+			args += "&dir_" + convert(i) + "_virtual_client=" + escapeParam(res[i].virtual_client);
+		}
 	}
 
-	std::string d=getResponse("SAVE BACKUP DIRS", args, false);
+	std::string d = getResponse("SAVE BACKUP DIRS", args, true);
 
-	if(d!="OK")
+	if (d != "OK")
 		return false;
 	else
 		return true;

@@ -556,9 +556,11 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,name,path,tgroup FROM backupdirs WHERE symlinked=0");
+	IQuery *q=db->Prepare("SELECT id,name,path,tgroup,optional FROM backupdirs WHERE symlinked=0");
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
+
+	IQuery* q_get_virtual_client = db->Prepare("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=?");
 
 	if(timeoutms==0)
 	{
@@ -574,7 +576,43 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			cdir.set("id", watoi(res[i]["id"]));
 			cdir.set("name", res[i]["name"]);
 			cdir.set("path", res[i]["path"]);
-			cdir.set("group", watoi(res[i]["tgroup"]));
+			int tgroup = watoi(res[i]["tgroup"]);
+			cdir.set("group", tgroup%c_group_size);
+			
+			if (tgroup >= c_group_size)
+			{
+				int offset = (tgroup / c_group_size)*c_group_size;
+				q_get_virtual_client->Bind(offset);
+				db_results res_vc = q_get_virtual_client->Read();
+				q_get_virtual_client->Reset();
+
+				if (!res_vc.empty())
+				{
+					cdir.set("virtual_client", res_vc[0]["virtual_client"]);
+				}
+			}
+
+			int flags = watoi(res[i]["optional"]);
+			
+			std::vector<std::pair<int, std::string> > flag_mapping;
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_Optional, "optional"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_FollowSymlinks, "follow_symlinks"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_SymlinksOptional, "symlinks_optional"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_OneFilesystem, "one_filesystem"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_RequireSnapshot, "require_snapshot"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_KeepFiles, "keep"));
+
+			std::string str_flags;
+			for (size_t j = 0; j < flag_mapping.size(); ++j)
+			{
+				if (flags & flag_mapping[j].first)
+				{
+					if (!str_flags.empty()) str_flags += ",";
+					str_flags += flag_mapping[j].second;
+				}
+			}
+
+			cdir.set("flags", str_flags);
 
 			dirs.add(cdir);
 		}
