@@ -586,6 +586,11 @@ function show_progress2(data)
 			{
 				data.progress[i].client_update=true;
 			}
+			
+			if(action==11 || action==12) //check database integrity, backup database
+			{
+				data.progress[i].show_details=true;
+			}
 		
 			data.progress[i].action=trans("action_"+data.progress[i].action);
 			if(data.progress[i].pcdone>=0)

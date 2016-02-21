@@ -1241,6 +1241,11 @@ bool copy_file(IFile *fsrc, IFile *fdst)
 	bool has_error=false;
 	while( (rc=(_u32)fsrc->Read(buf, 4096, &has_error))>0)
 	{
+		if(has_error)
+		{
+			break;
+		}
+		
 		if(rc>0)
 		{
 			fdst->Write(buf, (_u32)rc, &has_error);

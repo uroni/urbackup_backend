@@ -547,8 +547,10 @@ void CDatabase::DetachDBs(void)
 	}
 }
 
-bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
+bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB, IBackupProgress* progress)
 {
+	int64 page_size = watoi64(Read("PRAGMA " + pDB + ".page_size")[0]["page_size"]);
+
 	IScopedReadLock lock(NULL);
 
 	if (!in_transaction && write_lock.get()==NULL)
@@ -573,10 +575,13 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
       ** indicates that there are still further pages to copy, sleep for
       ** 250 ms before repeating. */
       do {
-        rc = sqlite3_backup_step(pBackup, -1);
+        rc = sqlite3_backup_step(pBackup, 32);
 
-		if(rc!=SQLITE_OK)
-			Server->wait(250);
+		int total = sqlite3_backup_pagecount(pBackup);
+		int remaining = sqlite3_backup_remaining(pBackup);
+		int done = total - remaining;
+		
+		progress->backupProgress(done*page_size, total*page_size);
 
       } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_LOCKED );
 
@@ -600,16 +605,16 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
   return rc==0;
 }
 
-bool CDatabase::Backup(const std::string &pFile)
+bool CDatabase::Backup(const std::string &pFile, IBackupProgress* progress)
 {
 	std::string path=ExtractFilePath(pFile);
-	bool b=backup_db(pFile, "main");
+	bool b=backup_db(pFile, "main", progress);
 	if(!b)
 		return false;
 
 	for(size_t i=0;i<attached_dbs.size();++i)
 	{
-		b=backup_db(path+"/"+ExtractFileName(attached_dbs[i].first), attached_dbs[i].second);
+		b=backup_db(path+"/"+ExtractFileName(attached_dbs[i].first), attached_dbs[i].second, progress);
 		if(!b)
 			return false;
 	}

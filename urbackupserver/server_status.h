@@ -24,7 +24,9 @@ enum SStatusAction
 	sa_cdp_sync=7,
 	sa_restore_file=8,
 	sa_restore_image=9,
-	sa_update=10
+	sa_update=10,
+	sa_check_integrity=11,
+	sa_backup_database=12
 };
 
 enum SStatusError
@@ -168,6 +170,9 @@ public:
 
 	static void setProcessDoneBytes(const std::string &clientname, size_t id,
 		int64 done_bytes);
+
+	static void setProcessDoneBytes(const std::string &clientname, size_t id,
+		int64 done_bytes, int64 total_bytes);
 
 	static void setProcessDetails(const std::string &clientname, size_t id,
 		std::string details, int detail_pc);

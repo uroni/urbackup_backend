@@ -56,7 +56,7 @@ public:
 	virtual void DetachDBs(void);
 	virtual void AttachDBs(void);
 
-	virtual bool Backup(const std::string &pFile);
+	virtual bool Backup(const std::string &pFile, IBackupProgress* progress);
 
 	virtual void freeMemory();
 
@@ -73,7 +73,7 @@ private:
 
 	DATABASE_ID database_id;
 	
-	bool backup_db(const std::string &pFile, const std::string &pDB);
+	bool backup_db(const std::string &pFile, const std::string &pDB, IBackupProgress* progress);
 
 	sqlite3 *db;
 	bool in_transaction;

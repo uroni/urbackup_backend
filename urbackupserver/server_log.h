@@ -35,6 +35,8 @@ struct SCircularData
 	size_t id;
 };
 
+const int LOG_CATEGORY_CLEANUP = -4;
+
 class ServerLogger
 {
 public:

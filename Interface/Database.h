@@ -32,7 +32,13 @@ public:
 	virtual void DetachDBs(void)=0;
 	virtual void AttachDBs(void)=0;
 
-	virtual bool Backup(const std::string &pFile)=0;
+	class IBackupProgress
+	{
+	public:
+		virtual void backupProgress(int64 pos, int64 total) = 0;
+	};
+
+	virtual bool Backup(const std::string &pFile, IBackupProgress* progress)=0;
 
 	virtual void freeMemory()=0;
 

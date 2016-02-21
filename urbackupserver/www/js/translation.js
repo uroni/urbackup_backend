@@ -797,6 +797,8 @@ translations.en = {
 "action_8": "File restore",
 "action_9": "Image restore",
 "action_10": "Client update",
+"action_11": "Checking database integrity",
+"action_12": "Backing up database",
 "action_1": "Incremental file backup",
 "action_2": "Full file backup",
 "action_3": "Incremental image backup",
