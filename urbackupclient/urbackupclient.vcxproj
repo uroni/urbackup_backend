@@ -440,7 +440,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -452,7 +452,7 @@
     <Link>
       <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_xp.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -467,7 +467,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -479,7 +479,7 @@
     <Link>
       <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_xp.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -491,7 +491,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -503,7 +503,7 @@
     <Link>
       <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_server03.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -518,7 +518,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;CLIENT_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -530,7 +530,7 @@
     <Link>
       <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_server03.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
