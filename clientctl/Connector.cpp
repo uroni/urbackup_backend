@@ -197,6 +197,11 @@ bool Connector::hasError(void)
 	return error;
 }
 
+std::string Connector::getSharedPathsRaw()
+{
+	return getResponse("GET BACKUP DIRS", "", false);
+}
+
 std::vector<SBackupDir> Connector::getSharedPaths(void)
 {
 	std::vector<SBackupDir> ret;

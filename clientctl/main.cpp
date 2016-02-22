@@ -74,8 +74,8 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " status" << std::endl;
 	std::cout << "\t\t" "Get current backup status" << std::endl;
 	std::cout << std::endl;
-	std::cout << "\t" << cmd << " list" << std::endl;
-	std::cout << "\t\t" "List backups and files/folders in backups" << std::endl;
+	std::cout << "\t" << cmd << " browse" << std::endl;
+	std::cout << "\t\t" "Browse backups and files/folders in backups" << std::endl;
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " restore-start" << std::endl;
 	std::cout << "\t\t" "Restore files/folders from backup" << std::endl;
@@ -555,18 +555,18 @@ int action_status(std::vector<std::string> args)
 	}	
 }
 
-int action_list(std::vector<std::string> args)
+int action_browse(std::vector<std::string> args)
 {
-	TCLAP::CmdLine cmd("List backups and files/folders in backups", ' ', cmdline_version);
+	TCLAP::CmdLine cmd("Browse backups and files/folders in backups", ' ', cmdline_version);
 
 	PwClientCmd pw_client_cmd(cmd, false);
 
 	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
-		"Backupid of backup from which to list files/folders",
+		"Backupid of backup in which to browse files/folders",
 		false, 0, "id", cmd);
 
 	TCLAP::ValueArg<std::string> path_arg("d", "path",
-		"Path of folder/file of which to list backups/contents",
+		"Path of folder/file to which to browse",
 		false, "", "path", cmd);
 
 	cmd.parse(args);
@@ -1060,7 +1060,7 @@ void display_table(const std::vector<std::vector<std::string> >& rows)
 	{
 		for (size_t j = 0; j < rows.size(); ++j)
 		{
-			max_size[j] = (std::max)(rows[j][i].size(), max_size[j]);
+			max_size[i] = (std::max)(rows[j][i].size(), max_size[i]);
 		}
 	}
 
@@ -1099,11 +1099,27 @@ int action_list_backupdirs(std::vector<std::string> args)
 		"Display only for virtual with name",
 		false, "", "client name", cmd);
 
+	TCLAP::SwitchArg raw_arg("r", "raw",
+		"Return raw JSON output", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
 	{
 		return 3;
+	}
+
+	if (raw_arg.getValue())
+	{
+		std::string ret = Connector::getSharedPathsRaw();
+		if (ret.empty())
+		{
+			std::cerr << "Error retrieving current backup directories from backend" << std::endl;
+			return 1;
+		}
+		std::cout << ret;
+		std::cout.flush();
+		return 0;
 	}
 
 	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
@@ -1275,8 +1291,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_start);
 	actions.push_back("status");
 	action_funs.push_back(action_status);
-	actions.push_back("list");
-	action_funs.push_back(action_list);
+	actions.push_back("browse");
+	action_funs.push_back(action_browse);
 	actions.push_back("restore-start");
 	action_funs.push_back(action_start_restore);
 	actions.push_back("set-settings");

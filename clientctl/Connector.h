@@ -149,6 +149,7 @@ class Connector
 {
 public:
 	static std::vector<SBackupDir> getSharedPaths(void);
+	static std::string getSharedPathsRaw();
 	static bool saveSharedPaths(const std::vector<SBackupDir> &res);
 	static SStatus getStatus(void);
 	static int startBackup(bool full);
