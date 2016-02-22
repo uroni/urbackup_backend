@@ -78,9 +78,9 @@ public:
 
 	static bool isUpdateingStats();
 
-	static bool disableUpdateStats();
+	static void disableUpdateStats();
 
-	static bool enableUpdateStats();
+	static void enableUpdateStats();
 
 	static void initMutex(void);
 	static void destroyMutex(void);

@@ -290,13 +290,13 @@ bool ServerCleanupThread::isUpdateingStats()
 	return update_stats;
 }
 
-bool ServerCleanupThread::disableUpdateStats()
+void ServerCleanupThread::disableUpdateStats()
 {
 	IScopedLock lock(mutex);
 	update_stats_disabled = true;
 }
 
-bool ServerCleanupThread::enableUpdateStats()
+void ServerCleanupThread::enableUpdateStats()
 {
 	IScopedLock lock(mutex);
 	update_stats_disabled = false;
