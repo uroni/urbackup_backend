@@ -28,7 +28,7 @@ SparseFile::SparseFile(IFsFile * backing_file, IFile * sparse_extends_f, bool re
 	}
 
 	std::vector<IFsFile::SSparseExtent> sparse_extents;
-	sparse_extents.resize(n_extents);
+	sparse_extents.resize(static_cast<size_t>(n_extents));
 
 	if (sparse_extends_f->Read(reinterpret_cast<char*>(sparse_extents.data()), static_cast<_u32>(sparse_extents.size()*sizeof(IFsFile::SSparseExtent)))
 		!= static_cast<_u32>(sparse_extents.size()*sizeof(IFsFile::SSparseExtent)))

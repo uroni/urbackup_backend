@@ -460,7 +460,7 @@ void ChunkPatcher::finishChunkPatcher(int64 pos)
 	int64 sparse_buf_used = pos%sparse_blocksize;
 	if (sparse_buf_used > 0 && !last_unchanged)
 	{
-		cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_buf_used, curr_changed);
+		cb->next_chunk_patcher_bytes(sparse_buf.data(), static_cast<size_t>(sparse_buf_used), curr_changed);
 	}
 }
 
