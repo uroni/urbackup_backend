@@ -619,7 +619,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 		ret.set("dirs", dirs);
 
-        tcpstack.Send(pipe, ret.stringify(true));
+        tcpstack.Send(pipe, ret.stringify(false));
 	}
 	else
 	{
