@@ -939,7 +939,7 @@ int action_add_backupdir(std::vector<std::string> args)
 		"Fail backup if snapshot of backup path cannot be created",
 		cmd);
 
-	TCLAP::SwitchArg separate_hashes_arg("h", "separate-hashes",
+	TCLAP::SwitchArg separate_hashes_arg("a", "separate-hashes",
 		"Do not share local hashes with other virtual clients",
 		cmd);
 
