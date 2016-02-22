@@ -911,7 +911,7 @@ int action_add_backupdir(std::vector<std::string> args)
 		"Backup directory name",
 		false, "", "name", cmd);
 
-	TCLAP::ValueArg<std::string> path_arg("p", "path",
+	TCLAP::ValueArg<std::string> path_arg("d", "path",
 		"Backup path",
 		true, "", "path", cmd);
 
@@ -1217,7 +1217,7 @@ int action_remove_backupdir(std::vector<std::string> args)
 		"Backup directory name",
 		false, "", "name");
 
-	TCLAP::ValueArg<std::string> path_arg("p", "path",
+	TCLAP::ValueArg<std::string> path_arg("d", "path",
 		"Backup path",
 		true, "", "path");
 
