@@ -235,7 +235,7 @@
       <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
