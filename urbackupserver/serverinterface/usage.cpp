@@ -24,9 +24,19 @@
 #include "../create_files_index.h"
 #include "../dao/ServerFilesDao.h"
 #include "../database.h"
+#include "../server_status.h"
 
 namespace 
 {
+	class ScopedEnableStats
+	{
+	public:
+		~ScopedEnableStats()
+		{
+			ServerCleanupThread::enableUpdateStats();
+		}
+	};
+
 	class RecalculateStatistics : public IThread
 	{
 	public:
@@ -36,6 +46,18 @@ namespace
 
 		void operator()(void)
 		{
+			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+			ScopedProcess statistics_recalc(std::string(), sa_recalculate_statistics, std::string(), logid, false);
+
+			ServerCleanupThread::disableUpdateStats();
+			ScopedEnableStats reenable_stats_update;
+
+			while (ServerCleanupThread::isUpdateingStats())
+			{
+				ServerLogger::Log(logid, "Waiting for statistics update to finish...");
+				Server->wait(10000);
+			}
+
 			IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 			ServerFilesDao filesdao(files_db);
 			
@@ -43,6 +65,8 @@ namespace
 
 			fileindex->start_transaction();
 			fileindex->start_iteration();
+
+			int64 n_done = 0;
 
 			std::map<int, int64> client_sizes;
 			std::map<int, int64> entries;
@@ -66,6 +90,13 @@ namespace
 							client_sizes[it->first]+=size_per_client;
 						}
 					}
+
+					++n_done;
+
+					if (n_done % 1000 == 0)
+					{
+						ServerLogger::Log(logid, convert(n_done)+" entries processed");
+					}
 				}
 
 			} while (has_next);
@@ -73,6 +104,7 @@ namespace
 			fileindex->stop_iteration();
 			fileindex->commit_transaction();
 
+			ServerLogger::Log(logid, convert(n_done) + " entries processed. Resetting and updating statistics.");
 
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -89,6 +121,8 @@ namespace
 			}
 
 			db->EndTransaction();
+
+			ServerLogger::Log(logid, "Statistics recalculation done");
 
 			ServerCleanupThread::updateStats(false);
 			delete this;

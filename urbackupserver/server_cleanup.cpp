@@ -50,6 +50,7 @@ bool ServerCleanupThread::update_stats=false;
 IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
 volatile bool ServerCleanupThread::do_quit=false;
+bool ServerCleanupThread::update_stats_disabled = false;
 
 void cleanupLastActs();
 
@@ -193,19 +194,23 @@ void ServerCleanupThread::operator()(void)
 			}
 			if(update_stats)
 			{
-				update_stats=false;
-				lock.relock(NULL);
-				Server->Log("Updating statistics...", LL_INFO);
-
-				ScopedActiveThread sat;
-
+				if (!update_stats_disabled)
 				{
-					IScopedLock lock(a_mutex);
-					ServerUpdateStats sus(false, update_stats_interruptible);
-					sus();					
+					lock.relock(NULL);
+					Server->Log("Updating statistics...", LL_INFO);
+
+					ScopedActiveThread sat;
+
+					{
+						IScopedLock lock(a_mutex);
+						ServerUpdateStats sus(false, update_stats_interruptible);
+						sus();
+					}
+
+					Server->Log("Done updating statistics.", LL_INFO);
 				}
 
-				Server->Log("Done updating statistics.", LL_INFO);
+				update_stats = false;
 			}
 		}
 		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -277,6 +282,24 @@ void ServerCleanupThread::updateStats(bool interruptible)
 	update_stats=true;
 	update_stats_interruptible=interruptible;
 	cond->notify_all();
+}
+
+bool ServerCleanupThread::isUpdateingStats()
+{
+	IScopedLock lock(mutex);
+	return update_stats;
+}
+
+bool ServerCleanupThread::disableUpdateStats()
+{
+	IScopedLock lock(mutex);
+	update_stats_disabled = true;
+}
+
+bool ServerCleanupThread::enableUpdateStats()
+{
+	IScopedLock lock(mutex);
+	update_stats_disabled = false;
 }
 
 void ServerCleanupThread::do_cleanup(void)

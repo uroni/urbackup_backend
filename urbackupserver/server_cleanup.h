@@ -75,6 +75,13 @@ public:
 	static void removeUnknown(void);
 
 	static void updateStats(bool interruptible);
+
+	static bool isUpdateingStats();
+
+	static bool disableUpdateStats();
+
+	static bool enableUpdateStats();
+
 	static void initMutex(void);
 	static void destroyMutex(void);
 
@@ -156,6 +163,7 @@ private:
 
 	static bool update_stats;
 	static bool update_stats_interruptible;
+	static bool update_stats_disabled;
 	
 	std::vector<int> removeerr;
 
