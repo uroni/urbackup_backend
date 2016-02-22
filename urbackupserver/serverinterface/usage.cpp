@@ -37,7 +37,7 @@ namespace
 		void operator()(void)
 		{
 			IDatabase* files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
-			ServerFilesDao filesdao(db);
+			ServerFilesDao filesdao(files_db);
 			
 			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
@@ -57,7 +57,7 @@ namespace
 
 					if(fentry.exists)
 					{
-						int64 size_per_client = (fentry.rsize>0 && fentry.rsize!=fentry.filesize)?fentry.rsize:fentry.filesize;
+						int64 size_per_client = fentry.filesize;
 						size_per_client/=entries.size();
 
 
@@ -93,8 +93,6 @@ namespace
 			ServerCleanupThread::updateStats(false);
 			delete this;
 		}
-	private:
-		IDatabase *db;
 	};
 }
 
