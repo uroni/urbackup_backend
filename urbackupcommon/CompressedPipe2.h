@@ -4,9 +4,7 @@
 #include "../Interface/Types.h"
 #include <vector>
 #include <memory>
-#define MINIZ_HEADER_FILE_ONLY
-#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.c"
+#include <zlib.h>
 
 class IMutex;
 
@@ -77,8 +75,8 @@ private:
 	bool destroy_cs;
 	bool has_error;
 	
-	mz_stream inf_stream;
-	mz_stream def_stream;
+	z_stream inf_stream;
+	z_stream def_stream;
 
 	std::auto_ptr<IMutex> read_mutex;
 	std::auto_ptr<IMutex> write_mutex;

@@ -42,14 +42,14 @@ CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 	input_buffer.resize(16384);
 	destroy_cs=false;
 
-	memset(&inf_stream, 0, sizeof(mz_stream));
-	memset(&def_stream, 0, sizeof(mz_stream));
+	memset(&inf_stream, 0, sizeof(z_stream));
+	memset(&def_stream, 0, sizeof(z_stream));
 
-	if(mz_deflateInit(&def_stream, compression_level)!=MZ_OK)
+	if(deflateInit(&def_stream, compression_level)!=Z_OK)
 	{
 		throw std::runtime_error("Error initializing compression stream");
 	}
-	if(mz_inflateInit(&inf_stream)!=MZ_OK)
+	if(inflateInit(&inf_stream)!=Z_OK)
 	{
 		throw std::runtime_error("Error initializing decompression stream");
 	}
@@ -57,8 +57,8 @@ CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 
 CompressedPipe2::~CompressedPipe2(void)
 {
-	mz_deflateEnd(&def_stream);
-	mz_inflateEnd(&inf_stream);
+	deflateEnd(&def_stream);
+	inflateEnd(&inf_stream);
 
 	if(destroy_cs)
 	{
@@ -146,8 +146,8 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 		set_out=true;
 
-		Server->Log("mz_inflate(1) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
-		int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
+		Server->Log("inflate(1) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
+		int rc = inflate(&inf_stream, Z_SYNC_FLUSH);
 
 		assert(bsize >= inf_stream.avail_out);
 		size_t used = bsize - inf_stream.avail_out;
@@ -155,7 +155,7 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 
 		Server->Log("rc=" + convert(rc) + " used=" + convert(used) + " avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
 
-		if(rc!=MZ_OK && rc!=MZ_STREAM_END && rc!=MZ_BUF_ERROR /*Needs more input*/)
+		if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR /*Needs more input*/)
 		{
 			Server->Log("Error decompressing stream(1): "+convert(rc));
 			has_error=true;
@@ -175,7 +175,7 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 	}
 
 	inf_stream.avail_in = static_cast<unsigned int>(input_buffer_size);
-	inf_stream.next_in = reinterpret_cast<const unsigned char*>(input_buffer.data());
+	inf_stream.next_in = reinterpret_cast<Bytef*>(input_buffer.data());
 	
 	if(!set_out)
 	{
@@ -183,14 +183,14 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 	}	
 
-	Server->Log("mz_inflate(2) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
-	int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
+	Server->Log("inflate(2) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
+	int rc = inflate(&inf_stream, Z_SYNC_FLUSH);
 
 	size_t used = bsize - inf_stream.avail_out;
 	Server->Log("rc=" + convert(rc) + " used=" + convert(used)+" avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
 	uncompressed_received_bytes+=used;
 
-	if(rc!=MZ_OK && rc!=MZ_STREAM_END)
+	if(rc!=Z_OK && rc!=Z_STREAM_END && rc != Z_BUF_ERROR /*Needs more input*/)
 	{
 		Server->Log("Error decompressing stream(2): "+convert(rc));
 		has_error=true;
@@ -244,7 +244,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 	IScopedLock lock(write_mutex.get());
 
 	assert(buffer != NULL || bsize == 0);
-	const char *ptr=buffer;
+	const char* ptr=buffer;
 	size_t cbsize=bsize;
 	int64 starttime = Server->getTimeMS();
 	do
@@ -264,17 +264,17 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 		
 		def_stream.avail_in = static_cast<unsigned int>(cbsize);
-		def_stream.next_in = reinterpret_cast<const unsigned char*>(ptr);
+		def_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(ptr));
 
 		do 
 		{
 			def_stream.avail_out = static_cast<unsigned int>(comp_buffer.size());
 			def_stream.next_out = reinterpret_cast<unsigned char*>(comp_buffer.data());
 
-			Server->Log("mz_deflate avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out)+" flush="+convert(curr_flush), LL_DEBUG);
-			int rc = mz_deflate(&def_stream, curr_flush ? MZ_PARTIAL_FLUSH : MZ_NO_FLUSH);
+			Server->Log("deflate avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out)+" flush="+convert(curr_flush), LL_DEBUG);
+			int rc = deflate(&def_stream, curr_flush ? Z_SYNC_FLUSH : Z_NO_FLUSH);
 
-			if(rc!=MZ_OK && rc!=MZ_STREAM_END)
+			if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR)
 			{
 				Server->Log("Error compressing stream: "+convert(rc));
 				has_error=true;

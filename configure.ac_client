@@ -86,6 +86,7 @@ AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
 AM_CONDITIONAL([MACOSX], test x"$opsys" = x"osx")
 
 AX_LIB_SOCKET_NSL
+AX_CHECK_ZLIB
 
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
