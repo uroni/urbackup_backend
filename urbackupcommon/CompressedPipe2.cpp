@@ -117,6 +117,10 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 	do
 	{
 		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);
+		if (left < 0)
+		{
+			break;
+		}
 
 		rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, left);
 		if(rc==0)
@@ -142,11 +146,14 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 		set_out=true;
 
+		Server->Log("mz_inflate(1) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
 		int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
 
 		assert(bsize >= inf_stream.avail_out);
 		size_t used = bsize - inf_stream.avail_out;
 		uncompressed_received_bytes+=used;
+
+		Server->Log("rc=" + convert(rc) + " used=" + convert(used) + " avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
 
 		if(rc!=MZ_OK && rc!=MZ_STREAM_END && rc!=MZ_BUF_ERROR /*Needs more input*/)
 		{
@@ -176,9 +183,11 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 	}	
 
+	Server->Log("mz_inflate(2) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
 	int rc = mz_inflate(&inf_stream, MZ_PARTIAL_FLUSH);
 
 	size_t used = bsize - inf_stream.avail_out;
+	Server->Log("rc=" + convert(rc) + " used=" + convert(used)+" avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
 	uncompressed_received_bytes+=used;
 
 	if(rc!=MZ_OK && rc!=MZ_STREAM_END)
@@ -262,6 +271,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 			def_stream.avail_out = static_cast<unsigned int>(comp_buffer.size());
 			def_stream.next_out = reinterpret_cast<unsigned char*>(comp_buffer.data());
 
+			Server->Log("mz_deflate avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out)+" flush="+convert(curr_flush), LL_DEBUG);
 			int rc = mz_deflate(&def_stream, curr_flush ? MZ_PARTIAL_FLUSH : MZ_NO_FLUSH);
 
 			if(rc!=MZ_OK && rc!=MZ_STREAM_END)
@@ -274,6 +284,8 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 			assert(comp_buffer.size() >= def_stream.avail_out);
 
 			size_t used = comp_buffer.size() - def_stream.avail_out;
+
+			Server->Log("rc="+convert(rc)+" used="+convert(used)+" avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out), LL_DEBUG);
 
 			int curr_timeout = timeoutms;
 
