@@ -36,7 +36,7 @@ cp -R install-data/* install-data-dbg/
 for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
 do
 	echo "Compiling for architecture $arch..."
-    ./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc
+    ./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os -DSQLITE_LOCK_TRACE" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc
     make clean
     make -j4
     rm -R install-data/$arch || true
