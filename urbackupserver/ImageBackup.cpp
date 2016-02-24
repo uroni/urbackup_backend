@@ -89,12 +89,19 @@ namespace
 				ServerLogger::Log(logid, "Reading from file failed", LL_ERROR);
 				return ESendErr_Read;
 			}
-			if(!outputpipe->Write(send_buffer, tsend))
+			if(!outputpipe->Write(send_buffer, tsend, 120000, false))
 			{
 				ServerLogger::Log(logid, "Sending file data failed", LL_DEBUG);
 				return ESendErr_Send;
 			}
 		}
+		
+		if (!outputpipe->Flush(120000))
+		{
+			ServerLogger::Log(logid, "Flushing file data failed", LL_DEBUG);
+			return ESendErr_Send;
+		}
+
 		return ESendErr_Ok;
 	}
 }

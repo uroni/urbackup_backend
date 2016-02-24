@@ -1325,6 +1325,8 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 					Server->Log("Too much hashdata - error in CMD_INCR_IMAGE", LL_ERROR);
 				}
 
+				tcpstack.reset();
+
 				if(hashdataleft==0)
 				{
 					hashdataok=true;
