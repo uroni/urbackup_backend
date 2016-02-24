@@ -242,16 +242,16 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			break;
 		}
 
-		cond->wait(&lock, timems);
-
-		if(timems>=0)
+		if (timems >= 0)
 		{
 			int64 ctime = Server->getTimeMS();
-			if(ctime-starttime>timems)
+			if (ctime - starttime>=timems)
 			{
 				break;
 			}
 		}
+
+		cond->wait(&lock, timems);
 	}
 
 	for( size_t i=0;i<tickets.size();++i)
