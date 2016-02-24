@@ -1,19 +1,16 @@
 # UrBackup translation
-# Copyright (C) 2011-2014 See translators
-# This file is distributed under the same license as the UrBackup package.
+# Copyright (C) 2011-2015 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
+# 
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
+# Adam Karlsson <adam.karlsson@gmail.com>, 2015
+# Jonas Aaslund <gnindit@gmail.com>, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
-"Language-Team: Swedish (http://www.transifex.com/projects/p/urbackup/language/sv/)\n"
+"PO-Revision-Date: 2016-02-12 15:36+0000\n"
+"Last-Translator: Jonas Aaslund <gnindit@gmail.com>\n"
+"Language-Team: Swedish (http://www.transifex.com/uroni/urbackup/language/sv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -21,1180 +18,1180 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "action_1"
-msgstr ""
+msgstr "Inkrementell filbackup"
 
 msgid "action_2"
-msgstr ""
+msgstr "Komplett filbackup"
 
 msgid "action_3"
-msgstr ""
+msgstr "Inkrementell diskbackup"
 
 msgid "action_4"
-msgstr ""
+msgstr "Komplett diskbackup"
 
 msgid "action_1_d"
-msgstr ""
+msgstr "Raderar inkrementell filbackup"
 
 msgid "action_2_d"
-msgstr ""
+msgstr "Raderar komplett filbackup"
 
 msgid "action_3_d"
-msgstr ""
+msgstr "Raderar inkrementell diskbackup"
 
 msgid "action_4_d"
-msgstr ""
+msgstr "Raderar komplett diskbackup"
 
 msgid "nav_item_6"
-msgstr ""
+msgstr "Status"
 
 msgid "nav_item_5"
-msgstr ""
+msgstr "Aktiviteter"
 
 msgid "nav_item_4"
-msgstr ""
+msgstr "Backuper"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "Loggar"
 
 msgid "nav_item_2"
-msgstr ""
+msgstr "Statistik"
 
 msgid "nav_item_1"
-msgstr ""
+msgstr "Inställningar"
 
 msgid "unknown"
-msgstr ""
+msgstr "Okänd"
 
 msgid "overview"
-msgstr ""
+msgstr "Översikt"
 
 msgid "ok"
-msgstr ""
+msgstr "Ok"
 
 msgid "no_recent_backup"
-msgstr ""
+msgstr "Ingen nuvarande backup"
 
 msgid "backup_never"
-msgstr ""
+msgstr "Aldrig"
 
 msgid "yes"
-msgstr ""
+msgstr "Ja"
 
 msgid "no"
-msgstr ""
+msgstr "Nej"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "Backupstatus"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "Datornamn"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "Sågs sist"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "Senaste filbackupen"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "Senaste diskbackupen"
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "Filbackup status"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "Diskbackup status"
 
 msgid "tShow details"
-msgstr ""
+msgstr "Visa detaljer"
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "Extra klienter"
 
 msgid "tNo extra clients"
-msgstr ""
+msgstr "Inga extra klienter"
 
 msgid "tActions"
-msgstr ""
+msgstr "Handlingar"
 
 msgid "tOnline"
-msgstr ""
+msgstr "Online"
 
 msgid "tHostname/IP"
-msgstr ""
+msgstr "Hostnamn/IP"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "Server identitet"
 
 msgid "users"
-msgstr ""
+msgstr "Användare"
 
 msgid "general_settings"
-msgstr ""
+msgstr "Generell"
 
 msgid "admin"
-msgstr ""
+msgstr "Administratör"
 
 msgid "user"
-msgstr ""
+msgstr "Användare"
 
 msgid "username_empty"
-msgstr ""
+msgstr "Var vänlig fyll i ett användarnamn"
 
 msgid "password_empty"
-msgstr ""
+msgstr "Var vänlig fyll i ett lösenord"
 
 msgid "password_differ"
-msgstr ""
+msgstr "Lösenorden skiljer sig"
 
 msgid "user_n_exist"
-msgstr ""
+msgstr "Användaren finns ej"
 
 msgid "password_wrong"
-msgstr ""
+msgstr "Fel lösenord"
 
 msgid "user_exists"
-msgstr ""
+msgstr "Användare med detta namn finns redan"
 
 msgid "session_timeout"
-msgstr ""
+msgstr "Sessionen avbröts pga inaktivitet. Logga in på nytt för att fortsätta."
 
 msgid "really_del_user"
-msgstr ""
+msgstr "Vill du verkligen ta bort denna användare?"
 
 msgid "user_add_done"
-msgstr ""
+msgstr "Ny användare lades till korrekt."
 
 msgid "user_remove_done"
-msgstr ""
+msgstr "Användaren togs bort korrekt"
 
 msgid "user_update_right_done"
-msgstr ""
+msgstr "Användarrättigheter har ändrats."
 
 msgid "user_pw_change_ok"
-msgstr ""
+msgstr "Lösenord för användaren har ändrats."
 
 msgid "right_all"
-msgstr ""
+msgstr "Fulla rättigheter"
 
 msgid "right_none"
-msgstr ""
+msgstr "Inga rättigheter"
 
 msgid "filter"
-msgstr ""
+msgstr "Filter"
 
 msgid "all"
-msgstr ""
+msgstr "Alla"
 
 msgid "loglevel_0"
-msgstr ""
+msgstr "Info"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "Varningar"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "Fel"
 
 msgid "dir_error_text"
-msgstr ""
+msgstr "Sökvägen som UrBackup vill spara backuper i är ej tillgänglig. Ändra sökväg i Inställningar eller genom att ge UrBackup rättigheter till denna sökväg."
 
 msgid "tmpdir_error_text"
-msgstr ""
+msgstr "Mappen där UrBackup vill spara temporära filer är inte tillgänlig. Ändra sökväg i inställningar eller ge UrBackup rättigheter till mappen."
 
 msgid "starting"
-msgstr ""
+msgstr "Startar"
 
 msgid "ident_err"
-msgstr ""
+msgstr "Servern avvisade"
 
 msgid "enter_hostname"
-msgstr ""
+msgstr "Vänligen fyll i ett hostnamn eller en IP adress"
 
 msgid "clients"
-msgstr ""
+msgstr "Klienter"
 
 msgid "validate_text_empty"
-msgstr ""
+msgstr "Vänligen fyll i ett värde för {name}"
 
 msgid "validate_text_notint"
-msgstr ""
+msgstr "Vänligen fyll i ett numeriskt värde för {name}"
 
 msgid "validate_name_update_freq_incr"
-msgstr ""
+msgstr "intervall för inkrementella filbackuper"
 
 msgid "validate_name_update_freq_full"
-msgstr ""
+msgstr "intervall för kompletta filbackuper"
 
 msgid "validate_name_update_freq_image_full"
-msgstr ""
+msgstr "intervall för inkrementella filbackuper"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr ""
+msgstr "intervall för kompletta diskbackuper"
 
 msgid "validate_name_max_file_incr"
-msgstr ""
+msgstr "högsta antal inkrementella filbackuper"
 
 msgid "validate_name_min_file_incr"
-msgstr ""
+msgstr "minsta antal inkrementella filbackuper"
 
 msgid "validate_name_max_file_full"
-msgstr ""
+msgstr "högsta antal kompletta filbackuper"
 
 msgid "validate_name_min_file_full"
-msgstr ""
+msgstr "minsta antal kompletta filbackuper"
 
 msgid "validate_name_min_image_incr"
-msgstr ""
+msgstr "minsta antal inkrementella diskbackuper"
 
 msgid "validate_name_max_image_incr"
-msgstr ""
+msgstr "högsta antal inkrementella diskbackuper"
 
 msgid "validate_name_min_image_full"
-msgstr ""
+msgstr "minsta antal kompletta diskbackuper"
 
 msgid "validate_name_max_image_full"
-msgstr ""
+msgstr "högsta antal kompletta diskbackuper"
 
 msgid "validate_name_startup_backup_delay"
-msgstr ""
+msgstr "fördröj start vid uppstart"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr ""
+msgstr "Formatet för backuptiden är fel"
 
 msgid "validate_name_max_active_clients"
-msgstr ""
+msgstr "max antal nyligen aktiva klienter"
 
 msgid "validate_name_max_sim_backups"
-msgstr ""
+msgstr "max antal samtidiga backuper"
 
 msgid "validate_name_backupfolder"
-msgstr ""
+msgstr "sökväg backup"
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "Datornamn"
 
 msgid "too_many_clients_err"
-msgstr ""
+msgstr "För många klienter"
 
 msgid "really_remove_client"
-msgstr ""
+msgstr "Är du säker på att du vill radera denna klient? Det betyder att klientens alla filer och diskbackuper kommer att radera!"
 
 msgid "computername"
-msgstr ""
+msgstr "Datornamn"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "Lagringsanvändande"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "Datornamn"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "Lagringsanvändande"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Lagringsanvändande"
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "Datum"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
+msgstr "Lagringsanvändande"
 
 msgid "tImages"
-msgstr ""
+msgstr "Avbildningar"
 
 msgid "tFiles"
-msgstr ""
+msgstr "Filer"
 
 msgid "tSum"
-msgstr ""
+msgstr "Summa"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
+msgstr "Format för upprensningstiden är fel"
 
 msgid "mail_settings"
-msgstr ""
+msgstr "Mejl"
 
 msgid "upgrade_error_text"
-msgstr ""
+msgstr "UrBackup håller på att uppdatera sin interna databas. Det kan ta en stund. Under tiden går det inte att komma åt servern och inte heller kommer den att göra några backupper."
 
 msgid "tActivities"
-msgstr ""
+msgstr "Aktiviteter"
 
 msgid "tAction"
-msgstr ""
+msgstr "Handling"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Framsteg"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "Filer i kö"
 
 msgid "tLast activities"
-msgstr ""
+msgstr "Senaste aktivitet"
 
 msgid "tStarting time"
-msgstr ""
+msgstr "Starttid "
 
 msgid "tRequired time"
-msgstr ""
+msgstr "Nödvändig tid"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "Använt lagringsutrymme"
 
 msgid "tClients"
-msgstr ""
+msgstr "Klienter"
 
 msgid "tLogs"
-msgstr ""
+msgstr "Loggfiler"
 
 msgid "tReports"
-msgstr ""
+msgstr "Rapporter"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "Skicka rapporter till"
 
 msgid "tSend"
-msgstr ""
+msgstr "Skicka"
 
 msgid "tBackups with a log message of at least log level"
-msgstr ""
+msgstr "Backuper med logmeddelande med minst log nivå"
 
 msgid "tBackup time"
-msgstr ""
+msgstr "Backuptid"
 
 msgid "tErrors"
-msgstr ""
+msgstr "Fel"
 
 msgid "tWarnings"
-msgstr ""
+msgstr "Varningar"
 
 msgid "tStorage allocation"
-msgstr ""
+msgstr "Tilldelat uterymme"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "Lagringsanvändande"
 
 msgid "tAll"
-msgstr ""
+msgstr "Alla"
 
 msgid "tBackup storage path"
-msgstr ""
+msgstr "Sökväg för backup"
 
 msgid "tDo not do image backups"
-msgstr ""
+msgstr "Skapa inga diskbackuper"
 
 msgid "tDo not do file backups"
-msgstr ""
+msgstr "Skapa inga filbackuper"
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "Stäng automatiskt av servern"
 
 msgid "tAutoupdate clients"
-msgstr ""
+msgstr "Uppdatera automatiskt klienter"
 
 msgid "tMax number of simultaneous backups"
-msgstr ""
+msgstr "Högsta antal samtidiga backuper"
 
 msgid "tMax number of recently active clients"
-msgstr ""
+msgstr "Max antal nyligen aktiva klienter"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "Rensningstid"
 
 msgid "tAutomatically backup UrBackup database"
-msgstr ""
+msgstr "Automatisk backup av UrBackup databas"
 
 msgid "tInterval for incremental file backups"
-msgstr ""
+msgstr "Intervall för inkrementella filbackuper"
 
 msgid "tInterval for full file backups"
-msgstr ""
+msgstr "Intervall för kompletta filbackuper"
 
 msgid "tInterval for incremental image backups"
-msgstr ""
+msgstr "Intervall för inkrementella diskbackuper"
 
 msgid "tInterval for full image backups"
-msgstr ""
+msgstr "Intervall för kompletta diskbackuper"
 
 msgid "tMaximal number of incremental file backups"
-msgstr ""
+msgstr "Högsta antal inkrementella filbackuper"
 
 msgid "tMinimal number of incremental file backups"
-msgstr ""
+msgstr "Minsta antal inkrementella filbackuper"
 
 msgid "tMaximal number of full file backups"
-msgstr ""
+msgstr "Högsta antal kompletta filbackuper"
 
 msgid "tMinimal number of full file backups"
-msgstr ""
+msgstr "Minsta antal kompletta filbackuper"
 
 msgid "tMaximal number of incremental image backups"
-msgstr ""
+msgstr "Högsta antal inkrementella diskbackuper"
 
 msgid "tMinimal number of incremental image backups"
-msgstr ""
+msgstr "Minsta antal inkrementella diskbackuper"
 
 msgid "tMaximal number of full image backups"
-msgstr ""
+msgstr "Högsta antal kompletta diskbackuper"
 
 msgid "tMinimal number of full image backups"
-msgstr ""
+msgstr "Minsta antal kompletta diskbackuper"
 
 msgid "tDelay after system startup"
-msgstr ""
+msgstr "Fördröjd start"
 
 msgid "tBackup window"
-msgstr ""
+msgstr "Backuptidpunkt"
 
 msgid "tExcluded files (with wildcards)"
-msgstr ""
+msgstr "Exkluderade filer (med jokertecken)"
 
 msgid "tIncluded files (with wildcards)"
-msgstr ""
+msgstr "Inkluderade filer (med jokertecken)"
 
 msgid "tDefault directories to backup"
-msgstr ""
+msgstr "Standardmappar att spara"
 
 msgid "tVolumes to backup"
-msgstr ""
+msgstr "Enheter att spara"
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr ""
+msgstr "Tillåt klienter att ändra vilka mappar som ska säkerhetskopieras"
 
 msgid "tAllow client-side starting of file backups"
-msgstr ""
+msgstr "Tillåt att klienter startar filbackup"
 
 msgid "tAllow client-side starting of image backups"
-msgstr ""
+msgstr "Tillåt att klienter startar diskbackup"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr ""
+msgstr "Tillåt att klienter visar backuploggar"
 
 msgid "tAllow client-side pausing of backups"
-msgstr ""
+msgstr "Tillåt klienter att pausa backuper"
 
 msgid "tAllow client-side changing of settings"
-msgstr ""
+msgstr "Tillåt klienter att ändra inställningar"
 
 msgid "tdays"
-msgstr ""
+msgstr "dagar"
 
 msgid "thours"
-msgstr ""
+msgstr "timmar"
 
 msgid "tmin"
-msgstr ""
+msgstr "minuter"
 
 msgid "tMail server name"
-msgstr ""
+msgstr "Mejlserver namn"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "Mejlserver port"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "Mejlserver användarnamn (tomt för inget)"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "Mejlserver lösenord"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "Avsändar mejladress"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "Skicka endast med SSL/TLS"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "Kontrollera SSL/TLS certifikat"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr ""
+msgstr "Skicka testmejl till denna adress efter att inställningarna har sparat (låt vara tomt i fall inget testmejl ska skickas)"
 
 msgid "tTest Mail sent successfully"
-msgstr ""
+msgstr "Testmejl skickades"
 
 msgid "tSending test mail failed. Error:"
-msgstr ""
+msgstr "Testmejl misslyckades"
 
 msgid "tFilter"
-msgstr ""
+msgstr "Filter"
 
 msgid "tBack"
-msgstr ""
+msgstr "Tillbaka"
 
 msgid "tAdd"
-msgstr ""
+msgstr "Lägg till"
 
 msgid "tRemove"
-msgstr ""
+msgstr "Ta bort"
 
 msgid "tSave"
-msgstr ""
+msgstr "Spara"
 
 msgid "tLevel"
-msgstr ""
+msgstr "Nivå"
 
 msgid "tTime"
-msgstr ""
+msgstr "Tid"
 
 msgid "tMessage"
-msgstr ""
+msgstr "Meddelande"
 
 msgid "tLog"
-msgstr ""
+msgstr "Log"
 
 msgid "tUsername"
-msgstr ""
+msgstr "Användarnamn"
 
 msgid "tRights"
-msgstr ""
+msgstr "Rättigheter"
 
 msgid "tNo Users"
-msgstr ""
+msgstr "Inga användare"
 
 msgid "tCreate user"
-msgstr ""
+msgstr "Skapa användare"
 
 msgid "tPassword"
-msgstr ""
+msgstr "Lösenord"
 
 msgid "tRepeat password"
-msgstr ""
+msgstr "Repetera lösenord"
 
 msgid "tRights for"
-msgstr ""
+msgstr "Rättigheter till"
 
 msgid "tAbort"
-msgstr ""
+msgstr "Avbryt"
 
 msgid "tCreate"
-msgstr ""
+msgstr "Skapa"
 
 msgid "tChange rights"
-msgstr ""
+msgstr "Ändra rättigheter"
 
 msgid "tChange password"
-msgstr ""
+msgstr "Ändra lösenord"
 
 msgid "tLogin"
-msgstr ""
+msgstr "Logga in"
 
 msgid "tInfos"
-msgstr ""
+msgstr "Information"
 
 msgid "tSeparate settings for this client"
-msgstr ""
+msgstr "Sepparata inställningar för denna klient"
 
 msgid "tServer"
-msgstr ""
+msgstr "Server"
 
 msgid "tFile backups"
-msgstr ""
+msgstr "Filbackuper"
 
 msgid "tImage backups"
-msgstr ""
+msgstr "Diskavbildsbackup"
 
 msgid "tPermissions"
-msgstr ""
+msgstr "Rättigheter"
 
 msgid "tClient"
-msgstr ""
+msgstr "Klient"
 
 msgid "tArchival"
-msgstr ""
+msgstr "Arkivering"
 
 msgid "tInternet"
-msgstr ""
+msgstr "Internet"
 
 msgid "tPerform autoupdates silently"
-msgstr ""
+msgstr "Utför autouppdateringar i bakgrunden"
 
 msgid "tMax backup speed for local network"
-msgstr ""
+msgstr "Hastighetsbegränsning lokalt nätverk:"
 
 msgid "tNo activities"
-msgstr ""
+msgstr "Inga aktiviteter"
 
 msgid "tSelect all"
-msgstr ""
+msgstr "Välj alla"
 
 msgid "tSelect none"
-msgstr ""
+msgstr "Välj inga"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "Ta bort markerad"
 
 msgid "tStart for selected"
-msgstr ""
+msgstr "Starta för markerad"
 
 msgid "tInternet clients"
-msgstr ""
+msgstr "Internet klienter"
 
 msgid "tAdd additional internet clients"
-msgstr ""
+msgstr "Lägg till ytterligare internet klienter"
 
 msgid "tClient name"
-msgstr ""
+msgstr "Klient namn "
 
 msgid "tNo entries for this filter"
-msgstr ""
+msgstr "Ingen noteringar för detta filter"
 
 msgid "tNo data"
-msgstr ""
+msgstr "Ingen data"
 
 msgid "tTotal max backup speed for local network"
-msgstr ""
+msgstr "Total hastighetsbegränsning för lokalt nätverk"
 
 msgid "tArchive every"
-msgstr ""
+msgstr "Arkivera varje"
 
 msgid "tArchive for"
-msgstr ""
+msgstr "Arkivera för"
 
 msgid "tArchive window"
-msgstr ""
+msgstr "Arkiveringstidpunkt"
 
 msgid "tBackup type"
-msgstr ""
+msgstr "Backuptyp"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr ""
+msgstr "Aktivera internetläge (kräver omstart av server)"
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "Hostnamn/IP-adress på internet"
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "Port för internetadress"
 
 msgid "tDo image backups over internet"
-msgstr ""
+msgstr "Utför diskbackup över internet"
 
 msgid "tDo full file backups over internet"
-msgstr ""
+msgstr "Utför komplett filbakup över internet"
 
 msgid "tMax backup speed for internet connection"
-msgstr ""
+msgstr "Hastighetsbegränsning internetkoppling"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr ""
+msgstr "Total hastighetsbegränsning internetkoppling"
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "Krypterad överföring"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "Komprimerad överföring"
 
 msgid "file_backup"
-msgstr ""
+msgstr "Filbackuper"
 
 msgid "hours"
-msgstr ""
+msgstr "timmar"
 
 msgid "days"
-msgstr ""
+msgstr "dagar"
 
 msgid "weeks"
-msgstr ""
+msgstr "veckor"
 
 msgid "months"
-msgstr ""
+msgstr "månader"
 
 msgid "year"
-msgstr ""
+msgstr "år"
 
 msgid "hour"
-msgstr ""
+msgstr "timmar"
 
 msgid "day"
-msgstr ""
+msgstr "dagar"
 
 msgid "week"
-msgstr ""
+msgstr "veckor"
 
 msgid "month"
-msgstr ""
+msgstr "månader"
 
 msgid "years"
-msgstr ""
+msgstr "år"
 
 msgid "min"
-msgstr ""
+msgstr "minut"
 
 msgid "mins"
-msgstr ""
+msgstr "minuter"
 
 msgid "validate_name_archive_every"
-msgstr ""
+msgstr "Arkivera varje"
 
 msgid "validate_name_archive_for"
-msgstr ""
+msgstr "Arkivera för"
 
 msgid "forever"
-msgstr ""
+msgstr "för alltid"
 
 msgid "backup_in_progress"
-msgstr ""
+msgstr "Backup pågår..."
 
 msgid "really_remove_clients"
-msgstr ""
+msgstr "Vill du verkligen ta bort dessa klienter? Alla deras filer och avbildnings backuper kommer tas bort!"
 
 msgid "no_client_selected"
-msgstr ""
+msgstr "Inga klienter har blivit valda"
 
 msgid "queued_backup"
-msgstr ""
+msgstr "Backup i kö"
 
 msgid "starting_backup_failed"
-msgstr ""
+msgstr "Start av backup misslyckades"
 
 msgid "trying_to_stop_backup"
-msgstr ""
+msgstr "Försöker stoppa backup. Det kan ta en stund"
 
 msgid "unarchived_in"
-msgstr ""
+msgstr "Kommer att sluta arkiveras i"
 
 msgid "validate_err_notregexp_archive_window"
-msgstr ""
+msgstr "Format för arkivtiden är fel"
 
 msgid "wait_for_archive_window"
-msgstr ""
+msgstr "Väntar på tidpunkt nästa körning"
 
 msgid "validate_err_notregexp_image_letters"
-msgstr ""
+msgstr "Felaktigt format för diskbeteckning"
 
 msgid "validate_name_global_local_speed"
-msgstr ""
+msgstr "Total bastighetsbegränsning lokalt nätverk"
 
 msgid "validate_name_global_internet_speed"
-msgstr ""
+msgstr "Total hastighetsbegränsning internetkoppling"
 
 msgid "validate_name_local_speed"
-msgstr ""
+msgstr "hastighetsbegränsning lokalt nätverk"
 
 msgid "validate_name_internet_speed"
-msgstr ""
+msgstr "hastighetsbegränsning internetkoppling"
 
 msgid "enter_clientname"
-msgstr ""
+msgstr "Vänligen fyll i ett klientnamn"
 
 msgid "internet_client_added"
-msgstr ""
+msgstr "Lagt till en ny klient. Du kan se klientens auth key (lösenord) i inställningarna."
 
 msgid "change_pw"
-msgstr ""
+msgstr "Ändra lösenord"
 
 msgid "old_pw_wrong"
-msgstr ""
+msgstr "Gamla lösenordet är fel"
 
 msgid "tID"
-msgstr ""
+msgstr "ID"
 
 msgid "tFile"
-msgstr ""
+msgstr "Fil"
 
 msgid "tSize"
-msgstr ""
+msgstr "Storlek"
 
 msgid "tIncremental"
-msgstr ""
+msgstr "Inkrementell"
 
 msgid "tLoading"
-msgstr ""
+msgstr "Laddar"
 
 msgid "tStorage usage of"
-msgstr ""
+msgstr "Lagringsanvändande för"
 
 msgid "tDelete domain"
-msgstr ""
+msgstr "Ta bort domän"
 
 msgid "tChange rights for user"
-msgstr ""
+msgstr "Ändra rättigheter för användare"
 
 msgid "tDomain"
-msgstr ""
+msgstr "Domän"
 
 msgid "tTranslation"
-msgstr ""
+msgstr "Översättning"
 
 msgid "tNew domain"
-msgstr ""
+msgstr "Ny domän"
 
 msgid "tChange"
-msgstr ""
+msgstr "Ändra"
 
 msgid "tChange password for user"
-msgstr ""
+msgstr "Ändra lösenord för användare"
 
 msgid "tSaved settings successfully"
-msgstr ""
+msgstr "Inställningar sparade"
 
 msgid "tThis client is going to be removed."
-msgstr ""
+msgstr "Klienten kommer att tas bort."
 
 msgid "tStop removing client"
-msgstr ""
+msgstr "Avbryt borttagning av klient"
 
 msgid "tFailed"
-msgstr ""
+msgstr "Misslyckade"
 
 msgid "tSuccessfull"
-msgstr ""
+msgstr "Lyckades"
 
 msgid "tInfo"
-msgstr ""
+msgstr "Info"
 
 msgid "tError"
-msgstr ""
+msgstr "Fel"
 
 msgid "tWarning"
-msgstr ""
+msgstr "Varning"
 
 msgid "tCurrent version"
-msgstr ""
+msgstr "Nuvarande version"
 
 msgid "tTarget version"
-msgstr ""
+msgstr "Målversion"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings."
-msgstr ""
+msgstr "Warning: Inställningarna på klienterna kommer att skriva över dessa inställningar. Om du inte vill detta så tillåt inte klienterna att ändra inställningar."
 
 msgid "tNext archival"
-msgstr ""
+msgstr "Nästa arkivering"
 
 msgid "tweeks"
-msgstr ""
+msgstr "veckor"
 
 msgid "tmonth"
-msgstr ""
+msgstr "månader"
 
 msgid "tyears"
-msgstr ""
+msgstr "år"
 
 msgid "tforever"
-msgstr ""
+msgstr "för alltid"
 
 msgid "tFile backup"
-msgstr ""
+msgstr "Filbackuper"
 
 msgid "tIncremental file backup"
-msgstr ""
+msgstr "Inkrementell filbackup"
 
 msgid "tFull file backup"
-msgstr ""
+msgstr "Komplett filbackup"
 
 msgid "tEnable internet mode"
-msgstr ""
+msgstr "Aktivera internetläge"
 
 msgid "tInternet auth key"
-msgstr ""
+msgstr "Internet autentiseringsnyckel"
 
 msgid "tIncremental image backup"
-msgstr ""
+msgstr "Inkrementell diskbackup"
 
 msgid "tFull image backup"
-msgstr ""
+msgstr "Komplett diskbackup"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
-msgstr ""
+msgstr "Klienter tas bort under rensningstiden om de är offline."
 
 msgid "tArchived"
-msgstr ""
+msgstr "Arkiverad"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Det finns för tillfället inte tillräckligt med utrymme i backupmappen. UrBackup raderar gamla disk- och filbackuper för att frigöra utrymme baserat på inställningarna. Medans detta pågår är backupprestandan nersatt."
 
 msgid "nospc_fatal_text"
-msgstr ""
+msgstr "Det finns för tillfället inte tillräckligtmed utrymme i backupmappen. UrBackup försökte radera gamla disk- och filbackuper men har inte tillåtelse att radera mera. Var god ändra inställningarna. Spara färre backuper eller tillåt att UrBackup använder mera utrymme."
 
 msgid "tNondefault temporary file directory"
-msgstr ""
+msgstr "Ej standard temporär filmapp"
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
+msgstr "Klienter kommer att raderas vid nästa rensningstid som är specificerad i inställningarna."
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "Om UrBackup"
 
 msgid "loading"
-msgstr ""
+msgstr "Laddar"
 
 msgid "authentication_err"
-msgstr ""
+msgstr "Fle vid serverautentisering"
 
 msgid "tInverval for incremental image backups"
-msgstr ""
+msgstr "Intervall för inkrementell diskbackup"
 
 msgid "action_5"
-msgstr ""
+msgstr "Återupptagen inkrementell filbackup."
 
 msgid "action_6"
-msgstr ""
+msgstr "Återupptagen komplett filbackup."
 
 msgid "really_recalculate"
-msgstr ""
+msgstr "Vill du verkligen beräkna statistiken igen? Det kan ta lång tid!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Ett fel inträffade på UrBackups interna databas. Det betyder att databasen förmodligen är trasig eller att det inte finns tillräckligt med diskutrymme. Om felet kvarstår så måste databasen återställas (filerna urbackup_server.db och urbackup_server_settings.db) från en backup. Se logfil för mera information."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup cachar alla filer. Det kan ta en stund."
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Ladda ner mappen som zip-fil"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Nuvarande lösenord"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Nytt lösenord"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Repetera nytt lösenord"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Byte av lösenord misslyckades:"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Lösenord ändrades"
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Antal processade poster"
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "UrBackup rullande log"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Rullande log"
 
 msgid "tShow"
-msgstr ""
+msgstr "Visa"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
+msgstr "Det finns en nyare version tillgänglig av UrBackup server"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indexerar..."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Ta bort"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Ladda ner klient från server"
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
+msgstr "Globalt filsystemskvot"
 
 msgid "tDisable"
-msgstr ""
+msgstr "Inaktivera"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Filformat för diskbackup"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Tillåt klient att starta komplett filbackup"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr ""
+msgstr "Tillåt klienten att starta inkrementell filbackup"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Tillåt klient att starta en komplett diskbackup"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Tillåt klienten att starta en inkrementell diskbackup"
 
 msgid "tBackup window for incremental file backups"
-msgstr ""
+msgstr "Tidsintervall för inkrementell filbackup"
 
 msgid "tBackup window for full file backups"
-msgstr ""
+msgstr "Tidsintervall för komplett filbackup"
 
 msgid "tBackup window for incremental image backups"
-msgstr ""
+msgstr "Tidsintervall för inkrementell diskbackup"
 
 msgid "tBackup window for full image backups"
-msgstr ""
+msgstr "Tidsintervall för komplett filbackup"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "Mjuk klient kvot"
 
 msgid "tCalculate file-hashes on the client"
-msgstr ""
+msgstr "Beräkna fil-hashar på klienten"
 
 msgid "tAdvanced"
-msgstr ""
+msgstr "Avancerad"
 
 msgid "tTemporary files as file backup buffer"
-msgstr ""
+msgstr "Temporära filer som buffer vid filbackup"
 
 msgid "tTemporary files as image backup buffer"
-msgstr ""
+msgstr "Temporära filer som bugger vid diskbackup"
 
 msgid "tLocal full file backup transfer mode"
-msgstr ""
+msgstr "Lokal komplett filbackup överföringsläge"
 
 msgid "tRaw"
-msgstr ""
+msgstr "Rå"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Hashad"
 
 msgid "tInternet full file backup transfer mode"
-msgstr ""
+msgstr "Internet komplett filbackup överföringsläge"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr ""
+msgstr "Lokal inkrementell filbackup överförsingsläge"
 
 msgid "tBlock differences - hashed"
-msgstr ""
+msgstr "Blockera skillnader - hashad"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr ""
+msgstr "Internet inkrementell filbackup överföringsläge"
 
 msgid "tLocal image backup transfer mode"
-msgstr ""
+msgstr "Lokal diskbackup överföringsläge"
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
+msgstr "Internet diskbackup överföringsläge"
 
 msgid "tFile hash collection amount"
-msgstr ""
+msgstr "Antal filhashar samlade"
 
 msgid "tFile hash collection timeout"
-msgstr ""
+msgstr "Tidsgräns för samlande av filhashar"
 
 msgid "tFile hash collection database cachesize"
-msgstr ""
+msgstr "Databas chachestorlek för samling av filhashar"
 
 msgid "tMB"
-msgstr ""
+msgstr "MB"
 
 msgid "tUpdate stats database cachesize"
-msgstr ""
+msgstr "Uppdatera statistikdatabas cachestorlek"
 
 msgid "tCache database type for file entries"
-msgstr ""
+msgstr "Cachedatabastyp för filer"
 
 msgid "tNone"
-msgstr ""
+msgstr "Ingen"
 
 msgid "tCache database size for file entries"
-msgstr ""
+msgstr "Cachedatabas storlek för filer"
 
 msgid "tSuspend index limit"
-msgstr ""
+msgstr "Suspendera gräns"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
+msgstr "Använd symboliska länkar vid inkrementell filbackup"
 
 msgid "tEnd-to-end verification of all file backups"
-msgstr ""
+msgstr "End-to-end verifiering av alla filbackuper"
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Serveradmin mejladress"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings. "
-msgstr ""
+msgstr "Warning: Inställningarna på klienterna kommer att skriva över dessa inställningar. Om du inte vill detta så tillåt inte klienterna att ändra inställningar."
 
 msgid "tClient download"
-msgstr ""
+msgstr "Clientnerladdning"
 
 msgid "tDownload"
-msgstr ""
+msgstr "Ladda ner"
 
 msgid "tStatus"
-msgstr ""
+msgstr "Status"
 
 msgid "tIP"
-msgstr ""
+msgstr "IP"
 
 msgid "tClient version"
-msgstr ""
+msgstr "Klientversion"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Operativsystem"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "Visa alla klienter"
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Denna klient kommer att raderas."
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr ""
+msgstr "Klienter kommer att raderas vid nästa rensningstid."
 
 msgid "tRecalculate statistics"
-msgstr ""
+msgstr "Räkna om statistiken"
 
 msgid "First"
-msgstr ""
+msgstr "Första"
 
 msgid "Last"
-msgstr ""
+msgstr "Sista"
 
 msgid "Next"
-msgstr ""
+msgstr "Nästa"
 
 msgid "Previous"
-msgstr ""
+msgstr "Föregående"
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Ingen data tillgänglig i tabellen"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr ""
+msgstr "Visar _START_ till _END_ av _TOTAL_ inlägg"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Visar 0 till 0 av 0 inlägg"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr ""
+msgstr "(filtrerad från _MAX_totala inlägg"
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Visa _MENU_ inlägg"
 
 msgid "Processing..."
-msgstr ""
+msgstr "Behandlar..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Sök:"
 
 msgid "No matching records found"
-msgstr ""
+msgstr "Inga motsvarande poster hittades"
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Återställ till standardvärden"
 
 msgid "Save"
-msgstr ""
+msgstr "Spara"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr ""
+msgstr "Anslut till internet backupserver om ansluten till lokal backupserver"
 
 msgid "tAllow clients to quit the tray icon"
-msgstr ""
+msgstr "Tillåt klienter att ta bort aktivitetsikon"
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Du behöver skapa en användare för att kunna skicka rapporter"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Visa/dölj kolumner"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Meddela när en ny version av servern finns tillgänglig"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (Virtual HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "Komprimerad VHD (komprimerad ej standard virtuell hårddisk)"

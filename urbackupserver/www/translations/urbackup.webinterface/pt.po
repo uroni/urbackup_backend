@@ -3,13 +3,15 @@
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # 
 # Translators:
-# j.almeida, 2015
-# j.almeida, 2015
+# J Almeida, 2015-2016
+# J Almeida, 2015
+# J Almeida, 2016
+# J Almeida, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2015-11-19 17:51+0000\n"
-"Last-Translator: j.almeida\n"
+"PO-Revision-Date: 2016-01-13 00:26+0000\n"
+"Last-Translator: J Almeida\n"
 "Language-Team: Portuguese (http://www.transifex.com/uroni/urbackup/language/pt/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -375,7 +377,7 @@ msgid "tAll"
 msgstr "Tudo"
 
 msgid "tBackup storage path"
-msgstr "Localização do armazenamento das backus"
+msgstr "Localização do armazenamento das backups"
 
 msgid "tDo not do image backups"
 msgstr "Não efetuar backup da imagem de sistema"
@@ -903,7 +905,7 @@ msgid "tArchived"
 msgstr "Arquivado"
 
 msgid "nospc_stalled_text"
-msgstr "Não existe espaço livre suficiente na pasta para backup. UrBackup vai eliminar imagens de sistema e ficheiros antigos consoante os limites definidos na configuração. Durante este processo a performance de backup poderá diminuir e a execução das backups poderá demorar."
+msgstr "Não existe espaço livre suficiente na pasta para backup. UrBackup vai eliminar imagens de sistema e cópias de ficheiros antigos consoante os limites definidos na configuração. Durante este processo a performance de backup poderá diminuir e a execução das backups poderá demorar."
 
 msgid "nospc_fatal_text"
 msgstr ""
@@ -912,7 +914,7 @@ msgid "tNondefault temporary file directory"
 msgstr ""
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
+msgstr "Os clientes são removidos durante a limpeza agendada "
 
 msgid "about_urbackup"
 msgstr "Cancelar UrBackup"
@@ -939,7 +941,7 @@ msgid "database_error_text"
 msgstr ""
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup está a registar a alteração de ficheiros. Este processo poderá demorar algum tempo."
 
 msgid "tDownload folder as ZIP"
 msgstr "Download da pasta como ficheiro ZIP"
@@ -981,7 +983,7 @@ msgid "tDelete"
 msgstr "Eliminar"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Download do software cliente do servidor de atualizações"
 
 msgid "tGlobal soft filesystem quota"
 msgstr ""
@@ -993,16 +995,16 @@ msgid "tImage backup file format"
 msgstr "Formato para imagem de sistema"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Permitir ao cliente iniciar uma cópia completa de ficheiros"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr ""
+msgstr "Permitir ao cliente iniciar uma cópia incremental de ficheiros"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Permitir ao cliente iniciar a backup completa da imagem completa do sistema"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Permitir ao cliente iniciar  backup incremental da imagem do sistema"
 
 msgid "tBackup window for incremental file backups"
 msgstr ""
@@ -1017,10 +1019,10 @@ msgid "tBackup window for full image backups"
 msgstr "Intervalo para a backup completa de ficheiros"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "\"Soft Quota\"  para cliente"
 
 msgid "tCalculate file-hashes on the client"
-msgstr ""
+msgstr "Calcular Hash do ficheiro no cliente"
 
 msgid "tAdvanced"
 msgstr "Avançado"
@@ -1032,7 +1034,7 @@ msgid "tTemporary files as image backup buffer"
 msgstr ""
 
 msgid "tLocal full file backup transfer mode"
-msgstr ""
+msgstr "Modo de transferência para copia completa de ficheiros"
 
 msgid "tRaw"
 msgstr "Raw"
@@ -1056,43 +1058,43 @@ msgid "tLocal image backup transfer mode"
 msgstr "Modo de transferência para copia da imagem de sistema  por internet"
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
+msgstr "Modo de transferência para copia da imagem do sistema  por internet"
 
 msgid "tFile hash collection amount"
-msgstr ""
+msgstr "Tamanho do dicionário Hash"
 
 msgid "tFile hash collection timeout"
-msgstr ""
+msgstr "Tempo limite para gerar dicionario Hash"
 
 msgid "tFile hash collection database cachesize"
-msgstr ""
+msgstr "Tamanho de cache para dicionário Hash"
 
 msgid "tMB"
 msgstr "MB"
 
 msgid "tUpdate stats database cachesize"
-msgstr ""
+msgstr "Tamanho da base dados cache para atualização de estatsticas"
 
 msgid "tCache database type for file entries"
-msgstr ""
+msgstr "Tipo de base dados para cache de ficheiros"
 
 msgid "tNone"
 msgstr "Nenhum"
 
 msgid "tCache database size for file entries"
-msgstr ""
+msgstr "Tamanho da base dados para cache de ficheiros"
 
 msgid "tSuspend index limit"
 msgstr "Suspender limite de indexações"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
+msgstr "Utilizar symlinks na cópia incremental de ficheiros"
 
 msgid "tEnd-to-end verification of all file backups"
 msgstr ""
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Email do administrador do servidor"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1125,7 +1127,7 @@ msgid "tThis client is going to be removed. "
 msgstr "Este computador vai ser removido"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr ""
+msgstr "Os clientes são removidos durante o período de limpeza configurado"
 
 msgid "tRecalculate statistics"
 msgstr "Recalcular estatisticas"
@@ -1179,10 +1181,10 @@ msgid "tConnect to Internet backup server if connected to local backup server"
 msgstr ""
 
 msgid "tAllow clients to quit the tray icon"
-msgstr ""
+msgstr "Permitir aos clientes terminar o icon de estado"
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Tem de criar um utilizador para poder enviar relatórios"
 
 msgid "Show/hide columns"
 msgstr "Visualizar/Esconder colunas"

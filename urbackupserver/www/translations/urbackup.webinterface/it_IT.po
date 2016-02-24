@@ -1,22 +1,19 @@
 # UrBackup translation
-# Copyright (C) 2011-2014 See translators
-# This file is distributed under the same license as the UrBackup package.
+# Copyright (C) 2011-2015 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
+# 
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
+# Francesco Pellegrino <fra.pel@gmail.com>, 2016
 # Marco Longo <longo.marco@consul-net.it>, 2014
+# Mirco Boschi <tipolosko@gmail.com>, 2015
 # paolo <inforossi@alice.it>, 2014
 # Samuele <samuele.facco@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-10-13 15:15+0000\n"
-"Last-Translator: Samuele <samuele.facco@gmail.com>\n"
-"Language-Team: Italian (Italy) (http://www.transifex.com/projects/p/urbackup/language/it_IT/)\n"
+"PO-Revision-Date: 2016-02-11 19:54+0000\n"
+"Last-Translator: Francesco Pellegrino <fra.pel@gmail.com>\n"
+"Language-Team: Italian (Italy) (http://www.transifex.com/uroni/urbackup/language/it_IT/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -915,7 +912,7 @@ msgid "nospc_fatal_text"
 msgstr "Non c'é abbastanza spazio libero nella cartella di backup. UrBackup ha provato a cancellare vecchi backup di immagini e file, ma ora non puó piú cancellare altro. Modificare le impostazioni per mantenere meno backup salvati, o aumentare lo spazio utilizzabile per permettere ad UrBackup di continuare con i backup."
 
 msgid "tNondefault temporary file directory"
-msgstr ""
+msgstr "Directory temporanea non predefinita"
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr "Client rimosso durante la pulizia della finestra"
@@ -933,22 +930,22 @@ msgid "tInverval for incremental image backups"
 msgstr "Intervallo per backup immagine incrementale"
 
 msgid "action_5"
-msgstr ""
+msgstr "Ripresa del backup incrementale in corso"
 
 msgid "action_6"
-msgstr ""
+msgstr "Ripresa del backup completo in corso"
 
 msgid "really_recalculate"
 msgstr "Vuoi davvero ricalcolare tutte le statistiche? Potrebbe volerci molto tempo!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Si é verificato un errore durante l'accesso o il controllo del database interno di UrBackup. Il database potrebbe essere danneggiato o finito lo spazio disponibile. Se il problema persiste consigliamo di ripristinare il database (urbackup_server.db e urbackup_server_settings.db) da un backup. Guarda i log per dettagli."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup sta creando il file di inizializzazione. Questo potrebbe richiedere un po' di tempo."
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Scarica cartella come file ZIP"
 
 msgid "tOld password"
 msgstr "Vecchia password "
@@ -963,40 +960,40 @@ msgid "tChanging password failed:"
 msgstr "Errore durante la modifica della password"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Password cambiata correttamente"
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Numero di files processati"
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "Log Live UrBackup"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Log Live"
 
 msgid "tShow"
-msgstr ""
+msgstr "Visualizza"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
+msgstr "E' disponibile una nuova versione del server UrBackup"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indicizzazione.."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Cancella"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Scarica client dal server di aggiornamento"
 
 msgid "tGlobal soft filesystem quota"
 msgstr ""
 
 msgid "tDisable"
-msgstr ""
+msgstr "Disabilita"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Formato immagine di backup"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr ""
@@ -1029,7 +1026,7 @@ msgid "tCalculate file-hashes on the client"
 msgstr ""
 
 msgid "tAdvanced"
-msgstr ""
+msgstr "Avanzate"
 
 msgid "tTemporary files as file backup buffer"
 msgstr ""
@@ -1038,31 +1035,31 @@ msgid "tTemporary files as image backup buffer"
 msgstr ""
 
 msgid "tLocal full file backup transfer mode"
-msgstr ""
+msgstr "Trasferimento completo locale del file di backup"
 
 msgid "tRaw"
-msgstr ""
+msgstr "Raw"
 
 msgid "tHashed"
 msgstr ""
 
 msgid "tInternet full file backup transfer mode"
-msgstr ""
+msgstr "Trasferimento completo remoto del file di backup"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr ""
+msgstr "Trasferimento incrementale locale del file di backup"
 
 msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr ""
+msgstr "Trasferimento incrementale remoto del file di backup"
 
 msgid "tLocal image backup transfer mode"
-msgstr ""
+msgstr "Trasferimento locale dell'immagine di backup"
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
+msgstr "Trasferimento remoto dell'immagine di backup"
 
 msgid "tFile hash collection amount"
 msgstr ""
@@ -1074,7 +1071,7 @@ msgid "tFile hash collection database cachesize"
 msgstr ""
 
 msgid "tMB"
-msgstr ""
+msgstr "MB"
 
 msgid "tUpdate stats database cachesize"
 msgstr ""
@@ -1083,7 +1080,7 @@ msgid "tCache database type for file entries"
 msgstr ""
 
 msgid "tNone"
-msgstr ""
+msgstr "Nessuno"
 
 msgid "tCache database size for file entries"
 msgstr ""
@@ -1098,88 +1095,88 @@ msgid "tEnd-to-end verification of all file backups"
 msgstr ""
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Indirizzo Mail gestore Server"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings. "
-msgstr ""
+msgstr "Attenzione: Le impostazioni del client sovrascriveranno quelle configurate qui. Se vuoi modificare questo disabilita la possibilitá per i client di modificare le impostazioni."
 
 msgid "tClient download"
-msgstr ""
+msgstr "Scarica Client"
 
 msgid "tDownload"
-msgstr ""
+msgstr "Scarica"
 
 msgid "tStatus"
-msgstr ""
+msgstr "Stato"
 
 msgid "tIP"
-msgstr ""
+msgstr "IP"
 
 msgid "tClient version"
-msgstr ""
+msgstr "Versione Client"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Sistema Operativo"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "Visualizza tutti i client"
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Il client stà per essere rimosso"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
-msgstr ""
+msgstr "Ricalcola Statistiche"
 
 msgid "First"
-msgstr ""
+msgstr "Primo"
 
 msgid "Last"
-msgstr ""
+msgstr "Ultimo"
 
 msgid "Next"
-msgstr ""
+msgstr "Successivo"
 
 msgid "Previous"
-msgstr ""
+msgstr "Precedente"
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Nessun dato disponibile nella tabella"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr ""
+msgstr "Mostrando da _START_ a _END_ di _TOT_ voci"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Mostrando da 0 a 0 di 0 voci"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr ""
+msgstr "(filtrato da _MAX_ voci)"
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Mostra _MENU_ voci"
 
 msgid "Processing..."
-msgstr ""
+msgstr "In lavorazione..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Cerca:"
 
 msgid "No matching records found"
-msgstr ""
+msgstr "Nessuna corrispondenza trovata."
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Ripristina al default"
 
 msgid "Save"
-msgstr ""
+msgstr "Salva"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
 msgstr ""
@@ -1188,16 +1185,16 @@ msgid "tAllow clients to quit the tray icon"
 msgstr ""
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Hai bisogno di creare un utente per essere abilitato a inviare report"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Visualizza/nascondi colonne"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Mostrami quando una nuova versione del software è disponibile"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (Virtual HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "VHD Compresso (HardDisk Virtuale compresso non standard)"
