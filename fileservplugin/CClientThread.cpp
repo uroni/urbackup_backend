@@ -1139,6 +1139,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		return false;
 	}
 
+	hFile=INVALID_HANDLE_VALUE;
+
 	SChunk chunk;
 	chunk.update_file = tf;
 	chunk.startpos = curr_filesize;
