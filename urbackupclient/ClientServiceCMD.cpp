@@ -704,7 +704,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 int64 ClientConnector::getLastBackupTime()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT strftime('%s',last_backup) AS last_backup FROM status");
+	IQuery *q=db->Prepare("SELECT strftime('%s',last_backup) AS last_backup FROM status", false);
 	if (q == NULL)
 		return 0;
 
@@ -718,6 +718,7 @@ int64 ClientConnector::getLastBackupTime()
 	{
 		cached_status=res;
 	}
+	db->destroyQuery(q);
 
 	if(res.size()>0)
 	{
