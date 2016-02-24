@@ -242,6 +242,7 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			break;
 		}
 
+		int left = timems;
 		if (timems >= 0)
 		{
 			int64 ctime = Server->getTimeMS();
@@ -249,9 +250,13 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			{
 				break;
 			}
+			else
+			{
+				left = timems - static_cast<int>(ctime - starttime);
+			}
 		}
 
-		cond->wait(&lock, timems);
+		cond->wait(&lock, left);
 	}
 
 	for( size_t i=0;i<tickets.size();++i)
