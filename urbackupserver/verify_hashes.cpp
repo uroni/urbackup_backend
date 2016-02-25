@@ -129,6 +129,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fp), MODE_READ));
 	if( f.get()==NULL )
 	{
+		std::cout << std::endl;
 		Server->Log("Error opening file \""+fp+"\"", LL_ERROR);
 		missing = true;
 		return false;
@@ -136,6 +137,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 
 	if(watoi64(res["filesize"])!=f->Size())
 	{
+		std::cout << std::endl;
 		Server->Log("Filesize of \""+fp+"\" is wrong", LL_ERROR);
 		return false;
 	}
@@ -165,12 +167,14 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 
 	if(calc_dig.empty())
 	{
+		std::cout << std::endl;
 		Server->Log("Could not read all bytes of file \""+fp+"\"", LL_ERROR);
 		return false;
 	}
 
 	if(res["shahash"]!=calc_dig)
 	{
+		std::cout << std::endl;
 		Server->Log("Hash of \""+fp+"\" is wrong", LL_ERROR);
 		return false;
 	}
@@ -370,6 +374,8 @@ bool verify_hashes(std::string arg)
 			}			
 		}
 	}
+
+	std::cout << std::endl;
 	
 	if(v_failure.is_open() && is_okay)
 	{
@@ -381,32 +387,33 @@ bool verify_hashes(std::string arg)
 
 	IQuery* q_get_file = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE id=?");
 
-	std::cout << missing_files.size() << " could not be opened during verification. Checking now if they have been deleted from the database..." << std::endl;
-
-	for(size_t i=0;i<missing_files.size();++i)
+	if (missing_files.size() > 0)
 	{
-		q_get_file->Bind(missing_files[i]);
-		db_results res = q_get_file->Read();
-		q_get_file->Reset();
-		
-		if(!res.empty())
-		{
-			bool is_missing=false;
-			db_single_result& res_single = res[0];
-			if(!verify_file(res_single, curr_verified, verify_size, is_missing))
-			{
-				v_failure << "Verification of file \"" << (res_single["fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
-				is_okay=false;
+		std::cout << missing_files.size() << " could not be opened during verification. Checking now if they have been deleted from the database..." << std::endl;
 
-				if(delete_failed)
+		for (size_t i = 0; i < missing_files.size(); ++i)
+		{
+			q_get_file->Bind(missing_files[i]);
+			db_results res = q_get_file->Read();
+			q_get_file->Reset();
+
+			if (!res.empty())
+			{
+				bool is_missing = false;
+				db_single_result& res_single = res[0];
+				if (!verify_file(res_single, curr_verified, verify_size, is_missing))
 				{
-					todelete.push_back(watoi64(res_single["id"]));
+					v_failure << "Verification of file \"" << (res_single["fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
+					is_okay = false;
+
+					if (delete_failed)
+					{
+						todelete.push_back(watoi64(res_single["id"]));
+					}
 				}
 			}
 		}
 	}
-	
-	std::cout << std::endl;
 
 	if(delete_failed)
 	{
