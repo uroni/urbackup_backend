@@ -28,7 +28,9 @@ g.languages=[
 				{ l: "Italiano", s: "it_IT" },
 				{ l: "České", s: "cs_CZ" },
 				{ l: "Türk", s: "tr" },
-				{ l: "Português", s: "pt" }
+				{ l: "Português", s: "pt" },
+				{ l: "Svensk", s: "sv" },
+				{ l: "Română", s: "ro" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
