@@ -1818,7 +1818,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 
 		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
-			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
+			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections, !metadata_download_thread->getHasTimeoutError());
 		}
 	}
 

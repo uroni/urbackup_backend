@@ -75,7 +75,7 @@ void FileMetadataDownloadThread::operator()()
 }
 
 bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metadata_dir,
-	const std::string& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections)
+	const std::string& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections, bool is_complete)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -107,7 +107,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			}
 			if(not_applied)
 			{
-				ServerLogger::Log(logid, "Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
+				ServerLogger::Log(logid, "Not all folder metadata could be applied. Metadata was inconsistent.", is_complete ? LL_WARNING : LL_DEBUG);
 			}
 			std::sort(last_metadata_ids.begin(), last_metadata_ids.end());
 			return true;
@@ -235,7 +235,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				if (output_f.get() == NULL
 					&& ftype == 0)
 				{
-					ServerLogger::Log(logid, "Metadata file and \"" + backup_dir + os_file_sep() + os_path + "\" do not exist. Skipping applying metdata for this file.", LL_INFO);
+					ServerLogger::Log(logid, "Metadata file and \"" + backup_dir + os_file_sep() + os_path + "\" do not exist. Skipping applying metdata for this file.", is_complete ? LL_WARNING : LL_DEBUG);
 				}				
 				else if(output_f.get()==NULL)
 				{
@@ -254,8 +254,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			unsigned int common_metadata_size =0;
 			if(metadata_f->Read(reinterpret_cast<char*>(&common_metadata_size), sizeof(common_metadata_size))!=sizeof(common_metadata_size))
 			{
-				ServerLogger::Log(logid, "Error saving metadata. Common metadata size could not be read.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				ServerLogger::Log(logid, "Error saving metadata. Common metadata size could not be read.", is_complete ? LL_ERROR : LL_DEBUG);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -270,8 +273,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 
 			if(metadata_f->Read(&common_metadata[0], static_cast<_u32>(common_metadata.size()))!=common_metadata.size())
 			{
-				ServerLogger::Log(logid, "Error saving metadata. Common metadata could not be read.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				ServerLogger::Log(logid, "Error saving metadata. Common metadata could not be read.", is_complete ? LL_ERROR : LL_DEBUG);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -292,7 +298,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(little_endian(read_common_metadata_checksum)!=common_metadata_checksum)
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata checksum wrong.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -360,16 +369,16 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			bool ok=false;
 			if(ch & ID_METADATA_OS_WIN)
 			{
-				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, metadataf_pos);
+				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, is_complete, metadataf_pos);
 			}
             else if(ch & ID_METADATA_OS_UNIX)
             {
-                ok = applyUnixMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, metadataf_pos);
+                ok = applyUnixMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset, is_complete, metadataf_pos);
             }
 
 			if(!ok)
 			{
-				ServerLogger::Log(logid, "Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
+				ServerLogger::Log(logid, "Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 
 				if(!dry_run && output_f.get() != NULL)
 				{
@@ -381,7 +390,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 					}
 				}
 
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				
 				return false;
 			}
@@ -465,7 +477,7 @@ namespace
     const int64 unix_meta_magic =  little_endian(0xFE4378A3467647F0ULL);
 }
 
-bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, int64& metadataf_pos)
+bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, bool is_complete, int64& metadataf_pos)
 {
 	int64 win32_magic_and_size[2];
 	win32_magic_and_size[1]=win32_meta_magic;
@@ -483,7 +495,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
 	{
-		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -510,7 +522,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	char version;
 	if(metadata_f->Read(&version, 1)!=1)
 	{
-		ServerLogger::Log(logid, "Error reading windows metadata version from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading windows metadata version from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -537,7 +549,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 	if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
 	{
-		ServerLogger::Log(logid, "Error reading windows stat data from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading windows stat data from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -557,7 +569,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		char cont = 0;
 		if(metadata_f->Read(reinterpret_cast<char*>(&cont), sizeof(cont))!=sizeof(cont))
 		{
-			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error reading  cont from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 			return false;
 		}
 
@@ -578,7 +590,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 		if (cont != 1)
 		{
-			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3", LL_ERROR);
+			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3 cont wrong: "+convert((int)cont), LL_ERROR);
 			return false;
 		}
 
@@ -586,7 +598,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 		if(metadata_f->Read(reinterpret_cast<char*>(&stream_id), metadata_id_size)!=metadata_id_size)
 		{
-			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" (metadata_id_size)", is_complete ? LL_ERROR : LL_DEBUG);
 			return false;
 		}
 
@@ -608,7 +620,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 			if(metadata_f->Read(stream_name.data(), static_cast<_u32>(stream_name.size()))!=stream_name.size())
 			{
-				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -2 (stream_name)", is_complete ? LL_ERROR : LL_DEBUG);
 				return false;
 			}
 
@@ -632,7 +644,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 			if(metadata_f->Read(buffer.data(), toread)!=toread)
 			{
-				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3", LL_ERROR);
+				ServerLogger::Log(logid, "Error reading  \"" + metadata_f->getFilename() + "\" -3 (stream)", is_complete ? LL_ERROR : LL_DEBUG);
 				return false;
 			}
 
@@ -654,7 +666,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	unsigned int read_data_checksum =0;
 	if(metadata_f->Read(reinterpret_cast<char*>(&read_data_checksum), sizeof(read_data_checksum))!=sizeof(read_data_checksum))
 	{
-		ServerLogger::Log(logid, "Error saving metadata. Data checksum could not be read.", LL_ERROR);
+		ServerLogger::Log(logid, "Error saving metadata. Data checksum could not be read.", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -682,7 +694,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	return true;
 }
 
-bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback* cb, int64 output_offset, int64& metadataf_pos)
+bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback* cb, int64 output_offset, bool is_complete, int64& metadataf_pos)
 {
     int64 unix_magic_and_size[2];
     unix_magic_and_size[1]=unix_meta_magic;
@@ -700,7 +712,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	_u32 stat_data_size;
 	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
 	{
-		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error reading stat data size from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -726,7 +738,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     char version;
     if(metadata_f->Read(&version, 1)!=1)
     {
-        ServerLogger::Log(logid, "Error reading unix metadata version from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading unix metadata version from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
         return false;
     }
 
@@ -752,7 +764,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
     {
-        ServerLogger::Log(logid, "Error reading stat data from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading stat data from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
         return false;
     }
 
@@ -770,7 +782,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     int64 num_eattr_keys;
     if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
     {
-        ServerLogger::Log(logid, "Error reading eattr num from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+        ServerLogger::Log(logid, "Error reading eattr num from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
         return false;
     }
 
@@ -792,7 +804,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         unsigned int key_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
         {
-            ServerLogger::Log(logid, "Error reading eattr key size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr key size from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
             return false;
         }
 
@@ -813,7 +825,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
         if(metadata_f->Read(&eattr_key[0], key_size)!=key_size)
         {
-            ServerLogger::Log(logid, "Error reading eattr key from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr key from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
             return false;
         }
 
@@ -831,7 +843,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         unsigned int val_size;
         if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
-            ServerLogger::Log(logid, "Error reading eattr value size from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr value size from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
             return false;
         }
 
@@ -852,7 +864,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
         if(metadata_f->Read(&eattr_val[0], val_size)!=val_size)
         {
-            ServerLogger::Log(logid, "Error reading eattr value from \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+            ServerLogger::Log(logid, "Error reading eattr value from \"" + metadata_f->getFilename() + "\"", is_complete ? LL_ERROR : LL_DEBUG);
             return false;
         }
 
@@ -871,7 +883,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 	unsigned int read_data_checksum =0;
 	if(metadata_f->Read(reinterpret_cast<char*>(&read_data_checksum), sizeof(read_data_checksum))!=sizeof(read_data_checksum))
 	{
-		ServerLogger::Log(logid, "Error saving metadata. Data checksum could not be read.", LL_ERROR);
+		ServerLogger::Log(logid, "Error saving metadata. Data checksum could not be read.", is_complete ? LL_ERROR : LL_DEBUG);
 		return false;
 	}
 
@@ -1057,7 +1069,7 @@ int check_metadata()
 	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0);
 
 	str_map corrections;
-	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, corrections)?0:1;
+	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, corrections, true)?0:1;
 }
 
 } //namespace server

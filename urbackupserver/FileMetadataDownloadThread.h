@@ -41,9 +41,9 @@ public:
 	virtual void operator()();
 
 	bool applyMetadata(const std::string& backup_metadata_dir, const std::string& backup_dir,
-		INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections);
-	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, int64& metadataf_pos);
-    bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, int64& metadataf_pos);
+		INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections, bool is_complete);
+	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, bool is_complete, int64& metadataf_pos);
+    bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset, bool is_complete, int64& metadataf_pos);
 
 	bool getHasError();
 
