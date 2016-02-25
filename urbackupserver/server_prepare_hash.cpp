@@ -456,7 +456,7 @@ void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t b
 {
 	if (buf != NULL)
 	{
-		addUnchangedHashes(file_pos+bsize, false);
+		addUnchangedHashes(file_pos, false);
 
 		hashf->hash(buf, (unsigned int)bsize);
 	}

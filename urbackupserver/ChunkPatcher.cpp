@@ -57,7 +57,7 @@ const int64 sparse_blocksize = 512*1024;
 
 ChunkPatcher::ChunkPatcher(void)
 	: cb(NULL), require_unchanged(true), with_sparse(false),
-	unchanged_align(0), unchanged_align_start(-1), unchanged_align_end(-1), last_unchanged(false)
+	unchanged_align(0), unchanged_align_start(-1), unchanged_align_end(-1), unchanged_align_end_next(-1), last_unchanged(false)
 {
 }
 
@@ -71,6 +71,10 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	patch->Seek(0);
 	file->Seek(0);
 	_i64 patchf_pos=0;
+	unchanged_align_start = -1;
+	unchanged_align_end = -1;
+	unchanged_align_end_next = -1;
+	last_unchanged = false;
 
 	const unsigned int buffer_size=512*1024;
 	std::vector<char> buf;
@@ -121,7 +125,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				&& unchanged_align != 0)
 			{
 				unchanged_align_start = roundDown(next_header.patch_off, unchanged_align);
-				unchanged_align_end = roundUp(next_header.patch_off + next_header.patch_size, unchanged_align);
+				unchanged_align_end_next = roundUp(next_header.patch_off + next_header.patch_size, unchanged_align);
 			}
 		}
 
@@ -158,6 +162,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			assert(file_pos==next_header.patch_off);
 
 			VLOG(Server->Log("Applying patch at "+convert(file_pos)+" length="+convert(next_header.patch_size), LL_DEBUG));
+
+			unchanged_align_end = unchanged_align_end_next;
 
 			while(next_header.patch_size>0)
 			{
@@ -228,10 +234,12 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 				if (unchanged_align != 0)
 				{
-					if (unchanged_align_start != -1
-						&& unchanged_align_end != -1
-						&& file_pos >= unchanged_align_start
-						&& file_pos < unchanged_align_end)
+					if ( (unchanged_align_start != -1
+							&& unchanged_align_end_next != -1
+							&& file_pos >= unchanged_align_start
+							&& file_pos < unchanged_align_end_next ) 
+						|| (unchanged_align_end != -1
+							&& file_pos < unchanged_align_end ) )
 					{
 						curr_require_unchaged = true;
 						file->Seek(file_pos);
@@ -239,11 +247,13 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 					if (!curr_require_unchaged 
 						&& unchanged_align_start != -1
+						&& file_pos < unchanged_align_start
 						&& file_pos + tr > unchanged_align_start)
 					{
 						tr = static_cast<_u32>(unchanged_align_start - file_pos);
 					}
 					else if (unchanged_align_end!= -1
+						&& file_pos < unchanged_align_end
 						&& file_pos + tr > unchanged_align_end)
 					{
 						tr = static_cast<_u32>(unchanged_align_end - file_pos);
@@ -292,7 +302,6 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					if (file_pos == unchanged_align_end)
 					{
 						unchanged_align_end = -1;
-						unchanged_align_start = -1;
 					}
 				}
 			}

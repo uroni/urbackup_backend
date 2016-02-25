@@ -48,6 +48,7 @@ private:
 	std::vector<char> sparse_buf;
 	int64 unchanged_align_start;
 	int64 unchanged_align_end;
+	int64 unchanged_align_end_next;
 	bool last_unchanged;
 };
 
