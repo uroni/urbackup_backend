@@ -392,59 +392,47 @@ bool BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch, ExtentIter
 	}
 
 	file_pos = 0;
-	add_hashes_start = -1;
 	chunk_patcher.setWithSparse(hash_with_sparse);
 	bool b = chunk_patcher.ApplyPatch(f, patch, extent_iterator);
-	addUnchangedHashes(file_pos, true);
 	return b;
 }
 
-void BackupServerPrepareHash::addUnchangedHashes(int64 stop, bool finish)
+void BackupServerPrepareHash::addUnchangedHashes(int64 start, size_t size, bool* is_sparse)
 {
-	if (add_hashes_start != -1 && hashoutput_f!=NULL)
+	assert(start%hash_bsize == 0);
+	assert(size==hash_bsize || start+size==chunk_patcher.getFilesize());
+
+	if (!hashoutput_f->Seek(sizeof(_i64) + (start / hash_bsize)*chunkhash_single_size))
 	{
-		assert(add_hashes_start%hash_bsize == 0);
-		assert(stop%hash_bsize == 0 || finish);
-
-		if (!hashoutput_f->Seek(sizeof(_i64) + (add_hashes_start / hash_bsize)*chunkhash_single_size))
-		{
-			Server->Log("Error seeking in hashoutput file " + hashoutput_f->getFilename(), LL_ERROR);
-			has_error = true;
-		}
-
-		int64 num = (stop - add_hashes_start) / hash_bsize;
-
-		if ((stop - add_hashes_start) % hash_bsize != 0)
-		{
-			++num;
-		}
-
-		for (int64 i = 0; i < num; ++i)
-		{
-			bool has_read_error = false;
-			char chunkhashes[chunkhash_single_size];
-			_u32 r = hashoutput_f->Read(chunkhashes, chunkhash_single_size, &has_read_error);
-
-			if (has_read_error)
-			{
-				Server->Log("Error reading from " + hashoutput_f->getFilename(), LL_ERROR);
-				has_error = true;
-			}
-
-			assert(r == chunkhash_single_size || finish);
-
-			size_t curr_size = hash_bsize;
-
-			if (i + 1 == num && stop%hash_bsize != 0)
-			{
-				curr_size = stop%hash_bsize;
-			}
-
-			reinterpret_cast<TreeHash*>(hashf)->addHashAllAdler(chunkhashes, r, curr_size);
-		}
-
-		add_hashes_start = -1;
+		Server->Log("Error seeking in hashoutput file " + hashoutput_f->getFilename(), LL_ERROR);
+		has_error = true;
 	}
+
+	bool has_read_error = false;
+	char chunkhashes[chunkhash_single_size];
+	_u32 r = hashoutput_f->Read(chunkhashes, chunkhash_single_size, &has_read_error);
+
+	if (has_read_error)
+	{
+		Server->Log("Error reading from " + hashoutput_f->getFilename(), LL_ERROR);
+		has_error = true;
+	}
+
+	assert(r == chunkhash_single_size || start + size == chunk_patcher.getFilesize());
+
+	size_t chunkhash_size = big_hash_size + small_hash_size*(size / c_small_hash_dist + (size%c_small_hash_dist == 0 ? 0 : 1));
+	
+	assert(chunkhash_size==chunkhash_single_size || start + size == chunk_patcher.getFilesize());
+
+	std::string sparse_hashes = get_sparse_extent_content();
+
+	if (is_sparse!=NULL && memcmp(sparse_hashes.data(), chunkhashes, (std::min)(chunkhash_size, static_cast<size_t>(r))) == 0)
+	{
+		*is_sparse = true;
+		return;
+	}
+
+	reinterpret_cast<TreeHash*>(hashf)->addHashAllAdler(chunkhashes, r, size);
 }
 
 void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t bsize)
@@ -452,17 +440,15 @@ void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t 
 	hashf->sparse_hash(buf, (unsigned int)bsize);
 }
 
-void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
+void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse)
 {
 	if (buf != NULL)
 	{
-		addUnchangedHashes(file_pos, false);
-
 		hashf->hash(buf, (unsigned int)bsize);
 	}
-	else if(add_hashes_start==-1)
+	else if(hashoutput_f!=NULL)
 	{
-		add_hashes_start = file_pos;
+		addUnchangedHashes(file_pos, bsize, is_sparse);
 	}
 
 	file_pos += bsize;

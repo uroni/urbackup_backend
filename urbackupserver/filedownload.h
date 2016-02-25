@@ -40,7 +40,7 @@ public:
 	void filedownload(std::string csvfile);
 
 	virtual IPipe * new_fileclient_connection(void);
-	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
+	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse);
 	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);

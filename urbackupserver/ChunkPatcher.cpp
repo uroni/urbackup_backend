@@ -290,9 +290,19 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						tr=static_cast<unsigned int>(size-file_pos);
 					}
 
-					file_pos+=tr;
-					cb->next_chunk_patcher_bytes(NULL, tr, false);
+					bool is_sparse = false;
+					cb->next_chunk_patcher_bytes(NULL, tr, false, &is_sparse);
 					last_unchanged = true;
+
+					if (is_sparse)
+					{
+						if (last_sparse_start == -1)
+						{
+							last_sparse_start = file_pos;
+						}
+					}
+
+					file_pos += tr;
 					
 					tr=0;
 				}

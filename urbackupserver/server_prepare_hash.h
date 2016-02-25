@@ -25,7 +25,7 @@ public:
 	
 	bool isWorking(void);
 
-	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
+	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse);
 
 	void next_sparse_extent_bytes(const char * buf, size_t bsize);
 
@@ -45,7 +45,7 @@ private:
 
 	void readNextExtent();
 
-	void addUnchangedHashes(int64 stop, bool finish);
+	void addUnchangedHashes(int64 start, size_t size, bool* is_sparse);
 
 	IPipe *pipe;
 	IPipe *output;
@@ -56,7 +56,6 @@ private:
 	IFile* hashoutput_f;
 
 	int64 file_pos;
-	int64 add_hashes_start;
 
 	bool has_sparse_extents;
 

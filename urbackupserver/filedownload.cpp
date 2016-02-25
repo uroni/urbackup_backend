@@ -349,7 +349,7 @@ IPipe * FileDownload::new_fileclient_connection(void)
 	return NULL;
 }
 
-void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
+void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse)
 {
 	if(changed)
 	{
