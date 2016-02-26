@@ -4954,7 +4954,7 @@ bool IndexThread::get_volumes_mounted_locally()
 {
 	std::string ret = strlower(get_snapshot_script_location("volumes_mounted_locally"));
 
-	return ret == "0" || ret == "false" || ret == "no";
+	return ret != "0" && ret != "false" && ret != "no";
 }
 
 
