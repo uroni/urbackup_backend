@@ -297,7 +297,7 @@ then
 
 	if command -v lvs >/dev/null 2>&1
 	then
-		LVM_VOLS=`lvs | wc -l`
+		LVM_VOLS=`lvs 2> /dev/null | wc -l`
 		if [ "x$LVM_VOLS" != x ] && [ $LVM_VOLS > 1 ]
 		then
 			echo "+Detected LVM volumes"

@@ -2139,19 +2139,24 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	cleanup_saved_shadowcopies(true);
 
 #ifdef _WIN32
-	WCHAR volume_path[MAX_PATH]; 
+	WCHAR volume_path[MAX_PATH];
 	BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir->orig_target).c_str(), volume_path, MAX_PATH);
-	if(!ok)
+	if (!ok)
 	{
 		VSSLog("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
 		return false;
 	}
-	std::string wpath=Server->ConvertFromWchar(volume_path);
+	std::string wpath = Server->ConvertFromWchar(volume_path);
 #else
-	std::string wpath = (getFolderMount((dir->orig_target)));
-	if(wpath.empty())
+	std::string wpath = "/";
+
+	if (get_volumes_mounted_locally())
 	{
-		wpath = dir->orig_target;
+		wpath = getFolderMount(dir->orig_target);
+		if (wpath.empty())
+		{
+			wpath = dir->orig_target;
+		}
 	}
 #endif
 
@@ -4934,15 +4939,22 @@ std::string IndexThread::get_snapshot_script_location(const std::string & name)
 	if (!index_clientsubname.empty()
 		&& settings->getValue(conv_filename(index_clientsubname) + "_" + name, &ret))
 	{
-		return ret;
+		return trim(ret);
 	}
 
 	if (settings->getValue(name, &ret))
 	{
-		return ret;
+		return trim(ret);
 	}
 
 	return std::string();
+}
+
+bool IndexThread::get_volumes_mounted_locally()
+{
+	std::string ret = strlower(get_snapshot_script_location("volumes_mounted_locally"));
+
+	return ret == "0" || ret == "false" || ret == "no";
 }
 
 

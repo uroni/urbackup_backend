@@ -236,6 +236,7 @@ private:
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
 	std::string get_snapshot_script_location(const std::string& name);
+	bool get_volumes_mounted_locally();
 #endif
 
 	bool deleteShadowcopy(SCDirs *dir);
