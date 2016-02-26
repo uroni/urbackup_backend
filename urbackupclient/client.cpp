@@ -2158,6 +2158,10 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 			wpath = dir->orig_target;
 		}
 	}
+	else
+	{
+		dir->target = wpath;
+	}
 #endif
 
 	
