@@ -2150,17 +2150,10 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	q_iterate->Bind(backupid);
 	IDatabaseCursor* cursor = q_iterate->Cursor();
 
-	std::set<int64> finished_rows;
-
 	db_single_result res;
 	while(cursor->next(res))
 	{
 		int64 id = watoi64(res["id"]);
-
-		if (finished_rows.find(id)!=finished_rows.end())
-		{
-			continue;
-		}
 
 		int64 filesize = watoi64(res["filesize"]);
 		int64 rsize = watoi64(res["rsize"]);
@@ -2180,6 +2173,8 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 			}
 
 			next_entry = it_next->second;
+
+			correction.next_entries.erase(it_next);
 		}
 
 		std::map<int64, int64>::iterator it_prev= correction.prev_entries.find(id);
@@ -2191,6 +2186,8 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 			}
 
 			prev_entry = it_prev->second;
+
+			correction.prev_entries.erase(it_prev);
 		}
 
 		std::map<int64, int>::iterator it_pointed_to = correction.pointed_to.find(id);
@@ -2202,14 +2199,32 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 			}
 
 			pointed_to = it_pointed_to->second;
+
+			correction.pointed_to.erase(it_pointed_to);
 		}
 
 		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), res["shahash"].c_str(),
 			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true, &correction);
-
-		finished_rows.insert(id);
 	}
 	filesdao->getDatabase()->destroyQuery(q_iterate);
+
+	for (std::map<int64, int64>::iterator it_next = correction.next_entries.begin();
+		 it_next != correction.next_entries.end(); ++it_next)
+	{
+		filesdao->setNextEntry(it_next->second, it_next->first);
+	}
+
+	for (std::map<int64, int64>::iterator it_prev = correction.prev_entries.begin();
+		 it_prev != correction.prev_entries.end(); ++it_prev)
+	{
+		filesdao->setPrevEntry(it_prev->second, it_prev->first);
+	}
+
+	for (std::map<int64, int>::iterator it_pointed_to = correction.pointed_to.begin();
+		 it_pointed_to != correction.pointed_to.end(); ++it_pointed_to)
+	{
+		filesdao->setPointedTo(it_pointed_to->second, it_pointed_to->first);
+	}
 
 	filesdao->deleteFiles(backupid);
 

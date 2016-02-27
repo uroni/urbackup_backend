@@ -1210,7 +1210,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 		}
 		dlfiles.delete_chunkhashes=true;
 		FsExtentIterator extent_iterator(file_old.get());
-		build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false, NULL, NULL, false, &extent_iterator);
+		build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, NULL, false, NULL, NULL, false, NULL, &extent_iterator);
 		hashfile_old->Seek(0);
 	}
 

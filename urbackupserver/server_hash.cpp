@@ -429,49 +429,66 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 	{
 		if(next_id!=0)
 		{
-			filesdao.setPointedTo(1, next_id);
-			Server->Log("Changed file index entry from "+convert(id)+" to "+convert(next_id)+" (next)", LL_DEBUG);
-			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
-
+			std::string str_correction;
 			if (correction != NULL
 				&& correction->needs_correction(next_id))
 			{
 				correction->pointed_to[next_id] = 1;
+				str_correction = " (with correction)";
 			}
+			else
+			{
+				filesdao.setPointedTo(1, next_id);
+			}
+
+			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
+
+			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(next_id) + " (next)"+str_correction, LL_DEBUG);
 		}
 		else
 		{
-			filesdao.setPointedTo(1, prev_id);
-			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id) + " (prev)", LL_DEBUG);
-			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
+			std::string str_correction;
 
 			if (correction != NULL
 				&& correction->needs_correction(prev_id))
 			{
 				correction->pointed_to[prev_id] = 1;
+				str_correction = " (with correction)";
 			}
+			else
+			{
+				filesdao.setPointedTo(1, prev_id);
+			}
+
+			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
+
+			Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id) + " (prev)"+str_correction, LL_DEBUG);
 		}
 	}
 
 	if(next_id!=0)
 	{
-		filesdao.setPrevEntry(prev_id, next_id);
-
 		if (correction!=NULL
 			&& correction->needs_correction(next_id))
 		{
 			correction->prev_entries[next_id] = prev_id;
 		}
+		else
+		{
+			filesdao.setPrevEntry(prev_id, next_id);
+		}
 	}
 
 	if(prev_id!=0)
 	{
-		filesdao.setNextEntry(next_id, prev_id);
-
 		if (correction != NULL
 			&& correction->needs_correction(prev_id))
 		{
-			correction->prev_entries[prev_id] = next_id;
+			correction->next_entries[prev_id] = next_id;
+		}
+		else
+		{
+			filesdao.setNextEntry(next_id, prev_id);
 		}
 	}
 
