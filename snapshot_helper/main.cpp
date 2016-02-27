@@ -86,7 +86,7 @@ std::string handleFilename(std::string fn)
 int exec_wait(const std::string& path, bool keep_stdout, ...)
 {
 	va_list vl;
-	va_start(vl, path);
+	va_start(vl, keep_stdout);
 	
 	std::vector<char*> args;
 	args.push_back(const_cast<char*>(path.c_str()));
