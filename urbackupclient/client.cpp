@@ -82,9 +82,8 @@ const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 const unsigned int shadowcopy_startnew_timeout=55*60*1000;
-const size_t max_modify_file_buffer_size=500*1024;
-const size_t max_add_file_buffer_size=500*1024;
-const int64 save_filehash_limit=20*4096;
+const size_t max_modify_file_buffer_size= 2 * 1024 * 1024;
+const size_t max_add_file_buffer_size=2*1024*1024;
 const int64 file_buffer_commit_interval=120*1000;
 
 
@@ -1083,7 +1082,7 @@ void IndexThread::indexDirs(bool full_backup)
 				}
 #endif
 				initialCheck(backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-					backup_dirs[i].flags, true, backup_dirs[i].symlinked, 0);
+					backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0);
 
 				commitModifyFilesBuffer();
 				commitAddFilesBuffer();
@@ -1333,7 +1332,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 		}
 	}
 
-	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter);
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db);
 
 	if(index_error)
 	{
@@ -1748,7 +1747,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 	return calculated_hash;
 }
 
-std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter)
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes)
 {
 #ifndef _WIN32
 	if(path.empty())
@@ -1774,16 +1773,16 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 	bool dir_changed=true;
 #endif
 	std::vector<SFileAndHash> fs_files;
-	if(!use_db || dir_changed )
+	if (!use_db || dir_changed)
 	{
 		++index_c_fs;
 
-		std::string tpath=os_file_prefix(path);
+		std::string tpath = os_file_prefix(path);
 
 		bool has_error;
-		fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
+		fs_files = convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0), fn_filter);
 
-		if(has_error)
+		if (has_error)
 		{
 #ifdef _WIN32
 			int err = GetLastError();
@@ -1794,37 +1793,40 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			bool root_exists = os_directory_exists(os_file_prefix(index_root_path)) ||
 				os_directory_exists(os_file_prefix(add_trailing_slash(index_root_path)));
 
-			if(root_exists)
+			if (root_exists)
 			{
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \""+path+"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert(err), LL_ERROR);
+				VSSLog("Error while getting files in folder \"" + path + "\". SYSTEM may not have permissions to access this folder. Windows errorcode: " + convert(err), LL_ERROR);
 #else
-                VSSLog("Error while getting files in folder \""+path+"\". User may not have permissions to access this folder. Errno is "+convert(err), LL_ERROR);
-                index_error=true;
+				VSSLog("Error while getting files in folder \"" + path + "\". User may not have permissions to access this folder. Errno is " + convert(err), LL_ERROR);
+				index_error = true;
 #endif
 			}
 			else
 			{
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \""+path+"\". Windows errorcode: "+convert(err)+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \"" + path + "\". Windows errorcode: " + convert(err) + ". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 #else
-				VSSLog("Error while getting files in folder \""+path+"\". Errorno is "+convert(err)+". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while getting files in folder \"" + path + "\". Errorno is " + convert(err) + ". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
 #endif
-				index_error=true;
+				index_error = true;
 			}
 		}
 
 		std::vector<SFileAndHash> db_files;
-		bool has_files=false;
-		
-#ifndef _WIN32
-		if(calculate_filehashes_on_client)
+		bool has_files = false;
+
+		if (use_db_hashes)
 		{
-#endif
-			has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files);
 #ifndef _WIN32
-		}
+			if (calculate_filehashes_on_client)
+			{
 #endif
+				has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files);
+#ifndef _WIN32
+			}
+#endif
+		}
 
 #ifdef _WIN32
 		if(dir_changed)
