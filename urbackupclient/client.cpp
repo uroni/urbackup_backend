@@ -1039,18 +1039,24 @@ void IndexThread::indexDirs(bool full_backup)
 					std::sort(changed_dirs.begin(), changed_dirs.end());
 
 #if !defined(VSS_XP) && !defined(VSS_S03)
-					VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
-					handleHardLinks(backup_dirs[i].path, mod_path);
+					if (!full_backup)
+					{
+						VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
+						handleHardLinks(backup_dirs[i].path, mod_path);
+					}
 #endif
 
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
 					
-					VSSLog("Removing deleted directories from index for \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
-					std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
-					DBScopedWriteTransaction write_transaction(db);
-					for (size_t j = 0; j < deldirs.size(); ++j)
+					if (!full_backup)
 					{
-						cd->removeDeletedDir(deldirs[j], db_tgroup);
+						VSSLog("Removing deleted directories from index for \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
+						std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
+						DBScopedWriteTransaction write_transaction(db);
+						for (size_t j = 0; j < deldirs.size(); ++j)
+						{
+							cd->removeDeletedDir(deldirs[j], db_tgroup);
+						}
 					}
 				}
 #else
