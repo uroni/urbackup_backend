@@ -364,6 +364,11 @@ bool ImageThread::sendFullImageThread(void)
 
 	bool success = !has_error;
 
+	if (success && !image_inf->no_shadowcopy)
+	{
+		ClientConnector::updateLastBackup();
+	}
+
 #ifdef VSS_XP //persistence
 	has_error=false;
 #endif
@@ -749,11 +754,14 @@ bool ImageThread::sendIncrImageThread(void)
 	Server->destroy(hashdatafile);
 	Server->deleteFile(hashdatafile_fn);
 
-	ClientConnector::updateLastBackup();
-
 	Server->Log("Sending image done", LL_INFO);
 
 	bool success = !has_error;
+
+	if (success && !image_inf->no_shadowcopy)
+	{
+		ClientConnector::updateLastBackup();
+	}
 
 #ifdef VSS_XP //persistence
 	has_error=false;
