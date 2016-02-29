@@ -802,6 +802,31 @@ void IndexThread::operator()(void)
 	delete this;
 }
 
+namespace
+{
+#ifdef _WIN32
+	std::string getVolPath(const std::string& bpath)
+	{
+		std::string prefixedbpath = os_file_prefix(bpath);
+		std::wstring tvolume;
+		tvolume.resize(prefixedbpath.size() + 100);
+		DWORD cchBufferLength = static_cast<DWORD>(tvolume.size());
+		BOOL b = GetVolumePathNameW(Server->ConvertToWchar(prefixedbpath).c_str(), &tvolume[0], cchBufferLength);
+		if (!b)
+		{
+			return std::string();
+		}
+
+		std::string volume =  Server->ConvertFromWchar(tvolume);
+
+		if (volume.find("\\\\?\\") == 0)
+			volume.erase(0, 4);
+
+		return volume;
+	}
+#endif
+}
+
 const char * filelist_fn="urbackup/data/filelist_new.ub";
 
 void IndexThread::indexDirs(bool full_backup)
@@ -1028,15 +1053,6 @@ void IndexThread::indexDirs(bool full_backup)
 					DirectoryWatcherThread::update_and_wait(open_files);
 					std::sort(open_files.begin(), open_files.end());
 					Server->wait(1000);
-					std::vector<std::string> acd = cd->getChangedDirs(strlower(backup_dirs[i].path), false);
-					for (size_t j = 0; j < acd.size(); ++j)
-					{
-						if (!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
-						{
-							changed_dirs.push_back(acd[j]);
-						}
-					}
-					std::sort(changed_dirs.begin(), changed_dirs.end());
 
 #if !defined(VSS_XP) && !defined(VSS_S03)
 					if (!full_backup)
@@ -1050,8 +1066,28 @@ void IndexThread::indexDirs(bool full_backup)
 					
 					if (!full_backup)
 					{
-						VSSLog("Removing deleted directories from index for \"" + backup_dirs[i].tname + "\"...", LL_DEBUG);
-						std::vector<std::string> deldirs = cd->getDelDirs(strlower(backup_dirs[i].path), false);
+						std::string volpath = getVolPath(backup_dirs[i].path);
+
+						if (volpath.empty())
+						{
+							VSSLog("Error getting volume path for " + backup_dirs[i].path, LL_WARNING);
+						}
+
+						volpath = strlower(removeDirectorySeparatorAtEnd(volpath));
+
+
+						std::vector<std::string> acd = cd->getChangedDirs(volpath, false);
+						for (size_t j = 0; j < acd.size(); ++j)
+						{
+							if (!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
+							{
+								changed_dirs.push_back(acd[j]);
+							}
+						}
+						std::sort(changed_dirs.begin(), changed_dirs.end());
+
+						VSSLog("Removing deleted directories from index for \"" + volpath + "\"...", LL_DEBUG);
+						std::vector<std::string> deldirs = cd->getDelDirs(volpath, false);
 						DBScopedWriteTransaction write_transaction(db);
 						for (size_t j = 0; j < deldirs.size(); ++j)
 						{
