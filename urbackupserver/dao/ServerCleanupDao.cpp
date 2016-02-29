@@ -689,13 +689,13 @@ std::vector<ServerCleanupDao::SClientInfo> ServerCleanupDao::getClients(void)
 * @func vector<SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient
 * @return int id, string backuptime, string path
 * @sql
-*	SELECT id, backuptime, path FROM backups WHERE clientid=:clientid(int)
+*	SELECT id, backuptime, path FROM backups WHERE clientid=:clientid(int) ORDER BY backuptime DESC
 */
 std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient(int clientid)
 {
 	if(q_getFileBackupsOfClient==NULL)
 	{
-		q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
+		q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=? ORDER BY backuptime DESC", false);
 	}
 	q_getFileBackupsOfClient->Bind(clientid);
 	db_results res=q_getFileBackupsOfClient->Read();
