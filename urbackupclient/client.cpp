@@ -1054,14 +1054,6 @@ void IndexThread::indexDirs(bool full_backup)
 					std::sort(open_files.begin(), open_files.end());
 					Server->wait(1000);
 
-#if !defined(VSS_XP) && !defined(VSS_S03)
-					if (!full_backup)
-					{
-						VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
-						handleHardLinks(backup_dirs[i].path, mod_path);
-					}
-#endif
-
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
 					
 					if (!full_backup)
@@ -1094,6 +1086,14 @@ void IndexThread::indexDirs(bool full_backup)
 							cd->removeDeletedDir(deldirs[j], db_tgroup);
 						}
 					}
+
+#if !defined(VSS_XP) && !defined(VSS_S03)
+					if (!full_backup)
+					{
+						VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
+						handleHardLinks(backup_dirs[i].path, mod_path);
+					}
+#endif
 				}
 #else
 				if (!onlyref)
@@ -3657,15 +3657,15 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 			}
 			else
 			{
-				BY_HANDLE_FILE_INFORMATION fileInformation;
-				BOOL b=GetFileInformationByHandle(hFile, &fileInformation);
+				FILE_STANDARD_INFO fileInformation;
+				BOOL b= GetFileInformationByHandleEx(hFile, FileStandardInfo, &fileInformation, sizeof(fileInformation));
 
 				if(!b)
 				{
 					VSSLog("Error getting file information of "+fn, LL_INFO);
 					CloseHandle(hFile);
 				}
-				else if(fileInformation.nNumberOfLinks>1)
+				else if(fileInformation.NumberOfLinks>1)
 				{
 					CloseHandle(hFile);
 
