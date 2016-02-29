@@ -817,7 +817,7 @@ namespace
 			return std::string();
 		}
 
-		std::string volume =  Server->ConvertFromWchar(tvolume);
+		std::string volume =  Server->ConvertFromWchar(tvolume.c_str());
 
 		if (volume.find("\\\\?\\") == 0)
 			volume.erase(0, 4);
