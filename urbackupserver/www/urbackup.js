@@ -1333,6 +1333,10 @@ function downloadZIP(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
+function downloadGZIP(clientid, backupid, path)
+{
+	location.href=getURL("backups", "sa=gzipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
+}
 
 function show_settings1()
 {

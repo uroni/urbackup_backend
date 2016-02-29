@@ -33,6 +33,7 @@ std::string constructFilter(const std::vector<int> &clientid, std::string key)
 }
 
 bool create_zip_to_output(const std::wstring& foldername, const std::wstring& filter);
+bool create_gzip_to_output(const std::wstring& foldername, const std::wstring& filter);
 
 namespace
 {
@@ -75,6 +76,17 @@ namespace
 		helper.releaseAll();
 
 		return create_zip_to_output(foldername, filter);
+	}
+	bool sendGZip(Helper& helper, const std::wstring& foldername, const std::wstring& filter)
+	{
+		std::wstring gzipname=ExtractFileName(foldername)+L".tar.gz";
+
+		THREAD_ID tid = Server->getThreadID();
+		Server->setContentType(tid, "application/octet-stream");
+		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(gzipname)+"\"");
+		helper.releaseAll();
+
+		return create_gzip_to_output(foldername, filter);
 	}
 }
 
@@ -183,7 +195,7 @@ ACTION_IMPL(backups)
 				ret.set("error", 2);
 			}
 		}
-		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" )
+		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" || sa==L"gzipdl")
 		{
 			int t_clientid=watoi(GET[L"clientid"]);
 			bool r_ok=helper.hasRights(t_clientid, rights, clientid);
@@ -203,7 +215,7 @@ ACTION_IMPL(backups)
 					}
 				}
 
-				if( (sa==L"filesdl" || sa==L"zipdl")
+				if( (sa==L"filesdl" || sa==L"zipdl" || sa==L"gzipdl")
 					&& !path.empty())
 				{
 					path.erase(path.size()-1, 1);
@@ -249,6 +261,11 @@ ACTION_IMPL(backups)
 						else if(sa==L"zipdl")
 						{
 							sendZip(helper, currdir, GET[L"filter"]);
+							return;
+						}
+						else if(sa==L"gzipdl")
+						{
+							sendGZip(helper, currdir, GET[L"filter"]);
 							return;
 						}
 
