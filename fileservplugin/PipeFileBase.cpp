@@ -24,8 +24,8 @@
 #include "../Interface/ThreadPool.h"
 #include "../stringtools.h"
 
-const size_t buffer_size = 5*1024*1024;
-const _u32 buffer_keep_free = 1*1024*1024;
+const size_t buffer_size = 10*1024*1024;
+const _u32 buffer_keep_free = 5*1024*1024;
 
 
 PipeFileBase::PipeFileBase(const std::string& pCmd)
