@@ -260,22 +260,13 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 
 				if(hFile!=INVALID_HANDLE_VALUE)
 				{
-					BY_HANDLE_FILE_INFORMATION file_info;
-					if(GetFileInformationByHandle(hFile, &file_info))
+					if (exact_filesize)
 					{
-						size.HighPart = file_info.nFileSizeHigh;
-						size.LowPart = file_info.nFileSizeLow;
-						f.size = size.QuadPart;
-
-						lwt.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
-						lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
-
-						f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
-
-						lwt.HighPart=file_info.ftCreationTime.dwHighDateTime;
-						lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
-
-						f.created=os_windows_to_unix_time(lwt.QuadPart);
+						LARGE_INTEGER fsize;
+						if (GetFileSizeEx(hFile, &fsize)!=0)
+						{
+							f.size = fsize.QuadPart;
+						}
 					}
 
 					
