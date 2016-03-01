@@ -69,13 +69,15 @@ bool PipeFileBase::SeekInt(_i64 spos)
 			buffer_size - buf_w_reserved_pos>static_cast<size_t>(-1 * seeked_r_pos) &&
 			buf_circle)
 		{
-			buf_r_pos = buffer_size + seeked_r_pos;
+			buf_r_pos = static_cast<size_t>(buffer_size + seeked_r_pos);
 			assert(buf_r_pos <= buffer_size);
 			curr_pos = spos;
 			return true;
 		}
 		else
 		{
+			Server->Log("Seek failed. buf_r_pos <= buf_w_pos. buf_r_pos=" + convert(buf_r_pos) + " buf_w_pos=" + convert(buf_w_pos) +
+				" seeked_r_pos=" + convert(seeked_r_pos) + " seek_off=" + convert(seek_off) + " spos=" + convert(spos) + " curr_pos=" + convert(curr_pos), LL_DEBUG);
 			return false;
 		}
 	}
@@ -99,6 +101,8 @@ bool PipeFileBase::SeekInt(_i64 spos)
 		}
 		else
 		{
+			Server->Log("Seek failed. buf_r_pos > buf_w_pos. buf_r_pos=" + convert(buf_r_pos) + " buf_w_pos=" + convert(buf_w_pos) +
+				" seeked_r_pos=" + convert(seeked_r_pos) + " seek_off=" + convert(seek_off) + " spos=" + convert(spos) + " curr_pos=" + convert(curr_pos), LL_DEBUG);
 			return false;
 		}
 	}
