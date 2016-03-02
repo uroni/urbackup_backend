@@ -320,6 +320,11 @@ bool PipeFileBase::fillBuffer()
 {
 	IScopedLock lock(buffer_mutex.get());
 
+	if (has_eof)
+	{
+		return false;
+	}
+
 	size_t bsize_free = 0;
 
 	if (buf_w_pos == buffer_size
@@ -507,6 +512,11 @@ std::string PipeFileBase::getStdErr()
 
 void PipeFileBase::waitForExit()
 {
+	{
+		IScopedLock lock(buffer_mutex.get());
+		has_eof = true;
+	}
+
 	std::vector<THREADPOOL_TICKET> tickets;
 	tickets.push_back(stdout_thread);
 	tickets.push_back(stderr_thread);
