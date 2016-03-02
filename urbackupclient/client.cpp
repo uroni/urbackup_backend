@@ -3649,7 +3649,7 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 			}
 
 			std::string fn=vsstpath+files[i].name;
-			HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 			if(hFile==INVALID_HANDLE_VALUE)
 			{

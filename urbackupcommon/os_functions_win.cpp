@@ -255,7 +255,7 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 		{
 			if(with_usn)
 			{
-				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+ConvertToWchar(f.name)).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+ConvertToWchar(f.name)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 				if(hFile!=INVALID_HANDLE_VALUE)
