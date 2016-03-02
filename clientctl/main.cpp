@@ -991,7 +991,7 @@ int action_add_backupdir(std::vector<std::string> args)
 		flags += ",keep";
 	}
 
-	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths(true);
 
 	if (Connector::hasError())
 	{
@@ -1122,7 +1122,7 @@ int action_list_backupdirs(std::vector<std::string> args)
 		return 0;
 	}
 
-	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths(false);
 
 	if (Connector::hasError())
 	{
@@ -1230,7 +1230,7 @@ int action_remove_backupdir(std::vector<std::string> args)
 		return 3;
 	}
 
-	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths();
+	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths(true);
 
 	if (Connector::hasError())
 	{

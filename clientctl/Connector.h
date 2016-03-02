@@ -148,7 +148,7 @@ struct SStatusDetails
 class Connector
 {
 public:
-	static std::vector<SBackupDir> getSharedPaths(void);
+	static std::vector<SBackupDir> getSharedPaths(bool use_change_pw);
 	static std::string getSharedPathsRaw();
 	static bool saveSharedPaths(const std::vector<SBackupDir> &res);
 	static SStatus getStatus(void);

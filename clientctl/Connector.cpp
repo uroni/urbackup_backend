@@ -202,10 +202,10 @@ std::string Connector::getSharedPathsRaw()
 	return getResponse("GET BACKUP DIRS", "", false);
 }
 
-std::vector<SBackupDir> Connector::getSharedPaths(void)
+std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 {
 	std::vector<SBackupDir> ret;
-	std::string d = getResponse("GET BACKUP DIRS", "", false);
+	std::string d = getResponse("GET BACKUP DIRS", "", use_change_pw);
 
 	if (d.empty())
 	{
