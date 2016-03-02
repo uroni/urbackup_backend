@@ -134,7 +134,10 @@ void Backup::operator()()
 		{
 			ServerLogger::Log(logid, "Backup succeeded", LL_INFO);
 		}
+	}
 
+	if (!has_early_error)
+	{
 		ServerCleanupThread::updateStats(false);
 	}
 
