@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <assert.h>
 
-const unsigned int ping_interval=5*60*1000;
+const unsigned int ping_interval=50*1000;
 const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
