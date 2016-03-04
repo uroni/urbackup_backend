@@ -36,7 +36,16 @@ namespace
 	*/
 	int sqlite3VarintLen(u64 v){
 		int i;
-		for(i=1; (v >>= 7)!=0; i++){ assert( i<9 ); }
+		for(i=1; (v >>= 7)!=0; i++)
+		{
+			assert( i<10 );
+		}
+
+		if (i == 10)
+		{
+			return 9;
+		}
+
 		return i;
 	}
 
