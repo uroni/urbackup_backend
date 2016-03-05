@@ -141,6 +141,16 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 			Write("PRAGMA wal_autocheckpoint=" + it->second);
 		}
 
+		it = params.find("page_size");
+		if (it != params.end())
+		{
+			Write("PRAGMA page_size=" + it->second);
+		}
+		else
+		{
+			Write("PRAGMA page_size=4096");
+		}
+
 		if(allocation_chunk_size!=std::string::npos)
 		{
 			int chunk_size = static_cast<int>(allocation_chunk_size);
