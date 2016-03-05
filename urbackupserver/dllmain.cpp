@@ -1994,7 +1994,7 @@ void upgrade(void)
 			{
 				if(db->EndTransaction())
 				{
-					db->Write("PRAGMA page_size = 32768");
+					db->Write("PRAGMA page_size = 4096");
 
 					db->Write("VACUUM");
 
