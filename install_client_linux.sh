@@ -269,9 +269,12 @@ then
     else
 		if grep 'NAME="Ubuntu"' /etc/os-release > /dev/null 2>&1
 		then
-			echo "+Detected Ubuntu. Dattobd supported"
-			UBUNTU=yes
-			DATTO=yes
+			if grep 'VERSION="' /etc/os-release | grep "LTS" > /dev/null 2>&1
+			then
+				echo "+Detected Ubuntu LTS. Dattobd supported"
+				UBUNTU=yes
+				DATTO=yes
+			fi
 		fi
 	fi
 
