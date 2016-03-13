@@ -90,6 +90,8 @@ bool ImageThread::sendFullImageThread(void)
 
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
+	std::auto_ptr<IFsFile> hdat_img;
+
 	bool run=true;
 	while(run)
 	{
@@ -119,6 +121,16 @@ bool ImageThread::sendFullImageThread(void)
 			}
 			mempipe->Write("exit");
 			mempipe=NULL;
+
+			if (run)
+			{
+				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter) + ".dat", MODE_RW));
+
+				if (hdat_img.get() == NULL)
+				{
+					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter+":") + ".dat", MODE_RW));
+				}
+			}
 		}
 		else
 		{
@@ -287,6 +299,11 @@ bool ImageThread::sendFullImageThread(void)
 								memcpy(cb+2*sizeof(int64), dig, c_hashsize);
 								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
 								notify_cs=true;
+
+								if (hdat_img.get() != NULL)
+								{
+									hdat_img->Write((j / vhdblocks)*c_hashsize, reinterpret_cast<char*>(dig), c_hashsize);
+								}
 							}
 							sha256_init(&shactx);
 						}
@@ -424,6 +441,8 @@ bool ImageThread::sendIncrImageThread(void)
 	int64 lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
+	std::auto_ptr<IFsFile> hdat_img;
+
 	bool run=true;
 	while(run)
 	{
@@ -451,6 +470,16 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 			mempipe->Write("exit");
 			mempipe=NULL;
+
+			if (run)
+			{
+				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter) + ".dat", MODE_RW));
+
+				if (hdat_img.get() == NULL)
+				{
+					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter + ":") + ".dat", MODE_RW));
+				}
+			}
 		}
 		else
 		{
@@ -584,54 +613,71 @@ bool ImageThread::sendIncrImageThread(void)
 
 				if(has_data)
 				{
-					sha256_init(&shactx);
-					bool mixed=false;
-					for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-					{
-						char* buf = fs->readBlock(j);
-						if( buf!=NULL )
-						{
-							sha256_update(&shactx, (unsigned char*)buf, blocksize);
-							blockbufs[j-i] = buf;
-						}
-						else
-						{
-							sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
-							mixed=true;
-							blockbufs[j-i] = NULL;
-						}
-					}
-					if(fs->hasError())
-					{
-						for(size_t i=0;i<blockbufs.size();++i)
-						{
-							if(blockbufs[i]!=NULL)
-							{
-								fs->releaseBuffer(blockbufs[i]);
-								blockbufs[i]=NULL;
-							}
-						}
-						ImageErrRunning("Error while reading from shadow copy device -2");
-						run=false;
-						break;
-					}
 					unsigned char digest[c_hashsize];
-					sha256_final(&shactx, digest);
-					bool has_hashdata=false;
-					char hashdata_buf[c_hashsize];
-					if(hashdatafile->Size()>=(currvhdblock+1)*c_hashsize)
+
+					bool has_hash = false;
+					if (hdat_img.get() != NULL)
 					{
-						hashdatafile->Seek(currvhdblock*c_hashsize);						
-						if( hashdatafile->Read(hashdata_buf, c_hashsize)!=c_hashsize )
+						if (hdat_img->Read((i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize) == c_hashsize)
+						{
+							has_hash = true;
+						}
+					}
+
+					bool has_hashdata = false;
+					char hashdata_buf[c_hashsize];
+					if (hashdatafile->Size() >= (currvhdblock + 1)*c_hashsize)
+					{
+						hashdatafile->Seek(currvhdblock*c_hashsize);
+						if (hashdatafile->Read(hashdata_buf, c_hashsize) != c_hashsize)
 						{
 							Server->Log("Reading hashdata failed!", LL_ERROR);
 						}
 						else
 						{
-							has_hashdata=true;
+							has_hashdata = true;
 						}
-					}						
-					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize)!=0)
+					}
+
+					bool mixed = false;
+					if (!has_hash
+						|| (has_hashdata && memcmp(hashdata_buf, digest, c_hashsize) != 0) )
+					{
+						sha256_init(&shactx);
+						for (int64 j = i; j < blocks && j < i + vhdblocks; ++j)
+						{
+							char* buf = fs->readBlock(j);
+							if (buf != NULL)
+							{
+								sha256_update(&shactx, (unsigned char*)buf, blocksize);
+								blockbufs[j - i] = buf;
+							}
+							else
+							{
+								sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
+								mixed = true;
+								blockbufs[j - i] = NULL;
+							}
+						}
+						if (fs->hasError())
+						{
+							for (size_t i = 0; i < blockbufs.size(); ++i)
+							{
+								if (blockbufs[i] != NULL)
+								{
+									fs->releaseBuffer(blockbufs[i]);
+									blockbufs[i] = NULL;
+								}
+							}
+							ImageErrRunning("Error while reading from shadow copy device -2");
+							run = false;
+							break;
+						}
+
+						sha256_final(&shactx, digest);
+					}
+
+					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize) != 0)
 					{
 						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
 						bool notify_cs=false;

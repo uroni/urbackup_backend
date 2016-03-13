@@ -70,7 +70,7 @@ private:
 struct SCRef
 {
 #ifdef _WIN32
-	SCRef(void): backupcom(NULL), ok(false), dontincrement(false) {}
+	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false) {}
 
 	IVssBackupComponents *backupcom;
 #endif
@@ -83,6 +83,7 @@ struct SCRef
 	bool dontincrement;
 	std::vector<std::string> starttokens;
 	std::string clientsubname;
+	bool cbt;
 };
 
 struct SCDirs
@@ -306,6 +307,12 @@ private:
 	void addFileFromLast(std::fstream &outfile);
 
 	bool handleLastFilelistDepth(SFile& data);
+
+	bool prepareCbt(std::string volume);
+
+	bool finishCbt(std::string volume);
+
+	bool disableCbt(std::string volume);
 
 	std::string starttoken;
 
