@@ -43,6 +43,18 @@ namespace
 {
 	const unsigned char ImageFlag_Persistent=1;
 	const unsigned char ImageFlag_Bitmap=2;
+
+	bool buf_is_zero(unsigned char* buf, size_t buf_size)
+	{
+		for (size_t i = 0; i < buf_size; ++i)
+		{
+			if (buf[i] != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 
@@ -124,11 +136,11 @@ bool ImageThread::sendFullImageThread(void)
 
 			if (run)
 			{
-				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter) + ".dat", MODE_RW));
+				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter) + ".dat", MODE_RW));
 
 				if (hdat_img.get() == NULL)
 				{
-					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter+":") + ".dat", MODE_RW));
+					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter+":") + ".dat", MODE_RW));
 				}
 			}
 		}
@@ -473,21 +485,69 @@ bool ImageThread::sendIncrImageThread(void)
 
 			if (run)
 			{
-				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter) + ".dat", MODE_RW));
+				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter) + ".dat", MODE_RW));
 
 				if (hdat_img.get() == NULL)
 				{
-					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->orig_image_letter + ":") + ".dat", MODE_RW));
+					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter + ":") + ".dat", MODE_RW));
 				}
 			}
 		}
 		else
 		{
+			int64 changed_blocks = 0;
+			int64 unchanged_blocks = 0;
+
+			if (hdat_img.get() != NULL)
+			{
+				std::auto_ptr<IFilesystem> fs;
+
+				if (!image_inf->shadowdrive.empty())
+				{
+					fs.reset(image_fak->createFilesystem(image_inf->shadowdrive, false,
+						IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
+				}
+
+				unsigned int blocksize = (unsigned int)fs->getBlocksize();
+				int64 drivesize = fs->getSize();
+
+				std::vector<char> buf;
+				buf.resize(4096);
+
+				hdat_img->Seek(0);
+				_u32 read;
+				int64 imgpos = 0;
+				do
+				{
+					read = hdat_img->Read(buf.data(), buf.size());
+
+					for (_u32 i = 0; i < read; i += SHA256_DIGEST_SIZE)
+					{
+						if (imgpos<drivesize 
+							&& fs->hasBlock(imgpos / blocksize))
+						{
+							if (buf_is_zero(reinterpret_cast<unsigned char*>(&buf[i]), SHA256_DIGEST_SIZE))
+							{
+								++changed_blocks;
+							}
+							else
+							{
+								++unchanged_blocks;
+							}
+						}
+
+						imgpos += c_vhdblocksize;
+					}
+
+				} while (read > 0);
+			}
+
 			std::auto_ptr<IFilesystem> fs;
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
+				bool readahead = (hdat_img.get() == NULL || changed_blocks > unchanged_blocks);
+				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), readahead,
 					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				shutdown_helper.reset(fs.get());
 			}
@@ -513,6 +573,12 @@ bool ImageThread::sendIncrImageThread(void)
 			vhdblocks=c_vhdblocksize/blocksize;
 			int64 currvhdblock=0;
 			int64 numblocks=drivesize/blocksize;
+
+			if (hdat_img.get() != NULL)
+			{
+				blockcnt = (changed_blocks*c_vhdblocksize) / blocksize;
+				blockcnt *= -1;
+			}
 
 			if(image_inf->startpos==0)
 			{
@@ -620,7 +686,7 @@ bool ImageThread::sendIncrImageThread(void)
 					{
 						if (hdat_img->Read((i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize) == c_hashsize)
 						{
-							has_hash = true;
+							has_hash = !buf_is_zero(digest, c_hashsize);
 						}
 					}
 
@@ -675,6 +741,11 @@ bool ImageThread::sendIncrImageThread(void)
 						}
 
 						sha256_final(&shactx, digest);
+
+						if (hdat_img.get() != NULL)
+						{
+							hdat_img->Write((i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize);
+						}
 					}
 
 					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize) != 0)

@@ -597,14 +597,18 @@ void IndexThread::operator()(void)
 				{
 					scd->ref->dontincrement=true;
 				}
-				if(start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==1?true:false))
+				bool onlyref = false;
+				if(start_shadowcopy(scd, &onlyref, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==1?true:false))
 				{
-					if (scd->ref->cbt)
+					if (scd->ref!=NULL
+						&& scd->ref->cbt
+						&& !onlyref)
 					{
 						scd->ref->cbt = finishCbt(scd->orig_target);
 					}
 
-					if (!scd->ref->cbt
+					if (scd->ref != NULL
+						&& !scd->ref->cbt
 						&& !disableCbt(scd->orig_target) )
 					{
 						VSSLog("Error disabling change block tracking for " + scd->orig_target, LL_ERROR);
@@ -653,7 +657,8 @@ void IndexThread::operator()(void)
 				scd->orig_target=scd->target;
 
 				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_DEBUG);
-				bool b= start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
+				bool onlyref = false;
+				bool b= start_shadowcopy(scd, &onlyref, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
@@ -672,12 +677,15 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
-					if (scd->ref->cbt)
+					if (scd->ref != NULL
+						&& scd->ref->cbt
+						&& !onlyref)
 					{
 						scd->ref->cbt = finishCbt(scd->orig_target);
 					}
 
-					if (!scd->ref->cbt
+					if (scd->ref != NULL
+						&& !scd->ref->cbt
 						&& !disableCbt(scd->orig_target))
 					{
 						VSSLog("Error disabling change block tracking for " + scd->orig_target, LL_ERROR);
@@ -1104,7 +1112,8 @@ void IndexThread::indexDirs(bool full_backup)
 					std::sort(open_files.begin(), open_files.end());
 					Server->wait(1000);
 
-					if (scd->ref->cbt)
+					if (scd->ref!=NULL
+						&& scd->ref->cbt)
 					{
 						scd->ref->cbt = finishCbt(backup_dirs[i].path);
 					}
@@ -1151,7 +1160,8 @@ void IndexThread::indexDirs(bool full_backup)
 #endif
 				}
 
-				if (!scd->ref->cbt)
+				if (scd->ref != NULL
+					&& !scd->ref->cbt)
 				{
 					if (!disableCbt(backup_dirs[i].path))
 					{
@@ -4541,7 +4551,8 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	ScopedCloseWindowsHandle hclose(hVolume);
 
-	BOOL b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_START, NULL, 0, NULL, 0, NULL, NULL);
+	DWORD bytesReturned;
+	BOOL b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_START, NULL, 0, NULL, 0, &bytesReturned, NULL);
 
 	if (!b)
 	{
@@ -4579,12 +4590,20 @@ bool IndexThread::finishCbt(std::string volume)
 		}
 	}
 
-	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ,
+	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ|GENERIC_WRITE,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if (hVolume == INVALID_HANDLE_VALUE)
 	{
+		return false;
+	}
+
+	if (FlushFileBuffers(hVolume) == FALSE)
+	{
+		std::string errmsg;
+		int64 err = os_last_error(errmsg);
+		VSSLog("Flushing volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 		return false;
 	}
 
@@ -4659,6 +4678,8 @@ bool IndexThread::finishCbt(std::string volume)
 
 	VSSLog("Zeroing image hash data of volume "+volume+"...", LL_DEBUG);
 
+	int64 changed_bytes = 0;
+
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; ++i)
 	{
 		BYTE ch = bitmap_data->Bitmap[i];
@@ -4674,11 +4695,15 @@ bool IndexThread::finishCbt(std::string volume)
 					VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 					return false;
 				}
+
+				changed_bytes += URBT_BLOCKSIZE;
 			}
 		}
 	}
 
 	hdat_img->Sync();
+
+	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes) + " have changed on volume", LL_INFO);
 
 	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
 
@@ -4717,7 +4742,7 @@ bool IndexThread::finishCbt(std::string volume)
 
 	hdat_file->Sync();
 
-	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, NULL, NULL);
+	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, &bytesReturned, NULL);
 
 	if (!b)
 	{

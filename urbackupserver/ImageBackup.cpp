@@ -819,9 +819,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					memcpy(&blockcnt, &buffer[off], sizeof(int64) );
 					blockcnt=little_endian(blockcnt);
 
-					if (!has_parent)
+					if (!has_parent || blockcnt<0)
 					{
-						ServerStatus::setProcessTotalBytes(clientname, status_id, blockcnt*blocksize);
+						ServerStatus::setProcessTotalBytes(clientname, status_id, (blockcnt<0 ? -blockcnt : blockcnt)*blocksize);
 					}
 
 					off+=sizeof(int64);
@@ -1004,7 +1004,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								last_status_update = ctime;
 								if(blockcnt!=0)
 								{
-									if(has_parent)
+									if(has_parent && blockcnt>0)
 									{
 										ServerStatus::setProcessDoneBytes(clientname, status_id, currblock*blocksize);
 										ServerStatus::setProcessPcDone(clientname, status_id, 
@@ -1023,7 +1023,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							{
 								last_eta_update = ctime;
 
-								int64 rel_blocks = has_parent ? currblock : numblocks;
+								int64 rel_blocks = (has_parent && blockcnt>=0) ? currblock : numblocks;
 								if (rel_blocks > 1000)
 								{									
 									int64 new_blocks = rel_blocks - last_eta_update_blocks;
@@ -1054,7 +1054,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 										if (set_eta)
 										{
-											int64 remaining_blocks = (has_parent ? totalblocks : blockcnt) - rel_blocks;
+											int64 remaining_blocks = ((has_parent && blockcnt >= 0) ? totalblocks : 
+												((blockcnt>0 ? blockcnt : -blockcnt)) - rel_blocks);
 											ServerStatus::setProcessEta(clientname, status_id,
 												static_cast<int64>(remaining_blocks / speed_bpms + 0.5), eta_set_time);
 										}
@@ -1212,11 +1213,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							return !vhdfile_err;
 						}
 						else if(currblock==-124 ||
-#ifndef _WIN32 
 							currblock==0xFFFFFFFFFFFFFFFFLLU)
-#else
-							currblock==0xFFFFFFFFFFFFFFFF)
-#endif
 						{
 							if(r-off>sizeof(int64))
 							{
