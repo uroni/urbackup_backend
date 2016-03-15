@@ -1287,6 +1287,13 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		}
 	}
 
+	if (!new_watchdirs.empty())
+	{
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	}
+
 	if(Server->fileExists(Server->getServerWorkingDir()+"\\UrBackupClient.exe"))
 	{
 		{
@@ -1586,6 +1593,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 		writestring((new_settings_str), settings_fn);
 
 		InternetClient::updateSettings();
+
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
 	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader(settings_server_fn));
@@ -1731,6 +1742,10 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		new_data+="client_set_settings_time="+convert(Server->getTimeSeconds())+"\n";
 
 		writestring(new_data, settings_fn);
+
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 }
 

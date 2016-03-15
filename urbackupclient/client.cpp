@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <sys\stat.h>
 #include "win_disk_mon.h"
+#include "win_all_volumes.h"
 #else
 #include "../config.h"
 #ifdef HAVE_MNTENT_H
@@ -73,7 +74,7 @@ const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
 const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
-
+const char IndexThread::IndexThreadAction_UpdateCbt = 7;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -395,6 +396,8 @@ void IndexThread::operator()(void)
 	
 	updateDirs();
 	register_token_callback();
+
+	updateCbt();
 
 	while(true)
 	{
@@ -848,6 +851,10 @@ void IndexThread::operator()(void)
 			{
 				cd->updateShadowCopyStarttime(save_id);
 			}
+		}
+		else if (action == IndexThreadAction_UpdateCbt)
+		{
+			updateCbt();
 		}
 	}
 
@@ -4542,6 +4549,10 @@ bool IndexThread::prepareCbt(std::string volume)
 			return false;
 		}
 	}
+	else if (volume.size() == 1)
+	{
+		volume += ":";
+	}
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
@@ -4559,9 +4570,19 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	if (!b)
 	{
+		DWORD lasterr = GetLastError();
+
 		std::string errmsg;
-		int64 err = os_last_error(errmsg);		
-		VSSLog("Preparing change block tracking reset for volume "+volume+" failed: " + errmsg + " (code: " + convert(err) + ")", LL_DEBUG);
+		int64 err = os_last_error(errmsg);
+		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_DEBUG);
+
+		
+		if ( (lasterr == ERROR_INVALID_FUNCTION
+				&& FileExists("urbctctl.exe") )
+			|| lasterr !=ERROR_INVALID_FUNCTION )
+		{
+			enableCbtVol(volume);
+		}
 	}
 
 	return b == TRUE;
@@ -4591,6 +4612,10 @@ bool IndexThread::finishCbt(std::string volume)
 		{
 			return false;
 		}
+	}
+	else if (volume.size() == 1)
+	{
+		volume += ":";
 	}
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ|GENERIC_WRITE,
@@ -4802,6 +4827,10 @@ bool IndexThread::disableCbt(std::string volume)
 			return false;
 		}
 	}
+	else if (volume.size() == 1)
+	{
+		volume += ":";
+	}
 
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
 	Server->deleteFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat");
@@ -4810,6 +4839,89 @@ bool IndexThread::disableCbt(std::string volume)
 		&& !FileExists("urbackup\\hdat_img_" + conv_filename(volume) + ".dat");
 #else
 	return false;
+#endif
+}
+
+void IndexThread::enableCbtVol(std::string volume)
+{
+#ifdef _WIN32
+	std::string allowed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz:";
+	
+	for (size_t i = 0; i < volume.size(); ++i)
+	{
+		if (allowed_chars.find(volume[i]) == std::string::npos)
+		{
+			return;
+		}
+	}
+
+	if (volume.size() == 1)
+	{
+		volume += ":";
+	}
+
+	system(("urbctctl.exe install " + volume).c_str());
+#endif
+}
+
+void IndexThread::updateCbt()
+{
+#ifdef _WIN32
+	if (!FileExists("urbctctl.exe"))
+	{
+		return;
+	}
+
+	std::set<std::string> vols;
+	static SVolumesCache* volumes_cache = NULL;
+
+	std::string settings_fn = "urbackup/data/settings.cfg";
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	if (curr_settings.get() != NULL)
+	{
+		std::string volumes;
+
+		if (curr_settings->getValue("image_letters", &volumes)
+			|| curr_settings->getValue("image_letters_def", &volumes))
+		{
+			if (strlower(volumes) == "all")
+			{
+				volumes = get_all_volumes_list(false, volumes_cache);
+			}
+			else if (strlower(volumes) == "all_nonusb")
+			{
+				volumes = get_all_volumes_list(true, volumes_cache);
+			}
+			
+			std::vector<std::string> ret;
+			Tokenize(volumes, ret, ";,");
+			for (size_t i = 0; i<ret.size(); ++i)
+			{
+				std::string cvol = strlower(trim(ret[i]));
+
+				if (vols.find(cvol) == vols.end())
+				{
+					enableCbtVol(cvol);
+					vols.insert(cvol);
+				}
+			}
+		}
+	}
+
+	readBackupDirs();
+
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		std::string cvol = strlower(trim(getVolPath(backup_dirs[i].path)));
+
+		if (!cvol.empty()
+			&& vols.find(cvol) == vols.end())
+		{
+			enableCbtVol(cvol);
+			vols.insert(cvol);
+		}
+	}
 #endif
 }
 

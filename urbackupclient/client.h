@@ -161,6 +161,7 @@ public:
 	static const char IndexThreadAction_PingShadowCopy;
 	static const char IndexThreadAction_AddWatchdir;
 	static const char IndexThreadAction_RemoveWatchdir;
+	static const char IndexThreadAction_UpdateCbt;
 
 	IndexThread(void);
 	~IndexThread();
@@ -313,6 +314,10 @@ private:
 	bool finishCbt(std::string volume);
 
 	bool disableCbt(std::string volume);
+
+	void enableCbtVol(std::string volume);
+
+	void updateCbt();
 
 	std::string starttoken;
 
