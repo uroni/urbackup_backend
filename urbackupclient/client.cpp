@@ -4488,6 +4488,9 @@ bool IndexThread::handleLastFilelistDepth(SFile& data)
 
 #ifdef _WIN32
 #define URBT_BLOCKSIZE (512 * 1024)
+#define URBT_MAGIC "~urbackupcbt!"
+#define URBT_MAGIC_SIZE 13
+
 typedef struct _URBCT_BITMAP_DATA
 {
 	DWORD BitmapSize;
@@ -4662,6 +4665,25 @@ bool IndexThread::finishCbt(std::string volume)
 
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
 
+	if (bitmap_data->BitmapSize < URBT_MAGIC_SIZE * 2)
+	{
+		VSSLog("Not enough data for urbackup cbt magic", LL_ERROR);
+		return false;
+	}
+
+	char* urbackupcbt_magic = URBT_MAGIC;
+	if (memcmp(bitmap_data->Bitmap, urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+	{
+		VSSLog("UrBackup cbt magic wrong (front)", LL_ERROR);
+		return false;
+	}
+
+	if (memcmp(&bitmap_data->Bitmap[bitmap_data->BitmapSize - URBT_MAGIC_SIZE], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+	{
+		VSSLog("UrBackup cbt magic wrong (tail)", LL_ERROR);
+		return false;
+	}
+
 	std::auto_ptr<IFsFile> hdat_img(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
 
 	if (hdat_img.get() == NULL)
@@ -4680,9 +4702,9 @@ bool IndexThread::finishCbt(std::string volume)
 
 	int64 changed_bytes = 0;
 
-	for (DWORD i = 0; i < bitmap_data->BitmapSize; ++i)
+	for (DWORD i = 0; i < bitmap_data->BitmapSize - URBT_MAGIC_SIZE*2; ++i)
 	{
-		BYTE ch = bitmap_data->Bitmap[i];
+		BYTE ch = bitmap_data->Bitmap[URBT_MAGIC_SIZE + i];
 
 		for (DWORD bit = 0; bit < 8; ++bit)
 		{
