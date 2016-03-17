@@ -1745,8 +1745,8 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 {
 	ServerSettings client_settings(db, clientid);
 
-	std::string client_quota = client_settings.getSettings()->client_quota;
-	if(client_quota.empty() || client_quota=="100%")
+	std::string client_quota = trim(client_settings.getSettings()->client_quota);
+	if(client_quota.empty() || client_quota=="100%" || client_quota=="-")
 	{
 		log << "Client does not have a quota or quota is 100%" << std::endl;
 		return true;
