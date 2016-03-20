@@ -56,7 +56,7 @@
 #else
 #define UPDATE_FILE_PREFIX "urbackup/"
 #include "../config.h"
-#define UPDATE_SIGNATURE_PREFIX DATADIR "/"
+#define UPDATE_SIGNATURE_PREFIX DATADIR "/urbackup/"
 #endif
 
 extern ICryptoFactory *crypto_fak;
