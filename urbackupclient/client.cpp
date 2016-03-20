@@ -1793,8 +1793,8 @@ bool IndexThread::readBackupScripts()
 
 						if (j > 0)
 						{
-							filesrv->registerFnRedirect(first_script_path + os_file_sep() + new_script.scriptname,
-								curr_script_path + os_file_sep() + new_script.scriptname);
+							filesrv->registerFnRedirect(first_script_path + os_file_sep() + new_script.outputname,
+								curr_script_path + os_file_sep() + new_script.outputname);
 						}
 					}
 				}

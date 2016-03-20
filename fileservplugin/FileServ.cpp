@@ -264,6 +264,6 @@ std::string FileServ::getRedirectedFn(const std::string & source_fn)
 	}
 	else
 	{
-		return it->first;
+		return source_fn;
 	}
 }
