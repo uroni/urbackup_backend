@@ -52,8 +52,10 @@
 
 #ifdef _WIN32
 #define UPDATE_FILE_PREFIX ""
+#define DATADIR ""
 #else
 #define UPDATE_FILE_PREFIX "urbackup/"
+#include "../config.h"
 #endif
 
 extern ICryptoFactory *crypto_fak;
@@ -502,7 +504,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 							if(checkHash(getSha512Hash(updatefile)))
 							{
 								Server->destroy(updatefile);
-								if(crypto_fak->verifyFile(UPDATE_FILE_PREFIX "urbackup_ecdsa409k1.pub",
+								if(crypto_fak->verifyFile(DATADIR "urbackup_ecdsa409k1.pub",
 									UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 								{
 #ifdef _WIN32
