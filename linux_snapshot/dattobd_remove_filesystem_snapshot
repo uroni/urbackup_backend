@@ -49,6 +49,7 @@ echo "Unmounting /dev/datto$NUM at /mnt/urbackup_snaps/$SNAP_ID..."
 
 if ! umount /mnt/urbackup_snaps/$SNAP_ID
 then
+	lsof | grep /mnt/urbackup_snaps/$SNAP_ID || true
     echo "Unmounting /mnt/urbackup_snaps/$SNAP_ID failed. Retrying in 10s..."
     sleep 10
     umount /mnt/urbackup_snaps/$SNAP_ID

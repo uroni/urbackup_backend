@@ -42,6 +42,7 @@ echo "Unmounting $VOLNAME at /mnt/urbackup_snaps/$SNAP_ID..."
 
 if ! umount /mnt/urbackup_snaps/$SNAP_ID
 then
+		lsof | grep /mnt/urbackup_snaps/$SNAP_ID || true
         sleep 10
         umount /mnt/urbackup_snaps/$SNAP_ID
 fi
