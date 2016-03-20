@@ -421,6 +421,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 				bool allow_exec;
 				std::string filename=map_file(o_filename, ident, allow_exec);
 
+				if (is_script)
+				{
+					filename = FileServ::getRedirectedFn(filename);
+				}
+
 				Log("Mapped name: "+filename, LL_DEBUG);
 
 				if(filename.empty())
@@ -1571,6 +1576,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	bool allow_exec;
 	std::string filename=map_file(o_filename, ident, allow_exec);
 
+	if (is_script)
+	{
+		filename = FileServ::getRedirectedFn(filename);
+	}
+
 	Log("Mapped name: "+filename, LL_DEBUG);
 
 	state=CS_BLOCKHASH;
@@ -2162,6 +2172,7 @@ bool CClientThread::FinishScript( CRData * data )
 
 	bool allow_exec;
 	std::string filename=map_file(s_filename, ident, allow_exec);
+	filename = FileServ::getRedirectedFn(filename);
 
 	Log("Mapped name: "+filename, LL_DEBUG);
 

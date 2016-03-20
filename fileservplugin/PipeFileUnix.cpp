@@ -67,7 +67,12 @@ PipeFile::PipeFile(const std::string& pCmd)
 		close(stderr_pipe[1]);
 
 		int rc = system(pCmd.c_str());
-
+		
+		if(rc>127)
+		{
+			rc = 127;
+		}
+		
 		_exit(rc);
 	}
 	else

@@ -31,6 +31,7 @@ std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
 std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
+std::map<std::string, std::string> FileServ::fn_redirects;
 
 
 FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
@@ -244,5 +245,25 @@ bool FileServ::hasActiveMetadataTransfers(const std::string& sharename, const st
 
 bool FileServ::registerFnRedirect(const std::string & source_fn, const std::string & target_fn)
 {
+	IScopedLock lock(mutex);
+
+	fn_redirects[source_fn] = target_fn;
+
 	return false;
+}
+
+std::string FileServ::getRedirectedFn(const std::string & source_fn)
+{
+	IScopedLock lock(mutex);
+
+	str_map::iterator it = fn_redirects.find(source_fn);
+
+	if (it != fn_redirects.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return it->first;
+	}
 }

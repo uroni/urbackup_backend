@@ -43,6 +43,8 @@ public:
 
 	bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn);
 
+	static std::string getRedirectedFn(const std::string& source_fn);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -69,6 +71,8 @@ private:
 	};
 
 	static std::map<std::string, SScriptMapping> script_mappings;
+
+	static std::map<std::string, std::string> fn_redirects;
 	
 	static IMutex *mutex;
 

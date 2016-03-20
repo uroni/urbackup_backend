@@ -1422,6 +1422,26 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 						{
 							if (!next(cfn, 0, "SCRIPT|urbackup/TAR"))
 							{
+								std::string tardirfn = ExtractFileName(getbetween("SCRIPT|", "|", cfn), "/");
+
+								if (tardirfn != ".." && tardirfn != ".")
+								{
+									std::string tardirpath = backuppath + os_file_sep() + "urbackup_backup_scripts" + os_file_sep() + tardirfn;
+									if (!os_create_dir(os_file_prefix(tardirpath)))
+									{
+										ServerLogger::Log(logid, "Error creating TAR dir at \"" + tardirpath + "\"", LL_ERROR);
+										break;
+									}
+
+									tardirpath = backuppath_hashes + os_file_sep() + "urbackup_backup_scripts" + os_file_sep() + tardirfn;
+
+									if (!os_create_dir(os_file_prefix(tardirpath)))
+									{
+										ServerLogger::Log(logid, "Error creating TAR dir at \"" + tardirpath + "\"", LL_ERROR);
+										break;
+									}
+								}
+
 								hash_file = false;
 							}
 
