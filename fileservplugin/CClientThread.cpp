@@ -548,6 +548,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 						getafter("|",s_filename), getuntil("|", s_filename), ident, folder_items, metadata_id);
 				}
 
+				ScopedShareActive scoped_share_active(o_filename);
+
 #ifndef LINUX
 				DWORD extra_flags = 0;
 				if (id == ID_GET_FILE_METADATA_ONLY)
@@ -1611,6 +1613,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 #endif
 
+	ScopedShareActive scoped_share_active;
+
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	IFile* srv_file = NULL;
 	if(is_script)
@@ -1651,6 +1655,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			PipeSessions::transmitFileMetadata(filename,
 				getafter("|",s_filename), getuntil("|", s_filename), ident, 0, metadata_id);
 		}
+
+		scoped_share_active.reset(s_filename);
 
 #ifdef _WIN32
 #ifndef BACKUP_SEM
@@ -1736,9 +1742,12 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	chunk.requested_filesize = requested_filesize;
 	chunk.pipe_file_user = pipe_file_user.get();
 	chunk.with_sparse = is_script ? false : with_sparse;
+	chunk.s_filename = s_filename;
 	pipe_file_user.release();
 
 	hFile=INVALID_HANDLE_VALUE;
+
+	scoped_share_active.release();
 
 	queueChunk(chunk);
 

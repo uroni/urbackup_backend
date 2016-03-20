@@ -25,6 +25,7 @@ private:
 
 	CClientThread *parent;
 	IFile *file;
+	std::string s_filename;
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	_i64 curr_hash_size;
 	_i64 curr_file_size;

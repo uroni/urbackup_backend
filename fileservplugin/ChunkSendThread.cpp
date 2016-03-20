@@ -24,6 +24,7 @@
 #include "FileServ.h"
 #include "socket_header.h"
 #include <memory.h>
+#include <assert.h>
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
@@ -75,6 +76,8 @@ void ChunkSendThread::operator()(void)
 			if (pipe_file_user.get()==NULL && file != NULL)
 			{
 				Server->destroy(file);
+				assert(!s_filename.empty());
+				FileServ::decrShareActive(s_filename);
 				file = NULL;
 			}
 			else if (pipe_file_user.get() != NULL)
@@ -96,8 +99,11 @@ void ChunkSendThread::operator()(void)
 			if(pipe_file_user.get() == NULL && file!=NULL)
 			{
 				Server->destroy(file);
+				assert(!s_filename.empty());
+				FileServ::decrShareActive(s_filename);
 			}
 			file=chunk.update_file;
+			s_filename = chunk.s_filename;
 			curr_hash_size=chunk.hashsize;
 			curr_file_size=chunk.startpos;
 			pipe_file_user.reset(chunk.pipe_file_user);
@@ -171,6 +177,8 @@ void ChunkSendThread::operator()(void)
 	if(pipe_file_user.get() == NULL && file!=NULL)
 	{
 		Server->destroy(file);
+		assert(!s_filename.empty());
+		FileServ::decrShareActive(s_filename);
 		file=NULL;
 	}
 	delete this;

@@ -723,7 +723,7 @@ void IndexThread::operator()(void)
 
 			int64 starttime = Server->getTimeMS();
 			while (filesrv != NULL
-				&& filesrv->hasActiveMetadataTransfers(scdir, starttoken)
+				&& filesrv->hasActiveTransfers(scdir, starttoken)
 				&& Server->getTimeMS() - starttime < 60 * 60 * 1000)
 			{
 				Server->wait(1000);

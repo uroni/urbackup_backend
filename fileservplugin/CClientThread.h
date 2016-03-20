@@ -70,6 +70,7 @@ struct SChunk
 	int64 requested_filesize;
 	ScopedPipeFileUser* pipe_file_user;
 	bool with_sparse;
+	std::string s_filename;
 };
 
 struct SLPData

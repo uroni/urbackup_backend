@@ -39,7 +39,11 @@ public:
 
 	static IFileServ::ITokenCallback* newTokenCallback();
 
-	bool hasActiveMetadataTransfers(const std::string& sharename, const std::string& server_token);
+	static void incrShareActive(std::string sharename);
+
+	static void decrShareActive(std::string sharename);
+
+	bool hasActiveTransfers(const std::string& sharename, const std::string& server_token);
 
 	bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn);
 
@@ -77,4 +81,54 @@ private:
 	static IMutex *mutex;
 
 	static ITokenCallbackFactory* token_callback_factory;
+
+	static std::map<std::string, size_t> active_shares;
+};
+
+
+class ScopedShareActive
+{
+public:
+	ScopedShareActive()
+	{
+
+	}
+
+	ScopedShareActive(const std::string& sharename)
+		: sharename(sharename)
+	{
+		if (!sharename.empty())
+		{
+			FileServ::incrShareActive(sharename);
+		}
+	}
+
+	~ScopedShareActive()
+	{
+		if (!sharename.empty())
+		{
+			FileServ::decrShareActive(sharename);
+		}
+	}
+
+	void reset(const std::string& new_sharename)
+	{
+		if (!sharename.empty())
+		{
+			FileServ::decrShareActive(sharename);
+		}
+		sharename = new_sharename;
+		if (!sharename.empty())
+		{
+			FileServ::incrShareActive(sharename);
+		}
+	}
+
+	void release()
+	{
+		sharename.clear();
+	}
+
+private:
+	std::string sharename;
 };
