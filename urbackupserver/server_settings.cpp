@@ -751,8 +751,9 @@ std::vector<STimeSpan> ServerSettings::parseTimeSpan(std::string time_span)
 				{
 					ret.clear();
 					return ret;
-				}				
+				}
 
+				ts.numdays = stop - start + 1;
 				for(int j=start;j<=stop;++j)
 				{				
 					ts.dayofweek=j;
