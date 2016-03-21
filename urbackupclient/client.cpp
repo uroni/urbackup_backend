@@ -4838,7 +4838,7 @@ bool IndexThread::disableCbt(std::string volume)
 	return !FileExists("urbackup\\hdat_file_" + conv_filename(volume) + ".dat")
 		&& !FileExists("urbackup\\hdat_img_" + conv_filename(volume) + ".dat");
 #else
-	return false;
+	return true;
 #endif
 }
 
