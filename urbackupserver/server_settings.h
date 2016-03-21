@@ -153,7 +153,14 @@ struct STimeSpan
 		}
 		else
 		{
-			return (stop_hour-start_hour)*numdays;
+			if (stop_hour < start_hour)
+			{
+				return (stop_hour + 24 - start_hour)*numdays;
+			}
+			else
+			{
+				return (stop_hour - start_hour)*numdays;
+			}
 		}
 	}
 };
