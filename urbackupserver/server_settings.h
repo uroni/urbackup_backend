@@ -136,7 +136,7 @@ struct SLDAPSettings
 
 struct STimeSpan
 {
-	STimeSpan(void): dayofweek(-1), numdays(1) {}
+	STimeSpan(void): dayofweek(-1), numdays(7) {}
 	STimeSpan(int dayofweek, float start_hour, float stop_hour):dayofweek(dayofweek), start_hour(start_hour), stop_hour(stop_hour), numdays(1) {}
 	STimeSpan(float start_hour, float stop_hour):dayofweek(0), start_hour(start_hour), stop_hour(stop_hour), numdays(1) {}
 
