@@ -702,13 +702,13 @@ Every web interface user can configure these values differently. UrBackup only s
 \hline
 Settings  & Description & Default value\\
 \hline\hline
-Interval for incremental file backups & The server will start incremental file backups in such intervals. & 5h\\
+Interval for incremental file backups & The server will start incremental file backups in such intervals.\footnote{\label{advanced_backup_interval_note}See section \ref{advanced_backup_interval} for time specific intervals.} & 5h\\
 \hline
-Interval for full file backups & The server will start full file backups in such intervals. & 30 days\\
+Interval for full file backups & The server will start full file backups in such intervals. \textsuperscript{\ref{advanced_backup_interval_note}} & 30 days\\
 \hline
-Interval for incremental image backups & The server will start incremental image backups in such intervals. & 7 days\\
+Interval for incremental image backups & The server will start incremental image backups in such intervals. \textsuperscript{\ref{advanced_backup_interval_note}} & 7 days\\
 \hline
-Interval for full image backups & The server will start full image backups in such intervals. & 30 days\\
+Interval for full image backups & The server will start full image backups in such intervals. \textsuperscript{\ref{advanced_backup_interval_note}} & 30 days\\
 \hline
 Maximal number of incremental file backups & Maximal number of incremental file backups for this client. If the number of
  incremental file backups exceeds this number the server will start deleting old incremental file backups. & 100\\
@@ -776,6 +776,23 @@ Mon-Fri/8:00-9:00, 19:30-20:30;Sat,Sun/0-24: On weekdays backup between 8 and 9 
 \par\null\par
 As one can see a number can denote a day of the week (1-Monday, 2-Tuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Tues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per ",". You can also set multiple window definitions. Separate them with ";".
 
+\subsubsection{Advanced backup interval}
+\label{advanced_backup_interval}
+
+Similar to the backup speed limit (see section \ref{speed_settings}) the backup intervals can be specified for different time intervals by combining them with a backup window (see previous section \ref{subsub_backup_window}) separated by ``@''. The most specific backup interval will then be used.\\
+
+\noindent For example, the default backup interval should be one hour and at night (8pm to 6am) it should be 4 hours:
+
+\begin{verbatim}
+1;4@1-7/20-6
+\end{verbatim}
+
+\noindent If additionally the backup interval should be 6 hours during the week-end:
+
+\begin{verbatim}
+1;4@1-5/18-6;6@5-7/0-24
+\end{verbatim}
+
 \subsubsection{Excluded files}
 \label{subsub_excluded_files}
 
@@ -821,11 +838,11 @@ Flags are specified by appending them after the backup location name (separated 
 \hline
 Flag & Description & Default\\
 \hline\hline
-optional & Backup will not fail, if the directory is unavailable & Not default\\
+optional & Backup will not fail if the directory is unavailable & Not default\\
 \hline
 follow\_symlinks & Symbolic links which point outside of the specified directory will be followed & Default\\
 \hline
-symlinks\_optional & Backup will not fail, if a symbolic link cannot be followed & Default\\
+symlinks\_optional & Backup will not fail if a symbolic link cannot be followed & Default\\
 \hline
 one\_filesystem & Files outside of the first encountered file system will be ignored and not backed up & Not default \\
 \hline
@@ -916,6 +933,9 @@ UrBackup has different transfer modes for files and images. Those are:
   		and if a lot of data is transferred (>2TB), however, the bit error detection mechanism
   		of TCP/IP is not enough to detect all occurring errors. The 'hashed' transfer mode
   		adds an additional layer of protection to make bit errors less probable.
+  		You do not need to use the hashed transfer mode if you backup via a Internet mode
+  		connection with enabled encryption, as the encryption layer already protects the integrity
+  		of the transmitted data.
   \item \textsl{Block differences - hashed}. Only available for file backups (as it is
   		automatically done for images). Blocks of the transferred files are compared using
   		CRC32 and MD5 hash functions. Only blocks which have changed are sent over the
@@ -951,8 +971,8 @@ If enabled UrBackup will use symbolic links to link unchanged directories with m
 The disadvantages are:
 
 \begin{itemize}
-  \item UrBackup needs to keep track of the number of times a directory is used. For hard links the operation system does this. UrBackup may be slower and less reliable doing this.
-  \item If the backup storage folder is moved all symbolic links are invalidated. To restore the symbolic links please run on Windows
+  \item UrBackup needs to keep track of the number of times a directory is used. For hard links the operating system does this. UrBackup may be slower and less reliable doing this.
+  \item If the backup storage folder is moved, all symbolic links are invalidated. To restore the symbolic links please run on Windows
   \begin{verbatim}
   C:\Program Files\UrBackupServer\remove_unkown.bat
   \end{verbatim}
@@ -997,11 +1017,11 @@ UrBackup protects whole machines from disaster by creating image backups and a u
 \subsection{Restoring image backups}
 
 Image backups can be restored with a Debian GNU/Linux based bootable CD/USB-stick. During image restore the machine to be restored must be reachable without network address tranlation from the server (or you forward the client ports in sections \ref{sec:ports} to the restore client).
-While Linux supports many mainboards, disk controllers etc. you should always verify that the restore CD works on your specific hardware, especially if you use exotic or new hardware.
-Drivers and firmware for some wireless devices and a program to configure is included, but restoring via a wired network connection will be less trouble and faster and should be preferred.
+While Linux supports many mainboards, disk controllers etc. you should always verify that the restore CD works on your specific hardware especially if you use exotic or new hardware.
+Drivers and firmware for some wireless devices and a program to configure is included but restoring via a wired network connection will be less trouble and faster and should be preferred.
 The restore itself is easy to use. After startup it will look for a backup server. If it does not find one, you can enter the backup server's IP/hostname and change your networking settings. After a backup server is found it will ask for a username and password. Use for example your admin account to access all clients and their image backups.
 Then you can select one image backup, select the disk you want to restore to and then it will restore. The target disk must be at least as large as the disk which was image backupped.
-Some hardware changes may cause Windows to bluescreen on startup after restore. If the startup repair fails, you may to do a repair install using a Windows disk. You should test, the different hardware combinations beforehand if you plan on restoring Windows to different hardware.
+Some hardware changes may cause Windows to bluescreen on startup after restore. If the startup repair fails, you may have to do a repair install using a Windows disk. You should test the different hardware combinations beforehand if you plan on restoring Windows to different hardware.
 
 \subsection{Restoring file backups}
 
@@ -1011,7 +1031,7 @@ You can also create a user for client(s), which allows the user to browse all ba
 
 Since UrBackup 2.0.x users can directly access the web interface from the client if a server URL is configured. Either they right-click on the UrBackup tray icon and then click ``Access/restore backups'' which opens the browser, or they can right click a file/directory in a backup path and then click on ``Access/restore backups'' to access all backups of a file/directory.\\
 
-When browsing backups the web interface will show a restore button if the client is online. The restore will ask for user confirmation. If the client includes a GUI component (tray icon), the user confirmation will popup for all active users on the client to be restored. If not acknoledged in time (timeout) or if declined the restore will fail. 
+When browsing backups the web interface will show a restore button if the client is online. The restore will ask for user confirmation. If the client includes a GUI component (tray icon), the user confirmation will popup for all active users on the client to be restored. If not acknowledged in time (timeout) or if declined the restore will fail. 
 You can change this behaviour in \textsl{C:\textbackslash Program files \textbackslash UrBackup \textbackslash args.txt} by changing ``default'' to ``server-confirms'' on Windows, or by changing the restore setting in \textsl{/etc/default/urbackupclient} or \textsl{/etc/sysconfig/urbackupclient} on Linux.
 
 UrBackup is setup this way because a theoretical data loss scenario is an attacker taking control of your backup server, deleting all backups and then deleting all files on the clients via restores.  
