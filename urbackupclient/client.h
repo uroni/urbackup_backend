@@ -309,13 +309,19 @@ private:
 
 	bool handleLastFilelistDepth(SFile& data);
 
+	bool volIsEnabled(std::string settings_val, std::string volume);
+
+	bool cbtIsEnabled(std::string clientsubname, std::string volume);
+
+	bool crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume);
+
 	bool prepareCbt(std::string volume);
 
 	bool finishCbt(std::string volume);
 
 	bool disableCbt(std::string volume);
 
-	void enableCbtVol(std::string volume);
+	void enableCbtVol(std::string volume, bool install);
 
 	void updateCbt();
 

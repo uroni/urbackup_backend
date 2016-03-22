@@ -86,6 +86,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("internet_full_image_style");
 	ret.push_back("create_linked_user_views");
 	ret.push_back("max_running_jobs_per_client");
+	ret.push_back("cbt_volumes");
+	ret.push_back("cbt_crash_persistent_volumes");
 	return ret;
 }
 
@@ -112,6 +114,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("internet_full_image_style");
 	ret.push_back("create_linked_user_views");
 	ret.push_back("max_running_jobs_per_client");
+	ret.push_back("cbt_volumes");
+	ret.push_back("cbt_crash_persistent_volumes");
 	return ret;
 }
 

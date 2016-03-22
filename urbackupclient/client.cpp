@@ -4493,6 +4493,85 @@ bool IndexThread::handleLastFilelistDepth(SFile& data)
 	return true;
 }
 
+bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
+{
+	settings_val = strlower(trim(settings_val));
+
+	if (settings_val == "all")
+	{
+		return true;
+	}
+
+	if (volume.size() == 2 && volume[1] == ':')
+	{
+		volume.resize(1);
+	}
+
+	volume = strlower(volume);
+
+	std::vector<std::string> vols;
+	TokenizeMail(settings_val, vols, ",;");
+
+	for (size_t i = 0; i < vols.size(); ++i)
+	{
+		if (vols[i].size() == 2 && vols[i][1] == ':')
+		{
+			vols[i].resize(1);
+		}
+
+		if (vols[i] == volume)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+
+	if (!clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	if (curr_settings.get() != NULL)
+	{
+		std::string cbt_volumes;
+		if (curr_settings->getValue("cbt_volumes", &cbt_volumes)
+			|| curr_settings->getValue("cbt_volumes_def", &cbt_volumes))
+		{
+			return volIsEnabled(cbt_volumes, volume);
+		}
+	}
+	return false;
+}
+
+bool IndexThread::crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume)
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+
+	if (!clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_" + conv_filename(clientsubname) + ".cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	if (curr_settings.get() != NULL)
+	{
+		std::string cbt_crash_persistent_volumes;
+		if (curr_settings->getValue("cbt_crash_persistent_volumes", &cbt_crash_persistent_volumes)
+			|| curr_settings->getValue("cbt_crash_persistent_volumes_def", &cbt_crash_persistent_volumes))
+		{
+			return volIsEnabled(cbt_crash_persistent_volumes, volume);
+		}
+	}
+	return false;
+}
+
 #ifdef _WIN32
 #define URBT_BLOCKSIZE (512 * 1024)
 #define URBT_MAGIC "~urbackupcbt!"
@@ -4582,7 +4661,10 @@ bool IndexThread::prepareCbt(std::string volume)
 				&& FileExists("urbctctl.exe") )
 			|| lasterr !=ERROR_INVALID_FUNCTION )
 		{
-			enableCbtVol(volume);
+			if (cbtIsEnabled(std::string(), volume))
+			{
+				enableCbtVol(volume, true);
+			}
 		}
 	}
 
@@ -4845,7 +4927,7 @@ bool IndexThread::disableCbt(std::string volume)
 #endif
 }
 
-void IndexThread::enableCbtVol(std::string volume)
+void IndexThread::enableCbtVol(std::string volume, bool install)
 {
 #ifdef _WIN32
 	std::string allowed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -4864,7 +4946,16 @@ void IndexThread::enableCbtVol(std::string volume)
 		volume += ":";
 	}
 
-	system(("urbctctl.exe install " + volume).c_str());
+	if (install)
+	{
+		std::string crash_persistent = crashPersistentCbtIsEnabled(std::string(), volume) ? "crash-persistent" : "not-crash-persistent";
+
+		system(("urbctctl.exe install " + volume + " " + crash_persistent).c_str());
+	}
+	else
+	{
+		system(("urbctctl.exe uninstall " + volume).c_str());
+	}
 #endif
 }
 
@@ -4905,7 +4996,7 @@ void IndexThread::updateCbt()
 
 				if (vols.find(cvol) == vols.end())
 				{
-					enableCbtVol(cvol);
+					enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol));
 					vols.insert(cvol);
 				}
 			}
@@ -4919,9 +5010,9 @@ void IndexThread::updateCbt()
 		std::string cvol = strlower(trim(getVolPath(backup_dirs[i].path)));
 
 		if (!cvol.empty()
-			&& vols.find(cvol) == vols.end())
+			&& vols.find(cvol) == vols.end() )
 		{
-			enableCbtVol(cvol);
+			enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol));
 			vols.insert(cvol);
 		}
 	}

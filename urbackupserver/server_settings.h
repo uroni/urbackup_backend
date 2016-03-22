@@ -112,6 +112,8 @@ struct SSettings
 	std::string internet_full_image_style;
 	float backup_ok_mod_file;
 	float backup_ok_mod_image;
+	std::string cbt_volumes;
+	std::string cbt_crash_persistent_volumes;
 };
 
 struct SLDAPSettings

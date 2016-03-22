@@ -327,6 +327,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_full_image_style=settings_default->getValue("internet_full_image_style", full_image_style_synthetic);
 	settings->backup_ok_mod_file = settings_default->getValue("backup_ok_mod_file", 3.f);
 	settings->backup_ok_mod_image = settings_default->getValue("backup_ok_mod_image", 3.f);
+	settings->cbt_volumes = settings_default->getValue("cbt_volumes", "ALL");
+	settings->cbt_crash_persistent_volumes = settings_default->getValue("cbt_crash_persistent_volumes", "-");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -476,6 +478,9 @@ void ServerSettings::readSettingsClient(void)
 	readStringClientSetting("local_full_image_style", &settings->local_full_image_style);
 	readStringClientSetting("internet_incr_image_style", &settings->internet_incr_image_style);
 	readStringClientSetting("internet_full_image_style", &settings->internet_full_image_style);
+
+	readStringClientSetting("cbt_volumes", &settings->cbt_volumes);
+	readStringClientSetting("cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
