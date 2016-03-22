@@ -574,7 +574,8 @@ bool ImageThread::sendIncrImageThread(void)
 			int64 currvhdblock=0;
 			int64 numblocks=drivesize/blocksize;
 
-			if (hdat_img.get() != NULL)
+			if (hdat_img.get() != NULL
+				&& unchanged_blocks>0)
 			{
 				blockcnt = (changed_blocks*c_vhdblocksize) / blocksize;
 				blockcnt *= -1;

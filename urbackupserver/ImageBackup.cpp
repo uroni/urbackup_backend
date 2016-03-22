@@ -821,6 +821,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if (!has_parent || blockcnt<0)
 					{
+						if (has_parent && blockcnt < 0)
+						{
+							ServerLogger::Log(logid, "Change block tracking active. Max "+PrettyPrintBytes(-blockcnt*blocksize)+" have changed.", LL_INFO);
+						}
+
 						ServerStatus::setProcessTotalBytes(clientname, status_id, (blockcnt<0 ? -blockcnt : blockcnt)*blocksize);
 					}
 
