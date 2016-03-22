@@ -4547,7 +4547,7 @@ bool IndexThread::cbtIsEnabled(std::string clientsubname, std::string volume)
 			return volIsEnabled(cbt_volumes, volume);
 		}
 	}
-	return false;
+	return true;
 }
 
 bool IndexThread::crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume)
@@ -4733,9 +4733,27 @@ bool IndexThread::finishCbt(std::string volume)
 		return false;
 	}
 
+	DISK_GEOMETRY disk_geometry = {};
+	b = DeviceIoControl(hVolume, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &disk_geometry, sizeof(disk_geometry),
+		&retBytes, NULL);
+
+	if (!b)
+	{
+		std::string errmsg;
+		int64 err = os_last_error(errmsg);
+		VSSLog("Getting disk geometry of volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+		return false;
+	}
+	
+
 	ULONGLONG bitmapBlocks = lengthInfo.Length.QuadPart / URBT_BLOCKSIZE + (lengthInfo.Length.QuadPart%URBT_BLOCKSIZE == 0 ? 0 : 1);
 
-	size_t bitmapBytes = bitmapBlocks / 8 + (bitmapBlocks % 8 == 0 ? 0 : 1);
+	size_t bitmapBytesWoMagic = bitmapBlocks / 8 + (bitmapBlocks % 8 == 0 ? 0 : 1);
+
+	DWORD bitmapSectorSize = disk_geometry.BytesPerSector - URBT_MAGIC_SIZE;
+
+	size_t bitmapBytes = (bitmapBytesWoMagic / bitmapSectorSize)*disk_geometry.BytesPerSector 
+		+ ((bitmapBytesWoMagic%bitmapSectorSize != 0) ? (URBT_MAGIC_SIZE + bitmapBytesWoMagic%bitmapSectorSize) : 0);
 
 	std::vector<char> buf;
 	buf.resize(2*sizeof(DWORD));
