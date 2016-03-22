@@ -4501,6 +4501,7 @@ bool IndexThread::handleLastFilelistDepth(SFile& data)
 typedef struct _URBCT_BITMAP_DATA
 {
 	DWORD BitmapSize;
+	ULONG SectorSize;
 	BYTE Bitmap[1];
 } URBCT_BITMAP_DATA, *PURBCT_BITMAP_DATA;
 
@@ -4655,10 +4656,10 @@ bool IndexThread::finishCbt(std::string volume)
 	size_t bitmapBytes = bitmapBlocks / 8 + (bitmapBlocks % 8 == 0 ? 0 : 1);
 
 	std::vector<char> buf;
-	buf.resize(sizeof(DWORD));
+	buf.resize(2*sizeof(DWORD));
 
 	DWORD bytesReturned;
-	b = DeviceIoControl(hVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf.data(), buf.size(), &bytesReturned, NULL);
+	b = DeviceIoControl(hVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf.data(), static_cast<DWORD>(buf.size()), &bytesReturned, NULL);
 
 	if (!b && GetLastError() != ERROR_MORE_DATA)
 	{
@@ -4676,9 +4677,9 @@ bool IndexThread::finishCbt(std::string volume)
 		return false;
 	}
 
-	buf.resize(sizeof(DWORD) + bitmap_data->BitmapSize);
+	buf.resize(2*sizeof(DWORD) + bitmap_data->BitmapSize);
 
-	b = DeviceIoControl(hVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf.data(), buf.size(), &bytesReturned, NULL);
+	b = DeviceIoControl(hVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf.data(), static_cast<DWORD>(buf.size()), &bytesReturned, NULL);
 
 	if (!b)
 	{
@@ -4689,24 +4690,15 @@ bool IndexThread::finishCbt(std::string volume)
 	}
 
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
-
-	if (bitmap_data->BitmapSize < URBT_MAGIC_SIZE * 2)
-	{
-		VSSLog("Not enough data for urbackup cbt magic", LL_ERROR);
-		return false;
-	}
-
 	char* urbackupcbt_magic = URBT_MAGIC;
-	if (memcmp(bitmap_data->Bitmap, urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
-	{
-		VSSLog("UrBackup cbt magic wrong (front)", LL_ERROR);
-		return false;
-	}
 
-	if (memcmp(&bitmap_data->Bitmap[bitmap_data->BitmapSize - URBT_MAGIC_SIZE], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
 	{
-		VSSLog("UrBackup cbt magic wrong (tail)", LL_ERROR);
-		return false;
+		if (memcmp(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+		{
+			VSSLog("UrBackup cbt magic wrong at pos "+convert((size_t)i), LL_ERROR);
+			return false;
+		}
 	}
 
 	std::auto_ptr<IFsFile> hdat_img(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
@@ -4727,24 +4719,30 @@ bool IndexThread::finishCbt(std::string volume)
 
 	int64 changed_bytes = 0;
 
-	for (DWORD i = 0; i < bitmap_data->BitmapSize - URBT_MAGIC_SIZE*2; ++i)
+	DWORD curr_bit = 0;
+	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
 	{
-		BYTE ch = bitmap_data->Bitmap[URBT_MAGIC_SIZE + i];
-
-		for (DWORD bit = 0; bit < 8; ++bit)
+		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
 		{
-			if ((ch & (1 << bit))>0)
-			{
-				if (hdat_img->Write((i * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
-				{
-					std::string errmsg;
-					int64 err = os_last_error(errmsg);
-					VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-					return false;
-				}
+			BYTE ch = bitmap_data->Bitmap[j];
 
-				changed_bytes += URBT_BLOCKSIZE;
+			for (DWORD bit = 0; bit < 8; ++bit)
+			{
+				if ((ch & (1 << bit))>0)
+				{
+					if (hdat_img->Write((curr_bit * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+					{
+						std::string errmsg;
+						int64 err = os_last_error(errmsg);
+						VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+						return false;
+					}
+
+					changed_bytes += URBT_BLOCKSIZE;
+				}
 			}
+
+			++curr_bit;
 		}
 	}
 
@@ -4768,22 +4766,27 @@ bool IndexThread::finishCbt(std::string volume)
 
 	char zero_chunk[chunkhash_single_size] = {};
 
-	for (DWORD i = 0; i < bitmap_data->BitmapSize; ++i)
+	curr_bit = 0;
+	for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
 	{
-		BYTE ch = bitmap_data->Bitmap[i];
-
-		for (DWORD bit = 0; bit < 8; ++bit)
+		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
 		{
-			if ((ch & (1 << bit))>0)
+			BYTE ch = bitmap_data->Bitmap[j];
+
+			for (DWORD bit = 0; bit < 8; ++bit)
 			{
-				if (hdat_file->Write((i * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
+				if ((ch & (1 << bit))>0)
 				{
-					std::string errmsg;
-					int64 err = os_last_error(errmsg);
-					VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-					return false;
+					if (hdat_file->Write((i * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
+					{
+						std::string errmsg;
+						int64 err = os_last_error(errmsg);
+						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+						return false;
+					}
 				}
 			}
+			++curr_bit;
 		}
 	}
 
