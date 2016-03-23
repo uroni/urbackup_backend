@@ -21,6 +21,8 @@
 #include "../Interface/Server.h"
 #include <assert.h>
 
+#define VLOG(x)
+
 const size_t iv_size = 12;
 const size_t end_marker_zeros = 4;
 
@@ -121,7 +123,7 @@ std::string AESGCMEncryption::get()
 		overhead_size+=end_marker_zeros+1;
 		message_size+=end_marker_zeros+1;
 		encryption_filter.GetNextMessage();
-		Server->Log("New message. Size: "+convert(message_size), LL_DEBUG);
+		VLOG(Server->Log("New message. Size: "+convert(message_size), LL_DEBUG));
 		message_size=0;
 	}
 

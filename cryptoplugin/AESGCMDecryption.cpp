@@ -19,6 +19,8 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 
+#define VLOG(x)
+
 const size_t iv_size = 12;
 const size_t end_marker_zeros = 4;
 
@@ -122,7 +124,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 					decryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
 				}
 
-				Server->Log("Data without end: "+convert(data_size), LL_DEBUG);
+				VLOG(Server->Log("Data without end: "+convert(data_size), LL_DEBUG));
 			}
 		}
 		else
@@ -146,7 +148,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 			}
 			try
 			{
-				Server->Log("Message end. Size: "+convert(decryption_filter.MaxRetrievable()), LL_DEBUG);
+				VLOG(Server->Log("Message end. Size: "+convert(decryption_filter.MaxRetrievable()), LL_DEBUG));
 				decryption_filter.MessageEnd();
 			}
 			catch (CryptoPP::Exception&)

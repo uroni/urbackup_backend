@@ -28,6 +28,8 @@
 #include <assert.h>
 #include "InternetServicePipe2.h"
 
+#define VLOG(x)
+
 
 const size_t max_send_size=20000;
 const size_t output_incr_size=8192;
@@ -146,14 +148,14 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 		set_out=true;
 
-		Server->Log("inflate(1) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
+		VLOG(Server->Log("inflate(1) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG));
 		int rc = inflate(&inf_stream, Z_SYNC_FLUSH);
 
 		assert(bsize >= inf_stream.avail_out);
 		size_t used = bsize - inf_stream.avail_out;
 		uncompressed_received_bytes+=used;
 
-		Server->Log("rc=" + convert(rc) + " used=" + convert(used) + " avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
+		VLOG(Server->Log("rc=" + convert(rc) + " used=" + convert(used) + " avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG));
 
 		if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR /*Needs more input*/)
 		{
@@ -183,11 +185,11 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
 	}	
 
-	Server->Log("inflate(2) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG);
+	VLOG(Server->Log("inflate(2) avail_in=" + convert(inf_stream.avail_in) + " avail_out=" + convert(inf_stream.avail_out), LL_DEBUG));
 	int rc = inflate(&inf_stream, Z_SYNC_FLUSH);
 
 	size_t used = bsize - inf_stream.avail_out;
-	Server->Log("rc=" + convert(rc) + " used=" + convert(used)+" avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG);
+	VLOG(Server->Log("rc=" + convert(rc) + " used=" + convert(used)+" avail_in = " + convert(inf_stream.avail_in) + " avail_out = " + convert(inf_stream.avail_out), LL_DEBUG));
 	uncompressed_received_bytes+=used;
 
 	if(rc!=Z_OK && rc!=Z_STREAM_END && rc != Z_BUF_ERROR /*Needs more input*/)
@@ -271,7 +273,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 			def_stream.avail_out = static_cast<unsigned int>(comp_buffer.size());
 			def_stream.next_out = reinterpret_cast<unsigned char*>(comp_buffer.data());
 
-			Server->Log("deflate avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out)+" flush="+convert(curr_flush), LL_DEBUG);
+			VLOG(Server->Log("deflate avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out)+" flush="+convert(curr_flush), LL_DEBUG));
 			int rc = deflate(&def_stream, curr_flush ? Z_SYNC_FLUSH : Z_NO_FLUSH);
 
 			if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR)
@@ -285,7 +287,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 			size_t used = comp_buffer.size() - def_stream.avail_out;
 
-			Server->Log("rc="+convert(rc)+" used="+convert(used)+" avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out), LL_DEBUG);
+			VLOG(Server->Log("rc="+convert(rc)+" used="+convert(used)+" avail_in=" + convert(def_stream.avail_in) + " avail_out=" + convert(def_stream.avail_out), LL_DEBUG));
 
 			int curr_timeout = timeoutms;
 
@@ -294,7 +296,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 				int64 time_elapsed = Server->getTimeMS()-starttime;
 				if(time_elapsed>curr_timeout)
 				{
-					Server->Log("Timeout after compression", LL_DEBUG);
+					VLOG(Server->Log("Timeout after compression", LL_DEBUG));
 					return false;
 				}
 				else
