@@ -5537,7 +5537,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	if(rc!=0)
 	{
-		VSSLog("Creating snapshot of "+dir->orig_target+" failed", LL_ERROR);
+		VSSLog("Creating snapshot of \""+dir->orig_target+"\" failed", LL_ERROR);
 		VSSLogLines(loglines, LL_ERROR);
 		return false;
 	}
