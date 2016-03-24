@@ -849,7 +849,7 @@ double ServerSettings::currentTimeSpanValue(std::string time_span_value)
 	std::vector<std::pair<double, STimeSpan > > time_span_values = parseTimeSpanValue(time_span_value);
 
 	double val = -1;
-	double selected_time_span_duration=25.f;
+	double selected_time_span_duration=25.f*7;
 
 	for(size_t i=0;i<time_span_values.size();++i)
 	{
