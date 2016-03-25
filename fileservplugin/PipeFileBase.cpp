@@ -348,6 +348,13 @@ bool PipeFileBase::fillBuffer()
 	}
 	else
 	{
+		if (buffer_size - buf_w_pos + buf_r_pos < buffer_keep_free)
+		{
+			lock.relock(NULL);
+			Server->wait(10);
+			return true;
+		}
+
 		bsize_free = buffer_size - buf_w_pos;
 	}
 

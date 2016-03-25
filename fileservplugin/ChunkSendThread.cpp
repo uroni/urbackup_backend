@@ -171,6 +171,13 @@ void ChunkSendThread::operator()(void)
 			{
 				has_error = true;
 			}
+			else if (file->Size() == -1)
+			{
+				if (!parent->FlushInt())
+				{
+					Server->Log("Error flushing output socket", LL_INFO);
+				}
+			}
 		}
 	}
 

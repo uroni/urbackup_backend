@@ -2049,6 +2049,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 	int64 foffset = start_offset;
 	bool is_eof=false;
+	int64 last_flush_foffset = foffset;
 
 	while( foffset < curr_filesize || (curr_filesize==-1 && !is_eof) )
 	{
@@ -2076,6 +2077,12 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 		bool curr_flush = rc<count;
 
+		if (last_flush_foffset - foffset>1 * 1024 * 1024)
+		{
+			curr_flush = true;
+			last_flush_foffset = foffset;
+		}
+
 		rc=SendInt(buf.data(), rc, curr_flush);
 		if(rc==SOCKET_ERROR)
 		{
@@ -2092,7 +2099,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		if(with_hashes && foffset==next_checkpoint)
 		{
 			hash_func.finalize();
-			SendInt((char*)hash_func.raw_digest_int(), 16);
+			SendInt((char*)hash_func.raw_digest_int(), 16, curr_flush);
 			next_checkpoint+=c_checkpoint_dist;
 			if(next_checkpoint>curr_filesize && curr_filesize>0)
 				next_checkpoint=curr_filesize;
