@@ -1019,7 +1019,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									{
 										ServerStatus::setProcessDoneBytes(clientname, status_id, numblocks*blocksize);
 										ServerStatus::setProcessPcDone(clientname, status_id,
-											(int)(((double)numblocks/(double)blockcnt)*100.0+0.5) );
+											(int)(((double)numblocks/(double)((blockcnt>0 ? blockcnt : -blockcnt)))*100.0+0.5) );
 									}
 								}
 							}
