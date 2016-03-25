@@ -519,7 +519,7 @@ bool ImageThread::sendIncrImageThread(void)
 				int64 imgpos = 0;
 				do
 				{
-					read = hdat_img->Read(buf.data(), buf.size());
+					read = hdat_img->Read(buf.data(), static_cast<_u32>(buf.size()));
 
 					for (_u32 i = 0; i < read; i += SHA256_DIGEST_SIZE)
 					{
@@ -532,7 +532,30 @@ bool ImageThread::sendIncrImageThread(void)
 							}
 							else
 							{
-								++unchanged_blocks;
+								bool has_hashdata = false;
+								char hashdata_buf[c_hashsize];
+								int64 hnum = imgpos / c_vhdblocksize;
+								if (hashdatafile->Size() >= (hnum + 1)*c_hashsize)
+								{
+									if (hashdatafile->Read(hnum*c_hashsize, hashdata_buf, c_hashsize) != c_hashsize)
+									{
+										Server->Log("Reading hashdata failed!", LL_ERROR);
+									}
+									else
+									{
+										has_hashdata = true;
+									}
+								}
+
+								if (!has_hashdata
+									|| memcmp(hashdata_buf, &buf[i], c_hashsize) == 0)
+								{
+									++unchanged_blocks;
+								}
+								else
+								{
+									++changed_blocks;
+								}
 							}
 						}
 
