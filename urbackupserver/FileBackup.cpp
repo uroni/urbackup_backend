@@ -209,6 +209,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				if(client_main->getProtocolVersions().file_protocol_version>=2 || pingthread->isTimeout() )
 				{
 					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed - TIMEOUT(1)", LL_ERROR);
+					has_timeout_error = true;
+					should_backoff = false;
 					break;
 				}
 				else
