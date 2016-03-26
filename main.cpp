@@ -36,6 +36,7 @@
 
 #ifdef _WIN32
 #include <conio.h>
+#include <signal.h>
 #endif
 #ifdef AS_SERVICE
 #	include "win_service/nt_service.h"
@@ -77,6 +78,24 @@ void hub_handler(int signum)
 		Server->setLogFile(g_logfile, g_logfile_user);
 	}
 }
+#else
+void abort_handler(int signal)
+{
+	Server->Log("Program abort (SIGABRT)", LL_ERROR);
+	RaiseException(0, 0, 0, NULL);
+}
+
+void invalid_parameter_handler(const wchar_t* expression,
+	const wchar_t* function,
+	const wchar_t* file,
+	unsigned int line,
+	uintptr_t pReserved)
+{
+	Server->Log("Invalid parameter detected in function " + Server->ConvertFromWchar(function) +
+		" File: " + Server->ConvertFromWchar(file) + " Line: " + convert(line) + " Expression: " + Server->ConvertFromWchar(expression), LL_ERROR);
+	RaiseException(0, 0, 0, NULL);
+}
+
 #endif
 
 #ifdef AS_SERVICE
@@ -491,6 +510,9 @@ int main_fkt(int argc, char *argv[])
 	}
 	if (signal (SIGTERM, termination_handler) == SIG_IGN)
 		signal (SIGTERM, SIG_IGN);
+#else
+	signal(SIGABRT, abort_handler);
+	_set_invalid_parameter_handler(invalid_parameter_handler);
 #endif
 	
 	((CSessionMgr*)Server->getSessionMgr())->startTimeoutSessionThread();
