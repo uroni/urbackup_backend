@@ -28,7 +28,7 @@
 #include <assert.h>
 #include "InternetServicePipe2.h"
 
-#define VLOG(x)
+#define VLOG(x) x
 
 
 const size_t max_send_size=20000;
@@ -38,7 +38,8 @@ const size_t output_max_size=32*1024;
 CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 	: cs(cs), has_error(false),
 	uncompressed_sent_bytes(0), uncompressed_received_bytes(0), sent_flushes(0),
-	input_buffer_size(0), read_mutex(Server->createMutex()), write_mutex(Server->createMutex())
+	input_buffer_size(0), read_mutex(Server->createMutex()), write_mutex(Server->createMutex()),
+	last_send_time(Server->getTimeMS())
 {
 	comp_buffer.resize(4096);
 	input_buffer.resize(16384);
@@ -261,6 +262,12 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 		bool has_next = bsize>0;
 		bool curr_flush = has_next ? false : flush;
 
+		if (!curr_flush
+			&& Server->getTimeMS() - last_send_time > 1000)
+		{
+			curr_flush = true;
+		}
+
 		if(curr_flush)
 		{
 			++sent_flushes;
@@ -310,6 +317,8 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 			if(used>0)
 			{
+				last_send_time = Server->getTimeMS();
+
 				bool b=cs->Write(comp_buffer.data(), used, curr_timeout, curr_flush);
 				if(!b)
 					return false;

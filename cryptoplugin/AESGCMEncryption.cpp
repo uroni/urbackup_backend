@@ -21,7 +21,7 @@
 #include "../Interface/Server.h"
 #include <assert.h>
 
-#define VLOG(x)
+#define VLOG(x) x
 
 const size_t iv_size = 12;
 const size_t end_marker_zeros = 4;

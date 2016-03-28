@@ -71,6 +71,7 @@ private:
 	int64 uncompressed_sent_bytes;
 	int64 uncompressed_received_bytes;
 	int64 sent_flushes;
+	int64 last_send_time;
 
 	bool destroy_cs;
 	bool has_error;
