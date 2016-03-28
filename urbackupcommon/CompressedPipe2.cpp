@@ -243,7 +243,9 @@ void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 			data_pos+=avail;
 		}
 
-	} while (inf_stream.avail_out==0);
+		fromLast = true;
+
+	} while (input_buffer_size!=0);
 }
 
 bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
