@@ -159,7 +159,8 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 
 		if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR /*Needs more input*/)
 		{
-			Server->Log("Error decompressing stream(1): "+convert(rc));
+			Server->Log("Error decompressing stream(1): " + convert(rc)
+				+ (inf_stream.msg != NULL ? ("Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
 			has_error=true;
 			return 0;
 		}
@@ -194,7 +195,8 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 
 	if(rc!=Z_OK && rc!=Z_STREAM_END && rc != Z_BUF_ERROR /*Needs more input*/)
 	{
-		Server->Log("Error decompressing stream(2): "+convert(rc));
+		Server->Log("Error decompressing stream(2): "+convert(rc)
+			+ (inf_stream.msg != NULL ? ("Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
 		has_error=true;
 		return 0;
 	}
@@ -278,7 +280,8 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 			if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR)
 			{
-				Server->Log("Error compressing stream: "+convert(rc));
+				Server->Log("Error compressing stream: "+convert(rc)
+					+ (def_stream.msg != NULL ? ("Err: " + std::string(def_stream.msg)) : ""), LL_ERROR);
 				has_error=true;
 				return false;
 			}
