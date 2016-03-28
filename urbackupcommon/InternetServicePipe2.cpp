@@ -183,7 +183,8 @@ bool InternetServicePipe2::Write( const char *buffer, size_t bsize, int timeoutm
 		enc->put(buffer, bsize);
 	}
 
-	if(flush || curr_write_chunk_size>128*1024 || (Server->getTimeMS()-last_flush_time)>200)
+	if( (flush || curr_write_chunk_size>128*1024 || (Server->getTimeMS()-last_flush_time)>200)
+		&& curr_write_chunk_size>0 )
 	{
 		enc->flush();
 		curr_write_chunk_size=0;
