@@ -72,6 +72,7 @@ CompressedPipe2::~CompressedPipe2(void)
 size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	IScopedLock lock(read_mutex.get());
+	VLOG(Server->Log("Read bsize=" + convert(bsize) + " timeoutms=" + convert(timeoutms)+" input_buffer_size="+convert(input_buffer_size), LL_DEBUG));
 
 	if(input_buffer_size>0)
 	{
@@ -142,6 +143,7 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 
 size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLast)
 {
+	VLOG(Server->Log("bsize=" + convert(bsize) + " fromLast=" + convert(fromLast), LL_DEBUG));
 	bool set_out=false;
 	if(fromLast)
 	{
@@ -161,7 +163,7 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 		if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR /*Needs more input*/)
 		{
 			Server->Log("Error decompressing stream(1): " + convert(rc)
-				+ (inf_stream.msg != NULL ? ("Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
+				+ (inf_stream.msg != NULL ? (" Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
 			has_error=true;
 			return 0;
 		}
@@ -197,7 +199,7 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLas
 	if(rc!=Z_OK && rc!=Z_STREAM_END && rc != Z_BUF_ERROR /*Needs more input*/)
 	{
 		Server->Log("Error decompressing stream(2): "+convert(rc)
-			+ (inf_stream.msg != NULL ? ("Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
+			+ (inf_stream.msg != NULL ? (" Err: " + std::string(inf_stream.msg)) : ""), LL_ERROR);
 		has_error=true;
 		return 0;
 	}
@@ -288,7 +290,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 			if(rc!=Z_OK && rc!=Z_STREAM_END && rc!=Z_BUF_ERROR)
 			{
 				Server->Log("Error compressing stream: "+convert(rc)
-					+ (def_stream.msg != NULL ? ("Err: " + std::string(def_stream.msg)) : ""), LL_ERROR);
+					+ (def_stream.msg != NULL ? (" Err: " + std::string(def_stream.msg)) : ""), LL_ERROR);
 				has_error=true;
 				return false;
 			}
