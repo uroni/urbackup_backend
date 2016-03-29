@@ -65,6 +65,8 @@ volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
+IMutex* IndexThread::cbt_shadow_id_mutex;
+std::map<std::string, int> IndexThread::cbt_shadow_ids;
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -283,6 +285,9 @@ IndexThread::IndexThread(void)
 	if(filesrv_mutex==NULL)
 		filesrv_mutex=Server->createMutex();
 
+	if (cbt_shadow_id_mutex == NULL)
+		cbt_shadow_id_mutex = Server->createMutex();
+
 	contractor=NULL;
 
 	dwt=NULL;
@@ -322,6 +327,7 @@ IndexThread::~IndexThread()
 	Server->destroy(filelist_mutex);
 	Server->destroy(msgpipe);
 	Server->destroy(filesrv_mutex);
+	Server->destroy(cbt_shadow_id_mutex);
 	cd->destroyQueries();
 	delete cd;
 }
@@ -607,7 +613,7 @@ void IndexThread::operator()(void)
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target);
+						scd->ref->cbt = finishCbt(scd->orig_target, image_backup==1 ? scd->ref->save_id : -1);
 					}
 
 					if (scd->ref != NULL
@@ -684,7 +690,7 @@ void IndexThread::operator()(void)
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target);
+						scd->ref->cbt = finishCbt(scd->orig_target, image_backup == 1 ? scd->ref->save_id : -1);
 					}
 
 					if (scd->ref != NULL
@@ -1122,7 +1128,7 @@ void IndexThread::indexDirs(bool full_backup)
 					if (scd->ref!=NULL
 						&& scd->ref->cbt)
 					{
-						scd->ref->cbt = finishCbt(backup_dirs[i].path);
+						scd->ref->cbt = finishCbt(backup_dirs[i].path, -1);
 					}
 
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
@@ -4674,7 +4680,7 @@ bool IndexThread::prepareCbt(std::string volume)
 #endif
 }
 
-bool IndexThread::finishCbt(std::string volume)
+bool IndexThread::finishCbt(std::string volume, int shadow_id)
 {
 #ifdef _WIN32
 	if (volume.empty())
@@ -4803,6 +4809,18 @@ bool IndexThread::finishCbt(std::string volume)
 
 	std::auto_ptr<IFsFile> hdat_img(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
 
+	bool concurrent_active = false;
+
+	if (hdat_img.get() == NULL)
+	{
+		hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_DEVICE));
+
+		if (hdat_img.get() != NULL)
+		{
+			concurrent_active = true;
+		}
+	}	
+
 	if (hdat_img.get() == NULL)
 	{
 		std::string errmsg;
@@ -4812,6 +4830,22 @@ bool IndexThread::finishCbt(std::string volume)
 	}
 
 	hdat_img->Resize(bitmap_data->BitmapSize * 8 * SHA256_DIGEST_SIZE);
+
+	if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+	{
+		VSSLog("Error writing shadow id", LL_ERROR);
+		return false;
+	}
+
+	{
+		IScopedLock lock(cbt_shadow_id_mutex);
+		cbt_shadow_ids[strlower(volume)] = shadow_id;
+	}
+
+	if (concurrent_active)
+	{
+		Server->wait(10000);
+	}
 
 	char zero_sha[SHA256_DIGEST_SIZE] = {};
 
@@ -4830,7 +4864,7 @@ bool IndexThread::finishCbt(std::string volume)
 			{
 				if ((ch & (1 << bit))>0)
 				{
-					if (hdat_img->Write((curr_bit * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+					if (hdat_img->Write(sizeof(shadow_id) + (curr_bit * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
 					{
 						std::string errmsg;
 						int64 err = os_last_error(errmsg);
@@ -5647,5 +5681,18 @@ std::string IndexThread::escapeDirParam( const std::string& dir )
 	return "\""+greplace("\"", "\\\"", dir)+"\"";
 }
 
+int IndexThread::getShadowId(const std::string & volume)
+{
+	IScopedLock lock(cbt_shadow_id_mutex);
 
+	std::map<std::string, int>::iterator it = cbt_shadow_ids.find(strlower(volume));
 
+	if (it != cbt_shadow_ids.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return -1;
+	}
+}

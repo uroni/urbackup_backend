@@ -198,6 +198,8 @@ public:
 
 	static std::string getSHA256(const std::string& fn);
 
+	static int getShadowId(const std::string& volume);
+
 private:
 
 	bool readBackupDirs(void);
@@ -317,7 +319,7 @@ private:
 
 	bool prepareCbt(std::string volume);
 
-	bool finishCbt(std::string volume);
+	bool finishCbt(std::string volume, int shadow_id);
 
 	bool disableCbt(std::string volume);
 
@@ -336,6 +338,9 @@ private:
 	static IMutex *filesrv_mutex;
 
 	static IPipe* msgpipe;
+
+	static IMutex* cbt_shadow_id_mutex;
+	static std::map<std::string, int> cbt_shadow_ids;
 
 	IPipe *contractor;
 
