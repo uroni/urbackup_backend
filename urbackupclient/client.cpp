@@ -4663,6 +4663,7 @@ bool IndexThread::prepareCbt(std::string volume)
 
 bool IndexThread::normalizeVolume(std::string & volume)
 {
+#ifdef _WIN32
 	if (volume.empty())
 	{
 		return false;
@@ -4692,6 +4693,7 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	{
 		volume = volume.substr(0, volume.size() - 1);
 	}
+#endif
 
 	return true;
 }
