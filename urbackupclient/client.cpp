@@ -4616,28 +4616,9 @@ namespace
 bool IndexThread::prepareCbt(std::string volume)
 {
 #ifdef _WIN32
-	if (volume.empty())
+	if (!normalizeVolume(volume))
 	{
 		return false;
-	}
-
-	if (volume[volume.size() - 1] == '\\')
-	{
-		volume = volume.substr(0, volume.size() - 1);
-	}
-
-	if (volume.size() > 2)
-	{
-		volume = getVolPath(volume);
-
-		if (volume.empty())
-		{
-			return false;
-		}
-	}
-	else if (volume.size() == 1)
-	{
-		volume += ":";
 	}
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ,
@@ -4680,15 +4661,14 @@ bool IndexThread::prepareCbt(std::string volume)
 #endif
 }
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id)
+bool IndexThread::normalizeVolume(std::string & volume)
 {
-#ifdef _WIN32
 	if (volume.empty())
 	{
 		return false;
 	}
 
-	if (volume[volume.size() - 1] == '\\')
+	if (volume[volume.size() - 1] == os_file_sep()[0])
 	{
 		volume = volume.substr(0, volume.size() - 1);
 	}
@@ -4705,6 +4685,23 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 	else if (volume.size() == 1)
 	{
 		volume += ":";
+	}
+
+	if (!volume.empty()
+		&& volume[volume.size() - 1] == os_file_sep()[0])
+	{
+		volume = volume.substr(0, volume.size() - 1);
+	}
+
+	return true;
+}
+
+bool IndexThread::finishCbt(std::string volume, int shadow_id)
+{
+#ifdef _WIN32
+	if (!normalizeVolume(volume))
+	{
+		return false;
 	}
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ|GENERIC_WRITE,
@@ -4945,28 +4942,9 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 bool IndexThread::disableCbt(std::string volume)
 {
 #ifdef _WIN32
-	if (volume.empty())
+	if (!normalizeVolume(volume))
 	{
 		return false;
-	}
-
-	if (volume[volume.size() - 1] == '\\')
-	{
-		volume = volume.substr(0, volume.size() - 1);
-	}
-
-	if (volume.size() > 2)
-	{
-		volume = getVolPath(volume);
-
-		if (volume.empty())
-		{
-			return false;
-		}
-	}
-	else if (volume.size() == 1)
-	{
-		volume += ":";
 	}
 
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
@@ -4982,6 +4960,11 @@ bool IndexThread::disableCbt(std::string volume)
 void IndexThread::enableCbtVol(std::string volume, bool install)
 {
 #ifdef _WIN32
+	if (!normalizeVolume(volume))
+	{
+		return;
+	}
+
 	std::string allowed_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz:";
 	

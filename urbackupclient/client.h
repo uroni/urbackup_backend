@@ -317,6 +317,8 @@ private:
 
 	bool crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume);
 
+	bool normalizeVolume(std::string& volume);
+
 	bool prepareCbt(std::string volume);
 
 	bool finishCbt(std::string volume, int shadow_id);
