@@ -1052,11 +1052,12 @@ void IndexThread::indexDirs(bool full_backup)
 			bool onlyref=true;
 			bool stale_shadowcopy=false;
 			bool shadowcopy_ok=false;
+			bool shadowcopy_not_configured = false;
 
 			if(filetype!=0 || !shadowcopy_optional)
 			{
 				VSSLog("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_DEBUG);	
-				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
+				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy, &shadowcopy_not_configured);
 				VSSLog("done.", LL_DEBUG);
 			}
 			else if(shadowcopy_optional)
@@ -1074,7 +1075,7 @@ void IndexThread::indexDirs(bool full_backup)
 
 			if(!shadowcopy_ok)
 			{
-				if(!shadowcopy_optional)
+				if(!shadowcopy_optional && !shadowcopy_not_configured)
 				{
 					VSSLog("Creating snapshot of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
@@ -2272,7 +2273,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 	return false;
 }
 
-bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart,
+	std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool* not_configured)
 {
 	cleanup_saved_shadowcopies(true);
 
@@ -2320,7 +2322,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 #ifdef _WIN32
 	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, onlyref);
 #else
-	bool b = start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref);
+	bool b = start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref, not_configured);
 #endif
 
 	if(!b)
@@ -5528,7 +5530,7 @@ bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool f
 #endif //_WIN32
 
 #ifndef _WIN32
-bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref )
+bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured)
 {
 	std::string scriptname;
 	if(dir->fileserv)
@@ -5544,6 +5546,10 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	if (scriptlocation.empty())
 	{
+		if (not_configured != NULL)
+		{
+			*not_configured = true;
+		}
 		return false;
 	}
 
