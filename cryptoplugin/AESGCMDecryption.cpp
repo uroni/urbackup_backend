@@ -19,7 +19,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 
-#define VLOG(x) x
+#define VLOG(x)
 
 const size_t iv_size = 12;
 const size_t end_marker_zeros = 4;

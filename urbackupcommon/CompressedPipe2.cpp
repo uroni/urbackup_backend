@@ -28,7 +28,7 @@
 #include <assert.h>
 #include "InternetServicePipe2.h"
 
-#define VLOG(x) x
+#define VLOG(x)
 
 
 const size_t max_send_size=20000;
