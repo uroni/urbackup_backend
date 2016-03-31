@@ -149,6 +149,20 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 			}
 		}
 
+		char* systemdrive = NULL;
+		size_t bufferCount;
+		if (_dupenv_s(&systemdrive, &bufferCount, "SystemDrive") == 0)
+		{
+			std::string s_systemdrive = std::string(systemdrive);
+
+			if (!s_systemdrive.empty()
+				&& next(orig_letter, 0, s_systemdrive.substr(0, 1)) )
+			{
+				fs->excludeFile(pDev + "\\swapfile.sys");
+			}
+		}
+		free(systemdrive);
+
 		//Exclude shadow storage files
 		if(pDev.find("HarddiskVolumeShadowCopy") != std::string::npos)
 		{
