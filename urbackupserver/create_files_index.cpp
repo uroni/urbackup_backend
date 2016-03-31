@@ -80,8 +80,8 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		ServerSettings server_settings(db);
 		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 
-		Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
-		db->Write("PRAGMA journal_mode = DELETE");
+		//Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
+		db->Write("PRAGMA journal_mode = WAL");
 	}
 
 	status.creating_filesindex=true;
