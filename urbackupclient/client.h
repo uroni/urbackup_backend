@@ -180,7 +180,7 @@ public:
 	static void share_dirs();
 	static void unshare_dirs();
 	
-	static void execute_postbackup_hook(void);
+	static void execute_postbackup_hook(std::string scriptname);
 
 	static void doStop(void);
 	
@@ -253,10 +253,12 @@ private:
 
 	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname);
 
-	int execute_hook(std::string script_name, bool incr, std::string server_token, int index_group);
+	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
 	int execute_postindex_hook(bool incr, std::string server_token, int index_group);
 	std::string execute_script(const std::string& cmd);
+
+	int execute_preimagebackup_hook(bool incr, std::string server_token);
 
 	void start_filesrv(void);
 

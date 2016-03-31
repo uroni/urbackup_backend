@@ -31,6 +31,7 @@ protected:
 	SBackup getLastImage(const std::string &letter, bool incr);
 	std::string constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd);
 	std::string getMBR(const std::string &dl);
+	bool runPostBackupScript(bool incr, const std::string &pLetter, bool success);
 
 	std::string letter;
 

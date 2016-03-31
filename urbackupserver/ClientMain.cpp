@@ -2418,7 +2418,7 @@ void ClientMain::timeoutRestores()
 	}
 }
 
-void ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
+bool ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
 {
 #ifdef _WIN32
 	name = name + ".bat";
@@ -2427,29 +2427,30 @@ void ClientMain::run_script( std::string name, const std::string& params, logid_
 	if(!FileExists(name))
 	{
 		ServerLogger::Log(logid, "Script does not exist "+name, LL_DEBUG);
-		return;
+		return true;
 	}
-
-	if(!FileExists(name))
-	{
-		ServerLogger::Log(logid, "Script does not exist "+name, LL_DEBUG);
-		return;
-	}
-
-	name+=" "+params;
-
-	name +=" 2>&1";
 
 #ifdef _WIN32
-	FILE* fp = _wpopen(Server->ConvertToWchar(name).c_str(), L"rb");
+	//I ... waaa ... even ... :(
+	std::string quoted_script_name = greplace(" ", "\" \"", name);
 #else
-	FILE* fp = popen(name.c_str(), "r");
+	std::string quoted_script_name = "\"" + greplace("\"", "\\\"", name) + "\"";
+#endif
+
+	quoted_script_name +=" "+params;
+
+	quoted_script_name +=" 2>&1";
+
+#ifdef _WIN32
+	FILE* fp = _wpopen(Server->ConvertToWchar(quoted_script_name).c_str(), L"rb");
+#else
+	FILE* fp = popen(quoted_script_name.c_str(), "r");
 #endif
 
 	if(!fp)
 	{
 		ServerLogger::Log(logid, "Could not open pipe for command "+name, LL_DEBUG);
-		return;
+		return false;
 	}
 
 	std::string output;
@@ -2479,6 +2480,8 @@ void ClientMain::run_script( std::string name, const std::string& params, logid_
 	{
 		ServerLogger::Log(logid, "Script output Line("+convert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
 	}
+
+	return rc == 0;
 }
 
 void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )

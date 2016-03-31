@@ -809,7 +809,11 @@ bool FullFileBackup::doFileBackup()
 		ServerLogger::Log(logid, PrettyPrintBytes(linked_bytes) + " of files were already present on the server and did not need to be transferred", LL_INFO);
 	}
 
-	ClientMain::run_script("urbackup" + os_file_sep() + "post_full_filebackup", "\""+ backuppath + "\"", logid);
+	if (!ClientMain::run_script("urbackup" + os_file_sep() + "post_full_filebackup",
+		"\"" + backuppath + "\" " + ((c_has_error || r_offline || disk_error) ? "0" : "1") + " " + convert(group), logid))
+	{
+		c_has_error = true;
+	}
 
 	if(c_has_error)
 		return false;

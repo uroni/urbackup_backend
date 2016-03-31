@@ -598,6 +598,18 @@ void IndexThread::operator()(void)
 				data.getStr(&index_clientsubname);
 			}
 
+			if (image_backup != 0)
+			{
+				int rc = execute_preimagebackup_hook(image_backup == 2, starttoken);
+
+				if (rc != 0)
+				{
+					VSSLog("Pre image backup hook failed with error code " + convert(rc), LL_ERROR);
+					contractor->Write("failed");
+					continue;
+				}
+			}
+
 			SCDirs *scd = getSCDir(scdir, index_clientsubname);
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
@@ -607,13 +619,13 @@ void IndexThread::operator()(void)
 					scd->ref->dontincrement=true;
 				}
 				bool onlyref = false;
-				if(start_shadowcopy(scd, &onlyref, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==1?true:false))
+				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup!=0?true:false))
 				{
 					if (scd->ref!=NULL
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, image_backup==1 ? scd->ref->save_id : -1);
+						scd->ref->cbt = finishCbt(scd->orig_target, image_backup!=0 ? scd->ref->save_id : -1);
 					}
 
 					if (scd->ref != NULL
@@ -667,7 +679,7 @@ void IndexThread::operator()(void)
 
 				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_DEBUG);
 				bool onlyref = false;
-				bool b= start_shadowcopy(scd, &onlyref, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
+				bool b= start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
@@ -690,7 +702,7 @@ void IndexThread::operator()(void)
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, image_backup == 1 ? scd->ref->save_id : -1);
+						scd->ref->cbt = finishCbt(scd->orig_target, image_backup != 0 ? scd->ref->save_id : -1);
 					}
 
 					if (scd->ref != NULL
@@ -738,7 +750,7 @@ void IndexThread::operator()(void)
 			SCDirs *scd = getSCDir(scdir, index_clientsubname);
 			if(scd->running==false )
 			{				
-				if(!release_shadowcopy(scd, image_backup==1?true:false, save_id))
+				if(!release_shadowcopy(scd, image_backup!=0?true:false, save_id))
 				{
 					Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
 					contractor->Write("failed");
@@ -751,7 +763,7 @@ void IndexThread::operator()(void)
 			else
 			{
 				std::string release_dir=scd->dir;
-				bool b=release_shadowcopy(scd, image_backup==1?true:false, save_id);
+				bool b=release_shadowcopy(scd, image_backup!=0?true:false, save_id);
 				if(!b)
 				{
 					contractor->Write("failed");
@@ -2907,7 +2919,7 @@ IFileServ *IndexThread::getFileSrv(void)
 	return filesrv;
 }
 
-int IndexThread::execute_hook(std::string script_name, bool incr, std::string server_token, int index_group)
+int IndexThread::execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group)
 {
 	if (!FileExists(script_name))
 	{
@@ -2927,7 +2939,10 @@ int IndexThread::execute_hook(std::string script_name, bool incr, std::string se
 #endif
 
 	std::string output;
-	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" + server_token + "\" " + convert(index_group)+" 2>&1", output);
+	int rc = os_popen(quoted_script_name + " " + (incr ? "1" : "0") + " \"" 
+		+ server_token + "\" "
+		+ (index_group!=NULL ? convert(*index_group) : "" )
+		+" 2>&1", output);
 
 	if (rc != 0 && !output.empty())
 	{
@@ -2952,7 +2967,7 @@ int IndexThread::execute_prebackup_hook(bool incr, std::string server_token, int
 	script_name = SYSCONFDIR "/urbackup/prefilebackup";
 #endif
 
-	return execute_hook(script_name, incr, server_token, index_group);
+	return execute_hook(script_name, incr, server_token, &index_group);
 }
 
 int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int index_group)
@@ -2964,10 +2979,10 @@ int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int
 	script_name = SYSCONFDIR "/urbackup/postfileindex";
 #endif
 
-	return execute_hook(script_name, incr, server_token, index_group);
+	return execute_hook(script_name, incr, server_token, &index_group);
 }
 
-void IndexThread::execute_postbackup_hook(void)
+void IndexThread::execute_postbackup_hook(std::string scriptname)
 {
 #ifdef _WIN32
 	STARTUPINFOW si;
@@ -2975,7 +2990,7 @@ void IndexThread::execute_postbackup_hook(void)
 	memset(&si, 0, sizeof(STARTUPINFO) );
 	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
 	si.cb=sizeof(STARTUPINFO);
-	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->ConvertToWchar(Server->getServerWorkingDir())+L"\\postfilebackup.bat\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->ConvertToWchar(Server->getServerWorkingDir()+"\\"+scriptname+".bat")+L"\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
 	{
 		Server->Log("Executing postfilebackup.bat failed: "+convert((int)GetLastError()), LL_INFO);
 	}
@@ -2994,7 +3009,8 @@ void IndexThread::execute_postbackup_hook(void)
 		pid2 = fork();
 		if(pid2==0)
 		{
-			const char* a1c = SYSCONFDIR "/urbackup/postfilebackup";
+			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
+			const char* a1c = fullname.c_str();
 			char *a1=(char*)a1c;
 			char* const argv[]={ a1, NULL };
 			execv(a1, argv);
@@ -4280,6 +4296,18 @@ std::string IndexThread::execute_script(const std::string& cmd)
 	}
 
 	return output;
+}
+
+int IndexThread::execute_preimagebackup_hook(bool incr, std::string server_token)
+{
+	std::string script_name;
+#ifdef _WIN32
+	script_name = Server->getServerWorkingDir() + "\\preimagebackup.bat";
+#else
+	script_name = SYSCONFDIR "/urbackup/preimagebackup";
+#endif
+
+	return execute_hook(script_name, incr, server_token, NULL);
 }
 
 bool IndexThread::addBackupScripts(std::fstream& outfile)

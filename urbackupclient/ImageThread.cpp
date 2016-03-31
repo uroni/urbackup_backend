@@ -415,6 +415,7 @@ bool ImageThread::sendFullImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
+		IndexThread::execute_postbackup_hook("postimagebackup");
 	}
 
 #ifdef VSS_XP //persistence
@@ -942,6 +943,7 @@ bool ImageThread::sendIncrImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
+		IndexThread::execute_postbackup_hook("postimagebackup");
 	}
 
 #ifdef VSS_XP //persistence

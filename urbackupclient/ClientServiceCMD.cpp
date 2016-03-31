@@ -667,7 +667,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 		status_updated = true;
 	}
 			
-	IndexThread::execute_postbackup_hook();
+	IndexThread::execute_postbackup_hook("postfilebackup");
 }
 
 void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
@@ -700,7 +700,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 		status_updated = true;
 	}
 
-	IndexThread::execute_postbackup_hook();
+	IndexThread::execute_postbackup_hook("postfilebackup");
 }
 
 int64 ClientConnector::getLastBackupTime()
@@ -1192,7 +1192,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addVoidPtr(mempipe);
 			data.addString(image_inf.image_letter);
 			data.addString(server_token);
-			data.addUChar(1); //image backup
+			data.addUChar(1); //full image backup
 			data.addUChar(0); //filesrv
 			data.addString(image_inf.clientsubname);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
@@ -1285,7 +1285,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addVoidPtr(mempipe);
 				data.addString(image_inf.image_letter);
 				data.addString(server_token);
-				data.addUChar(1); //image backup
+				data.addUChar(2); //incr image backup
 				data.addUChar(0); //file serv?
 				data.addString(image_inf.clientsubname);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
