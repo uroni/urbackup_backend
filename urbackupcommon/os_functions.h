@@ -127,6 +127,8 @@ int os_popen(const std::string& cmd, std::string& ret);
 
 int64 os_last_error(std::string& message);
 
+std::string os_last_error_str();
+
 struct SPrioInfoInt;
 
 struct SPrioInfo

@@ -2186,7 +2186,7 @@ IFsFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::string&
 
 				if(!os_create_dir_recursive(os_file_prefix(tmpfile_path)))
 				{
-					ServerLogger::Log(logid, "Error creating temporary file path", LL_WARNING);
+					ServerLogger::Log(logid, "Error creating temporary file path. "+os_last_error_str(), LL_WARNING);
 				}
 			}
 			ServerLogger::Log(logid, "Error opening temporary file. Retrying...", LL_WARNING);
@@ -2535,7 +2535,7 @@ bool ClientMain::createDirectoryForClient()
 	std::string backupfolder=server_settings->getSettings()->backupfolder;
 	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
 	{
-		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
+		Server->Log("Could not create or read directory for client \""+clientname+"\". "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 	return true;

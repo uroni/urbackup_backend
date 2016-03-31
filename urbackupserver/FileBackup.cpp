@@ -578,7 +578,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPath(use_snapshots, !r_incremental))
 		{
-            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
+            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error). "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}
@@ -586,7 +586,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPathCdp())
 		{
-            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error)", LL_ERROR);
+            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error). "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}

@@ -912,6 +912,13 @@ int os_popen(const std::string& cmd, std::string& ret)
 	return _pclose(in);
 }
 
+std::string os_last_error_str()
+{
+	std::string msg;
+	int64 code = os_last_error(msg);
+	return msg + " (code: " + convert(code) + ")";
+}
+
 #ifdef __linux__
 #if defined(__i386__)
 #define __NR_ioprio_set		289

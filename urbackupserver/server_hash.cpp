@@ -605,14 +605,14 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 									{
 										if (!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
 										{
-											ServerLogger::Log(logid, "Error truncating hashdata file -2", LL_ERROR);
+											ServerLogger::Log(logid, "Error truncating hashdata file -2. " + os_last_error_str(), LL_ERROR);
 										}
 									}
 								}
 							}
 							else
 							{
-								ServerLogger::Log(logid, "Error opening hash source file \""+existing_file.hashpath+"\"", LL_ERROR);
+								ServerLogger::Log(logid, "Error opening hash source file \""+existing_file.hashpath+"\". " + os_last_error_str(), LL_ERROR);
 							}
 
 							if (write_metadata && !write_file_metadata(hash_fn, this, metadata, false))
@@ -700,7 +700,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 						{
 							if(!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
 							{
-								ServerLogger::Log(logid, "Error truncating hashdata file -2", LL_ERROR);
+								ServerLogger::Log(logid, "Error truncating hashdata file -2. " + os_last_error_str(), LL_ERROR);
 							}
 							write_metadata=true;
 						}
@@ -1102,15 +1102,12 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 		dst=Server->openFile(os_file_prefix(dest), mode);
 		if(dst==NULL)
 		{
-#ifdef _WIN32
-			DWORD lr = GetLastError();
-#endif
-			ServerLogger::Log(logid, "Error opening file... \""+dest+"\" retrying...", LL_DEBUG);
+			ServerLogger::Log(logid, "Error opening file... \""+dest+"\" retrying... "+os_last_error_str(), LL_DEBUG);
 			Server->wait(500);
 			++count_t;
 			if(count_t>=10)
 			{
-				ServerLogger::Log(logid, "Error opening file... \""+dest+"\"", LL_ERROR);
+				ServerLogger::Log(logid, "Error opening file... \""+dest+"\". " + os_last_error_str(), LL_ERROR);
 				return NULL;
 			}
 		}
@@ -1122,7 +1119,11 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator)
 {
 	std::auto_ptr<IFsFile> dst(openFileRetry(dest, MODE_WRITE));
-	if(dst.get()==NULL) return false;
+	if (dst.get() == NULL)
+	{
+		ServerLogger::Log(logid, "Error opening dest file \"" + dest + "\". " + os_last_error_str(), LL_ERROR);
+		return false;
+	}
 
 	tf->Seek(0);
 	_u32 read;
@@ -1149,7 +1150,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 				
 			if (!tf->Seek(fpos))
 			{
-				ServerLogger::Log(logid, "Error seeking in source file for sparse extent \"" + tf->getFilename() + "\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error seeking in source file for sparse extent \"" + tf->getFilename() + "\" -2. " + os_last_error_str(), LL_ERROR);
 				return false;
 			}
 
@@ -1739,7 +1740,7 @@ bool BackupServerHash::punchHoleOrZero(IFile * tf, int64 offset, int64 size)
 				_u32 towrite = static_cast<_u32>((std::min)(size - written, static_cast<int64>(zero_buf.size())));
 				if (!writeRepeatFreeSpace(tf, zero_buf.data(), towrite, this))
 				{
-					ServerLogger::Log(logid, "Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -2", LL_ERROR);
+					ServerLogger::Log(logid, "Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -2. " + os_last_error_str(), LL_ERROR);
 					return false;
 				}
 				written += towrite;
@@ -1747,7 +1748,7 @@ bool BackupServerHash::punchHoleOrZero(IFile * tf, int64 offset, int64 size)
 		}
 		else
 		{
-			ServerLogger::Log(logid, "Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -1", LL_ERROR);
+			ServerLogger::Log(logid, "Error zeroing data in \"" + chunk_output_fn->getFilename() + "\" after punching hole failed -1. "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}

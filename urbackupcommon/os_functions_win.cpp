@@ -1265,6 +1265,13 @@ bool os_path_absolute(const std::string& path)
 	return PathIsRelativeW(ConvertToWchar(path).c_str())==FALSE;
 }
 
+std::string os_last_error_str()
+{
+	std::string msg;
+	int64 code = os_last_error(msg);
+	return msg + " (code: " + convert(code) + ")";
+}
+
 int os_popen(const std::string& cmd, std::string& ret)
 {
 	ret.clear();

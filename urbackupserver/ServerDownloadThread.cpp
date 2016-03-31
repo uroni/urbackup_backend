@@ -460,7 +460,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		fd = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 		if(fd==NULL)
 		{
-			ServerLogger::Log(logid, "Error creating temporary file 'fd' in load_file", LL_ERROR);
+			ServerLogger::Log(logid, "Error creating temporary file 'fd' in load_file. " + os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}
