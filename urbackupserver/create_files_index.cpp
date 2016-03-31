@@ -177,7 +177,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 		db->Write("CREATE INDEX files_backupid ON files (backupid)");
 
-		Server->Log("Copying back result...", LL_INFO);
+		Server->Log("Syncing...", LL_INFO);
 
 		Server->destroyAllDatabases();
 
@@ -192,20 +192,14 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		db_file->Sync();
 		db_file.reset();
 
-		if (!os_create_hardlink("urbackup/backup_server_files.db",
-			"urbackup/backup_server_files_new.db", true, NULL))
+		Server->Log("Renaming back result...", LL_INFO);
+
+		if (!os_rename_file("urbackup/backup_server_files_new.db",
+			"urbackup/backup_server_files.db"))
 		{
-			Server->Log("Reflinking failed. Falling back to copying...", LL_DEBUG);
-
-			if (!copy_file("urbackup/backup_server_files_new.db",
-				"urbackup/backup_server_files.db"))
-			{
-				Server->Log("Copying file failed. " + os_last_error_str(), LL_ERROR);
-				return false;
-			}
+			Server->Log("Renaming database file failed. " + os_last_error_str(), LL_ERROR);
+			return false;
 		}
-
-		Server->deleteFile("urbackup/backup_server_files_new.db");
 
 		db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
