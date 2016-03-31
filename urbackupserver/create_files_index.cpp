@@ -19,6 +19,7 @@
 #include "../Interface/Database.h"
 #include "../Interface/Server.h"
 #include "../Interface/DatabaseCursor.h"
+#include "../Interface/File.h"
 #include "database.h"
 #include "server_settings.h"
 #include "LMDBFileIndex.h"
@@ -29,6 +30,7 @@
 
 namespace
 {
+const size_t sqlite_data_allocation_chunk_size = 50 * 1024 * 1024; //50MB
 
 struct SCallbackData
 {
@@ -76,12 +78,58 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 	db_results cache_res;
 	if(db->getEngineName()=="sqlite")
 	{
+		Server->Log("Deleting database journal...", LL_INFO);
+		db->Write("PRAGMA journal_mode = DELETE");
+
+		if (FileExists("urbackup/backup_server_files.db-journal")
+			|| FileExists("urbackup/backup_server_files.db-wal"))
+		{
+			Server->Log("Deleting database journal failed. Aborting.", LL_ERROR);
+			return false;
+		}
+
+		Server->destroyAllDatabases();
+
+		Server->deleteFile("urbackup/backup_server_files_new.db");
+
+		Server->Log("Copying/reflinking database...", LL_INFO);
+		if (!os_create_hardlink("urbackup/backup_server_files_new.db",
+			"urbackup/backup_server_files.db", true, NULL))
+		{
+			Server->Log("Reflinking failed. Falling back to copying...", LL_DEBUG);
+
+			if (!copy_file("urbackup/backup_server_files.db",
+				"urbackup/backup_server_files_new.db"))
+			{
+				Server->Log("Copying file failed. " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+		}
+
+		str_map params;
+		if (!Server->openDatabase("urbackup/backup_server_files_new.db", URBACKUPDB_SERVER_FILES_NEW, params))
+		{
+			Server->Log("Couldn't open Database backup_server_files_new.db. Exiting. Expecting database at \"" +
+				Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files_new.db\"", LL_ERROR);
+			return false;
+		}
+
+		Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES_NEW, sqlite_data_allocation_chunk_size);
+
+		db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES_NEW);
+		if (db==NULL)
+		{
+			Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+				Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files_new.db\"", LL_ERROR);
+			return false;
+		}
+
 		cache_res=db->Read("PRAGMA cache_size");
 		ServerSettings server_settings(db);
 		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 
-		//Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
-		db->Write("PRAGMA journal_mode = WAL");
+		db->Write("PRAGMA journal_mode = OFF");
+		db->Write("PRAGMA synchronous = OFF");
 	}
 
 	status.creating_filesindex=true;
@@ -101,8 +149,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	db->Write("DROP INDEX IF EXISTS files_backupid");
 
-	db->BeginWriteTransaction();
-	
+
 	Server->Log("Starting creating files index...", LL_INFO);
 
 	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry, pointed_to FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
@@ -117,37 +164,61 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	if(fileindex.has_error())
 	{
-		db->Write("ROLLBACK");
 		return false;
 	}
 	else
 	{
+		if (data.cur->has_error())
+		{
+			return false;
+		}
+
 		Server->Log("Creating backupid index...", LL_INFO);
 
 		db->Write("CREATE INDEX files_backupid ON files (backupid)");
 
-		Server->Log("Committing changes...", LL_INFO);
+		Server->Log("Copying back result...", LL_INFO);
 
-		db->EndTransaction();
-	}
+		Server->destroyAllDatabases();
 
-	if(!cache_res.empty())
-	{
-		db->Write("PRAGMA cache_size = "+cache_res[0]["cache_size"]);
-		db->Write("PRAGMA shrink_memory");
+		std::auto_ptr<IFile> db_file(Server->openFile("urbackup/backup_server_files_new.db", MODE_RW));
+
+		if (db_file.get() == NULL)
+		{
+			Server->Log("Error opening new database file", LL_ERROR);
+			return false;
+		}
+
+		db_file->Sync();
+		db_file.reset();
+
+		if (!os_create_hardlink("urbackup/backup_server_files.db",
+			"urbackup/backup_server_files_new.db", true, NULL))
+		{
+			Server->Log("Reflinking failed. Falling back to copying...", LL_DEBUG);
+
+			if (!copy_file("urbackup/backup_server_files_new.db",
+				"urbackup/backup_server_files.db"))
+			{
+				Server->Log("Copying file failed. " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+		}
+
+		Server->deleteFile("urbackup/backup_server_files_new.db");
+
+		db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+
+		if (db == NULL)
+		{
+			Server->Log("Error opening database after file index creation.", LL_ERROR);
+			return false;
+		}
+
 		db->Write("PRAGMA journal_mode = WAL");
 	}
 
 	status.creating_filesindex=false;
-
-	if(data.cur->has_error())
-	{
-		db->destroyAllQueries();
-
-		return false;
-	}
-
-	db->destroyAllQueries();
 
 	return true;
 }
@@ -175,11 +246,13 @@ void delete_file_index(void)
 bool create_files_index(SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	ServerSettings settings(db);
 
-	ServerBackupDao backupdao(db);
+	bool creating_index;
 
-	bool creating_index = backupdao.getMiscValue("creating_file_entry_index").value=="true";
+	{
+		ServerBackupDao backupdao(db);
+		creating_index = backupdao.getMiscValue("creating_file_entry_index").value == "true";
+	}
 
 	if(!FileExists("urbackup/fileindex/backup_server_files_index.lmdb") || creating_index)
 	{
@@ -187,6 +260,8 @@ bool create_files_index(SStartupStatus& status)
 
 		{
 			DBScopedSynchronous synchronous_db(db);
+
+			ServerBackupDao backupdao(db);
 
 			backupdao.delMiscValue("creating_file_entry_index");
 			backupdao.addMiscValue("creating_file_entry_index", "true");
@@ -202,6 +277,8 @@ bool create_files_index(SStartupStatus& status)
 		}
 		else
 		{
+			db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			ServerBackupDao backupdao(db);
 			backupdao.delMiscValue("creating_file_entry_index");
 		}
 	}

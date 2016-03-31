@@ -519,6 +519,11 @@ bool os_create_dir(const std::string &dir)
 
 bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links)
 {
+	if (use_ioref)
+	{
+		return false;
+	}
+
 	BOOL r=CreateHardLinkW(ConvertToWchar(linkname).c_str(), ConvertToWchar(fname).c_str(), NULL);
 	if(too_many_links!=NULL)
 	{

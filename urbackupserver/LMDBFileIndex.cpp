@@ -111,7 +111,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 {
 	begin_txn(0);
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES_NEW);
 
 	ServerFilesDao filesdao(db);
 
@@ -196,8 +196,6 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			{
 				commit_transaction();
 				begin_txn(0);
-				db->EndTransaction();
-				db->BeginWriteTransaction();
 			}
 
 			++n_done;

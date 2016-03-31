@@ -426,6 +426,7 @@ bool verify_hashes(std::string arg)
 		}
 		else
 		{
+			files_db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 			ServerFilesDao backupdao(files_db);
 			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
