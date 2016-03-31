@@ -291,7 +291,16 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					}
 
 					bool is_sparse = false;
-					cb->next_chunk_patcher_bytes(NULL, tr, false, &is_sparse);
+					bool* p_is_sparse = &is_sparse;
+
+					if (unchanged_align != 0
+						&& tr < unchanged_align
+						&& last_sparse_start == -1)
+					{
+						p_is_sparse = NULL;
+					}
+
+					cb->next_chunk_patcher_bytes(NULL, tr, false, p_is_sparse);
 					last_unchanged = true;
 
 					if (is_sparse)
