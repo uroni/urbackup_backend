@@ -196,6 +196,8 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			{
 				commit_transaction();
 				begin_txn(0);
+				db->EndTransaction();
+				db->BeginWriteTransaction();
 			}
 
 			++n_done;
