@@ -465,6 +465,47 @@ UrBackup uses SHA512 to hash the files before file deduplication. In comparison 
 
 For the blocks in an image backup SHA256 is used. They are 512kbyte in size. The chance of a hash collision with SHA256 is $1$:($2^{256}$) ($p=\frac{1}{2^{256}}$) for two hashes. In the worst case you have $2TB/512kbyte = 4194304$ different blocks in an incremental image backup. The chance of having a collision in any of the 4194304 blocks (the worst case) is then $1-(1-\frac{1}{2^{256}})^{4194304} \approx 3.6*10^{-71}$. This is again ridiculously low compared to e.g. the probability of $10^{-18}$ of a typical hard disk having a uncorrectable bit error.
 
+\subsection{Pre and post backup scripts on client and server}
+
+UrBackup calls scripts previous and after backups on both the server and the client. This section will list the called scripts and the script parameters.
+
+\subsubsection{Client pre and post backup scripts}
+
+On Linux the clients pre and post backups scripts are searched for /etc/urbackup/ or /usr/local/etc/urbackup/ (depending on where urbackup is installed).
+On Windows they are searched for per default in C:\textbackslash Program Files\textbackslash UrBackup with a ``.bat'' file extension.
+All scripts except ``prefilebackup.bat'' on Windows have to be created first.
+
+\begin{tabular}{|p{0.18\textwidth}|p{0.23\textwidth}|p{0.23\textwidth}|p{0.2\textwidth}|}
+\hline
+Script & Description & Parameters & On failure (return code not zero)\\
+\hline\hline
+prefilebackup & Called before a file backup (before snapshot/shadowcopy creation). & 1: ``0" for full backup ``1" for incremental file backup. 2: Server token. 3: File backup group & Indexing fails and backup is not started\\
+\hline
+postfilebackup & Called if a file backup successfully finished & No parameters & Ignored\\ 
+\hline
+preimagebackup & Called before a image backup (before snapshot/shadowcopy creation). & 1: ``0" for full backup ``1" for incremental file backup. 2: Server token. & Image backup fails\\
+\hline
+postimagebackup & Called if a image backup successfully finished & No parameters & Ignored\\ 
+\hline
+\end{tabular}
+
+\subsubsection{Server post backup scripts}
+
+On Linux the post backup scripts are searched for in /var/urbackup or /usr/local/var/urbackup (depending on where urbackup is installed). On Windows they are searched for per default in C:\textbackslash Program Files\textbackslash UrBackupServer\textbackslash urbackup with a ``.bat'' file extension. All scripts have to be created.\\
+
+\begin{tabular}{|p{0.25\textwidth}|p{0.15\textwidth}|p{0.3\textwidth}|p{0.15\textwidth}|}
+\hline
+Script & Description & Parameters & On failure (return code not zero)\\
+\hline\hline
+post\_full\_filebackup & Executed after a full file backup finished & 1: Path to file backup. 2: ``1'' if successful, ``0'' otherwise. 3: File backup group & Backup fails\\
+\hline
+post\_full\_filebackup & Executed after a incremental file backup finished & 1: Path to file backup. 2: ``1'' if successful, ``0'' otherwise. 3: File backup group & Backup fails\\
+\hline
+post\_full\_imagebackup & Executed after a full image backup finished & 1: Path to image backup file. 2: Image letter. 3: ``1'' if successful, ``0'' otherwise & Backup fails\\
+\hline
+post\_incr\_imagebackup & Executed after a incremental image backup finished & 1: Path to image backup file. 2: Image letter. 3: ``1'' if successful, ``0'' otherwise & Backup fails\\
+\hline
+\end{tabular} 
 
 \section{Internet clients}
 \label{sec:internet_clients}
