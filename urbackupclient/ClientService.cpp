@@ -1653,6 +1653,8 @@ void ClientConnector::replaceSettings(const std::string &pData)
 	std::string ncname=new_settings->getValue("computername", "");
 	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
 	{
+		Server->Log("Restarting filesrv because of name change. Old name: " + IndexThread::getFileSrv()->getServerName() + " New name: " + ncname, LL_DEBUG);
+
 		CWData data;
 		data.addChar(7);
 		data.addVoidPtr(NULL);

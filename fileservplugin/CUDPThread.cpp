@@ -341,5 +341,9 @@ void CUDPThread::stop(void)
 {
 	do_stop=true;
 	Log("Stopping CUPDThread...", LL_DEBUG);
-	closesocket(udpsock);
+#ifdef _WIN32
+	::shutdown(udpsock, SD_BOTH);
+#else
+	::shutdown(udpsock, SHUT_RDWR);
+#endif
 }
