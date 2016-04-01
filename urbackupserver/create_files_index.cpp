@@ -75,7 +75,6 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 
-	db_results cache_res;
 	if(db->getEngineName()=="sqlite")
 	{
 		Server->Log("Deleting database journal...", LL_INFO);
@@ -123,10 +122,6 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 				Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files_new.db\"", LL_ERROR);
 			return false;
 		}
-
-		cache_res=db->Read("PRAGMA cache_size");
-		ServerSettings server_settings(db);
-		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 
 		db->Write("PRAGMA journal_mode = OFF");
 		db->Write("PRAGMA synchronous = OFF");
