@@ -73,7 +73,8 @@ db_results create_callback(size_t n_done, size_t n_rows, void *userdata)
 
 bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 {
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	IDatabase* db_files_new = NULL;
 
 	if(db->getEngineName()=="sqlite")
 	{
@@ -115,16 +116,24 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 		Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES_NEW, sqlite_data_allocation_chunk_size);
 
-		db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES_NEW);
-		if (db==NULL)
+		db_files_new = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES_NEW);
+		if (db_files_new ==NULL)
 		{
 			Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
 				Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files_new.db\"", LL_ERROR);
 			return false;
 		}
 
-		db->Write("PRAGMA journal_mode = OFF");
-		db->Write("PRAGMA synchronous = OFF");
+		db_files_new->Write("PRAGMA journal_mode = OFF");
+		db_files_new->Write("PRAGMA synchronous = OFF");
+
+		db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+
+		if (db == NULL)
+		{
+			Server->Log("Error opening database. -1", LL_ERROR);
+			return false;
+		}
 	}
 
 	status.creating_filesindex=true;
@@ -142,7 +151,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	Server->Log("Dropping index...", LL_INFO);
 
-	db->Write("DROP INDEX IF EXISTS files_backupid");
+	db_files_new->Write("DROP INDEX IF EXISTS files_backupid");
 
 
 	Server->Log("Starting creating files index...", LL_INFO);
@@ -170,7 +179,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 		Server->Log("Creating backupid index...", LL_INFO);
 
-		db->Write("CREATE INDEX files_backupid ON files (backupid)");
+		db_files_new->Write("CREATE INDEX files_backupid ON files (backupid)");
 
 		Server->Log("Syncing...", LL_INFO);
 
