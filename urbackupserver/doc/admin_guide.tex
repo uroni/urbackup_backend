@@ -6,6 +6,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{a4wide}
 \usepackage{textcomp}
+\usepackage{seqsplit}
 
 \begin{document}
 
@@ -369,7 +370,7 @@ Per default only privileged users can access 'pw\_change.txt'. On Windows this l
  The client core process saves the server credentials from which it accepts commands and which it allows to download files in 'server\_idents.txt' - one credential per line. The server's public key is also saved in 'server\_idents.txt'.
 
 If you want to manually add a server to 'server\_idents.txt' you need to remove the preceding '\#I' and '\#' at the end of the contents of 'server\_ident.key'. After installation the 'server\_idents.txt' does not exist and the client core process accepts(and adds) the first server it sees (with the public key of the server). After that no other servers with different credentials are accepted and you need to add their credentials either manually, or via clicking on the popup box, once the client has detected the new server. This prevents others from accessing files you want to be backed up in public places.\\
-If you want to have several servers to be able to do backups of a client you have two options. Either you manually supply the server credentials to the client (by copying them into 'server\_idents.txt') or you give all servers the same credentials by copying the same 'server\_ident.key', 'server\_ident\_ecdsa409k1.priv' and 'server\_ident\_ecdsa409k1.pub' to all servers.
+If you want to have several servers to be able to do backups of a client you have two options. Either you manually supply the server credentials to the client (by copying them into 'server\_idents.txt') or you give all servers the same credentials by copying the same 'server\_ident.key', \seqsplit{'server\_ident\_ecdsa409k1.priv'} and 'server\_ident\_ecdsa409k1.pub' to all servers.
 
 \subsection{Transfer security}
 
@@ -450,7 +451,7 @@ Volume\textgreater  being the drive letter of the backed up partition and YY the
 current year, MM the current month, DD the current day in the month and HHMM the
 hour and minute the image backup was started.
 
-Since UrBackup Server 1.4 the VHD-files are compressed by default. This can be disabled in the image backup settings section. On Windows there are no tools to directly mount compressed VHD files. For mounting them on Linux see section \ref{sec:mounting_image_files}. For decompressing the image files such that they can be mounted on Windows see \ref{sec:decompressing_vhd_files}. The compressed VHD files have the extension '.vhdz'. The VHD files are compressed in 2MB blocks using GZIP compression with normal compression level.
+Since UrBackup Server 1.4 the VHD-files are compressed by default. This can be disabled in the image backup settings section. On Windows there are no tools to directly mount compressed VHD files. For mounting them on Linux see section \ref{sec:mounting_image_files}. For decompressing the image files such that they can be mounted on Windows see \ref{assemble_vhd_files}. The compressed VHD files have the extension '.vhdz'. The VHD files are compressed in 2MB blocks using GZIP compression with normal compression level.
 
 \subsection{Collision probabilities}
 
