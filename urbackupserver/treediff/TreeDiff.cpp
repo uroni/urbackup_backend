@@ -76,7 +76,20 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 		int cmp = 1;
 		if(c1!=NULL)
 		{
-			cmp = c1->nameCompare(*c2);
+			if (c1->getType() == 'f'
+				&& c2->getType() == 'd')
+			{
+				cmp = -1;
+			}
+			else if (c1->getType() == 'd'
+				&& c2->getType() == 'f')
+			{
+				cmp = 1;
+			}
+			else
+			{
+				cmp = c1->nameCompare(*c2);
+			}
 		}
 
 		if(cmp==0)
