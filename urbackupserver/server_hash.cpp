@@ -654,7 +654,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 			if(!hashoutput_fn.empty())
 			{
-				IFile *src=openFileRetry((hashoutput_fn), MODE_READ);
+				IFile *src = Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ);
 				if(src!=NULL)
 				{
 					if(!copyFile(src, hash_fn, NULL))
@@ -683,7 +683,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 			}
 			else if(!existing_file.hashpath.empty())
 			{
-				IFile *ctf=openFileRetry(os_file_prefix(existing_file.hashpath), MODE_READ);
+				IFile *ctf= Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ);
 				if(ctf!=NULL)
 				{
 					int64 hashfilesize = read_hashdata_size(ctf);
@@ -1437,7 +1437,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		assert(dstfsize==tfilesize);
 	}
 
-	IFile *f_hash_output=openFileRetry(hash_output, MODE_READ);
+	IFile *f_hash_output=Server->openFile(os_file_prefix(hash_output), MODE_READ);
 	if(f_hash_output==NULL)
 	{
 		ServerLogger::Log(logid, "Error opening hashoutput file -1", LL_ERROR);
