@@ -1432,10 +1432,10 @@ IFsFile* CServer::openFile(std::string pFilename, int pMode)
 	return file;
 }
 
-IFsFile* CServer::openFileFromHandle(void *handle)
+IFsFile* CServer::openFileFromHandle(void *handle, const std::string& pFilename)
 {
 	File *file=new File;
-	if(!file->Open(handle) )
+	if(!file->Open(handle, pFilename) )
 	{
 		delete file;
 		return NULL;

@@ -169,9 +169,10 @@ bool File::OpenTemporaryFile(const std::string &dir, bool first_try)
 		return true;
 }
 
-bool File::Open(void *handle)
+bool File::Open(void *handle, const std::string& pFilename)
 {
 	fd=(int)((intptr_t)handle);
+	fn = pFilename;
 	return true;
 }
 

@@ -42,7 +42,7 @@ public:
 	File();
 	~File();
 	bool Open(std::string pfn, int mode=MODE_READ);
-	bool Open(void *handle);
+	bool Open(void *handle, const std::string& pFilename);
 	bool OpenTemporaryFile(const std::string &tmpdir="", bool first_try=true);
 	std::string Read(_u32 tr, bool *has_error=NULL);
 	std::string Read(int64 spos, _u32 tr, bool *has_error = NULL);

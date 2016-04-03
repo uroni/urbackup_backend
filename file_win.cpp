@@ -182,9 +182,10 @@ bool File::OpenTemporaryFile(const std::string &tmpdir, bool first_try)
 	}
 }
 
-bool File::Open(void *handle)
+bool File::Open(void *handle, const std::string& pFilename)
 {
 	hfile=(HANDLE)handle;
+	fn = pFilename;
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
 		return true;

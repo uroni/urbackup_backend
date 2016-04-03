@@ -52,7 +52,7 @@ bool File::Open(std::string pfn, int mode)
 		return false;
 }
 
-bool File::Open(void *handle)
+bool File::Open(void *handle, const std::string& pFilename)
 {
 	//Not supported
 	return false;

@@ -1724,7 +1724,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 	if(!is_script)
 	{
-		srv_file = Server->openFileFromHandle((void*)hFile);
+		srv_file = Server->openFileFromHandle((void*)hFile, filename);
 
 		if(srv_file==NULL)
 		{
@@ -1928,7 +1928,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 		return false;
 	}
 
-	std::auto_ptr<IFile> tf(Server->openFileFromHandle((void*)hFile));
+	std::auto_ptr<IFile> tf(Server->openFileFromHandle((void*)hFile, filename));
 	if(tf.get()==NULL)
 	{
 		Log("Could not open file from handle -hash", LL_ERROR);

@@ -146,7 +146,7 @@ public:
 	virtual void addRequest(void)=0;
 
 	virtual IFsFile* openFile(std::string pFilename, int pMode=0)=0;
-	virtual IFsFile* openFileFromHandle(void *handle)=0;
+	virtual IFsFile* openFileFromHandle(void *handle, const std::string& pFilename)=0;
 	virtual IFsFile* openTemporaryFile(void)=0;
 	virtual IFile* openMemoryFile(void)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
