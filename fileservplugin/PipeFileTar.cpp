@@ -486,7 +486,14 @@ bool PipeFileTar::Sync()
 std::string PipeFileTar::getFilename(void)
 {
 	IScopedLock lock(mutex.get());
-	return tar_file.fn;
+	if (!tar_file.fn.empty())
+	{
+		return tar_file.fn;
+	}
+	else
+	{
+		return output_fn;
+	}
 }
 
 int64 PipeFileTar::getLastRead()

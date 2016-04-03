@@ -25,6 +25,15 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <stdlib.h>
+#include <spawn.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#ifdef O_CLOEXEC
+#define clopipe(x) pipe2(x, O_CLOEXEC)
+#else
+#define clopipe(x) pipe(x)
+#endif
 
 PipeFile::PipeFile(const std::string& pCmd)
 	: PipeFileBase(pCmd),
@@ -33,7 +42,7 @@ PipeFile::PipeFile(const std::string& pCmd)
 {
 	int stdout_pipe[2];
 
-	if(pipe(stdout_pipe) == -1)
+	if(clopipe(stdout_pipe) == -1)
 	{
 		Server->Log("Error creating stdout pipe: " + convert(errno), LL_ERROR);
 		has_error=true;
@@ -41,50 +50,51 @@ PipeFile::PipeFile(const std::string& pCmd)
 	}
 
 	int stderr_pipe[2];
-	if(pipe(stderr_pipe) == -1)
+	if(clopipe(stderr_pipe) == -1)
 	{
 		Server->Log("Error creating stderr pipe: " + convert(errno), LL_ERROR);
 		has_error=true;
 		return;
 	}
-
-	child_pid = fork();
-
-	if(child_pid==-1)
+	
+	posix_spawn_file_actions_t fa;
+	if(posix_spawn_file_actions_init(&fa)!=0)
 	{
-		Server->Log("Error forking to execute command: " + convert(errno), LL_ERROR);
+		Server->Log("Error posix_spawn_file_actions_init: " + convert(errno), LL_ERROR);
 		has_error=true;
 		return;
 	}
-	else if(child_pid==0)
+	
+	if(posix_spawn_file_actions_adddup2(&fa, stdout_pipe[1], STDOUT_FILENO)!=0)
 	{
-		while ((dup2(stdout_pipe[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-		while ((dup2(stderr_pipe[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
-
-		close(stdout_pipe[0]);
-		close(stdout_pipe[1]);
-		close(stderr_pipe[0]);
-		close(stderr_pipe[1]);
-
-		int rc = system(pCmd.c_str());
-		
-		if(rc>127)
-		{
-			rc = 127;
-		}
-		
-		_exit(rc);
+		Server->Log("Error posix_spawn_file_actions_adddup2(1): " + convert(errno), LL_ERROR);
+		has_error=true;
+		return;
 	}
-	else
+	
+	if(posix_spawn_file_actions_adddup2(&fa, stderr_pipe[1], STDERR_FILENO)!=0)
 	{
-		close(stdout_pipe[1]);
-		close(stderr_pipe[1]);
-
-		hStdout = stdout_pipe[0];
-		hStderr = stderr_pipe[0];
-
-		init();
+		Server->Log("Error posix_spawn_file_actions_adddup2(2): " + convert(errno), LL_ERROR);
+		has_error=true;
+		return;
 	}
+	
+	char* argv[] = {"sh", "-c", pCmd.c_str(), NULL};
+	char* envp[] = {NULL};
+	if(posix_spawn(&child_pid, "/bin/sh", &fa, NULL, argv, envp)!=0)
+	{
+		Server->Log("Error executing command: " + convert(errno), LL_ERROR);
+		has_error=true;
+		return;
+	}
+
+	close(stdout_pipe[1]);
+	close(stderr_pipe[1]);
+
+	hStdout = stdout_pipe[0];
+	hStderr = stderr_pipe[0];
+
+	init();
 }
 
 PipeFile::~PipeFile()
