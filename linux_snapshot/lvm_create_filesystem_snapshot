@@ -12,7 +12,14 @@ SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
 
-VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+if lsblk -r --output "NAME,MOUNTPOINT" --paths > /dev/null 2>&1
+then
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+else
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+	VOLNAME="/dev/mapper/$VOLNAME"
+fi
+
 TYPE=`df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
 
 if [ "x$VOLNAME" = x ]
