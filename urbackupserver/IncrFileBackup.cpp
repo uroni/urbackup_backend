@@ -1418,8 +1418,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 
 	FileListParser list_parser;
 
-	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);
-	if(tmp==NULL)
+	std::auto_ptr<IFile> tmp(Server->openFile(clientlist_fn, MODE_READ));
+	if(tmp.get()==NULL)
 	{
 		ServerLogger::Log(logid, "Could not open clientlist in ::deleteFilesInSnapshot", LL_ERROR);
 		return false;
@@ -1474,7 +1474,6 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									if (!no_error)
 									{
 										ServerLogger::Log(logid, "Could not remove file \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), LL_ERROR);
-										Server->destroy(tmp);
 										return false;
 									}
 								}
@@ -1484,7 +1483,6 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 								if(!no_error)
 								{
 									ServerLogger::Log(logid, "Could not remove directory \""+curr_fn+"\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), LL_ERROR);
-									Server->destroy(tmp);
 									return false;
 								}
 							}
@@ -1498,8 +1496,14 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					{
 						if( curr_dir_exists )
 						{
-							//ServerLogger::Log(logid, L"Removing file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_DEBUG);
-							if( !Server->deleteFile(os_file_prefix(curr_fn)) )
+							int ftype = EFileType_File;
+							if (curr_path == os_file_sep() + "urbackup_backup_scripts")
+							{
+								ftype = os_get_file_type(os_file_prefix(curr_fn));
+							}
+
+							if(ftype & EFileType_File
+								&& !Server->deleteFile(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)
 								{
@@ -1512,7 +1516,23 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									{
 										ServerLogger::Log(logid, "Could not remove file \""+curr_fn+"\" in ::deleteFilesInSnapshot - " + systemErrorInfo()+". It was already deleted.", LL_ERROR);
 									}
-									Server->destroy(tmp);
+									return false;
+								}
+							}
+							else if (ftype & EFileType_Directory
+								&& !os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+							{
+								if (!no_error)
+								{
+									ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot (2) - " + systemErrorInfo(), LL_ERROR);
+									return false;
+								}
+							}
+							else
+							{
+								if (!no_error)
+								{
+									ServerLogger::Log(logid, "Cannot get file type in ::deleteFilesInSnapshot. " + systemErrorInfo(), LL_ERROR);
 									return false;
 								}
 							}
@@ -1530,7 +1550,6 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 		}
 	}
 
-	Server->destroy(tmp);
 	return true;
 }
 
