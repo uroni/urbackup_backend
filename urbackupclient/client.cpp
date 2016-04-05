@@ -3927,80 +3927,23 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 	}
 	else if (sha_version == 528)
 	{
-		int64 fsize1 = 0;
-		{
-			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-			if (f.get() != NULL)
-			{
-				fsize1 = f->Size();
-			}
-		}
-
 		TreeHash treehash;
 		if (!getShaBinary(fn, treehash))
 		{
 			return std::string();
 		}
 
-		std::string ret = treehash.finalize();
-
-		//TODO: Perf remove verification
-		std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-		IFile* hashoutput = Server->openTemporaryFile();
-		ScopedDeleteFile hashoutput_delete(hashoutput);
-		FsExtentIterator extent_iterator(f.get(), 512*1024);
-		TreeHash treehash2;
-		build_chunk_hashs(f.get(), hashoutput, NULL, NULL, false,
-			NULL, NULL, false, &treehash2, &extent_iterator);
-
-		int64 fsize2 = f->Size();
-
-		std::string other_ret = treehash2.finalize();
-		if (ret != other_ret  && fsize1 == fsize2)
-		{
-			Server->Log("Tree hash calc error at file " + fn, LL_ERROR);
-		}
-
-		assert(fsize1 != fsize2 || ret == other_ret);
-		return ret;
+		return treehash.finalize();
 	}
 	else
 	{
-		int64 fsize1 = 0;
-		{
-			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-			if (f.get() != NULL)
-			{
-				fsize1 = f->Size();
-			}
-		}
-
 		HashSha512 hash_512;
 		if (!getShaBinary(fn, hash_512))
 		{
 			return std::string();
 		}
 
-		std::string ret = hash_512.finalize();
-
-		//TODO: Perf remove verification
-		std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-		IFile* hashoutput = Server->openTemporaryFile();
-		ScopedDeleteFile hashoutput_delete(hashoutput);
-		FsExtentIterator extent_iterator(f.get(), 512*1024);
-		HashSha512 hash_512_other;
-		build_chunk_hashs(f.get(), hashoutput, NULL, NULL, false,
-			NULL, NULL, false, &hash_512_other, &extent_iterator);
-
-		int64 fsize2 = f->Size();
-		std::string other_sha = hash_512_other.finalize();
-		if (ret != other_sha && fsize1 == fsize2)
-		{
-			Server->Log("SHA calc error at file " + fn, LL_ERROR);
-		}
-
-		assert(fsize1 != fsize2 || ret == other_sha);
-		return ret;
+		return hash_512.finalize();
 	}
 }
 
