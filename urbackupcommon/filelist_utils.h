@@ -38,4 +38,5 @@ private:
 
 	ParseState state;
 	std::string t_name;
+	int64 pos;
 };

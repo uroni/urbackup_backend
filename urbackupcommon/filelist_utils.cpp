@@ -144,6 +144,7 @@ void writeFileItem(IFile* f, SFile cf, std::string extra)
 
 bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std::string>* extra )
 {
+	++pos;
 	switch(state)
 	{
 	case ParseState_Type:
@@ -164,7 +165,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 		}
 		else
 		{
-			Server->Log("Error parsing file BackupServerGet::getNextEntry - 1", LL_ERROR);
+			Server->Log("Error parsing file BackupServerGet::getNextEntry - 1. Unexpected char '"+std::string(1, ch)+"' at pos "+convert(pos-1)+". Expected 'f', 'd' or 'u'.", LL_ERROR);
 		}
 		break;
 	case ParseState_TypeFinish:
@@ -182,7 +183,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 		}
 		else
 		{
-			Server->Log("Error parsing file BackupServerGet::getNextEntry - 2", LL_ERROR);
+			Server->Log("Error parsing file BackupServerGet::getNextEntry - 2. Unexpected char '" + std::string(1, ch) + "'at pos " + convert(pos-1)+". Expected '\\n'.", LL_ERROR);
 		}
 		break;
 	case ParseState_Quote:
@@ -319,10 +320,11 @@ void FileListParser::reset( void )
 {
 	t_name="";
 	state=ParseState_Type;
+	pos = 0;
 }
 
 FileListParser::FileListParser()
-	: state(ParseState_Type)
+	: state(ParseState_Type), pos(0)
 {
 
 }

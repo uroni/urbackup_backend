@@ -643,9 +643,11 @@ bool FullFileBackup::doFileBackup()
 							&& !metadata_download_thread->hasMetadataId(line+1)
 							&& last_modified_offsets.top()!= std::string::npos)
 						{
-							has_all_metadata=false;
-
-							ServerLogger::Log(logid, "Metadata of \"" + cf.name + "\" missing", LL_DEBUG);
+							if (line < max_line)
+							{
+								has_all_metadata = false;
+								ServerLogger::Log(logid, "Metadata of \"" + cf.name + "\" missing", LL_DEBUG);
+							}
 
 							//go back to the directory entry and change the last modfied time
 							if(clientlist->Seek(last_modified_offsets.top()))
@@ -662,7 +664,7 @@ bool FullFileBackup::doFileBackup()
 								}
 								else
 								{
-									ServerLogger::Log(logid, "Error reading from clientlist", LL_ERROR);	
+									ServerLogger::Log(logid, "Error reading from clientlist "+clientlist->getFilename()+" from offset "+convert(last_modified_offsets.top()), LL_ERROR);	
 								}
 							}
 							else
