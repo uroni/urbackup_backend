@@ -1528,7 +1528,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									return false;
 								}
 							}
-							else
+							else if (ftype==0)
 							{
 								if (!no_error)
 								{
