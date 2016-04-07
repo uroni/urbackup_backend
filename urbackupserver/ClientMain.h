@@ -247,6 +247,7 @@ private:
 	bool exponentialBackoffImage();
 	bool exponentialBackoffFile();
 	bool exponentialBackoffCdp();
+	bool pauseRetryBackup();
 
 	bool authenticatePubKey();
 
@@ -313,6 +314,8 @@ private:
 
 	IMutex* throttle_mutex;
 	IPipeThrottler *client_throttler;
+
+	int64 last_backup_try;
 	
 	int64 last_image_backup_try;
 	size_t count_image_backup_try;

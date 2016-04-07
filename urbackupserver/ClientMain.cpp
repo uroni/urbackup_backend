@@ -129,6 +129,8 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	settings=NULL;
 	settings_client=NULL;
 
+	last_backup_try = 0;
+
 	last_image_backup_try=0;
 	count_image_backup_try=0;
 
@@ -505,6 +507,10 @@ void ClientMain::operator ()(void)
 								count_image_backup_try = 0;
 							}
 						}
+						else
+						{
+							last_backup_try = Server->getTimeSeconds();
+						}
 
 						delete backup_queue[i].backup;
 						send_logdata = true;
@@ -604,7 +610,7 @@ void ClientMain::operator ()(void)
 
 			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
-				&& exponentialBackoffFile() ) || do_full_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
@@ -620,7 +626,7 @@ void ClientMain::operator ()(void)
 			}
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
-				&& exponentialBackoffFile() ) || do_incr_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
@@ -636,7 +642,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_full_image_now)
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
-				&& exponentialBackoffImage() ) || do_full_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
 
@@ -660,7 +666,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_incr_image_now)
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
-				&& exponentialBackoffImage() ) || do_incr_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
 			{
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
@@ -2300,6 +2306,11 @@ bool ClientMain::exponentialBackoffFile()
 bool ClientMain::exponentialBackoffCdp()
 {
 	return exponentialBackoff(count_cdp_backup_try, last_cdp_backup_try, c_sleeptime_failed_filebackup, c_exponential_backoff_div);
+}
+
+bool ClientMain::pauseRetryBackup()
+{
+	return Server->getTimeMS() - last_backup_try >= 5 * 60 * 1000;
 }
 
 bool ClientMain::authenticatePubKey()
