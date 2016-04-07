@@ -126,7 +126,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size))!=sizeof(curr_fn_size))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Filename size could not be read.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 			
@@ -143,7 +146,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
 					ServerLogger::Log(logid, "Error saving metadata. Filename could not be read. Size: "+convert(curr_fn_size), LL_ERROR);
-					copyForAnalysis(metadata_f.get());
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
 					return false;
 				}
 
@@ -153,7 +159,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			else
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Filename is empty.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -161,7 +170,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&read_path_checksum), sizeof(read_path_checksum))!=sizeof(read_path_checksum))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Path checksum could not be read.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -170,7 +182,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(little_endian(read_path_checksum)!=path_checksum)
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Path checksum wrong.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
@@ -289,7 +304,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(metadata_f->Read(reinterpret_cast<char*>(&read_common_metadata_checksum), sizeof(read_common_metadata_checksum))!=sizeof(read_common_metadata_checksum))
 			{
 				ServerLogger::Log(logid, "Error saving metadata. Common metadata checksum could not be read.", LL_ERROR);
-				copyForAnalysis(metadata_f.get());
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
 				return false;
 			}
 
