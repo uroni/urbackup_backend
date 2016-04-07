@@ -237,8 +237,14 @@ bool FullFileBackup::doFileBackup()
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
-	while( (read=tmp_filelist->Read(buffer, 4096))>0 && !r_offline && !c_has_error)
+	bool has_read_error = false;
+	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 && !r_offline && !c_has_error)
 	{
+		if (has_read_error)
+		{
+			break;
+		}
+
 		for(size_t i=0;i<read;++i)
 		{
 			std::map<std::string, std::string> extra_params;
@@ -527,6 +533,13 @@ bool FullFileBackup::doFileBackup()
 			break;
 	}
 
+	if (has_read_error)
+	{
+		ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+		disk_error = true;
+	}
+
+
 	server_download->queueStop();
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
@@ -607,8 +620,14 @@ bool FullFileBackup::doFileBackup()
 	size_t output_offset=0;
 	std::stack<size_t> last_modified_offsets;
 	script_dir=false;
-	while( (read=tmp_filelist->Read(buffer, 4096))>0 )
+	has_read_error = false;
+	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 	{
+		if (has_read_error)
+		{
+			break;
+		}
+
 		for(size_t i=0;i<read;++i)
 		{
 			bool b=list_parser.nextEntry(buffer[i], cf, NULL);
@@ -649,7 +668,7 @@ bool FullFileBackup::doFileBackup()
 								ServerLogger::Log(logid, "Metadata of \"" + cf.name + "\" missing", LL_DEBUG);
 							}
 
-							//go back to the directory entry and change the last modfied time
+							//go back to the directory entry and change the last modified time
 							if(clientlist->Seek(last_modified_offsets.top()))
 							{
 								char ch;
@@ -715,6 +734,12 @@ bool FullFileBackup::doFileBackup()
 				++line;
 			}
 		}
+	}
+
+	if (has_read_error)
+	{
+		ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+		disk_error = true;
 	}
 
 	if(has_all_metadata)

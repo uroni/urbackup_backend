@@ -951,8 +951,14 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 	std::stack<std::set<std::string> > folder_files;
 	folder_files.push(std::set<std::string>());
 
-	while( (read=fileentries->Read(buffer, 4096))>0 )
+	bool has_read_error = false;
+	while( (read=fileentries->Read(buffer, 4096, &has_read_error))>0 )
 	{
+		if (has_read_error)
+		{
+			ServerLogger::Log(logid, "Error reading from file " + fileentries->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
 		for(size_t i=0;i<read;++i)
 		{
 			std::map<std::string, std::string> extras;
@@ -1471,8 +1477,14 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 	std::stack<std::set<std::string> > folder_files;
 	folder_files.push(std::set<std::string>());
 	
-	while((bread=file_list_f->Read(buffer, 4096))>0)
+	bool has_read_error = false;
+	while((bread=file_list_f->Read(buffer, 4096, &has_read_error))>0)
 	{
+		if (has_read_error)
+		{
+			ServerLogger::Log(logid, "Error reading from file " + file_list_f->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
 		for(_u32 i=0;i<bread;++i)
 		{
 			std::map<std::string, std::string> extra;

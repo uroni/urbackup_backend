@@ -418,8 +418,14 @@ bool IncrFileBackup::doFileBackup()
 	std::stack<int64> dir_ids;
 	std::map<int64, int64> dir_end_ids;
 
-	while( (read=tmp_filelist->Read(buffer, 4096))>0 )
+	bool has_read_error = false;
+	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 	{
+		if (has_read_error)
+		{
+			break;
+		}
+
 		filelist_currpos+=read;
 
 		for(size_t i=0;i<read;++i)
@@ -1033,6 +1039,12 @@ bool IncrFileBackup::doFileBackup()
 			break;
 	}
 
+	if (has_read_error)
+	{
+		ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+		disk_error = true;
+	}
+
 	server_download->queueStop();
 
 	ServerLogger::Log(logid, "Waiting for file transfers...", LL_INFO);
@@ -1122,8 +1134,13 @@ bool IncrFileBackup::doFileBackup()
 		list_parser.reset();
 		script_dir=false;
 		indirchange=false;
-		while( (read=tmp_filelist->Read(buffer, 4096))>0 )
+		has_read_error = false;
+		while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
 		{
+			if (has_read_error)
+			{
+				break;
+			}
 			for(size_t i=0;i<read;++i)
 			{
 				str_map extra_params;
@@ -1218,6 +1235,12 @@ bool IncrFileBackup::doFileBackup()
 					++line;
 				}
 			}
+		}
+
+		if (has_read_error)
+		{
+			ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+			disk_error = true;
 		}
 
 		if(has_all_metadata)

@@ -29,7 +29,7 @@ void writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 		written+=rc;
 		if(rc==0)
 		{
-			Server->Log("Failed to write to file "+f->getFilename()+" retrying...", LL_WARNING);
+			Server->Log("Failed to write to file "+f->getFilename()+" retrying... "+os_last_error_str(), LL_WARNING);
 			Server->wait(10000);
 		}
 	}
