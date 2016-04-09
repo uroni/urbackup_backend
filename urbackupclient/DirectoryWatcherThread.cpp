@@ -344,7 +344,8 @@ void DirectoryWatcherThread::On_FileNameChanged(const std::string & strOldFileNa
 
 void DirectoryWatcherThread::On_DirNameChanged( const std::string & strOldFileName, const std::string & strNewFileName, bool closed )
 {
-	On_FileNameChanged(strOldFileName, strNewFileName, closed);
+	On_DirRemoved(strOldFileName, closed);
+	On_FileModified(strNewFileName, closed);
 }
 
 void DirectoryWatcherThread::On_FileRemoved(const std::string & strFileName, bool closed)
