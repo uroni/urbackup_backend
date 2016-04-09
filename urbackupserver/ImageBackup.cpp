@@ -299,6 +299,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	if(cc==NULL)
 	{
 		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+		has_timeout_error = true;
 		return false;
 	}
 
@@ -635,6 +636,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			}
 			else
 			{
+				has_timeout_error = true;
 				ServerLogger::Log(logid, "Pipe to client unexpectedly closed has_error="+(cc==NULL?"NULL":convert(cc->hasError())), LL_ERROR);
 				goto do_image_cleanup;
 			}
@@ -1389,6 +1391,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			}
 		}
 	}
+	has_timeout_error = true;
 	ServerLogger::Log(logid, "Timeout while transfering image data", LL_ERROR);
 
 do_image_cleanup:
