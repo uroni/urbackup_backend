@@ -565,6 +565,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
+					std::string openerr = os_last_error_str();
 #ifdef CHECK_BASE_PATH
 					std::string share_name = getuntil("/",o_filename);
 					if(!share_name.empty())
@@ -593,7 +594,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
 						return false;
 					}
-					Log("Info: Couldn't open file", LL_DEBUG);
+					Log("Could not open file "+ filename+". "+ openerr, metadata_id != 0 ? LL_ERROR : LL_INFO);
 					break;
 				}
 
@@ -1674,6 +1675,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 		if(hFile == INVALID_HANDLE_VALUE)
 		{
+			std::string errstr = os_last_error_str();
 	#ifdef CHECK_BASE_PATH
 			std::string share_name = getuntil("/",o_filename);
 			if(!share_name.empty())
@@ -1690,7 +1692,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	#endif
 					
 			queueChunk(SChunk(ID_COULDNT_OPEN));
-			Log("Info: Couldn't open file", LL_DEBUG);
+			Log("Could not open file "+filename+". " + errstr, metadata_id != 0 ? LL_ERROR : LL_INFO);
 			return true;
 		}
 	}

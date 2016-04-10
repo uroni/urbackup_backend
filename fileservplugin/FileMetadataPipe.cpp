@@ -390,7 +390,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 					if (!openFileHandle())
 					{
-						Server->Log("Error opening file handle to " + local_fn, LL_ERROR);
+						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
 						PipeSessions::fileMetadataDone(public_fn, server_token);
