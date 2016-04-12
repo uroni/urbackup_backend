@@ -341,13 +341,14 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties")));
 
 	std::string access_key;
+	std::string client_access_key = server_settings->getSettings()->client_access_key;
 	if(urbackup_tokens->getValue("access_key", &access_key) &&
 		!access_key.empty() &&
-		access_key != server_settings->getSettings()->client_access_key )
+		access_key != client_access_key )
 	{
 		backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
 
-		if(!server_settings->getSettings()->client_access_key.empty())
+		if(!client_access_key.empty())
 		{
 			backup_dao->deleteUsedAccessTokens(clientid);
 		}
