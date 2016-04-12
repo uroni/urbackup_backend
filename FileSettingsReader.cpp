@@ -58,7 +58,13 @@ CFileSettingsReader::CFileSettingsReader(std::string pFile)
 	}
 	if( iter==settings->end() )
 	{
-		std::string fdata=getFile(pFile);
+		std::auto_ptr<IFile> f(Server->openFile(pFile, MODE_READ));
+		std::string fdata;
+		if (f.get() != NULL)
+		{
+			fdata = f->Read(static_cast<_u32>(f->Size()));
+			f.reset();
+		}
 
 		read(fdata, pFile);
 	}

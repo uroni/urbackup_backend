@@ -253,9 +253,10 @@ function try_anonymous_login(data)
 	}
 	
 	var params;
-	if(window.location.hash.length>0)
+	var hash = location.href.split('#').splice(1).join('#');
+	if(hash.length>0)
 	{
-		params = deparam(window.location.hash.substr(1));
+		params = deparam(hash);
 	}
 	if(params && params.token_data && params.clientname)
 	{
@@ -300,7 +301,7 @@ function try_anonymous_login(data)
 
 function file_access(params)
 {
-	var p = "clientname="+params.clientname;
+	var p = "clientname="+encodeURIComponent(params.clientname);
 	p+="&token_data="+encodeURIComponent(params["token_data"]);
 	
 	for(var i=0;;++i)
