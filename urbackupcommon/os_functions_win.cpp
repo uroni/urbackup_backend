@@ -551,7 +551,7 @@ int64 os_free_space(const std::string &path)
 		cp+='\\';
 
 	ULARGE_INTEGER li;
-	BOOL r=GetDiskFreeSpaceExW(ConvertToWchar(path).c_str(), &li, NULL, NULL);
+	BOOL r=GetDiskFreeSpaceExW(ConvertToWchar(cp).c_str(), &li, NULL, NULL);
 	if(r!=0)
 		return li.QuadPart;
 	else

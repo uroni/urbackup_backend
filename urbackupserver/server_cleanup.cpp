@@ -370,6 +370,7 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
+	cleanup_images();
 	cleanup_files();
 
 	if(switch_to_wal)
