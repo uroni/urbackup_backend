@@ -210,7 +210,7 @@ private:
 	bool backupNameInUse(const std::string& name);
 	void removeUnconfirmedSymlinkDirs(size_t off);
 
-	void filterEncryptedFiles(const std::string& dir, std::vector<SFile>& files);
+	void filterEncryptedFiles(const std::string& dir, const std::string& orig_dir, std::vector<SFile>& files);
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 	void handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files);
 

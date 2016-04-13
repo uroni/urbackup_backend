@@ -1930,7 +1930,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 		bool has_error;
 		std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
-		filterEncryptedFiles(path, os_files);
+		filterEncryptedFiles(path, orig_path, os_files);
 		fs_files = convertToFileAndHash(orig_path, os_files, fn_filter);
 
 		if (has_error)
@@ -2059,7 +2059,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 			bool has_error;
 			std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
-			filterEncryptedFiles(path, os_files);
+			filterEncryptedFiles(path, orig_path, os_files);
 			fs_files=convertToFileAndHash(orig_path, os_files, fn_filter);
 			if(has_error)
 			{
@@ -5235,7 +5235,7 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 	}
 }
 
-void IndexThread::filterEncryptedFiles(const std::string & dir, std::vector<SFile>& files)
+void IndexThread::filterEncryptedFiles(const std::string & dir, const std::string& orig_dir, std::vector<SFile>& files)
 {
 	bool has_encrypted = false;
 	for (size_t i = 0; i < files.size(); ++i)
@@ -5260,7 +5260,7 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, std::vector<SFil
 
 				if (has_error)
 				{
-					VSSLog("Not backing up encrypted directory \"" + dir + os_file_sep() + files[i].name + "\" (Cannot read directory contents: " + os_last_error_str() + ")", LL_WARNING);
+					VSSLog("Not backing up encrypted directory \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read directory contents: " + os_last_error_str() + ")", LL_WARNING);
 				}
 				else
 				{
@@ -5276,7 +5276,7 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, std::vector<SFil
 
 				if (hFile == INVALID_HANDLE_VALUE)
 				{
-					VSSLog("Not backing up encrypted file \"" + dir + os_file_sep() + files[i].name + "\" (Cannot read file contents: " + os_last_error_str() + ")", LL_WARNING);
+					VSSLog("Not backing up encrypted file \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read file contents: " + os_last_error_str() + ")", LL_WARNING);
 				}
 				else
 				{
