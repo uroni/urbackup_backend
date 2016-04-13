@@ -1929,7 +1929,9 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		std::string tpath = os_file_prefix(path);
 
 		bool has_error;
-		fs_files = convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0), fn_filter);
+		std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+		filterEncryptedFiles(path, os_files);
+		fs_files = convertToFileAndHash(orig_path, os_files, fn_filter);
 
 		if (has_error)
 		{
@@ -2056,7 +2058,9 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			std::string tpath=os_file_prefix(path);
 
 			bool has_error;
-			fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
+			std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
+			filterEncryptedFiles(path, os_files);
+			fs_files=convertToFileAndHash(orig_path, os_files, fn_filter);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -5228,6 +5232,69 @@ void IndexThread::removeUnconfirmedSymlinkDirs(size_t off)
 			}
 		}
 		++i;
+	}
+}
+
+void IndexThread::filterEncryptedFiles(const std::string & dir, std::vector<SFile>& files)
+{
+	bool has_encrypted = false;
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].isencrypted)
+		{
+			has_encrypted = true;
+		}
+	}
+
+	if (has_encrypted)
+	{
+		std::vector<SFile> new_files;
+
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			if (files[i].isencrypted
+				&& files[i].isdir)
+			{
+				bool has_error = false;
+				getFiles(os_file_prefix(dir + os_file_sep() + files[i].name), &has_error);
+
+				if (has_error)
+				{
+					VSSLog("Not backing up encrypted directory \"" + dir + os_file_sep() + files[i].name + "\" (Cannot read directory contents: " + os_last_error_str() + ")", LL_WARNING);
+				}
+				else
+				{
+					new_files.push_back(files[i]);
+				}
+			}
+			else if (files[i].isencrypted
+				&& !files[i].isdir)
+			{
+#ifdef _WIN32
+				HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(dir + os_file_sep() + files[i].name)).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+				if (hFile == INVALID_HANDLE_VALUE)
+				{
+					VSSLog("Not backing up encrypted file \"" + dir + os_file_sep() + files[i].name + "\" (Cannot read file contents: " + os_last_error_str() + ")", LL_WARNING);
+				}
+				else
+				{
+					CloseHandle(hFile);
+
+					new_files.push_back(files[i]);
+				}
+#else
+				new_files.push_back(files[i]);
+#endif
+			}
+			else
+			{
+				new_files.push_back(files[i]);
+			}
+		}
+
+		files = new_files;
 	}
 }
 

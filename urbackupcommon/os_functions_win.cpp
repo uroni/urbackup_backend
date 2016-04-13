@@ -251,6 +251,8 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 			f.isspecialf=true;
 		}
 
+		f.isencrypted = (wfd.dwFileAttributes & FILE_ATTRIBUTE_ENCRYPTED);
+
 		if( (exact_filesize || with_usn ) && !f.issym && !f.isdir)
 		{
 			if(with_usn)
