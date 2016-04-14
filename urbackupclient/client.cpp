@@ -5260,7 +5260,7 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, const std::strin
 
 				if (has_error)
 				{
-					VSSLog("Not backing up encrypted directory \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read directory contents: " + os_last_error_str() + ")", LL_WARNING);
+					VSSLog("Not backing up encrypted directory \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read directory contents: " + os_last_error_str() + "). See https://www.urbackup.org/faq.html#windows_efs", LL_WARNING);
 				}
 				else
 				{
@@ -5276,7 +5276,7 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, const std::strin
 
 				if (hFile == INVALID_HANDLE_VALUE)
 				{
-					VSSLog("Not backing up encrypted file \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read file contents: " + os_last_error_str() + ")", LL_WARNING);
+					VSSLog("Not backing up encrypted file \"" + orig_dir + os_file_sep() + files[i].name + "\" (Cannot read file contents: " + os_last_error_str() + "). See https://www.urbackup.org/faq.html#windows_efs", LL_WARNING);
 				}
 				else
 				{

@@ -1189,7 +1189,26 @@ function show_status2(data)
 	if(data.dir_error)
 	{
 		var ext_text="";
-		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
+		if(data.dir_error_ext) ext_text=" ("+data.dir_error_ext+")";
+		if(data.system_err) ext_text+=". "+data.system_err;
+		
+		if(data.dir_error_hint)
+		{
+			if(data.dir_error_hint=="volume_not_accessible")
+			{
+				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\servername\share).";
+			}
+			if(data.dir_error_hint=="folder_unc_access_denied")
+			{
+				ext_text+="<br>UrBackup is denied access to the network share, probably because it does not have the correct credentials to access the server. To setup UrBackup server to backup to a network share please see the FAQ: <a href=\"https://www.urbackup.org/faq.html#use_shares\">https://www.urbackup.org/faq.html#use_shares</a>";
+			}
+		}
+		
+		if(data.detail_err_str)
+		{
+			ext_text+="<br><br>Detailed error info:<br><pre>"+data.detail_err_str+"</pre>";
+		}
+		
 		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text")});
 	}
 	

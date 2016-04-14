@@ -95,6 +95,75 @@ void set_server_version_info(JSON::Object& ret)
 	}
 }
 
+void access_dir_details(std::string folder, std::string& ret)
+{
+	bool has_error = false;
+	getFiles(folder, &has_error);
+	if (has_error)
+	{
+		ret += "Cannot access " + folder + ". " + os_last_error_str() + "\n";
+	}
+	else
+	{
+		ret += "Can access " + folder + "\n";
+	}
+}
+
+std::string access_err_details(std::string folder)
+{
+	std::vector<std::string> toks;
+	TokenizeMail(folder, toks, os_file_sep());
+
+	std::string ret;
+
+	std::string cdir = os_file_sep();
+	access_dir_details(cdir, ret);
+
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		if (i!=0)
+		{
+			cdir += os_file_sep();
+		}
+		cdir += toks[i];
+
+		access_dir_details(cdir, ret);
+	}
+
+	return ret;
+}
+
+std::string access_dir_hint(std::string folder)
+{
+	if (folder.size() > 1 && folder[1] == ':')
+	{
+		bool has_error = false;
+		getFiles(folder.substr(0, 2) + os_file_sep(), &has_error);
+
+		if (has_error)
+		{
+			return "volume_not_accessible";
+		}
+	}
+
+	if ( (folder.size() > 2 && folder[0] == '\\'
+		&& folder[1] == '\\'
+		&& folder[2] != '?' )
+		|| next(folder, 0, "\\\\?\\UNC") )
+	{
+		bool has_error = false;
+		getFiles(folder, &has_error);
+
+		if (has_error && os_last_error() == 5
+			|| os_last_error()== 1326 )
+		{
+			return "folder_unc_access_denied";
+		}
+	}
+
+	return std::string();
+}
+
 }
 
 ACTION_IMPL(status)
@@ -137,17 +206,44 @@ ACTION_IMPL(status)
 
 			if(backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)) )
 			{
+				if (!backupfolder.empty())
+				{
+					ret.set("system_err", os_last_error_str());
+				}
+
 				ret.set("dir_error", true);
 				if(settings.getSettings()->backupfolder.empty())
 					ret.set("dir_error_ext", "err_name_empty");
 				else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) )
 					ret.set("dir_error_ext", "err_folder_not_found");
+
+#ifdef _WIN32
+				std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
+				if (!hint.empty())
+				{
+					ret.set("dir_error_hint", hint);
+				}
+#endif
+
+#ifndef _WIN32
+				ret.set("detail_err_str", access_err_details(settings.getSettings()->backupfolder));
+#endif
 			}
 			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) )
 			{
+				ret.set("system_err", os_last_error_str());
 				ret.set("dir_error" ,true);
-				ret.set("dir_error_ext", "err_cannot_create_subdir");
+				ret.set("dir_error_ext", "err_cannot_create_subdir");				
+
+#ifdef _WIN32
+				std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
+				if (!hint.empty())
+				{
+					ret.set("dir_error_hint", hint);
+				}
+#endif
 			}
+
 			IFile *tmp=Server->openTemporaryFile();
 			if(tmp==NULL)
 			{
