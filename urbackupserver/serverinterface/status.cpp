@@ -123,7 +123,7 @@ std::string access_err_details(std::string folder)
 	{
 		if (toks[i].empty()) continue;
 
-		if (i!=0)
+		if (cdir!=os_file_sep())
 		{
 			cdir += os_file_sep();
 		}
