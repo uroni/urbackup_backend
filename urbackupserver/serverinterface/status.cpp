@@ -121,6 +121,8 @@ std::string access_err_details(std::string folder)
 
 	for (size_t i = 0; i < toks.size(); ++i)
 	{
+		if (toks.empty()) continue;
+
 		if (i!=0)
 		{
 			cdir += os_file_sep();
