@@ -121,7 +121,7 @@ std::string access_err_details(std::string folder)
 
 	for (size_t i = 0; i < toks.size(); ++i)
 	{
-		if (toks.empty()) continue;
+		if (toks[i].empty()) continue;
 
 		if (i!=0)
 		{
