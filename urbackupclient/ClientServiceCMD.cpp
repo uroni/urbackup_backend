@@ -449,7 +449,7 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 		}
 
 		CWData data;
-		data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
+		data.addChar(IndexThread::IndexThreadAction_ReferenceShadowcopy);
 		data.addVoidPtr(mempipe);
 		data.addString(dir);
 		data.addString(server_token);

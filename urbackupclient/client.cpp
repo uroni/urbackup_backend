@@ -71,6 +71,7 @@ std::map<std::string, int> IndexThread::cbt_shadow_ids;
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
 const char IndexThread::IndexThreadAction_CreateShadowcopy = 2;
+const char IndexThread::IndexThreadAction_ReferenceShadowcopy = 11;
 const char IndexThread::IndexThreadAction_ReleaseShadowcopy = 3;
 const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
@@ -582,7 +583,8 @@ void IndexThread::operator()(void)
 				}
 			}
 		}
-		else if(action==IndexThreadAction_CreateShadowcopy)
+		else if(action==IndexThreadAction_CreateShadowcopy
+			 || action==IndexThreadAction_ReferenceShadowcopy )
 		{
 			std::string scdir;
 			data.getStr(&scdir);
@@ -610,6 +612,8 @@ void IndexThread::operator()(void)
 				}
 			}
 
+			bool reference_sc = action == IndexThreadAction_ReferenceShadowcopy;
+
 			SCDirs *scd = getSCDir(scdir, index_clientsubname);
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
@@ -618,7 +622,7 @@ void IndexThread::operator()(void)
 				{
 					scd->ref->dontincrement=true;
 				}
-				bool onlyref = false;
+				bool onlyref = reference_sc;
 				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup!=0?true:false))
 				{
 					if (scd->ref!=NULL
@@ -678,14 +682,14 @@ void IndexThread::operator()(void)
 				scd->orig_target=scd->target;
 
 				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_DEBUG);
-				bool onlyref = false;
+				bool onlyref = reference_sc;
 				bool b= start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
 					if(scd->fileserv)
 					{
-						shareDir(starttoken, scd->dir, scd->target);
+						shareDir(std::string(), scd->dir, scd->target);
 					}
 
 					if (!disableCbt(scd->orig_target))
@@ -1061,7 +1065,7 @@ void IndexThread::indexDirs(bool full_backup)
 			bool shadowcopy_optional = (backup_dirs[i].flags & EBackupDirFlag_Optional)
 				|| (backup_dirs[i].symlinked && (backup_dirs[i].flags & EBackupDirFlag_SymlinksOptional) );
 
-			bool onlyref=true;
+			bool onlyref=false;
 			bool stale_shadowcopy=false;
 			bool shadowcopy_ok=false;
 			bool shadowcopy_not_configured = false;
@@ -1074,6 +1078,7 @@ void IndexThread::indexDirs(bool full_backup)
 			}
 			else if(shadowcopy_optional)
 			{
+				onlyref = true;
 				std::string err_msg;
 				int64 errcode = os_last_error(err_msg);
 
@@ -2292,6 +2297,19 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart,
 	std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool* not_configured)
 {
+	bool c_onlyref = false;
+	if (onlyref != NULL)
+	{
+		if (*onlyref)
+		{
+			c_onlyref = true;
+		}
+		else
+		{
+			*onlyref = true;
+		}
+	}
+
 	cleanup_saved_shadowcopies(true);
 
 #ifdef _WIN32
@@ -2325,6 +2343,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		|| find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true) )
 	{
 		return true;
+	}
+
+	if (c_onlyref)
+	{
+		return false;
 	}
 
 	dir->ref=new SCRef;
