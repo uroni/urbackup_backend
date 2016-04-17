@@ -568,7 +568,7 @@ void ClientMain::operator ()(void)
 				}
 			}
 
-			if(client_updated_time!=0 && Server->getTimeSeconds()-client_updated_time>5*60)
+			if(client_updated_time!=0 && Server->getTimeSeconds()-client_updated_time>6*60)
 			{
 				updateCapabilities();
 				client_updated_time=0;
