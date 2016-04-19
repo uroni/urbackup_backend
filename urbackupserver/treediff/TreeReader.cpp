@@ -66,7 +66,7 @@ bool TreeReader::readTree(const std::string &fn)
 				}
 				else
 				{
-					Log("Error parsing file readTree - 0");
+					Log("Error parsing file readTree - 0. Expected 'f', 'd', or 'u'. Got '"+std::string(1, ch)+"' at line "+convert(lines)+" while reading "+fn);
 					return false;
 				}
 				break;
@@ -199,7 +199,7 @@ bool TreeReader::readTree(const std::string &fn)
 					}
 					else
 					{
-						Log("Error parsing file readTree - 1");
+						Log("Error parsing file readTree - 1. Expected 'f', 'd', or 'u'. Got '" + std::string(1, ch) + "' at line " + convert(lines)+" while reading "+fn);
 						return false;
 					}					
 					break;
