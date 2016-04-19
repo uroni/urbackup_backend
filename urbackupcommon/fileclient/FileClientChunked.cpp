@@ -961,7 +961,10 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 						+big_hash_size+chunknum*small_hash_size);
 				}				
 
-				state=CS_CHUNK;
+				if (adler_remaining > 0)
+				{
+					state = CS_CHUNK;
+				}
 				adler_hash=urb_adler32(0, NULL, 0);
 
 			}break;
