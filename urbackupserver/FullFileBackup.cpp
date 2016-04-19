@@ -156,6 +156,7 @@ bool FullFileBackup::doFileBackup()
 
 	FileListParser list_parser;
 
+	Server->deleteFile(clientlistName(backupid));
 	IFile *clientlist=Server->openFile(clientlistName(backupid), MODE_RW_CREATE);
 	ScopedDeleteFile clientlist_delete(clientlist);
 

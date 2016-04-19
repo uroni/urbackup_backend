@@ -1113,6 +1113,7 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
+	Server->deleteFile(clientlistName(backupid));
 	IFile* clientlist = Server->openFile(clientlistName(backupid), MODE_WRITE);
 	ScopedDeleteFile clientlist_delete(clientlist);
 
