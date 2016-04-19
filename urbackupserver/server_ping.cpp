@@ -82,6 +82,7 @@ void ServerPingThread::operator()(void)
 						30000, false, LL_DEBUG, NULL, NULL, &connection))
 			{
 				last_ping_ok=Server->getTimeMS();
+				client_main->refreshSessionIdentity();
 			}
 		}
 		

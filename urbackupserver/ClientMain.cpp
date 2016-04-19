@@ -152,6 +152,8 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	{
 		curr_server_token+=convert(filebackup_group_offset/c_group_size);
 	}
+
+	session_identity_refreshtime = 0;
 }
 
 ClientMain::~ClientMain(void)
@@ -278,7 +280,7 @@ void ClientMain::operator ()(void)
 	}
 	else
 	{
-		if(!authenticateIfNeeded())
+		if(!authenticateIfNeeded(true))
 		{
 			pipe->Write("ok");
 			delete this;
@@ -286,7 +288,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	std::string identity = session_identity.empty()?server_identity:session_identity;
+	std::string identity = getIdentity();
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedFreeMemory free_db_memory(db);
@@ -772,7 +774,7 @@ void ClientMain::operator ()(void)
 
 			tcpstack.setAddChecksum(internet_connection);
 
-			if(!authenticateIfNeeded())
+			if(!authenticateIfNeeded(true))
 			{
 				skip_checking=true;
 			}
@@ -1087,15 +1089,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 		return "";
 	}
 
-	std::string identity;
-	if(!session_identity.empty())
-	{
-		identity=session_identity;
-	}
-	else
-	{
-		identity=server_identity;
-	}
+	std::string identity = getIdentity();
 
 	tcpstack.Send(cc, identity+msg);
 
@@ -1202,15 +1196,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 		conn->conn.reset();
 	}
 
-	std::string identity;
-	if(!session_identity.empty())
-	{
-		identity=session_identity;
-	}
-	else
-	{
-		identity=server_identity;
-	}
+	std::string identity = getIdentity();
 
 	tcpstack.Send(cc.get(), identity+msg);
 
@@ -1537,7 +1523,8 @@ void ClientMain::sendSettings(void)
 bool ClientMain::getClientSettings(bool& doesnt_exist)
 {
 	doesnt_exist=false;
-	std::string identity = session_identity.empty()?server_identity:session_identity;
+	std::string identity = getIdentity();
+
 	FileClient fc(false, identity, protocol_versions.filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc, server_settings);
 	if(rc!=ERR_CONNECTED)
@@ -1814,7 +1801,7 @@ void ClientMain::checkClientVersion(void)
 
 			std::string msg="1CLIENTUPDATE size="+convert(datasize)+"&silent_update="+convert(server_settings->getSettings()->silent_update);
 
-			std::string identity= session_identity.empty()?server_identity:session_identity;
+			std::string identity = getIdentity();
 			tcpstack.Send(cc.get(), identity+msg);
 
 			int timeout=5*60*1000;
@@ -2097,7 +2084,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		curr_clientname =  (clientmainname);
 	}
 
-	std::string identity = session_identity.empty()?server_identity:session_identity;
+	std::string identity = getIdentity();
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(curr_clientname, SERVICE_FILESRV, timeoutms);
@@ -2397,7 +2384,9 @@ bool ClientMain::authenticatePubKey()
 
 		if(ret)
 		{
+			IScopedLock lock(clientaddr_mutex);
 			session_identity = "#I"+identity+"#";
+			session_identity_refreshtime = Server->getTimeMS();
 		}
 
 		return ret;
@@ -2427,6 +2416,12 @@ void ClientMain::timeoutRestores()
 			++i;
 		}
 	}
+}
+
+std::string ClientMain::getIdentity()
+{
+	IScopedLock lock(clientaddr_mutex);
+	return session_identity.empty() ? server_identity : session_identity;
 }
 
 bool ClientMain::run_script( std::string name, const std::string& params, logid_t logid)
@@ -2767,9 +2762,24 @@ void ClientMain::stopBackupBarrier()
 	running_backups_allowed=true;
 }
 
-bool ClientMain::authenticateIfNeeded()
+bool ClientMain::authenticateIfNeeded(bool retry_exit)
 {
-	session_identity.clear();
+	if (!needs_authentification)
+	{
+		return true;
+	}
+
+	{
+		IScopedLock lock(clientaddr_mutex);
+
+		if (session_identity_refreshtime!=0
+			&& Server->getTimeMS() - session_identity_refreshtime<30 * 60 * 1000)
+		{
+			return true;
+		}
+
+		session_identity.clear();
+	}
 
 	bool c = false;
 	do
@@ -2777,9 +2787,15 @@ bool ClientMain::authenticateIfNeeded()
 		c=false;
 
 		bool b = authenticatePubKey();
-		if(!b && needs_authentification)
+		if(!b)
 		{
 			ServerStatus::setStatusError(clientname, se_authentication_error);
+
+			if (!retry_exit)
+			{
+				Server->Log("Authentification failed for client \"" + clientname + "\"", LL_INFO);
+				return false;
+			}
 
 			Server->wait(5*60*1000); //5min
 

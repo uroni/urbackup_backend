@@ -329,7 +329,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	chksum_str += "&status_id=" + convert(status_id);
 
-	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+	std::string identity = client_main->getIdentity();
 
 	if(pParentvhd.empty())
 	{
@@ -546,11 +546,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
-							identity = client_main->getSessionIdentity().empty() ? server_identity : client_main->getSessionIdentity();
-							reconnected = true;
-							ServerStatus::setROnline(clientname, true);
-							Server->Log("Reconnected.", LL_DEBUG);
-							break;
+							Server->Log("Connected. Authenticating...", LL_DEBUG);
+							if (!client_main->authenticateIfNeeded(false))
+							{
+								Server->destroy(cc);
+								cc = NULL;
+								Server->wait(60000);
+							}
+							else
+							{
+								identity = client_main->getIdentity();
+								reconnected = true;
+								ServerStatus::setROnline(clientname, true);
+								Server->Log("Reconnected.", LL_DEBUG);
+								break;
+							}
 						}
 					}					
 				}

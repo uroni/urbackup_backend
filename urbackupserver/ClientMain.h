@@ -118,7 +118,7 @@ public:
 
 	void operator()(void);
 
-	bool authenticateIfNeeded();
+	bool authenticateIfNeeded(bool retry_exit);
 
 	struct SConnection
 	{
@@ -179,10 +179,13 @@ public:
 		return protocol_versions;
 	}
 
-	std::string getSessionIdentity()
+	void refreshSessionIdentity()
 	{
-		return session_identity;
+		IScopedLock lock(clientaddr_mutex);
+		session_identity_refreshtime = Server->getTimeMS();
 	}
+
+	std::string getIdentity();
 	
 	int getCurrImageVersion()
 	{
@@ -327,6 +330,7 @@ private:
 	size_t count_cdp_backup_try;
 
 	std::string session_identity;
+	int64 session_identity_refreshtime;
 
 	ServerBackupDao* backup_dao;
 

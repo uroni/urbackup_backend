@@ -115,7 +115,7 @@ bool FullFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, clientname+": Doing backup without hashed transfer...", LL_DEBUG);
 	}
-	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);

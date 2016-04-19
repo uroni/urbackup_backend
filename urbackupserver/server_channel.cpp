@@ -298,6 +298,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(msg=="PING")
 	{
+		client_main->refreshSessionIdentity();
 		return "PONG";
 	}
 	else if(msg=="UPDATE SETTINGS")

@@ -161,7 +161,7 @@ bool IncrFileBackup::doFileBackup()
 	}
 
 	Server->Log(clientname+": Connecting to client...", LL_DEBUG);
-	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version, client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
 	std::auto_ptr<FileClientChunked> fc_chunked;
 	if(intra_file_diffs)

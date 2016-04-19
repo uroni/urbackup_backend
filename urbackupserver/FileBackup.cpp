@@ -124,15 +124,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	if(client_main->getProtocolVersions().file_protocol_version>=2) pver="2";
 	if(client_main->getProtocolVersions().file_protocol_version_v2>=1) pver="3";
 
-	std::string identity;
-	if(!client_main->getSessionIdentity().empty())
-	{
-		identity=client_main->getSessionIdentity();
-	}
-	else
-	{
-		identity=server_identity;
-	}
+	std::string identity = client_main->getIdentity();
 
 	std::string start_backup_cmd=identity+pver;
 
@@ -1752,7 +1744,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 
 	if(client_main->getProtocolVersions().file_meta>0)
 	{
-		std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+		std::string identity = client_main->getIdentity();
 		std::auto_ptr<FileClient> fc_metadata_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 			client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
 
@@ -1805,7 +1797,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 
 			do
 			{
-				std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+				std::string identity = client_main->getIdentity();
 				std::auto_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 					client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
 
@@ -1873,7 +1865,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 	ServerLogger::Log(logid, "Local hash: "+local_hash+" remote hash: "+remote_hash, LL_INFO);
 	ServerLogger::Log(logid, "Trying to download "+rfn, LL_INFO);
 
-	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
 
