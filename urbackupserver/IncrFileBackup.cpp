@@ -1468,8 +1468,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				if(curr_file.isdir && curr_file.name=="..")
 				{
 					folder_files.pop();
-					curr_path=ExtractFilePath(curr_path, "/");
-					curr_os_path=ExtractFilePath(curr_os_path, "/");
+					curr_path=ExtractFilePath(curr_path, os_file_sep());
+					curr_os_path=ExtractFilePath(curr_os_path, os_file_sep());
 					if(!curr_dir_exists)
 					{
 						curr_dir_exists=os_directory_exists(curr_path);
@@ -1521,7 +1521,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 						if( curr_dir_exists )
 						{
 							int ftype = EFileType_File;
-							if (curr_path == os_file_sep() + "urbackup_backup_scripts")
+							if (curr_path == snapshot_path + os_file_sep() + "urbackup_backup_scripts")
 							{
 								ftype = os_get_file_type(os_file_prefix(curr_fn));
 							}
