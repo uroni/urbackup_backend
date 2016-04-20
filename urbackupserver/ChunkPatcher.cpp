@@ -311,6 +311,10 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 							last_sparse_start = file_pos;
 						}
 					}
+					else if (last_sparse_start != -1)
+					{
+						finishSparse(file_pos);
+					}
 
 					file_pos += tr;
 					
