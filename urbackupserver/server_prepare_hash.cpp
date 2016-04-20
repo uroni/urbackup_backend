@@ -232,14 +232,16 @@ void BackupServerPrepareHash::operator()(void)
 					if (has_snapshot)
 					{
 						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
-							"This may be caused by a bug or by random bit flips on the client or server hard disk. Failing backup.", LL_ERROR);
+							"This may be caused by a bug or by random bit flips on the client or server hard disk. Failing backup. "
+							"(Hash: "+ print_hash_func(c_hash_func)+")", LL_ERROR);
 						has_error = true;
 					}
 					else
 					{
 						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
 							"The file is being backed up without a snapshot so this is most likely caused by the file changing during the backup. "
-							"The backed up file may be corrupt and not a valid, consistent backup.", LL_WARNING);
+							"The backed up file may be corrupt and not a valid, consistent backup. "
+							"(Hash: "+print_hash_func(c_hash_func) + ")", LL_WARNING);
 					}
 				}
 

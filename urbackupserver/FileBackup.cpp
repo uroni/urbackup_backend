@@ -931,7 +931,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 	std::ostringstream log;
 
-	log << "Verification of file backup with id " << backupid << ". Path=" << (backuppath) << std::endl;
+	log << "Verification of file backup with id " << backupid << ". Path=" << (backuppath) << " Tree-hashing=" << convert(BackupServer::useTreeHashing()) << std::endl;
 
 	unsigned int read;
 	char buffer[4096];

@@ -15,6 +15,20 @@ const char HASH_FUNC_SHA512_NO_SPARSE = 0;
 const char HASH_FUNC_SHA512 = 1;
 const char HASH_FUNC_TREE = 2;
 
+namespace
+{
+	std::string print_hash_func(const char hf)
+	{
+		switch (hf)
+		{
+		case HASH_FUNC_SHA512_NO_SPARSE: return "sha512-nosparse";
+		case HASH_FUNC_SHA512: return "sha512-sparse";
+		case HASH_FUNC_TREE: return "tree-sparse";
+		default: return "unknown";
+		}
+	}
+}
+
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
