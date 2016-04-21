@@ -361,6 +361,13 @@ int action_run(std::vector<std::string> args)
 	}
 
 #ifndef _WIN32
+	char* http_proxy = getenv("http_proxy");
+	if (http_proxy != NULL)
+	{
+		real_args.push_back("--http_proxy");
+		real_args.push_back(http_proxy);
+	}
+
 	struct rlimit limit;
 
 	limit.rlim_cur = 65535;
