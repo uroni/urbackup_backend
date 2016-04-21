@@ -3704,7 +3704,7 @@ void IndexThread::addFileExceptions(std::vector<std::string>& exclude_dirs)
 	{
 		std::string excl = std::string(systemdrive) + "\\swapfile.sys";
 		strupper(&excl);
-		exclude_dirs.push_back(excl);
+		exclude_dirs.push_back(sanitizePattern(excl));
 	}
 	free(systemdrive);
 #endif
