@@ -107,6 +107,7 @@ if os.path.exists("client"):
 						  "client/urbackup_update.nsi",
 						  "client/urbackup_notray.nsi",
 						  "client/build_msi.bat",
+						  "client/build_client.bat",
 						  "osx_installer/resources/welcome.html",
 						  "create_osx_installer.sh",
 						  "install_client_linux.sh"]
