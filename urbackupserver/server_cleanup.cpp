@@ -621,7 +621,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		}
 		else
 		{
-			Server->Log("Backup image has dependant image which is not complete");
+			Server->Log("Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 
@@ -662,7 +662,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		}
 		else
 		{
-			Server->Log("Backup image has dependant image which is not complete");
+			Server->Log("Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 

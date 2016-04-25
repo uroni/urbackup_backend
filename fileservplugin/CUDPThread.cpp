@@ -101,14 +101,14 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		addr_udp.sin_port=htons(udpport);
 		addr_udp.sin_addr.s_addr=INADDR_ANY;
 
-		Log("Binding udp socket at port "+nconvert(udpport)+"...", LL_DEBUG);
+		Log("Binding UDP socket at port "+nconvert(udpport)+"...", LL_DEBUG);
 		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding udp socket to port "+nconvert(udpport)+" failed", LL_ERROR);
+			Server->Log("Binding UDP socket to port "+nconvert(udpport)+" failed", LL_ERROR);
 #else
-			Log("Failed binding udp socket.", LL_ERROR);
+			Log("Failed binding UDP socket.", LL_ERROR);
 #endif
 			has_error=true;
 			return;
