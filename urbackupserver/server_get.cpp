@@ -3541,7 +3541,7 @@ void BackupServerGet::notifyClientBackupSuccessfull(void)
 
 void BackupServerGet::sendClientBackupIncrIntervall(void)
 {
-	sendClientMessage("INCRINTERVAL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
+	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
 }
 
 bool BackupServerGet::updateCapabilities(void)
