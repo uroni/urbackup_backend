@@ -30,6 +30,7 @@
 #include <limits.h>
 #include "../../common/adler32.h"
 #include "../chunk_hasher.h"
+#include "../../urbackupcommon/os_functions.h"
 
 #define VLOG(x) x
 
@@ -1041,7 +1042,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 				VLOG(Server->Log("Read for hash at chunk_start="+convert(chunk_start)+" toread="+convert(toread)+" n="+convert(r), LL_DEBUG));
 				if(r<toread)
 				{
-					Server->Log("Read error in hash calculation at position "+convert(chunk_start)+" toread="+convert(toread)+" read="+convert(r)+". This will cause the whole block to be loaded.", LL_WARNING);
+					Server->Log("Read error in hash calculation at position "+convert(chunk_start)+" toread="+convert(toread)+" read="+convert(r)+". This will cause the whole block to be loaded. "+os_last_error_str(), LL_WARNING);
 					chunk_start=new_chunk_start;
 					break;
 				}
@@ -1051,7 +1052,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		}
 		else
 		{
-			Server->Log("Error seeking in base file (to position "+convert(chunk_start)+"). Whole block will be loaded. (1)", LL_WARNING);
+			Server->Log("Error seeking in base file (to position "+convert(chunk_start)+"). Whole block will be loaded (1). "+os_last_error_str(), LL_WARNING);
 			chunk_start=new_chunk_start;
 		}
 		
@@ -1083,7 +1084,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 					VLOG(Server->Log("Read for hash finalize at block_start="+convert(chunk_start)+" n="+convert(r), LL_DEBUG));
 					if(r==0)
 					{
-						Server->Log("Read error in hash finalization at position "+convert(chunk_start)+" toread="+convert(toread)+" read="+convert(r)+". This will cause the whole block to be loaded.", LL_WARNING);
+						Server->Log("Read error in hash finalization at position "+convert(chunk_start)+" toread="+convert(toread)+" read="+convert(r)+". This will cause the whole block to be loaded. "+os_last_error_str(), LL_WARNING);
 						file_pos+=dest_pos-chunk_start;
 						chunk_start=dest_pos;
 						break;
@@ -1095,7 +1096,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			}
 			else
 			{
-				Server->Log("Error seeking in base file (to position "+convert(chunk_start)+"). Whole block will be loaded. (2)", LL_WARNING);
+				Server->Log("Error seeking in base file (to position "+convert(chunk_start)+"). Whole block will be loaded (2). "+os_last_error_str(), LL_WARNING);
 				file_pos+=dest_pos-chunk_start;
 				chunk_start=dest_pos;
 			}
@@ -1280,7 +1281,7 @@ void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 			{
 				break;
 			}
-			Server->Log("Failed to write to file... waiting... in Chunked File transfer", LL_WARNING);
+			Server->Log("Failed to write to file... waiting... in Chunked File transfer. "+os_last_error_str(), LL_WARNING);
 			Server->wait(10000);
 			--tries;
 		}
@@ -1289,7 +1290,7 @@ void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 
 	if(rc==0)
 	{
-		Server->Log("Fatal error writing to file in writeFileRepeat. Write error in Chunked File transfer.", LL_ERROR);
+		Server->Log("Fatal error writing to file in writeFileRepeat. Write error in Chunked File transfer. "+os_last_error_str(), LL_ERROR);
 	}
 }
 
@@ -1346,7 +1347,7 @@ void FileClientChunked::State_SparseExtents(IFile** sparse_extents_f)
 	if (sparse_extents_f!=NULL
 		&& !FileClient::writeFileRetry(*sparse_extents_f, bufptr, rbytes))
 	{
-		Server->Log("Error writing to sparse extents file", LL_ERROR);
+		Server->Log("Error writing to sparse extents file. "+os_last_error_str(), LL_ERROR);
 		retval = ERR_HASH;
 		getfile_done = true;
 	}
@@ -2099,7 +2100,7 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 
 					if(has_error)
 					{
-						Server->Log("Error reading from chunkhashes file. Copying hashdata failed.", LL_ERROR);
+						Server->Log("Error reading from chunkhashes file. Copying hashdata failed. "+os_last_error_str(), LL_ERROR);
 					}
 
 					writeFileRepeat(m_hashoutput, buffer.data(), read);	
@@ -2110,7 +2111,7 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 			}
 			else
 			{
-				Server->Log("Error seeking to hashoutput end. Copying hashdata failed.", LL_ERROR);
+				Server->Log("Error seeking to hashoutput end. Copying hashdata failed. "+os_last_error_str(), LL_ERROR);
 			}
 		}		
 	}
