@@ -199,7 +199,9 @@ public:
 
 	static std::string getSHA256(const std::string& fn);
 
-	static int getShadowId(const std::string& volume);
+	static int getShadowId(const std::string& volume, IFile* hdat_img);
+
+	static bool normalizeVolume(std::string& volume);
 
 private:
 
@@ -320,8 +322,6 @@ private:
 	bool cbtIsEnabled(std::string clientsubname, std::string volume);
 
 	bool crashPersistentCbtIsEnabled(std::string clientsubname, std::string volume);
-
-	bool normalizeVolume(std::string& volume);
 
 	bool prepareCbt(std::string volume);
 

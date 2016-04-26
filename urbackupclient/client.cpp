@@ -40,6 +40,7 @@
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/TreeHash.h"
 #include "../fileservplugin/chunk_settings.h"
+#include "ImageThread.h"
 
 //For truncating files
 #ifdef _WIN32
@@ -4816,13 +4817,13 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		}
 	}
 
-	std::auto_ptr<IFsFile> hdat_img(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
+	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
 	bool concurrent_active = false;
 
 	if (hdat_img.get() == NULL)
 	{
-		hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat", MODE_RW_DEVICE));
+		hdat_img.reset(ImageThread::openHdatF(volume, true));
 
 		if (hdat_img.get() != NULL)
 		{
@@ -4868,6 +4869,12 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
 		{
 			BYTE ch = bitmap_data->Bitmap[j];
+
+			if (ch == 0)
+			{
+				++curr_bit;
+				continue;
+			}
 
 			for (DWORD bit = 0; bit < 8; ++bit)
 			{
@@ -4916,11 +4923,17 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		{
 			BYTE ch = bitmap_data->Bitmap[j];
 
+			if (ch == 0)
+			{
+				++curr_bit;
+				continue;
+			}
+
 			for (DWORD bit = 0; bit < 8; ++bit)
 			{
 				if ((ch & (1 << bit))>0)
 				{
-					if (hdat_file->Write((i * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
+					if (hdat_file->Write((curr_bit * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
 					{
 						std::string errmsg;
 						int64 err = os_last_error(errmsg);
@@ -4960,10 +4973,10 @@ bool IndexThread::disableCbt(std::string volume)
 	}
 
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
-	Server->deleteFile("urbackup\\hdat_img_" + conv_filename(volume) + ".dat");
+	Server->deleteFile(ImageThread::hdatFn(volume));
 
 	return !FileExists("urbackup\\hdat_file_" + conv_filename(volume) + ".dat")
-		&& !FileExists("urbackup\\hdat_img_" + conv_filename(volume) + ".dat");
+		&& !FileExists(ImageThread::hdatFn(volume));
 #else
 	return true;
 #endif
@@ -5743,7 +5756,7 @@ std::string IndexThread::escapeDirParam( const std::string& dir )
 	return "\""+greplace("\"", "\\\"", dir)+"\"";
 }
 
-int IndexThread::getShadowId(const std::string & volume)
+int IndexThread::getShadowId(const std::string & volume, IFile* hdat_img)
 {
 	IScopedLock lock(cbt_shadow_id_mutex);
 
@@ -5755,6 +5768,16 @@ int IndexThread::getShadowId(const std::string & volume)
 	}
 	else
 	{
+		if (hdat_img != NULL)
+		{
+			int shadow_id;
+			if (hdat_img->Read(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) == sizeof(shadow_id))
+			{
+				cbt_shadow_ids[strlower(volume)] = shadow_id;
+				return shadow_id;
+			}
+		}
+
 		return -1;
 	}
 }

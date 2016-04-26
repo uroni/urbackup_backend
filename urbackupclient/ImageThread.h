@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include "../Interface/Pipe.h"
 #include "../Interface/File.h"
@@ -6,6 +7,7 @@
 
 class ClientConnector;
 struct ImageInformation;
+class IFilesystem;
 
 class ImageThread : public IThread
 {
@@ -13,6 +15,9 @@ public:
 	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile);
 
 	void operator()(void);
+
+	static std::string hdatFn(std::string volume);
+	static IFsFile* openHdatF(std::string volume, bool share);
 
 private:
 

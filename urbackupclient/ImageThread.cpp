@@ -102,8 +102,9 @@ bool ImageThread::sendFullImageThread(void)
 
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
-	std::auto_ptr<IFsFile> hdat_img;
+	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
+	int r_shadow_id = -1;
 
 	bool run=true;
 	while(run)
@@ -138,20 +139,20 @@ bool ImageThread::sendFullImageThread(void)
 			if (run)
 			{
 				hdat_vol = image_inf->image_letter;
-				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter) + ".dat", MODE_RW_DEVICE));
+				hdat_img.reset(openHdatF(image_inf->image_letter, true));
 
-				if (hdat_img.get() == NULL)
+				if (hdat_vol.size()==1)
 				{
-					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter+":") + ".dat", MODE_RW_DEVICE));
-					hdat_vol = image_inf->image_letter + ":";
+					hdat_vol += ":";
 				}
 
 				if (hdat_img.get() != NULL)
 				{
-					int r_shadow_id = -1;
 					hdat_img->Read(0, reinterpret_cast<char*>(&r_shadow_id), sizeof(r_shadow_id));
 
-					if (r_shadow_id != image_inf->shadow_id)
+					if (r_shadow_id == -1
+						|| (r_shadow_id != image_inf->shadow_id
+							&& r_shadow_id != save_id) )
 					{
 						hdat_img.reset();
 					}
@@ -327,7 +328,7 @@ bool ImageThread::sendFullImageThread(void)
 								notify_cs=true;
 
 								if (hdat_img.get() != NULL
-									&& IndexThread::getShadowId(hdat_vol)==image_inf->shadow_id)
+									&& IndexThread::getShadowId(hdat_vol, hdat_img.get())==r_shadow_id)
 								{
 									hdat_img->Write(sizeof(int) + (j / vhdblocks)*c_hashsize, reinterpret_cast<char*>(dig), c_hashsize);
 								}
@@ -473,8 +474,9 @@ bool ImageThread::sendIncrImageThread(void)
 	int64 lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
-	std::auto_ptr<IFsFile> hdat_img;
+	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
+	int r_shadow_id = -1;
 
 	bool run=true;
 	while(run)
@@ -506,21 +508,21 @@ bool ImageThread::sendIncrImageThread(void)
 
 			if (run)
 			{
-				hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter) + ".dat", MODE_RW_DEVICE));
 				hdat_vol = image_inf->image_letter;
+				hdat_img.reset(openHdatF(image_inf->image_letter, true));
 
-				if (hdat_img.get() == NULL)
+				if (hdat_vol.size() == 1)
 				{
-					hdat_img.reset(Server->openFile("urbackup\\hdat_img_" + conv_filename(image_inf->image_letter + ":") + ".dat", MODE_RW_DEVICE));
-					hdat_vol = image_inf->image_letter + ":";
+					hdat_vol += ":";
 				}
 
 				if (hdat_img.get() != NULL)
 				{
-					int r_shadow_id = -1;
 					hdat_img->Read(0, reinterpret_cast<char*>(&r_shadow_id), sizeof(r_shadow_id));
 
-					if (r_shadow_id != image_inf->shadow_id)
+					if (r_shadow_id==-1
+						|| (r_shadow_id != image_inf->shadow_id
+						     && r_shadow_id != save_id) )
 					{
 						hdat_img.reset();
 					}
@@ -742,7 +744,7 @@ bool ImageThread::sendIncrImageThread(void)
 					bool has_hash = false;
 					if (hdat_img.get() != NULL)
 					{
-						if (IndexThread::getShadowId(hdat_vol) == image_inf->shadow_id)
+						if (IndexThread::getShadowId(hdat_vol, hdat_img.get()) == r_shadow_id)
 						{
 							if (hdat_img->Read(sizeof(int) + (i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize) == c_hashsize)
 							{
@@ -1068,4 +1070,44 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	}
 
 	return true;
+}
+
+std::string ImageThread::hdatFn(std::string volume)
+{
+	if (!IndexThread::normalizeVolume(volume))
+	{
+		return std::string();
+	}
+
+	return volume + os_file_sep() + "urbhdat_img.dat";
+}
+
+IFsFile* ImageThread::openHdatF(std::string volume, bool share)
+{
+	if (!IndexThread::normalizeVolume(volume))
+	{
+		return NULL;
+	}
+
+#ifdef _WIN32
+
+	DWORD share_mode = FILE_SHARE_READ;
+
+	if (share)
+	{
+		share_mode |= FILE_SHARE_WRITE;
+	}
+
+	HANDLE hfile = CreateFileA((volume + os_file_sep() + "urbhdat_img.dat").c_str(), GENERIC_WRITE|GENERIC_READ, share_mode, NULL, OPEN_ALWAYS,
+		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM, NULL);
+
+	if (hfile == INVALID_HANDLE_VALUE)
+	{
+		return NULL;
+	}
+
+	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "urbhdat_img.dat");
+#else
+	return NULL;
+#endif
 }
