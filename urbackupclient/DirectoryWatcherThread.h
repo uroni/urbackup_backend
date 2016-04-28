@@ -69,11 +69,8 @@ private:
 
 	volatile bool do_stop;
 	
-	IQuery* q_get_dir;
 	IQuery* q_add_dir;
-	IQuery* q_add_dir_with_id;
 	IQuery* q_add_del_dir;
-	IQuery* q_get_dir_backup;
 	IQuery* q_update_last_backup_time;
 
 	std::list<SLastEntries> lastentries;

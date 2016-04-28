@@ -63,10 +63,7 @@ void DirectoryWatcherThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
-	q_get_dir_backup=db->Prepare("SELECT id FROM mdirs_backup WHERE name=?");
-	q_get_dir=db->Prepare("SELECT id FROM mdirs WHERE name=?");
-	q_add_dir=db->Prepare("INSERT INTO mdirs (name) VALUES (?)");
-	q_add_dir_with_id=db->Prepare("INSERT INTO mdirs (id, name) VALUES (?, ?)");
+	q_add_dir=db->Prepare("INSERT INTO mdirs (name) SELECT ? AS name WHERE NOT EXISTS (SELECT * FROM mdirs WHERE name=?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
 	q_update_last_backup_time=db->Prepare("INSERT OR REPLACE INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', ?)");
 
@@ -280,35 +277,12 @@ void DirectoryWatcherThread::OnDirMod(const std::string &dir)
 		it++;
 	}
 
-	if(found==false)
+	if(!found)
 	{
-		q_get_dir->Bind(dir);
-		db_results res=q_get_dir->Read();
-		q_get_dir->Reset();
-
-		if(res.empty())
-		{
-			q_get_dir_backup->Bind(dir);
-			db_results res=q_get_dir_backup->Read();
-			q_get_dir_backup->Reset();
-		
-			_i64 dir_id;
-			if(res.empty())
-			{
-				q_add_dir->Bind(dir);
-				q_add_dir->Write();
-				q_add_dir->Reset();
-				dir_id=db->getLastInsertID();
-			}
-			else
-			{
-				dir_id=watoi64(res[0]["id"]);
-				q_add_dir_with_id->Bind(dir_id);
-				q_add_dir_with_id->Bind(dir);
-				q_add_dir_with_id->Write();
-				q_add_dir_with_id->Reset();
-			}
-		}		
+		q_add_dir->Bind(dir);
+		q_add_dir->Bind(dir);
+		q_add_dir->Write();
+		q_add_dir->Reset();
 
 		SLastEntries e;
 		e.dir=dir;
@@ -366,7 +340,7 @@ void DirectoryWatcherThread::On_DirAdded( const std::string & strFileName, bool 
 void DirectoryWatcherThread::On_FileModified(const std::string & strFileName, bool closed)
 {
 	bool ok=false;
-	std::string dir=strlower(ExtractFilePath(strFileName))+os_file_sep();
+	std::string dir=strlower(ExtractFilePath(strFileName, os_file_sep()))+os_file_sep();
 	for(size_t i=0;i<watching.size();++i)
 	{
 		if(dir.find(watching[i])==0)
@@ -380,7 +354,6 @@ void DirectoryWatcherThread::On_FileModified(const std::string & strFileName, bo
 void DirectoryWatcherThread::On_DirRemoved(const std::string & strDirName, bool closed)
 {
 	std::string rmDir=strlower(add_trailing_slash(strDirName));
-	bool ok=false;
 	for(size_t i=0;i<watching.size();++i)
 	{
 		if(rmDir.find(watching[i])==0)

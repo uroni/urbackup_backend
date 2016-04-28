@@ -185,6 +185,8 @@ public:
 	//@-SQLGenFunctionsEnd
 
 private:
+
+	std::string escapeGlob(const std::string& input);
 	
 
 	IDatabase *db;

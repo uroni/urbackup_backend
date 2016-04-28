@@ -379,16 +379,16 @@ std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool
 
 	if(del)
 	{
-		q_save_changed_dirs->Bind(path+sep+"*");
+		q_save_changed_dirs->Bind(escapeGlob(path)+sep+"*");
 		q_save_changed_dirs->Write();
 		q_save_changed_dirs->Reset();
-		q_remove_changed_dirs->Bind(path+sep+"*");
+		q_remove_changed_dirs->Bind(escapeGlob(path)+sep+"*");
 		q_remove_changed_dirs->Write();
 		q_remove_changed_dirs->Reset();
 	}
 
-	q_get_changed_dirs->Bind(path+sep+"*");
-	q_get_changed_dirs->Bind(path+sep+"*");
+	q_get_changed_dirs->Bind(escapeGlob(path)+sep+"*");
+	q_get_changed_dirs->Bind(escapeGlob(path)+sep+"*");
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 
@@ -491,7 +491,7 @@ void ClientDAO::deleteChangedDirs(const std::string& path)
 	}
 	else
 	{
-		q_remove_changed_dirs->Bind(path+os_file_sep()+"*");
+		q_remove_changed_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
 	}
 	q_remove_changed_dirs->Write();
 	q_remove_changed_dirs->Reset();
@@ -517,16 +517,16 @@ std::vector<std::string> ClientDAO::getDelDirs(const std::string& path, bool del
 
 	if(del)
 	{
-		q_copy_del_dirs->Bind(path+os_file_sep()+"*");
+		q_copy_del_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
 		q_copy_del_dirs->Write();
 		q_copy_del_dirs->Reset();
-		q_del_del_dirs->Bind(path+os_file_sep()+"*");
+		q_del_del_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
 		q_del_del_dirs->Write();
 		q_del_del_dirs->Reset();
 	}
 
-	q_get_del_dirs->Bind(path+os_file_sep()+"*");
-	q_get_del_dirs->Bind(path+os_file_sep()+"*");
+	q_get_del_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
+	q_get_del_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
 	db_results res=q_get_del_dirs->Read();
 	q_get_del_dirs->Reset();
 
@@ -545,7 +545,7 @@ void ClientDAO::deleteSavedDelDirs(void)
 
 void ClientDAO::removeDeletedDir(const std::string &dir, int tgroup)
 {
-	q_remove_del_dir->Bind(dir+"*");
+	q_remove_del_dir->Bind(escapeGlob(dir)+"*");
 	q_remove_del_dir->Bind(tgroup);
 	q_remove_del_dir->Write();
 	q_remove_del_dir->Reset();
@@ -843,5 +843,31 @@ void ClientDAO::setResetKeep(int val, int64 id)
 	q_setResetKeep->Bind(id);
 	q_setResetKeep->Write();
 	q_setResetKeep->Reset();
+}
+
+std::string ClientDAO::escapeGlob(const std::string& glob)
+{
+	std::string ret;
+	ret.reserve(glob.size());
+	for (size_t i = 0; i<glob.size(); ++i)
+	{
+		if (glob[i] == '?')
+		{
+			ret += "[?]";
+		}
+		else if (glob[i] == '[')
+		{
+			ret += "[[]";
+		}
+		else if (glob[i] == '*')
+		{
+			ret += "[*]";
+		}
+		else
+		{
+			ret += glob[i];
+		}
+	}
+	return ret;
 }
 
