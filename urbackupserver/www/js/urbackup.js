@@ -773,6 +773,11 @@ function show_statistics2(data)
 {
 	stopLoading();
 	if(g.main_nav_pos!=2) return;
+
+	if(I("statclient"))
+	{
+		$('#statclient').selectpicker('destroy');
+	}
 	
 	var ndata="<div class=\"row\">";
 	ndata+="<div class=\"col-sm-1\">";
