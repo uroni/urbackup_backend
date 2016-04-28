@@ -1,25 +1,76 @@
 # UrBackup translation
-# Copyright (C) 2011-2014 See translators
-# This file is distributed under the same license as the UrBackup package.
+# Copyright (C) 2011-2016 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# janda <jan.vojtek@gmail.com>, 2014
+# janda, 2014-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-11-08 20:48+0000\n"
-"Last-Translator: janda <jan.vojtek@gmail.com>\n"
-"Language-Team: Slovak (http://www.transifex.com/projects/p/urbackup/language/sk/)\n"
+"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
+"Language-Team: Slovak (http://www.transifex.com/uroni/urbackup/language/sk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: sk\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+
+msgid "nav_item_3"
+msgstr "Záznamy"
+
+msgid "nav_item_1"
+msgstr "Nastavenia"
+
+msgid "ok"
+msgstr "Ok"
+
+msgid "loglevel_1"
+msgstr "Upozornenia"
+
+msgid "loglevel_2"
+msgstr "Chyby"
+
+msgid "tLogs"
+msgstr "Záznamy"
+
+msgid "tErrors"
+msgstr "Chyby"
+
+msgid "tWarnings"
+msgstr "Upozornenia"
+
+msgid "tdays"
+msgstr "dní"
+
+msgid "thours"
+msgstr "hodín"
+
+msgid "tmin"
+msgstr "min"
+
+msgid "tAbort"
+msgstr "Prerušiť"
+
+msgid "tInfos"
+msgstr "Informácie"
+
+msgid "tFile backups"
+msgstr "Zálohovanie súborov"
+
+msgid "tImage backups"
+msgstr "Zálohovanie diskov"
+
+msgid "tClient"
+msgstr "Klient"
+
+msgid "tInternet"
+msgstr "Internet"
+
+msgid "hours"
+msgstr "hodín"
+
+msgid "days"
+msgstr "dní"
 
 msgid "action_1"
 msgstr ""
@@ -31,7 +82,7 @@ msgid "action_3"
 msgstr ""
 
 msgid "action_4"
-msgstr ""
+msgstr "Úplná záloha obrazu disku"
 
 msgid "action_1_d"
 msgstr ""
@@ -54,14 +105,8 @@ msgstr "Činnosti"
 msgid "nav_item_4"
 msgstr "Zálohy"
 
-msgid "nav_item_3"
-msgstr "Záznamy"
-
 msgid "nav_item_2"
 msgstr "Štatistika"
-
-msgid "nav_item_1"
-msgstr "Nastavenia"
 
 msgid "unknown"
 msgstr "Neznámy"
@@ -69,11 +114,8 @@ msgstr "Neznámy"
 msgid "overview"
 msgstr "Prehľad"
 
-msgid "ok"
-msgstr "Ok"
-
 msgid "no_recent_backup"
-msgstr "Žiadna nový záloha"
+msgstr "Žiadna nová záloha"
 
 msgid "backup_never"
 msgstr "Nikdy"
@@ -118,7 +160,7 @@ msgid "tActions"
 msgstr "Akcie"
 
 msgid "tOnline"
-msgstr ""
+msgstr "Online"
 
 msgid "tHostname/IP"
 msgstr "Názov hostiteľa / IP"
@@ -145,7 +187,7 @@ msgid "password_empty"
 msgstr "Prosím zadajte heslo"
 
 msgid "password_differ"
-msgstr ""
+msgstr "Heslá sa líšia"
 
 msgid "user_n_exist"
 msgstr "Užívateľ neexistuje"
@@ -157,7 +199,7 @@ msgid "user_exists"
 msgstr "Užívateľ s týmto menom už existuje"
 
 msgid "session_timeout"
-msgstr ""
+msgstr "Nečinnosť spôsobila odhlásenie. Prosím, prihláste sa znovu."
 
 msgid "really_del_user"
 msgstr "Naozaj chcete odstrániť tohto užívateľa?"
@@ -175,10 +217,10 @@ msgid "user_pw_change_ok"
 msgstr "Úspešne zmenené heslo užívateľa."
 
 msgid "right_all"
-msgstr "Všetky práva"
+msgstr "Všetky oprávnenia"
 
 msgid "right_none"
-msgstr "Žiadne práva"
+msgstr "Žiadne oprávnenia"
 
 msgid "filter"
 msgstr "Filter:"
@@ -189,20 +231,8 @@ msgstr "Všetko"
 msgid "loglevel_0"
 msgstr "Informácie"
 
-msgid "loglevel_1"
-msgstr "Upozornenia"
-
-msgid "loglevel_2"
-msgstr "Chyby"
-
-msgid "dir_error_text"
-msgstr "Priečinok, kde má UrBackup ukladať zálohy je neprístupný. Opravte to zmenou tohto priečinka v \"Nastaveniach\", alebo povoľte programu UrBackup práva na prístup k tomuto priečinku."
-
-msgid "tmpdir_error_text"
-msgstr "Priečinok, kde má UrBackup ukladať dočasné súbory je neprístupný. Opravte to zmenou tohto priečinka v \"Nastaveniach\", alebo povoľte programu UrBackup práva na prístup k tomuto priečinku."
-
 msgid "starting"
-msgstr ""
+msgstr "Spúšťanie"
 
 msgid "ident_err"
 msgstr ""
@@ -212,12 +242,6 @@ msgstr "Zadajte názov hostiteľa alebo IP adresu"
 
 msgid "clients"
 msgstr "Klienti"
-
-msgid "validate_text_empty"
-msgstr ""
-
-msgid "validate_text_notint"
-msgstr ""
 
 msgid "validate_name_update_freq_incr"
 msgstr ""
@@ -234,50 +258,14 @@ msgstr ""
 msgid "validate_name_max_file_incr"
 msgstr ""
 
-msgid "validate_name_min_file_incr"
-msgstr ""
-
-msgid "validate_name_max_file_full"
-msgstr ""
-
-msgid "validate_name_min_file_full"
-msgstr ""
-
-msgid "validate_name_min_image_incr"
-msgstr ""
-
-msgid "validate_name_max_image_incr"
-msgstr ""
-
-msgid "validate_name_min_image_full"
-msgstr ""
-
-msgid "validate_name_max_image_full"
-msgstr ""
-
 msgid "validate_name_startup_backup_delay"
 msgstr "oneskorenie po štarte systému"
-
-msgid "validate_err_notregexp_backup_window"
-msgstr ""
-
-msgid "validate_name_max_active_clients"
-msgstr ""
-
-msgid "validate_name_max_sim_backups"
-msgstr ""
-
-msgid "validate_name_backupfolder"
-msgstr ""
 
 msgid "validate_name_computername"
 msgstr "názov počítača"
 
 msgid "too_many_clients_err"
 msgstr "Príliš veľa klientov"
-
-msgid "really_remove_client"
-msgstr ""
 
 msgid "computername"
 msgstr "Názov počítača"
@@ -300,86 +288,296 @@ msgstr "Dátum"
 msgid "storage_usage_bar_graph_colname2"
 msgstr "Využitie ukladacieho priestoru"
 
-msgid "tImages"
-msgstr ""
-
 msgid "tFiles"
 msgstr "Súbory"
 
 msgid "tSum"
-msgstr ""
-
-msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
-
-msgid "mail_settings"
-msgstr ""
-
-msgid "upgrade_error_text"
-msgstr ""
+msgstr "Celkom"
 
 msgid "tActivities"
 msgstr "Činnosti"
 
-msgid "tAction"
-msgstr "Akcia"
-
 msgid "tProgress"
 msgstr "Priebeh"
 
-msgid "tFiles in queue"
-msgstr ""
-
-msgid "tLast activities"
-msgstr "Posledné činnosti"
-
 msgid "tStarting time"
-msgstr ""
-
-msgid "tRequired time"
-msgstr "Potrebný čas"
+msgstr "Čas štartu"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "Použitý ukladací priestor"
 
 msgid "tClients"
 msgstr "Klienti"
-
-msgid "tLogs"
-msgstr "Záznamy"
 
 msgid "tReports"
 msgstr "Správy"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "Odoslať správy"
 
 msgid "tSend"
 msgstr "Odoslať"
 
-msgid "tBackups with a log message of at least log level"
-msgstr ""
-
 msgid "tBackup time"
-msgstr "Doba zálohovania"
-
-msgid "tErrors"
-msgstr "Chyby"
-
-msgid "tWarnings"
-msgstr "Upozornenia"
-
-msgid "tStorage allocation"
-msgstr "Pridelenie ukladacieho priestoru"
+msgstr "Čas zálohy"
 
 msgid "tStorage usage"
 msgstr "Využitie ukladacieho priestoru"
 
 msgid "tAll"
+msgstr "Všetko"
+
+msgid "tFilter"
+msgstr "Filter"
+
+msgid "tBack"
+msgstr "Späť"
+
+msgid "tAdd"
+msgstr "Pridať"
+
+msgid "tRemove"
+msgstr "Odstrániť"
+
+msgid "tSave"
+msgstr "Uložiť"
+
+msgid "tMessage"
+msgstr "Správa"
+
+msgid "tLog"
+msgstr "Záznam"
+
+msgid "tUsername"
+msgstr "Užívateľské meno"
+
+msgid "tPassword"
+msgstr "Heslo"
+
+msgid "tLogin"
+msgstr "Prihlásiť"
+
+msgid "tServer"
+msgstr "Server"
+
+msgid "tPermissions"
+msgstr "Povolenia"
+
+msgid "tSelect all"
+msgstr "Vybrať všetko"
+
+msgid "mins"
+msgstr "minút"
+
+msgid "backup_in_progress"
+msgstr "Prebieha zálohovanie..."
+
+msgid "queued_backup"
+msgstr "Čakajúca záloha"
+
+msgid "tFile"
+msgstr "Súbor"
+
+msgid "tDomain"
+msgstr "Doména"
+
+msgid "tTranslation"
+msgstr "Preklad"
+
+msgid "tChange"
+msgstr "Zmeniť"
+
+msgid "tFailed"
+msgstr "Neúspešné"
+
+msgid "tInfo"
+msgstr "Informácie"
+
+msgid "tError"
+msgstr "Chyba"
+
+msgid "tWarning"
+msgstr "Upozornenie"
+
+msgid "tCurrent version"
+msgstr "Súčasná verzia"
+
+msgid "tIncremental file backup"
 msgstr ""
 
-msgid "tBackup storage path"
+msgid "tFull file backup"
 msgstr ""
+
+msgid "tIncremental image backup"
+msgstr ""
+
+msgid "tFull image backup"
+msgstr "Úplná záloha obrazu disku"
+
+msgid "about_urbackup"
+msgstr "O UrBackup"
+
+msgid "tShow"
+msgstr "Zobraziť"
+
+msgid "tIndexing..."
+msgstr "Indexovanie..."
+
+msgid "tDelete"
+msgstr "Odstrániť"
+
+msgid "tDisable"
+msgstr "Zakázať"
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tNone"
+msgstr "Žiadny"
+
+msgid "tServer admin mail address"
+msgstr "E-mailová adresa administrátora servera"
+
+msgid "tDownload"
+msgstr "Stiahnuť"
+
+msgid "tStatus"
+msgstr "Stav"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "Verzia klienta"
+
+msgid "tOperating System"
+msgstr "Operačný systém"
+
+msgid "tShow all clients"
+msgstr "Zobraziť všetkých klientov"
+
+msgid "tThis client is going to be removed. "
+msgstr "Tento klient bude odstránený."
+
+msgid "First"
+msgstr "Prvá"
+
+msgid "Last"
+msgstr "Posledná"
+
+msgid "Next"
+msgstr "Ďalšia"
+
+msgid "Previous"
+msgstr "Predchádzajúca"
+
+msgid "sInfoThousands"
+msgstr ","
+
+msgid "Processing..."
+msgstr "Spracovanie..."
+
+msgid "Search:"
+msgstr "Vyhľadávanie:"
+
+msgid "No matching records found"
+msgstr "Neboli nájdené žiadne zodpovedajúce záznamy"
+
+msgid "Restore to default"
+msgstr "Obnoviť predvolené"
+
+msgid "Save"
+msgstr "Uložiť"
+
+msgid "tAllow clients to quit the tray icon"
+msgstr "Povoliť klientom ukončiť ikonu v oblasti oznámení (system tray)"
+
+msgid "Show/hide columns"
+msgstr "Zobraziť / skryť stĺpce"
+
+msgid "dir_error_text"
+msgstr "Priečinok, kde má UrBackup ukladať zálohy je neprístupný. Opravte to zmenou tohto priečinka v \"Nastaveniach\", alebo povoľte programu UrBackup oprávnenia na prístup k tomuto priečinku."
+
+msgid "tmpdir_error_text"
+msgstr "Priečinok, kde má UrBackup ukladať dočasné súbory je neprístupný. Opravte to zmenou tohto priečinka v \"Nastaveniach\", alebo povoľte programu UrBackup oprávnenia na prístup k tomuto priečinku."
+
+msgid "validate_text_empty"
+msgstr "Prosím zadajte hodnotu pre {name}"
+
+msgid "validate_text_notint"
+msgstr "Prosím zadajte číselnú hodnotu pre {name}"
+
+msgid "validate_name_min_file_incr"
+msgstr ""
+
+msgid "validate_name_max_file_full"
+msgstr ""
+
+msgid "validate_name_min_file_full"
+msgstr ""
+
+msgid "validate_name_min_image_incr"
+msgstr ""
+
+msgid "validate_name_max_image_incr"
+msgstr ""
+
+msgid "validate_name_min_image_full"
+msgstr ""
+
+msgid "validate_name_max_image_full"
+msgstr ""
+
+msgid "validate_err_notregexp_backup_window"
+msgstr ""
+
+msgid "validate_name_max_active_clients"
+msgstr ""
+
+msgid "validate_name_max_sim_backups"
+msgstr ""
+
+msgid "validate_name_backupfolder"
+msgstr "cesta pre ukladanie záloh"
+
+msgid "really_remove_client"
+msgstr "Naozaj chcete odstrániť tohto klienta? Všetky jeho súbory a diskové zálohy budú vymazané!"
+
+msgid "tImages"
+msgstr "Obrazy diskov"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr ""
+
+msgid "mail_settings"
+msgstr "Mail"
+
+msgid "upgrade_error_text"
+msgstr "UrBackup upgraduje internú databázu. Môže to chvíľu trvať. Server je momentálne neprístupný a počas tejto aktualizácie nebude robiť žiadne zálohy."
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tAction"
+msgstr "Akcia"
+
+msgid "tFiles in queue"
+msgstr "Súbory vo fronte"
+
+msgid "tLast activities"
+msgstr "Posledné činnosti"
+
+msgid "tRequired time"
+msgstr "Potrebný čas"
+
+msgid "tBackups with a log message of at least log level"
+msgstr ""
+
+msgid "tStorage allocation"
+msgstr "Pridelenie ukladacieho priestoru"
+
+msgid "tBackup storage path"
+msgstr "Cesta pre ukladanie záloh"
 
 msgid "tDo not do image backups"
 msgstr ""
@@ -448,13 +646,13 @@ msgid "tBackup window"
 msgstr ""
 
 msgid "tExcluded files (with wildcards)"
-msgstr ""
+msgstr "Vylúčiť zo zálohy (s náhradnými znakmi *.*)"
 
 msgid "tIncluded files (with wildcards)"
-msgstr ""
+msgstr "Zahrnúť do zálohy (s náhradnými znakmi *.*)"
 
 msgid "tDefault directories to backup"
-msgstr ""
+msgstr "Predvolené priečinky pre zálohovanie"
 
 msgid "tVolumes to backup"
 msgstr "Zväzky pre zálohovanie:"
@@ -477,79 +675,46 @@ msgstr ""
 msgid "tAllow client-side changing of settings"
 msgstr ""
 
-msgid "tdays"
-msgstr "dní"
-
-msgid "thours"
-msgstr "hodín"
-
-msgid "tmin"
-msgstr "min"
-
 msgid "tMail server name"
-msgstr ""
+msgstr "Názov mail servera"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "Port mail servera"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "Používateľské meno mail servera (prázdne pre žiadne)"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "Heslo mail servera"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "E-mailová adresa odosielateľa"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "Odosielať e-maily iba s SSL/TLS"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "Kontrolovať SSL / TLS certifikát"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr ""
+msgstr "Po uložení nastavení odoslať skúšobný e-mail na túto e-mailovú adresu (ponechajte prázdne ak si neprajete odoslať skúšobný e-mail)"
 
 msgid "tTest Mail sent successfully"
-msgstr ""
+msgstr "Skúšobný e-mail úspešne odoslaný"
 
 msgid "tSending test mail failed. Error:"
-msgstr ""
-
-msgid "tFilter"
-msgstr "Filter"
-
-msgid "tBack"
-msgstr ""
-
-msgid "tAdd"
-msgstr "Pridať"
-
-msgid "tRemove"
-msgstr "Odstrániť"
-
-msgid "tSave"
-msgstr "Uložiť"
+msgstr "Odoslanie skúšobného e-mailu zlyhalo. Chyba:"
 
 msgid "tLevel"
-msgstr ""
+msgstr "Úroveň"
 
 msgid "tTime"
 msgstr "Čas"
 
-msgid "tMessage"
-msgstr "Správa"
-
-msgid "tLog"
-msgstr "Záznam"
-
-msgid "tUsername"
-msgstr "Užívateľské meno"
-
 msgid "tRights"
-msgstr "Práva"
+msgstr "Oprávnenia"
 
 msgid "tNo Users"
 msgstr "Žiadny užívatelia"
@@ -557,95 +722,50 @@ msgstr "Žiadny užívatelia"
 msgid "tCreate user"
 msgstr "Vytvoriť užívateľa"
 
-msgid "tPassword"
-msgstr "Heslo"
-
 msgid "tRepeat password"
 msgstr "Zopakujte heslo"
 
 msgid "tRights for"
-msgstr ""
-
-msgid "tAbort"
-msgstr "Prerušiť"
+msgstr "Oprávnenia pre"
 
 msgid "tCreate"
 msgstr "Vytvoriť"
 
 msgid "tChange rights"
-msgstr "Zmeniť práva"
+msgstr "Zmeniť oprávnenia"
 
 msgid "tChange password"
 msgstr "Zmeniť heslo"
 
-msgid "tLogin"
-msgstr ""
-
-msgid "tInfos"
-msgstr ""
-
 msgid "tSeparate settings for this client"
-msgstr ""
-
-msgid "tServer"
-msgstr "Server"
-
-msgid "tFile backups"
-msgstr ""
-
-msgid "tImage backups"
-msgstr ""
-
-msgid "tPermissions"
-msgstr "Povolenia"
-
-msgid "tClient"
-msgstr "Klient"
+msgstr "Povoliť samostatné nastavenia pre tohto klienta"
 
 msgid "tArchival"
-msgstr ""
-
-msgid "tInternet"
-msgstr "Internet"
+msgstr "Archivácia"
 
 msgid "tPerform autoupdates silently"
-msgstr ""
+msgstr "Povoliť automatické aktualizácie klienta na pozadí"
 
 msgid "tMax backup speed for local network"
-msgstr ""
+msgstr "Maximálna rýchlosť prenosu záloh v lokálnej sieti"
 
 msgid "tNo activities"
 msgstr "Žiadne činnosti"
 
-msgid "tSelect all"
-msgstr ""
-
 msgid "tSelect none"
-msgstr ""
+msgstr "Nevybrať nič"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "Odstrániť vybrané"
 
 msgid "tStart for selected"
-msgstr ""
-
-msgid "tInternet clients"
-msgstr "Internetový klienti"
-
-msgid "tAdd additional internet clients"
-msgstr ""
-
-msgid "tClient name"
-msgstr "Názov klienta"
+msgstr "Štart pre vybrané"
 
 msgid "tNo entries for this filter"
-msgstr ""
-
-msgid "tNo data"
-msgstr ""
+msgstr "Žiadne záznamy pre tento filter"
 
 msgid "tTotal max backup speed for local network"
-msgstr ""
+msgstr "Celková maximálna rýchlosť prenosu záloh v lokálnej sieti"
 
 msgid "tArchive every"
 msgstr ""
@@ -657,10 +777,10 @@ msgid "tArchive window"
 msgstr ""
 
 msgid "tBackup type"
-msgstr ""
+msgstr "Typ zálohy"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr ""
+msgstr "Povoliť zálohovanie cez internet (vyžaduje reštart servera)"
 
 msgid "tInternet server name/IP"
 msgstr "Názov internetového servera / IP"
@@ -669,16 +789,16 @@ msgid "tInternet server port"
 msgstr "Port internetového servera"
 
 msgid "tDo image backups over internet"
-msgstr ""
+msgstr "Zálohovať disky cez internet"
 
 msgid "tDo full file backups over internet"
 msgstr ""
 
 msgid "tMax backup speed for internet connection"
-msgstr ""
+msgstr "Maximálna rýchlosť prenosu záloh pomocou internetového pripojenia"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr ""
+msgstr "Celková maximálna rýchlosť prenosu záloh pomocou internetového pripojenia"
 
 msgid "tEncrypted transfer"
 msgstr "Šifrovaný prenos"
@@ -688,12 +808,6 @@ msgstr "Komprimovaný prenos"
 
 msgid "file_backup"
 msgstr ""
-
-msgid "hours"
-msgstr "hodín"
-
-msgid "days"
-msgstr "dní"
 
 msgid "weeks"
 msgstr "týždňov"
@@ -722,9 +836,6 @@ msgstr "rokov"
 msgid "min"
 msgstr "minúta"
 
-msgid "mins"
-msgstr "minút"
-
 msgid "validate_name_archive_every"
 msgstr ""
 
@@ -732,25 +843,19 @@ msgid "validate_name_archive_for"
 msgstr ""
 
 msgid "forever"
-msgstr ""
-
-msgid "backup_in_progress"
-msgstr "Prebieha zálohovanie..."
+msgstr "navždy"
 
 msgid "really_remove_clients"
-msgstr ""
+msgstr "Naozaj chcete odstrániť týchto klientov? Všetky ich diskové a súborové zálohy budú vymazané!"
 
 msgid "no_client_selected"
-msgstr ""
-
-msgid "queued_backup"
-msgstr ""
+msgstr "Nebol vybraný žiadny klient"
 
 msgid "starting_backup_failed"
-msgstr ""
+msgstr "Spustenie zálohovania zlyhalo"
 
 msgid "trying_to_stop_backup"
-msgstr ""
+msgstr "Snažím sa zastaviť zálohovanie. Môže to chvíľu trvať."
 
 msgid "unarchived_in"
 msgstr ""
@@ -765,22 +870,22 @@ msgid "validate_err_notregexp_image_letters"
 msgstr ""
 
 msgid "validate_name_global_local_speed"
-msgstr ""
+msgstr "celková maximálna rýchlosť prenosu záloh v lokálnej sieti"
 
 msgid "validate_name_global_internet_speed"
-msgstr ""
+msgstr "celková maximálna rýchlosť prenosu záloh pomocou internetového pripojenia"
 
 msgid "validate_name_local_speed"
-msgstr ""
+msgstr "maximálna rýchlosť prenosu záloh v lokálnej sieti"
 
 msgid "validate_name_internet_speed"
-msgstr ""
+msgstr "maximálna rýchlosť prenosu záloh pomocou internetového pripojenia"
 
 msgid "enter_clientname"
 msgstr "Prosím, zadajte názov klienta"
 
 msgid "internet_client_added"
-msgstr ""
+msgstr "Bol pridaný nový klient. Kľúč klienta (alebo heslo) nájdete v nastaveniach."
 
 msgid "change_pw"
 msgstr "Zmeniť heslo"
@@ -789,10 +894,7 @@ msgid "old_pw_wrong"
 msgstr "Staré heslo je nesprávne"
 
 msgid "tID"
-msgstr ""
-
-msgid "tFile"
-msgstr "Súbor"
+msgstr "ID"
 
 msgid "tSize"
 msgstr "Veľkosť"
@@ -801,28 +903,19 @@ msgid "tIncremental"
 msgstr ""
 
 msgid "tLoading"
-msgstr ""
+msgstr "Načítavanie"
 
 msgid "tStorage usage of"
-msgstr ""
+msgstr "Použitý ukladací priestor klientom"
 
 msgid "tDelete domain"
 msgstr "Odstrániť doménu"
 
 msgid "tChange rights for user"
-msgstr "Zmeniť práva pre užívateľa"
-
-msgid "tDomain"
-msgstr "Doména"
-
-msgid "tTranslation"
-msgstr "Preklad"
+msgstr "Zmeniť oprávnenia pre užívateľa"
 
 msgid "tNew domain"
 msgstr "Nová doména"
-
-msgid "tChange"
-msgstr "Zmeniť"
 
 msgid "tChange password for user"
 msgstr "Zmeniť heslo pre užívateľa"
@@ -836,23 +929,8 @@ msgstr "Tento klient bude odstránený."
 msgid "tStop removing client"
 msgstr "Zastaviť odstránenie klienta"
 
-msgid "tFailed"
-msgstr "Neúspešné"
-
 msgid "tSuccessfull"
 msgstr "Úspešné"
-
-msgid "tInfo"
-msgstr ""
-
-msgid "tError"
-msgstr "Chyba"
-
-msgid "tWarning"
-msgstr "Upozornenie"
-
-msgid "tCurrent version"
-msgstr "Súčasná verzia"
 
 msgid "tTarget version"
 msgstr "Cieľová verzia"
@@ -861,7 +939,7 @@ msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings."
-msgstr ""
+msgstr "Upozornenie: úprava nastavení na strane klienta prepíše tieto nastavenia. Ak tomuto chcete zabrániť, zakážte klientom možnosť meniť nastavenia."
 
 msgid "tNext archival"
 msgstr ""
@@ -876,35 +954,23 @@ msgid "tyears"
 msgstr "rokov"
 
 msgid "tforever"
-msgstr ""
+msgstr "navždy"
 
 msgid "tFile backup"
 msgstr ""
 
-msgid "tIncremental file backup"
-msgstr ""
-
-msgid "tFull file backup"
-msgstr ""
-
 msgid "tEnable internet mode"
-msgstr ""
+msgstr "Povoliť internetový mód"
 
 msgid "tInternet auth key"
-msgstr ""
-
-msgid "tIncremental image backup"
-msgstr ""
-
-msgid "tFull image backup"
-msgstr ""
+msgstr "Internetový autorizačný kľúč"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
 msgstr ""
 
 msgid "tArchived"
-msgstr ""
+msgstr "Archivované"
 
 msgid "nospc_stalled_text"
 msgstr ""
@@ -915,17 +981,26 @@ msgstr ""
 msgid "tNondefault temporary file directory"
 msgstr ""
 
+msgid "loading"
+msgstr "Načítavanie"
+
+msgid "tInternet clients"
+msgstr "Internetový klienti"
+
+msgid "tAdd additional internet clients"
+msgstr "Pridať ďalších internetových klientov"
+
+msgid "tClient name"
+msgstr "Názov klienta"
+
+msgid "tNo data"
+msgstr "Žiadne údaje"
+
 msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr ""
 
-msgid "about_urbackup"
-msgstr "O UrBackup"
-
-msgid "loading"
-msgstr ""
-
 msgid "authentication_err"
-msgstr ""
+msgstr "Chyba pri overovaní servera"
 
 msgid "tInverval for incremental image backups"
 msgstr ""
@@ -937,16 +1012,13 @@ msgid "action_6"
 msgstr ""
 
 msgid "really_recalculate"
-msgstr ""
+msgstr "Naozaj chcete prepočítať všetky štatistiky? Táto operácia môže trvať dlhšiu dobu!"
 
 msgid "database_error_text"
 msgstr ""
 
-msgid "creating_filescache_text"
-msgstr ""
-
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Stiahnuť priečinok ako ZIP"
 
 msgid "tOld password"
 msgstr "Staré heslo"
@@ -964,7 +1036,7 @@ msgid "tChanged password successfully"
 msgstr "Zmena hesla prebehla úspešne"
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Počet spracovaných súborov"
 
 msgid "tUrBackup live log"
 msgstr "UrBackup živý záznam"
@@ -972,29 +1044,17 @@ msgstr "UrBackup živý záznam"
 msgid "tLive Log"
 msgstr "Živý záznam"
 
-msgid "tShow"
-msgstr "Zobraziť"
-
 msgid "tThere is a new version of UrBackup server available"
 msgstr "K dispozícii je nová verzia UrBackup servera"
-
-msgid "tIndexing..."
-msgstr "Indexovanie..."
-
-msgid "tDelete"
-msgstr "Odstrániť"
 
 msgid "tDownload client from update server"
 msgstr "Stiahnuť klienta z aktualizačného servera"
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
-
-msgid "tDisable"
-msgstr ""
+msgstr "Celková kvóta súborového systému"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Formát diskovej zálohy"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr ""
@@ -1039,18 +1099,15 @@ msgid "tLocal full file backup transfer mode"
 msgstr ""
 
 msgid "tRaw"
-msgstr ""
+msgstr "Raw"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Hashed"
 
 msgid "tInternet full file backup transfer mode"
 msgstr ""
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr ""
-
-msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "tInternet incremental file backup transfer mode"
@@ -1062,40 +1119,7 @@ msgstr ""
 msgid "tInternet image backup transfer mode"
 msgstr ""
 
-msgid "tFile hash collection amount"
-msgstr ""
-
-msgid "tFile hash collection timeout"
-msgstr ""
-
-msgid "tFile hash collection database cachesize"
-msgstr ""
-
-msgid "tMB"
-msgstr ""
-
-msgid "tUpdate stats database cachesize"
-msgstr ""
-
-msgid "tCache database type for file entries"
-msgstr ""
-
-msgid "tNone"
-msgstr ""
-
-msgid "tCache database size for file entries"
-msgstr ""
-
-msgid "tSuspend index limit"
-msgstr ""
-
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
-
-msgid "tEnd-to-end verification of all file backups"
-msgstr ""
-
-msgid "tServer admin mail address"
 msgstr ""
 
 msgid ""
@@ -1107,46 +1131,34 @@ msgstr ""
 msgid "tClient download"
 msgstr ""
 
-msgid "tDownload"
-msgstr ""
-
-msgid "tStatus"
-msgstr "Stav"
-
-msgid "tIP"
-msgstr "IP"
-
-msgid "tClient version"
-msgstr "Verzia klienta"
-
-msgid "tOperating System"
-msgstr "Operačný systém"
-
-msgid "tShow all clients"
-msgstr "Zobraziť všetkých klientov"
-
-msgid "tThis client is going to be removed. "
-msgstr ""
-
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
 msgstr "Prepočítať štatistiky"
 
-msgid "First"
-msgstr "Prvá"
-
-msgid "Last"
-msgstr "Posledná"
-
-msgid "Next"
-msgstr "Ďalšia"
-
-msgid "Previous"
-msgstr "Predchádzajúca"
-
 msgid "No data available in table"
+msgstr "V tabuľke nie sú k dispozícií žiadne dáta"
+
+msgid "Show _MENU_ entries"
+msgstr "Zobraziť _MENU_ položiek"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr "Pripojiť sa k internetovému serveru, ak je pripojený lokálny server"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr "Aby ste mohli posielať správy, musíte najprv vytvoriť užívateľa"
+
+msgid "tShow when a new server version is available"
+msgstr "Zobraziť, ak je k dispozícii nová verzia servera"
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr "VHD (virtuálny pevný disk)"
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr "Komprimovaný VHD (komprimovaný neštandardný virtuálny pevný disk)"
+
+msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
@@ -1158,44 +1170,356 @@ msgstr "Zobrazujem 0 až 0 z 0 záznamov"
 msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrované z celkom _MAX_ záznamov)"
 
-msgid "sInfoThousands"
+msgid "Minimize"
 msgstr ""
 
-msgid "Show _MENU_ entries"
-msgstr "Zobraziť _MENU_ položiek"
-
-msgid "Processing..."
-msgstr "Spracovanie..."
-
-msgid "Search:"
-msgstr "Vyhľadávanie:"
-
-msgid "No matching records found"
-msgstr "Neboli nájdené žiadne zodpovedajúce záznamy"
-
-msgid "Restore to default"
-msgstr "Obnoviť predvolené"
-
-msgid "Save"
-msgstr "Uložiť"
-
-msgid "tConnect to Internet backup server if connected to local backup server"
+msgid "Maximize"
 msgstr ""
 
-msgid "tAllow clients to quit the tray icon"
+msgid "ldap_settings"
 msgstr ""
 
-msgid "tYou need to create a user to be able to send reports"
-msgstr "Aby ste mohli posielať správy, musíte vytvoriť užívateľa"
+msgid "client_exists"
+msgstr ""
 
-msgid "Show/hide columns"
-msgstr "Zobraziť / skryť stĺpce"
+msgid "validate_err_empty_internet_client_name"
+msgstr ""
 
-msgid "tShow when a new server version is available"
-msgstr "Zobraziť, ak je k dispozícii nová verzia servera"
+msgid "validate_err_empty_hostname"
+msgstr ""
 
-msgid "tVHD (Virtual HardDisk)"
-msgstr "VHD (virtuálny pevný disk)"
+msgid "creating_filesindex_text"
+msgstr ""
 
-msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr "Komprimovaný VHD (komprimovaný neštandardný virtuálny pevný disk)"
+msgid "about"
+msgstr ""
+
+msgid "all_clients"
+msgstr ""
+
+msgid "client_settings"
+msgstr ""
+
+msgid "action_8"
+msgstr ""
+
+msgid "action_9"
+msgstr ""
+
+msgid "action_10"
+msgstr ""
+
+msgid "action_11"
+msgstr ""
+
+msgid "action_12"
+msgstr ""
+
+msgid "action_13"
+msgstr ""
+
+msgid "tAbout UrBackup"
+msgstr "O UrBackup"
+
+msgid "tAdd client"
+msgstr ""
+
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
+msgstr ""
+
+msgid "tDownload the client from:"
+msgstr ""
+
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
+msgstr ""
+
+msgid "tAdd new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tName of new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tDiscover new client via IP/hostname hint"
+msgstr ""
+
+msgid "tIP/hostname of client to be discovered"
+msgstr ""
+
+msgid "tCancel"
+msgstr ""
+
+msgid "tAccess denied"
+msgstr ""
+
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
+msgstr ""
+
+msgid "tLogin with username and password"
+msgstr ""
+
+msgid "tError while accessing backups"
+msgstr ""
+
+msgid "tSorry, something went wrong:"
+msgstr ""
+
+msgid "tCreated"
+msgstr ""
+
+msgid "tLast modified"
+msgstr ""
+
+msgid "tLast accessed"
+msgstr ""
+
+msgid "tList"
+msgstr ""
+
+msgid "tRestore"
+msgstr ""
+
+msgid "tRestore folder to client"
+msgstr ""
+
+msgid "tVersion"
+msgstr ""
+
+msgid "tClient added successfully"
+msgstr ""
+
+msgid "tAdded new client with name:"
+msgstr ""
+
+msgid "tDefault authentication key:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Windows"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Mac OS X"
+msgstr ""
+
+msgid "tInstall it directly in the terminal via:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Linux"
+msgstr ""
+
+msgid "tAlternatively after you installed the client from:"
+msgstr ""
+
+msgid "tGo the settings screen on the client"
+msgstr ""
+
+msgid "tEnable the internet mode on the client"
+msgstr ""
+
+msgid "tSet the internet server to:"
+msgstr ""
+
+msgid "tSet the internet server port to:"
+msgstr ""
+
+msgid "tSet the computer name to:"
+msgstr ""
+
+msgid "tSet the authentication key to:"
+msgstr ""
+
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgstr ""
+
+msgid "tWith the command line:"
+msgstr ""
+
+msgid "tPercent finished"
+msgstr ""
+
+msgid "tDetails"
+msgstr ""
+
+msgid "tAdd Email Address"
+msgstr ""
+
+msgid "tFailed without failures caused by client timeout"
+msgstr ""
+
+msgid "tMinimum log level"
+msgstr ""
+
+msgid "tBackups interrupted"
+msgstr ""
+
+msgid "tStop"
+msgstr ""
+
+msgid "tShow log"
+msgstr ""
+
+msgid "tETA"
+msgstr ""
+
+msgid "tSpeed"
+msgstr ""
+
+msgid "tFile Backups"
+msgstr ""
+
+msgid "tImage Backups"
+msgstr ""
+
+msgid "tArchive"
+msgstr ""
+
+msgid "tServer URL"
+msgstr ""
+
+msgid "tMax simultaneous backups"
+msgstr ""
+
+msgid "tMax recently active clients"
+msgstr ""
+
+msgid "tDays"
+msgstr ""
+
+msgid "tRaw copy-on-write file"
+msgstr ""
+
+msgid "tMin"
+msgstr ""
+
+msgid "tVirtual sub client names"
+msgstr ""
+
+msgid "tLocal incremental image style"
+msgstr ""
+
+msgid "tBased on last full image backup"
+msgstr ""
+
+msgid "tBased on last image backup"
+msgstr ""
+
+msgid "tInternet incremental image style"
+msgstr ""
+
+msgid "tLocal full image style"
+msgstr ""
+
+msgid "tSynthetic full image backup"
+msgstr ""
+
+msgid "tInternet full image style"
+msgstr ""
+
+msgid "tDatabase cache size during batch processing"
+msgstr ""
+
+msgid "tDebugging: End-to-end verification of all file backups"
+msgstr ""
+
+msgid "tDebugging: Verify file backups using client side hashes"
+msgstr ""
+
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
+msgstr ""
+
+msgid "tRun backups with background priority on the clients"
+msgstr ""
+
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
+msgstr ""
+
+msgid "tMaximum number of simultaneous jobs per client"
+msgstr ""
+
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
+msgstr ""
+
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
+msgstr ""
+
+msgid "tEnable logins via LDAP/AD"
+msgstr ""
+
+msgid "tLDAP/AD server name"
+msgstr ""
+
+msgid "tLDAP/AD server port"
+msgstr ""
+
+msgid "tLDAP/AD user name prefix"
+msgstr ""
+
+msgid "tLDAP/AD user name suffix"
+msgstr ""
+
+msgid "tLDAP/AD group and class query"
+msgstr ""
+
+msgid "tLDAP/AD group key name in query"
+msgstr ""
+
+msgid "tLDAP/AD class key name in query"
+msgstr ""
+
+msgid "tLDAP/AD group rights map"
+msgstr ""
+
+msgid "tLDAP/AD class rights map"
+msgstr ""
+
+msgid "tTest login with this user"
+msgstr ""
+
+msgid "tPassword for test user"
+msgstr ""
+
+msgid "tTest login succeeded. Rights of user:"
+msgstr ""
+
+msgid "tTest login failed. Error:"
+msgstr ""
+
+msgid "tDownload client for Windows"
+msgstr ""
+
+msgid "tDownload client for Mac OS X"
+msgstr ""
+
+msgid "tDownload client for Linux"
+msgstr ""
+
+msgid "tRemove client"
+msgstr ""
+
+msgid "tAdd new client"
+msgstr ""
+
+msgid "tClient discovery hints"
+msgstr ""
+
+msgid "tAdd hostname/IP as client discovery hint"
+msgstr ""
+
+msgid "tBackup Statistics"
+msgstr ""
