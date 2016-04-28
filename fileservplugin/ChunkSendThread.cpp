@@ -378,8 +378,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 						script_eof=true;
 					}
 
-					memset(cptr+r, 0, to_read-r);
-					r=to_read;
+					break;
 				}
 				else
 				{
