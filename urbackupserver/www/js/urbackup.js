@@ -781,7 +781,7 @@ function show_statistics2(data)
 	if(data.users.length>0)
 	{
 		ndata+="<div class=\"col-sm-2\">";
-		ndata+="<select onchange=\"stat_client()\" class=\"selectpicker\" data-live-search=\"true\" id=\"statclient\">";
+		ndata+="<select onchange=\"stat_client()\" class=\"selectpicker\" data-live-search=\"true\" data-container=\"body\" id=\"statclient\">";
 		if(g.settings_nav_pos<1)
 		{
 			ndata+="<option value=\"n\">"+trans("clients")+"</option>";
@@ -2188,7 +2188,7 @@ function show_settings2(data)
 			
 			if(nav.clients.length>1)
 			{
-				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\" title=\""+trans("clients")+"\">";
+				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\" data-container=\"body\" title=\""+trans("clients")+"\">";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
 					var selected = "";
@@ -3029,7 +3029,7 @@ function createUser()
 	if(g.num_users==0)
 		d="disabled=\"disabled\"";
 		
-	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+" class=\"selectpicker\" data-live-search=\"true\">";
+	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+" class=\"selectpicker\" data-container=\"body\" data-live-search=\"true\">";
 	rights+="<option value=\"-1\">"+trans("admin")+"</option>";
 	
 	for(var i=0;i<g.settings_clients.length;++i)
@@ -3535,7 +3535,7 @@ function show_logs2(data)
 		np+="</label>";
 		np+=dustRender("logs_filter");
 		np+="<span style=\"margin-left:20px\">";
-		np+="<select onchange=\"logClientChange()\" id=\"logclients\" class=\"selectpicker\" data-live-search=\"true\">";
+		np+="<select onchange=\"logClientChange()\" id=\"logclients\" class=\"selectpicker\" data-container=\"body\" data-live-search=\"true\">";
 		np+="<option value=\"-1\">"+trans("all_clients")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
