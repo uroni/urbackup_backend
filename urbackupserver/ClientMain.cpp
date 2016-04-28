@@ -487,13 +487,13 @@ void ClientMain::operator ()(void)
 						{
 							if (backup_queue[i].backup->isFileBackup())
 							{
-								last_file_backup_try = Server->getTimeSeconds();
+								last_file_backup_try = Server->getTimeMS();
 								++count_file_backup_try;
 								ServerLogger::Log(logid, "Exponential backoff: Waiting at least " + PrettyPrintTime(exponentialBackoffTimeFile() * 1000) + " before next file backup", LL_WARNING);
 							}
 							else
 							{
-								last_image_backup_try = Server->getTimeSeconds();
+								last_image_backup_try = Server->getTimeMS();
 								++count_image_backup_try;
 								ServerLogger::Log(logid, "Exponential backoff: Waiting at least " + PrettyPrintTime(exponentialBackoffTimeImage() * 1000) + " before next image backup", LL_WARNING);
 							}
@@ -511,7 +511,7 @@ void ClientMain::operator ()(void)
 						}
 						else
 						{
-							last_backup_try = Server->getTimeSeconds();
+							last_backup_try = Server->getTimeMS();
 						}
 
 						delete backup_queue[i].backup;
@@ -570,7 +570,7 @@ void ClientMain::operator ()(void)
 				}
 			}
 
-			if(client_updated_time!=0 && Server->getTimeSeconds()-client_updated_time>6*60)
+			if(client_updated_time!=0 && Server->getTimeMS()-client_updated_time>6*60*1000)
 			{
 				updateCapabilities();
 				client_updated_time=0;
@@ -1874,7 +1874,7 @@ void ClientMain::checkClientVersion(void)
 
 			cc.reset();
 
-			client_updated_time = Server->getTimeSeconds();
+			client_updated_time = Server->getTimeMS();
 
 			if(ok)
 			{
@@ -2261,8 +2261,8 @@ bool ClientMain::exponentialBackoff(size_t count, int64 lasttime, unsigned int s
 {
 	if(count>0)
 	{
-		unsigned int passed_time=static_cast<unsigned int>(Server->getTimeSeconds()-lasttime);
-		unsigned int sleeptime_exp = exponentialBackoffTime(count, sleeptime, div);
+		int64 passed_time=Server->getTimeMS()-lasttime;
+		int64 sleeptime_exp = 1LL*exponentialBackoffTime(count, sleeptime, div)*1000;
 
 		return passed_time>=sleeptime_exp;
 	}
@@ -2738,9 +2738,9 @@ bool ClientMain::startBackupBarrier( int64 timeout_seconds )
 
 	running_backups_allowed=false;
 
-	int64 starttime = Server->getTimeSeconds();
+	int64 starttime = Server->getTimeMS();
 
-	while(running_backups>0 && Server->getTimeSeconds()-starttime<timeout_seconds)
+	while(running_backups>0 && Server->getTimeMS()-starttime<timeout_seconds*1000)
 	{
 		lock.relock(NULL);
 		Server->wait(60000);
