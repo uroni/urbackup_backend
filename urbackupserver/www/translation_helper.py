@@ -149,6 +149,7 @@ def translations_from_po():
                             
                             msgid = entry.msgid.replace("\"", "\\\"")
                             msgstr = entry.msgstr.replace("\"", "\\\"")
+                            msgstr = msgstr.replace("\n", "\\n")
                             
                             output.write("\""+msgid+"\": \""+msgstr+"\"")
         

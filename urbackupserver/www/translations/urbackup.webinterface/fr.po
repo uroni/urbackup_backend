@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:46+0000\n"
+"PO-Revision-Date: 2016-04-28 14:56+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -1277,61 +1277,61 @@ msgid "tLast modified"
 msgstr "Dernière modification"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "dernier accès"
 
 msgid "tList"
-msgstr ""
+msgstr "Liste"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Restaurer"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Restaurer un dossier vers un client"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Version"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Client ajouté avec succès"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Ajouter un nouveau client :"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Clé d'authentification par défaut"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Télécharger le logiciel client pré-configuré pour Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Télécharger le logiciel client pré-configuré pour Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Installer directement depuis le terminal via :"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Télécharger le logiciel client pré-configuré pour Linux"
 
 msgid "tAlternatively after you installed the client from:"
 msgstr ""
 
 msgid "tGo the settings screen on the client"
-msgstr ""
+msgstr "Aller sur les paramètres du client"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Activer le mode internet sur le client"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Configurer le serveur internet sur :"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Configurer le nom du PC sur :"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Configurer le nom du PC sur :"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Configurer la clé d'authentification sur :"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
@@ -1340,13 +1340,13 @@ msgid ""
 msgstr ""
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Sans pare-feu / NAT : Activer seulement le mode internet que si vous ne prévoyez d'utiliser le client via Internet . Sur Linux en changeant INTERNET_ONLY à true dans / etc / default / urbackupclient ou / etc / sysconfig / urbackupclient"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Pourcentage fini"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Détails"
 
 msgid "tAdd Email Address"
 msgstr ""

@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:45+0000\n"
+"PO-Revision-Date: 2016-04-28 15:01+0000\n"
 "Last-Translator: Ales Hermann\n"
 "Language-Team: Czech (Czech Republic) (http://www.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
 "MIME-Version: 1.0\n"
@@ -1189,110 +1189,110 @@ msgid "validate_err_empty_hostname"
 msgstr "Prosím zadejte IP / hostname klienta, k jeho nalezení"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup vytváří index vstupních souborů. To může chvíli trvat."
 
 msgid "about"
-msgstr ""
+msgstr "O..."
 
 msgid "all_clients"
-msgstr ""
+msgstr "Všichni klienti"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Nastavení klienta"
 
 msgid "action_8"
-msgstr ""
+msgstr "Obnova souborů"
 
 msgid "action_9"
-msgstr ""
+msgstr "Obnova diskových záloh"
 
 msgid "action_10"
-msgstr ""
+msgstr "Aktualizace klienta"
 
 msgid "action_11"
-msgstr ""
+msgstr "Kontrola integrity databáze"
 
 msgid "action_12"
-msgstr ""
+msgstr "Záloha sdatabáze"
 
 msgid "action_13"
-msgstr ""
+msgstr "Přepočet statistik"
 
 msgid "tAbout UrBackup"
 msgstr "O UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Přidat klienta"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup automaticky zjišťuje klienty ve vaší lokální síti. V případě, že je server ve stejné podsíti jako klient stačí nainstalovat klienta a čekat až bude nalezen."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Stáhnout klienta od:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Chce-li klient použít více záložních serverů identita tohoto serveru je:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Přidat nového Internetového klienta / klienta za NAT"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Název nového Internetového klienta / klienta za NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Najdi nového klienta pomocí IP / hostname"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP / hostname klienta nalezen"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Zrušit"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Přístup odepřen"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Promiňte, něco se pokazilo, nebo nemáte potřebná práva pro přístup k těmto souborům / složkám."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Přihlásit pomocí uživatelského jména a hesla"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Chyba při přístupu k zálohám"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Promiňte, něco se pokazilo:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Vytvořeno"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Poslední úpravy"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Poslední přístup"
 
 msgid "tList"
-msgstr ""
+msgstr "Seznam"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Obnova"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Obnovit složku klientovi"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Verze"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Klient úspěšně přidán"
 
 msgid "tAdded new client with name:"
 msgstr ""
