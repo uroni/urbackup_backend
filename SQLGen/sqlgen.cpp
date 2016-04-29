@@ -27,8 +27,9 @@ enum TokenizeState
 	TokenizeState_CommentSingleline
 };
 
-std::vector<CPPToken> tokenizeFile(std::string &cppfile)
+std::vector<CPPToken> tokenizeFileRegex(std::string &cppfile)
 {
+	//So much for that. Causes stack overflows
 	std::regex find_comments("(/\\*(\\S|\\s)*?\\*/)|(//.*)", std::regex::ECMAScript);
 	auto comments_begin=std::regex_iterator<std::string::iterator>(cppfile.begin(), cppfile.end(), find_comments);
 	auto comments_end=std::regex_iterator<std::string::iterator>();
@@ -50,6 +51,83 @@ std::vector<CPPToken> tokenizeFile(std::string &cppfile)
 	if(lastPos<cppfile.size())
 	{
 		tokens.push_back(CPPToken(cppfile.substr(lastPos), CPPFileTokenType_Code));
+	}
+
+	return tokens;
+}
+
+std::vector<CPPToken> tokenizeFile(std::string &cppfile)
+{
+	std::string cdata;
+	std::vector<CPPToken> tokens;
+	int state = 0;
+	for (size_t i = 0; i < cppfile.size(); ++i)
+	{
+		char ch = cppfile[i];
+
+		cdata += ch;
+
+		switch (state)
+		{
+		case 0:
+			if (ch == '/')
+			{
+				state = 1;
+			}
+			break;
+		case 1:
+			if (ch == '*')
+			{
+				state = 2;
+
+				if (cdata.size() > 2)
+				{
+					tokens.push_back(CPPToken(cdata.substr(0, cdata.size() - 2), CPPFileTokenType_Code));
+				}
+				cdata = "/*";
+			}
+			else if (ch == '/')
+			{
+				state = 3;
+				if (cdata.size() > 2)
+				{
+					tokens.push_back(CPPToken(cdata.substr(0, cdata.size() - 2), CPPFileTokenType_Code));
+				}
+				cdata = "//";
+			}
+			break;
+		case 2:
+			if (ch == '*')
+			{
+				state = 4;
+			}
+			break;
+		case 3:
+			if (ch == '\n')
+			{
+				state = 0;
+				tokens.push_back(CPPToken(cdata.substr(0, cdata.size()-1), CPPFileTokenType_Comment));
+				cdata = "\n";
+			}
+			break;
+		case 4:
+			if (ch == '/')
+			{
+				state = 0;
+				tokens.push_back(CPPToken(cdata, CPPFileTokenType_Comment));
+				cdata.clear();
+			}
+			else if(ch!='*')
+			{
+				state = 2;
+			}
+			break;
+		}
+	}
+
+	if (!cdata.empty())
+	{
+		tokens.push_back(CPPToken(cdata, CPPFileTokenType_Code));
 	}
 
 	return tokens;

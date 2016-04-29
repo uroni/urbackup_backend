@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -20,12 +20,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -51,12 +53,14 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\boost</AdditionalIncludeDirectories>
+      <AdditionalOptions>/F 10048576 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../libx86</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>52428800</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,11 +81,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../libx86</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>104857600</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Client.cpp" />
-    <ClCompile Include="..\Condition_boost.cpp" />
+    <ClCompile Include="..\Condition_std.cpp" />
     <ClCompile Include="..\Database.cpp" />
     <ClCompile Include="..\DatabaseCursor.cpp" />
     <ClCompile Include="..\DBSettingsReader.cpp" />
@@ -95,7 +100,7 @@
     <ClCompile Include="..\MemoryPipe.cpp" />
     <ClCompile Include="..\MemorySettingsReader.cpp" />
     <ClCompile Include="..\mt19937ar.cpp" />
-    <ClCompile Include="..\Mutex_boost.cpp" />
+    <ClCompile Include="..\Mutex_std.cpp" />
     <ClCompile Include="..\OutputStream.cpp" />
     <ClCompile Include="..\PipeThrottler.cpp" />
     <ClCompile Include="..\Query.cpp" />
@@ -106,7 +111,7 @@
     <ClCompile Include="..\ServiceWorker.cpp" />
     <ClCompile Include="..\SessionMgr.cpp" />
     <ClCompile Include="..\SettingsReader.cpp" />
-    <ClCompile Include="..\SharedMutex_boost.cpp" />
+    <ClCompile Include="..\SharedMutex_std.cpp" />
     <ClCompile Include="..\SQLiteFactory.cpp" />
     <ClCompile Include="..\sqlite\shell.c" />
     <ClCompile Include="..\sqlite\sqlite3.c" />
@@ -122,7 +127,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Client.h" />
-    <ClInclude Include="..\Condition_boost.h" />
+    <ClInclude Include="..\Condition_std.h" />
     <ClInclude Include="..\Database.h" />
     <ClInclude Include="..\DatabaseCursor.h" />
     <ClInclude Include="..\DBSettingsReader.h" />
@@ -132,7 +137,7 @@
     <ClInclude Include="..\MemoryPipe.h" />
     <ClInclude Include="..\MemorySettingsReader.h" />
     <ClInclude Include="..\mt19937ar.h" />
-    <ClInclude Include="..\Mutex_boost.h" />
+    <ClInclude Include="..\Mutex_std.h" />
     <ClInclude Include="..\OutputStream.h" />
     <ClInclude Include="..\PipeThrottler.h" />
     <ClInclude Include="..\Query.h" />
@@ -142,7 +147,7 @@
     <ClInclude Include="..\ServiceWorker.h" />
     <ClInclude Include="..\SessionMgr.h" />
     <ClInclude Include="..\SettingsReader.h" />
-    <ClInclude Include="..\SharedMutex_boost.h" />
+    <ClInclude Include="..\SharedMutex_std.h" />
     <ClInclude Include="..\socket_header.h" />
     <ClInclude Include="..\SQLiteFactory.h" />
     <ClInclude Include="..\StreamPipe.h" />

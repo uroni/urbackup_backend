@@ -24,9 +24,6 @@
     <ClCompile Include="..\Database.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="..\Mutex_boost.cpp">
-      <Filter>Server</Filter>
-    </ClCompile>
     <ClCompile Include="..\PipeThrottler.cpp">
       <Filter>Server</Filter>
     </ClCompile>
@@ -114,9 +111,6 @@
     <ClCompile Include="..\file_win.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="..\Condition_boost.cpp">
-      <Filter>Server</Filter>
-    </ClCompile>
     <ClCompile Include="..\libfastcgi\fastcgi.cpp">
       <Filter>Server</Filter>
     </ClCompile>
@@ -129,10 +123,16 @@
     <ClCompile Include="..\DatabaseCursor.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="..\SharedMutex_boost.cpp">
+    <ClCompile Include="..\StaticPluginRegistration.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="..\StaticPluginRegistration.cpp">
+    <ClCompile Include="..\Mutex_std.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SharedMutex_std.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Condition_std.cpp">
       <Filter>Server</Filter>
     </ClCompile>
   </ItemGroup>
@@ -156,9 +156,6 @@
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="..\stringtools.h">
-      <Filter>Server</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Mutex_boost.h">
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="sqlgen.h">
@@ -221,16 +218,19 @@
     <ClInclude Include="..\Client.h">
       <Filter>Server</Filter>
     </ClInclude>
-    <ClInclude Include="..\Condition_boost.h">
-      <Filter>Server</Filter>
-    </ClInclude>
     <ClInclude Include="..\DBSettingsReader.h">
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="..\DatabaseCursor.h">
       <Filter>Server</Filter>
     </ClInclude>
-    <ClInclude Include="..\SharedMutex_boost.h">
+    <ClInclude Include="..\Mutex_std.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedMutex_std.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Condition_std.h">
       <Filter>Server</Filter>
     </ClInclude>
   </ItemGroup>
