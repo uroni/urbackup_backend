@@ -220,7 +220,8 @@ std::vector<AnnotatedCode> getAnnotatedCode(const std::vector<CPPToken>& tokens)
 		{
 			std::map<std::string, std::string> annotations;
 
-			std::regex find_annotations("@([^ \\r\\n]*)[ ]*(((?!@)(?!\\*/)(\\S|\\s))*)", std::regex::ECMAScript);
+			//Doesn't work with MSVC2015 (out of stack memory): "@([^ \\r\\n]*)[ ]*(((?!@)(?!\\*/)(\\S|\\s))*)"
+			std::regex find_annotations("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)(?=(\\*/)|@)", std::regex::ECMAScript);
 
 			for(auto it=std::regex_iterator<std::string::const_iterator>(tokens[i].data.begin(), tokens[i].data.end(), find_annotations);
 				it!=std::regex_iterator<std::string::const_iterator>();++it)

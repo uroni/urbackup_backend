@@ -250,3 +250,7 @@ urbackup/UrBackupUpdateMac.sig2
 urbackupserver/www/templates/node_modules/.bin/dustc
 SQLGen/SQLGen.VC.opendb
 SQLGen/.vs/*
+SQLGen/SQLGen.VC.db
+SQLGen/SQLGen.VC.VC.opendb
+UrBackupBackend.VC.db
+UrBackupBackend.VC.VC.opendb
