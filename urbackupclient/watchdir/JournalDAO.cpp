@@ -37,6 +37,8 @@ void JournalDAO::prepareQueries()
 	q_delJournalData=NULL;
 	q_delFrnEntryViaFrn=NULL;
 	q_delJournalDeviceId=NULL;
+	q_getHardLinkParents=NULL;
+	q_deleteHardlink=NULL;
 }
 
 //@-SQLGenDestruction
@@ -60,6 +62,8 @@ void JournalDAO::destroyQueries()
 	db->destroyQuery(q_delJournalData);
 	db->destroyQuery(q_delFrnEntryViaFrn);
 	db->destroyQuery(q_delJournalDeviceId);
+	db->destroyQuery(q_getHardLinkParents);
+	db->destroyQuery(q_deleteHardlink);
 }
 
 /**
@@ -467,4 +471,51 @@ void JournalDAO::delJournalDeviceId(const std::string& device_name)
 	q_delJournalDeviceId->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func vector<SParentFrn> JournalDAO::getHardLinkParents
+* @return int64 parent_frn_high, int64 parent_frn_low
+* @sql
+*    SELECT parent_frn_high, parent_frn_low FROM hardlinks WHERE vol=:volume(string) AND frn_high=:frn_high(int64) AND frn_low=:frn_low(int64)
+*/
+std::vector<JournalDAO::SParentFrn> JournalDAO::getHardLinkParents(const std::string& volume, int64 frn_high, int64 frn_low)
+{
+	if(q_getHardLinkParents==NULL)
+	{
+		q_getHardLinkParents=db->Prepare("SELECT parent_frn_high, parent_frn_low FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
+	}
+	q_getHardLinkParents->Bind(volume);
+	q_getHardLinkParents->Bind(frn_high);
+	q_getHardLinkParents->Bind(frn_low);
+	db_results res=q_getHardLinkParents->Read();
+	q_getHardLinkParents->Reset();
+	std::vector<JournalDAO::SParentFrn> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].parent_frn_high=watoi64(res[i]["parent_frn_high"]);
+		ret[i].parent_frn_low=watoi64(res[i]["parent_frn_low"]);
+	}
+	return ret;
+}
+
+
+/**
+* @-SQLGenAccess
+* @func void JournalDAO::deleteHardlink
+* @sql
+*    DELETE FROM hardlinks WHERE vol=:vol(string) AND frn_high=:frn_high(int64) AND frn_low=:frn_low(int64)
+**/
+void JournalDAO::deleteHardlink(const std::string& vol, int64 frn_high, int64 frn_low)
+{
+	if(q_deleteHardlink==NULL)
+	{
+		q_deleteHardlink=db->Prepare("DELETE FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
+	}
+	q_deleteHardlink->Bind(vol);
+	q_deleteHardlink->Bind(frn_high);
+	q_deleteHardlink->Bind(frn_low);
+	q_deleteHardlink->Write();
+	q_deleteHardlink->Reset();
+}
 

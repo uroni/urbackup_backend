@@ -251,7 +251,7 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 			f.isspecialf=true;
 		}
 
-		f.isencrypted = (wfd.dwFileAttributes & FILE_ATTRIBUTE_ENCRYPTED);
+		f.isencrypted = (wfd.dwFileAttributes & FILE_ATTRIBUTE_ENCRYPTED)>0;
 
 		if( (exact_filesize || with_usn ) && !f.issym && !f.isdir)
 		{
@@ -264,10 +264,15 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 				{
 					if (exact_filesize)
 					{
-						LARGE_INTEGER fsize;
-						if (GetFileSizeEx(hFile, &fsize)!=0)
+						BY_HANDLE_FILE_INFORMATION fileInformation;
+						if (GetFileInformationByHandle(hFile, &fileInformation)!=0)
 						{
+							LARGE_INTEGER fsize;
+							fsize.LowPart = fileInformation.nFileSizeLow;
+							fsize.HighPart = fileInformation.nFileSizeHigh;
 							f.size = fsize.QuadPart;
+
+							f.nlinks = fileInformation.nNumberOfLinks;
 						}
 					}
 

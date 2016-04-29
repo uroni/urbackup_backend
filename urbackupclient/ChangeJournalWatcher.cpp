@@ -742,7 +742,10 @@ std::string ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128 
 				}
 				else
 				{
-					Server->Log("Couldn't follow up to root. Current path: "+path, LL_ERROR);
+					if (!filter_error)
+					{
+						Server->Log("Couldn't follow up to root. Current path: " + path, LL_ERROR);
+					}
 					return std::string();
 				}
 			}
@@ -1228,6 +1231,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 
 						for(size_t i=0;i<listeners.size();++i)
 							listeners[i]->On_FileRemoved(dir_fn+UsnRecord->Filename, closed);
+
+						hardlinkDelete(vol, UsnRecord->FileReferenceNumber);
 					}
 					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);
 				}
@@ -1399,6 +1404,17 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 						{
 							listeners[i]->On_FileModified(real_fn, closed);
 						}
+
+						if (UsnRecord->Reason & USN_REASON_HARD_LINK_CHANGE)
+						{
+							hardlinkChange(cj, vol, UsnRecord->FileReferenceNumber, UsnRecord->ParentFileReferenceNumber, UsnRecord->Filename, closed);
+						}
+
+						if (UsnRecord->Reason & USN_REASON_FILE_DELETE &&
+							closed)
+						{
+							hardlinkDelete(vol, UsnRecord->FileReferenceNumber);
+						}
 					}
 				}
 			}
@@ -1475,6 +1491,32 @@ std::string ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, 
 		has_error=true;
 		return std::string();
 	}
+}
+
+void ChangeJournalWatcher::hardlinkChange(const SChangeJournal &cj, const std::string& vol, uint128 frn, uint128 parent_frn, const std::string& name, bool closed)
+{
+	std::vector<JournalDAO::SParentFrn> parent_frns = journal_dao.getHardLinkParents(strlower(vol), frn.highPart, frn.lowPart);
+
+	for (size_t i = 0; i < parent_frns.size(); ++i)
+	{
+		uint128 parent_frn(parent_frns[i].parent_frn_low, parent_frns[i].parent_frn_high);
+
+		bool filter_error = true;
+		bool has_error = false;
+		std::string dir_fn = getFilename(cj, parent_frn, false, filter_error, has_error);
+		if (!dir_fn.empty())
+		{
+			for (size_t j = 0; j<listeners.size(); ++j)
+			{
+				listeners[j]->On_FileModified(dir_fn+name, closed);
+			}
+		}
+	}
+}
+
+void ChangeJournalWatcher::hardlinkDelete(const std::string & vol, uint128 frn)
+{
+	journal_dao.deleteHardlink(strlower(vol), frn.highPart, frn.lowPart);
 }
 
 uint128 ChangeJournalWatcher::getRootFRN( const std::string & root )

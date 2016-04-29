@@ -553,6 +553,7 @@ void IndexThread::operator()(void)
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
+				cd->resetAllHardlinks();
 			}
 
 			monitor_disk_failures();
@@ -901,8 +902,11 @@ namespace
 
 		std::string volume =  Server->ConvertFromWchar(tvolume.c_str());
 
-		if (volume.find("\\\\?\\") == 0)
+		if (volume.find("\\\\?\\") == 0
+			&& volume.find("\\\\?\\GLOBALROOT") != 0)
+		{
 			volume.erase(0, 4);
+		}
 
 		return volume;
 	}
@@ -1227,6 +1231,12 @@ void IndexThread::indexDirs(bool full_backup)
 				index_keep_files = (backup_dirs[i].flags & EBackupDirFlag_KeepFiles) > 0
 					&& !backup_dirs[i].reset_keep;
 
+				std::string volume = backup_dirs[i].path;
+				normalizeVolume(volume);
+
+				std::string vssvolume = mod_path;
+				normalizeVolume(vssvolume);
+
 #ifndef _WIN32
 				if (index_root_path.empty())
 				{
@@ -1235,7 +1245,7 @@ void IndexThread::indexDirs(bool full_backup)
 #endif
 				if (!index_error)
 				{
-					initialCheck(backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+					initialCheck(strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0);
 				}
 
@@ -1397,7 +1407,7 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 	return false;
 }
 
-bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
+bool IndexThread::initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
 	bool first, int flags, bool use_db, bool symlinked, size_t depth)
 {
 	bool has_include=false;
@@ -1507,6 +1517,12 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
+			}
+
+			if (!use_db
+				&& files[i].nlinks > 1)
+			{
+				enumerateHardLinks(volume, vssvolume, dir + os_file_sep() + files[i].name);
 			}
 
 			has_include=true;
@@ -1623,7 +1639,7 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 
 				if(!files[i].issym || !with_proper_symlinks)
 				{
-					b = initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
+					b = initialCheck(volume, vssvolume, orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
 							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1);
 				}
 
@@ -3819,6 +3835,17 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 				{
 					CloseHandle(hFile);
 
+					uint128 frn = getFrn(fn);
+					uint128 dir_frn = getFrn(vsstpath);
+
+					if (dir_frn != uint128()
+						&& frn != uint128())
+					{
+						cd->resetHardlink(volume, frn.highPart, frn.lowPart);
+						cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+					}
+					
+
 					bool file_is_open = std::binary_search(open_files.begin(),
 						open_files.end(), changed_dirs[cdir_idx]+strlower(files[i].name));
 
@@ -3846,6 +3873,15 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 							nfn=volume+nfn;
 
 						std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
+
+						uint128 frn = getFrn(fn);
+						uint128 dir_frn = getFrn(ndir);
+
+						if (dir_frn != uint128()
+							&& frn != uint128())
+						{
+							cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+						}
 					
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
@@ -3882,6 +3918,15 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 									nfn=volume+nfn;
 
 								std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
+
+								uint128 frn = getFrn(fn);
+								uint128 dir_frn = getFrn(ndir);
+
+								if (dir_frn != uint128()
+									&& frn != uint128())
+								{
+									cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+								}
 														
 								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
 								{
@@ -3922,6 +3967,129 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 	}
 #endif
 }
+
+void IndexThread::enumerateHardLinks(const std::string& volume, const std::string& vssvolume, const std::string & vsspath)
+{
+#ifdef _WIN32
+
+	uint128 frn = getFrn(vsspath);
+
+	if (frn == uint128())
+	{
+		return;
+	}
+
+	if (cd->hasHardLink(volume, frn.highPart, frn.lowPart).exists)
+	{
+		return;
+	}
+
+	std::wstring outBuf;
+	DWORD stringLength = 4096;
+	outBuf.resize(stringLength);
+	HANDLE hFn = FindFirstFileNameW(Server->ConvertToWchar(os_file_prefix(vsspath)).c_str(), 0, &stringLength, &outBuf[0]);
+
+	if (hFn == INVALID_HANDLE_VALUE && GetLastError() == ERROR_MORE_DATA)
+	{
+		outBuf.resize(stringLength);
+		hFn = FindFirstFileNameW(Server->ConvertToWchar(os_file_prefix(vsspath)).c_str(), 0, &stringLength, &outBuf[0]);
+	}
+
+	if (hFn == INVALID_HANDLE_VALUE)
+	{
+		VSSLog("Error reading hard link names of " + vsspath+". "+os_last_error_str(), LL_ERROR);
+	}
+	else
+	{
+		std::string nfn = strlower(Server->ConvertFromWchar(std::wstring(outBuf.begin(), outBuf.begin() + stringLength - 1)));
+		if (nfn[0] == '\\')
+			nfn = vssvolume + nfn;
+		else
+			nfn = vssvolume + os_file_sep() + nfn;
+
+		std::string ndir = ExtractFilePath(nfn, os_file_sep());
+
+		uint128 dir_frn = getFrn(ndir);
+
+		if (dir_frn != uint128())
+		{
+			cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+		}
+
+		BOOL b;
+
+		do
+		{
+			b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+
+			if (!b && GetLastError() == ERROR_MORE_DATA)
+			{
+				outBuf.resize(stringLength);
+				b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+			}
+
+			if (!b && GetLastError() != ERROR_HANDLE_EOF)
+			{
+				VSSLog("Error reading (2) hard link names of " + vsspath +". "+os_last_error_str(), LL_INFO);
+			}
+			else if (b)
+			{
+				std::string nfn = strlower(std::string(outBuf.begin(), outBuf.begin() + stringLength - 1));
+				if (nfn[0] == '\\')
+					nfn = vssvolume + nfn;
+				else
+					nfn = vssvolume + os_file_sep() + nfn;
+
+				std::string ndir = ExtractFilePath(nfn, os_file_sep());
+
+				dir_frn = getFrn(ndir);
+
+				if (dir_frn != uint128())
+				{
+					cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+				}
+			}
+		} while (b);
+
+		FindClose(hFn);
+	}
+#endif //_WIN32
+}
+
+#ifdef _WIN32
+uint128 IndexThread::getFrn(const std::string & fn)
+{
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(fn)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		VSSLog("Cannot open file " + fn + " to read the FRN. "+os_last_error_str(), LL_ERROR);
+		return uint128();
+	}
+	else
+	{
+		BY_HANDLE_FILE_INFORMATION fileInformation;
+		BOOL b = GetFileInformationByHandle(hFile, &fileInformation);
+
+		CloseHandle(hFile);
+
+		if (b)
+		{
+			LARGE_INTEGER frn;
+			frn.LowPart = fileInformation.nFileIndexLow;
+			frn.HighPart = fileInformation.nFileIndexHigh;
+
+			//TODO: Handle ReFS 128-bit FRN
+			return uint128(frn.QuadPart);
+		}
+		else
+		{
+			VSSLog("Cannot get FRN of " + fn +". "+os_last_error_str(), LL_ERROR);
+			return uint128();
+		}
+	}
+}
+#endif
 
 std::string IndexThread::escapeListName( const std::string& listname )
 {
@@ -5385,6 +5553,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		curr->size=files[i].size;
 		curr->issym=files[i].issym;
 		curr->isspecialf=files[i].isspecialf;
+		curr->nlinks = files[i].nlinks;
 
 		if (curr->issym)
 		{

@@ -16,6 +16,7 @@
 #include <Vss.h>
 #include <VsWriter.h>
 #include <VsBackup.h>
+#include "ChangeJournalWatcher.h"
 #else
 #include <win2003/vss.h>
 #include <win2003/vswriter.h>
@@ -217,7 +218,7 @@ private:
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 	void handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files);
 
-	bool initialCheck(std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth);
+	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth);
 
 	void indexDirs(bool full_backup);
 
@@ -292,6 +293,12 @@ private:
 	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
 
 	void handleHardLinks(const std::string& bpath, const std::string& vsspath);
+
+	void enumerateHardLinks(const std::string& volume, const std::string& vssvolume, const std::string& vsspath);
+
+#ifdef _WIN32
+	uint128 getFrn(const std::string& fn);
+#endif
 
 	std::string escapeListName(const std::string& listname);
 

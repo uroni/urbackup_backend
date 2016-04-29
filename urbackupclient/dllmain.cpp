@@ -568,6 +568,12 @@ void update_client23_24(IDatabase* db)
 	db->Write("CREATE TABLE virtual_client_group_offsets (id INTEGER PRIMARY KEY, virtual_client TEXT UNIQUE, group_offset INTEGER)");
 }
 
+void update_client24_25(IDatabase* db)
+{
+	db->Write("CREATE TABLE hardlinks (vol TEXT, frn_high INTEGER, frn_low INTEGER, parent_frn_high INTEGER, parent_frn_low INTEGER,"
+		"PRIMARY KEY(vol, frn_high, frn_low, parent_frn_high, parent_frn_low) ) WITHOUT ROWID");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -580,7 +586,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 24;
+	int max_v = 25;
 
 	if (ver > max_v)
 	{
@@ -692,6 +698,10 @@ bool upgrade_client(void)
 				break;
 			case 23:
 				update_client23_24(db);
+				++ver;
+				break;
+			case 24:
+				update_client24_25(db);
 				++ver;
 				break;
 			default:

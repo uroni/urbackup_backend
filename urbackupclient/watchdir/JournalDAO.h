@@ -49,6 +49,11 @@ public:
 		int64 pid;
 		int64 pid_high;
 	};
+	struct SParentFrn
+	{
+		int64 parent_frn_high;
+		int64 parent_frn_low;
+	};
 
 
 	SDeviceInfo getDeviceInfo(const std::string& device_name);
@@ -69,6 +74,8 @@ public:
 	void delJournalData(const std::string& device_name);
 	void delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid);
 	void delJournalDeviceId(const std::string& device_name);
+	std::vector<SParentFrn> getHardLinkParents(const std::string& volume, int64 frn_high, int64 frn_low);
+	void deleteHardlink(const std::string& vol, int64 frn_high, int64 frn_low);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -93,5 +100,7 @@ private:
 	IQuery* q_delJournalData;
 	IQuery* q_delFrnEntryViaFrn;
 	IQuery* q_delJournalDeviceId;
+	IQuery* q_getHardLinkParents;
+	IQuery* q_deleteHardlink;
 	//@-SQLGenVariablesEnd
 };

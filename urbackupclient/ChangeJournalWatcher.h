@@ -153,6 +153,10 @@ private:
 
 	std::string getNameFromMFTByFRN(const SChangeJournal &cj, uint128 frn, uint128& parent_frn, bool& has_error);
 
+	void hardlinkChange(const SChangeJournal &cj, const std::string& vol, uint128 frn, uint128 parent_frn, const std::string& name, bool closed);
+
+	void hardlinkDelete(const std::string& vol, uint128 frn);
+
 	void resetAll(const std::string& vol);
 
 	IDatabase *db;

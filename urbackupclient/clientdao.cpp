@@ -107,6 +107,10 @@ void ClientDAO::prepareQueriesGen(void)
 	q_addBackupDir=NULL;
 	q_delBackupDir=NULL;
 	q_setResetKeep=NULL;
+	q_resetHardlink=NULL;
+	q_hasHardLink=NULL;
+	q_addHardlink=NULL;
+	q_resetAllHardlinks=NULL;
 }
 
 //@-SQLGenDestruction
@@ -122,12 +126,42 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_addBackupDir);
 	db->destroyQuery(q_delBackupDir);
 	db->destroyQuery(q_setResetKeep);
+	db->destroyQuery(q_resetHardlink);
+	db->destroyQuery(q_hasHardLink);
+	db->destroyQuery(q_addHardlink);
+	db->destroyQuery(q_resetAllHardlinks);
 }
 
 void ClientDAO::restartQueries(void)
 {
 	destroyQueries();
 	prepareQueries();
+}
+
+std::string ClientDAO::escapeGlob(const std::string& glob)
+{
+	std::string ret;
+	ret.reserve(glob.size());
+	for (size_t i = 0; i<glob.size(); ++i)
+	{
+		if (glob[i] == '?')
+		{
+			ret += "[?]";
+		}
+		else if (glob[i] == '[')
+		{
+			ret += "[[]";
+		}
+		else if (glob[i] == '*')
+		{
+			ret += "[*]";
+		}
+		else
+		{
+			ret += glob[i];
+		}
+	}
+	return ret;
 }
 
 bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data)
@@ -845,29 +879,85 @@ void ClientDAO::setResetKeep(int val, int64 id)
 	q_setResetKeep->Reset();
 }
 
-std::string ClientDAO::escapeGlob(const std::string& glob)
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::resetHardlink
+* @sql
+*    DELETE FROM hardlinks WHERE vol=:vol(string) AND frn_high=:frn_high(int64) AND frn_low=:frn_low(int64)
+**/
+void ClientDAO::resetHardlink(const std::string& vol, int64 frn_high, int64 frn_low)
 {
-	std::string ret;
-	ret.reserve(glob.size());
-	for (size_t i = 0; i<glob.size(); ++i)
+	if(q_resetHardlink==NULL)
 	{
-		if (glob[i] == '?')
-		{
-			ret += "[?]";
-		}
-		else if (glob[i] == '[')
-		{
-			ret += "[[]";
-		}
-		else if (glob[i] == '*')
-		{
-			ret += "[*]";
-		}
-		else
-		{
-			ret += glob[i];
-		}
+		q_resetHardlink=db->Prepare("DELETE FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=?", false);
+	}
+	q_resetHardlink->Bind(vol);
+	q_resetHardlink->Bind(frn_high);
+	q_resetHardlink->Bind(frn_low);
+	q_resetHardlink->Write();
+	q_resetHardlink->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ClientDAO::hasHardLink
+* @return int64 frn_low
+* @sql
+*    SELECT frn_low FROM hardlinks WHERE vol=:vol(string) AND frn_high=:frn_high(int64) AND frn_low=:frn_low(int64) LIMIT 1
+**/
+ClientDAO::CondInt64 ClientDAO::hasHardLink(const std::string& vol, int64 frn_high, int64 frn_low)
+{
+	if(q_hasHardLink==NULL)
+	{
+		q_hasHardLink=db->Prepare("SELECT frn_low FROM hardlinks WHERE vol=? AND frn_high=? AND frn_low=? LIMIT 1", false);
+	}
+	q_hasHardLink->Bind(vol);
+	q_hasHardLink->Bind(frn_high);
+	q_hasHardLink->Bind(frn_low);
+	db_results res=q_hasHardLink->Read();
+	q_hasHardLink->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0]["frn_low"]);
 	}
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::addHardlink
+* @sql
+*    INSERT INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low)
+*	 VALUES (:vol(string), :frn_high(int64), :frn_low(int64), :parent_frn_high(int64), :parent_frn_low(int64))
+**/
+void ClientDAO::addHardlink(const std::string& vol, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low)
+{
+	if(q_addHardlink==NULL)
+	{
+		q_addHardlink=db->Prepare("INSERT INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low) VALUES (?, ?, ?, ?, ?)", false);
+	}
+	q_addHardlink->Bind(vol);
+	q_addHardlink->Bind(frn_high);
+	q_addHardlink->Bind(frn_low);
+	q_addHardlink->Bind(parent_frn_high);
+	q_addHardlink->Bind(parent_frn_low);
+	q_addHardlink->Write();
+	q_addHardlink->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::resetAllHardlinks
+* @sql
+*    DELETE FROM hardlinks
+**/
+void ClientDAO::resetAllHardlinks(void)
+{
+	if(q_resetAllHardlinks==NULL)
+	{
+		q_resetAllHardlinks=db->Prepare("DELETE FROM hardlinks", false);
+	}
+	q_resetAllHardlinks->Write();
+}

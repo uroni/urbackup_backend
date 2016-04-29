@@ -79,6 +79,7 @@ struct SFileAndHash
 	std::string hash;
 	bool issym;
 	bool isspecialf;
+	size_t nlinks;
 
 	std::string symlink_target;
 
@@ -182,6 +183,10 @@ public:
 	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
 	void delBackupDir(int64 id);
 	void setResetKeep(int val, int64 id);
+	void resetHardlink(const std::string& vol, int64 frn_high, int64 frn_low);
+	CondInt64 hasHardLink(const std::string& vol, int64 frn_high, int64 frn_low);
+	void addHardlink(const std::string& vol, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low);
+	void resetAllHardlinks(void);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -227,6 +232,10 @@ private:
 	IQuery* q_addBackupDir;
 	IQuery* q_delBackupDir;
 	IQuery* q_setResetKeep;
+	IQuery* q_resetHardlink;
+	IQuery* q_hasHardLink;
+	IQuery* q_addHardlink;
+	IQuery* q_resetAllHardlinks;
 	//@-SQLGenVariablesEnd
 
 	bool with_files_tmp;
