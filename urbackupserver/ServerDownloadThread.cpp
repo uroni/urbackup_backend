@@ -158,12 +158,15 @@ void ServerDownloadThread::operator()( void )
 					continue;
 				}
 			}
-				
-		    download_nok_ids.add(curr.id);
-
+			
+			if (!curr.metadata_only)
 			{
-				IScopedLock lock(mutex);
-				all_downloads_ok=false;
+				download_nok_ids.add(curr.id);
+
+				{
+					IScopedLock lock(mutex);
+					all_downloads_ok = false;
+				}
 			}
 
 			if(curr.patch_dl_files.prepared)
