@@ -3820,7 +3820,7 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 					CloseHandle(hFile);
 
 					bool file_is_open = std::binary_search(open_files.begin(),
-						open_files.end(), changed_dirs[cdir_idx]+os_file_sep()+strlower(files[i].name));
+						open_files.end(), changed_dirs[cdir_idx]+strlower(files[i].name));
 
 					std::wstring outBuf;
 					DWORD stringLength=4096;
@@ -3845,7 +3845,7 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 						else
 							nfn=volume+nfn;
 
-						std::string ndir=ExtractFilePath(nfn)+os_file_sep();
+						std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
 					
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
@@ -3881,7 +3881,7 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 								else
 									nfn=volume+nfn;
 
-								std::string ndir=ExtractFilePath(nfn)+os_file_sep();
+								std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
 														
 								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
 								{
@@ -3909,11 +3909,17 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 		}
 	}
 
-	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
-	std::sort(changed_dirs.begin(), changed_dirs.end());
+	if (!additional_changed_dirs.empty())
+	{
+		changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
+		std::sort(changed_dirs.begin(), changed_dirs.end());
+	}
 
-	open_files.insert(open_files.end(), additional_open_files.begin(), additional_open_files.end());
-	std::sort(open_files.begin(), open_files.end());
+	if (!additional_open_files.empty())
+	{
+		open_files.insert(open_files.end(), additional_open_files.begin(), additional_open_files.end());
+		std::sort(open_files.begin(), open_files.end());
+	}
 #endif
 }
 
