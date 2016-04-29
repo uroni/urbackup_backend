@@ -110,7 +110,16 @@ std::vector<CPPToken> tokenizeFile(std::string &cppfile)
 			if (ch == '\n')
 			{
 				state = 0;
-				tokens.push_back(CPPToken(cdata.substr(0, cdata.size()-1), CPPFileTokenType_Comment));
+				if (cdata.size() > 2 && cdata[cdata.size() - 2] == '\r')
+				{
+					tokens.push_back(CPPToken(cdata.substr(0, cdata.size() - 2), CPPFileTokenType_Comment));
+					cdata = "\r\n";
+				}
+				else
+				{
+					tokens.push_back(CPPToken(cdata.substr(0, cdata.size() - 1), CPPFileTokenType_Comment));
+					cdata = "\n";
+				}
 				cdata = "\n";
 			}
 			break;
@@ -221,7 +230,12 @@ std::vector<AnnotatedCode> getAnnotatedCode(const std::vector<CPPToken>& tokens)
 			std::map<std::string, std::string> annotations;
 
 			//Doesn't work with MSVC2015 (out of stack memory): "@([^ \\r\\n]*)[ ]*(((?!@)(?!\\*/)(\\S|\\s))*)"
-			std::regex find_annotations("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)(?=(\\*/)|@)", std::regex::ECMAScript);
+			std::regex find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)(?=(\\*/)|@)", std::regex::ECMAScript);
+
+			if (tokens[i].data.find("//") == 0)
+			{
+				find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)", std::regex::ECMAScript);
+			}
 
 			for(auto it=std::regex_iterator<std::string::const_iterator>(tokens[i].data.begin(), tokens[i].data.end(), find_annotations);
 				it!=std::regex_iterator<std::string::const_iterator>();++it)
