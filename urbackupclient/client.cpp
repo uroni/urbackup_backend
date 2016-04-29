@@ -3984,6 +3984,8 @@ void IndexThread::enumerateHardLinks(const std::string& volume, const std::strin
 		return;
 	}
 
+	DBScopedWriteTransaction write_transaction(db);
+
 	std::wstring outBuf;
 	DWORD stringLength = 4096;
 	outBuf.resize(stringLength);
