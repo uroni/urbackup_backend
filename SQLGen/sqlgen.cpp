@@ -95,6 +95,10 @@ std::vector<CPPToken> tokenizeFile(std::string &cppfile)
 				}
 				cdata = "//";
 			}
+			else
+			{
+				state = 0;
+			}
 			break;
 		case 2:
 			if (ch == '*')
