@@ -929,14 +929,14 @@ ClientDAO::CondInt64 ClientDAO::hasHardLink(const std::string& vol, int64 frn_hi
 * @-SQLGenAccess
 * @func void ClientDAO::addHardlink
 * @sql
-*    INSERT INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low)
+*    INSERT OR IGNORE INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low)
 *	 VALUES (:vol(string), :frn_high(int64), :frn_low(int64), :parent_frn_high(int64), :parent_frn_low(int64))
 **/
 void ClientDAO::addHardlink(const std::string& vol, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low)
 {
 	if(q_addHardlink==NULL)
 	{
-		q_addHardlink=db->Prepare("INSERT INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low) VALUES (?, ?, ?, ?, ?)", false);
+		q_addHardlink=db->Prepare("INSERT OR IGNORE INTO hardlinks (vol, frn_high, frn_low, parent_frn_high, parent_frn_low) VALUES (?, ?, ?, ?, ?)", false);
 	}
 	q_addHardlink->Bind(vol);
 	q_addHardlink->Bind(frn_high);

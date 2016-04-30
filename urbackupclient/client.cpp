@@ -1140,6 +1140,9 @@ void IndexThread::indexDirs(bool full_backup)
 #endif
 				std::string extra;
 
+				std::string volume = backup_dirs[i].path;
+				normalizeVolume(volume);
+
 #ifdef _WIN32
 				if (!shadowcopy_ok || !onlyref)
 				{
@@ -1191,7 +1194,7 @@ void IndexThread::indexDirs(bool full_backup)
 					if (!full_backup)
 					{
 						VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
-						handleHardLinks(backup_dirs[i].path, mod_path);
+						handleHardLinks(backup_dirs[i].path, mod_path, strlower(volume));
 					}
 #endif
 				}
@@ -1231,9 +1234,6 @@ void IndexThread::indexDirs(bool full_backup)
 				index_keep_files = (backup_dirs[i].flags & EBackupDirFlag_KeepFiles) > 0
 					&& !backup_dirs[i].reset_keep;
 
-				std::string volume = backup_dirs[i].path;
-				normalizeVolume(volume);
-
 				std::string vssvolume = mod_path;
 				normalizeVolume(vssvolume);
 
@@ -1251,6 +1251,7 @@ void IndexThread::indexDirs(bool full_backup)
 
 				commitModifyFilesBuffer();
 				commitAddFilesBuffer();
+				commitModifyHardLinks();
 			}
 
 			if(stop_index || index_error)
@@ -1316,6 +1317,7 @@ void IndexThread::indexDirs(bool full_backup)
 
 	commitModifyFilesBuffer();
 	commitAddFilesBuffer();
+	commitModifyHardLinks();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -3736,7 +3738,7 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 #endif
 }
 
-void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath)
+void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume)
 {
 #ifdef _WIN32
 	std::string prefixedbpath=os_file_prefix(bpath);
@@ -3836,13 +3838,16 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 					CloseHandle(hFile);
 
 					uint128 frn = getFrn(fn);
-					uint128 dir_frn = getFrn(vsstpath);
 
-					if (dir_frn != uint128()
-						&& frn != uint128())
+
+					SHardlinkKey hlkey = { normalized_volume, static_cast<int64>(frn.highPart), static_cast<int64>(frn.lowPart) };
+					bool add_hardlinks_db = std::find(modify_hardlink_buffer_keys.begin(),
+						modify_hardlink_buffer_keys.end(), hlkey) == modify_hardlink_buffer_keys.end();
+
+					if (frn != uint128()
+						&& add_hardlinks_db)
 					{
-						cd->resetHardlink(volume, frn.highPart, frn.lowPart);
-						cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+						addResetHardlink(normalized_volume, frn.highPart, frn.lowPart);
 					}
 					
 
@@ -3867,20 +3872,29 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 					else
 					{
 						std::string nfn = strlower(Server->ConvertFromWchar(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1)));
-						if(nfn[0]=='\\')
-							nfn=volume+nfn.substr(1);
+						std::string vssnfn;
+						if (nfn[0] == '\\')
+						{
+							vssnfn = vssvolume + nfn.substr(1);
+							nfn = volume + nfn.substr(1);
+						}
 						else
-							nfn=volume+nfn;
+						{
+							vssnfn = vssvolume + nfn;
+							nfn = volume + nfn;
+						}
 
 						std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
 
-						uint128 frn = getFrn(fn);
-						uint128 dir_frn = getFrn(ndir);
-
-						if (dir_frn != uint128()
-							&& frn != uint128())
+						if (add_hardlinks_db)
 						{
-							cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+							uint128 dir_frn = getFrn(ExtractFilePath(vssnfn, os_file_sep()));
+
+							if (dir_frn != uint128()
+								&& frn != uint128())
+							{
+								addHardLink(normalized_volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+							}
 						}
 					
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
@@ -3912,20 +3926,29 @@ void IndexThread::handleHardLinks(const std::string& bpath, const std::string& v
 							else if(b)
 							{
 								std::string nfn = strlower(std::string(outBuf.begin(), outBuf.begin()+stringLength-1));
-								if(nfn[0]=='\\')
-									nfn=volume+nfn.substr(1);
+								std::string vssnfn;
+								if (nfn[0] == '\\')
+								{
+									vssnfn = vssvolume + nfn.substr(1);
+									nfn = volume + nfn.substr(1);
+								}
 								else
-									nfn=volume+nfn;
+								{
+									vssnfn = vssvolume + nfn;
+									nfn = volume + nfn;
+								}
 
 								std::string ndir=ExtractFilePath(nfn, os_file_sep())+os_file_sep();
 
-								uint128 frn = getFrn(fn);
-								uint128 dir_frn = getFrn(ndir);
-
-								if (dir_frn != uint128()
-									&& frn != uint128())
+								if (add_hardlinks_db)
 								{
-									cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+									uint128 dir_frn = getFrn(ExtractFilePath(vssnfn, os_file_sep()));
+
+									if (dir_frn != uint128()
+										&& frn != uint128())
+									{
+										addHardLink(normalized_volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+									}
 								}
 														
 								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
@@ -3979,12 +4002,12 @@ void IndexThread::enumerateHardLinks(const std::string& volume, const std::strin
 		return;
 	}
 
-	if (cd->hasHardLink(volume, frn.highPart, frn.lowPart).exists)
+	SHardlinkKey hlkey = { volume, static_cast<int64>(frn.highPart), static_cast<int64>(frn.lowPart) };
+	if (cd->hasHardLink(volume, frn.highPart, frn.lowPart).exists
+		|| std::find(modify_hardlink_buffer_keys.begin(), modify_hardlink_buffer_keys.end(), hlkey)!= modify_hardlink_buffer_keys.end() )
 	{
 		return;
 	}
-
-	DBScopedWriteTransaction write_transaction(db);
 
 	std::wstring outBuf;
 	DWORD stringLength = 4096;
@@ -4015,7 +4038,7 @@ void IndexThread::enumerateHardLinks(const std::string& volume, const std::strin
 
 		if (dir_frn != uint128())
 		{
-			cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+			addHardLink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
 		}
 
 		BOOL b;
@@ -4048,7 +4071,7 @@ void IndexThread::enumerateHardLinks(const std::string& volume, const std::strin
 
 				if (dir_frn != uint128())
 				{
-					cd->addHardlink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
+					addHardLink(volume, frn.highPart, frn.lowPart, dir_frn.highPart, dir_frn.lowPart);
 				}
 			}
 		} while (b);
@@ -4056,6 +4079,45 @@ void IndexThread::enumerateHardLinks(const std::string& volume, const std::strin
 		FindClose(hFn);
 	}
 #endif //_WIN32
+}
+
+void IndexThread::addResetHardlink(const std::string & volume, int64 frn_high, int64 frn_low)
+{
+	if (modify_hardlink_buffer_keys.size() > 1000
+		|| modify_hardlink_buffer.size() > 10000)
+	{
+		commitModifyHardLinks();
+	}
+
+	SHardlinkKey key = { volume, frn_high, frn_low };
+	modify_hardlink_buffer_keys.push_back(key);
+}
+
+void IndexThread::addHardLink(const std::string & volume, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low)
+{
+	SHardlinkKey key = { volume, frn_high, frn_low };
+	SHardlink hl = { key, parent_frn_high, parent_frn_low };
+	modify_hardlink_buffer.push_back(hl);
+}
+
+void IndexThread::commitModifyHardLinks()
+{
+	DBScopedWriteTransaction transaction(db);
+
+	for (size_t i = 0; i < modify_hardlink_buffer_keys.size(); ++i)
+	{
+		cd->resetHardlink(modify_hardlink_buffer_keys[i].volume, modify_hardlink_buffer_keys[i].frn_high, modify_hardlink_buffer_keys[i].frn_low);
+	}
+
+	modify_hardlink_buffer_keys.clear();
+
+	for (size_t i = 0; i < modify_hardlink_buffer.size(); ++i)
+	{
+		cd->addHardlink(modify_hardlink_buffer[i].key.volume, modify_hardlink_buffer[i].key.frn_high, modify_hardlink_buffer[i].key.frn_low,
+			modify_hardlink_buffer[i].parent_frn_high, modify_hardlink_buffer[i].parent_frn_low);
+	}
+
+	modify_hardlink_buffer.clear();
 }
 
 #ifdef _WIN32
@@ -5145,7 +5207,7 @@ bool IndexThread::disableCbt(std::string volume)
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
 	{
-		return false;
+		return true;
 	}
 
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");

@@ -149,6 +149,27 @@ struct SBackupScript
 	}
 };
 
+struct SHardlinkKey
+{
+	bool operator==(const SHardlinkKey& other) const
+	{
+		return volume == other.volume
+			&& frn_high == other.frn_high
+			&& frn_low == other.frn_low;
+	}
+
+	std::string volume;
+	int64 frn_high;
+	int64 frn_low;
+};
+
+struct SHardlink
+{
+	SHardlinkKey key;
+	int64 parent_frn_high;
+	int64 parent_frn_low;
+};
+
 class ClientDAO;
 
 class IndexThread : public IThread
@@ -292,9 +313,15 @@ private:
 
 	static void addHardExcludes(std::vector<std::string>& exclude_dirs);
 
-	void handleHardLinks(const std::string& bpath, const std::string& vsspath);
+	void handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume);
 
 	void enumerateHardLinks(const std::string& volume, const std::string& vssvolume, const std::string& vsspath);
+
+	void addResetHardlink(const std::string& volume, int64 frn_high, int64 frn_low);
+
+	void addHardLink(const std::string& volume, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low);
+
+	void commitModifyHardLinks();
 
 #ifdef _WIN32
 	uint128 getFrn(const std::string& fn);
@@ -401,6 +428,9 @@ private:
 	size_t add_file_buffer_size;
 
 	int64 last_file_buffer_commit_time;
+
+	std::vector<SHardlinkKey> modify_hardlink_buffer_keys;
+	std::vector<SHardlink> modify_hardlink_buffer;
 
 	int index_group;
 	int index_flags;
