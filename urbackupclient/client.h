@@ -16,7 +16,6 @@
 #include <Vss.h>
 #include <VsWriter.h>
 #include <VsBackup.h>
-#include "ChangeJournalWatcher.h"
 #else
 #include <win2003/vss.h>
 #include <win2003/vswriter.h>
@@ -27,7 +26,9 @@
 #include <winxp/vswriter.h>
 #include <winxp/vsbackup.h>
 #endif //VSS_XP
-#endif
+
+#include "ChangeJournalWatcher.h"
+#endif //_WIN32
 
 #ifndef _WIN32
 #define VSS_ID GUID
