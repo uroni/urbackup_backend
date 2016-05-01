@@ -662,11 +662,15 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 						copied_file);
 
 					copy_file = false;
+
+					ServerLogger::Log(logid, "META: Linked file: \"" + os_path + "\"", LL_DEBUG);
 				}
 			}
 
 			if (copy_file)
 			{
+				ServerLogger::Log(logid, "META: Copying file: \"" + os_path + "\"", LL_DEBUG);
+
 				std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(os_path), MODE_WRITE));
 
 				if (output_f.get() == NULL)
