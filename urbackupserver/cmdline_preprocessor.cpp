@@ -213,6 +213,26 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("LOG_ROTATE_FILESIZE", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--rotate-filesize");
+				real_args.push_back(strlower(val));
+			}
+		}
+		if (settings->getValue("LOG_ROTATE_NUM", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--rotate-numfiles");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -277,6 +297,14 @@ int action_run(std::vector<std::string> args)
 		"Read configuration parameters from config file",
 		false, "", "path", cmd);
 #endif
+
+	TCLAP::ValueArg<int> rotate_filesize_arg("g", "rotate-filesize",
+		"Maximum size of log file before rotation",
+		false, 0, "bytes", cmd);
+
+	TCLAP::ValueArg<int> rotate_num_files_arg("j", "rotate-num-files",
+		"Max number of log files during rotation",
+		false, 0, "num", cmd);
 
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
@@ -358,6 +386,18 @@ int action_run(std::vector<std::string> args)
 	{
 		real_args.push_back("--http_server");
 		real_args.push_back(disable_http_server_arg.getValue() ? "false" : "true");
+	}
+	if (rotate_filesize_arg.getValue() > 0
+		&& std::find(real_args.begin(), real_args.end(), "--rotate-filesize") == real_args.end())
+	{
+		real_args.push_back("--rotate-filesize");
+		real_args.push_back(convert(rotate_filesize_arg.getValue()));
+	}
+	if (rotate_num_files_arg.getValue() > 0
+		&& std::find(real_args.begin(), real_args.end(), "--rotate-numfiles") == real_args.end())
+	{
+		real_args.push_back("--rotate-numfiles");
+		real_args.push_back(convert(rotate_num_files_arg.getValue()));
 	}
 
 #ifndef _WIN32
