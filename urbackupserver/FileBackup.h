@@ -107,7 +107,7 @@ protected:
 	void deleteBackup();
 	bool createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir);
 	bool startFileMetadataDownloadThread();
-	bool stopFileMetadataDownloadThread(bool stopped);
+	bool stopFileMetadataDownloadThread(bool stopped, size_t expected_embedded_metadata_files);
 	void parseSnapshotFailed(const std::string& logline);
 	void addFilePathCorrections(const std::map<std::string, std::string>& c);
 

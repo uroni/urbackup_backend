@@ -77,7 +77,8 @@ void FileMetadataDownloadThread::operator()()
 }
 
 bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metadata_dir,
-	const std::string& backup_dir, INotEnoughSpaceCallback *cb, BackupServerHash* local_hash, std::map<std::string, std::string>& filepath_corrections, bool is_complete)
+	const std::string& backup_dir, INotEnoughSpaceCallback *cb, BackupServerHash* local_hash, std::map<std::string, std::string>& filepath_corrections, bool is_complete,
+	size_t& num_embedded_files)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -759,6 +760,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			{
 				metadataf_pos += output_f_size + SHA512_DIGEST_SIZE;
 			}
+
+			++num_embedded_files;
 		}
 		else
 		{
@@ -1394,7 +1397,8 @@ int check_metadata()
 	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0, 0);
 
 	str_map corrections;
-	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, NULL, corrections, true)?0:1;
+	size_t num_embedded_files = 0;
+	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, NULL, corrections, true, num_embedded_files)?0:1;
 }
 
 } //namespace server

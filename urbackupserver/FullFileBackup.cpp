@@ -609,7 +609,7 @@ bool FullFileBackup::doFileBackup()
 	waitForFileThreads();
 
 
-	stopFileMetadataDownloadThread(false);
+	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
 
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 

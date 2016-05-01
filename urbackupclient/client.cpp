@@ -5137,7 +5137,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 
 	hdat_img->Sync();
 
-	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes) + " have changed on volume", LL_INFO);
+	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes) + " have changed on volume "+ volume, LL_INFO);
 
 	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat", MODE_RW_CREATE));
 

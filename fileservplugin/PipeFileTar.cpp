@@ -524,6 +524,8 @@ std::string PipeFileTar::getStdErr()
 	std::string symlink_target;
 	int64 size;
 
+	_u32 small_files = 0;
+
 	int64 starttime = Server->getTimeMS();
 
 	while (true)
@@ -575,6 +577,16 @@ std::string PipeFileTar::getStdErr()
 					has_next = true;
 					PipeSessions::injectPipeSession(remote_fn,
 						backupnum, new PipeFileTar(pipe_file, tar_file, file_offset, backupnum, fn_random, output_fn, server_token, identity), buildCurrMetadata());
+
+					if (small_files > 0)
+					{
+						CWData smallfilemsg;
+						smallfilemsg.addChar(3);
+						smallfilemsg.addUInt(small_files);
+
+						stderr_ret.append(smallfilemsg.getDataPtr(), smallfilemsg.getDataSize());
+					}
+
 					return stderr_ret;
 				}
 				else
@@ -584,6 +596,7 @@ std::string PipeFileTar::getStdErr()
 			}
 			else
 			{
+				++small_files;
 				std::string curr_metadata = buildCurrMetadata();
 				lock.relock(NULL);
 				PipeSessions::transmitFileMetadataAndFiledataWait(public_fn, curr_metadata, server_token, identity, this);
@@ -594,6 +607,15 @@ std::string PipeFileTar::getStdErr()
 		{
 			break;
 		}
+	}
+
+	if (small_files > 0)
+	{
+		CWData smallfilemsg;
+		smallfilemsg.addChar(3);
+		smallfilemsg.addUInt(small_files);
+
+		stderr_ret.append(smallfilemsg.getDataPtr(), smallfilemsg.getDataSize());
 	}
 
 	stderr_ret += pipe_file->pipe_file->getStdErr();

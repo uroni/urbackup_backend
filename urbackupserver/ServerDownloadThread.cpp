@@ -49,7 +49,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -1273,6 +1273,11 @@ std::map<std::string, std::string>& ServerDownloadThread::getFilePathCorrections
 	return filepath_corrections;
 }
 
+size_t ServerDownloadThread::getNumEmbeddedMetadataFiles()
+{
+	return num_embedded_metadata_files;
+}
+
 void ServerDownloadThread::queueSkip()
 {
 	SQueueItem ni;
@@ -1421,7 +1426,7 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 						data_size = little_endian(data_size);
 
 						if (i + 1 + sizeof(_u32) + data_size <= script_output.size()
-							&& data_size<1*1024*1024)
+							&& data_size < 1 * 1024 * 1024)
 						{
 							if (!next(cfn, 0, "SCRIPT|urbackup/TAR"))
 							{
@@ -1500,9 +1505,9 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 								if (is_dir != 0)
 								{
 									if (!os_directory_exists(os_file_prefix(backuppath + os_path))
-										&& !os_create_dir(os_file_prefix(backuppath + os_path) ) )
+										&& !os_create_dir(os_file_prefix(backuppath + os_path)))
 									{
-										ServerLogger::Log(logid, "Error creating TAR dir at \""+ backuppath + os_path + "\"", LL_ERROR);
+										ServerLogger::Log(logid, "Error creating TAR dir at \"" + backuppath + os_path + "\"", LL_ERROR);
 										break;
 									}
 
@@ -1543,6 +1548,23 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 						ServerLogger::Log(logid, "Error parsing script output for command \"" + todl.fn + "\" -4", LL_ERROR);
 						break;
 					}
+				}
+				else if (script_output[i] == 3)
+				{
+					if (i + sizeof(_u32) + 1 <= script_output.size())
+					{
+						_u32 small_files;
+						memcpy(&small_files, &script_output[i + 1], sizeof(small_files));
+						small_files = little_endian(small_files);
+						num_embedded_metadata_files += small_files;
+					}
+					else
+					{
+						ServerLogger::Log(logid, "Error parsing script output for command \"" + todl.fn + "\" -4", LL_ERROR);
+						break;
+					}
+
+					i += sizeof(_u32) + 1;
 				}
 				else
 				{

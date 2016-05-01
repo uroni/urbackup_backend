@@ -1775,7 +1775,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 
 		if(!metadata_download_thread->isDownloading())
 		{
-			stopFileMetadataDownloadThread(true);
+			stopFileMetadataDownloadThread(true, 0);
 			return false;
 		}
 	}	
@@ -1783,7 +1783,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 	return true;
 }
 
-bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
+bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_embedded_metadata_files)
 {
 	const int64 stalled_bytes_per_second = 4096;
 
@@ -1825,11 +1825,18 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 
 		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
-			bool b = metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, local_hash.get(), filepath_corrections, !metadata_download_thread->getHasTimeoutError());
+			size_t num_embedded_metadata_files = 0;
+			bool b = metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, local_hash.get(),
+				filepath_corrections, !metadata_download_thread->getHasTimeoutError(), num_embedded_metadata_files);
 
 			if (!b
 				&& metadata_download_thread->getHasFatalError())
 			{
+				disk_error = true;
+			}
+			else if (num_embedded_metadata_files != expected_embedded_metadata_files)
+			{
+				ServerLogger::Log(logid, "Wrong number of embedded meta-data files. Expected "+convert(expected_embedded_metadata_files)+" but got "+convert(num_embedded_metadata_files), LL_ERROR);
 				disk_error = true;
 			}
 

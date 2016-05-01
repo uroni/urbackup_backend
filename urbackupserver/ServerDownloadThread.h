@@ -199,6 +199,8 @@ public:
 
 	std::map<std::string, std::string>& getFilePathCorrections();
 
+	size_t getNumEmbeddedMetadataFiles();
+
 private:
 	std::string getDLPath(SQueueItem todl);
 
@@ -259,6 +261,7 @@ private:
 	bool with_metadata;
 	bool with_hashes;
 	
+	size_t num_embedded_metadata_files;
 
 	IMutex* mutex;
 	ICondition* cond;
