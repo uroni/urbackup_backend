@@ -626,6 +626,21 @@ bool ServerChannelThread::hasDownloadImageRights()
 	return !client_right_ids.empty();
 }
 
+int ServerChannelThread::getLastBackupid(IDatabase* db)
+{
+	IQuery* q = db->Prepare("SELECT id FROM backups WHERE clientid=? AND complete=1 ORDER BY backuptime DESC LIMIT 1");
+	q->Bind(clientid);
+	db_results res = q->Read();
+	q->Reset();
+
+	if (!res.empty())
+	{
+		return watoi(res[0]["id"]);
+	}
+
+	return 0;
+}
+
 void ServerChannelThread::GET_BACKUPCLIENTS(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -797,6 +812,11 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	if(has_backupid)
 	{
 		backupid=watoi(params["backupid"])-local_id_offset;
+
+		if (backupid == 0)
+		{
+			backupid = getLastBackupid(db);
+		}
 	}
 
 	std::string u_path=params["path"];
@@ -1131,6 +1151,11 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		{
 			ret.set("err", 2);
 			break;
+		}
+
+		if (backupid == 0)
+		{
+			backupid = getLastBackupid(db);
 		}
 
 		std::string u_path=params["path"];

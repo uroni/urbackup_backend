@@ -561,9 +561,9 @@ int action_browse(std::vector<std::string> args)
 
 	PwClientCmd pw_client_cmd(cmd, false);
 
-	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
-		"Backupid of backup in which to browse files/folders",
-		false, 0, "id", cmd);
+	TCLAP::ValueArg<std::string> backupid_arg("b", "backupid",
+		"Backupid of backup in which to browse files/folders or \"last\" for last complete backup",
+		false, "", "id", cmd);
 
 	TCLAP::ValueArg<std::string> path_arg("d", "path",
 		"Path of folder/file to which to browse",
@@ -603,9 +603,21 @@ int action_browse(std::vector<std::string> args)
 	else
 	{
 		int* pbackupid = NULL;
+		int backupid = 0;
 		if(backupid_arg.isSet())
 		{
-			pbackupid = &backupid_arg.getValue();
+			if (backupid_arg.getValue() != "last"
+				&& convert(atoi(backupid_arg.getValue().c_str())) != backupid_arg.getValue())
+			{
+				std::cerr << "Not a valid backupid: \"" << backupid_arg.getValue() << "\"" << std::endl;
+				return 3;
+			}
+
+			if (backupid_arg.getValue() != "last")
+			{
+				backupid = atoi(backupid_arg.getValue().c_str());
+			}
+			pbackupid = &backupid;
 		}
 		bool no_server;
 		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, no_server);
@@ -658,9 +670,9 @@ int action_start_restore(std::vector<std::string> args)
 
 	PwClientCmd pw_client_cmd(cmd, false);
 
-	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
-		"Backupid of backup from which to restore files/folders",
-		true, 0, "id", cmd);
+	TCLAP::ValueArg<std::string> backupid_arg("b", "backupid",
+		"Backupid of backup from which to restore files/folders or \"last\" for last complete backup",
+		true, "", "id", cmd);
 
 	TCLAP::ValueArg<std::string> path_arg("d", "path",
 		"Path of folder/file to restore",
@@ -696,6 +708,13 @@ int action_start_restore(std::vector<std::string> args)
 		return 3;
 	}
 
+	if (backupid_arg.getValue() != "last"
+		&& convert(atoi(backupid_arg.getValue().c_str())) != backupid_arg.getValue())
+	{
+		std::cerr << "Not a valid backupid: \""<< backupid_arg.getValue()<< "\"" << std::endl;
+		return 2;
+	}
+
 	std::vector<SPathMap> path_map;
 	for (size_t i = 0; i < map_from_arg.getValue().size(); ++i)
 	{
@@ -705,8 +724,14 @@ int action_start_restore(std::vector<std::string> args)
 		path_map.push_back(new_pm);
 	}
 
+	int backupid = 0;
+	if (backupid_arg.getValue() != "last")
+	{
+		backupid = atoi(backupid_arg.getValue().c_str());
+	}
+
 	bool no_server;
-	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid_arg.getValue(),
+	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid,
 		path_map, no_server, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue());
 
 	if(!restore_info.empty())

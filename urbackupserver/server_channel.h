@@ -5,6 +5,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 
 class ClientMain;
+class IDatabase;
 
 class ServerSettings;
 namespace {
@@ -32,6 +33,8 @@ private:
 	int constructCapabilities(void);
 
 	bool hasDownloadImageRights(void);
+
+	int getLastBackupid(IDatabase* db);
 
 	void LOGIN(str_map& params);
 	void SALT(str_map& params);
