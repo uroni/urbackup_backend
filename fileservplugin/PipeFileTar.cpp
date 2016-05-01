@@ -7,7 +7,6 @@
 #include "../urbackupcommon/os_functions.h"
 #include "FileMetadataPipe.h"
 #include "../stringtools.h"
-#include "../urbackupclient/tokens.h"
 #include <memory.h>
 #include <cstring>
 #include <stdlib.h>
@@ -327,7 +326,7 @@ std::string PipeFileTar::buildCurrMetadata()
 	{
 		//allow to all
 		CWData token_info;
-		token_info.addChar(tokens::ID_GRANT_ACCESS);
+		token_info.addChar(0);
 		token_info.addVarInt(0);
 		ttokens = std::string(token_info.getDataPtr(), token_info.getDataSize());
 	}
