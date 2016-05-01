@@ -32,6 +32,9 @@
 #include "FileServ.h"
 #include "ChunkSendThread.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "FileMetadataPipe.h"
+#include "../common/adler32.h"
+#include <memory>
 
 #include <algorithm>
 #include <limits.h>
@@ -499,6 +502,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 						{
 							server_token = filename.substr(tpos + 1);
 						}
+
+						if (metadata_id != 0)
+						{
+							PipeSessions::transmitFileMetadata(
+								getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), folder_items, metadata_id), server_token, ident);
+						}
+
 						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL);
 					}					
 
@@ -1640,7 +1650,20 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		}
 		else if(allow_exec)
 		{
-			srv_file = PipeSessions::getFile(filename, *pipe_file_user, std::string(), ident, NULL);
+			size_t tpos = filename.find_last_of('|');
+			std::string server_token;
+			if (tpos != std::string::npos)
+			{
+				server_token = filename.substr(tpos + 1);
+			}
+
+			if (metadata_id != 0)
+			{
+				PipeSessions::transmitFileMetadata(
+					getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), 0, metadata_id), server_token, ident);
+			}
+
+			srv_file = PipeSessions::getFile(filename, *pipe_file_user, server_token, ident, NULL);
 		}
 
 		if(srv_file==NULL)
@@ -2277,6 +2300,74 @@ bool CClientThread::FinishScript( CRData * data )
 	}
 
 	return ret;
+}
+
+std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id)
+{
+	CWData data;
+	data.addChar(ID_METADATA_V1);
+	_u32 fn_start = data.getDataSize();
+
+	std::string type = "f";
+
+	data.addString(type + "urbackup_backup_scripts/" + output_fn);
+	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr() + fn_start, static_cast<_u32>(data.getDataSize()) - fn_start));
+	_u32 common_start = data.getDataSize();
+	data.addUInt(0);
+	data.addChar(1);
+	data.addVarInt(Server->getTimeSeconds());
+	data.addVarInt(Server->getTimeSeconds());
+	data.addVarInt(0);
+	data.addVarInt(folder_items);
+	data.addVarInt(metadata_id);
+	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
+	std::string ttokens;
+	if (token_callback.get() != NULL)
+	{
+		ttokens = token_callback->translateTokens(0, 0, 0000400);
+	}
+
+	if (ttokens.empty())
+	{
+		//allow to all
+		CWData token_info;
+		token_info.addChar(0);
+		token_info.addVarInt(0);
+		ttokens = std::string(token_info.getDataPtr(), token_info.getDataSize());
+	}
+
+	data.addString(ttokens);
+
+	_u32 common_metadata_size = little_endian(static_cast<_u32>(data.getDataSize() - common_start - sizeof(_u32)));
+	memcpy(data.getDataPtr() + common_start, &common_metadata_size, sizeof(common_metadata_size));
+	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr() + common_start, static_cast<_u32>(data.getDataSize()) - common_start));
+	_u32 os_start = data.getDataSize();
+
+#ifdef _WIN32
+	data.addUInt(0);
+	data.addChar(1);
+	data.addUInt(0); //atributes
+	data.addVarInt(os_to_windows_filetime(Server->getTimeSeconds())); //creation time
+	data.addVarInt(0); //last access time
+	data.addVarInt(os_to_windows_filetime(Server->getTimeSeconds())); //modify time
+	data.addVarInt(os_to_windows_filetime(Server->getTimeSeconds())); //ctime
+	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize()) - os_start - sizeof(_u32));
+	memcpy(data.getDataPtr() + os_start, &stat_data_size, sizeof(stat_data_size));
+	data.addChar(0);
+#else
+	data.addUInt(0);
+	struct stat64 buf = {};
+	buf.st_mtime = Server->getTimeSeconds();
+	buf.st_ctime = buf.st_mtime;
+	buf.st_mode = 0000400;
+	serialize_stat_buf(buf, std::string(), data);
+	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize() - os_start - sizeof(_u32)));
+	memcpy(data.getDataPtr() + os_start, &stat_data_size, sizeof(stat_data_size));
+	data.addInt64(0);
+#endif
+	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr() + os_start, static_cast<_u32>(data.getDataSize()) - os_start));
+
+	return std::string(data.getDataPtr(), data.getDataSize());
 }
 
 int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents, std::vector<SExtent>& file_extents, bool& has_file_extents, int64& start_offset)

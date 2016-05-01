@@ -132,6 +132,8 @@ private:
 	bool InformMetadataStreamEnd( CRData * data );
 	bool FinishScript( CRData * data );
 
+	std::string getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id);
+
 	struct SExtent
 	{
 		SExtent()
