@@ -482,7 +482,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					bool sent_metadata = false;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
-						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident, NULL);
+						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident, NULL, NULL);
 					}
 					else if (next(s_filename, 0, "urbackup/TAR|"))
 					{
@@ -491,7 +491,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						std::string map_res = map_file(tar_fn, ident, allow_exec);
 						if (!map_res.empty() && allow_exec)
 						{
-							file = PipeSessions::getFile(tar_fn, pipe_file_user, server_token, ident, &sent_metadata);
+							file = PipeSessions::getFile(tar_fn, pipe_file_user, server_token, ident, &sent_metadata, NULL);
 						}
 					}
 					else if(allow_exec)
@@ -503,13 +503,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 							server_token = filename.substr(tpos + 1);
 						}
 
+						bool tar_file = false;
+						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL, &tar_file);
+
 						if (metadata_id != 0)
 						{
 							PipeSessions::transmitFileMetadata(
-								getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), folder_items, metadata_id), server_token, ident);
+								getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), folder_items, metadata_id, tar_file), server_token, ident);
 						}
-
-						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL);
 					}					
 
 					if(!file)
@@ -1645,7 +1646,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			std::string map_res = map_file(tar_fn, ident, allow_exec);
 			if (!map_res.empty() && allow_exec)
 			{
-				srv_file = PipeSessions::getFile(tar_fn, *pipe_file_user, server_token, ident, NULL);
+				srv_file = PipeSessions::getFile(tar_fn, *pipe_file_user, server_token, ident, NULL, NULL);
 			}
 		}
 		else if(allow_exec)
@@ -1657,13 +1658,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 				server_token = filename.substr(tpos + 1);
 			}
 
+			bool tar_file = false;
+			srv_file = PipeSessions::getFile(filename, *pipe_file_user, server_token, ident, NULL, &tar_file);
+
 			if (metadata_id != 0)
 			{
 				PipeSessions::transmitFileMetadata(
-					getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), 0, metadata_id), server_token, ident);
+					getuntil("|", s_filename), getDummyMetadata(getuntil("|", s_filename), 0, metadata_id, tar_file), server_token, ident);
 			}
-
-			srv_file = PipeSessions::getFile(filename, *pipe_file_user, server_token, ident, NULL);
 		}
 
 		if(srv_file==NULL)
@@ -2245,7 +2247,7 @@ bool CClientThread::FinishScript( CRData * data )
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
 		f_name = s_filename;
-		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident, NULL);
+		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident, NULL, NULL);
 	}
 	else if (next(s_filename, 0, "urbackup/TAR|"))
 	{
@@ -2254,13 +2256,13 @@ bool CClientThread::FinishScript( CRData * data )
 		std::string map_res = map_file(f_name, ident, allow_exec);
 		if (!map_res.empty() && allow_exec)
 		{
-			file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata);
+			file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata, NULL);
 		}
 	}
 	else if(allow_exec)
 	{
 		f_name = filename;
-		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
+		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL, NULL);
 	}			
 
 	bool ret=false;
@@ -2302,7 +2304,7 @@ bool CClientThread::FinishScript( CRData * data )
 	return ret;
 }
 
-std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id)
+std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id, bool is_dir)
 {
 	CWData data;
 	data.addChar(ID_METADATA_V1);
@@ -2310,7 +2312,12 @@ std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_
 
 	std::string type = "f";
 
-	data.addString(type + "urbackup_backup_scripts/" + output_fn);
+	if (is_dir)
+	{
+		type = "d";
+	}
+
+	data.addString(type + output_fn);
 	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr() + fn_start, static_cast<_u32>(data.getDataSize()) - fn_start));
 	_u32 common_start = data.getDataSize();
 	data.addUInt(0);

@@ -38,7 +38,7 @@ std::map<std::string, size_t> PipeSessions::active_shares;
 const int64 pipe_file_timeout = 1*60*60*1000;
 
 
-IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident, bool* sent_metadata)
+IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident, bool* sent_metadata, bool* tar_file)
 {
 	if(cmd.empty())
 	{
@@ -99,14 +99,19 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 
 			script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
 
-			bool tar_file = false;
-			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, tar_file);
+			bool l_tar_file = false;
+			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, l_tar_file);
 
 			script_cmd = "\"" + script_cmd + script_filename +
 				"\" \"" + output_filename + "\" "+convert(backupnum);
 
+			if (tar_file != NULL)
+			{
+				*tar_file = l_tar_file;
+			}
+
 			IPipeFile* nf;
-			if (!tar_file)
+			if (!l_tar_file)
 			{
 				nf = new PipeFile(script_cmd);
 			}
