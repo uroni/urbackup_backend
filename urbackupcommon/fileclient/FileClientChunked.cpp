@@ -117,6 +117,7 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	curr_is_script = is_script;
 	file_pos = 0;
 	extent_iterator.reset();
+	curr_sparse_extent.offset = -1;
 
 	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
 }
@@ -133,6 +134,7 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	curr_is_script = is_script;
 	file_pos = 0;
 	extent_iterator.reset();
+	curr_sparse_extent.offset = -1;
 	
 	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
 }
