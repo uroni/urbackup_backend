@@ -38,6 +38,7 @@
 #include "../utf8/utf8.h"
 #include "server.h"
 #include "../urbackupcommon/TreeHash.h"
+#include "../common/data.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -1873,6 +1874,16 @@ void FileBackup::addFilePathCorrections(const std::map<std::string, std::string>
 			filepath_corrections.insert(std::make_pair(it->first, it->second));
 		}
 	}
+}
+
+std::string FileBackup::permissionsAllowAll()
+{
+	CWData token_info;
+	//allow to all
+	token_info.addChar(0);
+	token_info.addVarInt(0);
+
+	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
 void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)

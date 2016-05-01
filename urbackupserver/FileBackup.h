@@ -110,6 +110,7 @@ protected:
 	bool stopFileMetadataDownloadThread(bool stopped, size_t expected_embedded_metadata_files);
 	void parseSnapshotFailed(const std::string& logline);
 	void addFilePathCorrections(const std::map<std::string, std::string>& c);
+	std::string permissionsAllowAll();
 
 	int group;
 	bool use_tmpfiles;

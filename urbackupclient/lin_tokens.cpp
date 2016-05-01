@@ -488,4 +488,14 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, T
 	return ret;
 }
 
+std::string permissions_allow_all()
+{
+	CWData token_info;
+	//allow to all
+	token_info.addChar(ID_GRANT_ACCESS);
+	token_info.addVarInt(0);
+
+	return std::string(token_info.getDataPtr(), token_info.getDataSize());
+}
+
 } //namespace tokens

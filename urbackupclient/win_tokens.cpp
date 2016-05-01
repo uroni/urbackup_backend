@@ -314,6 +314,16 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	return true;
 }
 
+std::string permissions_allow_all()
+{
+	CWData token_info;
+	//allow to all
+	token_info.addChar(ID_GRANT_ACCESS);
+	token_info.addVarInt(0);
+
+	return std::string(token_info.getDataPtr(), token_info.getDataSize());
+}
+
 std::string get_hostname()
 {
 	char hostname_c[MAX_PATH];

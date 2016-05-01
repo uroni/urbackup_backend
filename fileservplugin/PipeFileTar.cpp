@@ -7,6 +7,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "FileMetadataPipe.h"
 #include "../stringtools.h"
+#include "../urbackupclient/tokens.h"
 #include <memory.h>
 #include <cstring>
 #include <stdlib.h>
@@ -316,14 +317,23 @@ std::string PipeFileTar::buildCurrMetadata()
 	data.addVarInt(0);
 	data.addVarInt(0);
 	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
+	std::string ttokens;
 	if (token_callback.get() != NULL)
 	{
-		data.addString(token_callback->translateTokens(tar_file.buf.st_uid, tar_file.buf.st_gid, tar_file.buf.st_mode));
+		ttokens = token_callback->translateTokens(tar_file.buf.st_uid, tar_file.buf.st_gid, tar_file.buf.st_mode);
 	}
-	else
+
+	if (ttokens.empty())
 	{
-		data.addString(std::string());
+		//allow to all
+		CWData token_info;
+		token_info.addChar(tokens::ID_GRANT_ACCESS);
+		token_info.addVarInt(0);
+		ttokens = std::string(token_info.getDataPtr(), token_info.getDataSize());
 	}
+
+	data.addString(ttokens);
+	
 	_u32 common_metadata_size = little_endian(static_cast<_u32>(data.getDataSize() - common_start - sizeof(_u32)));
 	memcpy(data.getDataPtr() + common_start, &common_metadata_size, sizeof(common_metadata_size));
 	data.addUInt(urb_adler32(urb_adler32(0, NULL, 0), data.getDataPtr()+ common_start, static_cast<_u32>(data.getDataSize())- common_start));

@@ -710,6 +710,11 @@ bool IncrFileBackup::doFileBackup()
 									break;
 								}
 							}
+
+							if (depth == 0 && curr_path == "/urbackup_backup_scripts")
+							{
+								metadata.file_permissions = permissionsAllowAll();
+							}
 							
 							if( !dir_diff && !indirchange && curr_path!="/urbackup_backup_scripts")
 							{
