@@ -5,6 +5,7 @@
 #include <deque>
 #include "../Interface/Condition.h"
 #include "IFileServ.h"
+#include "../urbackupcommon/sha2/sha2.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -16,10 +17,12 @@ const _u32 ID_METADATA_OS = 1<<2;
 
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = ID_METADATA_OS | 1<<3;
+const _u32 ID_RAW_FILE = 1 << 4;
 
 const char METADATA_PIPE_SEND_FILE = 0;
 const char METADATA_PIPE_SEND_RAW = 1;
 const char METADATA_PIPE_EXIT = 2;
+const char METADATA_PIPE_SEND_RAW_FILEDATA = 3;
 
 class FileMetadataPipe : public PipeFileBase
 {
@@ -80,7 +83,13 @@ private:
 		MetadataState_OsChecksum,
 		MetadataState_File,
 		MetadataState_FileChecksum,
-		MetadataState_Raw
+		MetadataState_Raw,
+		MetadataState_RawFileFnSize,
+		MetadataState_RawFileFn,
+		MetadataState_RawFileFnChecksum,
+		MetadataState_RawFileDataSize,
+		MetadataState_RawFileData,
+		MetadataState_RawFileDataChecksum
 	};
 
 	size_t fn_off;
@@ -110,6 +119,10 @@ private:
 	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
 
 	unsigned int curr_checksum;
+
+	IFile* transmit_file;
+	IPipe* transmit_wait_pipe;
+	sha512_ctx transmit_file_ctx;
 };
 
 #ifndef _WIN32

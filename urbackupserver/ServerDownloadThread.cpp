@@ -667,7 +667,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(todl.is_script)
 	{
-		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random);
+		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random)+"|"+server_token;
 	}
 
 	bool full_dl=false;
@@ -1033,7 +1033,7 @@ std::string ServerDownloadThread::getDLPath( SQueueItem todl )
 
 	if(todl.is_script)
 	{
-		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random);
+		cfn = "SCRIPT|" + cfn + "|" + convert(incremental_num) + "|" + convert(todl.script_random)+"|"+server_token;
 	}
 	else if(!server_token.empty())
 	{
@@ -1430,7 +1430,8 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 								if (tardirfn != ".." && tardirfn != ".")
 								{
 									std::string tardirpath = backuppath + os_file_sep() + "urbackup_backup_scripts" + os_file_sep() + tardirfn;
-									if (!os_create_dir(os_file_prefix(tardirpath)))
+									if (!os_directory_exists(os_file_prefix(tardirpath))
+										&& !os_create_dir(os_file_prefix(tardirpath)))
 									{
 										ServerLogger::Log(logid, "Error creating TAR dir at \"" + tardirpath + "\"", LL_ERROR);
 										break;
@@ -1438,7 +1439,8 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 
 									tardirpath = backuppath_hashes + os_file_sep() + "urbackup_backup_scripts" + os_file_sep() + tardirfn;
 
-									if (!os_create_dir(os_file_prefix(tardirpath)))
+									if (!os_directory_exists(os_file_prefix(tardirpath))
+										&& !os_create_dir(os_file_prefix(tardirpath)))
 									{
 										ServerLogger::Log(logid, "Error creating TAR dir at \"" + tardirpath + "\"", LL_ERROR);
 										break;
@@ -1497,13 +1499,15 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 							{
 								if (is_dir != 0)
 								{
-									if (!os_create_dir(os_file_prefix(backuppath + os_path) ) )
+									if (!os_directory_exists(os_file_prefix(backuppath + os_path))
+										&& !os_create_dir(os_file_prefix(backuppath + os_path) ) )
 									{
 										ServerLogger::Log(logid, "Error creating TAR dir at \""+ backuppath + os_path + "\"", LL_ERROR);
 										break;
 									}
 
-									if (!os_create_dir(os_file_prefix(backuppath_hashes + os_path)))
+									if (!os_directory_exists(os_file_prefix(backuppath_hashes + os_path))
+										&& !os_create_dir(os_file_prefix(backuppath_hashes + os_path)))
 									{
 										ServerLogger::Log(logid, "Error creating TAR dir at \"" + backuppath_hashes + os_path + "\"", LL_ERROR);
 										break;
@@ -1517,13 +1521,13 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 										ServerLogger::Log(logid, "Error touching TAR special file at \"" + backuppath + os_path + "\"", LL_ERROR);
 										break;
 									}
-								}
 
-								addToQueueFull(0, ExtractFileName(remote_fn, "/"),
-									ExtractFileName(os_path, os_file_sep()),
-									ExtractFilePath(remote_fn, "/"),
-									ExtractFilePath(os_path, os_file_sep()), 0, metadata, true, true, 0, std::string(),
-									false, script_random);
+									addToQueueFull(0, ExtractFileName(remote_fn, "/"),
+										ExtractFileName(os_path, os_file_sep()),
+										ExtractFilePath(remote_fn, "/"),
+										ExtractFilePath(os_path, os_file_sep()), 0, metadata, true, true, 0, std::string(),
+										false, script_random);
+								}
 							}
 
 							i += 1 + sizeof(_u32) + data_size;

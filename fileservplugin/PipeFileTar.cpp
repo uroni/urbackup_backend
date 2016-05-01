@@ -127,14 +127,16 @@ namespace
 	}
 }
 
-PipeFileTar::PipeFileTar(const std::string & pCmd, int backupnum, int64 fn_random, std::string output_fn)
-	: pipe_file(new PipeFileStore(new PipeFile(pCmd))), file_offset(0), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random)
+PipeFileTar::PipeFileTar(const std::string & pCmd, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
+	: pipe_file(new PipeFileStore(new PipeFile(pCmd))), file_offset(0), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random),
+	server_token(server_token), identity(identity)
 {
 	sha_def_init(&sha_ctx);
 }
 
-PipeFileTar::PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn)
-	: pipe_file(pipe_file), tar_file(tar_file), file_offset(file_offset), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random)
+PipeFileTar::PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
+	: pipe_file(pipe_file), tar_file(tar_file), file_offset(file_offset), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random),
+	server_token(server_token), identity(identity)
 {
 	sha_def_init(&sha_ctx);
 }
@@ -392,18 +394,13 @@ bool PipeFileTar::readHeader(bool* has_error)
 	tar_file.buf.st_mode = extract_number(header, 100, 8);
 	tar_file.buf.st_uid = extract_number(header, 108, 8);
 	tar_file.buf.st_gid = extract_number(header, 116, 8);
-	tar_file.buf.st_mtime = extract_number(header, 136, 8);
+	tar_file.buf.st_mtime = extract_number(header, 136, 12);
 	tar_file.buf.st_atime = 0;
 	tar_file.pos = 0;
 
 	char type = header[156];
 
 	tar_file.is_dir = (!tar_file.fn.empty() && tar_file.fn[tar_file.fn.size() - 1] == '/');
-
-	if (!tar_file.is_dir)
-	{
-		int abc = 5;
-	}
 
 	tar_file.is_special = !tar_file.is_dir && (type != '0' && type!=0);
 	tar_file.is_symlink = false;
@@ -527,6 +524,7 @@ std::string PipeFileTar::getStdErr()
 	std::string symlink_target;
 	int64 size;
 
+	int64 starttime = Server->getTimeMS();
 
 	while (true)
 	{
@@ -547,36 +545,49 @@ std::string PipeFileTar::getStdErr()
 				fn = fn.substr(2);
 			}
 
-			CWData data;
-			data.addString("urbackup_backup_scripts/"+output_fn + (fn.empty() ? "" : ("/" + fn)));
-			data.addChar(is_dir ? 1 : 0);
-			data.addChar(is_symlink ? 1 : 0);
-			data.addChar(is_special ? 1 : 0);
-			data.addString(symlink_target);
-			data.addVarInt(size);
-			data.addUInt(static_cast<unsigned int>(fn_random));
+			std::string public_fn = "urbackup_backup_scripts/" + output_fn + (fn.empty() ? "" : ("/" + fn));
 
-			CWData header;
-			header.addChar(2);
-			header.addUInt(data.getDataSize());
-
-			stderr_ret.append(header.getDataPtr(), header.getDataSize());
-			stderr_ret.append(data.getDataPtr(), data.getDataSize());
-
-			std::string remote_fn = "urbackup_backup_scripts/" + output_fn + (fn.empty() ? "" : ("/" + fn)) + "|" + convert(backupnum) + "|" + convert(fn_random);
-
-			if (!is_dir && !is_symlink && !is_special)
+			if (is_dir
+				|| size > 512 * 1024
+				|| (starttime - Server->getTimeMS())>20000 )
 			{
-				pipe_file->inc();
-				has_next = true;
-				PipeSessions::injectPipeSession(remote_fn,
-					backupnum, new PipeFileTar(pipe_file, tar_file, file_offset, backupnum, fn_random, output_fn), buildCurrMetadata());
-				return stderr_ret;
+				CWData data;
+				data.addString(public_fn);
+				data.addChar(is_dir ? 1 : 0);
+				data.addChar(is_symlink ? 1 : 0);
+				data.addChar(is_special ? 1 : 0);
+				data.addString(symlink_target);
+				data.addVarInt(size);
+				data.addUInt(static_cast<unsigned int>(fn_random));
+
+				CWData header;
+				header.addChar(2);
+				header.addUInt(data.getDataSize());
+
+				stderr_ret.append(header.getDataPtr(), header.getDataSize());
+				stderr_ret.append(data.getDataPtr(), data.getDataSize());
+
+				std::string remote_fn = "urbackup_backup_scripts/" + output_fn + (fn.empty() ? "" : ("/" + fn)) + "|" + convert(backupnum) + "|" + convert(fn_random) + "|" + server_token;
+
+				if (!is_dir && !is_symlink && !is_special)
+				{
+					pipe_file->inc();
+					has_next = true;
+					PipeSessions::injectPipeSession(remote_fn,
+						backupnum, new PipeFileTar(pipe_file, tar_file, file_offset, backupnum, fn_random, output_fn, server_token, identity), buildCurrMetadata());
+					return stderr_ret;
+				}
+				else
+				{
+					PipeSessions::transmitFileMetadata(public_fn, buildCurrMetadata(), server_token, identity);
+				}
 			}
 			else
 			{
-				PipeSessions::injectPipeSession(remote_fn,
-					backupnum, NULL, buildCurrMetadata());
+				std::string curr_metadata = buildCurrMetadata();
+				lock.relock(NULL);
+				PipeSessions::transmitFileMetadataAndFiledataWait(public_fn, curr_metadata, server_token, identity, this);
+				lock.relock(mutex.get());
 			}
 		}
 		else

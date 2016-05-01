@@ -493,7 +493,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					else if(allow_exec)
 					{
-						file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL);
+						size_t tpos = filename.find_last_of('|');
+						std::string server_token;
+						if (tpos != std::string::npos)
+						{
+							server_token = filename.substr(tpos + 1);
+						}
+						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL);
 					}					
 
 					if(!file)

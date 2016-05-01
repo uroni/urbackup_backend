@@ -1757,7 +1757,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
-        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid));
+        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid, clientid));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get(), "fbackup meta");
 
@@ -1825,7 +1825,15 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped)
 
 		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
-			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections, !metadata_download_thread->getHasTimeoutError());
+			bool b = metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, local_hash.get(), filepath_corrections, !metadata_download_thread->getHasTimeoutError());
+
+			if (!b
+				&& metadata_download_thread->getHasFatalError())
+			{
+				disk_error = true;
+			}
+
+			return b;
 		}
 	}
 

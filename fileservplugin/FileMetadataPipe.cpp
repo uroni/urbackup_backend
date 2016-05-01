@@ -327,6 +327,121 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		}
 		return true;
 	}
+	else if (metadata_state == MetadataState_RawFileFnSize)
+	{
+		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
+		unsigned int fn_size = little_endian(static_cast<unsigned int>(public_fn.size()));
+		fn_size = little_endian(fn_size);
+		memcpy(buf, reinterpret_cast<char*>(&fn_size) + fn_off, read_bytes);
+		curr_checksum = urb_adler32(curr_checksum, reinterpret_cast<char*>(&fn_size) + fn_off, static_cast<_u32>(read_bytes));
+		fn_off += read_bytes;
+
+		if (fn_off == sizeof(unsigned int))
+		{
+			fn_off = 0;
+			metadata_state = MetadataState_RawFileFn;
+		}
+
+		return true;
+	}
+	else if (metadata_state == MetadataState_RawFileFn)
+	{
+		read_bytes = (std::min)(buf_avail, public_fn.size() - fn_off);
+		memcpy(buf, public_fn.data() + fn_off, read_bytes);
+		curr_checksum = urb_adler32(curr_checksum, public_fn.data() + fn_off, static_cast<_u32>(read_bytes));
+		fn_off += read_bytes;
+
+		if (fn_off == public_fn.size())
+		{
+			fn_off = 0;
+			metadata_state = MetadataState_RawFileFnChecksum;
+		}
+
+		return true;
+	}
+	else if (metadata_state == MetadataState_RawFileFnChecksum)
+	{
+		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
+		unsigned int endian_curr_checksum = little_endian(curr_checksum);
+		memcpy(buf, reinterpret_cast<char*>(&endian_curr_checksum) + fn_off, read_bytes);
+		fn_off += read_bytes;
+
+		if (fn_off == sizeof(unsigned int))
+		{
+			int64* datasize = reinterpret_cast<int64*>(metadata_buffer.data());
+			metadata_file_size = transmit_file->Size();
+			metadata_file_off = 0;
+			*datasize = little_endian(metadata_file_size);
+			metadata_buffer_size = sizeof(int64);
+			metadata_buffer_off = 0;
+			metadata_state = MetadataState_RawFileDataSize;
+		}
+
+		return true;
+	}
+	else if (metadata_state == MetadataState_RawFileDataSize)
+	{
+		if (metadata_buffer_size - metadata_buffer_off>0)
+		{
+			read_bytes = (std::min)(metadata_buffer_size - metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data() + metadata_buffer_off, read_bytes);
+			metadata_buffer_off += read_bytes;
+		}
+		if (metadata_buffer_size - metadata_buffer_off == 0)
+		{
+			metadata_buffer_size = 0;
+			metadata_buffer_off = 0;
+			curr_checksum = urb_adler32(0, NULL, 0);
+			metadata_state = MetadataState_RawFileData;
+			sha512_init(&transmit_file_ctx);
+		}
+		return true;
+	}
+	else if (metadata_state == MetadataState_RawFileData)
+	{
+		_u32 max_read = static_cast<_u32>((std::min)(metadata_file_size-metadata_file_off, (std::min)((int64)32768, static_cast<int64>(buf_avail))));
+
+		bool has_read_error = false;
+		read_bytes = transmit_file->Read(metadata_file_off, buf, max_read, &has_read_error);
+
+		sha512_update(&transmit_file_ctx, reinterpret_cast<unsigned char*>(buf), static_cast<_u32>(read_bytes));
+
+		if (has_read_error)
+		{
+			Server->Log("Error reading from file " + transmit_file->getFilename() + ". " + os_last_error_str(), LL_WARNING);
+			return false;
+		}
+		
+		metadata_file_off += read_bytes;
+
+		if (metadata_file_off == metadata_file_size)
+		{
+			metadata_state = MetadataState_RawFileDataChecksum;
+			sha512_final(&transmit_file_ctx, reinterpret_cast<unsigned char*>(metadata_buffer.data()));
+			metadata_buffer_size = SHA512_DIGEST_SIZE;
+			metadata_buffer_off = 0;
+		}
+
+		return true;
+	}
+	else if (metadata_state == MetadataState_RawFileDataChecksum)
+	{
+		if (metadata_buffer_size - metadata_buffer_off>0)
+		{
+			read_bytes = (std::min)(metadata_buffer_size - metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data() + metadata_buffer_off, read_bytes);
+			metadata_buffer_off += read_bytes;
+		}
+		if (metadata_buffer_size - metadata_buffer_off == 0)
+		{
+			transmit_wait_pipe->Write(std::string());
+			transmit_wait_pipe = NULL;
+			transmit_file = NULL;
+			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			metadata_state = MetadataState_Wait;
+		}
+		return true;
+	}
 
 
 	while(true)
@@ -457,6 +572,19 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					metadata_state = MetadataState_Raw;
 					metadata_buffer_off = 0;
 					return readStdoutIntoBuffer(buf, buf_avail, read_bytes);
+				}
+				else if (id == METADATA_PIPE_SEND_RAW_FILEDATA
+					&& msg_data.getStr(&public_fn)
+					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_file))
+					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe)))
+				{
+					metadata_state = MetadataState_RawFileFnSize;
+					*buf = ID_RAW_FILE;
+					read_bytes = 1;
+					fn_off = 0;
+					curr_checksum = urb_adler32(0, NULL, 0);
+
+					return true;
 				}
 				else if (id == METADATA_PIPE_EXIT)
 				{

@@ -23,6 +23,7 @@
 #include "../common/data.h"
 #include <memory>
 #include "../common/adler32.h"
+#include "FileBackup.h"
 
 namespace server
 {
@@ -31,15 +32,16 @@ const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = 1<<3;
+const _u32 ID_RAW_FILE = 1 << 4;
 
-FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid, int backupid)
-	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid), max_metadata_id(0)
+FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid, int backupid, int clientid)
+	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false)
 {
 
 }
 
-FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid)
-	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid), max_metadata_id(0)
+FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid, int clientid)
+	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false)
 {
 
 }
@@ -75,7 +77,7 @@ void FileMetadataDownloadThread::operator()()
 }
 
 bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metadata_dir,
-	const std::string& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::string, std::string>& filepath_corrections, bool is_complete)
+	const std::string& backup_dir, INotEnoughSpaceCallback *cb, BackupServerHash* local_hash, std::map<std::string, std::string>& filepath_corrections, bool is_complete)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -456,6 +458,306 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(!dry_run && output_f.get() != NULL)
 			{
 				addFolderItem(curr_fn.substr(1), backup_dir+os_file_sep()+os_path, is_dir, created, modified, accessed, folder_items);
+			}
+		}
+		else if (ch == ID_RAW_FILE)
+		{
+			unsigned int curr_fn_size = 0;
+			if (metadata_f->Read(reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size)) != sizeof(curr_fn_size))
+			{
+				ServerLogger::Log(logid, "Error saving metadata. Filename size could not be read. (2)", LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			metadataf_pos += sizeof(curr_fn_size);
+			unsigned int path_checksum = urb_adler32(urb_adler32(0, NULL, 0), reinterpret_cast<char*>(&curr_fn_size), sizeof(curr_fn_size));
+
+			curr_fn_size = little_endian(curr_fn_size);
+
+			std::string curr_fn;
+			curr_fn.resize(curr_fn_size);
+
+			if (curr_fn_size>1)
+			{
+				if (metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size())) != curr_fn.size())
+				{
+					ServerLogger::Log(logid, "Error saving metadata. Filename could not be read (2). Size: " + convert(curr_fn_size), LL_ERROR);
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
+					has_fatal_error = true;
+					return false;
+				}
+
+				metadataf_pos += curr_fn.size();
+				path_checksum = urb_adler32(path_checksum, &curr_fn[0], static_cast<_u32>(curr_fn.size()));
+			}
+			else
+			{
+				ServerLogger::Log(logid, "Error saving metadata. Filename is empty.", LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			unsigned int read_path_checksum = 0;
+			if (metadata_f->Read(reinterpret_cast<char*>(&read_path_checksum), sizeof(read_path_checksum)) != sizeof(read_path_checksum))
+			{
+				ServerLogger::Log(logid, "Error saving metadata. Path checksum could not be read. (2)", LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			metadataf_pos += sizeof(read_path_checksum);
+
+			if (little_endian(read_path_checksum) != path_checksum)
+			{
+				ServerLogger::Log(logid, "Error saving metadata. Path checksum wrong. (2)", LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			bool is_dir = (curr_fn[0] == 'd' || curr_fn[0] == 'l');
+			bool is_dir_symlink = curr_fn[0] == 'l';
+
+			std::string os_path;
+			std::string os_path_metadata;
+			std::vector<std::string> fs_toks;
+			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
+
+			std::string curr_path;
+			for (size_t i = 0; i<fs_toks.size(); ++i)
+			{
+				if (fs_toks[i] != "." && fs_toks[i] != "..")
+				{
+					if (!os_path.empty())
+					{
+						os_path += os_file_sep();
+						os_path_metadata += os_file_sep();
+					}
+
+					std::string path_component = (fs_toks[i]);
+
+					curr_path += "/" + path_component;
+
+					str_map::const_iterator it_correction = filepath_corrections.find(curr_path);
+					if (it_correction != filepath_corrections.end())
+					{
+						path_component = it_correction->second;
+					}
+					else
+					{
+						std::set<std::string> samedir_filenames;
+						path_component = FileBackup::fixFilenameForOS(path_component, samedir_filenames, curr_path, true, logid, filepath_corrections);
+					}
+
+					if (i == fs_toks.size() - 1)
+					{
+						os_path_metadata += escape_metadata_fn(path_component);
+
+						if (is_dir && !is_dir_symlink)
+						{
+							os_path_metadata += os_file_sep() + metadata_dir_fn;
+						}
+					}
+					else
+					{
+						os_path_metadata += path_component;
+					}
+
+					os_path += path_component;
+
+					if (i + 1 < fs_toks.size())
+					{
+						if (!os_directory_exists(os_file_prefix(backup_dir + os_file_sep() + os_path)))
+						{
+							os_create_dir(os_file_prefix(backup_dir + os_file_sep() + os_path));
+						}
+					}
+				}
+			}
+
+			os_path = backup_dir + os_file_sep() + os_path;
+			os_path_metadata = backup_metadata_dir + os_file_sep() + os_path_metadata;
+
+			int64 output_f_size= 0;
+			if (metadata_f->Read(reinterpret_cast<char*>(&output_f_size), sizeof(output_f_size)) != sizeof(output_f_size))
+			{
+				ServerLogger::Log(logid, "Error saving metadata. Output file size could not be read. (2) "+os_last_error_str(), LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			metadataf_pos += sizeof(output_f_size);
+
+			output_f_size = little_endian(output_f_size);
+
+			if (!metadata_f->Seek(metadataf_pos + output_f_size))
+			{
+				ServerLogger::Log(logid, "Error seeking in metadata for output file checksum. "+os_last_error_str(), LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			std::string checksum = metadata_f->Read(SHA512_DIGEST_SIZE);
+			if (checksum.size() != SHA512_DIGEST_SIZE)
+			{
+				ServerLogger::Log(logid, "Error reading output file checksum. " + os_last_error_str(), LL_ERROR);
+				if (is_complete)
+				{
+					copyForAnalysis(metadata_f.get());
+				}
+				has_fatal_error = true;
+				return false;
+			}
+
+			bool copy_file = true;
+
+			if (output_f_size > 4096
+				&& local_hash!=NULL)
+			{
+				bool tries_once;
+				std::string ff_last;
+				bool hardlink_limit;
+				bool copied_file;
+				int64 entryid = 0;
+				int entryclientid = 0;
+				int64 rsize = 0;
+				int64 next_entryid = 0;
+				FileMetadata metadata;
+				bool ok = local_hash->findFileAndLink(os_path, NULL, os_path_metadata, checksum, output_f_size, std::string(), true,
+					tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
+					metadata, true, NULL);
+
+				if (ok)
+				{
+					local_hash->addFileSQL(backupid, clientid, 0, os_path, os_path_metadata, checksum, output_f_size,
+						(rsize>0 && rsize != output_f_size) ? rsize : (copied_file ? output_f_size : 0), entryid, entryclientid, next_entryid,
+						copied_file);
+
+					copy_file = false;
+				}
+			}
+
+			if (copy_file)
+			{
+				std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(os_path), MODE_WRITE));
+
+				if (output_f.get() == NULL)
+				{
+					ServerLogger::Log(logid, "Error opening output file \"" + os_path + "\". " + os_last_error_str(), LL_ERROR);
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
+					has_fatal_error = true;
+					return false;
+				}
+
+				if (!metadata_f->Seek(metadataf_pos))
+				{
+					ServerLogger::Log(logid, "Error seeking in metadata for data start. " + os_last_error_str(), LL_ERROR);
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
+					has_fatal_error = true;
+					return false;
+				}
+
+				sha512_ctx shactx;
+				sha512_init(&shactx);
+
+				int64 filedata_end = metadataf_pos + output_f_size;
+				while (metadataf_pos < filedata_end)
+				{
+					_u32 toread = static_cast<_u32>((std::min)(filedata_end - metadataf_pos, static_cast<int64>(buffer.size())));
+
+					if (metadata_f->Read(buffer.data(), toread) != toread)
+					{
+						ServerLogger::Log(logid, "Error saving metadata. Output data could not be read. " + os_last_error_str(), LL_ERROR);
+						if (is_complete)
+						{
+							copyForAnalysis(metadata_f.get());
+						}
+						has_fatal_error = true;
+						return false;
+					}
+
+					if (!writeRepeatFreeSpace(output_f.get(), buffer.data(), toread, cb))
+					{
+						ServerLogger::Log(logid, "Error saving metadata. Error writing to output file. " + os_last_error_str(), LL_ERROR);
+						has_fatal_error = true;
+						return false;
+					}
+
+					sha512_update(&shactx, reinterpret_cast<unsigned char*>(buffer.data()), toread);
+
+					metadataf_pos += toread;
+				}
+
+				unsigned char dig[SHA512_DIGEST_SIZE];
+				sha512_final(&shactx, dig);
+
+				if (memcmp(checksum.data(), dig, SHA512_DIGEST_SIZE) != 0)
+				{
+					ServerLogger::Log(logid, "Data checksum of file \""+os_path+"\" wrong.", LL_ERROR);
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
+					has_fatal_error = true;
+					return false;
+				}
+
+				metadataf_pos += SHA512_DIGEST_SIZE;
+
+				if (!metadata_f->Seek(metadataf_pos))
+				{
+					ServerLogger::Log(logid, "Error seeking in metadata for end. " + os_last_error_str(), LL_ERROR);
+					if (is_complete)
+					{
+						copyForAnalysis(metadata_f.get());
+					}
+					has_fatal_error = true;
+					return false;
+				}
+
+				if (output_f_size > 4096
+					&& local_hash!=NULL)
+				{
+					local_hash->addFileSQL(backupid, clientid, 0, os_path, os_path_metadata, checksum, output_f_size,
+						output_f_size, 0, 0, 0, true);
+				}
+			}
+			else
+			{
+				metadataf_pos += output_f_size + SHA512_DIGEST_SIZE;
 			}
 		}
 		else
@@ -934,6 +1236,11 @@ bool FileMetadataDownloadThread::getHasError()
 	return has_error;
 }
 
+bool FileMetadataDownloadThread::getHasFatalError()
+{
+	return has_fatal_error;
+}
+
 FileMetadataDownloadThread::~FileMetadataDownloadThread()
 {
 	if(!dry_run && !metadata_tmp_fn.empty())
@@ -1084,10 +1391,10 @@ int check_metadata()
 	std::string metadata_file = Server->getServerParameter("metadata_file");
 
 	std::string dummy_server_token;
-	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0);
+	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0, 0);
 
 	str_map corrections;
-	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, corrections, true)?0:1;
+	return metadata_thread.applyMetadata(std::string(), std::string(), NULL, NULL, corrections, true)?0:1;
 }
 
 } //namespace server

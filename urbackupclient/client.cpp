@@ -926,6 +926,7 @@ void IndexThread::indexDirs(bool full_backup)
 	token_cache.reset();
 
 	index_follow_last = false;
+	index_keep_files = false;
 
 	std::vector<std::string> selected_dirs;
 	std::vector<int> selected_dir_db_tgroup;
@@ -1284,7 +1285,12 @@ void IndexThread::indexDirs(bool full_backup)
 
 		if (index_keep_files)
 		{
-			addFromLastUpto(std::string(), false, 0, true, outfile);
+			addFromLastUpto("urbackup_backup_scripts", true, 0, false, outfile);
+		}
+
+		if (outfile.is_open())
+		{
+			addBackupScripts(outfile);
 		}
 
 		std::streampos pos=outfile.tellp();
@@ -1308,11 +1314,6 @@ void IndexThread::indexDirs(bool full_backup)
 				VSSLog("Error reopening filelist", LL_ERROR);
 			}
 		}
-
-		if(outfile.is_open())
-		{
-			addBackupScripts(outfile);
-		}		
 	}
 
 	commitModifyFilesBuffer();
@@ -2336,7 +2337,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	BOOL ok = GetVolumePathNameW(Server->ConvertToWchar(dir->orig_target).c_str(), volume_path, MAX_PATH);
 	if (!ok)
 	{
-		VSSLog("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
+		VSSLog("Cannot get volume for path \""+ dir->orig_target+"\". "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 	std::string wpath = Server->ConvertFromWchar(volume_path);

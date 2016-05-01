@@ -112,7 +112,7 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			}
 			else
 			{
-				nf = new PipeFileTar(script_cmd, backupnum, fn_random, output_filename);
+				nf = new PipeFileTar(script_cmd, backupnum, fn_random, output_filename, server_token, ident);
 			}
 
 			if(nf->getHasError())
@@ -418,6 +418,8 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 	data.addString(metadata);
 	data.addString(server_token);
 
+	IScopedLock lock(mutex);
+
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|" + server_token);
 
 	if (it != pipe_files.end() && it->second.input_pipe != NULL)
@@ -427,6 +429,54 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
 }
+
+void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & public_fn, const std::string & metadata, const std::string & server_token, const std::string & identity, IFile* file)
+{
+	if (public_fn.empty() || next(public_fn, 0, "urbackup/"))
+	{
+		return;
+	}
+
+	std::string sharename = getuntil("/", public_fn);
+	if (sharename.empty())
+	{
+		sharename = public_fn;
+	}
+
+	CWData metadatamsg;
+	metadatamsg.addChar(METADATA_PIPE_SEND_RAW);
+	metadatamsg.addString("f" + public_fn);
+	metadatamsg.addString(metadata);
+	metadatamsg.addString(server_token);
+
+	CWData datamsg;
+	datamsg.addChar(METADATA_PIPE_SEND_RAW_FILEDATA);
+	datamsg.addString("f" + public_fn);
+	datamsg.addVoidPtr(file);
+	std::auto_ptr<IPipe> waitpipe(Server->createMemoryPipe());
+	datamsg.addVoidPtr(waitpipe.get());
+
+	IScopedLock lock(mutex);
+
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|" + server_token);
+
+	if (it != pipe_files.end() && it->second.input_pipe != NULL)
+	{
+		++active_shares[sharename + "|" + server_token];
+
+		it->second.input_pipe->Write(datamsg.getDataPtr(), datamsg.getDataSize());
+
+		++active_shares[sharename + "|" + server_token];
+
+		it->second.input_pipe->Write(metadatamsg.getDataPtr(), metadatamsg.getDataSize());
+
+		lock.relock(NULL);
+		std::string read_ret;
+		waitpipe->Read(&read_ret);
+	}
+}
+
+
 
 void PipeSessions::fileMetadataDone(const std::string & public_fn, const std::string& server_token)
 {

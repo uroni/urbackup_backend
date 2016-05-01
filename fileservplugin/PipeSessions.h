@@ -68,6 +68,9 @@ public:
 	static void transmitFileMetadata(const std::string& public_fn, const std::string& metadata,
 		const std::string& server_token, const std::string& identity);
 
+	static void transmitFileMetadataAndFiledataWait(const std::string& public_fn, const std::string& metadata,
+		const std::string& server_token, const std::string& identity, IFile* file);
+
 	static void fileMetadataDone(const std::string& public_fn, const std::string& server_token);
 
 	static bool isShareActive(const std::string& sharename, const std::string& server_token);
