@@ -421,6 +421,7 @@ bool PipeFileTar::readHeader(bool* has_error)
 		tar_file.is_special = true;
 	}
 
+	bool set_mode_type = false;
 	if (extract_string(header, 257, 5) == "ustar")
 	{
 		tar_file.buf.st_dev = extract_number(header, 329, 8) << 8 | extract_number(header, 337, 8);
@@ -435,10 +436,12 @@ bool PipeFileTar::readHeader(bool* has_error)
 		if (type == '3')
 		{
 			tar_file.buf.st_mode |= _S_IFCHR;
+			set_mode_type = true;
 		}
 		else if (type == '4')
 		{
 			tar_file.buf.st_mode |= _S_IFBLK;
+			set_mode_type = true;
 		}
 		else if (type == '5')
 		{
@@ -448,6 +451,23 @@ bool PipeFileTar::readHeader(bool* has_error)
 		else if (type == '6')
 		{
 			tar_file.buf.st_mode |= _S_IFIFO;
+			set_mode_type = true;
+		}
+	}
+
+	if (!set_mode_type)
+	{
+		if (tar_file.is_symlink)
+		{
+			tar_file.buf.st_mode |= 0120000;
+		}
+		else if (tar_file.is_dir)
+		{
+			tar_file.buf.st_mode |= _S_IFDIR;
+		}
+		else
+		{
+			tar_file.buf.st_mode |= _S_IFREG;
 		}
 	}
 
