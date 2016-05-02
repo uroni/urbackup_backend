@@ -472,7 +472,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							{
 								if(!os_create_dir_recursive(os_file_prefix(restore_path)))
 								{
-									log("Error recursively creating directory \""+restore_path+"\"", LL_ERROR);
+									log("Error recursively creating directory \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
 									has_error=true;
 								}
 							}
@@ -488,7 +488,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							{
 								if(!os_create_dir(os_file_prefix(restore_path)))
 								{
-									log("Error creating directory \""+restore_path+"\"", LL_ERROR);
+									log("Error creating directory \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
 									has_error=true;
 								}
 							}							
@@ -537,6 +537,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					std::string name_lower = data.name;
 #endif
 					std::string server_fn = server_path + "/" + data.name;
+
+					log("Restoring file \"" + local_fn + "\"...", LL_DEBUG);
 
 					folder_files.top().push_back(name_lower);
 
@@ -610,16 +612,36 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						if(orig_file==NULL)
 						{
-							log("Cannot open file \""+local_fn+"\" for writing. Not restoring file.", LL_ERROR);
+							log("Cannot open file \""+local_fn+"\" for writing. Not restoring file. " + os_last_error_str(), LL_ERROR);
 							has_error=true;
 						}
-						else
+						else if (data.size == 0)
 						{
+							if (orig_file->Size() != 0)
+							{
+								delete orig_file;
+
+								if (!os_file_truncate(os_file_prefix(local_fn), 0))
+								{
+									log("Cannot truncate file \"" + local_fn + "\" to zero bytes. " + os_last_error_str(), LL_ERROR);
+									has_error = true;
+								}
+							}
+							else
+							{
+								delete orig_file;
+							}
+
+							restore_download->addToQueueFull(line, server_fn, local_fn,
+								data.size, metadata, false, true, 0);
+						}
+						else
+						{		
 							IFile* chunkhashes = Server->openTemporaryFile();
 
 							if(chunkhashes==NULL)
 							{
-								log("Cannot open temporary file for chunk hashes of file \""+local_fn+"\". Not restoring file.", LL_ERROR);
+								log("Cannot open temporary file for chunk hashes of file \""+local_fn+"\". Not restoring file. " + os_last_error_str(), LL_ERROR);
 								has_error=true;
 								delete orig_file;
 							}
@@ -819,7 +841,7 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 
 	if(get_files_error)
 	{
-		log("Error enumerating files in \""+restore_path+"\"", LL_ERROR);
+		log("Error enumerating files in \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
 		ret=false;
 	}
 	else
@@ -839,7 +861,7 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 				{
 					if(!os_remove_nonempty_dir(os_file_prefix(cpath)))
 					{
-						log("Error deleting directory \""+restore_path+"\"", LL_WARNING);
+						log("Error deleting directory \""+restore_path+"\". "+os_last_error_str(), LL_WARNING);
 #ifndef _WIN32
 						ret=false;
 #else
@@ -851,7 +873,7 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 				{
 					if(!Server->deleteFile(os_file_prefix(cpath)))
 					{
-						log("Error deleting file \""+restore_path+"\"", LL_WARNING);
+						log("Error deleting file \""+restore_path+"\". "+os_last_error_str(), LL_WARNING);
 
 #ifndef _WIN32
 						ret=false;
@@ -902,7 +924,7 @@ bool RestoreFiles::deleteFileOnRestart( const std::string& fpath )
 	BOOL b = MoveFileExW(Server->ConvertToWchar(os_file_prefix(fpath)).c_str(), NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
 	if(b!=TRUE)
 	{
-		log("Error deleting file "+fpath+" on restart", LL_ERROR);
+		log("Error deleting file "+fpath+" on restart. "+os_last_error_str(), LL_ERROR);
 	}
 	return b==TRUE;
 #endif
@@ -936,7 +958,7 @@ bool RestoreFiles::deleteFolderOnRestart( const std::string& fpath )
 	BOOL b = MoveFileExW(Server->ConvertToWchar(os_file_prefix(fpath)).c_str(), NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
 	if(b!=TRUE)
 	{
-		log("Error deleting folder "+fpath+" on restart", LL_ERROR);
+		log("Error deleting folder "+fpath+" on restart. "+os_last_error_str(), LL_ERROR);
 	}
 	return b==TRUE;
 #endif
@@ -953,7 +975,7 @@ bool RestoreFiles::renameFilesOnRestart( std::vector<std::pair<std::string, std:
 			Server->ConvertToWchar(os_file_prefix(rename_queue[i].second)).c_str(), MOVEFILE_DELAY_UNTIL_REBOOT);
 		if(b!=TRUE)
 		{
-			log("Error renaming "+rename_queue[i].first+" to "+rename_queue[i].second+" on Windows restart", LL_ERROR);
+			log("Error renaming "+rename_queue[i].first+" to "+rename_queue[i].second+" on Windows restart. "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}

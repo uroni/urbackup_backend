@@ -357,7 +357,7 @@ void RestoreDownloadThread::unqueueFileFull( const std::string& fn, bool finish_
 	{
 		if(it->action==EQueueAction_Fileclient && 
 			it->queued && it->fileclient==EFileClient_Full
-			&& (it->remotefn) == fn)
+			&& it->remotefn == fn)
 		{
 			it->queued=false;
 			return;

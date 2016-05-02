@@ -128,6 +128,7 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	m_file=file;
 	m_chunkhashes=chunkhashes;
 	m_hashoutput=hashoutput;
+	m_patchfile = NULL;
 	remote_filesize = predicted_filesize;
 	last_transferred_bytes=0;
 	curr_output_fsize=0;
