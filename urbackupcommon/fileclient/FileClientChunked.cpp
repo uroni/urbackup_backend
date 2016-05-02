@@ -430,7 +430,18 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 						next->setProgressLogCallback(progress_log_callback);
 
 						next->setQueueOnly(true);
-						if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script, NULL)!=ERR_SUCCESS)
+
+						_u32 rc;
+						if (patch_mode)
+						{
+							rc = next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize, file_id, is_script, NULL);
+						}
+						else
+						{
+							rc = next->GetFileChunked(remotefn, orig_file, chunkhashes, hashoutput, predicted_filesize, file_id, is_script, NULL);
+						}
+
+						if(rc!=ERR_SUCCESS)
 						{
 							std::deque<FileClientChunked*>::iterator iter;
 							if(parent)
