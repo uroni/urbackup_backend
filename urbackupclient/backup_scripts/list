@@ -3,6 +3,8 @@
 CDIR=`dirname $0`
 
 . "SYSCONFDIR/mariadbdump.conf"
+. "SYSCONFDIR/postgresqldump.conf"
+. "SYSCONFDIR/postgresbase.conf"
 
 if [ "x$MARIADB_DUMP_ENABLED" != "x0" ]; then echo "scriptname=mariadbdump&outputname=mariadbdump.sql"; fi
 if [ "x$POSTGRESQL_DUMP_ENABLED" != "x0" ]; then echo "scriptname=postgresqldump&outputname=postgresqldump.sql"; fi

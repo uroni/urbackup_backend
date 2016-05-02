@@ -421,7 +421,7 @@ int follow_status(bool restore, int64 process_id)
 			{
 				if (restore)
 				{
-					waiting_msg = "Starting restore.Waiting for backup server...";
+					waiting_msg = "Starting restore. Waiting for backup server...";
 					std::cout << "\r" << waiting_msg << spinner[waiting_for_id_idx%spinner.size()];;
 				}
 				else
