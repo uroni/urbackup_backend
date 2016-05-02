@@ -171,7 +171,7 @@ void draw_progress(int pc_done, double speed_bpms, int64 done_bytes, int64 total
 
 	if (!details.empty())
 	{
-		toc += speed_str;
+		toc += details;
 	}
 
 

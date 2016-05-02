@@ -845,6 +845,18 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			if (!todl.metadata_only)
 			{
 				script_ok = logScriptOutput(cfn, todl, todl.sha_dig, script_start_time, hash_file);
+
+				if (!hash_file)
+				{
+					std::string os_curr_hash_path = FileBackup::convertToOSPathFromFileClient(todl.os_path + "/" + escape_metadata_fn(todl.short_fn));
+					std::string hashpath = backuppath_hashes + os_curr_hash_path;
+
+					if (os_directory_exists(os_file_prefix(hashpath))
+						|| os_create_dir(os_file_prefix(hashpath)))
+					{
+						write_file_metadata(hashpath + os_file_sep() + metadata_dir_fn, client_main, todl.metadata, false);
+					}
+				}
 			}
 		}
 

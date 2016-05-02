@@ -264,7 +264,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				if(output_f.get()==NULL
 					&& ftype!=0)
 				{
-					ServerLogger::Log(logid, "Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
+					ServerLogger::Log(logid, "Error saving metadata. Could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + "\"", LL_ERROR);
 					return false;
 				}
 			}			
