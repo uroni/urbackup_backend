@@ -121,7 +121,10 @@ do
 done
 
 install -c "backup_scripts/list" "$PREFIX/share/urbackup/scripts"
-install -c "backup_scripts/mariadb" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/mariadbdump" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/postgresqldump" "$PREFIX/share/urbackup/scripts"
+install -c "backup_scripts/postgresbase" "$PREFIX/share/urbackup/scripts"
+
 install -c "btrfs_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "btrfs_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "lvm_create_filesystem_snapshot" "$PREFIX/share/urbackup"
@@ -129,7 +132,9 @@ install -c "lvm_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 
-test -e "$PREFIX/etc/urbackup/mariadb.conf" || install -c "backup_scripts/mariadb.conf" "$PREFIX/etc/urbackup"
+test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
+test -e "$PREFIX/etc/urbackup/postgresqldump.conf" || install -c "backup_scripts/postgresqldump.conf" "$PREFIX/etc/urbackup"
+test -e "$PREFIX/etc/urbackup/postgresbase.conf" || install -c "backup_scripts/postgresbase.conf" "$PREFIX/etc/urbackup"
 
 chmod 700 "$PREFIX/share/urbackup/scripts"*
 chmod 700 "$PREFIX/etc/urbackup/"*
