@@ -608,6 +608,7 @@ namespace
 		{
 			assert(S_ISSOCK(statbuf.st_mode));
 			restore.log("Not creating unix socket at \"" + fn + "\"", LL_INFO);
+			return ret;
 		}
 
         if(chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)

@@ -43,6 +43,34 @@ namespace
 	const _u32 ID_METADATA_V1_WIN = 1<<0 | 1<<3;
 	const _u32 ID_METADATA_V1_UNIX = 1<<2 | 1<<3;
 
+	std::string reconstructOrigPath(const std::string& metadata_fn, bool isdir)
+	{
+		std::string cp;
+		if (isdir)
+		{
+			cp = ExtractFilePath(metadata_fn, os_file_sep());
+		}
+		else
+		{
+			cp = metadata_fn;
+		}
+
+		std::string orig_path_add = ExtractFileName(cp, os_file_sep());
+		FileMetadata parent_metadata;
+		while (!(cp = ExtractFilePath(cp, os_file_sep())).empty()
+			&& read_metadata(cp + os_file_sep() + metadata_dir_fn, parent_metadata))
+		{
+			if (!parent_metadata.orig_path.empty())
+			{
+				break;
+			}
+
+			orig_path_add = ExtractFileName(cp, os_file_sep()) + os_file_sep() + orig_path_add;
+		}
+
+		return parent_metadata.orig_path + os_file_sep() + orig_path_add;
+	}
+
 	class MetadataCallback : public IFileServ::IMetadataCallback
 	{
 	public:
@@ -93,6 +121,11 @@ namespace
 			}
 
 			orig_path = metadata.orig_path;
+
+			if (orig_path.empty())
+			{
+				orig_path = reconstructOrigPath(metadata_path, isdir);
+			}
 
 			for (size_t j = 0; j < map_paths.size(); ++j)
 			{
@@ -295,30 +328,7 @@ namespace
 				if (depth == 0
 					&& metadata.orig_path.empty())
 				{
-					std::string cp;
-					if (file.isdir)
-					{
-						cp = ExtractFilePath(metadataname, os_file_sep());
-					}
-					else
-					{
-						cp = metadataname;
-					}
-
-					std::string orig_path_add = ExtractFileName(cp, os_file_sep());
-					FileMetadata parent_metadata;
-					while ( !(cp = ExtractFilePath(cp, os_file_sep())).empty()
-						&& read_metadata(cp + os_file_sep() + metadata_dir_fn, parent_metadata))
-					{
-						if (!parent_metadata.orig_path.empty())
-						{
-							break;
-						}
-
-						orig_path_add = ExtractFileName(cp, os_file_sep()) + os_file_sep() + orig_path_add;
-					}
-
-					metadata.orig_path = parent_metadata.orig_path + os_file_sep() + orig_path_add;
+					metadata.orig_path = reconstructOrigPath(metadataname, file.isdir);
 				}
 
 				if(!metadata.orig_path.empty() &&

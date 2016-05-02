@@ -2366,7 +2366,14 @@ std::string CClientThread::getDummyMetadata(std::string output_fn, int64 folder_
 	struct stat64 buf = {};
 	buf.st_mtime = Server->getTimeSeconds();
 	buf.st_ctime = buf.st_mtime;
-	buf.st_mode = 0000400;
+	if (is_dir)
+	{
+		buf.st_mode = 0000400 | 0040000;
+	}
+	else
+	{
+		buf.st_mode = 0000400 | 0100000;
+	}
 	serialize_stat_buf(buf, std::string(), data);
 	_u32 stat_data_size = little_endian(static_cast<_u32>(data.getDataSize() - os_start - sizeof(_u32)));
 	memcpy(data.getDataPtr() + os_start, &stat_data_size, sizeof(stat_data_size));

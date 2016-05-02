@@ -691,6 +691,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								}
 								else
 								{
+									skipped_bytes += data.size;
+
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
                                         data.size, metadata, false, true, 0);
 
