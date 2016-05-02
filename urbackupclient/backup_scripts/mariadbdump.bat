@@ -1,6 +1,6 @@
 @echo off
 
-REM Copyright (c) 2014 Martin Raiber 
+REM Copyright (c) 2014-2016 Martin Raiber 
 REM
 REM Permission is hereby granted, free of charge, to any person obtaining a 
 REM copy of this software and associated documentation files (the 
@@ -21,7 +21,7 @@ REM CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 REM TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 REM SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
 
-call %~dp0\mariadb.conf.bat
+call %~dp0\mariadbdump.conf.bat
 
 echo Starting backup of MariaDB at %DATE% %TIME%... 1>&2
 "%MARIADB_DUMP%" --user=%MARIADB_BACKUP_USER% --password=%MARIADB_BACKUP_PASSWORD% --all-databases
