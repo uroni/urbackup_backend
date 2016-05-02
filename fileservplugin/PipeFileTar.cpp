@@ -20,6 +20,12 @@
 #ifndef _S_IFBLK
 #define	_S_IFBLK 0x3000
 #endif
+#ifndef _S_IFDIR
+#define _S_IFDIR 0x4000
+#endif
+#ifndef _S_IFREG
+#define _S_IFREG 0x8000
+#endif
 
 namespace
 {
