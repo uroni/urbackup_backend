@@ -516,13 +516,13 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							&& !removeFiles(restore_path, folder_files, deletion_queue))
 						{
 							has_error=true;
-						}
-
-						server_path=ExtractFilePath(server_path, "/");
-						restore_path=ExtractFilePath(restore_path, os_file_sep());						
+						}						
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
                             metadata, false, true, folder_items.back());
+
+						server_path = ExtractFilePath(server_path, "/");
+						restore_path = ExtractFilePath(restore_path, os_file_sep());
 
 						folder_items.pop_back();
 						folder_files.pop();
@@ -706,8 +706,26 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 					else
 					{
-						restore_download->addToQueueFull(line, server_fn, local_fn, 
-                            data.size, metadata, false, false, 0);
+						if (data.size == 0)
+						{
+							std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(local_fn), MODE_WRITE));
+
+							if (touch_file.get() == NULL)
+							{
+								log("Cannot touch file \"" + local_fn + "\". " + os_last_error_str(), LL_ERROR);
+								has_error = true;
+							}
+							else
+							{
+								restore_download->addToQueueFull(line, server_fn, local_fn,
+									data.size, metadata, false, true, 0);
+							}
+						}
+						else
+						{
+							restore_download->addToQueueFull(line, server_fn, local_fn,
+								data.size, metadata, false, false, 0);
+						}
 					}
 				}
 				++line;

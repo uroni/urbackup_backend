@@ -292,25 +292,33 @@ namespace
 
 				std::string metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
 				std::string filename = foldername + os_file_sep() + file.name;
-
-				if(file.isdir)
+				
+				std::string metadatasource;
+				bool recurse_dir = false;
+				if(file.isdir
+					&& os_directory_exists(os_file_prefix(metadataname)) )
 				{
-					metadataname+=os_file_sep()+metadata_dir_fn;
+					metadatasource = metadataname + os_file_sep()+metadata_dir_fn;
 					single_file = false;
+					recurse_dir = true;
+				}
+				else
+				{
+					metadatasource = metadataname;
 				}
 
 				bool has_metadata = false;
 
 				FileMetadata metadata;
 				if(token_authentication &&
-					( !read_metadata(metadataname, metadata) ||
+					( !read_metadata(metadatasource, metadata) ||
 					!backupaccess::checkFileToken(backup_tokens, tokens, metadata) ) )
 				{
 					continue;
 				}
 				else if(!token_authentication)
 				{
-					has_metadata = read_metadata(metadataname, metadata);
+					has_metadata = read_metadata(metadatasource, metadata);
 				}
 				else
 				{
@@ -319,7 +327,7 @@ namespace
 
 				if(!has_metadata)
 				{
-					ServerLogger::Log(log_id, "Cannot read file metadata of file "+filename+" from "+metadataname+". Cannot start restore.", LL_ERROR);
+					ServerLogger::Log(log_id, "Cannot read file metadata of file "+filename+" from "+ metadatasource +". Cannot start restore.", LL_ERROR);
 					return false;
 				}
 
@@ -328,7 +336,7 @@ namespace
 				if (depth == 0
 					&& metadata.orig_path.empty())
 				{
-					metadata.orig_path = reconstructOrigPath(metadataname, file.isdir);
+					metadata.orig_path = reconstructOrigPath(metadatasource, file.isdir);
 				}
 
 				if(!metadata.orig_path.empty() &&
@@ -360,7 +368,10 @@ namespace
 
 				if(file.isdir)
 				{
-					ret = ret && createFilelist(filename, hashfoldername + os_file_sep() + escape_metadata_fn(file.name), depth+1, false);
+					if (recurse_dir)
+					{
+						ret = ret && createFilelist(filename, metadataname, depth + 1, false);
+					}
 
 					SFile cf;
 					cf.name="..";

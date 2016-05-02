@@ -131,10 +131,16 @@ namespace
 				continue;
 
 			std::string metadata_fn;
-			if(files[i].isdir)
-				metadata_fn = dir+escape_metadata_fn(files[i].name)+os_file_sep()+metadata_dir_fn;
+			if (files[i].isdir
+				&& !files[i].issym
+				&& !files[i].isspecialf)
+			{
+				metadata_fn = dir + escape_metadata_fn(files[i].name) + os_file_sep() + metadata_dir_fn;
+			}
 			else
-				metadata_fn = dir+escape_metadata_fn(files[i].name);
+			{
+				metadata_fn = dir + escape_metadata_fn(files[i].name);
+			}
 
 			if(!read_metadata(metadata_fn, ret[i]) )
 			{
@@ -497,10 +503,10 @@ namespace backupaccess
 					ret.rel_metadata_path+=os_file_sep();
 				}
 
+				std::string curr_metadata_dir = backupfolder + os_file_sep() + clientname + os_file_sep() + backuppath + os_file_sep() + ".hashes" + (ret.rel_metadata_path.empty() ? "" : (os_file_sep() + ret.rel_metadata_path));
+
 				if(fileaccesstokens)
 				{
-					std::string curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+".hashes"+(ret.rel_metadata_path.empty()?"":(os_file_sep()+ret.rel_metadata_path));
-
 					if(!ret.is_file)
 					{
 						curr_metadata_dir+=metadata_dir_fn;
@@ -516,6 +522,26 @@ namespace backupaccess
 					{
 						ret.can_access_path=false;
 						break;
+					}
+				}
+				
+				if (os_directory_exists(os_file_prefix(curr_full_dir))
+					&& !os_directory_exists(os_file_prefix(curr_metadata_dir)))
+				{
+					std::string symlink_target;
+					if (os_get_symlink_target(os_file_prefix(curr_full_dir), symlink_target))
+					{
+						std::string upone = ".." + os_file_sep();
+						while (next(symlink_target, 0, upone))
+						{
+							symlink_target = symlink_target.substr(upone.size());
+						}
+						ret.rel_metadata_path = symlink_target + os_file_sep();
+					}
+
+					if (i == t_path.size() - 1)
+					{
+						ret.is_symlink = true;
 					}
 				}
 			}

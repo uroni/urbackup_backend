@@ -38,7 +38,7 @@ namespace backupaccess
 	struct SPathInfo
 	{
 		SPathInfo()
-			: can_access_path(false), is_file(false)
+			: can_access_path(false), is_file(false), is_symlink(false)
 		{
 
 		}
@@ -53,6 +53,7 @@ namespace backupaccess
 		std::string full_path;
 
 		bool is_file;
+		bool is_symlink;
 	};
 
 	SPathInfo get_metadata_path_with_tokens(const std::string& u_path, std::string* fileaccesstokens,
