@@ -759,6 +759,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 					local_hash->addFileSQL(backupid, clientid, 0, os_path, os_path_metadata, checksum, output_f_size,
 						output_f_size, 0, 0, 0, true);
 				}
+
+				FileMetadata metadata;
+				metadata.exist = true;
+				metadata.set_shahash(checksum);
+				write_file_metadata(backup_metadata_dir + os_file_sep() + os_path_metadata, cb, metadata, false);
 			}
 			else
 			{

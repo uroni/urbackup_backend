@@ -295,7 +295,16 @@ namespace
 				if (depth == 0
 					&& metadata.orig_path.empty())
 				{
-					std::string cp = ExtractFilePath(metadataname, os_file_sep());
+					std::string cp;
+					if (file.isdir)
+					{
+						cp = ExtractFilePath(metadataname, os_file_sep());
+					}
+					else
+					{
+						cp = metadataname;
+					}
+
 					std::string orig_path_add = ExtractFileName(cp, os_file_sep());
 					FileMetadata parent_metadata;
 					while ( !(cp = ExtractFilePath(cp, os_file_sep())).empty()
