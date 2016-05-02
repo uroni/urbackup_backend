@@ -171,7 +171,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 			for(size_t i=0;i<fs_toks.size();++i)
 			{
-				if(fs_toks[i]!="." && fs_toks[i]!="..")
+				if(fs_toks[i]!="." && fs_toks[i]!=".." && !fs_toks[i].empty())
 				{
 					if(!os_path.empty())
 						os_path+=os_file_sep();
@@ -775,16 +775,14 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	struct stat64 statbuf;
     unserialize_stat_buf(read_stat, statbuf, symlink_target);
 
-    std::string utf8fn = (output_fn);
-
-    if(!restore_stat_buf(restore, statbuf, utf8fn, symlink_target))
+    if(!restore_stat_buf(restore, statbuf, output_fn, symlink_target))
     {
         restore.log("Error setting unix metadata of "+output_fn, LL_ERROR);
     }
 
-    if(!remove_all_xattr(utf8fn))
+    if(!remove_all_xattr(output_fn))
     {
-        restore.log("Error removing xattrs of "+utf8fn, LL_ERROR);
+        restore.log("Error removing xattrs of "+ output_fn, LL_ERROR);
     }
 
     int64 num_eattr_keys;
@@ -844,9 +842,9 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 		data_checksum = urb_adler32(data_checksum, &eattr_val[0], eattr_val.size());
 
-        if(lsetxattr(utf8fn.c_str(), eattr_key.c_str(), eattr_val.data(), eattr_val.size(), 0)!=0)
+        if(lsetxattr(output_fn.c_str(), eattr_key.c_str(), eattr_val.data(), eattr_val.size(), 0)!=0)
         {
-            restore.log("Error setting xattr "+eattr_key+" of "+utf8fn+" errno: "+convert(errno), LL_ERROR);
+            restore.log("Error setting xattr "+eattr_key+" of "+ output_fn +" errno: "+convert(errno), LL_ERROR);
         }
     }
 
