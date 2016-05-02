@@ -292,6 +292,26 @@ namespace
 
 				std::string extra;
 
+				if (depth == 0
+					&& metadata.orig_path.empty())
+				{
+					std::string cp = ExtractFilePath(metadataname, os_file_sep());
+					std::string orig_path_add = ExtractFileName(cp, os_file_sep());
+					FileMetadata parent_metadata;
+					while ( !(cp = ExtractFilePath(cp, os_file_sep())).empty()
+						&& read_metadata(cp + os_file_sep() + metadata_dir_fn, parent_metadata))
+					{
+						if (!parent_metadata.orig_path.empty())
+						{
+							break;
+						}
+
+						orig_path_add = ExtractFileName(cp, os_file_sep()) + os_file_sep() + orig_path_add;
+					}
+
+					metadata.orig_path = parent_metadata.orig_path + os_file_sep() + orig_path_add;
+				}
+
 				if(!metadata.orig_path.empty() &&
 					(depth==0 || metadata.orig_path.find(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{

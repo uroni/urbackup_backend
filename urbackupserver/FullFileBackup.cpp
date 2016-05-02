@@ -370,6 +370,8 @@ bool FullFileBackup::doFileBackup()
 						if (depth == 0 && curr_path == "/urbackup_backup_scripts")
 						{
 							metadata.file_permissions = permissionsAllowAll();
+							curr_orig_path = local_curr_os_path;
+							metadata.orig_path = curr_orig_path;
 						}
 						
 						if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))

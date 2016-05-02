@@ -143,6 +143,7 @@ struct SBackupScript
 	std::string scriptname;
 	std::string outputname;
 	int64 size;
+	std::string orig_path;
 
 	bool operator<(const SBackupScript &other) const
 	{

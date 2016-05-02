@@ -1828,6 +1828,12 @@ bool IndexThread::readBackupScripts()
 						tar_file = true;
 					}
 
+					it = params.find("orig_path");
+					if (it != params.end())
+					{
+						new_script.orig_path = it->second;
+					}
+
 					scripts.push_back(new_script);
 
 					if (filesrv != NULL)
@@ -4529,7 +4535,14 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 		for(size_t i=0;i<scripts.size();++i)
 		{
 			int64 rndnum=Server->getRandomNumber()<<30 | Server->getRandomNumber();
-			outfile << "f\"" << (scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum << "\n";	
+			outfile << "f\"" << escapeListName(scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum;
+
+			if (!scripts[i].orig_path.empty())
+			{
+				outfile << "#orig_path=" << EscapeParamString(scripts[i].orig_path) << "&orig_sep=" << EscapeParamString(os_file_sep());
+			}
+			
+			outfile << "\n";
 		}
 
 		outfile << "u\n";
