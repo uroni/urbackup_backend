@@ -1563,6 +1563,9 @@ void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
 
 _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified )
 {
+	if (tcpsock == NULL)
+		return ERR_ERROR;
+
 	if(queued.empty())
 	{
 		CWData data;
@@ -1793,6 +1796,9 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 
 _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token, int tries)
 {
+	if (tcpsock == NULL)
+		return ERR_ERROR;
+
 	assert(queued.empty());
 
 	setReconnectTries(tries);
@@ -1857,6 +1863,10 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token, int t
 
 _u32 FileClient::FinishScript(std::string remotefn)
 {
+	if (tcpsock == NULL)
+		return ERR_ERROR;
+
+
 	if(queued.empty())
 	{
 		CWData data;
