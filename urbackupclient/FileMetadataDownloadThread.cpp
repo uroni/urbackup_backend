@@ -164,7 +164,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 #ifdef _WIN32
 			std::string os_path;
 #else
-            std::string os_path="/";
+            std::string os_path = os_file_sep();
 #endif
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
@@ -173,8 +173,11 @@ bool FileMetadataDownloadThread::applyMetadata()
 			{
 				if(fs_toks[i]!="." && fs_toks[i]!=".." && !fs_toks[i].empty())
 				{
-					if(!os_path.empty())
-						os_path+=os_file_sep();
+					if (!os_path.empty()
+						&& os_path != os_file_sep())
+					{
+						os_path += os_file_sep();
+					}
 
 					os_path += (fs_toks[i]);				
 				}
