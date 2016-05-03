@@ -1678,6 +1678,8 @@ bool IncrFileBackup::doFullBackup()
 	disk_error = full_backup.hasDiskError();
 	has_early_error = full_backup.hasEarlyError();
 	backupid = full_backup.getBackupid();
+	should_backoff = full_backup.shouldBackoff();
+	has_timeout_error = full_backup.hasTimeoutError();
 
 	log_action = LogAction_NoLogging;
 

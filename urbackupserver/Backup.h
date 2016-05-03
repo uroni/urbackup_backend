@@ -61,6 +61,11 @@ public:
 		return should_backoff;
 	}
 
+	bool hasTimeoutError()
+	{
+		return has_timeout_error;
+	}
+
 protected:
 	virtual bool doBackup() = 0;
 
