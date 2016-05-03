@@ -32,7 +32,6 @@
 #include "FileServ.h"
 #include "ChunkSendThread.h"
 #include "../urbackupcommon/sha2/sha2.h"
-#include "FileMetadataPipe.h"
 #include "../common/adler32.h"
 #include <memory>
 
@@ -66,6 +65,8 @@
 #endif
 
 #endif
+
+#include "FileMetadataPipe.h"
 
 #ifndef SEEK_DATA
 #define SEEK_DATA 3
