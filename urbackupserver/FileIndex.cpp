@@ -177,15 +177,21 @@ int64 FileIndex::get_with_cache_prefer_client(const SIndexKey& key)
 
 std::map<int, int64> FileIndex::get_all_clients_with_cache( const SIndexKey& key, bool with_del)
 {
-	std::map<int, int64> ret = get_all_clients(key);
-
+	std::map<int, int64> ret_cache;
 
 	{
 		IScopedLock lock(mutex);
 
-		get_from_cache_all_clients(key, *other_cache_buffer, ret);
+		get_from_cache_all_clients(key, *other_cache_buffer, ret_cache);
 
-		get_from_cache_all_clients(key, *active_cache_buffer, ret);
+		get_from_cache_all_clients(key, *active_cache_buffer, ret_cache);
+	}
+
+	std::map<int, int64> ret = get_all_clients(key);
+
+	for (std::map<int, int64>::iterator it = ret_cache.begin(); it != ret_cache.end();++it)
+	{
+		ret[it->first] = it->second;
 	}
 	
 	if(!with_del)
