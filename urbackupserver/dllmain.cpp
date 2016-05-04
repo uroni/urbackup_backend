@@ -585,7 +585,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-		db_results res=db->Read("SELECT password_md5 FROM settings_db.si_users WHERE name='admin'");
+		IQuery* q_read = db->Prepare("SELECT password_md5 FROM settings_db.si_users WHERE name=?");
+		q_read->Bind(set_admin_username);
+		db_results res = q_read->Read();
+		q_read->Reset();
 
 		if(res.empty())
 		{
