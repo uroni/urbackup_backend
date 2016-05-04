@@ -498,7 +498,7 @@ void ClientMain::operator ()(void)
 								ServerLogger::Log(logid, "Exponential backoff: Waiting at least " + PrettyPrintTime(exponentialBackoffTimeImage() * 1000) + " before next image backup", LL_WARNING);
 							}
 						}
-						else if (backup_queue[i].backup->getResult())
+						else
 						{
 							if (backup_queue[i].backup->isFileBackup())
 							{
@@ -508,9 +508,7 @@ void ClientMain::operator ()(void)
 							{
 								count_image_backup_try = 0;
 							}
-						}
-						else
-						{
+
 							last_backup_try = Server->getTimeMS();
 						}
 
