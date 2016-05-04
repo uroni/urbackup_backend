@@ -1080,6 +1080,8 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 
 void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_client)
 {
+	bool load_whole_block = false;
+
 	if(!hash_for_whole_block)
 	{
 		VLOG(Server->Log("Not a whole block. currpos="+convert(curr_pos)+" block_for_chunk_start="+convert(block_for_chunk_start), LL_DEBUG));
@@ -1105,6 +1107,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 						Server->Log("Read error in hash finalization at position "+convert(chunk_start)+" toread="+convert(toread)+" read="+convert(r)+". This will cause the whole block to be loaded. "+os_last_error_str(), LL_WARNING);
 						file_pos+=dest_pos-chunk_start;
 						chunk_start=dest_pos;
+						load_whole_block = true;
 						break;
 					}
 					file_pos+=r;
@@ -1117,6 +1120,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 				Server->Log("Error seeking in base file (to position "+convert(chunk_start)+"). Whole block will be loaded (2). "+os_last_error_str(), LL_WARNING);
 				file_pos+=dest_pos-chunk_start;
 				chunk_start=dest_pos;
+				load_whole_block = true;
 			}
 		}
 
@@ -1128,7 +1132,8 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 		VLOG(Server->Log("Whole block. currpos="+convert(curr_pos)+" block_for_chunk_start="+convert(block_for_chunk_start)+" chunk_start="+convert(chunk_start), LL_DEBUG));
 	}
 
-	if(memcmp(hash_from_client, md5_hash.raw_digest_int(), big_hash_size)!=0)
+	if(load_whole_block 
+		|| memcmp(hash_from_client, md5_hash.raw_digest_int(), big_hash_size)!=0)
 	{
 		if(!hash_for_whole_block)
 		{
