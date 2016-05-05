@@ -727,23 +727,13 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 	int rc = utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW);
 	return rc==0;
 #else
-	#if defined(__FreeBSD__)
-	#define O_SYMLINK 0
-	#endif
-
-	int fd = open(fn.c_str(), O_WRONLY|O_NOFOLLOW|O_SYMLINK|O_CLOEXEC);
-	if(fd==-1)
-	{
-		return false;
-	}
-	
 	struct timeval tv[2];
     tv[0].tv_sec = atime;
     tv[0].tv_usec = 0;
     tv[1].tv_sec = mtime;
     tv[1].tv_usec = 0;
-    int rc = futimes(fd, tv);
-	close(fd);
+	
+	int rc = lutimes(fn.c_str(), tv);
 	return rc==0;
 #endif
 }
