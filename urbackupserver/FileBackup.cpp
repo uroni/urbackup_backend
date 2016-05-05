@@ -1795,6 +1795,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
 
 			int64 transferred_bytes = metadata_download_thread->getTransferredBytes();
+			int attempt = 0;
 
 			do
 			{
@@ -1813,13 +1814,15 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 
 				int64 new_transferred_bytes = metadata_download_thread->getTransferredBytes();
 
-				if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0)
+				if(attempt>0
+					&& !Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0)
 					&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes )
 				{
 					metadata_download_thread->shutdown();
 				}
 
 				transferred_bytes = new_transferred_bytes;
+				++attempt;
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	
