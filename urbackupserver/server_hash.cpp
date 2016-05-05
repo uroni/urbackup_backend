@@ -687,8 +687,8 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 				if(ctf!=NULL)
 				{
 					int64 hashfilesize = read_hashdata_size(ctf);
-					assert(hashfilesize==-1 || hashfilesize==t_filesize);
-					if(hashfilesize!=-1)
+					if(hashfilesize!=-1
+						&& hashfilesize == t_filesize)
 					{
 						if(!copyFile(ctf, hash_fn, NULL))
 						{
@@ -707,6 +707,10 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					}
 					else
 					{
+						if (hashfilesize != -1)
+						{
+							ServerLogger::Log(logid, "File size in meta-data file \"" + existing_file.hashpath + "\" does not match database. From database=" + convert(t_filesize) + " In meta-data=" + convert(hashfilesize), LL_WARNING);
+						}
 						write_metadata=true;
 					}
 					
