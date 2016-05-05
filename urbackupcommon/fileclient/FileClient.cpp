@@ -965,6 +965,8 @@ bool FileClient::Reconnect(void)
 							state = EReceiveState_SparseExtends;
 							hash_func.init();
 
+							Server->Log("Downloading \""+ remotefn+"\" with sparse extents (full)...", LL_DEBUG);
+
 							resetSparseExtentsFile();
 
 							sparse_extends_f = temporaryFileRetry();

@@ -821,6 +821,8 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 
 				if (num_sparse_extents > 0)
 				{
+					Server->Log("Downloading \"" + remote_filename + "\" with sparse extents (chunked)...", LL_DEBUG);
+
 					state = CS_SPARSE_EXTENTS;
 					whole_block_remaining = static_cast<_u32>(num_sparse_extents*sizeof(IFsFile::SSparseExtent) + big_hash_size);
 					md5_hash.init();
