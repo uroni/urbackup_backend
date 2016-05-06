@@ -640,7 +640,10 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							{
 								local_fn=old_local_fn+"_"+convert(idx);
 								++idx;
-								orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+								if (!Server->fileExists(os_file_prefix(local_fn)) )
+								{
+									orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
+								}
 							}
 							rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
 						}
