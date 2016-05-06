@@ -263,6 +263,7 @@ private:
 	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
 	bool wait_for(IVssAsync *vsasync);
 	std::string GetErrorHResErrStr(HRESULT res);
+	void printProviderInfo(HRESULT res);
 	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error);
 	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error);
 #else

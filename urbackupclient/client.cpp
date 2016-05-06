@@ -97,12 +97,12 @@ const int64 file_buffer_commit_interval=120*1000;
 #define ENABLE_VSS
 #endif
 
-#define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
-#define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); return false; }}
-#define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
-#define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
-#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
-#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
+#define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code"+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); return false; }}
+#define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
+#define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
+#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed .VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
+#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
 
 void IdleCheckerThread::operator()(void)
 {
@@ -2917,6 +2917,35 @@ std::string IndexThread::GetErrorHResErrStr(HRESULT res)
 		return "VSS_E_VOLUME_NOT_SUPPORTED_BY_PROVIDER";
 	};
 	return "UNDEF";
+}
+
+void IndexThread::printProviderInfo(HRESULT res)
+{
+	if (res != VSS_E_UNEXPECTED_PROVIDER_ERROR)
+	{
+		return;
+	}
+
+	std::string data;
+	if (os_popen("vssadmin list providers", data) == 0)
+	{
+		std::vector<std::string> lines;
+		TokenizeMail(data, lines, "\n");
+
+		if (lines.size() > 3)
+		{
+			VSSLog("VSS provider information:", LL_ERROR);
+
+			for (size_t i = 3; i < lines.size(); ++i)
+			{
+				std::string cl = trim(lines[i]);
+				if (!cl.empty())
+				{
+					VSSLog(cl, LL_ERROR);
+				}
+			}
+		}
+	}
 }
 #endif
 
