@@ -829,7 +829,9 @@ void ClientMain::operator ()(void)
 				"&restore_path="+EscapeParamString(restore_path)+
 				"&single_file="+ convert(static_cast<int>(single_file))+
 				"&clean_other=" + convert(static_cast<int>(clean_other))+
-				"&ignore_other_fs=" + convert(static_cast<int>(ignore_other_fs)),
+				"&ignore_other_fs=" + convert(static_cast<int>(ignore_other_fs))+
+				"&tgroup=0"
+				"&clientsubname="+EscapeParamString(clientsubname),
 				"Starting restore failed", 10000, 10, true, LL_ERROR);
 
 			if (ret != "ok")

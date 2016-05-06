@@ -227,6 +227,9 @@ public:
 
 	static bool normalizeVolume(std::string& volume);
 
+	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<std::string>& include_dirs,
+		std::vector<int>& include_depth, std::vector<std::string>& include_prefix);
+
 private:
 
 	bool readBackupDirs(void);
@@ -247,8 +250,7 @@ private:
 
 	void updateDirs(void);
 
-	static std::string sanitizePattern(const std::string &p);
-	void readPatterns();	
+	static std::string sanitizePattern(const std::string &p);	
 
 	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes);
 

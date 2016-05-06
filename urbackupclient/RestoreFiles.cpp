@@ -238,6 +238,9 @@ void RestoreFiles::operator()()
 			return;
 		}
 
+		IndexThread::readPatterns(tgroup, clientsubname, exclude_dirs,
+			include_dirs, include_depth, include_prefix);
+
 		log("Downloading necessary file data...", LL_INFO);
 
 		fc.setProgressLogCallback(this);
@@ -383,6 +386,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	size_t depth = 0;
 
 	std::string restore_path;
+	std::string share_path;
 	std::string server_path = "clientdl";
 
 	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
@@ -462,8 +466,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						bool set_orig_path = false;
                         if(!metadata.orig_path.empty())
 						{
-                            restore_path = (metadata.orig_path);
+                            restore_path = metadata.orig_path;
 							set_orig_path=true;
+						}
+
+						bool set_share_path = false;
+						str_map::iterator it_share_path = extra.find("share_path");
+						if (it_share_path != extra.end())
+						{
+							share_path = greplace("/", os_file_sep(), it_share_path->second);
+							set_share_path = true;
 						}
 
 						if(depth==0)
@@ -494,6 +506,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
+						if (!set_share_path)
+						{
+							share_path += os_file_sep() + data.name;
+						}
+
 #ifdef _WIN32
 						std::string name_lower = strlower(data.name);
 #else
@@ -512,8 +529,10 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					{
 						--depth;
 
+						bool has_include_exclude = false;
 						if(clean_other
-							&& !removeFiles(restore_path, folder_files, deletion_queue))
+							&& (os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink)==0
+							&& !removeFiles(restore_path, share_path, folder_files, deletion_queue, has_include_exclude))
 						{
 							has_error=true;
 						}						
@@ -523,6 +542,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						server_path = ExtractFilePath(server_path, "/");
 						restore_path = ExtractFilePath(restore_path, os_file_sep());
+						share_path = ExtractFilePath(share_path, os_file_sep());
 
 						folder_items.pop_back();
 						folder_files.pop();
@@ -547,6 +567,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					{
                         local_fn = it_orig_path->second;
 						restore_path = ExtractFilePath(local_fn, os_file_sep());
+					}
+
+					str_map::iterator it_share_path = extra.find("share_path");
+					if (it_share_path != extra.end())
+					{
+						share_path = greplace("/", os_file_sep(), ExtractFilePath(it_share_path->second, "/"));
 					}
 				
 					if(Server->fileExists(os_file_prefix(local_fn)))
@@ -736,7 +762,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	if(!single_item && clean_other)
 	{
-		if(!removeFiles(restore_path, folder_files, deletion_queue))
+		bool has_include_exclude = false;
+		if(!removeFiles(restore_path, share_path, folder_files, deletion_queue, has_include_exclude))
 		{
 			has_error=true;
 		}
@@ -851,8 +878,8 @@ void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
 	ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 }
 
-bool RestoreFiles::removeFiles( std::string restore_path,
-	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue )
+bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path,
+	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude )
 {
 	bool ret=true;
 
@@ -874,20 +901,45 @@ bool RestoreFiles::removeFiles( std::string restore_path,
 			std::string fn_lower = files[j].name;
 #endif
 
-			if(std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
+			if(folder_files.empty()
+				|| std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
 			{
 				std::string cpath = restore_path+os_file_sep()+files[j].name;
+				std::string csharepath = share_path + os_file_sep() + files[j].name;
+
+				if (IndexThread::isExcluded(exclude_dirs, cpath)
+					|| IndexThread::isExcluded(exclude_dirs, csharepath))
+				{
+					has_include_exclude = true;
+					continue;
+				}
+				
+				if (!IndexThread::isIncluded(include_dirs, include_depth, include_prefix, cpath, NULL)
+					&& !IndexThread::isIncluded(include_dirs, include_depth, include_prefix, csharepath, NULL))
+				{
+					has_include_exclude = true;
+					continue;
+				}
+
 				if(files[j].isdir)
 				{
-					if(!os_remove_nonempty_dir(os_file_prefix(cpath)))
+					bool del_has_include_exclude = false;
+					std::stack<std::vector<std::string> > dummy_folder_files;
+					if( removeFiles(cpath, csharepath, dummy_folder_files, deletion_queue, del_has_include_exclude)
+						&& !del_has_include_exclude)
 					{
-						log("Error deleting directory \""+restore_path+"\". "+os_last_error_str(), LL_WARNING);
+						if (!os_remove_dir(os_file_prefix(cpath)))
+						{
+							log("Error deleting directory \"" + restore_path + "\". " + os_last_error_str(), LL_WARNING);
 #ifndef _WIN32
-						ret=false;
+							ret = false;
 #else
-						deletion_queue.push_back(cpath);
+							deletion_queue.push_back(cpath);
 #endif
+						}
 					}
+
+
 				}
 				else
 				{

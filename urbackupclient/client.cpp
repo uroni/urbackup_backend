@@ -917,7 +917,8 @@ const char * filelist_fn="urbackup/data/filelist_new.ub";
 
 void IndexThread::indexDirs(bool full_backup)
 {
-	readPatterns();
+	readPatterns(index_group, index_clientsubname,
+		exlude_dirs, include_dirs, include_depth, include_prefix);
 
 	updateDirs();
 
@@ -3157,7 +3158,8 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns()
+void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<std::string>& include_dirs,
+	std::vector<int>& include_depth, std::vector<std::string>& include_prefix)
 {
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";

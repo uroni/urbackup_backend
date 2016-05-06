@@ -186,19 +186,26 @@ namespace
 			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
 			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
-			bool clean_other, bool ignore_other_fs)
+			bool clean_other, bool ignore_other_fs, const std::string& share_path)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
 			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
-			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs)
+			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
+			share_path(share_path)
 		{
 			TokenizeMail(filter, filter_fns, "/");
 
 			if (filter_fns.size()==1)
 			{
 				single_file = true;
+			}
+
+			if (!share_path.empty()
+				&& share_path[share_path.size() - 1] == '/')
+			{
+				this->share_path.erase(share_path.size() - 1, 1);
 			}
 		}
 
@@ -207,7 +214,7 @@ namespace
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			ServerBackupDao backup_dao(db);
 
-			if(!createFilelist(foldername, hashfoldername, 0, skip_special_root))
+			if(!createFilelist(foldername, hashfoldername, share_path, 0, skip_special_root))
 			{
 				ServerStatus::stopProcess(curr_clientname, status_id);
 
@@ -262,7 +269,7 @@ namespace
 		}
 
 
-		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, size_t depth, bool skip_special)
+		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, const std::string& curr_share_path, size_t depth, bool skip_special)
 		{
 			bool has_error=false;
 			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
@@ -354,6 +361,11 @@ namespace
                     extra="&orig_path="+EscapeParamString(metadata.orig_path);
 				}
 
+				if (depth == 0)
+				{
+					extra += "&share_path=" + EscapeParamString(curr_share_path.empty() ? file.name : (curr_share_path + "/" + file.name));
+				}
+
 				if(!metadata.shahash.empty())
 				{
 					extra+="&shahash="+base64_encode_dash(metadata.shahash);
@@ -370,7 +382,7 @@ namespace
 				{
 					if (recurse_dir)
 					{
-						ret = ret && createFilelist(filename, metadataname, depth + 1, false);
+						ret = ret && createFilelist(filename, metadataname, curr_share_path + "/" + file.name, depth + 1, false);
 					}
 
 					SFile cf;
@@ -405,13 +417,14 @@ namespace
 		std::vector < std::pair<std::string, std::string> > map_paths;
 		bool clean_other;
 		bool ignore_other_fs;
+		std::string share_path;
 	};
 }
 
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
-	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs)
+	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -453,7 +466,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
 		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,
-		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs), "frestore preparation");
+		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path), "frestore preparation");
 
 	return true;
 }
@@ -493,10 +506,11 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 
 	std::string curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
 	std::string curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+".hashes";
+	std::string share_path = greplace(os_file_sep(), "/", file_backup_info.path);
 
 	std::vector<backupaccess::SToken> backup_tokens;
 	std::vector<std::string> tokens;
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(), false, backup_tokens,
-		tokens, true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs);
+		tokens, true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path);
 }
 

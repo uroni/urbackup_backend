@@ -2356,6 +2356,8 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	bool single_file = params["single_file"]=="1";
 	bool clean_other = params["clean_other"] == "1";
 	bool ignore_other_fs = params["ignore_other_fs"] != "0";
+	int tgroup = watoi(params["tgroup"]);
+	std::string clientsubname = params["clientsubname"];
 
 	if(restore_process_id==0)
 	{
@@ -2364,7 +2366,8 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	}
 
 	RestoreFiles* local_restore_files = new RestoreFiles(restore_process_id, restore_id, status_id, log_id,
-		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs);
+		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs,
+		tgroup, clientsubname);
 
 	if(restore == "client-confirms" && !has_restore_token)
 	{

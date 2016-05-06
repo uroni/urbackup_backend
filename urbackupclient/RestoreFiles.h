@@ -20,11 +20,12 @@ class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, pu
 public:
 	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id,
 		std::string client_token, std::string server_token, std::string restore_path, bool single_file,
-		bool clean_other, bool ignore_other_fs)
+		bool clean_other, bool ignore_other_fs, int tgroup, std::string clientsubname)
 		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
 		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
-		clean_other(clean_other), ignore_other_fs(ignore_other_fs), last_speed_received_bytes(0), speed_set_time(0)
+		clean_other(clean_other), ignore_other_fs(ignore_other_fs), last_speed_received_bytes(0), speed_set_time(0),
+		tgroup(tgroup), clientsubname(clientsubname)
 	{
 
 	}
@@ -68,7 +69,7 @@ private:
 
 	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater);
 
-	bool removeFiles( std::string restore_path, std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue );
+	bool removeFiles( std::string restore_path, std::string share_path, std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude );
 
 	bool deleteFilesOnRestart(std::vector<std::string> &deletion_queue);
 
@@ -111,4 +112,12 @@ private:
 
 	int64 last_speed_received_bytes;
 	int64 speed_set_time;
+
+	std::vector<std::string> exclude_dirs;
+	std::vector<std::string> include_dirs;
+	std::vector<int> include_depth;
+	std::vector<std::string> include_prefix;
+
+	int tgroup;
+	std::string clientsubname;
 };
