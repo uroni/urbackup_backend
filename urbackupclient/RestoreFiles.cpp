@@ -480,7 +480,17 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						if(depth==0)
 						{
-							if(!os_directory_exists(os_file_prefix(restore_path)))
+							bool win_root = false;
+
+#ifdef _WIN32
+							if (restore_path.size() <= 3)
+							{
+								win_root = true;
+							}
+#endif
+
+							if(!win_root
+								&& !os_directory_exists(os_file_prefix(restore_path)))
 							{
 								if(!os_create_dir_recursive(os_file_prefix(restore_path)))
 								{
