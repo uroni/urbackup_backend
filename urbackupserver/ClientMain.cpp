@@ -572,6 +572,11 @@ void ClientMain::operator ()(void)
 			{
 				updateCapabilities();
 				client_updated_time=0;
+				session_identity_refreshtime = 0;
+				if (!authenticateIfNeeded(true))
+				{
+					skip_checking = true;
+				}
 			}
 
 			if (Server->getTimeMS()- last_client_update_check > 24*60*60*1000
