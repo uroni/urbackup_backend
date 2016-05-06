@@ -371,7 +371,8 @@ namespace
 					extra+="&shahash="+base64_encode_dash(metadata.shahash);
 				}
 
-				if(depth==0 && !filter_fns.empty())
+				if(depth==0 &&
+					( !filter_fns.empty() || skip_special ) )
 				{
 					extra+="&single_item=1";
 				}

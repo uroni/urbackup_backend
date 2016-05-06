@@ -237,7 +237,7 @@ namespace
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
 	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
-		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 	if(hFile==INVALID_HANDLE_VALUE)
 	{
@@ -341,6 +341,9 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		if(curr_stream_id->dwStreamNameSize>0)
 		{
 			stream_id.resize(stream_id.size()+curr_stream_id->dwStreamNameSize);
+
+			curr_stream_id =
+				reinterpret_cast<WIN32_STREAM_ID_INT*>(stream_id.data());
 
 			if(metadata_f->Read(stream_id.data() + metadata_id_size, static_cast<_u32>(curr_stream_id->dwStreamNameSize))!=curr_stream_id->dwStreamNameSize)
 			{

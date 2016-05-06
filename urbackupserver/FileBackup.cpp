@@ -1810,7 +1810,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 				}
 
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
-				Server->wait(1000);
+				Server->wait(10000);
 
 				int64 new_transferred_bytes = metadata_download_thread->getTransferredBytes();
 

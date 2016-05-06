@@ -255,6 +255,11 @@ void RestoreFiles::operator()()
 
 		curr_restore_updater = NULL;
 
+		const int64 stalled_bytes_per_second = 4096;
+
+		int64 transferred_bytes = metadata_thread->getTransferredBytes();
+
+		int attempt = 0;
 		do
 		{
 			if (fc.InformMetadataStreamEnd(client_token, 0) == ERR_TIMEOUT)
@@ -266,9 +271,19 @@ void RestoreFiles::operator()()
 
 			log("Waiting for metadata download stream to finish", LL_DEBUG);
 
-			Server->wait(1000);
+			Server->wait(10000);
 
-			metadata_thread->shutdown();
+			int64 new_transferred_bytes = metadata_thread->getTransferredBytes();
+
+			if (attempt > 0
+				&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes)
+			{
+				metadata_thread->shutdown();
+			}
+
+			transferred_bytes = new_transferred_bytes;
+			++attempt;
+
 		} while (!Server->getThreadPool()->waitFor(metadata_dl, 10000));
 
 		if (!metadata_thread->applyMetadata())
@@ -405,6 +420,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	int64 laststatsupdate=Server->getTimeMS();
 	int64 skipped_bytes = 0;
+	int db_tgroup = 0;
 
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
@@ -498,6 +514,42 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									has_error=true;
 								}
 							}
+
+							if (!clientsubname.empty())
+							{
+								db_tgroup = -1;
+								IQuery *q = db->Prepare("SELECT group_offset FROM virtual_client_group_offsets WHERE virtual_client=?", false);
+								q->Bind(clientsubname);
+								db_results res = q->Read();
+								db->destroyQuery(q);
+
+								if (!res.empty())
+								{
+									db_tgroup = watoi(res[0]["group_offset"]) + tgroup;
+								}
+							}
+							else
+							{
+								db_tgroup = tgroup;
+							}
+
+							if (db_tgroup >= 0)
+							{
+								IQuery* q = db->Prepare("SELECT optional FROM backupdirs WHERE name=? AND tgroup=?", false);
+								q->Bind(data.name);
+								q->Bind(db_tgroup);
+								db_results res = q->Read();
+								db->destroyQuery(q);
+
+								if (!res.empty() && (watoi(res[0]["optional"]) & EBackupDirFlag_ShareHashes) > 0)
+								{
+									db_tgroup = 0;
+								}
+								else
+								{
+									db_tgroup += 1;
+								}
+							}
 						}
 						else
 						{
@@ -518,7 +570,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						if (!set_share_path)
 						{
-							share_path += os_file_sep() + data.name;
+							if (!share_path.empty())
+							{
+								share_path += os_file_sep();
+							}
+
+							share_path += data.name;
 						}
 
 #ifdef _WIN32
@@ -585,7 +642,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						share_path = greplace("/", os_file_sep(), ExtractFilePath(it_share_path->second, "/"));
 					}
 				
-					if(Server->fileExists(os_file_prefix(local_fn)))
+					if(os_get_file_type(os_file_prefix(local_fn))!=0)
 					{
 						if(restore_path!=curr_files_dir)
 						{
@@ -597,7 +654,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							std::string restore_path_lower = strlower(restore_path);
 #endif
 
-							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), 0, curr_files))
+							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), db_tgroup, curr_files))
 							{
 								curr_files.clear();
 							}
@@ -958,7 +1015,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					if(!Server->deleteFile(os_file_prefix(cpath)))
 					{
-						log("Error deleting file \""+restore_path+"\". "+os_last_error_str(), LL_WARNING);
+						log("Error deleting file \""+ cpath +"\". "+os_last_error_str(), LL_WARNING);
 
 #ifndef _WIN32
 						ret=false;
