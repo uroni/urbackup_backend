@@ -233,7 +233,10 @@ namespace
 		  hfile(hfile) {}
 
 		  ~HandleScope(){
-			  CloseHandle(hfile);
+			  if (hfile != INVALID_HANDLE_VALUE)
+			  {
+				  CloseHandle(hfile);
+			  }
 		  }
 	private:
 		HANDLE hfile;
@@ -245,7 +248,8 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
-	if(hFile==INVALID_HANDLE_VALUE)
+	if(hFile==INVALID_HANDLE_VALUE
+		&& output_fn.size()>3)
 	{
 		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\"", LL_ERROR);
 		return false;
@@ -361,14 +365,17 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 			data_checksum = urb_adler32(data_checksum, stream_id.data() + metadata_id_size, static_cast<_u32>(curr_stream_id->dwStreamNameSize));
 		}	
 
-		DWORD written=0;
-		BOOL b=BackupWrite(hFile, reinterpret_cast<LPBYTE>(stream_id.data()), static_cast<DWORD>(stream_id.size()), &written, FALSE, TRUE, &context);
-
-		if(!b || written!=stream_id.size())
+		if (hFile != INVALID_HANDLE_VALUE)
 		{
-			restore.log("Error writting metadata to file \""+output_fn+"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
-			has_error=true;
-			break;
+			DWORD written = 0;
+			BOOL b = BackupWrite(hFile, reinterpret_cast<LPBYTE>(stream_id.data()), static_cast<DWORD>(stream_id.size()), &written, FALSE, TRUE, &context);
+
+			if (!b || written != stream_id.size())
+			{
+				restore.log("Error writting metadata to file \"" + output_fn + "\". Last error: " + convert((int)GetLastError()), LL_ERROR);
+				has_error = true;
+				break;
+			}
 		}
 
 		int64 curr_pos=0;
@@ -386,21 +393,25 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 			data_checksum = urb_adler32(data_checksum, buffer.data(), toread);
 
-			DWORD written=0;
-			BOOL b=BackupWrite(hFile, reinterpret_cast<LPBYTE>(buffer.data()), toread, &written, FALSE, TRUE, &context);
-
-			if(!b || written!=toread)
+			if (hFile != INVALID_HANDLE_VALUE)
 			{
-				restore.log("Error writting metadata to file \""+output_fn+"\". Last error: "+convert((int)GetLastError()), LL_ERROR);
-				has_error=true;
-				break;
+				DWORD written = 0;
+				BOOL b = BackupWrite(hFile, reinterpret_cast<LPBYTE>(buffer.data()), toread, &written, FALSE, TRUE, &context);
+
+				if (!b || written != toread)
+				{
+					restore.log("Error writting metadata to file \"" + output_fn + "\". Last error: " + convert((int)GetLastError()), LL_ERROR);
+					has_error = true;
+					break;
+				}
 			}
 
 			curr_pos+=toread;
 		}
 	}
 
-	if(context!=NULL)
+	if(context!=NULL
+		&& hFile != INVALID_HANDLE_VALUE)
 	{
 		DWORD written;
 		BackupWrite(hFile, NULL, 0, &written, TRUE, TRUE, &context);
@@ -451,10 +462,13 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		has_error=true;
 	}
 
-	if(SetFileInformationByHandle(hFile, FileBasicInfo, &basic_info, sizeof(basic_info))!=TRUE)
+	if (hFile != INVALID_HANDLE_VALUE)
 	{
-		restore.log("Error setting file attributes of file \""+output_fn+"\".", LL_ERROR);
-		has_error=true;
+		if (SetFileInformationByHandle(hFile, FileBasicInfo, &basic_info, sizeof(basic_info)) != TRUE)
+		{
+			restore.log("Error setting file attributes of file \"" + output_fn + "\".", LL_ERROR);
+			has_error = true;
+		}
 	}
 
 	return !has_error;

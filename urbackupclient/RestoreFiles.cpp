@@ -299,6 +299,12 @@ void RestoreFiles::operator()()
 
 	ClientConnector::restoreDone(log_id, status_id, restore_id, true, server_token);
 
+	if (request_restart)
+	{
+		log("Restore requested system restart to rename/delete locked files", LL_INFO);
+		ClientConnector::requestRestoreRestart();
+	}
+
 	delete this;
 }
 
@@ -864,8 +870,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
     }
 
 #ifdef _WIN32
-	bool request_restart=false;
-
 	if(!has_error && !restore_download->hasError())
 	{
 		if(!deletion_queue.empty())
@@ -896,12 +900,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				has_error=true;
 			}
 		}
-	}	
-
-	if(request_restart)
-	{
-		log("Restore requested system restart to rename/delete locked files", LL_INFO);
-		ClientConnector::requestRestoreRestart();
 	}
 #endif
 

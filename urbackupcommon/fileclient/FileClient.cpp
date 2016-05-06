@@ -1801,8 +1801,6 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token, int t
 	if (tcpsock == NULL)
 		return ERR_ERROR;
 
-	assert(queued.empty());
-
 	setReconnectTries(tries);
 
 	CWData data;

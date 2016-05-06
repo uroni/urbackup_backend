@@ -27,7 +27,7 @@ public:
 		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
 		clean_other(clean_other), ignore_other_fs(ignore_other_fs), last_speed_received_bytes(0), speed_set_time(0),
-		tgroup(tgroup), clientsubname(clientsubname)
+		tgroup(tgroup), clientsubname(clientsubname), request_restart(false)
 	{
 
 	}
@@ -125,4 +125,6 @@ private:
 	std::string clientsubname;
 
 	str_map metadata_path_mapping;
+
+	bool request_restart;
 };
