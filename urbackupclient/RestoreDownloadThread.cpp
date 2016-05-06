@@ -29,10 +29,10 @@ namespace
 	const size_t queue_items_chunked = 4;
 }
 
-RestoreDownloadThread::RestoreDownloadThread( FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token )
+RestoreDownloadThread::RestoreDownloadThread( FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping)
 	: fc(fc), fc_chunked(fc_chunked), queue_size(0), all_downloads_ok(true),
 	mutex(Server->createMutex()), cond(Server->createCondition()), skipping(false), is_offline(false),
-	client_token(client_token)
+	client_token(client_token), metadata_path_mapping(metadata_path_mapping)
 {
 
 }
@@ -217,9 +217,21 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 			{
 				todl.destfn=old_destfn+"_"+convert(idx);
 				++idx;
+
+				IScopedLock lock(mutex.get());
 				dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
+
+				if (dest_f.get() != NULL)
+				{
+					renamed_files.insert(todl.destfn);
+				}
 			}
-			rename_queue.push_back(std::make_pair(todl.destfn, old_destfn));
+
+			if (dest_f.get() != NULL)
+			{
+				rename_queue.push_back(std::make_pair(todl.destfn, old_destfn));
+				metadata_path_mapping[old_destfn] = todl.destfn;
+			}
 		}
 #endif
 
@@ -454,5 +466,11 @@ void RestoreDownloadThread::sleepQueue(IScopedLock& lock)
 std::vector<std::pair<std::string, std::string> > RestoreDownloadThread::getRenameQueue()
 {
 	return rename_queue;
+}
+
+bool RestoreDownloadThread::isRenamedFile(const std::string & fn)
+{
+	IScopedLock lock(mutex.get());
+	return renamed_files.find(fn) != renamed_files.end();
 }
 

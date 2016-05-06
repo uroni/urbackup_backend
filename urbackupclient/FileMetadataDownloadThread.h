@@ -12,7 +12,7 @@ public:
 
 	virtual void operator()();
 
-	bool applyMetadata();
+	bool applyMetadata(const str_map& path_mapping);
 
 	bool applyOsMetadata(IFile* metadata_f, const std::string& output_fn);
 

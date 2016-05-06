@@ -10,6 +10,8 @@
 #include <memory>
 #include <stack>
 
+class RestoreDownloadThread;
+
 namespace
 {
 	class ScopedRestoreUpdater;
@@ -69,7 +71,8 @@ private:
 
 	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater);
 
-	bool removeFiles( std::string restore_path, std::string share_path, std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude );
+	bool removeFiles( std::string restore_path, std::string share_path, RestoreDownloadThread* restore_download, 
+		std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude );
 
 	bool deleteFilesOnRestart(std::vector<std::string> &deletion_queue);
 
@@ -120,4 +123,6 @@ private:
 
 	int tgroup;
 	std::string clientsubname;
+
+	str_map metadata_path_mapping;
 };

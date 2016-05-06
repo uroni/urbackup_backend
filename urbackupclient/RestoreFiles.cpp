@@ -286,7 +286,7 @@ void RestoreFiles::operator()()
 
 		} while (!Server->getThreadPool()->waitFor(metadata_dl, 10000));
 
-		if (!metadata_thread->applyMetadata())
+		if (!metadata_thread->applyMetadata(metadata_path_mapping))
 		{
 			restore_failed(fc, metadata_dl);
 			return;
@@ -404,7 +404,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string share_path;
 	std::string server_path = "clientdl";
 
-	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
+	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping);
     THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download, "file restore download");
 
 	std::string curr_files_dir;
@@ -599,7 +599,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						bool has_include_exclude = false;
 						if(clean_other
 							&& (os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink)==0
-							&& !removeFiles(restore_path, share_path, folder_files, deletion_queue, has_include_exclude))
+							&& !removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
 						{
 							has_error=true;
 						}						
@@ -702,7 +702,13 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
 								}
 							}
-							rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
+
+							if (orig_file != NULL)
+							{
+								rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
+								metadata_path_mapping[old_local_fn] = local_fn;
+								folder_files.top().push_back(strlower(ExtractFileName(local_fn, os_file_sep())));
+							}
 						}
 #endif
 
@@ -833,7 +839,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	if(!single_item && clean_other)
 	{
 		bool has_include_exclude = false;
-		if(!removeFiles(restore_path, share_path, folder_files, deletion_queue, has_include_exclude))
+		if(!removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
 		{
 			has_error=true;
 		}
@@ -894,6 +900,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	if(request_restart)
 	{
+		log("Restore requested system restart to rename/delete locked files", LL_INFO);
 		ClientConnector::requestRestoreRestart();
 	}
 #endif
@@ -948,7 +955,7 @@ void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
 	ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 }
 
-bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path,
+bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path, RestoreDownloadThread* restore_download,
 	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude )
 {
 	bool ret=true;
@@ -971,8 +978,9 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 			std::string fn_lower = files[j].name;
 #endif
 
-			if(folder_files.empty()
-				|| std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
+			if( (folder_files.empty()
+				  || std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
+				&& !restore_download->isRenamedFile(restore_path + os_file_sep() + files[j].name) )
 			{
 				std::string cpath = restore_path+os_file_sep()+files[j].name;
 				std::string csharepath = share_path + os_file_sep() + files[j].name;
@@ -995,7 +1003,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					bool del_has_include_exclude = false;
 					std::stack<std::vector<std::string> > dummy_folder_files;
-					if( removeFiles(cpath, csharepath, dummy_folder_files, deletion_queue, del_has_include_exclude)
+					if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude)
 						&& !del_has_include_exclude)
 					{
 						if (!os_remove_dir(os_file_prefix(cpath)))

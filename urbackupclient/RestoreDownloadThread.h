@@ -6,6 +6,7 @@
 #include "../Interface/Condition.h"
 #include "../urbackupcommon/file_metadata.h"
 #include <memory>
+#include <set>
 
 namespace
 {
@@ -58,7 +59,7 @@ namespace
 class RestoreDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
 {
 public:
-	RestoreDownloadThread(FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token);
+	RestoreDownloadThread(FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping);
 
 	void operator()();
 
@@ -92,6 +93,8 @@ public:
 
 	std::vector<std::pair<std::string, std::string> > getRenameQueue();
 
+	bool isRenamedFile(const std::string& fn);
+
 private:
 
 	void sleepQueue(IScopedLock& lock);
@@ -114,4 +117,6 @@ private:
 	const std::string& client_token;
 
 	std::vector<std::pair<std::string, std::string> > rename_queue;
+	str_map& metadata_path_mapping;
+	std::set<std::string> renamed_files;
 };

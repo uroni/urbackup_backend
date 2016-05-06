@@ -86,7 +86,7 @@ void FileMetadataDownloadThread::operator()()
 	metadata_tmp_fn = tmp_f->getFilename();
 }
 
-bool FileMetadataDownloadThread::applyMetadata()
+bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -181,6 +181,12 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 					os_path += (fs_toks[i]);				
 				}
+			}
+
+			str_map::const_iterator it_pm = path_mapping.find(os_path);
+			if (it_pm != path_mapping.end())
+			{
+				os_path = it_pm->second;
 			}
 
 			bool ok=false;
