@@ -258,7 +258,7 @@ bool FileBackup::hasEarlyError()
 
 void FileBackup::logVssLogdata(int64 vss_duration_s)
 {
-	std::string vsslogdata=client_main->sendClientMessage("GET VSSLOG", "Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
+	std::string vsslogdata=client_main->sendClientMessageRetry("GET VSSLOG", "Getting index log data from client failed", 10000, 10, true, LL_WARNING);
 
 	if(!vsslogdata.empty() && vsslogdata!="ERR")
 	{
