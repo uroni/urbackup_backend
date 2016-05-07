@@ -33,6 +33,7 @@
 #include "../urbackupcommon/chunk_hasher.h"
 #include "database.h"
 #include "FileMetadataDownloadThread.h"
+#include "file_permissions.h"
 
 namespace
 {
@@ -714,6 +715,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
 								metadata_path_mapping[old_local_fn] = local_fn;
 								folder_files.top().push_back(strlower(ExtractFileName(local_fn, os_file_sep())));
+								if (!change_file_permissions_admin_only(os_file_prefix(local_fn)))
+								{
+									log("Cannot change file permissions of \""+local_fn+"\" to allow only admin access. " + os_last_error_str(), LL_ERROR);
+									has_error = true;
+									orig_file = NULL;
+								}
 							}
 						}
 #endif

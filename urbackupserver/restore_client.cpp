@@ -181,16 +181,13 @@ namespace
 	{
 	public:
 		ClientDownloadThread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::string& foldername,
-			const std::string& hashfoldername, const std::string& filter,
-			bool token_authentication,
-			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
+			const std::string& hashfoldername, const std::string& filter, bool skip_special_root,
 			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
 			bool clean_other, bool ignore_other_fs, const std::string& share_path)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
-			token_authentication(token_authentication), backup_tokens(backup_tokens),
-			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name),
+			skip_special_root(skip_special_root), folder_log_name(folder_log_name),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
 			share_path(share_path)
@@ -317,22 +314,7 @@ namespace
 				bool has_metadata = false;
 
 				FileMetadata metadata;
-				if(token_authentication &&
-					( !read_metadata(metadatasource, metadata) ||
-					!backupaccess::checkFileToken(backup_tokens, tokens, metadata) ) )
-				{
-					continue;
-				}
-				else if(!token_authentication)
-				{
-					has_metadata = read_metadata(metadatasource, metadata);
-				}
-				else
-				{
-					has_metadata = true;
-				}
-
-				if(!has_metadata)
+				if(!read_metadata(metadatasource, metadata))
 				{
 					ServerLogger::Log(log_id, "Cannot read file metadata of file "+filename+" from "+ metadatasource +". Cannot start restore.", LL_ERROR);
 					return false;
@@ -404,9 +386,6 @@ namespace
 		std::string foldername;
 		std::string hashfoldername;
 		std::vector<std::string> filter_fns;
-		bool token_authentication;
-		std::vector<backupaccess::SToken> backup_tokens;
-		std::vector<std::string> tokens;
 		bool skip_special_root;
 		std::string folder_log_name;
 		int64 restore_id;
@@ -423,7 +402,7 @@ namespace
 }
 
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
-	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
+	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path)
 {
@@ -466,7 +445,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file, full_log_name, log_id, false);
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
-		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name, restore_id,
+		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
 		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path), "frestore preparation");
 
 	return true;
@@ -509,9 +488,7 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	std::string curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+".hashes";
 	std::string share_path = greplace(os_file_sep(), "/", file_backup_info.path);
 
-	std::vector<backupaccess::SToken> backup_tokens;
-	std::vector<std::string> tokens;
-	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(), false, backup_tokens,
-		tokens, true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path);
+	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(),
+		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path);
 }
 

@@ -1216,8 +1216,8 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		bool clean_other = params["clean_other"] == "1";
 		bool ignore_other_fs = params["ignore_other_fs"] != "0";
 
-		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, true,
-			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"],
+		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, 
+			path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"],
 			map_paths, clean_other, ignore_other_fs, greplace(os_file_sep(), "/", path_info.rel_path) ))
 		{
 			ret.set("err", 5);

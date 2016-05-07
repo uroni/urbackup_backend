@@ -2962,6 +2962,11 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
+		if (!next(server_token_keys[i], 0, "key."))
+		{
+			continue;
+		}
+
 		std::string server_key;
 
 		if(access_keys->getValue(server_token_keys[i],

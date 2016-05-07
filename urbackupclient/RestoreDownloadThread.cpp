@@ -19,6 +19,7 @@
 #include "RestoreDownloadThread.h"
 #include "../urbackupcommon/file_metadata.h"
 #include "../urbackupcommon/os_functions.h"
+#include "file_permissions.h"
 
 
 namespace
@@ -234,10 +235,15 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 			}
 		}
 #endif
-
 		if(dest_f.get()==NULL)
 		{
-			Server->Log("Cannot open \""+todl.destfn+"\" for writing", LL_ERROR);
+			Server->Log("Cannot open \""+todl.destfn+"\" for writing. "+os_last_error_str(), LL_ERROR);
+			download_nok_ids.push_back(todl.id);
+			return false;
+		}
+		else if (!change_file_permissions_admin_only(os_file_prefix(todl.destfn)))
+		{
+			Server->Log("Cannot change file permissions of \"" + todl.destfn + "\" to admin only. " + os_last_error_str(), LL_ERROR);
 			download_nok_ids.push_back(todl.id);
 			return false;
 		}

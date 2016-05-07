@@ -1089,8 +1089,8 @@ ACTION_IMPL(backups)
 							size_t status_id;
 							logid_t log_id;
 
-							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, CURRP["filter"], token_authentication,
-								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string(),
+							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, CURRP["filter"],
+								path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, std::string(),
 								std::vector< std::pair<std::string, std::string> >(), true, true, greplace(os_file_sep(), "/", path_info.rel_path)))
 							{
 								ret.set("err", "internal_error");

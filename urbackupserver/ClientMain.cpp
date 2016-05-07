@@ -826,7 +826,16 @@ void ClientMain::operator ()(void)
 			{
 				ServerLogger::Log(log_id, "Starting restore of path \"" + restore_path + "\". But client may be offline...", LL_INFO);
 			}
-			
+
+			if (crypto_fak == NULL)
+			{
+				ServerLogger::Log(log_id, "Cannot restore without crypto plugin", LL_ERROR);
+				restore_identity.clear();
+			}
+			else
+			{
+				restore_identity = base64_encode_dash(crypto_fak->encryptAuthenticatedAES(restore_identity, server_settings->getSettings()->client_access_key, 1));
+			}
 
 			std::string ret = sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+curr_server_token+
 				"&id="+convert(restore_id)+"&status_id="+convert(status_id)+

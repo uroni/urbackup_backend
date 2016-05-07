@@ -2365,6 +2365,38 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 		restore_process_id = ++curr_backup_running_id;
 	}
 
+	if (crypto_fak != NULL)
+	{
+		std::auto_ptr<ISettingsReader> access_keys(
+			Server->createFileSettingsReader("urbackup/access_keys.properties"));
+
+		if (access_keys.get() != NULL)
+		{
+			std::string access_key;
+			if (access_keys->getValue("key." + server_token, &access_key))
+			{
+				client_token = crypto_fak->decryptAuthenticatedAES(base64_decode_dash(client_token), access_key, 1);
+
+				if (client_token.empty())
+				{
+					Server->Log("Error decrypting server access token. Access key might be wrong.", LL_ERROR);
+				}
+			}
+			else
+			{
+				Server->Log("key."+ server_token+" not found in urbackup/access_keys.properties", LL_ERROR);
+			}
+		}
+		else
+		{
+			Server->Log("Error opening urbackup/access_keys.properties", LL_ERROR);
+		}
+	}
+	else
+	{
+		Server->Log("Error decrypting server access token. Crypto_fak not loaded.", LL_ERROR);
+	}
+
 	RestoreFiles* local_restore_files = new RestoreFiles(restore_process_id, restore_id, status_id, log_id,
 		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs,
 		tgroup, clientsubname);
