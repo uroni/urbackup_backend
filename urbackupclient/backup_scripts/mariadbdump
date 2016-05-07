@@ -23,7 +23,7 @@
 
 set -e
 
-. $SYSCONFDIR/mariadbdump.conf
+. SYSCONFDIR/mariadbdump.conf
 
 alias errcho='>&2 echo'
 

@@ -24,7 +24,7 @@
 
 set -e
 
-. $SYSCONFDIR/postgresbase.conf
+. SYSCONFDIR/postgresbase.conf
 
 alias errcho='>&2 echo'
 

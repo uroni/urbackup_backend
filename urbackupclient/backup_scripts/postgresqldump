@@ -24,7 +24,7 @@
 
 set -e
 
-. $SYSCONFDIR/postgresqldump.conf
+. SYSCONFDIR/postgresqldump.conf
 
 alias errcho='>&2 echo'
 
