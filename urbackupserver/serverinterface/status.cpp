@@ -271,7 +271,7 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 			ret.set("dir_error_hint", "UrBackup cannot create symbolic links on the backup storage. "
 				"Your backup storage must support symbolic links in order for UrBackup to work correctly. "
 				"The UrBackup Server must run as administrative user on Windows. "
-				"Note: As of 2016-05-07 samba has not implemented the necessary functionality.");
+				"Note: As of 2016-05-07 samba has not implemented the necessary functionality to support symbolic link creation from Windows.");
 		}
 
 		os_remove_symlink_dir(os_file_prefix(linkfolderpath));
