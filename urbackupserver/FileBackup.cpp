@@ -1859,6 +1859,12 @@ void FileBackup::parseSnapshotFailed(const std::string & logline)
 		shares_without_snapshot.push_back(share);
 	}
 
+	share = getbetween("Creating shadowcopy of \"", "\" failed in indexDirs().", logline);
+	if (!share.empty())
+	{
+		shares_without_snapshot.push_back(share);
+	}
+
 	share = getbetween("Backing up \"", "\" without snapshot.", logline);
 	if (!share.empty())
 	{
