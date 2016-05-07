@@ -166,6 +166,134 @@ std::string access_dir_hint(std::string folder)
 	return std::string();
 }
 
+void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::string backupfolder_uncompr,
+	JSON::Object& ret)
+{
+#ifdef _WIN32
+	if (backupfolder.size() == 2 && backupfolder[1] == ':')
+	{
+		backupfolder += os_file_sep();
+	}
+	if (backupfolder_uncompr.size() == 2 && backupfolder_uncompr[1] == ':')
+	{
+		backupfolder_uncompr += os_file_sep();
+	}
+#endif
+
+	if (backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)))
+	{
+		if (!backupfolder.empty())
+		{
+			ret.set("system_err", os_last_error_str());
+		}
+
+		ret.set("dir_error", true);
+		if (settings.getSettings()->backupfolder.empty())
+			ret.set("dir_error_ext", "err_name_empty");
+		else if (!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)))
+			ret.set("dir_error_ext", "err_folder_not_found");
+
+#ifdef _WIN32
+		std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
+		if (!hint.empty())
+		{
+			ret.set("dir_error_hint", hint);
+		}
+#endif
+
+#ifndef _WIN32
+		ret.set("detail_err_str", access_err_details(settings.getSettings()->backupfolder));
+#endif
+	}
+	else if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + "clients")) && !os_create_dir(os_file_prefix(backupfolder + os_file_sep() + "clients")))
+	{
+		ret.set("system_err", os_last_error_str());
+		ret.set("dir_error", true);
+		ret.set("dir_error_ext", "err_cannot_create_subdir");
+
+#ifdef _WIN32
+		std::string hint = access_dir_hint(backupfolder);
+		if (!hint.empty())
+		{
+			ret.set("dir_error_hint", hint);
+		}
+#endif
+	}
+	else
+	{
+		bool has_access_error = false;
+		std::string testfoldername = "testfolderHvfgh---dFFoeRRRf";
+		std::string testfolderpath = backupfolder + os_file_sep() + testfoldername;
+		if (os_directory_exists(os_file_prefix(testfolderpath)))
+		{
+			if (!os_remove_dir(os_file_prefix(testfolderpath)))
+			{
+				ret.set("system_err", os_last_error_str());
+				ret.set("dir_error", true);
+				ret.set("dir_error_ext", "err_cannot_create_subdir");
+				has_access_error = true;
+#ifdef _WIN32
+				std::string hint = access_dir_hint(backupfolder);
+				if (!hint.empty())
+				{
+					ret.set("dir_error_hint", hint);
+				}
+#endif
+			}
+		}
+
+		if (!has_access_error
+			&& !os_create_dir(os_file_prefix(testfolderpath)))
+		{
+			ret.set("system_err", os_last_error_str());
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_cannot_create_subdir");
+
+#ifdef _WIN32
+			std::string hint = access_dir_hint(backupfolder);
+			if (!hint.empty())
+			{
+				ret.set("dir_error_hint", hint);
+			}
+#endif
+			has_access_error = true;
+		}
+
+		std::string linkfolderpath = testfolderpath + "_link";
+		os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+
+		if (!has_access_error
+			&& !os_link_symbolic(os_file_prefix(testfolderpath), os_file_prefix(linkfolderpath)) )
+		{
+			ret.set("system_err", os_last_error_str());
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_cannot_create_symbolic_links");
+			ret.set("dir_error_hint", "UrBackup cannot create symbolic links on the backup storage. "
+				"Your backup storage must support symbolic links in order for UrBackup to work correctly. "
+				"The UrBackup Server must run as administrative user on Windows. "
+				"Note: As of 2016-05-07 samba has not implemented the necessary functionality.");
+		}
+
+		os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+
+		if (!has_access_error
+			&& !os_remove_dir(os_file_prefix(testfolderpath)))
+		{
+			ret.set("system_err", os_last_error_str());
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_cannot_create_subdir");
+			has_access_error = true;
+		}
+	}
+
+	IFile *tmp = Server->openTemporaryFile();
+	ScopedDeleteFile delete_tmp_file(tmp);
+	if (tmp == NULL)
+	{
+		ret.set("tmpdir_error", true);
+	}
+}
+
 }
 
 ACTION_IMPL(status)
@@ -192,69 +320,9 @@ ACTION_IMPL(status)
 	{
 		{
 			ServerSettings settings(db);
-			std::string backupfolder = settings.getSettings()->backupfolder;
-			std::string backupfolder_uncompr = settings.getSettings()->backupfolder_uncompr;
 
-#ifdef _WIN32
-			if(backupfolder.size()==2 && backupfolder[1]==':')
-			{
-				backupfolder+=os_file_sep();
-			}
-			if(backupfolder_uncompr.size()==2 && backupfolder_uncompr[1]==':')
-			{
-				backupfolder_uncompr+=os_file_sep();
-			}
-#endif
-
-			if(backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)) )
-			{
-				if (!backupfolder.empty())
-				{
-					ret.set("system_err", os_last_error_str());
-				}
-
-				ret.set("dir_error", true);
-				if(settings.getSettings()->backupfolder.empty())
-					ret.set("dir_error_ext", "err_name_empty");
-				else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) )
-					ret.set("dir_error_ext", "err_folder_not_found");
-
-#ifdef _WIN32
-				std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
-				if (!hint.empty())
-				{
-					ret.set("dir_error_hint", hint);
-				}
-#endif
-
-#ifndef _WIN32
-				ret.set("detail_err_str", access_err_details(settings.getSettings()->backupfolder));
-#endif
-			}
-			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+"clients")) )
-			{
-				ret.set("system_err", os_last_error_str());
-				ret.set("dir_error" ,true);
-				ret.set("dir_error_ext", "err_cannot_create_subdir");				
-
-#ifdef _WIN32
-				std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
-				if (!hint.empty())
-				{
-					ret.set("dir_error_hint", hint);
-				}
-#endif
-			}
-
-			IFile *tmp=Server->openTemporaryFile();
-			if(tmp==NULL)
-			{
-				ret.set("tmpdir_error", true);
-			}
-			else
-			{
-				Server->destroy(tmp);
-			}
+			access_dir_checks(settings, settings.getSettings()->backupfolder,
+				settings.getSettings()->backupfolder_uncompr, ret);
 
 			if(ServerStatus::getServerNospcStalled()>0)
 			{

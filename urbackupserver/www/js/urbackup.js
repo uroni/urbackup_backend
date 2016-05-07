@@ -1203,9 +1203,13 @@ function show_status2(data)
 			{
 				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\servername\share).";
 			}
-			if(data.dir_error_hint=="folder_unc_access_denied")
+			else if(data.dir_error_hint=="folder_unc_access_denied")
 			{
 				ext_text+="<br>UrBackup is denied access to the network share, probably because it does not have the correct credentials to access the server. To setup UrBackup server to backup to a network share please see the FAQ: <a href=\"https://www.urbackup.org/faq.html#use_shares\">https://www.urbackup.org/faq.html#use_shares</a>";
+			}
+			else
+			{
+				ext_text+="<br>"+data.dir_error_hint;
 			}
 		}
 		
