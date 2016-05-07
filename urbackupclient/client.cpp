@@ -407,6 +407,8 @@ void IndexThread::operator()(void)
 
 	updateCbt();
 
+	std::string last_index;
+
 	while(true)
 	{
 		std::string msg;
@@ -430,10 +432,23 @@ void IndexThread::operator()(void)
 		char action;
 		data.getChar(&action);
 		data.getVoidPtr((void**)&contractor);
-		if(action==IndexThreadAction_StartIncrFileBackup)
+		if(action==IndexThreadAction_StartIncrFileBackup
+			|| ( (last_index=="full" || last_index=="vfull") && action == IndexThreadAction_StartFullFileBackup ) )
 		{
 			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
+
+			if (action == IndexThreadAction_StartFullFileBackup)
+			{
+				if (last_index == "full")
+				{
+					VSSLog("Last full index unfinished. Performing incremental (virtual full) indexing...", LL_INFO);
+				}
+				else
+				{
+					VSSLog("Last virtual full index unfinished. Performing incremental (virtual full) indexing...", LL_INFO);
+				}
+			}
 
 			data.getStr(&starttoken);
 			data.getInt(&index_group);
@@ -501,6 +516,15 @@ void IndexThread::operator()(void)
 			}
 			else if(!stop_index)
 			{
+				if (action == IndexThreadAction_StartIncrFileBackup)
+				{
+					last_index = "incr";
+				}
+				else
+				{
+					last_index = "vfull";
+				}
+
 				indexDirs(false);
 
 				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
@@ -565,6 +589,8 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
+				last_index = "full";
+
 				indexDirs(true);
 
 				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
@@ -846,6 +872,19 @@ void IndexThread::operator()(void)
 		}
 		else if(action==IndexThreadAction_GetLog)
 		{
+			if (last_index == "full")
+			{
+				last_index = "full_done";
+			}
+			else if (last_index == "incr")
+			{
+				last_index = "incr_done";
+			}
+			else if (last_index == "vfull")
+			{
+				last_index = "vfull_done";
+			}
+
 			std::string ret;
 			ret+="0-"+convert(Server->getTimeSeconds())+"-\n";
 			for(size_t i=0;i<vsslog.size();++i)
