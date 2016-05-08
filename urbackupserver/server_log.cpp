@@ -241,9 +241,12 @@ std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, s
 
 		for(size_t i=0;i<iter->second.data.size();++i)
 		{
-			if(iter->second.data[i].id>minid &&
-				iter->second.data[i].id!=std::string::npos)
+			if (iter->second.data[i].id > minid &&
+				iter->second.data[i].id != std::string::npos &&
+				(logid == logid_t() || iter->second.data[i].logid == logid) )
+			{
 				return stripLogIdFilter(iter->second.data, logid);
+			}
 		}
 		return std::vector<SCircularLogEntry>();
 	}

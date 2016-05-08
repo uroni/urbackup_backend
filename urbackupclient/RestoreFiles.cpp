@@ -256,11 +256,11 @@ void RestoreFiles::operator()()
 
 		curr_restore_updater = NULL;
 
-		const int64 stalled_bytes_per_second = 4096;
-
 		int64 transferred_bytes = metadata_thread->getTransferredBytes();
 
 		int attempt = 0;
+		int64 last_transfer_time = Server->getTimeMS();
+
 		do
 		{
 			if (fc.InformMetadataStreamEnd(client_token, 0) == ERR_TIMEOUT)
@@ -272,20 +272,28 @@ void RestoreFiles::operator()()
 
 			log("Waiting for metadata download stream to finish", LL_DEBUG);
 
-			Server->wait(10000);
+			if (Server->getThreadPool()->waitFor(metadata_dl, 10000))
+			{
+				break;
+			}
 
 			int64 new_transferred_bytes = metadata_thread->getTransferredBytes();
 
-			if (attempt > 0
-				&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes)
+			if (new_transferred_bytes > transferred_bytes)
 			{
+				last_transfer_time = Server->getTimeMS();
+			}
+
+			if (Server->getTimeMS() - last_transfer_time>140000)
+			{
+				log("No meta-data transfer in the last " + PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + ". Shutting down meta-data tranfer.", LL_DEBUG);
 				metadata_thread->shutdown();
 			}
 
 			transferred_bytes = new_transferred_bytes;
 			++attempt;
 
-		} while (!Server->getThreadPool()->waitFor(metadata_dl, 10000));
+		} while (true);
 
 		if (!metadata_thread->applyMetadata(metadata_path_mapping))
 		{

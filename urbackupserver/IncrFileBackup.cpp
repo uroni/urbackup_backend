@@ -194,6 +194,8 @@ bool IncrFileBackup::doFileBackup()
 		return false;
 	}
 
+	fc.setProgressLogCallback(this);
+
 	ServerLogger::Log(logid, clientname+": Loading file list...", LL_INFO);
 	IFsFile* tmp_filelist = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	ScopedDeleteFile tmp_filelist_delete(tmp_filelist);

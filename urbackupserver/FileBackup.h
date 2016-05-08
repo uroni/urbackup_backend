@@ -43,7 +43,7 @@ struct SContinuousSequence
 	int64 next;
 };
 
-class FileBackup : public Backup
+class FileBackup : public Backup, public FileClient::ProgressLogCallback
 {
 public:
 	FileBackup(ClientMain* client_main, int clientid, std::string clientname, std::string subclientname, LogAction log_action,
@@ -68,6 +68,8 @@ public:
 	static std::string convertToOSPathFromFileClient(std::string path);
 
 	static std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, std::map<std::string, std::string>& filepath_corrections);
+
+	virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps);
 
 protected:
 	virtual bool doBackup();

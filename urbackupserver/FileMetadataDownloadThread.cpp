@@ -94,7 +94,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 	int64 metadataf_pos = 0;
 	ServerLogger::Log(logid, "Saving file metadata...", LL_INFO);
 
+	int64 lastlogtime = Server->getTimeMS();
+
 	last_metadata_ids.reserve(8000);
+
+	size_t metadata_n_files = 0;
 
 	do 
 	{
@@ -120,10 +124,20 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 
 		metadataf_pos += 1;
 
+		int64 ctime = Server->getTimeMS();
+		if (ctime - lastlogtime > 60000)
+		{
+			int pc_finished = (int)((metadataf_pos*100.f) / metadata_f->Size()+0.5f);
+			ServerLogger::Log(logid, "Saved metadata of "+convert(metadata_n_files)+" files and directories. "+convert(pc_finished)+"% done...", LL_INFO);
+			lastlogtime = ctime;
+		}
+
 		if(ch==ID_METADATA_NOP)
 		{
 			continue;
 		}
+
+		++metadata_n_files;
 	
 		if(ch & ID_METADATA_V1)
 		{

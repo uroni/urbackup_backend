@@ -126,6 +126,7 @@ bool FullFileBackup::doFileBackup()
 		log_backup=false;
 		return false;
 	}
+	fc.setProgressLogCallback(this);
 
 	IFsFile* tmp_filelist = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	ScopedDeleteFile tmp_filelist_delete(tmp_filelist);
