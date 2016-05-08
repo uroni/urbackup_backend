@@ -1786,7 +1786,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 
 bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_embedded_metadata_files)
 {
-	const int64 stalled_bytes_per_second = 4096;
+	const int64 stalled_bytes_per_second = 100;
 
 	if(metadata_download_thread.get()!=NULL)
 	{
@@ -1808,17 +1808,27 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 				{
 					fc_metadata_stream_end->InformMetadataStreamEnd(server_token, 0);
 				}
+				else
+				{
+					ServerLogger::Log(logid, "Could not get filesrv connection when trying to stop meta-data tranfer ("+clientname+").", LL_DEBUG);
+				}
 
-				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
+				ServerLogger::Log(logid, "Waiting for metadata download stream to finish (attempt "+convert(attempt)+", "+clientname+")", LL_DEBUG);
 				Server->wait(10000);
 
 				int64 new_transferred_bytes = metadata_download_thread->getTransferredBytes();
 
 				if(attempt>0
 					&& !Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 0)
-					&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes )
+					&& new_transferred_bytes - stalled_bytes_per_second <= transferred_bytes)
 				{
+					ServerLogger::Log(logid, "Transferred only "+convert(new_transferred_bytes-transferred_bytes)+" bytes of meta-data ("+clientname+"). Shutting down meta-data tranfer.", LL_DEBUG);
 					metadata_download_thread->shutdown();
+				}
+
+				if (attempt > 0)
+				{
+					metadata_download_thread->setProgressLogEnabled(true);
 				}
 
 				transferred_bytes = new_transferred_bytes;

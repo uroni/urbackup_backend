@@ -482,7 +482,9 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					if (std::find(last_public_fns.begin(), last_public_fns.end(), public_fn) != last_public_fns.end())
 					{
 						PipeSessions::fileMetadataDone(public_fn, server_token);
-						continue;
+						*buf = ID_METADATA_NOP;
+						read_bytes = 1;
+						return true;
 					}
 
 					last_public_fns.push_back(public_fn);

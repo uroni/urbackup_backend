@@ -56,7 +56,7 @@ void FileMetadataDownloadThread::operator()()
 
 	fc->setProgressLogCallback(NULL);
 
-	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false, true, 0);
+	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, 0, true, 0);
 
 	if(rc!=ERR_SUCCESS)
 	{
