@@ -1563,6 +1563,11 @@ void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
 	progress_log_callback = cb;
 }
 
+FileClient::ProgressLogCallback * FileClient::getProgressLogCallback()
+{
+	return progress_log_callback;
+}
+
 _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified )
 {
 	if (tcpsock == NULL)

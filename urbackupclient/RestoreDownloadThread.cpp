@@ -24,7 +24,6 @@
 
 namespace
 {
-	const unsigned int shadow_copy_timeout=30*60*1000;
 	const size_t max_queue_size = 500;
 	const size_t queue_items_full = 1;
 	const size_t queue_items_chunked = 4;

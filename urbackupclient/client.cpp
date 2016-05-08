@@ -771,39 +771,39 @@ void IndexThread::operator()(void)
 			index_clientsubname.clear();
 			data.getStr(&index_clientsubname);
 
-			int64 starttime = Server->getTimeMS();
-			while (filesrv != NULL
-				&& filesrv->hasActiveTransfers(scdir, starttoken)
-				&& Server->getTimeMS() - starttime < 60 * 60 * 1000)
+			if (filesrv != NULL
+				&& filesrv->hasActiveTransfers(scdir, starttoken) )
 			{
-				Server->wait(1000);
-			}
-
-			SCDirs *scd = getSCDir(scdir, index_clientsubname);
-			if(scd->running==false )
-			{				
-				if(!release_shadowcopy(scd, image_backup!=0?true:false, save_id))
-				{
-					Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
-					contractor->Write("failed");
-				}
-				else
-				{
-					contractor->Write("done");
-				}
+				contractor->Write("in use");
 			}
 			else
 			{
-				std::string release_dir=scd->dir;
-				bool b=release_shadowcopy(scd, image_backup!=0?true:false, save_id);
-				if(!b)
+				SCDirs *scd = getSCDir(scdir, index_clientsubname);
+				if (scd->running == false)
 				{
-					contractor->Write("failed");
-					Server->Log("Deleting shadowcopy of \""+release_dir+"\" failed.", LL_ERROR);
+					if (!release_shadowcopy(scd, image_backup != 0 ? true : false, save_id))
+					{
+						Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
+						contractor->Write("failed");
+					}
+					else
+					{
+						contractor->Write("done");
+					}
 				}
 				else
 				{
-					contractor->Write("done");
+					std::string release_dir = scd->dir;
+					bool b = release_shadowcopy(scd, image_backup != 0 ? true : false, save_id);
+					if (!b)
+					{
+						contractor->Write("failed");
+						Server->Log("Deleting shadowcopy of \"" + release_dir + "\" failed.", LL_ERROR);
+					}
+					else
+					{
+						contractor->Write("done");
+					}
 				}
 			}
 		}

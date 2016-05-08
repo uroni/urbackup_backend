@@ -119,6 +119,8 @@ public:
 
 		void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
 
+		FileClient::ProgressLogCallback* getProgressLogCallback();
+
 		_u32 Flush();
 
 		bool Reconnect(void);

@@ -62,6 +62,8 @@ public:
 
 	int64 getTransferredBytes();
 
+	void setProgressLogEnabled(bool b);
+
 private:
 
 	void copyForAnalysis(IFile* metadata_f);
@@ -89,6 +91,8 @@ private:
 
 	int backupid;
 	int clientid;
+
+	FileClient::ProgressLogCallback* orig_progress_log_callback;
 };
 
 int check_metadata();

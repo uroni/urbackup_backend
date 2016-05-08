@@ -353,11 +353,11 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 		{
 			std::string msg;
 			mempipe->Read(&msg, 0);
+			mempipe->Write("exit");
+			mempipe = Server->createMemoryPipe();
+			mempipe_owner = true;
 			if(msg=="exit")
 			{
-				mempipe->Write("exit");
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -367,22 +367,22 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			}
 			else if(msg.find("done")==0)
 			{
-				mempipe->Write("exit");
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
-				lasttime=Server->getTimeMS();
-				state=CCSTATE_NORMAL;
 			}
 			else if(msg.find("failed")==0)
 			{
-				mempipe->Write("exit");
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
 				tcpstack.Send(pipe, "FAILED");
-				lasttime=Server->getTimeMS();
-				state=CCSTATE_NORMAL;
 			}
+			else if (msg.find("in use") == 0)
+			{
+				tcpstack.Send(pipe, "IN USE");
+			}
+			else
+			{
+				assert(false);
+			}
+			lasttime = Server->getTimeMS();
+			state = CCSTATE_NORMAL;
 		}break;
 	case CCSTATE_CHANNEL: //Channel
 		{		

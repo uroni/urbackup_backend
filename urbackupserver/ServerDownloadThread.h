@@ -20,6 +20,10 @@
 class FileClient;
 class FileClientChunked;
 
+namespace server {
+	class FileMetadataDownloadThread;
+}
+
 namespace
 {
 	enum EFileClient
@@ -137,7 +141,7 @@ public:
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot,
-		bool with_sparse_hashing);
+		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download);
 
 	~ServerDownloadThread();
 
@@ -275,4 +279,6 @@ private:
 
 	std::map<std::string, std::string> filepath_corrections;
 	std::map<std::string, std::set<std::string> > tar_filenames;
+
+	server::FileMetadataDownloadThread* file_metadata_download;
 };

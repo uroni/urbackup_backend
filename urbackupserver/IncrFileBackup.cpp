@@ -356,7 +356,7 @@ bool IncrFileBackup::doFileBackup()
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing));
+		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get()));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 

@@ -209,7 +209,7 @@ bool FullFileBackup::doFileBackup()
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing));
+		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get()));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 

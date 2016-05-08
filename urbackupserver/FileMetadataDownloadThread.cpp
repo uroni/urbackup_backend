@@ -52,6 +52,8 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
 
+	orig_progress_log_callback = fc->getProgressLogCallback();
+
 	fc->setProgressLogCallback(NULL);
 
 	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false, true, 0);
@@ -1396,6 +1398,18 @@ bool FileMetadataDownloadThread::hasMetadataId( int64 id )
 int64 FileMetadataDownloadThread::getTransferredBytes()
 {
 	return fc->getTransferredBytes();
+}
+
+void FileMetadataDownloadThread::setProgressLogEnabled(bool b)
+{
+	if (b)
+	{
+		fc->setProgressLogCallback(orig_progress_log_callback);
+	}
+	else
+	{
+		fc->setProgressLogCallback(NULL);
+	}
 }
 
 int check_metadata()

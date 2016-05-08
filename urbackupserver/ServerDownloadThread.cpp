@@ -31,10 +31,10 @@
 #include "FileBackup.h"
 #include "../urbackupcommon/os_functions.h"
 #include "server.h"
+#include "FileMetadataDownloadThread.h"
 
 namespace
 {
-	const unsigned int shadow_copy_timeout=30*60*1000;
 	const size_t max_queue_size = 500;
 	const size_t queue_items_full = 1;
 	const size_t queue_items_chunked = 4;
@@ -42,14 +42,14 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, const std::string& clientsubname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing)
+	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname), clientsubname(clientsubname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -1262,7 +1262,7 @@ void ServerDownloadThread::start_shadowcopy(std::string path)
 		path += "/clientsubname=" + EscapeParamString(clientsubname);
 	}
 
-	client_main->sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", "Activating shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);
+	client_main->sendClientMessageRetry("START SC \""+path+"\"#token="+server_token, "DONE", "Referencing snapshot on \""+clientname+"\" for path \""+path+"\" failed", 10000, 10);
 }
 
 void ServerDownloadThread::stop_shadowcopy(std::string path)
@@ -1277,7 +1277,42 @@ void ServerDownloadThread::stop_shadowcopy(std::string path)
 		fc_chunked->freeFile();
 	}
 
-	client_main->sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", "Removing shadow copy on \""+clientname+"\" for path \""+(path)+"\" failed", shadow_copy_timeout);
+	bool in_use_log = false;
+	bool in_use = false;
+	do
+	{
+		std::string ret = client_main->sendClientMessageRetry("STOP SC \"" + path + "\"#token=" + server_token, "Removing snapshot on \"" + clientname + "\" for path \"" + path+"\" failed", 10000, 10);
+
+		in_use = false;
+
+		if (ret == "IN USE")
+		{
+			in_use = true;
+
+			if (!in_use_log)
+			{
+				in_use_log = true;
+				ServerLogger::Log(logid, "Share \"" + path + "\" on \"" + clientname + "\" is still in use (meta-data transfer). Waiting before removing snapshot...", LL_DEBUG);
+
+				if(file_metadata_download!=NULL)
+					file_metadata_download->setProgressLogEnabled(true);
+			}
+
+			Server->wait(30000);
+		}
+		else if (ret != "DONE")
+		{
+			ServerLogger::Log(logid, "Removing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed", LL_ERROR);
+		}
+
+	} while (in_use);
+
+
+	if (in_use_log)
+	{
+		if (file_metadata_download != NULL)
+			file_metadata_download->setProgressLogEnabled(false);
+	}
 }
 
 bool ServerDownloadThread::sleepQueue()
