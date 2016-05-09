@@ -1025,7 +1025,7 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize)
 {
 	int64 totalblocks = drivesize / blocksize;
-	if (totalblocks%blocksize != 0)
+	if (drivesize%blocksize != 0)
 	{
 		++totalblocks;
 	}
