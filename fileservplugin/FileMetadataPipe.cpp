@@ -481,7 +481,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 					if (std::find(last_public_fns.begin(), last_public_fns.end(), public_fn) != last_public_fns.end())
 					{
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
 						return true;
@@ -501,7 +501,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						Server->Log("Error getting file type of " + local_fn, LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 						return true;
 					}
 
@@ -510,7 +510,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
 						read_bytes = 1;
-						PipeSessions::fileMetadataDone(public_fn, server_token);
+						PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 						return true;
 					}
 
