@@ -1024,8 +1024,14 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 
 bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize)
 {
-	size_t bitmap_size = (drivesize / blocksize) / 8;
-	if ((drivesize / blocksize) % 8 != 0)
+	int64 totalblocks = drivesize / blocksize;
+	if (totalblocks%blocksize != 0)
+	{
+		++totalblocks;
+	}
+
+	size_t bitmap_size = totalblocks / 8;
+	if (totalblocks % 8 != 0)
 	{
 		++bitmap_size;
 	}
@@ -1036,7 +1042,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	sha256_init(&shactx);
 
 	unsigned int endian_blocksize = little_endian(blocksize);
-	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize)))
+	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize), 10000, false))
 	{
 		Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
 		return false;
@@ -1050,7 +1056,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 
 		sha256_update(&shactx, bitmap, (unsigned int)tosend);
 
-		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend))
+		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend, 10000, false))
 		{
 			Server->Log("Pipe broken while sending bitmap", LL_ERROR);
 			return false;
@@ -1063,7 +1069,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	unsigned char dig[c_hashsize];
 	sha256_final(&shactx, dig);
 
-	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize))
+	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize, 10000))
 	{
 		Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
 		return false;
