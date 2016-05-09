@@ -502,6 +502,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		{
 			ServerLogger::Log(logid, "Saving incomplete file.", LL_INFO);
 			hash_file = true;
+			todl.sha_dig.clear();
 
 			max_ok_id = (std::max)(max_ok_id, todl.id);
 			download_partial_ids.add(todl.id);
@@ -824,6 +825,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		{
 			ServerLogger::Log(logid, "Saving incomplete file.", LL_INFO);
 			hash_file=true;
+			todl.sha_dig.clear();
 
 			max_ok_id = (std::max)(max_ok_id, todl.id);
 			download_partial_ids.add(todl.id);
