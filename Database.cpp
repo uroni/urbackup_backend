@@ -297,7 +297,9 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 	const char* tail;
 	int err;
 	bool transaction_lock=false;
-	while((err=sqlite3_prepare_v2(db, pQuery.c_str(), (int)pQuery.size(), &prepared_statement, &tail) )==SQLITE_LOCKED || err==SQLITE_BUSY)
+	while((err=sqlite3_prepare_v2(db, pQuery.c_str(), (int)pQuery.size(), &prepared_statement, &tail) )==SQLITE_LOCKED 
+		|| err==SQLITE_BUSY
+		|| err==SQLITE_PROTOCOL)
 	{
 		if(err==SQLITE_LOCKED)
 		{
@@ -593,7 +595,7 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB, IBac
 		
 		progress->backupProgress(done*page_size, total*page_size);
 
-      } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_LOCKED );
+      } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_PROTOCOL || rc==SQLITE_LOCKED );
 
       /* Release resources allocated by backup_init(). */
       (void)sqlite3_backup_finish(pBackup);

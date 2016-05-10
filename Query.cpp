@@ -158,13 +158,19 @@ bool CQuery::Execute(int timeoutms)
 		sqlite3_busy_timeout(db->getDatabase(), timeoutms);
 	}
 	int err=sqlite3_step(ps);
-	while( err==SQLITE_IOERR_BLOCKED || err==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_LOCKED )
+	while( err==SQLITE_IOERR_BLOCKED 
+			|| err==SQLITE_BUSY 
+			|| err==SQLITE_PROTOCOL 
+			|| err==SQLITE_ROW 
+			|| err==SQLITE_LOCKED )
 	{
 		if(err==SQLITE_IOERR_BLOCKED)
 		{
 			Server->Log("SQlite is blocked!", LL_ERROR);
 		}
-		if(err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED)
+		if(err==SQLITE_BUSY 
+			|| err==SQLITE_IOERR_BLOCKED
+			|| err==SQLITE_PROTOCOL )
 		{
 			if(timeoutms>=0)
 			{
@@ -348,6 +354,7 @@ db_results CQuery::Read(int *timeoutms)
 bool CQuery::resultOkay(int rc)
 {
 	return  rc==SQLITE_BUSY ||
+			rc==SQLITE_PROTOCOL ||
 			rc==SQLITE_ROW ||
 			rc==SQLITE_IOERR_BLOCKED;
 }
@@ -371,7 +378,9 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 	int err=sqlite3_step(ps);
 	if( resultOkay(err) )
 	{
-		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
+		if( err==SQLITE_BUSY 
+			|| err==SQLITE_PROTOCOL
+			|| err==SQLITE_IOERR_BLOCKED )
 		{
 			if(timeoutms!=NULL && *timeoutms>=0)
 			{
