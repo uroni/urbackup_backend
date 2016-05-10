@@ -35,7 +35,7 @@ std::map<std::string, SExitInformation> PipeSessions::exit_information;
 std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
 std::map<std::string, size_t> PipeSessions::active_shares;
 
-const int64 pipe_file_timeout = 60*1000;
+const int64 pipe_file_timeout = 1*60*60*1000;
 
 
 IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user,
