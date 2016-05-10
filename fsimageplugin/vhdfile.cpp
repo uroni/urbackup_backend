@@ -53,14 +53,15 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
-	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
+	backing_file = Server->openFile(fn, (read_only ? MODE_READ : MODE_RW));
+
 	bool openedExisting = true;
 
 	if(!backing_file)
 	{
 		if(read_only==false)
 		{
-			backing_file=Server->openFile(fn, MODE_RW_CREATE);
+			backing_file = Server->openFile(fn, MODE_RW_CREATE);
 			openedExisting=false;
 		}
 		if(backing_file==NULL)
@@ -572,16 +573,29 @@ bool VHDFile::read_dynamicheader(void)
 		parent_unicodename=big_endian_utf16(parent_unicodename);
 		std::wstring parent_fn=Server->ConvertToWchar(Server->ConvertFromUTF16(parent_unicodename));
 		parent_fn.resize(wcslen(parent_fn.c_str()));
-		parent_fn=Server->ConvertToWchar(ExtractFilePath(file->getFilename()))+L"/"+parent_fn;
+
+		std::string curr_dir = ExtractFilePath(file->getFilename());
+
+		bool is_in_other_folder = false;
+		while(parent_fn.size()>3
+			&& (parent_fn.find(L"../")==0
+				|| parent_fn.find(L"..\\")==0 ) )
+		{
+			curr_dir = ExtractFilePath(curr_dir);
+			parent_fn = parent_fn.substr(3);
+			is_in_other_folder = true;
+		}
+
+		parent_fn=Server->ConvertToWchar(curr_dir)+L"/"+parent_fn;
 		std::string utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
 		Server->Log("VHD-Parent: \""+utf8_parent_fn+"\"", LL_INFO);
 
-		if (parent_fn.size()>2 && parent_fn[0]=='.' && parent_fn[1]=='.'
+		if (is_in_other_folder
 			&& !FileExists(utf8_parent_fn))
 		{
 			parent_fn = Server->ConvertToWchar(ExtractFilePath(file->getFilename())) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
 			utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
-			Server->Log("corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+			Server->Log("Corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
 		}
 
 
@@ -1260,6 +1274,11 @@ bool VHDFile::finish()
 	if (finished)
 	{
 		return true;
+	}
+
+	if (!is_open)
+	{
+		return false;
 	}
 
 	switchBitmap(0);

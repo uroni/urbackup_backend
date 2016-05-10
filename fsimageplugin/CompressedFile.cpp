@@ -541,6 +541,11 @@ void CompressedFile::writeIndex()
 		return;
 	}
 
+	if (blockOffsets.empty())
+	{
+		return;
+	}
+
 	_u32 nOffsetBytes = static_cast<_u32>(sizeof(__int64)*blockOffsets.size());
 	if(writeToFile(reinterpret_cast<char*>(&blockOffsets[0]), nOffsetBytes)!=nOffsetBytes)
 	{
