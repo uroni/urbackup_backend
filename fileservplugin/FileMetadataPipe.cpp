@@ -639,6 +639,7 @@ void FileMetadataPipe::cleanupOnForceShutdown()
 		PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 	}
 
+#ifdef _WIN32
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		if (backup_read_context != NULL)
@@ -650,6 +651,7 @@ void FileMetadataPipe::cleanupOnForceShutdown()
 		CloseHandle(hFile);
 		hFile = INVALID_HANDLE_VALUE;
 	}
+#endif
 
 	while (true)
 	{
