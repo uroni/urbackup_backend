@@ -1591,13 +1591,14 @@ bool FileClientChunked::Reconnect(bool rerequest)
 
 				if(curr_file_id!=0)
 				{
-					data.addChar(0);
+					data.addChar(0); //version
 					data.addVarInt(curr_file_id);
-					data.addChar(1);
+					data.addChar(1); // with sparse
 				}
 
 				data.addInt64( fileoffset );
-				data.addInt64( hashfilesize );			
+				data.addInt64( hashfilesize );
+				data.addUChar(1); //reconnect flag
 
 				size_t rc=stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() );
 				if(rc==0)

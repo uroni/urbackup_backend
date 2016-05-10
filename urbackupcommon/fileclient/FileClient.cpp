@@ -841,8 +841,7 @@ bool FileClient::Reconnect(void)
 					received=last_checkpoint;
 				}
 
-				if( received>0 )
-					data.addInt64( received ); 
+				data.addInt64( received ); 
 
 				if(file!=NULL)
 				{
@@ -1255,8 +1254,7 @@ bool FileClient::Reconnect(void)
 					received=last_checkpoint;
 				}
 
-				if( received>0 )
-					data.addInt64( received ); 
+				data.addInt64( received ); 
 
 				if(file!=NULL)
 				{

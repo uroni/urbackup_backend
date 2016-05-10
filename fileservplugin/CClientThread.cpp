@@ -396,7 +396,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 				_i64 start_offset=0;
-				bool offset_set=data->getInt64(&start_offset);
+				bool resumed=data->getInt64(&start_offset);
 								
 				bool is_script = false;
 				if(next(s_filename, 0, "SCRIPT|"))
@@ -487,7 +487,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					bool sent_metadata = false;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
-						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident, NULL, NULL);
+						file = PipeSessions::getFile(o_filename, pipe_file_user, std::string(), ident, NULL, NULL, resumed);
 					}
 					else if (next(s_filename, 0, "urbackup/TAR|"))
 					{
@@ -496,7 +496,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						std::string map_res = map_file(tar_fn, ident, allow_exec);
 						if (!map_res.empty() && allow_exec)
 						{
-							file = PipeSessions::getFile(tar_fn, pipe_file_user, server_token, ident, &sent_metadata, NULL);
+							file = PipeSessions::getFile(tar_fn, pipe_file_user, server_token, ident, &sent_metadata, NULL, true);
 						}
 					}
 					else if(allow_exec)
@@ -509,7 +509,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						}
 
 						bool tar_file = false;
-						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL, &tar_file);
+						file = PipeSessions::getFile(filename, pipe_file_user, server_token, ident, NULL, &tar_file, resumed);
 
 						if (metadata_id != 0)
 						{
@@ -1596,6 +1596,15 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	_i64 requested_filesize=-1;
 	data->getInt64(&requested_filesize);
 
+	unsigned char flags1 = 0;
+	data->getUChar(&flags1);
+
+	bool resumed = false;
+	if (flags1 & 1)
+	{
+		resumed = true;
+	}
+
 	Log("Sending file (chunked) "+o_filename, LL_DEBUG);
 
 	bool allow_exec;
@@ -1651,7 +1660,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			std::string map_res = map_file(tar_fn, ident, allow_exec);
 			if (!map_res.empty() && allow_exec)
 			{
-				srv_file = PipeSessions::getFile(tar_fn, *pipe_file_user, server_token, ident, NULL, NULL);
+				srv_file = PipeSessions::getFile(tar_fn, *pipe_file_user, server_token, ident, NULL, NULL, true);
 			}
 		}
 		else if(allow_exec)
@@ -1664,7 +1673,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			}
 
 			bool tar_file = false;
-			srv_file = PipeSessions::getFile(filename, *pipe_file_user, server_token, ident, NULL, &tar_file);
+			srv_file = PipeSessions::getFile(filename, *pipe_file_user, server_token, ident, NULL, &tar_file, resumed);
 
 			if (metadata_id != 0)
 			{
@@ -2252,7 +2261,7 @@ bool CClientThread::FinishScript( CRData * data )
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 	{
 		f_name = s_filename;
-		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident, NULL, NULL);
+		file = PipeSessions::getFile(s_filename, pipe_file_user, std::string(), ident, NULL, NULL, true);
 	}
 	else if (next(s_filename, 0, "urbackup/TAR|"))
 	{
@@ -2261,13 +2270,13 @@ bool CClientThread::FinishScript( CRData * data )
 		std::string map_res = map_file(f_name, ident, allow_exec);
 		if (!map_res.empty() && allow_exec)
 		{
-			file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata, NULL);
+			file = PipeSessions::getFile(f_name, pipe_file_user, server_token, ident, &sent_metadata, NULL, true);
 		}
 	}
 	else if(allow_exec)
 	{
 		f_name = filename;
-		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL, NULL);
+		file = PipeSessions::getFile(filename, pipe_file_user, std::string(), ident, NULL, NULL, true);
 	}			
 
 	bool ret=false;

@@ -57,7 +57,9 @@ public:
 	static void init();
 	static void destroy();
 
-	static IFile* getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user, const std::string& server_token, const std::string& ident, bool* sent_metadat, bool* tar_file);
+	static IFile* getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user,
+		const std::string& server_token, const std::string& ident, bool* sent_metadat, bool* tar_file,
+		bool resume);
 	static void injectPipeSession(const std::string& session_key, int backupnum, IPipeFile* pipe_file, const std::string& metadata);
 	static void removeFile(const std::string& cmd);
 	static SExitInformation getExitInformation(const std::string& cmd);
