@@ -39,6 +39,7 @@ protected:
 
 	virtual bool readStderrIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes );
 
+	virtual void cleanupOnForceShutdown();
 
 private:
 

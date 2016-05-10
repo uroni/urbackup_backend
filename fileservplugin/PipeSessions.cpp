@@ -35,7 +35,7 @@ std::map<std::string, SExitInformation> PipeSessions::exit_information;
 std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
 std::map<std::string, size_t> PipeSessions::active_shares;
 
-const int64 pipe_file_timeout = 1*60*60*1000;
+const int64 pipe_file_timeout = 60*1000;
 
 
 IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user,
@@ -331,6 +331,12 @@ void PipeSessions::operator()()
 				if (it->second.file != NULL)
 				{
 					it->second.file->forceExitWait();
+
+					while (it->second.file->hasUser())
+					{
+						Server->wait(1000);
+					}
+
 					delete it->second.file;
 				}
 				delete it->second.input_pipe;
@@ -464,6 +470,7 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 	datamsg.addVoidPtr(file);
 	std::auto_ptr<IPipe> waitpipe(Server->createMemoryPipe());
 	datamsg.addVoidPtr(waitpipe.get());
+	datamsg.addString(server_token);
 
 	IScopedLock lock(mutex);
 

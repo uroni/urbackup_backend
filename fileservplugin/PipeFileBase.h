@@ -80,6 +80,8 @@ protected:
 
 	void waitForExit();
 
+	virtual void cleanupOnForceShutdown();
+
 private:
 	bool fillBuffer();
 	bool readStderr();

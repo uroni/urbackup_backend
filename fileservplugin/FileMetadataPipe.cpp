@@ -578,7 +578,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				else if (id == METADATA_PIPE_SEND_RAW_FILEDATA
 					&& msg_data.getStr(&public_fn)
 					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_file))
-					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe)))
+					&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe))
+					&& msg_data.getStr(&server_token))
 				{
 					metadata_state = MetadataState_RawFileFnSize;
 					*buf = ID_RAW_FILE;
@@ -629,6 +630,68 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 			}
 		}
 	}	
+}
+
+void FileMetadataPipe::cleanupOnForceShutdown()
+{
+	if (metadata_state != MetadataState_Wait)
+	{
+		PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+	}
+
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		if (backup_read_context != NULL)
+		{
+			BackupRead(hFile, NULL, 0, NULL, TRUE, TRUE, &backup_read_context);
+			backup_read_context = NULL;
+		}
+
+		CloseHandle(hFile);
+		hFile = INVALID_HANDLE_VALUE;
+	}
+
+	while (true)
+	{
+		std::string msg;
+		size_t r = pipe->Read(&msg, 0);
+
+		if (r == 0)
+		{
+			break;
+		}
+
+		CRData msg_data(&msg);
+
+		char id;
+		if (msg_data.getChar(&id))
+		{
+			if (id == METADATA_PIPE_SEND_FILE &&
+				msg_data.getStr(&public_fn) &&
+				msg_data.getStr(&local_fn) &&
+				msg_data.getInt64(&folder_items) &&
+				msg_data.getInt64(&metadata_id) &&
+				msg_data.getStr(&server_token))
+			{
+				PipeSessions::fileMetadataDone(public_fn, server_token);
+			}
+			else if (id == METADATA_PIPE_SEND_RAW
+				&& msg_data.getStr(&public_fn)
+				&& msg_data.getStr(&raw_metadata)
+				&& msg_data.getStr(&server_token))
+			{
+				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			}
+			else if (id == METADATA_PIPE_SEND_RAW_FILEDATA
+				&& msg_data.getStr(&public_fn)
+				&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_file))
+				&& msg_data.getVoidPtr(reinterpret_cast<void**>(&transmit_wait_pipe))
+				&& msg_data.getStr(&server_token))
+			{
+				PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
+			}
+		}
+	}
 }
 
 
@@ -836,6 +899,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 bool FileMetadataPipe::openFileHandle()
 {
+	backup_read_context = NULL;
 	hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ | ACCESS_SYSTEM_SECURITY | READ_CONTROL, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 

@@ -529,6 +529,12 @@ void PipeFileBase::waitForExit()
 	tickets.push_back(stderr_thread);
 
 	Server->getThreadPool()->waitFor(tickets);
+
+	cleanupOnForceShutdown();
+}
+
+void PipeFileBase::cleanupOnForceShutdown()
+{
 }
 
 bool PipeFileBase::PunchHole( _i64 spos, _i64 size )
