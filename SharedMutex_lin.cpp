@@ -23,10 +23,29 @@
 
 SharedMutex::SharedMutex()
 {
-	int rc = pthread_rwlock_init(&lock, NULL);
+	pthread_rwlockattr_t attr;
+	int rc;
+	if((rc=pthread_rwlockattr_init(&attr))!=0)
+	{
+		Server->Log("Error initializing rwlockattr rc="+convert(rc), LL_ERROR);
+		assert(false);
+	}
+#ifdef __GLIBC__
+	if((rc=pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP))!=0)
+	{
+		Server->Log("Error setting PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP rc="+convert(rc), LL_ERROR);
+		assert(false);
+	}
+#endif
+	rc = pthread_rwlock_init(&lock, &attr);
 	if(rc)
 	{
 		Server->Log("Error initializing rwlock rc="+convert(rc), LL_ERROR);
+		assert(false);
+	}
+	if((rc=pthread_rwlockattr_destroy(&attr))!=0)
+	{
+		Server->Log("Error destroing rwlockattr rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
 }
