@@ -207,12 +207,9 @@ void CClientThread::operator()(void)
 bool CClientThread::RecvMessage()
 {
 	_i32 rc;
-	timeval lon;
-	lon.tv_usec=0;
-	lon.tv_sec=60;
 	if(extra_buffer==NULL || extra_buffer->empty())
 	{
-		rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+		rc=clientpipe->isReadable(60*1000)?1:0;
 		if(clientpipe->hasError())
 			rc=-1;
 		if( rc==0 )
@@ -220,7 +217,6 @@ bool CClientThread::RecvMessage()
 			Log("1 min Timeout deleting Buffers ("+convert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
 			delete bufmgr;
 			bufmgr=NULL;
-			lon.tv_sec=3600;
 			int n=0;
 			while(!stopped && rc==0 && n<60)
 			{
@@ -236,7 +232,7 @@ bool CClientThread::RecvMessage()
 					}
 				}
 
-				rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+				rc=clientpipe->isReadable(60*1000)?1:0;
 				if(clientpipe->hasError())
 					rc=-1;
 				++n;
@@ -259,7 +255,7 @@ bool CClientThread::RecvMessage()
 	{
 		if(extra_buffer==NULL || extra_buffer->empty())
 		{
-			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, lon.tv_sec*1000);
+			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, 60*1000);
 		}
 		else
 		{
