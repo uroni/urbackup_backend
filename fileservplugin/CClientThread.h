@@ -197,6 +197,7 @@ private:
 
 	EClientState state;
 	THREADPOOL_TICKET chunk_send_thread_ticket;
+	bool waiting_for_chunk;
 
 	SOCKET int_socket;
 	bool has_socket;

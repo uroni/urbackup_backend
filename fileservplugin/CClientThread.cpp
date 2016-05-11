@@ -81,7 +81,7 @@
 
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
-	: extra_buffer(NULL)
+	: extra_buffer(NULL), waiting_for_chunk(false)
 {
 	int_socket=pSocket;
 
@@ -116,7 +116,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 }
 
 CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vector<char>* extra_buffer)
-	: extra_buffer(extra_buffer)
+	: extra_buffer(extra_buffer), waiting_for_chunk(false)
 {
 	stopped=false;
 	killable=false;
@@ -224,6 +224,18 @@ bool CClientThread::RecvMessage()
 			int n=0;
 			while(!stopped && rc==0 && n<60)
 			{
+				if (chunk_send_thread_ticket != ILLEGAL_THREADPOOL_TICKET
+					&& state == CS_BLOCKHASH)
+				{
+					IScopedLock lock(mutex);
+
+					if (next_chunks.empty()
+						&& waiting_for_chunk)
+					{
+						queueChunk(SChunk(ID_FREE_SERVER_FILE));
+					}
+				}
+
 				rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
 				if(clientpipe->hasError())
 					rc=-1;
@@ -1840,7 +1852,9 @@ bool CClientThread::getNextChunk(SChunk *chunk, bool has_error)
 	
 	while(next_chunks.empty() && state==CS_BLOCKHASH)
 	{
+		waiting_for_chunk = true;
 		cond->wait(&lock);
+		waiting_for_chunk = false;
 	}
 
 	if(!next_chunks.empty() && state==CS_BLOCKHASH)
