@@ -779,7 +779,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				FileMetadata metadata;
 				metadata.exist = true;
 				metadata.set_shahash(checksum);
-				write_file_metadata(backup_metadata_dir + os_file_sep() + os_path_metadata, cb, metadata, false);
+				write_file_metadata(os_path_metadata, cb, metadata, false);
 			}
 			else
 			{
