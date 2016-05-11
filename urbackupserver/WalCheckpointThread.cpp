@@ -50,6 +50,8 @@ void WalCheckpointThread::checkpoint()
 
 			passive_checkpoint();
 
+			sync_database();
+
 			Server->Log("Files WAL file "+ db_fn + "-wal greater than "+PrettyPrintBytes(full_checkpoint_size)+". Doing full WAL checkpoint...", LL_INFO);
 
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), db_id);
