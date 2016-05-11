@@ -1070,7 +1070,8 @@ function show_status2(data)
 			obj.file_ok_t=trans("no_recent_backup");
 		}
 		
-		if(obj.os_simple.length>0
+		if(obj.os_simple
+			&& obj.os_simple.length>0
 			&& obj.os_simple!="windows")
 		{
 			obj.image_style="";
