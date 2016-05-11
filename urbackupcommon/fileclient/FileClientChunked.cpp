@@ -1598,7 +1598,10 @@ bool FileClientChunked::Reconnect(bool rerequest)
 
 				data.addInt64( fileoffset );
 				data.addInt64( hashfilesize );
-				data.addUChar(1); //reconnect flag
+				if (file_pos > 0)
+				{
+					data.addUChar(1); //resume flag
+				}
 
 				size_t rc=stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() );
 				if(rc==0)

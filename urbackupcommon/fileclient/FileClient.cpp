@@ -836,12 +836,17 @@ bool FileClient::Reconnect(void)
 					data.addChar(1);
 				}
 
+				bool resume = received > 0;
+
 				if( protocol_version>1 )
 				{
 					received=last_checkpoint;
 				}
 
-				data.addInt64( received ); 
+				if (resume || received>0)
+				{
+					data.addInt64(received);
+				}
 
 				if(file!=NULL)
 				{
@@ -1249,12 +1254,17 @@ bool FileClient::Reconnect(void)
 					data.addChar(1);
 				}
 
+				bool resume = received > 0;
+
 				if( protocol_version>1 )
 				{
 					received=last_checkpoint;
 				}
 
-				data.addInt64( received ); 
+				if (resume || received>0)
+				{
+					data.addInt64(received);
+				}
 
 				if(file!=NULL)
 				{
