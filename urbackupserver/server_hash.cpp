@@ -410,7 +410,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		}
 		else
 		{
-			Server->Log("File entry with id "+convert(id)+" with filesize "+convert(filesize)+" found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING);
+			Server->Log("File entry with id "+convert(id)+" with filesize "+convert(filesize)+" not found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING);
 			clients+=convert(clientid);
 		}
 		
@@ -419,7 +419,8 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 			with_backupstat? ServerFilesDao::c_direction_outgoing : ServerFilesDao::c_direction_outgoing_nobackupstat,
 			incremental);
 
-		if(pointed_to)
+		if(pointed_to
+			&& !all_clients.empty())
 		{
 			Server->Log("Delete file index entry " + convert(id), LL_DEBUG);
 			fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));

@@ -271,6 +271,7 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 		if(_has_error)
 		{
 			Server->Log("LMDB had error during increase (on put). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 
@@ -289,6 +290,7 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 			{
 				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
+				start_transaction();
 				return;
 			}
 			
@@ -307,6 +309,7 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 		if(_has_error)
 		{
 			Server->Log("LMDB had error on BAD_TXN (on put). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 		
@@ -354,6 +357,7 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 		if(_has_error)
 		{
 			Server->Log("LMDB had error during increase (on del). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 
@@ -372,6 +376,7 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 			{
 				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
+				start_transaction();
 				return;
 			}
 			
@@ -390,6 +395,7 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 		if(_has_error)
 		{
 			Server->Log("LMDB had error on BAD_TXN (on del). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 		
@@ -398,6 +404,10 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 		replay_transaction_log();
 		
 		del_internal(key, true, false);
+	}
+	else if (rc == MDB_NOTFOUND)
+	{
+		Server->Log("LMDB: Failed to delete data (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
 	}
 	else if(rc)
 	{
@@ -429,6 +439,7 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 		if(_has_error)
 		{
 			Server->Log("LMDB had error during increase (on commit). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 
@@ -447,6 +458,7 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 			{
 				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
+				start_transaction();
 				return;
 			}
 			
@@ -465,6 +477,7 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 		if(_has_error)
 		{
 			Server->Log("LMDB had error on BAD_TXN (on commit). Aborting...", LL_ERROR);
+			start_transaction();
 			return;
 		}
 		
