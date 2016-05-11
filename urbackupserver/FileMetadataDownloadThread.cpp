@@ -128,7 +128,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 		if (ctime - lastlogtime > 60000)
 		{
 			int pc_finished = (int)((metadataf_pos*100.f) / metadata_f->Size()+0.5f);
-			ServerLogger::Log(logid, "Saved metadata of "+convert(metadata_n_files)+" files and directories. "+convert(pc_finished)+"% done...", LL_INFO);
+			ServerLogger::Log(logid, "Saved metadata of "+convert(metadata_n_files)+" files and directories. "+convert(pc_finished)+"% done...", LL_DEBUG);
 			lastlogtime = ctime;
 		}
 
