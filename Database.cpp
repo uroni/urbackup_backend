@@ -671,7 +671,8 @@ void CDatabase::unlockForSingleUse()
 
 ISharedMutex* CDatabase::getSingleUseMutex()
 {
-	if (write_lock.get() == NULL)
+	if (write_lock.get() == NULL
+		&& transaction_read_lock.get()==NULL)
 	{
 		return single_user_mutex;
 	}
