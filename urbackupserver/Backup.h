@@ -91,6 +91,7 @@ protected:
 	bool r_resumed;
 	bool r_incremental;
 	bool should_backoff;
+	size_t num_issues;
 
 	std::string details;
 

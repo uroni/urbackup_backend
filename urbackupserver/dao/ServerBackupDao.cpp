@@ -900,18 +900,40 @@ void ServerBackupDao::updateClientLastImageBackup(int backupid, int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateClientLastFileBackup
 * @sql
-*       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)) WHERE id=:clientid(int)
+*       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)), last_filebackup_issues=:last_filebackup_issues(int) WHERE id=:clientid(int)
 */
-void ServerBackupDao::updateClientLastFileBackup(int backupid, int clientid)
+void ServerBackupDao::updateClientLastFileBackup(int backupid, int last_filebackup_issues, int clientid)
 {
 	if(q_updateClientLastFileBackup==NULL)
 	{
-		q_updateClientLastFileBackup=db->Prepare("UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=?) WHERE id=?", false);
+		q_updateClientLastFileBackup=db->Prepare("UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=?), last_filebackup_issues=? WHERE id=?", false);
 	}
 	q_updateClientLastFileBackup->Bind(backupid);
+	q_updateClientLastFileBackup->Bind(last_filebackup_issues);
 	q_updateClientLastFileBackup->Bind(clientid);
 	q_updateClientLastFileBackup->Write();
 	q_updateClientLastFileBackup->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateClientOsAndClientVersion
+* @sql
+*       UPDATE clients SET os_simple=:os_simple(string), os_version_str=:os_version(string), client_version_str=:client_version(string)
+*		WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int clientid)
+{
+	if(q_updateClientOsAndClientVersion==NULL)
+	{
+		q_updateClientOsAndClientVersion=db->Prepare("UPDATE clients SET os_simple=?, os_version_str=?, client_version_str=? WHERE id=?", false);
+	}
+	q_updateClientOsAndClientVersion->Bind(os_simple);
+	q_updateClientOsAndClientVersion->Bind(os_version);
+	q_updateClientOsAndClientVersion->Bind(client_version);
+	q_updateClientOsAndClientVersion->Bind(clientid);
+	q_updateClientOsAndClientVersion->Write();
+	q_updateClientOsAndClientVersion->Reset();
 }
 
 /**
@@ -1415,6 +1437,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_saveImageAssociation=NULL;
 	q_updateClientLastImageBackup=NULL;
 	q_updateClientLastFileBackup=NULL;
+	q_updateClientOsAndClientVersion=NULL;
 	q_deleteAllUsersOnClient=NULL;
 	q_addUserOnClient=NULL;
 	q_addClientToken=NULL;
@@ -1478,6 +1501,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_saveImageAssociation);
 	db->destroyQuery(q_updateClientLastImageBackup);
 	db->destroyQuery(q_updateClientLastFileBackup);
+	db->destroyQuery(q_updateClientOsAndClientVersion);
 	db->destroyQuery(q_deleteAllUsersOnClient);
 	db->destroyQuery(q_addUserOnClient);
 	db->destroyQuery(q_addClientToken);

@@ -205,6 +205,8 @@ public:
 
 	size_t getNumEmbeddedMetadataFiles();
 
+	size_t getNumIssues();
+
 private:
 	std::string getDLPath(SQueueItem todl);
 
@@ -281,4 +283,6 @@ private:
 	std::map<std::string, std::set<std::string> > tar_filenames;
 
 	server::FileMetadataDownloadThread* file_metadata_download;
+
+	size_t num_issues;
 };

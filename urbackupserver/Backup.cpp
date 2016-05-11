@@ -58,7 +58,7 @@ Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, st
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
-	server_token(server_token), details(details)
+	server_token(server_token), details(details), num_issues(0)
 {
 	
 }
@@ -130,9 +130,13 @@ void Backup::operator()()
 		{
 			ServerLogger::Log(logid, "Backup failed", LL_ERROR);
 		}
-		else
+		else if(num_issues==0)
 		{
 			ServerLogger::Log(logid, "Backup succeeded", LL_INFO);
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Backup completed with issues", LL_INFO);
 		}
 	}
 

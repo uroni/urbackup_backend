@@ -1109,6 +1109,8 @@ bool IncrFileBackup::doFileBackup()
 		has_timeout_error=true;
 	}
 
+	num_issues += server_download->getNumIssues();
+
 	ServerLogger::Log(logid, "Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();

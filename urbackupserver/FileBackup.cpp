@@ -305,6 +305,11 @@ void FileBackup::logVssLogdata(int64 vss_duration_s)
 				msg = lines[i].substr(s1+1);
 			}
 
+			if (loglevel == LL_ERROR)
+			{
+				++num_issues;
+			}
+
 			parseSnapshotFailed(msg);
 			ServerLogger::Log(logid, msg, loglevel);
 		}
@@ -621,11 +626,10 @@ bool FileBackup::doBackup()
 		ServerLogger::Log(logid, "Backup had an early error. Deleting partial backup.", LL_ERROR);
 
 		deleteBackup();
-
 	}
 	else
 	{
-		backup_dao->updateClientLastFileBackup(backupid, clientid);
+		backup_dao->updateClientLastFileBackup(backupid, static_cast<int>(num_issues), clientid);
 		backup_dao->updateFileBackupSetComplete(backupid);
 	}
 
@@ -1819,7 +1823,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 
 	if(metadata_download_thread.get()!=NULL)
 	{
-		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 1000))
+		if (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 1000))
 		{
 			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
 
@@ -1831,16 +1835,16 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 			{
 				std::string identity = client_main->getIdentity();
 				std::auto_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-					client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
+					client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
 
-				_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
-				if(rc==ERR_CONNECTED)
+				_u32 rc = client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
+				if (rc == ERR_CONNECTED)
 				{
 					fc_metadata_stream_end->InformMetadataStreamEnd(server_token, 0);
 				}
 				else
 				{
-					ServerLogger::Log(logid, "Could not get filesrv connection when trying to stop meta-data tranfer ("+clientname+").", LL_DEBUG);
+					ServerLogger::Log(logid, "Could not get filesrv connection when trying to stop meta-data tranfer (" + clientname + ").", LL_DEBUG);
 				}
 
 				if (Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000))
@@ -1856,14 +1860,14 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 				}
 				else
 				{
-					ServerLogger::Log(logid, "Waiting for metadata download stream to finish (attempt " + convert(attempt) + ", " + clientname + "). " 
-						+ PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + " since last meta-data transfer. Forcefully shutting down after " 
+					ServerLogger::Log(logid, "Waiting for metadata download stream to finish (attempt " + convert(attempt) + ", " + clientname + "). "
+						+ PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + " since last meta-data transfer. Forcefully shutting down after "
 						+ PrettyPrintTime(metadata_waittime) + " without transfer.", LL_DEBUG);
 				}
 
-				if(Server->getTimeMS()- last_transfer_time>metadata_waittime)
+				if (Server->getTimeMS() - last_transfer_time > metadata_waittime)
 				{
-					ServerLogger::Log(logid, "No meta-data transfer in the last "+ PrettyPrintTime(Server->getTimeMS() - last_transfer_time)+". Shutting down meta-data tranfer.", LL_DEBUG);
+					ServerLogger::Log(logid, "No meta-data transfer in the last " + PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + ". Shutting down meta-data tranfer.", LL_DEBUG);
 					metadata_download_thread->shutdown();
 				}
 
@@ -1874,15 +1878,24 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 
 				transferred_bytes = new_transferred_bytes;
 				++attempt;
-			}
-			while(true);
-		}	
+			} while (true);
+		}
+
+		if (metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError())
+		{
+			++num_issues;
+		}
 
 		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
 		{
 			size_t num_embedded_metadata_files = 0;
 			bool b = metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, local_hash.get(),
 				filepath_corrections, !metadata_download_thread->getHasTimeoutError(), num_embedded_metadata_files);
+
+			if (!b)
+			{
+				++num_issues;
+			}
 
 			if (!b
 				&& metadata_download_thread->getHasFatalError())

@@ -118,7 +118,8 @@ public:
 	void updateImageBackupRunning(int backupid);
 	void saveImageAssociation(int img_id, int assoc_id);
 	void updateClientLastImageBackup(int backupid, int clientid);
-	void updateClientLastFileBackup(int backupid, int clientid);
+	void updateClientLastFileBackup(int backupid, int last_filebackup_issues, int clientid);
+	void updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int clientid);
 	void deleteAllUsersOnClient(int clientid);
 	void addUserOnClient(int clientid, const std::string& username);
 	void addClientToken(int clientid, const std::string& token);
@@ -189,6 +190,7 @@ private:
 	IQuery* q_saveImageAssociation;
 	IQuery* q_updateClientLastImageBackup;
 	IQuery* q_updateClientLastFileBackup;
+	IQuery* q_updateClientOsAndClientVersion;
 	IQuery* q_deleteAllUsersOnClient;
 	IQuery* q_addUserOnClient;
 	IQuery* q_addClientToken;

@@ -49,7 +49,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -527,11 +527,9 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
+		if (rc == ERR_FILE_DOESNT_EXIST)
 		{
-			ret = false;
-			has_timeout = true;
-			exp_backoff = true;
+			++num_issues;
 		}
 	}
 	else
@@ -786,10 +784,9 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl))
+		if (rc == ERR_FILE_DOESNT_EXIST)
 		{
-			has_timeout = true;
-			exp_backoff = true;
+			++num_issues;
 		}
 
 		{
@@ -1337,6 +1334,11 @@ std::map<std::string, std::string>& ServerDownloadThread::getFilePathCorrections
 size_t ServerDownloadThread::getNumEmbeddedMetadataFiles()
 {
 	return num_embedded_metadata_files;
+}
+
+size_t ServerDownloadThread::getNumIssues()
+{
+	return num_issues;
 }
 
 void ServerDownloadThread::queueSkip()

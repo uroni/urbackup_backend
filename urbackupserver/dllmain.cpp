@@ -1690,6 +1690,20 @@ bool upgrade45_46()
 	return b;
 }
 
+bool upgrade46_47()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD last_filebackup_issues DEFAULT 0");
+	b &= db->Write("ALTER TABLE clients ADD os_simple");
+	b &= db->Write("ALTER TABLE clients ADD os_version_str");
+	b &= db->Write("ALTER TABLE clients ADD client_version_str");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1712,7 +1726,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=46;
+	int max_v=47;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1973,6 +1987,13 @@ void upgrade(void)
 					has_error = true;
 				}
 				++ver;
+			case 46:
+				if (!upgrade46_47())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
 			default:
 				break;
 		}

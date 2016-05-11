@@ -1362,15 +1362,19 @@ bool ClientMain::updateCapabilities(void)
 		{
 			update_version=watoi(it->second);
 		}
+		std::string client_version_str;
 		it=params.find("CLIENT_VERSION_STR");
 		if(it!=params.end())
 		{
-			ServerStatus::setClientVersionString(clientname, (it->second));
+			client_version_str = it->second;
+			ServerStatus::setClientVersionString(clientname, it->second);
 		}
+		std::string os_version_str;
 		it=params.find("OS_VERSION_STR");
 		if(it!=params.end())
 		{
-			ServerStatus::setOSVersionString(clientname, (it->second));
+			os_version_str = it->second;
+			ServerStatus::setOSVersionString(clientname, it->second);
 		}
 		it=params.find("ALL_VOLUMES");
 		if(it!=params.end())
@@ -1438,6 +1442,9 @@ bool ClientMain::updateCapabilities(void)
 				ServerStatus::setRestore(clientname, ERestore_disabled);
 			}			
 		}
+
+		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
+			os_version_str, client_version_str, clientid);
 	}
 
 	return !cap.empty();

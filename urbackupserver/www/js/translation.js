@@ -1319,7 +1319,9 @@ translations.en = {
 "tAdd new client": "Add new client",
 "tClient discovery hints": "Client discovery hints",
 "tAdd hostname/IP as client discovery hint": "Add hostname/IP as client discovery hint",
-"tBackup Statistics": "Backup Statistics"
+"tBackup Statistics": "Backup Statistics",
+"completed_with_issues": "Completed with issues",
+"not_supported": "Not supported"
 }
 translations.en_US = {
 "tInfos": "About"

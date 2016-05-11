@@ -35,13 +35,13 @@ const _u32 ID_METADATA_V1 = 1<<3;
 const _u32 ID_RAW_FILE = 1 << 4;
 
 FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid, int backupid, int clientid)
-	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false)
+	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false)
 {
 
 }
 
 FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid, int clientid)
-	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false)
+	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false)
 {
 
 }

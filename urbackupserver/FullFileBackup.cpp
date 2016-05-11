@@ -589,6 +589,8 @@ bool FullFileBackup::doFileBackup()
 		r_offline=true;
 	}
 
+	num_issues += server_download->getNumIssues();
+
 	int64 transfer_stop_time = Server->getTimeMS();
 
 	size_t max_line = line;

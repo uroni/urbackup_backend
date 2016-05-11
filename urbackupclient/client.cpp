@@ -771,6 +771,15 @@ void IndexThread::operator()(void)
 			index_clientsubname.clear();
 			data.getStr(&index_clientsubname);
 
+			int64 starttime = Server->getTimeMS();
+
+			while (filesrv != NULL
+				&& filesrv->hasActiveTransfers(scdir, starttoken)
+				&& Server->getTimeMS() - starttime < 5000)
+			{
+				Server->wait(100);
+			}
+
 			if (filesrv != NULL
 				&& filesrv->hasActiveTransfers(scdir, starttoken) )
 			{

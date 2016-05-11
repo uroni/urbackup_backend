@@ -1053,10 +1053,16 @@ function show_status2(data)
 	for(var i=0;i<data.status.length;++i)
 	{
 		var obj=data.status[i];
-		if(obj.file_ok)
+		if(obj.file_ok
+			&& obj.last_filebackup_issues==0)
 		{
 			obj.file_style="success";
 			obj.file_ok_t=trans("ok");
+		}
+		else if(obj.file_ok)
+		{
+			obj.file_style="warning";
+			obj.file_ok_t=trans("completed_with_issues");
 		}
 		else
 		{
@@ -1064,15 +1070,24 @@ function show_status2(data)
 			obj.file_ok_t=trans("no_recent_backup");
 		}
 		
-		if(obj.image_ok)
+		if(obj.os_simple.length>0
+			&& obj.os_simple!="windows")
 		{
-			obj.image_style="success";
-			obj.image_ok_t=trans("ok");
+			obj.image_style="";
+			obj.image_ok_t=trans("not_supported");
 		}
 		else
 		{
-			obj.image_style="danger";
-			obj.image_ok_t=trans("no_recent_backup");
+			if(obj.image_ok)
+			{
+				obj.image_style="success";
+				obj.image_ok_t=trans("ok");
+			}
+			else
+			{
+				obj.image_style="danger";
+				obj.image_ok_t=trans("no_recent_backup");
+			}
 		}
 		
 		if(obj.lastbackup=="") obj.lastbackup=trans("backup_never");

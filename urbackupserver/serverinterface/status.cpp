@@ -404,7 +404,7 @@ ACTION_IMPL(status)
 			}
 		}
 		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image FROM clients"+filter+" ORDER BY name");
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str FROM clients"+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
@@ -433,10 +433,12 @@ ACTION_IMPL(status)
 			stat.set("lastseen", watoi64(res[i]["lastseen"]));
 			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
 			stat.set("delete_pending", res[i]["delete_pending"] );
+			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
 
 			std::string ip="-";
-			std::string client_version_string;
-			std::string os_version_string;
+			std::string client_version_string = res[i]["client_version_str"];
+			std::string os_version_string = res[i]["os_version_str"];
+			std::string os_simple = res[i]["os_simple"];
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
@@ -488,6 +490,7 @@ ACTION_IMPL(status)
 			stat.set("ip", ip);
 			stat.set("client_version_string", client_version_string);
 			stat.set("os_version_string", os_version_string);
+			stat.set("os_simple", os_simple);
 			stat.set("status", i_status);
 			stat.set("processes", processes);
 
