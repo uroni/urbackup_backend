@@ -52,7 +52,7 @@ public:
 	class QueueCallback
 	{
 	public:
-		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script) = 0;
+		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script) = 0;
 		virtual void unqueueFileChunked(const std::string& remotefn) = 0;
 		virtual void resetQueueChunked() = 0;
 	};
@@ -62,8 +62,8 @@ public:
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFsFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFsFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f);
 
 	bool hasError(void);
 
@@ -171,7 +171,7 @@ private:
 	IFile *m_patchfile;
 	_i64 patchfile_pos;
 	IFile *m_chunkhashes;
-	IFile *m_hashoutput;
+	IFsFile *m_hashoutput;
 	IPipe *pipe;
 	CTCPStack *stack;
 

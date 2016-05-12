@@ -397,7 +397,7 @@ void RestoreDownloadThread::resetQueueFull()
 }
 
 bool RestoreDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile,
-	IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
+	IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
 {
 	IScopedLock lock(mutex.get());
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();

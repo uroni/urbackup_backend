@@ -105,7 +105,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 	else if(method==1)
 	{
 		IFile *hashfile;
-		IFile *hashfile_output;
+		IFsFile *hashfile_output;
 
 		if(queueStatus==SQueueStatus_Queue || queueStatus==SQueueStatus_NoQueue)
 		{
@@ -176,7 +176,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 	else if(method==2)
 	{
 		IFile *hashfile;
-		IFile *hashfile_output;
+		IFsFile *hashfile_output;
 		IFile *patchfile;
 
 		if(queueStatus==SQueueStatus_Queue || queueStatus==SQueueStatus_NoQueue)
@@ -373,7 +373,7 @@ void FileDownload::cleanup_tmpfile(IFile *tmpfile)
 	Server->deleteFile(fn);
 }
 
-bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
+bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
 {
 	for(size_t i=0;i<dlqueueChunked.size();++i)
 	{

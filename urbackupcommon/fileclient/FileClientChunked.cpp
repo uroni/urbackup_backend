@@ -100,7 +100,7 @@ FileClientChunked::~FileClientChunked(void)
 	Server->destroy(ofb_pipe);
 }
 
-_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
+_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFsFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
 {
 	m_file=NULL;
 	patch_mode=true;
@@ -122,7 +122,7 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
 }
 
-_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
+_u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFsFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
 {
 	patch_mode=false;
 	m_file=file;
@@ -396,7 +396,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					IFile* orig_file;
 					IFile* patchfile;
 					IFile* chunkhashes;
-					IFile* hashoutput;
+					IFsFile* hashoutput;
 					_i64 predicted_filesize;
 					int64 file_id;
 					bool is_script;
@@ -786,6 +786,16 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 								remote_filesize = new_remote_filesize;
 
 								calcTotalChunks();
+
+								if(m_hashoutput != NULL)
+								{
+									int64 max_hashoutput_size = get_hashdata_size(new_remote_filesize);
+
+									if (max_hashoutput_size < m_hashoutput->Size())
+									{
+										m_hashoutput->Resize(max_hashoutput_size);
+									}
+								}
 							}
 						}
 					}

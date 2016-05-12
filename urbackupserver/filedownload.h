@@ -11,7 +11,7 @@ struct FileDownloadQueueItemChunked
 	IFsFile* orig_file;
 	IFile* patchfile;
 	IFile* chunkhashes;
-	IFile* hashoutput;
+	IFsFile* hashoutput;
 	_i64 predicted_filesize;
 	bool queued;
 };
@@ -43,7 +43,7 @@ public:
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse);
 	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize);
 
-	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
+	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 	virtual void unqueueFileChunked(const std::string& remotefn);
 	virtual void resetQueueChunked();
 

@@ -1080,7 +1080,7 @@ void ServerDownloadThread::resetQueueFull()
 	}
 }
 
-bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
+bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)
 {
 	IScopedLock lock(mutex);
 	bool retry=true;
@@ -1206,7 +1206,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 		return dlfiles;
 	}
 	ScopedDeleteFile pfd_delete(pfd);
-	IFile *hash_tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	IFsFile *hash_tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(hash_tmp==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file 'hash_tmp' in load_file_patch", LL_ERROR);
