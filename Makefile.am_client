@@ -73,6 +73,7 @@ if MACOSX
 install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump \
 					urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump \
 					urbackupclient/backup_scripts/postgresbase.conf urbackupclient/backup_scripts/postgresbase \
+					urbackupclient/backup_scripts/mariadbxtrabackup.conf urbackupclient/backup_scripts/mariadbxtrabackup \
 					client/info.txt client/data/backup-bad.ico client/data/backup-ok.ico client/data/backup-progress.ico \
 					client/data/backup-progress-pause.ico client/data/backup-no-server.ico client/data/backup-no-recent.ico client/data/backup-indexing.ico \
 					client/data/logo1.png client/data/lang/*/*.mo client/version.txt client/data/urbackup_ecdsa409k1.pub client/data/updates_h.dat
@@ -80,12 +81,17 @@ else
 install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump \
 					urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump \
 					urbackupclient/backup_scripts/postgresbase.conf urbackupclient/backup_scripts/postgresbase \
+					urbackupclient/backup_scripts/mariadbxtrabackup.conf urbackupclient/backup_scripts/mariadbxtrabackup \
 					client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm \
 					client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm \
 					client/data/logo1.png client/data/lang/*/*.mo client/version.txt client/data/urbackup_ecdsa409k1.pub client/data/updates_h.dat
 endif
 else
-install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump client/version.txt client/data/urbackup_ecdsa409k1.pub client/data/updates_h.dat
+install-data-local: urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump \
+					urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump \
+					urbackupclient/backup_scripts/postgresbase.conf urbackupclient/backup_scripts/postgresbase \
+					urbackupclient/backup_scripts/mariadbxtrabackup.conf urbackupclient/backup_scripts/mariadbxtrabackup \
+					client/version.txt client/data/urbackup_ecdsa409k1.pub client/data/updates_h.dat
 endif
 
 	$(MKDIR_P) "$(DESTDIR)$(localstatedir)/urbackup/"
@@ -99,6 +105,8 @@ endif
 	$(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/postgresqldump" "$(DESTDIR)$(datadir)/urbackup/scripts/postgresqldump"
 	test -e "$(DESTDIR)$(sysconfdir)/postgresbase.conf" || $(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/postgresbase.conf" "$(DESTDIR)$(sysconfdir)/urbackup/postgresbase.conf"
 	$(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/postgresbase" "$(DESTDIR)$(datadir)/urbackup/scripts/postgresbase"
+	test -e "$(DESTDIR)$(sysconfdir)/mariadbxtrabackup.conf" || $(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/mariadbxtrabackup.conf" "$(DESTDIR)$(sysconfdir)/urbackup/mariadbxtrabackup.conf"
+	$(INSTALL_PROGRAM) "$(srcdir)/urbackupclient/backup_scripts/mariadbxtrabackup" "$(DESTDIR)$(datadir)/urbackup/scripts/mariadbxtrabackup"
 	
 	for script in "$(DESTDIR)$(datadir)/urbackup/scripts/"*; do sed "s|SYSCONFDIR|$(sysconfdir)|g" "$$script" > "$$script.r"; mv "$$script.r" "$$script"; done
 	chmod 700 "$(DESTDIR)$(datadir)/urbackup/scripts/"*
@@ -194,4 +202,4 @@ noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h 
 
 EXTRA_DIST_GUI = client/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo client/gui/GUISetupWizard.h client/SetupWizard.h
 
-EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client init.d_client_rh defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackupclientbackend-debian.service urbackupclientbackend-redhat.service urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump urbackupclient/backup_scripts/postgresbase urbackupclient/backup_scripts/postgresbase.conf client/version.txt client/data/urbackup_ecdsa409k1.pub linux_snapshot/btrfs_create_filesystem_snapshot linux_snapshot/btrfs_remove_filesystem_snapshot linux_snapshot/dattobd_create_filesystem_snapshot linux_snapshot/dattobd_remove_filesystem_snapshot linux_snapshot/lvm_create_filesystem_snapshot linux_snapshot/lvm_remove_filesystem_snapshot client/data/updates_h.dat
+EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client init.d_client_rh defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackupclientbackend-debian.service urbackupclientbackend-redhat.service urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadbdump.conf urbackupclient/backup_scripts/mariadbdump urbackupclient/backup_scripts/postgresqldump.conf urbackupclient/backup_scripts/postgresqldump urbackupclient/backup_scripts/postgresbase urbackupclient/backup_scripts/postgresbase.conf urbackupclient/backup_scripts/mariadbxtrabackup.conf urbackupclient/backup_scripts/mariadbxtrabackup client/version.txt client/data/urbackup_ecdsa409k1.pub linux_snapshot/btrfs_create_filesystem_snapshot linux_snapshot/btrfs_remove_filesystem_snapshot linux_snapshot/dattobd_create_filesystem_snapshot linux_snapshot/dattobd_remove_filesystem_snapshot linux_snapshot/lvm_create_filesystem_snapshot linux_snapshot/lvm_remove_filesystem_snapshot client/data/updates_h.dat
