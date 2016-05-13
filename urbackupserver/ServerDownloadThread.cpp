@@ -1269,7 +1269,17 @@ void ServerDownloadThread::start_shadowcopy(std::string path)
 		path += "/clientsubname=" + EscapeParamString(clientsubname);
 	}
 
-	client_main->sendClientMessageRetry("START SC \""+path+"\"#token="+server_token, "DONE", "Referencing snapshot on \""+clientname+"\" for path \""+path+"\" failed", 10000, 10);
+	std::string ret = client_main->sendClientMessageRetry("START SC \"" + path + "\"#token=" + server_token, "Referencing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed", 10000, 10);
+
+	if (ret != "DONE")
+	{
+		if (ret.empty())
+		{
+			ret = "TIMEOUT";
+		}
+
+		ServerLogger::Log(logid, "Referencing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed: " + ret, LL_INFO);
+	}
 }
 
 void ServerDownloadThread::stop_shadowcopy(std::string path)
@@ -1309,7 +1319,12 @@ void ServerDownloadThread::stop_shadowcopy(std::string path)
 		}
 		else if (ret != "DONE")
 		{
-			ServerLogger::Log(logid, "Removing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed", LL_ERROR);
+			if (ret.empty())
+			{
+				ret = "TIMEOUT";
+			}
+
+			ServerLogger::Log(logid, "Removing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed: "+ret, LL_INFO);
 		}
 
 	} while (in_use);

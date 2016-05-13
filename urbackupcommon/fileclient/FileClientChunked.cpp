@@ -223,14 +223,23 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			data.addInt64(remote_filesize);
 		}
 
-		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
-		{
-			Server->Log("Timout during file request (3)", LL_ERROR);
-			return ERR_TIMEOUT;
-		}
+		needs_flush = true;
+		next_chunk = 0;
 
-		needs_flush=true;
-		next_chunk=0;
+		int tries = 10;
+		while (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
+		{
+			Server->Log("Timeout during file request (3). Reconnecting...", LL_DEBUG);
+
+			--tries;
+
+			if (tries==0
+				|| !Reconnect(false))
+			{
+				Server->Log("Timeout during file request (3)", LL_ERROR);
+				return ERR_TIMEOUT;
+			}
+		}
 	}
 	
 	num_chunks=hashfilesize/c_checkpoint_dist+((hashfilesize%c_checkpoint_dist!=0)?1:0);

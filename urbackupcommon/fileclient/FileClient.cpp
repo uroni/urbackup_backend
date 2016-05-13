@@ -722,13 +722,24 @@ bool FileClient::Reconnect(void)
 			data.addChar(1);
 		}
 
-		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
-		{
-			Server->Log("Timeout during file request (1)", LL_ERROR);
-			return ERR_TIMEOUT;
-		}
+		needs_flush = true;
 
-		needs_flush=true;
+		while(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during file request (1). Reconnecting...", LL_DEBUG);
+
+			bool b = false;
+			int tries = getReconnectTriesDecr();
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if (!b)
+			{
+				Server->Log("Timeout during file request (1)", LL_ERROR);
+				return ERR_TIMEOUT;
+			}
+		}
 	}
 	else
 	{
@@ -853,11 +864,23 @@ bool FileClient::Reconnect(void)
 					file->Seek(received);
 				}
 
-				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
-				if(rc==0)
+				while (stack.Send(tcpsock, data.getDataPtr(), data.getDataSize()) != data.getDataSize())
 				{
-					Server->Log("FileClient: Error sending request", LL_INFO);
+					Server->Log("Timeout during file request (4). Reconnecting...", LL_DEBUG);
+
+					bool b = false;
+					int tries = getReconnectTriesDecr();
+					if (tries > 0)
+					{
+						b = Reconnect();
+					}
+					if (!b)
+					{
+						Server->Log("Timeout during file request (4)", LL_ERROR);
+						return ERR_TIMEOUT;
+					}
 				}
+
 				starttime=Server->getTimeMS();
 
 				if(protocol_version>0)
@@ -1271,10 +1294,21 @@ bool FileClient::Reconnect(void)
 					file->Seek(received);
 				}
 
-				if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+				while(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 				{
-					Server->Log("Timeout during file request (2)", LL_ERROR);
-					return ERR_TIMEOUT;
+					Server->Log("Timeout during file request (2). Reconnecting...", LL_DEBUG);
+
+					bool b = false;
+					int tries = getReconnectTriesDecr();
+					if (tries > 0)
+					{
+						b = Reconnect();
+					}
+					if (!b)
+					{
+						Server->Log("Timeout during file request (2)", LL_ERROR);
+						return ERR_TIMEOUT;
+					}
 				}
 				starttime=Server->getTimeMS();
 
