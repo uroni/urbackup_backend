@@ -239,11 +239,13 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop, unsigned int p_script_random)
+    bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop,
+	unsigned int p_script_random, std::string display_fn)
 {
 	SQueueItem ni;
 	ni.id = id;
 	ni.fn = fn;
+	ni.display_fn = display_fn;
 	ni.short_fn = short_fn;
 	ni.curr_path = curr_path;
 	ni.os_path = os_path;
@@ -291,11 +293,12 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 
 void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn,
 	const std::string &curr_path, const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	bool is_script, const std::string& sha_dig, unsigned int p_script_random)
+	bool is_script, const std::string& sha_dig, unsigned int p_script_random, std::string display_fn)
 {
 	SQueueItem ni;
 	ni.id = id;
 	ni.fn = fn;
+	ni.display_fn = display_fn;
 	ni.short_fn = short_fn;
 	ni.curr_path = curr_path;
 	ni.os_path = os_path;
@@ -1546,13 +1549,19 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 							std::string remote_fn = "urbackup/TAR|" + server_token + "|" + fn;
 							if (is_dir == 0 && is_symlink == 0 && is_special == 0)
 							{
+								std::string display_fn = todl.display_fn;
+								if (display_fn.empty())
+								{
+									display_fn = todl.fn;
+								}
+
 								if (fc_chunked != NULL)
 								{
 									addToQueueChunked(0, ExtractFileName(remote_fn, "/"),
 										ExtractFileName(os_path, os_file_sep()),
 										ExtractFilePath(remote_fn, "/"),
 										ExtractFilePath(os_path, os_file_sep()),
-										fsize, metadata, true, std::string(), script_random);
+										fsize, metadata, true, std::string(), script_random, display_fn);
 								}
 								else
 								{
@@ -1560,7 +1569,8 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 										ExtractFileName(os_path, os_file_sep()),
 										ExtractFilePath(remote_fn, "/"),
 										ExtractFilePath(os_path, os_file_sep()),
-										fsize, metadata, true, false, 0, std::string(), false, script_random);
+										fsize, metadata, true, false, 0, std::string(),
+										false, script_random, display_fn);
 								}
 							}
 							else
@@ -1639,7 +1649,12 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 			if(!line.empty())
 			{
 				int64 times = curr_time - (last_timems - timems)/1000;
-				ServerLogger::Log(times, logid, todl.fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
+				std::string display_fn = todl.display_fn;
+				if (display_fn.empty())
+				{
+					display_fn = todl.fn;
+				}
+				ServerLogger::Log(times, logid, display_fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
 			}
 
 			if(retval!=0)

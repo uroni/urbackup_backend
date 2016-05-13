@@ -70,6 +70,7 @@ namespace
 
 		size_t id;
 		std::string fn;
+		std::string display_fn;
 		std::string short_fn;
 		std::string curr_path;
 		std::string os_path;
@@ -149,10 +150,10 @@ public:
 
 	void addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path, const std::string &os_path,
         _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig,
-		bool at_front_postpone_quitstop=false, unsigned int p_script_random=0);
+		bool at_front_postpone_quitstop=false, unsigned int p_script_random=0, std::string display_fn = std::string());
 
 	void addToQueueChunked(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
-		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig, unsigned int p_script_random = 0);
+		const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, const std::string& sha_dig, unsigned int p_script_random = 0, std::string display_fn=std::string());
 
 	void addToQueueStartShadowcopy(const std::string& fn);
 
