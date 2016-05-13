@@ -695,7 +695,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
             addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path,
-				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig, true, todl.script_random);
+				todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, todl.folder_items, todl.sha_dig,
+				true, todl.script_random, todl.display_fn);
 			return true;
 		}
 	}
@@ -1459,7 +1460,13 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 								times = curr_time;
 							}
 
-							ServerLogger::Log(times, logid, todl.fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
+							std::string display_fn = todl.display_fn;
+							if (display_fn.empty())
+							{
+								display_fn = todl.fn;
+							}
+
+							ServerLogger::Log(times, logid, display_fn + ": " + trim(line), retval!=0?LL_ERROR:LL_INFO);
 							line.clear();
 						}
 						else
