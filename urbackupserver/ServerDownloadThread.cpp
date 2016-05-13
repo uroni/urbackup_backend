@@ -481,6 +481,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
+		ServerLogger::Log(logid, "Corrupted data while loading \"" + todl.fn + "\". Retrying...", LL_WARNING);
+
 		fd->Seek(0);
         rc=fc.GetFile(cfn, fd, hashed_transfer, todl.metadata_only, todl.folder_items, todl.is_script, with_metadata ? (todl.id+1) : 0);
 		--hash_retries;
@@ -734,6 +736,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
+		ServerLogger::Log(logid, "Corrupted data while loading patch for \"" + todl.fn + "\". Retrying...", LL_WARNING);
+
 		dlfiles.orig_file->Seek(0);
 		dlfiles.patchfile=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 		if(dlfiles.patchfile==NULL)
