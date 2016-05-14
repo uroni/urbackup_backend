@@ -30,20 +30,26 @@
 CDBSettingsReader::CDBSettingsReader(THREAD_ID tid, DATABASE_ID did, const std::string &pTable, const std::string &pSQL)
 {
 	table=pTable;
-	IDatabase *db=Server->getDatabase(tid, did);
+	db=Server->getDatabase(tid, did);
 	if(pSQL.empty() )
-		query=db->Prepare("SELECT value FROM "+table+" WHERE key=?");
+		query=db->Prepare("SELECT value FROM "+table+" WHERE key=?", false);
 	else
-		query=db->Prepare(pSQL);
+		query=db->Prepare(pSQL, false);
 }
 
 CDBSettingsReader::CDBSettingsReader(IDatabase *pDB, const std::string &pTable, const std::string &pSQL)
+	: db(pDB)
 {
 	table=pTable;
 	if(pSQL.empty() )
-		query=pDB->Prepare("SELECT value FROM "+table+" WHERE key=?");
+		query=pDB->Prepare("SELECT value FROM "+table+" WHERE key=?", false);
 	else
-		query=pDB->Prepare(pSQL);
+		query=pDB->Prepare(pSQL, false);
+}
+
+CDBSettingsReader::~CDBSettingsReader()
+{
+	db->destroyQuery(query);
 }
 
 bool CDBSettingsReader::getValue(std::string key, std::string *value)
