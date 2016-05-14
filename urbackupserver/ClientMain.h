@@ -118,7 +118,7 @@ public:
 
 	void operator()(void);
 
-	bool authenticateIfNeeded(bool retry_exit);
+	bool authenticateIfNeeded(bool retry_exit, bool force);
 
 	struct SConnection
 	{

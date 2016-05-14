@@ -547,7 +547,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						else
 						{
 							Server->Log("Connected. Authenticating...", LL_DEBUG);
-							if (!client_main->authenticateIfNeeded(false))
+							if (!client_main->authenticateIfNeeded(false,
+								internet_connection!=client_main->isOnInternetConnection()))
 							{
 								Server->destroy(cc);
 								cc = NULL;
@@ -559,6 +560,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								reconnected = true;
 								ServerStatus::setROnline(clientname, true);
 								Server->Log("Reconnected.", LL_DEBUG);
+								internet_connection = client_main->isOnInternetConnection();
 								break;
 							}
 						}

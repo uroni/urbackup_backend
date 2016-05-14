@@ -280,7 +280,7 @@ void ClientMain::operator ()(void)
 	}
 	else
 	{
-		if(!authenticateIfNeeded(true))
+		if(!authenticateIfNeeded(true, false))
 		{
 			pipe->Write("ok");
 			delete this;
@@ -573,7 +573,7 @@ void ClientMain::operator ()(void)
 				updateCapabilities();
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
-				if (!authenticateIfNeeded(true))
+				if (!authenticateIfNeeded(true, false))
 				{
 					skip_checking = true;
 				}
@@ -777,7 +777,7 @@ void ClientMain::operator ()(void)
 
 			tcpstack.setAddChecksum(internet_connection);
 
-			if(!authenticateIfNeeded(true))
+			if(!authenticateIfNeeded(true, true))
 			{
 				skip_checking=true;
 			}
@@ -2783,7 +2783,7 @@ void ClientMain::stopBackupBarrier()
 	running_backups_allowed=true;
 }
 
-bool ClientMain::authenticateIfNeeded(bool retry_exit)
+bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 {
 	if (!needs_authentification)
 	{
@@ -2794,7 +2794,8 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit)
 		IScopedLock lock(clientaddr_mutex);
 
 		if (session_identity_refreshtime!=0
-			&& Server->getTimeMS() - session_identity_refreshtime<30 * 60 * 1000)
+			&& Server->getTimeMS() - session_identity_refreshtime<30 * 60 * 1000
+			&& !force)
 		{
 			return true;
 		}
