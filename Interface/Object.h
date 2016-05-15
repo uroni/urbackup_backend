@@ -55,6 +55,7 @@ public:
 	~ScopedFreeObjRef()
 	{
 		delete ref;
+		ref = NULL;
 	}
 
 private:

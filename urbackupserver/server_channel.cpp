@@ -158,7 +158,6 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::str
 
 ServerChannelThread::~ServerChannelThread(void)
 {
-	delete settings;
 	Server->destroy(mutex);
 }
 
@@ -168,6 +167,7 @@ void ServerChannelThread::operator()(void)
 	lasttime=0;
 
 	settings=new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), clientid);
+	ScopedFreeObjRef<ServerSettings*> settings_free(settings);
 
 	while(do_exit==false)
 	{
