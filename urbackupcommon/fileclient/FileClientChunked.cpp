@@ -1201,7 +1201,11 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			writeFileRepeat(m_hashoutput, hash_from_client, big_hash_size);
 		}
 
-		curr_output_fsize = (std::max)(curr_output_fsize, curr_pos+c_checkpoint_dist);
+		int64 dest_pos = curr_pos + c_checkpoint_dist;
+		if (dest_pos>remote_filesize)
+			dest_pos = remote_filesize;
+
+		curr_output_fsize = (std::max)(curr_output_fsize, dest_pos);
 
 		std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(curr_pos);
 		if(it!=pending_chunks.end())
@@ -1274,6 +1278,7 @@ void FileClientChunked::State_Block(void)
 	{
 		writeFileRepeat(m_file, bufptr, rbytes);
 		file_pos+=rbytes;
+		curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 	}
 	else
 	{
@@ -1282,8 +1287,6 @@ void FileClientChunked::State_Block(void)
 	}
 	
 	chunk_start+=(unsigned int)rbytes;
-
-	curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 
 	char *alder_bufptr=bufptr;
 	while(rbytes>0)
@@ -1365,14 +1368,13 @@ void FileClientChunked::State_Chunk(void)
 		{
 			writeFileRepeat(m_file, bufptr, rbytes);
 			file_pos+=rbytes;
+			curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 		}
 		else
 		{
 			writePatch(file_pos, (unsigned int)rbytes, bufptr, adler_remaining==0);
 			file_pos+=rbytes;
 		}
-
-		curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 
 		remaining_bufptr_bytes-=rbytes;
 		bufptr_bytes_done+=rbytes;
@@ -1489,8 +1491,13 @@ void FileClientChunked::writePatchInt(_i64 pos, unsigned int length, char *buf)
 	memcpy(pd+sizeof(_i64), &length_tmp, sizeof(unsigned int));
 	writeFileRepeat(m_patchfile, pd, plen);
 	writeFileRepeat(m_patchfile, buf, length);
+	if (last_chunk_patches.empty())
+	{
+		last_patch_output_fsize = curr_output_fsize;
+	}
 	last_chunk_patches.push_back(patchfile_pos);
 	patchfile_pos+=plen+length;
+	curr_output_fsize = (std::max)(curr_output_fsize, pos + length);
 }
 
 void FileClientChunked::writePatchSize(_i64 remote_fs)
@@ -1517,6 +1524,11 @@ void FileClientChunked::invalidateLastPatches(void)
 {
 	if(patch_mode)
 	{
+		if (!last_chunk_patches.empty())
+		{
+			curr_output_fsize = last_patch_output_fsize;
+		}
+
 		_i64 invalid_pos=little_endian(-1);
 		for(size_t i=0;i<last_chunk_patches.size();++i)
 		{

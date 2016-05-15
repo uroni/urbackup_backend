@@ -176,6 +176,7 @@ private:
 	CTCPStack *stack;
 
 	std::vector<_i64> last_chunk_patches;
+	int64 last_patch_output_fsize;
 	bool patch_mode;
 	char patch_buf[c_chunk_size];
 	unsigned int patch_buf_pos;
