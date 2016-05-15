@@ -226,18 +226,29 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		needs_flush = true;
 		next_chunk = 0;
 
-		int tries = 10;
-		while (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
+		if (queue_only)
 		{
-			Server->Log("Timeout during file request (3). Reconnecting...", LL_DEBUG);
-
-			--tries;
-
-			if (tries==0
-				|| !Reconnect(false))
+			if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), 0, false) != data.getDataSize())
 			{
-				Server->Log("Timeout during file request (3)", LL_ERROR);
+				Server->Log("Timeout during file queue request (3)", LL_ERROR);
 				return ERR_TIMEOUT;
+			}
+		}
+		else
+		{
+			int tries = 10;
+			while (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
+			{
+				Server->Log("Timeout during file request (3). Reconnecting...", LL_DEBUG);
+
+				--tries;
+
+				if (tries == 0
+					|| !Reconnect(false))
+				{
+					Server->Log("Timeout during file request (3)", LL_ERROR);
+					return ERR_TIMEOUT;
+				}
 			}
 		}
 	}
