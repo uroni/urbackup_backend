@@ -50,6 +50,7 @@ const unsigned int image_timeout=10*24*60*60*1000;
 const unsigned int image_recv_timeout=30*60*1000;
 const unsigned int image_recv_timeout_after_first=2*60*1000;
 const unsigned int mbr_size=(1024*1024)/2;
+const int max_num_hash_errors = 10;
 
 extern std::string server_identity;
 extern IFSImageFactory *image_fak;
@@ -1132,8 +1133,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else if(nextblock-currblock>vhd_blocksize)
 						{
-							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+convert(nextblock-vhd_blocksize-1)+" got "+convert(currblock)+". Stopping image backup.", LL_ERROR);
-							goto do_image_cleanup;
+							if (num_hash_errors < max_num_hash_errors)
+							{
+								ServerLogger::Log(logid, "Block sent out of sequence. Expected block >=" + convert(nextblock - vhd_blocksize - 1) + " got " + convert(currblock) + ". Retrying...", LL_WARNING);
+								transferred_bytes += cc->getTransferedBytes();
+								Server->destroy(cc);
+								cc = NULL;
+								nextblock = last_verified_block;
+								++num_hash_errors;
+								break;
+							}
+							else
+							{
+								ServerLogger::Log(logid, "Block sent out of sequence. Expected block >=" + convert(nextblock - vhd_blocksize - 1) + " got " + convert(currblock) + ". Stopping backup.", LL_ERROR);
+								goto do_image_cleanup;
+							}
 						}
 
 						currblock=-1;
@@ -1305,7 +1319,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
 									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock), LL_DEBUG);
-									if(num_hash_errors<10)
+									if(num_hash_errors<max_num_hash_errors)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
 										transferred_bytes+=cc->getTransferedBytes();
@@ -1359,8 +1373,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else if(currblock<0)
 						{
-							ServerLogger::Log(logid, "Received unknown block number: "+convert(currblock)+". Stopping image backup.", LL_ERROR);
-							goto do_image_cleanup;
+							if (num_hash_errors < max_num_hash_errors)
+							{
+								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + ". Retrying...", LL_WARNING);
+								transferred_bytes += cc->getTransferedBytes();
+								Server->destroy(cc);
+								cc = NULL;
+								nextblock = last_verified_block;
+								++num_hash_errors;
+								break;
+							}
+							else
+							{
+								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + ". Stopping backup.", LL_ERROR);
+								goto do_image_cleanup;
+							}
 						}
 						else
 						{
