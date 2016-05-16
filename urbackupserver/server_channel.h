@@ -69,7 +69,6 @@ private:
 
     static int img_id_offset;
 
-	std::string identity;
 	std::string client_addr;
 
 	SessionKeepaliveThread* keepalive_thread;

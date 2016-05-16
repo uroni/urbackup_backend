@@ -148,7 +148,7 @@ void ServerChannelThread::initOffset()
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
 	bool internet_mode, const std::string& identity, std::string server_token) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
-		internet_mode(internet_mode), identity(identity), keepalive_thread(NULL), server_token(server_token)
+		internet_mode(internet_mode), keepalive_thread(NULL), server_token(server_token)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -185,7 +185,7 @@ void ServerChannelThread::operator()(void)
 					IScopedLock lock(mutex);
 					input=np;
 				}
-
+				std::string identity = client_main->getIdentity();
 				tcpstack.Send(input, identity+"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1");
 
 				lasttime=Server->getTimeMS();
