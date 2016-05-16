@@ -18,6 +18,8 @@
 
 class FileMetadata;
 
+const int64 link_file_min_size = 2048;
+
 struct STmpFile
 {
 	STmpFile(int backupid, std::string fp, std::string hashpath)

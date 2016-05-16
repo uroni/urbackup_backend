@@ -879,7 +879,7 @@ bool IncrFileBackup::doFileBackup()
 					else if(indirchange || file_changed) //is changed
 					{
 						bool f_ok=false;
-						if(!curr_sha2.empty() && cf.size>=0)
+						if(!curr_sha2.empty() && cf.size>= link_file_min_size)
 						{
 							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2 , cf.size, true,
 								metadata))
@@ -962,7 +962,7 @@ bool IncrFileBackup::doFileBackup()
 							}
 							++link_logcnt;
 
-							if(!curr_sha2.empty() && cf.size>=0)
+							if(!curr_sha2.empty() && cf.size>= link_file_min_size)
 							{
 								if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size, false,
 									metadata))

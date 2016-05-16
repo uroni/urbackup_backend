@@ -738,15 +738,16 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator)
 {
 	bool copy=true;
-	bool tries_once;
+	bool tries_once = false;
 	std::string ff_last;
-	bool hardlink_limit;
-	bool copied_file;
+	bool hardlink_limit = false;
+	bool copied_file = false;
 	int64 entryid = 0;
 	int entryclientid = 0;
 	int64 next_entryid = 0;
 	int64 rsize = 0;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
+	if(t_filesize>= link_file_min_size
+		&& findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, false, extent_iterator))
 	{

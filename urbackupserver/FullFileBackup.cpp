@@ -507,8 +507,9 @@ bool FullFileBackup::doFileBackup()
 					if( hash_it!=extra_params.end())
 					{
 						curr_sha2 = base64_decode_dash(hash_it->second);
-						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size,
-							true, metadata))
+						if(cf.size>= link_file_min_size
+							&& link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size,
+							             true, metadata))
 						{
 							file_ok=true;
 							linked_bytes+=cf.size;
