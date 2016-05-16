@@ -9,6 +9,7 @@
 #include "dao/ServerFilesDao.h"
 #include <sstream>
 #include <memory>
+#include <set>
 #include "FileIndex.h"
 
 class ServerSettings;
@@ -87,6 +88,10 @@ public:
 
 	static void doQuit(void);
 
+	static void lockImageFromCleanup(int backupid);
+	static void unlockImageFromCleanup(int backupid);
+	static bool isImageLockedFromCleanup(int backupid);
+
 private:
 
 	void do_cleanup(void);
@@ -117,6 +122,10 @@ private:
 	bool cleanup_clientlists();
 
 	void cleanup_client_hist();
+
+	void cleanup_all_system_images(ServerSettings& settings);
+
+	void cleanup_system_images(int clientid, std::string clientname, ServerSettings& settings);
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
@@ -175,4 +184,38 @@ private:
 	std::auto_ptr<ServerBackupDao> backupdao;
 	std::auto_ptr<ServerFilesDao> filesdao;
 	std::auto_ptr<FileIndex> fileindex;
+
+	static IMutex* cleanup_lock_mutex;
+	static std::set<int> locked_images;
+};
+
+class ScopedLockImageFromCleanup
+{
+public:
+	ScopedLockImageFromCleanup(int backupid)
+		: backupid(backupid)
+	{
+		if (backupid != 0)
+			ServerCleanupThread::lockImageFromCleanup(backupid);
+	}
+
+	~ScopedLockImageFromCleanup()
+	{
+		if (backupid != 0)
+			ServerCleanupThread::unlockImageFromCleanup(backupid);
+	}
+
+	void reset(int nid=0)
+	{
+		if (backupid != 0)
+			ServerCleanupThread::unlockImageFromCleanup(backupid);
+
+		backupid = nid;
+
+		if(backupid!=0)
+			ServerCleanupThread::lockImageFromCleanup(backupid);
+	}
+
+private:
+	int backupid;
 };

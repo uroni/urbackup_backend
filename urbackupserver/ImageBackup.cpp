@@ -162,6 +162,8 @@ bool ImageBackup::doBackup()
 
 	int sysvol_id=-1;
 	int esp_id=-1;
+	ScopedLockImageFromCleanup lock_cleanup_sysvol(0);
+	ScopedLockImageFromCleanup lock_esp_sysvol(0);
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
@@ -172,6 +174,7 @@ bool ImageBackup::doBackup()
 		if(sysvol_backup.getResult())
 		{
 			sysvol_id = sysvol_backup.getBackupId();
+			lock_cleanup_sysvol.reset(sysvol_id);
 		}
 
 		client_main->startBackupRunning(false);
@@ -188,6 +191,7 @@ bool ImageBackup::doBackup()
 			if(esp_backup.getResult())
 			{
 				esp_id = esp_backup.getBackupId();
+				lock_cleanup_sysvol.reset(esp_id);
 			}
 
 			client_main->startBackupRunning(false);
@@ -263,6 +267,17 @@ bool ImageBackup::doBackup()
 		if(esp_id!=-1)
 		{
 			backup_dao->saveImageAssociation(backupid, esp_id);
+		}
+	}
+	else
+	{
+		if (sysvol_id!=-1)
+		{
+			backup_dao->setImageBackupIncomplete(sysvol_id);
+		}
+		if (esp_id != -1)
+		{
+			backup_dao->setImageBackupIncomplete(esp_id);
 		}
 	}
 
@@ -424,6 +439,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 
 	backupid=static_cast<int>(db->getLastInsertID());
+	ScopedLockImageFromCleanup cleanup_lock(backupid);
 
 	std::string ret;
 	int64 starttime=Server->getTimeMS();

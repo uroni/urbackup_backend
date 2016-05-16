@@ -51,6 +51,8 @@ IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
 volatile bool ServerCleanupThread::do_quit=false;
 bool ServerCleanupThread::update_stats_disabled = false;
+std::set<int> ServerCleanupThread::locked_images;
+IMutex* ServerCleanupThread::cleanup_lock_mutex = NULL;
 
 void cleanupLastActs();
 
@@ -61,6 +63,7 @@ void ServerCleanupThread::initMutex(void)
 	mutex=Server->createMutex();
 	cond=Server->createCondition();
 	a_mutex=Server->createMutex();
+	cleanup_lock_mutex = Server->createMutex();
 }
 
 void ServerCleanupThread::destroyMutex(void)
@@ -68,6 +71,7 @@ void ServerCleanupThread::destroyMutex(void)
 	Server->destroy(mutex);
 	Server->destroy(cond);
 	Server->destroy(a_mutex);
+	Server->destroy(cleanup_lock_mutex);
 }
 
 ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
@@ -465,23 +469,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 			}
 		}
 
-		res_image_backups=cleanupdao->getImageBackupsOfClient(clientid);
-
-		for(size_t j=0;j<res_image_backups.size();++j)
-		{
-			if(res_image_backups[j].letter=="SYSVOL"
-				|| res_image_backups[j].letter=="ESP")
-			{
-				if(!cleanupdao->getParentImageBackup(res_image_backups[j].id).exists)
-				{
-					Server->Log("Image backup [id="+convert(res_image_backups[j].id)+" path="+res_image_backups[j].path+" clientname="+clientname+"] is a system reserved or EFI system partition image and has no parent image. Deleting it.", LL_WARNING);
-					if(!removeImage(res_image_backups[j].id, &settings, false, false, true, false))
-					{
-						Server->Log("Could not remove image backup [id="+convert(res_image_backups[j].id)+" path="+res_image_backups[j].path+" clientname="+clientname+"]", LL_ERROR);
-					}
-				}
-			}
-		}
+		cleanup_system_images(clientid, clientname, settings);
 
 
 		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL);
@@ -758,21 +746,26 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			Server->Log("Deleting full image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 
-		if(!findUncompleteImageRef(backupid) )
-		{			
-			if(!removeImage(backupid, &settings, true, false, true, true))
+		if (isImageLockedFromCleanup(backupid))
+		{
+			Server->Log("Backup image is locked from cleanup");
+			notit.push_back(backupid);
+		}
+		else if(findUncompleteImageRef(backupid) )
+		{		
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+		else
+		{
+			if (!removeImage(backupid, &settings, true, false, true, true))
 			{
 				notit.push_back(backupid);
 			}
 			else
 			{
 				imageids.push_back(backupid);
-			}	
-		}
-		else
-		{
-			Server->Log("Backup image has dependant image which is not complete");
-			notit.push_back(backupid);
+			}
 		}
 
 		int r=hasEnoughFreeSpace(minspace, &settings);
@@ -799,7 +792,17 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			Server->Log("Deleting incremental image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 
-		if(!findUncompleteImageRef(backupid) )
+		if (isImageLockedFromCleanup(backupid))
+		{
+			Server->Log("Backup image is locked from cleanup");
+			notit.push_back(backupid);
+		}
+		else if (findUncompleteImageRef(backupid))
+		{
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+		else
 		{
 			if(!removeImage(backupid, &settings, true, false, true, true))
 			{
@@ -809,11 +812,6 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			{
 				imageids.push_back(backupid);
 			}
-		}
-		else
-		{
-			Server->Log("Backup image has dependant image which is not complete");
-			notit.push_back(backupid);
 		}
 
 		int r=hasEnoughFreeSpace(minspace, &settings);
@@ -831,16 +829,22 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	std::vector<ServerCleanupDao::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
 	for(size_t i=0;i<incomplete_images.size();++i)
 	{
-		Server->Log("Deleting incomplete image file \""+incomplete_images[i].path+"\"...", LL_INFO);
-		if(!deleteImage(incomplete_images[i].clientname, incomplete_images[i].path))
+		if (!isImageLockedFromCleanup(incomplete_images[i].id))
 		{
-			Server->Log("Deleting incomplete image \""+incomplete_images[i].path+"\" failed.", LL_WARNING); 
+			Server->Log("Deleting incomplete image file \"" + incomplete_images[i].path + "\"...", LL_INFO);
+			if (!deleteImage(incomplete_images[i].clientname, incomplete_images[i].path))
+			{
+				Server->Log("Deleting incomplete image \"" + incomplete_images[i].path + "\" failed.", LL_WARNING);
+			}
+			cleanupdao->removeImage(incomplete_images[i].id);
 		}
-		cleanupdao->removeImage(incomplete_images[i].id);
 	}
 
 	{
 		ServerSettings settings(db);
+
+		cleanup_all_system_images(settings);
+
 		int r=hasEnoughFreeSpace(minspace, &settings);
 		if( r==-1 || r==1)
 			return;
@@ -1665,6 +1669,28 @@ void ServerCleanupThread::doQuit(void)
 	cond->notify_all();
 }
 
+void ServerCleanupThread::lockImageFromCleanup(int backupid)
+{
+	IScopedLock lock(cleanup_lock_mutex);
+	locked_images.insert(backupid);
+}
+
+void ServerCleanupThread::unlockImageFromCleanup(int backupid)
+{
+	IScopedLock lock(cleanup_lock_mutex);
+	std::set<int>::iterator it = locked_images.find(backupid);
+	if (it != locked_images.end())
+	{
+		locked_images.erase(it);
+	}
+}
+
+bool ServerCleanupThread::isImageLockedFromCleanup(int backupid)
+{
+	IScopedLock lock(cleanup_lock_mutex);
+	return locked_images.find(backupid) != locked_images.end();
+}
+
 bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 {
 	std::vector<SFile> files=getFiles(path, NULL);
@@ -2115,6 +2141,44 @@ void ServerCleanupThread::cleanup_client_hist()
 	rewrite_history("-2 years", "-1000 years", "%Y");
 }
 
+void ServerCleanupThread::cleanup_all_system_images(ServerSettings & settings)
+{
+	std::vector<ServerCleanupDao::SClientInfo> res_clients = cleanupdao->getClients();
+
+	for (size_t i = 0; i < res_clients.size(); ++i)
+	{
+		int clientid = res_clients[i].id;
+		const std::string& clientname = res_clients[i].name;
+
+		cleanup_system_images(clientid, clientname, settings);
+	}
+}
+
+void ServerCleanupThread::cleanup_system_images(int clientid, std::string clientname, ServerSettings& settings)
+{
+	std::vector<ServerCleanupDao::SImageBackupInfo>
+		res_image_backups = cleanupdao->getOldImageBackupsOfClient(clientid);
+
+	for (size_t j = 0; j<res_image_backups.size(); ++j)
+	{
+		if (res_image_backups[j].letter == "SYSVOL"
+			|| res_image_backups[j].letter == "ESP")
+		{
+			if (!cleanupdao->getParentImageBackup(res_image_backups[j].id).exists
+				&& !isImageLockedFromCleanup(res_image_backups[j].id) )
+			{
+				Server->Log("Image backup [id=" + convert(res_image_backups[j].id) + " path=" 
+					+ res_image_backups[j].path + " clientname=" + clientname 
+					+ "] is a system reserved or EFI system partition image older than 24h and has no parent image. Deleting it.", LL_INFO);
+				if (!removeImage(res_image_backups[j].id, &settings, false, false, true, false))
+				{
+					Server->Log("Could not remove image backup [id=" + convert(res_image_backups[j].id) + " path=" + res_image_backups[j].path + " clientname=" + clientname + "]", LL_ERROR);
+				}
+			}
+		}
+	}
+}
+
 void ServerCleanupThread::cleanup_other()
 {
 	Server->Log("Deleting old logs...", LL_INFO);
@@ -2357,6 +2421,8 @@ bool ServerCleanupThread::cleanup_clientlists()
 
 	return !has_error;
 }
+
+
 
 
 #endif //CLIENT_ONLY

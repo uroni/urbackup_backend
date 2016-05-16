@@ -845,6 +845,23 @@ void ServerBackupDao::setImageBackupComplete(int backupid)
 
 /**
 * @-SQLGenAccess
+* @func void ServerBackupDao::setImageBackupIncomplete
+* @sql
+*       UPDATE backup_images SET complete=0 WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageBackupIncomplete(int backupid)
+{
+	if (q_setImageBackupIncomplete == NULL)
+	{
+		q_setImageBackupIncomplete = db->Prepare("UPDATE backup_images SET complete=0 WHERE id=?", false);
+	}
+	q_setImageBackupIncomplete->Bind(backupid);
+	q_setImageBackupIncomplete->Write();
+	q_setImageBackupIncomplete->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerBackupDao::updateImageBackupRunning
 * @sql
 *       UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=:backupid(int)
@@ -1433,6 +1450,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_setImageSize=NULL;
 	q_addImageSizeToClient=NULL;
 	q_setImageBackupComplete=NULL;
+	q_setImageBackupIncomplete = NULL;
 	q_updateImageBackupRunning=NULL;
 	q_saveImageAssociation=NULL;
 	q_updateClientLastImageBackup=NULL;
@@ -1497,6 +1515,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setImageSize);
 	db->destroyQuery(q_addImageSizeToClient);
 	db->destroyQuery(q_setImageBackupComplete);
+	db->destroyQuery(q_setImageBackupIncomplete);
 	db->destroyQuery(q_updateImageBackupRunning);
 	db->destroyQuery(q_saveImageAssociation);
 	db->destroyQuery(q_updateClientLastImageBackup);

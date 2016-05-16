@@ -110,6 +110,7 @@ public:
 	CondInt64 getImageSize(int backupid);
 	std::vector<SClientInfo> getClients(void);
 	std::vector<SFileBackupInfo> getFileBackupsOfClient(int clientid);
+	std::vector<SImageBackupInfo> getOldImageBackupsOfClient(int clientid);
 	std::vector<SImageBackupInfo> getImageBackupsOfClient(int clientid);
 	CondInt findFileBackup(int clientid, const std::string& path);
 	CondInt64 getUsedStorage(int clientid);
@@ -158,6 +159,7 @@ private:
 	IQuery* q_getImageSize;
 	IQuery* q_getClients;
 	IQuery* q_getFileBackupsOfClient;
+	IQuery* q_getOldImageBackupsOfClient;
 	IQuery* q_getImageBackupsOfClient;
 	IQuery* q_findFileBackup;
 	IQuery* q_getUsedStorage;

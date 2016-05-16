@@ -714,6 +714,36 @@ std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsO
 
 /**
 * @-SQLGenAccess
+* @func vector<SImageBackupInfo> ServerCleanupDao::getOldImageBackupsOfClient
+* @return int id, string backuptime, string letter, string path
+* @sql
+*	SELECT id, backuptime, letter, path FROM backup_images
+*	WHERE clientid=:clientid(int) AND running<datetime('now','-12 hours')
+*/
+std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getOldImageBackupsOfClient(int clientid)
+{
+	if (q_getOldImageBackupsOfClient == NULL)
+	{
+		q_getOldImageBackupsOfClient = db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=? AND running<datetime('now','-12 hours')", false);
+	}
+	q_getOldImageBackupsOfClient->Bind(clientid);
+	db_results res = q_getOldImageBackupsOfClient->Read();
+	q_getOldImageBackupsOfClient->Reset();
+	std::vector<ServerCleanupDao::SImageBackupInfo> ret;
+	ret.resize(res.size());
+	for (size_t i = 0; i<res.size(); ++i)
+	{
+		ret[i].exists = true;
+		ret[i].id = watoi(res[i]["id"]);
+		ret[i].backuptime = res[i]["backuptime"];
+		ret[i].letter = res[i]["letter"];
+		ret[i].path = res[i]["path"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func vector<SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient
 * @return int id, string backuptime, string letter, string path
 * @sql
@@ -1038,6 +1068,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getImageSize=NULL;
 	q_getClients=NULL;
 	q_getFileBackupsOfClient=NULL;
+	q_getOldImageBackupsOfClient = NULL;
 	q_getImageBackupsOfClient=NULL;
 	q_findFileBackup=NULL;
 	q_getUsedStorage=NULL;
@@ -1082,6 +1113,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getImageSize);
 	db->destroyQuery(q_getClients);
 	db->destroyQuery(q_getFileBackupsOfClient);
+	db->destroyQuery(q_getOldImageBackupsOfClient);
 	db->destroyQuery(q_getImageBackupsOfClient);
 	db->destroyQuery(q_findFileBackup);
 	db->destroyQuery(q_getUsedStorage);
