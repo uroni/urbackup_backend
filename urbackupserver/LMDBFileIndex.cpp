@@ -520,6 +520,13 @@ bool LMDBFileIndex::create_env()
 			}
 		}
 		
+		rc = mdb_env_set_maxreaders(env, 4094);
+
+		if (rc)
+		{
+			Server->Log("LMDB: Failed to set max readers (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			return false;
+		}
 
 		rc = mdb_env_set_mapsize(env, map_size);
 
