@@ -36,6 +36,7 @@ std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> Pip
 std::map<std::string, size_t> PipeSessions::active_shares;
 
 const int64 pipe_file_timeout = 1*60*60*1000;
+const int64 pipe_file_read_timeout = 30 * 60 * 1000;
 
 
 IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_file_user,
@@ -325,7 +326,7 @@ void PipeSessions::operator()()
 			it!=pipe_files.end();)
 		{
 			if( !it->second.retrieving_exit_info
-				 && (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_timeout)
+				 && (it->second.file!=NULL && currtime - it->second.file->getLastRead() > pipe_file_read_timeout)
 					 || (it->second.file==NULL && currtime - it->second.addtime > pipe_file_timeout) )
 			{
 				if (it->second.file != NULL)
