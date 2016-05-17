@@ -2102,8 +2102,6 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	std::vector<char> buf;
 	buf.resize(s_bsize);
 
-	bool has_error=false;
-
 	int64 foffset = start_offset;
 	bool is_eof=false;
 	int64 last_flush_foffset = foffset;

@@ -70,7 +70,7 @@ bool copy_os_metadata(const std::string& in_fn, const std::string& out_fn, INotE
 
 namespace
 {
-	const char* metadata_dir_fn=".dir_metadata";
+	const char metadata_dir_fn[]=".dir_metadata";
 }
 
 std::string escape_metadata_fn(const std::string& fn);

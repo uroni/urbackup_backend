@@ -2132,7 +2132,7 @@ _u32 FileClientChunked::getErrorcode2()
 std::string FileClientChunked::getErrorcodeString()
 {
 	std::string err;
-	if(errorcode1<sizeof(fc_err_strs))
+	if(errorcode1<sizeof(fc_err_strs)/sizeof(fc_err_strs[0]))
 	{
 		err=fc_err_strs[errorcode1];
 	}

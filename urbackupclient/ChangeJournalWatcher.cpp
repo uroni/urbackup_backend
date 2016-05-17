@@ -1017,10 +1017,10 @@ void ChangeJournalWatcher::update_longliving(void)
 		std::vector<std::string> files = open_write_files.get();
 		for(size_t i=0;i<files.size();++i)
 		{
-			for(size_t i=0;i<listeners.size();++i)
+			for(size_t j=0;j<listeners.size();++j)
 			{
-				listeners[i]->On_FileModified(files[i], false);
-				listeners[i]->On_FileOpen(files[i]);
+				listeners[j]->On_FileModified(files[i], false);
+				listeners[j]->On_FileOpen(files[i]);
 			}
 		}
 	}
