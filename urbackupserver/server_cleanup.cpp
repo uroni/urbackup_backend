@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include "create_files_index.h"
+#include "WalCheckpointThread.h"
 #include <assert.h>
 #include <set>
 
@@ -676,6 +677,7 @@ bool ServerCleanupThread::deleteAndTruncateFile(std::string path)
 {
 	if(!Server->deleteFile(os_file_prefix(path)))
 	{
+		Server->Log("Deleting " + path + " failed. " + os_last_error_str() + " . Truncating it instead.", LL_INFO);
 		os_file_truncate(os_file_prefix(path), 0);
 		return false;
 	}
@@ -1626,7 +1628,13 @@ bool ServerCleanupThread::backup_database(void)
 					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 					ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
 
-					ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i]+"...", LL_INFO);
+					ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
+
+					ServerLogger::Log(logid, "Stop checkpointing of " + copy_backup[i] + "...", LL_INFO);
+
+					WalCheckpointThread::lockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+
+					ServerLogger::Log(logid, "Stop writes to " + copy_backup[i]+"...", LL_INFO);
 
 					DBScopedWriteTransaction copy_db_transaction(copy_db);
 
@@ -1655,6 +1663,8 @@ bool ServerCleanupThread::backup_database(void)
 					{
 						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
 					}
+
+					WalCheckpointThread::unlockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
 				}
 			}		
 

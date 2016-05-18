@@ -707,6 +707,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_chunk_hasher();
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
+	WalCheckpointThread::init_mutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
 
 	is_leak_check=(Server->getServerParameter("leak_check")=="true");
@@ -799,6 +800,7 @@ DLLEXPORT void UnloadActions(void)
 		ServerSettings::clear_cache();
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
+		WalCheckpointThread::destroy_mutex();
 		destroy_dir_link_mutex();
 		Server->wait(1000);
 	}

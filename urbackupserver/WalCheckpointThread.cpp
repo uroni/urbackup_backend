@@ -25,6 +25,11 @@
 #include "../stringtools.h"
 #include <memory>
 
+IMutex* WalCheckpointThread::mutex = NULL;
+ICondition* WalCheckpointThread::cond = NULL;
+std::set<std::string> WalCheckpointThread::locked_dbs;
+std::set<std::string> WalCheckpointThread::tolock_dbs;
+
 WalCheckpointThread::WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id)
 	: last_checkpoint_wal_size(0), passive_checkpoint_size(passive_checkpoint_size),
 	full_checkpoint_size(full_checkpoint_size), db_fn(db_fn), db_id(db_id), cannot_open(false)
@@ -90,8 +95,69 @@ void WalCheckpointThread::operator()()
 {
 	while(true)
 	{
-		Server->wait(10000); //every 10s
+		waitAndLockForBackup();
 		checkpoint();
+	}
+}
+
+void WalCheckpointThread::lockForBackup(const std::string & fn)
+{
+	IScopedLock lock(mutex);
+	tolock_dbs.insert(fn);
+	cond->notify_all();
+
+	while (locked_dbs.find(fn) == locked_dbs.end())
+	{
+		lock.relock(NULL);
+		Server->wait(1000);
+		lock.relock(mutex);
+	}
+}
+
+void WalCheckpointThread::unlockForBackup(const std::string & fn)
+{
+	IScopedLock lock(mutex);
+	std::set<std::string>::iterator it = tolock_dbs.find(fn);
+	if (it != tolock_dbs.end())
+	{
+		tolock_dbs.erase(it);
+	}
+	cond->notify_all();
+}
+
+void WalCheckpointThread::init_mutex()
+{
+	mutex = Server->createMutex();
+	cond = Server->createCondition();
+}
+
+void WalCheckpointThread::destroy_mutex()
+{
+	Server->destroy(mutex);
+	Server->destroy(cond);
+}
+
+void WalCheckpointThread::waitAndLockForBackup()
+{
+	IScopedLock lock(mutex);
+
+	cond->wait(&lock, 10000);
+
+	bool locked_db = false;
+	while (tolock_dbs.find(db_fn)!= tolock_dbs.end())
+	{
+		if (!locked_db)
+		{
+			locked_db = true;
+			locked_dbs.insert(db_fn);
+		}
+
+		cond->wait(&lock);
+	}
+
+	if (locked_db)
+	{
+		locked_dbs.erase(locked_dbs.find(db_fn));
 	}
 }
 

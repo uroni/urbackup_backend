@@ -1,6 +1,9 @@
 #pragma once
 #include "../Interface/Thread.h"
 #include "../Interface/Types.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
+#include <set>
 
 class WalCheckpointThread : public IThread
 {
@@ -11,7 +14,15 @@ public:
 
 	void operator()();
 
+	static void lockForBackup(const std::string& fn);
+	static void unlockForBackup(const std::string& fn);
+
+	static void init_mutex();
+	static void destroy_mutex();
+
 private:
+
+	void waitAndLockForBackup();
 
 	void sync_database();
 
@@ -25,4 +36,9 @@ private:
 	DATABASE_ID db_id;
 
 	bool cannot_open;
+
+	static IMutex* mutex;
+	static ICondition* cond;
+	static std::set<std::string> tolock_dbs;
+	static std::set<std::string> locked_dbs;
 };
