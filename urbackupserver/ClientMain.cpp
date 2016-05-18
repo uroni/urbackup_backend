@@ -1051,7 +1051,7 @@ bool ClientMain::isUpdateIncrImage(void)
 bool ClientMain::isUpdateIncrImage(const std::string &letter)
 {
 	int update_freq = server_settings->getUpdateFreqImageIncr();
-	if( server_settings->getUpdateFreqImageFull()<0 || update_freq<0 )
+	if( update_freq<0 )
 		return false;
 
 	return !backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+" seconds",
