@@ -92,6 +92,7 @@ public:
 	static void unlockImageFromCleanup(int backupid);
 	static bool isImageLockedFromCleanup(int backupid);
 
+	static bool isClientlistDeletionAllowed();
 private:
 
 	void do_cleanup(void);
@@ -163,6 +164,8 @@ private:
 	bool backup_ident();
 	void ren_files_backupfolder();
 
+	static void setClientlistDeletionAllowed(bool b);
+
 	IDatabase *db;
 
 	static IMutex *mutex;
@@ -187,6 +190,8 @@ private:
 
 	static IMutex* cleanup_lock_mutex;
 	static std::set<int> locked_images;
+
+	static bool allow_clientlist_deletion;
 };
 
 class ScopedLockImageFromCleanup

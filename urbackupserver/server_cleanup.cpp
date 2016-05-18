@@ -53,6 +53,7 @@ volatile bool ServerCleanupThread::do_quit=false;
 bool ServerCleanupThread::update_stats_disabled = false;
 std::set<int> ServerCleanupThread::locked_images;
 IMutex* ServerCleanupThread::cleanup_lock_mutex = NULL;
+bool ServerCleanupThread::allow_clientlist_deletion = true;
 
 void cleanupLastActs();
 
@@ -158,10 +159,14 @@ void ServerCleanupThread::operator()(void)
 			filesdao.reset();
 			fileindex.reset();
 
+			setClientlistDeletionAllowed(false);
+
 			if(backup_database() && backup_clientlists() && backup_ident() )
 			{
 				ren_files_backupfolder();
 			}
+
+			setClientlistDeletionAllowed(true);
 		}
 
 		if( settings->getValue("download_client", "true")=="true" )
@@ -263,10 +268,14 @@ void ServerCleanupThread::operator()(void)
 				filesdao.reset();
 				fileindex.reset();
 
+				setClientlistDeletionAllowed(false);
+
 				if(backup_database() && backup_clientlists() && backup_ident() )
 				{
 					ren_files_backupfolder();
 				}
+
+				setClientlistDeletionAllowed(true);
 
 				Server->destroy(settings);
 
@@ -1691,6 +1700,12 @@ bool ServerCleanupThread::isImageLockedFromCleanup(int backupid)
 	return locked_images.find(backupid) != locked_images.end();
 }
 
+bool ServerCleanupThread::isClientlistDeletionAllowed()
+{
+	IScopedLock lock(mutex);
+	return allow_clientlist_deletion;
+}
+
 bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 {
 	std::vector<SFile> files=getFiles(path, NULL);
@@ -2363,6 +2378,12 @@ void ServerCleanupThread::ren_files_backupfolder()
 			os_rename_file(os_file_prefix(bfolder+os_file_sep()+files[i].name), os_file_prefix(bfolder+os_file_sep()+files[i].name.substr(0, files[i].name.size()-1)));
 		}
 	}
+}
+
+void ServerCleanupThread::setClientlistDeletionAllowed(bool b)
+{
+	IScopedLock lock(mutex);
+	allow_clientlist_deletion = b;
 }
 
 bool ServerCleanupThread::backup_ident()

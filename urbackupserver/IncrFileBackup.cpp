@@ -24,6 +24,7 @@
 #include "../urbackupcommon/filelist_utils.h"
 #include "server_dir_links.h"
 #include "server_running.h"
+#include "server_cleanup.h"
 #include "ServerDownloadThread.h"
 #include "FileIndex.h"
 #include <stack>
@@ -1310,7 +1311,10 @@ bool IncrFileBackup::doFileBackup()
 			Server->destroy(clientlist);
 			DBScopedSynchronous synchronous(db);
 			backup_dao->setFileBackupDone(backupid);
-			Server->deleteFile(clientlist_name);
+			if (ServerCleanupThread::isClientlistDeletionAllowed())
+			{
+				Server->deleteFile(clientlist_name);
+			}
 		}
 
 		if(group==c_group_default || group==c_group_continuous )
@@ -1366,7 +1370,10 @@ bool IncrFileBackup::doFileBackup()
 		Server->destroy(clientlist);
 		DBScopedSynchronous synchronous(db);
 		backup_dao->setFileBackupDone(backupid);
-		Server->deleteFile(clientlist_name);
+		if (ServerCleanupThread::isClientlistDeletionAllowed())
+		{
+			Server->deleteFile(clientlist_name);
+		}
 	}
 	else
 	{
