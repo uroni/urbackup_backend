@@ -51,13 +51,14 @@ namespace
 
 CFileSettingsReader::CFileSettingsReader(std::string pFile)
 {
-	std::map<std::string, SCachedSettings*>::iterator iter;
-	{
-		IScopedLock lock(settings_mutex);
-		iter=settings->find(pFile);
-	}
+	IScopedLock lock(settings_mutex);
+	std::map<std::string, SCachedSettings*>::iterator iter 
+		= settings->find(pFile);
+
 	if( iter==settings->end() )
 	{
+		lock.relock(NULL);
+
 		std::auto_ptr<IFile> f(Server->openFile(pFile, MODE_READ));
 		std::string fdata;
 		if (f.get() != NULL)
@@ -70,7 +71,6 @@ CFileSettingsReader::CFileSettingsReader(std::string pFile)
 	}
 	else
 	{
-		IScopedLock lock(settings_mutex);
 		cached_settings=iter->second;
 		++cached_settings->refcount;
 	}
@@ -175,5 +175,19 @@ void CFileSettingsReader::read( const std::string& fdata, const std::string& pFi
 	cached_settings->key=pFile;
 
 	IScopedLock lock(settings_mutex);
-	settings->insert(std::pair<std::string, SCachedSettings*>(pFile, cached_settings) );
+
+	std::map<std::string, SCachedSettings*>::iterator iter = settings->find(pFile);
+
+	if (iter == settings->end())
+	{
+		settings->insert(std::pair<std::string, SCachedSettings*>(pFile, cached_settings));
+	}
+	else
+	{
+		Server->destroy(cached_settings->smutex);
+		delete cached_settings;
+
+		cached_settings = iter->second;
+		++cached_settings->refcount;
+	}	
 }
