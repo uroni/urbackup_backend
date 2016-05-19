@@ -27,6 +27,7 @@
 #endif
 #include "../stringtools.h"
 #include "../common/data.h"
+#include "../md5.h"
 #include "database.h"
 #include "ServerIdentityMgr.h"
 #include "ClientService.h"
@@ -754,6 +755,12 @@ void IndexThread::operator()(void)
 					{
 						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + (scd->target));
 						scd->running = true;
+					}
+
+					if ((image_backup != 0 && FileExists("create_md5sums_imagebackup"))
+						|| (image_backup == 0 && FileExists("create_md5sums_filebackup")))
+					{
+						createMd5sumsFile(removeDirectorySeparatorAtEnd(scd->target), scd->orig_target);
 					}
 				}
 			}
@@ -5408,6 +5415,72 @@ void IndexThread::updateCbt()
 		}
 	}
 #endif
+}
+
+void IndexThread::createMd5sumsFile(const std::string & path, std::string vol)
+{
+	normalizeVolume(vol);
+
+	std::string fn = "md5sums-"+conv_filename(vol)+"-"+db->Read("SELECT strftime('%Y-%m-%d %H-%M', 'now', 'localtime') AS fn")[0]["fn"]+".txt";
+	std::auto_ptr<IFile> output_f(Server->openFile(fn, MODE_WRITE));
+
+	if (output_f.get() == NULL)
+	{
+		Server->Log("Error opening md5sums file. " + os_last_error_str(), LL_ERROR);
+	}
+
+	createMd5sumsFile(path, std::string(), output_f.get());
+}
+
+void IndexThread::createMd5sumsFile(const std::string & path, const std::string& md5sums_path, IFile * output_f)
+{
+	std::vector<SFile> files = getFiles(os_file_prefix(path));
+	
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].isdir
+			&& !files[i].issym)
+		{
+			createMd5sumsFile(path + os_file_sep() + files[i].name,
+				md5sums_path.empty() ? files[i].name : (md5sums_path + "/" + files[i].name),
+				output_f);
+		}
+		else if (!files[i].isspecialf)
+		{
+			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(path + os_file_sep() + files[i].name), MODE_READ_SEQUENTIAL_BACKUP));
+
+			if (f.get() == NULL)
+			{
+				Server->Log("Error opening file \"" + path + os_file_sep() + files[i].name + "\" for creating md5sums. " + os_last_error_str(), LL_ERROR);
+			}
+			else
+			{
+				MD5 md5;
+				std::vector<char> buf;
+				buf.resize(32768);
+
+				bool has_read_error = false;
+				_u32 rc;
+				while ((rc=f->Read(buf.data(), static_cast<_u32>(buf.size()), &has_read_error)) > 0)
+				{
+					md5.update(reinterpret_cast<unsigned char*>(buf.data()), static_cast<_u32>(rc));
+				}
+
+				if (has_read_error)
+				{
+					Server->Log("Error while reading from file \"" + path + os_file_sep() + files[i].name + "\" for creating md5sums. " + os_last_error_str(), LL_ERROR);
+				}
+
+				md5.finalize();
+
+				char* hd = md5.hex_digest();
+				std::string hex_dig(hd);
+				delete[] hd;
+
+				output_f->Write(hex_dig + "  " + (md5sums_path.empty() ? files[i].name : (md5sums_path + "/" + files[i].name)) + "\n");
+			}
+		}
+	}
 }
 
 void IndexThread::setFlags( unsigned int flags )
