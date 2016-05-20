@@ -450,6 +450,7 @@ namespace
 #ifdef __linux__
 	void fibmap_test(std::string fn, std::string bitmap_source)
 	{
+#ifdef FIBMAP
 		//leaks
 
 		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
@@ -538,6 +539,7 @@ namespace
 
 			exp_block = blocknum + 1;
 		}
+#endif //FIBMAP
 	}
 #endif //__linux__
 }
