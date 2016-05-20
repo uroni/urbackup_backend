@@ -855,6 +855,11 @@ int action_assemble(std::vector<std::string> args)
 	return run_real_main(real_args);
 }
 
+int action_internal(std::vector<std::string> args)
+{
+	return run_real_main(args);
+}
+
 void action_help(std::string cmd)
 {
 	std::cout << std::endl;
@@ -935,6 +940,8 @@ int main(int argc, char* argv[])
 #endif
 	actions.push_back("assemble");
 	action_funs.push_back(action_assemble);
+	actions.push_back("internal");
+	action_funs.push_back(action_internal);
 
 	bool has_help=false;
 	bool has_version=false;

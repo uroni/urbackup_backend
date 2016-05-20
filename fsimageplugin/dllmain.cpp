@@ -74,6 +74,9 @@ extern IServer* Server;
 #include <linux/types.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
+#include <errno.h>
 #endif
 
 #include "ClientBitmap.h"
@@ -466,7 +469,7 @@ namespace
 		if (next(bitmap_source, 0, "raw:"))
 		{
 			cowfile = new CowFile(bitmap_source.substr(4), true, 0);
-			if (!cowfile.isOpen())
+			if (!cowfile->isOpen())
 			{
 				Server->Log("Error opening cowfile " + bitmap_source, LL_ERROR);
 				return;
@@ -486,7 +489,7 @@ namespace
 		}
 		else if (next(bitmap_source, 0, "cbitmap:"))
 		{
-			ClientBitmap* cbitmap = ClientBitmap(bitmap_source.substr(8));
+			ClientBitmap* cbitmap = new ClientBitmap(bitmap_source.substr(8));
 			if (cbitmap->hasError())
 			{
 				Server->Log("Error opening client bitmap " + bitmap_source, LL_ERROR);
@@ -1077,7 +1080,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				fs_buffer buf(&fs, fs.readBlock(currpos/ntfs_blocksize));
 
-				if(buf.get())
+				if(buf.get()==NULL)
 				{
 					Server->Log("Could not read block "+convert(currpos/ntfs_blocksize), LL_ERROR);
 				}
@@ -1112,7 +1115,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				{
 					++diff;
 					Server->Log("Different blocks: "+convert(diff)+" at pos "+convert(currpos)+" mixed = "+
-						(mixed==3? "true":"false") );
+						(mixed==3? "true":"false")+" ("+convert(mixed)+")" );
 				}
 
 				mixed=0;
@@ -1288,11 +1291,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(0);
 	}
 
-	std::string fibmap_test = Server->getServerParameter("fibmap_test");
-	if (!fibmap_test.empty())
+	std::string fibmap_test_fn = Server->getServerParameter("fibmap_test");
+	if (!fibmap_test_fn.empty())
 	{
 #ifdef __linux__
-		fibmap_test(fibmap_test, Server->getServerParameter("bitmap_source"));
+		fibmap_test(fibmap_test_fn, Server->getServerParameter("bitmap_source"));
 #endif
 		exit(0);
 	}
