@@ -22,7 +22,7 @@ public:
 	virtual bool this_has_sector(_i64 sector_size=-1);
 	virtual unsigned int getBlocksize();
 	virtual bool finish();
-	virtual bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback);
+	virtual bool trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback);
 	virtual bool syncBitmap(_i64 fs_offset);
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback) { return true; }
 

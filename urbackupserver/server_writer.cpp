@@ -161,7 +161,7 @@ void ServerVHDWriter::operator()(void)
 	{
 		trimmed_bytes=0;
 		ServerLogger::Log(logid, "Starting trimming image file (if possible)", LL_DEBUG);
-		if(!vhd->trimUnused(mbr_offset, this))
+		if(!vhd->trimUnused(mbr_offset, vhd_blocksize, this))
 		{
 			ServerLogger::Log(logid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
 		}
@@ -427,6 +427,14 @@ void ServerVHDWriter::setMbrOffset(int64 offset)
 
 void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
 {
+	/*
+	* If we do not align trimming to the hash block size
+	* we need to recalculate the hash here.
+	* Trimming only at hash block size for now.
+	*/
+	assert(trim_start%vhd_blocksize == 0);
+	assert(trim_stop%vhd_blocksize == 0);
+
 	_i64 block_start = trim_start/vhd_blocksize;
 	if(trim_start%vhd_blocksize!=0)
 	{

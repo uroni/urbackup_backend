@@ -489,7 +489,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 #endif
 }
 
-bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
+bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
 	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
@@ -510,13 +510,36 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 	}
 
 	unsigned int bitmap_blocksize = static_cast<unsigned int>(bitmap_source->getBlocksize());
-
+	
+	if(trim_blocksize<bitmap_blocksize)
+	{
+		trim_blocksize = bitmap_blocksize;
+	}
+	
+	if(trim_blocksize%bitmap_blocksize!=0)
+	{
+		Server->Log("Trim block size (" + convert(trim_blocksize)+") is not a multiple of the bitmap block size ("+convert(bitmap_blocksize)+")", LL_WARNING);
+		return false;
+	}
+	
+	trim_blocksize=trim_blocksize/bitmap_blocksize;
+	
 	int64 unused_start_block = -1;
 
 	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/bitmap_blocksize;
-			ntfs_block<n_ntfs_blocks; ++ntfs_block)
+			ntfs_block<n_ntfs_blocks; ntfs_block+=trim_blocksize)
 	{
-		if(!bitmap_source->hasBlock(ntfs_block))
+		bool has_block=false;
+		for(int64 i=ntfs_block;i<ntfs_block+trim_blocksize && i<n_ntfs_blocks;++i)
+		{
+			if(bitmap_source->hasBlock(i))
+			{
+				has_block=true;
+				break;
+			}
+		}
+	
+		if(!has_block)
 		{
 			if(unused_start_block==-1)
 			{

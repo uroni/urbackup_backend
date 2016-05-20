@@ -107,7 +107,7 @@ public:
 
 	bool isCompressed();
 
-	bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
+	bool trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback)
 	{
 		return true;
 	}
