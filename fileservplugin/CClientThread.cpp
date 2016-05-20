@@ -853,6 +853,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 						delete t_send[i];
 					}
 					t_send.clear();
+
+					for (size_t i = 0; i < t_unsend.size(); ++i)
+					{
+						bufmgr->releaseBuffer(t_unsend[i]->buffer);
+						delete t_unsend[i];
+					}
+
+					t_unsend.clear();
 				}
 
 				if( !stopped )
@@ -1321,6 +1329,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 	}
 	else
 	{
+		ldata->bufmgr->releaseBuffer(ldata->buffer);
 		Log( "Info: Chunk size=0", LL_DEBUG);
 		delete ldata;
 	}
@@ -1339,6 +1348,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 tore
 
 	SLPData *ldata=new SLPData;
 	ldata->buffer=bufmgr->getBuffer();
+	ldata->bufmgr = bufmgr;
 
 	if( ldata->buffer==NULL ) 
 	{
@@ -1482,6 +1492,15 @@ int CClientThread::SendData()
 				delete t_send[i];
 			}
 			t_send.clear();
+
+			for (size_t i = 0; i < t_unsend.size(); ++i)
+			{
+				bufmgr->releaseBuffer(t_unsend[i]->buffer);
+				delete t_unsend[i];
+			}
+
+			t_unsend.clear();
+
 			return 2;		
 		}		
 
@@ -1508,8 +1527,15 @@ void CClientThread::ReleaseMemory(void)
 				delete t_send[i];
 			}
 
-
 			t_send.clear();
+
+			for (size_t i = 0; i < t_unsend.size(); ++i)
+			{
+				bufmgr->releaseBuffer(t_unsend[i]->buffer);
+				delete t_unsend[i];
+			}
+
+			t_unsend.clear();
 		}
 	}
 	Log("done.", LL_DEBUG);

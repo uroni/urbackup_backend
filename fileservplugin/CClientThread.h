@@ -78,6 +78,7 @@ struct SLPData
 	std::deque<SSendData*> *t_send;
 	std::vector<SLPData*> *t_unsend;
 	unsigned int *errorcode;
+	fileserv::CBufMgr* bufmgr;
 	char* buffer;
 	bool last;
 
