@@ -68,6 +68,16 @@ extern IServer* Server;
 #endif
 #include "FileWrapper.h"
 
+#ifdef __linux__
+#include <linux/fiemap.h>
+#include <linux/fs.h>
+#include <linux/types.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#endif
+
+#include "ClientBitmap.h"
+
 
 CImagePluginMgr *imagepluginmgr;
 
@@ -436,9 +446,100 @@ namespace
 		return true;
 	}
 
-}
+#ifdef __linux__
+	void fibmap_test(std::string fn, std::string bitmap_source)
+	{
+		//leaks
 
-void openDeviceFile(std::string device_verify);
+		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
+
+		int fd = open64(fn.c_str(), O_RDONLY| O_LARGEFILE);
+
+		if (fd == -1 || f.get()==NULL)
+		{
+			Server->Log("Error opening " + fn, LL_ERROR);
+			return;
+		}
+
+		IReadOnlyBitmap* bitmap = NULL;
+		CowFile* cowfile = NULL;
+		if (next(bitmap_source, 0, "raw:"))
+		{
+			cowfile = new CowFile(bitmap_source.substr(4), true, 0);
+			if (!cowfile.isOpen())
+			{
+				Server->Log("Error opening cowfile " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			FileWrapper* file_wrapper = new FileWrapper(cowfile, 512 * 1024);
+
+			FSNTFS* ntfs = new FSNTFS(file_wrapper, false, false);
+
+			if (ntfs->hasError())
+			{
+				Server->Log("Error opening ntfs on cowfile " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			bitmap = ntfs;
+		}
+		else if (next(bitmap_source, 0, "cbitmap:"))
+		{
+			ClientBitmap* cbitmap = ClientBitmap(bitmap_source.substr(8));
+			if (cbitmap->hasError())
+			{
+				Server->Log("Error opening client bitmap " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			bitmap = cbitmap;
+		}
+		else
+		{
+			Server->Log("Unknown bitmap source: " + bitmap_source, LL_ERROR);
+			return;
+		}
+
+		_u32 exp_block = 0;
+		for (int64 i = 0; i < f->Size(); i += 4096)
+		{
+			_u32 blocknum = i / 4096;
+			int rc = ioctl(fd, FIBMAP, &blocknum);
+
+			if (rc != 0)
+			{
+				Server->Log("FIBMAP ioctl failed with errno "+convert(errno), LL_ERROR);
+				return;
+			}
+
+			if (cowfile != NULL)
+			{
+				cowfile->Seek(512*1024 + blocknum * 4096);
+				if (!cowfile->has_sector())
+				{
+					Server->Log("Cowfile does not have block " + convert(blocknum), LL_ERROR);
+				}
+			}
+
+			if (bitmap != NULL)
+			{
+				if (!bitmap->hasBlock(blocknum))
+				{
+					Server->Log("Bitmap bit for block " + convert(blocknum)+" not set", LL_ERROR);
+				}
+			}
+
+			if (blocknum != exp_block)
+			{
+				Server->Log("Block " + convert(i / 4096) + " is at " + convert(blocknum));
+			}
+
+			exp_block = blocknum + 1;
+		}
+	}
+#endif //__linux__
+}
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -1184,6 +1285,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 			exit(7);
 		}
+		exit(0);
+	}
+
+	std::string fibmap_test = Server->getServerParameter("fibmap_test");
+	if (!fibmap_test.empty())
+	{
+#ifdef __linux__
+		fibmap_test(fibmap_test, Server->getServerParameter("bitmap_source"));
+#endif
 		exit(0);
 	}
 
