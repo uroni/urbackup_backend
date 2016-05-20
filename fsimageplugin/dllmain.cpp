@@ -69,9 +69,7 @@ extern IServer* Server;
 #include "FileWrapper.h"
 
 #ifdef __linux__
-#include <linux/fiemap.h>
 #include <linux/fs.h>
-#include <linux/types.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h> 
