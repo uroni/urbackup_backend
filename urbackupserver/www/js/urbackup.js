@@ -1210,6 +1210,7 @@ function show_status2(data)
 	if(data.dir_error)
 	{
 		var ext_text="";
+		var generic_text=true;
 		if(data.dir_error_ext) ext_text=" ("+data.dir_error_ext+")";
 		if(data.system_err) ext_text+=". "+data.system_err;
 		
@@ -1229,12 +1230,18 @@ function show_status2(data)
 			}
 		}
 		
+		if( data.dir_error_ext
+			&& data.dir_error_ext=="err_cannot_create_symbolic_links")
+		{
+			generic_text=false;
+		}
+		
 		if(data.detail_err_str)
 		{
 			ext_text+="<br><br>Detailed error info:<br><pre>"+data.detail_err_str+"</pre>";
 		}
 		
-		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text")});
+		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text"), generic_text: generic_text});
 	}
 	
 	var tmpdir_error="";

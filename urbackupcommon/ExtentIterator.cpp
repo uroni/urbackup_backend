@@ -75,6 +75,7 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 void ExtentIterator::reset()
 {
 	num_sparse_extents = -1;
+	next_sparse_extent_num = 0;
 	if (sparse_extents_f.get() != NULL)
 	{
 		sparse_extents_f->Seek(0);
