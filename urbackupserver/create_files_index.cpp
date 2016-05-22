@@ -164,7 +164,10 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 	data.max_pos=n_files;
 	data.status=&status;
 
-	fileindex.create(create_callback, &data);
+	{
+		DBScopedWriteTransaction write_transaction(db_files_new);
+		fileindex.create(create_callback, &data);
+	}
 
 	if(fileindex.has_error())
 	{
