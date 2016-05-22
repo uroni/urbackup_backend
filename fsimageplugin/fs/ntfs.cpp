@@ -257,6 +257,7 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 
 	Runlist bitmaprunlist(bitmaprecord+currpos+bitmapstream.run_offset );
 	
+	Server->Log("Bitmap size="+convert(bitmapstream.real_size), LL_DEBUG);
 	bitmap=new unsigned char[(unsigned int)bitmapstream.real_size];
 	char *buffer=new char[clustersize];
 	MemFree buffer_free(buffer);

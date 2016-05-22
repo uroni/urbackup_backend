@@ -502,12 +502,23 @@ namespace
 			Server->Log("Unknown bitmap source: " + bitmap_source, LL_ERROR);
 			return;
 		}
+		
+		int block_size;
+		int rc = ioctl(fd, FIGETBSZ, &block_size);
+		if(rc!=0)
+		{
+			Server->Log("FIGETBSZ ioctl failed with errno "+convert(errno), LL_ERROR);
+			return;
+		}
+		
+		Server->Log("Block size: "+convert(block_size)+" File size: "+convert(f->Size()), LL_INFO);
 
 		_u32 exp_block = 0;
-		for (int64 i = 0; i < f->Size(); i += 4096)
+		for (int64 i = 0; i < f->Size(); i += block_size)
 		{
-			_u32 blocknum = i / 4096;
-			int rc = ioctl(fd, FIBMAP, &blocknum);
+			_u32 input_blocknum = i / block_size;
+			int rc = ioctl(fd, FIBMAP, &input_blocknum);
+			int64 blocknum = input_blocknum;
 
 			if (rc != 0)
 			{
@@ -517,24 +528,24 @@ namespace
 
 			if (cowfile != NULL)
 			{
-				cowfile->Seek(512*1024 + blocknum * 4096);
+				cowfile->Seek(512*1024 + blocknum * block_size);
 				if (!cowfile->has_sector())
 				{
-					Server->Log("Cowfile does not have block " + convert(blocknum), LL_ERROR);
+					Server->Log("Cowfile does not have block at " + convert(blocknum*block_size), LL_ERROR);
 				}
 			}
 
 			if (bitmap != NULL)
 			{
-				if (!bitmap->hasBlock(blocknum))
+				if (!bitmap->hasBlock((blocknum*block_size)/bitmap->getBlocksize()))
 				{
-					Server->Log("Bitmap bit for block " + convert(blocknum)+" not set", LL_ERROR);
+					Server->Log("Bitmap bit for block at " + convert(blocknum*block_size)+" not set", LL_ERROR);
 				}
 			}
 
-			if (blocknum != exp_block)
+			if (blocknum!=0 && blocknum != exp_block)
 			{
-				Server->Log("Block " + convert(i / 4096) + " is at " + convert(blocknum));
+				Server->Log("Block " + convert(i / block_size) + " is at " + convert(blocknum*block_size));
 			}
 
 			exp_block = blocknum + 1;
