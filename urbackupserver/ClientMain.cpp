@@ -616,7 +616,7 @@ void ClientMain::operator ()(void)
 			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
 				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_full_backup_now )
-				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
+				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now && !do_incr_backup_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
 				SRunningBackup backup;
@@ -632,7 +632,7 @@ void ClientMain::operator ()(void)
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
 				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_incr_backup_now )
-				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now
+				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
 				SRunningBackup backup;

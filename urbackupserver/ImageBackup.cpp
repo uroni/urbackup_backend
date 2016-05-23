@@ -1609,7 +1609,9 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 				}
 			}
 
-			if (trim_start_block != -1)
+			if (trim_start_block != -1
+				&& vhdfile!=NULL
+				&& parent_fn )
 			{
 				vhdfile->writeBuffer(mbr_offset + trim_start_block*blocksize, NULL,
 					static_cast<unsigned int>((nextblock - trim_start_block)*blocksize));
@@ -1683,7 +1685,9 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 		trim_start_block = nextblock;
 	}
 
-	if (trim_start_block != -1)
+	if (trim_start_block != -1
+		&& vhdfile!=NULL
+		&& parent_fn )
 	{
 		vhdfile->writeBuffer(mbr_offset + trim_start_block*blocksize, NULL,
 			static_cast<unsigned int>((nextblock - trim_start_block + trim_add)*blocksize));

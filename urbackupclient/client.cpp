@@ -994,7 +994,7 @@ void IndexThread::indexDirs(bool full_backup)
 #ifdef _WIN32
 			selected_dirs[selected_dirs.size()-1]=strlower(selected_dirs[selected_dirs.size()-1]);
 #endif
-			if (backup_dirs[i].flags&EBackupDirFlag_ShareHashes)
+			if (backup_dirs[i].flags & EBackupDirFlag_ShareHashes)
 			{
 				selected_dir_db_tgroup.push_back(0);
 			}
@@ -4970,6 +4970,11 @@ bool IndexThread::prepareCbt(std::string volume)
 		return false;
 	}
 
+	if (!cbtIsEnabled(std::string(), volume))
+	{
+		return false;
+	}
+
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
@@ -5064,6 +5069,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		return false;
 	}
 
+	ScopedCloseWindowsHandle hclose(hVolume);
+
 	if (FlushFileBuffers(hVolume) == FALSE)
 	{
 		std::string errmsg;
@@ -5071,8 +5078,6 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		VSSLog("Flushing volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 		return false;
 	}
-
-	ScopedCloseWindowsHandle hclose(hVolume);
 
 	GET_LENGTH_INFORMATION lengthInfo;
 	DWORD retBytes;
@@ -5146,6 +5151,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
 	char* urbackupcbt_magic = URBT_MAGIC;
 
+	DWORD RealBitmapSize = 0;
+
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
 	{
 		if (memcmp(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
@@ -5153,6 +5160,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 			VSSLog("UrBackup cbt magic wrong at pos "+convert((size_t)i), LL_ERROR);
 			return false;
 		}
+		DWORD tr = (std::min)(bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE, bitmap_data->SectorSize - URBT_MAGIC_SIZE);
+		RealBitmapSize += tr;
 	}
 
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
@@ -5177,7 +5186,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		return false;
 	}
 
-	hdat_img->Resize(bitmap_data->BitmapSize * 8 * SHA256_DIGEST_SIZE);
+	hdat_img->Resize(sizeof(shadow_id) + RealBitmapSize * 8 * SHA256_DIGEST_SIZE);
 
 	if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
 	{
@@ -5201,7 +5210,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 
 	int64 changed_bytes = 0;
 
-	DWORD curr_bit = 0;
+	DWORD curr_byte = 0;
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
 	{
 		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
@@ -5210,7 +5219,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 
 			if (ch == 0)
 			{
-				++curr_bit;
+				++curr_byte;
 				continue;
 			}
 
@@ -5218,7 +5227,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 			{
 				if ((ch & (1 << bit))>0)
 				{
-					if (hdat_img->Write(sizeof(shadow_id) + (curr_bit * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+					if (hdat_img->Write(sizeof(shadow_id) + (curr_byte * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
 					{
 						std::string errmsg;
 						int64 err = os_last_error(errmsg);
@@ -5230,7 +5239,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 				}
 			}
 
-			++curr_bit;
+			++curr_byte;
 		}
 	}
 
@@ -5254,7 +5263,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 
 	char zero_chunk[chunkhash_single_size] = {};
 
-	curr_bit = 0;
+	curr_byte = 0;
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
 	{
 		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
@@ -5263,7 +5272,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 
 			if (ch == 0)
 			{
-				++curr_bit;
+				++curr_byte;
 				continue;
 			}
 
@@ -5271,7 +5280,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 			{
 				if ((ch & (1 << bit))>0)
 				{
-					if (hdat_file->Write((curr_bit * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
+					if (hdat_file->Write((curr_byte * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
 					{
 						std::string errmsg;
 						int64 err = os_last_error(errmsg);
@@ -5280,7 +5289,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 					}
 				}
 			}
-			++curr_bit;
+			++curr_byte;
 		}
 	}
 
