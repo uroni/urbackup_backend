@@ -445,7 +445,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 starttime=Server->getTimeMS();
 	bool first=true;
 	const unsigned int c_buffer_size=32768;
-	char buffer[c_buffer_size];
+	std::vector<char> buffer;
+	buffer.resize(c_buffer_size);
 	unsigned int blocksize=0xFFFFFFFF;
 	unsigned int blockleft=0;
 	int64 currblock=-1;
@@ -680,7 +681,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				_u32 off_start=off;
 				if(r>=csize)
 				{
-					memcpy(&blocksize, buffer, sizeof(unsigned int) );
+					memcpy(&blocksize, buffer.data(), sizeof(unsigned int) );
 					blocksize = little_endian(blocksize);
 					off+=sizeof(unsigned int);
 					vhd_blocksize/=blocksize;
@@ -1429,7 +1430,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						if(r-off>0)
 						{
-							memmove(buffer, &buffer[off], r-off);
+							memmove(buffer.data(), &buffer[off], r-off);
 							off=(_u32)r-off;
 							break;
 						}
