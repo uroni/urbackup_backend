@@ -34,4 +34,5 @@ public:
 	virtual bool trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback)=0;
 	virtual bool syncBitmap(_i64 fs_offset)=0;
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback)=0;
+	virtual bool setUnused(_i64 unused_start, _i64 unused_end) = 0;
 };

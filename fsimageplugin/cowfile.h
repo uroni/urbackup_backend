@@ -25,7 +25,7 @@ public:
 	virtual bool trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback);
 	virtual bool syncBitmap(_i64 fs_offset);
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback) { return true; }
-
+	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
 
 private:
 	void setupBitmap();
@@ -36,7 +36,6 @@ private:
 	bool saveBitmap();
 	bool loadBitmap(const std::string& bitmap_fn);
 	void resizeBitmap();
-	bool setUnused(_i64 unused_start, _i64 unused_end);
 
 	int fd;
 	std::string filename;

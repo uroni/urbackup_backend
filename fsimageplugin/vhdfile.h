@@ -119,6 +119,11 @@ public:
 
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback);
 
+	virtual bool setUnused(_i64 unused_start, _i64 unused_end)
+	{
+		return false;
+	}
+
 private:
 
 	bool check_if_compressed();

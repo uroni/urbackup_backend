@@ -110,7 +110,7 @@ void ServerVHDWriter::operator()(void)
 			{
 				if(!has_error)
 				{
-					if(!filebuffer)
+					if(!filebuffer || item.buf==NULL)
 					{
 						writeVHD(item.pos, item.buf, item.bsize);
 					}
@@ -215,6 +215,21 @@ void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 {
 	IScopedLock lock(vhd_mutex);
+
+	if (buf == NULL)
+	{
+		if (!vhd->setUnused(pos, pos + bsize))
+		{
+			ServerLogger::Log(logid, "Error setting unused area (from byte "+convert(pos)+" to byte "+convert(pos + bsize)+". "+os_last_error_str(), LL_ERROR);
+			has_error = true;
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
 	vhd->Seek(pos);
 	bool b=vhd->Write(buf, bsize)!=0;
 	written+=bsize;
@@ -271,7 +286,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 					}
 #endif
 
-					ServerLogger::Log(logid, "FATAL: Writing failed after cleanup", LL_ERROR);
+					ServerLogger::Log(logid, "FATAL: Writing failed after cleanup. "+os_last_error_str(), LL_ERROR);
 					
 					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 					has_error=true;
@@ -280,14 +295,14 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			else
 			{
 				has_error=true;
-				Server->Log("FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
+				ServerLogger::Log(logid, "FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
 				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			}
 		}
 		else
 		{			
 			has_error=true;
-			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File.", LL_ERROR);
+			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+os_last_error_str(), LL_ERROR);
 			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}
