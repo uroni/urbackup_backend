@@ -1397,11 +1397,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							}
 							currblock=-1;
 						}
-						else if(currblock<0)
+						else if(currblock<0
+							|| currblock>totalblocks)
 						{
 							if (num_hash_errors < max_num_hash_errors)
 							{
-								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + ". Retrying...", LL_WARNING);
+								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + " (max: "+convert(totalblocks)+"). Retrying...", LL_WARNING);
 								transferred_bytes += cc->getTransferedBytes();
 								Server->destroy(cc);
 								cc = NULL;
@@ -1411,7 +1412,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							}
 							else
 							{
-								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + ". Stopping backup.", LL_ERROR);
+								ServerLogger::Log(logid, "Received unknown block number: " + convert(currblock) + +" (max: " + convert(totalblocks) + "). Stopping backup.", LL_ERROR);
 								goto do_image_cleanup;
 							}
 						}
