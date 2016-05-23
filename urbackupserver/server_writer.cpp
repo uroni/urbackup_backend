@@ -343,6 +343,9 @@ void ServerVHDWriter::writeBuffer(uint64 pos, char *buf, unsigned int bsize)
 
 void ServerVHDWriter::freeBuffer(char *buf)
 {
+	if(buf==NULL)
+		return;
+
 	if(filebuffer)
 		bufmgr->releaseBuffer(buf-sizeof(FileBufferVHDItem));
 	else
