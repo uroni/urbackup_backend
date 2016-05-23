@@ -944,6 +944,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(5);
 		}
 
+		bool verify_all = Server->getServerParameter("verify_all")=="true";
+		
+		if(verify_all)
+		{
+			Server->Log("Verifying empty blocks");
+		}
+		
 		const int64 vhd_blocksize=(1024*1024)/2;
 		int skip=1024*512;
 		in->Seek(skip);
@@ -961,7 +968,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		for(;currpos<size;currpos+=vhd_blocksize)
 		{
 			in->Seek(currpos);
-			bool has_sector=in->this_has_sector(vhd_blocksize);
+			bool has_sector=verify_all || in->this_has_sector(vhd_blocksize);
 
 			if(!has_sector && !has_dig_z)
 			{
