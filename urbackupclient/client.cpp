@@ -4970,6 +4970,11 @@ bool IndexThread::prepareCbt(std::string volume)
 		return false;
 	}
 
+	if (!cbtIsEnabled(std::string(), volume))
+	{
+		return false;
+	}
+
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
