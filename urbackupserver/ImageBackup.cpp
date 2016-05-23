@@ -1443,9 +1443,13 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				else
 				{
 					unsigned int available=(std::min)(blockleft, (unsigned int)r-off);
-					memcpy(&blockdata[blocksize-blockleft], &buffer[off], available);
-					blockleft-=available;
-					off+=available;
+					if (available > 0)
+					{
+						memcpy(&blockdata[blocksize - blockleft], &buffer[off], available);
+						blockleft -= available;
+						off += available;
+					}
+
 					if( off>=r )
 					{
 						off=0;
