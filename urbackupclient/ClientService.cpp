@@ -1851,14 +1851,21 @@ bool ClientConnector::sendFullImage(void)
 
 	IScopedLock lock(backup_mutex);
 
-	SRunningProcess new_proc;
-	new_proc.action = RUNNING_FULL_IMAGE;
-	new_proc.server_token = server_token;
-	new_proc.pcdone = 0;
-	new_proc.details = image_inf.orig_image_letter;
-	new_proc.server_id = image_inf.server_status_id;
-
-	local_backup_running_id = addNewProcess(new_proc);
+	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
+	if (cproc != NULL)
+	{
+		local_backup_running_id = cproc->id;
+	}
+	else
+	{
+		SRunningProcess new_proc;
+		new_proc.action = RUNNING_FULL_IMAGE;
+		new_proc.server_token = server_token;
+		new_proc.pcdone = 0;
+		new_proc.details = image_inf.orig_image_letter;
+		new_proc.server_id = image_inf.server_status_id;
+		local_backup_running_id = addNewProcess(new_proc);
+	}
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
@@ -1877,14 +1884,22 @@ bool ClientConnector::sendIncrImage(void)
 
 	IScopedLock lock(backup_mutex);
 
-	SRunningProcess new_proc;
-	new_proc.action = RUNNING_INCR_IMAGE;
-	new_proc.server_token = server_token;
-	new_proc.pcdone = 0;
-	new_proc.details = image_inf.orig_image_letter;
-	new_proc.server_id = image_inf.server_status_id;
+	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
+	if (cproc != NULL)
+	{
+		local_backup_running_id = cproc->id;
+	}
+	else
+	{
+		SRunningProcess new_proc;
+		new_proc.action = RUNNING_INCR_IMAGE;
+		new_proc.server_token = server_token;
+		new_proc.pcdone = 0;
+		new_proc.details = image_inf.orig_image_letter;
+		new_proc.server_id = image_inf.server_status_id;
 
-	local_backup_running_id = addNewProcess(new_proc);
+		local_backup_running_id = addNewProcess(new_proc);
+	}
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
