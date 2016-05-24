@@ -259,22 +259,26 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 			has_access_error = true;
 		}
 
-		std::string linkfolderpath = testfolderpath + "_link";
-		os_remove_symlink_dir(os_file_prefix(linkfolderpath));
-
-		if (!has_access_error
-			&& !os_link_symbolic(os_file_prefix(testfolderpath), os_file_prefix(linkfolderpath)) )
+		if (!settings.getSettings()->no_file_backups)
 		{
-			ret.set("system_err", os_last_error_str());
-			ret.set("dir_error", true);
-			ret.set("dir_error_ext", "err_cannot_create_symbolic_links");
-			ret.set("dir_error_hint", "UrBackup cannot create symbolic links on the backup storage. "
-				"Your backup storage must support symbolic links in order for UrBackup to work correctly. "
-				"The UrBackup Server must run as administrative user on Windows (If not you get error code 1314). "
-				"Note: As of 2016-05-07 samba has not implemented the necessary functionality to support symbolic link creation from Windows (With this you get error code 4390).");
-		}
+			std::string linkfolderpath = testfolderpath + "_link";
+			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
 
-		os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+			if (!has_access_error
+				&& !os_link_symbolic(os_file_prefix(testfolderpath), os_file_prefix(linkfolderpath)))
+			{
+				ret.set("system_err", os_last_error_str());
+				ret.set("dir_error", true);
+				ret.set("dir_error_ext", "err_cannot_create_symbolic_links");
+				ret.set("dir_error_hint", "UrBackup cannot create symbolic links on the backup storage. "
+					"Your backup storage must support symbolic links in order for UrBackup to work correctly. "
+					"The UrBackup Server must run as administrative user on Windows (If not you get error code 1314). "
+					"Note: As of 2016-05-07 samba (which is used by many Linux based NAS operating systems for Windows file sharing) has not "
+					"implemented the necessary functionality to support symbolic link creation from Windows (With this you get error code 4390).");
+			}
+
+			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+		}
 
 		if (!has_access_error
 			&& !os_remove_dir(os_file_prefix(testfolderpath)))
