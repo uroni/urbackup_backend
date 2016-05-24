@@ -52,6 +52,7 @@ void nt_service::stop(DWORD exit_code)
 	{
 		service_status.dwCurrentState  = SERVICE_STOPPED;
 		service_status.dwWin32ExitCode = exit_code; 
+		service_status.dwWaitHint = 0;
 		SetServiceStatus ( hstatus, &service_status );
 	}
 }

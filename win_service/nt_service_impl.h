@@ -74,10 +74,12 @@ VOID WINAPI service_control_handler(DWORD control)
 		{
 		case SERVICE_CONTROL_STOP:
 			service_status.dwCurrentState = SERVICE_STOP_PENDING;
+			service_status.dwWaitHint = 30000;
 			SetServiceStatus(hstatus, &service_status);
 			break;
 		case SERVICE_CONTROL_SHUTDOWN:
 			service_status.dwCurrentState = SERVICE_STOP_PENDING;
+			service_status.dwWaitHint = 30000;
 			SetServiceStatus(hstatus, &service_status);
 			break;
 		}
@@ -110,6 +112,7 @@ VOID WINAPI service_control_handler(DWORD control)
             break;
 	}
 	service_status.dwWin32ExitCode = 0; 
+	service_status.dwWaitHint = 0;
     SetServiceStatus (hstatus, &service_status);
 }
 //-----------------------------------------------------------------------------
@@ -141,6 +144,7 @@ VOID WINAPI nt_service_main( DWORD argc, char_* argv[] )
 	    
     // We report the running status to SCM. 
     service_status.dwCurrentState = SERVICE_RUNNING; 
+	service_status.dwWaitHint = 30000;
     SetServiceStatus( hstatus, &service_status);
      
     // The worker loop of a service
