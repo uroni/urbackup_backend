@@ -1,6 +1,7 @@
 #include "nt_service.h"
 #include "bitmask.h"
 #include <map>
+#include <thread>
 
 using namespace nt;
 using std_::bitmask;
@@ -67,8 +68,32 @@ NTSERVICE_ACCEPT accept_const_from_control_const( NTSERVICE_CONTROL control )
 //-----------------------------------------------------------------------------
 VOID WINAPI service_control_handler(DWORD control)
 {
-	if ( callback_map.find(control) != callback_map.end() )
-		callback_map[control]();
+	if (callback_map.find(control) != callback_map.end())
+	{
+		switch (control)
+		{
+		case SERVICE_CONTROL_STOP:
+			service_status.dwCurrentState = SERVICE_STOP_PENDING;
+			SetServiceStatus(hstatus, &service_status);
+			break;
+		case SERVICE_CONTROL_SHUTDOWN:
+			service_status.dwCurrentState = SERVICE_STOP_PENDING;
+			SetServiceStatus(hstatus, &service_status);
+			break;
+		}
+
+		if (control == SERVICE_CONTROL_STOP ||
+			control == SERVICE_CONTROL_SHUTDOWN)
+		{
+			std::thread tr(callback_map[control]);
+			tr.detach();
+			return;
+		}
+		else
+		{
+			callback_map[control]();
+		}
+	}
 
 	switch(control) 
     { 

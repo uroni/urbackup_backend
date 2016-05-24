@@ -601,6 +601,12 @@ void my_shutdown_fcn(void)
 		delete Server;
 		Server=NULL;
 	}*/
+	if (Server != NULL)
+	{
+		Server->ShutdownPlugins();
+	}
+	nt_service&  service = nt_service::instance(L"UrBackupBackend");
+	service.stop(0);
 }
 void my_stop_fcn(void)
 {
