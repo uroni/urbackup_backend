@@ -3831,7 +3831,7 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 #endif
 
 #ifdef _WIN32
-	exclude_dirs.push_back(sanitizePattern(":\\urbct.dat"));
+	exclude_dirs.push_back(sanitizePattern(":\\URBCT.DAT"));
 #endif
 }
 
