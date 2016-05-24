@@ -3829,6 +3829,10 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back("/dev/*");
 	exclude_dirs.push_back("/sys/*");
 #endif
+
+#ifdef _WIN32
+	exclude_dirs.push_back(sanitizePattern(":\\urbct.dat"));
+#endif
 }
 
 void IndexThread::handleHardLinks(const std::string& bpath, const std::string& vsspath, const std::string& normalized_volume)
