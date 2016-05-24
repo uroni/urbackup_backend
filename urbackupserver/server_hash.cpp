@@ -651,18 +651,19 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 			metadata.rsize=rsize;
 
-			bool write_metadata=false;
+			bool write_metadata=true;
 
 			if(!hashoutput_fn.empty())
 			{
-				IFile *src = Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ);
-				if(src!=NULL)
+				std::auto_ptr<IFile> src(Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ));
+				if(src.get()!=NULL)
 				{
-					if(!copyFile(src, hash_fn, NULL))
+					if(!copyFile(src.get(), hash_fn, NULL))
 					{
 						ServerLogger::Log(logid, "Error copying hashoutput to destination -1", LL_ERROR);
 						has_error=true;
 						hash_fn.clear();
+						write_metadata = false;
 					}
 					else
 					{
@@ -670,32 +671,31 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 						{
 							ServerLogger::Log(logid, "Error truncating hashdata file -1", LL_ERROR);
 						}
-
-						write_metadata=true;
 					}
-					Server->destroy(src);
 				}
 				else
 				{
 					ServerLogger::Log(logid, "HT: Error opening hashoutput", LL_ERROR);
 					has_error=true;
 					hash_fn.clear();
+					write_metadata = false;
 				}
 			}
 			else if(!existing_file.hashpath.empty())
 			{
-				IFile *ctf= Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ);
-				if(ctf!=NULL)
+				std::auto_ptr<IFile> ctf(Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ));
+				if(ctf.get()!=NULL)
 				{
-					int64 hashfilesize = read_hashdata_size(ctf);
+					int64 hashfilesize = read_hashdata_size(ctf.get());
 					if(hashfilesize!=-1
 						&& hashfilesize == t_filesize)
 					{
-						if(!copyFile(ctf, hash_fn, NULL))
+						if(!copyFile(ctf.get(), hash_fn, NULL))
 						{
 							ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
 							has_error=true;
 							hash_fn.clear();
+							write_metadata = false;
 						}
 						else
 						{
@@ -703,7 +703,6 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 							{
 								ServerLogger::Log(logid, "Error truncating hashdata file -2. " + os_last_error_str(), LL_ERROR);
 							}
-							write_metadata=true;
 						}
 					}
 					else
@@ -712,10 +711,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 						{
 							ServerLogger::Log(logid, "File size in meta-data file \"" + existing_file.hashpath + "\" does not match database. From database=" + convert(t_filesize) + " In meta-data=" + convert(hashfilesize), LL_WARNING);
 						}
-						write_metadata=true;
 					}
-					
-					Server->destroy(ctf);
 				}
 			}
 
