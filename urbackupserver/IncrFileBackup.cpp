@@ -331,7 +331,9 @@ bool IncrFileBackup::doFileBackup()
 
 	size_t num_copied_file_entries = 0;
 
-	int copy_file_entries_sparse_modulo = server_settings->getSettings()->min_file_incr;
+	int copy_file_entries_sparse_modulo = (std::max)(1,
+		(std::min)(server_settings->getSettings()->min_file_incr,
+			server_settings->getSettings()->max_file_incr) );
 
 	if (copy_last_file_entries)
 	{
