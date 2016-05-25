@@ -3828,6 +3828,8 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back("/proc/*");
 	exclude_dirs.push_back("/dev/*");
 	exclude_dirs.push_back("/sys/*");
+	exclude_dirs.push_back("/.datto_*");
+	exclude_dirs.push_back("/.overlay_*");
 #endif
 
 #ifdef _WIN32
