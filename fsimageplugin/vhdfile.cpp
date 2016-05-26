@@ -1365,17 +1365,32 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 	std::vector<char> buffer;
 	buffer.resize(sector_size);
 
+	int64 ntfs_blocks_per_vhd_sector = blocksize / bitmap_blocksize;
+
 	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/ bitmap_blocksize;
-		ntfs_block<n_ntfs_blocks; ++ntfs_block)
+		ntfs_block<n_ntfs_blocks; ntfs_block+= ntfs_blocks_per_vhd_sector)
 	{
-		if(bitmap_source->hasBlock(ntfs_block))
+		bool has_vhd_sector = false;
+		for (int64 i = ntfs_block;
+			i < ntfs_block + ntfs_blocks_per_vhd_sector
+			&& i<n_ntfs_blocks; ++i)
+		{
+			if ( bitmap_source->hasBlock(ntfs_block) )
+			{
+				has_vhd_sector = true;
+				break;
+			}
+		}
+
+		if(has_vhd_sector)
 		{
 			int64 block_pos = fs_offset + ntfs_block*bitmap_blocksize;
-			for(unsigned int i=0;i<bitmap_blocksize;i+=sector_size)
+			for(unsigned int i=0;i<blocksize;i+=sector_size)
 			{
 				Seek(block_pos + i);
 
-				if(!has_block(false))
+				if( !has_block(false)
+					&& has_block(true) )
 				{
 					bool has_error = false;
 					if(Read(buffer.data(), sector_size)!=sector_size)
