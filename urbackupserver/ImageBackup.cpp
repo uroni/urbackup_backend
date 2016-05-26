@@ -1573,6 +1573,8 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 	ServerVHDWriter* vhdfile, int64 trim_add)
 {
 	if(trim_add>0
+		&& vhdfile != NULL
+		&& parent_fn
 	    && (nextblock==currblock) )
 	{
 		vhdfile->writeBuffer(mbr_offset + nextblock*blocksize, NULL,
