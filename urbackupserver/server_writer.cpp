@@ -110,17 +110,38 @@ void ServerVHDWriter::operator()(void)
 			{
 				if(!has_error)
 				{
-					if(!filebuffer || item.buf==NULL)
+					if(!filebuffer)
 					{
 						writeVHD(item.pos, item.buf, item.bsize);
 					}
 					else
 					{
-						FileBufferVHDItem *fbi=(FileBufferVHDItem*)(item.buf-sizeof(FileBufferVHDItem));
+						FileBufferVHDItem *fbi;
+						FileBufferVHDItem local_fbi;
+						if (item.buf != NULL)
+						{
+							fbi = (FileBufferVHDItem*)(item.buf - sizeof(FileBufferVHDItem));
+							fbi->type = 0;
+						}
+						else
+						{
+							fbi = &local_fbi;
+							fbi->type = 1;
+						}
+							
 						fbi->pos=item.pos;
-						fbi->bsize=item.bsize;
-						writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem)+item.bsize);
-						currfile_size+=item.bsize+sizeof(FileBufferVHDItem);
+						fbi->bsize = item.bsize;
+						if (item.buf != NULL)
+						{
+							writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem) + item.bsize);
+							currfile_size += item.bsize + sizeof(FileBufferVHDItem);
+						}
+						else
+						{
+							writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem));
+							currfile_size += sizeof(FileBufferVHDItem);
+						}
+						
 
 						if(currfile_size>filebuf_lim)
 						{
@@ -220,7 +241,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	{
 		if (!vhd->setUnused(pos, pos + bsize))
 		{
-			ServerLogger::Log(logid, "Error setting unused area (from byte "+convert(pos)+" to byte "+convert(pos + bsize)+". "+os_last_error_str(), LL_ERROR);
+			ServerLogger::Log(logid, "Error setting unused area (from byte "+convert(pos)+" to byte "+convert(pos + bsize)+"). "+os_last_error_str(), LL_ERROR);
 			has_error = true;
 			return false;
 		}
@@ -479,6 +500,39 @@ void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
 	trimmed_bytes+=trim_stop-trim_start;
 }
 
+bool ServerVHDWriter::emptyVHDBlock(int64 empty_start, int64 empty_end)
+{
+	assert(empty_start%vhd_blocksize == 0);
+	assert(empty_end%vhd_blocksize == 0);
+
+	_i64 block_start = empty_start / vhd_blocksize;
+	if (empty_start%vhd_blocksize != 0)
+	{
+		++block_start;
+	}
+
+	_i64 block_end = empty_end / vhd_blocksize;
+
+	bool ret = true;
+	for (; block_start<block_end; ++block_start)
+	{
+		if (hashfile->Seek(block_start*sha_size))
+		{
+			if (hashfile->Write(reinterpret_cast<const char*>(zero_hash), sha_size) != sha_size)
+			{
+				Server->Log("Error writing to hashfile while setting block to empty.", LL_WARNING);
+				ret = false;
+			}
+		}
+		else
+		{
+			Server->Log("Error seeking in hashfile setting block to empty.", LL_WARNING);
+			ret = false;
+		}
+	}
+	return ret;
+}
+
 void ServerVHDWriter::setDoMakeFull( bool b )
 {
 	do_make_full=b;
@@ -508,8 +562,8 @@ ServerFileBufferWriter::~ServerFileBufferWriter(void)
 
 void ServerFileBufferWriter::operator()(void)
 {
-	char *blockbuf=new char[blocksize+sizeof(FileBufferVHDItem)];
-	unsigned int blockbuf_size=blocksize+sizeof(FileBufferVHDItem);
+	char *blockbuf=new char[blocksize+sizeof(FileBufferVHDItem)+1];
+	unsigned int blockbuf_size=blocksize+sizeof(FileBufferVHDItem)+1;
 
 	while(!exit_now)
 	{
@@ -536,6 +590,8 @@ void ServerFileBufferWriter::operator()(void)
 			tmp->Seek(0);
 			uint64 tpos=0;
 			uint64 tsize=tmp->Size();
+			char next_type = -1;
+
 			while(tpos<tsize)
 			{
 				if(exit_now)
@@ -543,20 +599,20 @@ void ServerFileBufferWriter::operator()(void)
 
 				if(!parent->hasError())
 				{
-					unsigned int tw=blockbuf_size;
 					bool old_method=false;
-					if(tw<sizeof(FileBufferVHDItem) || tmp->Read(blockbuf, tw)!=tw)
+					if(next_type!=0 || tmp->Read(blockbuf+1, blockbuf_size-1)!= blockbuf_size-1)
 					{
 						old_method=true;
 					}
 					else
 					{
 						FileBufferVHDItem *item=(FileBufferVHDItem*)blockbuf;
-						if(tw==item->bsize+sizeof(FileBufferVHDItem) )
+						if(blockbuf_size-1==item->bsize+sizeof(FileBufferVHDItem) )
 						{
 							parent->writeVHD(item->pos, blockbuf+sizeof(FileBufferVHDItem), item->bsize);
 							written+=item->bsize;
 							tpos+=item->bsize+sizeof(FileBufferVHDItem);
+							next_type = blockbuf[blockbuf_size - 1];
 						}
 						else
 						{
@@ -576,30 +632,56 @@ void ServerFileBufferWriter::operator()(void)
 							break;
 						}
 						tpos+=sizeof(FileBufferVHDItem);
-						unsigned int tw=item.bsize;
-						if(tpos+tw>tsize)
+						if (item.type==1)
 						{
-							Server->Log("Size field is wrong", LL_ERROR);
-							exit_now=true;
+							parent->writeVHD(item.pos, NULL, item.bsize);
+							next_type = -1;
+						}
+						else if(item.type==0)
+						{
+							unsigned int tw = item.bsize;
+							if (tpos + tw > tsize)
+							{
+								Server->Log("Size field is wrong", LL_ERROR);
+								exit_now = true;
+								parent->setHasError(true);
+								break;
+							}
+							if (tw+1 > blockbuf_size)
+							{
+								delete[]blockbuf;
+								blockbuf = new char[tw + 1 + sizeof(FileBufferVHDItem)];
+								blockbuf_size = tw + 1 + sizeof(FileBufferVHDItem);
+							}
+							unsigned int read = tmp->Read(blockbuf, tw+1);
+							if (read < tw)
+							{
+								Server->Log("Error reading from tmp.f", LL_ERROR);
+								exit_now = true;
+								parent->setHasError(true);
+								break;
+							}
+
+							if (read == tw+1)
+							{
+								next_type = blockbuf[tw];
+							}
+							else
+							{
+								next_type = -1;
+							}
+
+							parent->writeVHD(item.pos, blockbuf, tw);
+							written += tw;
+							tpos += item.bsize;
+						}
+						else
+						{
+							Server->Log("Wrong type: "+convert((int)item.type), LL_ERROR);
+							exit_now = true;
 							parent->setHasError(true);
 							break;
 						}
-						if(tw>blockbuf_size)
-						{
-							delete []blockbuf;
-							blockbuf=new char[tw+sizeof(FileBufferVHDItem)];
-							blockbuf_size=tw+sizeof(FileBufferVHDItem);
-						}
-						if(tmp->Read(blockbuf, tw)!=tw)
-						{
-							Server->Log("Error reading from tmp.f", LL_ERROR);
-							exit_now=true;
-							parent->setHasError(true);
-							break;
-						}
-						parent->writeVHD(item.pos, blockbuf, tw);
-						written+=tw;
-						tpos+=item.bsize;
 					}
 
 					if( written>=free_space_lim/2)

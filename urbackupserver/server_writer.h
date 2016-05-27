@@ -18,6 +18,7 @@ struct BufferVHDItem
 
 struct FileBufferVHDItem
 {
+	char type;
 	uint64 pos;
 	unsigned int bsize;
 };
@@ -63,6 +64,8 @@ public:
 	void setMbrOffset(int64 offset);
 
 	virtual void trimmed(_i64 trim_start, _i64 trim_stop);
+
+	virtual bool emptyVHDBlock(int64 empty_start, int64 empty_end);
 
 private:
 	IVHDFile *vhd;

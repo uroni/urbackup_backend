@@ -50,7 +50,6 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 	read_only=pRead_only;
 	is_open=false;
 	curr_offset=0;
-	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
 	backing_file = Server->openFile(fn, (read_only ? MODE_READ : MODE_RW));
@@ -146,7 +145,6 @@ VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead
 	read_only=pRead_only;
 	parent=NULL;
 	curr_offset=0;
-	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
 	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
@@ -362,11 +360,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 	dynamicheader.cookie[5]='r';
 	dynamicheader.cookie[6]='s';
 	dynamicheader.cookie[7]='e';
-#ifdef _WIN32
-	dynamicheader.dataoffset=0xFFFFFFFFFFFFFFFF;
-#else
 	dynamicheader.dataoffset=0xFFFFFFFFFFFFFFFFLLU;
-#endif
 	dynamicheader.tableoffset=big_endian(bat_offset);
 	dynamicheader.header_version=big_endian((unsigned int)0x00010000);
 	dynamicheader.table_entries=big_endian(batsize);
@@ -633,7 +627,7 @@ void VHDFile::init_bitmap(void)
 	if(bitmap_size%sector_size!=0)
 		bitmap_size+=sector_size-bitmap_size%sector_size;
 
-	bitmap=new unsigned char[bitmap_size];
+	bitmap.resize(bitmap_size);
 }
 
 bool VHDFile::read_bat(void)
@@ -673,7 +667,7 @@ inline bool VHDFile::isBitmapSet(unsigned int offset)
 	return has_bit;
 }
 
-inline void VHDFile::setBitmapBit(unsigned int offset, bool v)
+inline bool VHDFile::setBitmapBit(unsigned int offset, bool v)
 {
 	size_t sector=offset/sector_size;
 	size_t bitmap_byte=(size_t)(sector/8);
@@ -681,13 +675,23 @@ inline void VHDFile::setBitmapBit(unsigned int offset, bool v)
 
 	unsigned char b=bitmap[bitmap_byte];
 
+	bool has_bit = ((b & (1 << (7 - bitmap_bit)))>0);
+
 	if(v==true)
 		b=b|(1<<(7-bitmap_bit));
 	else
 		b=b&(~(1<<(7-bitmap_bit)));
 
 	bitmap[bitmap_byte]=b;
-	bitmap_dirty=true;
+	if (has_bit != v)
+	{
+		bitmap_dirty = true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
@@ -752,7 +756,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 				return false;
 			}
 
-			if(file->Read((char*)bitmap, bitmap_size)!=bitmap_size)
+			if(file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size)!=bitmap_size)
 			{
 				Server->Log("Error reading bitmap", LL_ERROR);
 				return false;
@@ -887,11 +891,11 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 				Server->Log("Seeking failed", LL_ERROR);
 
 			if(!new_block)
-				file->Read((char*)bitmap, bitmap_size);
+				file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 			else
 			{
-				memset(bitmap, 0, bitmap_size );
-				_u32 rc=file->Write((char*)bitmap, bitmap_size);
+				memset(bitmap.data(), 0, bitmap_size );
+				_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 				if(rc!=bitmap_size)
 				{
 					Server->Log("Writing bitmap failed", LL_ERROR);
@@ -954,7 +958,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 		if(!fast_mode)
 		{
 			file->Seek(dataoffset);
-			_u32 rc=file->Write((char*)bitmap, bitmap_size);
+			_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 			if(rc!=bitmap_size)
 			{
 				Server->Log("Writing bitmap failed", LL_ERROR);
@@ -1041,7 +1045,7 @@ bool VHDFile::has_block(bool use_parent)
 			return false;
 		}
 
-		if(file->Read((char*)bitmap, bitmap_size)!=bitmap_size)
+		if(file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size)!=bitmap_size)
 		{
 			Server->Log("Error reading bitmap", LL_ERROR);
 			return false;
@@ -1072,7 +1076,7 @@ void VHDFile::switchBitmap(uint64 new_offset)
 	if(fast_mode && !read_only && bitmap_dirty && bitmap_offset!=0)
 	{
 		file->Seek(bitmap_offset);
-		_u32 rc=file->Write((char*)bitmap, bitmap_size);
+		_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 		if(rc!=bitmap_size)
 		{
 			Server->Log("Writing bitmap failed", LL_ERROR);
@@ -1375,7 +1379,7 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 			i < ntfs_block + ntfs_blocks_per_vhd_sector
 			&& i<n_ntfs_blocks; ++i)
 		{
-			if ( bitmap_source->hasBlock(ntfs_block) )
+			if ( bitmap_source->hasBlock(i) )
 			{
 				has_vhd_sector = true;
 				break;
@@ -1385,9 +1389,11 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 		if(has_vhd_sector)
 		{
 			int64 block_pos = fs_offset + ntfs_block*bitmap_blocksize;
-			for(unsigned int i=0;i<blocksize;i+=sector_size)
+			int64 max_block_pos = (std::min)(fs_offset + ntfs_block*bitmap_blocksize + blocksize,
+				fs_offset + n_ntfs_blocks*bitmap_blocksize);
+			for(int64 i = block_pos;i<max_block_pos;i+=sector_size)
 			{
-				Seek(block_pos + i);
+				Seek(i);
 
 				if( !has_block(false)
 					&& has_block(true) )
@@ -1395,17 +1401,25 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 					bool has_error = false;
 					if(Read(buffer.data(), sector_size)!=sector_size)
 					{
-						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+convert(block_pos + i), LL_WARNING);
+						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+convert(i), LL_WARNING);
 						return false;
 					}
 					
-					if(!write_callback->writeVHD(block_pos + i, buffer.data(), sector_size))
+					if(!write_callback->writeVHD(i, buffer.data(), sector_size))
 					{
-						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+convert(block_pos + i), LL_WARNING);
+						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+convert(i), LL_WARNING);
 						return false;
 					}
 				}
 			}
+		}
+		else
+		{
+			int64 block_pos = ntfs_block*bitmap_blocksize;
+			int64 max_block_pos = (std::min)(ntfs_block*bitmap_blocksize + blocksize,
+				n_ntfs_blocks*bitmap_blocksize);
+
+			write_callback->emptyVHDBlock(block_pos, max_block_pos);
 		}
 	}
 
@@ -1414,12 +1428,176 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 
 	Server->Log("Writing new headers...", LL_INFO);
 
+	/**
+	* For some reason Windows won't open the VHD if
+	* the BAT is not shifted to follow the dynamic header
+	*/
+	bat_offset = def_bat_offset;
+
 	if(!write_header(false) ||
 		!write_dynamicheader(NULL, 0, "") ||
-		!write_footer() )
+		!write_footer() ||
+		!write_bat() )
 	{
 		Server->Log("Error writing new headers", LL_WARNING);
 		return false;
+	}
+
+	return true;
+}
+
+bool VHDFile::setUnused(_i64 unused_start, _i64 unused_end)
+{
+	if (!Seek(unused_start))
+	{
+		return false;
+	}
+
+	if (read_only)
+	{
+		return false;
+	}
+
+	if (static_cast<uint64>(unused_end)>dstsize)
+	{
+		return false;
+	}
+
+	bool dwrite_footer = false;
+
+	uint64 block = curr_offset / ((uint64)blocksize);
+	size_t blockoffset = curr_offset%blocksize;
+	size_t remaining = blocksize - blockoffset;
+	size_t towrite = unused_end- unused_start;
+	size_t bufferoffset = 0;
+	bool firstw = true;
+	std::vector<char> zero_buf;
+
+	while (true)
+	{
+		uint64 dataoffset;
+		unsigned int bat_ref = big_endian(bat[block]);
+		bool new_block = false;
+		if (bat_ref == 0xFFFFFFFF)
+		{
+			dataoffset = nextblock_offset;
+			nextblock_offset += blocksize + bitmap_size;
+			nextblock_offset = nextblock_offset + (sector_size - nextblock_offset%sector_size);
+			dwrite_footer = true;
+			new_block = true;
+			bat[block] = big_endian((unsigned int)(dataoffset / (uint64)(sector_size)));
+		}
+		else
+		{
+			dataoffset = (uint64)bat_ref*(uint64)sector_size;
+		}
+		if (currblock != block)
+		{
+			switchBitmap(dataoffset);
+
+			bool b = file->Seek(dataoffset);
+			if (!b)
+				Server->Log("Seeking failed", LL_ERROR);
+
+			if (!new_block)
+				file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+			else
+			{
+				memset(bitmap.data(), 0, bitmap_size);
+				_u32 rc = file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+				if (rc != bitmap_size)
+				{
+					Server->Log("Writing bitmap failed", LL_ERROR);
+					print_last_error();
+					return false;
+				}
+			}
+			currblock = block;
+		}
+
+		while (blockoffset < blocksize)
+		{
+			size_t wantwrite = (std::min)((size_t)sector_size, towrite);
+			if (remaining < wantwrite)
+				wantwrite = remaining;
+			if (firstw && blockoffset%sector_size != 0 && wantwrite > sector_size - blockoffset%sector_size)
+			{
+				wantwrite = sector_size - blockoffset%sector_size;
+				firstw = false;
+			}
+			else
+			{
+				firstw = false;
+			}
+
+			/**
+			* This is counter-intuitive. We want it to return zeroes on reads but if we
+			* set the bit to false it will read from the parent. So set it to true
+			* to read the zeroes from the current VHD file.
+			* This only works if we have not written to the same location previously, so
+			* write zeroes in this case.
+			*/
+			if (!setBitmapBit((unsigned int)blockoffset, true))
+			{
+				if (zero_buf.size() != wantwrite)
+				{
+					zero_buf.resize(wantwrite);
+				}
+				_u32 rc = file->Write(dataoffset + bitmap_size + blockoffset, zero_buf.data(), (_u32)wantwrite);
+				if (rc != wantwrite)
+				{
+					Server->Log("Writing to file failed (2)", LL_ERROR);
+					print_last_error();
+					return false;
+				}
+			}
+
+			bufferoffset += wantwrite;
+			blockoffset += wantwrite;
+			remaining -= wantwrite;
+			towrite -= wantwrite;
+			if (towrite == 0)
+			{
+				break;
+			}
+			if (remaining == 0)
+			{
+				break;
+			}
+		}
+
+		if (!fast_mode)
+		{
+			file->Seek(dataoffset);
+			_u32 rc = file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+			if (rc != bitmap_size)
+			{
+				Server->Log("Writing bitmap failed", LL_ERROR);
+				print_last_error();
+				return false;
+			}
+		}
+
+		if (towrite == 0)
+			break;
+
+		++block;
+		blockoffset = 0;
+		remaining = blocksize;
+	}
+
+	if (dwrite_footer && !fast_mode)
+	{
+		if (!write_footer())
+		{
+			Server->Log("Error writing footer (2)", LL_ERROR);
+			return false;
+		}
+		if (!write_bat())
+		{
+			Server->Log("Error writing BAT (2)", LL_ERROR);
+			return false;
+		}
 	}
 
 	return true;

@@ -453,7 +453,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	char *blockdata=NULL;
 	int64 drivesize;
 	ServerVHDWriter *vhdfile=NULL;
-	ServerVHDWriter *vhdfile_trim = NULL;
 	THREADPOOL_TICKET vhdfile_ticket;
 	IVHDFile *r_vhdfile=NULL;
 	IFile *hashfile=NULL;
@@ -812,12 +811,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 
 					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset, hashfile, vhd_blocksize*blocksize, logid);
-					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile, "image backup writer");
-
-					if (image_file_format == image_file_format_cowraw)
-					{
-						vhdfile_trim = vhdfile;
-					}
+					vhdfile_ticket = Server->getThreadPool()->execute(vhdfile, "image backup writer");
 
 					blockdata=vhdfile->getBuffer();
 
@@ -1133,7 +1127,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata,
 								has_parent, vhdfile, hashfile, parenthashfile,
 								blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-								-1, vhdfile_trim, 0);
+								-1, vhdfile, 0);
 
 							sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
 
@@ -1192,7 +1186,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							{
 								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-									-1, vhdfile_trim, 0);
+									-1, vhdfile, 0);
 
 								if(nextblock!=0)
 								{
@@ -1330,7 +1324,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									{
 										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent,
 											vhdfile, hashfile, parenthashfile, blocksize, mbr_offset,
-											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile_trim, 1);
+											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile, 1);
 										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
@@ -1389,7 +1383,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								vhdblock = little_endian(vhdblock);
 								nextblock = updateNextblock(nextblock, vhdblock+vhd_blocksize, &shactx, zeroblockdata, has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-									vhdblock, vhdfile_trim, 0);
+									vhdblock, vhdfile, 0);
 							}
 							else
 							{

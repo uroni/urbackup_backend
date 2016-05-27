@@ -14,6 +14,7 @@ class IVHDWriteCallback
 {
 public:
 	virtual bool writeVHD(uint64 pos, char *buf, unsigned int bsize) = 0;
+	virtual bool emptyVHDBlock(int64 empty_start, int64 empty_end) = 0;
 };
 
 class IVHDFile

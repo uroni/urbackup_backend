@@ -119,10 +119,7 @@ public:
 
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback);
 
-	virtual bool setUnused(_i64 unused_start, _i64 unused_end)
-	{
-		return false;
-	}
+	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
 
 private:
 
@@ -141,7 +138,7 @@ private:
 	void init_bitmap(void);
 
 	inline bool isBitmapSet(unsigned int offset);
-	inline void setBitmapBit(unsigned int offset, bool v);
+	inline bool setBitmapBit(unsigned int offset, bool v);
 	void switchBitmap(uint64 new_offset);
 
 	unsigned int calculate_chs(void);
@@ -172,7 +169,7 @@ private:
 
 	uint64 nextblock_offset;
 
-	unsigned char * bitmap;
+	std::vector<unsigned char> bitmap;
 	unsigned int bitmap_size;
 
 	bool is_open;
