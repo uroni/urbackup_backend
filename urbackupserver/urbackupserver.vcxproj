@@ -297,6 +297,7 @@
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
+    <ClCompile Include="apps\md5sum_check.cpp" />
     <ClCompile Include="apps\repair_cmd.cpp" />
     <ClCompile Include="apps\skiphash_copy.cpp" />
     <ClCompile Include="Backup.cpp" />

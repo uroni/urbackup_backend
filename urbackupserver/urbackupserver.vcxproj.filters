@@ -333,6 +333,9 @@
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="apps\md5sum_check.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

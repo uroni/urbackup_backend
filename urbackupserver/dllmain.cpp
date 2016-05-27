@@ -143,6 +143,7 @@ bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 void open_settings_database_full();
+int md5sum_check();
 
 std::string lang="en";
 std::string time_format_str="%Y-%m-%d %H:%M";
@@ -381,6 +382,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else if(app=="skiphash_copy")
 		{
 			rc=skiphash_copy_file();
+		}
+		else if (app == "md5sum_check")
+		{
+			rc = md5sum_check();
 		}
 		else
 		{
