@@ -2,6 +2,7 @@
 #include "../../Interface/File.h"
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include "../../stringtools.h"
 #include "../../md5.h"
 #include "../../urbackupcommon/os_functions.h"
