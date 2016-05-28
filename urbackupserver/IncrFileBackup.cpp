@@ -1638,7 +1638,7 @@ void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int c
 	std::string curr_file_path = (curr_path + "/" + cf.name);
 	std::string md5 = Server->GenerateBinaryMD5(curr_file_path);
 	const int* md5ptr = reinterpret_cast<const int*>(md5.data());
-	if(*md5ptr % copy_file_entries_sparse_modulo == incremental_num % copy_file_entries_sparse_modulo )
+	if( (*md5ptr>=0 ? *md5ptr : -1* *md5ptr ) % copy_file_entries_sparse_modulo == incremental_num % copy_file_entries_sparse_modulo )
 	{
 		FileMetadata metadata;
 		std::auto_ptr<IFile> last_file(Server->openFile(os_file_prefix(backuppath+local_curr_os_path), MODE_READ));
