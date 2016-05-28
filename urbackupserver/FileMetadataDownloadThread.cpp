@@ -806,7 +806,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 
 	std::sort(last_metadata_ids.begin(), last_metadata_ids.end());
 
-	Server->Log("Loop exit in " __FUNCTION__, LL_ERROR);
+	Server->Log("Loop exit in " + std::string(__FUNCTION__), LL_ERROR);
 	assert(false);
 	return true;
 }
