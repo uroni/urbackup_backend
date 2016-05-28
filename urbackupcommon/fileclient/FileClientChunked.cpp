@@ -663,7 +663,7 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 
 			if(!getfile_done ||
 				(retval==ERR_BASE_DIR_LOST
-				 || retval==ERR_FILE_DOESNT_EXIST
+				 || retval== ERR_CANNOT_OPEN_FILE
 				 || retval==ERR_SUCCESS) )
 			{
 				FileClientChunked* next = getNextFileClient();
@@ -907,7 +907,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 		case ID_COULDNT_OPEN:
 			{
 				getfile_done=true;
-				retval=ERR_FILE_DOESNT_EXIST;
+				retval= ERR_CANNOT_OPEN_FILE;
 				if(remote_filesize!=-1)
 				{
 					Server->Log("Did expect file to exist (2). Reconnecting...", LL_WARNING);

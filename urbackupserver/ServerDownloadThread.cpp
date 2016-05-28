@@ -532,7 +532,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST)
+		if (rc == ERR_CANNOT_OPEN_FILE)
 		{
 			++num_issues;
 		}
@@ -792,7 +792,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_FILE_DOESNT_EXIST)
+		if (rc == ERR_CANNOT_OPEN_FILE)
 		{
 			++num_issues;
 		}
@@ -889,8 +889,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
-		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST
-		|| (rc == ERR_FILE_DOESNT_EXIST && fileHasSnapshot(todl) ) )
+		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST )
 		return false;
 	else
 		return true;

@@ -236,7 +236,7 @@ private:
 const _u32 ERR_CONTINUE=0;
 const _u32 ERR_SUCCESS=1;
 const _u32 ERR_TIMEOUT=2;
-const _u32 ERR_FILE_DOESNT_EXIST=3;
+const _u32 ERR_CANNOT_OPEN_FILE=3;
 const _u32 ERR_SOCKET_ERROR=4;
 const _u32 ERR_CONNECTED=5;
 const _u32 ERR_ERROR=6;

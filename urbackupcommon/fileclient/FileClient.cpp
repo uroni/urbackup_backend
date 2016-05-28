@@ -908,7 +908,7 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
-					return ERR_FILE_DOESNT_EXIST;
+					return ERR_CANNOT_OPEN_FILE;
 				}
 				else if(PID==ID_BASE_DIR_LOST)
 				{
@@ -1344,7 +1344,7 @@ std::string FileClient::getErrorString(_u32 ec)
 	DEFEC(CONTINUE);
 	DEFEC(SUCCESS);
 	DEFEC(TIMEOUT);
-	DEFEC(FILE_DOESNT_EXIST);
+	DEFEC(CANNOT_OPEN_FILE);
 	DEFEC(SOCKET_ERROR);
 	DEFEC(CONNECTED);
 	DEFEC(ERROR);
@@ -1707,7 +1707,7 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
-					return ERR_FILE_DOESNT_EXIST;
+					return ERR_CANNOT_OPEN_FILE;
 				}
 				else if(PID==ID_BASE_DIR_LOST)
 				{

@@ -1579,7 +1579,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		Server->destroy(tmp);
 		Server->deleteFile(tmp_fn);
 
-		if(rc==ERR_FILE_DOESNT_EXIST)
+		if(rc== ERR_CANNOT_OPEN_FILE)
 		{
 			doesnt_exist=true;
 		}
