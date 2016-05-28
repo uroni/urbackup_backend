@@ -340,6 +340,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_mutex1();
 	ServerLogger::init_mutex();
 	init_dir_link_mutex();
+	WalCheckpointThread::init_mutex();
 
 	std::string app=Server->getServerParameter("app", "");
 
@@ -712,7 +713,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_chunk_hasher();
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
-	WalCheckpointThread::init_mutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
 
 	is_leak_check=(Server->getServerParameter("leak_check")=="true");
