@@ -613,7 +613,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 							}
 							else
 							{
-								ServerLogger::Log(logid, "Error opening hash source file \""+existing_file.hashpath+"\". " + os_last_error_str(), LL_ERROR);
+								Server->Log("Error opening hash source file \""+existing_file.hashpath+"\". " + os_last_error_str(), LL_ERROR);
 							}
 
 							if (write_metadata && !write_file_metadata(hash_fn, this, metadata, false))
@@ -709,7 +709,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					{
 						if (hashfilesize != -1)
 						{
-							ServerLogger::Log(logid, "File size in meta-data file \"" + existing_file.hashpath + "\" does not match database. From database=" + convert(t_filesize) + " In meta-data=" + convert(hashfilesize), LL_WARNING);
+							Server->Log("File size in meta-data file \"" + existing_file.hashpath + "\" does not match database. From database=" + convert(t_filesize) + " In meta-data=" + convert(hashfilesize), LL_WARNING);
 						}
 					}
 				}
