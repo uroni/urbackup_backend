@@ -464,6 +464,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								}
 								else
 								{
+									Server->Log("Unknown connection version " + convert((int)conn_version) + " in state ISS_CAPA", LL_ERROR);
 									assert(false);
 								}
 								

@@ -381,6 +381,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 				else
 				{
+					Server->Log("Unknown msg " + msg + " in CCSTATE_SHADOWCOPY", LL_ERROR);
 					assert(false);
 				}
 				lasttime = Server->getTimeMS();

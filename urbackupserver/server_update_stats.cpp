@@ -329,6 +329,7 @@ void ServerUpdateStats::update_files(void)
 			}
 			else
 			{
+				Server->Log("Unknown direction in ServerUpdateStats::update_files " + convert((int)entry.direction), LL_ERROR);
 				assert(false);
 			}
 

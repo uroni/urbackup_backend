@@ -24,6 +24,7 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <Strsafe.h>
+#include <sstream>
 
 bool CServer::LoadDLL(const std::string &name)
 {
@@ -58,6 +59,25 @@ void CServer::UnloadDLLs2(void)
 
 int CServer::WriteDump(void* pExceptionPointers)
 {
+	PEXCEPTION_POINTERS exc_ptrs = (EXCEPTION_POINTERS*)pExceptionPointers;
+
+	PEXCEPTION_RECORD curr_exc_rec = NULL;
+	if (exc_ptrs != NULL)
+	{
+		curr_exc_rec = exc_ptrs->ExceptionRecord;
+	}
+	
+	while (curr_exc_rec != NULL)
+	{
+		std::ostringstream ss;
+		ss << "0x" << std::hex << curr_exc_rec->ExceptionAddress;
+
+		Server->Log("Fatal exception code " + convert((int64)curr_exc_rec->ExceptionCode)
+			+ " at address " + ss.str(), LL_ERROR);
+
+		curr_exc_rec = curr_exc_rec->ExceptionRecord;
+	}
+
 	BOOL bMiniDumpSuccessful;
     WCHAR szPath[MAX_PATH]; 
     WCHAR szFileName[MAX_PATH]; 
@@ -85,7 +105,7 @@ int CServer::WriteDump(void* pExceptionPointers)
 	if(hDumpFile!=INVALID_HANDLE_VALUE)
 	{
 		ExpParam.ThreadId = GetCurrentThreadId();
-		ExpParam.ExceptionPointers = (EXCEPTION_POINTERS*)pExceptionPointers;
+		ExpParam.ExceptionPointers = exc_ptrs;
 		ExpParam.ClientPointers = TRUE;
 
 		bMiniDumpSuccessful = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 

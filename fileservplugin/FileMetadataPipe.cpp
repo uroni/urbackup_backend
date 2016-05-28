@@ -597,12 +597,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				}
 				else
 				{
+					Server->Log("Unknown metadata pipe id: " + convert((int)id), LL_ERROR);
 					assert(false);
 					return false;
 				}
 			}
 			else
 			{
+				Server->Log("Cannot get metadata pipe id", LL_ERROR);
 				assert(false);
 				return false;
 			}

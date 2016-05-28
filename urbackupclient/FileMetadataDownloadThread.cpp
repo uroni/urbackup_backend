@@ -208,6 +208,7 @@ bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 
 	} while (true);
 
+	Server->Log("Loop exit in " __FUNCTION__, LL_ERROR);
 	assert(false);
 	return true;
 }

@@ -134,6 +134,7 @@ namespace usn
 		}
 		else
 		{
+			Server->Log("Unknown usn data version " + convert((int)version), LL_ERROR);
 			assert(false);
 			return FALSE;
 		}
