@@ -1893,7 +1893,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(!ok)
 			{
-				ServerLogger::Log(logid, "Timeout: In client update", LL_ERROR);
+				ServerLogger::Log(logid, "Timeout: In client update of \"" + clientname + "\"", LL_ERROR);
 			}
 
 			cc.reset();
@@ -1902,7 +1902,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(ok)
 			{
-				ServerLogger::Log(logid, "Updated client successfully", LL_INFO);
+				ServerLogger::Log(logid, "Updated client \""+clientname+"\" successfully", LL_INFO);
 			}
 
 			updateCapabilities();

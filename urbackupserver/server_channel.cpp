@@ -169,6 +169,8 @@ void ServerChannelThread::operator()(void)
 	settings=new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), clientid);
 	ScopedFreeObjRef<ServerSettings*> settings_free(settings);
 
+	std::string curr_ident;
+
 	while(do_exit==false)
 	{
 		if(input==NULL)
@@ -185,8 +187,8 @@ void ServerChannelThread::operator()(void)
 					IScopedLock lock(mutex);
 					input=np;
 				}
-				std::string identity = client_main->getIdentity();
-				tcpstack.Send(input, identity+"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1");
+				curr_ident = client_main->getIdentity();
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1");
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -200,6 +202,15 @@ void ServerChannelThread::operator()(void)
 				IScopedLock lock(mutex);
 				Server->destroy(input);
 				input=NULL;
+				tcpstack.reset();
+			}
+
+			if (curr_ident != client_main->getIdentity())
+			{
+				Server->Log("Resetting channel to " + clientname + " because session identity changed.", LL_DEBUG);
+				IScopedLock lock(mutex);
+				Server->destroy(input);
+				input = NULL;
 				tcpstack.reset();
 			}
 
