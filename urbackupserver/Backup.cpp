@@ -116,8 +116,6 @@ void Backup::operator()()
 
 	int64 backup_starttime=Server->getTimeMS();
 
-	client_main->startBackupRunning(is_file_backup);
-
 	bool do_log = false;
 	backup_result = doBackup();
 

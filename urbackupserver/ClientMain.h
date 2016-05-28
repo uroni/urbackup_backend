@@ -239,7 +239,7 @@ private:
 	bool isRunningFileBackup(int group);	
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
-	bool isBackupsRunningOkay(bool file);	
+	bool isBackupsRunningOkay(bool file, bool incr=false);	
 	bool updateCapabilities(void);
 	IPipeThrottler *getThrottler(size_t speed_bps);
 

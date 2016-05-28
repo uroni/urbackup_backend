@@ -655,7 +655,7 @@ void ClientMain::operator ()(void)
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
-					if( (isUpdateFullImage(letter) && !isRunningImageBackup(letter)) || do_full_image_now )
+					if( ( (isUpdateFullImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false)) || do_full_image_now) )
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
@@ -678,7 +678,7 @@ void ClientMain::operator ()(void)
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
-					if( (isUpdateIncrImage(letter) && !isRunningImageBackup(letter)) || do_incr_image_now )
+					if( ((isUpdateIncrImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false) ) || do_incr_image_now) )
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
@@ -723,11 +723,14 @@ void ClientMain::operator ()(void)
 					{
 						if(backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET)
 						{
+							bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
+
 							ServerStatus::addRunningJob(clientmainname);
-							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client)
+							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client
+								&& isBackupsRunningOkay(filebackup, true))
 							{
 								std::string tname = "backup main";
-								if (dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL)
+								if (filebackup)
 								{
 									tname = "fbackup main";
 								}
@@ -1926,11 +1929,21 @@ sockaddr_in ClientMain::getClientaddr(void)
 }
 
 
-bool ClientMain::isBackupsRunningOkay(bool file)
+bool ClientMain::isBackupsRunningOkay(bool file, bool incr)
 {
 	IScopedLock lock(running_backup_mutex);
 	if(running_backups<server_settings->getSettings()->max_sim_backups)
 	{
+		if (running_backups_allowed
+			&& incr)
+		{
+			++running_backups;
+			if (file)
+			{
+				++running_file_backups;
+			}
+		}
+
 		return running_backups_allowed;
 	}
 	else
