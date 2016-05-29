@@ -90,9 +90,10 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 	}
 
 	DBScopedSynchronous synchonous_link(link_dao->getDatabase());
-	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
 
 	IScopedLock lock(dir_link_mutex);
+
+	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
 
 	std::string link_src_dir;
 	std::string pool_name;
