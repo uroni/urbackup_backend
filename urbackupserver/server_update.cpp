@@ -172,7 +172,7 @@ void ServerUpdate::update_server_version_info()
 
 void ServerUpdate::read_update_location()
 {
-	std::string read_update_location = trim(getFile("server_update_location.url"));
+	std::string read_update_location = trim(getFile("urbackup/server_update_location.url"));
 
 	if (!read_update_location.empty())
 	{
