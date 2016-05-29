@@ -1853,9 +1853,11 @@ bool ClientConnector::sendFullImage(void)
 	IScopedLock lock(backup_mutex);
 
 	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-	if (cproc != NULL)
+	if (cproc != NULL
+		&& cproc->action == RUNNING_FULL_IMAGE)
 	{
 		local_backup_running_id = cproc->id;
+		cproc->last_pingtime = Server->getTimeMS();
 	}
 	else
 	{
@@ -1867,6 +1869,8 @@ bool ClientConnector::sendFullImage(void)
 		new_proc.server_id = image_inf.server_status_id;
 		local_backup_running_id = addNewProcess(new_proc);
 	}
+
+	removeTimedOutProcesses(server_token, false);
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
@@ -1886,9 +1890,11 @@ bool ClientConnector::sendIncrImage(void)
 	IScopedLock lock(backup_mutex);
 
 	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-	if (cproc != NULL)
+	if (cproc != NULL
+		&& cproc->action == RUNNING_INCR_IMAGE )
 	{
 		local_backup_running_id = cproc->id;
+		cproc->last_pingtime = Server->getTimeMS();
 	}
 	else
 	{
@@ -1901,6 +1907,8 @@ bool ClientConnector::sendIncrImage(void)
 
 		local_backup_running_id = addNewProcess(new_proc);
 	}
+
+	removeTimedOutProcesses(server_token, false);
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
@@ -3136,7 +3144,7 @@ SRunningProcess * ClientConnector::getRunningFileBackupProcess(std::string serve
 
 SRunningProcess * ClientConnector::getRunningBackupProcess(std::string server_token, int64 server_id)
 {
-	for (size_t i = 0; i < running_processes.size(); ++i)
+	for (size_t i = running_processes.size(); i-- > 0;)
 	{
 		SRunningProcess& curr = running_processes[i];
 		if ( (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
@@ -3259,6 +3267,28 @@ std::string ClientConnector::actionToStr(RunningAction action)
 		return "RESTORE_FILES";
 	default:
 		return "";
+	}
+}
+
+void ClientConnector::removeTimedOutProcesses(std::string server_token, bool file)
+{
+	int64 ctime = Server->getTimeMS();
+
+	for (size_t i = 0; i < running_processes.size();)
+	{
+		SRunningProcess& curr = running_processes[i];
+
+		bool curr_file = (curr.action == RUNNING_FULL_FILE || curr.action == RUNNING_INCR_FILE || curr.action == RUNNING_RESUME_FULL_FILE || curr.action == RUNNING_RESUME_INCR_FILE);
+
+		if ( (curr_file || !file)
+			&& (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
+			&& ctime - curr.last_pingtime>x_pingtimeout )
+		{
+			running_processes.erase(running_processes.begin() + i);
+			continue;
+		}
+
+		++i;
 	}
 }
 

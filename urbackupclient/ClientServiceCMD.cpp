@@ -315,6 +315,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	IScopedLock process_lock(process_mutex);
 
+	removeTimedOutProcesses(server_token, true);
+
 	running_processes.push_back(new_proc);
 
 	status_updated = true;
@@ -423,6 +425,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	new_proc.server_token = server_token;
 
 	IScopedLock process_lock(process_mutex);
+
+	removeTimedOutProcesses(server_token, true);
 
 	running_processes.push_back(new_proc);
 

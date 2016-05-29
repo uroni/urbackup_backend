@@ -321,6 +321,7 @@ private:
 	static SRunningProcess* getRunningProcess(int64 id);
 	static SRunningProcess* getActiveProcess(int64 timeout);
 	static std::string actionToStr(RunningAction action);
+	static void removeTimedOutProcesses(std::string server_token, bool file);
 
 	IPipe *pipe;
 	IPipe *mempipe;
