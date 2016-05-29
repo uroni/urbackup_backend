@@ -1085,7 +1085,7 @@ std::string ImageThread::hdatFn(std::string volume)
 		return std::string();
 	}
 
-	return volume + os_file_sep() + "urbhdat_img.dat";
+	return volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat";
 }
 
 IFsFile* ImageThread::openHdatF(std::string volume, bool share)
@@ -1104,7 +1104,7 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 		share_mode |= FILE_SHARE_WRITE;
 	}
 
-	HANDLE hfile = CreateFileA((volume + os_file_sep() + "urbhdat_img.dat").c_str(), GENERIC_WRITE|GENERIC_READ, share_mode, NULL, OPEN_ALWAYS,
+	HANDLE hfile = CreateFileA((volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat").c_str(), GENERIC_WRITE|GENERIC_READ, share_mode, NULL, OPEN_ALWAYS,
 		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM, NULL);
 
 	if (hfile == INVALID_HANDLE_VALUE)
@@ -1112,7 +1112,7 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 		return NULL;
 	}
 
-	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "urbhdat_img.dat");
+	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat");
 #else
 	return NULL;
 #endif
