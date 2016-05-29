@@ -1774,7 +1774,21 @@ bool ClientMain::sendMailToAdmins(const std::string& subj, const std::string& me
 
 void ClientMain::checkClientVersion(void)
 {
-	std::string version=getFile("urbackup/version.txt");
+	std::string version;
+	if (protocol_versions.os_simple == "osx")
+	{
+		version = getFile("urbackup/version_osx.txt");
+	}
+	else if (protocol_versions.os_simple == "linux")
+	{
+		version = getFile("urbackup/version_linux.txt");
+	}
+	else
+	{
+		version = getFile("urbackup/version.txt");
+	}
+
+
 	if(!version.empty())
 	{
 		std::string r=sendClientMessage("VERSION "+version, "Sending version to client failed", 10000);

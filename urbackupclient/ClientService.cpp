@@ -3043,6 +3043,54 @@ bool ClientConnector::sendChannelPacket(const SChannel& channel, const std::stri
     return localstack.Send(channel.pipe, msg) == msg.size();
 }
 
+bool ClientConnector::versionNeedsUpdate(const std::string & local_version, const std::string & server_version)
+{
+	std::vector<std::string> local_features;
+	int ilocal_version = parseVersion(local_version, local_features);
+	std::vector<std::string> server_features;
+	int iserver_version = parseVersion(server_version, server_features);
+
+	for (size_t i = 0; i < local_features.size(); ++i)
+	{
+		if (std::find(server_features.begin(), server_features.end(), local_features[i]) == local_features.end())
+		{
+			Server->Log("Server update does not have feature " + local_features[i] + ". Not updating.", LL_INFO);
+			return false;
+		}
+	}
+
+	if (iserver_version > ilocal_version)
+	{
+		Server->Log("Server has new version "+convert(iserver_version)+" (client version: "+convert(ilocal_version)+"). Updating...", LL_INFO);
+		return true;
+	}
+
+	for (size_t i = 0; i < server_features.size(); ++i)
+	{
+		if (std::find(local_features.begin(), local_features.end(), server_features[i]) == server_features.end())
+		{
+			Server->Log("Client currently does not have feature " + server_features[i] + ". Updating...", LL_INFO);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+int ClientConnector::parseVersion(const std::string & version, std::vector<std::string>& features)
+{
+	if (version.find("-") == std::string::npos)
+	{
+		return atoi(version.c_str());
+	}
+	else
+	{
+		TokenizeMail(getafter("-", version), features, ",");
+
+		return atoi(getuntil("-", version).c_str());
+	}
+}
+
 void ClientConnector::requestRestoreRestart()
 {
 	IScopedLock lock(backup_mutex);

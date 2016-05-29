@@ -2039,7 +2039,7 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 
 void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 {
-	int n_version=atoi(cmd.substr(8).c_str());
+	std::string server_version = cmd.substr(8);
 
 #ifdef _WIN32
 #define VERSION_FILE_PREFIX ""
@@ -2059,7 +2059,8 @@ void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 	if(version_1.empty() ) version_1="0";
 	if(version_2.empty() ) version_2="0";
 
-	if( atoi(version_1.c_str())<n_version && atoi(version_2.c_str())<n_version )
+	if(versionNeedsUpdate(version_1, server_version)
+		&& versionNeedsUpdate(version_2, server_version) )
 	{
 		tcpstack.Send(pipe, "update");
 	}

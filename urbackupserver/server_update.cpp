@@ -45,81 +45,93 @@ void ServerUpdate::update_client()
 	read_update_location();
 
 	std::string http_proxy = Server->getServerParameter("http_proxy");
-
-	std::string errmsg;
-	Server->Log("Downloading version file...", LL_INFO);
-	std::string version = url_fak->downloadString(urbackup_update_url+"version.txt", http_proxy, &errmsg);
-	if(version.empty())
-	{
-		Server->Log("Error while downloading version info from "+urbackup_update_url+"version.txt: " + errmsg, LL_ERROR);
-		return;
-	}
-	std::string curr_version=getFile("urbackup/version.txt");
-	if(curr_version.empty()) curr_version="0";
 	
-	if(atoi(version.c_str())>atoi(curr_version.c_str()))
+	
+	struct SUpdatePlatform
 	{
-		std::vector<std::pair<std::string, std::string> > update_files;
+		SUpdatePlatform(std::string extension,
+			std::string basename, std::string versionname)
+			: extension(extension), basename(basename),
+			versionname(versionname)
+		{}
+		std::string extension;
+		std::string basename;
+		std::string versionname;
+	};
 
-		update_files.push_back(std::make_pair(std::string("exe"), std::string("UrBackupUpdate")));
-		update_files.push_back(std::make_pair(std::string("sh"), std::string("UrBackupUpdateMac")));
-		update_files.push_back(std::make_pair(std::string("sh"), std::string("UrBackupUpdateLinux")));
+	std::vector<SUpdatePlatform> update_files;
 
-		for (size_t i = 0; i < update_files.size(); ++i)
+	update_files.push_back(SUpdatePlatform("exe", "UrBackupUpdate", "version.txt"));
+	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateMac", "version_osx.txt"));
+	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateLinux", "version_linux.txt"));
+
+	for (size_t i = 0; i < update_files.size(); ++i)
+	{
+		SUpdatePlatform& curr = update_files[i];
+
+		std::string errmsg;
+		Server->Log("Downloading version file...", LL_INFO);
+		std::string version = url_fak->downloadString(urbackup_update_url + curr.versionname, http_proxy, &errmsg);
+		if (version.empty())
 		{
-			std::string basename = update_files[i].second;
-			std::string exe_extension = update_files[i].first;
+			Server->Log("Error while downloading version info from " + urbackup_update_url + curr.versionname + ": " + errmsg, LL_ERROR);
+			return;
+		}
+		std::string curr_version = getFile("urbackup/"+curr.versionname);
+		if (curr_version.empty()) curr_version = "0";
 
+		if (version!=curr_version)
+		{
 			Server->Log("Downloading signature...", LL_INFO);
 
-			IFile* sig_file = Server->openFile("urbackup/"+basename+".sig2", MODE_WRITE);
+			IFile* sig_file = Server->openFile("urbackup/" + curr.basename + ".sig2", MODE_WRITE);
 			if (sig_file == NULL)
 			{
-				Server->Log("Error opening signature output file urbackup/"+ basename+".sig2", LL_ERROR);
+				Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig2", LL_ERROR);
 				return;
 			}
 			ObjectScope sig_file_scope(sig_file);
 
-			bool b = url_fak->downloadFile(urbackup_update_url + basename + ".sig2", sig_file, http_proxy, &errmsg);
+			bool b = url_fak->downloadFile(urbackup_update_url + curr.basename + ".sig2", sig_file, http_proxy, &errmsg);
 
 			if (!b)
 			{
-				Server->Log("Error while downloading update signature from " + urbackup_update_url + basename + ".sig2: " + errmsg, LL_ERROR);
+				Server->Log("Error while downloading update signature from " + urbackup_update_url + curr.basename + ".sig2: " + errmsg, LL_ERROR);
 			}
 
-			if (update_files[i].first == "exe")
+			if (curr.extension == "exe")
 			{
 				Server->Log("Downloading old signature...", LL_INFO);
 
-				IFile* old_sig_file = Server->openFile("urbackup/" + basename + ".sig", MODE_WRITE);
+				IFile* old_sig_file = Server->openFile("urbackup/" + curr.basename + ".sig", MODE_WRITE);
 				if (old_sig_file == NULL)
 				{
-					Server->Log("Error opening signature output file urbackup/" + basename + ".sig", LL_ERROR);
+					Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig", LL_ERROR);
 					return;
 				}
 				ObjectScope old_sig_file_scope(old_sig_file);
 
-				bool b = url_fak->downloadFile(urbackup_update_url + basename + ".sig", old_sig_file, http_proxy, &errmsg);
+				bool b = url_fak->downloadFile(urbackup_update_url + curr.basename + ".sig", old_sig_file, http_proxy, &errmsg);
 
 				if (!b)
 				{
-					Server->Log("Error while downloading old update signature from " + urbackup_update_url + basename + ".sig: " + errmsg, LL_ERROR);
+					Server->Log("Error while downloading old update signature from " + urbackup_update_url + curr.basename + ".sig: " + errmsg, LL_ERROR);
 				}
 			}
 
 			Server->Log("Getting update file URL...", LL_INFO);
-			std::string update_url = url_fak->downloadString(urbackup_update_url + basename + ".url", http_proxy, &errmsg);
+			std::string update_url = url_fak->downloadString(urbackup_update_url + curr.basename + ".url", http_proxy, &errmsg);
 
 			if (update_url.empty())
 			{
-				Server->Log("Error while downloading update url from " + urbackup_update_url + basename + ".url: " + errmsg, LL_ERROR);
+				Server->Log("Error while downloading update url from " + urbackup_update_url + curr.basename + ".url: " + errmsg, LL_ERROR);
 				return;
 			}
 
-			IFile* update_file = Server->openFile("urbackup/"+ basename+"." + exe_extension, MODE_WRITE);
+			IFile* update_file = Server->openFile("urbackup/" + curr.basename + "." + curr.extension, MODE_WRITE);
 			if (update_file == NULL)
 			{
-				Server->Log("Error opening update output file urbackup/"+basename+"." + exe_extension, LL_ERROR);
+				Server->Log("Error opening update output file urbackup/" + curr.basename + "." + curr.extension, LL_ERROR);
 				return;
 			}
 			ObjectScope update_file_scope(update_file);
@@ -132,10 +144,13 @@ void ServerUpdate::update_client()
 				Server->Log("Error while downloading update file from " + update_url + ": " + errmsg, LL_ERROR);
 				return;
 			}
-		}
 
-		Server->Log("Successfully downloaded update file.", LL_INFO);
-		writestring(version, "urbackup/version.txt");
+			sig_file->Sync();
+			update_file->Sync();
+
+			Server->Log("Successfully downloaded update file.", LL_INFO);
+			writestring(version, "urbackup/"+curr.versionname);
+		}
 	}
 }
 
