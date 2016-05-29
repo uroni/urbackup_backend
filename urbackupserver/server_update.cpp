@@ -28,6 +28,18 @@ extern IUrlFactory *url_fak;
 namespace
 {
 	std::string urbackup_update_url = "http://update3.urbackup.org/";
+
+	struct SUpdatePlatform
+	{
+		SUpdatePlatform(std::string extension,
+			std::string basename, std::string versionname)
+			: extension(extension), basename(basename),
+			versionname(versionname)
+		{}
+		std::string extension;
+		std::string basename;
+		std::string versionname;
+	};
 }
 
 ServerUpdate::ServerUpdate(void)
@@ -45,19 +57,6 @@ void ServerUpdate::update_client()
 	read_update_location();
 
 	std::string http_proxy = Server->getServerParameter("http_proxy");
-	
-	
-	struct SUpdatePlatform
-	{
-		SUpdatePlatform(std::string extension,
-			std::string basename, std::string versionname)
-			: extension(extension), basename(basename),
-			versionname(versionname)
-		{}
-		std::string extension;
-		std::string basename;
-		std::string versionname;
-	};
 
 	std::vector<SUpdatePlatform> update_files;
 
