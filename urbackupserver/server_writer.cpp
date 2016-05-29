@@ -34,9 +34,10 @@ const uint64 filebuf_lim=1000*1024*1024; //1000MB
 const unsigned int sha_size=32;
 
 ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
-		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize, logid_t logid)
+		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize,
+	logid_t logid, int64 drivesize)
  : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize), do_make_full(false),
-   logid(logid)
+   logid(logid), drivesize(drivesize)
 {
 	filebuffer=use_tmpfiles;
 
@@ -239,7 +240,14 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 
 	if (buf == NULL)
 	{
-		if (!vhd->setUnused(pos, pos + bsize))
+		int64 unused_end = pos + bsize;
+		if (pos<drivesize && unused_end>drivesize)
+		{
+			Server->Log("Trim beyond drivesize (drivesize: " + convert(drivesize) + " trim to " + convert(pos + bsize)+"). Trimming less...", LL_INFO);
+			unused_end = drivesize;
+		}
+
+		if (!vhd->setUnused(pos, unused_end))
 		{
 			ServerLogger::Log(logid, "Error setting unused area (from byte "+convert(pos)+" to byte "+convert(pos + bsize)+"). "+os_last_error_str(), LL_ERROR);
 			has_error = true;

@@ -1450,16 +1450,19 @@ bool VHDFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
 	if (!Seek(unused_start))
 	{
+		Server->Log("Error while sseking to "+convert(unused_end)+" in VHD file. Size is "+convert(dstsize)+" -2", LL_ERROR);
 		return false;
 	}
 
 	if (read_only)
 	{
+		Server->Log("VHD file is read only -2", LL_ERROR);
 		return false;
 	}
 
 	if (static_cast<uint64>(unused_end)>dstsize)
 	{
+		Server->Log("VHD file is not large enough. Want to trim till " + convert(unused_end) + " but size is " + convert(dstsize), LL_ERROR);
 		return false;
 	}
 

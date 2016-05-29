@@ -810,7 +810,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 					}
 
-					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset, hashfile, vhd_blocksize*blocksize, logid);
+					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images,
+						mbr_offset, hashfile, vhd_blocksize*blocksize, logid, drivesize + (int64)mbr_size);
 					vhdfile_ticket = Server->getThreadPool()->execute(vhdfile, "image backup writer");
 
 					blockdata=vhdfile->getBuffer();
