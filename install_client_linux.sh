@@ -202,7 +202,11 @@ fi
 if [ $SYSTEMD = yes ]
 then
 	echo "Installing systemd unit..."
-	SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
+	SYSTEMD_DIR=""
+	if command -v pkg-config >/dev/null 2>&1
+	then
+		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
+	fi
 	
 	if [ "x$SYSTEMD_DIR" = x ]
 	then
