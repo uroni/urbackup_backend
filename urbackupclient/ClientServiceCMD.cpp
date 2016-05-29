@@ -2046,7 +2046,7 @@ void ClientConnector::CMD_VERSION_UPDATE(const std::string &cmd)
 #else
 #define VERSION_FILE_PREFIX "urbackup/"
 
-	if (n_version < 125)
+	if (atoi(server_version.c_str()) < 125)
 	{
 		tcpstack.Send(pipe, "noop");
 		return;
