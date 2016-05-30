@@ -641,17 +641,23 @@ bool FileClient::Reconnect(void)
 		queue_callback->resetQueueFull();
 	}
 
-	if(tcpsock!=NULL)
+	unsigned int local_reconnection_timeout;
 	{
 		IScopedLock lock(mutex);
-		transferred_bytes+=tcpsock->getTransferedBytes();
-		real_transferred_bytes+=tcpsock->getRealTransferredBytes();
-		Server->destroy(tcpsock);
-		tcpsock=NULL;
+		if (tcpsock != NULL)
+		{
+			IScopedLock lock(mutex);
+			transferred_bytes += tcpsock->getTransferedBytes();
+			real_transferred_bytes += tcpsock->getRealTransferredBytes();
+			Server->destroy(tcpsock);
+			tcpsock = NULL;
+		}
+
+		local_reconnection_timeout = reconnection_timeout;
 	}
 	connect_starttime=Server->getTimeMS();
-
-	while(Server->getTimeMS()-connect_starttime<reconnection_timeout)
+	
+	while(Server->getTimeMS()-connect_starttime<local_reconnection_timeout)
 	{
 		IPipe* new_tcpsock;
 		if(reconnection_callback==NULL)
@@ -677,6 +683,8 @@ bool FileClient::Reconnect(void)
 		else
 		{
 			Server->wait(1000);
+			IScopedLock lock(mutex);
+			local_reconnection_timeout = reconnection_timeout;
 		}
 	}
 	Server->Log("Reconnecting failed.", LL_DEBUG);
@@ -1360,6 +1368,7 @@ std::string FileClient::getErrorString(_u32 ec)
 
 void FileClient::setReconnectionTimeout(unsigned int t)
 {
+	IScopedLock lock(mutex);
 	reconnection_timeout=t;
 }
 
@@ -2017,6 +2026,7 @@ void FileClient::Shutdown()
 		tcpsock->shutdown();
 	}
 	reconnect_tries = 0;
+	reconnection_timeout = 10000;
 }
 
 bool FileClient::isDownloading()
