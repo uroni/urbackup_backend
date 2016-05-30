@@ -1434,7 +1434,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 	{
 		if (dstfsize != tfilesize)
 		{
-			ServerLogger::Log(logid, "dstfsize="+convert(dstfsize)+" tfilesize="+convert(tfilesize), LL_ERROR);
+			ServerLogger::Log(logid, "dstfsize="+convert(dstfsize)+" tfilesize="+convert(tfilesize)+" dest=\""+ dest+"\" patch=\""+patch->getFilename()+"\" source=\""+ source+"\"", LL_ERROR);
 		}
 		assert(dstfsize==tfilesize);
 	}

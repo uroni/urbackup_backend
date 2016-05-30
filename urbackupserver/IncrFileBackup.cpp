@@ -604,39 +604,50 @@ bool IncrFileBackup::doFileBackup()
 							std::string srcpath=last_backuppath+local_curr_os_path;
 							std::string src_hashpath = last_backuppath_hashes+local_curr_os_path;
 							if(link_directory_pool(clientid, backuppath+local_curr_os_path, srcpath, dir_pool_path,
-								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao)
-								&&
-								link_directory_pool(clientid, backuppath_hashes+local_curr_os_path, src_hashpath, dir_pool_path,
-								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao))
+								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao) )
 							{
-								skip_dir_completely=1;
-								dir_linked=true;
-
-								if (copy_last_file_entries)
+								if(link_directory_pool(clientid, backuppath_hashes + local_curr_os_path, src_hashpath, dir_pool_path,
+									BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao) )
 								{
-									std::vector<ServerFilesDao::SFileEntry> file_entries = filesdao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath) + os_file_sep() + "*");
-									for (size_t i = 0; i<file_entries.size(); ++i)
+									skip_dir_completely = 1;
+									dir_linked = true;
+
+									if (copy_last_file_entries)
 									{
-										if (file_entries[i].fullpath.size()>srcpath.size())
+										std::vector<ServerFilesDao::SFileEntry> file_entries = filesdao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath) + os_file_sep() + "*");
+										for (size_t i = 0; i < file_entries.size(); ++i)
 										{
-											std::string entry_hashpath;
-											if (next(file_entries[i].hashpath, 0, src_hashpath))
+											if (file_entries[i].fullpath.size() > srcpath.size())
 											{
-												entry_hashpath = backuppath_hashes + local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
+												std::string entry_hashpath;
+												if (next(file_entries[i].hashpath, 0, src_hashpath))
+												{
+													entry_hashpath = backuppath_hashes + local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
+												}
+
+												addFileEntrySQLWithExisting(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
+													file_entries[i].shahash, file_entries[i].filesize, file_entries[i].filesize, incremental_num);
+
+												++num_copied_file_entries;
 											}
-											
-											addFileEntrySQLWithExisting(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
-												file_entries[i].shahash, file_entries[i].filesize, file_entries[i].filesize, incremental_num);
-
-											++num_copied_file_entries;
 										}
-									}
 
-									skip_dir_copy_sparse = false;
+										skip_dir_copy_sparse = false;
+									}
+									else
+									{
+										skip_dir_copy_sparse = readd_file_entries_sparse;
+									}
 								}
 								else
 								{
-									skip_dir_copy_sparse = readd_file_entries_sparse;
+									std::auto_ptr<DBScopedSynchronous> link_dao_synchronous;
+									if (!remove_directory_link(backuppath + local_curr_os_path, *link_dao, clientid, link_dao_synchronous))
+									{
+										ServerLogger::Log(logid, "Could not remove symlinked directory \"" + backuppath + local_curr_os_path + "\" after symlinking metadata directory failed.", LL_ERROR);
+										c_has_error = true;
+										break;
+									}
 								}
 							}
 						}
@@ -953,15 +964,15 @@ bool IncrFileBackup::doFileBackup()
 						{
 							if(link_logcnt<5)
 							{
-								ServerLogger::Log(logid, "Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. Loading file...", LL_WARNING);
-							}
-							else if(link_logcnt==5)
-							{
-								ServerLogger::Log(logid, "More warnings of kind: Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. Loading file... Skipping.", LL_WARNING);
+								ServerLogger::Log(logid, "Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. "+os_last_error_str()+". Loading file...", LL_WARNING);
 							}
 							else
 							{
-								Server->Log("Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. Loading file...", LL_WARNING);
+								if (link_logcnt == 5)
+								{
+									ServerLogger::Log(logid, "More warnings of kind: Creating hardlink from \"" + srcpath + "\" to \"" + backuppath + local_curr_os_path + "\" failed. Loading file... Skipping.", LL_WARNING);
+								}
+								Server->Log("Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. "+os_last_error_str()+". Loading file...", LL_WARNING);
 							}
 							++link_logcnt;
 
