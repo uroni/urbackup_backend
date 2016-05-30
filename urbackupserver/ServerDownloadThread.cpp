@@ -494,7 +494,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, "Error getting complete file \""+cfn+"\" from "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
+		int ll = LL_ERROR;
+		if (rc == ERR_CANNOT_OPEN_FILE && !fileHasSnapshot(todl))
+		{
+			ll = LL_WARNING;
+		}
+		ServerLogger::Log(logid, "Error getting complete file \""+cfn+"\" from "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", ll);
+
 		{
 			IScopedLock lock(mutex);
 			all_downloads_ok=false;
@@ -532,7 +538,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_CANNOT_OPEN_FILE)
+		if ( rc == ERR_CANNOT_OPEN_FILE
+			&& fileHasSnapshot(todl) )
 		{
 			++num_issues;
 		}
@@ -775,7 +782,12 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, "Error getting file patch for \""+cfn+"\" from "+clientname+". Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
+		int ll = LL_ERROR;
+		if (rc == ERR_CANNOT_OPEN_FILE && !fileHasSnapshot(todl))
+		{
+			ll = LL_WARNING;
+		}
+		ServerLogger::Log(logid, "Error getting file patch for \""+cfn+"\" from "+clientname+". Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", ll);
 
 		if(rc==ERR_ERRORCODES)
 		{
@@ -792,7 +804,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			}
 		}
 
-		if (rc == ERR_CANNOT_OPEN_FILE)
+		if (rc == ERR_CANNOT_OPEN_FILE
+			&& fileHasSnapshot(todl) )
 		{
 			++num_issues;
 		}
