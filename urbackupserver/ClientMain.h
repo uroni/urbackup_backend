@@ -194,7 +194,6 @@ public:
 
 	static bool run_script(std::string name, const std::string& params, logid_t logid);
 
-	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
 
 	void updateClientAddress(const std::string& address_data);

@@ -58,7 +58,7 @@ Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, st
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
-	server_token(server_token), details(details), num_issues(0)
+	server_token(server_token), details(details), num_issues(0), stop_backup_running(true)
 {
 	
 }
@@ -119,7 +119,10 @@ void Backup::operator()()
 	bool do_log = false;
 	backup_result = doBackup();
 
-	client_main->stopBackupRunning(is_file_backup);
+	if (stop_backup_running)
+	{
+		client_main->stopBackupRunning(is_file_backup);
+	}
 
 	if(!has_early_error && log_action!=LogAction_NoLogging)
 	{

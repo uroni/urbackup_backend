@@ -1680,7 +1680,7 @@ void IncrFileBackup::copyFile(const std::string& source, const std::string& dest
 
 bool IncrFileBackup::doFullBackup()
 {
-	client_main->stopBackupRunning(true);
+	setStopBackupRunning(false);
 	active_thread->Exit();
 
 	ServerStatus::stopProcess(clientname, status_id);
@@ -1696,8 +1696,6 @@ bool IncrFileBackup::doFullBackup()
 	has_timeout_error = full_backup.hasTimeoutError();
 
 	log_action = LogAction_NoLogging;
-
-	client_main->startBackupRunning(true);
 
 	return full_backup.getResult();
 }

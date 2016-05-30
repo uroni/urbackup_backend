@@ -167,8 +167,8 @@ bool ImageBackup::doBackup()
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
-		client_main->stopBackupRunning(false);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL", server_token, "SYSVOL");
+		sysvol_backup.setStopBackupRunning(false);
 		sysvol_backup();
 
 		if(sysvol_backup.getResult())
@@ -176,16 +176,14 @@ bool ImageBackup::doBackup()
 			sysvol_id = sysvol_backup.getBackupId();
 			lock_cleanup_sysvol.reset(sysvol_id);
 		}
-
-		client_main->startBackupRunning(false);
-		
+	
 		ServerLogger::Log(logid, "Backing up SYSVOL done.", LL_DEBUG);
 
 		if(client_main->getProtocolVersions().efi_version>0)
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
-			client_main->stopBackupRunning(false);
 			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP", server_token, "ESP");
+			esp_backup.setStopBackupRunning(false);
 			esp_backup();
 
 			if(esp_backup.getResult())
@@ -193,8 +191,6 @@ bool ImageBackup::doBackup()
 				esp_id = esp_backup.getBackupId();
 				lock_cleanup_sysvol.reset(esp_id);
 			}
-
-			client_main->startBackupRunning(false);
 
 			ServerLogger::Log(logid, "Backing up EFI System Partition done.", LL_DEBUG);
 		}

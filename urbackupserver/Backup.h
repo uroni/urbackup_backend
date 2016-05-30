@@ -66,6 +66,12 @@ public:
 		return has_timeout_error;
 	}
 
+
+	bool setStopBackupRunning(bool b)
+	{
+		stop_backup_running = b;
+	}
+
 protected:
 	virtual bool doBackup() = 0;
 
@@ -103,4 +109,6 @@ protected:
 	ActiveThread* active_thread;
 
 	std::string server_token;
+
+	bool stop_backup_running;
 };

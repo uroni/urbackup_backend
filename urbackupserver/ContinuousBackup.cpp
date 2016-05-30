@@ -62,6 +62,7 @@ bool ContinuousBackup::doFileBackup()
 
 	IncrFileBackup incr_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
 		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details);
+	incr_backup.setStopBackupRunning(false);
 	incr_backup();
 
 	if(incr_backup.getResult())

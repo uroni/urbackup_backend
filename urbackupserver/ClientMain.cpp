@@ -1966,16 +1966,6 @@ bool ClientMain::isBackupsRunningOkay(bool file, bool incr)
 	}
 }
 
-void ClientMain::startBackupRunning(bool file)
-{
-	IScopedLock lock(running_backup_mutex);
-	++running_backups;
-	if(file)
-	{
-		++running_file_backups;
-	}
-}
-
 void ClientMain::stopBackupRunning(bool file)
 {
 	IScopedLock lock(running_backup_mutex);
