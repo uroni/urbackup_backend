@@ -456,7 +456,7 @@ void ServerVHDWriter::writeRetry(IFile *f, char *buf, unsigned int bsize)
 		off+=r;
 		if(off<bsize)
 		{
-			Server->Log("Error writing to file \""+f->getFilename()+"\". Retrying", LL_WARNING);
+			Server->Log("Error writing to file \""+f->getFilename()+"\". "+os_last_error_str()+". Retrying...", LL_WARNING);
 			Server->wait(10000);
 		}
 	}

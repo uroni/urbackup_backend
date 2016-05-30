@@ -663,7 +663,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			else
 			{
 				has_timeout_error = true;
-				ServerLogger::Log(logid, "Pipe to client unexpectedly closed has_error="+(cc==NULL?"NULL":convert(cc->hasError())), LL_ERROR);
+				if (!persistent)
+				{
+					ServerLogger::Log(logid, "Client disconnected and image is not persistent (Timeout: " + (cc == NULL ? "unavailable" : convert(!cc->hasError()))+").", LL_ERROR);
+				}
+				else
+				{
+					ServerLogger::Log(logid, "Client disconnected before sending anything (Timeout: " + (cc == NULL ? "unavailable" : convert(!cc->hasError())) + ").", LL_ERROR);
+				}
 				goto do_image_cleanup;
 			}
 		}
