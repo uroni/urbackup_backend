@@ -1969,9 +1969,21 @@ bool ClientMain::isBackupsRunningOkay(bool file, bool incr)
 void ClientMain::stopBackupRunning(bool file)
 {
 	IScopedLock lock(running_backup_mutex);
+	if (running_backups == 0)
+	{
+		Server->Log("running_backups is zero", LL_ERROR);
+		assert(false);
+		return;
+	}
 	--running_backups;
 	if(file)
 	{
+		if (running_file_backups == 0)
+		{
+			Server->Log("running_file_backups is zero", LL_ERROR);
+			assert(false);
+			return;
+		}
 		--running_file_backups;
 	}
 }
