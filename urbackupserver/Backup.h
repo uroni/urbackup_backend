@@ -67,7 +67,7 @@ public:
 	}
 
 
-	bool setStopBackupRunning(bool b)
+	void setStopBackupRunning(bool b)
 	{
 		stop_backup_running = b;
 	}
