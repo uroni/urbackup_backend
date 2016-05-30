@@ -59,7 +59,8 @@ void ServerRunningUpdater::operator()(void)
 	{
 		IScopedLock lock(mutex);
 		cond->wait(&lock, 60000);
-		if(do_stop==false && suspended==false)
+		if(!do_stop && !suspended
+			&& backupid!=0)
 		{
 			q->Bind(backupid);
 			q->Write();
@@ -82,6 +83,12 @@ void ServerRunningUpdater::stop(void)
 void ServerRunningUpdater::suspend(bool b)
 {
 	suspended=b;
+}
+
+void ServerRunningUpdater::setBackupid(int pBackupid)
+{
+	IScopedLock lock(mutex);
+	backupid = pBackupid;
 }
 
 #endif //CLIENT_ONLY

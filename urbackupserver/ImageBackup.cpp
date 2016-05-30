@@ -109,7 +109,8 @@ namespace
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
 	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details)
-	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
+	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details),
+	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0)
 {
 }
 
@@ -312,6 +313,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		sletter = pLetter[0];
 	}
 
+	std::string imagefn;
 	std::string mbrd = getMBR(sletter);
 	if (mbrd.empty())
 	{
@@ -321,30 +323,34 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			return false;
 		}
 	}
-
-	std::string imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
-
-	if (imagefn.empty())
-	{
-		return false;
-	}
-
-	std::auto_ptr<IFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
-	if (mbr_file.get() != NULL)
-	{
-		_u32 w = mbr_file->Write(mbrd);
-		if (w != mbrd.size())
-		{
-			ServerLogger::Log(logid, "Error writing mbr data. "+os_last_error_str(), LL_ERROR);
-			return false;
-		}
-		mbr_file.reset();
-	}
 	else
 	{
-		ServerLogger::Log(logid, "Error creating file for writing MBR data. "+os_last_error_str(), LL_ERROR);
-		return false;
+		imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
+
+		if (imagefn.empty())
+		{
+			return false;
+		}
+
+		std::auto_ptr<IFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+		if (mbr_file.get() != NULL)
+		{
+			_u32 w = mbr_file->Write(mbrd);
+			if (w != mbrd.size())
+			{
+				ServerLogger::Log(logid, "Error writing mbr data. " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+			mbr_file.reset();
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Error creating file for writing MBR data. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
 	}
+
+	ScopedLockImageFromCleanup cleanup_lock(0);
 
 	if (!imagefn.empty())
 	{
@@ -356,10 +362,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		{
 			backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
 		}
-	}
 
-	backupid = static_cast<int>(db->getLastInsertID());
-	ScopedLockImageFromCleanup cleanup_lock(backupid);
+		backupid = static_cast<int>(db->getLastInsertID());
+		cleanup_lock.reset(backupid);
+	}
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
@@ -754,6 +760,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						{
 							backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
 						}
+
+						backupid = static_cast<int>(db->getLastInsertID());
+						cleanup_lock.reset(backupid);
+						running_updater->setBackupid(backupid);
 					}
 
 					IFSImageFactory::ImageFormat image_format;

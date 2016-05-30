@@ -15,6 +15,8 @@ public:
 	void stop(void);
 	void suspend(bool b);
 
+	void setBackupid(int pBackupid);
+
 private:
 	volatile bool do_stop;
 	bool image;
