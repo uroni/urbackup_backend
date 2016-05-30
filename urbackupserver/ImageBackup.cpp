@@ -352,20 +352,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	ScopedLockImageFromCleanup cleanup_lock(0);
 
-	if (!imagefn.empty())
-	{
-		if (pParentvhd.empty())
-		{
-			backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
-		}
-		else
-		{
-			backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
-		}
-
-		backupid = static_cast<int>(db->getLastInsertID());
-		cleanup_lock.reset(backupid);
-	}
+	addBackupToDatabase(pLetter, pParentvhd, incremental,
+		incremental_ref, imagefn, cleanup_lock, NULL);
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
@@ -752,18 +740,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							goto do_image_cleanup;
 						}
 
-						if (pParentvhd.empty())
-						{
-							backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
-						}
-						else
-						{
-							backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
-						}
-
-						backupid = static_cast<int>(db->getLastInsertID());
-						cleanup_lock.reset(backupid);
-						running_updater->setBackupid(backupid);
+						addBackupToDatabase(pLetter, pParentvhd, incremental,
+							incremental_ref, imagefn, cleanup_lock, running_updater);
 					}
 
 					IFSImageFactory::ImageFormat image_format;
@@ -1884,4 +1862,29 @@ bool ImageBackup::runPostBackupScript(bool incr, const std::string& path, const 
 
 	return ClientMain::run_script("urbackup" + os_file_sep() + script_name,
 		"\""+ path+"\" \"" + pLetter + "\" " + (success ? "1" : "0"), logid);
+}
+
+void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
+	const std::string& imagefn, ScopedLockImageFromCleanup& cleanup_lock, ServerRunningUpdater *running_updater)
+{
+	if (imagefn.empty())
+	{
+		return;
+	}
+
+	if (pParentvhd.empty())
+	{
+		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+	}
+	else
+	{
+		backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
+	}
+
+	backupid = static_cast<int>(db->getLastInsertID());
+	cleanup_lock.reset(backupid);
+	if (running_updater != NULL)
+	{
+		running_updater->setBackupid(backupid);
+	}
 }

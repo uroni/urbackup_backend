@@ -7,6 +7,8 @@
 class ServerVHDWriter;
 class IFile;
 class ServerPingThread;
+class ScopedLockImageFromCleanup;
+class ServerRunningUpdater;
 
 class ImageBackup : public Backup
 {
@@ -33,6 +35,9 @@ protected:
 	std::string constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd);
 	std::string getMBR(const std::string &dl);
 	bool runPostBackupScript(bool incr, const std::string& path, const std::string &pLetter, bool success);
+	void addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd,
+		int incremental, int incremental_ref, const std::string& imagefn, ScopedLockImageFromCleanup& cleanup_lock,
+		ServerRunningUpdater *running_updater);
 
 	std::string letter;
 
