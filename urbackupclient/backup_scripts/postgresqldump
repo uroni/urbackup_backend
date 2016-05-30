@@ -31,7 +31,7 @@ alias errcho='>&2 echo'
 TIME=`date`
 errcho "Starting dump backup of PostgreSQL at $TIME..."
 
-pg_dumpall
+su postgres -c "pg_dumpall"
 
 TIME=`date`
 errcho "Backup of PostgreSQL finished at $TIME."
