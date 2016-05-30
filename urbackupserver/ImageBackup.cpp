@@ -714,9 +714,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							}
 
 							if(pLetter=="SYSVOL")
-								ServerLogger::Log(logid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", loglevel);
+								ServerLogger::Log(logid, "Request of SYSVOL failed. Reason: "+err, loglevel);
 							else
-								ServerLogger::Log(logid, "Request of EFI System Partition failed. Reason: "+err+". This probably just means the Computer does not have a EFI System Partition which UrBackup can backup.", loglevel);
+								ServerLogger::Log(logid, "Request of EFI System Partition failed. Reason: "+err, loglevel);
 						}
 					}
 					else
