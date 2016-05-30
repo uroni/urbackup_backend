@@ -87,7 +87,7 @@ namespace
 			size_t tsend=(std::min)((size_t)c_send_buffer_size, hsize-i);
 			if(file->Read(send_buffer, (_u32)tsend)!=tsend)
 			{
-				ServerLogger::Log(logid, "Reading from file failed", LL_ERROR);
+				ServerLogger::Log(logid, "Reading from file failed. "+os_last_error_str(), LL_ERROR);
 				return ESendErr_Read;
 			}
 			if(!outputpipe->Write(send_buffer, tsend, 120000, false))
@@ -306,19 +306,68 @@ namespace
 
 bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format, bool transfer_bitmap)
 {
+	std::string sletter = pLetter;
+	if (pLetter != "SYSVOL" && pLetter != "ESP")
+	{
+		sletter = pLetter[0];
+	}
+
+	std::string mbrd = getMBR(sletter);
+	if (mbrd.empty())
+	{
+		if (pLetter != "SYSVOL" && pLetter != "ESP")
+		{
+			ServerLogger::Log(logid, "Cannot retrieve master boot record (MBR) for the disk from the client.", LL_ERROR);
+			return false;
+		}
+	}
+
+	std::string imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
+
+	if (imagefn.empty())
+	{
+		return false;
+	}
+
+	std::auto_ptr<IFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+	if (mbr_file.get() != NULL)
+	{
+		_u32 w = mbr_file->Write(mbrd);
+		if (w != mbrd.size())
+		{
+			ServerLogger::Log(logid, "Error writing mbr data. "+os_last_error_str(), LL_ERROR);
+			return false;
+		}
+		mbr_file.reset();
+	}
+	else
+	{
+		ServerLogger::Log(logid, "Error creating file for writing MBR data. "+os_last_error_str(), LL_ERROR);
+		return false;
+	}
+
+	if (!imagefn.empty())
+	{
+		if (pParentvhd.empty())
+		{
+			backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+		}
+		else
+		{
+			backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
+		}
+	}
+
+	backupid = static_cast<int>(db->getLastInsertID());
+	ScopedLockImageFromCleanup cleanup_lock(backupid);
+
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, "Connecting to \""+clientname+"\" for image backup failed", LL_ERROR);
 		has_timeout_error = true;
 		return false;
-	}
-
-	std::string sletter=pLetter;
-	if(pLetter!="SYSVOL" && pLetter!="ESP")
-	{
-		sletter=pLetter[0];
 	}
 
 	bool with_checksum=false;
@@ -367,75 +416,24 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			Server->destroy(hashfile);
 			return false;
 		}
-		if(sendFileToPipe(hashfile, cc, logid)!=ESendErr_Ok)
+		ESendErr senderr = sendFileToPipe(hashfile, cc, logid);
+		if(senderr!=ESendErr_Ok)
 		{
-			ServerLogger::Log(logid, "Sending hashdata failed", LL_ERROR);
+			if (senderr == ESendErr_Send)
+			{
+				ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Connection to client broke.", LL_ERROR);
+				has_timeout_error = true;
+			}
+			else
+			{
+				ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Server cannot read necessary data.", LL_ERROR);
+			}
 			Server->destroy(cc);
 			Server->destroy(hashfile);
 			return false;
 		}
 		Server->destroy(hashfile);
 	}
-
-	
-
-	std::string imagefn;
-
-	{
-		std::string mbrd=getMBR(sletter);
-		if(mbrd.empty())
-		{
-			if(pLetter!="SYSVOL" && pLetter!="ESP")
-			{
-				ServerLogger::Log(logid, "Error getting MBR data", LL_ERROR);
-			}
-		}
-		else
-		{
-			imagefn = constructImagePath(sletter, image_file_format, pParentvhd);
-
-			if (imagefn.empty())
-			{
-				Server->destroy(cc);
-				return false;
-			}
-
-			IFile *mbr_file=Server->openFile(os_file_prefix(imagefn+".mbr"), MODE_WRITE);
-			if(mbr_file!=NULL)
-			{
-				_u32 w=mbr_file->Write(mbrd);
-				if(w!=mbrd.size())
-				{
-					Server->Log("Error writing mbr data.", LL_ERROR);
-					Server->destroy(mbr_file);
-					Server->destroy(cc);
-					return false;
-				}
-				Server->destroy(mbr_file);
-			}
-			else
-			{
-				Server->Log("Error creating file for writing MBR data.", LL_ERROR);
-				Server->destroy(cc);
-				return false;
-			}
-		}
-	}
-
-	if (!imagefn.empty())
-	{
-		if (pParentvhd.empty())
-		{
-			backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
-		}
-		else
-		{
-			backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
-		}
-	}
-
-	backupid=static_cast<int>(db->getLastInsertID());
-	ScopedLockImageFromCleanup cleanup_lock(backupid);
 
 	std::string ret;
 	int64 starttime=Server->getTimeMS();
