@@ -117,6 +117,8 @@ bool copy_file(IFile *fsrc, IFile *fdst);
 
 bool os_path_absolute(const std::string& path);
 
+bool os_sync(const std::string& path);
+
 enum EFileType
 {
 	EFileType_File = 1,

@@ -1039,3 +1039,27 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	return false;
 }
 #endif //__NR_ioprio_set
+
+bool os_sync(const std::string & path)
+{
+	int fd = open(path.c_str(), O_RDWR);
+	
+	if(fd!=-1)
+	{
+		if(syncfs(fd)!=0)
+		{
+			sync();
+			close(fd);
+			return true;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	else
+	{
+		sync();
+		return true;
+	}
+}

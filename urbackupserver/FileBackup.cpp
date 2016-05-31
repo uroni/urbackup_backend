@@ -629,6 +629,11 @@ bool FileBackup::doBackup()
 	}
 	else
 	{
+		if (!os_sync(backuppath))
+		{
+			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+		}
+
 		backup_dao->updateClientLastFileBackup(backupid, static_cast<int>(num_issues), clientid);
 		backup_dao->updateFileBackupSetComplete(backupid);
 	}

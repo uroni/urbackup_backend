@@ -217,6 +217,7 @@ CowFile::~CowFile()
 {
 	if(is_open)
 	{
+		fsync(fd);
 		close(fd);
 	}
 
@@ -422,7 +423,7 @@ bool CowFile::saveBitmap()
 	}
 
 	bitmap_dirty=false;
-	return true;
+	return bitmap_file->Sync();
 }
 
 bool CowFile::loadBitmap(const std::string& bitmap_fn)

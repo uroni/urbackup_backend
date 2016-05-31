@@ -1277,6 +1277,52 @@ bool os_path_absolute(const std::string& path)
 	return PathIsRelativeW(ConvertToWchar(path).c_str())==FALSE;
 }
 
+bool os_sync(const std::string & path)
+{
+	std::string prefixedbpath = os_file_prefix(path);
+	std::wstring tvolume;
+	tvolume.resize(prefixedbpath.size() + 100);
+	DWORD cchBufferLength = static_cast<DWORD>(tvolume.size());
+	BOOL b = GetVolumePathNameW(ConvertToWchar(prefixedbpath).c_str(), &tvolume[0], cchBufferLength);
+	if (!b)
+	{
+		return false;
+	}
+
+	std::string volume = ConvertFromWchar(tvolume.c_str());
+
+	if (volume.find("\\\\?\\") == 0
+		&& volume.find("\\\\?\\GLOBALROOT") != 0)
+	{
+		volume.erase(0, 4);
+	}
+
+	if (!volume.empty()
+		&& volume[volume.size() - 1] == os_file_sep()[0])
+	{
+		volume = volume.substr(0, volume.size() - 1);
+	}
+
+	HANDLE hVol = CreateFileW(ConvertToWchar("\\\\.\\"+volume).c_str(),
+		GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_WRITE | FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	if (hVol == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+
+	b = FlushFileBuffers(hVol);
+
+	CloseHandle(hVol);
+	
+	return b == TRUE;
+}
+
 std::string os_last_error_str()
 {
 	std::string msg;
