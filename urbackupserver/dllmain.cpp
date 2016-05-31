@@ -431,10 +431,23 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc = md5sum_check();
 		}
+		else if (app == "hash")
+		{
+			std::auto_ptr<IFsFile> f(Server->openFile(Server->getServerParameter("hash_file"), MODE_READ_SEQUENTIAL));
+			if (f.get() != NULL)
+			{
+				std::string h = BackupServerPrepareHash::calc_hash(f.get(), Server->getServerParameter("hash_method"));
+				Server->Log("Hash: " + base64_encode(reinterpret_cast<const unsigned char*>(h.data()), static_cast<unsigned int>(h.size())), LL_INFO);
+			}
+			else
+			{
+				Server->Log("Cannot open file to hash (hash_file) \"" + Server->getServerParameter("hash_file") + "\" for reading. " + os_last_error_str(), LL_ERROR);
+			}
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy, md5sum_check, hash");
 		}
 		exit(rc);
 	}

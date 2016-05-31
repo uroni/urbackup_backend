@@ -274,6 +274,30 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
+std::string BackupServerPrepareHash::calc_hash(IFsFile * f, std::string method)
+{
+	FsExtentIterator extent_iterator(f, hash_bsize);
+	if (method=="sha512-nosparse" 
+		|| method=="sha512-sparse")
+	{
+		HashSha512 hashsha;
+		if (hash_sha(f, &extent_iterator, method == "sha512-sparse", hashsha))
+		{
+			return hashsha.finalize();
+		}
+	}
+	else
+	{
+		TreeHash treehash;
+		if (hash_sha(f, &extent_iterator, true, treehash))
+		{
+			return treehash.finalize();
+		}
+	}
+
+	return std::string();
+}
+
 bool BackupServerPrepareHash::hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashFunc& hashf, IHashProgressCallback* progress_callback)
 {
 	f->Seek(0);

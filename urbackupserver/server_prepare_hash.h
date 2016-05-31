@@ -51,6 +51,9 @@ public:
 		virtual void hash_progress(int64 curr) = 0;
 	};
 
+
+	static std::string calc_hash(IFsFile *f, std::string method);
+
 	static bool hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashFunc& hashf, IHashProgressCallback* progress_callback=NULL);
 
 private:
