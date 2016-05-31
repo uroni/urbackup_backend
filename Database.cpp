@@ -151,6 +151,12 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 			Write("PRAGMA page_size=4096");
 		}
 
+		it = params.find("mmap_size");
+		if (it != params.end())
+		{
+			Write("PRAGMA mmap_size=" + it->second);
+		}
+
 		if(allocation_chunk_size!=std::string::npos)
 		{
 			int chunk_size = static_cast<int>(allocation_chunk_size);

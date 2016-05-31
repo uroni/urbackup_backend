@@ -233,6 +233,36 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("SQLITE_MMAP_HUGE", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--sqlite_mmap_huge");
+				real_args.push_back(strlower(val));
+			}
+		}
+		if (settings->getValue("SQLITE_MMAP_MEDIUM", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--sqlite_mmap_medium");
+				real_args.push_back(strlower(val));
+			}
+		}
+		if (settings->getValue("SQLITE_MMAP_SMALL", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--sqlite_mmap_small");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)

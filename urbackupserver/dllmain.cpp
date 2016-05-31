@@ -168,14 +168,28 @@ void open_server_database(bool init_db)
 		writestring(get_backup_server_db_data(), "urbackup/backup_server.db");
 	}
 
+	std::string sqlite_mmap_huge = Server->getServerParameter("sqlite_mmap_huge");
+	std::string sqlite_mmap_medium = Server->getServerParameter("sqlite_mmap_medium");
+	std::string sqlite_mmap_small = Server->getServerParameter("sqlite_mmap_small");
+
 	str_map params;
 	params["wal_autocheckpoint"] = "0";
+
+	if (!sqlite_mmap_medium.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_medium;
+	}
 		
 	if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER, params) )
 	{
 		Server->Log("Couldn't open Database backup_server.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server.db\"", LL_ERROR);
 		exit(1);
+	}
+
+	if (!sqlite_mmap_medium.empty())
+	{
+		params.erase(params.find("mmap_size"));
 	}
 
 	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
@@ -187,12 +201,21 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
+	if (!sqlite_mmap_huge.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_huge;
+	}
 
 	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES, params))
 	{
 		Server->Log("Couldn't open Database backup_server_files.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
 		exit(1);
+	}
+
+	if (!sqlite_mmap_huge.empty())
+	{
+		params.erase(params.find("mmap_size"));
 	}
 
 	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES, sqlite_data_allocation_chunk_size);
@@ -204,11 +227,21 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
+	if (!sqlite_mmap_small.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_small;
+	}
+
 	if (!Server->openDatabase("urbackup/backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL, params))
 	{
 		Server->Log("Couldn't open Database backup_server_link_journal.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
 		exit(1);
+	}
+
+	if (!sqlite_mmap_small.empty())
+	{
+		params.erase(params.find("mmap_size"));
 	}
 
 	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINK_JOURNAL, sqlite_data_allocation_chunk_size);
@@ -220,11 +253,21 @@ void open_server_database(bool init_db)
 		exit(1);
 	}
 
+	if (!sqlite_mmap_medium.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_small;
+	}
+
 	if (!Server->openDatabase("urbackup/backup_server_links.db", URBACKUPDB_SERVER_LINKS, params))
 	{
 		Server->Log("Couldn't open Database backup_server_links.db. Exiting. Expecting database at \"" +
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
 		exit(1);
+	}
+
+	if (!sqlite_mmap_medium.empty())
+	{
+		params.erase(params.find("mmap_size"));
 	}
 
 	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINKS, sqlite_data_allocation_chunk_size);

@@ -33,7 +33,7 @@ endif
 urbackupsrv_LDADD = $(LIBCURL) $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) $(FUSE_LIBS)
 urbackupsrv_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN $(WITH_FUSEPLUGIN_CXXFLAGS) -DVARDIR='"$(localstatedir)"' -DBINDIR='"$(bindir)"' -DDATADIR='"$(datadir)"'
 urbackupsrv_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(LIBCURL_CPPFLAGS) $(FUSE_CFLAGS) $(FORTIFY_FLAGS)
-urbackupsrv_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
+urbackupsrv_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY -DSQLITE_MAX_MMAP_SIZE=0x10000000000LL $(SUID_CFLAGS)
 urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_ldflags)
 
 urbackup_snapshot_helper_SOURCES = snapshot_helper/main.cpp urbackupcommon/os_functions_lin_min.cpp stringtools.cpp
