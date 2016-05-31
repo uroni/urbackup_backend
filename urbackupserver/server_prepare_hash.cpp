@@ -233,7 +233,9 @@ void BackupServerPrepareHash::operator()(void)
 					{
 						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
 							"This may be caused by a bug or by random bit flips on the client or server hard disk. Failing backup. "
-							"(Hash: "+ print_hash_func(c_hash_func)+")", LL_ERROR);
+							"(Hash: "+ print_hash_func(c_hash_func)+
+							", client hash: "+base64_encode(reinterpret_cast<const unsigned char*>(client_sha_dig.data()), static_cast<unsigned int>(client_sha_dig.size()))+
+							", server hash: "+ base64_encode(reinterpret_cast<const unsigned char*>(h.data()), static_cast<unsigned int>(h.size()))+")", LL_ERROR);
 						has_error = true;
 					}
 					else
