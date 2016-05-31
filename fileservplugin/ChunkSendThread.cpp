@@ -240,6 +240,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		bool script_eof=false;
 		bool off_sent=false;
+		bool readerr = false;
+		unsigned int readderr_code = 0;
 
 		do
 		{
@@ -247,19 +249,23 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			if(blockleft>0)
 			{
 				_u32 toread = (std::min)(blockleft, c_chunk_size);
-				bool readerr=false;
 
 				while(r<toread)
 				{
-					_u32 r_add=file->Read(spos, chunk_buf+off+r,  toread-r, &readerr);
+					bool c_readerr = false;
+					_u32 r_add=file->Read(spos, chunk_buf+off+r,  toread-r, &c_readerr);
 					spos += r_add;
 
-					if(readerr)
+					if(c_readerr
+						|| (r_add==0 && file->Size()!=-1) )
 					{
-						sendError(ERR_READING_FAILED, getSystemErrorCode());
-					}
-					else if(r_add==0 && file->Size()!=-1)
-					{
+						if (c_readerr)
+						{
+							readerr = true;
+							readderr_code = getSystemErrorCode();
+							Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(1).", LL_ERROR);
+						}
+
 						if(curr_file_size==-1)
 						{
 							if(!script_eof)
@@ -302,6 +308,12 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		}
 		while(r==c_chunk_size && blockleft>0);	
+
+		if (readerr)
+		{
+			sendError(ERR_READING_FAILED, readderr_code);
+			return false;
+		}
 
 		md5_hash.finalize();
 		*chunk_buf=ID_BLOCK_HASH;
@@ -359,6 +371,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		spos += r;
 		real_r=r;
 
+		if (readerr)
+		{
+			unsigned int readderr_code = getSystemErrorCode();
+			Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
+			sendError(ERR_READING_FAILED, readderr_code);
+			return false;
+		}
+
 		while(r<to_read)
 		{
 			_u32 r_add = file->Read(spos, cptr+r, to_read-r, &readerr);
@@ -366,9 +386,13 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 			if (readerr)
 			{
-				sendError(ERR_READING_FAILED, getSystemErrorCode());
+				unsigned int readderr_code = getSystemErrorCode();
+				Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
+				sendError(ERR_READING_FAILED, readderr_code);
+				return false;
 			}
-			else if(r_add==0 && file->Size()!=-1)
+
+			if( r_add==0 && file->Size()!=-1 )
 			{
 				if(curr_file_size==-1)
 				{
@@ -507,7 +531,7 @@ bool ChunkSendThread::sendError( _u32 errorcode1, _u32 errorcode2 )
 	memcpy(buffer+1, &errorcode1, sizeof(_u32));
 	memcpy(buffer+1+sizeof(_u32), &errorcode2, sizeof(_u32));
 
-	if(parent->SendInt(buffer, 1+sizeof(_u32)*2)==SOCKET_ERROR)
+	if(parent->SendInt(buffer, 1+sizeof(_u32)*2, true)==SOCKET_ERROR)
 	{
 		Log("Error sending error paket");
 		return false;

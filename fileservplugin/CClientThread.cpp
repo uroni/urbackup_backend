@@ -769,7 +769,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if(errorcode!=0)
 					{
-						Log("Error occurred while reading from file. Errorcode is "+convert(errorcode), LL_ERROR);
+						Log("Error occurred while reading from file \""+ filename+"\" (code: "+convert(errorcode)+").", LL_ERROR);
 						stopped=true;						
 					}
 
@@ -1373,6 +1373,8 @@ bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 tore
 	if( b==FALSE)
 	{
 		Log("Error: Can't start reading from File", LL_DEBUG);
+		bufmgr->releaseBuffer(ldata->buffer);
+		delete ldata;
 		return false;
 	}
 	else
