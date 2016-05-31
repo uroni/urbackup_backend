@@ -1054,6 +1054,7 @@ bool os_sync(const std::string & path)
 		}
 		else
 		{
+			close(fd);
 			return true;
 		}
 	}
