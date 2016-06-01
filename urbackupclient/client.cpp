@@ -1439,7 +1439,9 @@ void IndexThread::resetFileEntries(void)
 	db->Write("DELETE FROM files");
 	cd->deleteSavedChangedDirs();
 	cd->resetAllHardlinks();
+#ifdef _WIN32
 	DirectoryWatcherThread::reset_mdirs(std::string());
+#endif
 }
 
 bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath)
