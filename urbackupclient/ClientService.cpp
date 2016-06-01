@@ -3052,7 +3052,7 @@ bool ClientConnector::versionNeedsUpdate(const std::string & local_version, cons
 
 	for (size_t i = 0; i < local_features.size(); ++i)
 	{
-		if (std::find(server_features.begin(), server_features.end(), local_features[i]) == local_features.end())
+		if (std::find(server_features.begin(), server_features.end(), local_features[i]) == server_features.end())
 		{
 			Server->Log("Server update does not have feature " + local_features[i] + ". Not updating.", LL_INFO);
 			return false;
@@ -3067,7 +3067,7 @@ bool ClientConnector::versionNeedsUpdate(const std::string & local_version, cons
 
 	for (size_t i = 0; i < server_features.size(); ++i)
 	{
-		if (std::find(local_features.begin(), local_features.end(), server_features[i]) == server_features.end())
+		if (std::find(local_features.begin(), local_features.end(), server_features[i]) == local_features.end())
 		{
 			Server->Log("Client currently does not have feature " + server_features[i] + ". Updating...", LL_INFO);
 			return true;
