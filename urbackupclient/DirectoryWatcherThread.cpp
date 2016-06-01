@@ -22,6 +22,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "database.h"
 #include "client.h"
+#include "clientdao.h"
 
 #define CHANGE_JOURNAL
 
@@ -66,6 +67,7 @@ void DirectoryWatcherThread::operator()(void)
 	q_add_dir=db->Prepare("INSERT INTO mdirs (name) SELECT ? AS name WHERE NOT EXISTS (SELECT * FROM mdirs WHERE name=?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
 	q_update_last_backup_time=db->Prepare("INSERT OR REPLACE INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', ?)");
+	q_remove_changed_dirs = db->Prepare("DELETE FROM mdirs WHERE name GLOB ?");
 
 	ChangeJournalWatcher dcw(this, db);
 
@@ -157,7 +159,6 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='U' )
 			{
-				lastentries.clear();
 				dcw.update();
 
 				IScopedLock lock(update_mutex);
@@ -201,6 +202,23 @@ void DirectoryWatcherThread::operator()(void)
 				IScopedLock lock(update_mutex);
 				update_cond->notify_all();
 			}
+			else if (msg[0] == 'R')
+			{
+				std::string path = msg.substr(1);
+				std::string sep = os_file_sep();
+				if (path == "##-GAP-##"
+					|| path.empty())
+				{
+					sep = "";
+				}
+				q_remove_changed_dirs->Bind(ClientDAO::escapeGlob(path) + sep + "*");
+				q_remove_changed_dirs->Write();
+				q_remove_changed_dirs->Reset();
+				lastentries.clear();
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
 		}
 	}
 
@@ -226,6 +244,13 @@ void DirectoryWatcherThread::update_and_wait(std::vector<std::string>& r_open_fi
 	update_cond->wait(&lock);
 
 	r_open_files.insert(r_open_files.end(), open_files.begin(), open_files.end());
+}
+
+void DirectoryWatcherThread::reset_mdirs(const std::string& path)
+{
+	IScopedLock lock(update_mutex);
+	pipe->Write("R"+ path);
+	update_cond->wait(&lock);
 }
 
 void DirectoryWatcherThread::freeze(void)

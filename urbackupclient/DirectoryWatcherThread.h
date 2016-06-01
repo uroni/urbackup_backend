@@ -47,6 +47,7 @@ public:
 
 	static void update(void);
 	static void update_and_wait(std::vector<std::string>& r_open_files);
+	static void reset_mdirs(const std::string& path);
 
 	static void freeze(void);
 	static void unfreeze(void);
@@ -72,6 +73,7 @@ private:
 	IQuery* q_add_dir;
 	IQuery* q_add_del_dir;
 	IQuery* q_update_last_backup_time;
+	IQuery *q_remove_changed_dirs;
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::string> watching;

@@ -43,7 +43,6 @@ void ClientDAO::prepareQueries()
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
-	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=? AND tgroup=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=? AND tgroup=?", false);
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken, clientsubname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)", false);
@@ -72,7 +71,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_get_dirs);
 	db->destroyQuery(q_remove_all);
 	db->destroyQuery(q_get_changed_dirs);
-	db->destroyQuery(q_remove_changed_dirs);
 	db->destroyQuery(q_modify_files);
 	db->destroyQuery(q_has_files);
 	db->destroyQuery(q_insert_shadowcopy);
@@ -401,7 +399,7 @@ void ClientDAO::removeAllFiles(void)
 	q_remove_all->Write();
 }
 
-std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool del)
+std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool backup)
 {
 	std::vector<std::string> ret;
 
@@ -409,16 +407,6 @@ std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool
 	if(path == "##-GAP-##")
 	{
 		sep = "";
-	}
-
-	if(del)
-	{
-		q_save_changed_dirs->Bind(escapeGlob(path)+sep+"*");
-		q_save_changed_dirs->Write();
-		q_save_changed_dirs->Reset();
-		q_remove_changed_dirs->Bind(escapeGlob(path)+sep+"*");
-		q_remove_changed_dirs->Write();
-		q_remove_changed_dirs->Reset();
 	}
 
 	q_get_changed_dirs->Bind(escapeGlob(path)+sep+"*");
@@ -431,6 +419,14 @@ std::vector<std::string> ClientDAO::getChangedDirs(const std::string& path, bool
 	{
 		ret.push_back(res[i]["name"] );
 	}
+
+	if (backup)
+	{
+		q_save_changed_dirs->Bind(escapeGlob(path) + sep + "*");
+		q_save_changed_dirs->Write();
+		q_save_changed_dirs->Reset();
+	}
+
 	return ret;
 }
 
@@ -515,20 +511,6 @@ bool ClientDAO::hasChangedGap(void)
 	db_results res=q_has_changed_gap->Read();
 	q_has_changed_gap->Reset();
 	return !res.empty();
-}
-
-void ClientDAO::deleteChangedDirs(const std::string& path)
-{
-	if(path.empty())
-	{
-		q_remove_changed_dirs->Bind("*");
-	}
-	else
-	{
-		q_remove_changed_dirs->Bind(escapeGlob(path)+os_file_sep()+"*");
-	}
-	q_remove_changed_dirs->Write();
-	q_remove_changed_dirs->Reset();
 }
 
 std::vector<std::string> ClientDAO::getGapDirs(void)

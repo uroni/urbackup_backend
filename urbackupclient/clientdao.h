@@ -125,7 +125,7 @@ public:
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<std::string> getChangedDirs(const std::string& path, bool del=true);
+	std::vector<std::string> getChangedDirs(const std::string& path, bool backup);
 
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
@@ -136,7 +136,6 @@ public:
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
-	void deleteChangedDirs(const std::string& path);
 
 	std::vector<std::string> getGapDirs(void);
 
@@ -189,9 +188,9 @@ public:
 	void resetAllHardlinks(void);
 	//@-SQLGenFunctionsEnd
 
-private:
+	static std::string escapeGlob(const std::string& input);
 
-	std::string escapeGlob(const std::string& input);
+private:
 	
 
 	IDatabase *db;
@@ -201,7 +200,6 @@ private:
 	IQuery *q_get_dirs;
 	IQuery *q_remove_all;
 	IQuery *q_get_changed_dirs;
-	IQuery *q_remove_changed_dirs;
 	IQuery *q_modify_files;
 	IQuery *q_has_files;
 	IQuery *q_insert_shadowcopy;

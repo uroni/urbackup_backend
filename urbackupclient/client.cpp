@@ -573,12 +573,8 @@ void IndexThread::operator()(void)
 			}
 			//full backup
 			{
-				cd->deleteChangedDirs(std::string());
-				cd->deleteSavedChangedDirs();
-
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
-				cd->resetAllHardlinks();
 			}
 
 			monitor_disk_failures();
@@ -1015,21 +1011,19 @@ void IndexThread::indexDirs(bool full_backup)
 #ifdef _WIN32
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
-	Server->wait(1000);
 	DirectoryWatcherThread::update_and_wait(open_files);
-
-	//---TRANSACTION---
-	db->BeginWriteTransaction();
 
 	changed_dirs.clear();
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
-		std::vector<std::string> acd=cd->getChangedDirs(selected_dirs[i]);
+		std::vector<std::string> acd=cd->getChangedDirs(selected_dirs[i], true);
 		changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
+		DirectoryWatcherThread::reset_mdirs(selected_dirs[i]);
 	}
 
 	//move GAP dirs to backup table
-	cd->getChangedDirs("##-GAP-##");
+	cd->getChangedDirs("##-GAP-##", true);
+	DirectoryWatcherThread::reset_mdirs("##-GAP-##");
 	
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
@@ -1040,9 +1034,6 @@ void IndexThread::indexDirs(bool full_backup)
 			cd->removeDeletedDir(deldirs[j], selected_dir_db_tgroup[i]);
 		}
 	}
-
-	db->EndTransaction();
-	//---END TRANSACTION---
 
 	std::string tmp = cd->getMiscValue("last_filebackup_filetime_lower");
 	if(!tmp.empty())
@@ -1206,7 +1197,6 @@ void IndexThread::indexDirs(bool full_backup)
 					past_refs.push_back(scd->ref);
 					DirectoryWatcherThread::update_and_wait(open_files);
 					std::sort(open_files.begin(), open_files.end());
-					Server->wait(1000);
 
 					if (scd->ref!=NULL
 						&& scd->ref->cbt)
@@ -1447,8 +1437,9 @@ void IndexThread::indexDirs(bool full_backup)
 void IndexThread::resetFileEntries(void)
 {
 	db->Write("DELETE FROM files");
-	db->Write("DELETE FROM mdirs");
-	db->Write("DELETE FROM mdirs_backup");
+	cd->deleteSavedChangedDirs();
+	cd->resetAllHardlinks();
+	DirectoryWatcherThread::reset_mdirs(std::string());
 }
 
 bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath)
@@ -2083,7 +2074,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 						if(fs_files[i].change_indicator>0)
 							fs_files[i].change_indicator*=-1;
 						else if(fs_files[i].change_indicator==0)
-							fs_files[i].change_indicator=-1;
+							fs_files[i].change_indicator=-1 * Server->getRandomNumber();
 					}
 				}
 			}
@@ -4948,6 +4939,7 @@ typedef struct _URBCT_BITMAP_DATA
 #define IOCTL_URBCT_RESET_START CTL_CODE(FILE_DEVICE_DISK, 3240, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_URBCT_RETRIEVE_BITMAP CTL_CODE(FILE_DEVICE_DISK, 3241, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_URBCT_RESET_FINISH CTL_CODE(FILE_DEVICE_DISK, 3242, METHOD_BUFFERED, FILE_READ_DATA)
+#define IOCTL_URBCT_MARK_ALL CTL_CODE(FILE_DEVICE_DISK, 3245, METHOD_BUFFERED, FILE_READ_DATA)
 
 namespace
 {
@@ -5327,6 +5319,17 @@ bool IndexThread::disableCbt(std::string volume)
 
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
 	Server->deleteFile(ImageThread::hdatFn(volume));
+
+	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (hVolume != INVALID_HANDLE_VALUE)
+	{
+		ScopedCloseWindowsHandle hclose(hVolume);
+		DWORD bytesReturned;
+		DeviceIoControl(hVolume, IOCTL_URBCT_MARK_ALL, NULL, 0, NULL, 0, &bytesReturned, NULL);
+	}
 
 	return !FileExists("urbackup\\hdat_file_" + conv_filename(volume) + ".dat")
 		&& !FileExists(ImageThread::hdatFn(volume));
