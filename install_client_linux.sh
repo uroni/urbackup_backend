@@ -57,6 +57,7 @@ else
 fi
 
 SYSTEMD=no
+RESTART_SERVICE=no
 
 if command -v systemctl >/dev/null 2>&1
 then
@@ -65,16 +66,14 @@ then
 	
 	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
 	then
-		echo "Stopping currently running client service..."
-		systemctl stop urbackupclientbackend.service || true
+		RESTART_SERVICE=yes
 	fi
 else
 	if [ -e /etc/init.d/urbackupclientbackend ]
 	then
 		if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
 		then
-			echo "Stopping currently running client service..."
-			/etc/init.d/urbackupclientbackend stop || true
+			RESTART_SERVICE=yes
 		fi
 	fi
 fi
@@ -217,8 +216,14 @@ then
 	install -c urbackupclientbackend.service $SYSTEMD_DIR
 	systemctl enable urbackupclientbackend.service
 	
-	echo "Starting UrBackup Client service..."
-	systemctl start urbackupclientbackend.service
+	if [ $RESTART_SERVICE = no ]
+	then
+		echo "Starting UrBackup Client service..."
+		systemctl start urbackupclientbackend.service
+	else
+		echo "Restarting UrBackup Client service..."
+		systemctl restart urbackupclientbackend.service
+	fi	
 	
 	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
 	then
@@ -240,8 +245,15 @@ else
 		chkconfig --level 345 urbackupclientbackend on
 	fi
 	
-	echo "Starting UrBackup Client service..."
-	/etc/init.d/urbackupclientbackend start
+	if [ $RESTART_SERVICE = no ]
+	then
+		echo "Starting UrBackup Client service..."
+		/etc/init.d/urbackupclientbackend start
+	else
+		echo "Restarting UrBackup Client service..."
+		/etc/init.d/urbackupclientbackend restart
+	fi
+	
 	
 	if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
 	then
