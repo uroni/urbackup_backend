@@ -299,6 +299,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					{
 						bool is_user = username[0] == 'u';
 
+						os_create_dir(tokens::tokens_path);
+
 						std::string token_path;
 						if (is_user)
 						{
