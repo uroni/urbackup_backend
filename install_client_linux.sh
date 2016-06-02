@@ -222,6 +222,8 @@ then
 		systemctl start urbackupclientbackend.service
 	else
 		echo "Restarting UrBackup Client service..."
+		#This will kill the installer during auto-update.
+		#So do not do anything (important) after that.
 		systemctl restart urbackupclientbackend.service
 	fi	
 	
