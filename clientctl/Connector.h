@@ -159,8 +159,15 @@ public:
 	static std::vector<SLogLine> getLogdata(int logid, int loglevel);
 	static bool setPause(bool b_pause);
 
-	static std::string getFileBackupsList(bool& no_server);
-	static std::string getFileList(const std::string& path, int* backupid, bool& no_server);
+	enum EAccessError
+	{
+		EAccessError_Ok,
+		EAccessError_NoServer,
+		EAccessError_NoTokens
+	};
+
+	static std::string getFileBackupsList(EAccessError& access_error);
+	static std::string getFileList(const std::string& path, int* backupid, EAccessError& access_error);
 	static std::string startRestore( const std::string& path, int backupid,
 		const std::vector<SPathMap>& map_paths, bool& no_server, bool clean_other,
 		bool ignore_other_fs);

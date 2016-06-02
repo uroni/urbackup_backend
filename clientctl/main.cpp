@@ -578,8 +578,8 @@ int action_browse(std::vector<std::string> args)
 
 	if(path_arg.getValue().empty() && !backupid_arg.isSet())
 	{
-		bool no_server;
-		std::string filebackups = Connector::getFileBackupsList(no_server);
+		Connector::EAccessError access_error;
+		std::string filebackups = Connector::getFileBackupsList(access_error);
 
 		if(!filebackups.empty())
 		{
@@ -588,10 +588,15 @@ int action_browse(std::vector<std::string> args)
 		}
 		else
 		{
-			if(no_server)
+			if(access_error==Connector::EAccessError_NoServer)
 			{
 				std::cerr << "Error getting file backups. No backup server found." << std::endl;
 				return 2;
+			}
+			else if (access_error == Connector::EAccessError_NoTokens)
+			{
+				std::cerr << "No file backup access tokens found. Did you run a file backup yet?" << std::endl;
+				return 3;
 			}
 			else
 			{
@@ -619,8 +624,8 @@ int action_browse(std::vector<std::string> args)
 			}
 			pbackupid = &backupid;
 		}
-		bool no_server;
-		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, no_server);
+		Connector::EAccessError access_error;
+		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, access_error);
 
 		if(!filelist.empty())
 		{
@@ -629,10 +634,15 @@ int action_browse(std::vector<std::string> args)
 		}
 		else
 		{
-			if(no_server)
+			if (access_error == Connector::EAccessError_NoServer)
 			{
 				std::cerr << "Error getting file list. No backup server found." << std::endl;
 				return 2;
+			}
+			else if (access_error == Connector::EAccessError_NoTokens)
+			{
+				std::cerr << "No file backup access tokens found. Did you run a file backup yet?" << std::endl;
+				return 3;
 			}
 			else
 			{

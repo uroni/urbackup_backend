@@ -448,12 +448,13 @@ void Connector::setClient(const std::string &pClient)
 	client=pClient;
 }
 
-std::string Connector::getFileBackupsList(bool& no_server)
+std::string Connector::getFileBackupsList(EAccessError& access_error)
 {
-	no_server=false;
+	access_error = EAccessError_Ok;
 
 	if(!readTokens())
 	{
+		access_error = EAccessError_NoTokens;
 		return std::string();
 	}
 
@@ -465,7 +466,7 @@ std::string Connector::getFileBackupsList(bool& no_server)
 		{
 			if(list[0]=='1')
 			{
-				no_server=true;
+				access_error = EAccessError_NoServer;
 			}
 
 			return std::string();
@@ -502,12 +503,13 @@ bool Connector::readTokens()
 	return !tokens.empty();
 }
 
-std::string Connector::getFileList( const std::string& path, int* backupid, bool& no_server)
+std::string Connector::getFileList( const std::string& path, int* backupid, EAccessError& access_error)
 {
-	no_server=false;
+	access_error = EAccessError_Ok;
 
 	if(!readTokens())
 	{
+		access_error = EAccessError_NoTokens;
 		return std::string();
 	}
 
@@ -532,7 +534,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, bool
 		{
 			if(list[0]=='1')
 			{
-				no_server=true;
+				access_error = EAccessError_NoServer;
 			}
 
 			return std::string();
