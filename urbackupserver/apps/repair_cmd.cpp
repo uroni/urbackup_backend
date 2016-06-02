@@ -62,10 +62,10 @@ int repair_cmd(void)
 
 	std::vector<std::string> db_names;
 	db_names.push_back("");
-	db_names.push_back("settings");
-	db_names.push_back("files");
-	db_names.push_back("links");
-	db_names.push_back("link_journal");
+	db_names.push_back("_settings");
+	db_names.push_back("_files");
+	db_names.push_back("_links");
+	db_names.push_back("_link_journal");
 
 	for (size_t i = 0; i < db_names.size(); ++i)
 	{

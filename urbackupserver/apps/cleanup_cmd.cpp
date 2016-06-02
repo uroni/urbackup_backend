@@ -164,6 +164,8 @@ int cleanup_cmd(void)
 	return 0;
 }
 
+void open_settings_database_full();
+
 int defrag_database(void)
 {
 	Server->Log("Shutting down all database instances...", LL_INFO);
@@ -171,20 +173,31 @@ int defrag_database(void)
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
 	open_server_database(true);
+	open_settings_database_full();
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	if(db==NULL)
+	std::vector<DATABASE_ID> dbs;
+	dbs.push_back(URBACKUPDB_SERVER);
+	dbs.push_back(URBACKUPDB_SERVER_SETTINGS);
+	dbs.push_back(URBACKUPDB_SERVER_FILES);
+	dbs.push_back(URBACKUPDB_SERVER_LINKS);
+	dbs.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
+	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		Server->Log("Could not open database", LL_ERROR);
-		return 1;
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), dbs[i]);
+		if (db == NULL)
+		{
+			Server->Log("Could not open database", LL_ERROR);
+			return 1;
+		}
+
+		Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
+		db->Write("PRAGMA journal_mode = DELETE");
+
+		Server->Log("Rebuilding Database...", LL_INFO);
+		db->Write("PRAGMA page_size = 4096");
+		db->Write("VACUUM");
 	}
-
-	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
-	db->Write("PRAGMA journal_mode = DELETE");
-
-	Server->Log("Rebuilding Database...", LL_INFO);
-	db->Write("PRAGMA page_size = 4096");
-	db->Write("VACUUM");
 
 	Server->Log("Rebuilding Database successfull.", LL_INFO);
 
