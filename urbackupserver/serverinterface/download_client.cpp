@@ -22,6 +22,7 @@
 #include "../server_settings.h"
 
 extern ICryptoFactory *crypto_fak;
+extern std::string server_token;
 
 namespace
 {
@@ -183,7 +184,12 @@ ACTION_IMPL(download_client)
 				}
 
 				std::string access_keys;
-				if (os == "linux" || os == "osx" || os=="mac")
+				ServerSettings settings(helper.getDatabase(), clientid);
+
+				std::string db_authkey = settings.getSettings()->internet_authkey;
+
+				if ( (os == "linux" || os == "osx" || os=="mac")
+					&& !db_authkey.empty() && db_authkey==authkey )
 				{
 					bool all_browse_backups;
 					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
@@ -199,6 +205,17 @@ ACTION_IMPL(download_client)
 						if (!res_root_token.empty())
 						{
 							access_keys = "uroot:"+res_root_token[0]["token"];
+						}
+
+						std::string client_access_key = settings.getSettings()->client_access_key;
+						if (!client_access_key.empty())
+						{
+							if (!access_keys.empty())
+							{
+								access_keys += ";";
+							}
+
+							access_keys += "t" + server_token + ":" + client_access_key;
 						}
 					}
 				}

@@ -279,6 +279,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		std::auto_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
 		std::string access_keys;
+		std::string client_access_keys;
 		if (settings_reader->getValue("access_keys", &access_keys) && !access_keys.empty())
 		{
 			ClientDAO cd(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
@@ -291,21 +292,40 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				if (username.size() > 1
 					&& !access_key.empty())
 				{
-					bool is_user = username[0] == 'u';
+					bool is_token = username[0] == 't';
 					username = username.substr(1);
 
-					std::string token_path;
-					if (is_user)
+					if (!is_token)
 					{
-						token_path = std::string(tokens::tokens_path) + os_file_sep() + "user_" + bytesToHex(username);
+						bool is_user = username[0] == 'u';
+
+						std::string token_path;
+						if (is_user)
+						{
+							token_path = std::string(tokens::tokens_path) + os_file_sep() + "user_" + bytesToHex(username);
+						}
+						else
+						{
+							token_path = std::string(tokens::tokens_path) + os_file_sep() + "group_" + bytesToHex(username);
+						}
+
+						tokens::write_token(tokens::get_hostname(), is_user, username, token_path, cd, access_key);
 					}
 					else
 					{
-						token_path = std::string(tokens::tokens_path) + os_file_sep() + "group_" + bytesToHex(username);
-					}
+						client_access_keys += "key." + username + "=" +
+							access_key + "\n";
 
-					tokens::write_token(tokens::get_hostname(), is_user, username, token_path, cd, access_key);
+						client_access_keys += "key_age." + username + "=" +
+							convert(Server->getTimeSeconds()) + "\n";
+					}
 				}				
+			}
+
+			if (!client_access_keys.empty()
+				&& !FileExists("urbackup/access_keys.properties"))
+			{
+				write_file_only_admin(client_access_keys, "urbackup/access_keys.properties");
 			}
 		}
 
