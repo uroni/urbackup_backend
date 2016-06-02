@@ -76,7 +76,7 @@ int repair_cmd(void)
 
 	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), dbs[i]);
 		if (db == NULL)
 		{
 			Server->Log("Could not open database with id " + convert(dbs[i]), LL_ERROR);
