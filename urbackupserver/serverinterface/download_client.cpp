@@ -189,7 +189,8 @@ ACTION_IMPL(download_client)
 				std::string db_authkey = settings.getSettings()->internet_authkey;
 
 				if ( (os == "linux" || os == "osx" || os=="mac")
-					&& !db_authkey.empty() && db_authkey==authkey )
+					&& ( (!db_authkey.empty() && db_authkey==authkey )
+						 || all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() ) )
 				{
 					bool all_browse_backups;
 					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
