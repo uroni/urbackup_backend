@@ -224,7 +224,7 @@ void RestoreFiles::operator()()
 
 		int64 starttime = Server->getTimeMS();
 
-		while (Server->getTimeMS() - starttime < 10000)
+		while (Server->getTimeMS() - starttime < 60000)
 		{
 			if (fc_metadata.isDownloading())
 			{
