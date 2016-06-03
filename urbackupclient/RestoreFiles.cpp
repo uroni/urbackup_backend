@@ -970,7 +970,17 @@ void RestoreFiles::log_progress(const std::string & fn, int64 total, int64 downl
 {
 	if (total > 0)
 	{
-		curr_restore_updater->update_fn(fn, (int)(((downloaded*100.f) / total) + 0.5f));
+		std::string cfn;
+		if (next(fn, 0, "clientdl/"))
+		{
+			cfn = fn.substr(9);
+		}
+		else
+		{
+			cfn = fn;
+		}
+
+		curr_restore_updater->update_fn(cfn, (int)(((downloaded*100.f) / total) + 0.5f));
 	}
 }
 
