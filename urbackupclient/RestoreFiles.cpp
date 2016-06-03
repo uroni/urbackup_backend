@@ -731,6 +731,17 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								}
 							}
 						}
+#else
+						if (orig_file == NULL)
+						{
+							log("Cannot open file \"" + local_fn + "\" for writing. Unlinking file and creating new one. " + os_last_error_str(), LL_INFO);
+
+							int rc = unlink(local_fn.c_str());
+							if (rc == 0)
+							{
+								orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
+							}
+						}
 #endif
 
 						if(orig_file==NULL)
