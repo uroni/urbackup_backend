@@ -2336,7 +2336,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	bool has_restore_token = false;
 	if (!restore_token.restore_token.empty()
 		&& params["restore_token"] == restore_token.restore_token
-		&& Server->getTimeMS() - restore_token.restore_token_time<120 * 1000)
+		&& Server->getTimeMS() - restore_token.restore_token_time<60*60*1000)
 	{
 		restore_token.restore_token = "";
 		has_restore_token = true;
