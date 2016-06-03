@@ -184,13 +184,9 @@ ACTION_IMPL(download_client)
 				}
 
 				std::string access_keys;
-				ServerSettings settings(helper.getDatabase(), clientid);
-
-				std::string db_authkey = settings.getSettings()->internet_authkey;
 
 				if ( (os == "linux" || os == "osx" || os=="mac")
-					&& ( (!db_authkey.empty() && db_authkey==authkey )
-						 || all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() ) )
+					&& ( all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() ) )
 				{
 					bool all_browse_backups;
 					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
@@ -208,6 +204,7 @@ ACTION_IMPL(download_client)
 							access_keys = "uroot:"+res_root_token[0]["token"];
 						}
 
+						ServerSettings settings(helper.getDatabase(), clientid);
 						std::string client_access_key = settings.getSettings()->client_access_key;
 						if (!client_access_key.empty())
 						{
