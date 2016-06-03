@@ -740,6 +740,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							if (rc == 0)
 							{
 								orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
+								if (!change_file_permissions_admin_only(os_file_prefix(local_fn)))
+								{
+									log("Cannot change file permissions of \"" + local_fn + "\" to allow only root access. " + os_last_error_str(), LL_ERROR);
+									has_error = true;
+									orig_file = NULL;
+								}
 							}
 						}
 #endif
