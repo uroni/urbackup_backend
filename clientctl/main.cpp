@@ -25,6 +25,7 @@
 #include "../stringtools.h"
 #include "../tclap/CmdLine.h"
 #include "json/json.h"
+#include "../urbackupcommon/os_functions.h"
 
 #ifndef _WIN32
 #include <sys/ioctl.h>
@@ -674,6 +675,17 @@ int wait_for_restore(std::string restore_info)
 	return follow_status(true, process_id);
 }
 
+std::string remove_ending_slash(const std::string& path)
+{
+	if (path.size() > 1
+		&& path[path.size() - 1] == os_file_sep()[0])
+	{
+		return path.substr(0, path.size() - 1);
+	}
+	
+	return path;
+}
+
 int action_start_restore(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Restore files/folders from backup", ' ', cmdline_version);
@@ -721,7 +733,7 @@ int action_start_restore(std::vector<std::string> args)
 	if (backupid_arg.getValue() != "last"
 		&& convert(atoi(backupid_arg.getValue().c_str())) != backupid_arg.getValue())
 	{
-		std::cerr << "Not a valid backupid: \""<< backupid_arg.getValue()<< "\"" << std::endl;
+		std::cerr << "Not a valid backupid: \"" << backupid_arg.getValue() << "\"" << std::endl;
 		return 2;
 	}
 
@@ -729,8 +741,9 @@ int action_start_restore(std::vector<std::string> args)
 	for (size_t i = 0; i < map_from_arg.getValue().size(); ++i)
 	{
 		SPathMap new_pm;
-		new_pm.source = map_from_arg.getValue()[i];
-		new_pm.target = map_to_arg.getValue()[i];
+		new_pm.source = remove_ending_slash(map_from_arg.getValue()[i]);
+		new_pm.target = remove_ending_slash(map_to_arg.getValue()[i]);
+
 		path_map.push_back(new_pm);
 	}
 
