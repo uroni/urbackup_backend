@@ -245,7 +245,7 @@ void RestoreFiles::operator()()
 		if (!fc_metadata.isDownloading())
 		{
 			log("Error starting metadata download", LL_INFO);
-			restore_failed(fc, metadata_dl);
+			restore_failed(*metadata_thread.get(), metadata_dl);
 			return;
 		}
 
@@ -260,7 +260,7 @@ void RestoreFiles::operator()()
 
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
-			restore_failed(fc, metadata_dl);
+			restore_failed(*metadata_thread.get(), metadata_dl);
 			return;
 		}
 
@@ -307,7 +307,7 @@ void RestoreFiles::operator()()
 
 		if (!metadata_thread->applyMetadata(metadata_path_mapping))
 		{
-			restore_failed(fc, metadata_dl);
+			restore_failed(*metadata_thread.get(), metadata_dl);
 			return;
 		}
 
@@ -994,11 +994,11 @@ void RestoreFiles::log_progress(const std::string & fn, int64 total, int64 downl
 	}
 }
 
-void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
+void RestoreFiles::restore_failed(client::FileMetadataDownloadThread& metadata_thread, THREADPOOL_TICKET metadata_dl)
 {
 	log("Restore failed.", LL_INFO);
 
-	fc.InformMetadataStreamEnd(client_token, 3);
+	metadata_thread.shutdown();
 
 	Server->getThreadPool()->waitFor(metadata_dl);
 

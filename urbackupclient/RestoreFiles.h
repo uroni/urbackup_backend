@@ -17,6 +17,11 @@ namespace
 	class ScopedRestoreUpdater;
 }
 
+namespace client
+{
+	class FileMetadataDownloadThread;
+}
+
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback, FileClient::ProgressLogCallback
 {
 public:
@@ -65,7 +70,7 @@ private:
 	bool connectFileClient(FileClient& fc);
 	bool downloadFilelist(FileClient& fc);
 
-	void restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl);
+	void restore_failed(client::FileMetadataDownloadThread& metadata_thread, THREADPOOL_TICKET metadata_dl);
 
 	int64 calculateDownloadSize();
 
