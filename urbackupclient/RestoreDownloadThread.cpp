@@ -260,7 +260,7 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 
 	if(rc!=ERR_SUCCESS)
 	{
-		Server->Log("Error loading \""+todl.destfn+"\" rc="+convert(rc), LL_ERROR);
+		Server->Log("Error loading \""+todl.destfn+"\" "+FileClient::getErrorString(rc)+" (code: "+convert(rc)+")", LL_ERROR);
 		download_nok_ids.push_back(todl.id);
 		return false;
 	}
@@ -330,7 +330,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 
 	if(rc!=ERR_SUCCESS)
 	{
-		Server->Log("Error loading \""+todl.destfn+"\" -2 rc="+convert(rc), LL_ERROR);
+		Server->Log("Error loading \""+todl.destfn+"\"  " + FileClient::getErrorString(rc) + " (code: " + convert(rc) + ")", LL_ERROR);
 		download_nok_ids.push_back(todl.id);
 		return false;
 	}

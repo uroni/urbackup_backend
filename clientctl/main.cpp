@@ -744,6 +744,18 @@ int action_start_restore(std::vector<std::string> args)
 		new_pm.source = remove_ending_slash(map_from_arg.getValue()[i]);
 		new_pm.target = remove_ending_slash(map_to_arg.getValue()[i]);
 
+		if (new_pm.source == os_file_sep()
+			&& new_pm.target != os_file_sep())
+		{
+			new_pm.target += os_file_sep();
+		}
+
+		if (new_pm.target == os_file_sep()
+			&& new_pm.source != os_file_sep())
+		{
+			new_pm.target = std::string();
+		}
+
 		path_map.push_back(new_pm);
 	}
 
