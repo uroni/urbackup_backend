@@ -1510,8 +1510,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 		if(with_orig_path)
 		{
-			extra+="&orig_path=" + EscapeParamString((orig_dir))
-				+ "&orig_sep=" + EscapeParamString((os_file_sep()));
+			extra+="&orig_path=" + EscapeParamString(orig_dir.empty() ? os_file_sep() : orig_dir)
+				+ "&orig_sep=" + EscapeParamString(os_file_sep());
 		}
 
 #ifdef _WIN32

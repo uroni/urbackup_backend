@@ -590,7 +590,12 @@ bool IncrFileBackup::doFileBackup()
 
 						if(!has_orig_path)
 						{
-							curr_orig_path += orig_sep + (cf.name);
+							if (curr_orig_path != orig_sep)
+							{
+								curr_orig_path += orig_sep;
+							}
+
+							curr_orig_path += cf.name;
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
 							metadata.has_orig_path=true;
@@ -834,7 +839,14 @@ bool IncrFileBackup::doFileBackup()
 
 					if(!has_orig_path)
 					{
-						metadata.orig_path = curr_orig_path + orig_sep + (cf.name);
+						if (curr_orig_path != orig_sep)
+						{
+							metadata.orig_path = curr_orig_path + orig_sep + cf.name;
+						}
+						else
+						{
+							metadata.orig_path = orig_sep + cf.name;
+						}
 					}
 
 					bool copy_curr_file_entry=false;
