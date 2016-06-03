@@ -44,7 +44,8 @@ namespace
 			: update_mutex(Server->createMutex()), stopped(false),
 			update_cond(Server->createCondition()), curr_pc(-1),
 			restore_id(restore_id), status_id(status_id), server_token(server_token),
-			curr_fn_pc(-1), local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0), success(false)
+			curr_fn_pc(-1), local_process_id(local_process_id), total_bytes(-1), done_bytes(0), speed_bpms(0), success(false),
+			last_fn_time(0)
 		{
 			SRunningProcess new_proc;
 			new_proc.id = local_process_id;
@@ -61,6 +62,13 @@ namespace
 				while (!stopped)
 				{
 					ClientConnector::updateRestorePc(local_process_id, restore_id, status_id, curr_pc, server_token, curr_fn, curr_fn_pc, total_bytes, done_bytes, speed_bpms);
+
+					if (Server->getTimeMS() - last_fn_time > 61000)
+					{
+						curr_fn.clear();
+						curr_fn_pc = -1;
+					}
+
 					update_cond->wait(&lock, 60000);
 				}
 			}
@@ -89,6 +97,7 @@ namespace
 			IScopedLock lock(update_mutex.get());
 			curr_fn = fn;
 			curr_fn_pc = fn_pc;
+			last_fn_time = Server->getTimeMS();
 			update_cond->notify_all();
 		}
 
@@ -120,6 +129,7 @@ namespace
 		int64 done_bytes;
 		double speed_bpms;
 		bool success;
+		int64 last_fn_time;
 	};
 
 	class ScopedRestoreUpdater
