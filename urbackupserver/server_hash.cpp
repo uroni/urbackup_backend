@@ -550,11 +550,11 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 						continue;
 					}
 
-					if(!first_logmsg)
+					if(first_logmsg)
 					{
 						ServerLogger::Log(logid, "HT: Hardlinking failed (File doesn't exist): \""+existing_file.fullpath+"\"", LL_DEBUG);
 					}
-					first_logmsg=true;
+					first_logmsg=false;
 
 					deleteFileSQL(*filesdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, existing_file.clientid, existing_file.backupid, existing_file.incremental,
 						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true, detach_dbs, false, NULL);

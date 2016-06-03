@@ -1590,7 +1590,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
-			if(calculate_filehashes_on_client)
+			if(calculate_filehashes_on_client
+				&& !files[i].hash.empty() )
 			{
 				if(sha_version==256)
 				{
