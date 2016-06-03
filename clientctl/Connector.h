@@ -169,7 +169,7 @@ public:
 	static std::string getFileBackupsList(EAccessError& access_error);
 	static std::string getFileList(const std::string& path, int* backupid, EAccessError& access_error);
 	static std::string startRestore( const std::string& path, int backupid,
-		const std::vector<SPathMap>& map_paths, bool& no_server, bool clean_other,
+		const std::vector<SPathMap>& map_paths, EAccessError& access_error, bool clean_other,
 		bool ignore_other_fs);
 
 	static std::string getStatusDetailsRaw();

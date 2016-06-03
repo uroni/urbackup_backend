@@ -740,9 +740,9 @@ int action_start_restore(std::vector<std::string> args)
 		backupid = atoi(backupid_arg.getValue().c_str());
 	}
 
-	bool no_server;
+	Connector::EAccessError access_error;
 	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid,
-		path_map, no_server, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue());
+		path_map, access_error, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue());
 
 	if(!restore_info.empty())
 	{
@@ -758,10 +758,15 @@ int action_start_restore(std::vector<std::string> args)
 	}
 	else
 	{
-		if(no_server)
+		if(access_error == Connector::EAccessError_NoServer)
 		{
 			std::cerr << "Error starting restore. No backup server found." << std::endl;
 			return 2;
+		}
+		else if (access_error == Connector::EAccessError_NoTokens)
+		{
+			std::cerr << "Error starting restore. No file backup access tokens found. Did you run a file backup yet?" << std::endl;
+			return 3;
 		}
 		else
 		{

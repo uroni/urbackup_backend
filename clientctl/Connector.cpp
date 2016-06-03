@@ -551,13 +551,14 @@ std::string Connector::getFileList( const std::string& path, int* backupid, EAcc
 }
 
 std::string Connector::startRestore( const std::string& path, int backupid,
-	const std::vector<SPathMap>& map_paths, bool& no_server, bool clean_other,
+	const std::vector<SPathMap>& map_paths, EAccessError& access_error, bool clean_other,
 	bool ignore_other_fs)
 {
-	no_server=false;
+	access_error = EAccessError_Ok;
 
 	if(!readTokens())
 	{
+		access_error = EAccessError_NoTokens;
 		return std::string();
 	}
 
@@ -583,7 +584,7 @@ std::string Connector::startRestore( const std::string& path, int backupid,
 		{
 			if(res[0]=='1')
 			{
-				no_server=true;
+				access_error = EAccessError_NoServer;
 			}
 
 			return std::string();
