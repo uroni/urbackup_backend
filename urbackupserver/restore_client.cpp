@@ -179,18 +179,27 @@ namespace
 
 	class ClientDownloadThread : public IThread
 	{
+	private:
+		struct SRestoreFolder
+		{
+			std::string foldername;
+			std::string hashfoldername;
+			std::string share_path;
+		};
+
 	public:
 		ClientDownloadThread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::string& foldername,
 			const std::string& hashfoldername, const std::string& filter, bool skip_special_root,
 			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
-			bool clean_other, bool ignore_other_fs, const std::string& share_path)
+			bool clean_other, bool ignore_other_fs, const std::string& share_path,
+			bool follow_symlinks)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
-			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
-			skip_special_root(skip_special_root), folder_log_name(folder_log_name),
+			filelist_f(filelist_f),
+			skip_special_root(skip_special_root),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
-			share_path(share_path)
+			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks)
 		{
 			TokenizeMail(filter, filter_fns, "/");
 
@@ -198,12 +207,18 @@ namespace
 			{
 				single_file = true;
 			}
-
-			if (!share_path.empty()
-				&& share_path[share_path.size() - 1] == '/')
+			SRestoreFolder restore_folder;
+			restore_folder.foldername = foldername;
+			restore_folder.hashfoldername = hashfoldername;
+			restore_folder.share_path = share_path;
+			
+			if (!restore_folder.share_path.empty()
+				&& restore_folder.share_path[restore_folder.share_path.size() - 1] == '/')
 			{
-				this->share_path.erase(share_path.size() - 1, 1);
+				restore_folder.share_path.erase(restore_folder.share_path.size() - 1, 1);
 			}
+
+			restore_folders.push_back(restore_folder);
 		}
 
 		void operator()()
@@ -211,24 +226,31 @@ namespace
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			ServerBackupDao backup_dao(db);
 
-			if(!createFilelist(foldername, hashfoldername, share_path, 0, skip_special_root))
+			for (; curr_restore_folder_idx < restore_folders.size(); ++curr_restore_folder_idx)
 			{
-				ServerStatus::stopProcess(curr_clientname, status_id);
+				SRestoreFolder& restore_folder = restore_folders[curr_restore_folder_idx];
 
-				int errors=0;
-				int warnings=0;
-				int infos=0;
-				std::string logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
+				if (!createFilelist(restore_folder.foldername, restore_folder.hashfoldername,
+					restore_folder.share_path, 0,
+					curr_restore_folder_idx==0 ? skip_special_root : false) )
+				{
+					ServerStatus::stopProcess(curr_clientname, status_id);
 
-				backup_dao.saveBackupLog(restore_clientid, errors, warnings, infos, 0,
-					0, 0, 1);
+					int errors = 0;
+					int warnings = 0;
+					int infos = 0;
+					std::string logdata = ServerLogger::getLogdata(log_id, errors, warnings, infos);
 
-				backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+					backup_dao.saveBackupLog(restore_clientid, errors, warnings, infos, 0,
+						0, 0, 1);
 
-				backup_dao.setRestoreDone(0, restore_id);
+					backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
 
-				return;
-			}		
+					backup_dao.setRestoreDone(0, restore_id);
+
+					return;
+				}
+			}
 
 			fileserv->addIdentity(identity);
 			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity, false);
@@ -236,12 +258,18 @@ namespace
 
 			delete filelist_f;
 
-			MetadataCallback* callback = new MetadataCallback(hashfoldername, map_paths);
-			fileserv->shareDir("clientdl", foldername, identity, false);
+			for (size_t i = 0; i < restore_folders.size(); ++i)
+			{
+				SRestoreFolder& restore_folder = restore_folders[i];
+
+				MetadataCallback* callback = new MetadataCallback(restore_folder.hashfoldername, map_paths);
+				fileserv->shareDir("clientdl"+convert(i), restore_folder.foldername, identity, false);
+				ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl" + convert(i), identity, false, true));
+				fileserv->registerMetadataCallback("clientdl" + convert(i), identity, callback);
+			}
+			
 			fileserv->shareDir("urbackup", "/tmp/mkmergsdfklrzrehmklregmfdkgfdgwretklödf", identity, false);
-			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
 			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("urbackup", identity, false, false));
-			fileserv->registerMetadataCallback("clientdl", identity, callback);
 
 
 			CWData data;
@@ -266,7 +294,8 @@ namespace
 		}
 
 
-		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, const std::string& curr_share_path, size_t depth, bool skip_special)
+		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, const std::string& curr_share_path,
+			size_t depth, bool skip_special)
 		{
 			bool has_error=false;
 			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
@@ -281,7 +310,7 @@ namespace
 
 			for(size_t i=0;i<files.size();++i)
 			{
-				const SFile& file=files[i];
+				SFile file=files[i];
 
 				if(depth==0 && (!filter_fns.empty() && std::find(filter_fns.begin(), filter_fns.end(), file.name)==filter_fns.end()) )
 				{
@@ -296,10 +325,41 @@ namespace
 
 				std::string metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
 				std::string filename = foldername + os_file_sep() + file.name;
+
+				if (file.issym)
+				{
+					std::string pool_path;
+					if (os_get_symlink_target(filename, pool_path))
+					{
+						std::string directory_pool = ExtractFileName(ExtractFilePath(ExtractFilePath(pool_path, os_file_sep()), os_file_sep()), os_file_sep());
+
+						if (directory_pool != ".directory_pool")
+						{
+							if (os_get_file_type(pool_path) & EFileType_Directory)
+							{
+								file.isdir = true;
+							}
+							else
+							{
+								file.isdir = false;
+							}
+
+							if (follow_symlinks)
+							{
+								followSymlink(pool_path, filename, metadataname);
+							}
+						}
+						else
+						{
+							file.issym = false;
+							file.isdir = true;
+						}
+					}
+				}
 				
 				std::string metadatasource;
 				bool recurse_dir = false;
-				if(file.isdir
+				if(file.isdir && !file.issym
 					&& os_directory_exists(os_file_prefix(metadataname)) )
 				{
 					metadatasource = metadataname + os_file_sep()+metadata_dir_fn;
@@ -309,7 +369,7 @@ namespace
 				else
 				{
 					metadatasource = metadataname;
-				}
+				}				
 
 				bool has_metadata = false;
 
@@ -359,6 +419,7 @@ namespace
 					extra+="&single_item=1";
 				}
 
+
 				writeFileItem(filelist_f, file, extra);
 
 				if(file.isdir)
@@ -378,16 +439,65 @@ namespace
 			return ret;
 		}
 
+		void followSymlink(const std::string& symlink_target,
+			std::string file_path,
+			std::string hash_file_path)
+		{
+			std::vector<std::string> symlink_path_toks;
+			TokenizeMail(symlink_target, symlink_path_toks, os_file_sep());
+			size_t sym_off = 0;
+			for (sym_off = 0; sym_off< symlink_path_toks.size()
+				&& symlink_path_toks[sym_off] == ".."; ++sym_off)
+			{
+				file_path = ExtractFilePath(file_path, os_file_sep());
+				hash_file_path = ExtractFilePath(hash_file_path, os_file_sep());
+			}
+
+			for (size_t i = 0; i < restore_folders.size(); ++i)
+			{
+				if (next(file_path, 0, restore_folders[i].foldername))
+				{
+					//Is already being restored
+					return;
+				}
+			}
+
+			for (size_t i = curr_restore_folder_idx + 1; i < restore_folders.size();)
+			{
+				if (next(restore_folders[i].foldername, 0, file_path))
+				{
+					//Will be restored by new restore folder
+					restore_folders.erase(restore_folders.begin() + i);
+				}
+				else
+				{
+					++i;
+				}
+			}
+
+			SRestoreFolder restore_folder;
+			restore_folder.foldername = file_path;
+			restore_folder.hashfoldername = hash_file_path;
+			
+			for (; sym_off < symlink_path_toks.size(); ++sym_off)
+			{
+				restore_folder.foldername += os_file_sep() + symlink_path_toks[sym_off];
+				restore_folder.hashfoldername += os_file_sep() + symlink_path_toks[sym_off];
+				if (!restore_folder.share_path.empty())
+				{
+					restore_folder.share_path += "/";
+				}
+				restore_folder.share_path += symlink_path_toks[sym_off];
+			}
+		}
+
 	private:
 		std::string curr_clientname;
 		int curr_clientid;
 		int restore_clientid;
 		IFile* filelist_f;
-		std::string foldername;
-		std::string hashfoldername;
 		std::vector<std::string> filter_fns;
 		bool skip_special_root;
-		std::string folder_log_name;
 		int64 restore_id;
 		size_t status_id;
 		logid_t log_id;
@@ -397,14 +507,16 @@ namespace
 		std::vector < std::pair<std::string, std::string> > map_paths;
 		bool clean_other;
 		bool ignore_other_fs;
-		std::string share_path;
+		std::vector<SRestoreFolder> restore_folders;
+		size_t curr_restore_folder_idx;
+		bool follow_symlinks;
 	};
 }
 
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
-	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path)
+	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path, bool follow_symlinks)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -446,7 +558,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
 		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
-		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path), "frestore preparation");
+		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks), "frestore preparation");
 
 	return true;
 }
@@ -454,7 +566,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid,
 	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths,
-	bool clean_other, bool ignore_other_fs)
+	bool clean_other, bool ignore_other_fs, bool follow_symlinks)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -489,6 +601,6 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	std::string share_path = greplace(os_file_sep(), "/", file_backup_info.path);
 
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(),
-		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path);
+		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks);
 }
 

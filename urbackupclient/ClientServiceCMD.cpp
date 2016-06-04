@@ -1746,6 +1746,12 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 		accessparams += "&ignore_other_fs=" + EscapeParamString(it_ignore_other_fs->second);
 	}
 
+	str_map::iterator it_follow_symlinks = params.find("follow_symlinks");
+	if (it_follow_symlinks != params.end())
+	{
+		accessparams += "&follow_symlinks=" + EscapeParamString(it_follow_symlinks->second);
+	}
+
 	for (size_t i = 0; params.find("map_path_source" + convert(i)) != params.end(); ++i)
 	{
 		accessparams += "&map_path_source" + convert(i) + "=" + EscapeParamString(params["map_path_source" + convert(i)]);

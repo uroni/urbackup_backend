@@ -552,7 +552,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, EAcc
 
 std::string Connector::startRestore( const std::string& path, int backupid,
 	const std::vector<SPathMap>& map_paths, EAccessError& access_error, bool clean_other,
-	bool ignore_other_fs)
+	bool ignore_other_fs, bool follow_symlinks)
 {
 	access_error = EAccessError_Ok;
 
@@ -574,6 +574,7 @@ std::string Connector::startRestore( const std::string& path, int backupid,
 
 	params += std::string("&clean_other=") + (clean_other ? "1" : "0");
 	params += std::string("&ignore_other_fs=") + (ignore_other_fs ? "1" : "0");
+	params += std::string("&follow_symlinks=") + (follow_symlinks ? "1" : "0");
 
 	std::string res = getResponse("DOWNLOAD FILES TOKENS",
 		params, false);
