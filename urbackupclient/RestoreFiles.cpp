@@ -1091,6 +1091,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude)
 						&& !del_has_include_exclude)
 					{
+						log("Deleting directory \"" + restore_path + "\".", LL_DEBUG);
 						if (!os_remove_dir(os_file_prefix(cpath)))
 						{
 							log("Error deleting directory \"" + restore_path + "\". " + os_last_error_str(), LL_WARNING);
@@ -1106,6 +1107,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				}
 				else
 				{
+					log("Deleting file \"" + cpath + "\".", LL_DEBUG);
+
 					if(!Server->deleteFile(os_file_prefix(cpath)))
 					{
 						log("Error deleting file \""+ cpath +"\". "+os_last_error_str(), LL_WARNING);
