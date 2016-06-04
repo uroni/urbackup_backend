@@ -534,10 +534,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					if(data.name!="..")
 					{
 						bool set_orig_path = false;
+						std::string restore_name = data.name;
                         if(!metadata.orig_path.empty())
 						{
                             restore_path = metadata.orig_path;
 							set_orig_path=true;
+							restore_name = ExtractFilePath(restore_path, os_file_sep());
 						}
 
 						bool set_share_path = false;
@@ -633,9 +635,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						}
 
 #ifdef _WIN32
-						std::string name_lower = strlower(data.name);
+						std::string name_lower = strlower(restore_name);
 #else
-						std::string name_lower = data.name;
+						std::string name_lower = restore_name;
 #endif
 						folder_files.top().push_back(name_lower);
 
@@ -671,11 +673,23 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				}
 				else
 				{
-					std::string local_fn = restore_path + os_file_sep() + data.name;
+					std::string restore_name;
+					std::string local_fn;
+					if (!metadata.orig_path.empty())
+					{
+						local_fn = metadata.orig_path;
+						restore_name = ExtractFilePath(restore_path, os_file_sep());
+					}
+					else
+					{
+						local_fn = restore_path + os_file_sep() + data.name;
+						restore_name = data.name;
+					}
+					
 #ifdef _WIN32
-					std::string name_lower = strlower(data.name);
+					std::string name_lower = strlower(restore_name);
 #else
-					std::string name_lower = data.name;
+					std::string name_lower = restore_name;
 #endif
 					std::string server_fn = server_path + "/" + data.name;
 
@@ -717,10 +731,10 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						std::string shahash;
 
 						SFileAndHash search_file = {};
-						search_file.name = data.name;
+						search_file.name = restore_name;
 
 						std::vector<SFileAndHash>::iterator it_file = std::lower_bound(curr_files.begin(), curr_files.end(), search_file);
-						if(it_file!=curr_files.end() && it_file->name == data.name)
+						if(it_file!=curr_files.end() && it_file->name == restore_name)
 						{
 							SFile metadata = getFileMetadataWin(local_fn, true);
 							if(!metadata.name.empty())
