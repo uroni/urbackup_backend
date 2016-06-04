@@ -5588,7 +5588,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
 		VSSLog("Following symbolic link at \""+symlink+"\" to new symlink backup target at \""+target+"\"", LL_INFO);
-		addSymlinkBackupDir(target);
+		addSymlinkBackupDir(target, output_target);
 		return true;
 	}
 	else
@@ -5598,7 +5598,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 	}
 }
 
-void IndexThread::addSymlinkBackupDir( const std::string& target )
+void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& output_target )
 {
 	std::string name=".symlink_"+ExtractFileName(target);
 
@@ -5613,6 +5613,8 @@ void IndexThread::addSymlinkBackupDir( const std::string& target )
 		}
 		name+=add;
 	}
+
+	output_target = name;
 
 	SBackupDir backup_dir;
 

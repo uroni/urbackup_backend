@@ -55,9 +55,9 @@ void FileServ::shareDir(const std::string &name, const std::string &path, const 
 	add_share_path(name, path, identity, allow_exec);
 }
 
-void FileServ::removeDir(const std::string &name, const std::string& identity)
+bool FileServ::removeDir(const std::string &name, const std::string& identity)
 {
-	remove_share_path(name, identity);
+	return remove_share_path(name, identity);
 }
 
 void FileServ::stopServer(void)

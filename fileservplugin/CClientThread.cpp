@@ -567,7 +567,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						break;
 					}
 				}
-				else if(metadata_id!=0 && next(s_filename, 0, "clientdl/"))
+				else if(metadata_id!=0 && next(s_filename, 0, "clientdl"))
 				{
 					PipeSessions::transmitFileMetadata(filename,
 						s_filename, ident, ident, folder_items, metadata_id);
@@ -1727,7 +1727,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 	else
 	{
-		if(metadata_id!=0 && next(s_filename, 0, "clientdl/"))
+		if(metadata_id!=0 && next(s_filename, 0, "clientdl"))
 		{
 			PipeSessions::transmitFileMetadata(filename,
 				s_filename, ident, ident, 0, metadata_id);

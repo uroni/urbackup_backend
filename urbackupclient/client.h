@@ -236,7 +236,7 @@ private:
 	bool readBackupScripts();
 
 	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target, std::string& output_target);
-	void addSymlinkBackupDir(const std::string& target);
+	void addSymlinkBackupDir(const std::string& target, std::string& output_target);
 	bool backupNameInUse(const std::string& name);
 	void removeUnconfirmedSymlinkDirs(size_t off);
 

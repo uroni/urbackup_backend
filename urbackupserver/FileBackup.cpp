@@ -1773,6 +1773,18 @@ bool FileBackup::createSymlink(const std::string& name, size_t depth, const std:
 		}
 	}
 
+	if (toks.empty()
+		&& isdir)
+	{
+		target += ".symlink_void_dir";
+	}
+
+	if (toks.empty()
+		&& !isdir)
+	{
+		target += ".symlink_void_file";
+	}
+
 	return os_link_symbolic(target, os_file_prefix(name), NULL, &isdir);
 }
 

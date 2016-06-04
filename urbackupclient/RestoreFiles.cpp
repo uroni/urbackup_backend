@@ -469,9 +469,38 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				FileMetadata metadata;
 				metadata.read(extra);
 
+				if ( depth==0
+					&& (!data.isdir || data.name != "..") 
+					&& !metadata.orig_path.empty()
+					&& !restore_path.empty() )
+				{
+					if (ExtractFilePath(metadata.orig_path, os_file_sep()) != restore_path)
+					{
+						if (!single_item && clean_other)
+						{
+							bool has_include_exclude = false;
+							if (!removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
+							{
+								has_error = true;
+							}
+						}
+
+						folder_files.top().clear();
+					}
+				}
+
 				if(depth==0 && extra.find("single_item")!=extra.end())
 				{
 					single_item=true;
+				}
+				else
+				{
+					single_item = false;
+				}
+
+				if (depth == 0 && extra.find("server_path") != extra.end())
+				{
+					server_path = extra["server_path"];
 				}
 
 				int64 ctime=Server->getTimeMS();
@@ -711,24 +740,31 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
-						IFsFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+						std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW));
 
 #ifdef _WIN32
-						if(orig_file==NULL)
+						if (orig_file.get() == NULL
+							&& os_get_file_type(os_file_prefix(local_fn)) & EFileType_Symlink)
+						{
+							Server->deleteFile(os_file_prefix(local_fn));
+							orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE));
+						}
+
+						if(orig_file.get()==NULL)
 						{
 							size_t idx=0;
 							std::string old_local_fn=local_fn;
-							while(orig_file==NULL && idx<100)
+							while(orig_file.get()==NULL && idx<100)
 							{
 								local_fn=old_local_fn+"_"+convert(idx);
 								++idx;
 								if (!Server->fileExists(os_file_prefix(local_fn)) )
 								{
-									orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
+									orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE));
 								}
 							}
 
-							if (orig_file != NULL)
+							if (orig_file.get() != NULL)
 							{
 								rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
 								metadata_path_mapping[old_local_fn] = local_fn;
@@ -737,30 +773,30 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								{
 									log("Cannot change file permissions of \""+local_fn+"\" to allow only admin access. " + os_last_error_str(), LL_ERROR);
 									has_error = true;
-									orig_file = NULL;
+									orig_file.reset();
 								}
 							}
 						}
 #else
-						if (orig_file == NULL)
+						if (orig_file.get() == NULL)
 						{
 							log("Cannot open file \"" + local_fn + "\" for writing. Unlinking file and creating new one. " + os_last_error_str(), LL_INFO);
 
 							int rc = unlink(local_fn.c_str());
 							if (rc == 0)
 							{
-								orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE);
+								orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE));
 								if (!change_file_permissions_admin_only(os_file_prefix(local_fn)))
 								{
 									log("Cannot change file permissions of \"" + local_fn + "\" to allow only root access. " + os_last_error_str(), LL_ERROR);
 									has_error = true;
-									orig_file = NULL;
+									orig_file.reset();
 								}
 							}
 						}
 #endif
 
-						if(orig_file==NULL)
+						if(orig_file.get()==NULL)
 						{
 							log("Cannot open file \""+local_fn+"\" for writing. Not restoring file. " + os_last_error_str(), LL_ERROR);
 							has_error=true;
@@ -768,8 +804,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						else if (data.size == 0)
 						{
 							if (orig_file->Size() != 0)
-							{
-								delete orig_file;
+							{							
+								orig_file.reset();
 
 								if (!os_file_truncate(os_file_prefix(local_fn), 0))
 								{
@@ -779,7 +815,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}
 							else
 							{
-								delete orig_file;
+								orig_file.reset();
 							}
 
 							restore_download->addToQueueFull(line, server_fn, local_fn,
@@ -793,7 +829,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							{
 								log("Cannot open temporary file for chunk hashes of file \""+local_fn+"\". Not restoring file. " + os_last_error_str(), LL_ERROR);
 								has_error=true;
-								delete orig_file;
 							}
 							else
 							{
@@ -816,9 +851,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								if(shahash.empty())
 								{
 									log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
-									FsExtentIterator extent_iterator(orig_file, 512*1024);
+									FsExtentIterator extent_iterator(orig_file.get(), 512*1024);
 
-									if (build_chunk_hashs(orig_file, chunkhashes, NULL, NULL, false, NULL,
+									if (build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL,
 										NULL, false, hashf.get(), &extent_iterator))
 									{
 										calc_hashes = true;
@@ -831,13 +866,14 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
                                     if(!calc_hashes)
                                     {
                                         log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
-										FsExtentIterator extent_iterator(orig_file);
-                                        build_chunk_hashs(orig_file, chunkhashes, NULL, NULL, false, NULL, NULL,
+										FsExtentIterator extent_iterator(orig_file.get());
+                                        build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL, NULL,
 											false, NULL, &extent_iterator);
                                     }
 
+									IFsFile* r_orig_file = orig_file.release();
 									restore_download->addToQueueChunked(line, server_fn, local_fn, 
-										data.size, metadata, false, orig_file, chunkhashes);
+										data.size, metadata, false, r_orig_file, chunkhashes);
 								}
 								else
 								{
@@ -849,7 +885,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									std::string tmpfn = chunkhashes->getFilename();
 									delete chunkhashes;
 									Server->deleteFile(tmpfn);
-									delete orig_file;
 								}
 							}
 						}
@@ -981,9 +1016,9 @@ void RestoreFiles::log_progress(const std::string & fn, int64 total, int64 downl
 	if (total > 0)
 	{
 		std::string cfn;
-		if (next(fn, 0, "clientdl/"))
+		if (next(fn, 0, "clientdl"))
 		{
-			cfn = fn.substr(9);
+			cfn = getafter("/", fn);
 		}
 		else
 		{

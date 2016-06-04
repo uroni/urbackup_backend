@@ -185,6 +185,7 @@ namespace
 			std::string foldername;
 			std::string hashfoldername;
 			std::string share_path;
+			std::vector<std::string> filter_fns;
 		};
 
 	public:
@@ -201,16 +202,17 @@ namespace
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
 			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks)
 		{
-			TokenizeMail(filter, filter_fns, "/");
-
-			if (filter_fns.size()==1)
-			{
-				single_file = true;
-			}
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = foldername;
 			restore_folder.hashfoldername = hashfoldername;
 			restore_folder.share_path = share_path;
+
+			TokenizeMail(filter, restore_folder.filter_fns, "/");
+
+			if (restore_folder.filter_fns.size() == 1)
+			{
+				single_file = true;
+			}
 			
 			if (!restore_folder.share_path.empty()
 				&& restore_folder.share_path[restore_folder.share_path.size() - 1] == '/')
@@ -229,6 +231,8 @@ namespace
 			for (; curr_restore_folder_idx < restore_folders.size(); ++curr_restore_folder_idx)
 			{
 				SRestoreFolder& restore_folder = restore_folders[curr_restore_folder_idx];
+
+				filter_fns = restore_folder.filter_fns;
 
 				if (!createFilelist(restore_folder.foldername, restore_folder.hashfoldername,
 					restore_folder.share_path, 0,
@@ -294,7 +298,7 @@ namespace
 		}
 
 
-		bool createFilelist(const std::string& foldername, const std::string& hashfoldername, const std::string& curr_share_path,
+		bool createFilelist(std::string foldername, std::string hashfoldername, std::string curr_share_path,
 			size_t depth, bool skip_special)
 		{
 			bool has_error=false;
@@ -335,19 +339,8 @@ namespace
 
 						if (directory_pool != ".directory_pool")
 						{
-							if (os_get_file_type(pool_path) & EFileType_Directory)
-							{
-								file.isdir = true;
-							}
-							else
-							{
-								file.isdir = false;
-							}
-
-							if (follow_symlinks)
-							{
-								followSymlink(pool_path, filename, metadataname);
-							}
+							followSymlink(pool_path, filename, metadataname, file.isdir);
+							file.size = 0;
 						}
 						else
 						{
@@ -406,6 +399,7 @@ namespace
 				if (depth == 0)
 				{
 					extra += "&share_path=" + EscapeParamString(curr_share_path.empty() ? file.name : (curr_share_path + "/" + file.name));
+					extra += "&server_path=clientdl" + convert(curr_restore_folder_idx);
 				}
 
 				if(!metadata.shahash.empty())
@@ -441,44 +435,26 @@ namespace
 
 		void followSymlink(const std::string& symlink_target,
 			std::string file_path,
-			std::string hash_file_path)
+			std::string hash_file_path,
+			bool& is_dir)
 		{
 			std::vector<std::string> symlink_path_toks;
 			TokenizeMail(symlink_target, symlink_path_toks, os_file_sep());
-			size_t sym_off = 0;
-			for (sym_off = 0; sym_off< symlink_path_toks.size()
-				&& symlink_path_toks[sym_off] == ".."; ++sym_off)
-			{
-				file_path = ExtractFilePath(file_path, os_file_sep());
-				hash_file_path = ExtractFilePath(hash_file_path, os_file_sep());
-			}
-
-			for (size_t i = 0; i < restore_folders.size(); ++i)
-			{
-				if (next(file_path, 0, restore_folders[i].foldername))
-				{
-					//Is already being restored
-					return;
-				}
-			}
-
-			for (size_t i = curr_restore_folder_idx + 1; i < restore_folders.size();)
-			{
-				if (next(restore_folders[i].foldername, 0, file_path))
-				{
-					//Will be restored by new restore folder
-					restore_folders.erase(restore_folders.begin() + i);
-				}
-				else
-				{
-					++i;
-				}
-			}
 
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = file_path;
 			restore_folder.hashfoldername = hash_file_path;
-			
+
+			size_t sym_off = 0;
+			restore_folder.foldername = ExtractFilePath(restore_folder.foldername, os_file_sep());
+			restore_folder.hashfoldername = ExtractFilePath(restore_folder.hashfoldername, os_file_sep());
+			for (sym_off = 0; sym_off< symlink_path_toks.size()
+				&& symlink_path_toks[sym_off] == ".."; ++sym_off)
+			{
+				restore_folder.foldername = ExtractFilePath(restore_folder.foldername, os_file_sep());
+				restore_folder.hashfoldername = ExtractFilePath(restore_folder.hashfoldername, os_file_sep());
+			}
+
 			for (; sym_off < symlink_path_toks.size(); ++sym_off)
 			{
 				restore_folder.foldername += os_file_sep() + symlink_path_toks[sym_off];
@@ -489,6 +465,63 @@ namespace
 				}
 				restore_folder.share_path += symlink_path_toks[sym_off];
 			}
+
+			is_dir = (os_get_file_type(restore_folder.foldername) & EFileType_Directory) > 0;
+
+			if (!follow_symlinks)
+			{
+				return;
+			}
+
+			for (size_t i = 0; i < restore_folders.size(); ++i)
+			{
+				if (next(restore_folder.foldername, 0, restore_folders[i].foldername) )
+				{
+					if (restore_folders[i].filter_fns.empty())
+					{
+						//Is already being restored
+						return;
+					}
+					else
+					{
+						for (size_t j = 0; j < restore_folders[i].filter_fns.size(); ++j)
+						{
+							if (next(restore_folder.foldername, 0, restore_folders[i].foldername + os_file_sep()+ restore_folders[i].filter_fns[j]))
+							{
+								//Is already being restored
+								return;
+							}
+						}
+					}
+				}
+			}
+
+			if (is_dir)
+			{
+				for (size_t i = curr_restore_folder_idx + 1; i < restore_folders.size();)
+				{
+					if (next(restore_folders[i].foldername, 0, restore_folder.foldername))
+					{
+						//Will be restored by new restore folder
+						restore_folders.erase(restore_folders.begin() + i);
+					}
+					else
+					{
+						++i;
+					}
+				}
+			}
+
+			if (!is_dir)
+			{
+				std::string fn = ExtractFileName(restore_folder.foldername, os_file_sep());
+				restore_folder.foldername = ExtractFilePath(restore_folder.foldername, os_file_sep());
+				restore_folder.hashfoldername = ExtractFilePath(restore_folder.hashfoldername, os_file_sep());
+				restore_folder.share_path = ExtractFilePath(restore_folder.share_path, "/");
+				restore_folder.filter_fns.push_back(fn);
+			}
+
+			restore_folders.push_back(restore_folder);
 		}
 
 	private:

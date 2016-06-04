@@ -137,7 +137,7 @@ void add_share_path(const std::string &name, const std::string &path, const std:
 	mapcs.Leave();
 }
 
-void remove_share_path(const std::string &name, const std::string& identity)
+bool remove_share_path(const std::string &name, const std::string& identity)
 {
 	mapcs.Enter();
 
@@ -145,9 +145,12 @@ void remove_share_path(const std::string &name, const std::string& identity)
 	if(it!=mapbuffer.end())
 	{
 		mapbuffer.erase(it);
+		mapcs.Leave();
+		return true;
 	}
 
 	mapcs.Leave();
+	return false;
 }
 
 void register_fn_redirect(const std::string & source_fn, const std::string & target_fn)

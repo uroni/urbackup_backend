@@ -1291,8 +1291,12 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 
 		fileserv->removeIdentity(ident);
 		fileserv->removeDir("clientdl_filelist", ident);
-		fileserv->removeDir("clientdl", ident);
-		fileserv->removeMetadataCallback("clientdl", ident);
+		size_t idx = 0;
+		while (fileserv->removeDir("clientdl"+convert(idx), ident))
+		{
+			fileserv->removeMetadataCallback("clientdl"+convert(idx), ident);
+			++idx;
+		}		
 
 		int errors=0;
 		int warnings=0;
