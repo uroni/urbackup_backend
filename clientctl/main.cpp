@@ -431,6 +431,8 @@ int follow_status(bool restore, int64 process_id)
 					std::cout << "\r" << waiting_msg << spinner[waiting_for_id_idx%spinner.size()];;
 				}
 
+				std::cout.flush();
+
 				++waiting_for_id_idx;
 			}
 		}
