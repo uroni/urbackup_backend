@@ -346,7 +346,7 @@ int follow_status(bool restore, int64 process_id)
 			{
 				if (!found_once && waiting_for_id_idx>0)
 				{
-					std::cout << "\r" << waiting_msg << "done" << std::endl;
+					std::cout << "\r" << waiting_msg << " done" << std::endl;
 				}
 
 				found_once = true;
@@ -407,7 +407,7 @@ int follow_status(bool restore, int64 process_id)
 						std::cout << std::endl;
 						if (restore)
 						{
-
+							std::cerr << "Restore failed." << std::endl;
 						}
 						else
 						{
@@ -418,7 +418,7 @@ int follow_status(bool restore, int64 process_id)
 				}
 			}
 
-			if (!found_once && waiting_for_id_idx==0)
+			if (!found_once)
 			{
 				if (restore)
 				{
