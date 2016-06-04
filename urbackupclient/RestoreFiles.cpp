@@ -261,6 +261,7 @@ void RestoreFiles::operator()()
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
 			restore_failed(*metadata_thread.get(), metadata_dl);
+			metadata_thread->applyMetadata(metadata_path_mapping);
 			return;
 		}
 
