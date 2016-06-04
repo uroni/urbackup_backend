@@ -724,6 +724,7 @@ std::string EscapeParamString(const std::string &pStr)
 		case '/': ret+="%2F"; break;
 		case ' ': ret+="%20"; break;
 		case '#': ret+="%23"; break;
+		case '+': ret+="%2B"; break;
 		default: ret+=pStr[i]; break;
 		}
 	}
