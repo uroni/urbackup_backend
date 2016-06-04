@@ -382,7 +382,7 @@ namespace
 				}
 
 				if(!metadata.orig_path.empty() &&
-					(depth==0 || metadata.orig_path.find_last_of(file.name)!=metadata.orig_path.size()-file.name.size()))
+					(depth==0 || metadata.orig_path.rfind(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
 					for (size_t j = 0; j < map_paths.size(); ++j)
 					{
