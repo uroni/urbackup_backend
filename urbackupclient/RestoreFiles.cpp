@@ -473,7 +473,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				if ( depth==0
 					&& (!data.isdir || data.name != "..") 
 					&& !metadata.orig_path.empty()
-					&& !restore_path.empty() )
+					&& !restore_path.empty()
+					&& !has_error)
 				{
 					if (ExtractFilePath(metadata.orig_path, os_file_sep()) != restore_path)
 					{
@@ -651,15 +652,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 					else
 					{
-						--depth;
-
-						bool has_include_exclude = false;
-						if(clean_other
-							&& (os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink)==0
-							&& !removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
-						{
-							has_error=true;
-						}						
+						--depth;			
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
                             metadata, false, true, folder_items.back());
@@ -934,7 +927,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 	} while (read>0 && !has_error);
 
-	if(!single_item && clean_other)
+	if(!single_item && clean_other
+		&& !has_error)
 	{
 		bool has_include_exclude = false;
 		if(!removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
