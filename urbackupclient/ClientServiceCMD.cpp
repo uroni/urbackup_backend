@@ -767,7 +767,15 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 {
 	state=CCSTATE_STATUS;
 
-	lasttime=Server->getTimeMS();
+	if (cmd == "FSTATUS")
+	{
+		sendStatus();
+		state = CCSTATE_NORMAL;
+	}
+	else
+	{
+		lasttime = Server->getTimeMS();
+	}
 }
 
 void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)

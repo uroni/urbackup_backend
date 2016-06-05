@@ -944,7 +944,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
 			}
-			else if(cmd=="STATUS" )
+			else if(cmd=="STATUS" || cmd=="FSTATUS" )
 			{
 				CMD_STATUS(cmd); continue;
 			}
