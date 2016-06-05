@@ -17,6 +17,8 @@ const int MODE_READ_SEQUENTIAL=7;
 const int MODE_READ_SEQUENTIAL_BACKUP=8;
 const int MODE_RW_SEQUENTIAL=9;
 const int MODE_RW_DEVICE = 11;
+const int MODE_RW_RESTORE = 12;
+const int MODE_RW_CREATE_RESTORE = 13;
 //Linux only
 const int MODE_RW_READNONE=10;
 

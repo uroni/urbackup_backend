@@ -385,6 +385,27 @@ bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao,
 	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 
+bool is_directory_link(const std::string & path)
+{
+	int ftype = os_get_file_type(os_file_prefix(path));
+
+	if (ftype & EFileType_Directory == 0
+		|| ftype & EFileType_Symlink == 0)
+	{
+		return false;
+	}
+
+	std::string symlink_target;
+	if (!os_get_symlink_target(os_file_prefix(path), symlink_target))
+	{
+		return false;
+	}
+
+	std::string directory_pool = ExtractFileName(ExtractFilePath(ExtractFilePath(symlink_target, os_file_sep()), os_file_sep()), os_file_sep());
+
+	return directory_pool == ".directory_pool";
+}
+
 void init_dir_link_mutex()
 {
 	dir_link_mutex=Server->createMutex();

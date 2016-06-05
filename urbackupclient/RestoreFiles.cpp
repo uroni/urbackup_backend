@@ -754,14 +754,14 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
-						std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW));
+						std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
 
 #ifdef _WIN32
 						if (orig_file.get() == NULL
 							&& os_get_file_type(os_file_prefix(local_fn)) & EFileType_Symlink)
 						{
 							Server->deleteFile(os_file_prefix(local_fn));
-							orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE));
+							orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 						}
 
 						if(orig_file.get()==NULL)
@@ -774,7 +774,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								++idx;
 								if (!Server->fileExists(os_file_prefix(local_fn)) )
 								{
-									orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE));
+									orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 								}
 							}
 
@@ -819,18 +819,14 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						{
 							if (orig_file->Size() != 0)
 							{							
-								orig_file.reset();
-
-								if (!os_file_truncate(os_file_prefix(local_fn), 0))
+								if (orig_file->Resize(0))
 								{
 									log("Cannot truncate file \"" + local_fn + "\" to zero bytes. " + os_last_error_str(), LL_ERROR);
 									has_error = true;
 								}
 							}
-							else
-							{
-								orig_file.reset();
-							}
+
+							orig_file.reset();
 
 							restore_download->addToQueueFull(line, server_fn, local_fn,
 								data.size, metadata, false, true, 0);
@@ -907,7 +903,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					{
 						if (data.size == 0)
 						{
-							std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(local_fn), MODE_WRITE));
+							std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 
 							if (touch_file.get() == NULL)
 							{

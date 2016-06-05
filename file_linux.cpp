@@ -80,6 +80,15 @@ File::File()
 
 bool File::Open(std::string pfn, int mode)
 {
+	if (mode == MODE_RW_RESTORE)
+	{
+		mode = MODE_RW;
+	}
+	if (mode == MODE_RW_CREATE_RESTORE)
+	{
+		mode = MODE_RW_CREATE;
+	}
+
 	fn=pfn;
 	int flags=0;
 	mode_t imode=S_IRWXU|S_IRWXG;

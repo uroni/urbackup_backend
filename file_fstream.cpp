@@ -30,6 +30,15 @@ File::File()
 
 bool File::Open(std::string pfn, int mode)
 {
+	if (mode == MODE_RW_RESTORE)
+	{
+		mode = MODE_RW;
+	}
+	if (mode == MODE_RW_CREATE_RESTORE)
+	{
+		mode = MODE_RW_CREATE;
+	}
+
 	fn=pfn;
 	std::ios::openmode _mode;
 	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)

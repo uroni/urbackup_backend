@@ -68,12 +68,15 @@ bool File::Open(std::string pfn, int mode)
 		|| mode==MODE_RW_SEQUENTIAL
 		|| mode==MODE_RW_CREATE
 		|| mode==MODE_RW_READNONE
-		|| mode== MODE_RW_DEVICE)
+		|| mode== MODE_RW_DEVICE
+		|| mode==MODE_RW_RESTORE
+		|| mode==MODE_RW_CREATE_RESTORE)
 	{
 		if(mode==MODE_RW
 			|| mode==MODE_RW_SEQUENTIAL
 			|| mode==MODE_RW_READNONE
-			|| mode== MODE_RW_DEVICE)
+			|| mode== MODE_RW_DEVICE
+			|| mode==MODE_RW_RESTORE)
 		{
 			dwCreationDisposition=OPEN_EXISTING;
 		}
@@ -97,7 +100,9 @@ bool File::Open(std::string pfn, int mode)
 	{
 		flags|=FILE_FLAG_SEQUENTIAL_SCAN;
 	}
-	if(mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if(mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode==MODE_RW_RESTORE
+		|| mode==MODE_RW_CREATE_RESTORE)
 	{
 		flags|=FILE_FLAG_BACKUP_SEMANTICS;
 	}
