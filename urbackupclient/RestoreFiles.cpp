@@ -199,6 +199,7 @@ void RestoreFiles::operator()()
 		{
 			log("Connecting for restore failed", LL_ERROR);
 			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			is_offline = true;
 			return;
 		}
 
@@ -207,6 +208,7 @@ void RestoreFiles::operator()()
 		if (!downloadFilelist(fc))
 		{
 			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			is_offline = true;
 			return;
 		}
 
@@ -226,6 +228,7 @@ void RestoreFiles::operator()()
 		{
 			log("Connecting for file metadata failed", LL_ERROR);
 			ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+			is_offline = true;
 			return;
 		}
 
@@ -246,6 +249,7 @@ void RestoreFiles::operator()()
 		{
 			log("Error starting metadata download", LL_INFO);
 			restore_failed(*metadata_thread.get(), metadata_dl);
+			is_offline = true;
 			return;
 		}
 
@@ -261,6 +265,7 @@ void RestoreFiles::operator()()
 		if (!downloadFiles(fc, total_size, restore_updater))
 		{
 			restore_failed(*metadata_thread.get(), metadata_dl);
+			is_offline = true;
 			metadata_thread->applyMetadata(metadata_path_mapping);
 			return;
 		}
@@ -298,6 +303,7 @@ void RestoreFiles::operator()()
 			if (Server->getTimeMS() - last_transfer_time>140000)
 			{
 				log("No meta-data transfer in the last " + PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + ". Shutting down meta-data tranfer.", LL_DEBUG);
+				is_offline = true;
 				metadata_thread->shutdown();
 			}
 
@@ -1001,7 +1007,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 void RestoreFiles::log( const std::string& msg, int loglevel )
 {
 	Server->Log(msg, loglevel);
-	if(loglevel>=LL_INFO)
+	if(loglevel>=LL_INFO
+		&& !is_offline)
 	{
 		ClientConnector::tochannelLog(log_id, msg, loglevel, server_token);
 	}
