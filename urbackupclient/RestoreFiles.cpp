@@ -678,7 +678,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					if (!metadata.orig_path.empty())
 					{
 						local_fn = metadata.orig_path;
-						restore_name = ExtractFileName(restore_path, os_file_sep());
+						restore_name = ExtractFileName(metadata.orig_path, os_file_sep());
 					}
 					else
 					{
@@ -1063,7 +1063,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 	if(get_files_error)
 	{
 		log("Error enumerating files in \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
-		if (os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink == 0)
+		if ((os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink) == 0)
 		{
 			ret = false;
 		}
