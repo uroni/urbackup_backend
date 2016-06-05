@@ -549,7 +549,8 @@ namespace
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
-	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path, bool follow_symlinks)
+	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path,
+	bool follow_symlinks, THREADPOOL_TICKET& ticket)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -589,7 +590,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	log_id = ServerLogger::getLogId(restore_clientid);
 	status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file, full_log_name, log_id, false);
 
-	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
+	ticket = Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid,
 		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
 		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks), "frestore preparation");
 
@@ -632,8 +633,9 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	std::string curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
 	std::string curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+".hashes";
 	std::string share_path = greplace(os_file_sep(), "/", file_backup_info.path);
+	THREADPOOL_TICKET ticket;
 
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(),
-		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks);
+		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, ticket);
 }
 

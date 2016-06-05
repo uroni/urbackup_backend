@@ -2078,6 +2078,10 @@ function restoreFiles(clientid, backupid, path, server_confirms_restore, fn_filt
 		filter+="&filter="+fn_filter.replace(/\//g,"%2F")
 	}
 	
+	g.curr_clientid = clientid;
+	g.curr_backupid = backupid;
+	g.curr_path = path;
+	
 	new getJSON("backups", "sa=clientdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F")+filter, restore_callback);
 }
 
@@ -2087,6 +2091,37 @@ function restore_callback(data)
 	if(data.err)
 	{
 		alert("An error occured when starting restore: " + data.err);
+	}
+	else if(data.wait_key)
+	{
+		var ndata=dustRender("backup_restore_wait");
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
+		
+		new getJSON("restore_prepare_wait", "wait_key="+data.wait_key, restore_prepare_wait_callback);
+	}
+}
+
+function restore_prepare_wait_callback(data)
+{
+	if(!data.wait_key)
+	{
+		alert("An error occured while waiting for the restore process: "+data.err);
+	}
+	else
+	{
+		if(data.completed)
+		{
+			stopLoading();
+			tabMouseClickFiles(g.curr_clientid, g.curr_backupid, g.curr_path);
+		}
+		else
+		{
+			new getJSON("restore_prepare_wait", "wait_key="+data.wait_key, restore_prepare_wait_callback);
+		}
 	}
 }
 

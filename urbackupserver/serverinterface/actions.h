@@ -20,4 +20,5 @@ namespace Actions
 	ACTION(livelog);
 	ACTION(start_backup);
 	ACTION(add_client);
+	ACTION(restore_prepare_wait);
 }

@@ -336,6 +336,9 @@
     <ClCompile Include="apps\md5sum_check.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\restore_prepare_wait.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
