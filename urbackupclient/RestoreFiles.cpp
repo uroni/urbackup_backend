@@ -541,7 +541,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						{
                             restore_path = metadata.orig_path;
 							set_orig_path=true;
-							restore_name = ExtractFilePath(restore_path, os_file_sep());
+							restore_name = ExtractFileName(restore_path, os_file_sep());
 						}
 
 						bool set_share_path = false;
@@ -672,7 +672,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					if (!metadata.orig_path.empty())
 					{
 						local_fn = metadata.orig_path;
-						restore_name = ExtractFilePath(restore_path, os_file_sep());
+						restore_name = ExtractFileName(restore_path, os_file_sep());
 					}
 					else
 					{
