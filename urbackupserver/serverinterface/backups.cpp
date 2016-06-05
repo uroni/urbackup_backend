@@ -30,6 +30,7 @@
 #include "../server_status.h"
 #include "../restore_client.h"
 #include "../dao/ServerBackupDao.h"
+#include "../server_dir_links.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -130,21 +131,31 @@ namespace
 			if(skip_special && (files[i].name==".hashes" || files[i].name=="user_views" || next(files[i].name, 0, ".symlink_") ) )
 				continue;
 
-			std::string metadata_fn;
-			if (files[i].isdir
-				&& !files[i].issym
-				&& !files[i].isspecialf)
+			SFile file = files[i];
+
+			if (file.isdir
+				&& file.issym
+				&& is_directory_link(dir + file.name) )
 			{
-				metadata_fn = dir + escape_metadata_fn(files[i].name) + os_file_sep() + metadata_dir_fn;
+				file.issym = false;
+				file.isspecialf = false;
+			}
+
+			std::string metadata_fn;
+			if (file.isdir
+				&& !file.issym
+				&& !file.isspecialf)
+			{
+				metadata_fn = dir + escape_metadata_fn(file.name) + os_file_sep() + metadata_dir_fn;
 			}
 			else
 			{
-				metadata_fn = dir + escape_metadata_fn(files[i].name);
+				metadata_fn = dir + escape_metadata_fn(file.name);
 			}
 
 			if(!read_metadata(metadata_fn, ret[i]) )
 			{
-				Server->Log("Error reading metadata of file "+dir+os_file_sep()+files[i].name, LL_ERROR);
+				Server->Log("Error reading metadata of file "+dir+os_file_sep()+ file.name, LL_ERROR);
 			}
 		}
 
@@ -507,13 +518,14 @@ namespace backupaccess
 
 				if(fileaccesstokens)
 				{
+					std::string curr_metadata_file = curr_metadata_dir;
 					if(!ret.is_file)
 					{
-						curr_metadata_dir+=metadata_dir_fn;
+						curr_metadata_file +=metadata_dir_fn;
 					}
 
 					FileMetadata dir_metadata;
-					if(!read_metadata(curr_metadata_dir, dir_metadata))
+					if(!read_metadata(curr_metadata_file, dir_metadata))
 					{
 						ret.can_access_path=false;
 						break;

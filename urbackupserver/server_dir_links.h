@@ -20,3 +20,5 @@ bool remove_directory_link(const std::string &path, ServerLinkDao& link_dao, int
 	std::auto_ptr<DBScopedSynchronous>& synchronous_link_dao, bool with_transaction=true);
 
 bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao, int clientid, bool delete_root=true, bool with_transaction=true);
+
+bool is_directory_link(const std::string& path);
