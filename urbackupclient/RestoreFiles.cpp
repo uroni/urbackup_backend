@@ -1063,7 +1063,10 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 	if(get_files_error)
 	{
 		log("Error enumerating files in \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
-		ret=false;
+		if (os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink == 0)
+		{
+			ret = false;
+		}
 	}
 	else
 	{

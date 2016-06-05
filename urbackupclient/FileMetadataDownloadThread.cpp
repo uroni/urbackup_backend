@@ -252,7 +252,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	if(hFile==INVALID_HANDLE_VALUE
 		&& output_fn.size()>3)
 	{
-		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\"", LL_ERROR);
+		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\". "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 
@@ -373,7 +373,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 			if (!b || written != stream_id.size())
 			{
-				restore.log("Error writting metadata to file \"" + output_fn + "\". Last error: " + convert((int)GetLastError()), LL_ERROR);
+				restore.log("Error writting metadata to file \"" + output_fn + "\". "+os_last_error_str(), LL_ERROR);
 				has_error = true;
 				break;
 			}
@@ -401,7 +401,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
 				if (!b || written != toread)
 				{
-					restore.log("Error writting metadata to file \"" + output_fn + "\". Last error: " + convert((int)GetLastError()), LL_ERROR);
+					restore.log("Error writting metadata to file \"" + output_fn + "\". "+os_last_error_str(), LL_ERROR);
 					has_error = true;
 					break;
 				}
