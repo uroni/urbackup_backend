@@ -69,7 +69,8 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 	backup_state(BackupState_StatInit),
 #endif
 	metadata_state(MetadataState_Wait),
-		errpipe(Server->createMemoryPipe())
+		errpipe(Server->createMemoryPipe()),
+	metadata_file(NULL)
 {
 	metadata_buffer.resize(4096);
 	init();
@@ -154,6 +155,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					errpipe->Write("Error seeking to metadata in \"" + metadata_file->getFilename()+"\"");
 
 					read_bytes=0;
+					metadata_file.reset();
 					PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 					metadata_state = MetadataState_Wait;
 					return false;
@@ -306,6 +308,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(fn_off==sizeof(unsigned int))
 		{
+			metadata_file.reset();
 			PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 			metadata_state = MetadataState_Wait;
 		}
@@ -545,9 +548,9 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					{
 						std::string orig_path;
 						_u32 version = 0;
-						metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version);
+						metadata_file.reset(callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version));
 
-						if (metadata_file == NULL)
+						if (metadata_file.get() == NULL)
 						{
 							errpipe->Write("Error opening metadata file for \"" + public_fn + "\"");
 
@@ -640,6 +643,8 @@ void FileMetadataPipe::cleanupOnForceShutdown()
 	{
 		PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
 	}
+
+	metadata_file.reset();
 
 #ifdef _WIN32
 	if (hFile != INVALID_HANDLE_VALUE)

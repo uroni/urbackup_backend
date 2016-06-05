@@ -2,6 +2,7 @@
 #include "PipeFileBase.h"
 #include "../Interface/Pipe.h"
 #include <string>
+#include <memory>
 #include <deque>
 #include "../Interface/Condition.h"
 #include "IFileServ.h"
@@ -100,7 +101,7 @@ private:
 	int64 folder_items;
 	IFileServ::IMetadataCallback* callback;
 	std::string server_token;
-	IFile* metadata_file;
+	std::auto_ptr<IFile> metadata_file;
 	int64 metadata_file_off;
 	int64 metadata_file_size;
 	int64 metadata_id;
