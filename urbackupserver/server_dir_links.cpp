@@ -389,8 +389,8 @@ bool is_directory_link(const std::string & path)
 {
 	int ftype = os_get_file_type(os_file_prefix(path));
 
-	if (ftype & EFileType_Directory == 0
-		|| ftype & EFileType_Symlink == 0)
+	if ( (ftype & EFileType_Directory) == 0
+		|| (ftype & EFileType_Symlink) == 0)
 	{
 		return false;
 	}

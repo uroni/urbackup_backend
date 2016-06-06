@@ -29,6 +29,7 @@
 #include "../Interface/File.h"
 #include <memory>
 #include "../Interface/Server.h"
+#include "create_files_index.h"
 
 MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
@@ -407,7 +408,7 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 	}
 	else if (rc == MDB_NOTFOUND)
 	{
-		Server->Log("LMDB: Failed to delete data (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+		FILEENTRY_DEBUG(Server->Log("LMDB: Failed to delete data (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR));
 	}
 	else if(rc)
 	{
