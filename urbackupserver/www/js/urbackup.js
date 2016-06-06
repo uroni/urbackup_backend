@@ -2075,7 +2075,7 @@ function restoreFiles(clientid, backupid, path, server_confirms_restore, fn_filt
 	var filter="";
 	if(fn_filter)
 	{
-		filter+="&filter="+fn_filter.replace(/\//g,"%2F")
+		filter+="&filter="+encodeURIComponent(fn_filter.replace(/\//g,"%2F"))
 	}
 	
 	g.curr_clientid = clientid;

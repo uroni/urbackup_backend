@@ -501,7 +501,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				{
 					single_item=true;
 				}
-				else
+				else if(depth==0)
 				{
 					single_item = false;
 				}
@@ -624,7 +624,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 							if(!os_directory_exists(os_file_prefix(restore_path)))
 							{
-								if(!os_create_dir(os_file_prefix(restore_path)))
+								if(!os_create_dir(os_file_prefix(restore_path))
+									&& !createDirectoryWin(restore_path) )
 								{
 									log("Error creating directory \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
 									has_error=true;
@@ -1265,4 +1266,36 @@ void RestoreFiles::calculateDownloadSpeed(FileClient & fc, FileClientChunked * f
 			last_speed_received_bytes = received_data_bytes;
 		}
 	}
+}
+
+bool RestoreFiles::createDirectoryWin(const std::string & dir)
+{
+#ifdef _WIN32
+	if (GetLastError() == ERROR_ACCESS_DENIED)
+	{
+		std::string cdir = ExtractFilePath(dir, os_file_sep());
+		while (!cdir.empty())
+		{
+			if (change_file_permissions_admin_only(os_file_prefix(cdir)))
+			{
+				if (os_create_dir(os_file_prefix(dir)))
+				{
+					return true;
+				}
+				else
+				{
+					if (GetLastError() != ERROR_ACCESS_DENIED)
+					{
+						return false;
+					}
+				}
+			}
+
+			cdir = ExtractFilePath(cdir, os_file_sep());
+		}
+	}
+	return false;
+#else
+	return false;
+#endif
 }

@@ -94,7 +94,8 @@ bool change_file_permissions_admin_only(const std::string& filename)
 
 	 bool ret=true;
 
-	 DWORD rc = SetNamedSecurityInfoA(const_cast<char*>(filename.c_str()), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
+	 DWORD rc = SetNamedSecurityInfoW(const_cast<wchar_t*>(Server->ConvertToWchar(filename).c_str()),
+		 SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
 	 if(rc!=ERROR_SUCCESS)
 	 {
 		 Server->Log("Error setting security information of file " + filename + ". rc: "+convert((int)rc), LL_ERROR);
@@ -133,7 +134,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 		 return false;
 	 }
 
-	 HANDLE file = CreateFileA(fn.c_str(),
+	 HANDLE file = CreateFileW(Server->ConvertToWchar(fn).c_str(),
 		 GENERIC_READ | GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, 0, NULL);
 
 	 if(file==INVALID_HANDLE_VALUE)

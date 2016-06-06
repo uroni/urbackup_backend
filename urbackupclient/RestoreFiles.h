@@ -91,6 +91,8 @@ private:
 
 	void calculateDownloadSpeed(FileClient & fc, FileClientChunked * fc_chunked);
 
+	bool createDirectoryWin(const std::string& dir);
+
 	int64 local_process_id;
 
 	int64 restore_id;
