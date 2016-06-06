@@ -13,7 +13,7 @@ ACTION_IMPL(restore_prepare_wait)
 
 		if (Server->getThreadPool()->waitFor(ticket, 10000))
 		{
-			session->mStr.erase(session->mStr.find("wait_key"));
+			session->mStr.erase(session->mStr.find(POST["wait_key"]));
 			ret.set("completed", true);
 		}
 		else
