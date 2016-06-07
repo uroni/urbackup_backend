@@ -491,6 +491,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	bool ret = true;
 	bool hash_file = false;
 	bool script_ok = true;
+	std::string os_curr_hash_path = FileBackup::convertToOSPathFromFileClient(todl.os_path + "/" + escape_metadata_fn(todl.short_fn));
+	std::string hashpath = backuppath_hashes + os_curr_hash_path;
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -557,9 +559,6 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 				if (!hash_file)
 				{
-					std::string os_curr_hash_path = FileBackup::convertToOSPathFromFileClient(todl.os_path + "/" + escape_metadata_fn(todl.short_fn));
-					std::string hashpath = backuppath_hashes + os_curr_hash_path;
-
 					if (os_directory_exists(os_file_prefix(hashpath))
 						|| os_create_dir(os_file_prefix(hashpath)))
 					{
@@ -575,9 +574,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
     if(hash_file && !todl.metadata_only)
 	{
 		std::string os_curr_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+"/"+todl.short_fn);
-		std::string os_curr_hash_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+"/"+escape_metadata_fn(todl.short_fn));
 		std::string dstpath=backuppath+os_curr_path;
-		std::string hashpath =backuppath_hashes+os_curr_hash_path;
 		std::string filepath_old;
 		
 		if( use_reflink && (!last_backuppath.empty() || !last_backuppath_complete.empty() ) )
@@ -612,6 +609,11 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	}
 	else
 	{
+		if (!todl.is_script && todl.metadata_only)
+		{
+			write_file_metadata(hashpath, client_main, todl.metadata, false);
+		}
+
 		fc.resetSparseExtentsFile();
 	}
 
