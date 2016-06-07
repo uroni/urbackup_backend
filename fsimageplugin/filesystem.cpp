@@ -111,13 +111,14 @@ namespace
 
 				if(current_block!=-1)
 				{
+					int64 l_current_block = current_block;
 					lock.relock(NULL);
-					char* buf = fs.readBlockInt(current_block, false);
+					char* buf = fs.readBlockInt(l_current_block, false);
 					lock.relock(mutex.get());
 
-					read_blocks[current_block] = buf;
+					read_blocks[l_current_block] = buf;
 
-					current_block = next_used_block(current_block);
+					current_block = next_used_block(l_current_block);
 
 					if(readahead_miss)
 					{
