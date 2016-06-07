@@ -465,6 +465,7 @@ bool FullFileBackup::doFileBackup()
 					}
 
 					bool file_ok=false;
+					bool write_file_metadata = false;
 
                     str_map::iterator sym_target = extra_params.find("sym_target");
                     if(sym_target!=extra_params.end())
@@ -484,6 +485,7 @@ bool FullFileBackup::doFileBackup()
 							}
 
                             file_ok=true;
+							write_file_metadata = true;
                         }
                     }
 					else if(extra_params.find("special")!=extra_params.end())
@@ -504,6 +506,7 @@ bool FullFileBackup::doFileBackup()
 							}
 
 							file_ok=true;
+							write_file_metadata = true;
 						}
 					}
 
@@ -537,7 +540,7 @@ bool FullFileBackup::doFileBackup()
 						if(client_main->getProtocolVersions().file_meta>0)
 						{
                     	    server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                    	        metadata, script_dir, true, 0, curr_sha2);
+                    	        metadata, script_dir, true, 0, curr_sha2, false, 0, std::string(), write_file_metadata);
                     	}
                     }
                     else

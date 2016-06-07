@@ -240,7 +240,7 @@ void ServerDownloadThread::operator()( void )
 void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 	const std::string &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
     bool is_script, bool metadata_only, size_t folder_items, const std::string& sha_dig, bool at_front_postpone_quitstop,
-	unsigned int p_script_random, std::string display_fn)
+	unsigned int p_script_random, std::string display_fn, bool write_metadata)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -259,6 +259,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
     ni.metadata_only = metadata_only;
 	ni.folder_items = folder_items;
 	ni.sha_dig = sha_dig;
+	ni.write_metadata = write_metadata;
 
 	if(is_script)
 	{
@@ -609,7 +610,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	}
 	else
 	{
-		if (!todl.is_script && todl.metadata_only)
+		if (todl.write_metadata)
 		{
 			write_file_metadata(hashpath, client_main, todl.metadata, false);
 		}

@@ -870,6 +870,7 @@ bool IncrFileBackup::doFileBackup()
 					}
 
                     bool download_metadata=false;
+					bool write_file_metadata = false;
 
 					bool file_changed = hasChange(line, diffs);
 
@@ -887,6 +888,7 @@ bool IncrFileBackup::doFileBackup()
                         else
                         {
                             download_metadata=true;
+							write_file_metadata = true;
                         }
 					}
 					else if(extra_params.find("special")!=extra_params.end() && (indirchange || file_changed || !use_snapshots) )
@@ -902,6 +904,7 @@ bool IncrFileBackup::doFileBackup()
 						else
 						{
 							download_metadata=true;
+							write_file_metadata = true;
 						}
 					}
 					else if(indirchange || file_changed) //is changed
@@ -1062,7 +1065,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                            metadata, script_dir, true, 0, std::string());
+                            metadata, script_dir, true, 0, std::string(), false, 0, std::string(), write_file_metadata);
                     }
 				}
 				++line;
