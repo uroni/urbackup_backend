@@ -62,7 +62,8 @@ void ClientSend::operator()(void)
 				if(tqueue.empty() && needs_flush)
 				{
 					needs_flush = false;
-					if(!pipe->Flush(-1))
+					if(!has_error
+						&& !pipe->Flush(-1))
 					{
 						print_last_error();
 						has_error=true;
@@ -99,7 +100,8 @@ void ClientSend::operator()(void)
 		}
 		else if(do_exit)
 		{
-			if (!pipe->Flush(-1))
+			if (!has_error
+				&& !pipe->Flush(-1))
 			{
 				print_last_error();
 				has_error = true;

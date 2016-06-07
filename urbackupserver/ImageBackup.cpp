@@ -511,6 +511,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		off=0;
 		if(r==0 )
 		{
+			curr_image_recv_timeout = image_recv_timeout;
 			ServerStatus::setProcessSpeed(clientname, status_id, 0);
 			ServerStatus::setProcessEta(clientname, status_id, -1);
 			if(persistent && nextblock!=0)
