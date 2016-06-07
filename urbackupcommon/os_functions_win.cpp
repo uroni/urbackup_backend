@@ -1322,7 +1322,7 @@ std::string os_last_error_str()
 {
 	std::string msg;
 	int64 code = os_last_error(msg);
-	return trim(msg) + " (code: " + convert(code) + ")";
+	return msg + " (code: " + convert(code) + ")";
 }
 
 int os_popen(const std::string& cmd, std::string& ret)
@@ -1372,7 +1372,7 @@ int64 os_last_error(std::string& message)
 		std::wstring wmessage;
 		wmessage.resize(r);
 		memcpy(&wmessage[0], output, r*sizeof(wchar_t));
-		message = ConvertFromWchar(wmessage);
+		message = trim(ConvertFromWchar(wmessage));
 	}
 
 	if(output!=NULL)

@@ -470,7 +470,9 @@ bool IncrFileBackup::doFileBackup()
 							dir_ids.push(line);
 						}
 					}
-					else if(skip_dir_copy_sparse)
+					else if( skip_dir_copy_sparse
+						&& extra_params.find("sym_target")==extra_params.end()
+						&& extra_params.find("special")==extra_params.end() )
 					{
 						std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
 						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num,
