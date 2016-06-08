@@ -164,6 +164,12 @@ private:
 
 	_u32 Flush(IPipe* fpipe);
 
+	int getReconnectTries();
+
+	int decrReconnectTries();
+
+	void setReconnectTries(int tries);
+
 	std::string remote_filename;
 
 	IFile *m_file;
@@ -271,6 +277,8 @@ private:
 
 	std::auto_ptr<ExtentIterator> extent_iterator;
 	IFsFile::SSparseExtent curr_sparse_extent;
+
+	int reconnect_tries;
 };
 
 #endif //FILECLIENTCHUNKED_H

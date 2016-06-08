@@ -169,6 +169,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 	if(getPipe()==NULL)
 		return ERR_ERROR;
 
+	if (!queue_only)
+	{
+		setReconnectTries(50);
+	}
+
 	_i64 fileoffset=0;
 
 	m_chunkhashes->Seek(0);
@@ -1574,6 +1579,11 @@ bool FileClientChunked::Reconnect(bool rerequest)
 	if(reconnection_callback==NULL)
 		return false;
 
+	if (decrReconnectTries() <= 0)
+	{
+		return false;
+	}
+
 	int64 reconnect_starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-reconnect_starttime<reconnection_timeout)
 	{
@@ -2215,6 +2225,42 @@ _u32 FileClientChunked::Flush(IPipe* fpipe)
 	}
 
 	return ERR_SUCCESS;
+}
+
+int FileClientChunked::getReconnectTries()
+{
+	if (parent)
+	{
+		return parent->getReconnectTries();
+	}
+	else
+	{
+		return reconnect_tries;
+	}
+}
+
+int FileClientChunked::decrReconnectTries()
+{
+	if (parent)
+	{
+		return parent->decrReconnectTries();
+	}
+	else
+	{
+		return reconnect_tries--;
+	}
+}
+
+void FileClientChunked::setReconnectTries(int tries)
+{
+	if (parent)
+	{
+		parent->setReconnectTries(tries);
+	}
+	else
+	{
+		reconnect_tries=tries;
+	}
 }
 
 _u32 FileClientChunked::freeFile()
