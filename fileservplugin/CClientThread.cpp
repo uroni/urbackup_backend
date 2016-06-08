@@ -770,6 +770,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(errorcode!=0)
 					{
 						Log("Error occurred while reading from file \""+ filename+"\" (code: "+convert(errorcode)+").", LL_ERROR);
+						FileServ::callErrorCallback(o_filename, filename, i, "code: " + convert(errorcode));
 						stopped=true;						
 					}
 
@@ -777,7 +778,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(!ReadFilePart(hFile, i, last, toread))
 						{
-							Log("Reading from file failed. Last error is "+convert((unsigned int)GetLastError()), LL_ERROR);
+							unsigned int ec = (unsigned int)GetLastError();
+							Log("Reading from file failed. Last error is "+convert(ec), LL_ERROR);
+							FileServ::callErrorCallback(o_filename, filename, i, "code: " + convert(ec));
 							stopped=true;
 						}
 					}
@@ -820,6 +823,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 				while(bufmgr->nfreeBufffer()!=NBUFFERS && !stopped)
 				{
 					SleepEx(0,true);
+
+					if (errorcode != 0)
+					{
+						Log("Error occurred while reading from file \"" + filename + "\" (code: " + convert(errorcode) + ") -2.", LL_ERROR);
+						FileServ::callErrorCallback(o_filename, filename, filesize.QuadPart, "code: " + convert(errorcode));
+						stopped = true;
+					}
+
 					int rc;
 					rc=SendData();
 					
@@ -1102,6 +1113,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						if(rc<0)
 						{
 							Log("Error: Reading and sending from file failed. Errno: "+convert(errno), LL_DEBUG);
+							FileServ::callErrorCallback(o_filename, filename, foffset, "code: " + convert(errno));
 							CloseHandle(hFile);
 							return false;
 						}
@@ -1134,6 +1146,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 							else if (rc < 0)
 							{
 								Log("Error: Reading from file failed. Errno: " + convert(errno), LL_DEBUG);
+								FileServ::callErrorCallback(o_filename, filename, foffset, "code: " + convert(errno));
 								CloseHandle(hFile);
 								return false;
 							}

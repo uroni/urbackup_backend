@@ -49,6 +49,10 @@ public:
 
 	static std::string getRedirectedFn(const std::string& source_fn);
 
+	static void callErrorCallback(std::string sharename, const std::string& filepath, int64 pos, const std::string& msg);
+
+	virtual void registerReadErrorCallback(IReadErrorCallback* cb);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -83,6 +87,8 @@ private:
 	static ITokenCallbackFactory* token_callback_factory;
 
 	static std::map<std::string, size_t> active_shares;
+
+	static IReadErrorCallback* read_error_callback;
 };
 
 

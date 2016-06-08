@@ -288,6 +288,8 @@ IndexThread::IndexThread(void)
 	if(filesrv_mutex==NULL)
 		filesrv_mutex=Server->createMutex();
 
+	read_error_mutex = Server->createMutex();
+
 	if (cbt_shadow_id_mutex == NULL)
 		cbt_shadow_id_mutex = Server->createMutex();
 
@@ -331,6 +333,7 @@ IndexThread::~IndexThread()
 	Server->destroy(msgpipe);
 	Server->destroy(filesrv_mutex);
 	Server->destroy(cbt_shadow_id_mutex);
+	Server->destroy(read_error_mutex);
 	cd->destroyQueries();
 	delete cd;
 }
@@ -372,6 +375,28 @@ void IndexThread::updateDirs(void)
 		}
 	}
 #endif
+}
+
+void IndexThread::log_read_errors(const std::string& share_name, const std::string& orig_path)
+{
+	IScopedLock lock2(read_error_mutex);
+
+	for (size_t i = 0; i < read_errors.size();)
+	{
+		if (read_errors[i].sharename == share_name)
+		{
+			VSSLog("There was a read error during the last file backup while backing up the file \"" + read_errors[i].filepath + "\" at position " + convert(read_errors[i].filepos)
+				+ " in backup path \""+ orig_path +"\" ("+read_errors[i].msg+"). "
+				+ "This might have prevented the backup from finishing. "
+				"If this keeps occuring please have a look at the system error log and at the disk S.M.A.R.T. values.", LL_WARNING);
+
+			read_errors.erase(read_errors.begin() + i);
+		}
+		else
+		{
+			++i;
+		}
+	}
 }
 
 void IndexThread::operator()(void)
@@ -1430,6 +1455,16 @@ void IndexThread::indexDirs(bool full_backup)
 	}
 
 	share_dirs();
+
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		if (backup_dirs[i].group == index_group
+			&& (!backup_dirs[i].symlinked || backup_dirs[i].symlinked_confirmed) )
+		{
+			log_read_errors(starttoken + "|" + backup_dirs[i].tname, backup_dirs[i].path);
+			log_read_errors(backup_dirs[i].tname, backup_dirs[i].path);
+		}
+	}
 
 	changed_dirs.clear();
 }
@@ -3251,6 +3286,22 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	}
 }
 
+void IndexThread::onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg)
+{
+	SReadError read_error;
+	read_error.sharename = sharename;
+	read_error.filepath = filepath;
+	read_error.filepos = pos;
+	read_error.msg = msg;
+
+	IScopedLock lock(read_error_mutex);
+
+	if (std::find(read_errors.begin(), read_errors.end(), read_error)==read_errors.end())
+	{
+		read_errors.push_back(read_error);
+	}
+}
+
 std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
 {
 	std::vector<std::string> exclude_dirs;
@@ -3507,6 +3558,8 @@ void IndexThread::start_filesrv(void)
 
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
+
+	filesrv->registerReadErrorCallback(this);
 }
 
 void IndexThread::shareDir(const std::string& token, std::string name, const std::string &path)
@@ -3542,9 +3595,9 @@ std::string IndexThread::getShareDir(const std::string &name)
 void IndexThread::share_dirs()
 {
 	IScopedLock lock(filesrv_mutex);
-	for(std::map<std::string, std::string>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
+	for (std::map<std::string, std::string>::iterator it = filesrv_share_dirs.begin(); it != filesrv_share_dirs.end(); ++it)
 	{
-		std::string dir=it->first;
+		std::string dir = it->first;
 		filesrv->shareDir(dir, it->second, std::string(), false);
 	}
 }

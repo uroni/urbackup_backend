@@ -33,6 +33,12 @@ public:
 		virtual ITokenCallback* getTokenCallback() = 0;
 	};
 
+	class IReadErrorCallback
+	{
+	public:
+		virtual void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg) = 0;
+	};
+
 
 	virtual void shareDir(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec)=0;
 	virtual bool removeDir(const std::string &name, const std::string& identity)=0;
@@ -51,6 +57,7 @@ public:
 	virtual void registerTokenCallbackFactory(ITokenCallbackFactory* callback_factory) = 0;
 	virtual bool hasActiveTransfers(const std::string& sharename, const std::string& server_token) = 0;
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
+	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
 };
 
 #endif //IFILESERV_H

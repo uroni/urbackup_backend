@@ -264,6 +264,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 							readerr = true;
 							readderr_code = getSystemErrorCode();
 							Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(1).", LL_ERROR);
+							FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 						}
 
 						if(curr_file_size==-1)
@@ -375,6 +376,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		{
 			unsigned int readderr_code = getSystemErrorCode();
 			Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
+			FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 			sendError(ERR_READING_FAILED, readderr_code);
 			return false;
 		}
@@ -388,6 +390,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			{
 				unsigned int readderr_code = getSystemErrorCode();
 				Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
+				FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 				sendError(ERR_READING_FAILED, readderr_code);
 				return false;
 			}

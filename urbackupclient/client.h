@@ -172,9 +172,23 @@ struct SHardlink
 	int64 parent_frn_low;
 };
 
+struct SReadError
+{
+	bool operator==(const SReadError& other) const
+	{
+		return sharename == other.sharename
+			&& filepath == other.filepath;
+	}
+
+	std::string sharename;
+	std::string filepath;
+	int64 filepos;
+	std::string msg;
+};
+
 class ClientDAO;
 
-class IndexThread : public IThread
+class IndexThread : public IThread, public IFileServ::IReadErrorCallback
 {
 public:
 	static const char IndexThreadAction_StartFullFileBackup;
@@ -230,6 +244,8 @@ public:
 	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<std::string>& include_dirs,
 		std::vector<int>& include_depth, std::vector<std::string>& include_prefix);
 
+	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
+	
 private:
 
 	bool readBackupDirs(void);
@@ -249,6 +265,8 @@ private:
 	void indexDirs(bool full_backup);
 
 	void updateDirs(void);
+
+	void log_read_errors(const std::string& share_name, const std::string& orig_path);
 
 	static std::string sanitizePattern(const std::string &p);	
 
@@ -526,6 +544,9 @@ private:
 	};
 
 	std::auto_ptr<SLastFileList> last_filelist;
+
+	std::vector<SReadError> read_errors;
+	IMutex* read_error_mutex;
 };
 
 std::string add_trailing_slash(const std::string &strDirName);

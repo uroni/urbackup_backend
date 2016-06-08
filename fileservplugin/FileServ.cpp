@@ -33,6 +33,7 @@ std::map<std::string, FileServ::SScriptMapping> FileServ::script_mappings;
 IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 std::map<std::string, std::string> FileServ::fn_redirects;
 std::map<std::string, size_t> FileServ::active_shares;
+FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
 
 
 FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
@@ -308,4 +309,22 @@ std::string FileServ::getRedirectedFn(const std::string & source_fn)
 	{
 		return source_fn;
 	}
+}
+
+void FileServ::callErrorCallback(std::string sharename, const std::string & filepath, int64 pos, const std::string& msg)
+{
+	if (sharename.find("/") != std::string::npos)
+	{
+		sharename = getuntil("/", sharename);
+	}
+
+	if (read_error_callback != NULL)
+	{
+		read_error_callback->onReadError(sharename, filepath, pos, msg);
+	}
+}
+
+void FileServ::registerReadErrorCallback(IReadErrorCallback * cb)
+{
+	read_error_callback = cb;
 }
