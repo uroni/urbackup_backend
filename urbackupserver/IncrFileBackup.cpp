@@ -169,6 +169,7 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if(client_main->getClientChunkedFilesrvConnection(fc_chunked, server_settings.get(), 10000))
 		{
+			fc_chunked->setProgressLogCallback(this);
 			fc_chunked->setDestroyPipe(true);
 			if(fc_chunked->hasError())
 			{
