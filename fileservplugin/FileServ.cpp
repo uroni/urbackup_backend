@@ -34,6 +34,7 @@ IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 std::map<std::string, std::string> FileServ::fn_redirects;
 std::map<std::string, size_t> FileServ::active_shares;
 FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
+std::vector<std::string> FileServ::read_error_files;
 
 
 FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
