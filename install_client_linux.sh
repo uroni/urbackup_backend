@@ -275,6 +275,7 @@ then
 
     CENTOS=no
 	UBUNTU=no
+	FEDORA=no
 
     DATTO=no
     LVM=no
@@ -291,6 +292,11 @@ then
         then
             CENTOS=7
         fi
+		
+		if grep "Fedora" /etc/fedora-release > /dev/null 2>&1
+		then
+			FEDORA=yes
+		fi
     else
 		if grep 'NAME="Ubuntu"' /etc/os-release > /dev/null 2>&1
 		then
@@ -307,6 +313,12 @@ then
     if [ $CENTOS != no ]
     then
         echo "+Detected EL/RH $CENTOS. Dattobd supported"
+        DATTO=yes
+    fi
+	
+	if [ $FEDORA != no ]
+	then
+		echo "+Detected Fedora. Dattobd supported"
         DATTO=yes
     fi
 
@@ -401,9 +413,12 @@ then
     then
         if [ $CENTOS != no ]
         then
-            curl -O https://cpkg.datto.com/datto-rpm/EnterpriseLinux/7/x86_64/datto-el-rpm-release-1.0.0-1.noarch.rpm
-            yum localinstall datto-el-rpm-release-1.0.0-1.noarch.rpm
+            yum localinstall https://cpkg.datto.com/datto-rpm/EnterpriseLinux/$(rpm -E %rhel)/x86_64/datto-el-rpm-release-$(rpm -E %rhel)-8.1.noarch.rpm
             yum install dkms-dattobd dattobd-utils
+		elif [ $FEDORA != no ]
+		then
+			yum install https://cpkg.datto.com/datto-rpm/Fedora/$(rpm -E %fedora)/x86_64/datto-fedora-rpm-release-$(rpm -E %fedora)-8.1.noarch.rpm
+			yum install kernel-devel-$(uname -r) dkms-dattobd dattobd-utils
         elif [ $UBUNTU != no ]
 		then
 			apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 29FF164C
