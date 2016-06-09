@@ -858,7 +858,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			
 			hash_file=false;
 		}
-		else if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
+		else if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR || rc==ERR_READ_ERROR)
 			&& dlfiles.patchfile->Size()>0
 			&& save_incomplete_file)
 		{
