@@ -388,7 +388,7 @@ void IndexThread::log_read_errors(const std::string& share_name, const std::stri
 			VSSLog("There was a read error during the last file backup while backing up the file \"" + read_errors[i].filepath + "\" at position " + convert(read_errors[i].filepos)
 				+ " in backup path \""+ orig_path +"\" ("+read_errors[i].msg+"). "
 				+ "This might have prevented the backup from finishing. "
-				"If this keeps occuring please have a look at the system error log and at the disk S.M.A.R.T. values.", LL_WARNING);
+				"If this keeps occuring, please have a look at the system error log and at the disk S.M.A.R.T. values.", LL_WARNING);
 
 			read_errors.erase(read_errors.begin() + i);
 		}

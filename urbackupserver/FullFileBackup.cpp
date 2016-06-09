@@ -607,11 +607,16 @@ bool FullFileBackup::doFileBackup()
 
 	num_issues += server_download->getNumIssues();
 
+	if (server_download->getHasDiskError())
+	{
+		disk_error = true;
+	}
+
 	int64 transfer_stop_time = Server->getTimeMS();
 
 	size_t max_line = line;
 
-	if(!r_offline && !c_has_error)
+	if(!r_offline && !c_has_error && !disk_error)
 	{
 		sendBackupOkay(true);
 	}

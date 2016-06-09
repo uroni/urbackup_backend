@@ -712,6 +712,7 @@ void FileClientChunked::State_First(void)
 	case ID_FILESIZE: need_bytes=sizeof(_i64); break;
 	case ID_FILESIZE_AND_EXTENTS: need_bytes=2*sizeof(_i64); break;
 	case ID_BASE_DIR_LOST: need_bytes=0; break;
+	case ID_READ_ERROR: need_bytes = 0; break;
 	case ID_COULDNT_OPEN: need_bytes=0; break;
 	case ID_WHOLE_BLOCK: need_bytes=sizeof(_i64)+sizeof(_u32); break;
 	case ID_UPDATE_CHUNK: need_bytes=sizeof(_i64)+sizeof(_u32); break;
@@ -924,6 +925,21 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				}
 				return;
 			}
+		case ID_READ_ERROR:
+			{
+				getfile_done = true;
+				retval = ERR_READ_ERROR;
+				if (remote_filesize != -1)
+				{
+					Server->Log("Did expect file to exist (3). Reconnecting...", LL_WARNING);
+					if (!Reconnect(false))
+					{
+						getfile_done = true;
+						retval = ERR_CONN_LOST;
+					}
+				}
+				return;
+			}
 		case ID_WHOLE_BLOCK:
 			{
 				_i64 block_start;
@@ -1041,11 +1057,24 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 			}break;
 		case ID_BLOCK_ERROR:
 			{
+				errorcode1 = -1;
+				errorcode2 = -1;
 				msg.getUInt(&errorcode1);
-				msg.getUInt(&errorcode1);
+				msg.getUInt(&errorcode2);
 
 				retval=ERR_ERRORCODES;
 				getfile_done=true;
+
+				if (remote_filesize != -1)
+				{
+					Server->Log("Did expect file to exist (4). Reconnecting...", LL_WARNING);
+					if (!Reconnect(false))
+					{
+						getfile_done = true;
+						retval = ERR_CONN_LOST;
+					}
+				}
+
 				return;
 			} break;
 		}
@@ -2151,7 +2180,7 @@ std::string FileClientChunked::getErrorcodeString()
 		err="Errorcode: "+ convert(errorcode1);
 	}
 
-	err+=" System error code: "+convert(errorcode2);
+	err+=". System error code: "+convert(errorcode2);
 
 	return err;
 }

@@ -925,7 +925,7 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
-					return ERR_READ_ERROR;
+					return ERR_BASE_DIR_LOST;
 				}
 				else if (PID == ID_READ_ERROR)
 				{
@@ -934,7 +934,7 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf + 1, rc - 1);
 						dl_off = rc - 1;
 					}
-					return ERR_BASE_DIR_LOST;
+					return ERR_READ_ERROR;
 				}
 				else if(PID==ID_FILESIZE || PID== ID_FILESIZE_AND_EXTENTS)
 				{

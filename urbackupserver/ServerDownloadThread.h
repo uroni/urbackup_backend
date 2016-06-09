@@ -210,6 +210,8 @@ public:
 
 	size_t getNumIssues();
 
+	bool getHasDiskError();
+
 private:
 	std::string getDLPath(SQueueItem todl);
 
@@ -288,4 +290,6 @@ private:
 	server::FileMetadataDownloadThread* file_metadata_download;
 
 	size_t num_issues;
+
+	bool has_disk_error;
 };

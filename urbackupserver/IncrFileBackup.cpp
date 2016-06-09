@@ -1132,7 +1132,12 @@ bool IncrFileBackup::doFileBackup()
 		incr_backup_stoptime=Server->getTimeMS();
 	}
 
-	sendBackupOkay(!r_offline && !c_has_error);
+	if (server_download->getHasDiskError())
+	{
+		disk_error = true;
+	}
+
+	sendBackupOkay(!r_offline && !c_has_error && !disk_error);
 
 	if(r_offline && server_download->hasTimeout() && !server_download->shouldBackoff() )
 	{

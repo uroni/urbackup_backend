@@ -1713,6 +1713,17 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	}
 #endif
 
+	if (!is_script
+		&& metadata_id != 0
+		&& FileServ::hasReadError(filename))
+	{
+		FileServ::clearReadErrorFile(filename);
+
+		queueChunk(SChunk(ID_READ_ERROR));
+		Log("Info: Returning read error instead of file \""+filename+"\"", LL_DEBUG);
+		return true;
+	}
+
 	ScopedShareActive scoped_share_active;
 
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;

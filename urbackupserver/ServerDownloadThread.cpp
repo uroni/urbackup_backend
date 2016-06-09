@@ -49,7 +49,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), has_disk_error(false)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -509,7 +509,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			all_downloads_ok=false;
 		}
 
-		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
+		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_READ_ERROR)
 			&& save_incomplete_file
             && fd!=NULL && fd->Size()>0
                 && !todl.metadata_only)
@@ -539,6 +539,12 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			{
 				exp_backoff = true;
 			}
+		}
+
+		if (rc == ERR_READ_ERROR)
+		{
+			has_disk_error = true;
+			exp_backoff = true;
 		}
 
 		if ( rc == ERR_CANNOT_OPEN_FILE
@@ -795,6 +801,12 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		if(rc==ERR_ERRORCODES)
 		{
 			ServerLogger::Log(logid, "Remote Error: "+fc_chunked->getErrorcodeString(), LL_ERROR);
+			exp_backoff = true;
+
+			if (fc_chunked->getErrorcode1() == ERR_READING_FAILED)
+			{
+				rc = ERR_READ_ERROR;
+			}
 		}
 
 		if(rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR || rc==ERR_BASE_DIR_LOST)
@@ -805,6 +817,12 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			{
 				exp_backoff = true;
 			}
+		}
+
+		if (rc == ERR_READ_ERROR)
+		{
+			exp_backoff = true;
+			has_disk_error = true;
 		}
 
 		if (rc == ERR_CANNOT_OPEN_FILE
@@ -905,7 +923,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
-		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST )
+		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST 
+		|| rc== ERR_ERRORCODES)
 		return false;
 	else
 		return true;
@@ -1377,6 +1396,11 @@ size_t ServerDownloadThread::getNumEmbeddedMetadataFiles()
 size_t ServerDownloadThread::getNumIssues()
 {
 	return num_issues;
+}
+
+bool ServerDownloadThread::getHasDiskError()
+{
+	return has_disk_error;
 }
 
 void ServerDownloadThread::queueSkip()
