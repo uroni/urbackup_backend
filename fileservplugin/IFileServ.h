@@ -58,6 +58,7 @@ public:
 	virtual bool hasActiveTransfers(const std::string& sharename, const std::string& server_token) = 0;
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
+	virtual void clearReadErrors() = 0;
 };
 
 #endif //IFILESERV_H

@@ -925,6 +925,15 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
+					return ERR_READ_ERROR;
+				}
+				else if (PID == ID_READ_ERROR)
+				{
+					if (rc>1)
+					{
+						memmove(dl_buf, dl_buf + 1, rc - 1);
+						dl_off = rc - 1;
+					}
 					return ERR_BASE_DIR_LOST;
 				}
 				else if(PID==ID_FILESIZE || PID== ID_FILESIZE_AND_EXTENTS)
@@ -1361,6 +1370,7 @@ std::string FileClient::getErrorString(_u32 ec)
 	DEFEC(INT_ERROR);
 	DEFEC(CONN_LOST);
 	DEFEC(ERRORCODES);
+	DEFEC(READ_ERROR);
 	}
 #undef DEFEC
 	return "";

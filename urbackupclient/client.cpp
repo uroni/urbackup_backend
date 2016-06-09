@@ -3600,6 +3600,7 @@ void IndexThread::share_dirs()
 		std::string dir = it->first;
 		filesrv->shareDir(dir, it->second, std::string(), false);
 	}
+	filesrv->clearReadErrors();
 }
 
 void IndexThread::unshare_dirs()

@@ -245,6 +245,7 @@ const _u32 ERR_HASH=8;
 const _u32 ERR_INT_ERROR=9;
 const _u32 ERR_CONN_LOST=10;
 const _u32 ERR_ERRORCODES=11;
+const _u32 ERR_READ_ERROR = 12;
 
 const _u32 sleeptime=50;
 

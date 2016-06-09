@@ -313,6 +313,11 @@ std::string FileServ::getRedirectedFn(const std::string & source_fn)
 
 void FileServ::callErrorCallback(std::string sharename, const std::string & filepath, int64 pos, const std::string& msg)
 {
+	{
+		IScopedLock lock(mutex);
+		read_error_files.push_back(filepath);
+	}
+
 	if (sharename.find("/") != std::string::npos)
 	{
 		sharename = getuntil("/", sharename);
@@ -324,7 +329,32 @@ void FileServ::callErrorCallback(std::string sharename, const std::string & file
 	}
 }
 
+bool FileServ::hasReadError(const std::string & filepath)
+{
+	IScopedLock lock(mutex);
+	return std::find(read_error_files.begin(),
+		read_error_files.end(), filepath)!=read_error_files.end();
+}
+
 void FileServ::registerReadErrorCallback(IReadErrorCallback * cb)
 {
 	read_error_callback = cb;
+}
+
+void FileServ::clearReadErrors()
+{
+	IScopedLock lock(mutex);
+	read_error_files.clear();
+}
+
+void FileServ::clearReadErrorFile(const std::string & filepath)
+{
+	IScopedLock lock(mutex);
+	std::vector<std::string>::iterator it = std::find(read_error_files.begin(),
+		read_error_files.end(), filepath);
+
+	if (it != read_error_files.end())
+	{
+		read_error_files.erase(it);
+	}
 }

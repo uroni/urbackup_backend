@@ -51,7 +51,13 @@ public:
 
 	static void callErrorCallback(std::string sharename, const std::string& filepath, int64 pos, const std::string& msg);
 
+	static bool hasReadError(const std::string& filepath);
+
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb);
+
+	void clearReadErrors();
+
+	static void clearReadErrorFile(const std::string& filepath);
 
 private:
 	bool *dostop;
@@ -89,6 +95,8 @@ private:
 	static std::map<std::string, size_t> active_shares;
 
 	static IReadErrorCallback* read_error_callback;
+
+	static std::vector<std::string> read_error_files;
 };
 
 

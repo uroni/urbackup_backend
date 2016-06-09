@@ -487,6 +487,23 @@ bool CClientThread::ProcessPacket(CRData *data)
 					bufmgr=new fileserv::CBufMgr(NBUFFERS,READSIZE);
 				}
 #endif
+
+				if (!is_script
+					&& metadata_id != 0
+					&& FileServ::hasReadError(filename))
+				{
+					FileServ::clearReadErrorFile(filename);
+
+					char ch = ID_READ_ERROR;
+					int rc = SendInt(&ch, 1);
+					if (rc == SOCKET_ERROR)
+					{
+						Log("Error: Socket Error - DBG: Send ID_READ_ERROR", LL_DEBUG);
+						return false;
+					}
+					Log("Info: Returning read error instead of sending file \""+filename+"\"", LL_DEBUG);
+					break;
+				}
 				
 				if(is_script)
 				{
