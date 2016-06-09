@@ -1368,6 +1368,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 tore
 		Log("Error: No Free Buffer", LL_DEBUG);
 		Log("Info: Free Buffers="+convert(bufmgr->nfreeBufffer()), LL_DEBUG );
 		delete ldata;
+		delete overlap;
 		return true;
 	}
 
@@ -1388,6 +1389,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 tore
 		Log("Error: Can't start reading from File", LL_DEBUG);
 		bufmgr->releaseBuffer(ldata->buffer);
 		delete ldata;
+		delete overlap;
 		return false;
 	}
 	else
