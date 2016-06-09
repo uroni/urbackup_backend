@@ -263,6 +263,16 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("HTTP_PROXY", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--http_proxy");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -432,7 +442,8 @@ int action_run(std::vector<std::string> args)
 
 #ifndef _WIN32
 	char* http_proxy = getenv("http_proxy");
-	if (http_proxy != NULL)
+	if (http_proxy != NULL
+		&& std::find(real_args.begin(), real_args.end(), "--http_proxy") == real_args.end())
 	{
 		real_args.push_back("--http_proxy");
 		real_args.push_back(http_proxy);
