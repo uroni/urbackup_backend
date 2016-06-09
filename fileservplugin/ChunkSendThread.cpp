@@ -205,8 +205,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	int64 spos = chunk->startpos;
 	if(!file->Seek(spos))
 	{
-		sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
-		return false;
+		return sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
 	}
 
 	if(chunk->transfer_all)
@@ -312,8 +311,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		if (readerr)
 		{
-			sendError(ERR_READING_FAILED, readderr_code);
-			return false;
+			return sendError(ERR_READING_FAILED, readderr_code);
 		}
 
 		md5_hash.finalize();
@@ -377,8 +375,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			unsigned int readderr_code = getSystemErrorCode();
 			Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
 			FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
-			sendError(ERR_READING_FAILED, readderr_code);
-			return false;
+			return sendError(ERR_READING_FAILED, readderr_code);
 		}
 
 		while(r<to_read)
@@ -391,8 +388,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				unsigned int readderr_code = getSystemErrorCode();
 				Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
 				FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
-				sendError(ERR_READING_FAILED, readderr_code);
-				return false;
+				return sendError(ERR_READING_FAILED, readderr_code);
 			}
 
 			if( r_add==0 && file->Size()!=-1 )
