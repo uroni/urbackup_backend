@@ -78,6 +78,11 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			return NULL;
 		}
 
+		if (tar_file != NULL)
+		{
+			*tar_file = dynamic_cast<PipeFileTar*>(it->second.file)!=NULL;
+		}
+
 		pipe_file_user.reset(it->second.file);
 
 		return it->second.file;
