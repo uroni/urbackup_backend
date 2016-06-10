@@ -1062,6 +1062,8 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				msg.getUInt(&ec1);
 				msg.getUInt(&ec2);
 
+				Server->Log("Received error codes (ID_BLOCK_ERROR) ec1=" + convert(ec1) + " ec2=" + convert(ec2), LL_DEBUG);
+
 				setErrorCodes(ec1, ec2);
 
 				retval=ERR_ERRORCODES;
