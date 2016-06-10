@@ -1057,10 +1057,12 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 			}break;
 		case ID_BLOCK_ERROR:
 			{
-				errorcode1 = -1;
-				errorcode2 = -1;
+				_u32 ec1 = -1;
+				_u32 ec2 = -1;
 				msg.getUInt(&errorcode1);
 				msg.getUInt(&errorcode2);
+
+				setErrorCodes(ec1, ec2);
 
 				retval=ERR_ERRORCODES;
 				getfile_done=true;
@@ -2289,6 +2291,19 @@ void FileClientChunked::setReconnectTries(int tries)
 	else
 	{
 		reconnect_tries=tries;
+	}
+}
+
+void FileClientChunked::setErrorCodes(_u32 ec1, _u32 ec2)
+{
+	if (parent)
+	{
+		parent->setErrorCodes(ec1, ec2);
+	}
+	else
+	{
+		errorcode1 = ec1;
+		errorcode2 = ec2;
 	}
 }
 

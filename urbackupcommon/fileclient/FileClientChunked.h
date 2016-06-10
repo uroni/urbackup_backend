@@ -170,6 +170,8 @@ private:
 
 	void setReconnectTries(int tries);
 
+	void setErrorCodes(_u32 ec1, _u32 ec2);
+
 	std::string remote_filename;
 
 	IFile *m_file;
