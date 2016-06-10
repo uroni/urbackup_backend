@@ -1059,8 +1059,8 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 			{
 				_u32 ec1 = -1;
 				_u32 ec2 = -1;
-				msg.getUInt(&errorcode1);
-				msg.getUInt(&errorcode2);
+				msg.getUInt(&ec1);
+				msg.getUInt(&ec2);
 
 				setErrorCodes(ec1, ec2);
 
