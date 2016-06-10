@@ -253,19 +253,21 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				{
 					bool c_readerr = false;
 					_u32 r_add=file->Read(spos, chunk_buf+off+r,  toread-r, &c_readerr);
+
+					if (c_readerr)
+					{
+						readerr = true;
+						readderr_code = getSystemErrorCode();
+						Server->Log("Reading from file \"" + file->getFilename() + "\" at position "+convert(spos)+" failed (code: " + convert(readderr_code) + ")(1).", LL_ERROR);
+						FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
+						memset(chunk_buf + off + r + r_add, 0, (toread - r) - r_add);
+						r_add = toread - r;
+					}
+
 					spos += r_add;
 
-					if(c_readerr
-						|| (r_add==0 && file->Size()!=-1) )
+					if(r_add==0 && file->Size()!=-1)
 					{
-						if (c_readerr)
-						{
-							readerr = true;
-							readderr_code = getSystemErrorCode();
-							Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(1).", LL_ERROR);
-							FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
-						}
-
 						if(curr_file_size==-1)
 						{
 							if(!script_eof)
@@ -373,7 +375,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		if (readerr)
 		{
 			unsigned int readderr_code = getSystemErrorCode();
-			Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
+			Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) + " failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
 			FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 			return sendError(ERR_READING_FAILED, readderr_code);
 		}
@@ -386,7 +388,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			if (readerr)
 			{
 				unsigned int readderr_code = getSystemErrorCode();
-				Server->Log("Reading from file \"" + file->getFilename() + "\" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
+				Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) +" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
 				FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 				return sendError(ERR_READING_FAILED, readderr_code);
 			}
