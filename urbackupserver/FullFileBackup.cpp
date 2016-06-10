@@ -607,7 +607,8 @@ bool FullFileBackup::doFileBackup()
 
 	num_issues += server_download->getNumIssues();
 
-	if (server_download->getHasDiskError())
+	if (server_download->getHasDiskError()
+		&& !server_settings->getSettings()->ignore_disk_errors)
 	{
 		disk_error = true;
 	}

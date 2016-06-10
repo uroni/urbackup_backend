@@ -329,6 +329,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->backup_ok_mod_image = settings_default->getValue("backup_ok_mod_image", 3.f);
 	settings->cbt_volumes = settings_default->getValue("cbt_volumes", "ALL");
 	settings->cbt_crash_persistent_volumes = settings_default->getValue("cbt_crash_persistent_volumes", "-");
+	settings->ignore_disk_errors = (settings_default->getValue("ignore_disk_errors", "false") == "true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -481,6 +482,8 @@ void ServerSettings::readSettingsClient(void)
 
 	readStringClientSetting("cbt_volumes", &settings->cbt_volumes);
 	readStringClientSetting("cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
+
+	readBoolClientSetting("ignore_disk_errors", &settings->ignore_disk_errors);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

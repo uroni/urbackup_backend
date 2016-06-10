@@ -156,6 +156,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(max_running_jobs_per_client);
 	SET_SETTING(cbt_volumes);
 	SET_SETTING(cbt_crash_persistent_volumes);
+	SET_SETTING(ignore_disk_errors);
 #undef SET_SETTING
 	return ret;
 }

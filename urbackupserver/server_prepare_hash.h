@@ -32,7 +32,7 @@ namespace
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
-	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid);
+	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid, bool ignore_hash_mismatch);
 	~BackupServerPrepareHash(void);
 
 	void operator()(void);
@@ -82,6 +82,8 @@ private:
 	volatile bool has_error;
 
 	logid_t logid;
+
+	bool ignore_hash_mismatch;
 
 };
 

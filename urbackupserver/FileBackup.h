@@ -82,7 +82,7 @@ protected:
 	void logVssLogdata(int64 vss_duration_s);
 	bool getTokenFile(FileClient &fc, bool hashed_transfer );
 	std::string clientlistName(int ref_backupid);
-	void createHashThreads(bool use_reflink);
+	void createHashThreads(bool use_reflink, bool ignore_hash_mismatches);
 	void destroyHashThreads();
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 	void calculateDownloadSpeed(int64 ctime, FileClient &fc, FileClientChunked* fc_chunked);

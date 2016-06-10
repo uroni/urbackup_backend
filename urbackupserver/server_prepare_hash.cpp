@@ -49,8 +49,9 @@ namespace
 	const size_t hash_bsize = 512*1024;
 }
 
-BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid)
-	: logid(logid)
+BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid,
+	logid_t logid, bool ignore_hash_mismatch)
+	: logid(logid), ignore_hash_mismatch(ignore_hash_mismatch)
 {
 	pipe=pPipe;
 	output=pOutput;
@@ -232,11 +233,16 @@ void BackupServerPrepareHash::operator()(void)
 					if (has_snapshot)
 					{
 						ServerLogger::Log(logid, "Client calculated hash of \"" + tfn + "\" differs from server calculated hash. "
-							"This may be caused by a bug or by random bit flips on the client or server hard disk. Failing backup. "
+							"This may be caused by a bug or by random bit flips on the client or server hard disk. "
+							+(ignore_hash_mismatch?"":"Failing backup. ")+
 							"(Hash: "+ print_hash_func(c_hash_func)+
 							", client hash: "+base64_encode(reinterpret_cast<const unsigned char*>(client_sha_dig.data()), static_cast<unsigned int>(client_sha_dig.size()))+
 							", server hash: "+ base64_encode(reinterpret_cast<const unsigned char*>(h.data()), static_cast<unsigned int>(h.size()))+")", LL_ERROR);
-						has_error = true;
+
+						if (!ignore_hash_mismatch)
+						{
+							has_error = true;
+						}
 					}
 					else
 					{

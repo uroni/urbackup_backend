@@ -545,6 +545,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		{
 			has_disk_error = true;
 			exp_backoff = true;
+			++num_issues;
 		}
 
 		if ( rc == ERR_CANNOT_OPEN_FILE
@@ -823,6 +824,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		{
 			exp_backoff = true;
 			has_disk_error = true;
+			++num_issues;
 		}
 
 		if (rc == ERR_CANNOT_OPEN_FILE

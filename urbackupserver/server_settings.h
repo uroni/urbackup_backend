@@ -114,6 +114,7 @@ struct SSettings
 	float backup_ok_mod_image;
 	std::string cbt_volumes;
 	std::string cbt_crash_persistent_volumes;
+	bool ignore_disk_errors;
 };
 
 struct SLDAPSettings

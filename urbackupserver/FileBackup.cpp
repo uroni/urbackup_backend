@@ -362,7 +362,7 @@ std::string FileBackup::clientlistName(int ref_backupid)
 	return "urbackup/clientlist_b_" + convert(ref_backupid) + ".ub";
 }
 
-void FileBackup::createHashThreads(bool use_reflink)
+void FileBackup::createHashThreads(bool use_reflink, bool ignore_hash_mismatches)
 {
 	assert(bsh==NULL);
 	assert(bsh_prepare==NULL);
@@ -371,7 +371,7 @@ void FileBackup::createHashThreads(bool use_reflink)
 	hashpipe_prepare=Server->createMemoryPipe();
 
 	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid);
-	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid);
+	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches);
 	bsh_ticket = Server->getThreadPool()->execute(bsh, "fbackup write");
 	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare, "fbackup hash");
 }
@@ -596,7 +596,7 @@ bool FileBackup::doBackup()
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
 	local_hash->setupDatabase();
 
-	createHashThreads(use_reflink);
+	createHashThreads(use_reflink, server_settings->getSettings()->ignore_disk_errors);
 	
 
 	bool backup_result = doFileBackup();

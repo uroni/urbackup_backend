@@ -1132,7 +1132,8 @@ bool IncrFileBackup::doFileBackup()
 		incr_backup_stoptime=Server->getTimeMS();
 	}
 
-	if (server_download->getHasDiskError())
+	if (server_download->getHasDiskError()
+		&& !server_settings->getSettings()->ignore_disk_errors )
 	{
 		disk_error = true;
 	}
