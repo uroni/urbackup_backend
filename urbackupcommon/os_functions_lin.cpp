@@ -1043,7 +1043,7 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 
 bool os_sync(const std::string & path)
 {
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_SYNCFS)
 	int fd = open(path.c_str(), O_RDWR);
 	
 	if(fd!=-1)
