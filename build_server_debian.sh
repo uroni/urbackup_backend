@@ -16,7 +16,7 @@ if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
 	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS"
+	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
 	touch build_server_debian_ok
 fi
 
