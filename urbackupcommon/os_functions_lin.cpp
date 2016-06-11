@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#include "../config.h"
 #ifdef __linux__
 #include <sys/resource.h>
 #include <sys/syscall.h>

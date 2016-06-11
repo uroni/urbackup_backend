@@ -83,7 +83,7 @@ AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
-AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
+AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
 

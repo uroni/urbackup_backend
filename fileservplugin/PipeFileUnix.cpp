@@ -25,7 +25,10 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <stdlib.h>
+#include "../config.h"
+#if defined(HAVE_SPAWN_H)
 #include <spawn.h>
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -64,6 +67,7 @@ PipeFile::PipeFile(const std::string& pCmd)
 		return;
 	}
 	
+#if defined(HAVE_SPAWN_H)
 	posix_spawn_file_actions_t fa;
 	if(posix_spawn_file_actions_init(&fa)!=0)
 	{
@@ -94,14 +98,53 @@ PipeFile::PipeFile(const std::string& pCmd)
 		has_error=true;
 		return;
 	}
-
+	
 	close(stdout_pipe[1]);
 	close(stderr_pipe[1]);
 
 	hStdout = stdout_pipe[0];
 	hStderr = stderr_pipe[0];
 
-	init();
+	init();	
+#else
+	child_pid = fork();
+
+	if(child_pid==-1)
+	{
+		Server->Log("Error forking to execute command: " + convert(errno), LL_ERROR);
+		has_error=true;
+		return;
+	}
+	else if(child_pid==0)
+	{
+		while ((dup2(stdout_pipe[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
+		while ((dup2(stderr_pipe[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
+
+		close(stdout_pipe[0]);
+		close(stdout_pipe[1]);
+		close(stderr_pipe[0]);
+		close(stderr_pipe[1]);
+
+		int rc = system(pCmd.c_str());
+		
+		if(rc>127)
+		{
+			rc = 127;
+		}
+		
+		_exit(rc);
+	}
+	else
+	{
+		close(stdout_pipe[1]);
+		close(stderr_pipe[1]);
+
+		hStdout = stdout_pipe[0];
+		hStderr = stderr_pipe[0];
+
+		init();
+	}
+#endif
 }
 
 PipeFile::~PipeFile()
