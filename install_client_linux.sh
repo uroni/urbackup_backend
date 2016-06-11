@@ -425,22 +425,24 @@ then
 
     if [ $snapn = 1 ]
     then
-        if [ $CENTOS != no ]
-        then
-            yum localinstall https://cpkg.datto.com/datto-rpm/EnterpriseLinux/$(rpm -E %rhel)/x86_64/datto-el-rpm-release-$(rpm -E %rhel)-8.1.noarch.rpm
-            yum install dkms-dattobd dattobd-utils
-		elif [ $FEDORA != no ]
-		then
-			yum install https://cpkg.datto.com/datto-rpm/Fedora/$(rpm -E %fedora)/x86_64/datto-fedora-rpm-release-$(rpm -E %fedora)-8.1.noarch.rpm
-			yum install kernel-devel-$(uname -r) dkms-dattobd dattobd-utils
-        elif [ $UBUNTU != no ]
-		then
-			apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 29FF164C
-			CODENAME=`lsb_release -sc`
-			echo "deb https://cpkg.datto.com/repositories $CODENAME main" > /etc/apt/sources.list.d/datto-linux-agent.list
-			apt-get update
-			apt-get install dattobd-dkms dattobd-utils
-		fi
+        # if [ $CENTOS != no ]
+        # then
+            # yum localinstall https://cpkg.datto.com/datto-rpm/EnterpriseLinux/$(rpm -E %rhel)/x86_64/datto-el-rpm-release-$(rpm -E %rhel)-8.1.noarch.rpm
+            # yum install dkms-dattobd dattobd-utils
+		# elif [ $FEDORA != no ]
+		# then
+			# yum install https://cpkg.datto.com/datto-rpm/Fedora/$(rpm -E %fedora)/x86_64/datto-fedora-rpm-release-$(rpm -E %fedora)-8.1.noarch.rpm
+			# yum install kernel-devel-$(uname -r) dkms-dattobd dattobd-utils
+        # elif [ $UBUNTU != no ]
+		# then
+			# apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 29FF164C
+			# CODENAME=`lsb_release -sc`
+			# echo "deb https://cpkg.datto.com/repositories $CODENAME main" > /etc/apt/sources.list.d/datto-linux-agent.list
+			# apt-get update
+			# apt-get install dattobd-dkms dattobd-utils
+		# fi
+		
+		echo "Configured dattobd. Please install dattobd following the instructions at https://github.com/datto/dattobd"
 
 		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_create_filesystem_snapshot"
 		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_remove_filesystem_snapshot"
