@@ -26,6 +26,10 @@ AC_ARG_ENABLE([clientupdate],
      AS_HELP_STRING([--enable-clientupdate], [Enables the internal client update functionality]))
 AM_CONDITIONAL(CLIENT_UPDATE, test "x$enable_clientupdate" = xyes)
 
+AC_ARG_ENABLE([embedded-cryptopp],
+     AS_HELP_STRING([--enable-embedded-cryptopp], [Use statically linked Crypto++ 5.6.3 included with the source distribution.]))
+AM_CONDITIONAL(EMBEDDED_CRYPTOPP, test "x$enable_embedded_cryptopp" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -95,7 +99,10 @@ AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
 
-MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or build without crypto support."; exit 44;])
+if test "x$enable_embedded_cryptopp" != "xyes"
+then
+	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or run configure with --enable-embedded-cryptopp."; exit 44;])
+fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
 
@@ -113,6 +120,10 @@ AS_IF([test "x$enable_headless" != "xyes"],
 			'wx-config --libs' or 'wx-config --static --libs' command)
 			is in LD_LIBRARY_PATH or equivalent variable and
 			wxWidgets version is $reqwx or above.
+			
+			Alternatively you can run ./configure with the
+			--enable-headless switch to not build and install
+			the GUI component (tray icon).
 			])
 	fi
 ])
