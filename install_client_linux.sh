@@ -99,26 +99,20 @@ fi
 
 if [ $TARGET = x86_64-linux-glibc ]
 then
-	RET=0
-	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
-	if [ $RET != 1 ]
+	if ! $TARGET/urbackupclientctl --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "Glibc not installed or too old. Falling back to musl libc..."
+		echo "Glibc not installed or too old. Falling back to ellcc build..."
 		TARGET=x86_64-linux-eng
 	else
-		RET=0
-		$TARGET/urbackupclientbackend --version > /dev/null 2>&1 || RET=$?
-		if [ $RET != 1 ]
+		if ! $TARGET/urbackupclientbackend --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "Glibc not installed or too old. Falling back to musl libc..."
+			echo "Glibc not installed or too old. Falling back to ellcc build..."
 			TARGET=x86_64-linux-eng
 		fi
 	fi
 fi
 
-RET=0
-$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
-if [ $RET != 1 ]
+if ! $TARGET/urbackupclientctl --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 then
 	echo "Error running executable on this system ($arch). Stopping installation."
 	exit 2
