@@ -99,12 +99,14 @@ fi
 
 if [ $TARGET = x86_64-linux-glibc ]
 then
+	RET=0
 	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
 	if [ $RET != 1 ]
 	then
 		echo "Glibc not installed or too old. Falling back to musl libc..."
 		TARGET=x86_64-linux-eng
 	else
+		RET=0
 		$TARGET/urbackupclientbackend --version > /dev/null 2>&1 || RET=$?
 		if [ $RET != 1 ]
 		then
@@ -114,6 +116,7 @@ then
 	fi
 fi
 
+RET=0
 $TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
 if [ $RET != 1 ]
 then
