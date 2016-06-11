@@ -10,6 +10,14 @@ python3 build/replace_versions.py
 
 ./switch_build.sh client
 
+if [ ! -e cryptoplugin/cryptopp563.zip]
+then
+	wget https://www.cryptopp.com/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
+	cd cryptoplugin
+	unzip cryptopp563.zip
+	cd ..
+fi
+
 autoreconf --install
 
 rm -R install-data || true
@@ -39,8 +47,7 @@ do
 	
 	if [ $arch = x86_64-linux-glibc ]
 	then
-		sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am
-		./configure --enable-headless --enable-clientupdate CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto" LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os"
+		./configure --enable-headless --enable-clientupdate --enable-embedded-cryptopp CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto -DCRYPTOPP_DISABLE_SSSE3" LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os"
 		STRIP_CMD="strip"
 	else
 		./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc
