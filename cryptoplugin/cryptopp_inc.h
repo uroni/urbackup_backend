@@ -14,7 +14,7 @@
 #include <oids.h>
 #include <dsa.h>
 #else
-#include "config.h"
+#include "../config.h"
 #define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
 #define CRYPTOPP_INCLUDE_SHA <CRYPTOPP_INCLUDE_PREFIX/sha.h>
 #define CRYPTOPP_INCLUDE_MODES <CRYPTOPP_INCLUDE_PREFIX/modes.h>
