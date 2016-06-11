@@ -10,7 +10,7 @@ python3 build/replace_versions.py
 
 ./switch_build.sh client
 
-if [ ! -e cryptoplugin/cryptopp563.zip]
+if [ ! -e cryptoplugin/cryptopp563.zip ]
 then
 	wget https://www.cryptopp.com/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
 	cd cryptoplugin
