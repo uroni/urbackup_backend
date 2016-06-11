@@ -83,7 +83,7 @@ TARGET=no
 arch=`uname -m`
 case "$arch" in
     i?86) TARGET=i386-linux-eng ;;
-    x86_64) TARGET=x86_64-linux-eng ;;
+    x86_64) TARGET=x86_64-linux-glibc ;;
     armv6*) TARGET=armv6-linux-engeabihf ;;
 	armv7*) TARGET=armv6-linux-engeabihf ;;
 	armv8*) TARGET=aarch64-linux-eng ;;
@@ -95,6 +95,23 @@ then
 	exit 3
 else
 	echo "Detected architecture $TARGET"
+fi
+
+if [ $TARGET = x86_64-linux-glibc ]
+then
+	$TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?
+	if [ $RET != 1 ]
+	then
+		echo "Glibc not installed or too old. Falling back to musl libc..."
+		TARGET=x86_64-linux-eng
+	else
+		$TARGET/urbackupclientbackend --version > /dev/null 2>&1 || RET=$?
+		if [ $RET != 1 ]
+		then
+			echo "Glibc not installed or too old. Falling back to musl libc..."
+			TARGET=x86_64-linux-eng
+		fi
+	fi
 fi
 
 $TARGET/urbackupclientctl --version > /dev/null 2>&1 || RET=$?

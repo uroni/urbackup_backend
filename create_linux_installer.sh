@@ -33,10 +33,20 @@ chmod +x install-data/*_filesystem_snapshot
 
 cp -R install-data/* install-data-dbg/
 
-for arch in i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
+for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
 do
 	echo "Compiling for architecture $arch..."
-    ./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc
+	
+	if [ $arch = x86_64-linux-glibc ]
+	then
+		sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am
+		./configure --enable-headless --enable-clientupdate CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-Wl,--gc-sections -static-libstdc++" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os"
+		STRIP_CMD="strip"
+	else
+		./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc
+		STRIP_CMD="ecc-strip"
+	fi
+	
     make clean
     make -j4
     rm -R install-data/$arch || true
@@ -45,10 +55,15 @@ do
     mkdir -p install-data-dbg/$arch
     cp urbackupclientbackend install-data/$arch/
 	cp urbackupclientbackend install-data-dbg/$arch/
-	ecc-strip install-data/$arch/urbackupclientbackend
+	$STRIP_CMD install-data/$arch/urbackupclientbackend
 	cp urbackupclientctl install-data/$arch/
 	cp urbackupclientctl install-data-dbg/$arch/
-	ecc-strip install-data/$arch/urbackupclientctl
+	$STRIP_CMD install-data/$arch/urbackupclientctl
+	
+	if [ $arch = x86_64-linux-glibc ]
+	then
+		./switch_build.sh client
+	fi
 done
 
 rm -R linux-installer || true
