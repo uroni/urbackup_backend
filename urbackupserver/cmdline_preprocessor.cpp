@@ -319,7 +319,7 @@ int action_run(std::vector<std::string> args)
 
 	TCLAP::ValueArg<std::string> pidfile_arg("w", "pidfile",
 		"Save pid of daemon in file",
-		false, "/var/run/urbackup_client.pid", "path", cmd);
+		false, "/var/run/urbackupsrv.pid", "path", cmd);
 
 	TCLAP::MultiArg<std::string> broadcast_interface_arg("b", "broadcast-interface",
 		"Network interface from which to send broadcasts", false, "network interface name", cmd);
