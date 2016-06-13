@@ -59,6 +59,7 @@ pkgbuild --root osx-pkg --identifier org.urbackup.client.service --version $VERS
 pkgbuild --root "osx-pkg2/Applications/UrBackup Client.app" --identifier "org.urbackup.client" --version $VERSION_SHORT_NUM --scripts osx_installer/scripts2 --ownership recommended pkg1/output2.pkg --install-location "/Applications/UrBackup Client.app"
 productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version $VERSION_SHORT_NUM final.pkg
 
+security unlock-keychain -p foobar /Users/martin/Library/Keychains/dev.keychain
 productsign --sign 3Y4WACCWC5 final.pkg final-signed.pkg
 
 cp final-signed.pkg "UrBackup Client $VERSION_SHORT.pkg"
