@@ -614,6 +614,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			q->Bind(trim(bf));
 			q->Write();
 			db->destroyQuery(q);
+			ServerSettings::updateAll();
 		}
 	}
 
