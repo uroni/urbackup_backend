@@ -30,6 +30,13 @@ then
 fi
 
 # Checks for libraries.
+PKG_CHECK_MODULES([libarchive], [libarchive], [found_libarchive=yes], [found_libarchive=no])
+if test "x$found_libarchive" = "xno" ; then
+    AC_MSG_ERROR([*** Working libarchive library and headers not found ***])
+fi
+LIBARCHIVE_LIBS='-larchive'
+AC_SUBST(LIBARCHIVE_LIBS)
+
 
 # Checks for header files.
 AC_HEADER_STDC
