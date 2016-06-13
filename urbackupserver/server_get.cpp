@@ -510,7 +510,7 @@ void BackupServerGet::operator ()(void)
 		sendSettings();
 	}
 
-	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
+	ServerLogger::Log(clientid, "Sending backup incr interval...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
 
 	if(server_settings->getSettings()->autoupdate_clients)
@@ -851,7 +851,7 @@ void BackupServerGet::operator ()(void)
 					r_success=false;
 
 					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
-					sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+					sendMailToAdmins("Fatal error occurred during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 				}
 			}
 
@@ -2963,11 +2963,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(copy_last_file_entries || readd_file_entries_sparse)
 	{
-		ServerLogger::Log(clientid, L"Copying readded file entries from temporary table...", LL_INFO);
+		ServerLogger::Log(clientid, L"Copying re-added file entries from temporary table...", LL_INFO);
 
 		if(num_readded_entries>0)
 		{
-			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
+			ServerLogger::Log(clientid, L"Number of re-added file entries is "+convert(num_readded_entries), LL_INFO);
 		}
 
 		if(num_copied_file_entries>0)
@@ -2994,7 +2994,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			backup_dao->dropTemporaryLastFilesTable();
 		}
 
-		ServerLogger::Log(clientid, L"Done copying readded file entries from temporary table.", LL_DEBUG);
+		ServerLogger::Log(clientid, L"Done copying re-added file entries from temporary table.", LL_DEBUG);
 	}
 
 	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);
@@ -3064,7 +3064,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		else if(!c_has_error)
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			sendMailToAdmins("Fatal error occurred during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 		}
 	}
 	else if(!c_has_error && !disk_error)
@@ -3078,7 +3078,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else
 	{
 		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
-		sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+		sendMailToAdmins("Fatal error occurred during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 	}
 
 	running_updater->stop();
@@ -4790,7 +4790,7 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			sendMailToAdmins("Fatal error occurred during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 			return false;
 		}
 	}
