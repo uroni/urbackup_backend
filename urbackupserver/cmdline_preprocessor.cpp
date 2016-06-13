@@ -1,3 +1,4 @@
+#include <sstream>
 #include "../tclap/CmdLine.h"
 #include <vector>
 #include "../stringtools.h"
