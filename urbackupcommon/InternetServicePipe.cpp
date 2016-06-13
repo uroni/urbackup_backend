@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "InternetServicePipe.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 
@@ -69,10 +87,10 @@ std::string InternetServicePipe::encrypt(const std::string &data)
 	return enc->encrypt(data);
 }
 
-bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	std::string encbuf=enc->encrypt(buffer, bsize);
-	bool b=cs->Write(encbuf, timeoutms);
+	bool b=cs->Write(encbuf, timeoutms, flush);
 	return b;
 }
 
@@ -100,9 +118,9 @@ size_t InternetServicePipe::Read(std::string *ret, int timeoutms)
 	return 0;
 }
 
-bool InternetServicePipe::Write(const std::string &str, int timeoutms)
+bool InternetServicePipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(str.c_str(), str.size(), timeoutms);
+	return Write(str.c_str(), str.size(), timeoutms, flush);
 }
 
 /**
@@ -171,4 +189,9 @@ _i64 InternetServicePipe::getTransferedBytes(void)
 void InternetServicePipe::resetTransferedBytes(void)
 {
 	cs->resetTransferedBytes();
+}
+
+bool InternetServicePipe::Flush(int timeoutms)
+{
+	return cs->Flush(timeoutms);
 }

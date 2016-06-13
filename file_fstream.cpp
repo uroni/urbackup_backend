@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -28,8 +28,17 @@ File::File()
 
 }
 
-bool File::Open(std::wstring pfn, int mode)
+bool File::Open(std::string pfn, int mode)
 {
+	if (mode == MODE_RW_RESTORE)
+	{
+		mode = MODE_RW;
+	}
+	if (mode == MODE_RW_CREATE_RESTORE)
+	{
+		mode = MODE_RW_CREATE;
+	}
+
 	fn=pfn;
 	std::ios::openmode _mode;
 	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
@@ -52,13 +61,13 @@ bool File::Open(std::wstring pfn, int mode)
 		return false;
 }
 
-bool File::Open(void *handle)
+bool File::Open(void *handle, const std::string& pFilename)
 {
 	//Not supported
 	return false;
 }
 
-bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
+bool File::OpenTemporaryFile(const std::string &dir, bool first_try)
 {
 	return Open(tmpnam(NULL), MODE_TEMP);
 } 
@@ -108,9 +117,24 @@ _i64 File::Size(void)
 	return fsize;	
 }
 
+_i64 File::RealSize(void)
+{
+	return Size();
+}
+
 void File::Close()
 {
 	fi.close();
+}
+
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
+bool File::Sync()
+{
+	return false;
 }
 
 #endif

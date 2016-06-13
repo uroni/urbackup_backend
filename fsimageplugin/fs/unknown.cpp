@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -26,14 +26,14 @@
 
 #define DEF_BLOCKSIZE 4096
 
-FSUnknown::FSUnknown(const std::wstring &pDev, bool read_ahead, bool background_priority)
+FSUnknown::FSUnknown(const std::string &pDev, bool read_ahead, bool background_priority)
 	: Filesystem(pDev, read_ahead, background_priority)
 {
 	if(has_error)
 		return;
 
 #ifdef _WIN32
-	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+	HANDLE hDev=CreateFileW( Server->ConvertToWchar(pDev).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Error opening device -2", LL_ERROR);
@@ -57,7 +57,7 @@ FSUnknown::FSUnknown(const std::wstring &pDev, bool read_ahead, bool background_
 #endif
 
 	int64 bitmap_entries=(int64)(drivesize/DEF_BLOCKSIZE);
-	if(dev->Size()%DEF_BLOCKSIZE!=0)
+	if(drivesize%DEF_BLOCKSIZE!=0)
 		++bitmap_entries;
 
 	size_t bitmap_bytes=(size_t)(bitmap_entries/8);
@@ -81,7 +81,7 @@ int64 FSUnknown::getBlocksize(void)
 
 int64 FSUnknown::getSize(void)
 {
-	return dev->Size();
+	return drivesize;
 }
 
 const unsigned char *FSUnknown::getBitmap(void)

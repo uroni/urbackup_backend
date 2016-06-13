@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -137,7 +137,7 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 }
 
-bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	int rc = selectSocketWrite(s, timeoutms);
 	size_t written=0;
@@ -152,7 +152,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 			written+=rc;
 			if( written<bsize )
 			{
-				return Write(buffer+written, bsize-written, -1);
+				return Write(buffer+written, bsize-written, -1, flush);
 			}
 		}
 		else
@@ -161,7 +161,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 			DWORD err = WSAGetLastError();
 			if(err==EINTR)
 			{
-				return Write(buffer, bsize, timeoutms);
+				return Write(buffer, bsize, timeoutms, flush);
 			}
 
 			if(err!=WSAEWOULDBLOCK)
@@ -171,7 +171,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 #else
 			if(errno==EINTR)
 			{
-				return Write(buffer, bsize, timeoutms);
+				return Write(buffer, bsize, timeoutms, flush);
 			}
 
 			if(errno!=EAGAIN && errno!=EWOULDBLOCK)
@@ -194,9 +194,9 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 	return true;
 }
 
-bool CStreamPipe::Write(const std::string &str, int timeoutms)
+bool CStreamPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(&str[0], str.size(), timeoutms);
+	return Write(&str[0], str.size(), timeoutms, flush);
 }
 
 size_t CStreamPipe::Read(std::string *ret, int timeoutms)
@@ -322,4 +322,9 @@ void CStreamPipe::addOutgoingThrottler(IPipeThrottler *throttler)
 void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
 {
 	incoming_throttlers.push_back(throttler);
+}
+
+bool CStreamPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return true;
 }

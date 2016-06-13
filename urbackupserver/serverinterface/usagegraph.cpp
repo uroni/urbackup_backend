@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -25,20 +25,20 @@ namespace
 	struct SUsed
 	{
 		SUsed(void):used(0) {}
-		SUsed(const std::wstring &pTdate_full, const std::wstring &pTdate, double pUsed): tdate_full(pTdate_full), tdate(pTdate), used(pUsed) {}
-		std::wstring tdate_full;
-		std::wstring tdate;
+		SUsed(const std::string &pTdate_full, const std::string &pTdate, double pUsed): tdate_full(pTdate_full), tdate(pTdate), used(pUsed) {}
+		std::string tdate_full;
+		std::string tdate;
 		double used;
 	};
 }
 
 ACTION_IMPL(usagegraph)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	IDatabase *db=helper.getDatabase();
 	int clientid=-1;
-	std::wstring s_clientid=GET[L"clientid"];
+	std::string s_clientid=POST["clientid"];
 	if(!s_clientid.empty())
 	{
 		IQuery *q=db->Prepare("SELECT id,name FROM clients WHERE id=?");
@@ -48,7 +48,7 @@ ACTION_IMPL(usagegraph)
 
 		if(!res.empty())
 		{
-			clientid=watoi(res[0][L"id"]);
+			clientid=watoi(res[0]["id"]);
 		}
 	}
 
@@ -78,14 +78,14 @@ ACTION_IMPL(usagegraph)
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL &&
 		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && (client_id_found || rights=="all") ) )
 	  )
 	{	
 		helper.releaseAll();
 		
-		std::string scale = wnarrow(GET[L"scale"]);
+		std::string scale = POST["scale"];
 
 		if(scale.empty())
 		{
@@ -95,7 +95,7 @@ ACTION_IMPL(usagegraph)
 		std::string t_where=" 0=0";
 		if(clientid!=-1)
 		{
-			t_where+=" AND id="+nconvert(clientid)+" ";
+			t_where+=" AND id="+convert(clientid)+" ";
 		}
 		
 		int c_lim=1;
@@ -105,7 +105,7 @@ ACTION_IMPL(usagegraph)
 			db_results res_c=q_count_clients->Read();
 			q_count_clients->Reset();
 			if(!res_c.empty())
-				c_lim=watoi(res_c[0][L"c"]);
+				c_lim=watoi(res_c[0]["c"]);
 		}
 
 		unsigned int n_items;
@@ -113,30 +113,24 @@ ACTION_IMPL(usagegraph)
 		std::string date_fmt;
 		if(scale=="y")
 		{
-			back="-10 year";
-			n_items=10;
+			back="-40 year";
+			n_items=40;
 			date_fmt="%Y";
 		}
 		else if(scale=="m")
 		{
-			back="-1 year";
-			n_items=12;
+			back="-3 year";
+			n_items=40;
 			date_fmt="%Y-%m";
 		}
 		else
 		{
-			back="-1 month";
-			n_items=31;
+			back="-2 month";
+			n_items=40;
 			date_fmt="%Y-%m-%d";
 		}
 
-		db_results cache_res;
-		if(db->getEngineName()=="sqlite")
-		{
-			cache_res=db->Read("PRAGMA cache_size");
-			db->Write("PRAGMA cache_size = -51200"); //50MB
-		}
-			
+		
 		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_fmt+"', MAX(b.created), 'localtime') AS tdate, strftime('%Y-%m-%d', MAX(b.created), 'localtime') AS tdate_full "
 				    "FROM "
 				    "("
@@ -146,7 +140,7 @@ ACTION_IMPL(usagegraph)
 				    "GROUP BY strftime('"+date_fmt+"', created, 'localtime'), id "
 					"HAVING mcreated>date('now','"+back+"') "
 				    "ORDER BY mcreated DESC "
-				    "LIMIT "+nconvert(c_lim*(n_items*2))+" "
+				    "LIMIT "+convert(c_lim*(n_items*2))+" "
 				    ") a "
 				    "INNER JOIN clients_hist b ON a.mcreated=b.created WHERE "+t_where+" AND b.created>date('now','"+back+"') "
 				    "GROUP BY strftime('"+date_fmt+"', b.created, 'localtime'), id "
@@ -159,21 +153,16 @@ ACTION_IMPL(usagegraph)
 			bool found=false;
 			for(size_t j=0;j<used.size();++j)
 			{
-				if(used[j].tdate==res[i][L"tdate"])
+				if(used[j].tdate==res[i]["tdate"])
 				{
 					found=true;
-					used[j].used+=atof(wnarrow(res[i][L"used"]).c_str());
+					used[j].used+=atof(res[i]["used"].c_str());
 				}
 			}
 			if(!found && used.size()<n_items)
 			{
-				used.push_back(SUsed(res[i][L"tdate_full"], res[i][L"tdate"], atof(wnarrow(res[i][L"used"]).c_str()) ) );
+				used.push_back(SUsed(res[i]["tdate_full"], res[i]["tdate"], atof(res[i]["used"].c_str()) ) );
 			}
-		}
-
-		if(!cache_res.empty())
-		{
-			db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
 		}
 
 		bool size_gb=false;
@@ -196,7 +185,7 @@ ACTION_IMPL(usagegraph)
 				size/=1024*1024;
 			}
 			JSON::Object obj;
-			obj.set("xlabel", Server->ConvertToUTF8(used[i].tdate_full));
+			obj.set("xlabel", (used[i].tdate_full));
 			obj.set("data", (float)size);
 			data.add(obj);
 		}
@@ -208,13 +197,13 @@ ACTION_IMPL(usagegraph)
 		else
 			ret.set("ylabel", "MB");
 
-		helper.update(tid, &GET, &PARAMS);
+		helper.update(tid, &POST, &PARAMS);
 	}
 	else
 	{
 		ret.set("error", 1);
 	}
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

@@ -1,3 +1,4 @@
+#pragma once
 #include "../Interface/Object.h"
 
 class IFilesystem;
@@ -39,7 +40,15 @@ private:
 	char* buf;
 };
 
-class IFilesystem : public IObject
+class IReadOnlyBitmap : public IObject
+{
+public:
+	virtual int64 getBlocksize() = 0;
+	virtual bool hasBlock(int64 block) = 0;
+	virtual bool hasError(void) = 0;
+};
+
+class IFilesystem : public IReadOnlyBitmap
 {
 public:
 	virtual int64 getBlocksize(void)=0;

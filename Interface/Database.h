@@ -10,13 +10,13 @@
 class IDatabase : public IObject
 {
 public:
-	virtual db_nresults ReadN(std::string pQuery)=0; 
 	virtual db_results Read(std::string pQuery)=0; 
 	virtual bool Write(std::string pQuery)=0;
 
-	virtual bool BeginWriteTransaction(void)=0;
-	virtual bool BeginReadTransaction(void)=0;
+	virtual bool BeginReadTransaction()=0;
+	virtual bool BeginWriteTransaction()=0;
 	virtual bool EndTransaction(void)=0;
+	virtual bool RollbackTransaction(void) = 0;
 
 	virtual IQuery* Prepare(std::string pQuery, bool autodestroy=true)=0;
 	virtual void destroyQuery(IQuery *q)=0;
@@ -32,11 +32,23 @@ public:
 	virtual void DetachDBs(void)=0;
 	virtual void AttachDBs(void)=0;
 
-	virtual bool Backup(const std::string &pFile)=0;
+	class IBackupProgress
+	{
+	public:
+		virtual void backupProgress(int64 pos, int64 total) = 0;
+	};
+
+	virtual bool Backup(const std::string &pFile, IBackupProgress* progress)=0;
 
 	virtual void freeMemory()=0;
 
 	virtual int getLastChanges()=0;
+
+	virtual std::string getTempDirectoryPath() = 0;
+
+	virtual void lockForSingleUse() = 0;
+
+	virtual void unlockForSingleUse() = 0;
 };
 
 class DBScopedFreeMemory
@@ -98,10 +110,27 @@ public:
 		if(db!=NULL) db->EndTransaction();
 	}
 
+	void reset(IDatabase* pdb)
+	{
+		if (db != NULL) {
+			db->EndTransaction();
+		}
+		db = pdb;
+		if (db != NULL) {
+			db->BeginWriteTransaction();
+		}
+	}
+
 	void restart() {
 		if(db!=NULL) {
 			db->EndTransaction();
 			db->BeginWriteTransaction();
+		}
+	}
+
+	void rollback() {
+		if (db != NULL) {
+			db->RollbackTransaction();
 		}
 	}
 
@@ -111,6 +140,42 @@ public:
 	}
 private:
 	IDatabase* db;
+};
+
+class DBScopedSynchronous
+{
+public:
+	DBScopedSynchronous(IDatabase* pdb)
+		:db(NULL)
+	{
+		reset(pdb);
+	}
+
+	~DBScopedSynchronous()
+	{
+		if (db != NULL)
+		{
+			db->Write("PRAGMA synchronous = " + synchronous);
+		}
+	}
+
+	void reset(IDatabase* pdb)
+	{
+		if (db != NULL)
+		{
+			db->Write("PRAGMA synchronous = " + synchronous);
+		}
+		db = pdb;
+		if (db != NULL)
+		{
+			synchronous = db->Read("PRAGMA synchronous")[0]["synchronous"];
+			db->Write("PRAGMA synchronous=FULL");
+		}
+	}
+
+private:
+	IDatabase* db;
+	std::string synchronous;
 };
 
 #endif

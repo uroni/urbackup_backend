@@ -2,8 +2,10 @@
 #include "../Interface/ThreadPool.h"
 
 #include "../urbackupcommon/bufmgr.h"
+#include "../fsimageplugin/IVHDFile.h"
 
 #include <queue>
+#include "server_log.h"
 
 class IVHDFile;
 
@@ -16,16 +18,17 @@ struct BufferVHDItem
 
 struct FileBufferVHDItem
 {
+	char type;
 	uint64 pos;
 	unsigned int bsize;
 };
 
 class ServerFileBufferWriter;
 
-class ServerVHDWriter : public IThread
+class ServerVHDWriter : public IThread, public ITrimCallback, public IVHDWriteCallback
 {
 public:
-	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles);
+	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize, logid_t logid, int64 drivesize);
 	~ServerVHDWriter(void);
 
 	void operator()(void);
@@ -50,10 +53,19 @@ public:
 
 	size_t getQueueSize(void);
 
-	void writeVHD(uint64 pos, char *buf, unsigned int bsize);
+	bool writeVHD(uint64 pos, char *buf, unsigned int bsize);
 	void freeFile(IFile *buf);
 
 	void writeRetry(IFile *f, char *buf, unsigned int bsize);
+
+	void setDoTrim(bool b);
+	void setDoMakeFull(bool b);
+
+	void setMbrOffset(int64 offset);
+
+	virtual void trimmed(_i64 trim_start, _i64 trim_stop);
+
+	virtual bool emptyVHDBlock(int64 empty_start, int64 empty_end);
 
 private:
 	IVHDFile *vhd;
@@ -77,8 +89,22 @@ private:
 	volatile bool exit_now;
 	volatile bool has_error;
 	volatile bool finish;
+	volatile bool do_trim;
+	volatile bool do_make_full;
 
 	bool filebuffer;
+
+	int64 mbr_offset;
+
+	IFile* hashfile;
+
+	int64 vhd_blocksize;
+
+	int64 trimmed_bytes;
+
+	logid_t logid;
+
+	int64 drivesize;
 };
 
 class ServerFileBufferWriter : public IThread

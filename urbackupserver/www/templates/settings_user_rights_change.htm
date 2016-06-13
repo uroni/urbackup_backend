@@ -1,19 +1,25 @@
 ﻿<br />
-<strong>{tChange rights for user}: {username}</strong>
-<br />
-<form action="#" onsubmit="submitChangeUserRights({userid}); return false;">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable" id="rightstable">
-<tr>
-<th class="tabHeaderNB">{tDomain}</td>
-<th class="tabHeaderNB">{tRights}</td>
-<th class="tabHeaderNB">{tTranslation}</td>
-<th class="tabHeaderNB">{tActions}</td>
-</tr>
-{rows|s}
-</table>
-<br />
-<a href="javascript: addNewDomain({userid}, '{username}')">{tNew domain}</a>
-<br />
-<br />
-<input type="button" value="{tAbort}" onclick="userSettings()"> <input type="submit" value="{tChange}" />
-</form>
+<div class="panel panel-default">
+	<div class="panel-heading"><strong>{tChange rights for user}:</strong> {username}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form" action="#" onsubmit="submitChangeUserRights({userid}); return false;">
+			<table class="table-striped" id="rightstable">
+				<thead>
+					<tr>
+						<th>{tDomain}</td>
+						<th>{tRights}</td>
+						<th>{tTranslation}</td>
+						<th>{tActions}</td>
+					</tr>
+				</thead>
+				<tbody>
+					{rows|s}
+				</tbody>
+			</table>
+			<br />
+			<a class="btn btn-default" href="javascript: addNewDomain({userid}, '{username}')">{tNew domain}</a>
+			<br />
+			<input type="button" class="btn btn-default" value="{tCancel}" onclick="userSettings()"> <input type="submit" class="btn btn-default" value="{tChange}" />
+		</form>
+	</div>
+</div>

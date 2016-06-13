@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "ZlibDecompression.h"
 #include "../Interface/Server.h"
 
@@ -7,10 +25,7 @@ size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::
 	try
 	{
 		decomp.Put((const byte*)input, input_size);
-		if(flush)
-		{
-			decomp.Flush(true);
-		}
+		decomp.Flush(true);
 		size_t rc=(size_t)decomp.MaxRetrievable();
 		if(rc>0)
 		{

@@ -8,10 +8,9 @@ public:
 	CMemorySettingsReader(const std::string &pData);
 
 	virtual bool getValue(std::string key, std::string *value);
-	virtual bool getValue(std::wstring key, std::wstring *value);
 
-	virtual std::vector<std::wstring> getKeys();
+	virtual std::vector<std::string> getKeys();
 
 private:
-	std::map<std::wstring,std::wstring> mSettingsMap;
+	std::map<std::string,std::string> mSettingsMap;
 };

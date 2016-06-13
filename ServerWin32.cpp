@@ -1,21 +1,21 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
+#define __ICondition_INTERFACE_DEFINED__
 #include "vld.h"
 #include "Server.h"
 #include "stringtools.h"
@@ -24,6 +24,7 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <Strsafe.h>
+#include <sstream>
 
 bool CServer::LoadDLL(const std::string &name)
 {
@@ -31,7 +32,7 @@ bool CServer::LoadDLL(const std::string &name)
 
 	if(dll==NULL)
 	{
-		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+nconvert((int)GetLastError()));
+		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+convert((int)GetLastError()));
 		return false;
 	}
 
@@ -58,11 +59,30 @@ void CServer::UnloadDLLs2(void)
 
 int CServer::WriteDump(void* pExceptionPointers)
 {
+	PEXCEPTION_POINTERS exc_ptrs = (EXCEPTION_POINTERS*)pExceptionPointers;
+
+	PEXCEPTION_RECORD curr_exc_rec = NULL;
+	if (exc_ptrs != NULL)
+	{
+		curr_exc_rec = exc_ptrs->ExceptionRecord;
+	}
+	
+	while (curr_exc_rec != NULL)
+	{
+		std::ostringstream ss;
+		ss << "0x" << std::hex << curr_exc_rec->ExceptionAddress;
+
+		Server->Log("Fatal exception code " + convert((int64)curr_exc_rec->ExceptionCode)
+			+ " at address " + ss.str(), LL_ERROR);
+
+		curr_exc_rec = curr_exc_rec->ExceptionRecord;
+	}
+
 	BOOL bMiniDumpSuccessful;
     WCHAR szPath[MAX_PATH]; 
     WCHAR szFileName[MAX_PATH]; 
     WCHAR* szAppName = L"UrBackup";
-    WCHAR* szVersion = L"v0.25.1";
+    WCHAR* szVersion = L"v2.0.0";
     DWORD dwBufferSize = MAX_PATH;
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;
@@ -85,21 +105,21 @@ int CServer::WriteDump(void* pExceptionPointers)
 	if(hDumpFile!=INVALID_HANDLE_VALUE)
 	{
 		ExpParam.ThreadId = GetCurrentThreadId();
-		ExpParam.ExceptionPointers = (EXCEPTION_POINTERS*)pExceptionPointers;
+		ExpParam.ExceptionPointers = exc_ptrs;
 		ExpParam.ClientPointers = TRUE;
 
 		bMiniDumpSuccessful = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
-						hDumpFile, MiniDumpWithDataSegs, &ExpParam, NULL, NULL);
+						hDumpFile, MiniDumpWithFullMemory, &ExpParam, NULL, NULL);
 
 		if(!bMiniDumpSuccessful)
 		{
-			Server->Log("Writing minidump failed: Last error="+nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Writing minidump failed: Last error="+convert((int)GetLastError()), LL_ERROR);
 		}
 
 		CloseHandle(hDumpFile);
 	}
 
-	Server->Log(L"Fatal exception (APPLICATION CRASHED). Crash dump written to \""+(std::wstring)szFileName+L"\"", LL_ERROR);
+	Server->Log("Fatal exception (APPLICATION CRASHED). Crash dump written to \""+Server->ConvertFromWchar(szFileName)+"\"", LL_ERROR);
 
     return EXCEPTION_EXECUTE_HANDLER;
 }

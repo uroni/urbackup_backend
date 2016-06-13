@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -36,29 +36,35 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -124,7 +130,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -132,10 +138,11 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibd_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -155,54 +162,60 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(SolutionDir)/../deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(SolutionDir)/../deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">
@@ -212,21 +225,23 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(SolutionDir)/../deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(SolutionDir)/../deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">
@@ -236,21 +251,23 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;_WIN_PRE_VISTA;SERVER_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;_WIN_PRE_VISTA;SERVER_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -258,31 +275,56 @@
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp" />
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
+    <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
+    <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
+    <ClCompile Include="apps\md5sum_check.cpp" />
     <ClCompile Include="apps\repair_cmd.cpp" />
+    <ClCompile Include="apps\skiphash_copy.cpp" />
+    <ClCompile Include="Backup.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
-    <ClCompile Include="create_files_cache.cpp" />
+    <ClCompile Include="cmdline_preprocessor.cpp" />
+    <ClCompile Include="ContinuousBackup.cpp" />
+    <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
+    <ClCompile Include="dao\ServerFilesDao.cpp" />
+    <ClCompile Include="dao\ServerLinkDao.cpp" />
+    <ClCompile Include="dao\ServerLinkJournalDao.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="DatabaseFileCache.cpp" />
-    <ClCompile Include="FileCache.cpp" />
-    <ClCompile Include="fileclient\FileClientChunked.cpp" />
+    <ClCompile Include="FileBackup.cpp" />
+    <ClCompile Include="FileMetadataDownloadThread.cpp" />
+    <ClCompile Include="FullFileBackup.cpp" />
+    <ClCompile Include="FileIndex.cpp" />
     <ClCompile Include="filedownload.cpp" />
+    <ClCompile Include="ImageBackup.cpp" />
+    <ClCompile Include="IncrFileBackup.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
-    <ClCompile Include="MDBFileCache.cpp" />
+    <ClCompile Include="LMDBFileIndex.cpp" />
+    <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
+    <ClCompile Include="serverinterface\add_client.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\create_zip.cpp" />
     <ClCompile Include="serverinterface\download_client.cpp" />
@@ -294,6 +336,7 @@
     <ClCompile Include="serverinterface\logs.cpp" />
     <ClCompile Include="serverinterface\piegraph.cpp" />
     <ClCompile Include="serverinterface\progress.cpp" />
+    <ClCompile Include="serverinterface\restore_prepare_wait.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
@@ -305,12 +348,11 @@
     <ClCompile Include="server_archive.cpp" />
     <ClCompile Include="server_channel.cpp" />
     <ClCompile Include="server_cleanup.cpp" />
+    <ClCompile Include="server_continuous.cpp" />
     <ClCompile Include="server_dir_links.cpp" />
-    <ClCompile Include="server_download.cpp" />
-    <ClCompile Include="server_get.cpp" />
+    <ClCompile Include="ServerDownloadThread.cpp" />
+    <ClCompile Include="ClientMain.cpp" />
     <ClCompile Include="server_hash.cpp" />
-    <ClCompile Include="server_hash_existing.cpp" />
-    <ClCompile Include="server_image.cpp" />
     <ClCompile Include="server_log.cpp" />
     <ClCompile Include="server_ping.cpp" />
     <ClCompile Include="server_prepare_hash.cpp" />
@@ -322,12 +364,12 @@
     <ClCompile Include="server_writer.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="snapshot_helper.cpp" />
-    <ClCompile Include="SQLiteFileCache.cpp" />
+    <ClCompile Include="ThrottleUpdater.cpp" />
     <ClCompile Include="treediff\TreeDiff.cpp" />
     <ClCompile Include="treediff\TreeNode.cpp" />
     <ClCompile Include="treediff\TreeReader.cpp" />
-    <ClCompile Include="fileclient\FileClient.cpp" />
     <ClCompile Include="verify_hashes.cpp" />
+    <ClCompile Include="WalCheckpointThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\adler32.h" />
@@ -335,52 +377,75 @@
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
+    <ClInclude Include="..\urbackupcommon\CompressedPipe2.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h" />
+    <ClInclude Include="..\urbackupcommon\file_metadata.h" />
+    <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h" />
     <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h" />
     <ClInclude Include="..\urbackupcommon\json.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\settings.h" />
     <ClInclude Include="..\urbackupcommon\settingslist.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="..\urbackupcommon\SparseFile.h" />
+    <ClInclude Include="..\urbackupcommon\TreeHash.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="apps\app.h" />
+    <ClInclude Include="apps\check_files_index.h" />
     <ClInclude Include="apps\cleanup_cmd.h" />
     <ClInclude Include="apps\export_auth_log.h" />
     <ClInclude Include="apps\repair_cmd.h" />
+    <ClInclude Include="apps\skiphash_copy.h" />
+    <ClInclude Include="Backup.h" />
     <ClInclude Include="ChunkPatcher.h" />
+    <ClInclude Include="ContinuousBackup.h" />
     <ClInclude Include="create_files_cache.h" />
     <ClInclude Include="dao\ServerBackupDao.h" />
     <ClInclude Include="dao\ServerCleanupDAO.h" />
+    <ClInclude Include="dao\ServerFilesDao.h" />
+    <ClInclude Include="dao\ServerLinkDao.h" />
+    <ClInclude Include="dao\ServerLinkJournalDao.h" />
     <ClInclude Include="database.h" />
-    <ClInclude Include="DatabaseFileCache.h" />
-    <ClInclude Include="FileCache.h" />
-    <ClInclude Include="fileclient\FileClientChunked.h" />
-    <ClInclude Include="fileclient\packet_ids.h" />
-    <ClInclude Include="fileclient\socket_header.h" />
+    <ClInclude Include="FileBackup.h" />
+    <ClInclude Include="FileMetadataDownloadThread.h" />
+    <ClInclude Include="FullFileBackup.h" />
+    <ClInclude Include="FileIndex.h" />
     <ClInclude Include="filedownload.h" />
+    <ClInclude Include="ImageBackup.h" />
+    <ClInclude Include="IncrFileBackup.h" />
     <ClInclude Include="InternetServiceConnector.h" />
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
-    <ClInclude Include="MDBFileCache.h" />
+    <ClInclude Include="LMDBFileIndex.h" />
+    <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
+    <ClInclude Include="serverinterface\backups.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\login.h" />
     <ClInclude Include="serverinterface\rights.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
     <ClInclude Include="server_cleanup.h" />
+    <ClInclude Include="server_continuous.h" />
     <ClInclude Include="server_dir_links.h" />
-    <ClInclude Include="server_download.h" />
-    <ClInclude Include="server_get.h" />
+    <ClInclude Include="ServerDownloadThread.h" />
+    <ClInclude Include="ClientMain.h" />
     <ClInclude Include="server_hash.h" />
-    <ClInclude Include="server_hash_existing.h" />
     <ClInclude Include="server_image.h" />
     <ClInclude Include="server_log.h" />
     <ClInclude Include="server_ping.h" />
@@ -392,12 +457,12 @@
     <ClInclude Include="server_writer.h" />
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="snapshot_helper.h" />
-    <ClInclude Include="SQLiteFileCache.h" />
+    <ClInclude Include="ThrottleUpdater.h" />
     <ClInclude Include="treediff\TreeDiff.h" />
     <ClInclude Include="treediff\TreeNode.h" />
     <ClInclude Include="treediff\TreeReader.h" />
-    <ClInclude Include="fileclient\FileClient.h" />
     <ClInclude Include="server_status.h" />
+    <ClInclude Include="WalCheckpointThread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

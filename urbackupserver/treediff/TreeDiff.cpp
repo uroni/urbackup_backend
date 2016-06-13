@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -21,7 +21,8 @@
 #include <algorithm>
 
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
-	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees)
+	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
 {
 	std::vector<size_t> ret;
 
@@ -39,7 +40,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		return ret;
 	}
 
-	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret);
+	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret, modified_inplace_ids, dir_diffs);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -52,44 +53,88 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 	}
 
 	std::sort(ret.begin(), ret.end());
+	std::sort(dir_diffs.begin(), dir_diffs.end());
+
+	if(modified_inplace_ids!=NULL)
+	{
+		std::sort(modified_inplace_ids->begin(), modified_inplace_ids->end());
+	}
 
 	return ret;
 }
 
-void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs)
+void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs,
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
 {
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
 	TreeNode *c2=t2->getFirstChild();
+	TreeNode *c1=t1->getFirstChild();
 	bool did_subtree_change=false;
 	while(c2!=NULL)
 	{		
-		bool found=false;
-		TreeNode *c1=t1->getFirstChild();
-		while(c1!=NULL)
+		int cmp = 1;
+		if(c1!=NULL)
 		{
-			if(c1->equals(*c2))
+			if (c1->getType() == 'f'
+				&& c2->getType() == 'd')
 			{
-				gatherDiffs(c1, c2, diffs);
+				cmp = -1;
+			}
+			else if (c1->getType() == 'd'
+				&& c2->getType() == 'f')
+			{
+				cmp = 1;
+			}
+			else
+			{
+				cmp = c1->nameCompare(*c2);
+			}
+		}
+
+		if(cmp==0)
+		{
+			bool equal_dir = (c1->getType()=='d' && c2->getType()=='d');
+			bool data_equals = c1->dataEquals(*c2);
+
+			if(equal_dir && !data_equals)
+			{
+				dir_diffs.push_back(c2->getId());
+				subtreeChanged(c2);
+			}
+
+			if( equal_dir
+				|| data_equals )
+			{
+				gatherDiffs(c1, c2, diffs, modified_inplace_ids, dir_diffs);
 				c2->setMappedNode(c1);
 				c1->setMappedNode(c2);
-				found=true;
-				break;
 			}
+			else
+			{
+				if(modified_inplace_ids!=NULL)
+				{
+					modified_inplace_ids->push_back(c2->getId());
+				}
+				
+				diffs.push_back(c2->getId());
+				subtreeChanged(c2);				
+			}
+
+			c1=c1->getNextSibling();
+			c2=c2->getNextSibling();
+		}
+		else if(cmp<0)
+		{
 			c1=c1->getNextSibling();
 		}
-
-		if(!found)
+		else
 		{
 			diffs.push_back(c2->getId());
-			if(!did_subtree_change)
-			{
-				subtreeChanged(c2);
-				did_subtree_change=true;
-			}
-		}
+			subtreeChanged(c2);
 
-		c2=c2->getNextSibling();
+			c2=c2->getNextSibling();
+		}
 	}
 }
 

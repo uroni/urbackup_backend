@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -32,10 +32,39 @@
 #include "FileServ.h"
 #include "../stringtools.h"
 #include <memory.h>
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#endif
 
 std::string getSystemServerName(bool use_fqdn)
 {
 	char hostname[MAX_PATH];
+#ifdef __APPLE__
+	//TODO: Fix FQDN for Apple
+	while (true)
+	{
+		FILE* fd = popen("/bin/hostname", "r");
+		if (fd != NULL)
+		{
+			if (fgets(hostname, MAX_PATH, fd) != NULL)
+			{
+				if (trim(hostname) == "localhost")
+				{
+					Server->wait(100);
+					continue;
+				}
+
+				return trim(hostname);
+			}
+			pclose(fd);
+		}
+		else
+		{
+			Server->wait(100);
+		}
+	}
+#endif
+
     _i32 rc=gethostname(hostname, MAX_PATH);
 
 	if(rc==SOCKET_ERROR)
@@ -48,23 +77,32 @@ std::string getSystemServerName(bool use_fqdn)
 		return hostname;
 	}
 
-	struct hostent* h;
-	h = gethostbyname(hostname);
-	if(h!=NULL)
+	std::string ret;
+
+	addrinfo* h;
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_CANONNAME;
+	if(getaddrinfo(hostname, NULL, NULL, &h)==0)
 	{
-		if(strlower(h->h_name)==strlower(hostname))
+		if(h->ai_canonname==NULL ||
+			strlower(h->ai_canonname)==strlower(hostname))
 		{
-			return hostname;
+			ret = hostname;
 		}
 		else
 		{
-			return h->h_name;
+			ret = h->ai_canonname;
 		}
+
+		freeaddrinfo(h);
 	}
 	else
 	{
-		return hostname;
+		ret = hostname;
 	}
+
+	return ret;
 }
 
 bool CUDPThread::hasError(void)
@@ -85,7 +123,11 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 	use_fqdn_=use_fqdn;
 
 	{
-		udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		udpsock=socket(AF_INET, type, 0);
 
 		int optval=1;
 		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
@@ -99,14 +141,14 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 
 		addr_udp.sin_family=AF_INET;
 		addr_udp.sin_port=htons(udpport);
-		addr_udp.sin_addr.s_addr=INADDR_ANY;
+		addr_udp.sin_addr.s_addr= htonl(INADDR_ANY);
 
-		Log("Binding udp socket at port "+nconvert(udpport)+"...", LL_DEBUG);
+		Log("Binding udp socket at port "+convert(udpport)+"...", LL_DEBUG);
 		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding udp socket to port "+nconvert(udpport)+" failed", LL_ERROR);
+			Server->Log("Binding udp socket to port "+convert(udpport)+" failed", LL_ERROR);
 #else
 			Log("Failed binding udp socket.", LL_ERROR);
 #endif
@@ -248,7 +290,7 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
 #ifdef _WIN32
-			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Last error: "+ convert((int)GetLastError()), LL_ERROR);
 #endif
 #endif
 			has_error=true;
@@ -259,7 +301,7 @@ bool CUDPThread::UdpStep(void)
 			if(buffer[0]==ID_PING)
 			{
 				unsigned int rsleep=Server->getRandomNumber()%500;
-				Log("UDP: PING received... sending PONG. Delay="+nconvert(rsleep)+"ms", LL_DEBUG);
+				//Log("UDP: PING received... sending PONG. Delay="+convert(rsleep)+"ms", LL_DEBUG);
 				Server->wait(rsleep);
 				char *buffer=new char[mServername.size()+2];
 				buffer[0]=ID_PONG;
@@ -268,7 +310,7 @@ bool CUDPThread::UdpStep(void)
 				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
 				if( rc==SOCKET_ERROR )
 				{
-					Log("Sending reply failed "+nconvert(rc), LL_DEBUG);
+					Log("Sending reply failed "+convert(rc), LL_DEBUG);
 				}
 				delete[] buffer;
 			}
@@ -285,7 +327,7 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Select error in CUDPThread::UdpStep", LL_ERROR);
 #ifdef _WIN32
-			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+			Server->Log("Last error: "+ convert((int)GetLastError()), LL_ERROR);
 #endif
 #endif
 		has_error=true;
@@ -299,5 +341,9 @@ void CUDPThread::stop(void)
 {
 	do_stop=true;
 	Log("Stopping CUPDThread...", LL_DEBUG);
-	closesocket(udpsock);
+#ifdef _WIN32
+	::shutdown(udpsock, SD_BOTH);
+#else
+	::shutdown(udpsock, SHUT_RDWR);
+#endif
 }

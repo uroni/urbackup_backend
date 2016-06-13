@@ -1,19 +1,75 @@
 # UrBackup translation
-# Copyright (C) 2011-2015 See translators
+# Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
-# 
 # Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2015-07-19 16:38+0000\n"
+"PO-Revision-Date: 2016-04-28 14:37+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
-"Language-Team: Turkish (http://www.transifex.com/p/urbackup/language/tr/)\n"
+"Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: tr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "nav_item_3"
+msgstr "Loglar"
+
+msgid "nav_item_1"
+msgstr "Ayarlar"
+
+msgid "ok"
+msgstr "Tamam"
+
+msgid "loglevel_1"
+msgstr "Uyarılar"
+
+msgid "loglevel_2"
+msgstr "Hatalar"
+
+msgid "tLogs"
+msgstr "Loglar"
+
+msgid "tErrors"
+msgstr "Hatalar"
+
+msgid "tWarnings"
+msgstr "Uyarılar"
+
+msgid "tdays"
+msgstr "Gün"
+
+msgid "thours"
+msgstr "Saat"
+
+msgid "tmin"
+msgstr "Min"
+
+msgid "tAbort"
+msgstr "İptal"
+
+msgid "tInfos"
+msgstr "Info"
+
+msgid "tFile backups"
+msgstr "Dosya yedekleme"
+
+msgid "tImage backups"
+msgstr "imaj yedekleri"
+
+msgid "tClient"
+msgstr "İstemci"
+
+msgid "tInternet"
+msgstr "Internet"
+
+msgid "hours"
+msgstr "Saat"
+
+msgid "days"
+msgstr "Gün"
 
 msgid "action_1"
 msgstr "Artımlı dosya yedekleme"
@@ -48,23 +104,14 @@ msgstr "Aktiviteler"
 msgid "nav_item_4"
 msgstr "Yedekler"
 
-msgid "nav_item_3"
-msgstr "Loglar"
-
 msgid "nav_item_2"
 msgstr "İstatistik"
-
-msgid "nav_item_1"
-msgstr "Ayarlar"
 
 msgid "unknown"
 msgstr ""
 
 msgid "overview"
 msgstr "Genel Bakış"
-
-msgid "ok"
-msgstr "Tamam"
 
 msgid "no_recent_backup"
 msgstr "Yakın zamanda yedekleme yok"
@@ -183,18 +230,6 @@ msgstr "Hepsi"
 msgid "loglevel_0"
 msgstr "Bilgi"
 
-msgid "loglevel_1"
-msgstr "Uyarılar"
-
-msgid "loglevel_2"
-msgstr "Hatalar"
-
-msgid "dir_error_text"
-msgstr "urbackup yedeklerin kaydeedildiği dizine erişilemiyor, Ayarlar sekmesinde bu klasöre urbackup için erişim yetkisi vererek bunu düzeltin lütfen"
-
-msgid "tmpdir_error_text"
-msgstr "urbackup geçici dosyaların kaydedildiği dizine erişiemiyor, Ayarlar  sekmesinde bu klasöre urbackup için erişim yetkisi vererek bunu düzeltin lütfen"
-
 msgid "starting"
 msgstr "Başlangıç"
 
@@ -206,12 +241,6 @@ msgstr "Bir bilgisayar adı veya IP adresi girin"
 
 msgid "clients"
 msgstr "İstemciler"
-
-msgid "validate_text_empty"
-msgstr "{Name} için bir değer girin"
-
-msgid "validate_text_notint"
-msgstr "{Name} için sayısal bir değer girin"
 
 msgid "validate_name_update_freq_incr"
 msgstr "Artımlı dosya yedekleme için aralık"
@@ -228,50 +257,14 @@ msgstr "Tam imaj yedeklemeleri için aralık"
 msgid "validate_name_max_file_incr"
 msgstr "En fazla artımlı dosya yedekleme sayısı"
 
-msgid "validate_name_min_file_incr"
-msgstr "En az artımlı dosya yedekleme sayısı"
-
-msgid "validate_name_max_file_full"
-msgstr "En fazla Tam dosya yedekleme sayısı"
-
-msgid "validate_name_min_file_full"
-msgstr "En az Tam dosya yedekleme sayısı"
-
-msgid "validate_name_min_image_incr"
-msgstr "En az Artımlı imaj yedekleme sayısı"
-
-msgid "validate_name_max_image_incr"
-msgstr "En fazla Artımlı imaj yedekleme sayısı"
-
-msgid "validate_name_min_image_full"
-msgstr "En az Tam imaj yedekleme sayısı"
-
-msgid "validate_name_max_image_full"
-msgstr "En fazla Tam imaj yedekleme sayısı"
-
 msgid "validate_name_startup_backup_delay"
 msgstr "Sistem başlangıcından sonra gecikme"
-
-msgid "validate_err_notregexp_backup_window"
-msgstr "Yedekleme  için Format penceresi hatalı"
-
-msgid "validate_name_max_active_clients"
-msgstr "En fazla aktif client sayısı"
-
-msgid "validate_name_max_sim_backups"
-msgstr "En fazla eşzamanlı yedekleme sayısı"
-
-msgid "validate_name_backupfolder"
-msgstr "Yedekleme depolama yolu"
 
 msgid "validate_name_computername"
 msgstr "Bilgisayar adı"
 
 msgid "too_many_clients_err"
 msgstr "Çok fazla client bağlı"
-
-msgid "really_remove_client"
-msgstr "Gerçekten bu clientı silmek istiyormusunuz?, tüm dosya ve imaj yedekleri silinecek demektir?"
 
 msgid "computername"
 msgstr "Bilgisayar adı"
@@ -294,53 +287,26 @@ msgstr "Tarih"
 msgid "storage_usage_bar_graph_colname2"
 msgstr "Kullanılan Depolama alanı"
 
-msgid "tImages"
-msgstr "imajlar"
-
 msgid "tFiles"
 msgstr "Dosyalar"
 
 msgid "tSum"
 msgstr "Toplam"
 
-msgid "validate_err_notregexp_cleanup_window"
-msgstr "Temizleme için format penceresi hatalı "
-
-msgid "mail_settings"
-msgstr "Posta"
-
-msgid "upgrade_error_text"
-msgstr "urbackup internal veritabanını yükseltiliyor. Bu biraz zaman alabilir. Sunucu erişilemez ve bu yükseltme sırasında herhangi bir yedekleme işlemi yapılamaz"
-
 msgid "tActivities"
 msgstr "Aktiviteler"
-
-msgid "tAction"
-msgstr "Eylem"
 
 msgid "tProgress"
 msgstr "İlerleme"
 
-msgid "tFiles in queue"
-msgstr "Kuyruktaki dosyalar"
-
-msgid "tLast activities"
-msgstr "Son aktiviteler"
-
 msgid "tStarting time"
 msgstr "Başlangıç ​​zamanı"
-
-msgid "tRequired time"
-msgstr "Gereken zaman"
 
 msgid "tUsed Storage"
 msgstr "Kullanılan Depolama alanı"
 
 msgid "tClients"
 msgstr "İstemciler"
-
-msgid "tLogs"
-msgstr "Loglar"
 
 msgid "tReports"
 msgstr "Raporlar"
@@ -351,26 +317,263 @@ msgstr "Rapor gönder"
 msgid "tSend"
 msgstr "Gönder"
 
-msgid "tBackups with a log message of at least log level"
-msgstr "En azından log seviyesinde bir log mesajı ile yedekler"
-
 msgid "tBackup time"
 msgstr "Yedekleme zamanı"
-
-msgid "tErrors"
-msgstr "Hatalar"
-
-msgid "tWarnings"
-msgstr "Uyarılar"
-
-msgid "tStorage allocation"
-msgstr "Ayrılan depolama alanı"
 
 msgid "tStorage usage"
 msgstr "Kullanılan Depolama alanı"
 
 msgid "tAll"
 msgstr "Hepsi"
+
+msgid "tFilter"
+msgstr "Filtre:"
+
+msgid "tBack"
+msgstr "Geri"
+
+msgid "tAdd"
+msgstr "Ekle"
+
+msgid "tRemove"
+msgstr "Kaldır"
+
+msgid "tSave"
+msgstr "Kaydet"
+
+msgid "tMessage"
+msgstr "Mesaj"
+
+msgid "tLog"
+msgstr "Log"
+
+msgid "tUsername"
+msgstr "Kullanıcı adı"
+
+msgid "tPassword"
+msgstr "Şifre"
+
+msgid "tLogin"
+msgstr "Oturum Aç"
+
+msgid "tServer"
+msgstr "Sunucu"
+
+msgid "tPermissions"
+msgstr "İzinler"
+
+msgid "tSelect all"
+msgstr "Hepsini seç"
+
+msgid "mins"
+msgstr "Dakikalar"
+
+msgid "backup_in_progress"
+msgstr "Yedekleme sürüyor .."
+
+msgid "queued_backup"
+msgstr "Kuyruktaki yedeklemeler"
+
+msgid "tFile"
+msgstr "Dosya"
+
+msgid "tDomain"
+msgstr "Alan"
+
+msgid "tTranslation"
+msgstr "Çeviri"
+
+msgid "tChange"
+msgstr "Değiştir"
+
+msgid "tFailed"
+msgstr "Başarısız"
+
+msgid "tInfo"
+msgstr "Bilgi"
+
+msgid "tError"
+msgstr "Hata"
+
+msgid "tWarning"
+msgstr "Uyarı"
+
+msgid "tCurrent version"
+msgstr "Şu anki sürüm"
+
+msgid "tIncremental file backup"
+msgstr "Artımlı dosya yedekleme"
+
+msgid "tFull file backup"
+msgstr "Tam dosya yedekleme"
+
+msgid "tIncremental image backup"
+msgstr "Artımlı imaj yedekleme"
+
+msgid "tFull image backup"
+msgstr "Tam imaj yedekleme"
+
+msgid "about_urbackup"
+msgstr "urbackup Hakkında"
+
+msgid "tShow"
+msgstr "Göster"
+
+msgid "tIndexing..."
+msgstr "Dizin .."
+
+msgid "tDelete"
+msgstr "Sil"
+
+msgid "tDisable"
+msgstr "Devre Dışı"
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tNone"
+msgstr "Yok"
+
+msgid "tServer admin mail address"
+msgstr "Sunucu yönetici posta adresi"
+
+msgid "tDownload"
+msgstr "İndir"
+
+msgid "tStatus"
+msgstr "Durum"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "İstemci sürümü"
+
+msgid "tOperating System"
+msgstr "İşletim Sistemi"
+
+msgid "tShow all clients"
+msgstr "Tüm istemcileri göster"
+
+msgid "tThis client is going to be removed. "
+msgstr "Bu istemci kaldırılmış olacak"
+
+msgid "First"
+msgstr "İlk"
+
+msgid "Last"
+msgstr "Son"
+
+msgid "Next"
+msgstr "Sonraki"
+
+msgid "Previous"
+msgstr "Önceki"
+
+msgid "sInfoThousands"
+msgstr " "
+
+msgid "Processing..."
+msgstr "İşleme .."
+
+msgid "Search:"
+msgstr ""
+
+msgid "No matching records found"
+msgstr "Hiçbir eşleşen kayıt bulunamadı"
+
+msgid "Restore to default"
+msgstr "Varsayılanları geriyükle"
+
+msgid "Save"
+msgstr "Kaydet"
+
+msgid "tAllow clients to quit the tray icon"
+msgstr "İstemcilere  Simge üzerinden çıkmak için izin ver"
+
+msgid "Show/hide columns"
+msgstr "Sütunları göster / gizle"
+
+msgid "dir_error_text"
+msgstr "urbackup yedeklerin kaydeedildiği dizine erişilemiyor, Ayarlar sekmesinde bu klasöre urbackup için erişim yetkisi vererek bunu düzeltin lütfen"
+
+msgid "tmpdir_error_text"
+msgstr "urbackup geçici dosyaların kaydedildiği dizine erişiemiyor, Ayarlar  sekmesinde bu klasöre urbackup için erişim yetkisi vererek bunu düzeltin lütfen"
+
+msgid "validate_text_empty"
+msgstr "{Name} için bir değer girin"
+
+msgid "validate_text_notint"
+msgstr "{Name} için sayısal bir değer girin"
+
+msgid "validate_name_min_file_incr"
+msgstr "En az artımlı dosya yedekleme sayısı"
+
+msgid "validate_name_max_file_full"
+msgstr "En fazla Tam dosya yedekleme sayısı"
+
+msgid "validate_name_min_file_full"
+msgstr "En az Tam dosya yedekleme sayısı"
+
+msgid "validate_name_min_image_incr"
+msgstr "En az Artımlı imaj yedekleme sayısı"
+
+msgid "validate_name_max_image_incr"
+msgstr "En fazla Artımlı imaj yedekleme sayısı"
+
+msgid "validate_name_min_image_full"
+msgstr "En az Tam imaj yedekleme sayısı"
+
+msgid "validate_name_max_image_full"
+msgstr "En fazla Tam imaj yedekleme sayısı"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr "Yedekleme  için Format penceresi hatalı"
+
+msgid "validate_name_max_active_clients"
+msgstr "En fazla aktif client sayısı"
+
+msgid "validate_name_max_sim_backups"
+msgstr "En fazla eşzamanlı yedekleme sayısı"
+
+msgid "validate_name_backupfolder"
+msgstr "Yedekleme depolama yolu"
+
+msgid "really_remove_client"
+msgstr "Gerçekten bu clientı silmek istiyormusunuz?, tüm dosya ve imaj yedekleri silinecek demektir?"
+
+msgid "tImages"
+msgstr "imajlar"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr "Temizleme için format penceresi hatalı "
+
+msgid "mail_settings"
+msgstr "Posta"
+
+msgid "upgrade_error_text"
+msgstr "urbackup internal veritabanını yükseltiliyor. Bu biraz zaman alabilir. Sunucu erişilemez ve bu yükseltme sırasında herhangi bir yedekleme işlemi yapılamaz"
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tAction"
+msgstr "Eylem"
+
+msgid "tFiles in queue"
+msgstr "Kuyruktaki dosyalar"
+
+msgid "tLast activities"
+msgstr "Son aktiviteler"
+
+msgid "tRequired time"
+msgstr "Gereken zaman"
+
+msgid "tBackups with a log message of at least log level"
+msgstr "En azından log seviyesinde bir log mesajı ile yedekler"
+
+msgid "tStorage allocation"
+msgstr "Ayrılan depolama alanı"
 
 msgid "tBackup storage path"
 msgstr "Yedeklemelerin kaydedlleceği yer"
@@ -471,15 +674,6 @@ msgstr "Yedeklemelerin istemci tarafında duraklatılmasına izin ver"
 msgid "tAllow client-side changing of settings"
 msgstr "Ayarları istemci tarafında değiştirilmesine izin ver"
 
-msgid "tdays"
-msgstr "Gün"
-
-msgid "thours"
-msgstr "Saat"
-
-msgid "tmin"
-msgstr "Min"
-
 msgid "tMail server name"
 msgstr "Posta sunucusu adı"
 
@@ -512,35 +706,11 @@ msgstr "Test maili başarıyla gönderildi"
 msgid "tSending test mail failed. Error:"
 msgstr ""
 
-msgid "tFilter"
-msgstr "Filtre:"
-
-msgid "tBack"
-msgstr "Geri"
-
-msgid "tAdd"
-msgstr "Ekle"
-
-msgid "tRemove"
-msgstr "Kaldır"
-
-msgid "tSave"
-msgstr "Kaydet"
-
 msgid "tLevel"
 msgstr "Seviye"
 
 msgid "tTime"
 msgstr "Zaman"
-
-msgid "tMessage"
-msgstr "Mesaj"
-
-msgid "tLog"
-msgstr "Log"
-
-msgid "tUsername"
-msgstr "Kullanıcı adı"
 
 msgid "tRights"
 msgstr "Yetkiler"
@@ -551,17 +721,11 @@ msgstr "Kullanıcı Yok"
 msgid "tCreate user"
 msgstr "Kullanıcı oluşturma"
 
-msgid "tPassword"
-msgstr "Şifre"
-
 msgid "tRepeat password"
 msgstr "Şifreyi tekrar girin"
 
 msgid "tRights for"
 msgstr "Yetkiler"
-
-msgid "tAbort"
-msgstr "İptal"
 
 msgid "tCreate"
 msgstr "Create"
@@ -572,35 +736,11 @@ msgstr "Yetkilerını değiştirme"
 msgid "tChange password"
 msgstr "Şifre değiştir"
 
-msgid "tLogin"
-msgstr "Oturum Aç"
-
-msgid "tInfos"
-msgstr "Info"
-
 msgid "tSeparate settings for this client"
 msgstr "Bu istemci için farklı ayarlar"
 
-msgid "tServer"
-msgstr "Sunucu"
-
-msgid "tFile backups"
-msgstr "Dosya yedekleme"
-
-msgid "tImage backups"
-msgstr "imaj yedekleri"
-
-msgid "tPermissions"
-msgstr "İzinler"
-
-msgid "tClient"
-msgstr "İstemci"
-
 msgid "tArchival"
 msgstr "Arşiv"
-
-msgid "tInternet"
-msgstr "Internet"
 
 msgid "tPerform autoupdates silently"
 msgstr "Sessizce otomatik güncelleme gerçekleştir"
@@ -611,9 +751,6 @@ msgstr "Yerel ağ Max yedekleme hızı"
 msgid "tNo activities"
 msgstr "Aktivite Yok"
 
-msgid "tSelect all"
-msgstr "Hepsini seç"
-
 msgid "tSelect none"
 msgstr "Hiçbiri"
 
@@ -623,20 +760,8 @@ msgstr "Seçilen Kaldır"
 msgid "tStart for selected"
 msgstr "Seçilen için Başlat"
 
-msgid "tInternet clients"
-msgstr "Internet istemcileri"
-
-msgid "tAdd additional internet clients"
-msgstr "Ek internet istemcileri ekleme"
-
-msgid "tClient name"
-msgstr "İstemci Adı"
-
 msgid "tNo entries for this filter"
 msgstr "Bu filtre için hiçbir giriş yok"
-
-msgid "tNo data"
-msgstr "Veri yok"
 
 msgid "tTotal max backup speed for local network"
 msgstr "Yerel ağ için toplam maksimum yedekleme hızı"
@@ -683,12 +808,6 @@ msgstr "Sıkıştırılmış transfer"
 msgid "file_backup"
 msgstr "Dosya yedekleme"
 
-msgid "hours"
-msgstr "Saat"
-
-msgid "days"
-msgstr "Gün"
-
 msgid "weeks"
 msgstr "Hafta"
 
@@ -716,9 +835,6 @@ msgstr "Yıllar"
 msgid "min"
 msgstr "Dakika"
 
-msgid "mins"
-msgstr "Dakikalar"
-
 msgid "validate_name_archive_every"
 msgstr "Her arşivle"
 
@@ -728,17 +844,11 @@ msgstr "Arşiv"
 msgid "forever"
 msgstr "Sonsuza dek"
 
-msgid "backup_in_progress"
-msgstr "Yedekleme sürüyor .."
-
 msgid "really_remove_clients"
 msgstr "Gerçekten bu clientı silmek istiyormusunuz?, Tüm dosya ve imaj yedekleri silinecek demektir!!!"
 
 msgid "no_client_selected"
 msgstr "Hiçbir İstemci seçilmedi"
-
-msgid "queued_backup"
-msgstr "Kuyruktaki yedeklemeler"
 
 msgid "starting_backup_failed"
 msgstr "Yedekeleme işi başlatılamadı, başarısız"
@@ -785,9 +895,6 @@ msgstr "Eski parola yanlış"
 msgid "tID"
 msgstr "Kimlik"
 
-msgid "tFile"
-msgstr "Dosya"
-
 msgid "tSize"
 msgstr "Boyut"
 
@@ -806,17 +913,8 @@ msgstr "Domain Sil"
 msgid "tChange rights for user"
 msgstr "Kullanıcı Yetkilerını değiştirme"
 
-msgid "tDomain"
-msgstr "Alan"
-
-msgid "tTranslation"
-msgstr "Çeviri"
-
 msgid "tNew domain"
 msgstr "Yeni domain"
-
-msgid "tChange"
-msgstr "Değiştir"
 
 msgid "tChange password for user"
 msgstr "Kullanıcının parolasını değiştir"
@@ -830,23 +928,8 @@ msgstr "Bu istemci kaldırıldı olacak"
 msgid "tStop removing client"
 msgstr "İstemci silmeyi durdur"
 
-msgid "tFailed"
-msgstr "Başarısız"
-
 msgid "tSuccessfull"
 msgstr "Başarılı"
-
-msgid "tInfo"
-msgstr "Bilgi"
-
-msgid "tError"
-msgstr "Hata"
-
-msgid "tWarning"
-msgstr "Uyarı"
-
-msgid "tCurrent version"
-msgstr "Şu anki sürüm"
 
 msgid "tTarget version"
 msgstr "Hedef versiyonu"
@@ -875,23 +958,11 @@ msgstr "Sonsuza dek"
 msgid "tFile backup"
 msgstr "Dosya yedekleme"
 
-msgid "tIncremental file backup"
-msgstr "Artımlı dosya yedekleme"
-
-msgid "tFull file backup"
-msgstr "Tam dosya yedekleme"
-
 msgid "tEnable internet mode"
 msgstr "İnternet modunu etkinleştirin"
 
 msgid "tInternet auth key"
 msgstr "Internet auth anahtarı"
-
-msgid "tIncremental image backup"
-msgstr "Artımlı imaj yedekleme"
-
-msgid "tFull image backup"
-msgstr "Tam imaj yedekleme"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
@@ -901,7 +972,7 @@ msgid "tArchived"
 msgstr "Arşivlenen"
 
 msgid "nospc_stalled_text"
-msgstr "Yedek klasöründe şu anda yeterli boş alan yok. urbackup Ayarlarda belirlenen limitler dahilinde eski dosya ve imaj yedekleri silinir. Bu işlem sırasında yedekleme performansı düşer ve yedeklemeler durdurulur."
+msgstr ""
 
 msgid "nospc_fatal_text"
 msgstr "Yedek klasöründe şu anda yeterli boş alan yok. urbackup eski imaj ve dosya yedeklerini silmeye çalıştı fakat daha fazla dosya silinmesi gerekiyor. Lütfen yedeklemenin devam etmesi için depolama miktarını arttıracak ayarları değiştirin."
@@ -909,14 +980,23 @@ msgstr "Yedek klasöründe şu anda yeterli boş alan yok. urbackup eski imaj ve
 msgid "tNondefault temporary file directory"
 msgstr "Varsayılan dışında geçici dosya dizini"
 
-msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr "İstemciler temizleme zaman penceresinde temizleme sırasında kaldırılır"
-
-msgid "about_urbackup"
-msgstr "urbackup Hakkında"
-
 msgid "loading"
 msgstr "Yükleniyor"
+
+msgid "tInternet clients"
+msgstr "Internet istemcileri"
+
+msgid "tAdd additional internet clients"
+msgstr "Ek internet istemcileri ekleme"
+
+msgid "tClient name"
+msgstr "İstemci Adı"
+
+msgid "tNo data"
+msgstr "Veri yok"
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr "İstemciler temizleme zaman penceresinde temizleme sırasında kaldırılır"
 
 msgid "authentication_err"
 msgstr "Sunucu kimlik doğrulaması sırasında hata"
@@ -934,10 +1014,7 @@ msgid "really_recalculate"
 msgstr "? Bu uzun zaman alabilir gerçekten tüm istatistik yeniden hesaplamak istiyor musunuz!"
 
 msgid "database_error_text"
-msgstr "Bir hata erişen veya urbackup dahili veritabanı kontrol ederken. Bu, veritabanı muhtemelen hasarlı veya yeterince boş alan yoksa demektir oluştu. Bu hata devam ederse, bir yedekten veritabanı (dosyalar urbackup_server.db ve urbackup_server_settings.db) geri lütfen . Ayrıntılar için günlük dosyasına bakın."
-
-msgid "creating_filescache_text"
-msgstr "urbackup dosyası girişi chache yaratıyor. Bu biraz zaman alabilir."
+msgstr ""
 
 msgid "tDownload folder as ZIP"
 msgstr "ZIP gibi klasörü indirin"
@@ -966,26 +1043,14 @@ msgstr "urbackup canlı log"
 msgid "tLive Log"
 msgstr "Canlı Log"
 
-msgid "tShow"
-msgstr "Göster"
-
 msgid "tThere is a new version of UrBackup server available"
 msgstr "Mevcut urbackup sunucusunun yeni bir sürümü var"
-
-msgid "tIndexing..."
-msgstr "Dizin .."
-
-msgid "tDelete"
-msgstr "Sil"
 
 msgid "tDownload client from update server"
 msgstr "İstemciyi güncelleme sunucusundan indir "
 
 msgid "tGlobal soft filesystem quota"
 msgstr "Global soft filesystem kotası"
-
-msgid "tDisable"
-msgstr "Devre Dışı"
 
 msgid "tImage backup file format"
 msgstr "imaj yedekleme dosya biçimi"
@@ -1044,9 +1109,6 @@ msgstr "Internet tam dosya yedekleme transfer modu"
 msgid "tLocal incremental file backup transfer mode"
 msgstr "Yerel Artımlı dosya yedekleme aktarım modu"
 
-msgid "tBlock differences - hashed"
-msgstr "Blok farklar - karma"
-
 msgid "tInternet incremental file backup transfer mode"
 msgstr "Internet Artımlı dosya yedekleme aktarım modu"
 
@@ -1056,41 +1118,8 @@ msgstr "Yerel imaj yedekleme transfer modu"
 msgid "tInternet image backup transfer mode"
 msgstr "Internet imaj yedekleme transfer modu"
 
-msgid "tFile hash collection amount"
-msgstr "Hash toplama miktarını Dosyası"
-
-msgid "tFile hash collection timeout"
-msgstr "Hash toplama zaman aşımı Dosyası"
-
-msgid "tFile hash collection database cachesize"
-msgstr "Dosya karma koleksiyonu veritabanı cachesize"
-
-msgid "tMB"
-msgstr "MB"
-
-msgid "tUpdate stats database cachesize"
-msgstr "Update veritabanı cachesize durumu"
-
-msgid "tCache database type for file entries"
-msgstr "Dosya girdileri için Cache veritabanı türü"
-
-msgid "tNone"
-msgstr "Yok"
-
-msgid "tCache database size for file entries"
-msgstr "Dosya girdileri için Cache veritabanı boyutu"
-
-msgid "tSuspend index limit"
-msgstr "Index sınırı askıda"
-
 msgid "tUse symlinks during incremental file backups"
 msgstr "Artımlı dosya yedekleme sırasında sembolik kullan"
-
-msgid "tEnd-to-end verification of all file backups"
-msgstr "Tüm dosya yedeklerinin Uçtan uca doğrulama"
-
-msgid "tServer admin mail address"
-msgstr "Sunucu yönetici posta adresi"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1101,47 +1130,35 @@ msgstr ""
 msgid "tClient download"
 msgstr "İstemci yazılımı indir"
 
-msgid "tDownload"
-msgstr "İndir"
-
-msgid "tStatus"
-msgstr "Durum"
-
-msgid "tIP"
-msgstr "IP"
-
-msgid "tClient version"
-msgstr "İstemci sürümü"
-
-msgid "tOperating System"
-msgstr "İşletim Sistemi"
-
-msgid "tShow all clients"
-msgstr "Tüm istemcileri göster"
-
-msgid "tThis client is going to be removed. "
-msgstr "Bu istemci kaldırılmış olacak"
-
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr "İstemciler zaman penceresinden Temizleme işlemi sırasında kaldırılır"
 
 msgid "tRecalculate statistics"
 msgstr "Istatistiklerini yeniden hesapla"
 
-msgid "First"
-msgstr "İlk"
-
-msgid "Last"
-msgstr "Son"
-
-msgid "Next"
-msgstr "Sonraki"
-
-msgid "Previous"
-msgstr "Önceki"
-
 msgid "No data available in table"
 msgstr "Mevcut tabloda veri yok"
+
+msgid "Show _MENU_ entries"
+msgstr "MENU girdilerini göster"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr "Yerel yedekleme sunucusuna bağlı ise internet yedekleme sunucusuna bağlan"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr "Raporların gönderilmesi için bir kullanıcı oluşturmanız gerekir"
+
+msgid "tShow when a new server version is available"
+msgstr "Yeni bir sürüm kullanılabilir olduğunda göster"
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr "VHD (Virtual HardDisk)"
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr "Sıkıştırılmış VHD (Sıkıştırılmış standart dışı sanal HardDisk)"
+
+msgid "tBlock differences - hashed"
+msgstr "Blok farklar - karma"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
 msgstr "_TOTAL_ Girdilerinin _END_ için _START_ Gösterilen"
@@ -1152,44 +1169,356 @@ msgstr "0 0 girişlere 0 Gösterilen"
 msgid "(filtered from _MAX_ total entries)"
 msgstr "(_MAX_ Toplam girdileri filtrelenmiş)"
 
-msgid "sInfoThousands"
-msgstr " "
-
-msgid "Show _MENU_ entries"
-msgstr "MENU girdilerini göster"
-
-msgid "Processing..."
-msgstr "İşleme .."
-
-msgid "Search:"
+msgid "Minimize"
 msgstr ""
 
-msgid "No matching records found"
-msgstr "Hiçbir eşleşen kayıt bulunamadı"
+msgid "Maximize"
+msgstr ""
 
-msgid "Restore to default"
-msgstr "Varsayılanları geriyükle"
+msgid "ldap_settings"
+msgstr ""
 
-msgid "Save"
-msgstr "Kaydet"
+msgid "client_exists"
+msgstr ""
 
-msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr "Yerel yedekleme sunucusuna bağlı ise internet yedekleme sunucusuna bağlan"
+msgid "validate_err_empty_internet_client_name"
+msgstr ""
 
-msgid "tAllow clients to quit the tray icon"
-msgstr "İstemcilere  Simge üzerinden çıkmak için izin ver"
+msgid "validate_err_empty_hostname"
+msgstr ""
 
-msgid "tYou need to create a user to be able to send reports"
-msgstr "Raporların gönderilmesi için bir kullanıcı oluşturmanız gerekir"
+msgid "creating_filesindex_text"
+msgstr ""
 
-msgid "Show/hide columns"
-msgstr "Sütunları göster / gizle"
+msgid "about"
+msgstr ""
 
-msgid "tShow when a new server version is available"
-msgstr "Yeni bir sürüm kullanılabilir olduğunda göster"
+msgid "all_clients"
+msgstr ""
 
-msgid "tVHD (Virtual HardDisk)"
-msgstr "VHD (Virtual HardDisk)"
+msgid "client_settings"
+msgstr ""
 
-msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr "Sıkıştırılmış VHD (Sıkıştırılmış standart dışı sanal HardDisk)"
+msgid "action_8"
+msgstr ""
+
+msgid "action_9"
+msgstr ""
+
+msgid "action_10"
+msgstr ""
+
+msgid "action_11"
+msgstr ""
+
+msgid "action_12"
+msgstr ""
+
+msgid "action_13"
+msgstr ""
+
+msgid "tAbout UrBackup"
+msgstr "urbackup Hakkında"
+
+msgid "tAdd client"
+msgstr ""
+
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
+msgstr ""
+
+msgid "tDownload the client from:"
+msgstr ""
+
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
+msgstr ""
+
+msgid "tAdd new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tName of new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tDiscover new client via IP/hostname hint"
+msgstr ""
+
+msgid "tIP/hostname of client to be discovered"
+msgstr ""
+
+msgid "tCancel"
+msgstr ""
+
+msgid "tAccess denied"
+msgstr ""
+
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
+msgstr ""
+
+msgid "tLogin with username and password"
+msgstr ""
+
+msgid "tError while accessing backups"
+msgstr ""
+
+msgid "tSorry, something went wrong:"
+msgstr ""
+
+msgid "tCreated"
+msgstr ""
+
+msgid "tLast modified"
+msgstr ""
+
+msgid "tLast accessed"
+msgstr ""
+
+msgid "tList"
+msgstr ""
+
+msgid "tRestore"
+msgstr ""
+
+msgid "tRestore folder to client"
+msgstr ""
+
+msgid "tVersion"
+msgstr ""
+
+msgid "tClient added successfully"
+msgstr ""
+
+msgid "tAdded new client with name:"
+msgstr ""
+
+msgid "tDefault authentication key:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Windows"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Mac OS X"
+msgstr ""
+
+msgid "tInstall it directly in the terminal via:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Linux"
+msgstr ""
+
+msgid "tAlternatively after you installed the client from:"
+msgstr ""
+
+msgid "tGo the settings screen on the client"
+msgstr ""
+
+msgid "tEnable the internet mode on the client"
+msgstr ""
+
+msgid "tSet the internet server to:"
+msgstr ""
+
+msgid "tSet the internet server port to:"
+msgstr ""
+
+msgid "tSet the computer name to:"
+msgstr ""
+
+msgid "tSet the authentication key to:"
+msgstr ""
+
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgstr ""
+
+msgid "tWith the command line:"
+msgstr ""
+
+msgid "tPercent finished"
+msgstr ""
+
+msgid "tDetails"
+msgstr ""
+
+msgid "tAdd Email Address"
+msgstr ""
+
+msgid "tFailed without failures caused by client timeout"
+msgstr ""
+
+msgid "tMinimum log level"
+msgstr ""
+
+msgid "tBackups interrupted"
+msgstr ""
+
+msgid "tStop"
+msgstr ""
+
+msgid "tShow log"
+msgstr ""
+
+msgid "tETA"
+msgstr ""
+
+msgid "tSpeed"
+msgstr ""
+
+msgid "tFile Backups"
+msgstr ""
+
+msgid "tImage Backups"
+msgstr ""
+
+msgid "tArchive"
+msgstr ""
+
+msgid "tServer URL"
+msgstr ""
+
+msgid "tMax simultaneous backups"
+msgstr ""
+
+msgid "tMax recently active clients"
+msgstr ""
+
+msgid "tDays"
+msgstr ""
+
+msgid "tRaw copy-on-write file"
+msgstr ""
+
+msgid "tMin"
+msgstr ""
+
+msgid "tVirtual sub client names"
+msgstr ""
+
+msgid "tLocal incremental image style"
+msgstr ""
+
+msgid "tBased on last full image backup"
+msgstr ""
+
+msgid "tBased on last image backup"
+msgstr ""
+
+msgid "tInternet incremental image style"
+msgstr ""
+
+msgid "tLocal full image style"
+msgstr ""
+
+msgid "tSynthetic full image backup"
+msgstr ""
+
+msgid "tInternet full image style"
+msgstr ""
+
+msgid "tDatabase cache size during batch processing"
+msgstr ""
+
+msgid "tDebugging: End-to-end verification of all file backups"
+msgstr ""
+
+msgid "tDebugging: Verify file backups using client side hashes"
+msgstr ""
+
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
+msgstr ""
+
+msgid "tRun backups with background priority on the clients"
+msgstr ""
+
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
+msgstr ""
+
+msgid "tMaximum number of simultaneous jobs per client"
+msgstr ""
+
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
+msgstr ""
+
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
+msgstr ""
+
+msgid "tEnable logins via LDAP/AD"
+msgstr ""
+
+msgid "tLDAP/AD server name"
+msgstr ""
+
+msgid "tLDAP/AD server port"
+msgstr ""
+
+msgid "tLDAP/AD user name prefix"
+msgstr ""
+
+msgid "tLDAP/AD user name suffix"
+msgstr ""
+
+msgid "tLDAP/AD group and class query"
+msgstr ""
+
+msgid "tLDAP/AD group key name in query"
+msgstr ""
+
+msgid "tLDAP/AD class key name in query"
+msgstr ""
+
+msgid "tLDAP/AD group rights map"
+msgstr ""
+
+msgid "tLDAP/AD class rights map"
+msgstr ""
+
+msgid "tTest login with this user"
+msgstr ""
+
+msgid "tPassword for test user"
+msgstr ""
+
+msgid "tTest login succeeded. Rights of user:"
+msgstr ""
+
+msgid "tTest login failed. Error:"
+msgstr ""
+
+msgid "tDownload client for Windows"
+msgstr ""
+
+msgid "tDownload client for Mac OS X"
+msgstr ""
+
+msgid "tDownload client for Linux"
+msgstr ""
+
+msgid "tRemove client"
+msgstr ""
+
+msgid "tAdd new client"
+msgstr ""
+
+msgid "tClient discovery hints"
+msgstr ""
+
+msgid "tAdd hostname/IP as client discovery hint"
+msgstr ""
+
+msgid "tBackup Statistics"
+msgstr ""

@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #ifndef NO_SQLITE
@@ -36,6 +36,7 @@
 #include "Query.h"
 #include "sqlite/sqlite3.h"
 #include "Interface/File.h"
+#include <stdlib.h>
 extern "C"
 {
 	#include "sqlite/shell.h"
@@ -43,9 +44,41 @@ extern "C"
 #include "Database.h"
 #include "stringtools.h"
 
-IMutex * CDatabase::lock_mutex=NULL;
-int CDatabase::lock_count=0;
-ICondition *CDatabase::unlock_cond=NULL;
+
+namespace
+{
+	size_t get_sqlite_cache_size()
+	{
+		std::string cache_size_str = Server->getServerParameter("sqlite_cache_size");
+
+		if(!cache_size_str.empty())
+		{
+			return atoi(cache_size_str.c_str());
+		}
+		else
+		{
+			return 2*1024; //2MB
+		}
+	}
+
+	void errorLogCallback(void *pArg, int iErrCode, const char *zMsg)
+	{
+		switch (iErrCode)
+		{
+		case SQLITE_LOCKED:
+		case SQLITE_BUSY:
+		case SQLITE_SCHEMA:
+			return;
+		case SQLITE_NOTICE_RECOVER_ROLLBACK:
+		case SQLITE_NOTICE_RECOVER_WAL:
+			Server->Log("SQLite: "+ std::string(zMsg) + " code: " + convert(iErrCode), LL_INFO);
+			break;
+		default:
+			Server->Log("SQLite: " + std::string(zMsg) + " errorcode: " + convert(iErrCode), LL_WARNING);
+			break;
+		}
+	}
+}
 
 
 struct UnlockNotification {
@@ -53,23 +86,6 @@ struct UnlockNotification {
   ICondition* cond;                 
   IMutex *mutex;              
 };
-
-static int callback(void *CPtr, int argc, char **argv, char **azColName)
-{
-	CDatabase* db=(CDatabase*)CPtr;
-	db_nsingle_result result;
-	
-	for(int i=0; i<argc; i++)
-	{
-		//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		if( azColName[i] && argv[i])
-			result.insert(std::pair<std::string,std::string>(azColName[i], argv[i]) ); 
-	}
-
-	db->InsertResults(result);
-  
-	return 0;
-}
 
 static void unlock_notify_cb(void **apArg, int nArg)
 {
@@ -95,8 +111,15 @@ CDatabase::~CDatabase()
 	sqlite3_close(db);
 }
 
-bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach)
+bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
+	size_t allocation_chunk_size, ISharedMutex* p_single_user_mutex, IMutex* p_lock_mutex,
+	int* p_lock_count, ICondition *p_unlock_cond, const str_map& params)
 {
+	single_user_mutex = p_single_user_mutex;
+	lock_mutex = p_lock_mutex;
+	lock_count = p_lock_count;
+	unlock_cond = p_unlock_cond;
+
 	attached_dbs=attach;
 	in_transaction=false;
 	if( sqlite3_open(pFile.c_str(), &db) )
@@ -108,20 +131,43 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 	else
 	{
 		
-		#ifdef BDBPLUGIN
-		/*db_results res=Read("PRAGMA multiversion");
-		if(!res.empty() && res[0][L"multiversion"]!=L"1")
-		{
-		    Write("PRAGMA multiversion=ON");
-		}*/
-		Write("PRAGMA synchronous=ON");
-		//Write("PRAGMA snapshot_isolation=ON");
-		//Write("PRAGMA bdbsql_error_file='urbackup/bdb_errors.log'");
-		#else
 		Write("PRAGMA synchronous=NORMAL");
-		#endif
 		Write("PRAGMA foreign_keys = ON");
-		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
+		Write("PRAGMA threads = 2");
+
+		str_map::const_iterator it = params.find("wal_autocheckpoint");
+		if (it != params.end())
+		{
+			Write("PRAGMA wal_autocheckpoint=" + it->second);
+		}
+
+		it = params.find("page_size");
+		if (it != params.end())
+		{
+			Write("PRAGMA page_size=" + it->second);
+		}
+		else
+		{
+			Write("PRAGMA page_size=4096");
+		}
+
+		it = params.find("mmap_size");
+		if (it != params.end())
+		{
+			Write("PRAGMA mmap_size=" + it->second);
+		}
+
+		if(allocation_chunk_size!=std::string::npos)
+		{
+			int chunk_size = static_cast<int>(allocation_chunk_size);
+			sqlite3_file_control(db, NULL, SQLITE_FCNTL_CHUNK_SIZE, &chunk_size);
+		}
+
+		static size_t sqlite_cache_size = get_sqlite_cache_size();
+		Write("PRAGMA cache_size = -"+convert(sqlite_cache_size));	
+
+		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
+
 		AttachDBs();
 
 		return true;
@@ -130,30 +176,11 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 
 void CDatabase::initMutex(void)
 {
-	lock_mutex=Server->createMutex();
-	unlock_cond=Server->createCondition();
+	sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL);
 }
 
 void CDatabase::destroyMutex(void)
 {
-	Server->destroy(lock_mutex);
-	Server->destroy(unlock_cond);
-}
-
-db_nresults CDatabase::ReadN(std::string pQuery)
-{
-	//Server->Log("SQL Query(Read): "+pQuery);
-	results.clear();
-	char *zErrMsg = 0;
-	int rc=sqlite3_exec(db, pQuery.c_str(), callback, this, &zErrMsg);
-	if( rc!=SQLITE_OK )
-	{
-		Server->Log("SQL ERROR: "+(std::string)zErrMsg);
-	}
-	if( zErrMsg!=NULL )
-		sqlite3_free(zErrMsg);
-
-	return results;
 }
 
 db_results CDatabase::Read(std::string pQuery)
@@ -185,36 +212,42 @@ bool CDatabase::Write(std::string pQuery)
 	}
 }
 
-void CDatabase::InsertResults(const db_nsingle_result &pResult)
-{
-	results.push_back(pResult);
-}
-
-
 //ToDo: Cache Writings
 
 bool CDatabase::BeginReadTransaction()
 {
+	if (write_lock.get() == NULL)
+	{
+		transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	}
+
+	in_transaction = true;
 	if(Write("BEGIN"))
 	{
-		in_transaction=true;
 		return true;
 	}
 	else
 	{
+		in_transaction = false;
 		return false;
 	}
 }
 
 bool CDatabase::BeginWriteTransaction()
 {
+	if (write_lock.get() == NULL)
+	{
+		transaction_read_lock.reset(new IScopedReadLock(single_user_mutex));
+	}
+
+	in_transaction = true;
 	if(Write("BEGIN IMMEDIATE;"))
 	{
-		in_transaction=true;
 		return true;
 	}
 	else
 	{
+		in_transaction = false;
 		return false;
 	}
 }
@@ -223,9 +256,10 @@ bool CDatabase::EndTransaction(void)
 {
 	Write("END;");
 	in_transaction=false;
+	transaction_read_lock.reset();
 	IScopedLock lock(lock_mutex);
 	bool waited=false;
-	while(lock_count>0)
+	while(*lock_count>0)
 	{
 		unlock_cond->wait(&lock);
 		waited=true;
@@ -237,17 +271,45 @@ bool CDatabase::EndTransaction(void)
 	return true;
 }
 
+bool CDatabase::RollbackTransaction()
+{
+	Write("ROLLBACK;");
+	in_transaction = false;
+	transaction_read_lock.reset();
+	IScopedLock lock(lock_mutex);
+	bool waited = false;
+	while (*lock_count>0)
+	{
+		unlock_cond->wait(&lock);
+		waited = true;
+	}
+	if (waited)
+	{
+		Server->wait(50);
+	}
+	return true;
+}
+
 IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 {
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction && write_lock.get()==NULL)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	sqlite3_stmt *prepared_statement;
 	const char* tail;
 	int err;
 	bool transaction_lock=false;
-	while((err=sqlite3_prepare_v2(db, pQuery.c_str(), (int)pQuery.size(), &prepared_statement, &tail) )==SQLITE_LOCKED || err==SQLITE_BUSY)
+	while((err=sqlite3_prepare_v2(db, pQuery.c_str(), (int)pQuery.size(), &prepared_statement, &tail) )==SQLITE_LOCKED 
+		|| err==SQLITE_BUSY
+		|| err==SQLITE_PROTOCOL)
 	{
 		if(err==SQLITE_LOCKED)
 		{
-			if(LockForTransaction())
+			if(!transaction_lock && LockForTransaction())
 			{
 				transaction_lock=true;
 				if(!WaitForUnlock())
@@ -256,7 +318,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		}
 		else
 		{
-			if(transaction_lock==false)
+			if(!transaction_lock)
 			{
 				if(!isInTransaction() && LockForTransaction())
 				{
@@ -289,6 +351,10 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		{
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 		}
+		if (err ==SQLITE_FULL)
+		{
+			Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+		}
 
 		return NULL;
 	}
@@ -303,6 +369,13 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 
 IQuery* CDatabase::Prepare(int id, std::string pQuery)
 {
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction && write_lock.get()==NULL)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	std::map<int, IQuery*>::iterator iter=prepared_queries.find(id);
 	if( iter!=prepared_queries.end() )
 	{
@@ -390,13 +463,13 @@ sqlite3 *CDatabase::getDatabase(void)
 bool CDatabase::LockForTransaction(void)
 {
 	lock_mutex->Lock();
-	++lock_count;
+	++*lock_count;
 	return true;
 }
 
 void CDatabase::UnlockForTransaction(void)
 {
-	--lock_count;
+	--*lock_count;
 	unlock_cond->notify_all();
 	lock_mutex->Unlock();
 }
@@ -478,16 +551,31 @@ std::string CDatabase::getEngineName(void)
 
 void CDatabase::AttachDBs(void)
 {
-	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);	}
+	for(size_t i=0;i<attached_dbs.size();++i)
+	{
+		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);
+	}
 }
 
 void CDatabase::DetachDBs(void)
 {
-	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("DETACH DATABASE "+attached_dbs[i].second);	}
+	for(size_t i=0;i<attached_dbs.size();++i)
+	{
+		Write("DETACH DATABASE "+attached_dbs[i].second);
+	}
 }
 
-bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
+bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB, IBackupProgress* progress)
 {
+	int64 page_size = watoi64(Read("PRAGMA " + pDB + ".page_size")[0]["page_size"]);
+
+	IScopedReadLock lock(NULL);
+
+	if (!in_transaction && write_lock.get()==NULL)
+	{
+		lock.relock(single_user_mutex);
+	}
+
 	int rc;                     /* Function return code */
   sqlite3 *pBackupDB;             /* Database connection opened on zFilename */
   sqlite3_backup *pBackup;    /* Backup handle used to copy data */
@@ -505,12 +593,15 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
       ** indicates that there are still further pages to copy, sleep for
       ** 250 ms before repeating. */
       do {
-        rc = sqlite3_backup_step(pBackup, -1);
+        rc = sqlite3_backup_step(pBackup, 32);
 
-		if(rc!=SQLITE_OK)
-			Server->wait(250);
+		int total = sqlite3_backup_pagecount(pBackup);
+		int remaining = sqlite3_backup_remaining(pBackup);
+		int done = total - remaining;
+		
+		progress->backupProgress(done*page_size, total*page_size);
 
-      } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_LOCKED );
+      } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_PROTOCOL || rc==SQLITE_LOCKED );
 
       /* Release resources allocated by backup_init(). */
       (void)sqlite3_backup_finish(pBackup);
@@ -522,7 +613,7 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
     rc = sqlite3_errcode(pBackupDB);
 	if(rc!=0)
 	{
-		Server->Log("Database backup failed with error code: "+nconvert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_ERROR);
+		Server->Log("Database backup failed with error code: "+convert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_ERROR);
 	}
   }
   
@@ -532,16 +623,16 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
   return rc==0;
 }
 
-bool CDatabase::Backup(const std::string &pFile)
+bool CDatabase::Backup(const std::string &pFile, IBackupProgress* progress)
 {
 	std::string path=ExtractFilePath(pFile);
-	bool b=backup_db(pFile, "main");
+	bool b=backup_db(pFile, "main", progress);
 	if(!b)
 		return false;
 
 	for(size_t i=0;i<attached_dbs.size();++i)
 	{
-		b=backup_db(path+"/"+ExtractFileName(attached_dbs[i].first), attached_dbs[i].second);
+		b=backup_db(path+"/"+ExtractFileName(attached_dbs[i].first), attached_dbs[i].second, progress);
 		if(!b)
 			return false;
 	}
@@ -557,6 +648,44 @@ void CDatabase::freeMemory()
 int CDatabase::getLastChanges()
 {
 	return sqlite3_changes(db);
+}
+
+std::string CDatabase::getTempDirectoryPath()
+{
+	char* tmpfn = NULL;
+	if(sqlite3_file_control(db, NULL, SQLITE_FCNTL_TEMPFILENAME, &tmpfn)==SQLITE_OK && tmpfn!=NULL)
+	{
+		std::string ret = ExtractFilePath(tmpfn);
+		sqlite3_free(tmpfn);
+		return ret;
+	}
+	else
+	{
+		return std::string();
+	}
+}
+
+void CDatabase::lockForSingleUse()
+{
+	write_lock.reset(new IScopedWriteLock(single_user_mutex));
+}
+
+void CDatabase::unlockForSingleUse()
+{
+	write_lock.reset();
+}
+
+ISharedMutex* CDatabase::getSingleUseMutex()
+{
+	if (write_lock.get() == NULL
+		&& transaction_read_lock.get()==NULL)
+	{
+		return single_user_mutex;
+	}
+	else
+	{
+		return NULL;
+	}	
 }
 
 #endif //NO_SQLITE

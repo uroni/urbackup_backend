@@ -1,6 +1,3 @@
-<h3>{tClient download}</h3>
-
-<select size="1" style="width: 150px;" id="download_client">
-{download_clients|s}
+<select id="download_client_{os}" class="selectpicker" data-live-search="true" onChange="downloadClient(-1, null, '{os}')" data-title="{?os_windows}{tDownload client for Windows}{/os_windows}{?os_mac}{tDownload client for Mac OS X}{/os_mac}{?os_linux}{tDownload client for Linux}{/os_linux}" data-style="btn btn-sm btn-default" data-width="15em" data-container="body">
+		{download_clients|s}
 </select>
-<input type="button" value="{tDownload}" onclick="downloadClient({clientid})" />

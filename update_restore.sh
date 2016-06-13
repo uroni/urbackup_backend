@@ -1,37 +1,30 @@
 #!/bin/sh
 
+set -e
+set -x
+
+sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_client
+
 ./switch_build.sh client
 
-make
-cd fileservplugin
-make
-cd ..
-cd urbackupclient
-make
-cd ..
+autoreconf --install
 
-./switch_build.sh server
-make
+./configure CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 -DRESTORE_CLIENT -flto" CFLAGS="-flto" LDFLAGS="-flto" --enable-headless --with-crypto-prefix=/usr/local
+
+make -j4
 
 LANG=en
 
-mkdir restore_cd/urbackup
-mkdir restore_cd/urbackup/restore
+mkdir -p restore_cd/urbackup/restore
 cp urbackupclient/backup_client.db restore_cd/urbackup/
 touch restore_cd/urbackup/new.txt
 
-cp urbackup_srv restore_cd/urbackup_client
-cp urbackupclient/.libs/liburbackupclient.so restore_cd/liburbackupclient.so
-cp fsimageplugin/.libs/liburbackupclient_fsimageplugin.so restore_cd/libfsimageplugin.so
-cp fileservplugin/.libs/liburbackupclient_fileservplugin.so restore_cd/libfileservplugin.so
+cp urbackupclientbackend restore_cd/urbackuprestoreclient
 cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
-cp urbackupserver/restore/* restore_cd/urbackup/restore/
+cp urbackupserver/restore/* restore_cd/urbackup/restore/ || true
 chmod +x restore_cd/urbackup/restore/*.sh
-strip restore_cd/urbackup_client
-strip restore_cd/liburbackupclient.so
-strip restore_cd/libfsimageplugin.so
-strip restore_cd/libfileservplugin.so
+#strip restore_cd/urbackuprestoreclient
 
 cd restore_cd
-tar -czf ../restore_cd.tgz *
-cp ../restore_cd.tgz /var/www/restore_cd.tgz
+tar -cJf ../restore_cd_2.tar.xz *
+cp ../restore_cd_2.tar.xz /var/www/restore_cd_2.tar.xz

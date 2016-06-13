@@ -1,0 +1,70 @@
+<div class="panel panel-default">
+	<div class="panel-heading">{tClient added successfully}</div>
+	<div class="panel-body">
+		<p>
+			{tAdded new client with name:} {new_clientname}
+		</p>
+		<p>
+			{tDefault authentication key:} {new_authkey}
+		</p>
+		<p>
+			<ul>
+				<li><a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'windows')">{tDownload preconfigured client installer for Windows}</a></li>
+				<li>
+					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'mac')">{tDownload preconfigured client installer for Mac OS X}</a>
+					<p>
+						{tInstall it directly in the terminal via:}
+						<blockquote>
+							<p>
+								<code>
+									TF=`mktemp` && curl "{mac_url}" > $TF && bash $TF; rm $TF
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
+				<li>
+					<a href="#" onClick="javascript: downloadClient({new_clientid}, '{new_authkey}', 'linux')">{tDownload preconfigured client installer for Linux}</a>
+					<p>
+						{tInstall it directly in the terminal via:}
+						<blockquote>
+							<p>
+								<code>
+									TF=`mktemp` && wget "{linux_url}" -O $TF && sh $TF; rm $TF
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
+				<li>
+					<p>
+						{tAlternatively after you installed the client from:} <a href="https://www.urbackup.org/download.html" target="_blank">https://www.urbackup.org/download.html</a>
+					</p>
+					<p>
+						<ul>
+							<li>{tGo to the settings screen on the client}</li>
+							<li>{tEnable the internet mode on the client}</li>
+							<li>{tSet the internet server to:} {internet_server}</li>
+							<li>{tSet the internet server port to:} {internet_server_port}</li>
+							<li>{tSet the computer name to:} {new_clientname}</li>
+							<li>{tSet the authentication key to:} {new_authkey}</li>
+							<li>{tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient}</li>
+						</ul>
+					</p>
+					<p>
+						{tWith the command line:}
+						<blockquote>
+							<p>
+								<code>
+									urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}<br>
+									[ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient<br>
+									[ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient
+								</code>
+							</p>
+						</blockquote>
+					</p>
+				</li>
+			</ul>
+		</p>
+	</div>
+</div>

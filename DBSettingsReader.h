@@ -6,14 +6,15 @@ class CDBSettingsReader : public CSettingsReader
 public:
 	CDBSettingsReader(THREAD_ID tid, DATABASE_ID did, const std::string &pTable, const std::string &pSQL="");
 	CDBSettingsReader(IDatabase *pDB, const std::string &pTable, const std::string &pSQL="");
+	~CDBSettingsReader();
 
 	bool getValue(std::string key, std::string *value);	
-	bool getValue(std::wstring key, std::wstring *value);
 
-	std::vector<std::wstring> getKeys();
+	std::vector<std::string> getKeys();
 
 private:
 	std::string table;	
 
+	IDatabase* db;
 	IQuery *query;
 };

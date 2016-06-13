@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -58,7 +58,7 @@ namespace
 	};
 }
 
-CHTTPAction::CHTTPAction(const std::wstring &pName, const std::wstring pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput)
+CHTTPAction::CHTTPAction(const std::string &pName, const std::string pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput)
 {
 	name=pName;
 	GETStr=pGETStr;
@@ -72,8 +72,8 @@ CHTTPAction::CHTTPAction(const std::wstring &pName, const std::wstring pContext,
 
 void CHTTPAction::operator()(void)
 {
-	std::map<std::wstring, std::wstring> GET;
-	std::map<std::wstring, std::wstring> POST;
+	std::map<std::string, std::string> GET;
+	std::map<std::string, std::string> POST;
 	ParseParamStrHttp(GETStr, &GET, true);
 	ParseParamStrHttp(POSTStr, &POST, true);
 
@@ -98,8 +98,8 @@ void CHTTPAction::operator()(void)
 
 	if( tid==0 )
 	{
-		std::wstring error=L"Error: Unknown action ["+name+L"]";
+		std::string error="Error: Unknown action ["+name+"]";
 		Server->Log(error, LL_WARNING);
-		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
 	}
 }

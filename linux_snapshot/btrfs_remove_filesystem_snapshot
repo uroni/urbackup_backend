@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_NAME="$3"
+SNAP_DEST="$4"
+SNAP_ORIG_PATH="$5"
+
+if ! test -e $SNAP_MOUNTPOINT
+then
+        echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+        exit 0
+fi
+
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | tr -s " " | cut -d" " -f2)
+
+if [[ $TYPE == "" ]]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [[ $TYPE == "btrfs" ]]
+then
+        btrfs subvolume delete "$SNAP_MOUNTPOINT"
+else
+        echo "Cannot remove snapshot at $SNAP_MOUNTPOINT. File system type $TYPE not supported."
+        exit 1
+fi
+
+exit 0

@@ -1,860 +1,943 @@
 # UrBackup translation
-# Copyright (C) 2011-2014 See translators
-# This file is distributed under the same license as the UrBackup package.
+# Copyright (C) 2011-2016 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
+# Jarosław Gorzelnik <jarek12@interia.pl>, 2015
+# Krzysztof Pałka <k.palka.pl@gmail.com>, 2015
+# Łukasz Milata <drupter@gmail.com>, 2015
+# Maciej Dyczko <edyczkowski@gmail.com>, 2015
+# Thomas Pancherz <pancherz_news@arcor.de>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
+"PO-Revision-Date: 2016-04-28 14:37+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
-"Language-Team: Polish (http://www.transifex.com/projects/p/urbackup/language/pl/)\n"
+"Language-Team: Polish (http://www.transifex.com/uroni/urbackup/language/pl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: pl\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-msgid "action_1"
-msgstr ""
-
-msgid "action_2"
-msgstr ""
-
-msgid "action_3"
-msgstr ""
-
-msgid "action_4"
-msgstr ""
-
-msgid "action_1_d"
-msgstr ""
-
-msgid "action_2_d"
-msgstr ""
-
-msgid "action_3_d"
-msgstr ""
-
-msgid "action_4_d"
-msgstr ""
-
-msgid "nav_item_6"
-msgstr ""
-
-msgid "nav_item_5"
-msgstr ""
-
-msgid "nav_item_4"
-msgstr ""
-
 msgid "nav_item_3"
-msgstr ""
-
-msgid "nav_item_2"
-msgstr ""
+msgstr "Dziennik zdarzeń"
 
 msgid "nav_item_1"
-msgstr ""
-
-msgid "unknown"
-msgstr ""
-
-msgid "overview"
-msgstr ""
+msgstr "Ustawienia"
 
 msgid "ok"
-msgstr ""
-
-msgid "no_recent_backup"
-msgstr ""
-
-msgid "backup_never"
-msgstr ""
-
-msgid "yes"
-msgstr ""
-
-msgid "no"
-msgstr ""
-
-msgid "tBackup status"
-msgstr ""
-
-msgid "tComputer name"
-msgstr ""
-
-msgid "tLast seen"
-msgstr ""
-
-msgid "tLast file backup"
-msgstr ""
-
-msgid "tLast image backup"
-msgstr ""
-
-msgid "tFile backup status"
-msgstr ""
-
-msgid "tImage backup status"
-msgstr ""
-
-msgid "tShow details"
-msgstr ""
-
-msgid "tExtra clients"
-msgstr ""
-
-msgid "tNo extra clients"
-msgstr ""
-
-msgid "tActions"
-msgstr ""
-
-msgid "tOnline"
-msgstr ""
-
-msgid "tHostname/IP"
-msgstr ""
-
-msgid "tServer identity"
-msgstr ""
-
-msgid "users"
-msgstr ""
-
-msgid "general_settings"
-msgstr ""
-
-msgid "admin"
-msgstr ""
-
-msgid "user"
-msgstr ""
-
-msgid "username_empty"
-msgstr ""
-
-msgid "password_empty"
-msgstr ""
-
-msgid "password_differ"
-msgstr ""
-
-msgid "user_n_exist"
-msgstr ""
-
-msgid "password_wrong"
-msgstr ""
-
-msgid "user_exists"
-msgstr ""
-
-msgid "session_timeout"
-msgstr ""
-
-msgid "really_del_user"
-msgstr ""
-
-msgid "user_add_done"
-msgstr ""
-
-msgid "user_remove_done"
-msgstr ""
-
-msgid "user_update_right_done"
-msgstr ""
-
-msgid "user_pw_change_ok"
-msgstr ""
-
-msgid "right_all"
-msgstr ""
-
-msgid "right_none"
-msgstr ""
-
-msgid "filter"
-msgstr ""
-
-msgid "all"
-msgstr ""
-
-msgid "loglevel_0"
-msgstr ""
+msgstr "Ok"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "Ostrzeżenia"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "Błędy"
 
-msgid "dir_error_text"
-msgstr ""
+msgid "tLogs"
+msgstr "Dziennik zdarzeń"
 
-msgid "tmpdir_error_text"
-msgstr ""
+msgid "tErrors"
+msgstr "Błędy"
+
+msgid "tWarnings"
+msgstr "Ostrzeżenia"
+
+msgid "tdays"
+msgstr "dni"
+
+msgid "thours"
+msgstr "godzin"
+
+msgid "tmin"
+msgstr "min"
+
+msgid "tAbort"
+msgstr "Anuluj"
+
+msgid "tInfos"
+msgstr "Informacje"
+
+msgid "tFile backups"
+msgstr "Kopie zapasowe plików"
+
+msgid "tImage backups"
+msgstr "Obraz dysku"
+
+msgid "tClient"
+msgstr "Klient"
+
+msgid "tInternet"
+msgstr "Internet"
+
+msgid "hours"
+msgstr "godzin"
+
+msgid "days"
+msgstr "dni"
+
+msgid "action_1"
+msgstr "Kopia przyrostowa plików"
+
+msgid "action_2"
+msgstr "Pełna kopia plków"
+
+msgid "action_3"
+msgstr "Przyrostowa kopia obrazu dysku"
+
+msgid "action_4"
+msgstr "Pełna kopia obrazu dysku"
+
+msgid "action_1_d"
+msgstr "Kasowanie przyrostowej kopii plików"
+
+msgid "action_2_d"
+msgstr "Kosowanie pełnej kopii plików"
+
+msgid "action_3_d"
+msgstr "Kasowanie przyrostowej kopii obrazu dysku"
+
+msgid "action_4_d"
+msgstr "Kasowanie pełnej kopii obrazu dysku"
+
+msgid "nav_item_6"
+msgstr "Status"
+
+msgid "nav_item_5"
+msgstr "Zadania"
+
+msgid "nav_item_4"
+msgstr "Kopie zapasowe"
+
+msgid "nav_item_2"
+msgstr "Statystyki"
+
+msgid "unknown"
+msgstr "Nieznane"
+
+msgid "overview"
+msgstr "Przegląd"
+
+msgid "no_recent_backup"
+msgstr "Brak kopii ostatnio"
+
+msgid "backup_never"
+msgstr "Nigdy"
+
+msgid "yes"
+msgstr "Tak"
+
+msgid "no"
+msgstr "Nie"
+
+msgid "tBackup status"
+msgstr "Status kopii"
+
+msgid "tComputer name"
+msgstr "Nazwa Komputera"
+
+msgid "tLast seen"
+msgstr "Ostatnio widziany"
+
+msgid "tLast file backup"
+msgstr "Ostatnia kopia plików"
+
+msgid "tLast image backup"
+msgstr "Ostatnia kopia obrazu dysku"
+
+msgid "tFile backup status"
+msgstr "Status kopii pików"
+
+msgid "tImage backup status"
+msgstr "Status kopii obrazu plików"
+
+msgid "tShow details"
+msgstr "Pokaż szczegóły"
+
+msgid "tExtra clients"
+msgstr "Dodatkowi klienci"
+
+msgid "tNo extra clients"
+msgstr "Brak dodatkowych klientów"
+
+msgid "tActions"
+msgstr "Działanie"
+
+msgid "tOnline"
+msgstr "Online"
+
+msgid "tHostname/IP"
+msgstr "Nazwa hosta"
+
+msgid "tServer identity"
+msgstr "Identyfikator serwera"
+
+msgid "users"
+msgstr "Użytkownicy"
+
+msgid "general_settings"
+msgstr "Ogólne"
+
+msgid "admin"
+msgstr "Administrator"
+
+msgid "user"
+msgstr "Użytkownik"
+
+msgid "username_empty"
+msgstr "Proszę podać nazwę użytkownika"
+
+msgid "password_empty"
+msgstr "Proszę podać hasło"
+
+msgid "password_differ"
+msgstr "Podane hasła różnią się"
+
+msgid "user_n_exist"
+msgstr "Użytkownik nie istnieje"
+
+msgid "password_wrong"
+msgstr "Złe hasło"
+
+msgid "user_exists"
+msgstr "Użytkownik o tej nazwie już istnieje"
+
+msgid "session_timeout"
+msgstr "Sesja wygasła. Zaloguj się ponownie, aby kontynuować"
+
+msgid "really_del_user"
+msgstr "Na pewno chcesz usunąć tego użytkownika ?"
+
+msgid "user_add_done"
+msgstr "Nowy użytkownik został poprawnie dodany."
+
+msgid "user_remove_done"
+msgstr "Usunięto użytkownika"
+
+msgid "user_update_right_done"
+msgstr "Zmieniono prawa użytkownika"
+
+msgid "user_pw_change_ok"
+msgstr "Zmieniono hasło użytkownika"
+
+msgid "right_all"
+msgstr "Wszystkie prawa"
+
+msgid "right_none"
+msgstr "Brak praw"
+
+msgid "filter"
+msgstr "Filtr"
+
+msgid "all"
+msgstr "Wszystko"
+
+msgid "loglevel_0"
+msgstr "Informacja"
 
 msgid "starting"
-msgstr ""
+msgstr "Zaczyna"
 
 msgid "ident_err"
-msgstr ""
+msgstr "Serwer odrzucony"
 
 msgid "enter_hostname"
-msgstr ""
+msgstr "Proszę podać nazwę lub IP hosta"
 
 msgid "clients"
-msgstr ""
-
-msgid "validate_text_empty"
-msgstr ""
-
-msgid "validate_text_notint"
-msgstr ""
+msgstr "Klienci"
 
 msgid "validate_name_update_freq_incr"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowej kopii zapasowej:"
 
 msgid "validate_name_update_freq_full"
-msgstr ""
+msgstr "Interwał wykonywania pełnej kopii zapasowej:"
 
 msgid "validate_name_update_freq_image_full"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowego obrazu dysku:"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr ""
+msgstr "Interwał wykonywania pełnego obrazu dysku:"
 
 msgid "validate_name_max_file_incr"
-msgstr ""
-
-msgid "validate_name_min_file_incr"
-msgstr ""
-
-msgid "validate_name_max_file_full"
-msgstr ""
-
-msgid "validate_name_min_file_full"
-msgstr ""
-
-msgid "validate_name_min_image_incr"
-msgstr ""
-
-msgid "validate_name_max_image_incr"
-msgstr ""
-
-msgid "validate_name_min_image_full"
-msgstr ""
-
-msgid "validate_name_max_image_full"
-msgstr ""
+msgstr "Maksymalna liczba przyrostowych kopii zapasowych:"
 
 msgid "validate_name_startup_backup_delay"
-msgstr ""
-
-msgid "validate_err_notregexp_backup_window"
-msgstr ""
-
-msgid "validate_name_max_active_clients"
-msgstr ""
-
-msgid "validate_name_max_sim_backups"
-msgstr ""
-
-msgid "validate_name_backupfolder"
-msgstr ""
+msgstr "Opóźnienie po starcie systemu:"
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "Nazwa komputera"
 
 msgid "too_many_clients_err"
-msgstr ""
-
-msgid "really_remove_client"
-msgstr ""
+msgstr "Za dużo klientów"
 
 msgid "computername"
-msgstr ""
+msgstr "Nazwa Komputera"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "Użycie magazynu"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "Nazwa Komputera"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "Użycie magazynu"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Użycie magazynu"
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "Data"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
-
-msgid "tImages"
-msgstr ""
+msgstr "Użycie magazynu"
 
 msgid "tFiles"
-msgstr ""
+msgstr "Pliki"
 
 msgid "tSum"
-msgstr ""
-
-msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
-
-msgid "mail_settings"
-msgstr ""
-
-msgid "upgrade_error_text"
-msgstr ""
+msgstr "Suma"
 
 msgid "tActivities"
+msgstr "Zadania"
+
+msgid "tProgress"
+msgstr "Postęp"
+
+msgid "tStarting time"
+msgstr "Czas rozpoczęcia"
+
+msgid "tUsed Storage"
+msgstr "Wykorzystana przestrzeń na dysku"
+
+msgid "tClients"
+msgstr "Klienci"
+
+msgid "tReports"
+msgstr "Raporty"
+
+msgid "tSend reports to"
+msgstr "Wyślij raporty do"
+
+msgid "tSend"
+msgstr "Wyślij"
+
+msgid "tBackup time"
+msgstr "Czas kopiowania"
+
+msgid "tStorage usage"
+msgstr "Użyte miejsce"
+
+msgid "tAll"
+msgstr "Wszystko"
+
+msgid "tFilter"
+msgstr "Filtr"
+
+msgid "tBack"
+msgstr "Cofnij"
+
+msgid "tAdd"
+msgstr "Dodaj"
+
+msgid "tRemove"
+msgstr "Usuń"
+
+msgid "tSave"
+msgstr "Zapisz"
+
+msgid "tMessage"
+msgstr "Wiadomość"
+
+msgid "tLog"
+msgstr "Dziennik"
+
+msgid "tUsername"
+msgstr "Użytkownik"
+
+msgid "tPassword"
+msgstr "hasło"
+
+msgid "tLogin"
+msgstr "Zaloguj"
+
+msgid "tServer"
+msgstr "Serwer"
+
+msgid "tPermissions"
+msgstr "Uprawnienia"
+
+msgid "tSelect all"
+msgstr "Zaznacz wszystko"
+
+msgid "mins"
+msgstr "minut"
+
+msgid "backup_in_progress"
+msgstr "Kopiowanie..."
+
+msgid "queued_backup"
+msgstr "Kopie w kolejce"
+
+msgid "tFile"
+msgstr "Plik"
+
+msgid "tDomain"
+msgstr "Domena"
+
+msgid "tTranslation"
+msgstr "Tłumaczenie"
+
+msgid "tChange"
+msgstr "Zmień"
+
+msgid "tFailed"
+msgstr "Błąd"
+
+msgid "tInfo"
+msgstr "Informacja"
+
+msgid "tError"
+msgstr "Błąd"
+
+msgid "tWarning"
+msgstr "Ostrzeżenie"
+
+msgid "tCurrent version"
+msgstr "Aktualna wersja "
+
+msgid "tIncremental file backup"
+msgstr "Kopia przyrostowa plików"
+
+msgid "tFull file backup"
+msgstr "Pełna kopia plków"
+
+msgid "tIncremental image backup"
+msgstr "Przyrostowa kopia obrazu dysku"
+
+msgid "tFull image backup"
+msgstr "Pełna kopia obrazu dysku"
+
+msgid "about_urbackup"
+msgstr "O UrBackup"
+
+msgid "tShow"
+msgstr "Pokaż"
+
+msgid "tIndexing..."
+msgstr "Indeksuje..."
+
+msgid "tDelete"
+msgstr "Usuń"
+
+msgid "tDisable"
+msgstr "Zablokuj"
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tNone"
+msgstr "Brak"
+
+msgid "tServer admin mail address"
+msgstr "E-mail Administratora"
+
+msgid "tDownload"
+msgstr "Pobierz"
+
+msgid "tStatus"
+msgstr "Status"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "Wersja Klienta"
+
+msgid "tOperating System"
+msgstr "System operacyjny"
+
+msgid "tShow all clients"
+msgstr "Pokaż wszystkich klientów"
+
+msgid "tThis client is going to be removed. "
+msgstr "Ten klient zostanie usunięty"
+
+msgid "First"
+msgstr "Pierwsza"
+
+msgid "Last"
+msgstr "Ostatnia"
+
+msgid "Next"
+msgstr "Następna"
+
+msgid "Previous"
+msgstr "Poprzednia"
+
+msgid "sInfoThousands"
+msgstr ""
+
+msgid "Processing..."
+msgstr "Przetwarzanie..."
+
+msgid "Search:"
+msgstr "Szukaj:"
+
+msgid "No matching records found"
+msgstr "Brak pasujących rekordów"
+
+msgid "Restore to default"
+msgstr "Przywróć standardowe ustawienia"
+
+msgid "Save"
+msgstr "ZapiszZapisz"
+
+msgid "tAllow clients to quit the tray icon"
+msgstr "Zezwól klientowi na wyjście "
+
+msgid "Show/hide columns"
+msgstr "Pokaż/ukryj kolumny"
+
+msgid "dir_error_text"
+msgstr "Folder w którym UrBackup chce zapisać kopię jest nie dostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu"
+
+msgid "tmpdir_error_text"
+msgstr "Folder w którym UrBackup chce zapisać pliki tymczasowe jest nie dostępny. Proszę zmienić ścieżkę w \"Ustawieniach\" lub prawa dostępu do folderu"
+
+msgid "validate_text_empty"
+msgstr "Proszę podać wartość dla {nazwa}"
+
+msgid "validate_text_notint"
+msgstr "Proszę podać wartość numeryczną dla {name}"
+
+msgid "validate_name_min_file_incr"
+msgstr "Minimalna liczba przyrostowych kopii zapasowych:"
+
+msgid "validate_name_max_file_full"
+msgstr "Maksymalna liczba pełnych kopii zapasowych:"
+
+msgid "validate_name_min_file_full"
+msgstr "Minimalna liczba pełnych kopii zapasowych:"
+
+msgid "validate_name_min_image_incr"
+msgstr "Minimalna liczba przyrostowych obrazów dysku:"
+
+msgid "validate_name_max_image_incr"
+msgstr "Maksymalna liczba przyrostowych obrazów dysku:"
+
+msgid "validate_name_min_image_full"
+msgstr "Minimalna liczba pełnych obrazów dysku:"
+
+msgid "validate_name_max_image_full"
+msgstr "Maksymalna liczba pełnych obrazów dysku:"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr "Błędnie określony czas na kopie"
+
+msgid "validate_name_max_active_clients"
+msgstr "Maksymalna liczba ostatnich aktywności klientów"
+
+msgid "validate_name_max_sim_backups"
+msgstr "Maksymalna liczba równoczesnych kopii"
+
+msgid "validate_name_backupfolder"
+msgstr "Ścieżka do magazynu kopii"
+
+msgid "really_remove_client"
+msgstr "Napewno usunąć Klienta?!  Usunięte zostaną również wszystkie jego kopie"
+
+msgid "tImages"
+msgstr "Obrazy"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr "Błędnie określony czas na czyszczenie"
+
+msgid "mail_settings"
+msgstr "adres e-mail"
+
+msgid "upgrade_error_text"
+msgstr "Aktualizacja wewnętrznej bazy danych UrBackup. To może chwilę potrwać. W czasie aktualizacji serwer jest niedostępny i nie wykonuje żadnych kopii zapasowych"
+
+msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tAction"
-msgstr ""
-
-msgid "tProgress"
-msgstr ""
+msgstr "Działanie"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "Pliki w kolejce"
 
 msgid "tLast activities"
-msgstr ""
-
-msgid "tStarting time"
-msgstr ""
+msgstr "Ostatnie działania"
 
 msgid "tRequired time"
-msgstr ""
-
-msgid "tUsed Storage"
-msgstr ""
-
-msgid "tClients"
-msgstr ""
-
-msgid "tLogs"
-msgstr ""
-
-msgid "tReports"
-msgstr ""
-
-msgid "tSend reports to"
-msgstr ""
-
-msgid "tSend"
-msgstr ""
+msgstr "Potrzebny czas"
 
 msgid "tBackups with a log message of at least log level"
 msgstr ""
 
-msgid "tBackup time"
-msgstr ""
-
-msgid "tErrors"
-msgstr ""
-
-msgid "tWarnings"
-msgstr ""
-
 msgid "tStorage allocation"
-msgstr ""
-
-msgid "tStorage usage"
-msgstr ""
-
-msgid "tAll"
-msgstr ""
+msgstr "Przydzielone miejsce"
 
 msgid "tBackup storage path"
-msgstr ""
+msgstr "Ścieżka do magazynu kopii"
 
 msgid "tDo not do image backups"
-msgstr ""
+msgstr "Nie wykonuj obrazu dysku"
 
 msgid "tDo not do file backups"
-msgstr ""
+msgstr "Nie wykonuj kopii plików"
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "Automatycznie wyłącz serwer"
 
 msgid "tAutoupdate clients"
-msgstr ""
+msgstr "Automatycznie aktualizuj Klientów"
 
 msgid "tMax number of simultaneous backups"
-msgstr ""
+msgstr "Maksymalna liczba równoczesnych kopii"
 
 msgid "tMax number of recently active clients"
-msgstr ""
+msgstr "Maksymalna liczba ostatnich aktywności klientów"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "Okno czasowe dla operacji czyszczenia"
 
 msgid "tAutomatically backup UrBackup database"
-msgstr ""
+msgstr "Automatycznie kopiuj bazę daynych UrBackup"
 
 msgid "tInterval for incremental file backups"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowej kopii zapasowej:"
 
 msgid "tInterval for full file backups"
-msgstr ""
+msgstr "Interwał wykonywania pełnej kopii zapasowej plików"
 
 msgid "tInterval for incremental image backups"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowego obrazu dysku"
 
 msgid "tInterval for full image backups"
-msgstr ""
+msgstr "Interwał wykonywania pełnego obrazu dysku"
 
 msgid "tMaximal number of incremental file backups"
-msgstr ""
+msgstr "Maksymalna liczba przyrostowych kopii zapasowych plików"
 
 msgid "tMinimal number of incremental file backups"
-msgstr ""
+msgstr "Minimalna liczba przyrostowych kopii zapasowych plików"
 
 msgid "tMaximal number of full file backups"
-msgstr ""
+msgstr "Maksymalna liczba pełnych kopii zapasowych plików"
 
 msgid "tMinimal number of full file backups"
-msgstr ""
+msgstr "Minimalna liczba pełnych kopii zapasowych plików"
 
 msgid "tMaximal number of incremental image backups"
-msgstr ""
+msgstr "Maksymalna liczba przyrostowych obrazów dysku"
 
 msgid "tMinimal number of incremental image backups"
-msgstr ""
+msgstr "Minimalna liczba przyrostowych obrazów dysku:"
 
 msgid "tMaximal number of full image backups"
-msgstr ""
+msgstr "Maksymalna liczba pełnych obrazów dysku:"
 
 msgid "tMinimal number of full image backups"
-msgstr ""
+msgstr "Minimalna liczba pełnych obrazów dysku:"
 
 msgid "tDelay after system startup"
-msgstr ""
+msgstr "Opóźnienie po starcie systemu"
 
 msgid "tBackup window"
-msgstr ""
+msgstr "Okno wykonywania kopi zapasowej:"
 
 msgid "tExcluded files (with wildcards)"
-msgstr ""
+msgstr "Wyklucz z kopii zapasowej (z wzorcami):"
 
 msgid "tIncluded files (with wildcards)"
-msgstr ""
+msgstr "Uwzględnij w kopii zapasowej (z wzorcami):"
 
 msgid "tDefault directories to backup"
-msgstr ""
+msgstr "Domyślne foldery  kopii"
 
 msgid "tVolumes to backup"
-msgstr ""
+msgstr "Woluminy do wykonywania obrazu dysku:"
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr ""
+msgstr "Zezwól klientowi na zmiane folderu kopii"
 
 msgid "tAllow client-side starting of file backups"
-msgstr ""
+msgstr "Zezwól klientowi na start kopii plików"
 
 msgid "tAllow client-side starting of image backups"
-msgstr ""
+msgstr "Zezwól klientowi na start kopiowania obrazu dysku"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr ""
+msgstr "Zezwól klientowi na przeglądanie logów  kopii"
 
 msgid "tAllow client-side pausing of backups"
-msgstr ""
+msgstr "Pozwól na wstrzymanie wykonywania kopi zapasowej po stronie klienta"
 
 msgid "tAllow client-side changing of settings"
-msgstr ""
-
-msgid "tdays"
-msgstr ""
-
-msgid "thours"
-msgstr ""
-
-msgid "tmin"
-msgstr ""
+msgstr "Pozwól na zmianę ustawień po stronie klienta"
 
 msgid "tMail server name"
-msgstr ""
+msgstr "Adres serwera"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "Port serwera e-mail"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "Nazwa użytkownika (puste jeżeli brak)"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "Hasło"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "Adres nadawcy"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "Wyślij e-mail gdy  SSL/TLS"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "Sprawdź SSL/TLS"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr ""
+msgstr "Wyśli testowy e-mail na ten adres e-mail po zapisaniu ustawień (zostaw puste  aby nie wysyłać)"
 
 msgid "tTest Mail sent successfully"
-msgstr ""
+msgstr "Testowy e-mail wysłany"
 
 msgid "tSending test mail failed. Error:"
-msgstr ""
-
-msgid "tFilter"
-msgstr ""
-
-msgid "tBack"
-msgstr ""
-
-msgid "tAdd"
-msgstr ""
-
-msgid "tRemove"
-msgstr ""
-
-msgid "tSave"
-msgstr ""
+msgstr "Problem z wysłaniem e-maila. Błąd:"
 
 msgid "tLevel"
-msgstr ""
+msgstr "Poziom"
 
 msgid "tTime"
-msgstr ""
-
-msgid "tMessage"
-msgstr ""
-
-msgid "tLog"
-msgstr ""
-
-msgid "tUsername"
-msgstr ""
+msgstr "Czas"
 
 msgid "tRights"
-msgstr ""
+msgstr "Prawa"
 
 msgid "tNo Users"
-msgstr ""
+msgstr "Brak użytkowników"
 
 msgid "tCreate user"
-msgstr ""
-
-msgid "tPassword"
-msgstr ""
+msgstr "Utwórz użytkownika"
 
 msgid "tRepeat password"
-msgstr ""
+msgstr "powtórz hasło"
 
 msgid "tRights for"
-msgstr ""
-
-msgid "tAbort"
-msgstr ""
+msgstr "Prawa dla"
 
 msgid "tCreate"
-msgstr ""
+msgstr "Utwórz"
 
 msgid "tChange rights"
-msgstr ""
+msgstr "Zmień prawa"
 
 msgid "tChange password"
-msgstr ""
-
-msgid "tLogin"
-msgstr ""
-
-msgid "tInfos"
-msgstr ""
+msgstr "Zmień hasło"
 
 msgid "tSeparate settings for this client"
-msgstr ""
-
-msgid "tServer"
-msgstr ""
-
-msgid "tFile backups"
-msgstr ""
-
-msgid "tImage backups"
-msgstr ""
-
-msgid "tPermissions"
-msgstr ""
-
-msgid "tClient"
-msgstr ""
+msgstr "Indywidualne ustawienia dla tego klienta"
 
 msgid "tArchival"
-msgstr ""
-
-msgid "tInternet"
-msgstr ""
+msgstr "Archiwalny"
 
 msgid "tPerform autoupdates silently"
-msgstr ""
+msgstr "Aktualizuj w tle"
 
 msgid "tMax backup speed for local network"
-msgstr ""
+msgstr "Maks. prędkość kopii zapasowej w sieci lokalnej:"
 
 msgid "tNo activities"
-msgstr ""
-
-msgid "tSelect all"
-msgstr ""
+msgstr "Brak zadań"
 
 msgid "tSelect none"
-msgstr ""
+msgstr "Odznacz"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "Usuń zaznaczone"
 
 msgid "tStart for selected"
-msgstr ""
-
-msgid "tInternet clients"
-msgstr ""
-
-msgid "tAdd additional internet clients"
-msgstr ""
-
-msgid "tClient name"
-msgstr ""
+msgstr "Zacznij dla zaznaczonych"
 
 msgid "tNo entries for this filter"
-msgstr ""
-
-msgid "tNo data"
-msgstr ""
+msgstr "Dla tego filtra nie ma pasujących pozycji"
 
 msgid "tTotal max backup speed for local network"
-msgstr ""
+msgstr "Całkowita maks. prędkość kopii zapasowej w sieci lokalnej"
 
 msgid "tArchive every"
-msgstr ""
+msgstr "Archiwizuj co"
 
 msgid "tArchive for"
-msgstr ""
+msgstr "Archiwizuj na"
 
 msgid "tArchive window"
-msgstr ""
+msgstr "Okno czasowe dla operacji archiwizacji"
 
 msgid "tBackup type"
-msgstr ""
+msgstr "Typ kopii"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr ""
+msgstr "Zezwól na tryb internetowy (wymaga restartu serwera)"
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "Internetowa nazwa serwera/IP"
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "Internetowy port serwera"
 
 msgid "tDo image backups over internet"
-msgstr ""
+msgstr "Wykonuj obraz dysku przez internet:"
 
 msgid "tDo full file backups over internet"
-msgstr ""
+msgstr "Wykonuj pełne kopie zapasowe plików przez internet:"
 
 msgid "tMax backup speed for internet connection"
-msgstr ""
+msgstr "Maks. prędkość kopii zapasowych przez internet:"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr ""
+msgstr "Całkowita maksymalna prędkość dla połączenia internetowego"
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "Zaszyfrowana transmisja"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "Kompresja transferu:"
 
 msgid "file_backup"
-msgstr ""
-
-msgid "hours"
-msgstr ""
-
-msgid "days"
-msgstr ""
+msgstr "Kopie zapasowe plików"
 
 msgid "weeks"
-msgstr ""
+msgstr "tygodni"
 
 msgid "months"
-msgstr ""
+msgstr "miesiące"
 
 msgid "year"
-msgstr ""
+msgstr "rok"
 
 msgid "hour"
-msgstr ""
+msgstr "godzin"
 
 msgid "day"
-msgstr ""
+msgstr "dzień"
 
 msgid "week"
-msgstr ""
+msgstr "tydzień"
 
 msgid "month"
-msgstr ""
+msgstr "miesiąc"
 
 msgid "years"
-msgstr ""
+msgstr "lata"
 
 msgid "min"
-msgstr ""
-
-msgid "mins"
-msgstr ""
+msgstr "minuta"
 
 msgid "validate_name_archive_every"
-msgstr ""
+msgstr "Archiwizuj co"
 
 msgid "validate_name_archive_for"
-msgstr ""
+msgstr "Archiwizuj na"
 
 msgid "forever"
-msgstr ""
-
-msgid "backup_in_progress"
-msgstr ""
+msgstr "zawsze"
 
 msgid "really_remove_clients"
-msgstr ""
+msgstr "Napewno usunąć tych Klientów?!  Usunięte zostaną również wszystkie ich kopie"
 
 msgid "no_client_selected"
-msgstr ""
-
-msgid "queued_backup"
-msgstr ""
+msgstr "Nie zaznaczono klienta"
 
 msgid "starting_backup_failed"
-msgstr ""
+msgstr "Błąd przy rozpoczęciu kopiowania"
 
 msgid "trying_to_stop_backup"
-msgstr ""
+msgstr "Przerywam kopiowanie. To może troche potrwać"
 
 msgid "unarchived_in"
-msgstr ""
+msgstr "Przestanie być archiwizowane w przeciągu"
 
 msgid "validate_err_notregexp_archive_window"
-msgstr ""
+msgstr "Błędnie określony czas na archiwizacje"
 
 msgid "wait_for_archive_window"
-msgstr ""
+msgstr "Oczekuje na okno czasowe/następny start"
 
 msgid "validate_err_notregexp_image_letters"
 msgstr ""
 
 msgid "validate_name_global_local_speed"
-msgstr ""
+msgstr "Całkowita maks. prędkość kopii zapasowej w sieci lokalnej"
 
 msgid "validate_name_global_internet_speed"
-msgstr ""
+msgstr "Całkowita maks. prędkość kopii zapasowej przez internet"
 
 msgid "validate_name_local_speed"
-msgstr ""
+msgstr "Maks. prędkość kopii zapasowej w sieci lokalnej:"
 
 msgid "validate_name_internet_speed"
-msgstr ""
+msgstr "Maks. prędkość kopii zapasowych przez internet"
 
 msgid "enter_clientname"
-msgstr ""
+msgstr "Proszę podać nazwę klienta"
 
 msgid "internet_client_added"
-msgstr ""
+msgstr "Dodano nowego lkienta. Możesz zobaczyć auth klucz (lub hasło)\n w ustawieniach"
 
 msgid "change_pw"
-msgstr ""
+msgstr "Zmień hasło"
 
 msgid "old_pw_wrong"
-msgstr ""
+msgstr "Stare hasło jest błędne"
 
 msgid "tID"
-msgstr ""
-
-msgid "tFile"
-msgstr ""
+msgstr "ID"
 
 msgid "tSize"
-msgstr ""
+msgstr "Rozmiar"
 
 msgid "tIncremental"
-msgstr ""
+msgstr "Przyrostowy"
 
 msgid "tLoading"
-msgstr ""
+msgstr "Ładuje"
 
 msgid "tStorage usage of"
-msgstr ""
+msgstr "Użycie magazynu"
 
 msgid "tDelete domain"
-msgstr ""
+msgstr "Usuń domenę "
 
 msgid "tChange rights for user"
-msgstr ""
-
-msgid "tDomain"
-msgstr ""
-
-msgid "tTranslation"
-msgstr ""
+msgstr "Zmień prawa dla użytkonika"
 
 msgid "tNew domain"
-msgstr ""
-
-msgid "tChange"
-msgstr ""
+msgstr "Nowa domena"
 
 msgid "tChange password for user"
-msgstr ""
+msgstr "Zmień hasło dla użytkownika"
 
 msgid "tSaved settings successfully"
-msgstr ""
+msgstr "Zapisano ustawienia"
 
 msgid "tThis client is going to be removed."
-msgstr ""
+msgstr "Ten klient zostanie usunięty"
 
 msgid "tStop removing client"
-msgstr ""
-
-msgid "tFailed"
-msgstr ""
+msgstr "Stop.  Usuwam klienta"
 
 msgid "tSuccessfull"
-msgstr ""
-
-msgid "tInfo"
-msgstr ""
-
-msgid "tError"
-msgstr ""
-
-msgid "tWarning"
-msgstr ""
-
-msgid "tCurrent version"
-msgstr ""
+msgstr "Sukces"
 
 msgid "tTarget version"
-msgstr ""
+msgstr "Docelowa"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -863,47 +946,35 @@ msgid ""
 msgstr ""
 
 msgid "tNext archival"
-msgstr ""
+msgstr "Następne archiwum"
 
 msgid "tweeks"
-msgstr ""
+msgstr "tygodni"
 
 msgid "tmonth"
-msgstr ""
+msgstr "miesiąc"
 
 msgid "tyears"
-msgstr ""
+msgstr "lata"
 
 msgid "tforever"
-msgstr ""
+msgstr "zawsze"
 
 msgid "tFile backup"
-msgstr ""
-
-msgid "tIncremental file backup"
-msgstr ""
-
-msgid "tFull file backup"
-msgstr ""
+msgstr "Kopie zapasowe plików"
 
 msgid "tEnable internet mode"
-msgstr ""
+msgstr "Zezwól na tryb internetowy"
 
 msgid "tInternet auth key"
 msgstr ""
 
-msgid "tIncremental image backup"
-msgstr ""
-
-msgid "tFull image backup"
-msgstr ""
-
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
-msgstr ""
+msgstr "Klienci usunięci podczas porządkowania, jeżeli offline"
 
 msgid "tArchived"
-msgstr ""
+msgstr "Zarchiwizowany"
 
 msgid "nospc_stalled_text"
 msgstr ""
@@ -914,110 +985,104 @@ msgstr ""
 msgid "tNondefault temporary file directory"
 msgstr ""
 
-msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
-
-msgid "about_urbackup"
-msgstr ""
-
 msgid "loading"
-msgstr ""
+msgstr "Ładuje"
+
+msgid "tInternet clients"
+msgstr "Klienci internetowi"
+
+msgid "tAdd additional internet clients"
+msgstr "Dodaj klienta internetowego"
+
+msgid "tClient name"
+msgstr "Nazwa Klienta"
+
+msgid "tNo data"
+msgstr "Brak danych"
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr "Klienci usunięci podczas porządkowania "
 
 msgid "authentication_err"
-msgstr ""
+msgstr "Błąd podczas autoryzacji"
 
 msgid "tInverval for incremental image backups"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowego obrazu dysku"
 
 msgid "action_5"
-msgstr ""
+msgstr "Wznowione wykonywanie przyrostowej kopii zapasowej plików."
 
 msgid "action_6"
-msgstr ""
+msgstr "Wznowione wykonywanie pełnej kopii zapasowej plików."
 
 msgid "really_recalculate"
-msgstr ""
+msgstr "Czy naprawdę chcesz przeliczyć wszystkie statystyki? To może zająć jakis czas"
 
 msgid "database_error_text"
 msgstr ""
 
-msgid "creating_filescache_text"
-msgstr ""
-
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Pobież folder jako zip"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Stare hasło"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Nowe hasło"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Powtórz nowe hasło"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Zmiana hasła nie powiodła się"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Zmieniono hasło"
 
 msgid "tNumber of file entries processed"
 msgstr ""
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "UrBackup aktualny log"
 
 msgid "tLive Log"
-msgstr ""
-
-msgid "tShow"
-msgstr ""
+msgstr "Aktualny log"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
-
-msgid "tIndexing..."
-msgstr ""
-
-msgid "tDelete"
-msgstr ""
+msgstr "Jest nowa wersja UrBackup servera"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Pobież klienta z serwera aktualizacji"
 
 msgid "tGlobal soft filesystem quota"
 msgstr ""
 
-msgid "tDisable"
-msgstr ""
-
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Status kopii obrazu plików"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Zezwól klientowi na start pełnej kopii plików"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr ""
+msgstr "Zezwól klientowi na start przyrostowej kopii plików"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Zezwól klientowi na start pełnej kopii obrazu dysku"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Zezwól klientowi na start przyrostowej kopii obrazu dysku"
 
 msgid "tBackup window for incremental file backups"
-msgstr ""
+msgstr "Interwał wykonywania przyrostowej kopii plików"
 
 msgid "tBackup window for full file backups"
-msgstr ""
+msgstr "Czas na pełne kopie plików"
 
 msgid "tBackup window for incremental image backups"
-msgstr ""
+msgstr "Czas na wykonanie przyrostowej kopii obrazu"
 
 msgid "tBackup window for full image backups"
-msgstr ""
+msgstr "Czas na wykonanie pełnej kopii obrazu"
 
 msgid "tSoft client quota"
 msgstr ""
@@ -1026,7 +1091,7 @@ msgid "tCalculate file-hashes on the client"
 msgstr ""
 
 msgid "tAdvanced"
-msgstr ""
+msgstr "Zaawansowane"
 
 msgid "tTemporary files as file backup buffer"
 msgstr ""
@@ -1038,63 +1103,27 @@ msgid "tLocal full file backup transfer mode"
 msgstr ""
 
 msgid "tRaw"
-msgstr ""
+msgstr "Raw"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Hashed"
 
 msgid "tInternet full file backup transfer mode"
-msgstr ""
+msgstr "Pełna kopia plików przez internet"
 
 msgid "tLocal incremental file backup transfer mode"
 msgstr ""
 
-msgid "tBlock differences - hashed"
-msgstr ""
-
 msgid "tInternet incremental file backup transfer mode"
-msgstr ""
+msgstr "Przyrostowa kopia plików przez internet"
 
 msgid "tLocal image backup transfer mode"
 msgstr ""
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
-
-msgid "tFile hash collection amount"
-msgstr ""
-
-msgid "tFile hash collection timeout"
-msgstr ""
-
-msgid "tFile hash collection database cachesize"
-msgstr ""
-
-msgid "tMB"
-msgstr ""
-
-msgid "tUpdate stats database cachesize"
-msgstr ""
-
-msgid "tCache database type for file entries"
-msgstr ""
-
-msgid "tNone"
-msgstr ""
-
-msgid "tCache database size for file entries"
-msgstr ""
-
-msgid "tSuspend index limit"
-msgstr ""
+msgstr "Obraz dysku przez internet"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
-
-msgid "tEnd-to-end verification of all file backups"
-msgstr ""
-
-msgid "tServer admin mail address"
 msgstr ""
 
 msgid ""
@@ -1104,48 +1133,36 @@ msgid ""
 msgstr ""
 
 msgid "tClient download"
-msgstr ""
-
-msgid "tDownload"
-msgstr ""
-
-msgid "tStatus"
-msgstr ""
-
-msgid "tIP"
-msgstr ""
-
-msgid "tClient version"
-msgstr ""
-
-msgid "tOperating System"
-msgstr ""
-
-msgid "tShow all clients"
-msgstr ""
-
-msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Pobierz Klienta"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr ""
+msgstr "Klienci usunięci podczas porządkowania "
 
 msgid "tRecalculate statistics"
-msgstr ""
-
-msgid "First"
-msgstr ""
-
-msgid "Last"
-msgstr ""
-
-msgid "Next"
-msgstr ""
-
-msgid "Previous"
-msgstr ""
+msgstr "Przeliczam statystyki"
 
 msgid "No data available in table"
+msgstr "Brak danych w tabeli"
+
+msgid "Show _MENU_ entries"
+msgstr "Pokaż wpisy _MENU_"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr "Połącz do serwera internetowego jeżeli podłączono do lokalnego"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr "Musisz utworzyć użytkownika żeby można było wysyłać raporty"
+
+msgid "tShow when a new server version is available"
+msgstr "Pokaż jeżeli nowa wersja serwera jest dostępna"
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr "VHD (Virtual HardDisk)"
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr "Skompresowany VHD (Skompresowany nie standardowy Virtual HardDisk)"
+
+msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
@@ -1157,44 +1174,356 @@ msgstr ""
 msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
-msgid "sInfoThousands"
+msgid "Minimize"
 msgstr ""
 
-msgid "Show _MENU_ entries"
+msgid "Maximize"
 msgstr ""
 
-msgid "Processing..."
+msgid "ldap_settings"
 msgstr ""
 
-msgid "Search:"
+msgid "client_exists"
 msgstr ""
 
-msgid "No matching records found"
+msgid "validate_err_empty_internet_client_name"
 msgstr ""
 
-msgid "Restore to default"
+msgid "validate_err_empty_hostname"
 msgstr ""
 
-msgid "Save"
+msgid "creating_filesindex_text"
 msgstr ""
 
-msgid "tConnect to Internet backup server if connected to local backup server"
+msgid "about"
 msgstr ""
 
-msgid "tAllow clients to quit the tray icon"
+msgid "all_clients"
 msgstr ""
 
-msgid "tYou need to create a user to be able to send reports"
+msgid "client_settings"
 msgstr ""
 
-msgid "Show/hide columns"
+msgid "action_8"
 msgstr ""
 
-msgid "tShow when a new server version is available"
+msgid "action_9"
 msgstr ""
 
-msgid "tVHD (Virtual HardDisk)"
+msgid "action_10"
 msgstr ""
 
-msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgid "action_11"
+msgstr ""
+
+msgid "action_12"
+msgstr ""
+
+msgid "action_13"
+msgstr ""
+
+msgid "tAbout UrBackup"
+msgstr "O UrBackup"
+
+msgid "tAdd client"
+msgstr ""
+
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
+msgstr ""
+
+msgid "tDownload the client from:"
+msgstr ""
+
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
+msgstr ""
+
+msgid "tAdd new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tName of new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tDiscover new client via IP/hostname hint"
+msgstr ""
+
+msgid "tIP/hostname of client to be discovered"
+msgstr ""
+
+msgid "tCancel"
+msgstr ""
+
+msgid "tAccess denied"
+msgstr ""
+
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
+msgstr ""
+
+msgid "tLogin with username and password"
+msgstr ""
+
+msgid "tError while accessing backups"
+msgstr ""
+
+msgid "tSorry, something went wrong:"
+msgstr ""
+
+msgid "tCreated"
+msgstr ""
+
+msgid "tLast modified"
+msgstr ""
+
+msgid "tLast accessed"
+msgstr ""
+
+msgid "tList"
+msgstr ""
+
+msgid "tRestore"
+msgstr ""
+
+msgid "tRestore folder to client"
+msgstr ""
+
+msgid "tVersion"
+msgstr ""
+
+msgid "tClient added successfully"
+msgstr ""
+
+msgid "tAdded new client with name:"
+msgstr ""
+
+msgid "tDefault authentication key:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Windows"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Mac OS X"
+msgstr ""
+
+msgid "tInstall it directly in the terminal via:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Linux"
+msgstr ""
+
+msgid "tAlternatively after you installed the client from:"
+msgstr ""
+
+msgid "tGo the settings screen on the client"
+msgstr ""
+
+msgid "tEnable the internet mode on the client"
+msgstr ""
+
+msgid "tSet the internet server to:"
+msgstr ""
+
+msgid "tSet the internet server port to:"
+msgstr ""
+
+msgid "tSet the computer name to:"
+msgstr ""
+
+msgid "tSet the authentication key to:"
+msgstr ""
+
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgstr ""
+
+msgid "tWith the command line:"
+msgstr ""
+
+msgid "tPercent finished"
+msgstr ""
+
+msgid "tDetails"
+msgstr ""
+
+msgid "tAdd Email Address"
+msgstr ""
+
+msgid "tFailed without failures caused by client timeout"
+msgstr ""
+
+msgid "tMinimum log level"
+msgstr ""
+
+msgid "tBackups interrupted"
+msgstr ""
+
+msgid "tStop"
+msgstr ""
+
+msgid "tShow log"
+msgstr ""
+
+msgid "tETA"
+msgstr ""
+
+msgid "tSpeed"
+msgstr ""
+
+msgid "tFile Backups"
+msgstr ""
+
+msgid "tImage Backups"
+msgstr ""
+
+msgid "tArchive"
+msgstr ""
+
+msgid "tServer URL"
+msgstr ""
+
+msgid "tMax simultaneous backups"
+msgstr ""
+
+msgid "tMax recently active clients"
+msgstr ""
+
+msgid "tDays"
+msgstr ""
+
+msgid "tRaw copy-on-write file"
+msgstr ""
+
+msgid "tMin"
+msgstr ""
+
+msgid "tVirtual sub client names"
+msgstr ""
+
+msgid "tLocal incremental image style"
+msgstr ""
+
+msgid "tBased on last full image backup"
+msgstr ""
+
+msgid "tBased on last image backup"
+msgstr ""
+
+msgid "tInternet incremental image style"
+msgstr ""
+
+msgid "tLocal full image style"
+msgstr ""
+
+msgid "tSynthetic full image backup"
+msgstr ""
+
+msgid "tInternet full image style"
+msgstr ""
+
+msgid "tDatabase cache size during batch processing"
+msgstr ""
+
+msgid "tDebugging: End-to-end verification of all file backups"
+msgstr ""
+
+msgid "tDebugging: Verify file backups using client side hashes"
+msgstr ""
+
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
+msgstr ""
+
+msgid "tRun backups with background priority on the clients"
+msgstr ""
+
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
+msgstr ""
+
+msgid "tMaximum number of simultaneous jobs per client"
+msgstr ""
+
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
+msgstr ""
+
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
+msgstr ""
+
+msgid "tEnable logins via LDAP/AD"
+msgstr ""
+
+msgid "tLDAP/AD server name"
+msgstr ""
+
+msgid "tLDAP/AD server port"
+msgstr ""
+
+msgid "tLDAP/AD user name prefix"
+msgstr ""
+
+msgid "tLDAP/AD user name suffix"
+msgstr ""
+
+msgid "tLDAP/AD group and class query"
+msgstr ""
+
+msgid "tLDAP/AD group key name in query"
+msgstr ""
+
+msgid "tLDAP/AD class key name in query"
+msgstr ""
+
+msgid "tLDAP/AD group rights map"
+msgstr ""
+
+msgid "tLDAP/AD class rights map"
+msgstr ""
+
+msgid "tTest login with this user"
+msgstr ""
+
+msgid "tPassword for test user"
+msgstr ""
+
+msgid "tTest login succeeded. Rights of user:"
+msgstr ""
+
+msgid "tTest login failed. Error:"
+msgstr ""
+
+msgid "tDownload client for Windows"
+msgstr ""
+
+msgid "tDownload client for Mac OS X"
+msgstr ""
+
+msgid "tDownload client for Linux"
+msgstr ""
+
+msgid "tRemove client"
+msgstr ""
+
+msgid "tAdd new client"
+msgstr ""
+
+msgid "tClient discovery hints"
+msgstr ""
+
+msgid "tAdd hostname/IP as client discovery hint"
+msgstr ""
+
+msgid "tBackup Statistics"
 msgstr ""

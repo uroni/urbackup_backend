@@ -1,4 +1,6 @@
-<div style="width: 100%; border: 1px solid black;">
-	<div style="width: {pcdone}%;background-image: url(progress.png); background-repeat:repeat-x;height:15px">
-	</div>
+<div class="progress" style="text-align: center;">
+  <div class="progress-bar" role="progressbar" aria-valuenow="{pcdone}" aria-valuemin="0" aria-valuemax="100" style="width: {pcdone}%; {?percent}min-width: 2em;{/percent}">
+	{?percent}{pcdone}%{/percent}
+  </div>
+  {?indexing}{tIndexing...}{/indexing}
 </div>

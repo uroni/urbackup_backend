@@ -1,7 +1,7 @@
 #include <string>
 #include <vector>
 
-std::wstring map_file(std::wstring fn, bool append_urd=false, std::wstring *udir=NULL);
-void add_share_path(const std::wstring &name, const std::wstring &path);
-void remove_share_path(const std::wstring &name);
-std::vector<std::wstring> get_maps(void);
+std::string map_file(std::string fn, const std::string& identity, bool& allow_exec);
+void add_share_path(const std::string &name, const std::string &path, const std::string& identity, bool allow_exec);
+bool remove_share_path(const std::string &name, const std::string& identity);
+void register_fn_redirect(const std::string & source_fn, const std::string & target_fn);

@@ -64,15 +64,22 @@ class CompressedFile;
 class VHDFile : public IVHDFile, public IFile
 {
 public:
-	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
-	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
 	~VHDFile();
 
-	virtual std::string Read(_u32 tr);
-	virtual _u32 Read(char* buffer, _u32 bsize);
-	virtual _u32 Write(const std::string &tw);
-	virtual _u32 Write(const char* buffer, _u32 bsize);
+	virtual std::string Read(_u32 tr, bool *has_error=NULL);
+	virtual std::string Read(int64 spos, _u32 tr, bool *has_error = NULL);
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL);
+	virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool *has_error = NULL);
+	virtual _u32 Write(const std::string &tw, bool *has_error=NULL);
+	virtual _u32 Write(int64 spos, const std::string &tw, bool *has_error = NULL);
+	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error=NULL);
+	virtual _u32 Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error = NULL);
 	virtual _i64 Size(void);
+	virtual _i64 RealSize(void);
+	virtual bool PunchHole( _i64 spos, _i64 size );
+	virtual bool Sync();
 	
 	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);
@@ -82,12 +89,11 @@ public:
 	char *getUID(void);
 	unsigned int getTimestamp(void);
 	std::string getFilename(void);
-	std::wstring getFilenameW(void);
 
-	bool has_sector(void);
-	bool this_has_sector(void);
+	bool has_sector(_i64 sector_size=-1);
+	bool this_has_sector(_i64 sector_size=-1);
 
-	bool has_block(void);
+	bool has_block(bool use_parent=true);
 
 	unsigned int getBlocksize();
 
@@ -101,12 +107,26 @@ public:
 
 	bool isCompressed();
 
+	bool trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* trim_callback)
+	{
+		return true;
+	}
+
+	bool syncBitmap(_i64 fs_offset)
+	{
+		return true;
+	}
+
+	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback);
+
+	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
+
 private:
 
 	bool check_if_compressed();
 
 	bool write_header(bool diff);
-	bool write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn);
+	bool write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::string parentfn);
 	bool write_bat(void);
 	bool write_footer(void);
 
@@ -118,7 +138,7 @@ private:
 	void init_bitmap(void);
 
 	inline bool isBitmapSet(unsigned int offset);
-	inline void setBitmapBit(unsigned int offset, bool v);
+	inline bool setBitmapBit(unsigned int offset, bool v);
 	void switchBitmap(uint64 new_offset);
 
 	unsigned int calculate_chs(void);
@@ -149,7 +169,7 @@ private:
 
 	uint64 nextblock_offset;
 
-	unsigned char * bitmap;
+	std::vector<unsigned char> bitmap;
 	unsigned int bitmap_size;
 
 	bool is_open;

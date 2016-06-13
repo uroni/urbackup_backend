@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "InternetClient.h"
 
 #include "../Interface/Server.h"
@@ -12,9 +30,9 @@
 #include "../common/data.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
-#include "../urbackupcommon/InternetServicePipe.h"
+#include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/internet_pipe_capabilities.h"
-#include "../urbackupcommon/CompressedPipe.h"
+#include "../urbackupcommon/CompressedPipe2.h"
 
 #include "../stringtools.h"
 
@@ -38,6 +56,7 @@ std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens
 bool InternetClient::do_exit=false;
 IMutex *InternetClient::onetime_token_mutex=NULL;
 std::string InternetClient::status_msg="initializing";
+
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -137,12 +156,39 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
+
 	setStatusMsg("wait_local");
+	doUpdateSettings();
+
 	if(Server->getServerParameter("internet_only_mode")!="true")
 	{
-		const size_t wait_time_ms=180000;
-		Server->Log("Internet only mode not enabled. Waiting for local server for "+FormatTime(wait_time_ms/1000)+"...", LL_DEBUG);
-		Server->wait(wait_time_ms);
+		const int64 wait_time_ms=180000;
+
+		bool has_server = !server_settings.servers.empty();
+
+		if (has_server)
+		{
+			Server->Log("Internet only mode not enabled. Waiting for local server for " + FormatTime(wait_time_ms / 1000) + "...", LL_DEBUG);
+		}
+		int64 wait_starttime = Server->getTimeMS();
+		while (Server->getTimeMS() - wait_starttime < wait_time_ms)
+		{
+			Server->wait(1000);
+			{
+				IScopedLock lock(mutex);
+				if (update_settings)
+				{
+					doUpdateSettings();
+					update_settings = false;
+
+					if (!has_server
+						&& !server_settings.servers.empty())
+					{
+						break;
+					}
+				}
+			}	
+		}
 	}
 	else
 	{
@@ -174,7 +220,7 @@ void InternetClient::operator()(void)
 			{
 				if(n_connections<spare_connections)
 				{
-					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings));
+					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings), "internet client");
 					newConnection();
 				}
 				else
@@ -200,7 +246,7 @@ void InternetClient::operator()(void)
 
 void InternetClient::doUpdateSettings(void)
 {
-	server_settings.name.clear();
+	server_settings.servers.clear();
 
 	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	if(settings==NULL)
@@ -215,7 +261,15 @@ void InternetClient::doUpdateSettings(void)
 		if( !settings->getValue("internet_mode_enabled_def", &internet_mode_enabled) || internet_mode_enabled=="false" )
 		{
 			Server->destroy(settings);
-			Server->Log("Internet mode is not enabled.", LL_DEBUG);
+			if(Server->getServerParameter("internet_only_mode")=="true")
+			{
+				Server->Log("Internet mode not enabled. Please set \"internet_mode_enabled\" to \"true\".", LL_ERROR);
+				exit(2);
+			}
+			else
+			{
+				Server->Log("Internet mode not enabled", LL_DEBUG);
+			}
 			return;
 		}
 	}
@@ -227,24 +281,62 @@ void InternetClient::doUpdateSettings(void)
 	if(!settings->getValue("internet_authkey", &authkey) && !settings->getValue("internet_authkey_def", &authkey))
 	{
 		Server->destroy(settings);
-		Server->Log("Cannot read internet_authkey", LL_INFO);
+		if(Server->getServerParameter("internet_only_mode")=="true")
+		{
+			Server->Log("Internet authentication key not configured. Please configure \"internet_authkey\".", LL_ERROR);
+			exit(2);
+		}
+		else
+		{
+			Server->Log("Internet authentication key not configured", LL_INFO);
+		}
 		return;
 	}
 	if( (!settings->getValue("computername", &computername)
 		 && !settings->getValue("computername_def", &computername) ) 
 		   || computername.empty())
 	{
-		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+		computername=(IndexThread::getFileSrv()->getServerName());		
 	}
-	if(settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name) )
+	if( (settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name))
+		&& !server_name.empty() )
 	{
 		if(!settings->getValue("internet_server_port", &server_port) )
 			settings->getValue("internet_server_port_def", &server_port);
 
-		server_settings.name=server_name;
-		server_settings.port=(unsigned short)atoi(server_port.c_str());
+		std::vector<std::string> server_names;
+		Tokenize(server_name, server_names, ";");
+
+		std::vector<std::string> server_ports;
+		Tokenize(server_port, server_ports, ";");
+
+		for(size_t i=0;i<server_names.size();++i)
+		{
+			if(i<server_ports.size())
+			{
+				server_settings.servers.push_back(std::make_pair(server_names[i],
+					static_cast<unsigned short>(atoi(server_ports[i].c_str()))));
+			}
+			else
+			{
+				server_settings.servers.push_back(std::make_pair(server_names[i],
+					static_cast<unsigned short>(atoi(server_ports[server_ports.size()-1].c_str()))));
+			}
+		}
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
+	}
+	else
+	{
+		if(Server->getServerParameter("internet_only_mode")=="true")
+		{
+			Server->Log("Internet server not configured. Please configure \"internet_server\".", LL_ERROR);
+			exit(2);
+		}
+		else
+		{
+			Server->Log("Internet server not configured", LL_INFO);
+		}
 	}
 	std::string tmp;
 	server_settings.internet_compress=true;
@@ -276,31 +368,35 @@ void InternetClient::doUpdateSettings(void)
 
 bool InternetClient::tryToConnect(IScopedLock *lock)
 {
-	std::string name=server_settings.name;
-	if(name.empty())
+	if(server_settings.servers.empty())
 	{
 		setStatusMsg("no_server");
 		return false;
 	}
 
-	unsigned short port=server_settings.port;
-	lock->relock(NULL);
-	Server->Log("Trying to connect to internet server \""+name+"\" at port "+nconvert(port), LL_DEBUG);
-	IPipe *cs=Server->ConnectStream(name, port, 10000);
-	lock->relock(mutex);
-	if(cs!=NULL)
+	for(size_t i=0;i<server_settings.servers.size();++i)
 	{
-		Server->Log("Successfully connected.", LL_DEBUG);
-		setStatusMsg("connected");
-		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
-		newConnection();
-		return true;
+		std::string name=server_settings.servers[i].first;
+
+		unsigned short port=server_settings.servers[i].second;
+
+		lock->relock(NULL);
+		Server->Log("Trying to connect to internet server \""+name+"\" at port "+convert(port), LL_DEBUG);
+		IPipe *cs=Server->ConnectStream(name, port, 10000);
+		lock->relock(mutex);
+		if(cs!=NULL)
+		{
+			server_settings.selected_server=i;
+			Server->Log("Successfully connected.", LL_DEBUG);
+			setStatusMsg("connected");
+			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings), "internet client");
+			newConnection();
+			return true;
+		}
 	}
-	else
-	{
-		setStatusMsg("connecting_failed");
-		Server->Log("Connecting failed.", LL_DEBUG);
-	}
+
+	setStatusMsg("connecting_failed");
+	Server->Log("Connecting failed.", LL_DEBUG);
 	return false;
 }
 
@@ -309,12 +405,12 @@ THREADPOOL_TICKET InternetClient::start(bool use_pool)
 	init_mutex();
 	if(!use_pool)
 	{
-		Server->createThread(new InternetClient);
+		Server->createThread(new InternetClient, "internet client main");
 		return ILLEGAL_THREADPOOL_TICKET;
 	}
 	else
 	{
-		return Server->getThreadPool()->execute(new InternetClient);
+		return Server->getThreadPool()->execute(new InternetClient, "internet client main");
 	}
 }
 
@@ -424,18 +520,21 @@ void InternetClientThread::operator()(void)
 		int tries=10;
 		while(tries>0 && cs==NULL)
 		{
-			cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+			cs=Server->ConnectStream(server_settings.servers[server_settings.selected_server].first,
+				server_settings.servers[server_settings.selected_server].second, 10000);
 			--tries;
 			InternetClient::setStatusMsg("connecting_failed");
 			if(cs==NULL && tries>0)
 			{
-				Server->Log("Connecting to server "+server_settings.name+" failed. Retrying in 30s...", LL_INFO);
+				Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
+					+ " failed. Retrying in 30s...", LL_INFO);
 				Server->wait(30000);
 			}
 		}
 		if(cs==NULL)
 		{
-			Server->Log("Connecting to server "+server_settings.name+" failed", LL_INFO);
+			Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
+				+ " failed", LL_INFO);
 			InternetClient::rmConnection();
 			InternetClient::setHasConnection(false);
 			InternetClient::setStatusMsg("connecting_failed");
@@ -453,12 +552,14 @@ void InternetClientThread::operator()(void)
 	std::string challenge;
 	unsigned int server_capa;
 	unsigned int capa=0;
-	int compression_level;
+	int compression_level=6;
 	unsigned int server_iterations;
 	std::string authkey;
 	std::string challenge_response;
-	InternetServicePipe ics_pipe;
+	InternetServicePipe2* ics_pipe = new InternetServicePipe2();
 	std::string hmac_key;
+	std::string server_pubkey;
+	bool destroy_cs = true;
 
 	{
 		char *buf;
@@ -483,6 +584,15 @@ void InternetClientThread::operator()(void)
 				&& rd.getUInt(&server_iterations) ))
 			{
 				std::string error = "Not enough challenge fields -1";
+				Server->Log(error, LL_ERROR);
+				InternetClient::setStatusMsg("error:"+error);
+				delete []buf;
+				goto cleanup;
+			}
+
+			if(!rd.getStr(&server_pubkey) || server_pubkey.empty())
+			{
+				std::string error = "No server public key. Server version probably not new enough.";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
 				delete []buf;
@@ -516,11 +626,11 @@ void InternetClientThread::operator()(void)
 		CWData data;
 		if(token.second.empty())
 		{
-			data.addChar(ID_ISC_AUTH);
+			data.addChar(ID_ISC_AUTH2);
 		}
 		else
 		{
-			data.addChar(ID_ISC_AUTH_TOKEN);
+			data.addChar(ID_ISC_AUTH_TOKEN2);
 		}
 
 		data.addString(server_settings.clientname);
@@ -529,10 +639,14 @@ void InternetClientThread::operator()(void)
 
 		if(token.second.empty())
 		{
+			std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
+
 			authkey=server_settings.authkey;			
-			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, (std::max)(pbkdf2_iterations,server_iterations) );
+			std::string salt = challenge+client_challenge+ecdh_key_exchange->getSharedKey(server_pubkey);
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(pbkdf2_iterations,server_iterations) );
 			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
 			data.addString(hmac_l);
+			data.addString(ecdh_key_exchange->getPublicKey());
 		}
 		else
 		{
@@ -606,12 +720,12 @@ void InternetClientThread::operator()(void)
 				goto cleanup;
 			}
 
-			ics_pipe.init(cs, hmac_key);
+			ics_pipe->init(cs, hmac_key);
 
 			std::string new_token;
 			while(rd.getStr(&new_token))
 			{
-				InternetClient::addOnetimeToken(ics_pipe.decrypt(new_token));
+				InternetClient::addOnetimeToken(ics_pipe->decrypt(new_token));
 			}
 		}
 	}
@@ -628,19 +742,19 @@ void InternetClientThread::operator()(void)
 
 		data.addUInt(capa);
 
-		tcpstack.Send(&ics_pipe, data);
+		tcpstack.Send(ics_pipe, data);
 	}
 
 	comm_pipe=cs;
 	
 	if( capa & IPC_ENCRYPTED )
 	{
-		ics_pipe.setBackendPipe(comm_pipe);
-		comm_pipe=&ics_pipe;
+		ics_pipe->setBackendPipe(comm_pipe);
+		comm_pipe=ics_pipe;
 	}
 	if( capa & IPC_COMPRESSED )
 	{
-		comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+		comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
 		comm_pipe=comp_pipe;
 	}
 
@@ -710,12 +824,13 @@ void InternetClientThread::operator()(void)
 				ClientConnector clientservice;
 				runServiceWrapper(comm_pipe, &clientservice);
 				Server->Log("SERVICE_COMMANDS finished", LL_DEBUG);
+				destroy_cs=clientservice.closeSocket();
 				goto cleanup;
 			}
 			else if(service==SERVICE_FILESRV)
 			{
 				Server->Log("Started connection to SERVICE_FILESRV", LL_DEBUG);
-				IndexThread::getFileSrv()->runClient(comm_pipe);
+				IndexThread::getFileSrv()->runClient(comm_pipe, NULL);
 				Server->Log("SERVICE_FILESRV finished", LL_DEBUG);
 				goto cleanup;
 			}
@@ -729,9 +844,13 @@ void InternetClientThread::operator()(void)
 	}
 
 cleanup:
-	delete comp_pipe;
-	if(cs!=NULL)
-		Server->destroy(cs);
+	if(destroy_cs)
+	{
+		delete comp_pipe;
+		if(cs!=NULL)
+			Server->destroy(cs);
+		delete ics_pipe;
+	}	
 	if(!finish_ok)
 	{
 		InternetClient::setHasAuthErr();
@@ -745,7 +864,7 @@ cleanup:
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
-	client->Init(Server->getThreadID(), pipe, server_settings.name);
+	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].first);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
 	if(cc!=NULL)
 	{
@@ -753,9 +872,10 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 	}
 	while(true)
 	{
-		bool b=client->Run();
+		bool b=client->Run(NULL);
 		if(!b)
 		{
+			printInfo(pipe);
 			return;
 		}
 
@@ -763,17 +883,50 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		{
 			if(pipe->isReadable(10))
 			{
-				client->ReceivePackets();
+				client->ReceivePackets(NULL);
 			}
 			else if(pipe->hasError())
 			{
-				client->ReceivePackets();
+				client->ReceivePackets(NULL);
 				Server->wait(20);
 			}
 		}
 		else
 		{
 			Server->wait(20);
+		}
+	}
+}
+
+void InternetClientThread::printInfo( IPipe * pipe )
+{
+	int64 transferred_bytes = pipe->getTransferedBytes();
+
+	if(transferred_bytes>1*1024*1024) //1MB
+	{
+		Server->Log("Service finished. Transferred "+PrettyPrintBytes(transferred_bytes));
+
+		IPipe* back_pipe= pipe;
+		CompressedPipe2* comp_pipe = dynamic_cast<CompressedPipe2*>(pipe);
+
+		if(comp_pipe!=NULL)
+		{
+			back_pipe=comp_pipe->getRealPipe();
+		}
+
+		int64 enc_overhead=0;
+		InternetServicePipe2* isp2 = dynamic_cast<InternetServicePipe2*>(back_pipe);
+		if(isp2!=NULL)
+		{
+			enc_overhead=isp2->getEncryptionOverheadBytes();
+			Server->Log("Encryption overhead: "+PrettyPrintBytes(enc_overhead));
+		}
+
+		if(comp_pipe!=NULL)
+		{
+			int64 uncompr_transferred = comp_pipe->getUncompressedReceivedBytes()+comp_pipe->getUncompressedSentBytes();
+			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+convert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");
+			Server->Log("Average sent paket size: "+PrettyPrintBytes(comp_pipe->getUncompressedSentBytes()/comp_pipe->getSentFlushes()));
 		}
 	}
 }

@@ -7,6 +7,8 @@ httpserver.dll
 --plugin
 cryptoplugin.dll
 --plugin
+fileservplugin.dll
+--plugin
 urbackupserver.dll
 --logfile
 urbackup.log
@@ -20,3 +22,5 @@ true
 urbackup\www
 --http_port
 55414
+--http_server
+true

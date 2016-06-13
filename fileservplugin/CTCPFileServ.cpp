@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -111,9 +111,13 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 	if(rc == SOCKET_ERROR)	return false;
 #endif
 
-	//start tcpsock
+	if(tcpport!=0)
 	{
-		mSocket=socket(AF_INET,SOCK_STREAM,0);
+		int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		mSocket=socket(AF_INET, type, 0);
 		if(mSocket<1) return false;
 
 #ifndef DISABLE_WINDOW_SIZE
@@ -123,20 +127,12 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 
 		if( err==SOCKET_ERROR )
 			Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
-		else 
-			Log("Info: retval "+nconvert(err), LL_DEBUG );
 
 
 		err=setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 
 		if( err==SOCKET_ERROR )
 			Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
-		else 
-			Log("Info: retval "+nconvert(err), LL_DEBUG );
-
-		socklen_t window_size_len=sizeof(window_size);
-		getsockopt(mSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-		Log("Info: Window size="+nconvert(window_size));
 #endif
 		int optval=1;
 		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
@@ -145,19 +141,23 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start", LL_ERROR);
 			return false;
 		}
+#ifdef __APPLE__
+		optval = 1;
+		setsockopt(mSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 
 		sockaddr_in addr;
 
 		memset(&addr, 0, sizeof(sockaddr_in));
 		addr.sin_family=AF_INET;
 		addr.sin_port=htons(tcpport);
-		addr.sin_addr.s_addr=INADDR_ANY;
+		addr.sin_addr.s_addr=htonl(INADDR_ANY);
 
 		rc=bind(mSocket,(sockaddr*)&addr,sizeof(addr));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed", LL_ERROR);
+			Server->Log("Binding tcp socket to port "+convert(tcpport)+" failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
 #else
 			Log("Failed. Binding tcp socket.", LL_ERROR);
 #endif
@@ -172,19 +172,12 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		delete udpthread;
 		udpthread=NULL;
 	}
-	if(udpthread==NULL)
+	if(udpthread==NULL && udpport!=0)
 	{
 		udpthread=new CUDPThread(udpport,pServername, use_fqdn);
 		if(!udpthread->hasError())
 		{
-			if(Server->getServerParameter("internet_only_mode")!="true")
-			{
-				udpticket=Server->getThreadPool()->execute(udpthread);
-			}
-			else
-			{
-				udpticket=ILLEGAL_THREADPOOL_TICKET;
-			}
+			udpticket=Server->getThreadPool()->execute(udpthread, "filesrv: broadcast response");
 		}
 		else
 		{
@@ -209,6 +202,12 @@ bool CTCPFileServ::Run(void)
 
 bool CTCPFileServ::TcpStep(void)
 {
+	if(m_tcpport==0)
+	{
+		Server->wait(REFRESH_SECONDS*1000);
+		return true;
+	}
+
 	socklen_t addrsize=sizeof(sockaddr_in);
 
 #ifdef _WIN32
@@ -233,10 +232,14 @@ bool CTCPFileServ::TcpStep(void)
 		SOCKET ns=accept(mSocket, (sockaddr*)&naddr, &addrsize);
 		if(ns>0)
 		{
+#ifdef __APPLE__
+			int optval = 1;
+			setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 			cs.Enter();
 			//Log("New Connection incomming", LL_DEBUG);
 			CClientThread *clientthread=new CClientThread(ns, this);
-			Server->createThread(clientthread);
+			Server->createThread(clientthread, "file server");
 			clientthreads.push_back(clientthread);
 			cs.Leave();
 		}
@@ -265,7 +268,7 @@ void CTCPFileServ::DelClientThreads(void)
 				delete clientthreads[i];
 				clientthreads.erase( clientthreads.begin()+i );
 				proc=true;
-				Log("ClientThread deleted. "+nconvert((NBUFFERS*READSIZE)/1024)+" KB Memory freed.",LL_DEBUG);
+				Log("ClientThread deleted. "+convert((NBUFFERS*READSIZE)/1024)+" KB Memory freed.",LL_DEBUG);
 				break;
 			}
 		}

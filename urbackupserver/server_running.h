@@ -2,7 +2,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 
-class BackupServerGet;
+class ClientMain;
 
 class ServerRunningUpdater : public IThread
 {
@@ -14,6 +14,8 @@ public:
 
 	void stop(void);
 	void suspend(bool b);
+
+	void setBackupid(int pBackupid);
 
 private:
 	volatile bool do_stop;

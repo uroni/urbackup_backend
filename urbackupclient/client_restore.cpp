@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include <string>
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
@@ -11,15 +29,18 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <algorithm>
-#include "../urbackupserver/fileclient/socket_header.h"
+#include "../urbackupcommon/fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
 #include <sys/ioctl.h>
+#else
+#include <ws2tcpip.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
 #include "../fileservplugin/settings.h"
 #include "../fileservplugin/packet_ids.h"
 #include <memory>
+#include "../cryptoplugin/ICryptoFactory.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -32,6 +53,7 @@ const std::string configure_networkcard=configure_wlan;
 
 #define UDP_SOURCE_PORT 35623
 
+extern ICryptoFactory *crypto_fak;
 
 namespace
 {
@@ -153,13 +175,19 @@ IPipe* connectToService(int *ec)
 	return c;
 }
 
+struct SPasswordSalt
+{
+	std::string salt;
+	std::string rnd;
+	int pbkdf2_rounds;
+};
 
-std::vector<std::pair<std::string, std::string> > getSalt(const std::string& username, int *ec)
+std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	*ec=0;
-	std::vector<std::pair<std::string, std::string> > ret;
+	std::vector<SPasswordSalt> ret;
 
 	IPipe *c=connectToService(ec);
 	if(c==NULL)
@@ -189,15 +217,28 @@ std::vector<std::pair<std::string, std::string> > getSalt(const std::string& use
 				std::vector<std::string> salt_toks;
 				Tokenize(toks[i], salt_toks, ";");
 
+				SPasswordSalt new_salts;
+				new_salts.pbkdf2_rounds=0;
+
 				if(salt_toks.size()==3)
 				{
-					ret.push_back(std::make_pair(salt_toks[1], salt_toks[2]));
+					new_salts.salt = salt_toks[1];
+					new_salts.rnd = salt_toks[2];
 				}
+				else if(salt_toks.size()==4)
+				{
+					new_salts.salt = salt_toks[1];
+					new_salts.rnd = salt_toks[2];
+					new_salts.pbkdf2_rounds = atoi(salt_toks[3].c_str());
+				}
+
+				ret.push_back(new_salts);
 			}
 			else
 			{
 				Server->Log("SALT error: "+toks[i], LL_ERROR);
-				ret.push_back(std::make_pair(std::string(), std::string()));
+				SPasswordSalt new_salts = {};
+				ret.push_back(new_salts);
 			}
 		}
 	}
@@ -205,7 +246,7 @@ std::vector<std::pair<std::string, std::string> > getSalt(const std::string& use
 	return ret;
 }
 
-bool tryLogin(const std::string& username, const std::string& password, std::vector<std::pair<std::string, std::string> > salts, int *ec)
+bool tryLogin(const std::string& username, const std::string& password, std::vector<SPasswordSalt> salts, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -224,11 +265,19 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 
 		for(size_t i=0;i<salts.size();++i)
 		{
-			if(!salts[i].first.empty()
-				&& !salts[i].second.empty())
+			if(!salts[i].salt.empty()
+				&& !salts[i].rnd.empty())
 			{
-				auth_str+="&password"+nconvert(i)+"="+
-					Server->GenerateHexMD5(salts[i].second+Server->GenerateHexMD5(salts[i].first+password));
+
+				std::string pw_md5 = Server->GenerateHexMD5(salts[i].salt+password);
+
+				if(salts[i].pbkdf2_rounds>0)
+				{
+					pw_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pw_md5), salts[i].salt, salts[i].pbkdf2_rounds));
+				}
+
+				auth_str+="&password"+convert(i)+"="+
+					Server->GenerateHexMD5(salts[i].rnd+pw_md5);
 			}
 		}
 	}
@@ -248,6 +297,10 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		if(r=="ok")
 		{
 			ret=true;
+		}
+		else if (r == "no channels available")
+		{
+			ret = true;
 		}
 		else
 		{
@@ -336,6 +389,72 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	return ret;
 }
 
+struct SFileBackup
+{
+	bool operator<(const SFileBackup &other) const
+	{
+		return other.time_s<time_s;
+	}
+	std::string time_str;
+	_i64 time_s;
+	int id;
+	int tgroup;
+};
+
+std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	std::vector<SFileBackup> ret;
+	*ec=0;
+
+	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
+	if(c==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		*ec=10;
+		return ret;
+	}
+
+	tcpstack.Send(c, "GET FILE BACKUPS "+clientname+"#pw="+pw);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		if(r[0]=='0')
+		{
+			Server->Log("No backupserver found", LL_ERROR);
+			*ec=1;
+		}
+		else
+		{
+			std::vector<std::string> toks;
+			std::string t=r.substr(1);
+			Tokenize(t, toks, "\n");
+			for(size_t i=0;i<toks.size();++i)
+			{
+				std::vector<std::string> t2;
+				Tokenize(toks[i], t2, "|");
+				if(t2.size()==4  )
+				{
+					SFileBackup si;
+					si.id=atoi(t2[0].c_str());
+					si.time_s=os_atoi64(t2[1]);
+					si.time_str=t2[2];
+					si.tgroup=atoi(t2[3].c_str());
+					ret.push_back(si);
+				}
+			}
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
 volatile bool restore_retry_ok=false;
 
 int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth);
@@ -380,12 +499,13 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	std::string s_offset;
 	if(offset!=-1)
 	{
-		s_offset="&offset="+nconvert(offset);
+		s_offset="&offset="+convert(offset);
 	}
 
-	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+convert(img_id)+"&time="+img_time+"&mbr="+convert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
+	Server->Log("Restoring to "+restore_out);
 	std::auto_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
 	if(out_file.get()==NULL)
 	{
@@ -473,10 +593,16 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						_u32 woff=0;
 						do
 						{
-							_u32 w=out_file->Write(&blockdata[woff], tw-woff);
+							bool has_write_error = false;
+							_u32 w=out_file->Write(&blockdata[woff], tw-woff, &has_write_error);
 							if(w==0)
 							{
 								Server->Log("Writing to output file failed", LL_ERROR);
+								return 6;
+							}
+							if (has_write_error)
+							{
+								Server->Log("Writing to output file failed -2", LL_ERROR);
 								return 6;
 							}
 							woff+=w;
@@ -499,9 +625,16 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 					{
 						blockleft=c_block_size;
 						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
+						if (*s == 0x7fffffffffffffffLL)
+						{
+							Server->Log("Restore finished", LL_INFO);
+							pos = *s;
+							break;
+						}
 						if(*s>imgsize)
 						{
-							Server->Log("invalid seek value: "+nconvert(*s), LL_ERROR);
+							Server->Log("Invalid seek value: "+convert(*s), LL_ERROR);
+							//TODO return error code here after deprecation period
 							pos=*s;
 							break;
 						}
@@ -511,7 +644,11 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						}
 						else
 						{
-							out_file->Seek(*s);
+							if (!out_file->Seek(*s))
+							{
+								Server->Log("Seeking in output file failed (to position "+convert(*s)+")", LL_ERROR);
+								return 6;
+							}
 							pos=*s;
 						}
 						off+=sizeof(_i64);
@@ -552,7 +689,55 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	return 0;
 }
 
+int downloadFiles(int backupid, std::string backup_time)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	std::vector<SImage> ret;
+
+	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+	if(client_pipe.get()==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		return 10;
+	}
+
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&backupid="+convert(backupid)+"&time="+backup_time);
+	int64 starttime = Server->getTimeMS();
+
+	while(Server->getTimeMS()-starttime<60000)
+	{
+		std::string msg;
+		if(client_pipe->Read(&msg, 60000)>0)
+		{
+			tcpstack.AddData(&msg[0], msg.size());
+
+			if(tcpstack.getPacket(msg) )
+			{
+				if(msg=="ok")
+				{
+					return 0;
+				}
+				else
+				{
+					Server->Log("Error: "+msg, LL_ERROR);
+					return 1;
+				}
+
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	Server->Log("Timeout", LL_ERROR);
+	return 2;
 }
+
+} //unnamed namespace
 
 namespace
 {
@@ -567,10 +752,26 @@ namespace
 		}
 		else
 		{
-			hostent* hp = gethostbyname(host);
-			if (hp != 0)
+			addrinfo hints;
+			memset(&hints, 0, sizeof(hints));
+			hints.ai_family = AF_INET;
+			hints.ai_protocol = IPPROTO_TCP;
+			hints.ai_socktype = SOCK_STREAM;
+
+			addrinfo* hp;
+			if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
 			{
-				memcpy(dest, hp->h_addr, hp->h_length);
+				if(hp->ai_addrlen<=sizeof(sockaddr_in))
+				{
+					memcpy(dest, &reinterpret_cast<sockaddr_in*>(hp->ai_addr)->sin_addr, sizeof(in_addr));
+					freeaddrinfo(hp);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(hp);
+					return false;
+				}
 			}
 			else
 			{
@@ -582,7 +783,11 @@ namespace
 
 	bool ping_server(void)
 	{
-		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
+#endif
+		SOCKET udpsock=socket(AF_INET, type,0);
 
 		std::string server=Server->getServerParameter("ping_server");
 
@@ -628,7 +833,7 @@ namespace
 	
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
-		int rc = system("lsblk -o MAJ:MIN,MODEL,SIZE,TYPE -P 1> out");
+		int rc = system(("lsblk -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
 		
 		std::vector<SLsblk> ret;
 		
@@ -774,7 +979,10 @@ void do_restore(void)
 		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
 		Server->Log("get_clientnames", LL_INFO);
 		Server->Log("get_backupimages(restore_name)", LL_INFO);
+		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		exit(0);
 	}
@@ -840,6 +1048,29 @@ void do_restore(void)
 			}
 		}
 	}
+	else if(cmd=="get_file_backups" )
+	{
+		tcpstack.Send(c, "GET FILE BACKUPS "+Server->getServerParameter("restore_name")+"#pw="+pw);
+		std::string r=getResponse(c);
+		if(r.empty() )
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			Server->destroy(c);exit(2);return;
+		}
+		else
+		{
+			if(r[0]=='0')
+			{
+				Server->Log("No backupserver found", LL_ERROR);
+				Server->destroy(c);exit(3);return;
+			}
+			else
+			{
+				std::cout << r.substr(1) ;
+				Server->destroy(c);exit(0);return;
+			}
+		}
+	}
 	else if(cmd=="download_mbr" || cmd=="download_image" )
 	{
 		bool mbr=false;
@@ -847,6 +1078,11 @@ void do_restore(void)
 			mbr=true;
 
 		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr);
+		exit(ec);
+	}
+	else if(cmd=="download_files")
+	{
+		int ec=downloadFiles(atoi(Server->getServerParameter("restore_backupid").c_str()), Server->getServerParameter("restore_time"));
 		exit(ec);
 	}
 	else if(cmd=="download_progress")
@@ -928,8 +1164,12 @@ bool has_network_device(void)
 	int           nInterfaces;
 	int           i;
 
+	int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
 /* Get a socket handle. */
-	sck = socket(AF_INET, SOCK_DGRAM, 0);
+	sck = socket(AF_INET, type, 0);
 	if(sck < 0)
 	{
 		return true;
@@ -979,7 +1219,7 @@ void ping_named_server(void)
 
 	if(!out.empty())
 	{
-		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\" &").c_str());
+		system(("./urbackuprestoreclient --ping-server \""+out+"\" &").c_str());
 	}
 }
 
@@ -989,7 +1229,7 @@ bool do_login(void)
 	system("cat urbackup/restore/trying_to_login");
 
 	int ec;
-	if(!tryLogin("", "", std::vector<std::pair<std::string, std::string> >(), &ec) )
+	if(!tryLogin("", "", std::vector<SPasswordSalt>(), &ec) )
 	{
 		if(ec==1)
 		{
@@ -1011,13 +1251,13 @@ bool do_login(void)
 				return false;
 			}
 
-			std::vector<std::pair<std::string, std::string> > salts=getSalt(username, &ec);
+			std::vector<SPasswordSalt> salts=getSalt(username, &ec);
 
 			bool found_salt=false;
 			for(size_t i=0;i<salts.size();++i)
 			{
-				if(!salts[i].first.empty() &&
-					!salts[i].second.empty() )
+				if(!salts[i].salt.empty() &&
+					!salts[i].rnd.empty() )
 				{
 					found_salt=true;
 					break;
@@ -1172,7 +1412,7 @@ void restore_wizard(void)
 						break; 
 					}
 
-					if(clients.empty())
+					if(errmsg.empty() && clients.empty())
 					{
 						ec=3;
 						errmsg="`cat urbackup/restore/no_clients_found`";
@@ -1230,7 +1470,7 @@ void restore_wizard(void)
 					std::string mi;
 					for(size_t i=0;i<clients.size();++i)
 					{
-						mi+="\""+nconvert((int)i+1)+"\" \""+clients[i]+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+clients[i]+"\" ";
 					}
 					int r=system(("dialog --menu \"`cat urbackup/restore/select`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
@@ -1294,7 +1534,7 @@ void restore_wizard(void)
 						if(!images[i].letter.empty())
 							images[i].letter=" "+images[i].letter;
 
-						mi+="\""+nconvert((int)i+1)+"\" \""+images[i].time_str+images[i].letter+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+images[i].time_str+images[i].letter+"\" ";
 					}
 					int r=system(("dialog --menu \"`cat urbackup/restore/select_date`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
@@ -1347,7 +1587,7 @@ void restore_wizard(void)
 				{
 					if(drives[i].type=="disk")
 					{
-						mi+="\""+nconvert((int)i+1)+"\" \""+drives[i].model+" `cat urbackup/restore/size`: "+drives[i].size+"\" ";
+						mi+="\""+convert((int)i+1)+"\" \""+drives[i].model+" `cat urbackup/restore/size`: "+drives[i].size+"\" ";
 					}
 				}
 				std::string scmd="dialog --menu \"`cat urbackup/restore/select_drive`\" 15 50 10 "+mi+"2> out";
@@ -1379,7 +1619,7 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				int rc = downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				int rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true);
 				if (rc !=0 )
 				{
 					Server->Log("Error downloading MBR", LL_ERROR);
@@ -1420,11 +1660,81 @@ void restore_wizard(void)
 					break;
 				}
 				dev->Seek(0);
-				dev->Write(mbrdata.mbr_data);
+				if(dev->Write(mbrdata.mbr_data)!=mbrdata.mbr_data.size())
+				{
+					err="error_writing_mbr";
+					state=101;
+					break;
+				}
+
+				if(mbrdata.gpt_style)
+				{
+					std::string onlypart = ExtractFileName(seldrive);
+					std::string logical_block_size_str = getFile("/sys/block/"+onlypart+"/queue/logical_block_size");
+
+					if(!logical_block_size_str.empty())
+					{
+						unsigned int logical_block_size = atoi(logical_block_size_str.c_str());
+
+						if(logical_block_size!=mbrdata.gpt_header_pos)
+						{
+							err="gpt_logical_blocksize_change";
+							state=101;
+							break;						
+						}
+						Server->Log("Logical block size: "+convert(logical_block_size));
+					}
+					else
+					{
+						Server->Log("Could not get logical block size");
+					}
+
+					system("cat urbackup/restore/writing_gpt_header");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.gpt_header_pos) || dev->Write(mbrdata.gpt_header)!=mbrdata.gpt_header.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_gpt_table");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.gpt_table_pos) || dev->Write(mbrdata.gpt_table)!=mbrdata.gpt_table.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_backup_gpt_header");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.backup_gpt_header_pos) || dev->Write(mbrdata.backup_gpt_header)!=mbrdata.backup_gpt_header.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_backup_gpt_table");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.backup_gpt_table_pos) || dev->Write(mbrdata.backup_gpt_table)!=mbrdata.backup_gpt_table.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+				}				
+
 				Server->destroy(dev);
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
+				Server->Log("Selected device: "+seldrive+" Partition: "+convert(mbrdata.partition_number));
 				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
@@ -1450,8 +1760,9 @@ void restore_wizard(void)
 
 					if(dev==NULL)
 					{
+						Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
 						//Fix LBA partition signature
-						system(("echo w | fdisk.distrib "+seldrive+" > /dev/null 2>&1").c_str());
+						system(("echo w | fdisk "+seldrive+" > /dev/null 2>&1").c_str());
 					}
 
 					++try_c;
@@ -1473,11 +1784,11 @@ void restore_wizard(void)
 				{
 					windows_partition=selpart;
 				}
-				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selpart);
-				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
+				RestoreThread rt(selimage.id, convert(selimage.time_s), selpart);
+				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt, "image restore");
 				while(true)
 				{
-					system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
+					system(("./urbackuprestoreclient --image-download-progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
 					while(!rt.isDone() && !restore_retry_ok)
 					{
 						Server->wait(1000);

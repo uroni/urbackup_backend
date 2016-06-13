@@ -10,16 +10,18 @@
 #include "../Interface/Query.h"
 #include "PersistentOpenFiles.h"
 
+#include "watchdir/JournalDAO.h"
+
 class DirectoryWatcherThread;
 
 struct SChangeJournal
 {
-	std::vector<std::wstring> path;
+	std::vector<std::string> path;
 	USN last_record;
 	DWORDLONG journal_id;
 	HANDLE hVolume;
 	_i64 rid;
-	std::wstring vol_str;
+	std::string vol_str;
 };
 
 struct SDeviceInfo
@@ -90,7 +92,7 @@ struct UsnInt
     uint128 ParentFileReferenceNumber;
 	USN Usn;
 	DWORD Reason;
-	std::wstring Filename;
+	std::string Filename;
 	USN NextUsn;
 	DWORD attributes;
 };
@@ -102,108 +104,115 @@ class IChangeJournalListener;
 class ChangeJournalWatcher
 {
 public:
-	ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener);
+	ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB);
 	~ChangeJournalWatcher(void);
 
-	void watchDir(const std::wstring &dir);
+	void watchDir(const std::string &dir);
 
-	void update(std::wstring vol_str=L"");
+	void update(std::string vol_str="");
 	void update_longliving(void);
 
 	void set_freeze_open_write_files(bool b);
 
 	void set_last_backup_time(int64 t);
-private:
-	IChangeJournalListener *listener;
-	std::map<std::wstring, SChangeJournal> wdirs;
 
-	void createQueries(void);
-	SDeviceInfo getDeviceInfo(const std::wstring &name);
-	_i64 hasRoot(const std::wstring &root);
-	int64 addFrn(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid);
-	void addFrnTmp(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid);
-	void renameEntry(const std::wstring &name, _i64 id, uint128 pid);
+	void add_listener(IChangeJournalListener *pListener);
+
+private:
+	std::vector<IChangeJournalListener*> listeners;
+	std::map<std::string, SChangeJournal> wdirs;
+
+	SDeviceInfo getDeviceInfo(const std::string &name);
+	_i64 hasRoot(const std::string &root);
+	int64 addFrn(const std::string &name, uint128 parent_id, uint128 frn, _i64 rid);
+	void addFrnTmp(const std::string &name, uint128 parent_id, uint128 frn, _i64 rid);
+	void renameEntry(const std::string &name, _i64 id, uint128 pid);
 	void resetRoot(_i64 rid);
 	_i64 hasEntry( _i64 rid, uint128 frn);
 	std::vector<uint128> getChildren(uint128 frn, _i64 rid);
 	void deleteEntry(_i64 id);
 	void deleteEntry(uint128 frn, _i64 rid);
-	void saveJournalData(DWORDLONG journal_id, const std::wstring &vol, const UsnInt& rec, USN nextUsn);
-	std::vector<UsnInt> getJournalData( const std::wstring &vol);
-	void setIndexDone(const std::wstring &vol, int s);
-	void deleteJournalData(const std::wstring &vol);
-	void deleteJournalId(const std::wstring &vol);
+	void saveJournalData(DWORDLONG journal_id, const std::string &vol, const UsnInt& rec, USN nextUsn);
+	std::vector<UsnInt> getJournalData( const std::string &vol);
+	void setIndexDone(const std::string &vol, int s);
+	void deleteJournalData(const std::string &vol);
+	void deleteJournalId(const std::string &vol);
 
 	void deleteWithChildren( uint128 frn, _i64 rid);
-	std::wstring getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
+	std::string getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
-	void indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent, size_t& nDirFrns);
-	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported);
+	void indexRootDirs(_i64 rid, const std::string &root, uint128 parent, size_t& nDirFrns);
+	void indexRootDirs2(const std::string &root, SChangeJournal *sj, bool& not_supported);
 
-	uint128 getRootFRN( const std::wstring & root );
+	uint128 getRootFRN( const std::string & root );
 
-	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::wstring, bool>& local_open_write_files);
+	void updateWithUsn(const std::string &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::string, bool>& local_open_write_files);
 
-	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
-	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
+	void reindex(_i64 rid, std::string vol, SChangeJournal *sj);
+	void logEntry(const std::string &vol, const UsnInt *UsnRecord);
 
-	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, uint128 frn, uint128& parent_frn, bool& has_error);
+	std::string getNameFromMFTByFRN(const SChangeJournal &cj, uint128 frn, uint128& parent_frn, bool& has_error);
+
+	void hardlinkChange(const SChangeJournal &cj, const std::string& vol, uint128 frn, uint128 parent_frn, const std::string& name, bool closed);
+
+	void hardlinkDelete(const std::string& vol, uint128 frn);
+
+	void resetAll(const std::string& vol);
 
 	IDatabase *db;
 
-	IQuery *q_get_dev_id;
-	IQuery *q_has_root;
-	IQuery *q_add_frn;
 	IQuery *q_add_frn_tmp;
-	IQuery *q_reset_root;
-	IQuery *q_get_entry;
-	IQuery *q_get_children;
-	IQuery *q_del_entry;
-	IQuery *q_get_name;
-	IQuery *q_update_lastusn;
-	IQuery *q_add_journal;
-	IQuery *q_update_journal_id;
-	IQuery *q_rename_entry;
-	IQuery *q_create_tmp_table;
-	IQuery *q_save_journal_data;
-	IQuery *q_get_journal_data;
-	IQuery *q_set_index_done;
-	IQuery *q_del_journal_data;
-	IQuery *q_del_entry_frn;
-	IQuery *q_del_journal_id;
 
 	int64 last_index_update;
 
 	bool has_error;
 	bool indexing_in_progress;
-	std::wstring indexing_volume;
+	std::string indexing_volume;
 
 	bool freeze_open_write_files;
 
-	std::map<std::wstring, bool> open_write_files_frozen;
+	std::map<std::string, bool> open_write_files_frozen;
 
-	std::vector<std::wstring> error_dirs;
+	std::vector<std::string> error_dirs;
 
 	DirectoryWatcherThread * dwt;
 
 	int64 last_backup_time;
 
+	JournalDAO journal_dao;
+	
 	bool unsupported_usn_version_err;
 
+	std::string rename_old_name;
 	bool usn_logging_enabled;
 
+	size_t num_changes;
+	
 	PersistentOpenFiles open_write_files;
 };
 
 class IChangeJournalListener
 {
 public:
-	virtual void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)=0;
-    virtual void On_FileRemoved(const std::wstring & strFileName)=0;
-    virtual void On_FileAdded(const std::wstring & strFileName)=0;
-    virtual void On_FileModified(const std::wstring & strFileName, bool save_fn)=0;
-	virtual void On_ResetAll(const std::wstring & vol)=0;
-	virtual void On_DirRemoved(const std::wstring & strDirName)=0;
+	virtual int64 getStartUsn(int64 sequence_id)=0;
+	virtual void On_FileNameChanged(const std::string & strOldFileName, const std::string & strNewFileName, bool closed)=0;
+	virtual void On_DirNameChanged(const std::string & strOldFileName, const std::string & strNewFileName, bool closed)=0;
+    virtual void On_FileRemoved(const std::string & strFileName, bool closed)=0;
+    virtual void On_FileAdded(const std::string & strFileName, bool closed)=0;
+	virtual void On_DirAdded(const std::string & strFileName, bool closed)=0;
+    virtual void On_FileModified(const std::string & strFileName, bool closed)=0;
+	virtual void On_FileOpen(const std::string & strFileName)=0;
+	virtual void On_ResetAll(const std::string & vol)=0;
+	virtual void On_DirRemoved(const std::string & strDirName, bool closed)=0;
+	
+	struct SSequence
+	{
+		int64 id;
+		int64 start;
+		int64 stop;
+	};
+
+	virtual void Commit(const std::vector<SSequence>& sequences)=0;
 };
 
 #endif //CHANGEJOURNALWATCHER_H

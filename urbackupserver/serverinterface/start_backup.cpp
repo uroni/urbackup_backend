@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "action_header.h"
 #include "../../Interface/Pipe.h"
 #include "../server_status.h"
@@ -5,15 +23,15 @@
 
 namespace
 {
-	bool client_start_backup(IPipe *comm_pipe, std::wstring backup_type)
+	bool client_start_backup(IPipe *comm_pipe, std::string backup_type)
 	{
-		if(backup_type==L"full_file")
+		if(backup_type=="full_file")
 			comm_pipe->Write("START BACKUP FULL");
-		else if(backup_type==L"incr_file")
+		else if(backup_type=="incr_file")
 			comm_pipe->Write("START BACKUP INCR");
-		else if(backup_type==L"full_image")
+		else if(backup_type=="full_image")
 			comm_pipe->Write("START IMAGE FULL");
-		else if(backup_type==L"incr_image")
+		else if(backup_type=="incr_image")
 			comm_pipe->Write("START IMAGE INCR");
 		else
 			return false;
@@ -24,7 +42,7 @@ namespace
 
 ACTION_IMPL(start_backup)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 
 	std::string status_rights=helper.getRights("status");
 	std::vector<int> status_right_clientids;
@@ -39,15 +57,19 @@ ACTION_IMPL(start_backup)
 		}
 	}
 
-	std::wstring s_start_client=GET[L"start_client"];
+	std::string s_start_client=POST["start_client"];
 	std::vector<int> start_client;
-	std::wstring start_type=GET[L"start_type"];
-	if(!s_start_client.empty() && helper.getRights("start_backup")=="all")
+	std::string start_type=POST["start_type"];
+
+	SUser *session=helper.getSession();
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
+
+	if(session!=NULL && !s_start_client.empty() && helper.getRights("start_backup")=="all")
 	{
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
 
-		std::vector<std::wstring> sv_start_client;
-		Tokenize(s_start_client, sv_start_client, L",");
+		std::vector<std::string> sv_start_client;
+		Tokenize(s_start_client, sv_start_client, ",");
 
 		JSON::Array result;
 
@@ -104,7 +126,7 @@ ACTION_IMPL(start_backup)
 
 		JSON::Object ret;
 		ret.set("result", result);
-		helper.Write(ret.get(false));
+        helper.Write(ret.stringify(false));
 	}
 	else
 	{

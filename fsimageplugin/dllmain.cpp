@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -28,9 +28,22 @@
 #include <stdio.h>
 #include <string>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_fsimageplugin
+#define UnloadActions UnloadActions_fsimageplugin
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/File.h"
@@ -41,6 +54,9 @@ IServer *Server;
 #include <stdlib.h>
 
 #include "vhdfile.h"
+#ifndef _WIN32
+#include "cowfile.h"
+#endif
 #include "fs/ntfs.h"
 
 #include "pluginmgr.h"
@@ -52,6 +68,17 @@ IServer *Server;
 #endif
 #include "FileWrapper.h"
 
+#ifdef __linux__
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
+#include <errno.h>
+#endif
+
+#include "ClientBitmap.h"
+
 
 CImagePluginMgr *imagepluginmgr;
 
@@ -59,13 +86,13 @@ void PrintInfo(IFilesystem *fs);
 
 namespace
 {
-	bool decompress_vhd(const std::wstring& fn, const std::wstring& output)
+	bool decompress_vhd(const std::string& fn, const std::string& output)
 	{
-		std::wstring tmp_output=output;
+		std::string tmp_output=output;
 
 		if(fn==output)
 		{
-			tmp_output+=L".tmp";
+			tmp_output+=".tmp";
 		}
 
 		IFile* out = Server->openFile(tmp_output, MODE_WRITE);
@@ -73,11 +100,11 @@ namespace
 
 		if(out==NULL)
 		{
-			Server->Log(L"Error opening output file \""+output+L"\"", LL_ERROR);
+			Server->Log("Error opening output file \""+output+"\"", LL_ERROR);
 			return false;
 		}
 
-		if(findextension(fn)==L"vhdz")
+		if(findextension(fn)=="vhdz")
 		{
 			std::auto_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
 
@@ -85,9 +112,9 @@ namespace
 			{
 				if(vhdfile->isCompressed())
 				{
-					std::wstring parent_fn = vhdfile->getParent()->getFilenameW();
+					std::string parent_fn = vhdfile->getParent()->getFilename();
 					vhdfile.reset();
-					Server->Log(L"Decompressing parent VHD \""+parent_fn+L"\"...", LL_INFO);
+					Server->Log("Decompressing parent VHD \""+parent_fn+"\"...", LL_INFO);
 					bool b = decompress_vhd(parent_fn, parent_fn);
 
 					if(!b)
@@ -136,7 +163,7 @@ namespace
 				if(currentpc!=pcdone)
 				{
 					pcdone=currentpc;
-					Server->Log(L"Decompressing \""+fn+L"\"... "+convert(pcdone)+L"%", LL_INFO);
+					Server->Log("Decompressing \""+fn+"\"... "+convert(pcdone)+"%", LL_INFO);
 				}
 			} while (read>0);
 
@@ -147,9 +174,9 @@ namespace
 		{
 			out_file.clear();
 #ifdef _WIN32
-			return MoveFileExW(tmp_output.c_str(), fn.c_str(), MOVEFILE_REPLACE_EXISTING)==TRUE;
+			return MoveFileExW(Server->ConvertToWchar(tmp_output).c_str(), Server->ConvertToWchar(fn).c_str(), MOVEFILE_REPLACE_EXISTING)==TRUE;
 #else
-			return rename(Server->ConvertToUTF8(tmp_output).c_str(), Server->ConvertToUTF8(fn).c_str())==0;
+			return rename(tmp_output.c_str(), fn.c_str())==0;
 #endif
 		}
 		else
@@ -158,6 +185,27 @@ namespace
 		}
 	}
 
+
+	IVHDFile* open_device_file(std::string device_verify)
+	{
+		std::string ext = strlower(findextension(device_verify));
+		if(ext=="vhd" || ext=="vhdz")
+		{
+			return new VHDFile(device_verify, true,0);
+		}
+#if !defined(_WIN32) && !defined(__APPLE__)
+		else if(ext=="raw")
+		{
+			return new CowFile(device_verify, true,0);
+		}
+#endif
+		else
+		{
+			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);
+			return NULL;
+		}
+	}
+	
 	struct partition
 	{
 		unsigned char boot_flag;       
@@ -180,12 +228,12 @@ namespace
 			if(currentpc!=lastpc)
 			{
 				lastpc=currentpc;
-				Server->Log(L"Assembling... "+convert(currentpc)+L"%", LL_INFO);
+				Server->Log("Assembling... "+convert(currentpc)+"%", LL_INFO);
 			}
 		}
 	}
 
-	bool assemble_vhd(const std::vector<std::wstring>& fn, const std::wstring& output)
+	bool assemble_vhd(const std::vector<std::string>& fn, const std::string& output)
 	{
 		//This function leaks currently. Do exit program after function!
 
@@ -199,10 +247,10 @@ namespace
 
 		for(size_t i=0;i<fn.size();++i)
 		{
-			std::auto_ptr<IFile> f(Server->openFile(fn[i]+L".mbr", MODE_READ));
+			std::auto_ptr<IFile> f(Server->openFile(fn[i]+".mbr", MODE_READ));
 			if(f.get()==NULL)
 			{
-				Server->Log(L"Could not open MBR file "+fn[i]+L".mbr", LL_ERROR);
+				Server->Log("Could not open MBR file "+fn[i]+".mbr", LL_ERROR);
 				exit(1);
 			}
 			size_t fsize=(size_t)f->Size();
@@ -222,7 +270,9 @@ namespace
 			{
 				if(mbrdatas[j].partition_number==mbrdata.partition_number)
 				{
-					Server->Log(L"Volume "+mbrdatas[j].volume_name+L" has the same partition number as the volume "+mbrdata.volume_name+L". Please make sure you only select volumes from one device.", LL_ERROR);
+					Server->Log("Volume "+mbrdatas[j].volume_name+" ("+
+						fn[j]+") has the same partition number as the volume "+mbrdata.volume_name+
+						" ("+fn[i]+"). Please make sure you only select volumes from one device.", LL_ERROR);
 					return false;
 				}
 			}
@@ -258,7 +308,7 @@ namespace
 			VHDFile* in(new VHDFile(fn[i], true, 0));
 			if(!in->isOpen())
 			{
-				Server->Log(L"Error opening VHD-File \""+fn[i]+L"\"", LL_ERROR);
+				Server->Log("Error opening VHD-File \""+fn[i]+"\"", LL_ERROR);
 				return false;
 			}
 
@@ -274,7 +324,7 @@ namespace
 			}
 			else
 			{
-				Server->Log(L"Volume "+mbrdatas[i].volume_name+L" not an NTFS volume. Copying all blocks...", LL_WARNING);
+				Server->Log("Volume "+mbrdatas[i].volume_name+" not an NTFS volume. Copying all blocks...", LL_WARNING);
 				total_copy_bytes+=input_files[i]->Size();
 			}
 
@@ -297,7 +347,7 @@ namespace
 		VHDFile vhdout(output, false, total_size, 2*1024*1024, true, false);
 		if(!vhdout.isOpen())
 		{
-			Server->Log(L"Error opening output VHD-File \""+output+L"\"", LL_ERROR);
+			Server->Log("Error opening output VHD-File \""+output+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -313,7 +363,7 @@ namespace
 
 		for(size_t i=0;i<fn.size();++i)
 		{
-			Server->Log(L"Writing "+fn[i]+L" into output VHD...");
+			Server->Log("Writing "+fn[i]+" into output VHD...");
 
 			partition* cpart = partitions + (mbrdatas[i].partition_number-1);
 			int64 out_pos = cpart->start_sector*c_sector_size;
@@ -321,7 +371,7 @@ namespace
 
 			if(input_fs[i]!=NULL)
 			{
-				Server->Log(L"Optimized by only writing used NTFS sectors...");
+				Server->Log("Optimized by only writing used NTFS sectors...");
 
 				int64 blocksize = input_fs[i]->getBlocksize();
 				int64 numblocks = input_fs[i]->getSize()/blocksize;
@@ -396,6 +446,113 @@ namespace
 
 		return true;
 	}
+
+#ifdef __linux__
+	void fibmap_test(std::string fn, std::string bitmap_source)
+	{
+#ifdef FIBMAP
+		//leaks
+
+		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
+
+		int fd = open64(fn.c_str(), O_RDONLY| O_LARGEFILE);
+
+		if (fd == -1 || f.get()==NULL)
+		{
+			Server->Log("Error opening " + fn, LL_ERROR);
+			return;
+		}
+
+		IReadOnlyBitmap* bitmap = NULL;
+		CowFile* cowfile = NULL;
+		if (next(bitmap_source, 0, "raw:"))
+		{
+			cowfile = new CowFile(bitmap_source.substr(4), true, 0);
+			if (!cowfile->isOpen())
+			{
+				Server->Log("Error opening cowfile " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			FileWrapper* file_wrapper = new FileWrapper(cowfile, 512 * 1024);
+
+			FSNTFS* ntfs = new FSNTFS(file_wrapper, false, false);
+
+			if (ntfs->hasError())
+			{
+				Server->Log("Error opening ntfs on cowfile " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			bitmap = ntfs;
+		}
+		else if (next(bitmap_source, 0, "cbitmap:"))
+		{
+			ClientBitmap* cbitmap = new ClientBitmap(bitmap_source.substr(8));
+			if (cbitmap->hasError())
+			{
+				Server->Log("Error opening client bitmap " + bitmap_source, LL_ERROR);
+				return;
+			}
+
+			bitmap = cbitmap;
+		}
+		else
+		{
+			Server->Log("Unknown bitmap source: " + bitmap_source, LL_ERROR);
+			return;
+		}
+		
+		int block_size;
+		int rc = ioctl(fd, FIGETBSZ, &block_size);
+		if(rc!=0)
+		{
+			Server->Log("FIGETBSZ ioctl failed with errno "+convert(errno), LL_ERROR);
+			return;
+		}
+		
+		Server->Log("Block size: "+convert(block_size)+" File size: "+convert(f->Size()), LL_INFO);
+
+		_u32 exp_block = 0;
+		for (int64 i = 0; i < f->Size(); i += block_size)
+		{
+			_u32 input_blocknum = i / block_size;
+			int rc = ioctl(fd, FIBMAP, &input_blocknum);
+			int64 blocknum = input_blocknum;
+
+			if (rc != 0)
+			{
+				Server->Log("FIBMAP ioctl failed with errno "+convert(errno), LL_ERROR);
+				return;
+			}
+
+			if (cowfile != NULL)
+			{
+				cowfile->Seek(512*1024 + blocknum * block_size);
+				if (!cowfile->has_sector())
+				{
+					Server->Log("Cowfile does not have block at " + convert(blocknum*block_size), LL_ERROR);
+				}
+			}
+
+			if (bitmap != NULL)
+			{
+				if (!bitmap->hasBlock((blocknum*block_size)/bitmap->getBlocksize()))
+				{
+					Server->Log("Bitmap bit for block at " + convert(blocknum*block_size)+" not set", LL_ERROR);
+				}
+			}
+
+			if (blocknum!=0 && blocknum != exp_block)
+			{
+				Server->Log("Block " + convert(i / block_size) + " is at " + convert(blocknum*block_size));
+			}
+
+			exp_block = blocknum + 1;
+		}
+#endif //FIBMAP
+	}
+#endif //__linux__
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
@@ -414,7 +571,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		{
 			Server->deleteFile(compress_file+".urz");
-			CompressedFile compFile(widen(compress_file+".urz"), MODE_RW_CREATE);
+			CompressedFile compFile(compress_file+".urz", MODE_RW_CREATE);
 
 			if(compFile.hasError())
 			{
@@ -451,17 +608,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifdef _WIN32
 		if(decompress=="SelectViaGUI")
 		{
-			std::wstring filter;
-			filter += L"Compressed image files (*.vhdz)";
-			filter += (wchar_t)'\0';
-			filter += L"*.vhdz";
-			filter += (wchar_t)'\0';
-			filter += (wchar_t)'\0';
-			std::vector<std::wstring> res = file_via_dialog(L"Please select compressed image file to decompress",
-				filter, false, true, L"");
+			std::string filter;
+			filter += "Compressed image files (*.vhdz)";
+			filter += '\0';
+			filter += "*.vhdz";
+			filter += '\0';
+			filter += '\0';
+			std::vector<std::string> res = file_via_dialog("Please select compressed image file to decompress",
+				filter, false, true, "");
 			if(!res.empty())
 			{
-				decompress = Server->ConvertToUTF8(res[0]);
+				decompress = res[0];
 			}
 			else
 			{
@@ -492,7 +649,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			targetName = Server->getServerParameter("output_fn");
 		}
 
-		bool b = decompress_vhd(Server->ConvertToUnicode(decompress), Server->ConvertToUnicode(targetName));		
+		bool b = decompress_vhd(decompress, targetName);		
 
 		exit(b?0:3);
 	}
@@ -501,33 +658,33 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!assemble.empty())
 	{
 		bool selected_via_gui=false;
-		std::vector<std::wstring> input_files;
-		std::wstring output_file;
+		std::vector<std::string> input_files;
+		std::string output_file;
 #ifdef _WIN32
 		if(assemble=="SelectViaGUI")
 		{
-			std::wstring filter;
-			filter += L"Image files (*.vhdz;*.vhd)";
-			filter += (wchar_t)'\0';
-			filter += L"*.vhdz;*.vhd";
-			filter += (wchar_t)'\0';
+			std::string filter;
+			filter += "Image files (*.vhdz;*.vhd)";
+			filter += '\0';
+			filter += "*.vhdz;*.vhd";
+			filter += '\0';
 			/*filter += L"Image files (*.vhd)";
-			filter += (wchar_t)'\0';
+			filter += '\0';
 			filter += L"*.vhd";
-			filter += (wchar_t)'\0';*/
-			filter += (wchar_t)'\0';
-			input_files = file_via_dialog(L"Please select all the images to assemble into one image",
-				filter, true, true, L"");
+			filter += '\0';*/
+			filter += '\0';
+			input_files = file_via_dialog("Please select all the images to assemble into one image",
+				filter, true, true, "");
 
 			filter.clear();
-			filter += L"Image file (*.vhd)";
-			filter += (wchar_t)'\0';
-			filter += L"*.vhd";
-			filter += (wchar_t)'\0';
-			filter += (wchar_t)'\0';
+			filter += "Image file (*.vhd)";
+			filter += '\0';
+			filter += "*.vhd";
+			filter += '\0';
+			filter += '\0';
 
-			std::vector<std::wstring> output_files = file_via_dialog(L"Please select where to save the output image",
-				filter, false, false, L"vhd");
+			std::vector<std::string> output_files = file_via_dialog("Please select where to save the output image",
+				filter, false, false, "vhd");
 
 			if(!output_files.empty())
 			{
@@ -540,8 +697,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(!selected_via_gui)
 		{
-			TokenizeMail(Server->ConvertToUnicode(assemble), input_files, L";");
-			output_file = Server->ConvertToUnicode(Server->getServerParameter("output_file"));
+			TokenizeMail(assemble, input_files, ";");
+			output_file = Server->getServerParameter("output_file");
 		}
 
 		if(input_files.empty())
@@ -566,12 +723,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false, true);
+		FSNTFS ntfs("\\\\.\\"+devinfo+":", false, true);
 	
 		if(!ntfs.hasError())
 		{
-			Server->Log("Used Space: "+nconvert(ntfs.calculateUsedSpace())+" of "+nconvert(ntfs.getSize()));
-			Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
+			Server->Log("Used Space: "+convert(ntfs.calculateUsedSpace())+" of "+convert(ntfs.getSize()));
+			Server->Log(convert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
 		}
 	}
 
@@ -579,7 +736,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!vhdcopy_in.empty())
 	{
 		Server->Log("VHDCopy.");
-		VHDFile in(Server->ConvertToUnicode(vhdcopy_in), true,0);
+		VHDFile in(vhdcopy_in, true,0);
 		if(in.isOpen()==false)
 		{
 			Server->Log("Error opening VHD-File \""+vhdcopy_in+"\"", LL_ERROR);
@@ -589,7 +746,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		uint64 vhdsize=in.getSize();
 		float vhdsize_gb=(vhdsize/1024)/1024.f/1024.f;
 		uint64 vhdsize_mb=vhdsize/1024/1024;
-		Server->Log("VHD Info: Size: "+nconvert(vhdsize_gb)+" GB "+nconvert(vhdsize_mb)+" MB",LL_INFO);
+		Server->Log("VHD Info: Size: "+convert(vhdsize_gb)+" GB "+convert(vhdsize_mb)+" MB",LL_INFO);
 		unsigned int vhd_blocksize=in.getBlocksize();
 		
 		std::string vhdcopy_out=Server->getServerParameter("vhdcopy_out");
@@ -615,7 +772,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					skip=atoi(skip_s.c_str());
 				}
 
-				Server->Log("Skipping "+nconvert(skip)+" bytes...", LL_INFO);
+				Server->Log("Skipping "+convert(skip)+" bytes...", LL_INFO);
 				in.Seek(skip);
 				char buffer[4096];
 				size_t read;
@@ -642,7 +799,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 				if(currpos!=skip)
 				{
-					Server->Log("First VHD sector at "+nconvert(currpos), LL_INFO);
+					Server->Log("First VHD sector at "+convert(currpos), LL_INFO);
 				}
 
 				do
@@ -676,7 +833,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 						int pc=(int)(((float)currpos/(float)vhdsize)*100.f+0.5f);
 						if(pc!=last_pc)
 						{
-							Server->Log(nconvert(pc)+"%", LL_INFO);
+							Server->Log(convert(pc)+"%", LL_INFO);
 							last_pc=pc;
 						}
 					}
@@ -731,7 +888,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!vhdinfo.empty())
 	{
 		std::cout << "--VHDINFO--" << std::endl;
-		VHDFile in(Server->ConvertToUnicode(vhdinfo), true,0);
+		VHDFile in(vhdinfo, true,0);
 		if(in.isOpen()==false)
 		{
 			Server->Log("Error opening VHD-File \""+vhdinfo+"\"", LL_ERROR);
@@ -741,7 +898,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		uint64 vhdsize=in.getSize();
 		float vhdsize_gb=(vhdsize/1024)/1024.f/1024.f;
 		uint64 vhdsize_mb=vhdsize/1024/1024;
-		std::cout << ("VHD Info: Size: "+nconvert(vhdsize_gb)+" GB "+nconvert(vhdsize_mb)+" MB") << std::endl;
+		std::cout << ("VHD Info: Size: "+convert(vhdsize_gb)+" GB "+convert(vhdsize_mb)+" MB") << std::endl;
 		std::cout << "Blocksize: " << in.getBlocksize() << " Bytes" << std::endl;
 		
 		uint64 new_blocks=0;
@@ -761,13 +918,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(3);
 	}
 
-	std::string vhd_verify=Server->getServerParameter("vhd_verify");
-	if(!vhd_verify.empty())
+	std::string image_verify=Server->getServerParameter("image_verify");
+	if(!image_verify.empty())
 	{
-		VHDFile in(Server->ConvertToUnicode(vhd_verify), true,0);
-		if(in.isOpen()==false)
+		std::auto_ptr<IVHDFile> in(open_device_file(image_verify));
+
+		if(in.get()==NULL || in->isOpen()==false)
 		{
-			Server->Log("Error opening VHD-File \""+vhdcopy_in+"\"", LL_ERROR);
+			Server->Log("Error opening Image-File \""+image_verify+"\"", LL_ERROR);
 			exit(4);
 		}
 
@@ -776,10 +934,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if(s_hashfile.empty())
 		{
 			has_hashfile=false;
-			s_hashfile=vhd_verify+".hash";
+			s_hashfile=image_verify+".hash";
 		}
-
-		std::string s_hashfile2=Server->getServerParameter("hashfile_2");
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
 		if(hashfile==NULL)
@@ -788,41 +944,38 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(5);
 		}
 
-		IFile *hashfile2=NULL;
-		if(!s_hashfile2.empty())
+		bool verify_all = Server->getServerParameter("verify_all")=="true";
+		
+		if(verify_all)
 		{
-			hashfile2=Server->openFile(s_hashfile, MODE_READ);
-			if(hashfile2==NULL)
-			{
-				Server->Log("Error opening hashfile");
-				exit(5);
-			}
+			Server->Log("Verifying empty blocks");
 		}
-
-		unsigned int blocksize=in.getBlocksize();
+		
+		const int64 vhd_blocksize=(1024*1024)/2;
 		int skip=1024*512;
-		in.Seek(skip);
+		in->Seek(skip);
 		uint64 currpos=skip;
-		uint64 size=in.getSize();
+		uint64 size=in->getSize();
 		sha256_ctx ctx;
 		sha256_init(&ctx);
 		char buf[512];
 		int diff=0;
 		int diff_w=0;
+		size_t ok_blocks=0;
 		int last_pc=0;
 		unsigned char dig_z[32];
 		bool has_dig_z=false;
-		for(;currpos<size;currpos+=blocksize)
+		for(;currpos<size;currpos+=vhd_blocksize)
 		{
-			in.Seek(currpos);
-			bool has_sector=in.this_has_sector();
+			in->Seek(currpos);
+			bool has_sector=verify_all || in->this_has_sector(vhd_blocksize);
 
 			if(!has_sector && !has_dig_z)
 			{
-				for(unsigned int i=0;i<blocksize;i+=512)
+				for(unsigned int i=0;i<vhd_blocksize;i+=512)
 				{
 					size_t read;
-					in.Read(buf, 512, read);
+					in->Read(buf, 512, read);
 					sha256_update(&ctx, (unsigned char*)buf, 512);
 				}
 				sha256_final(&ctx, dig_z);
@@ -834,10 +987,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 			if(has_sector)
 			{
-				for(unsigned int i=0;i<blocksize;i+=512)
+				for(unsigned int i=0;i<vhd_blocksize && currpos+i<size;i+=512)
 				{
 					size_t read;
-					in.Read(buf, 512, read);
+					in->Read(buf, 512, read);
 					sha256_update(&ctx, (unsigned char*)buf, 512);
 				}
 				
@@ -858,19 +1011,23 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(memcmp(dig_r, dig_f, 32)!=0)
 			{
 				++diff;
-				Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+				Server->Log("Different blocks: "+convert(diff)+" at pos "+convert(currpos)+" has_sector="+convert(has_sector));
 			}
 			else if(has_sector && has_hashfile)
 			{
 				++diff_w;
-				Server->Log("Wrong difference: "+nconvert(diff_w)+" at pos "+nconvert(currpos));
+				Server->Log("Wrong difference: "+convert(diff_w)+" at pos "+convert(currpos));
+			}
+			else
+			{
+				++ok_blocks;
 			}
 		
 			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
 			if(pc!=last_pc)
 			{
 				last_pc=pc;
-				Server->Log("Checking hashfile: "+nconvert(pc)+"%");
+				Server->Log("Checking hashfile: "+convert(pc)+"%");
 			}
 			
 		}
@@ -878,15 +1035,26 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Hashfile does match");
 		}
-		Server->Log("Different blocks: "+nconvert(diff));
-		Server->Log("Wrong differences: "+nconvert(diff_w));
-		exit(7);
+		Server->Log("Blocks with correct hash: "+convert(ok_blocks));
+		Server->Log("Different blocks: "+convert(diff));
+		Server->Log("Wrong differences: "+convert(diff_w));
+		exit(diff==0?0:7);
 	}
 
 	std::string device_verify=Server->getServerParameter("device_verify");
 	if(!device_verify.empty())
 	{
-		FSNTFS fs(Server->ConvertToUnicode(device_verify), true, false);
+		std::auto_ptr<IVHDFile> in(open_device_file(device_verify));
+
+		if(in.get()==NULL || in->isOpen()==false)
+		{
+			Server->Log("Error opening Image-File \""+device_verify+"\"", LL_ERROR);
+			exit(4);
+		}
+
+		int skip=1024*512;
+		FileWrapper wrapper(in.get(), skip);
+		FSNTFS fs(&wrapper, false, false);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -898,14 +1066,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string s_hashfile=Server->getServerParameter("hash_file");
 		if(s_hashfile.empty())
 		{
-			Server->Log("Hash file parameter not set (--hash_file)", LL_ERROR);
-			exit(4);
+			s_hashfile = device_verify+".hash";
 		}
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
 		if(hashfile==NULL)
 		{
-			Server->Log("Error opening hashfile");
+			Server->Log("Error opening hashfile "+s_hashfile);
 			exit(7);
 		}
 
@@ -918,6 +1085,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		sha256_init(&ctx);
 		int diff=0;
 		int last_pc=0;
+		int mixed=0;
 		std::vector<char> zerobuf;
 		zerobuf.resize(ntfs_blocksize);
 		memset(&zerobuf[0], 0, ntfs_blocksize);
@@ -930,18 +1098,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				fs_buffer buf(&fs, fs.readBlock(currpos/ntfs_blocksize));
 
-				if(buf.get())
+				if(buf.get()==NULL)
 				{
-					Server->Log("Could not read block "+nconvert(currpos/ntfs_blocksize), LL_ERROR);
+					Server->Log("Could not read block "+convert(currpos/ntfs_blocksize), LL_ERROR);
 				}
 				else
 				{
 					sha256_update(&ctx, (unsigned char*)buf.get(), ntfs_blocksize);
 				}
+				mixed = mixed | 1;
 			}
 			else
 			{
 				sha256_update(&ctx, (unsigned char*)&zerobuf[0], ntfs_blocksize);
+
+				mixed = mixed | 2;
 			}
 
 			if( (currpos+ntfs_blocksize)%vhd_sectorsize==0 )
@@ -958,18 +1129,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				sha256_final(&ctx, dig_r);
 				sha256_init(&ctx);
 
-				if(memcmp(dig_r, dig_f, 32)!=0)
+				if(memcmp(dig_r, dig_f, 32)!=0 && mixed!=2)
 				{
 					++diff;
-					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+					Server->Log("Different blocks: "+convert(diff)+" at pos "+convert(currpos)+" mixed = "+
+						(mixed==3? "true":"false")+" ("+convert(mixed)+")" );
 				}
+
+				mixed=0;
 			}		
 		
 			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
 			if(pc!=last_pc)
 			{
 				last_pc=pc;
-				Server->Log("Checking device hashsums: "+nconvert(pc)+"%");
+				Server->Log("Checking device hashsums: "+convert(pc)+"%");
 			}
 			
 		}
@@ -977,14 +1151,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Device does not match hash file");
 		}
-		Server->Log("Different blocks: "+nconvert(diff));
+		Server->Log("Different blocks: "+convert(diff));
 		exit(7);
 	}
 
 	std::string vhd_cmp=Server->getServerParameter("vhd_cmp");
 	if(!vhd_cmp.empty())
 	{
-		VHDFile in(Server->ConvertToUnicode(vhd_cmp), true,0);
+		VHDFile in(vhd_cmp, true,0);
 		if(in.isOpen()==false)
 		{
 			Server->Log("Error opening VHD-File \""+vhd_cmp+"\"", LL_ERROR);
@@ -992,7 +1166,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		std::string other=Server->getServerParameter("other");
-		VHDFile other_in(Server->ConvertToUnicode(other), true,0);
+		VHDFile other_in(other, true,0);
 		if(other_in.isOpen()==false)
 		{
 			Server->Log("Error opening VHD-File \""+other+"\"", LL_ERROR);
@@ -1019,11 +1193,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 			if(in.this_has_sector() && !other_in.this_has_sector())
 			{
-				Server->Log("Sector only in file 1 at pos "+nconvert(currpos));
+				Server->Log("Sector only in file 1 at pos "+convert(currpos));
 			}
 			if(!in.this_has_sector() && other_in.this_has_sector())
 			{
-				Server->Log("Sector only in file 2 at pos "+nconvert(currpos));
+				Server->Log("Sector only in file 2 at pos "+convert(currpos));
 			}
 
 			if(has_sector)
@@ -1064,9 +1238,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 										std::string fn_uc;
 										fn_uc.resize(fn.filename_length*2);
 										memcpy(&fn_uc[0], buf1+pos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
-										Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+										Server->Log("Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
 									}
-									Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+									Server->Log("Attribute Type: "+convert(attr.type)+" nonresident="+convert(attr.nonresident)+" length="+convert(attr.length), LL_DEBUG);
 								}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
 							}
 
@@ -1074,7 +1248,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 							{
 								if(buf1[i]!=buf2[i])
 								{
-									Server->Log("Position "+nconvert(i)+": "+nconvert((int)buf1[i])+"<->"+nconvert((int)buf2[i]));
+									Server->Log("Position "+convert(i)+": "+convert((int)buf1[i])+"<->"+convert((int)buf2[i]));
 								}
 							}
 						}
@@ -1086,7 +1260,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				if(hdiff)
 				{
 					++diff;
-					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+					Server->Log("Different blocks: "+convert(diff)+" at pos "+convert(currpos));
 				}
 			}
 		
@@ -1094,18 +1268,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(pc!=last_pc)
 			{
 				last_pc=pc;
-				Server->Log("Checking hashfile: "+nconvert(pc)+"%");
+				Server->Log("Checking hashfile: "+convert(pc)+"%");
 			}
 			
 		}
-		Server->Log("Different blocks: "+nconvert(diff));
+		Server->Log("Different blocks: "+convert(diff));
 		exit(7);
 	}
 
 	std::string vhd_fixmftmirr=Server->getServerParameter("vhd_checkmftmirr");
 	if(!vhd_fixmftmirr.empty())
 	{
-		VHDFile vhd(Server->ConvertToUnicode(vhd_fixmftmirr), false, 0);
+		VHDFile vhd(vhd_fixmftmirr, false, 0);
 		vhd.addVolumeOffset(1024*512);
 
 		if(vhd.isOpen()==false)
@@ -1135,14 +1309,32 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(0);
 	}
 
+	std::string fibmap_test_fn = Server->getServerParameter("fibmap_test");
+	if (!fibmap_test_fn.empty())
+	{
+#ifdef __linux__
+		fibmap_test(fibmap_test_fn, Server->getServerParameter("bitmap_source"));
+#endif
+		exit(0);
+	}
+
 	imagepluginmgr=new CImagePluginMgr;
 
 	Server->RegisterPluginThreadsafeModel( imagepluginmgr, "fsimageplugin");
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -fsimageplugin- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)
 {
 	
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

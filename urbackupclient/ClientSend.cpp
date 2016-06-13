@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -51,8 +51,26 @@ void ClientSend::operator()(void)
 		BufferItem item;
 		bool has_item=false;
 		bool do_exit;
+		bool needs_flush = true;
 		{
 			IScopedLock lock(mutex);
+
+			if(tqueue.empty() && exit==false)
+			{
+				cond->wait(&lock, 100);
+
+				if(tqueue.empty() && needs_flush)
+				{
+					needs_flush = false;
+					if(!has_error
+						&& !pipe->Flush(-1))
+					{
+						print_last_error();
+						has_error=true;
+					}
+				}
+			}
+
 			if(tqueue.empty() && exit==false)
 				cond->wait(&lock);
 
@@ -70,7 +88,7 @@ void ClientSend::operator()(void)
 		{
 			if(!has_error)
 			{
-				bool b=pipe->Write(item.buf, item.bsize);
+				bool b=pipe->Write(item.buf, item.bsize, 60000, false);
 				if(!b)
 				{
 					print_last_error();
@@ -82,6 +100,13 @@ void ClientSend::operator()(void)
 		}
 		else if(do_exit)
 		{
+			if (!has_error
+				&& !pipe->Flush(-1))
+			{
+				print_last_error();
+				has_error = true;
+			}
+
 			break;
 		}
 	}
@@ -142,8 +167,8 @@ bool ClientSend::hasError(void)
 void ClientSend::print_last_error(void)
 {
 #ifdef _WIN32
-	Server->Log("Sending failed. Last error: "+nconvert((int)GetLastError()), LL_DEBUG);
+	Server->Log("Sending failed. Last error: "+convert((int)GetLastError()), LL_DEBUG);
 #else
-	Server->Log("Sending failed. Last error: "+nconvert(errno), LL_DEBUG);
+	Server->Log("Sending failed. Last error: "+convert(errno), LL_DEBUG);
 #endif
 }

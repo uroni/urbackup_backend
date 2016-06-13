@@ -1,23 +1,26 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
 #include "vld.h"
 #define DEF_SERVER
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#endif
 #include "Server.h"
 #include "AcceptThread.h"
 #include "SessionMgr.h"
@@ -33,6 +36,7 @@
 
 #ifdef _WIN32
 #include <conio.h>
+#include <signal.h>
 #endif
 #ifdef AS_SERVICE
 #	include "win_service/nt_service.h"
@@ -64,7 +68,7 @@ void destroy_mutex_selthread(void);
 void termination_handler(int signum)
 {
 	run=false;
-	Server->Log("Shutting down (Signal "+nconvert(signum)+")", LL_WARNING);
+	Server->Log("Shutting down (Signal "+convert(signum)+")", LL_WARNING);
 }
 
 void hub_handler(int signum)
@@ -74,6 +78,24 @@ void hub_handler(int signum)
 		Server->setLogFile(g_logfile, g_logfile_user);
 	}
 }
+#else
+void abort_handler(int signal)
+{
+	Server->Log("Program abort (SIGABRT)", LL_ERROR);
+	RaiseException(0, 0, 0, NULL);
+}
+
+void invalid_parameter_handler(const wchar_t* expression,
+	const wchar_t* function,
+	const wchar_t* file,
+	unsigned int line,
+	uintptr_t pReserved)
+{
+	Server->Log("Invalid parameter detected in function " + Server->ConvertFromWchar(function) +
+		" File: " + Server->ConvertFromWchar(file) + " Line: " + convert(line) + " Expression: " + Server->ConvertFromWchar(expression), LL_ERROR);
+	RaiseException(0, 0, 0, NULL);
+}
+
 #endif
 
 #ifdef AS_SERVICE
@@ -92,9 +114,16 @@ CAcceptThread *c_at=NULL;
 int main_fkt(int argc, char *argv[]);
 
 #ifndef AS_SERVICE
-int main(int argc, char *argv[])
-{
+
+#ifdef _WIN32
+#define MAINNAME main
 #else
+#define MAINNAME real_main
+#endif
+
+int MAINNAME(int argc, char *argv[])
+{
+#else //AS_SERVICE
 int my_init_fcn_t(int argc, char *argv[])
 {
 #endif
@@ -165,6 +194,7 @@ int main_fkt(int argc, char *argv[])
 	bool daemon=false;
 	std::string daemon_user;
 	std::string pidfile;
+	bool log_console_no_time=false;
 
 	for(int i=1;i<argc;++i)
 	{
@@ -246,6 +276,10 @@ int main_fkt(int argc, char *argv[])
 			Server->setLogRotationNumFiles(atoi(narg.c_str()));
 			++i;
 		}
+		else if( carg=="--log_console_no_time")
+		{
+			log_console_no_time = true;
+		}
 		else
 		{
 			if( carg.size()>1 && carg[0]=='-' )
@@ -291,24 +325,41 @@ int main_fkt(int argc, char *argv[])
 #ifndef AS_SERVICE
 		{
 			wchar_t buf[MAX_PATH];
-			GetCurrentDirectory(MAX_PATH, buf);
-			Server->setServerWorkingDir(buf);
+			GetCurrentDirectoryW(MAX_PATH, buf);
+			Server->setServerWorkingDir(Server->ConvertFromWchar(buf));
 		}
 #else
 		{
 			wchar_t buf[MAX_PATH+1];
 			GetModuleFileNameW(NULL, buf, MAX_PATH);
-			Server->setServerWorkingDir(ExtractFilePath(buf));
-			SetCurrentDirectory(ExtractFilePath(buf).c_str());
+			Server->setServerWorkingDir(ExtractFilePath(Server->ConvertFromWchar(buf)));
+			SetCurrentDirectoryW(Server->ConvertToWchar(ExtractFilePath(Server->ConvertFromWchar(buf))).c_str());
 		}
 #endif
 #else
-		Server->setServerWorkingDir(Server->ConvertToUnicode(ExtractFilePath(argv[0])));
+		char buf[4096];
+		char* cwd = getcwd(buf, sizeof(buf));
+		if(cwd==NULL)
+		{
+			Server->setServerWorkingDir((ExtractFilePath(argv[0])));
+		}
+		else
+		{
+			Server->setServerWorkingDir((cwd));
+		}		
 #endif
 	}
 	else
 	{
-		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
+		Server->setServerWorkingDir((workingdir));
+#ifndef _WIN32
+		int rc = chdir((Server->getServerWorkingDir()).c_str());
+		if(rc!=0)
+		{
+			Server->Log("Cannot set working directory to directory "+workingdir, LL_ERROR);
+		}
+
+#endif
 	}
 
 
@@ -338,7 +389,7 @@ int main_fkt(int argc, char *argv[])
 			exit(0);
 		}
 
-		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		chdir((Server->getServerWorkingDir()).c_str());
 		
 		if(pidfile.empty())
 		{
@@ -380,6 +431,11 @@ int main_fkt(int argc, char *argv[])
 			Server->setLogLevel(LL_ERROR);
 	}
 
+	if(log_console_no_time)
+	{
+		Server->setLogConsoleTime(false);
+	}
+
 	if(is_big_endian())
 	{
 		Server->setLogLevel(LL_DEBUG);
@@ -388,14 +444,12 @@ int main_fkt(int argc, char *argv[])
 #ifndef _WIN32
 	if( !daemon_user.empty() && (getuid()==0 || geteuid()==0) )
 	{
-	    Server->Log("Changing user...", LL_DEBUG);
 		char buf[1000];
 	    passwd pwbuf;
 		passwd *pw;
 		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
 	    if(pw!=NULL)
 	    {
-			Server->Log("done.");
 			setgid(pw->pw_gid);
 			setuid(pw->pw_uid);
 	    }
@@ -410,10 +464,12 @@ int main_fkt(int argc, char *argv[])
 		Server->Log("SQLite3 wasn't compiled with the SQLITE_THREADSAFE. Exiting.", LL_ERROR);
 		return 43;
 	}
+
+	sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 	//sqlite3_enable_shared_cache(1);
 
 	{
-		str_nmap::iterator iter=srv_params.find("sqlite_tmpdir");
+		str_map::iterator iter=srv_params.find("sqlite_tmpdir");
 		if(iter!=srv_params.end() && !iter->second.empty())
 		{
 			sqlite3_temp_directory=sqlite3_mprintf("%s", iter->second.c_str());
@@ -428,6 +484,8 @@ int main_fkt(int argc, char *argv[])
 			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
 		}
 	}
+
+	Server->LoadStaticPlugins();
 	
 	CLoadbalancerClient *lbs=NULL;
 	if( loadbalancer!="" )
@@ -452,6 +510,9 @@ int main_fkt(int argc, char *argv[])
 	}
 	if (signal (SIGTERM, termination_handler) == SIG_IGN)
 		signal (SIGTERM, SIG_IGN);
+#else
+	signal(SIGABRT, abort_handler);
+	_set_invalid_parameter_handler(invalid_parameter_handler);
 #endif
 	
 	((CSessionMgr*)Server->getSessionMgr())->startTimeoutSessionThread();
@@ -540,6 +601,12 @@ void my_shutdown_fcn(void)
 		delete Server;
 		Server=NULL;
 	}*/
+	if (Server != NULL)
+	{
+		Server->ShutdownPlugins();
+	}
+	nt_service&  service = nt_service::instance(L"UrBackupBackend");
+	service.stop(0);
 }
 void my_stop_fcn(void)
 {
@@ -560,7 +627,7 @@ void my_stop_fcn(void)
 	{
 		Server->ShutdownPlugins();
 	}
-	nt_service&  service = nt_service::instance(L"CompiledServer");
+	nt_service&  service = nt_service::instance(L"UrBackupBackend");
 	service.stop(0);
 }
 
@@ -579,7 +646,17 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		std::string args=getFile("args.txt");
+		std::string args=trim(getFile("args.txt"));
+
+		for (size_t i = 0; i < 10; ++i)
+		{
+			std::string extra_args = trim(getFile("extra_args_" + convert(i) + ".txt"));
+			if (!extra_args.empty())
+			{
+				args += "\n" + extra_args;
+			}
+		}
+
 		int lc=linecount(args);
 		srv_argv=new char*[lc+1];
 		srv_argv[0]=new char[strlen(argv[0])+1];
@@ -608,7 +685,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		// creates an access point to the instance of the service framework
-		nt_service&  service = nt_service::instance(L"CompiledServer");
+		nt_service&  service = nt_service::instance(L"UrBackupBackend");
 
 		// register "my_service_main" to be executed as the service main method 
 		service.register_service_main( my_service_main );

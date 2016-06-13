@@ -15,8 +15,8 @@ class ICondition;
 
 struct SServerSettings
 {
-	std::string name;
-	unsigned short port;
+	std::vector<std::pair<std::string, unsigned short> > servers;
+	size_t selected_server;
 	std::string clientname;
 	std::string authkey;
 	bool internet_compress;
@@ -86,6 +86,7 @@ public:
 
 private:
 	std::string generateRandomBinaryAuthKey(void);
+	void printInfo( IPipe * pipe );
 	IPipe *cs;
 	SServerSettings server_settings;
 };

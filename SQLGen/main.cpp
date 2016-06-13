@@ -44,7 +44,15 @@ int main(int argc, char* argv[])
 	writestring(cppfile_data, cppfile+".sqlgenbackup");
 	writestring(headerfile_data, headerfile+".sqlgenbackup");
 
-	sqlgen(Server->getDatabase(Server->getThreadID(), maindb), cppfile_data, headerfile_data);
+	try
+	{
+		sqlgen(Server->getDatabase(Server->getThreadID(), maindb), cppfile_data, headerfile_data);
+	}
+	catch (std::exception& e)
+	{
+		std::cout << "Error: " << e.what() << std::endl;
+		return 1;
+	}
 
 	writestring(cppfile_data, cppfile);
 	writestring(headerfile_data, headerfile);

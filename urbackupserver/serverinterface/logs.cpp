@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -21,19 +21,18 @@
 #include "action_header.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../urlplugin/IUrlFactory.h"
+#include "backups.h"
 
 extern IUrlFactory *url_fak;
 
-std::string constructFilter(const std::vector<int> &clientid, std::string key);
-
 ACTION_IMPL(logs)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
-	std::wstring filter=GET[L"filter"];
-	std::wstring s_logid=GET[L"logid"];
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
+	std::string filter=POST["filter"];
+	std::string s_logid=POST["logid"];
 	int logid=watoi(s_logid);
 	std::string rights=helper.getRights("logs");
 	std::vector<int> clientid;
@@ -52,14 +51,14 @@ ACTION_IMPL(logs)
 		{
 			filter+=convert(clientid[i]);
 			if(i+1<clientid.size())
-				filter+=L",";
+				filter+=",";
 		}
 	}
 	std::vector<int> v_filter;
 	if(!filter.empty())
 	{
-		std::vector<std::wstring> s_filter;
-		Tokenize(filter, s_filter, L",");
+		std::vector<std::string> s_filter;
+		Tokenize(filter, s_filter, ",");
 		for(size_t i=0;i<s_filter.size();++i)
 		{
 			v_filter.push_back(watoi(s_filter[i]));
@@ -69,7 +68,7 @@ ACTION_IMPL(logs)
 	{
 		IDatabase *db=helper.getDatabase();
 		std::string qstr="SELECT c.id AS id, c.name AS name FROM clients c WHERE ";
-		if(!clientid.empty()) qstr+=constructFilter(clientid, "c.id")+" AND ";
+		if(!clientid.empty()) qstr+=backupaccess::constructFilter(clientid, "c.id")+" AND ";
 		qstr+=" EXISTS (SELECT id FROM logs l WHERE l.clientid=c.id LIMIT 1) ORDER BY name";
 		
 		IQuery *q_clients=db->Prepare(qstr);
@@ -79,8 +78,8 @@ ACTION_IMPL(logs)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"]));
-			obj.set("name", res[i][L"name"]);
+			obj.set("id", watoi(res[i]["id"]));
+			obj.set("name", res[i]["name"]);
 			clients.add(obj);
 		}
 		if(clientid.empty())
@@ -88,10 +87,10 @@ ACTION_IMPL(logs)
 			ret.set("all_clients", JSON::Value(true));
 		}
 		ret.set("clients", clients);
-		ret.set("has_user", session->id>0);
+		ret.set("has_user", session->id!=SESSION_ID_TOKEN_AUTH && session->id!=SESSION_ID_ADMIN);
 
 		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
-											:" WHERE "+constructFilter(clientid, "id"))+" ORDER BY name");
+											:" WHERE "+backupaccess::constructFilter(clientid, "id"))+" ORDER BY name");
 
 		res=q_log_right_clients->Read();
 		q_log_right_clients->Reset();
@@ -99,8 +98,8 @@ ACTION_IMPL(logs)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"]));
-			obj.set("name", res[i][L"name"]);
+			obj.set("id", watoi(res[i]["id"]));
+			obj.set("name", res[i]["name"]);
 			log_right_clients.add(obj);
 		}
 		ret.set("log_right_clients", log_right_clients);
@@ -108,7 +107,7 @@ ACTION_IMPL(logs)
 		ret.set("filter", filter);
 		if(s_logid.empty())
 		{
-			std::wstring s_ll=GET[L"ll"];
+			std::string s_ll=POST["ll"];
 			int ll=2;
 			if(!s_ll.empty())
 			{
@@ -123,12 +122,12 @@ ACTION_IMPL(logs)
 			{
 				bed="(l.warnings>0 OR l.errors>0)";
 			}
-			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, l.errors AS errors, l.warnings AS warnings, "
-				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed FROM logs l INNER JOIN clients c ON l.clientid=c.id";
+			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, l.errors AS errors, l.warnings AS warnings, "
+				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed, l.restore AS restore FROM logs l INNER JOIN clients c ON l.clientid=c.id";
 
 			if(!v_filter.empty())
 			{
-				qstr+=" WHERE "+constructFilter(v_filter, "l.clientid");
+				qstr+=" WHERE "+backupaccess::constructFilter(v_filter, "l.clientid");
 				if(!bed.empty())
 				{
 					qstr+=" AND "+bed;
@@ -144,35 +143,36 @@ ACTION_IMPL(logs)
 			for(size_t i=0;i<res.size();++i)
 			{
 				JSON::Object obj;
-				obj.set("name", res[i][L"name"]);
-				obj.set("id", watoi(res[i][L"id"]));
-				obj.set("time", res[i][L"time"]);
-				obj.set("errors", watoi(res[i][L"errors"]));
-				obj.set("warnings", watoi(res[i][L"warnings"]));
-				obj.set("image", watoi(res[i][L"image"]));
-				obj.set("incremental", watoi(res[i][L"incremental"]));
-				obj.set("resumed", watoi(res[i][L"resumed"]));
+				obj.set("name", res[i]["name"]);
+				obj.set("id", watoi(res[i]["id"]));
+				obj.set("time", watoi64(res[i]["time"]));
+				obj.set("errors", watoi(res[i]["errors"]));
+				obj.set("warnings", watoi(res[i]["warnings"]));
+				obj.set("image", watoi(res[i]["image"]));
+				obj.set("incremental", watoi(res[i]["incremental"]));
+				obj.set("resumed", watoi(res[i]["resumed"]));
+				obj.set("restore", watoi(res[i]["restore"]));
 				logs.add(obj);
 			}
 			ret.set("logs", logs);
 			ret.set("ll", ll);
 
-			if(GET.find(L"report_mail")!=GET.end())
+			if(POST.find("report_mail")!=POST.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=? WHERE id=?");
-				q->Bind(GET[L"report_mail"]);
-				q->Bind(watoi(GET[L"report_loglevel"]));
+				q->Bind(POST["report_mail"]);
+				q->Bind(watoi(POST["report_loglevel"]));
 				q->Bind(session->id);
 				q->Write();
 				q->Reset();
 			}
 
-			if(GET.find(L"report_mail")!=GET.end())
+			if(POST.find("report_mail")!=POST.end())
 			{
 				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
-				q->Bind(GET[L"report_mail"]);
-				q->Bind(watoi(GET[L"report_loglevel"]));
-				q->Bind(watoi(GET[L"report_sendonly"]));
+				q->Bind(POST["report_mail"]);
+				q->Bind(watoi(POST["report_loglevel"]));
+				q->Bind(watoi(POST["report_sendonly"]));
 				q->Bind(session->id);
 				q->Write();
 				ret.set("saved_ok", true);
@@ -185,9 +185,9 @@ ACTION_IMPL(logs)
 			
 			if(!res.empty())
 			{
-				ret.set("report_mail", res[0][L"report_mail"]);
-				ret.set("report_loglevel", watoi(res[0][L"report_loglevel"]));
-				ret.set("report_sendonly", watoi(res[0][L"report_sendonly"]));
+				ret.set("report_mail", res[0]["report_mail"]);
+				ret.set("report_loglevel", watoi(res[0]["report_loglevel"]));
+				ret.set("report_sendonly", watoi(res[0]["report_sendonly"]));
 			}
 			else
 			{
@@ -209,7 +209,8 @@ ACTION_IMPL(logs)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, l.logdata AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, c.name AS name FROM logs l INNER JOIN clients c ON l.clientid=c.id WHERE l.id=?");
+			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, c.name AS name "
+				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) INNER JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
 			q->Bind(logid);
 			db_results res=q->Read();
 			q->Reset();
@@ -220,7 +221,7 @@ ACTION_IMPL(logs)
 				if(!clientid.empty())
 				{
 					ok=false;
-					int t_clientid=watoi(res[0][L"clientid"]);
+					int t_clientid=watoi(res[0]["clientid"]);
 					for(size_t i=0;i<clientid.size();++i)
 					{
 						if(clientid[i]==t_clientid)
@@ -234,9 +235,9 @@ ACTION_IMPL(logs)
 				if(ok)
 				{
 					JSON::Object log;
-					log.set("data", res[0][L"logdata"]);
-					log.set("time", res[0][L"time"]);
-					log.set("clientname", res[0][L"name"]);
+					log.set("data", res[0]["logdata"]);
+					log.set("time", watoi64(res[0]["time"]));
+					log.set("clientname", res[0]["name"]);
 					ret.set("log", log);
 				}
 			}
@@ -247,7 +248,7 @@ ACTION_IMPL(logs)
 		ret.set("error", 1);
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

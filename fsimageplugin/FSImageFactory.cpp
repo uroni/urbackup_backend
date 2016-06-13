@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -32,15 +32,38 @@
 #include <Windows.h>
 #else
 #include <errno.h>
+#include "cowfile.h"
+#endif
+
+#ifdef _WIN32
+namespace
+{
+	LONG GetStringRegKey(HKEY hKey, const std::string &strValueName, std::string &strValue, const std::string &strDefaultValue)
+	{
+		strValue = strDefaultValue;
+		WCHAR szBuffer[8192];
+		DWORD dwBufferSize = sizeof(szBuffer);
+		ULONG nError;
+		std::wstring rval;
+		nError = RegQueryValueExW(hKey, Server->ConvertToWchar(strValueName).c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		if (ERROR_SUCCESS == nError)
+		{
+			rval.resize(dwBufferSize/sizeof(wchar_t));
+			memcpy(const_cast<wchar_t*>(rval.c_str()), szBuffer, dwBufferSize);
+			strValue = Server->ConvertFromWchar(rval);
+		}
+		return nError;
+	}
+}
 #endif
 
 
 void PrintInfo(IFilesystem *fs)
 {
-	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
+	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
+IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -51,14 +74,14 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 #else
 		last_error=errno;
 #endif
-		Server->Log(L"Error opening device file ("+pDev+L") Errorcode: "+convert(last_error), LL_ERROR);
+		Server->Log("Error opening device file ("+pDev+") Errorcode: "+convert(last_error), LL_ERROR);
 		return NULL;
 	}
 	char buffer[1024];
 	_u32 rc=dev->Read(buffer, 1024);
 	if(rc!=1024)
 	{
-		Server->Log(L"Error reading data from device ("+pDev+L")", LL_ERROR);
+		Server->Log("Error reading data from device ("+pDev+")", LL_ERROR);
 		return NULL;
 	}
 
@@ -66,16 +89,86 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 
 	if(isNTFS(buffer) )
 	{
-		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
+		Server->Log("Filesystem type is ntfs ("+pDev+")", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 
 
-		/** NOT TESTED ENOUGH
-		if(exclude_shadow_storage && pDev.find(L"HarddiskVolumeShadowCopy")!=std::string::npos)
+#ifdef _WIN32
+		if(next(orig_letter, 0, "C"))
 		{
-			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
-			fs->excludeFile(pDev+L"\\pagefile.sys");
-		}*/
+			fs->excludeFile(pDev+"\\HIBERFIL.SYS");
+		}
+
+		HKEY hKey;
+		LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
+		if(lRes == ERROR_SUCCESS)
+		{
+			std::string tfiles;
+			lRes = GetStringRegKey(hKey, "ExistingPageFiles", tfiles, "");
+			if(lRes == ERROR_SUCCESS)
+			{
+				std::vector<std::string> toks;
+				std::string sep;
+				sep.resize(1);
+				sep[0]=0;
+				Tokenize(tfiles, toks, sep);
+				for(size_t i=0;i<toks.size();++i)
+				{
+					toks[i]=trim(toks[i].c_str());
+
+					if(toks[i].empty())
+						continue;
+
+					toks[i]=trim(toks[i]);
+
+					if(toks[i].find("\\??\\")==0)
+					{
+						toks[i].erase(0, 4);
+					}
+
+					toks[i]=strlower(toks[i]);
+
+					if(next(toks[i], 0, strlower(orig_letter)))
+					{
+						std::string fs_path=orig_letter;
+						if(fs_path.find(":")==std::string::npos)
+						{
+							fs_path+=":";
+						}
+						if(fs_path.find("\\")!=std::string::npos)
+						{
+							fs_path = fs_path.substr(0, fs_path.size()-1);
+						}
+						if(toks[i].size()>fs_path.size())
+						{
+							std::string pagefile_shadowcopy = toks[i].substr(fs_path.size());
+							fs->excludeFile(pDev+pagefile_shadowcopy);
+						}
+					}
+				}
+			}
+		}
+
+		char* systemdrive = NULL;
+		size_t bufferCount;
+		if (_dupenv_s(&systemdrive, &bufferCount, "SystemDrive") == 0)
+		{
+			std::string s_systemdrive = std::string(systemdrive);
+
+			if (!s_systemdrive.empty()
+				&& next(orig_letter, 0, s_systemdrive.substr(0, 1)) )
+			{
+				fs->excludeFile(pDev + "\\swapfile.sys");
+			}
+		}
+		free(systemdrive);
+
+		//Exclude shadow storage files
+		if(pDev.find("HarddiskVolumeShadowCopy") != std::string::npos)
+		{
+			fs->excludeFiles(pDev + "\\System Volume Information", "{3808876b-c176-4e48-b7ae-04046e6cc752}");
+		}
+#endif
 		
 		/*
 		int64 idx=0;
@@ -86,14 +179,14 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 			int64 idx_start=idx;
 			for(size_t i=0;i<100;++i)
 			{
-				b1+=nconvert((int)fs->readBlock(idx, NULL));
-				b2+=nconvert((int)fs2->readBlock(idx, NULL));
+				b1+=convert((int)fs->readBlock(idx, NULL));
+				b2+=convert((int)fs2->readBlock(idx, NULL));
 				++idx;
 			}
 			if(b1!=b2)
 			{
-				Server->Log(nconvert(idx_start)+" fs1: "+b1, LL_DEBUG);
-				Server->Log(nconvert(idx_start)+" fs2: "+b2, LL_DEBUG);
+				Server->Log(convert(idx_start)+" fs1: "+b1, LL_DEBUG);
+				Server->Log(convert(idx_start)+" fs2: "+b2, LL_DEBUG);
 			}
 		}*/
 
@@ -141,19 +234,44 @@ bool FSImageFactory::isNTFS(char *buffer)
 	}
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize,
-	unsigned int pBlocksize, bool fast_mode, CompressionSetting compress)
+IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
+	unsigned int pBlocksize, bool fast_mode, ImageFormat format)
 {
-	return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, compress!=CompressionSetting_None);
+	switch(format)
+	{
+	case ImageFormat_VHD:
+	case ImageFormat_CompressedVHD:
+		return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, format!=ImageFormat_VHD);
+	case ImageFormat_RawCowFile:
+#if !defined(_WIN32) && !defined(__APPLE__)
+		return new CowFile(fn, pRead_only, pDstsize);
+#else
+		return NULL;
+#endif
+	}
+	return NULL;
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn,
-	bool pRead_only, bool fast_mode, CompressionSetting compress)
+IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string &parent_fn,
+	bool pRead_only, bool fast_mode, ImageFormat format)
 {
-	return new VHDFile(fn, parent_fn, pRead_only, fast_mode, compress!=CompressionSetting_None);
+	switch(format)
+	{
+	case ImageFormat_VHD:
+	case ImageFormat_CompressedVHD:
+		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD);
+	case ImageFormat_RawCowFile:
+#if !defined(_WIN32) && !defined(__APPLE__)
+		return new CowFile(fn, parent_fn, pRead_only);
+#else
+		return NULL;
+#endif
+	}
+
+	return NULL;
 }
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)
 {
-	delete ((VHDFile*)vhd);
+	delete vhd;
 }

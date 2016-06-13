@@ -4,18 +4,23 @@ set -e
 
 git reset --hard
 python3.3 build/replace_versions.py
+if [ "x$STATIC_CRYPTOPP" != "x" ]
+then
+	sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
+fi
 
-wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
+wget http://buildserver.urbackup.org/urbackup-debian_dev.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
 if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
-	autoreconf || true
-	automake --add-missing || true
-	libtoolize || true
+	wget https://www.cryptopp.com/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
+	cd cryptoplugin
+	unzip cryptopp563.zip
+	cd ..
 	autoreconf --install
-	./configure --with-pychart --enable-packaging --enable-install_initd --with-mountvhd
+	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
 	touch build_server_debian_ok
 fi
 

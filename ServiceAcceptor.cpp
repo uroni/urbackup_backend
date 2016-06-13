@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -44,11 +44,15 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	int rc;
 #ifdef _WIN32
 	WSADATA wsadata;
-	rc = WSAStartup(MAKEWORD(2,0), &wsadata);
+	rc = WSAStartup(MAKEWORD(2,2), &wsadata);
 	if(rc == SOCKET_ERROR)	return;
 #endif
 
-	s=socket(AF_INET,SOCK_STREAM,0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s=socket(AF_INET,type,0);
 	if(s<1)
 	{
 		Server->Log(name+": Creating SOCKET failed",LL_ERROR);
@@ -60,10 +64,15 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(port),LL_ERROR);
+		Server->Log("Failed setting SO_REUSEADDR for port "+convert(port),LL_ERROR);
 		has_error=true;
 		return;
 	}
+
+#ifdef __APPLE__
+	optval = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 
 	sockaddr_in addr;
 
@@ -73,17 +82,17 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	switch(bindTarget)
 	{
 	case IServer::BindTarget_All:
-		addr.sin_addr.s_addr=INADDR_ANY;
+		addr.sin_addr.s_addr= htonl(INADDR_ANY);
 		break;
 	case IServer::BindTarget_Localhost:
-		addr.sin_addr.s_addr=INADDR_LOOPBACK;
+		addr.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
 		break;
 	}
 
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log(name+": Failed binding SOCKET to Port "+nconvert(port),LL_ERROR);
+		Server->Log(name+": Failed binding socket to port "+convert(port)+". Another instance of this application may already be active and bound to this port.",LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -109,7 +118,7 @@ CServiceAcceptor::~CServiceAcceptor()
 		workers[i]->stop();
 	}
 	size_t c=0;
-	Server->Log("c=0/"+nconvert(workers.size()+1));
+	Server->Log("c=0/"+convert(workers.size()+1));
 	while(c<workers.size()+1)
 	{
 		std::string r;
@@ -117,7 +126,7 @@ CServiceAcceptor::~CServiceAcceptor()
 		if(r=="ok")
 		{
 			++c;
-			Server->Log("c="+nconvert(c)+"/"+nconvert(workers.size()+1));
+			Server->Log("c="+convert(c)+"/"+convert(workers.size()+1));
 		}
 	}
 	Server->destroy(exitpipe);
@@ -172,7 +181,11 @@ void CServiceAcceptor::operator()(void)
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 				if(ns!=SOCKET_ERROR)
 				{
-					//Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
+#ifdef __APPLE__
+					int optval = 1;
+					setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+					//Server->Log(name+": New Connection incomming "+convert(Server->getTimeMS())+" s: "+convert((int)ns), LL_DEBUG);
 
 	#ifdef _WIN32
 					int window_size=512*1024;
@@ -211,7 +224,7 @@ void CServiceAcceptor::AddToWorker(SOCKET pSocket, const std::string& endpoint)
 	CServiceWorker *nw=new CServiceWorker(service, name, exitpipe, maxClientsPerThread);
 	workers.push_back(nw);
 
-	Server->createThread(nw);
+	Server->createThread(nw, name+": worker");
 
 	nw->AddClient( pSocket, endpoint );
 }	

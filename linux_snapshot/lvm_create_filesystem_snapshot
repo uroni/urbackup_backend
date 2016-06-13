@@ -1,0 +1,67 @@
+#!/bin/sh
+
+set -e
+
+#For 20GB
+#SNAP_SIZE="-L20G"
+SNAP_SIZE="-l50%FREE"
+
+mkdir -p /mnt/urbackup_snaps
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+
+if lsblk -r --output "NAME,MOUNTPOINT" --paths > /dev/null 2>&1
+then
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+else
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+	VOLNAME="/dev/mapper/$VOLNAME"
+fi
+
+TYPE=`df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
+
+if [ "x$VOLNAME" = x ]
+then
+    echo "Could not find LVM volume for mountpoint ${SNAP_MOUNTPOINT}"
+    exit 1
+fi
+
+export LVM_SUPPRESS_FD_WARNINGS=1
+
+VGNAME=`lvdisplay "$VOLNAME" | grep "VG Name" | tr -s " " | cut -d" " -f4`
+if [ "x$VGNAME" = x ]
+then
+	echo "Could not find LVM volume group of volume $VOLNAME"
+    exit 1
+fi
+
+if [ "x$SNAP_ID" = x ]
+then
+    echo "No snapshot id specified"
+    exit 1
+fi
+
+lvcreate $SNAP_SIZE -s -n urbackup_snap_$SNAP_ID "$VOLNAME"
+
+mkdir -p /mnt/urbackup_snaps/$SNAP_ID
+
+MOUNTOPTS="ro"
+
+if [ $TYPE = "xfs" ]
+then
+    MOUNTOPTS="ro,nouuid"
+fi
+
+if ! mount -o $MOUNTOPTS /dev/$VGNAME/urbackup_snap_$SNAP_ID /mnt/urbackup_snaps/$SNAP_ID
+then
+	echo "Mounting filesystem failed"
+	rmdir /mnt/urbackup_snaps/$SNAP_ID
+	lvremove -f /dev/$VGNAME/urbackup_snap_$SNAP_ID
+	exit 1
+fi
+
+echo "SNAPSHOT=/mnt/urbackup_snaps/$SNAP_ID"
+
+exit 0

@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -35,11 +35,20 @@ void CPoolThread::operator()(void)
 	THREAD_ID tid = Server->getThreadID();
 	THREADPOOL_TICKET ticket;
 	bool stop=false;
-	IThread *tr=mgr->getRunnable(&ticket, false, stop);
+	std::string name;
+	IThread *tr=mgr->getRunnable(&ticket, false, stop, name);
 	if(tr!=NULL)
 	{
-	  (*tr)();
-	  Server->clearDatabases(tid);
+		if (!name.empty())
+		{
+			Server->setCurrentThreadName(name);
+		}
+		else
+		{
+			Server->setCurrentThreadName("unnamed");
+		}
+		(*tr)();
+		Server->clearDatabases(tid);
 	}
 
 	if(!stop)
@@ -47,11 +56,20 @@ void CPoolThread::operator()(void)
 		while(dexit==false)
 		{
 			stop=false;
-			IThread *tr=mgr->getRunnable(&ticket, true, stop);
+			std::string name;
+			IThread *tr=mgr->getRunnable(&ticket, true, stop, name);
 			if(tr!=NULL)
 			{
-			  (*tr)();
-			  Server->clearDatabases(tid);
+				if (!name.empty())
+				{
+					Server->setCurrentThreadName(name);
+				}
+				else
+				{
+					Server->setCurrentThreadName("unnamed");
+				}
+				(*tr)();
+				Server->clearDatabases(tid);
 			}
 			else if(stop)
 			{
@@ -69,7 +87,7 @@ void CPoolThread::shutdown(void)
 	dexit=true;
 }
 
-IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop)
+IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop, std::string& name)
 {
 	IScopedLock lock(mutex);
 
@@ -96,12 +114,14 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& sto
 				stop=true;
 				return NULL;
 			}
+			Server->setCurrentThreadName("idle pool thread");
 			cond->wait(&lock);
 		}
 		else
 		{
-			ret=toexecute[0].first;
-			*todel=toexecute[0].second;
+			ret=toexecute[0].runnable;
+			*todel=toexecute[0].ticket;
+			name = toexecute[0].name;
 			toexecute.erase( toexecute.begin() );
 		}
 	}
@@ -222,16 +242,21 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			break;
 		}
 
-		cond->wait(&lock, timems);
-
-		if(timems>=0)
+		int left = timems;
+		if (timems >= 0)
 		{
 			int64 ctime = Server->getTimeMS();
-			if(ctime-starttime>timems)
+			if (ctime - starttime>=timems)
 			{
 				break;
 			}
+			else
+			{
+				left = timems - static_cast<int>(ctime - starttime);
+			}
 		}
+
+		cond->wait(&lock, left);
 	}
 
 	for( size_t i=0;i<tickets.size();++i)
@@ -251,7 +276,7 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 	return ret;
 }
 
-THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
+THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& name)
 {
 	IScopedLock lock(mutex);
 	if( nThreads-nRunning==0 )
@@ -262,16 +287,16 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
 		threads.push_back(nt);
 	}
 
-	toexecute.push_back(std::pair<IThread*, THREADPOOL_TICKET>(runnable, ++currticket) );
+	toexecute.push_back(SNewTask(runnable, ++currticket, name));
 	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, (ICondition*)NULL) );
 	++nRunning;
 	cond->notify_one();
 	return currticket;
 }
 
-void CThreadPool::executeWait(IThread *runnable)
+void CThreadPool::executeWait(IThread *runnable, const std::string& name)
 {
-	THREADPOOL_TICKET ticket=execute(runnable);
+	THREADPOOL_TICKET ticket=execute(runnable, name);
 	waitFor(ticket);
 }
 

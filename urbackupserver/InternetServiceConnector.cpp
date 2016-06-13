@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "InternetServiceConnector.h"
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
@@ -6,6 +24,7 @@
 #include "../common/data.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
+#include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipe.h"
 #include "server_settings.h"
 #include "database.h"
@@ -15,11 +34,13 @@
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
+#include "../urbackupcommon/InternetServicePipe2.h"
 
 const unsigned int ping_interval=50*1000;
 const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
+const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
@@ -27,6 +48,8 @@ IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
 std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
+std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
+
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
@@ -44,6 +67,7 @@ void InternetService::destroyClient( ICustomClient * pClient)
 InternetServiceConnector::InternetServiceConnector(void)
 {
 	local_mutex=Server->createMutex();
+	ecdh_key_exchange=NULL;
 }
 
 InternetServiceConnector::~InternetServiceConnector(void)
@@ -54,6 +78,16 @@ InternetServiceConnector::~InternetServiceConnector(void)
 		cleanup_pipes(true);
 	}
 	Server->destroy(local_mutex);
+
+	if(ecdh_key_exchange!=NULL
+		&& Server->getTimeMS()-ecdh_key_exchange_age<max_ecdh_key_age)
+	{
+		ecdh_key_exchange_buffer.push_back(std::make_pair(ecdh_key_exchange, ecdh_key_exchange_age));
+	}
+	else
+	{
+		Server->destroy(ecdh_key_exchange);
+	}
 }
 
 void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
@@ -62,6 +96,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	cs=pPipe;
 	comm_pipe=cs;
 	is_pipe=NULL;
+	conn_version=2;
 	comp_pipe=NULL;
 	connect_start=false;
 	do_connect=false;
@@ -75,6 +110,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	connection_done_cond=NULL;
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
+	tcpstack.setMaxPacketSize(32768);
 	challenge=ServerSettings::generateRandomBinaryKey();
 	{
 		CWData data;
@@ -92,6 +128,24 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 		data.addUInt(capa);
 		data.addInt(compression_level);
 		data.addUInt((unsigned int)pbkdf2_iterations);
+
+		if(ecdh_key_exchange==NULL)
+		{
+			IScopedLock lock(mutex);
+			if(!ecdh_key_exchange_buffer.empty())
+			{
+				ecdh_key_exchange = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size()-1].first;
+				ecdh_key_exchange_age = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size() - 1].second;
+				ecdh_key_exchange_buffer.pop_back();
+			}
+		}
+		if(ecdh_key_exchange==NULL)
+		{
+			ecdh_key_exchange = crypto_fak->createECDHKeyExchange();
+			ecdh_key_exchange_age = Server->getTimeMS();
+		}
+
+		data.addString(ecdh_key_exchange->getPublicKey());
 
 		tcpstack.Send(cs, data);
 	}
@@ -116,10 +170,11 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 	}
 }
 
-bool InternetServiceConnector::Run(void)
+bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 {
 	if(stop_connecting)
 	{
+		IScopedLock lock(local_mutex);
 		cleanup_pipes(false);
 		return false;
 	}
@@ -173,6 +228,7 @@ bool InternetServiceConnector::Run(void)
 			IScopedLock lock(mutex);
 			if(!connect_start)
 			{
+				has_timeout=true;
 				cleanup_pipes(true);
 				return false;
 			}
@@ -181,7 +237,7 @@ bool InternetServiceConnector::Run(void)
 	return true;
 }
 
-void InternetServiceConnector::ReceivePackets(void)
+void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 {
 	if(state==ISS_USED || has_timeout)
 	{
@@ -220,10 +276,11 @@ void InternetServiceConnector::ReceivePackets(void)
 			{
 			case ISS_AUTH:
 				{
-					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN)
+					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN
+						|| id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
 					{
-						unsigned int iterations=(unsigned int)pbkdf2_iterations;
-						if(id==ID_ISC_AUTH_TOKEN)
+						unsigned int iterations=static_cast<unsigned int>(pbkdf2_iterations);
+						if(id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH_TOKEN2)
 						{
 							iterations=1;
 							token_auth=true;
@@ -242,7 +299,7 @@ void InternetServiceConnector::ReceivePackets(void)
 						{							
 							std::string token;
 							bool db_timeout=false;
-							if(id==ID_ISC_AUTH_TOKEN)
+							if(id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH_TOKEN2)
 							{
 								unsigned int token_id;
 								if(rd.getUInt(&token_id) )
@@ -268,21 +325,57 @@ void InternetServiceConnector::ReceivePackets(void)
 								authkey=getAuthkeyFromDB(clientname, db_timeout);
 							}
 
+							std::string ecdh_pubkey;
+							if(id==ID_ISC_AUTH2)
+							{
+								if(!rd.getStr(&ecdh_pubkey) || ecdh_pubkey.empty())
+								{
+									errmsg="Missing field -2";
+								}
+							}
 							
 							if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
 							{
 								errmsg="Client challenge missing or not long enough";
 							}
 
+							unsigned int client_iterations = iterations;
+							if(id!=ID_ISC_AUTH_TOKEN && id!=ID_ISC_AUTH_TOKEN2)
+							{
+								rd.getUInt(&client_iterations);
+							}
+
 							if(errmsg.empty() && !authkey.empty())
 							{
-								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, iterations);
+								std::string salt = challenge+client_challenge;
+
+								if(id==ID_ISC_AUTH2)
+								{
+									salt+=ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+								}
+
+								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(iterations, client_iterations));
 
 								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
 								if(hmac_loc==hmac)
 								{
-									state=ISS_CAPA;									
-									is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
+									if(id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
+									{
+										if(id==ID_ISC_AUTH2)
+										{
+											delete ecdh_key_exchange;
+											ecdh_key_exchange=NULL;
+										}
+										
+										is_pipe=new InternetServicePipe2(comm_pipe, hmac_key);
+										conn_version=2;
+									}
+									else
+									{
+										is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
+										conn_version=1;
+									}		
+									state=ISS_CAPA;	
 									comm_pipe=is_pipe;
 								}
 								else
@@ -333,19 +426,15 @@ void InternetServiceConnector::ReceivePackets(void)
 							data.addString(errmsg);
 						}
 						else if(state==ISS_CAPA)
-						{
-							unsigned int client_iterations;
-							rd.getUInt(&client_iterations);
-							
+						{						
 							data.addChar(ID_ISC_AUTH_OK);
-							if(is_pipe!=NULL)
-							{
-								std::string hmac_loc;
-								hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
-								data.addString(hmac_loc);
-								std::string new_token=generateOnetimeToken(clientname);
-								data.addString(is_pipe->encrypt(new_token));
-							}
+
+							std::string hmac_loc;
+							hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
+							data.addString(hmac_loc);							
+							
+							std::string new_token=generateOnetimeToken(clientname);
+							data.addString(is_pipe->encrypt(new_token));
 						}
 						tcpstack.Send(cs, data);
 					}
@@ -365,7 +454,20 @@ void InternetServiceConnector::ReceivePackets(void)
 							}	
 							if(capa & IPC_COMPRESSED )
 							{
-								comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+								if(conn_version==1)
+								{
+									comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+								}
+								else if(conn_version==2)
+								{
+									comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
+								}
+								else
+								{
+									Server->Log("Unknown connection version " + convert((int)conn_version) + " in state ISS_CAPA", LL_ERROR);
+									assert(false);
+								}
+								
 								comm_pipe=comp_pipe;
 							}
 
@@ -382,7 +484,7 @@ void InternetServiceConnector::ReceivePackets(void)
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
 
-							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+nconvert(spare_connections_num)+" spare connections", LL_DEBUG);
+							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+convert(spare_connections_num)+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
 						}
@@ -454,9 +556,14 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 		else
 		{
 			InternetServiceConnector *isc=iter->second.spare_connections.back();
-			iter->second.spare_connections.pop_back();
 
-			isc->connectStart();
+			if(!isc->connectStart())
+			{
+				Server->Log("Connecting on internet connection failed (1). Service="+convert((int)service), LL_DEBUG);
+				continue;
+			}
+
+			iter->second.spare_connections.pop_back();
 
 			lock.relock(NULL);
 
@@ -471,7 +578,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 			if(!isc->Connect(service, static_cast<int>(rtime)))
 			{
 				//Automatically freed
-				Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
+				Server->Log("Connecting on internet connection failed. Service="+convert((int)service), LL_DEBUG);
 			}
 			else
 			{
@@ -479,7 +586,17 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				isc->freeConnection(); //deletes ics
 
 				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-				if(comp_pipe!=NULL)
+				CompressedPipe2 *comp_pipe2=dynamic_cast<CompressedPipe2*>(ret);
+				if(comp_pipe2!=NULL)
+				{
+					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
+					if(isc_pipe2!=NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
+					comp_pipe2->destroyBackendPipeOnDelete(true);
+				}
+				else if(comp_pipe!=NULL)
 				{
 					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
 					if(isc_pipe!=NULL)
@@ -495,15 +612,20 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					{
 						isc_pipe->destroyBackendPipeOnDelete(true);
 					}
+					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(ret);
+					if(isc_pipe2!=NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
 				}
-				Server->Log("Established internet connection. Service="+nconvert((int)service), LL_DEBUG);
+				Server->Log("Established internet connection. Service="+convert((int)service), LL_DEBUG);
 					
 				return ret;
 			}
 		}
 	}while(timeoutms==-1 || Server->getTimeMS()-starttime<(unsigned int)timeoutms);
 
-	Server->Log("Establishing internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
+	Server->Log("Establishing internet connection failed. Service="+convert((int)service), LL_DEBUG);
 	return NULL;
 }
 
@@ -526,9 +648,15 @@ bool InternetServiceConnector::closeSocket(void)
 		return true;
 }
 
-void InternetServiceConnector::connectStart()
+bool InternetServiceConnector::connectStart()
 {
+	if(has_timeout)
+	{
+		return false;
+	}
+
 	connect_start=true;
+	return true;
 }
 
 bool InternetServiceConnector::Connect(char service, int timems)
@@ -663,7 +791,7 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 	if(!res.empty())
 	{					
 		db_timeout=false;
-		return Server->ConvertToUTF8(res[0][L"value"]);
+		return (res[0]["value"]);
 	}
 	else if(timeoutms==1)
 	{

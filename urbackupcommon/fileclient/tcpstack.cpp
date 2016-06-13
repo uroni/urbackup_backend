@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -26,8 +26,8 @@
 
 const unsigned int checksum_len=16;
 
-CTCPStack::CTCPStack(bool add_checksum)
-	: add_checksum(add_checksum)
+CTCPStack::CTCPStack(bool add_checksum, size_t max_packet_size)
+	: add_checksum(add_checksum), max_packet_size(max_packet_size)
 {
 }
 
@@ -41,8 +41,21 @@ void CTCPStack::AddData(char* buf, size_t datasize)
 	}
 }
 
-size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
+void CTCPStack::AddData( std::string data )
 {
+	if(!data.empty())
+	{
+		AddData(&data[0], data.size());
+	}
+}
+
+size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms, bool flush)
+{
+	if(msglen>max_packet_size)
+	{
+		return 0;
+	}
+
 	char* buffer;
 	size_t msg_off=sizeof(MAX_PACKETSIZE);
 	size_t len_off=0;
@@ -79,7 +92,7 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 	while(currpos<packet_len)
 	{
 		size_t ts=(std::min)((size_t)MAX_PACKET, packet_len-currpos);
-		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1 );
+		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1, flush);
 		first_packet=false;
 		currpos+=ts;
 		if(!b)
@@ -93,14 +106,14 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 	return msglen;
 }
 
-size_t  CTCPStack::Send(IPipe* p, CWData data, int timeoutms)
+size_t  CTCPStack::Send(IPipe* p, CWData data, int timeoutms, bool flush)
 {
-	return Send(p, data.getDataPtr(), data.getDataSize(), timeoutms);
+	return Send(p, data.getDataPtr(), data.getDataSize(), timeoutms, flush);
 }
 
-size_t CTCPStack::Send(IPipe* p, const std::string &msg, int timeoutms)
+size_t CTCPStack::Send(IPipe* p, const std::string &msg, int timeoutms, bool flush)
 {
-	return Send(p, (char*)msg.c_str(), msg.size(), timeoutms);
+	return Send(p, (char*)msg.c_str(), msg.size(), timeoutms, flush);
 }
 
 
@@ -114,7 +127,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 			memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE) );
 			len=little_endian(len);
 
-			if(buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
+			if(len<max_packet_size && buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
 			{
 				char* buf=new char[len+1];
 				if(len>0)
@@ -140,7 +153,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 			memcpy(&len, &buffer[checksum_len], sizeof(MAX_PACKETSIZE) );
 			len=little_endian(len);
 
-			if(buffer.size()>=checksum_len+(size_t)len+sizeof(MAX_PACKETSIZE))
+			if(len<max_packet_size && buffer.size()>=checksum_len+(size_t)len+sizeof(MAX_PACKETSIZE))
 			{
 				MD5 md((unsigned char*)&buffer[checksum_len], (size_t)len+sizeof(MAX_PACKETSIZE) );
 
@@ -170,6 +183,23 @@ char* CTCPStack::getPacket(size_t* packetsize)
 	return NULL;
 }
 
+bool CTCPStack::getPacket( std::string& msg )
+{
+	size_t packetsize = 0;
+	char* packet = getPacket(&packetsize);
+
+	if(packet)
+	{
+		msg.assign(packet, packet+packetsize);
+		delete[] packet;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 void CTCPStack::reset(void)
 {
         buffer.clear();
@@ -177,6 +207,11 @@ void CTCPStack::reset(void)
 
 char *CTCPStack::getBuffer()
 {
+	if(buffer.empty())
+	{
+		return NULL;
+	}
+
 	return &buffer[0];
 }
 
@@ -188,4 +223,9 @@ size_t CTCPStack::getBuffersize()
 void CTCPStack::setAddChecksum(bool b)
 {
 	add_checksum=b;
+}
+
+void CTCPStack::setMaxPacketSize( size_t mp )
+{
+	max_packet_size = mp;
 }

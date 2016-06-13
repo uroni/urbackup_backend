@@ -1,33 +1,65 @@
-﻿<h1>{tStorage allocation}</h1>
+﻿<div class="panel panel-default">
+	<div class="panel-heading">{tStorage usage}</div>
+	<div class="panel-body">
+		<div id="usagegraph"><img src="images/indicator.gif" />{tLoading}...</div>
+		<br/>&nbsp;<br/>
+	</div>
+</div>
 
-<div id="piegraph"><img src="indicator.gif" />{tLoading}...<br /><br /></div>
+{?maximized}
+<div class="row">
+	<div class="col-lg-6">
+{/maximized}
+		<div class="panel panel-default">
+			<div class="panel-heading">{tBackup Statistics}</div>
+			<div class="panel-body">
+				{^maximized}
+				<div class="row">
+					<div class="col-lg-8">
+				{/maximized}
+						<table id="statistics_table" class="table table-striped">
+							<thead>
+								<tr>			
+									<th>{tComputer name}</th>
+									<th>{tImages}</th>
+									<th>{tFiles}</th>
+									<th>{tAll}</th>
+								</tr>
+							</thead>
+							<tbody>
+								{rows|s}
+							</tbody>
+						</table>
+						
+						<div class="panel panel-primary">
+							<div class="panel-heading">{tSum}</div>
+							<div class="panel-body">
+								<table class="table table-striped">
+									<tr><td>{tImages}</td><td>{images_total}</td></tr>
+									<tr><td>{tFiles}</td><td>{files_total}</td></tr>
+									<tr><td>{tAll}</td><td>{used_total}</td></tr>
+								</table>
+								<button class="btn btn-default" onclick="recalculateStatistics()">{tRecalculate statistics}</button>
+							</div>
+						</div>
+				{^maximized}
+					</div>
+				</div>
+				{/maximized}
+			</div>
+		</div>
+{?maximized}
+	</div>
+	<div class="col-lg-6">
+{/maximized}
 
-<br />
-
-<table cellspacing="0" cellpadding="0" id="statistics_table">
-<thead>
-<tr>			
-	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
-	<th style="width: 150px" class="tabHeader">{tImages}</th>
-	<th style="width: 150px" class="tabHeader">{tFiles}</th>
-	<th style="width: 150px" class="tabHeaderRight">{tAll}</th>
-</tr>
-</thead>
-<tbody>
-{rows|s}
-</tbody>
-</table>
-
-<h3>{tSum}</h3>
-<table cellspacing="0" cellpadding="0">
-<tr><td style="padding-right: 1em;font-weight:bold;">{tImages}</td><td>{images_total}</td></tr>
-<tr><td style="padding-right: 1em;font-weight:bold;">{tFiles}</td><td>{files_total}</td></tr>
-<tr><td style="padding-right: 1em;font-weight:bold;">{tAll}</td><td>{used_total}</td></tr>
-</table>
-
-<br />
-<input value="{tRecalculate statistics}" onclick="recalculateStatistics()" type="button"></td>
-
-<h1>{tStorage usage}</h1>
-
-<div id="usagegraph"><img src="indicator.gif" />{tLoading}...</div>
+		<div class="panel panel-default">
+			<div class="panel-heading">{tStorage allocation}</div>
+			<div class="panel-body">
+				<div id="piegraph"><img src="images/indicator.gif" />{tLoading}...</div>
+			</div>
+		</div>
+{?maximized}
+	</div>
+</div> <!-- row -->
+{/maximized}

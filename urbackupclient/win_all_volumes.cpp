@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "win_all_volumes.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
@@ -16,7 +34,7 @@ namespace
 	{		
 		PWCHAR names = NULL;		
 		DWORD CharCount = MAX_PATH + 1;
-		std::wstring ret;
+		std::string ret;
 
 		BOOL rc;
 		while(true)
@@ -53,7 +71,7 @@ namespace
 				std::wstring cname = name;
 				if(ret.empty() || cname.size()<ret.size())
 				{
-					ret = cname;
+					ret = Server->ConvertFromWchar(cname);
 				}
 			}
 		}
@@ -64,7 +82,7 @@ namespace
 			names = NULL;
 		}
 
-		return Server->ConvertToUTF8(ret);
+		return (ret);
 	}
 
 	bool is_usb_disk(std::string path, SVolumesCache* cache)
@@ -139,7 +157,7 @@ std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
 			vol_name[2] != L'?'  ||	vol_name[3] != L'\\' ||
 			vol_name[idx] != L'\\' )
 		{
-			Server->Log(std::wstring(L"get_all_volumes_list: bad path: ") + vol_name, LL_ERROR);
+			Server->Log(std::string("get_all_volumes_list: bad path: ") + Server->ConvertFromWchar(vol_name), LL_ERROR);
 			return "";
 		}
 
@@ -152,7 +170,7 @@ std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
 
 		if ( CharCount == 0 )
 		{
-			Server->Log(std::wstring(L"QueryDosDeviceW failed with ec = ") + convert(static_cast<int>(GetLastError())), LL_ERROR);
+			Server->Log(std::string("QueryDosDeviceW failed with ec = ") + convert(static_cast<int>(GetLastError())), LL_ERROR);
 			break;
 		}
 
@@ -239,7 +257,7 @@ std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
 		{
 			if (GetLastError() != ERROR_NO_MORE_FILES)
 			{
-				Server->Log(std::wstring(L"FindNextVolumeW failed with ec = ") + convert(static_cast<int>(GetLastError())), LL_ERROR);
+				Server->Log(std::string("FindNextVolumeW failed with ec = ") + convert(static_cast<int>(GetLastError())), LL_ERROR);
 				break;
 			}
 			break;

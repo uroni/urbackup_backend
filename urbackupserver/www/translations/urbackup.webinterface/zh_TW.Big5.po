@@ -1,24 +1,75 @@
 # UrBackup translation
-# Copyright (C) 2011-2014 See translators
-# This file is distributed under the same license as the UrBackup package.
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
-# Translators:
+# Copyright (C) 2011-2016 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
+"PO-Revision-Date: 2016-04-28 14:37+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
-"Language-Team: Chinese (Taiwan) (Big5)  (http://www.transifex.com/projects/p/urbackup/language/zh_TW.Big5/)\n"
+"Language-Team: Chinese (Taiwan) (Big5)  (http://www.transifex.com/uroni/urbackup/language/zh_TW.Big5/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: zh_TW.Big5\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "nav_item_3"
+msgstr "日志"
+
+msgid "nav_item_1"
+msgstr "設定"
+
+msgid "ok"
+msgstr "Ok"
+
+msgid "loglevel_1"
+msgstr "警告"
+
+msgid "loglevel_2"
+msgstr "錯誤"
+
+msgid "tLogs"
+msgstr "日志"
+
+msgid "tErrors"
+msgstr "錯誤"
+
+msgid "tWarnings"
+msgstr "警告"
+
+msgid "tdays"
+msgstr "天"
+
+msgid "thours"
+msgstr "小時"
+
+msgid "tmin"
+msgstr "分"
+
+msgid "tAbort"
+msgstr "終止"
+
+msgid "tInfos"
+msgstr "情報"
+
+msgid "tFile backups"
+msgstr "檔案備份"
+
+msgid "tImage backups"
+msgstr "磁碟鏡像備份"
+
+msgid "tClient"
+msgstr "用戶端"
+
+msgid "tInternet"
+msgstr "互聯網"
+
+msgid "hours"
+msgstr "小時"
+
+msgid "days"
+msgstr "天"
 
 msgid "action_1"
 msgstr "增量備份檔案"
@@ -53,23 +104,14 @@ msgstr "活動"
 msgid "nav_item_4"
 msgstr "備份"
 
-msgid "nav_item_3"
-msgstr "日志"
-
 msgid "nav_item_2"
 msgstr "統計"
-
-msgid "nav_item_1"
-msgstr "設定"
 
 msgid "unknown"
 msgstr "未知"
 
 msgid "overview"
 msgstr "概覽"
-
-msgid "ok"
-msgstr "Ok"
 
 msgid "no_recent_backup"
 msgstr "近期沒有備份"
@@ -84,10 +126,10 @@ msgid "no"
 msgstr "否"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "狀態"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "計算機名"
 
 msgid "tLast seen"
 msgstr ""
@@ -188,18 +230,6 @@ msgstr "全部"
 msgid "loglevel_0"
 msgstr "情報"
 
-msgid "loglevel_1"
-msgstr "警告"
-
-msgid "loglevel_2"
-msgstr "錯誤"
-
-msgid "dir_error_text"
-msgstr "無法訪問UrBackup保存備份的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。"
-
-msgid "tmpdir_error_text"
-msgstr "無法訪問UrBackup保存臨時檔案的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。"
-
 msgid "starting"
 msgstr "啓動中"
 
@@ -211,12 +241,6 @@ msgstr "請鍵入主機名或IP地址"
 
 msgid "clients"
 msgstr "用戶端"
-
-msgid "validate_text_empty"
-msgstr "{name}需要一個值"
-
-msgid "validate_text_notint"
-msgstr "{name}需要一個數字值"
 
 msgid "validate_name_update_freq_incr"
 msgstr "增量備份檔案的時間間隔"
@@ -233,50 +257,14 @@ msgstr "完整備份磁碟鏡像的時間間隔"
 msgid "validate_name_max_file_incr"
 msgstr "檔案增量備分數之上限"
 
-msgid "validate_name_min_file_incr"
-msgstr "檔案增量備分數之下限"
-
-msgid "validate_name_max_file_full"
-msgstr "檔案完整備分數之上限"
-
-msgid "validate_name_min_file_full"
-msgstr "檔案完整備分數之下限"
-
-msgid "validate_name_min_image_incr"
-msgstr "磁碟鏡像增量備分數之下限"
-
-msgid "validate_name_max_image_incr"
-msgstr "磁碟鏡像增量備分數之上限"
-
-msgid "validate_name_min_image_full"
-msgstr "磁碟鏡像完整備分數之下限"
-
-msgid "validate_name_max_image_full"
-msgstr "磁碟鏡像完整備分數之上限"
-
 msgid "validate_name_startup_backup_delay"
 msgstr "系統啓動後延遲"
-
-msgid "validate_err_notregexp_backup_window"
-msgstr "備份視窗格式錯誤"
-
-msgid "validate_name_max_active_clients"
-msgstr "近期活動用戶端峰值"
-
-msgid "validate_name_max_sim_backups"
-msgstr "同時備份峰值"
-
-msgid "validate_name_backupfolder"
-msgstr "保存備份的路徑"
 
 msgid "validate_name_computername"
 msgstr "計算機名"
 
 msgid "too_many_clients_err"
 msgstr "用戶端過多"
-
-msgid "really_remove_client"
-msgstr "確定移除此用戶端嗎？檔案和磁碟鏡像備份將被全部移除！"
 
 msgid "computername"
 msgstr "計算機名"
@@ -299,13 +287,262 @@ msgstr "日期"
 msgid "storage_usage_bar_graph_colname2"
 msgstr "儲存空間使用情況"
 
-msgid "tImages"
-msgstr ""
-
 msgid "tFiles"
 msgstr ""
 
 msgid "tSum"
+msgstr ""
+
+msgid "tActivities"
+msgstr "活動"
+
+msgid "tProgress"
+msgstr ""
+
+msgid "tStarting time"
+msgstr ""
+
+msgid "tUsed Storage"
+msgstr ""
+
+msgid "tClients"
+msgstr "用戶端"
+
+msgid "tReports"
+msgstr ""
+
+msgid "tSend reports to"
+msgstr ""
+
+msgid "tSend"
+msgstr ""
+
+msgid "tBackup time"
+msgstr ""
+
+msgid "tStorage usage"
+msgstr "儲存空間使用情況"
+
+msgid "tAll"
+msgstr "全部"
+
+msgid "tFilter"
+msgstr "過濾器"
+
+msgid "tBack"
+msgstr ""
+
+msgid "tAdd"
+msgstr ""
+
+msgid "tRemove"
+msgstr ""
+
+msgid "tSave"
+msgstr ""
+
+msgid "tMessage"
+msgstr ""
+
+msgid "tLog"
+msgstr ""
+
+msgid "tUsername"
+msgstr ""
+
+msgid "tPassword"
+msgstr ""
+
+msgid "tLogin"
+msgstr ""
+
+msgid "tServer"
+msgstr ""
+
+msgid "tPermissions"
+msgstr ""
+
+msgid "tSelect all"
+msgstr ""
+
+msgid "mins"
+msgstr "分"
+
+msgid "backup_in_progress"
+msgstr "備份進行中……"
+
+msgid "queued_backup"
+msgstr "在佇列中等待的備份任務"
+
+msgid "tFile"
+msgstr ""
+
+msgid "tDomain"
+msgstr ""
+
+msgid "tTranslation"
+msgstr ""
+
+msgid "tChange"
+msgstr ""
+
+msgid "tFailed"
+msgstr ""
+
+msgid "tInfo"
+msgstr "情報"
+
+msgid "tError"
+msgstr ""
+
+msgid "tWarning"
+msgstr ""
+
+msgid "tCurrent version"
+msgstr ""
+
+msgid "tIncremental file backup"
+msgstr "增量備份檔案"
+
+msgid "tFull file backup"
+msgstr "完整備份檔案"
+
+msgid "tIncremental image backup"
+msgstr "增量備份磁碟鏡像"
+
+msgid "tFull image backup"
+msgstr "完整備份磁碟鏡像"
+
+msgid "about_urbackup"
+msgstr ""
+
+msgid "tShow"
+msgstr ""
+
+msgid "tIndexing..."
+msgstr ""
+
+msgid "tDelete"
+msgstr ""
+
+msgid "tDisable"
+msgstr ""
+
+msgid "tMB"
+msgstr ""
+
+msgid "tNone"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr ""
+
+msgid "tDownload"
+msgstr ""
+
+msgid "tStatus"
+msgstr "狀態"
+
+msgid "tIP"
+msgstr ""
+
+msgid "tClient version"
+msgstr ""
+
+msgid "tOperating System"
+msgstr ""
+
+msgid "tShow all clients"
+msgstr ""
+
+msgid "tThis client is going to be removed. "
+msgstr ""
+
+msgid "First"
+msgstr ""
+
+msgid "Last"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Previous"
+msgstr ""
+
+msgid "sInfoThousands"
+msgstr ""
+
+msgid "Processing..."
+msgstr ""
+
+msgid "Search:"
+msgstr ""
+
+msgid "No matching records found"
+msgstr ""
+
+msgid "Restore to default"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "tAllow clients to quit the tray icon"
+msgstr ""
+
+msgid "Show/hide columns"
+msgstr ""
+
+msgid "dir_error_text"
+msgstr "無法訪問UrBackup保存備份的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。"
+
+msgid "tmpdir_error_text"
+msgstr "無法訪問UrBackup保存臨時檔案的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。"
+
+msgid "validate_text_empty"
+msgstr "{name}需要一個值"
+
+msgid "validate_text_notint"
+msgstr "{name}需要一個數字值"
+
+msgid "validate_name_min_file_incr"
+msgstr "檔案增量備分數之下限"
+
+msgid "validate_name_max_file_full"
+msgstr "檔案完整備分數之上限"
+
+msgid "validate_name_min_file_full"
+msgstr "檔案完整備分數之下限"
+
+msgid "validate_name_min_image_incr"
+msgstr "磁碟鏡像增量備分數之下限"
+
+msgid "validate_name_max_image_incr"
+msgstr "磁碟鏡像增量備分數之上限"
+
+msgid "validate_name_min_image_full"
+msgstr "磁碟鏡像完整備分數之下限"
+
+msgid "validate_name_max_image_full"
+msgstr "磁碟鏡像完整備分數之上限"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr "備份視窗格式錯誤"
+
+msgid "validate_name_max_active_clients"
+msgstr "近期活動用戶端峰值"
+
+msgid "validate_name_max_sim_backups"
+msgstr "同時備份峰值"
+
+msgid "validate_name_backupfolder"
+msgstr "保存備份的路徑"
+
+msgid "really_remove_client"
+msgstr "確定移除此用戶端嗎？檔案和磁碟鏡像備份將被全部移除！"
+
+msgid "tImages"
 msgstr ""
 
 msgid "validate_err_notregexp_cleanup_window"
@@ -317,13 +554,10 @@ msgstr "郵件"
 msgid "upgrade_error_text"
 msgstr "UrBackup正在升級內部數據庫並需要一些時間。升級期間伺服器無法訪問並暫停全部備份任務。"
 
-msgid "tActivities"
+msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tAction"
-msgstr ""
-
-msgid "tProgress"
 msgstr ""
 
 msgid "tFiles in queue"
@@ -332,49 +566,13 @@ msgstr ""
 msgid "tLast activities"
 msgstr ""
 
-msgid "tStarting time"
-msgstr ""
-
 msgid "tRequired time"
-msgstr ""
-
-msgid "tUsed Storage"
-msgstr ""
-
-msgid "tClients"
-msgstr ""
-
-msgid "tLogs"
-msgstr ""
-
-msgid "tReports"
-msgstr ""
-
-msgid "tSend reports to"
-msgstr ""
-
-msgid "tSend"
 msgstr ""
 
 msgid "tBackups with a log message of at least log level"
 msgstr ""
 
-msgid "tBackup time"
-msgstr ""
-
-msgid "tErrors"
-msgstr ""
-
-msgid "tWarnings"
-msgstr ""
-
 msgid "tStorage allocation"
-msgstr ""
-
-msgid "tStorage usage"
-msgstr ""
-
-msgid "tAll"
 msgstr ""
 
 msgid "tBackup storage path"
@@ -476,15 +674,6 @@ msgstr ""
 msgid "tAllow client-side changing of settings"
 msgstr ""
 
-msgid "tdays"
-msgstr ""
-
-msgid "thours"
-msgstr ""
-
-msgid "tmin"
-msgstr ""
-
 msgid "tMail server name"
 msgstr ""
 
@@ -517,34 +706,10 @@ msgstr ""
 msgid "tSending test mail failed. Error:"
 msgstr ""
 
-msgid "tFilter"
-msgstr ""
-
-msgid "tBack"
-msgstr ""
-
-msgid "tAdd"
-msgstr ""
-
-msgid "tRemove"
-msgstr ""
-
-msgid "tSave"
-msgstr ""
-
 msgid "tLevel"
 msgstr ""
 
 msgid "tTime"
-msgstr ""
-
-msgid "tMessage"
-msgstr ""
-
-msgid "tLog"
-msgstr ""
-
-msgid "tUsername"
 msgstr ""
 
 msgid "tRights"
@@ -556,16 +721,10 @@ msgstr ""
 msgid "tCreate user"
 msgstr ""
 
-msgid "tPassword"
-msgstr ""
-
 msgid "tRepeat password"
 msgstr ""
 
 msgid "tRights for"
-msgstr ""
-
-msgid "tAbort"
 msgstr ""
 
 msgid "tCreate"
@@ -575,36 +734,12 @@ msgid "tChange rights"
 msgstr ""
 
 msgid "tChange password"
-msgstr ""
-
-msgid "tLogin"
-msgstr ""
-
-msgid "tInfos"
-msgstr ""
+msgstr "更改口令"
 
 msgid "tSeparate settings for this client"
 msgstr ""
 
-msgid "tServer"
-msgstr ""
-
-msgid "tFile backups"
-msgstr ""
-
-msgid "tImage backups"
-msgstr ""
-
-msgid "tPermissions"
-msgstr ""
-
-msgid "tClient"
-msgstr ""
-
 msgid "tArchival"
-msgstr ""
-
-msgid "tInternet"
 msgstr ""
 
 msgid "tPerform autoupdates silently"
@@ -616,9 +751,6 @@ msgstr ""
 msgid "tNo activities"
 msgstr ""
 
-msgid "tSelect all"
-msgstr ""
-
 msgid "tSelect none"
 msgstr ""
 
@@ -628,29 +760,17 @@ msgstr ""
 msgid "tStart for selected"
 msgstr ""
 
-msgid "tInternet clients"
-msgstr ""
-
-msgid "tAdd additional internet clients"
-msgstr ""
-
-msgid "tClient name"
-msgstr ""
-
 msgid "tNo entries for this filter"
-msgstr ""
-
-msgid "tNo data"
 msgstr ""
 
 msgid "tTotal max backup speed for local network"
 msgstr ""
 
 msgid "tArchive every"
-msgstr ""
+msgstr "歸檔周期"
 
 msgid "tArchive for"
-msgstr ""
+msgstr "歸檔"
 
 msgid "tArchive window"
 msgstr ""
@@ -688,12 +808,6 @@ msgstr ""
 msgid "file_backup"
 msgstr "檔案備份"
 
-msgid "hours"
-msgstr "小時"
-
-msgid "days"
-msgstr "天"
-
 msgid "weeks"
 msgstr "星期"
 
@@ -721,9 +835,6 @@ msgstr "年"
 msgid "min"
 msgstr "分"
 
-msgid "mins"
-msgstr "分"
-
 msgid "validate_name_archive_every"
 msgstr "歸檔周期"
 
@@ -733,17 +844,11 @@ msgstr "歸檔"
 msgid "forever"
 msgstr "長期"
 
-msgid "backup_in_progress"
-msgstr "備份進行中……"
-
 msgid "really_remove_clients"
 msgstr "確定移除此用戶端嗎？檔案和磁碟鏡像備份將被全部移除！"
 
 msgid "no_client_selected"
 msgstr "未選擇用戶端"
-
-msgid "queued_backup"
-msgstr "在佇列中等待的備份任務"
 
 msgid "starting_backup_failed"
 msgstr "備份任務啓動失敗"
@@ -790,9 +895,6 @@ msgstr "舊口令錯誤"
 msgid "tID"
 msgstr ""
 
-msgid "tFile"
-msgstr ""
-
 msgid "tSize"
 msgstr ""
 
@@ -811,16 +913,7 @@ msgstr ""
 msgid "tChange rights for user"
 msgstr ""
 
-msgid "tDomain"
-msgstr ""
-
-msgid "tTranslation"
-msgstr ""
-
 msgid "tNew domain"
-msgstr ""
-
-msgid "tChange"
 msgstr ""
 
 msgid "tChange password for user"
@@ -835,22 +928,7 @@ msgstr ""
 msgid "tStop removing client"
 msgstr ""
 
-msgid "tFailed"
-msgstr ""
-
 msgid "tSuccessfull"
-msgstr ""
-
-msgid "tInfo"
-msgstr ""
-
-msgid "tError"
-msgstr ""
-
-msgid "tWarning"
-msgstr ""
-
-msgid "tCurrent version"
 msgstr ""
 
 msgid "tTarget version"
@@ -866,36 +944,24 @@ msgid "tNext archival"
 msgstr ""
 
 msgid "tweeks"
-msgstr ""
+msgstr "星期"
 
 msgid "tmonth"
-msgstr ""
+msgstr "月"
 
 msgid "tyears"
-msgstr ""
+msgstr "年"
 
 msgid "tforever"
-msgstr ""
+msgstr "長期"
 
 msgid "tFile backup"
-msgstr ""
-
-msgid "tIncremental file backup"
-msgstr ""
-
-msgid "tFull file backup"
-msgstr ""
+msgstr "檔案備份"
 
 msgid "tEnable internet mode"
 msgstr ""
 
 msgid "tInternet auth key"
-msgstr ""
-
-msgid "tIncremental image backup"
-msgstr ""
-
-msgid "tFull image backup"
 msgstr ""
 
 msgid ""
@@ -906,7 +972,7 @@ msgid "tArchived"
 msgstr ""
 
 msgid "nospc_stalled_text"
-msgstr "備份資料夾空間不足，UrBackup正根據設定值移除舊的磁碟鏡像和檔案備份數據。此期間的備份性能降低，備份數據被隔離。"
+msgstr ""
 
 msgid "nospc_fatal_text"
 msgstr "備份資料夾空間不足，UrBackup已根據設定值移除了舊的磁碟鏡像和檔案備份數據，但當前設定值已不允許繼續移除。通過更改“設定”保存更少的備份數或增加備份儲存空間後UrBackup方可繼續執行備份任務。"
@@ -914,13 +980,22 @@ msgstr "備份資料夾空間不足，UrBackup已根據設定值移除了舊的�
 msgid "tNondefault temporary file directory"
 msgstr ""
 
-msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
-
-msgid "about_urbackup"
-msgstr ""
-
 msgid "loading"
+msgstr ""
+
+msgid "tInternet clients"
+msgstr ""
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr ""
+
+msgid "tNo data"
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr ""
 
 msgid "authentication_err"
@@ -939,9 +1014,6 @@ msgid "really_recalculate"
 msgstr ""
 
 msgid "database_error_text"
-msgstr ""
-
-msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tDownload folder as ZIP"
@@ -971,25 +1043,13 @@ msgstr ""
 msgid "tLive Log"
 msgstr ""
 
-msgid "tShow"
-msgstr ""
-
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
-
-msgid "tIndexing..."
-msgstr ""
-
-msgid "tDelete"
 msgstr ""
 
 msgid "tDownload client from update server"
 msgstr ""
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
-
-msgid "tDisable"
 msgstr ""
 
 msgid "tImage backup file format"
@@ -1049,9 +1109,6 @@ msgstr ""
 msgid "tLocal incremental file backup transfer mode"
 msgstr ""
 
-msgid "tBlock differences - hashed"
-msgstr ""
-
 msgid "tInternet incremental file backup transfer mode"
 msgstr ""
 
@@ -1061,40 +1118,7 @@ msgstr ""
 msgid "tInternet image backup transfer mode"
 msgstr ""
 
-msgid "tFile hash collection amount"
-msgstr ""
-
-msgid "tFile hash collection timeout"
-msgstr ""
-
-msgid "tFile hash collection database cachesize"
-msgstr ""
-
-msgid "tMB"
-msgstr ""
-
-msgid "tUpdate stats database cachesize"
-msgstr ""
-
-msgid "tCache database type for file entries"
-msgstr ""
-
-msgid "tNone"
-msgstr ""
-
-msgid "tCache database size for file entries"
-msgstr ""
-
-msgid "tSuspend index limit"
-msgstr ""
-
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
-
-msgid "tEnd-to-end verification of all file backups"
-msgstr ""
-
-msgid "tServer admin mail address"
 msgstr ""
 
 msgid ""
@@ -1106,46 +1130,34 @@ msgstr ""
 msgid "tClient download"
 msgstr ""
 
-msgid "tDownload"
-msgstr ""
-
-msgid "tStatus"
-msgstr ""
-
-msgid "tIP"
-msgstr ""
-
-msgid "tClient version"
-msgstr ""
-
-msgid "tOperating System"
-msgstr ""
-
-msgid "tShow all clients"
-msgstr ""
-
-msgid "tThis client is going to be removed. "
-msgstr ""
-
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
 msgstr ""
 
-msgid "First"
-msgstr ""
-
-msgid "Last"
-msgstr ""
-
-msgid "Next"
-msgstr ""
-
-msgid "Previous"
-msgstr ""
-
 msgid "No data available in table"
+msgstr ""
+
+msgid "Show _MENU_ entries"
+msgstr ""
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr ""
+
+msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr ""
+
+msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
@@ -1157,44 +1169,356 @@ msgstr ""
 msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
-msgid "sInfoThousands"
+msgid "Minimize"
 msgstr ""
 
-msgid "Show _MENU_ entries"
+msgid "Maximize"
 msgstr ""
 
-msgid "Processing..."
+msgid "ldap_settings"
 msgstr ""
 
-msgid "Search:"
+msgid "client_exists"
 msgstr ""
 
-msgid "No matching records found"
+msgid "validate_err_empty_internet_client_name"
 msgstr ""
 
-msgid "Restore to default"
+msgid "validate_err_empty_hostname"
 msgstr ""
 
-msgid "Save"
+msgid "creating_filesindex_text"
 msgstr ""
 
-msgid "tConnect to Internet backup server if connected to local backup server"
+msgid "about"
 msgstr ""
 
-msgid "tAllow clients to quit the tray icon"
+msgid "all_clients"
 msgstr ""
 
-msgid "tYou need to create a user to be able to send reports"
+msgid "client_settings"
 msgstr ""
 
-msgid "Show/hide columns"
+msgid "action_8"
 msgstr ""
 
-msgid "tShow when a new server version is available"
+msgid "action_9"
 msgstr ""
 
-msgid "tVHD (Virtual HardDisk)"
+msgid "action_10"
 msgstr ""
 
-msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgid "action_11"
+msgstr ""
+
+msgid "action_12"
+msgstr ""
+
+msgid "action_13"
+msgstr ""
+
+msgid "tAbout UrBackup"
+msgstr ""
+
+msgid "tAdd client"
+msgstr ""
+
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
+msgstr ""
+
+msgid "tDownload the client from:"
+msgstr ""
+
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
+msgstr ""
+
+msgid "tAdd new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tName of new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tDiscover new client via IP/hostname hint"
+msgstr ""
+
+msgid "tIP/hostname of client to be discovered"
+msgstr ""
+
+msgid "tCancel"
+msgstr ""
+
+msgid "tAccess denied"
+msgstr ""
+
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
+msgstr ""
+
+msgid "tLogin with username and password"
+msgstr ""
+
+msgid "tError while accessing backups"
+msgstr ""
+
+msgid "tSorry, something went wrong:"
+msgstr ""
+
+msgid "tCreated"
+msgstr ""
+
+msgid "tLast modified"
+msgstr ""
+
+msgid "tLast accessed"
+msgstr ""
+
+msgid "tList"
+msgstr ""
+
+msgid "tRestore"
+msgstr ""
+
+msgid "tRestore folder to client"
+msgstr ""
+
+msgid "tVersion"
+msgstr ""
+
+msgid "tClient added successfully"
+msgstr ""
+
+msgid "tAdded new client with name:"
+msgstr ""
+
+msgid "tDefault authentication key:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Windows"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Mac OS X"
+msgstr ""
+
+msgid "tInstall it directly in the terminal via:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Linux"
+msgstr ""
+
+msgid "tAlternatively after you installed the client from:"
+msgstr ""
+
+msgid "tGo the settings screen on the client"
+msgstr ""
+
+msgid "tEnable the internet mode on the client"
+msgstr ""
+
+msgid "tSet the internet server to:"
+msgstr ""
+
+msgid "tSet the internet server port to:"
+msgstr ""
+
+msgid "tSet the computer name to:"
+msgstr ""
+
+msgid "tSet the authentication key to:"
+msgstr ""
+
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgstr ""
+
+msgid "tWith the command line:"
+msgstr ""
+
+msgid "tPercent finished"
+msgstr ""
+
+msgid "tDetails"
+msgstr ""
+
+msgid "tAdd Email Address"
+msgstr ""
+
+msgid "tFailed without failures caused by client timeout"
+msgstr ""
+
+msgid "tMinimum log level"
+msgstr ""
+
+msgid "tBackups interrupted"
+msgstr ""
+
+msgid "tStop"
+msgstr ""
+
+msgid "tShow log"
+msgstr ""
+
+msgid "tETA"
+msgstr ""
+
+msgid "tSpeed"
+msgstr ""
+
+msgid "tFile Backups"
+msgstr ""
+
+msgid "tImage Backups"
+msgstr ""
+
+msgid "tArchive"
+msgstr ""
+
+msgid "tServer URL"
+msgstr ""
+
+msgid "tMax simultaneous backups"
+msgstr ""
+
+msgid "tMax recently active clients"
+msgstr ""
+
+msgid "tDays"
+msgstr ""
+
+msgid "tRaw copy-on-write file"
+msgstr ""
+
+msgid "tMin"
+msgstr ""
+
+msgid "tVirtual sub client names"
+msgstr ""
+
+msgid "tLocal incremental image style"
+msgstr ""
+
+msgid "tBased on last full image backup"
+msgstr ""
+
+msgid "tBased on last image backup"
+msgstr ""
+
+msgid "tInternet incremental image style"
+msgstr ""
+
+msgid "tLocal full image style"
+msgstr ""
+
+msgid "tSynthetic full image backup"
+msgstr ""
+
+msgid "tInternet full image style"
+msgstr ""
+
+msgid "tDatabase cache size during batch processing"
+msgstr ""
+
+msgid "tDebugging: End-to-end verification of all file backups"
+msgstr ""
+
+msgid "tDebugging: Verify file backups using client side hashes"
+msgstr ""
+
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
+msgstr ""
+
+msgid "tRun backups with background priority on the clients"
+msgstr ""
+
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
+msgstr ""
+
+msgid "tMaximum number of simultaneous jobs per client"
+msgstr ""
+
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
+msgstr ""
+
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
+msgstr ""
+
+msgid "tEnable logins via LDAP/AD"
+msgstr ""
+
+msgid "tLDAP/AD server name"
+msgstr ""
+
+msgid "tLDAP/AD server port"
+msgstr ""
+
+msgid "tLDAP/AD user name prefix"
+msgstr ""
+
+msgid "tLDAP/AD user name suffix"
+msgstr ""
+
+msgid "tLDAP/AD group and class query"
+msgstr ""
+
+msgid "tLDAP/AD group key name in query"
+msgstr ""
+
+msgid "tLDAP/AD class key name in query"
+msgstr ""
+
+msgid "tLDAP/AD group rights map"
+msgstr ""
+
+msgid "tLDAP/AD class rights map"
+msgstr ""
+
+msgid "tTest login with this user"
+msgstr ""
+
+msgid "tPassword for test user"
+msgstr ""
+
+msgid "tTest login succeeded. Rights of user:"
+msgstr ""
+
+msgid "tTest login failed. Error:"
+msgstr ""
+
+msgid "tDownload client for Windows"
+msgstr ""
+
+msgid "tDownload client for Mac OS X"
+msgstr ""
+
+msgid "tDownload client for Linux"
+msgstr ""
+
+msgid "tRemove client"
+msgstr ""
+
+msgid "tAdd new client"
+msgstr ""
+
+msgid "tClient discovery hints"
+msgstr ""
+
+msgid "tAdd hostname/IP as client discovery hint"
+msgstr ""
+
+msgid "tBackup Statistics"
 msgstr ""

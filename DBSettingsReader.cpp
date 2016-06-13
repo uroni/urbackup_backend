@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -30,43 +30,29 @@
 CDBSettingsReader::CDBSettingsReader(THREAD_ID tid, DATABASE_ID did, const std::string &pTable, const std::string &pSQL)
 {
 	table=pTable;
-	IDatabase *db=Server->getDatabase(tid, did);
+	db=Server->getDatabase(tid, did);
 	if(pSQL.empty() )
-		query=db->Prepare("SELECT value FROM "+table+" WHERE key=?");
+		query=db->Prepare("SELECT value FROM "+table+" WHERE key=?", false);
 	else
-		query=db->Prepare(pSQL);
+		query=db->Prepare(pSQL, false);
 }
 
 CDBSettingsReader::CDBSettingsReader(IDatabase *pDB, const std::string &pTable, const std::string &pSQL)
+	: db(pDB)
 {
 	table=pTable;
 	if(pSQL.empty() )
-		query=pDB->Prepare("SELECT value FROM "+table+" WHERE key=?");
+		query=pDB->Prepare("SELECT value FROM "+table+" WHERE key=?", false);
 	else
-		query=pDB->Prepare(pSQL);
+		query=pDB->Prepare(pSQL, false);
+}
+
+CDBSettingsReader::~CDBSettingsReader()
+{
+	db->destroyQuery(query);
 }
 
 bool CDBSettingsReader::getValue(std::string key, std::string *value)
-{
-	if(query==NULL)
-	{
-		return false;
-	}
-
-	query->Bind(key);
-	db_nresults res=query->ReadN();
-	query->Reset();
-
-	if( res.size()>0 )
-	{
-		*value=res[0]["value"];
-		return true;
-	}
-	else
-		return false;
-}
-
-bool CDBSettingsReader::getValue(std::wstring key, std::wstring *value)
 {
 	if(query==NULL)
 	{
@@ -79,14 +65,14 @@ bool CDBSettingsReader::getValue(std::wstring key, std::wstring *value)
 
 	if( res.size()>0 )
 	{
-		*value=res[0][L"value"];
+		*value=res[0]["value"];
 		return true;
 	}
 	else
 		return false;
 }
 
-std::vector<std::wstring> CDBSettingsReader::getKeys()
+std::vector<std::string> CDBSettingsReader::getKeys()
 {
-	return std::vector<std::wstring>();
+	return std::vector<std::string>();
 }

@@ -33,12 +33,12 @@
     <Filter Include="lmdb">
       <UniqueIdentifier>{85f47f3b-2e45-4b5c-96c7-cb2511e6ba0b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="filescache">
-      <UniqueIdentifier>{3ec8a037-dfb3-443f-aa14-dd5a1f016e35}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Ressourcendateien">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="filesindex">
+      <UniqueIdentifier>{3ec8a037-dfb3-443f-aa14-dd5a1f016e35}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -54,13 +54,7 @@
     <ClCompile Include="server_cleanup.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="server_get.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="server_hash.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="server_image.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="server_log.cpp">
@@ -89,9 +83,6 @@
     </ClCompile>
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="fileclient\FileClient.cpp">
-      <Filter>fileclient</Filter>
     </ClCompile>
     <ClCompile Include="server_update.cpp">
       <Filter>Quelldateien</Filter>
@@ -174,9 +165,6 @@
     <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="fileclient\FileClientChunked.cpp">
-      <Filter>fileclient</Filter>
-    </ClCompile>
     <ClCompile Include="ChunkPatcher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -213,21 +201,6 @@
     <ClCompile Include="lmdb\midl.c">
       <Filter>lmdb</Filter>
     </ClCompile>
-    <ClCompile Include="FileCache.cpp">
-      <Filter>filescache</Filter>
-    </ClCompile>
-    <ClCompile Include="DatabaseFileCache.cpp">
-      <Filter>filescache</Filter>
-    </ClCompile>
-    <ClCompile Include="MDBFileCache.cpp">
-      <Filter>filescache</Filter>
-    </ClCompile>
-    <ClCompile Include="SQLiteFileCache.cpp">
-      <Filter>filescache</Filter>
-    </ClCompile>
-    <ClCompile Include="create_files_cache.cpp">
-      <Filter>filescache</Filter>
-    </ClCompile>
     <ClCompile Include="serverinterface\download_client.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
@@ -255,14 +228,116 @@
     <ClCompile Include="apps\export_auth_log.cpp">
       <Filter>apps</Filter>
     </ClCompile>
-    <ClCompile Include="server_download.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="server_hash_existing.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="create_files_index.cpp">
+      <Filter>filesindex</Filter>
+    </ClCompile>
+    <ClCompile Include="LMDBFileIndex.cpp">
+      <Filter>filesindex</Filter>
+    </ClCompile>
+    <ClCompile Include="server_continuous.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileIndex.cpp">
+      <Filter>filesindex</Filter>
+    </ClCompile>
+    <ClCompile Include="apps\check_files_index.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="FullFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="IncrFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Backup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ContinuousBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ServerDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientMain.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ThrottleUpdater.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\glob.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMetadataDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="WalCheckpointThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="restore_client.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="apps\skiphash_copy.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="cmdline_preprocessor.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\add_client.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerFilesDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerLinkDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerLinkJournalDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="apps\md5sum_check.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\restore_prepare_wait.cpp">
+      <Filter>serverinterface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -282,9 +357,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="server_cleanup.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="server_get.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="server_hash.h">
@@ -316,9 +388,6 @@
     </ClInclude>
     <ClInclude Include="..\stringtools.h">
       <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="fileclient\FileClient.h">
-      <Filter>fileclient</Filter>
     </ClInclude>
     <ClInclude Include="server_update.h">
       <Filter>Headerdateien</Filter>
@@ -353,12 +422,6 @@
     <ClInclude Include="..\urbackupcommon\settingslist.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="fileclient\packet_ids.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
-    <ClInclude Include="fileclient\socket_header.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\os_functions.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -385,9 +448,6 @@
     </ClInclude>
     <ClInclude Include="..\md5.h">
       <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="fileclient\FileClientChunked.h">
-      <Filter>fileclient</Filter>
     </ClInclude>
     <ClInclude Include="ChunkPatcher.h">
       <Filter>Headerdateien</Filter>
@@ -425,18 +485,6 @@
     <ClInclude Include="create_files_cache.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="DatabaseFileCache.h">
-      <Filter>filescache</Filter>
-    </ClInclude>
-    <ClInclude Include="MDBFileCache.h">
-      <Filter>filescache</Filter>
-    </ClInclude>
-    <ClInclude Include="FileCache.h">
-      <Filter>filescache</Filter>
-    </ClInclude>
-    <ClInclude Include="SQLiteFileCache.h">
-      <Filter>filescache</Filter>
-    </ClInclude>
     <ClInclude Include="serverinterface\rights.h">
       <Filter>serverinterface</Filter>
     </ClInclude>
@@ -461,14 +509,110 @@
     <ClInclude Include="apps\export_auth_log.h">
       <Filter>apps</Filter>
     </ClInclude>
-    <ClInclude Include="server_download.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="server_hash_existing.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\adler32.h">
       <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="LMDBFileIndex.h">
+      <Filter>filesindex</Filter>
+    </ClInclude>
+    <ClInclude Include="FileIndex.h">
+      <Filter>filesindex</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\check_files_index.h">
+      <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\backups.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="server_continuous.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FullFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IncrFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Backup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ContinuousBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientMain.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ThrottleUpdater.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\glob.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="WalCheckpointThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipe2.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\skiphash_copy.h">
+      <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="restore_client.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\SparseFile.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerFilesDao.h">
+      <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerLinkDao.h">
+      <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerLinkJournalDao.h">
+      <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\TreeHash.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

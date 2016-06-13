@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -28,10 +28,13 @@
 #ifndef _WIN32
 #include <memory.h>
 #include <stdlib.h>
+#else
+#include <Windows.h>
 #endif
 
 #include "utf8/utf8.h"
 #include "Interface/Types.h"
+#include "stringtools.h"
 
 
 using namespace std;
@@ -39,7 +42,6 @@ using namespace std;
 typedef int s32;
 typedef unsigned int u32;
 typedef float f32;
-
 
 //--------------------------------------------------------------------
 /**
@@ -58,29 +60,9 @@ string getafterinc(const std::string &str,const std::string &data)
 	}
 }
 
-wstring getafterinc(const std::wstring &str,const std::wstring &data)
-{
-	size_t pos=data.find(str);
-	if(pos!=std::wstring::npos)
-	{
-		return data.substr(pos);
-	}
-	else
-	{
-		return L"";
-	}
-}
-
 string getafter(const std::string &str,const std::string &data)
 {
 	std::string ret=getafterinc(str,data);
-	ret.erase(0,str.size() );
-	return ret;
-}
-
-wstring getafter(const std::wstring &str,const std::wstring &data)
-{
-	std::wstring ret=getafterinc(str,data);
 	ret.erase(0,str.size() );
 	return ret;
 }
@@ -162,14 +144,6 @@ string getuntil(string str,string data)
 	return data.substr(0,off);
 }
 
-wstring getuntil(wstring str,wstring data)
-{
-	size_t off=data.find(str);
-	if(off==-1)
-		return L"";
-	return data.substr(0,off);
-}
-
 //--------------------------------------------------------------------
 /**
 *	liefert einen teil des strings bevor einem teilstring inklusive
@@ -244,111 +218,121 @@ std::string getFile(std::string filename)
         return ret;
 }
 
-std::wstring widen(std::string tw);
-
-std::wstring getFileUTF8(string filename)
+void strupper_utf8(std::string *pStr)
 {
-        fstream FileBin;
-	FileBin.open(filename.c_str(), ios::in|ios::binary);
-	if(FileBin.is_open()==false)
-        {
-                return L"";
-        }
-        FileBin.seekg(0, ios::end);
-        unsigned long FileSize = (unsigned int)streamoff(FileBin.tellg());
-        FileBin.seekg(0, ios::beg);
-	char* buffer=new char[FileSize+1];
-
-        FileBin.read(buffer, FileSize);
-	buffer[FileSize]='\0';
-
-	std::wstring ret;
-	if( FileSize>3 && utf8::is_bom(buffer) )
+	std::wstring tmp;
+	try
 	{
-		utf8::utf8to16(buffer, buffer+FileSize, back_inserter(ret) );
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf8to16(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+		else
+		{
+			utf8::utf8to32(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
 	}
-	else
+	catch (...) {}
+	
+#ifdef _WIN32
+	CharUpperBuffW(&tmp[0], static_cast<DWORD>(tmp.size()));
+#else
+	for (size_t i = 0; i < tmp.size(); ++i)
 	{
-		ret=widen(buffer);
+		tmp[i] = towupper(tmp[i]);
 	}
-	FileBin.close();
-        delete [] buffer;
-        return ret;
+#endif
+
+	pStr->clear();
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+		else
+		{
+			utf8::utf32to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+	}
+	catch (...) {}
 }
 
-//--------------------------------------------------------------------
-/**
-*	string in großbuchstaben umwandeln
-*/
-void strupper(char *string)
+void strlower_utf8(std::string *pStr)
 {
-   for(; *string != '\0'; string++ )
-      if(*string >= 'a' && *string <='z')
-         *string -= 32;   /* siehe ASCII-Tabelle */
-}
+	std::wstring tmp;
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf8to16(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+		else
+		{
+			utf8::utf8to32(pStr->begin(), pStr->end(), back_inserter(tmp));
+		}
+	}
+	catch (...) {}
 
-//--------------------------------------------------------------------
-/**
-*	string in kleinbuchstaben umwandeln
-*/
-void strlower(char *string)
-{
-   for(; *string != '\0'; string++ )
-      if(*string >= 'A' && *string <='Z')
-         *string += 32;
+#ifdef _WIN32
+	CharLowerBuffW(&tmp[0], static_cast<DWORD>(tmp.size()));
+#else
+	for (size_t i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] = towlower(tmp[i]);
+	}
+#endif
+
+	pStr->clear();
+	try
+	{
+		if (sizeof(wchar_t) == 2)
+		{
+			utf8::utf16to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+		else
+		{
+			utf8::utf32to8(tmp.begin(), tmp.end(), back_inserter(*pStr));
+		}
+	}
+	catch (...) {}
 }
 
 std::string strlower(const std::string &str)
 {
-	std::string ret=str;
-   for(size_t i=0; i<str.size();++i)
-      if(str[i] >= 'A' && str[i] <='Z')
-         ret[i] += 32;
-
-   return ret;
-}
-
-std::wstring strlower(const std::wstring &str)
-{
-	std::wstring ret;
+	std::string ret;
 	ret.resize(str.size());
-	for(size_t i=0;i<str.size();++i)
+	for (size_t i = 0; i < str.size(); ++i)
 	{
-#ifdef _WIN32
-		ret[i]=towlower(str[i]);
-#else
-		ret[i]=tolower(str[i]);
-#endif
+		if (str[i] < 0)
+		{
+			ret = str;
+			strlower_utf8(&ret);
+			return ret;
+		}
+		else
+		{
+			ret[i] = tolower(str[i]);
+		}
 	}
+
 	return ret;
 }
 
-
-//--------------------------------------------------------------------
-/**
-*	string in großbuchstaben umwandeln
-*/
 void strupper(std::string *pStr)
 {
 	for(size_t i=0;i<pStr->size();++i)
 	{
-		(*pStr)[i]=toupper((*pStr)[i] );
-	}
-}
-
-//--------------------------------------------------------------------
-/**
-*	string in großbuchstaben umwandeln
-*/
-void strupper(std::wstring *pStr)
-{
-	for(size_t i=0;i<pStr->size();++i)
-	{
-#ifdef _WIN32
-		(*pStr)[i]=towupper((*pStr)[i] );
-#else
-		(*pStr)[i]=toupper((*pStr)[i] );
-#endif
+		char ch = (*pStr)[i];
+		if (ch < 0)
+		{
+			strupper_utf8(pStr);
+			return;
+		}
+		else
+		{
+			(*pStr)[i] = toupper((*pStr)[i]);
+		}
 	}
 }
 
@@ -366,28 +350,7 @@ string ExtractFileName(string fulln, string separators)
 		bool separator = separators.find(fulln[i])!=string::npos;
 		if(separator)
 		{
-			if(i<(s32)fulln.length()-2)
-				break;
-		}
-		if(fulln[i]!=0 && !separator)
-			filename=fulln[i]+filename;
-	}
-
-	return filename;
-}
-
-wstring ExtractFileName(wstring fulln, wstring separators)
-{
-	wstring filename;
-
-	s32 off=0;
-	for(s32 i=(s32)fulln.length()-1;i>-1;i--)
-	{
-		bool separator = separators.find(fulln[i])!=string::npos;
-
-		if( separator )
-		{
-			if(i<(s32)fulln.length()-2)
+			if(i<(s32)fulln.length()-1)
 				break;
 		}
 		if(fulln[i]!=0 && !separator)
@@ -426,76 +389,11 @@ string ExtractFilePath(string fulln, string separators)
 
 //--------------------------------------------------------------------
 /**
-*	pfad aus pfadangabe (inkl. dateiname) extrahieren
-*/
-wstring ExtractFilePath(wstring fulln, wstring separators)
-{
-	bool in=false;
-	wstring path;
-	for(s32 i=(s32)fulln.length()-2;i>=0;--i)
-	{
-		if( separators.find(fulln[i])!=string::npos
-			&& in==false)
-		{
-			in=true;
-			continue;
-		}
-		
-		if(in==true)
-		{
-			path=fulln[i]+path;
-		}
-
-	}
-
-	return path;
-}
-
-//--------------------------------------------------------------------
-/**
 *	bool in wide string (true/false) konvertieren
 */
-std::wstring convert(bool pBool)
+std::string convert(bool pBool)
 {
-	if(pBool==true)
-		return L"true";
-	else 
-		return L"false";
-}
-
-//--------------------------------------------------------------------
-/**
-*	integer in wide character
-*/
-std::wstring convert(s32 i){
-	wostringstream ss;
-	ss << i;
-	return ss.str();
-}
-
-//--------------------------------------------------------------------
-/**
-*	f32 in wide character
-*/
-std::wstring convert(f32 f){
-	wostringstream ss;
-	ss << f;
-	return ss.str();
-}
-
-std::wstring convert(double f){
-	wostringstream ss;
-	ss << f;
-	return ss.str();
-}
-
-//--------------------------------------------------------------------
-/**
-*	bool in string (true/false) konvertieren
-*/
-std::string nconvert(bool pBool)
-{
-	if(pBool==true)
+	if(pBool)
 		return "true";
 	else 
 		return "false";
@@ -505,24 +403,7 @@ std::string nconvert(bool pBool)
 /**
 *	integer in string
 */
-std::string nconvert(s32 i){
-	ostringstream ss;
-	ss << i;
-	return ss.str();
-}
-#if defined(_WIN64) || defined(_LP64)
-std::string nconvert(unsigned int i){
-	ostringstream ss;
-	ss << i;
-	return ss.str();
-}
-#endif
-
-//--------------------------------------------------------------------
-/**
-*	integer in string
-*/
-std::string nconvert(long long int i){
+std::string convert(int i){
 	ostringstream ss;
 	ss << i;
 	return ss.str();
@@ -532,74 +413,55 @@ std::string nconvert(long long int i){
 /**
 *	integer in string
 */
-std::wstring convert(long long int i){
-	wostringstream ss;
-	ss << i;
-	return ss.str();
-}
-
-//--------------------------------------------------------------------
-/**
-*	size_t in string
-*/
-std::string nconvert(size_t i){
+std::string convert(long long int i){
 	ostringstream ss;
 	ss << i;
 	return ss.str();
 }
 
-//--------------------------------------------------------------------
-/**
-*	size_t in string
-*/
-std::wstring convert(size_t i){
-	wostringstream ss;
-	ss << i;
-	return ss.str();
-}
-
 #if defined(_WIN64) || defined(_LP64)
-std::wstring convert(unsigned int i){
-	wostringstream ss;
+std::string convert(unsigned int i){
+	ostringstream ss;
 	ss << i;
 	return ss.str();
 }
 #endif
+
+//--------------------------------------------------------------------
+/**
+*	size_t in string
+*/
+std::string convert(size_t i){
+	ostringstream ss;
+	ss << i;
+	return ss.str();
+}
+
 #if !defined(_WIN32) || !defined(_WIN64)
 //--------------------------------------------------------------------
 /**
 *	integer in string
 */
 
-std::string nconvert(unsigned long long int i){
+std::string convert(unsigned long long int i){
 	ostringstream ss;
 	ss << i;
 	return ss.str();
 }
 
-
-//--------------------------------------------------------------------
-/**
-*	integer in string
-*/
-std::wstring convert(unsigned long long int i){
-	wostringstream ss;
-	ss << i;
-	return ss.str();
-}
 #endif
 
 //--------------------------------------------------------------------
 /**
 *	f32 in string
 */
-std::string nconvert(f32 f){
+std::string convert(f32 f){
 	ostringstream ss;
 	ss << f;
 	return ss.str();
 }
 
-std::string nconvert(double f){
+std::string convert(double f){
 	ostringstream ss;
 	ss << f;
 	return ss.str();
@@ -624,67 +486,6 @@ std::string findextension(const std::string& pString)
 		retv.push_back(temp[i]);
 
 	return retv;
-}
-
-std::wstring findextension(const std::wstring& pString)
-{
-	std::wstring retv;
-	std::wstring temp;
-
-	for(s32 i=(s32)pString.size()-1; i>=0; i--)
-		if( pString[i] != '.' )
-			temp.push_back(pString[i]);
-		else
-			break;
-
-	for(s32 i=(s32)temp.size()-1; i>=0; i--)
-		retv.push_back(temp[i]);
-
-	return retv;
-}
-
-//--------------------------------------------------------------------
-/**
-*	string in wide string
-*/
-std::wstring widen(std::string tw)
-{
-	std::wstring out;
-	out.resize(tw.size() );
-	for(size_t i=0;i<tw.size();++i)
-	{
-		out[i]=tw[i];
-	}
-	return out;
-}
-
-//--------------------------------------------------------------------
-/**
-*	wide string in string
-*/
-std::string wnarrow(const std::wstring& pStr)
-{
-	std::string out;
-	out.resize( pStr.size() );
-	for(size_t i=0;i<pStr.size();++i)
-	{
-		out[i]=(char)pStr[i];
-	}
-	return out;
-}
-
-//--------------------------------------------------------------------
-/**
-*/
-std::wstring replaceonce(std::wstring tor, std::wstring tin, std::wstring data)
-{
-        s32 off=(s32)data.find(tor);
-        if(off!=-1)
-        {
-                data.erase(off,tor.size() );
-                data.insert(off,tin);
-        }
-        return data;
 }
 
 //--------------------------------------------------------------------
@@ -764,62 +565,6 @@ void	Tokenize(const std::string& str, std::vector<std::string> &tokens, std::str
 		if(tokens[i]=="") tokens.erase(tokens.begin()+(i--));
 }
 
-void	Tokenize(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps)
-{
-	// one-space line for storing blank lines in the file
-	std::wstring blankLine = L" ";
-
-	// pos0 and pos1 store the scope of the current turn, i stores
-	// the position of the symbol \".
-	s32 pos0 = 0, pos1 = 0, i = 0;
-	while(true)
-	{ 
-		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps, pos0);
-		// find the next \" 
-		i    = (s32)str.find_first_of(L"\"", pos0);
-	    
-		// if the end is reached..
-	    if(pos1 == std::string::npos)
-	    {
-			// ..push back the string to the end
-			tokens.push_back(str.substr(pos0, str.size()));
-			break;
-	    }  
-		// if a string \" was found before the next seperator...
-	    if(( i<pos1 )&&( i > 0 ))
-	    {      
-			// .. find the end of the string and push it back, strings
-			// are treated like a single token
-			pos1 = (s32)str.find_first_of(L"\"", i+1);
-			tokens.push_back(str.substr(pos0, pos1-pos0+1));
-	    }  
-		// if two seperators are found in a row, the file has a blank
-		// line, in this case the one-space string is pushed as a token
-		else if( pos1==pos0 )
-		{
-			tokens.push_back(blankLine);
-		}
-	    else
-            // if no match is found, we have a simple token with the range
-			// stored in pos0/1
-			tokens.push_back(str.substr(pos0, (pos1 - pos0)));
-
-		// equalize pos
-		pos0=pos1;
-		// increase 
-	    ++pos1;
-		// added for ini-file!
-		// increase by length of seps
-		++pos0;
-	}
-	  
-	// loop through all tokens and check for empty tokens which may result
-	// as garbage through the process
-	for(s32 i=0;i<(s32)tokens.size();i++)
-		if(tokens[i].empty()) tokens.erase(tokens.begin()+(i--));
-}
-
 void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std::string seps)
 {
 	// one-space line for storing blank lines in the file
@@ -840,50 +585,6 @@ void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std:
 			// ..push back the string to the end
 			std::string nt=str.substr(pos0, str.size());
 			if( nt!="" )
-				tokens.push_back(nt);
-			break;
-	    }  
-		// if two seperators are found in a row, the file has a blank
-		// line, in this case the one-space string is pushed as a token
-		else if( pos1==pos0 )
-		{
-			tokens.push_back(blankLine);
-		}
-	    else
-            // if no match is found, we have a simple token with the range
-			// stored in pos0/1
-			tokens.push_back(str.substr(pos0, (pos1 - pos0)));
-
-		// equalize pos
-		pos0=pos1;
-		// increase 
-	    ++pos1;
-		// added for ini-file!
-		// increase by length of seps
-		++pos0;
-	}
-}
-
-void TokenizeMail(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps)
-{
-	// one-space line for storing blank lines in the file
-	std::wstring blankLine = L"";
-
-	// pos0 and pos1 store the scope of the current turn, i stores
-	// the position of the symbol \".
-	s32 pos0 = 0, pos1 = 0;
-	while(true)
-	{ 
-		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps.c_str(), pos0);
-		// find the next \" 
-	    
-		// if the end is reached..
-	    if(pos1 == std::string::npos)
-	    {
-			// ..push back the string to the end
-			std::wstring nt=str.substr(pos0, str.size());
-			if( !nt.empty() )
 				tokens.push_back(nt);
 			break;
 	    }  
@@ -931,28 +632,6 @@ bool isletter(char ch)
 		return false;
 }
 
-//--------------------------------------------------------------------
-/**
-*/
-bool str_isnumber(wchar_t ch)
-{
-	if( ch>=48 && ch <=57 )
-		return true;
-	else
-		return false;
-}
-
-//--------------------------------------------------------------------
-/**
-*/
-bool isletter(wchar_t ch)
-{
-	ch=toupper(ch);
-	if( ch<=90 && ch>=65)
-		return true;
-	else
-		return false;
-}
 
 bool next(const std::string &pData, const size_t & doff, const std::string &pStr)
 {
@@ -966,34 +645,7 @@ bool next(const std::string &pData, const size_t & doff, const std::string &pStr
         return true;
 }
 
-bool next(const std::wstring &pData, const size_t & doff, const std::wstring &pStr)
-{
-        for(size_t i=0;i<pStr.size();++i)
-        {
-                if( i+doff>=pData.size() )
-                        return false;
-                if( pData[doff+i]!=pStr[i] )
-                        return false;
-        }
-        return true;
-}
-
 std::string greplace(std::string tor, std::string tin, std::string data)
-{
-        for(size_t i=0;i<data.size();++i)
-        {
-                if( next(data, i, tor)==true )
-                {
-                        data.erase(i, tor.size());
-                        data.insert(i,tin);
-			i+=tin.size()-1;
-                }
-        }
-
-        return data;
-}
-
-std::wstring greplace(std::wstring tor, std::wstring tin, std::wstring data)
 {
         for(size_t i=0;i<data.size();++i)
         {
@@ -1041,23 +693,6 @@ void transformHTML(std::string &str)
 	}
 }
 
-std::wstring EscapeSQLString(const std::wstring &pStr)
-{
-	std::wstring ret;
-	for(size_t i=0;i<pStr.size();++i)
-	{
-		if(pStr[i]=='\'')
-		{
-			ret+=L"''";
-		}
-		else
-		{
-			ret+=pStr[i];
-		}
-	}
-	return ret;
-}
-
 std::string EscapeSQLString(const std::string &pStr)
 {
 	std::string ret;
@@ -1078,19 +713,19 @@ std::string EscapeSQLString(const std::string &pStr)
 std::string EscapeParamString(const std::string &pStr)
 {
 	std::string ret;
+	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
-		if(pStr[i]=='&')
+		switch(pStr[i])
 		{
-			ret+="%26";
-		}
-		else if(pStr[i]=='$')
-		{
-			ret+="%24";
-		}
-		else
-		{
-			ret+=pStr[i];
+		case '%': ret+="%25"; break;
+		case '&': ret+="%26"; break;
+		case '$': ret+="%24"; break;
+		case '/': ret+="%2F"; break;
+		case ' ': ret+="%20"; break;
+		case '#': ret+="%23"; break;
+		case '+': ret+="%2B"; break;
+		default: ret+=pStr[i]; break;
 		}
 	}
 	return ret;
@@ -1099,20 +734,6 @@ std::string EscapeParamString(const std::string &pStr)
 void EscapeCh(std::string &pStr, char ch)
 {
 	std::string ins;
-	ins+=ch;
-	for(size_t i=0;i<pStr.size();++i)
-	{
-		if(pStr[i]==ch)
-		{
-			pStr.insert(i,ins);
-			++i;
-		}
-	}
-}
-
-void EscapeCh(std::wstring &pStr, wchar_t ch)
-{
-	std::wstring ins;
 	ins+=ch;
 	for(size_t i=0;i<pStr.size();++i)
 	{
@@ -1142,29 +763,9 @@ std::string UnescapeSQLString(const std::string &pStr)
 	return ret;
 }
 
-std::wstring UnescapeSQLString(const std::wstring &pStr)
+void ParseParamStrHttp(const std::string &pStr, std::map<std::string,std::string> *pMap, bool escape_params)
 {
-	std::wstring ret;
-	for(size_t i=0;i<pStr.size();++i)
-	{
-		if( i+1<pStr.size() && pStr[i]=='\'' && pStr[i+1]=='\'' )
-		{
-			ret+=L"'";
-			++i;
-		}
-		else
-		{
-			ret+=pStr[i];
-		}
-	}
-	return ret;
-}
-
-wstring htmldecode(string str, bool html, char xc='%');
-
-void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params)
-{
-	std::wstring key;
+	std::string key;
 	std::string value;
 
 	int pos=0;
@@ -1178,12 +779,12 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 		else if( (ch=='&'||ch=='$') && pos==1 )
 		{
 			pos=0;
-			std::wstring wv=htmldecode(value, false);
+			std::string wv=htmldecode(value, false);
 			if(escape_params)
 			{
 				wv=EscapeSQLString(wv);
 			}
-			pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
+			pMap->insert( std::pair<std::string, std::string>(key,wv) );
 			key.clear(); value.clear();
 		}
 		else if( pos==0 )
@@ -1198,12 +799,12 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 
 	if( value.size()>0 || key.size()>0 )
 	{
-		std::wstring wv=htmldecode(value, false);
+		std::string wv=htmldecode(value, false);
 		if(escape_params)
 		{
 			wv=EscapeSQLString(wv);
 		}
-		pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
+		pMap->insert( std::pair<std::string, std::string>(key,wv) );
 	}
 }
 
@@ -1219,9 +820,9 @@ std::string FormatTime(int timeins)
 	s=int(t-h*3600-m*60);
 
 	std::string sh,sm,ss;
-	sh=nconvert(h);
-	sm=nconvert(m);
-	ss=nconvert(s);
+	sh=convert(h);
+	sm=convert(m);
+	ss=convert(s);
 	if( sm.size()==1 && h>0 )
 		sm="0"+sm;
 	if( ss.size()==1 )
@@ -1237,7 +838,11 @@ std::string FormatTime(int timeins)
 
 //-------------------HTML DECODE-----------------
 
-const char array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+namespace
+{
+	const char hexnum_array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+}
+
 
 bool IsHex(const std::string &str)
 {
@@ -1247,7 +852,7 @@ bool IsHex(const std::string &str)
 		bool in=false;
 		for(size_t t=0;t<16;++t)
 		{
-			if(array[t]==str[i])
+			if(hexnum_array[t]==str[i])
 			{
 				in=true;
 				break;
@@ -1271,7 +876,7 @@ unsigned long hexToULong(const std::string &data)
 	{
 		for(unsigned char j = 0; j < 16; j++)
 		{
-			if( str[i] == array[j])
+			if( str[i] == hexnum_array[j])
 			{			
 				return_value = ((return_value * 16) + j);
 			}
@@ -1284,20 +889,25 @@ std::string byteToHex(unsigned char ch)
 {
 	std::string r;
 	r.resize(2);
-	r[0]=array[ch%16];
-	ch/=16;
-	r[1]=array[ch%16];
+	r[0]=hexnum_array[ch/16];
+	r[1]=hexnum_array[ch%16];
 	return r;
 }
 
 std::string bytesToHex(const unsigned char *b, size_t bsize)
 {
 	std::string r;
+	r.reserve(bsize*2);
 	for(size_t i=0;i<bsize;++i)
 	{
 		r+=byteToHex(b[i]);
 	}
 	return r;
+}
+
+std::string bytesToHex( const std::string& data )
+{
+	return bytesToHex(reinterpret_cast<const unsigned char*>(data.data()), data.size());
 }
 
 std::string hexToBytes(const std::string& data)
@@ -1311,9 +921,9 @@ std::string hexToBytes(const std::string& data)
 	return ret;
 }
 
-wstring htmldecode(string str, bool html, char xc)
+string htmldecode(string str, bool html, char xc)
 {
-	std::string tmp;
+	std::string ret;
 	for(size_t i=0;i<str.size();i++)
 	{
 		if(str[i]==xc && i+2<str.size())
@@ -1323,37 +933,27 @@ wstring htmldecode(string str, bool html, char xc)
 			if( html==true && ch!=0  )
 			{
 				if( ch!='-' && ch!=',' && ch!='#' )
-					tmp+="&#"+nconvert((s32)ch)+";";
+					ret+="&#"+convert((s32)ch)+";";
 				else
 				{
-					tmp+=ch;
+					ret+=ch;
 				}
 			}
 			else if( ch!=0 )
 			{
-				tmp+=ch;
+				ret+=ch;
 			}
 			i+=2;
 		}
 		else if(str[i]=='+' && !html)
 		{
-			tmp+=' ';
+			ret+=' ';
 		}
 		else
 		{
-			tmp+=str[i];
+			ret+=str[i];
 		}
 	}
-	std::wstring ret;
-	try
-	{
-	    if( sizeof(wchar_t)==2 )
-    		utf8::utf8to16(tmp.begin(), tmp.end(), back_inserter(ret));
-    	else if( sizeof(wchar_t)==4 )
-    		utf8::utf8to32(tmp.begin(), tmp.end(), back_inserter(ret));
-	}
-	catch(...){}
-
 	return ret;
 }
 
@@ -1420,16 +1020,6 @@ bool checkStringHTML(const std::string &str)
 }
 
 std::string ReplaceChar(std::string str, char tr, char ch)
-{
-	for(size_t i=0;i<str.size();++i)
-	{
-		if( str[i]==tr )
-			str[i]=ch;
-	}
-	return str;
-}
-
-std::wstring ReplaceChar(std::wstring str, wchar_t tr, wchar_t ch)
 {
 	for(size_t i=0;i<str.size();++i)
 	{
@@ -1595,46 +1185,27 @@ bool CheckForIllegalChars(const std::string &str)
 	return true;
 }
 
-int watoi(std::wstring str)
+int watoi(std::string str)
 {
-#ifdef _WIN32
-	return _wtoi(str.c_str());
-#else
-	return atoi(wnarrow(str).c_str());
-#endif
+	return atoi(str.c_str());
 }
 
-_i64 watoi64(std::wstring str)
+_i64 watoi64(std::string str)
 {
 #ifdef _WIN32
-	return _wtoi64(str.c_str());
+	return _atoi64(str.c_str());
 #else
-	return atoll(wnarrow(str).c_str());
+	return atoll(str.c_str());
 #endif
 }
-
 
 std::string trim(const std::string &str)
 {
-	size_t startpos = str.find_first_not_of(" \t");
-	size_t endpos = str.find_last_not_of(" \t");
+	size_t startpos = str.find_first_not_of(" \r\n\t");
+	size_t endpos = str.find_last_not_of(" \r\n\t");
 	if(( string::npos == startpos ) || ( string::npos == endpos))  
 	{
 		return "";
-	}
-	else
-	{
-		return str.substr( startpos, endpos-startpos+1 );
-	}
-}
-
-std::wstring trim(const std::wstring &str)
-{
-	size_t startpos = str.find_first_not_of(L" \t");
-	size_t endpos = str.find_last_not_of(L" \t");
-	if(( wstring::npos == startpos ) || ( wstring::npos == endpos))  
-	{
-		return L"";
 	}
 	else
 	{
@@ -1675,31 +1246,21 @@ std::string UnescapeHTML(const std::string &html)
 	return ret;
 }
 
-std::wstring UnescapeHTML(const std::wstring &html)
-{
-	std::wstring ret=greplace(L"&amp;", L"&", html);
-	ret=greplace(L"&lt;", L"<", ret);
-	ret=greplace(L"&gt;", L">", ret);
-	ret=greplace(L"&quot;", L"\"", ret);
-	ret=greplace(L"&#x27;", L"'", ret);
-	return ret;
-}
-
 std::string PrettyPrintBytes(_i64 bytes)
 {
 	if(bytes<1024)
-		return nconvert(bytes)+" bytes";
+		return convert(bytes)+" bytes";
 
 	if(bytes<1024*1024)
-		return nconvert(bytes/1024.f)+" KB";
+		return convert(bytes/1024.f)+" KB";
 
 	if(bytes<1024*1024*1024)
-		return nconvert(bytes/(1024.f*1024.f))+" MB";
+		return convert(bytes/(1024.f*1024.f))+" MB";
 
 	if((float)bytes<1024.f*1024*1024*1024)
-		return nconvert(bytes/(1024.f*1024.f*1024.f))+" GB";
+		return convert(bytes/(1024.f*1024.f*1024.f))+" GB";
 
-	return nconvert(bytes/(1024.f*1024.f*1024.f*1024.f))+" TB";
+	return convert(bytes/(1024.f*1024.f*1024.f*1024.f))+" TB";
 }
 
 std::string PrettyPrintSpeed(size_t bps)
@@ -1707,15 +1268,15 @@ std::string PrettyPrintSpeed(size_t bps)
 	size_t bit_ps=bps*8;
 
 	if( bit_ps<1000)
-		return nconvert(bit_ps)+" Bit/s";
+		return convert(bit_ps)+" Bit/s";
 
 	if( bit_ps<1000*1000)
-		return nconvert(bit_ps/1000.f)+" KBit/s";
+		return convert(bit_ps/1000.f)+" KBit/s";
 
 	if( bit_ps<1000*1000*1000)
-		return nconvert(bit_ps/(1000.f*1000.f))+" MBit/s";
+		return convert(bit_ps/(1000.f*1000.f))+" MBit/s";
 
-	return nconvert(bit_ps/(1000.f*1000.f*1000.f))+" GBit/s";
+	return convert(bit_ps/(1000.f*1000.f*1000.f))+" GBit/s";
 }
 
 std::string PrettyPrintTime(int64 ms)
@@ -1733,7 +1294,7 @@ std::string PrettyPrintTime(int64 ms)
 	{
 		int64 t=ms/c_d;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+" days";
+		ret+=convert(t)+" days";
 		ms-=t*c_d;
 	}
 
@@ -1741,7 +1302,7 @@ std::string PrettyPrintTime(int64 ms)
 	{
 		int64 t=ms/c_h;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+"h";
+		ret+=convert(t)+"h";
 		ms-=t*c_h;
 	}
 
@@ -1749,7 +1310,7 @@ std::string PrettyPrintTime(int64 ms)
 	{
 		int64 t=ms/c_m;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+"m";
+		ret+=convert(t)+"m";
 		ms-=t*c_m;
 	}
 
@@ -1757,14 +1318,14 @@ std::string PrettyPrintTime(int64 ms)
 	{
 		int64 t=ms/c_s;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+"s";
+		ret+=convert(t)+"s";
 		ms-=t*c_s;
 	}
 
 	if( orig < c_s)
 	{
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(ms)+"ms";
+		ret+=convert(ms)+"ms";
 	}
 
 	return ret;

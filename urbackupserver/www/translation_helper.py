@@ -18,7 +18,7 @@ def write_po_header(f, lang):
                   "\n"]); 
 
 def po_from_translations():
-    with codecs.open("translation.js", "r", encoding="utf8") as translation_file:
+    with codecs.open("js/translation.js", "r", encoding="utf8") as translation_file:
         
         translation = translation_file.readlines();
         
@@ -107,7 +107,7 @@ def translations_from_po():
     
     lang_map = { "fa_IR": "fa" }
     
-    with codecs.open("translation.js", "w", encoding="utf8") as output:
+    with codecs.open("js/translation.js", "w", encoding="utf8") as output:
         
         output.write("if(!window.translations) translations=new Object();\n")
             
@@ -149,6 +149,7 @@ def translations_from_po():
                             
                             msgid = entry.msgid.replace("\"", "\\\"")
                             msgstr = entry.msgstr.replace("\"", "\\\"")
+                            msgstr = msgstr.replace("\n", "\\n")
                             
                             output.write("\""+msgid+"\": \""+msgstr+"\"")
         

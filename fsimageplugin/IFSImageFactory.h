@@ -9,19 +9,20 @@ class IVHDFile;
 class IFSImageFactory : public IPlugin
 {
 public:
-	virtual IFilesystem *createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)=0;
+	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)=0;
 
-	enum CompressionSetting
+	enum ImageFormat
 	{
-		CompressionSetting_None=0,
-		CompressionSetting_Zlib=1
+		ImageFormat_VHD=0,
+		ImageFormat_CompressedVHD=1,
+		ImageFormat_RawCowFile=2
 	};
 
-	virtual IVHDFile *createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize,
-		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, CompressionSetting compress=CompressionSetting_None)=0;
+	virtual IVHDFile *createVHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize,
+		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD)=0;
 
-	virtual IVHDFile *createVHDFile(const std::wstring &fn, const std::wstring &parent_fn,
-		bool pRead_only, bool fast_mode=false, CompressionSetting compress=CompressionSetting_None)=0;
+	virtual IVHDFile *createVHDFile(const std::string &fn, const std::string &parent_fn,
+		bool pRead_only, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD)=0;
 
 	virtual void destroyVHDFile(IVHDFile *vhd)=0;
 };

@@ -1,23 +1,20 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server_writer.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -28,13 +25,19 @@
 #include "../urbackupcommon/os_functions.h"
 #include "server_log.h"
 #include "server_cleanup.h"
-#include "server_get.h"
+#include "ClientMain.h"
+#include "zero_hash.h"
 
 extern IFSImageFactory *image_fak;
 const size_t free_space_lim=1000*1024*1024; //1000MB
 const uint64 filebuf_lim=1000*1024*1024; //1000MB
+const unsigned int sha_size=32;
 
-ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles)
+ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
+		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize,
+	logid_t logid, int64 drivesize)
+ : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize), do_make_full(false),
+   logid(logid), drivesize(drivesize)
 {
 	filebuffer=use_tmpfiles;
 
@@ -53,7 +56,7 @@ ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigne
 	{
 		filebuf=new CFileBufMgr(false);
 		filebuf_writer=new ServerFileBufferWriter(this, blocksize);
-		filebuf_writer_ticket=Server->getThreadPool()->execute(filebuf_writer);
+		filebuf_writer_ticket=Server->getThreadPool()->execute(filebuf_writer, "image buffered writer");
 		currfile=filebuf->getBuffer();
 		currfile_size=0;
 	}
@@ -114,11 +117,32 @@ void ServerVHDWriter::operator()(void)
 					}
 					else
 					{
-						FileBufferVHDItem *fbi=(FileBufferVHDItem*)(item.buf-sizeof(FileBufferVHDItem));
+						FileBufferVHDItem *fbi;
+						FileBufferVHDItem local_fbi;
+						if (item.buf != NULL)
+						{
+							fbi = (FileBufferVHDItem*)(item.buf - sizeof(FileBufferVHDItem));
+							fbi->type = 0;
+						}
+						else
+						{
+							fbi = &local_fbi;
+							fbi->type = 1;
+						}
+							
 						fbi->pos=item.pos;
-						fbi->bsize=item.bsize;
-						writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem)+item.bsize);
-						currfile_size+=item.bsize+sizeof(FileBufferVHDItem);
+						fbi->bsize = item.bsize;
+						if (item.buf != NULL)
+						{
+							writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem) + item.bsize);
+							currfile_size += item.bsize + sizeof(FileBufferVHDItem);
+						}
+						else
+						{
+							writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem));
+							currfile_size += sizeof(FileBufferVHDItem);
+						}
+						
 
 						if(currfile_size>filebuf_lim)
 						{
@@ -155,12 +179,36 @@ void ServerVHDWriter::operator()(void)
 		Server->getThreadPool()->waitFor(filebuf_writer_ticket);
 	}
 
+	if(do_trim)
+	{
+		trimmed_bytes=0;
+		ServerLogger::Log(logid, "Starting trimming image file (if possible)", LL_DEBUG);
+		if(!vhd->trimUnused(mbr_offset, vhd_blocksize, this))
+		{
+			ServerLogger::Log(logid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Trimmed "+PrettyPrintBytes(trimmed_bytes), LL_DEBUG);
+		}
+	}
+
+	if(do_make_full)
+	{
+		ServerLogger::Log(logid, "Converting incremental image file to full image file...", LL_INFO);
+
+		if(!vhd->makeFull(mbr_offset, this))
+		{
+			ServerLogger::Log(logid, "Covnerting incremental image to full image failed", LL_ERROR);
+		}
+	}
+
 	if(!vhd->finish())
 	{
 		checkFreeSpaceAndCleanup();
 		if(!vhd->finish())
 		{
-			ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+			ServerLogger::Log(logid, "FATAL: Writing failed after cleanup", LL_ERROR);
 			has_error=true;
 		}
 	}
@@ -170,10 +218,10 @@ void ServerVHDWriter::operator()(void)
 
 void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 {
-	std::wstring p;
+	std::string p;
 	{
 		IScopedLock lock(vhd_mutex);
-		p=ExtractFilePath(vhd->getFilenameW());
+		p=ExtractFilePath(vhd->getFilename());
 	}
 	int64 fs=os_free_space(os_file_prefix(p));
 	if(fs!=-1 && fs <= free_space_lim )
@@ -186,9 +234,31 @@ void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 	}
 }
 
-void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
+bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 {
 	IScopedLock lock(vhd_mutex);
+
+	if (buf == NULL)
+	{
+		int64 unused_end = pos + bsize;
+		if (pos<drivesize && unused_end>drivesize)
+		{
+			Server->Log("Trim beyond drivesize (drivesize: " + convert(drivesize) + " trim to " + convert(pos + bsize)+"). Trimming less...", LL_INFO);
+			unused_end = drivesize;
+		}
+
+		if (!vhd->setUnused(pos, unused_end))
+		{
+			ServerLogger::Log(logid, "Error setting unused area (from byte "+convert(pos)+" to byte "+convert(pos + bsize)+"). "+os_last_error_str(), LL_ERROR);
+			has_error = true;
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
 	vhd->Seek(pos);
 	bool b=vhd->Write(buf, bsize)!=0;
 	written+=bsize;
@@ -206,11 +276,11 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			}
 			else
 			{
-				return;
+				return true;
 			}
 		}
 
-		std::wstring p=ExtractFilePath(vhd->getFilenameW());
+		std::string p=ExtractFilePath(vhd->getFilename());
 		int64 fs=os_free_space(os_file_prefix(p));
 		if(fs!=-1 && fs <= free_space_lim )
 		{
@@ -232,39 +302,41 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 						}
 						else
 						{
-							return;
+							return true;
 						}
 					}
 
 #ifdef _WIN32
 					if(GetLastError()==ERROR_FILE_SYSTEM_LIMITATION)
 					{
-						ServerLogger::Log(clientid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
+						ServerLogger::Log(logid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
 							" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
 							" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
 					}
 #endif
 
-					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+					ServerLogger::Log(logid, "FATAL: Writing failed after cleanup. "+os_last_error_str(), LL_ERROR);
 					
-					BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 					has_error=true;
 				}
 			}
 			else
 			{
 				has_error=true;
-				Server->Log("FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
-				BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+				ServerLogger::Log(logid, "FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
+				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			}
 		}
 		else
 		{			
 			has_error=true;
-			ServerLogger::Log(clientid, "FATAL: Error writing to VHD-File.", LL_ERROR);
-			BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+os_last_error_str(), LL_ERROR);
+			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}
+
+	return !has_error;
 }
 
 char *ServerVHDWriter::getBuffer(void)
@@ -300,6 +372,9 @@ void ServerVHDWriter::writeBuffer(uint64 pos, char *buf, unsigned int bsize)
 
 void ServerVHDWriter::freeBuffer(char *buf)
 {
+	if(buf==NULL)
+		return;
+
 	if(filebuffer)
 		bufmgr->releaseBuffer(buf-sizeof(FileBufferVHDItem));
 	else
@@ -358,10 +433,10 @@ IVHDFile* ServerVHDWriter::getVHD(void)
 
 bool ServerVHDWriter::cleanupSpace(void)
 {
-	ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
+	ServerLogger::Log(logid, "Not enough free space. Cleaning up.", LL_INFO);
 	if(!ServerCleanupThread::cleanupSpace(free_space_lim) )
 	{
-		ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
+		ServerLogger::Log(logid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
 		return false;
 	}
 	return true;
@@ -381,10 +456,94 @@ void ServerVHDWriter::writeRetry(IFile *f, char *buf, unsigned int bsize)
 		off+=r;
 		if(off<bsize)
 		{
-			Server->Log("Error writing to file \""+f->getFilename()+"\". Retrying", LL_WARNING);
+			Server->Log("Error writing to file \""+f->getFilename()+"\". "+os_last_error_str()+". Retrying...", LL_WARNING);
 			Server->wait(10000);
 		}
 	}
+}
+
+void ServerVHDWriter::setDoTrim(bool b)
+{
+	do_trim = b;
+}
+
+void ServerVHDWriter::setMbrOffset(int64 offset)
+{
+	mbr_offset = offset;
+}
+
+void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
+{
+	/*
+	* If we do not align trimming to the hash block size
+	* we need to recalculate the hash here.
+	* Trimming only at hash block size for now.
+	*/
+	assert(trim_start%vhd_blocksize == 0);
+	assert(trim_stop%vhd_blocksize == 0);
+
+	_i64 block_start = trim_start/vhd_blocksize;
+	if(trim_start%vhd_blocksize!=0)
+	{
+		++block_start;
+	}
+
+	_i64 block_end = trim_stop/vhd_blocksize;
+
+	for(;block_start<block_end;++block_start)
+	{
+		if(hashfile->Seek(block_start*sha_size) )
+		{
+			if(hashfile->Write(reinterpret_cast<const char*>(zero_hash), sha_size)!=sha_size)
+			{
+				Server->Log("Error writing to hashfile while trimming.", LL_WARNING);
+			}
+		}
+		else
+		{
+			Server->Log("Error seeking in hashfile while trimming.", LL_WARNING);
+		}
+	}
+
+	trimmed_bytes+=trim_stop-trim_start;
+}
+
+bool ServerVHDWriter::emptyVHDBlock(int64 empty_start, int64 empty_end)
+{
+	assert(empty_start%vhd_blocksize == 0);
+	assert(empty_end%vhd_blocksize == 0);
+
+	_i64 block_start = empty_start / vhd_blocksize;
+	if (empty_start%vhd_blocksize != 0)
+	{
+		++block_start;
+	}
+
+	_i64 block_end = empty_end / vhd_blocksize;
+
+	bool ret = true;
+	for (; block_start<block_end; ++block_start)
+	{
+		if (hashfile->Seek(block_start*sha_size))
+		{
+			if (hashfile->Write(reinterpret_cast<const char*>(zero_hash), sha_size) != sha_size)
+			{
+				Server->Log("Error writing to hashfile while setting block to empty.", LL_WARNING);
+				ret = false;
+			}
+		}
+		else
+		{
+			Server->Log("Error seeking in hashfile setting block to empty.", LL_WARNING);
+			ret = false;
+		}
+	}
+	return ret;
+}
+
+void ServerVHDWriter::setDoMakeFull( bool b )
+{
+	do_make_full=b;
 }
 
 //-------------FilebufferWriter-----------------
@@ -411,8 +570,8 @@ ServerFileBufferWriter::~ServerFileBufferWriter(void)
 
 void ServerFileBufferWriter::operator()(void)
 {
-	char *blockbuf=new char[blocksize+sizeof(FileBufferVHDItem)];
-	unsigned int blockbuf_size=blocksize+sizeof(FileBufferVHDItem);
+	char *blockbuf=new char[blocksize+sizeof(FileBufferVHDItem)+1];
+	unsigned int blockbuf_size=blocksize+sizeof(FileBufferVHDItem)+1;
 
 	while(!exit_now)
 	{
@@ -439,6 +598,8 @@ void ServerFileBufferWriter::operator()(void)
 			tmp->Seek(0);
 			uint64 tpos=0;
 			uint64 tsize=tmp->Size();
+			char next_type = -1;
+
 			while(tpos<tsize)
 			{
 				if(exit_now)
@@ -446,20 +607,20 @@ void ServerFileBufferWriter::operator()(void)
 
 				if(!parent->hasError())
 				{
-					unsigned int tw=blockbuf_size;
 					bool old_method=false;
-					if(tw<sizeof(FileBufferVHDItem) || tmp->Read(blockbuf, tw)!=tw)
+					if(next_type!=0 || tmp->Read(blockbuf+1, blockbuf_size-1)!= blockbuf_size-1)
 					{
 						old_method=true;
 					}
 					else
 					{
 						FileBufferVHDItem *item=(FileBufferVHDItem*)blockbuf;
-						if(tw==item->bsize+sizeof(FileBufferVHDItem) )
+						if(blockbuf_size-1==item->bsize+sizeof(FileBufferVHDItem) )
 						{
 							parent->writeVHD(item->pos, blockbuf+sizeof(FileBufferVHDItem), item->bsize);
 							written+=item->bsize;
 							tpos+=item->bsize+sizeof(FileBufferVHDItem);
+							next_type = blockbuf[blockbuf_size - 1];
 						}
 						else
 						{
@@ -479,30 +640,56 @@ void ServerFileBufferWriter::operator()(void)
 							break;
 						}
 						tpos+=sizeof(FileBufferVHDItem);
-						unsigned int tw=item.bsize;
-						if(tpos+tw>tsize)
+						if (item.type==1)
 						{
-							Server->Log("Size field is wrong", LL_ERROR);
-							exit_now=true;
+							parent->writeVHD(item.pos, NULL, item.bsize);
+							next_type = -1;
+						}
+						else if(item.type==0)
+						{
+							unsigned int tw = item.bsize;
+							if (tpos + tw > tsize)
+							{
+								Server->Log("Size field is wrong", LL_ERROR);
+								exit_now = true;
+								parent->setHasError(true);
+								break;
+							}
+							if (tw+1 > blockbuf_size)
+							{
+								delete[]blockbuf;
+								blockbuf = new char[tw + 1 + sizeof(FileBufferVHDItem)];
+								blockbuf_size = tw + 1 + sizeof(FileBufferVHDItem);
+							}
+							unsigned int read = tmp->Read(blockbuf, tw+1);
+							if (read < tw)
+							{
+								Server->Log("Error reading from tmp.f", LL_ERROR);
+								exit_now = true;
+								parent->setHasError(true);
+								break;
+							}
+
+							if (read == tw+1)
+							{
+								next_type = blockbuf[tw];
+							}
+							else
+							{
+								next_type = -1;
+							}
+
+							parent->writeVHD(item.pos, blockbuf, tw);
+							written += tw;
+							tpos += item.bsize;
+						}
+						else
+						{
+							Server->Log("Wrong type: "+convert((int)item.type), LL_ERROR);
+							exit_now = true;
 							parent->setHasError(true);
 							break;
 						}
-						if(tw>blockbuf_size)
-						{
-							delete []blockbuf;
-							blockbuf=new char[tw+sizeof(FileBufferVHDItem)];
-							blockbuf_size=tw+sizeof(FileBufferVHDItem);
-						}
-						if(tmp->Read(blockbuf, tw)!=tw)
-						{
-							Server->Log("Error reading from tmp.f", LL_ERROR);
-							exit_now=true;
-							parent->setHasError(true);
-							break;
-						}
-						parent->writeVHD(item.pos, blockbuf, tw);
-						written+=tw;
-						tpos+=item.bsize;
 					}
 
 					if( written>=free_space_lim/2)
@@ -549,4 +736,3 @@ void ServerFileBufferWriter::writeBuffer(IFile *buf)
 	cond->notify_all();
 }
 
-#endif //CLIENT_ONLY

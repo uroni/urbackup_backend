@@ -1,0 +1,87 @@
+#!/bin/sh
+
+set -e
+
+mkdir -p /mnt/urbackup_snaps
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+
+DEVICE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+
+if [ "x$DEVICE" = "x" ]
+then
+    echo "Cannot get device for filesystem $SNAP_MOUNTPOINT"
+    exit 1
+fi
+
+echo "Snapshotting device $DEVICE via dattobd..."
+
+NUM=0
+
+while [ -e "/dev/datto$NUM" ]
+do
+        NUM=`expr $NUM + 1`
+done
+
+if ! modprobe dattobd
+then
+	echo "Dattobd kernel module not available"
+	exit 1
+fi
+
+echo "Using /dev/datto$NUM..."
+
+sync
+
+dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_$SNAP_ID" $NUM
+
+echo $NUM > ${SNAP_DEST}-num
+
+DEV_SIZE=`blockdev --getsize /dev/datto$NUM`
+
+truncate -s100M $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+
+LODEV=`losetup -f`
+
+if [ "x$LODEV" = x ]
+then
+	rm "${SNAP_DEST}-num"
+	rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+	dbdctl destroy $NUM
+    exit 1
+fi
+	
+
+losetup $LODEV $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+
+echo "0 $DEV_SIZE snapshot /dev/datto$NUM $LODEV N 8" | dmsetup create "wsnap-$SNAP_ID"
+
+echo "Mounting /dev/mapper/wsnap-$SNAP_ID..."
+
+mkdir -p $SNAP_DEST
+
+MOUNTOPTS="ro"
+
+if [ $TYPE = "xfs" ]
+then
+    MOUNTOPTS="ro,nouuid"
+fi
+
+if ! mount -o $MOUNTOPTS /dev/mapper/wsnap-$SNAP_ID $SNAP_DEST
+then
+    echo "Mounting filesystem failed"
+    rmdir "$SNAP_DEST"
+    rm "${SNAP_DEST}-num"
+    dmsetup remove "wsnap-$SNAP_ID"
+	losetup -d $LODEV
+    rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+    dbdctl destroy $NUM
+    exit 1
+fi
+
+echo "SNAPSHOT=$SNAP_DEST"
+
+exit 0

@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -68,7 +68,7 @@ void CHTTPClient::destroy_mutex(void)
 	Server->destroy(share_mutex);
 }
 
-void CHTTPClient::ReceivePackets(void)
+void CHTTPClient::ReceivePackets(IRunOtherCallback* run_other)
 {
 	std::string data;
 	size_t rc=pipe->Read(&data);
@@ -114,7 +114,7 @@ void CHTTPClient::ReceivePackets(void)
 	}
 }
 
-bool CHTTPClient::Run(void)
+bool CHTTPClient::Run(IRunOtherCallback* run_other)
 {
 	if( http_g_state==HTTP_STATE_WAIT_FOR_THREAD )
 	{
@@ -130,7 +130,7 @@ bool CHTTPClient::Run(void)
 				http_g_state=HTTP_STATE_KEEPALIVE;
 				http_keepalive_start=Server->getTimeMS();
 				//Server->Log("Keep-alive: "+http_params["KEEP-ALIVE"], LL_DEBUG);
-				str_nmap::iterator iter=http_params.find("KEEP-ALIVE");
+				str_map::iterator iter=http_params.find("KEEP-ALIVE");
 				if(iter==http_params.end())
 				{
 					http_keepalive_count=HTTP_MAX_KEEPALIVE;
@@ -311,7 +311,7 @@ void CHTTPClient::processHeader(char ch)
 	case 2:
 		if( http_method=="POST")
 		{
-			str_nmap::iterator iter=http_params.find("CONTENT-LENGTH");
+			str_map::iterator iter=http_params.find("CONTENT-LENGTH");
 			if( iter!=http_params.end() )
 			{
 				http_remaining_content=atoi(iter->second.c_str() );
@@ -362,7 +362,7 @@ void CHTTPClient::processContent(char ch)
 	{
 		http_g_state=HTTP_STATE_READY;
 		
-		str_nmap::iterator iter=http_params.find("CONTENT-TYPE");
+		str_map::iterator iter=http_params.find("CONTENT-TYPE");
 		if(iter!=http_params.end())
 		{
 			std::string ct=iter->second;
@@ -438,7 +438,7 @@ void CHTTPClient::parseAction(std::string pQuery, std::string &pAction, std::str
 
 bool CHTTPClient::processRequest(void)
 {
-	//Server->Log("Parsing done... starting handling request_num: "+nconvert(request_num)+" "+nconvert(Server->getTimeMS()), LL_INFO);
+	//Server->Log("Parsing done... starting handling request_num: "+convert(request_num)+" "+convert(Server->getTimeMS()), LL_INFO);
 	++request_num;
 	if(!allowed_urls.empty())
 	{
@@ -544,8 +544,8 @@ bool CHTTPClient::processRequest(void)
 
 		pl=NULL;
 		http_params["REMOTE_ADDR"]=endpoint;
-		CHTTPAction *action_handler=new CHTTPAction(widen(name),widen(context),gparams, http_content, http_params, pipe);
-		request_ticket=Server->getThreadPool()->execute(action_handler);
+		CHTTPAction *action_handler=new CHTTPAction(name,context,gparams, http_content, http_params, pipe);
+		request_ticket=Server->getThreadPool()->execute(action_handler, "http dynamic request");
 		request_handler=action_handler;
 		return true;
 	}
@@ -587,7 +587,7 @@ void CHTTPClient::ParseMultipartData(const std::string &data, const std::string 
 	std::string contenttype;
 	size_t start;
 	POSTFILE_KEY pfilekey=Server->getPostFileKey();
-	http_params["POSTFILEKEY"]=nconvert(pfilekey);
+	http_params["POSTFILEKEY"]=convert(pfilekey);
 	for(size_t i=0;i<data.size();++i)
 	{
 	    switch(state)
@@ -644,7 +644,7 @@ void CHTTPClient::ParseMultipartData(const std::string &data, const std::string 
                 IFile *memfile=Server->openMemoryFile();
 				memfile->Write(data.substr(start,i-start-2) );
 				memfile->Seek(0);
-				Server->addPostFile(pfilekey, name, SPostfile(memfile, widen(filename), widen(contenttype)) );
+				Server->addPostFile(pfilekey, name, SPostfile(memfile, filename, contenttype) );
 				fileupload=true;
 				state=0;
 				rboundary.erase(rboundary.size()-2,2);

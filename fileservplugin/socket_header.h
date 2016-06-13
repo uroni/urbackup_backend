@@ -6,7 +6,7 @@
 #	include <signal.h>
 #	include <sys/socket.h>
 #	include <sys/types.h>
-#	include <sys/poll.h>
+#	include <poll.h>
 #	include <netinet/in.h>
 #	include <netinet/tcp.h>
 #	include <arpa/inet.h>
@@ -14,7 +14,11 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #	include <sys/sendfile.h>
+#else
+#   include <sys/uio.h>
+#endif
 #	define SOCKET_ERROR -1
 #	define closesocket close
 #	define SOCKET int
@@ -28,6 +32,6 @@
 #	define Sleep(x) usleep(x*1000)
 #	define MAX_PATH 260
 #endif
-#ifdef sun
+#if defined(__sun__) || defined(__APPLE__)
 #	define MSG_NOSIGNAL 0
 #endif

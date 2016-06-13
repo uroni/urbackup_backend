@@ -22,8 +22,8 @@ class CHTTPClient : public ICustomClient
 public:
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint);
 
-	virtual void ReceivePackets(void);
-	virtual bool Run(void);
+	virtual void ReceivePackets(IRunOtherCallback* run_other);
+	virtual bool Run(IRunOtherCallback* run_other);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -42,7 +42,7 @@ private:
 	inline void parseAction(std::string pQuery, std::string &pAction, std::string &pContext);
 	inline void ParseMultipartData(const std::string &data, const std::string &boundary);
 
-	str_nmap http_params;
+	str_map http_params;
 	std::string http_method;
 	std::string http_query;
 	std::string http_content;

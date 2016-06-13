@@ -26,9 +26,21 @@
 #include <iostream>
 #include <memory.h>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_fuseplugin
+#define UnloadActions UnloadActions_fuseplugin
+#endif
 
 #include "../Interface/Types.h"
 #include "../fsimageplugin/IFSImageFactory.h"
@@ -125,15 +137,16 @@ namespace
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
-
-	Server->Log("Mounting VHD via fuse...", LL_INFO);
 	
 	std::string vhd_filename = Server->getServerParameter("mount");
 	
 	if(vhd_filename.empty())
 	{
-		Server->Log("Please specify the file to mount using the --mount parameter", LL_ERROR);
-		exit(1);
+		return;
+	}
+	else
+	{
+		Server->Log("Mounting VHD via fuse...", LL_INFO);
 	}
 	
 	std::string mountpoint = Server->getServerParameter("mountpoint");
@@ -152,7 +165,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(2);
 	}
 	
-	vhdfile = image_fak->createVHDFile(Server->ConvertToUnicode(vhd_filename), true, 0);
+	vhdfile = image_fak->createVHDFile((vhd_filename), true, 0);
 	
 	if(vhdfile==NULL || !vhdfile->isOpen())
 	{
@@ -167,7 +180,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		global_offset=atoi(offset_s.c_str());
 	}
 	
-	Server->Log("Volume offset is "+nconvert(global_offset)+" bytes. Configure via --offset", LL_DEBUG);
+	Server->Log("Volume offset is "+convert(global_offset)+" bytes. Configure via --offset", LL_DEBUG);
 	
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 	
@@ -216,3 +229,10 @@ DLLEXPORT void UnloadActions(void)
 {
 	Server->Log("Unload");
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 2);
+}
+#endif

@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "CompressedPipe.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../Interface/Server.h"
@@ -179,23 +197,34 @@ void CompressedPipe::Process(const char *buffer, size_t bsize)
 	}
 }
 
-bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	const char *ptr=buffer;
 	size_t cbsize=bsize;
-	while(bsize>0)
+	do
 	{
 		cbsize=(std::min)(max_send_size, bsize);
 
-		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, true, sizeof(_u16));
-		*((_u16*)&comp_buffer[0])=little_endian(rc);
-		bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
-		if(!b)
-			return false;
+		bsize-=cbsize;
+
+		bool has_next = bsize>0;
+
+		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, flush, sizeof(_u16));
+		if(rc>0)
+		{
+			*((_u16*)&comp_buffer[0])=little_endian(rc);
+			bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
+			if(!b)
+				return false;
+		}
+		else if(!has_next && flush)
+		{
+			return cs->Flush();
+		}
 
 		ptr+=cbsize;
-		bsize-=cbsize;
-	}
+		
+	} while(bsize>0);
 
 	return true;
 }
@@ -255,9 +284,9 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 	return rc;
 }
 
-bool CompressedPipe::Write(const std::string &str, int timeoutms)
+bool CompressedPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(str.c_str(), str.size(), timeoutms);
+	return Write(str.c_str(), str.size(), timeoutms, flush);
 }
 
 /**
@@ -324,4 +353,9 @@ _i64 CompressedPipe::getTransferedBytes(void)
 void CompressedPipe::resetTransferedBytes(void)
 {
 	cs->resetTransferedBytes();
+}
+
+bool CompressedPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return Write(NULL, 0, timeoutms, true);
 }

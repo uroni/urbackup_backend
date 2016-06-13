@@ -42,4 +42,24 @@ private:
 	IObject *obj;
 };
 
+template<typename T>
+class ScopedFreeObjRef
+{
+public:
+	ScopedFreeObjRef(T& ref)
+		: ref(ref)
+	{
+
+	}
+
+	~ScopedFreeObjRef()
+	{
+		delete ref;
+		ref = NULL;
+	}
+
+private:
+	T& ref;
+};
+
 #endif //IOBJECT_H

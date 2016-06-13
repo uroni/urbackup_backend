@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -41,28 +41,13 @@ CMemorySettingsReader::CMemorySettingsReader(const std::string &pData)
 			value=line;
 		}		
 		
-		mSettingsMap.insert(std::pair<std::wstring,std::wstring>(Server->ConvertToUnicode(key), Server->ConvertToUnicode(value)) );
+		mSettingsMap.insert(std::pair<std::string,std::string>((key), (value)) );
 	}
 }
 
 bool CMemorySettingsReader::getValue(std::string key, std::string *value)
 {
-	std::wstring s_value;
-	bool b=getValue( widen(key), &s_value);
-
-	if(b==true)
-	{
-		std::string nvalue=wnarrow(s_value);
-		*value=nvalue;		
-		return true;
-	}
-
-	return false;
-}
-
-bool CMemorySettingsReader::getValue(std::wstring key, std::wstring *value)
-{
-	std::map<std::wstring,std::wstring>::iterator i=mSettingsMap.find(key);
+	std::map<std::string,std::string>::iterator i=mSettingsMap.find(key);
 	if( i!=mSettingsMap.end() )
 	{
 		*value=i->second;
@@ -72,10 +57,10 @@ bool CMemorySettingsReader::getValue(std::wstring key, std::wstring *value)
 	
 }
 
-std::vector<std::wstring> CMemorySettingsReader::getKeys()
+std::vector<std::string> CMemorySettingsReader::getKeys()
 {
-	std::vector<std::wstring> ret;
-	for(std::map<std::wstring,std::wstring>::iterator i=mSettingsMap.begin();i!=mSettingsMap.end();++i)
+	std::vector<std::string> ret;
+	for(std::map<std::string,std::string>::iterator i=mSettingsMap.begin();i!=mSettingsMap.end();++i)
 	{
 		ret.push_back(i->first);
 	}

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -e
+
+mkdir -p /mnt/urbackup_snaps
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+SNAP_NAME="$3"
+SNAP_ORIG_PATH="$4"
+SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+
+if [[ $TYPE == "" ]]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [[ $TYPE == "btrfs" ]]
+then
+        btrfs subvolume snapshot -r "$SNAP_MOUNTPOINT" "$SNAP_DEST"
+else
+        echo "Cannot create snapshot of file system with type $TYPE"
+        exit 1
+fi
+
+echo "SNAPSHOT=$SNAP_DEST"
+
+exit 0

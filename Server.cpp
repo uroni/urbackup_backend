@@ -1,30 +1,32 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
 #include "vld.h"
 #ifdef _WIN32
 #define _CRT_RAND_S
+#include <ws2tcpip.h>
 #endif
 
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <memory.h>
+#include <assert.h>
 #ifndef _WIN32
 #include <errno.h>
 #endif
@@ -58,19 +60,16 @@
 
 
 
-#ifdef THREAD_BOOST
-#include <boost/thread/thread.hpp>
-#include <boost/thread/xtime.hpp>
-#include <boost/bind.hpp>
-#include "Mutex_boost.h"
-#include "Condition_boost.h"
-#else
 #ifdef _WIN32
+#include <condition_variable>
+#include "Mutex_std.h"
+#include "Condition_std.h"
+#include "SharedMutex_std.h"
 #else
 #include <pthread.h>
 #include "Mutex_lin.h"
 #include "Condition_lin.h"
-#endif
+#include "SharedMutex_lin.h"
 #endif
 
 #ifdef _WIN32
@@ -83,6 +82,13 @@
 #	include <unistd.h>
 #	include <sys/types.h>
 #	include <pwd.h>
+#	include "config.h"
+#endif
+#include "StaticPluginRegistration.h"
+
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
 #endif
 
 const size_t SEND_BLOCKSIZE=8192;
@@ -103,6 +109,35 @@ namespace
 		{
 			GetTickCount64_fun = reinterpret_cast<GetTickCount64_t*> (GetProcAddress(hKernel32, "GetTickCount64"));
 		}
+	}
+#endif
+
+#ifdef _WIN32
+	//from https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+	const DWORD MS_VC_EXCEPTION = 0x406D1388;
+#pragma pack(push,8)
+	typedef struct tagTHREADNAME_INFO
+	{
+		DWORD dwType; // Must be 0x1000.
+		LPCSTR szName; // Pointer to name (in user addr space).
+		DWORD dwThreadID; // Thread ID (-1=caller thread).
+		DWORD dwFlags; // Reserved for future use, must be zero.
+	} THREADNAME_INFO;
+#pragma pack(pop)
+	void SetThreadName(DWORD dwThreadID, const char* threadName) {
+		THREADNAME_INFO info;
+		info.dwType = 0x1000;
+		info.szName = threadName;
+		info.dwThreadID = dwThreadID;
+		info.dwFlags = 0;
+#pragma warning(push)
+#pragma warning(disable: 6320 6322)
+		__try {
+			RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {
+		}
+#pragma warning(pop)
 	}
 #endif
 		
@@ -149,6 +184,8 @@ CServer::CServer()
 		log_rotation_files = 100;
 	}
 
+	log_console_time = true;
+
 #ifdef _WIN32
 	initialize_GetTickCount64();
 	log_rotation_size = 20*1024*1024; //20MB
@@ -176,17 +213,16 @@ void CServer::setup(void)
 
 void CServer::destroyAllDatabases(void)
 {
-	Log("Destroying all databases...", LL_DEBUG);
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		for( std::map<THREAD_ID, IDatabaseInt*>::iterator j=i->second.tmap.begin();j!=i->second.tmap.end();++j)
+		for( std::map<THREAD_ID, IDatabaseInt*>::iterator j=i->second->tmap.begin();j!=i->second->tmap.end();++j)
 		{
 			delete j->second;
 		}
-		i->second.tmap.clear();
+		i->second->tmap.clear();
 	}
 }
 
@@ -194,14 +230,14 @@ void CServer::destroyDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
-		if(iter!=i->second.tmap.end())
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second->tmap.find(tid);
+		if(iter!=i->second->tmap.end())
 		{
 			delete iter->second;
-			i->second.tmap.erase(iter);
+			i->second->tmap.erase(iter);
 		}
 	}
 }
@@ -261,9 +297,9 @@ CServer::~CServer()
 
 	Log("Deleting actions...");
 
-	for(std::map< std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.begin();iter1!=actions.end();++iter1)
+	for(std::map< std::string, std::map<std::string, IAction*> >::iterator iter1=actions.begin();iter1!=actions.end();++iter1)
 	{
-		for(std::map<std::wstring, IAction*>::iterator iter2=iter1->second.begin();iter2!=iter1->second.end();++iter2)
+		for(std::map<std::string, IAction*>::iterator iter2=iter1->second.begin();iter2!=iter1->second.end();++iter2)
 		{
 			iter2->second->Remove();
 		}
@@ -316,7 +352,7 @@ CServer::~CServer()
 	std::cout << "Server cleanup done..." << std::endl;
 }
 
-void CServer::setServerParameters(const str_nmap &pServerParams)
+void CServer::setServerParameters(const str_map &pServerParams)
 {
 	IScopedLock lock(param_mutex);
 	server_params=pServerParams;
@@ -330,7 +366,7 @@ std::string CServer::getServerParameter(const std::string &key)
 std::string CServer::getServerParameter(const std::string &key, const std::string &def)
 {
 	IScopedLock lock(param_mutex);
-	str_nmap::iterator iter=server_params.find(key);
+	str_map::iterator iter=server_params.find(key);
 	if( iter!=server_params.end() )
 	{
 		return iter->second;
@@ -364,22 +400,26 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif	
 
+		if(log_console_time)
+		{
+			std::cout << buffer;
+		}
 
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer << "ERROR: " << pStr << std::endl;
+			std::cout << "ERROR: " << pStr << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << pStr << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << buffer << "WARNING: " << pStr << std::endl;
+			std::cout << "WARNING: " << pStr << std::endl;
 			if(logfile_a)
 				logfile<< buffer << "WARNING: " << pStr << std::endl;
 		}
 		else
 		{
-			std::cout << buffer << pStr << std::endl;		
+			std::cout << pStr << std::endl;		
 			if(logfile_a)
 				logfile << buffer << pStr << std::endl;
 		}
@@ -414,74 +454,14 @@ void CServer::rotateLogfile()
 
 		for(size_t i=log_rotation_files-1;i>0;--i)
 		{
-			rename((logfile_fn+"."+nconvert(i)).c_str(), (logfile_fn+"."+nconvert(i+1)).c_str());
+			rename((logfile_fn+"."+convert(i)).c_str(), (logfile_fn+"."+convert(i+1)).c_str());
 		}
 
-		deleteFile(logfile_fn+"."+nconvert(log_rotation_files));
+		deleteFile(logfile_fn+"."+convert(log_rotation_files));
 
 		rename(logfile_fn.c_str(), (logfile_fn+".1").c_str());
 
 		setLogFile(logfile_fn, logfile_chown_user);
-	}
-}
-
-void CServer::Log( const std::wstring &pStr, int LogLevel)
-{
-	if( loglevel <=LogLevel )
-	{
-		IScopedLock lock(log_mutex);
-
-		time_t rawtime;		
-		char buffer [100];
-		time ( &rawtime );
-#ifdef _WIN32
-		struct tm  timeinfo;
-		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
-#else
-		struct tm *timeinfo;
-		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
-#endif		
-
-		std::string out_str=ConvertToUTF8(pStr);
-
-		if( LogLevel==LL_ERROR )
-		{
-			std::cout << buffer << "ERROR: " << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << "ERROR: " << out_str << std::endl;
-		}
-		else if( LogLevel==LL_WARNING )
-		{
-			std::cout << buffer << "WARNING: " << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << "WARNING: " << out_str << std::endl;
-		}
-		else
-		{
-			std::cout << buffer << out_str << std::endl;
-			if(logfile_a)
-				logfile << buffer << out_str<< std::endl;
-		}
-
-		if(logfile_a)
-		{
-			logfile.flush();
-
-			rotateLogfile();
-		}
-
-		if(has_circular_log_buffer)
-		{
-			logToCircularBuffer(out_str, LogLevel);
-		}
-	}
-	else if(has_circular_log_buffer)
-	{
-		IScopedLock lock(log_mutex);
-
-		logToCircularBuffer(ConvertToUTF8(pStr), LogLevel);
 	}
 }
 
@@ -525,15 +505,15 @@ void CServer::setLogLevel(int LogLevel)
 	loglevel=LogLevel;
 }
 
-THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS, IOutputStream *req)
+THREAD_ID CServer::Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS, IOutputStream *req)
 {
 	IAction *action_ptr=NULL;
 	{
 		IScopedLock lock(action_mutex);
-		std::map<std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.find( context );
+		std::map<std::string, std::map<std::string, IAction*> >::iterator iter1=actions.find( context );
 		if( iter1!=actions.end() )
 		{
-			std::map<std::wstring, IAction*>::iterator iter2=iter1->second.find(action);
+			std::map<std::string, IAction*>::iterator iter2=iter1->second.find(action);
 			if( iter2!=iter1->second.end() )
 				action_ptr=iter2->second;
 		}
@@ -584,7 +564,7 @@ THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &conte
 	return 0;
 }
 
-std::string CServer::Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS)
+std::string CServer::Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS)
 {
 	CStringOutputStream cos;
 	Execute(action, context, GET, POST, PARAMS, &cos);
@@ -595,19 +575,19 @@ void CServer::AddAction(IAction *action)
 {
 	IScopedLock lock(action_mutex);
 
-	std::map<std::wstring, IAction*> *ptr=&actions[action_context];
-	ptr->insert( std::pair<std::wstring, IAction*>(action->getName(), action ) );
+	std::map<std::string, IAction*> *ptr=&actions[action_context];
+	ptr->insert( std::pair<std::string, IAction*>(action->getName(), action ) );
 }
 
 bool CServer::RemoveAction(IAction *action)
 {
 	IScopedLock lock(action_mutex);
 
-	std::map<std::wstring, std::map<std::wstring, IAction*> >::iterator iter1=actions.find(action_context);
+	std::map<std::string, std::map<std::string, IAction*> >::iterator iter1=actions.find(action_context);
 	
 	if( iter1!=actions.end() )
 	{	
-		std::map<std::wstring, IAction*>::iterator iter2=iter1->second.find( action->getName() );
+		std::map<std::string, IAction*>::iterator iter2=iter1->second.find( action->getName() );
 		if( iter2!=iter1->second.end() )
 		{
 			iter1->second.erase( iter2 );
@@ -617,7 +597,7 @@ bool CServer::RemoveAction(IAction *action)
 	return false;
 }
 
-void CServer::setActionContext(std::wstring context)
+void CServer::setActionContext(std::string context)
 {
 	action_context=context;
 }
@@ -660,11 +640,31 @@ int64 CServer::getTimeMS(void)
 	xt.sec-=start_t;
 	unsigned int t=xt.sec*1000+(unsigned int)((double)xt.nsec/1000000.0);
 	return t;*/
-	timeval tp;
+	/*timeval tp;
 	gettimeofday(&tp, NULL);
 	static long start_t=tp.tv_sec;
 	tp.tv_sec-=start_t;
 	return tp.tv_sec*1000+tp.tv_usec/1000;
+*/
+#ifdef __APPLE__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	return static_cast<int64>(mts.tv_sec) * 1000 + mts.tv_nsec / 1000000;
+#else
+	timespec tp;
+	if(clock_gettime(CLOCK_MONOTONIC, &tp)!=0)
+	{
+		timeval tv;
+		gettimeofday(&tv, NULL);
+		static long start_t=tv.tv_sec;
+		tv.tv_sec-=start_t;
+		return tv.tv_sec*1000+tv.tv_usec/1000;
+	}
+	return static_cast<int64>(tp.tv_sec)*1000+tp.tv_nsec/1000000;
+#endif //__APPLE__
 #endif
 }
 
@@ -812,11 +812,11 @@ ITemplate* CServer::createTemplate(std::string pFile)
 
 THREAD_ID CServer::getThreadID(void)
 {
-#ifdef THREAD_BOOST
+#ifdef _WIN32
 	IScopedLock lock(thread_mutex);
 	
-	boost::thread::id ct=boost::this_thread::get_id();
-	std::map<boost::thread::id, THREAD_ID>::iterator iter=threads.find(ct);
+	std::thread::id ct = std::this_thread::get_id();
+	std::map<std::thread::id, THREAD_ID>::iterator iter=threads.find(ct);
 	
 	if(iter!=threads.end() )
 	{
@@ -827,11 +827,10 @@ THREAD_ID CServer::getThreadID(void)
 	if( curr_thread_id>=MAX_THREAD_ID )
 		curr_thread_id=0;
 
-	threads.insert( std::pair<boost::thread::id, THREAD_ID>( ct, curr_thread_id) );
+	threads.insert( std::pair<std::thread::id, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
-#else
-#ifndef _WIN32
+#else //_WIN32
 	IScopedLock lock(thread_mutex);
 	
 	pthread_t ct=pthread_self();
@@ -849,15 +848,14 @@ THREAD_ID CServer::getThreadID(void)
 	threads.insert( std::pair<pthread_t, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
-#endif
-#endif //THREAD_BOOST
+#endif //_WIN32
 }
 
-bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine)
+bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params, std::string pEngine)
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
 	if( iter!=databases.end() )
 	{
 		Log("Database already openend", LL_ERROR);
@@ -871,8 +869,14 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 		return false;
 	}
 
-	SDatabase ndb(iter2->second, pFile);
-	databases.insert( std::pair<DATABASE_ID, SDatabase >(pIdentifier, ndb)  );
+	SDatabase* ndb= new SDatabase(iter2->second, pFile);
+	ndb->single_user_mutex.reset(createSharedMutex());
+	ndb->lock_mutex.reset(createMutex());
+	ndb->lock_count.reset(new int);
+	*ndb->lock_count = 0;
+	ndb->unlock_cond.reset(createCondition());
+	ndb->params = params;
+	databases.insert( std::pair<DATABASE_ID, SDatabase* >(pIdentifier, ndb)  );
 
 	return true;
 }
@@ -881,26 +885,28 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator database_iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator database_iter=databases.find(pIdentifier);
 	if( database_iter==databases.end() )
 	{
-		Log("Database with identifier \""+nconvert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
+		Log("Database with identifier \""+convert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
 		return NULL;
 	}
 
-	std::map<THREAD_ID, IDatabaseInt*>::iterator thread_iter=database_iter->second.tmap.find( tid );
-	if( thread_iter==database_iter->second.tmap.end() )
+	std::map<THREAD_ID, IDatabaseInt*>::iterator thread_iter=database_iter->second->tmap.find( tid );
+	if( thread_iter==database_iter->second->tmap.end() )
 	{
-		IDatabaseInt *db=database_iter->second.factory->createDatabase();
-		if(db->Open(database_iter->second.file, database_iter->second.attach)==false )
+		IDatabaseInt *db=database_iter->second->factory->createDatabase();
+		SDatabase* params = database_iter->second;
+		if(db->Open(params->file, params->attach,
+			params->allocation_chunk_size, params->single_user_mutex.get(),
+			params->lock_mutex.get(), params->lock_count.get(), params->unlock_cond.get(),
+			params->params)==false )
 		{
-			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
+			Log("Database \""+database_iter->second->file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
-		
-		Log("Created new database connection for "+database_iter->second.file, LL_DEBUG);
 
-		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
+		database_iter->second->tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
 		return db;
 	}
@@ -914,11 +920,11 @@ void CServer::clearDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase* >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
-		if( iter!=i->second.tmap.end() )
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second->tmap.find(tid);
+		if( iter!=i->second->tmap.end() )
 		{
 			iter->second->destroyAllQueries();
 		}
@@ -991,54 +997,16 @@ std::string CServer::GenerateHexMD5(const std::string &input)
 
 std::string CServer::GenerateBinaryMD5(const std::string &input)
 {
-	MD5 md((unsigned char*)input.c_str() );
-	unsigned char *p=md.raw_digest();
-	std::string ret;
-	ret.resize(16);
-	for(size_t i=0;i<16;++i)
-		ret[i]=p[i];
-	delete []p;
+	MD5 md((unsigned char*)input.c_str(), static_cast<unsigned int>(input.size()));
+	unsigned char *p=md.raw_digest_int();
+	std::string ret(reinterpret_cast<char*>(p), reinterpret_cast<char*>(p)+16);
 	return ret;
 }
-
-std::string CServer::GenerateHexMD5(const std::wstring &input)
-{
-	unsigned int *tmp=new unsigned int[input.size()];
-	for(size_t i=0,l=input.size();i<l;++i)
-	{
-		tmp[i]=input[i];
-	}
-	MD5 md((unsigned char*)tmp, (unsigned int)input.size()*sizeof(unsigned int) );
-	char *p=md.hex_digest();
-	std::string ret=p;
-	delete []p;
-	delete []tmp;
-	return ret;
-}
-
-std::string CServer::GenerateBinaryMD5(const std::wstring &input)
-{
-	unsigned int *tmp=new unsigned int[input.size()];
-	for(size_t i=0,l=input.size();i<l;++i)
-	{
-		tmp[i]=input[i];
-	}
-	MD5 md((unsigned char*)tmp, (unsigned int)input.size()*sizeof(unsigned int) );
-	unsigned char *p=md.raw_digest();
-	std::string ret;
-	ret.resize(16);
-	for(size_t i=0;i<16;++i)
-		ret[i]=p[i];
-	delete []p;
-	delete []tmp;
-	return ret;
-}
-
 
 void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 {
 	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort, pMaxClientsPerThread, bindTarget);
-	Server->createThread(acc);
+	Server->createThread(acc, pServiceName+": accept");
 
 	stream_services.push_back( acc );
 }
@@ -1051,7 +1019,12 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	server.sin_port=htons(pPort);
 	server.sin_family=AF_INET;
 
-	SOCKET s=socket(AF_INET, SOCK_STREAM, 0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+
+	SOCKET s=socket(AF_INET, type, 0);
 	if(s==SOCKET_ERROR)
 	{
 		return NULL;
@@ -1062,6 +1035,11 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	ioctlsocket(s,FIONBIO,&nonBlocking);
 #else
 	fcntl(s,F_SETFL,fcntl(s, F_GETFL, 0) | O_NONBLOCK);
+#endif
+
+#ifdef __APPLE__
+	int val = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val));
 #endif
 
 	int rc=connect(s, (sockaddr*)&server, sizeof(sockaddr_in) );
@@ -1120,7 +1098,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		if(err)
 		{
 			closesocket(s);
-			Server->Log("Socket has error: "+nconvert(err), LL_INFO);
+			Server->Log("Socket has error: "+convert(err), LL_INFO);
 			return NULL;
 		}
 		else
@@ -1288,14 +1266,19 @@ IPipe *CServer::createMemoryPipe(void)
 	return new CMemoryPipe;
 }
 
-#ifdef THREAD_BOOST
-void thread_helper_f(IThread *t)
+#ifdef _WIN32
+void thread_helper_f(IThread *t, const std::string& name)
 {
+#if defined(_WIN32) && defined(_DEBUG)
+	SetThreadName(-1, name.c_str());
+#endif
+
 #ifndef _DEBUG
 	__try
 	{
 #endif
 		(*t)();
+		Server->destroyDatabases(Server->getThreadID());
 #ifndef _DEBUG
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
@@ -1304,40 +1287,90 @@ void thread_helper_f(IThread *t)
 	}
 #endif
 }
-#else
-#ifndef _WIN32
+#else //_WIN32
 void* thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();
+	Server->destroyDatabases(Server->getThreadID());
 	return NULL;
 }
-#endif
-#endif //THREAD_BOOST
+#endif //_WIN32
 
-void CServer::createThread(IThread *thread)
+void CServer::createThread(IThread *thread, const std::string& name)
 {
-#ifdef THREAD_BOOST
-	boost::thread tr(thread_helper_f, thread);
-	tr.yield();
-#else
 #ifdef _WIN32
-	
+	std::thread tr(thread_helper_f, thread, name);
+	tr.detach();
 #else
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
+#if !defined(URB_THREAD_STACKSIZE64) || !defined(URB_THREAD_STACKSIZE32)
+
 #ifndef _LP64
 	//Only on 32bit architectures
 	pthread_attr_setstacksize(&attr, 1*1024*1024);
+#endif
+
+#else
+
+#ifdef _LP64
+	pthread_attr_setstacksize(&attr, (URB_THREAD_STACKSIZE64));
+#else
+	pthread_attr_setstacksize(&attr, (URB_THREAD_STACKSIZE32));
+#endif
+
 #endif
 
 	pthread_t t;
 	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
 	pthread_detach(t);
 
+#ifdef HAVE_PTHREAD_SETNAME_NP
+	if (!name.empty())
+	{
+		std::string thread_name;
+		if (name.size() > 15)
+		{
+			thread_name = name.substr(0, 15);
+		}
+		else
+		{
+			thread_name = name;
+		}
+
+		pthread_setname_np(t, thread_name.c_str());
+	}
+#endif //HAVE_PTHREAD_SETNAME_NP
+
 	pthread_attr_destroy(&attr);
 #endif
-#endif //THREAD_BOOST
+}
+
+void CServer::setCurrentThreadName(const std::string& name)
+{
+#if defined(_WIN32)
+#if defined(_DEBUG)
+	SetThreadName(-1, name.c_str());
+#endif
+#elif defined(HAVE_PTHREAD_SETNAME_NP)
+	if (!name.empty())
+	{
+		pthread_t ct = pthread_self();
+
+		std::string thread_name;
+		if (name.size() > 15)
+		{
+			thread_name = name.substr(0, 15);
+		}
+		else
+		{
+			thread_name = name;
+		}
+
+		pthread_setname_np(ct, thread_name.c_str());
+	}
+#endif
 }
 
 IThreadPool *CServer::getThreadPool(void)
@@ -1345,7 +1378,7 @@ IThreadPool *CServer::getThreadPool(void)
 	return threadpool;
 }
 
-ISettingsReader* CServer::createFileSettingsReader(std::string pFile)
+ISettingsReader* CServer::createFileSettingsReader(const std::string& pFile)
 {
 	return new CFileSettingsReader(pFile);
 }
@@ -1388,12 +1421,7 @@ void CServer::addRequest(void)
 	++num_requests;
 }
 
-IFile* CServer::openFile(std::string pFilename, int pMode)
-{
-	return openFile(ConvertToUnicode(pFilename), pMode);
-}
-
-IFile* CServer::openFile(std::wstring pFilename, int pMode)
+IFsFile* CServer::openFile(std::string pFilename, int pMode)
 {
 	File *file=new File;
 	if(!file->Open(pFilename, pMode) )
@@ -1404,10 +1432,10 @@ IFile* CServer::openFile(std::wstring pFilename, int pMode)
 	return file;
 }
 
-IFile* CServer::openFileFromHandle(void *handle)
+IFsFile* CServer::openFileFromHandle(void *handle, const std::string& pFilename)
 {
 	File *file=new File;
-	if(!file->Open(handle) )
+	if(!file->Open(handle, pFilename) )
 	{
 		delete file;
 		return NULL;
@@ -1415,7 +1443,7 @@ IFile* CServer::openFileFromHandle(void *handle)
 	return file;
 }
 
-IFile* CServer::openTemporaryFile(void)
+IFsFile* CServer::openTemporaryFile(void)
 {
 	File *file=new File;
 	if(!file->OpenTemporaryFile(tmpdir) )
@@ -1438,144 +1466,128 @@ bool CServer::deleteFile(std::string pFilename)
 	return DeleteFileInt(pFilename);
 }
 
-bool CServer::deleteFile(std::wstring pFilename)
+bool CServer::fileExists(std::string pFilename)
 {
-	return DeleteFileInt(pFilename);
+#ifndef WIN32
+	return ::FileExists(pFilename);
+#else
+	fstream in(ConvertToWchar(pFilename).c_str(), ios::in);
+	if( in.is_open()==false )
+		return false;
+
+	in.close();
+	return true;
+#endif
 }
 
-std::string CServer::ConvertToUTF8(const std::wstring &input)
-{
-    std::string ret;
-    try
-    {
-	if(sizeof(wchar_t)==2 )
-    	    utf8::utf16to8(input.begin(), input.end(), back_inserter(ret));
-        else
-            utf8::utf32to8(input.begin(), input.end(), back_inserter(ret));
-    }
-    catch(...){}
-    return ret;
-}
-
-std::wstring CServer::ConvertToUnicode(const std::string &input)
-{
-    std::wstring ret;
-    try
-    {
-		if(sizeof(wchar_t)==2)
-			utf8::utf8to16(input.begin(), input.end(), back_inserter(ret));
-        else
-			utf8::utf8to32(input.begin(), input.end(), back_inserter(ret));
-    }
-    catch(...){}
-	
-    return ret;
-}
-
-std::string CServer::ConvertToUTF16(const std::wstring &input)
+std::string CServer::ConvertToUTF16(const std::string &input)
 {
 	std::string ret;
 	try
 	{
-		if(sizeof(wchar_t)==2)
-		{
-			ret.resize(input.size()*2);
-			memcpy(&ret[0], &input[0], input.size()*2);
-		}
-		else
-		{
-			std::string utf8=ConvertToUTF8(input);
-			std::vector<utf8::uint16_t> tmp;
-			utf8::utf8to16(utf8.begin(), utf8.end(), back_inserter(tmp) );
-			ret.resize(tmp.size()*2);
-			memcpy(&ret[0], &tmp[0], tmp.size()*2); 
-		}
+		std::vector<utf8::uint16_t> tmp;
+		utf8::utf8to16(input.begin(), input.end(), back_inserter(tmp) );
+		ret.resize(tmp.size()*2);
+		memcpy(&ret[0], &tmp[0], tmp.size()*2); 
 	}
 	catch(...){}
 
 	return ret;
 }
 
-std::string CServer::ConvertToUTF32(const std::wstring &input)
+std::string CServer::ConvertToUTF32(const std::string &input)
 {
 	std::string ret;
 	try
 	{
-		if(sizeof(wchar_t)==4)
-		{
-			ret.resize(input.size()*4);
-			memcpy(&ret[0], &input[0], input.size()*4);
-		}
-		else
-		{
-			std::string utf8=ConvertToUTF8(input);
-			std::vector<utf8::uint32_t> tmp;
-			utf8::utf8to32(utf8.begin(), utf8.end(), back_inserter(tmp) );
-			ret.resize(tmp.size()*4);
-			memcpy(&ret[0], &tmp[0], tmp.size()*4); 
-		}
+		std::vector<utf8::uint32_t> tmp;
+		utf8::utf8to32(input.begin(), input.end(), back_inserter(tmp) );
+		ret.resize(tmp.size()*4);
+		memcpy(&ret[0], &tmp[0], tmp.size()*4); 
 	}
 	catch(...){}
 
 	return ret;
 }
 
-std::wstring CServer::ConvertFromUTF16(const std::string &input)
+std::string CServer::ConvertFromUTF16(const std::string &input)
 {
-	std::wstring ret;
+	if(input.empty())
+	{
+		return std::string();
+	}
+
+	std::string ret;
     try
     {
-		if(sizeof(wchar_t)==2)
-		{
-			ret.resize(input.size()/2);
-			memcpy(&ret[0], &input[0], input.size());
-		}
-        else
-		{
-			if(input.empty())
-			{
-				return L"";
-			}
-			else
-			{
-				std::string tmp;
-				utf8::utf16to8((utf8::uint16_t*)&input[0], (utf8::uint16_t*)(&input[input.size()-1]+1), back_inserter(tmp));
-				ret=ConvertToUnicode(tmp);
-			}
-		}
+		utf8::utf16to8((utf8::uint16_t*)&input[0], (utf8::uint16_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
-    catch(...){}
-	
+    catch(...){}	
     return ret;
 }
 
-std::wstring CServer::ConvertFromUTF32(const std::string &input)
+std::string CServer::ConvertFromUTF32(const std::string &input)
 {
-	std::wstring ret;
+	if(input.empty())
+	{
+		return std::string();
+	}
+
+	std::string ret;
     try
     {
-		if(sizeof(wchar_t)==4)
-		{
-			ret.resize(input.size()/4);
-			memcpy(&ret[0], &input[0], input.size());
-		}
-        else
-		{
-			if(input.empty())
-			{
-				return L"";
-			}
-			else
-			{
-				std::string tmp;
-				utf8::utf32to8((utf8::uint32_t*)&input[0], (utf8::uint32_t*)(&input[input.size()-1]+1), back_inserter(tmp));
-				ret=ConvertToUnicode(tmp);
-			}
-		}
+		utf8::utf32to8((utf8::uint32_t*)&input[0], (utf8::uint32_t*)(&input[input.size()-1]+1), back_inserter(ret));
     }
-    catch(...){}
-	
+    catch(...){}	
     return ret;
+}
+
+std::wstring CServer::ConvertToWchar(const std::string &input)
+{
+	if(input.empty())
+	{
+		return std::wstring();
+	}
+
+	std::wstring ret;
+	try
+	{
+		if(sizeof(wchar_t)==2)
+		{
+			utf8::utf8to16(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		else if(sizeof(wchar_t)==4)
+		{
+			utf8::utf8to32(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		
+	}
+	catch(...){}	
+	return ret;
+}
+
+std::string CServer::ConvertFromWchar(const std::wstring &input)
+{
+	if(input.empty())
+	{
+		return std::string();
+	}
+
+	std::string ret;
+	try
+	{
+		if(sizeof(wchar_t)==2)
+		{
+			utf8::utf16to8(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+		else if(sizeof(wchar_t)==4)
+		{
+			utf8::utf32to8(&input[0], &input[input.size()-1]+1, back_inserter(ret));
+		}
+
+	}
+	catch(...){}	
+	return ret;
 }
 
 ICondition* CServer::createCondition(void)
@@ -1625,17 +1637,17 @@ POSTFILE_KEY CServer::getPostFileKey()
 	return curr_postfilekey++;
 }
 
-std::wstring CServer::getServerWorkingDir(void)
+std::string CServer::getServerWorkingDir(void)
 {
 	return workingdir;
 }
 
-void CServer::setServerWorkingDir(const std::wstring &wdir)
+void CServer::setServerWorkingDir(const std::string &wdir)
 {
 	workingdir=wdir;
 }
 
-void CServer::setTemporaryDirectory(const std::wstring &dir)
+void CServer::setTemporaryDirectory(const std::string &dir)
 {
 	tmpdir=dir;
 }
@@ -1659,16 +1671,31 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
 	if( iter==databases.end() )
 	{
 		return false;
 	}
 
-	if(std::find(iter->second.attach.begin(), iter->second.attach.end(), std::pair<std::string,std::string>(pFile, pName))==iter->second.attach.end())
+	if(std::find(iter->second->attach.begin(), iter->second->attach.end(), std::pair<std::string,std::string>(pFile, pName))==iter->second->attach.end())
 	{
-		iter->second.attach.push_back(std::pair<std::string,std::string>(pFile, pName));
+		iter->second->attach.push_back(std::pair<std::string,std::string>(pFile, pName));
 	}
+
+	return true;
+}
+
+bool CServer::setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t allocation_chunk_size)
+{
+	IScopedLock lock(db_mutex);
+
+	std::map<DATABASE_ID, SDatabase* >::iterator iter=databases.find(pIdentifier);
+	if( iter==databases.end() )
+	{
+		return false;
+	}
+
+	iter->second->allocation_chunk_size = allocation_chunk_size;
 
 	return true;
 }
@@ -1689,9 +1716,10 @@ void CServer::startupComplete(void)
 	startup_complete_cond->notify_all();
 }
 
-IPipeThrottler* CServer::createPipeThrottler(size_t bps)
+IPipeThrottler* CServer::createPipeThrottler(size_t bps,
+	IPipeThrottlerUpdater* updater)
 {
-	return new PipeThrottler(bps);
+	return new PipeThrottler(bps, updater);
 }
 
 
@@ -1729,14 +1757,14 @@ void CServer::randomFill(char *buf, size_t blen)
 	char *dptr=buf+blen;
 	while(buf<dptr)
 	{
-		if(dptr-buf>=sizeof(unsigned long))
+		if(dptr-buf>=sizeof(unsigned int))
 		{
-			*((unsigned long*)buf)=genrand_int32();
-			buf+=sizeof(unsigned long);
+			*((unsigned int*)buf)=genrand_int32();
+			buf+=sizeof(unsigned int);
 		}
 		else
 		{
-			unsigned long rnd=genrand_int32();
+			unsigned int rnd=genrand_int32();
 			memcpy(buf, &rnd, dptr-buf);
 			buf+=dptr-buf;
 		}
@@ -1763,6 +1791,7 @@ unsigned int CServer::getSecureRandomNumber(void)
 		return getRandomNumber();
 	}
 	rnd_in.read((char*)&rnd, sizeof(unsigned int));
+	assert(rnd_in.gcount()==sizeof(unsigned int));
 	if(rnd_in.fail() || rnd_in.eof() )
 	{
 		Log("Error reading secure random number", LL_ERROR);
@@ -1834,6 +1863,8 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 
 	rnd_in.read(buf, blen);
 
+	assert(rnd_in.gcount()==blen);
+
 	if(rnd_in.fail() || rnd_in.eof() )
 	{
 		Log("Error reading secure random numbers fill", LL_ERROR);
@@ -1841,6 +1872,16 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 		return;
 	}
 #endif
+}
+
+std::string CServer::secureRandomString(size_t len)
+{
+	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	std::string key;
+	std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
+	for(size_t j=0;j<len;++j)
+		key+=rchars[rnd_n[j]%rchars.size()];
+	return key;
 }
 
 void CServer::setLogCircularBufferSize(size_t size)
@@ -1903,6 +1944,11 @@ size_t CServer::getFailBits(void)
 	return failbits;
 }
 
+ISharedMutex* CServer::createSharedMutex()
+{
+	return new SharedMutex;
+}
+
 void CServer::setLogRotationFilesize( size_t filesize )
 {
 	log_rotation_size=filesize;
@@ -1911,4 +1957,20 @@ void CServer::setLogRotationFilesize( size_t filesize )
 void CServer::setLogRotationNumFiles( size_t numfiles )
 {
 	log_rotation_files=numfiles;
+}
+
+void CServer::LoadStaticPlugins()
+{
+	std::vector<SStaticPlugin>& staticplugins = get_static_plugin_registrations();
+	std::sort(staticplugins.begin(), staticplugins.end());
+	for(size_t i=0;i<staticplugins.size();++i)
+	{
+		LOADACTIONS loadfunc = staticplugins[i].loadactions;
+		loadfunc(this);
+	}
+}
+
+void CServer::setLogConsoleTime(bool b)
+{
+	log_console_time = b;
 }

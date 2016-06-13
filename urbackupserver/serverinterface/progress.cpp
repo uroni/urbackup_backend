@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -25,48 +25,31 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids);
 
 ACTION_IMPL(progress)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 
-	std::vector<int> clientids;
-	std::string rights=helper.getRights("progress");
-	if(rights!="none" && rights!="all")
-	{
-		std::vector<std::string> s_cid;
-		Tokenize(rights, s_cid, ",");
-		for(size_t i=0;i<s_cid.size();++i)
-		{
-			clientids.push_back(atoi(s_cid[i].c_str()));
-		}
-	}
+	bool all_progress_rights = false;
+	std::vector<int> progress_clientids = helper.clientRights("progress", all_progress_rights);
+
+	bool all_stop_rights = false;
+	std::vector<int> stop_clientids = helper.clientRights("stop_backup", all_stop_rights);
+
+	bool all_log_rights = false;
+	std::vector<int> log_clientids = helper.clientRights("logs", all_log_rights);
+
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
-	if(session!=NULL && (rights=="all" || !clientids.empty()) )
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
+	if(session!=NULL && (all_progress_rights || !progress_clientids.empty()) )
 	{
-		if(GET.find(L"stop_clientid")!=GET.end())
+		if(POST.find("stop_clientid")!=POST.end() &&
+			POST.find("stop_id")!=POST.end())
 		{
-			int stop_clientid=watoi(GET[L"stop_clientid"]);
-			std::string stop_rights=helper.getRights("stop_backup");
-			bool stop_ok=false;
-			if(stop_rights=="all")
-			{
-				stop_ok=true;
-			}
-			else
-			{
-				std::vector<std::string> s_cid;
-				Tokenize(stop_rights, s_cid, ",");
-				for(size_t i=0;i<s_cid.size();++i)
-				{
-					if(atoi(s_cid[i].c_str())==stop_clientid)
-					{
-						stop_ok=true;
-					}
-				}
-			}
+			int stop_clientid=watoi(POST["stop_clientid"]);
+			int stop_id=watoi(POST["stop_id"]);
 
-			if(stop_ok)
+			if(all_stop_rights
+				|| std::find(stop_clientids.begin(), stop_clientids.end(), stop_clientid)!=stop_clientids.end())
 			{
 				IDatabase *db=helper.getDatabase();
 				IQuery *q_get_name=db->Prepare("SELECT name FROM clients WHERE id=?");
@@ -74,7 +57,7 @@ ACTION_IMPL(progress)
 				db_results res=q_get_name->Read();
 				if(!res.empty())
 				{
-					ServerStatus::stopBackup(res[0][L"name"], true);
+					ServerStatus::stopProcess(res[0]["name"], stop_id, true);
 				}
 			}
 		}
@@ -83,25 +66,59 @@ ACTION_IMPL(progress)
 		std::vector<SStatus> clients=ServerStatus::getStatus();
 		for(size_t i=0;i<clients.size();++i)
 		{
-			bool found=false;
-			for(size_t j=0;j<clientids.size();++j)
+			int curr_clientid = clients[i].clientid;
+			if(all_progress_rights
+				|| std::find(progress_clientids.begin(), progress_clientids.end(), curr_clientid)!= progress_clientids.end() )
 			{
-				if(clientids[j]==clients[i].clientid)
-				{
-					found=true;
-					break;
-				}
-			}
-			if(clients[i].statusaction!=sa_none && clients[i].action_done==false && (rights=="all" || found==true) )
-			{
-				if(clients[i].r_online || clients[i].statusaction==sa_incr_image || clients[i].statusaction==sa_full_image)
+				for(size_t j=0;j<clients[i].processes.size();++j)
 				{
 					JSON::Object obj;
 					obj.set("name", JSON::Value(clients[i].client));
 					obj.set("clientid", JSON::Value(clients[i].clientid));
-					obj.set("action", JSON::Value((int)clients[i].statusaction));
-					obj.set("pcdone", JSON::Value(clients[i].pcdone));
-					obj.set("queue", JSON::Value(clients[i].prepare_hashqueuesize+clients[i].hashqueuesize) );
+					obj.set("action", JSON::Value(static_cast<int>(clients[i].processes[j].action)));
+					obj.set("pcdone", JSON::Value(clients[i].processes[j].pcdone));
+					obj.set("queue", JSON::Value(clients[i].processes[j].prepare_hashqueuesize+
+						clients[i].processes[j].hashqueuesize));
+					obj.set("id", JSON::Value(clients[i].processes[j].id));
+					obj.set("logid", JSON::Value(clients[i].processes[j].logid.first));
+					obj.set("details", clients[i].processes[j].details);
+					obj.set("total_bytes", clients[i].processes[j].total_bytes);
+					obj.set("done_bytes", clients[i].processes[j].done_bytes);
+					obj.set("detail_pc", clients[i].processes[j].detail_pc);
+
+					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
+					int64 etams = clients[i].processes[j].eta_ms - add_time;
+					if (etams>0 && etams<60 * 1000)
+					{
+						etams = 61 * 1000;
+					}
+
+					obj.set("eta_ms", etams);
+					obj.set("speed_bpms", clients[i].processes[j].speed_bpms);
+
+					JSON::Array past_speed_bpms;
+					for (std::deque<double>::iterator it = clients[i].processes[j].past_speed_bpms.begin();
+					it != clients[i].processes[j].past_speed_bpms.end(); ++it)
+					{
+						past_speed_bpms.add(*it);
+					}
+
+					obj.set("past_speed_bpms", past_speed_bpms);
+
+					if (clients[i].processes[j].can_stop 
+						&& (all_stop_rights
+							|| std::find(stop_clientids.begin(), stop_clientids.end(), curr_clientid) != stop_clientids.end() ) )
+					{
+						obj.set("can_stop_backup", true);
+					}
+
+					if (clients[i].processes[j].logid!=logid_t()
+						&& (all_log_rights
+							|| std::find(log_clientids.begin(), log_clientids.end(), curr_clientid) != log_clientids.end() ) )
+					{
+						obj.set("can_show_backup_log", true);
+					}				
+
 					pg.add(obj);
 				}
 			}
@@ -113,24 +130,18 @@ ACTION_IMPL(progress)
 		ret.set("error", JSON::Value(1));
 	}
 
-	clientids.clear();
-	rights=helper.getRights("lastacts");
-	if(rights!="none" && rights!="all")
+	if (POST["with_lastacts"] != "0")
 	{
-		std::vector<std::string> s_cid;
-		Tokenize(rights, s_cid, ",");
-		for(size_t i=0;i<s_cid.size();++i)
-		{
-			clientids.push_back(atoi(s_cid[i].c_str()));
-		}
-	}
+		bool all_lastacts_rights = false;
+		std::vector<int> lastacts_clientids = helper.clientRights("lastacts", all_lastacts_rights);
 
-	if(session!=NULL && (rights=="all" || !clientids.empty()) )
-	{
-		getLastActs(helper, ret, clientids);
-	}
+		if (session != NULL && (all_lastacts_rights || !lastacts_clientids.empty()))
+		{
+			getLastActs(helper, ret, lastacts_clientids);
+		}
+	}	
 	
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

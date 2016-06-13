@@ -1,8 +1,8 @@
-<tr onmouseover="tabMouseOver(this)" onmouseout="tabMouseOut(this)" onclick="g.tabMouseClickLogs({id})">
-	<td class="tabFLeftH">&nbsp;</td>
-	<td class="tabFLeftH">{name}</td>
-	<td class="tabFLeftH">{time}</td>
-	<td class="tabFLeftH" style="{estyle}"><div style="background-color:white">{errors}</div></td>
-	<td class="tabFLeftH" style="{wstyle}"><div style="background-color:white">{warnings}</div></td>
-	<td class="tabFRightH">{action}</td>
+<tr onclick="g.tabMouseClickLogs({id})" style="cursor: pointer">
+	<td>&nbsp;</td>
+	<td>{name}</td>
+	<td>{time}</td>
+	<td class="{eclass}">{errors}</div></td>
+	<td class="{wclass}">{warnings}</div></td>
+	<td>{action}</td>
 </tr>

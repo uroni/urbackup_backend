@@ -6,7 +6,7 @@
 	
     <Package Description='UrBackup Server'
              Comments='UrBackup Server for file and image backups'
-             Manufacturer='Martin Raiber' InstallerVersion='300' Compressed='yes' Platform='$(var.Platform)'/>
+             Manufacturer='Martin Raiber' InstallerVersion='301' Compressed='yes' Platform='$(var.Platform)'/>
 	
 	<MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
 	
@@ -20,7 +20,7 @@
 
 						   
     <Directory Id='TARGETDIR' Name='SourceDir'>
-	  <Merge Id="VCRedist" SourceFile="C:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC100_CRT_x64.msm" DiskId="1" Language="0"/>
+	  <Merge Id="VCRedist" SourceFile="C:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC140_CRT_x64.msm" DiskId="1" Language="0"/>
       <Directory Id='$(var.ProgramFilesFolder)' Name='PFiles'>
         <Directory Id='URBACKUPDIR' Name='UrBackupServer'>			
             <Component Id='InstallService' Guid="deca7cff-6721-4270-905a-b4b02d6740ce" Win64="$(var.isx64)">

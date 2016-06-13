@@ -1,19 +1,20 @@
 #pragma once
 #define NO_INTERFACE
 
-#ifdef THREAD_BOOST
-#	include <boost/thread/thread.hpp>
-#else
 #ifdef _WIN32
+#	include <thread>
 #else
 #	include <pthread.h>
-#endif
 #endif
 
 #include "Interface/Server.h"
 #include "Interface/Action.h"
+#include "Interface/Mutex.h"
+#include "Interface/Condition.h"
+#include "Interface/SharedMutex.h"
 #include <vector>
 #include <fstream>
+#include <memory>
 
 typedef void(*LOADACTIONS)(IServer*);
 typedef void(*UNLOADACTIONS)(void);
@@ -34,11 +35,24 @@ class IOutputStream;
 
 struct SDatabase
 {
-	SDatabase(IDatabaseFactory *factory, const std::string &file) : factory(factory), file(file) {}
+	SDatabase(IDatabaseFactory *factory, const std::string &file)
+		: factory(factory), file(file), allocation_chunk_size(std::string::npos)
+	{}
+
 	IDatabaseFactory *factory;
 	std::string file;
 	std::map<THREAD_ID, IDatabaseInt*> tmap;
 	std::vector<std::pair<std::string,std::string> > attach;
+	size_t allocation_chunk_size;
+	std::auto_ptr<ISharedMutex> single_user_mutex;
+	std::auto_ptr<IMutex> lock_mutex;
+	std::auto_ptr<int> lock_count;
+	std::auto_ptr<ICondition> unlock_cond;
+	str_map params;
+
+private:
+	SDatabase(const SDatabase& other) {}
+	void operator=(const SDatabase& other){}
 };
 
 
@@ -48,7 +62,7 @@ public:
 	CServer();
 	~CServer();
 	void setup(void);
-	void setServerParameters(const str_nmap &pServerParams);
+	void setServerParameters(const str_map &pServerParams);
 
 	virtual std::string getServerParameter(const std::string &key);
 	virtual std::string getServerParameter(const std::string &key, const std::string &def);
@@ -58,19 +72,18 @@ public:
 	virtual void setLogCircularBufferSize(size_t size);
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid);
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
-	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO);
 	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true);
 	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true);
 
 	virtual void setContentType(THREAD_ID tid, const std::string &str);
 	virtual void addHeader(THREAD_ID tid, const std::string &str);
 
-	THREAD_ID Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS, IOutputStream *req);
-	std::string Execute(const std::wstring &action, const std::wstring &context, str_map &GET, str_map &POST, str_nmap &PARAMS);
+	THREAD_ID Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS, IOutputStream *req);
+	std::string Execute(const std::string &action, const std::string &context, str_map &GET, str_map &POST, str_map &PARAMS);
 
 	virtual void AddAction(IAction *action);
 	virtual bool RemoveAction(IAction *action);
-	virtual void setActionContext(std::wstring context);
+	virtual void setActionContext(std::string context);
 	virtual void resetActionContext(void);
 
 	virtual int64 getTimeSeconds(void);
@@ -78,6 +91,7 @@ public:
 
 	virtual bool LoadDLL(const std::string &name);
 	virtual bool UnloadDLL(const std::string &name);
+	void LoadStaticPlugins();
 
 	virtual void destroy(IObject *obj);
 
@@ -85,17 +99,19 @@ public:
 
 	virtual ITemplate* createTemplate(std::string pFile);
 	virtual IMutex* createMutex(void);
+	virtual ISharedMutex* createSharedMutex();
 	virtual ICondition* createCondition(void);
 	virtual IPipe *createMemoryPipe(void);
-	virtual void createThread(IThread *thread);
+	virtual void createThread(IThread *thread, const std::string& name = std::string());
+	virtual void setCurrentThreadName(const std::string& name);
 	virtual IThreadPool *getThreadPool(void);
-	virtual ISettingsReader* createFileSettingsReader(std::string pFile);
+	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
-	virtual IPipeThrottler* createPipeThrottler(size_t bps);
+	virtual IPipeThrottler* createPipeThrottler(size_t bps, IPipeThrottlerUpdater* updater=NULL);
 
-	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite");
+	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params = str_map(), std::string pEngine="sqlite");
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier);
 	virtual void destroyAllDatabases(void);
 	virtual void destroyDatabases(THREAD_ID tid);
@@ -105,17 +121,15 @@ public:
 
 	virtual THREAD_ID getThreadID(void);
 	
-	virtual std::string ConvertToUTF8(const std::wstring &input);
-	virtual std::wstring ConvertToUnicode(const std::string &input);
-	virtual std::string ConvertToUTF16(const std::wstring &input);
-	virtual std::string ConvertToUTF32(const std::wstring &input);
-	virtual std::wstring ConvertFromUTF16(const std::string &input);
-	virtual std::wstring ConvertFromUTF32(const std::string &input);
+	virtual std::string ConvertToUTF16(const std::string &input);
+	virtual std::string ConvertToUTF32(const std::string &input);
+	virtual std::wstring ConvertToWchar(const std::string &input);
+	virtual std::string ConvertFromWchar(const std::wstring &input);
+	virtual std::string ConvertFromUTF16(const std::string &input);
+	virtual std::string ConvertFromUTF32(const std::string &input);
 
 	virtual std::string GenerateHexMD5(const std::string &input);
 	virtual std::string GenerateBinaryMD5(const std::string &input);
-	virtual std::string GenerateHexMD5(const std::wstring &input);
-	virtual std::string GenerateBinaryMD5(const std::wstring &input);
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
@@ -132,30 +146,30 @@ public:
 	virtual unsigned int getNumRequests(void);
 	virtual void addRequest(void);
 
-	virtual IFile* openFile(std::string pFilename, int pMode=0);
-	virtual IFile* openFile(std::wstring pFilename, int pMode=0);
-	virtual IFile* openFileFromHandle(void *handle);
-	virtual IFile* openTemporaryFile(void);
+	virtual IFsFile* openFile(std::string pFilename, int pMode=0);
+	virtual IFsFile* openFileFromHandle(void *handle, const std::string& pFilename);
+	virtual IFsFile* openTemporaryFile(void);
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);
-	virtual bool deleteFile(std::wstring pFilename);
+	virtual bool fileExists(std::string pFilename);
 
 	virtual POSTFILE_KEY getPostFileKey();
 	virtual void addPostFile(POSTFILE_KEY pfkey, const std::string &name, const SPostfile &pf);
 	virtual SPostfile getPostFile(POSTFILE_KEY pfkey, const std::string &name);
 	virtual void clearPostFiles(POSTFILE_KEY pfkey);
 
-	virtual std::wstring getServerWorkingDir(void);
-	void setServerWorkingDir(const std::wstring &wdir);
+	virtual std::string getServerWorkingDir(void);
+	void setServerWorkingDir(const std::string &wdir);
 
 	void ShutdownPlugins(void);
 
-	void setTemporaryDirectory(const std::wstring &dir);
+	void setTemporaryDirectory(const std::string &dir);
 
 	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory);
 	virtual bool hasDatabaseFactory(const std::string &pEngineName);
 
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
+	virtual bool setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t allocation_chunk_size);
 
 	static int WriteDump(void* pExceptionPointers);
 
@@ -172,16 +186,19 @@ public:
 	virtual unsigned int getSecureRandomNumber(void);
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n);
 	virtual void secureRandomFill(char *buf, size_t blen);
+	virtual std::string secureRandomString(size_t len);
 
 	virtual void setFailBit(size_t failbit);
 	virtual void clearFailBit(size_t failbit);
 	virtual size_t getFailBits(void);
 
-	void clearDatabases(THREAD_ID tid);
+	virtual void clearDatabases(THREAD_ID tid);
 
 	void setLogRotationFilesize(size_t filesize);
 
 	void setLogRotationNumFiles(size_t numfiles);
+
+	void setLogConsoleTime(bool b);
 
 private:
 
@@ -213,7 +230,7 @@ private:
 	ICondition *startup_complete_cond;
 	bool startup_complete;
 
-	std::map< std::wstring, std::map<std::wstring, IAction*> > actions;
+	std::map< std::string, std::map<std::string, IAction*> > actions;
 
 	std::map<std::string, UNLOADACTIONS> unload_functs;
 	std::vector<HMODULE> unload_handles;
@@ -222,16 +239,13 @@ private:
 	std::map<THREAD_ID, std::pair<bool, std::string> > current_outputs;
 
 	THREAD_ID curr_thread_id;
-#ifdef THREAD_BOOST
-	std::map<boost::thread::id, THREAD_ID> threads;
-#else
 #ifdef _WIN32
+	std::map<std::thread::id, THREAD_ID> threads;
 #else
 	std::map<pthread_t, THREAD_ID> threads;
 #endif
-#endif
 
-	std::map<DATABASE_ID, SDatabase > databases;
+	std::map<DATABASE_ID, SDatabase*> databases;
 
 	CSessionMgr *sessmgr;
 
@@ -247,7 +261,7 @@ private:
 	std::map<POSTFILE_KEY, std::map<std::string, SPostfile > > postfiles;
 	POSTFILE_KEY curr_postfilekey;
 
-	str_nmap server_params;
+	str_map server_params;
 
 	PLUGIN_ID curr_pluginid;
 
@@ -255,11 +269,11 @@ private:
 
 	CThreadPool* threadpool;
 
-	std::wstring action_context;
+	std::string action_context;
 
-	std::wstring workingdir;
+	std::string workingdir;
 
-	std::wstring tmpdir;
+	std::string tmpdir;
 
 	std::map<std::string, IDatabaseFactory*> database_factories;
 
@@ -277,6 +291,8 @@ private:
 	std::string logfile_chown_user;
 
 	size_t log_rotation_size;
+
+	bool log_console_time;
 
 	size_t log_rotation_files;
 };

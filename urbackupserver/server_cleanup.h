@@ -6,7 +6,11 @@
 #include <vector>
 #include "dao/ServerCleanupDao.h"
 #include "dao/ServerBackupDao.h"
+#include "dao/ServerFilesDao.h"
 #include <sstream>
+#include <memory>
+#include <set>
+#include "FileIndex.h"
 
 class ServerSettings;
 
@@ -27,7 +31,7 @@ struct CleanupAction
 	}
 
 	//Delete file backup
-	CleanupAction(std::wstring backupfolder, int clientid, int backupid, bool force_remove)
+	CleanupAction(std::string backupfolder, int clientid, int backupid, bool force_remove)
 		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid),
 		  force_remove(force_remove)
 	{
@@ -48,7 +52,7 @@ struct CleanupAction
 
 	ECleanupAction action;
 	
-	std::wstring backupfolder;
+	std::string backupfolder;
 	int clientid;
 	int backupid;
 	bool force_remove;
@@ -72,11 +76,23 @@ public:
 	static void removeUnknown(void);
 
 	static void updateStats(bool interruptible);
+
+	static bool isUpdateingStats();
+
+	static void disableUpdateStats();
+
+	static void enableUpdateStats();
+
 	static void initMutex(void);
 	static void destroyMutex(void);
 
 	static void doQuit(void);
 
+	static void lockImageFromCleanup(int backupid);
+	static void unlockImageFromCleanup(int backupid);
+	static bool isImageLockedFromCleanup(int backupid);
+
+	static bool isClientlistDeletionAllowed();
 private:
 
 	void do_cleanup(void);
@@ -84,11 +100,11 @@ private:
 
 	void do_remove_unknown(void);
 
-	bool correct_target(const std::wstring& backupfolder, std::wstring& target);
+	bool correct_target(const std::string& backupfolder, std::string& target);
 
-	bool correct_poolname(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& pool_name, std::wstring& pool_path);
+	bool correct_poolname(const std::string& backupfolder, const std::string& clientname, const std::string& pool_name, std::string& pool_path);
 
-	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder);
+	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder);
 
 	int max_removable_incr_images(ServerSettings& settings, int backupid);
 
@@ -102,9 +118,15 @@ private:
 
 	void cleanup_other();
 
-	void rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
+	void rewrite_history(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping);
+
+	bool cleanup_clientlists();
 
 	void cleanup_client_hist();
+
+	void cleanup_all_system_images(ServerSettings& settings);
+
+	void cleanup_system_images(int clientid, std::string clientname, ServerSettings& settings);
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
@@ -117,25 +139,32 @@ private:
 
 	void removeClient(int clientid);
 
-	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove=false);
+	bool deleteFileBackup(const std::string &backupfolder, int clientid, int backupid, bool force_remove=false);
+
+	void removeFileBackupSql( int backupid );
 
 	void deletePendingClients(void);
 
-	void backup_database(void);
+	bool backup_database(void);
 
-	bool deleteAndTruncateFile(std::wstring path);
-	bool deleteImage(std::wstring path);
+	bool deleteAndTruncateFile(std::string path);
+	bool deleteImage(std::string clientname, std::string path);
 	int64 getImageSize(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
-	bool truncate_files_recurisve(std::wstring path);
+	bool truncate_files_recurisve(std::string path);
 
 	void enforce_quotas(void);
 
 	bool enforce_quota(int clientid, std::ostringstream& log);
 
 	void delete_incomplete_file_backups(void);
+	bool backup_clientlists();
+	bool backup_ident();
+	void ren_files_backupfolder();
+
+	static void setClientlistDeletionAllowed(bool b);
 
 	IDatabase *db;
 
@@ -146,6 +175,7 @@ private:
 
 	static bool update_stats;
 	static bool update_stats_interruptible;
+	static bool update_stats_disabled;
 	
 	std::vector<int> removeerr;
 
@@ -153,6 +183,44 @@ private:
 
 	CleanupAction cleanup_action;
 
-	ServerCleanupDao* cleanupdao;
-	ServerBackupDao* backupdao;
+	std::auto_ptr<ServerCleanupDao> cleanupdao;
+	std::auto_ptr<ServerBackupDao> backupdao;
+	std::auto_ptr<ServerFilesDao> filesdao;
+	std::auto_ptr<FileIndex> fileindex;
+
+	static IMutex* cleanup_lock_mutex;
+	static std::set<int> locked_images;
+
+	static bool allow_clientlist_deletion;
+};
+
+class ScopedLockImageFromCleanup
+{
+public:
+	ScopedLockImageFromCleanup(int backupid)
+		: backupid(backupid)
+	{
+		if (backupid != 0)
+			ServerCleanupThread::lockImageFromCleanup(backupid);
+	}
+
+	~ScopedLockImageFromCleanup()
+	{
+		if (backupid != 0)
+			ServerCleanupThread::unlockImageFromCleanup(backupid);
+	}
+
+	void reset(int nid=0)
+	{
+		if (backupid != 0)
+			ServerCleanupThread::unlockImageFromCleanup(backupid);
+
+		backupid = nid;
+
+		if(backupid!=0)
+			ServerCleanupThread::lockImageFromCleanup(backupid);
+	}
+
+private:
+	int backupid;
 };

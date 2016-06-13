@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -59,7 +59,8 @@ void ServerRunningUpdater::operator()(void)
 	{
 		IScopedLock lock(mutex);
 		cond->wait(&lock, 60000);
-		if(do_stop==false && suspended==false)
+		if(!do_stop && !suspended
+			&& backupid!=0)
 		{
 			q->Bind(backupid);
 			q->Write();
@@ -82,6 +83,12 @@ void ServerRunningUpdater::stop(void)
 void ServerRunningUpdater::suspend(bool b)
 {
 	suspended=b;
+}
+
+void ServerRunningUpdater::setBackupid(int pBackupid)
+{
+	IScopedLock lock(mutex);
+	backupid = pBackupid;
 }
 
 #endif //CLIENT_ONLY

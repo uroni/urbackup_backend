@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -28,19 +28,23 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -108,7 +112,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -154,7 +158,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -176,19 +180,26 @@
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="bufmgr.cpp" />
-    <ClCompile Include="CampusThread.cpp" />
     <ClCompile Include="CClientThread.cpp" />
     <ClCompile Include="ChunkSendThread.cpp" />
     <ClCompile Include="CriticalSection.cpp" />
     <ClCompile Include="CTCPFileServ.cpp" />
     <ClCompile Include="CUDPThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="FileMetadataPipe.cpp" />
     <ClCompile Include="FileServ.cpp" />
     <ClCompile Include="FileServFactory.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map_buffer.cpp" />
+    <ClCompile Include="PipeFile.cpp" />
+    <ClCompile Include="PipeFileBase.cpp" />
+    <ClCompile Include="PipeFileTar.cpp" />
+    <ClCompile Include="PipeFileWin.cpp" />
+    <ClCompile Include="PipeSessions.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
   </ItemGroup>
@@ -198,20 +209,25 @@
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="bufmgr.h" />
-    <ClInclude Include="CampusThread.h" />
     <ClInclude Include="CClientThread.h" />
     <ClInclude Include="ChunkSendThread.h" />
     <ClInclude Include="chunk_settings.h" />
     <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="CTCPFileServ.h" />
     <ClInclude Include="CUDPThread.h" />
+    <ClInclude Include="FileMetadataPipe.h" />
     <ClInclude Include="FileServ.h" />
     <ClInclude Include="FileServFactory.h" />
     <ClInclude Include="IFileServ.h" />
     <ClInclude Include="IFileServFactory.h" />
+    <ClInclude Include="IPermissionCallback.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="map_buffer.h" />
     <ClInclude Include="packet_ids.h" />
+    <ClInclude Include="PipeFile.h" />
+    <ClInclude Include="PipeFileBase.h" />
+    <ClInclude Include="PipeFileTar.h" />
+    <ClInclude Include="PipeSessions.h" />
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="socket_header.h" />

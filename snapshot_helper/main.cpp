@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <pwd.h>
 extern char **environ;
 #endif
@@ -16,8 +18,6 @@ extern char **environ;
 #define DEF_Server
 #include "../Server.h"
 
-
-const std::string btrfs_cmd="/sbin/btrfs";
 
 CServer *Server;
 
@@ -83,10 +83,10 @@ std::string handleFilename(std::string fn)
 }
 
 #ifndef _WIN32
-int exec_wait(const std::string& path, ...)
+int exec_wait(const std::string& path, bool keep_stdout, ...)
 {
 	va_list vl;
-	va_start(vl, path);
+	va_start(vl, keep_stdout);
 	
 	std::vector<char*> args;
 	args.push_back(const_cast<char*>(path.c_str()));
@@ -107,6 +107,29 @@ int exec_wait(const std::string& path, ...)
 	{
 		environ = new char*[1];
 		*environ=NULL;
+		
+		if(!keep_stdout)
+		{
+			int nullfd = open("/dev/null", O_WRONLY);
+			
+			if(nullfd!=-1)
+			{
+				if(dup2(nullfd, 1)==-1)
+				{
+					return -1;
+				}
+				
+				if(dup2(nullfd, 2)==-1)
+				{
+					return -1;
+				}
+			}
+			else
+			{
+				return -1;
+			}
+		}
+		
 		int rc = execvp(path.c_str(), args.data());
 		exit(rc);
 	}
@@ -135,15 +158,55 @@ bool chown_dir(const std::string& dir)
 	}
 	return false;
 }
-#endif
 
+std::string find_btrfs_cmd()
+{
+	static std::string btrfs_cmd;
+	
+	if(!btrfs_cmd.empty())
+	{
+		return btrfs_cmd;
+	}
+	
+	if(exec_wait("btrfs", false, "--version", NULL)==0)
+	{
+		btrfs_cmd="btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/sbin/btrfs", false, "--version", NULL)==0)
+	{
+		btrfs_cmd="/sbin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/bin/btrfs", false, "--version", NULL)==0)
+	{
+		btrfs_cmd="/bin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/usr/sbin/btrfs", false, "--version", NULL)==0)
+	{
+		btrfs_cmd="/usr/sbin/btrfs";
+		return btrfs_cmd;
+	}
+	else if(exec_wait("/usr/bin/btrfs", false, "--version", NULL)==0)
+	{
+		btrfs_cmd="/usr/bin/btrfs";
+		return btrfs_cmd;
+	}
+	else
+	{
+		btrfs_cmd="btrfs";
+		return btrfs_cmd;
+	}
+}
+#endif
 
 bool create_subvolume(std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return os_create_dir(subvolume_folder);
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "create", subvolume_folder.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "create", subvolume_folder.c_str(), NULL);
 	chown_dir(subvolume_folder);
 	return rc==0;
 #endif
@@ -154,7 +217,7 @@ bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
 #ifdef _WIN32
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
 	chown_dir(snapshot_dst);
 	return rc==0;
 #endif
@@ -165,7 +228,17 @@ bool remove_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "delete", subvolume_folder.c_str(), NULL);
+	int compat_rc = exec_wait(find_btrfs_cmd(), false, "subvolume", "delete", "-c", NULL);
+	
+	int rc;
+	if(compat_rc==12)
+	{
+		rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "delete", subvolume_folder.c_str(), NULL);
+	}
+	else
+	{
+		rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
+	}
 	return rc==0;
 #endif
 }	
@@ -175,7 +248,7 @@ bool is_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return true;
 #else
-	int rc=exec_wait(btrfs_cmd, "subvolume", "list", subvolume_folder.c_str(), NULL);
+	int rc=exec_wait(find_btrfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
 	return rc==0;
 #endif
 }	
@@ -217,7 +290,7 @@ int main(int argc, char *argv[])
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 
-		std::string subvolume_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+name;
+		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
 		return create_subvolume(subvolume_folder)?0:1;
 	}
@@ -233,8 +306,8 @@ int main(int argc, char *argv[])
 		std::string src_name=handleFilename(argv[3]);
 		std::string dst_name=handleFilename(argv[4]);
 
-		std::string subvolume_src_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+src_name;
-		std::string subvolume_dst_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+dst_name;
+		std::string subvolume_src_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+src_name;
+		std::string subvolume_dst_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+dst_name;
 
 		return create_snapshot(subvolume_src_folder, subvolume_dst_folder)?0:1;
 	}
@@ -249,25 +322,25 @@ int main(int argc, char *argv[])
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 
-		std::string subvolume_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+name;
+		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
 		return remove_subvolume(subvolume_folder)?0:1;
 	}
 	else if(cmd=="test")
 	{
-		std::string clientdir=backupfolder+os_file_sepn()+"testA54hj5luZtlorr494";
+		std::string clientdir=backupfolder+os_file_sep()+"testA54hj5luZtlorr494";
 		
 		bool create_dir_rc=os_create_dir(clientdir);
 		if(!create_dir_rc)
 		{	
-			remove_subvolume(clientdir+os_file_sepn()+"A");
-			remove_subvolume(clientdir+os_file_sepn()+"B");
+			remove_subvolume(clientdir+os_file_sep()+"A");
+			remove_subvolume(clientdir+os_file_sep()+"B");
 			os_remove_dir(clientdir);
 		}
 		create_dir_rc = create_dir_rc || os_create_dir(clientdir);
 		if(create_dir_rc)
 		{	
-			if(!create_subvolume(clientdir+os_file_sepn()+"A") )
+			if(!create_subvolume(clientdir+os_file_sep()+"A") )
 			{
 				std::cout << "TEST FAILED: Creating test subvolume failed" << std::endl;
 				os_remove_dir(clientdir);
@@ -276,7 +349,7 @@ int main(int argc, char *argv[])
 			
 			bool suc=true;
 
-			if(!create_snapshot(clientdir+os_file_sepn()+"A", clientdir+os_file_sepn()+"B") )
+			if(!create_snapshot(clientdir+os_file_sep()+"A", clientdir+os_file_sep()+"B") )
 			{
 				std::cout << "TEST FAILED: Creating test snapshot failed" << std::endl;
 				suc=false;
@@ -284,16 +357,16 @@ int main(int argc, char *argv[])
 			
 			if(suc)
 			{			
-				writestring("test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test");
+				writestring("test", clientdir+os_file_sep()+"A"+os_file_sep()+"test");
 				
-				if(!os_create_hardlink(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test", true, NULL))
+				if(!os_create_hardlink(clientdir+os_file_sep()+"B"+os_file_sep()+"test", clientdir+os_file_sep()+"A"+os_file_sep()+"test", true, NULL))
 				{
 					std::cout << "TEST FAILED: Creating cross sub-volume reflink failed. Need Linux kernel >= 3.6." << std::endl;
 					suc=false;
 				}
 				else
 				{
-					if(getFile(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test")!="test")
+					if(getFile(clientdir+os_file_sep()+"B"+os_file_sep()+"test")!="test")
 					{
 						std::cout << "TEST FAILED: Cannot read reflinked file" << std::endl;
 						suc=false;
@@ -301,13 +374,13 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			if(!remove_subvolume(clientdir+os_file_sepn()+"A") )
+			if(!remove_subvolume(clientdir+os_file_sep()+"A") )
 			{
 				std::cout << "TEST FAILED: Removing subvolume A failed" << std::endl;
 				suc=false;
 			}
 
-			if(!remove_subvolume(clientdir+os_file_sepn()+"B") )
+			if(!remove_subvolume(clientdir+os_file_sep()+"B") )
 			{
 				std::cout << "TEST FAILED: Removing subvolume B failed" << std::endl;
 				suc=false;
@@ -343,7 +416,7 @@ int main(int argc, char *argv[])
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 
-		std::string subvolume_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+name;
+		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
 		return is_subvolume(subvolume_folder)?0:1;
 	}

@@ -10,13 +10,21 @@ class FileWrapper : public IFile
 public:
 	FileWrapper(IVHDFile* wfile, int64 offset);
 
-	virtual std::string Read(_u32 tr);
+	virtual std::string Read(_u32 tr, bool *has_error);
 
-	virtual _u32 Read(char* buffer, _u32 bsize);
+	virtual std::string Read(int64 spos, _u32 tr, bool *has_error);
 
-	virtual _u32 Write(const std::string &tw);
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error);
 
-	virtual _u32 Write(const char* buffer, _u32 bsize);
+	virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool *has_error);
+
+	virtual _u32 Write(const std::string &tw, bool *has_error);
+
+	virtual _u32 Write(int64 spos, const std::string &tw, bool *has_error);
+
+	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error);
+
+	virtual _u32 Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error);
 
 	virtual bool Seek(_i64 spos);
 
@@ -26,7 +34,9 @@ public:
 
 	virtual std::string getFilename(void);
 
-	virtual std::wstring getFilenameW(void);
+	virtual bool PunchHole( _i64 spos, _i64 size );
+
+	virtual bool Sync();
 
 private:
 	int64 offset;

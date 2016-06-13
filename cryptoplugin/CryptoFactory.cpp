@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -25,8 +25,11 @@
 #include "AESDecryption.h"
 #include "ZlibCompression.h"
 #include "ZlibDecompression.h"
+#include "AESGCMDecryption.h"
+#include "AESGCMEncryption.h"
 
 #include "cryptopp_inc.h"
+#include "ECDHKeyExchange.h"
 
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
 {
@@ -48,7 +51,49 @@ IAESDecryption* CryptoFactory::createAESDecryptionNoDerivation(const std::string
 	return new AESDecryption(password, false);
 }
 
+IAESGCMEncryption* CryptoFactory::createAESGCMEncryption(const std::string &password)
+{
+	return new AESGCMEncryption(password, true);
+}
+
+IAESGCMDecryption* CryptoFactory::createAESGCMDecryption(const std::string &password)
+{
+	return new AESGCMDecryption(password, true);
+}
+
+IAESGCMEncryption* CryptoFactory::createAESGCMEncryptionNoDerivation(const std::string &password)
+{
+	return new AESGCMEncryption(password, false);
+}
+
+IAESGCMDecryption* CryptoFactory::createAESGCMDecryptionNoDerivation(const std::string &password)
+{
+	return new AESGCMDecryption(password, false);
+}
+
 bool CryptoFactory::generatePrivatePublicKeyPair(const std::string &keybasename)
+{
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PrivateKey privateKey;
+	privateKey.Initialize(rnd, CryptoPP::ASN1::sect409k1());
+	
+	Server->Log("Calculating public key...", LL_INFO);
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey publicKey;
+	privateKey.MakePublicKey( publicKey );
+
+	if (!privateKey.Validate(rnd, 3) || !publicKey.Validate(rnd, 3))
+	{
+		Server->Log("Validating key pair failed", LL_ERROR);
+		return false;
+	}
+
+	privateKey.Save(CryptoPP::FileSink((keybasename+".priv").c_str()).Ref());
+	publicKey.Save(CryptoPP::FileSink((keybasename+".pub").c_str()).Ref());
+	return true;
+}
+
+bool CryptoFactory::generatePrivatePublicKeyPairDSA(const std::string &keybasename)
 {
 	CryptoPP::AutoSeededRandomPool rnd;
 
@@ -67,19 +112,20 @@ bool CryptoFactory::generatePrivatePublicKeyPair(const std::string &keybasename)
 
 	dsaPrivate.Save(CryptoPP::FileSink((keybasename+".priv").c_str()).Ref());
 	dsaPublic.Save(CryptoPP::FileSink((keybasename+".pub").c_str()).Ref());
+
 	return true;
 }
 
 bool CryptoFactory::signFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)
 {
-	CryptoPP::DSA::PrivateKey PrivateKey; 
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PrivateKey privateKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
 	try
 	{
-		PrivateKey.Load(CryptoPP::FileSource(keyfilename.c_str(), true).Ref());
+		privateKey.Load(CryptoPP::FileSource(keyfilename.c_str(), true).Ref());
 		
-		CryptoPP::DSA::Signer signer( PrivateKey );
+		CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::Signer signer( privateKey );
 		CryptoPP::FileSource( filename.c_str(), true, 
 				new CryptoPP::SignerFilter( rnd, signer,
 				new CryptoPP::FileSink( sigfilename.c_str() )
@@ -96,16 +142,42 @@ bool CryptoFactory::signFile(const std::string &keyfilename, const std::string &
 	return false;
 }
 
+bool CryptoFactory::signFileDSA(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)
+{
+	CryptoPP::DSA::PrivateKey privateKey; 
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	try
+	{
+		privateKey.Load(CryptoPP::FileSource(keyfilename.c_str(), true).Ref());
+
+		CryptoPP::DSA::Signer signer( privateKey );
+		CryptoPP::FileSource( filename.c_str(), true, 
+			new CryptoPP::SignerFilter( rnd, signer,
+			new CryptoPP::FileSink( sigfilename.c_str() )
+			) // SignerFilter
+			);
+
+		return true;
+	}
+	catch(const CryptoPP::Exception& e)
+	{
+		Server->Log("Exception occured in CryptoFactory::signFile: " + e.GetWhat(), LL_ERROR);
+	}
+
+	return false;
+}
+
 bool CryptoFactory::verifyFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)
 {
-	CryptoPP::DSA::PublicKey PublicKey; 
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey PublicKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
 	try
 	{
 		PublicKey.Load(CryptoPP::FileSource(keyfilename.c_str(), true).Ref());
 		
-		CryptoPP::DSA::Verifier verifier( PublicKey );
+		CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::Verifier verifier( PublicKey );
 		CryptoPP::SignatureVerificationFilter svf(verifier);
 
 		CryptoPP::FileSource( sigfilename.c_str(), true, new CryptoPP::Redirector( svf, CryptoPP::Redirector::PASS_WAIT_OBJECTS ) );
@@ -124,9 +196,9 @@ bool CryptoFactory::verifyFile(const std::string &keyfilename, const std::string
 std::string CryptoFactory::generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations)
 {
 	CryptoPP::SecByteBlock derived;
-	derived.resize(CryptoPP::SHA512::DIGESTSIZE);
-	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> pkcs;
-	pkcs.DeriveKey(derived, CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
+	derived.resize(CryptoPP::SHA256::DIGESTSIZE);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pkcs;
+	pkcs.DeriveKey(derived, CryptoPP::SHA256::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
 
 	CryptoPP::HexEncoder hexEncoder;
 	hexEncoder.Put(derived,derived.size());
@@ -159,6 +231,32 @@ IZlibDecompression* CryptoFactory::createZlibDecompression(void)
 
 bool CryptoFactory::signData(const std::string &pubkey, const std::string &data, std::string &signature)
 {
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PrivateKey PrivateKey; 
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	try
+	{
+		PrivateKey.Load(CryptoPP::StringSource(reinterpret_cast<const byte*>(pubkey.c_str()), pubkey.size(), true).Ref());
+
+		CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::Signer signer( PrivateKey );
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(data.c_str()), data.size(), true,
+			new CryptoPP::SignerFilter( rnd, signer,
+			new CryptoPP::StringSink( signature )
+			) // SignerFilter
+			);
+
+		return true;
+	}
+	catch(const CryptoPP::Exception& e)
+	{
+		Server->Log("Exception occured in CryptoFactory::signDataDSA: " + e.GetWhat(), LL_ERROR);
+	}
+
+	return false;
+}
+
+bool CryptoFactory::signDataDSA(const std::string &pubkey, const std::string &data, std::string &signature)
+{
 	CryptoPP::DSA::PrivateKey PrivateKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
@@ -185,6 +283,31 @@ bool CryptoFactory::signData(const std::string &pubkey, const std::string &data,
 
 bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &data, const std::string &signature )
 {
+	CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::PublicKey PublicKey; 
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	try
+	{
+		PublicKey.Load(CryptoPP::StringSource(reinterpret_cast<const byte*>(pubkey.c_str()), pubkey.size(), true).Ref());
+
+		CryptoPP::ECDSA<CryptoPP::EC2N, CryptoPP::SHA256>::Verifier verifier( PublicKey );
+		CryptoPP::SignatureVerificationFilter svf(verifier);
+
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(signature.c_str()), signature.size(), true, new CryptoPP::Redirector( svf, CryptoPP::Redirector::PASS_WAIT_OBJECTS ) );
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(data.c_str()), data.size(), true, new CryptoPP::Redirector( svf ) );
+
+		return svf.GetLastResult();
+	}
+	catch(const CryptoPP::Exception& e)
+	{
+		Server->Log("Exception occured in CryptoFactory::verifyData: " + e.GetWhat(), LL_ERROR);
+	}
+
+	return false;
+}
+
+bool CryptoFactory::verifyDataDSA( const std::string &pubkey, const std::string &data, const std::string &signature )
+{
 	CryptoPP::DSA::PublicKey PublicKey; 
 	CryptoPP::AutoSeededRandomPool rnd;
 
@@ -202,8 +325,73 @@ bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &da
 	}
 	catch(const CryptoPP::Exception& e)
 	{
-		Server->Log("Exception occured in CryptoFactory::verifyData: " + e.GetWhat(), LL_ERROR);
+		Server->Log("Exception occured in CryptoFactory::verifyDataDSA: " + e.GetWhat(), LL_ERROR);
 	}
 
 	return false;
+}
+
+std::string CryptoFactory::encryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations/*=20000*/ )
+{
+	const size_t iv_size=CryptoPP::AES::BLOCKSIZE;
+	std::string ciphertext;
+	ciphertext.resize(iv_size);
+
+	Server->secureRandomFill(&ciphertext[0], iv_size);
+
+	CryptoPP::SecByteBlock key;
+	key.resize(CryptoPP::SHA256::DIGESTSIZE);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> gen;
+	gen.DeriveKey(key.BytePtr(), CryptoPP::SHA256::DIGESTSIZE, 0, reinterpret_cast<const byte*>(password.c_str()), password.size(),
+		reinterpret_cast<const byte*>(ciphertext.data()), iv_size, static_cast<unsigned int>(iterations), 0);
+
+	CryptoPP::EAX<CryptoPP::AES>::Encryption enc;
+	enc.SetKeyWithIV(key.BytePtr(), CryptoPP::AES::BLOCKSIZE, reinterpret_cast<const byte*>(ciphertext.data()), iv_size);
+
+	
+	CryptoPP::ArraySource( reinterpret_cast<const byte*>(data.data()), data.size(), true,
+		new CryptoPP::AuthenticatedEncryptionFilter( enc,
+		new CryptoPP::StringSink( ciphertext )
+		) );
+
+	return ciphertext;
+}
+
+std::string CryptoFactory::decryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations)
+{
+	const size_t iv_size=CryptoPP::AES::BLOCKSIZE;
+	if(data.size()<iv_size)
+	{
+		return std::string();
+	}
+
+	CryptoPP::SecByteBlock key;
+	key.resize(CryptoPP::SHA256::DIGESTSIZE);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> gen;
+	gen.DeriveKey(key.BytePtr(), CryptoPP::SHA256::DIGESTSIZE, 0, reinterpret_cast<const byte*>(password.c_str()), password.size(),
+		reinterpret_cast<const byte*>(data.data()), iv_size, static_cast<unsigned int>(iterations), 0);
+
+	CryptoPP::EAX<CryptoPP::AES>::Decryption dec;
+	dec.SetKeyWithIV(key.BytePtr(), CryptoPP::AES::BLOCKSIZE, reinterpret_cast<const byte*>(data.data()), iv_size);
+		
+	
+	try
+	{
+		std::string ret;
+		CryptoPP::ArraySource( reinterpret_cast<const byte*>(data.data()+iv_size), data.size()-iv_size, true,
+			new CryptoPP::AuthenticatedDecryptionFilter( dec,
+				new CryptoPP::StringSink( ret ) ) );
+		return ret;
+	}	
+	catch(const CryptoPP::HashVerificationFilter::HashVerificationFailed&)
+	{
+		return std::string();
+	}
+}
+
+IECDHKeyExchange* CryptoFactory::createECDHKeyExchange()
+{
+	return new ECDHKeyExchange();
 }

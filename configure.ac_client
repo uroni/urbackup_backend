@@ -2,33 +2,39 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-client], [1.4.11], [martin@urbackup.org])
+AC_INIT([urbackup-client], [2.0.26.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 AC_ARG_ENABLE([headless],
      AS_HELP_STRING([--enable-headless], [Do not compile and install the GUI components]))
-AC_ARG_ENABLE([install_initd],
-     AS_HELP_STRING([--enable-install_initd], [Enables installing of supplied init.d file into /etc/init.d]))	 
-AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
+	 
+AC_ARG_ENABLE([install_debian_initd],
+     AS_HELP_STRING([--enable-install-debian-initd], [Enables installing of supplied Debian init.d file into /etc/init.d]))	 
+AM_CONDITIONAL(INSTALL_DEBIAN_INITD, test "x$enable_install_debian_initd" = xyes)
+
+AC_ARG_ENABLE([install_redhat_initd],
+     AS_HELP_STRING([--enable-install-redhat-initd], [Enables installing of supplied RedHat init.d file into /etc/init.d]))	 
+AM_CONDITIONAL(INSTALL_REDHAT_INITD, test "x$enable_install_redhat_initd" = xyes)
+
 AC_ARG_ENABLE([fortify],
      AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
 AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 
+AC_ARG_ENABLE([clientupdate],
+     AS_HELP_STRING([--enable-clientupdate], [Enables the internal client update functionality]))
+AM_CONDITIONAL(CLIENT_UPDATE, test "x$enable_clientupdate" = xyes)
+
+AC_ARG_ENABLE([embedded-cryptopp],
+     AS_HELP_STRING([--enable-embedded-cryptopp], [Compile and use Crypto++ 5.6.3 included with the source distribution.]))
+AM_CONDITIONAL(EMBEDDED_CRYPTOPP, test "x$enable_embedded_cryptopp" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-
-#AX_BOOST_BASE([1.38.0])
-#AX_BOOST_THREAD
-
-#if !($HAVE_BOOST_THREAD)
-#then
-#   echo "Sorry, you need the Thread-Lib from Boost."
-#   echo "Please install from http://www.boost.org"
-#   exit 1
-#fi
+AM_PROG_CC_C_O
+AC_PROG_OBJCXX
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)
@@ -38,11 +44,13 @@ then
 	exit 1
 fi
 
+AC_LANG([C++])
+
 # Checks for libraries.
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([pthread.h arpa/inet.h fcntl.h netdb.h netinet/in.h stdlib.h sys/socket.h sys/time.h unistd.h mntent.h spawn.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -52,24 +60,80 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
 
+AC_CXX_HAVE_SSTREAM
+AC_CXX_HAVE_STRSTREAM
+AC_CXX_HAVE_LONG_LONG
+
+AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
+	
+AX_CHECK_LINK_FLAG([-Wl,-z,relro],
+	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
+
+AC_MSG_CHECKING([for operating system])
+case "$host_os" in
+freebsd*)
+        opsys="freebsd"
+        ;;
+linux*)
+        opsys="linux"
+        ;;
+darwin*)
+		opsys="osx"
+        ;;
+*)
+        opsys=""
+        ;;
+esac
+AM_CONDITIONAL([FREEBSD], test x"$opsys" = x"freebsd")
+AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
+AM_CONDITIONAL([MACOSX], test x"$opsys" = x"osx")
+
 AX_LIB_SOCKET_NSL
+AX_CHECK_ZLIB
 
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
-AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
+AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs])
+AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
+AC_SUBST([DLOPEN_LIBS])
 
-P_SUBDIRS="cryptoplugin fileservplugin fsimageplugin urbackupclient"
-
-AS_IF([test "x$enable_headless" != "xyes"],
-    [P_SUBDIRS="client $P_SUBDIRS"])
-	
-AC_SUBST([P_SUBDIRS])
-
-if test "x$enable_headless" != "xyes"; then
-    AC_CONFIG_SUBDIRS([client])
+if test "x$enable_embedded_cryptopp" != "xyes"
+then
+	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or run configure with --enable-embedded-cryptopp."; exit 44;])
 fi
 
-AC_CONFIG_SUBDIRS([cryptoplugin fileservplugin fsimageplugin urbackupclient])
+AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
+
+AS_IF([test "x$enable_headless" != "xyes"],
+[
+	AM_OPTIONS_WXCONFIG
+	reqwx=2.9.0
+	AM_PATH_WXCONFIG($reqwx, wxWin=1)
+	if test "$wxWin" != 1; then
+		AC_MSG_ERROR([
+			wxWidgets must be installed on your system.
+	 
+			Please check that wx-config is in path, the directory
+			where wxWidgets libraries are installed (returned by
+			'wx-config --libs' or 'wx-config --static --libs' command)
+			is in LD_LIBRARY_PATH or equivalent variable and
+			wxWidgets version is $reqwx or above.
+			
+			Alternatively you can run ./configure with the
+			--enable-headless switch to not build and install
+			the GUI component (tray icon).
+			])
+	fi
+])
+
+AS_IF([test "x$opsys" != "xosx"],
+[
+	AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+		[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
+		[AC_MSG_FAILURE([No library for clock_gettime found])] )
+])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

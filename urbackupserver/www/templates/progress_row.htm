@@ -1,13 +1,53 @@
 <tr>
 	<td class="tabFLeft">{name}</td>
 	<td class="tabFLeft">{action}</td>
+	<td class="tabFLeft">
+		{?image}
+			Volume: {details}
+		{:else}
+			{?client_update}
+				To version: {details}
+			{:else}
+				{?file_restore}
+					Path: {details|s}
+				{:else}
+					-
+				{/file_restore}
+			{/client_update}
+		{/image}
+		{?show_details}
+			{details}
+		{/show_details}
+		{?backups_interrupted}
+			<br />{tBackups interrupted}
+		{/backups_interrupted}
+	</td>
 	<td class="tabFLeft" style="text-align: center;">
-		<div style="width: 100%; border: 1px solid black;">
-			<div style="width: {?percent}{pcdone}%{:else}0%{/percent};background-image: url(progress.png); background-repeat:repeat-x;height:15px">
-			</div>
+		<div class="progress">
+		  <div class="progress-bar" role="progressbar" aria-valuenow="{pcdone}" aria-valuemin="0" aria-valuemax="100" style="width: {pcdone}%; {?percent}min-width: 2em;{/percent}">
+			{?percent}{pcdone}%{/percent}
+		  </div>
+		  {?indexing}{tIndexing...}{/indexing}
 		</div>
-		{?percent}{pcdone}%{/percent}
-		{?indexing}{tIndexing...}{/indexing}
+		{?f_total_bytes}
+			<div style="min-width:15em">
+				{f_done_bytes} / {f_total_bytes}
+			</div>
+		{/f_total_bytes}
+	<td class="tabFLeft">{eta}</td>
+	<td class="tabFLeft"><span id="speed_sparkline_{id}" style="margin-right: 5px" ></span><span style="white-space: nowrap;">{speed}</span></td>
 	<td class="tabFLeft">{queue}</td>
-	<td class="tabFRight"><input type="button" value="Stop" onclick="stopBackup({clientid})"/></td>
+	<td class="tabFRight">
+		{?can_stop_backup}
+		<input type="button" value="{tStop}" class="btn btn-xs btn-danger" onclick="stopBackup({clientid}, {id})"/>
+		{/can_stop_backup}
+		{?can_stop_backup}
+			{?can_show_backup_log}
+				&nbsp;
+			{/can_show_backup_log}
+		{/can_stop_backup}
+		{?can_show_backup_log}
+		<input type="button" value="{tShow log}" class="btn btn-xs btn-default" onclick="showBackupLiveLog({clientid}, '{name|j}', {logid})"/>
+		{/can_show_backup_log}
+	</td>
 </tr>

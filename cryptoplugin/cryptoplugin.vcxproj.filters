@@ -36,6 +36,18 @@
     <ClCompile Include="ZlibDecompression.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="AESGCMEncryption.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="AESGCMDecryption.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ECDHKeyExchange.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stringtools.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h">
@@ -69,6 +81,24 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="ZlibDecompression.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="AESGCMEncryption.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IAESGCMEncryption.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="AESGCMDecryption.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IAESGCMDecryption.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IECDHKeyExchange.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ECDHKeyExchange.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>

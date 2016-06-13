@@ -1,25 +1,40 @@
 # Defaults for urbackup_client initscript
-# sourced by /etc/init.d/urbackup_client
-# installed at /etc/default/urbackup_client by the maintainer scripts
+# sourced by /etc/init.d/urbackupclientbackend
+# installed at /etc/default/urbackupclient by the maintainer scripts
 
 #
-# This is a POSIX shell fragment
+# This is parsed as a key=value file
 #
-
-# Additional options that are passed to the Daemon.
 
 #logfile name
-LOGFILE="urbackup_client.log"
+LOGFILE="/var/log/urbackupclient.log"
 
 #Either debug,warn,info or error
-LOGLEVEL="warn"
+LOGLEVEL=warn
 
-#Tmp file directory - be carefull this can get very large
+#Max size of the log file before rotation
+#Disable if you are using logrotate for
+#more advanced configurations (e.g. with compression)
+LOG_ROTATE_FILESIZE=20971520
+
+#Max number of log files during rotation
+LOG_ROTATE_NUM=10
+
+#Tmp file directory
 DAEMON_TMPDIR="/tmp"
 
-#Priority adjustment of the client process. Increase to lower priority.
-NICE_LEVEL=0
+# Valid settings:
+#
+# "client-confirms": If you have the GUI component the currently active user
+#                    will need to confirm restores from the web interface.
+#                    If you have no GUI component this will cause restores
+#                    from the server web interface to not work
+# "server-confirms": The server will ask the user starting the restore on 
+#                    the web interface for confirmation
+# "disabled":        Restores via web interface are disabled.
+#                    Restores via urbackupclientctl still work
+#
+RESTORE=disabled
 
-#I/O-Scheduling class (with IO-priotity) of the client process.
-#Values e.g. idle, best-effort or real-time
-IOSCHED_CLASS="best-effort"
+#If true client will not bind to any external network ports (either true or false)
+INTERNET_ONLY=false

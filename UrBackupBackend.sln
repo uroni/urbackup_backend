@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fileservplugin", "fileservplugin\fileservplugin.vcxproj", "{B1F1AF2E-E544-45F7-864A-883461A4B574}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fsimageplugin", "fsimageplugin\fsimageplugin.vcxproj", "{20375DC0-38DA-4254-B479-EFA8028C29B1}"
@@ -20,6 +22,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sysvol_test", "urbackupclient\sysvol_test\sysvol_test.vcxproj", "{09263E7C-F43C-4925-B672-22C1818D8CCD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CA5F39A5-2BAF-447D-89A0-1D670620574D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clientctl", "clientctl\clientctl.vcxproj", "{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -190,6 +194,22 @@ Global
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|Win32.Build.0 = Release|Win32
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|x64.ActiveCfg = Release|x64
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|x64.Build.0 = Release|x64
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Debug|x64.ActiveCfg = Debug|x64
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Debug|x64.Build.0 = Debug|x64
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Server PreVista|Win32.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Server PreVista|Win32.Build.0 = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Server PreVista|x64.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Service|Win32.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Service|Win32.Build.0 = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release Service|x64.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release x64|Win32.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release x64|Win32.Build.0 = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release x64|x64.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release|Win32.ActiveCfg = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release|Win32.Build.0 = Release|Win32
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release|x64.ActiveCfg = Release|x64
+		{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

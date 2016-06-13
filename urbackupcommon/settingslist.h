@@ -1,8 +1,9 @@
 #include <string>
 #include <vector>
 
-std::vector<std::wstring> getSettingsList(void);
-std::vector<std::wstring> getOnlyServerClientSettingsList(void);
-std::vector<std::wstring> getGlobalizedSettingsList(void);
-std::vector<std::wstring> getLocalizedSettingsList(void);
-std::vector<std::wstring> getGlobalSettingsList(void);
+std::vector<std::string> getSettingsList(void);
+std::vector<std::string> getOnlyServerClientSettingsList(void);
+std::vector<std::string> getGlobalizedSettingsList(void);
+std::vector<std::string> getLocalizedSettingsList(void);
+std::vector<std::string> getGlobalSettingsList(void);
+std::vector<std::string> getLdapSettingsList(void);

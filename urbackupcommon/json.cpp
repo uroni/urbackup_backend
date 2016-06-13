@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -52,12 +52,12 @@ namespace JSON
 		data.erase(data.begin()+idx);
 	}
 
-	std::string Array::get(bool compressed)
+    std::string Array::stringify(bool compressed) const
 	{
 		std::string r="[";
 		for(size_t i=0;i<data.size();++i)
 		{
-			r+=data[i].get(compressed);
+            r+=data[i].stringify(compressed);
 			if(i+1<data.size())
 				r+=",";
 		}
@@ -87,26 +87,26 @@ namespace JSON
 			data.erase(it);
 	}
 
-	Value Object::get(const std::string &key)
+    Value Object::get(const std::string &key)
 	{
-		std::map<std::string, Value>::iterator it=data.find(key);
+        std::map<std::string, Value>::const_iterator it=data.find(key);
 		if(it!=data.end())
 			return it->second;
 		else
 			return Value();
 	}
 
-	std::string Object::get(bool compressed)
+    std::string Object::stringify(bool compressed) const
 	{
 		std::string r="{";
 		if(!compressed)
 			r+="\n";
-		std::map<std::string, Value>::iterator last=data.end();
+        std::map<std::string, Value>::const_iterator last=data.end();
 		if(!data.empty())
 			--last;
-		for(std::map<std::string, Value>::iterator it=data.begin();it!=data.end();++it)
+        for(std::map<std::string, Value>::const_iterator it=data.begin();it!=data.end();++it)
 		{
-			r+="\""+it->first+"\": "+it->second.get(compressed);
+            r+="\""+it->first+"\": "+it->second.stringify(compressed);
 			if(it!=last)
 			{
 				r+=",";
@@ -132,11 +132,6 @@ namespace JSON
 	}
 
 	Value::Value(const std::string &val)
-	{
-		init(val);
-	}
-
-	Value::Value(const std::wstring &val)
 	{
 		init(val);
 	}
@@ -186,11 +181,6 @@ namespace JSON
 		init(val);
 	}
 	
-	Value::Value(const wchar_t *val)
-	{
-		init(val);
-	}
-	
 	Value::Value(long unsigned int val)
 	{
 		init(val);
@@ -208,22 +198,10 @@ namespace JSON
 		data=new std::string(val);
 	}
 	
-	void Value::init(const wchar_t *val)
-	{
-		data_type=wstr_type;
-		data=new std::wstring(val);
-	}
-
 	void Value::init(const std::string &val)
 	{
 		data_type=str_type;
 		data=new std::string(val);
-	}
-
-	void Value::init(const std::wstring &val)
-	{
-		data_type=wstr_type;
-		data=new std::wstring(val);
 	}
 
 	void Value::init(const Object &val)
@@ -297,7 +275,6 @@ namespace JSON
 		switch(data_type)
 		{
 			case str_type: delete ((std::string*)data); break;
-			case wstr_type: delete ((std::wstring*)data); break;
 			case obj_type: delete ((Object*)data); break;
 			case array_type: delete ((Array*)data); break;
 			case bool_type: delete ((bool*)data); break;
@@ -327,7 +304,6 @@ namespace JSON
 		switch(other_type)
 		{
 			case str_type: init(other.getString()); break;
-			case wstr_type: init(other.getWString()); break;
 			case obj_type: init(other.getObject()); break;
 			case array_type: init(other.getArray()); break;
 			case bool_type: init(other.getBool()); break;
@@ -352,35 +328,35 @@ namespace JSON
 		return *this;
 	}
 
-	std::wstring Value::escape(const std::wstring &t)
+    std::string Value::escape(const std::string &t) const
 	{
-		std::wstring r;
+		std::string r;
 		for(size_t i=0;i<t.size();++i)
 		{
 			if(t[i]=='\\')
 			{
-				r+=L"\\\\";
+				r+="\\\\";
 			}
 			else if(t[i]=='"')
 			{
-				r+=L"\\\"";
+				r+="\\\"";
 			}
 			else if(t[i]=='\n')
 			{
-				r+=L"\\n";
+				r+="\\n";
 			}
 			else if(t[i]=='\r')
 			{
-				r+=L"\\r";
+				r+="\\r";
 			}
-			else if(t[i]<32)
+			else if(t[i]>=0 && t[i]<32)
 			{
 				std::string hex = byteToHex(static_cast<unsigned char>(t[i]));
 				if(hex.size()<2)
 				{
 					hex="0"+hex;
 				}
-				r+=L"\\u00"+widen(hex);
+				r+="\\u00"+hex;
 			}
 			else
 			{
@@ -390,31 +366,29 @@ namespace JSON
 		return r;
 	}
 
-	std::string Value::get(bool compressed)
+    std::string Value::stringify(bool compressed) const
 	{
 		switch(data_type)
 		{
-			case str_type: return "\""+Server->ConvertToUTF8(escape(Server->ConvertToUnicode(*((std::string*)data))))+"\"";
-			case wstr_type: return "\""+Server->ConvertToUTF8(escape(*((std::wstring*)data)))+"\"";
-			case obj_type: return ((Object*)data)->get(compressed);
-			case array_type: return ((Array*)data)->get(compressed);
-			case bool_type: return nconvert(*((bool*)data));
-			case int_type: return nconvert(*((int*)data));
-			case uint_type: return nconvert(*((unsigned int*)data));
-			case int64_type: return nconvert(*((_i64*)data));
-			case uint64_type: return nconvert(*((uint64*)data));
-			case double_type: return nconvert(*((double*)data));
-			case luint_type: return nconvert((size_t)*((long unsigned int*)data));
+			case str_type: return "\""+(escape((*((std::string*)data))))+"\"";
+            case obj_type: return ((Object*)data)->stringify(compressed);
+            case array_type: return ((Array*)data)->stringify(compressed);
+			case bool_type: return convert(*((bool*)data));
+			case int_type: return convert(*((int*)data));
+			case uint_type: return convert(*((unsigned int*)data));
+			case int64_type: return convert(*((_i64*)data));
+			case uint64_type: return convert(*((uint64*)data));
+			case double_type: return convert(*((double*)data));
+			case luint_type: return convert((size_t)*((long unsigned int*)data));
 			default: return "null";
 		}
 	}
 
-	std::wstring Value::toString() const
+	std::string Value::toString() const
 	{
 		switch(data_type)
 		{
-		case str_type: return Server->ConvertToUnicode(*((std::string*)data));
-		case wstr_type: return *((std::wstring*)data);
+		case str_type: return (*((std::string*)data));
 		case bool_type: return convert(*((bool*)data));
 		case int_type: return convert(*((int*)data));
 		case uint_type: return convert(*((unsigned int*)data));
@@ -422,7 +396,7 @@ namespace JSON
 		case uint64_type: return convert(*((uint64*)data));
 		case double_type: return convert(*((double*)data));
 		case luint_type: return convert((size_t)*((long unsigned int*)data));
-		default: return L"null";
+		default: return "null";
 		}
 	}
 
@@ -431,18 +405,6 @@ namespace JSON
 		if(data_type==str_type)
 		{
 			return *((std::string*)data);
-		}
-		else
-		{
-			throw BadTypeException();
-		}
-	}
-
-	const std::wstring & Value::getWString(void) const
-	{
-		if(data_type==wstr_type)
-		{
-			return *((std::wstring*)data);
 		}
 		else
 		{

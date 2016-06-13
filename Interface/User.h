@@ -9,9 +9,9 @@
 
 struct SUser
 {
-	std::wstring username;
-	std::wstring session;
-	std::wstring ident_data;
+	std::string username;
+	std::string session;
+	std::string ident_data;
 	int id;
 	str_map mStr;
 	int_map mInt;

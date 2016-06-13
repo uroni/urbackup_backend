@@ -8,8 +8,9 @@
 
 class IMutex;
 class ICondition;
-class InternetServicePipe;
-class CompressedPipe;
+class IInternetServicePipe;
+class ICompressedPipe;
+class IECDHKeyExchange;
 
 class InternetService : public IService
 {
@@ -59,8 +60,8 @@ public:
 	~InternetServiceConnector(void);
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 
-	virtual bool Run(void);
-	virtual void ReceivePackets(void);
+	virtual bool Run(IRunOtherCallback* run_other);
+	virtual void ReceivePackets(IRunOtherCallback* run_other);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -69,7 +70,7 @@ public:
 	static std::vector<std::pair<std::string, std::string> > getOnlineClients(void);
 	
 
-	void connectStart();
+	bool connectStart();
 	bool Connect(char service, int timems);
 	void stopConnecting(void);
 	void freeConnection(void);
@@ -101,11 +102,14 @@ private:
 
 	THREAD_ID tid;
 	IPipe *cs;
-	InternetServicePipe *is_pipe;
-	CompressedPipe *comp_pipe;
+	IInternetServicePipe *is_pipe;
+	ICompressedPipe *comp_pipe;
+	int conn_version;
 	IPipe *comm_pipe;
 	IMutex *local_mutex;
 	ICondition* connection_done_cond;
+	IECDHKeyExchange* ecdh_key_exchange;
+	int64 ecdh_key_exchange_age;
 
 	CTCPStack tcpstack;
 
@@ -135,6 +139,7 @@ private:
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
 	static unsigned int onetime_token_id;
+	static std::vector<std::pair<IECDHKeyExchange*, int64> > ecdh_key_exchange_buffer;
 
 	static int64 last_token_remove;
 };

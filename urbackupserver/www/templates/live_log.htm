@@ -1,10 +1,10 @@
 <html style="height: 100%">
 <head>
 <title>{tUrBackup live log}: {clientname}</title>
-<script language="JavaScript" src="jquery.js"></script>
-<script language="JavaScript" src="dust-full.min.js"></script>
-<script language="JavaScript" src="templates.js"></script>
-<script language="JavaScript" src="urbackup_functions.js"></script>
+<script language="JavaScript" src="js/jquery.js"></script>
+<script language="JavaScript" src="js/dust-full.min.js"></script>
+<script language="JavaScript" src="js/templates.js"></script>
+<script language="JavaScript" src="js/urbackup_functions.js"></script>
 <script type="text/javascript">
 /*<!--*/
 if(!window.g)
@@ -13,6 +13,9 @@ if(!window.g)
 g.session="{session}";
 g.max_log_id=-1;
 g.clientid={clientid};
+{?logid}
+g.logid={logid};
+{/logid}
 g.live_log_rows=0;
 g.max_live_log_rows=500;
 
@@ -23,7 +26,12 @@ g.refresh_log = function()
 	{
 		lastid="&lastid="+g.max_log_id;
 	}
-	new getJSON("livelog", "clientid="+g.clientid+lastid, refresh_log2);
+	var logid="";
+	if(g.logid)
+	{
+		logid="&logid="+g.logid;
+	}
+	new getJSON("livelog", "clientid="+g.clientid+lastid+logid, refresh_log2);
 };
 
 function refresh_log2(data)
@@ -34,7 +42,6 @@ function refresh_log2(data)
 		var obj=data.logdata[i];
 		if(obj.id>g.max_log_id)
 		{
-			var d=new Date(obj.time*1000);
 			var s_loglevel="";
 			var background_color="";
 			
@@ -51,7 +58,7 @@ function refresh_log2(data)
 			case  2: s_loglevel="ERROR"; break;
 			}
 			new_data+=dustRender("live_log_row", {
-				time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color
+				time: format_unix_timestamp(obj.time), loglevel: s_loglevel, message: obj.msg, background_color: background_color
 			});
 			
 			g.max_log_id=obj.id;
@@ -117,6 +124,6 @@ function refresh_log2(data)
 <table style="border: 0px" id="logdata" style="height: 100%">
 
 </table>
-<img src="indicator.gif" />
+<img src="images/indicator.gif" />
 </body>
 </html> 

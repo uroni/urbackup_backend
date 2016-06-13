@@ -7,49 +7,84 @@
 
 #include "ChunkPatcher.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "server_log.h"
+#include "../urbackupcommon/ExtentIterator.h"
+#include "../urbackupcommon/TreeHash.h"
 
-class INotEnoughSpaceCallback
+const char HASH_FUNC_SHA512_NO_SPARSE = 0;
+const char HASH_FUNC_SHA512 = 1;
+const char HASH_FUNC_TREE = 2;
+
+namespace
 {
-public:
-	virtual bool handle_not_enough_space(const std::wstring &path)=0;
-};
-
+	std::string print_hash_func(const char hf)
+	{
+		switch (hf)
+		{
+		case HASH_FUNC_SHA512_NO_SPARSE: return "sha512-nosparse";
+		case HASH_FUNC_SHA512: return "sha512-sparse";
+		case HASH_FUNC_TREE: return "tree-sparse";
+		default: return "unknown";
+		}
+	}
+}
 
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
-	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid);
+	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid, bool ignore_hash_mismatch);
 	~BackupServerPrepareHash(void);
 
 	void operator()(void);
 	
 	bool isWorking(void);
 
-	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace);
-	static bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
-	static bool writeFileRepeat(IFile *f, const char *buf, size_t bsize);
+	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse);
 
-	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
+	void next_sparse_extent_bytes(const char * buf, size_t bsize);
 
 	bool hasError(void);
 
-	static std::string hash_sha512(IFile *f);
+	class IHashProgressCallback
+	{
+	public:
+		virtual void hash_progress(int64 curr) = 0;
+	};
+
+
+	static std::string calc_hash(IFsFile *f, std::string method);
+
+	static bool hash_sha(IFile *f, IExtentIterator* extent_iterator, bool hash_with_sparse, IHashFunc& hashf, IHashProgressCallback* progress_callback=NULL);
 
 private:
 	
-	std::string hash_with_patch(IFile *f, IFile *patch);
+	bool hash_with_patch(IFile *f, IFile *patch, ExtentIterator* extent_iterator, bool hash_with_sparse);
+
+	void readNextExtent();
+
+	void addUnchangedHashes(int64 start, size_t size, bool* is_sparse);
 
 	IPipe *pipe;
 	IPipe *output;
 
 	int clientid;
 
-	sha512_ctx ctx;
+	IHashFunc* hashf;
+	IFile* hashoutput_f;
+
+	int64 file_pos;
+
+	bool has_sparse_extents;
 
 	ChunkPatcher chunk_patcher;
 	
 	volatile bool working;
 	volatile bool has_error;
+
+	logid_t logid;
+
+	bool ignore_hash_mismatch;
+
 };
 
 #endif //SERVER_PREPARE_HASH_H

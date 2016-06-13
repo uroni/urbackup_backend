@@ -63,24 +63,28 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedistInstalled64:
-		; Push $R0
-   		; ClearErrors
-   		; ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{8220EEFE-38CD-377E-8595-13398D740ACE}" "Version"
-	   	; IfErrors 0 VSRedist90Installed64
-		; inetc::get "http://www.urserver.de/vc90/vcredist_x64.exe" $TEMP\vcredist_x64.exe
-		; Pop $0
-		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
-		; Delete '$TEMP\vcredist_x64.exe'
-; VSRedist90Installed64:
-		File "vcredist\vcredist_2010sp1_x64.exe"
-		ExecWait '"$TEMP\vcredist_2010sp1_x64.exe" /q /norestart'
-		File "vcredist\idndl.amd64.exe"
-		${If} ${IsWinXP}
-			ExecWait '"$TEMP\idndl.amd64.exe" /q /norestart'
+		File "..\deps\redist\vc_redist_2015.x64.exe"
+		ExecWait '"$TEMP\vc_redist_2015.x64.exe" /q /norestart' $0
+		${If} $0 != '0'
+		${If} $0 != '3010'
+		${If} $0 != '1638'
+		${If} $0 != '8192'
+		${If} $0 != '1641'
+		${If} $0 != '1046'
+			ExecWait '"$TEMP\vc_redist_2015.x64.exe" /passive /norestart' $0
+			${If} $0 != '0'
+			${If} $0 != '3010'
+				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				Quit
+			${EndIf}
+			${EndIf}
 		${EndIf}
-		${If} ${IsWin2003}
-			ExecWait '"$TEMP\idndl.amd64.exe" /q /norestart'
 		${EndIf}
+		${EndIf}
+		${EndIf}
+		${EndIf}
+		${EndIf}
+			
 	${Else}
 		; ReadRegStr $0 HKLM "SOFTWARE\Microsoft\VisualStudio\10.0\VC\Runtimes\x86" 'Installed'
 		; ${If} $0 != '1'
@@ -92,23 +96,26 @@ Section "install"
 				; Delete '$TEMP\vcredist_x86.exe'
 			; ${EndIf}
 		; ${EndIf}
-		; Push $R0
-   		; ClearErrors
-   		; ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{9A25302D-30C0-39D9-BD6F-21E6EC160475}" "Version"
-	   	; IfErrors 0 VSRedist90Installed86
-		; inetc::get "http://www.urserver.de/vc90/vcredist_x86.exe" $TEMP\vcredist_x86.exe
-		; Pop $0
-		; ExecWait '"$TEMP\vcredist_x86.exe" /q'  
-		; Delete '$TEMP\vcredist_x86.exe'
-; VSRedist90Installed86:
-		File "vcredist\vcredist_2010sp1_x86.exe"
-		ExecWait '"$TEMP\vcredist_2010sp1_x86.exe" /q /norestart'
-		File "vcredist\idndl.x86.exe"
-		${If} ${IsWinXP}
-			ExecWait '"$TEMP\idndl.x86.exe" /q /norestart'
+		File "..\deps\redist\vc_redist_2015.x86.exe"
+		ExecWait '"$TEMP\vc_redist_2015.x86.exe" /q /norestart' $0
+		${If} $0 != '0'
+		${If} $0 != '3010'
+		${If} $0 != '1638'
+		${If} $0 != '8192'
+		${If} $0 != '1641'
+		${If} $0 != '1046'
+			ExecWait '"$TEMP\vc_redist_2015.x86.exe"  /passive /norestart' $0
+			${If} $0 != '0'
+			${If} $0 != '3010'
+				MessageBox MB_OK "Unable to install Visual Studio 2015 runtime. UrBackup needs that runtime."
+				Quit
+			${EndIf}
+			${EndIf}
 		${EndIf}
-		${If} ${IsWin2003}
-			ExecWait '"$TEMP\idndl.x86.exe" /q /norestart'
+		${EndIf}
+		${EndIf}
+		${EndIf}
+		${EndIf}
 		${EndIf}
 	${EndIf}
 	
@@ -128,14 +135,13 @@ Section "install"
 	
 	SetOutPath "$INSTDIR"
 	File "data_common\args.txt"
-	File "data_common\args_prevista.txt"
 	File "data_common\license.txt"
 	File "data_common\cleanup.bat"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
 	File "data_common\cleanup_database.bat"
 	File "data_common\defrag_database.bat"
-	File "data_common\urbackup_dsa.pub"
+	File "data_common\urbackup_ecdsa409k1.pub"
 	File "data_common\repair_database.bat"
 	File "data_common\export_auth_log.bat"
 	File "data_common\uncompress_image.bat"
@@ -146,26 +152,19 @@ Section "install"
 	${IfNot} ${RunningX64} 
 		File "data\fsimageplugin.dll"
 		File "data\urbackupserver.dll"
-		File "data\urbackupserver_prevista.dll"
 		File "data\httpserver.dll"
+		File "data\fileservplugin.dll"
 		File "data\cryptoplugin.dll"
 		File "data_service\urbackup_srv.exe"
-		File "data\curllib.dll"
-		File "data\libssl32.dll"
-		File "data\libeay32.dll"
 		File "data\urlplugin.dll"
 		SetOutPath "$INSTDIR"
 	${Else}
 		File "data_x64\fsimageplugin.dll"
 		File "data_x64\urbackupserver.dll"
-		File "data_x64\urbackupserver_prevista.dll"
 		File "data_x64\httpserver.dll"
+		File "data_x64\fileservplugin.dll"
 		File "data_service_x64\urbackup_srv.exe"
-		File "data_x64\libcurl.dll"
 		File "data_x64\cryptoplugin.dll"
-		File "data_x64\zlib1.dll"
-		File "data_x64\ssleay32.dll"
-		File "data_x64\libeay32.dll"
 		File "data_x64\urlplugin.dll"
 		SetOutPath "$INSTDIR"
 	${EndIf}
@@ -174,55 +173,21 @@ Section "install"
 	File "data_common\urbackup\status.htm"
 	SetOutPath "$INSTDIR\urbackup\www"
 	File "data_common\urbackup\www\favicon.ico"
-	File "data_common\urbackup\www\*.png"
 	File "data_common\urbackup\www\index.htm"
-	File "data_common\urbackup\www\*.gif"
-	File "data_common\urbackup\www\*.css"
-	File "data_common\urbackup\www\*.js"
 	File "data_common\urbackup\www\*.swf"
-	
-	
-	${IfNot} ${RunningX64}
-		${If} ${IsWinXP}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-		${If} ${IsWin2003}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-	${Else}
-		${If} ${IsWin2003}
-			StrCpy $0 "$INSTDIR\args_prevista.txt" ;Path of copy file from
-			StrCpy $1 "$INSTDIR\args.txt"   ;Path of copy file to
-			StrCpy $2 0 ; only 0 or 1, set 0 to overwrite file if it already exists
-			System::Call 'kernel32::CopyFile(t r0, t r1, b r2) l'
-			Pop $0
-			;SetRebootFlag true
-		${EndIf}
-	${EndIf}
+	SetOutPath "$INSTDIR\urbackup\www\images"
+	File "data_common\urbackup\www\images\*.png"
+	File "data_common\urbackup\www\images\*.gif"
+	SetOutPath "$INSTDIR\urbackup\www\css"	
+	File "data_common\urbackup\www\css\*.css"
+	SetOutPath "$INSTDIR\urbackup\www\js"
+	File "data_common\urbackup\www\js\*.js"
 	
 	CreateDirectory "$SMPROGRAMS\UrBackup Server"
 	CreateShortCut "$SMPROGRAMS\UrBackup Server\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
 	CreateShortCut "$SMPROGRAMS\UrBackup Server\UrBackup Server Interface.lnk" "http://localhost:55414" "" "$INSTDIR\urbackup\www\favico.ico" 0
-	;SetOutPath "$SMPROGRAMS\UrBackup Server"
-	;File "data_common\UrBackup Server Interface.htm"
 	
-	${If} ${IsWinXP}
-		nsisFirewallW::AddAuthorizedApplication "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${ElseIf} ${IsWin2003}
-		nsisFirewallW::AddAuthorizedApplication "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${Else}
-		liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
-	${EndIf}
+	liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
 	Pop $0
 	
 	

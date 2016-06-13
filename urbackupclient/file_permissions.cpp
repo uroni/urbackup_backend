@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "file_permissions.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
@@ -7,7 +25,7 @@
 #include <Sddl.h>
 #include <Aclapi.h>
 #else
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -25,6 +43,9 @@ const TCHAR * szSD = TEXT("D:")       // Discretionary ACL
 
 bool change_file_permissions_admin_only(const std::string& filename)
 {
+#ifdef _DEBUG
+	return true;
+#else
 	PSECURITY_DESCRIPTOR pSDCNV = NULL;
 
      BOOL b=ConvertStringSecurityDescriptorToSecurityDescriptor(
@@ -73,10 +94,11 @@ bool change_file_permissions_admin_only(const std::string& filename)
 
 	 bool ret=true;
 
-	 DWORD rc = SetNamedSecurityInfoA(const_cast<char*>(filename.c_str()), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
+	 DWORD rc = SetNamedSecurityInfoW(const_cast<wchar_t*>(Server->ConvertToWchar(filename).c_str()),
+		 SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
 	 if(rc!=ERROR_SUCCESS)
 	 {
-		 Server->Log("Error setting security information. rc: "+nconvert((int)rc), LL_ERROR);
+		 Server->Log("Error setting security information of file " + filename + ". rc: "+convert((int)rc), LL_ERROR);
 		 ret=false;
 	 }
 
@@ -86,10 +108,15 @@ bool change_file_permissions_admin_only(const std::string& filename)
 	 LocalFree(pSDCNV);
 
 	 return ret;
+#endif //_DEBUG
 }
 
 bool write_file_only_admin(const std::string& data, const std::string& fn)
 {
+#ifdef _DEBUG
+	writestring(data, fn);
+	return true;
+#else
 	SECURITY_ATTRIBUTES  sa;      
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = FALSE;
@@ -107,7 +134,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 		 return false;
 	 }
 
-	 HANDLE file = CreateFileA(fn.c_str(),
+	 HANDLE file = CreateFileW(Server->ConvertToWchar(fn).c_str(),
 		 GENERIC_READ | GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, 0, NULL);
 
 	 if(file==INVALID_HANDLE_VALUE)
@@ -133,6 +160,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 	 CloseHandle(file);
 	 LocalFree(sa.lpSecurityDescriptor);
 	 return true;
+#endif //_DEBUG
 }
 
 #else
@@ -164,7 +192,7 @@ bool change_file_permissions_admin_only(const std::string& filename)
 {
 	if(chmod(filename.c_str(), S_IRWXU)!=0)
 	{
-		Server->Log("Error setting file permissions", LL_ERROR);
+		Server->Log("Error setting file permissions to \""+filename+"\"", LL_ERROR);
 		return false;
 	}
 	return true;

@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -26,7 +26,10 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
 #include "../Interface/Action.h"
 
@@ -37,13 +40,28 @@
 #include "IndexFiles.h"
 #include "HTTPClient.h"
 
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_httpserver
+#define UnloadActions UnloadActions_httpserver
+#endif
+
 CHTTPService* http_service=NULL;
 std::vector<std::string> allowed_urls;
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
+
+	if(Server->getServerParameter("http_server")!="true")
+	{
+		return;
+	}
 
 	CHTTPClient::init_mutex();
 
@@ -85,15 +103,28 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
-	Server->Log("Starting HTTP-Server on port "+nconvert(port), LL_INFO);
+	Server->Log("Starting HTTP-Server on port "+convert(port), LL_INFO);
 
 	Server->StartCustomStreamService( http_service, "HTTP", (unsigned short)port, 1);
 }
 
 DLLEXPORT void UnloadActions(void)
 {
+	if(Server->getServerParameter("http_server")!="true")
+	{
+		return;
+	}
+
 	if(Server->getServerParameter("leak_check")=="true")
 	{
 		CHTTPClient::destroy_mutex();
 	}
 }
+
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

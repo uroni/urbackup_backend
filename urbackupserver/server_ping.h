@@ -1,20 +1,24 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Mutex.h"
 
-class BackupServerGet;
+class ClientMain;
 
 class ServerPingThread : public IThread
 {
 public:
-	ServerPingThread(BackupServerGet *pServer_get, bool with_eta);
+	ServerPingThread(ClientMain *client_main, const std::string& clientname,
+		size_t status_id, bool with_eta, std::string server_token);
 	void operator()(void);
 	void setStop(bool b);
 
 	bool isTimeout(void);
 
 private:
-	BackupServerGet *server_get;
+	ClientMain *client_main;
 	volatile bool stop;
 	volatile bool is_timeout;
 	bool with_eta;
+	const std::string& clientname;
+	size_t status_id;
+	std::string server_token;
 };

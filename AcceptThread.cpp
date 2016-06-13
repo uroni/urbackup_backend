@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -54,7 +54,7 @@ void OutputCallback::operator() (const void* buf, size_t count)
 	#else
 			ec=errno;
 	#endif
-			Server->Log("Send failed in OutputCallback ec="+nconvert(ec), LL_INFO);
+			Server->Log("Send failed in OutputCallback ec="+convert(ec), LL_INFO);
 			throw std::runtime_error("Send failed in OutputCallback");
 		}
 		else
@@ -69,36 +69,42 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
-	Server->Log("Creating SOCKET...",LL_INFO);
-	s=socket(AF_INET,SOCK_STREAM,0);
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s=socket(AF_INET, type, 0);
 	if(s<1)
 	{
-		Server->Log("Creating SOCKET failed",LL_ERROR);
+		Server->Log("Creating SOCKET failed. Port "+convert((int)uPort)+" may already be in use",LL_ERROR);
 		error=true;
 		return;
 	}
-	Server->Log("done.",LL_INFO);
 
 	int optval=1;
 	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(uPort),LL_ERROR);
+		Server->Log("Failed setting SO_REUSEADDR for port "+convert(uPort),LL_ERROR);
 		error=true;
 		return;
 	}
+#ifdef __APPLE__
+	optval = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 
 	sockaddr_in addr;
 
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(uPort);
-	addr.sin_addr.s_addr=INADDR_ANY;
+	addr.sin_addr.s_addr= htonl(INADDR_ANY);
 
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log("Failed binding SOCKET to Port "+nconvert(uPort),LL_ERROR);
+		Server->Log("Failed binding SOCKET to Port "+convert(uPort),LL_ERROR);
 		error=true;
 		return;
 	}
@@ -178,6 +184,11 @@ void CAcceptThread::operator()(bool single)
 			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 			if(ns!=SOCKET_ERROR)
 			{
+
+#ifdef __APPLE__
+				int optval = 1;
+				setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
 				//Server->Log("New Connection incomming", LL_INFO);
 
 				OutputCallback *output=new OutputCallback(ns);
@@ -216,7 +227,7 @@ void CAcceptThread::AddToSelectThread(CClient *client)
 
 	SelectThreads.push_back( nt );
 
-	Server->createThread(nt);
+	Server->createThread(nt, "fastcgi: accept");
 }
 
 bool CAcceptThread::has_error(void)

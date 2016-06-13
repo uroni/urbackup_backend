@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -25,9 +25,21 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urbackupserver
+#define UnloadActions UnloadActions_urbackupserver
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
@@ -54,7 +66,7 @@ SStartupStatus startup_status;
 #include "server_status.h"
 #include "server_log.h"
 #include "server_cleanup.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "server_archive.h"
 #include "server_settings.h"
 #include "server_update_stats.h"
@@ -64,15 +76,50 @@ SStartupStatus startup_status;
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
 #include "apps/export_auth_log.h"
-#include "create_files_cache.h"
+#include "apps/skiphash_copy.h"
+#include "create_files_index.h"
 #include "server_dir_links.h"
+#include "server_channel.h"
 
 #include <stdlib.h>
+#include "../Interface/DatabaseCursor.h"
+#include <set>
+#include "apps/check_files_index.h"
+#include "../fileservplugin/IFileServ.h"
+#include "../fileservplugin/IFileServFactory.h"
+#include "restore_client.h"
+#include "WalCheckpointThread.h"
+#include "FileMetadataDownloadThread.h"
+#include "../urbackupcommon/chunk_hasher.h"
+
+#define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
+
+namespace
+{
+#include "backup_server_db.h"
+
+	std::string get_backup_server_db_data()
+	{
+		size_t out_len;
+		void* cdata = tinfl_decompress_mem_to_heap(backup_server_db_z, backup_server_db_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
+		if (cdata == NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+		mz_free(cdata);
+		return ret;
+	}
+}
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
+IFileServ* fileserv=NULL;
 
 std::string server_identity;
 std::string server_token;
@@ -95,7 +142,8 @@ bool test_amatch(void);
 bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
-void open_settings_database_full(bool use_berkeleydb);
+void open_settings_database_full();
+int md5sum_check();
 
 std::string lang="en";
 std::string time_format_str="%Y-%m-%d %H:%M";
@@ -105,147 +153,167 @@ THREADPOOL_TICKET tt_cleanup_thread;
 THREADPOOL_TICKET tt_automatic_archive_thread;
 bool is_leak_check=false;
 
+const size_t sqlite_data_allocation_chunk_size = 50*1024*1024; //50MB
+
 #ifdef _WIN32
 const std::string new_file="new.txt";
 #else
 const std::string new_file="urbackup/new.txt";
 #endif
 
-bool copy_file(const std::wstring &src, const std::wstring &dst)
+void open_server_database(bool init_db)
 {
-	IFile *fsrc=Server->openFile(src, MODE_READ);
-	if(fsrc==NULL) return false;
-	IFile *fdst=Server->openFile(dst, MODE_WRITE);
-	if(fdst==NULL)
+	if( !FileExists("urbackup/backup_server.db") && init_db )
 	{
-		Server->destroy(fsrc);
-		return false;
+		writestring(get_backup_server_db_data(), "urbackup/backup_server.db");
 	}
-	char buf[4096];
-	size_t rc;
-	while( (rc=(_u32)fsrc->Read(buf, 4096))>0)
-	{
-		fdst->Write(buf, (_u32)rc);
-	}
-	
-	Server->destroy(fsrc);
-	Server->destroy(fdst);
-	return true;
-}
 
-void open_server_database(bool &use_berkeleydb, bool init_db)
-{
-	std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 100000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 100000\r\nset_cachesize 0 104857600 1";
-	use_berkeleydb=false;
+	std::string sqlite_mmap_huge = Server->getServerParameter("sqlite_mmap_huge");
+	std::string sqlite_mmap_medium = Server->getServerParameter("sqlite_mmap_medium");
+	std::string sqlite_mmap_small = Server->getServerParameter("sqlite_mmap_small");
 
-	if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
+	str_map params;
+	params["wal_autocheckpoint"] = "0";
+
+	if (!sqlite_mmap_medium.empty())
 	{
-		if(init_db)
-		{
-			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
-		}
+		params["mmap_size"] = sqlite_mmap_medium;
 	}
 		
-	if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server_init.sql") )
+	if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER, params) )
 	{
-		bool init=false;
-		std::string engine="sqlite";
-		std::string db_fn="urbackup/backup_server.db";
-		if(Server->hasDatabaseFactory("bdb") )
-		{
-			os_create_dir(L"urbackup/backup_server.bdb-journal");
-			writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
-			engine="bdb";
-			db_fn="urbackup/backup_server.bdb";
-			use_berkeleydb=true;
-		}
-			
-		if(! Server->openDatabase(db_fn, URBACKUPDB_SERVER, engine) )
-		{
-			Server->Log("Couldn't open Database "+db_fn+". Exiting.", LL_ERROR);
-			exit(1);
-		}
-
-		if(init_db)
-		{
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-			db->Import("urbackup/backup_server_init.sql");
-		}
+		Server->Log("Couldn't open Database backup_server.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server.db\"", LL_ERROR);
+		exit(1);
 	}
-	else
-	{			
-		if(Server->hasDatabaseFactory("bdb") )
-		{
-			use_berkeleydb=true;
 
-			Server->Log("Warning: Switching to Berkley DB", LL_WARNING);
-			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER_TMP) )
-			{
-				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
-				exit(1);
-			}
-
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_TMP);
-			Server->deleteFile("urbackup/backup_server.dat");
-			if(db->Dump("urbackup/backup_server.dat"))
-			{
-				Server->destroyAllDatabases();
-
-				os_create_dir(L"urbackup/backup_server.bdb-journal");
-				writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
-
-				if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
-				{
-					Server->Log("Couldn't open Database backup_server.bdb. Exiting.", LL_ERROR);
-					exit(1);
-				}
-				db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-				if(db->Import("urbackup/backup_server.dat") )
-				{
-					Server->deleteFile("urbackup/backup_server.dat");
-					rename("urbackup/backup_server.db", "urbackup/backup_server_old_sqlite.db");
-				}
-				else
-				{
-					Server->Log("Importing data into new BerkleyDB database failed. Exiting.", LL_ERROR);
-					exit(1);
-				}
-			}
-			else
-			{
-				Server->Log("Dumping Database failed. Exiting", LL_ERROR);
-				exit(1);
-			}
-		}
-		else
-		{
-			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
-			{
-				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
-				exit(1);
-			}
-		}
+	if (!sqlite_mmap_medium.empty())
+	{
+		params.erase(params.find("mmap_size"));
 	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
 
 	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
 	{
-		Server->Log(L"Couldn't open backup server database. Exiting. Expecting database at \""+
-			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server.db\"", LL_ERROR);
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \""+
+			Server->getServerWorkingDir()+os_file_sep()+"urbackup"+os_file_sep()+"backup_server.db\"", LL_ERROR);
 		exit(1);
 	}
-	else
+
+	if (!sqlite_mmap_huge.empty())
 	{
-		Server->destroyDatabases(Server->getThreadID());
+		params["mmap_size"] = sqlite_mmap_huge;
 	}
+
+	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES, params))
+	{
+		Server->Log("Couldn't open Database backup_server_files.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_huge.empty())
+	{
+		params.erase(params.find("mmap_size"));
+	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES, sqlite_data_allocation_chunk_size);
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_small.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_small;
+	}
+
+	if (!Server->openDatabase("urbackup/backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL, params))
+	{
+		Server->Log("Couldn't open Database backup_server_link_journal.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_small.empty())
+	{
+		params.erase(params.find("mmap_size"));
+	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINK_JOURNAL, sqlite_data_allocation_chunk_size);
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINK_JOURNAL))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_link_journal.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_medium.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_small;
+	}
+
+	if (!Server->openDatabase("urbackup/backup_server_links.db", URBACKUPDB_SERVER_LINKS, params))
+	{
+		Server->Log("Couldn't open Database backup_server_links.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_medium.empty())
+	{
+		params.erase(params.find("mmap_size"));
+	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_LINKS, sqlite_data_allocation_chunk_size);
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
+		exit(1);
+	}
+	
+	Server->destroyDatabases(Server->getThreadID());
 }
 
-void open_settings_database(bool use_berkeleydb)
+void open_settings_database()
 {
 	std::string aname="urbackup/backup_server_settings.db";
-	if(use_berkeleydb)
-		aname="urbackup/backup_server_settings.bdb";
 
-	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
+	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);	
+}
+
+bool attach_other_dbs(IDatabase* db)
+{
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_files.db' AS files_db"))
+	{
+		return false;
+	}
+
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_link_journal.db' AS link_journal_db"))
+	{
+		return false;
+	}
+
+	if (!db->Write("ATTACH DATABASE 'urbackup/backup_server_links.db' AS links_db"))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void detach_other_dbs(IDatabase* db)
+{
+	db->Write("DETACH DATABASE files_db");
+	db->Write("DETACH DATABASE link_journal_db");
+	db->Write("DETACH DATABASE links_db");
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
@@ -271,28 +339,51 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())
 	{
-		os_remove_nonempty_dir(widen(rmtest));
+		os_remove_nonempty_dir(rmtest);
 		return;
 	}
 
 	std::string download_file=Server->getServerParameter("download_file");
 	if(!download_file.empty())
 	{
-		FileDownload dl;
+		/* For attaching debugger
+		std::cout << "Process id: " << GetCurrentProcessId() << std::endl;
+		system("pause");*/
 		unsigned int tcpport=43001;
 		std::string s_tcpport=Server->getServerParameter("tcpport");
 		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
 		int method=0;
 		std::string s_method=Server->getServerParameter("method");
 		if(!s_method.empty()) method=atoi(s_method.c_str());
-		Server->Log("Starting file download...");
-		dl.filedownload(download_file, Server->getServerParameter("servername"), Server->getServerParameter("dstfn"), tcpport, method);
+
+		FileDownload dl(Server->getServerParameter("servername"), tcpport);
+
+		int predicted_filesize = atoi(Server->getServerParameter("predicted_filesize", "-1").c_str());
+		Server->Log("Starting file download... (predicted_filesize="+convert(predicted_filesize)+")");
+		dl.filedownload(download_file, Server->getServerParameter("dstfn"), method, predicted_filesize, SQueueStatus_NoQueue);
+		exit(1);
+	}
+
+	std::string download_file_csv=Server->getServerParameter("download_file_csv");
+	if(!download_file_csv.empty())
+	{
+		/* For attaching debugger
+		std::cout << "Process id: " << GetCurrentProcessId() << std::endl;
+		system("pause");*/
+		unsigned int tcpport=43001;
+		std::string s_tcpport=Server->getServerParameter("tcpport");
+		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
+
+		FileDownload dl(Server->getServerParameter("servername"), tcpport);
+
+		dl.filedownload(download_file_csv);
 		exit(1);
 	}
 
 	init_mutex1();
 	ServerLogger::init_mutex();
 	init_dir_link_mutex();
+	WalCheckpointThread::init_mutex();
 
 	std::string app=Server->getServerParameter("app", "");
 
@@ -324,10 +415,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=export_auth_log();
 		}
+		else if(app=="check_fileindex")
+		{
+			rc=check_files_index();
+		}
+		else if(app=="check_metadata")
+		{
+			rc=server::check_metadata();
+		}
+		else if(app=="skiphash_copy")
+		{
+			rc=skiphash_copy_file();
+		}
+		else if (app == "md5sum_check")
+		{
+			rc = md5sum_check();
+		}
+		else if (app == "hash")
+		{
+			std::auto_ptr<IFsFile> f(Server->openFile(Server->getServerParameter("hash_file"), MODE_READ_SEQUENTIAL));
+			if (f.get() != NULL)
+			{
+				std::string h = BackupServerPrepareHash::calc_hash(f.get(), Server->getServerParameter("hash_method"));
+				Server->Log("Hash: " + base64_encode(reinterpret_cast<const unsigned char*>(h.data()), static_cast<unsigned int>(h.size())), LL_INFO);
+			}
+			else
+			{
+				Server->Log("Cannot open file to hash (hash_file) \"" + Server->getServerParameter("hash_file") + "\" for reading. " + os_last_error_str(), LL_ERROR);
+			}
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy, md5sum_check, hash");
 		}
 		exit(rc);
 	}
@@ -362,10 +482,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
 	}
+
+	if(FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signData(getFile("urbackup/server_ident_ecdsa409k1.priv"), "test", signature))
+		{
+			Server->Log("Server ECDSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.pub");
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.priv");
+		}
+	}
+
+	if(!FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		Server->Log("Generating Server private/public ECDSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident_ecdsa409k1");
+	}
+
+	if(FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signDataDSA(getFile("urbackup/server_ident.priv"), "test", signature))
+		{
+			Server->Log("Server DSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident.pub");
+			Server->deleteFile("urbackup/server_ident.priv");
+		}
+	}
+
 	if(!FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
 	{
-		Server->Log("Generating Server private/public key...", LL_INFO);
-		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident");
+		Server->Log("Generating Server private/public DSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPairDSA("urbackup/server_ident");
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
@@ -387,18 +536,29 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
-	
-	bool use_berkeleydb;
-	open_server_database(use_berkeleydb, true);
+	{
+		str_map params;
+		IFileServFactory* fileserv_fak=(IFileServFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fileserv", params));
+		if( fileserv_fak==NULL )
+		{
+			Server->Log("Error loading fileservplugin. File restores won't work.", LL_ERROR);
+		}
+		else
+		{
+			fileserv = fileserv_fak->createFileServNoBind();
+		}
+	}
 
+	
+	open_server_database(true);
 	
 
 	ServerStatus::init_mutex();
 	ServerSettings::init_mutex();
-	BackupServerGet::init_mutex();
+	ClientMain::init_mutex();
 
-	open_settings_database(use_berkeleydb);
-	open_settings_database_full(use_berkeleydb);
+	open_settings_database();
+	open_settings_database_full();
 	
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
@@ -428,17 +588,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		
 	upgrade();
 
-	if(!use_berkeleydb)
-	{
-		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db->Write("PRAGMA journal_mode=WAL");
-	}
 
-	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
+	std::vector<DATABASE_ID> dbs;
+	dbs.push_back(URBACKUPDB_SERVER);
+	dbs.push_back(URBACKUPDB_SERVER_FILES);
+	dbs.push_back(URBACKUPDB_SERVER_LINKS);
+	dbs.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
+	for (size_t i = 0; i < dbs.size(); ++i)
 	{
-		Server->Log(L"Couldn't open backup server settings database. Exiting. Expecting database at \""+
-			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server_settings.db\"", LL_ERROR);
-		exit(1);
+		IDatabase *db = Server->getDatabase(Server->getThreadID(), dbs[i]);
+		db->Write("PRAGMA journal_mode=WAL");
 	}
 		
 	if( FileExists("urbackup/backupfolder") )
@@ -457,8 +617,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
-	ServerUpdateStats::createFilesIndices();
-	create_files_cache(startup_status);
+	if(!create_files_index(startup_status))
+	{
+		Server->Log("Could not create or open file entry index. Exiting.", LL_ERROR);
+		exit(1);
+	}
 
 	{
 		IScopedLock lock(startup_status.mutex);
@@ -468,35 +631,60 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string set_admin_pw=Server->getServerParameter("set_admin_pw");
 	if(!set_admin_pw.empty())
 	{
-		std::string rnd=ServerSettings::generateRandomAuthKey(20);
+		std::string set_admin_username = Server->getServerParameter("set_admin_username");
+
+		if(set_admin_username.empty())
+		{
+			set_admin_username = "admin";
+		}
+
+		std::string new_salt=ServerSettings::generateRandomAuthKey(20);
+
+		const size_t pbkdf2_rounds = 10000;
+
+		std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->GenerateHexMD5(new_salt+set_admin_pw)),
+				new_salt, pbkdf2_rounds));
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db_results res=db->Read("SELECT password_md5 FROM settings_db.si_users WHERE name='admin'");
+
+		IQuery* q_read = db->Prepare("SELECT password_md5 FROM settings_db.si_users WHERE name=?");
+		q_read->Bind(set_admin_username);
+		db_results res = q_read->Read();
+		q_read->Reset();
+
 		if(res.empty())
 		{
-			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
-			q->Bind("admin");
-			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
-			q->Bind(rnd);
+			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?,?)");
+			q->Bind(set_admin_username);
+			q->Bind(password_md5);
+			q->Bind(new_salt);
+			q->Bind(pbkdf2_rounds);
 			q->Write();
 			q->Reset();
+
+			Server->Log("User account \""+set_admin_username+"\" not present. Created admin user account with specified password.", LL_INFO);
 		}
 		else
 		{
-			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=? WHERE name='admin'");
-			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
-			q->Bind(rnd);
+			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name=?");
+			q->Bind(password_md5);
+			q->Bind(new_salt);
+			q->Bind(pbkdf2_rounds);
+			q->Bind(set_admin_username);
 			q->Write();
 			q->Reset();
+
+			Server->Log("Changed admin password.", LL_INFO);
 		}
 
-		Server->Log("Changed admin password.", LL_INFO);
-
 		{
-			db_results res=db->Read("SELECT id FROM si_users WHERE name='admin'");
+			IQuery *q=db->Prepare("SELECT id FROM si_users WHERE name=?");
+			q->Bind(set_admin_username);
+			db_results res = q->Read();
+			q->Reset();
 			if(!res.empty())
 			{
-				updateRights(watoi(res[0][L"id"]), "idx=0&0_domain=all&0_right=all", db);
+				updateRights(watoi(res[0]["id"]), "idx=0&0_domain=all&0_right=all", db);
 
 				Server->Log("Updated admin rights.", LL_INFO);
 			}
@@ -504,7 +692,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		db->destroyAllQueries();
 
-		exit(1);
+		exit(0);
 	}
 		
 
@@ -524,16 +712,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(download_client);
 	ADD_ACTION(livelog);
 	ADD_ACTION(start_backup);
+	ADD_ACTION(add_client);
+	ADD_ACTION(restore_prepare_wait);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{
 		ADD_ACTION(shutdown);
 	}
 
-	{
-		ServerBackupDao backup_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
-		replay_directory_link_journal(backup_dao);
-	}
+	replay_directory_link_journal();
 
 	Server->Log("Started UrBackup...", LL_INFO);
 
@@ -545,9 +732,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Error loading IUrlFactory", LL_INFO);
 	}
 
+    ServerChannelThread::initOffset();
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	if(crypto_fak==NULL 
+		&& db->Read("SELECT * FROM settings_db.si_users WHERE pbkdf2_rounds>0").size()>0)
+	{
+		Server->Log("Encrypted user passwords need cryptoplugin. Cannot run without cryptoplugin", LL_ERROR);
+		exit(1);
+	}
+
 	server_exit_pipe=Server->createMemoryPipe();
 	BackupServer *backup_server=new BackupServer(server_exit_pipe);
-	Server->createThread(backup_server);
+	Server->createThread(backup_server, "client discovery");
 	Server->wait(500);
 
 	InternetServiceConnector::init_mutex();
@@ -570,6 +767,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	init_chunk_hasher();
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
@@ -578,16 +776,34 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(is_leak_check)
 	{
-		tt_cleanup_thread=Server->getThreadPool()->execute(server_cleanup);
-		tt_automatic_archive_thread=Server->getThreadPool()->execute(new ServerAutomaticArchive);
+		tt_cleanup_thread=Server->getThreadPool()->execute(server_cleanup, "backup cleanup");
+		tt_automatic_archive_thread=Server->getThreadPool()->execute(new ServerAutomaticArchive, "backup archival");
 	}
 	else
 	{
-		Server->createThread(server_cleanup);
-		Server->createThread(new ServerAutomaticArchive);
+		Server->createThread(server_cleanup, "backup cleanup");
+		Server->createThread(new ServerAutomaticArchive, "backup archival");
 	}
 
 	Server->setLogCircularBufferSize(20);
+
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(100*1024*1024, 1000*1024*1024,
+		"urbackup"+os_file_sep()+"backup_server_files.db", URBACKUPDB_SERVER_FILES);
+	Server->createThread(wal_checkpoint_thread, "files checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER);
+	Server->createThread(wal_checkpoint_thread, "main checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
+	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
+	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
+
+	Server->clearDatabases(Server->getThreadID());
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
@@ -646,31 +862,53 @@ DLLEXPORT void UnloadActions(void)
 		ServerSettings::clear_cache();
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
+		WalCheckpointThread::destroy_mutex();
 		destroy_dir_link_mutex();
 		Server->wait(1000);
 	}
 
 	if(shutdown_ok)
 	{
-		BackupServerGet::destroy_mutex();
+		ClientMain::destroy_mutex();
 	}
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("PRAGMA wal_checkpoint");
-	if(!shutdown_ok)
-		db->BeginWriteTransaction();
+	std::vector<DATABASE_ID> db_ids;
+	db_ids.push_back(URBACKUPDB_SERVER);
+	db_ids.push_back(URBACKUPDB_SERVER_FILES);
+	db_ids.push_back(URBACKUPDB_SERVER_LINKS);
+	db_ids.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
+
+	if (!shutdown_ok)
+	{
+		for (size_t i = 0; i < db_ids.size(); ++i)
+		{
+			IDatabase *db = Server->getDatabase(Server->getThreadID(), db_ids[i]);
+			db->BeginWriteTransaction();
+		}
+	}
 	else
+	{
 		Server->destroyAllDatabases();
+	}
+	FileIndex::stop_accept();
+	FileIndex::flush();
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 20);
+}
+#endif
 
 void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_update, db_results &curr_r)
 {
-	_i64 filesize=os_atoi64(wnarrow(curr_r[0][L"filesize"]));
+	_i64 filesize=os_atoi64(curr_r[0]["filesize"]);
 
 	std::map<int, int> client_c;
 	for(size_t i=0;i<curr_r.size();++i)
 	{
-		int cid=watoi(curr_r[i][L"clientid"]);
+		int cid=watoi(curr_r[i]["clientid"]);
 		std::map<int, int>::iterator it=client_c.find(cid);
 		if(it==client_c.end())
 		{
@@ -684,14 +922,14 @@ void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_upd
 		if(i==0)
 		{
 			q_file_update->Bind(filesize);
-			q_file_update->Bind(os_atoi64(wnarrow(curr_r[i][L"id"])));
+			q_file_update->Bind(os_atoi64(curr_r[i]["id"]));
 			q_file_update->Write();
 			q_file_update->Reset();
 		}
 		else
 		{
 			q_file_update->Bind(0);
-			q_file_update->Bind(os_atoi64(wnarrow(curr_r[i][L"id"])));
+			q_file_update->Bind(os_atoi64(curr_r[i]["id"]));
 			q_file_update->Write();
 			q_file_update->Reset();
 		}
@@ -705,7 +943,7 @@ void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_upd
 		q_space_get->Reset();
 		if(!res.empty())
 		{
-			_i64 used=os_atoi64(wnarrow(res[0][L"bytes_used_files"]));
+			_i64 used=os_atoi64(res[0]["bytes_used_files"]);
 			used+=filesize/client_c.size();
 			q_space_update->Bind(used);
 			q_space_update->Bind(it->first);
@@ -731,8 +969,8 @@ void upgrade_1(void)
 	IQuery *q_space_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?");
 	IQuery *q_file_update=db->Prepare("UPDATE files SET rsize=? WHERE rowid=?");
 
-	std::wstring filesize;
-	std::wstring shhash;
+	std::string filesize;
+	std::string shhash;
 	db_results curr_r;
 	int last_pc=0;
 	Server->Log("Updating client space usage...", LL_INFO);
@@ -743,22 +981,22 @@ void upgrade_1(void)
 		q_read->Reset();
 		for(size_t j=0;j<res.size();++j)
 		{
-			if(shhash.empty() || (res[j][L"shahash"]!=shhash || res[j][L"filesize"]!=filesize )  )
+			if(shhash.empty() || (res[j]["shahash"]!=shhash || res[j]["filesize"]!=filesize )  )
 			{
 				if(!curr_r.empty())
 				{
 					update_file(q_space_get, q_space_update, q_file_update, curr_r);
 				}
 				curr_r.clear();
-				shhash=res[j][L"shhash"];
-				filesize=res[j][L"filesize"];
+				shhash=res[j]["shhash"];
+				filesize=res[j]["filesize"];
 				curr_r.push_back(res[j]);
 			}
 
 			int pc=(int)(((float)j/(float)res.size())*100.f+0.5f);
 			if(pc!=last_pc)
 			{
-				Server->Log(nconvert(pc)+"%", LL_INFO);
+				Server->Log(convert(pc)+"%", LL_INFO);
 				last_pc=pc;
 			}
 		}
@@ -913,7 +1151,7 @@ void upgrade16_17(void)
 	{
 		std::string key=ServerSettings::generateRandomAuthKey();
 		q->Bind(key);
-		q->Bind(res[i][L"id"]);
+		q->Bind(res[i]["id"]);
 		q->Write();
 		q->Reset();
 	}
@@ -969,14 +1207,14 @@ void upgrade23_24(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("allow_starting_incr_file_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("allow_starting_full_file_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -986,14 +1224,14 @@ void upgrade23_24(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("allow_starting_incr_image_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("allow_starting_full_image_backups");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1013,8 +1251,8 @@ void upgrade25_26(void)
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES ('client_settings', ?, ?)");
 	for(size_t i=0;i<res.size();++i)
 	{
-		q_insert->Bind(res[i][L"t_right"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["t_right"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1028,26 +1266,26 @@ void upgrade26_27(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		q_insert->Bind("backup_window_incr_file");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_full_file");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_incr_image");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 
 		q_insert->Bind("backup_window_full_image");
-		q_insert->Bind(res[i][L"value"]);
-		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Bind(res[i]["value"]);
+		q_insert->Bind(res[i]["clientid"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -1127,6 +1365,410 @@ void upgrade34_35()
 	db->Write("CREATE INDEX IF NOT EXISTS clients_hist_id_created_idx ON clients_hist_id (created)");
 }
 
+bool upgrade35_36()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	std::auto_ptr<IFile> db_file(Server->openFile("urbackup/backup_server.db", MODE_READ));
+
+	if(db_file.get() && Server->getServerParameter("override_freespace_check")==std::string())
+	{
+		int64 free_space = os_free_space(Server->getServerWorkingDir()+os_file_sep()+"urbackup");
+
+		int64 missing_free_space = db_file->Size()-free_space;
+		if(free_space<db_file->Size())
+		{
+			Server->Log("UrBackup needs "+PrettyPrintBytes(missing_free_space)+" more free space for the upgrade process. Please free up this amount of space at \""+Server->getServerWorkingDir()+os_file_sep()+"urbackup\"", LL_ERROR);
+			return false;
+		}
+
+		std::string tmpdir = db->getTempDirectoryPath();
+		if(!tmpdir.empty())
+		{
+			free_space = os_free_space(tmpdir);
+
+			int64 missing_free_space = db_file->Size()-free_space;
+			if(free_space<db_file->Size())
+			{
+				Server->Log("UrBackup needs "+PrettyPrintBytes(missing_free_space)+" more free space for the upgrade process at the temporary location. "
+					"Please free up this amount of space at \""+tmpdir+"\"", LL_ERROR);
+				return false;
+			}
+		}
+	}
+
+	db_file.reset();
+
+	if(!db->Write("ALTER TABLE files RENAME TO files_bck"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP INDEX files_idx") ||
+		!db->Write("DROP INDEX files_did_count") ||
+		!db->Write("DROP INDEX files_backupid") )
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_del"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_new"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE TABLE files_db.files ("
+		"id INTEGER PRIMARY KEY,"
+		"backupid INTEGER,"
+		"fullpath TEXT,"
+		"shahash BLOB,"
+		"filesize INTEGER,"
+		"created INTEGER DEFAULT (CAST(strftime('%s','now') as INTEGER)),"
+		"rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
+	{
+		return false;
+	}
+
+	IDatabaseCursor* cur = db->Prepare("SELECT rowid, backupid, fullpath, shahash, filesize, strftime('%s', created) AS created, rsize, clientid, incremental, hashpath FROM files_bck")->Cursor();
+
+	IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
+		"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
+	db_single_result res;
+	while (cur->next(res))
+	{
+		q_insert_file->Bind(watoi64(res["rowid"]));
+		q_insert_file->Bind(watoi(res["backupid"]));
+		q_insert_file->Bind(res["fullpath"]);
+		q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
+		q_insert_file->Bind(watoi64(res["filesize"]));
+		q_insert_file->Bind(watoi64(res["created"]));
+		q_insert_file->Bind(watoi64(res["rsize"]));
+		q_insert_file->Bind(watoi(res["clientid"]));
+		q_insert_file->Bind(watoi(res["incremental"]));
+		q_insert_file->Bind(res["hashpath"]);
+		q_insert_file->Write();
+		q_insert_file->Reset();
+	}
+
+	if (cur->has_error())
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_bck"))
+	{
+		return false;
+	}
+
+	if(!db->Write("CREATE INDEX files_db.files_backupid ON files (backupid)"))
+	{
+		return false;
+	}
+
+	if(!db->Write("CREATE TABLE files_incoming_stat (id INTEGER PRIMARY KEY, filesize INTEGER, clientid INTEGER, backupid INTEGER, existing_clients TEXT, direction INTEGER, incremental INTEGER)"))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool upgrade36_37()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	bool b = true;
+	b &= db->Write("ALTER TABLE backups ADD tgroup INTEGER");
+	b &= db->Write("UPDATE backups SET tgroup=0 WHERE tgroup IS NULL");
+	return b;
+}
+
+bool update37_38()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE log_data (id INTEGER PRIMARY KEY, logid INTEGER REFERENCES logs(id) ON DELETE CASCADE, data TEXT)");
+	b &= db->Write("CREATE INDEX log_data_idx ON log_data (logid)");
+
+	IQuery* q_ins=db->Prepare("INSERT INTO log_data (logid, data) VALUES (?, ?)");
+
+	db_results res;
+	do 
+	{
+		res=db->Read("SELECT l.id AS id, l.logdata AS logdata FROM logs l WHERE NOT EXISTS (SELECT id FROM log_data WHERE logid = l.id) LIMIT 100");
+		for(size_t i=0;i<res.size();++i)
+		{
+			q_ins->Bind(res[i]["id"]);
+			q_ins->Bind(res[i]["logdata"]);
+			q_ins->Write();
+			q_ins->Reset();
+		}
+	} while (!res.empty());
+
+	b &= db->Write("UPDATE logs SET logdata = NULL");
+
+	return b;
+}
+
+bool update38_39()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE users_on_client (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, username TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX users_on_client_unique ON users_on_client(clientid, username)");
+
+	b &= db->Write("CREATE TABLE tokens_on_client (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, token TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX tokens_on_client_unique ON tokens_on_client(clientid, token)");
+
+	b &= db->Write("CREATE TABLE user_tokens (id INTEGER PRIMARY KEY, username TEXT, token TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX user_tokens_unique ON user_tokens(username, token)");
+
+	return b;
+}
+
+bool update39_40()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE logs ADD restore INTEGER");
+	b &= db->Write("UPDATE logs SET restore=0 WHERE restore IS NULL");
+	b &= db->Write("CREATE TABLE restores (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, created DATE DEFAULT CURRENT_TIMESTAMP, finished DATE, done INTEGER, path TEXT, identity TEXT, success INTEGER)");
+
+	return b;
+}
+
+bool upgrade40_41()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE settings_db.si_users ADD pbkdf2_rounds INTEGER");
+	b &= db->Write("UPDATE settings_db.si_users SET pbkdf2_rounds=0");
+
+	if(crypto_fak!=NULL)
+	{
+		db_results res = db->Read("SELECT id, password_md5, salt FROM settings_db.si_users");
+
+		const size_t pbkdf2_rounds = 10000;
+
+		IQuery* q_update = db->Prepare("UPDATE settings_db.si_users SET password_md5=?, pbkdf2_rounds=? WHERE id=?");
+
+		for(size_t i=0;i<res.size();++i)
+		{
+			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes((res[i]["password_md5"])),
+				(res[i]["salt"]), pbkdf2_rounds));
+
+			q_update->Bind(password_md5);
+			q_update->Bind(pbkdf2_rounds);
+			q_update->Bind(res[i]["id"]);
+			q_update->Write();
+			q_update->Reset();
+		}
+	}	
+
+	return b;
+}
+
+bool upgrade41_42()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD virtualmain TEXT");
+
+	return b;
+}
+
+bool upgrade42_43()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE settings_db.access_tokens ("
+		"clientid INTEGER,"
+		"tokenhash BLOB)");
+
+	b &= db->Write("CREATE UNIQUE INDEX settings_db.access_tokens_idx ON access_tokens(tokenhash)");
+
+	return b;
+}
+
+bool upgrade43_44()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE restores ADD image INTEGER DEFAULT 0");
+
+	b &= db->Write("ALTER TABLE restores ADD letter TEXT DEFAULT ''");
+
+	return b;
+}
+
+bool upgrade44_45()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if (!db->Read("SELECT * FROM sqlite_master WHERE name = 'files' AND type = 'table'").empty())
+	{
+		db->Write("DROP TABLE IF EXISTS files_db.files");
+
+		if (!db->Write("CREATE TABLE files_db.files ("
+			"id INTEGER PRIMARY KEY,"
+			"backupid INTEGER,"
+			"fullpath TEXT,"
+			"shahash BLOB,"
+			"filesize INTEGER,"
+			"created INTEGER DEFAULT (CAST(strftime('%s','now') as INTEGER)),"
+			"rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
+		{
+			return false;
+		}
+
+		IDatabaseCursor* cur = db->Prepare("SELECT id, backupid, fullpath, shahash, filesize, strftime('%s', created) AS created, rsize, clientid, incremental, hashpath FROM files")->Cursor();
+
+		IQuery* q_insert_file = db->Prepare("INSERT INTO files_db.files (id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, next_entry, prev_entry, pointed_to) "
+			"VALUES (?,?,?,?,?,?,?,?,?,?,0,0,0)");
+		db_single_result res;
+		while (cur->next(res))
+		{
+			q_insert_file->Bind(watoi64(res["id"]));
+			q_insert_file->Bind(watoi(res["backupid"]));
+			q_insert_file->Bind(res["fullpath"]);
+			q_insert_file->Bind(res["shahash"].c_str(), static_cast<_u32>(res["shahash"].size()));
+			q_insert_file->Bind(watoi64(res["filesize"]));
+			q_insert_file->Bind(watoi64(res["created"]));
+			q_insert_file->Bind(watoi64(res["rsize"]));
+			q_insert_file->Bind(watoi(res["clientid"]));
+			q_insert_file->Bind(watoi(res["incremental"]));
+			q_insert_file->Bind(res["hashpath"]);
+			q_insert_file->Write();
+			q_insert_file->Reset();
+		}
+
+		if (cur->has_error())
+		{
+			return false;
+		}
+
+		if (!db->Write("DROP TABLE files"))
+		{
+			return false;
+		}
+
+		if (!db->Write("CREATE INDEX files_db.files_backupid ON files (backupid)"))
+		{
+			return false;
+		}
+	}
+
+	if (!db->Write("CREATE TABLE files_db.files_incoming_stat (id INTEGER PRIMARY KEY, filesize INTEGER, clientid INTEGER, backupid INTEGER, existing_clients TEXT, direction INTEGER, incremental INTEGER)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE files_incoming_stat"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE TABLE links_db.directory_links ("
+		"id INTEGER PRIMARY KEY,"
+		"clientid INTGER,"
+		"name TEXT,"
+		"target TEXT)"))
+	{
+		return false;
+	}
+
+	IDatabaseCursor* cur = db->Prepare("SELECT id, clientid, name, target FROM directory_links")->Cursor();
+
+	IQuery* q_insert_link = db->Prepare("INSERT INTO links_db.directory_links (id, clientid, name, target) "
+		"VALUES (?, ?, ?, ?)");
+	db_single_result res;
+	while (cur->next(res))
+	{
+		q_insert_link->Bind(res["id"]);
+		q_insert_link->Bind(res["clientid"]);
+		q_insert_link->Bind(res["name"]);
+		q_insert_link->Bind(res["target"]);
+		q_insert_link->Write();
+		q_insert_link->Reset();
+	}
+
+	if (!db->Write("CREATE INDEX links_db.directory_links_idx ON directory_links (clientid, name)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE INDEX links_db.directory_links_target_idx ON directory_links (clientid, target)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("CREATE TABLE link_journal_db.directory_link_journal ("
+		"id INTEGER PRIMARY KEY,"
+		"linkname TEXT,"
+		"linktarget TEXT)"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE directory_links"))
+	{
+		return false;
+	}
+
+	if (!db->Write("DROP TABLE directory_link_journal"))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool upgrade45_46()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("DROP TABLE user_tokens");
+
+	b &= db->Write("CREATE TABLE user_tokens (id INTEGER PRIMARY KEY, username TEXT, tgroup TEXT, clientid INTEGER DEFAULT 0, token TEXT, created DATE DEFAULT CURRENT_TIMESTAMP)");
+	b &= db->Write("CREATE UNIQUE INDEX user_tokens_unique ON user_tokens(username, clientid, token, tgroup)");
+
+	return b;
+}
+
+bool upgrade46_47()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD last_filebackup_issues DEFAULT 0");
+	b &= db->Write("ALTER TABLE clients ADD os_simple");
+	b &= db->Write("ALTER TABLE clients ADD os_version_str");
+	b &= db->Write("ALTER TABLE clients ADD client_version_str");
+
+	return b;
+}
+
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1146,9 +1788,9 @@ void upgrade(void)
 	if(res_v.empty())
 		return;
 	
-	int ver=watoi(res_v[0][L"tvalue"]);
+	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=35;
+	int max_v=47;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1159,8 +1801,23 @@ void upgrade(void)
 	{
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
-		Server->Log("Converting database to journal mode...", LL_WARNING);
+		Server->Log("Converting database to delete journal mode...", LL_WARNING);
+
+		if (!attach_other_dbs(db))
+		{
+			Server->Log("Attaching other databases failed", LL_ERROR);
+			return;
+		}
+
 		db->Write("PRAGMA journal_mode=DELETE");
+	}
+
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+convert(server_settings.getSettings()->update_stats_cachesize));
 	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
@@ -1168,10 +1825,18 @@ void upgrade(void)
 	{
 		if(ver<max_v)
 		{
-		    Server->Log("Upgrading database to version "+nconvert(ver+1), LL_WARNING);
+		    Server->Log("Upgrading database to version "+convert(ver+1), LL_WARNING);
+		}
+		if(ver>max_v)
+		{
+			Server->Log("Current UrBackup database version is "+convert(ver)+". This UrBackup"
+				" server version only supports databases up to version "+convert(max_v)+"."
+				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
+			exit(4);
 		}
 		db->BeginWriteTransaction();
 		old_v=ver;
+		bool has_error=false;
 		switch(ver)
 		{
 			case 1:
@@ -1310,8 +1975,101 @@ void upgrade(void)
 				upgrade34_35();
 				++ver;
 				break;
+			case 35:
+				if(!upgrade35_36())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 36:
+				if(!upgrade36_37())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 37:
+				if(!update37_38())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 38:
+				if(!update38_39())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 39:
+				if(!update39_40())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 40:
+				if(!upgrade40_41())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 41:
+				if(!upgrade41_42())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 42:
+				if(!upgrade42_43())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 43:
+				if (!upgrade43_44())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 44:
+				if (!upgrade44_45())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 45:
+				if (!upgrade45_46())
+				{
+					has_error = true;
+				}
+				++ver;
+			case 46:
+				if (!upgrade46_47())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
 			default:
 				break;
+		}
+
+		if(has_error ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+			(Server->getFailBits() & IServer::FAIL_DATABASE_FULL) )
+		{
+			db->Write("ROLLBACK");
+			Server->Log("Upgrading database failed. Shutting down server.", LL_ERROR);
+			exit(5);
 		}
 		
 		if(ver!=old_v)
@@ -1319,6 +2077,24 @@ void upgrade(void)
 			q_update->Bind(ver);
 			q_update->Write();
 			q_update->Reset();
+
+			if(ver==36)
+			{
+				if(db->EndTransaction())
+				{
+					db->Write("PRAGMA page_size = 4096");
+
+					db->Write("VACUUM");
+
+					db->BeginWriteTransaction();
+				}
+				else
+				{
+					Server->Log("Upgrading database failed. Ending transaction failed. Shutting down server.", LL_ERROR);
+					exit(5);
+				}
+				
+			}
 
 			{
 				IScopedLock lock(startup_status.mutex);
@@ -1332,8 +2108,15 @@ void upgrade(void)
 	
 	if(do_upgrade)
 	{
+		detach_other_dbs(db);
 		Server->Log("Done.", LL_WARNING);
 	}
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+cache_res[0]["cache_size"]);
+		db->freeMemory();
+	}
 	
-	db->destroyAllQueries();
+	Server->clearDatabases(Server->getThreadID());
 }

@@ -15,24 +15,15 @@
     <Filter Include="sha2">
       <UniqueIdentifier>{d7a7cd78-b293-49b5-bb87-4e3461a306af}</UniqueIdentifier>
     </Filter>
-    <Filter Include="glob">
-      <UniqueIdentifier>{8d6f30f4-00a8-4748-aea5-692bd3875606}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Headerdateien">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="fileclient">
+      <UniqueIdentifier>{5cdf5545-d6e8-4bee-8076-81b308b385b1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="watchdir\CriticalSection.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DirectoryChanges.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
       <Filter>sha2</Filter>
     </ClCompile>
@@ -78,9 +69,6 @@
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="glob\glob.cpp">
-      <Filter>glob</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\escape.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -96,13 +84,7 @@
     <ClCompile Include="InternetClient.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\md5.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\common\data.cpp">
@@ -123,20 +105,77 @@
     <ClCompile Include="PersistentOpenFiles.cpp">
       <Filter>watchdir</Filter>
     </ClCompile>
+    <ClCompile Include="watchdir\JournalDAO.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\glob.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="common_tokens.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\adler32.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="RestoreFiles.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="RestoreDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMetadataDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="win_tokens.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="TokenCallback.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="cmdline_preprocessor.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="win_disk_mon.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="watchdir\CriticalSection.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DirectoryChanges.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\Event.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
       <Filter>sha2</Filter>
     </ClInclude>
@@ -188,13 +227,7 @@
     <ClInclude Include="InternetClient.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="..\md5.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\capa_bits.h">
@@ -217,6 +250,75 @@
     </ClInclude>
     <ClInclude Include="PersistentOpenFiles.h">
       <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\JournalDAO.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\change_ids.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\glob.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\adler32.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="RestoreDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="RestoreFiles.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="tokens.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="TokenCallback.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipe2.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="win_disk_mon.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\SparseFile.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\TreeHash.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

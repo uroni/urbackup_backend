@@ -17,9 +17,9 @@ public:
 			Server->Log("Cannot read version", LL_ERROR);
 			has_error=true;return;
 		}
-		if(version!=0)
+		if(version!=0 && version!=1)
 		{
-			Server->Log("Version is wrong", LL_ERROR);
+			Server->Log("MBR data version not supported: "+convert(version), LL_ERROR);
 			has_error=true;return;
 		}
 		if(!data.getInt(&device_number))
@@ -43,18 +43,69 @@ public:
 			Server->Log("Cannot get volume name", LL_ERROR);
 			has_error=true;return;
 		}
-		volume_name=Server->ConvertToUnicode(tmp);
+		volume_name=tmp;
 		if(!data.getStr(&tmp))
 		{
 			Server->Log("Cannot get fsn name", LL_ERROR);
 			has_error=true;return;
 		}
-		fsn=Server->ConvertToUnicode(tmp);
+		fsn=tmp;
 		if(!data.getStr(&mbr_data))
 		{
 			Server->Log("Cannot get mbr data", LL_ERROR);
 			has_error=true;return;
 		}
+		if(version==1)
+		{
+			gpt_style=true;
+
+			if(!data.getInt64(&gpt_header_pos))
+			{
+				Server->Log("Cannot get GPT header pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&gpt_header))
+			{
+				Server->Log("Cannot get GPT header", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getInt64(&gpt_table_pos))
+			{
+				Server->Log("Cannot get GPT table pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&gpt_table))
+			{
+				Server->Log("Cannot get GPT table", LL_ERROR);
+				has_error=true;return;
+			}
+
+			if(!data.getInt64(&backup_gpt_header_pos))
+			{
+				Server->Log("Cannot get backup GPT header pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&backup_gpt_header))
+			{
+				Server->Log("Cannot get backup GPT header", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getInt64(&backup_gpt_table_pos))
+			{
+				Server->Log("Cannot get backup GPT table pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&backup_gpt_table))
+			{
+				Server->Log("Cannot get backup GPT table", LL_ERROR);
+				has_error=true;return;
+			}
+		}
+		else
+		{
+			gpt_style=false;
+		}
+
 		has_error=false;
 		data.getStr(&errmsg);
 	}
@@ -67,20 +118,18 @@ public:
 	std::string infoString(void)
 	{
 		std::string ret;
-	#define ADD_INFO(x) ret+=std::string(#x "=")+nconvert(x)+"\n"
+	#define ADD_INFO(x) ret+=std::string(#x "=")+convert(x)+"\n"
 	#define ADD_INFO_STR(x) ret+=std::string(#x "=")+x+"\n"
-	#define ADD_INFO_WSTR(x) ret+=std::string(#x "=")+Server->ConvertToUTF8(x)+"\n"
 		ADD_INFO(version);
 		ADD_INFO(device_number);
 		ADD_INFO(partition_number);
 		ADD_INFO_STR(serial_number);
-		ADD_INFO_WSTR(volume_name);
-		ADD_INFO_WSTR(fsn);
-		ret+=std::string("mbr_data (")+nconvert(mbr_data.size())+" bytes)\n";
+		ADD_INFO_STR(volume_name);
+		ADD_INFO_STR(fsn);
+		ret+=std::string("mbr_data (")+convert(mbr_data.size())+" bytes)\n";
 		ADD_INFO_STR(errmsg);
 	#undef ADD_INFO
 	#undef ADD_INFO_STR
-	#undef ADD_INFO_WSTR
 		return ret;
 	}
 
@@ -88,10 +137,24 @@ public:
 	int device_number;
 	int partition_number;
 	std::string serial_number;
-	std::wstring volume_name;
-	std::wstring fsn;
+	std::string volume_name;
+	std::string fsn;
 	std::string mbr_data;
 	std::string errmsg;
+
+	bool gpt_style;
+
+	int64 gpt_header_pos;
+	std::string gpt_header;
+
+	int64 gpt_table_pos;
+	std::string gpt_table;
+
+	int64 backup_gpt_header_pos;
+	std::string backup_gpt_header;
+
+	int64 backup_gpt_table_pos;
+	std::string backup_gpt_table;
 
 private:
 	bool has_error;

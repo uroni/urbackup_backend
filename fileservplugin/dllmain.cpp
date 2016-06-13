@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -27,14 +27,25 @@
 #define DEF_SERVER
 #include "../Interface/Server.h"
 
+#ifndef STATIC_PLUGIN
+IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_fileservplugin
+#define UnloadActions UnloadActions_fileservplugin
+#endif
+
+
 #include "pluginmgr.h"
 #include "FileServ.h"
 #include "IFileServFactory.h"
 #include "IFileServ.h"
+#include "PipeSessions.h"
 #include "../stringtools.h"
 #include <stdlib.h>
-
-IServer *Server=NULL;
 
 CFileServPluginMgr *fileservpluginmgr=NULL;
 
@@ -43,6 +54,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	Server=pServer;
 
 	FileServ::init_mutex();
+	PipeSessions::init();
 
 	fileservpluginmgr=new CFileServPluginMgr;
 
@@ -64,11 +76,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			udpport=atoi(s_udpport.c_str());
 
 		IFileServ *fileserv=fileserv_fak->createFileServ(tcpport, udpport);
-		fileserv->shareDir(widen(ExtractFileName(share_dir)), widen(share_dir));
+		fileserv->shareDir(ExtractFileName(share_dir), share_dir, std::string(), false);
 		fileserv->addIdentity("");
 	}
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -fileserv- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)
@@ -76,5 +90,13 @@ DLLEXPORT void UnloadActions(void)
 	if(Server->getServerParameter("leak_check")=="true")
 	{
 		FileServ::destroy_mutex();
+		PipeSessions::destroy();
 	}
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

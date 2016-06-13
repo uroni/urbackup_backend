@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
 #include "../urbackupcommon/os_functions.h"
@@ -22,12 +24,32 @@ typedef struct _GUID {
 #endif
 #endif
 
+std::string guidToString(GUID guid);
+GUID randomGuid();
+
+enum EBackupDirFlag
+{
+	EBackupDirFlag_None = 0,
+	EBackupDirFlag_Optional = 1,
+	EBackupDirFlag_FollowSymlinks = 2,
+	EBackupDirFlag_SymlinksOptional = 4,
+	EBackupDirFlag_OneFilesystem = 8,
+	EBackupDirFlag_RequireSnapshot = 16,
+	EBackupDirFlag_ShareHashes = 32,
+	EBackupDirFlag_KeepFiles = 64,
+};
+
 struct SBackupDir
 {
 	int id;
-	std::wstring tname;
-	std::wstring path;
-	bool optional;
+	std::string tname;
+	std::string path;
+	int flags;
+	int group;
+	bool symlinked;
+	bool symlinked_confirmed;
+	bool server_default;
+	bool reset_keep;
 };
 
 struct SShadowCopy
@@ -36,38 +58,32 @@ struct SShadowCopy
 	int id;
 	GUID vssid;
 	GUID ssetid;
-	std::wstring target;
-	std::wstring path;
-	std::wstring tname;
-	std::wstring orig_target;
-	std::wstring vol;
-	std::wstring starttoken;
+	std::string target;
+	std::string path;
+	std::string tname;
+	std::string orig_target;
+	std::string vol;
+	std::string starttoken;
+	std::string clientsubname;
 	bool filesrv;
 	int refs;
 	int passedtime;
 };
 
-struct SMDir
-{
-	SMDir(_i64 id, std::wstring name)
-		: id(id), name(name) {}
-
-	_i64 id;
-	std::wstring name;
-
-	bool operator<(const SMDir &other) const
-	{
-		return name<other.name;
-	}
-};
-
 struct SFileAndHash
 {
-	std::wstring name;
+	std::string name;
 	int64 size;
-	int64 last_modified;
+	int64 change_indicator;
 	bool isdir;
 	std::string hash;
+	bool issym;
+	bool isspecialf;
+	size_t nlinks;
+
+	std::string symlink_target;
+
+	std::string output_symlink_target;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -78,9 +94,12 @@ struct SFileAndHash
 	{
 		return name == other.name &&
 			size == other.size &&
-			last_modified == other.last_modified &&
+			change_indicator == other.change_indicator &&
 			isdir == other.isdir &&
-			hash == other.hash;
+			hash == other.hash &&
+			issym == other.issym &&
+			isspecialf == other.isspecialf &&
+			symlink_target == other.symlink_target;
 	}
 };
 
@@ -88,29 +107,25 @@ class ClientDAO
 {
 public:
 	ClientDAO(IDatabase *pDB);
-	void prepareQueries(void);
+	~ClientDAO();
+	void prepareQueries();
 	void destroyQueries(void);
 	void restartQueries(void);
 
 	void prepareQueriesGen(void);
 	void destroyQueriesGen(void);
 
-	bool getFiles(std::wstring path, std::vector<SFileAndHash> &data);
+	bool getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data);
 
-	void addFiles(std::wstring path, const std::vector<SFileAndHash> &data);
-	void modifyFiles(std::wstring path, const std::vector<SFileAndHash> &data);
-	bool hasFiles(std::wstring path);
+	void addFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	void modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	bool hasFiles(std::string path, int tgroup);
 	
 	void removeAllFiles(void);
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<SMDir> getChangedDirs(bool del=true);
-
-	void moveChangedFiles(bool del=true);
-
-	std::vector<std::wstring> getChangedFiles(_i64 dir_id);
-	bool hasFileChange(_i64 dir_id, std::wstring fn);
+	std::vector<std::string> getChangedDirs(const std::string& path, bool backup);
 
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
@@ -118,33 +133,62 @@ public:
 	int modShadowcopyRefCount(int id, int m);
 
 
-	void deleteSavedChangedFiles(void);
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
-	void deleteChangedDirs(void);
 
-	std::vector<std::wstring> getGapDirs(void);
+	std::vector<std::string> getGapDirs(void);
 
-	std::vector<std::wstring> getDelDirs(bool del=true);
+	std::vector<std::string> getDelDirs(const std::string& path, bool del=true);
 	void deleteSavedDelDirs(void);
 
-	void removeDeletedDir(const std::wstring &dir);
+	void removeDeletedDir(const std::string &dir, int tgroup);
 
-	std::wstring getOldExcludePattern(void);
-	void updateOldExcludePattern(const std::wstring &pattern);
+	std::string getOldExcludePattern(void);
+	void updateOldExcludePattern(const std::string &pattern);
 
-	std::wstring getOldIncludePattern(void);
-	void updateOldIncludePattern(const std::wstring &pattern);
+	std::string getOldIncludePattern(void);
+	void updateOldIncludePattern(const std::string &pattern);
 
-	std::wstring getMiscValue(const std::string& key);
-	void updateMiscValue(const std::string& key, const std::wstring& value);
+	std::string getMiscValue(const std::string& key);
+	void updateMiscValue(const std::string& key, const std::string& value);
+
+	static const int c_is_group;
+	static const int c_is_user;
+	static const int c_is_system_user;
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt64
+	{
+		bool exists;
+		int64 value;
+	};
+	struct SToken
+	{
+		int64 id;
+		std::string accountname;
+		std::string token;
+		int is_user;
+	};
 
 
 	void updateShadowCopyStarttime(int id);
+	void updateFileAccessToken(const std::string& accountname, const std::string& token, int is_user);
+	std::vector<SToken> getFileAccessTokens(void);
+	CondInt64 getFileAccessTokenId2Alts(const std::string& accountname, int is_user_alt1, int is_user_alt2);
+	CondInt64 getFileAccessTokenId(const std::string& accountname, int is_user);
+	void updateGroupMembership(int64 uid, const std::string& accountname);
+	std::vector<int> getGroupMembership(int uid);
+	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
+	void delBackupDir(int64 id);
+	void setResetKeep(int val, int64 id);
+	void resetHardlink(const std::string& vol, int64 frn_high, int64 frn_low);
+	CondInt64 hasHardLink(const std::string& vol, int64 frn_high, int64 frn_low);
+	void addHardlink(const std::string& vol, int64 frn_high, int64 frn_low, int64 parent_frn_high, int64 parent_frn_low);
+	void resetAllHardlinks(void);
 	//@-SQLGenFunctionsEnd
+
+	static std::string escapeGlob(const std::string& input);
 
 private:
 	
@@ -156,7 +200,6 @@ private:
 	IQuery *q_get_dirs;
 	IQuery *q_remove_all;
 	IQuery *q_get_changed_dirs;
-	IQuery *q_remove_changed_dirs;
 	IQuery *q_modify_files;
 	IQuery *q_has_files;
 	IQuery *q_insert_shadowcopy;
@@ -172,16 +215,26 @@ private:
 	IQuery *q_remove_del_dir;
 	IQuery *q_get_shadowcopy_refcount;
 	IQuery *q_set_shadowcopy_refcount;
-	IQuery *q_save_changed_files;
-	IQuery *q_remove_changed_files;
-	IQuery *q_delete_saved_changed_files;
-	IQuery *q_has_changed_file;
-	IQuery *q_get_changed_files;
 	IQuery *q_get_pattern;
 	IQuery *q_insert_pattern;
 	IQuery *q_update_pattern;
 
 	//@-SQLGenVariablesBegin
 	IQuery* q_updateShadowCopyStarttime;
+	IQuery* q_updateFileAccessToken;
+	IQuery* q_getFileAccessTokens;
+	IQuery* q_getFileAccessTokenId2Alts;
+	IQuery* q_getFileAccessTokenId;
+	IQuery* q_updateGroupMembership;
+	IQuery* q_getGroupMembership;
+	IQuery* q_addBackupDir;
+	IQuery* q_delBackupDir;
+	IQuery* q_setResetKeep;
+	IQuery* q_resetHardlink;
+	IQuery* q_hasHardLink;
+	IQuery* q_addHardlink;
+	IQuery* q_resetAllHardlinks;
 	//@-SQLGenVariablesEnd
+
+	bool with_files_tmp;
 };

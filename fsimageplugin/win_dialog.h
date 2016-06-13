@@ -1,20 +1,25 @@
 #include <Windows.h>
 #include <string>
+#include "../Interface/Server.h"
 
 namespace
 {
-	std::vector<std::wstring> file_via_dialog(const std::wstring& title,
-		const std::wstring& filter, bool multi_select, bool existing_file,
-		const std::wstring& defExt)
+	std::vector<std::string> file_via_dialog(const std::string& title,
+		const std::string& filter, bool multi_select, bool existing_file,
+		const std::string& defExt)
 	{
 		OPENFILENAMEW ofn = {};
 
 		std::vector<wchar_t> buf;
 		buf.resize(524288);
 
+		std::wstring wfilter = Server->ConvertToWchar(filter);
+		std::wstring wtitle = Server->ConvertToWchar(title);
+		std::wstring wdefExt = Server->ConvertToWchar(defExt);
+
 		ofn.lStructSize = sizeof(ofn);
-		ofn.lpstrFilter = filter.c_str();
-		ofn.nMaxCustFilter = static_cast<DWORD>(filter.size());
+		ofn.lpstrFilter = wfilter.c_str();
+		ofn.nMaxCustFilter = static_cast<DWORD>(wfilter.size());
 		ofn.nMaxFile = static_cast<DWORD>(buf.size());
 		ofn.Flags = OFN_EXPLORER | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE | OFN_PATHMUSTEXIST;
 
@@ -32,33 +37,33 @@ namespace
 			ofn.Flags |= OFN_ALLOWMULTISELECT;
 		}
 
-		ofn.lpstrTitle = title.c_str();
+		ofn.lpstrTitle = wtitle.c_str();
 
 		ofn.lpstrFile = buf.data();
 
-		if(!defExt.empty())
+		if(!wdefExt.empty())
 		{
-			ofn.lpstrDefExt = defExt.c_str();
+			ofn.lpstrDefExt = wdefExt.c_str();
 		}
 
 		if(GetOpenFileNameW(&ofn))
 		{
 			if(!multi_select)
 			{
-				std::vector<std::wstring> ret;
-				ret.push_back(buf.data());
+				std::vector<std::string> ret;
+				ret.push_back(Server->ConvertFromWchar(buf.data()));
 				return ret;
 			}
 			else
 			{
-				std::vector<std::wstring> ret;
+				std::vector<std::string> ret;
 				std::wstring cname;
 				for(size_t i=0;i<buf.size();++i)
 				{
 					if(buf[i]==0)
 					{
 						if(cname.empty()) break;
-						ret.push_back(cname);
+						ret.push_back(Server->ConvertFromWchar(cname));
 						cname.clear();
 					}
 					else
@@ -87,7 +92,7 @@ namespace
 		}
 		else
 		{
-			return std::vector<std::wstring>();
+			return std::vector<std::string>();
 		}
 	}
 }

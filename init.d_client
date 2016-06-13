@@ -1,6 +1,6 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          urbackup_client
+# Provides:          urbackupclientbackend
 # Required-Start:    $network $local_fs $remote_fs
 # Required-Stop:     $remote_fs $local_fs
 # Default-Start:     2 3 4 5
@@ -13,37 +13,16 @@
 
 # Author: Martin Raiber <martin@urbackup.org>
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="UrBackup Client deamon"             # Introduce a short description here
-NAME="urbackup_client"             # Introduce the short server's name here
+DESC="UrBackup Client Daemon"
+NAME="urbackupclientbackend"
 PREFIX="/usr/local"
-DAEMON=$PREFIX/bin/start_urbackup_client # Introduce the server's location here
-DAEMON_REAL=$PREFIX/bin/urbackup_client
+DAEMON=$PREFIX/sbin/urbackupclientbackend
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_TMPDIR=/tmp
-NICE_LEVEL="0"
-IOSCHED_CLASS="best-effort"
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
-
-#Default options that are passed to the Daemon.
-
-#logfile name
-LOGFILE="urbackup_client.log"
-
-#Either debug,warn,info or error
-LOGLEVEL="error"
-
-#Tmp file directory - be carefull this can get very large
-DAEMON_TMPDIR="/tmp"
-
-# Read configuration variable file if it is present
-[ -r /etc/default/$NAME ] && . /etc/default/$NAME
-
-DAEMON_ARGS="--logfile $LOGFILE --loglevel $LOGLEVEL"
 
 # Load the VERBOSE setting and other rcS variables
 [ -r /lib/init/vars.sh ] && . /lib/init/vars.sh
@@ -51,11 +30,6 @@ DAEMON_ARGS="--logfile $LOGFILE --loglevel $LOGLEVEL"
 # Define LSB log_* functions.
 # Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
 . /lib/lsb/init-functions
-
-DAEMON_TMPDIR="$DAEMON_TMPDIR/urbackup_client_tmp"
-rm -Rf $DAEMON_TMPDIR > /dev/null 2>&1
-mkdir $DAEMON_TMPDIR > /dev/null 2>&1
-ulimit -n 10000 > /dev/null 2>&1
 
 #
 # Function that starts the daemon/service
@@ -67,10 +41,10 @@ do_start()
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --nicelevel $NICE_LEVEL --iosched $IOSCHED_CLASS --exec $DAEMON_REAL --test > /dev/null \
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --nicelevel $NICE_LEVEL --iosched $IOSCHED_CLASS --exec $DAEMON -- \
-		$DAEMON_ARGS \
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- \
+		--daemon --config "/etc/default/urbackupclient" --pidfile $PIDFILE \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend
@@ -87,7 +61,7 @@ do_stop()
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
-	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --exec $DAEMON
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
 	# Wait for children to finish too if this is a daemon that forks
@@ -96,7 +70,7 @@ do_stop()
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON_REAL
+	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
 	[ "$?" = 2 ] && return 2
 	# Many daemons don't delete their pidfiles when they exit.
 	rm -f $PIDFILE
@@ -112,7 +86,7 @@ do_reload() {
 	# restarting (for example, when it is sent a SIGHUP),
 	# then implement that here.
 	#
-	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --exec $DAEMON
 	return 0
 }
 
@@ -168,7 +142,6 @@ case "$1" in
 	esac
 	;;
   *)
-	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
 	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
 	exit 3
 	;;

@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -22,62 +22,57 @@
 #include "../Interface/Query.h"
 #include "database.h"
 #include "../stringtools.h"
+#include <limits.h>
 
-std::map<int, std::vector<SLogEntry> > ServerLogger::logdata;
+std::map<logid_t, std::vector<SLogEntry> > ServerLogger::logdata;
 IMutex *ServerLogger::mutex=NULL;
 std::map<int, SCircularData> ServerLogger::circular_logdata;
+logid_t ServerLogger::logid_gen;
+std::map<logid_t, int> ServerLogger::logid_client;
 
 const size_t circular_logdata_buffersize=20;
 
-void ServerLogger::Log(int clientid, const std::string &pStr, int LogLevel)
+void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 {
 	Server->Log(pStr, LogLevel);
 
 	IScopedLock lock(mutex);
 
-	logCircular(clientid, pStr, LogLevel);
+	logCircular(logid_client[logid], logid, pStr, LogLevel);
 
 	if(LogLevel<0)
 		return;
 
-	if(clientid==0)
-		return;	
-
-	logMemory(clientid, pStr, LogLevel);
+	logMemory(Server->getTimeSeconds(), logid, pStr, LogLevel);
 }
 
-void ServerLogger::Log(int clientid, const std::wstring &pStr, int LogLevel)
+void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	Server->Log(pStr, LogLevel);
 
 	IScopedLock lock(mutex);
 
-	const std::string utf8Str=Server->ConvertToUTF8(pStr);
-
-	logCircular(clientid, utf8Str, LogLevel);
+	logCircular(logid_client[logid], logid, pStr, LogLevel);
 
 	if(LogLevel<0)
 		return;
 
-	if(clientid==0)
-		return;
-
-	logMemory(clientid, utf8Str, LogLevel);
+	logMemory(times, logid, pStr, LogLevel);
 }
 
-void ServerLogger::logMemory(int clientid, const std::string &pStr, int LogLevel)
+void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	SLogEntry le;
 	le.data=pStr;
 	le.loglevel=LogLevel;
-	le.time=Server->getTimeSeconds();
+	le.time=times;
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter==logdata.end() )
 	{
 		std::vector<SLogEntry> n;
 		n.push_back(le);
-		logdata.insert(std::pair<int, std::vector<SLogEntry> >(clientid, n) );
+		logdata.insert(std::pair<logid_t, std::vector<SLogEntry> >(logid, n) );
 	}
 	else
 	{
@@ -85,7 +80,27 @@ void ServerLogger::logMemory(int clientid, const std::string &pStr, int LogLevel
 	}
 }
 
-void ServerLogger::logCircular(int clientid, const std::string &pStr, int LogLevel)
+std::vector<SCircularLogEntry> ServerLogger::stripLogIdFilter(const std::vector<SCircularLogEntryWithId>& data, logid_t logid)
+{
+	std::vector<SCircularLogEntry> ret;
+	ret.reserve(data.size());
+	for (size_t i = 0; i < data.size(); ++i)
+	{
+		if (logid == logid_t()
+			|| logid == data[i].logid)
+		{
+			SCircularLogEntry ne;
+			ne.id = data[i].id;
+			ne.loglevel = data[i].loglevel;
+			ne.time = data[i].time;
+			ne.utf8_msg = data[i].utf8_msg;
+			ret.push_back(ne);
+		}		
+	}
+	return ret;
+}
+
+void ServerLogger::logCircular(int clientid, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	std::map<int, SCircularData>::iterator iter=circular_logdata.find(clientid);
 	SCircularData *data;
@@ -94,18 +109,19 @@ void ServerLogger::logCircular(int clientid, const std::string &pStr, int LogLev
 		data=&circular_logdata[clientid];
 		data->data.resize(circular_logdata_buffersize);
 		data->idx=0;
-		data->id=0;
+		data->id=1;
 	}
 	else
 	{
 		data=&iter->second;
 	}
 
-	SCircularLogEntry& entry=data->data[data->idx];
+	SCircularLogEntryWithId& entry=data->data[data->idx];
 	entry.id=data->id++;
 	entry.loglevel=LogLevel;
 	entry.time=Server->getTimeSeconds();
 	entry.utf8_msg=pStr;
+	entry.logid = logid;
 
 	data->idx=(data->idx+1)%circular_logdata_buffersize;
 }
@@ -120,13 +136,13 @@ void ServerLogger::destroy_mutex(void)
 	Server->destroy(mutex);
 }
 
-std::wstring ServerLogger::getLogdata(int clientid, int &errors, int &warnings, int &infos)
+std::string ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings, int &infos)
 {
 	IScopedLock lock(mutex);
 
-	std::wstring ret;
+	std::string ret;
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
 		for(size_t i=0;i<iter->second.size();++i)
@@ -141,27 +157,27 @@ std::wstring ServerLogger::getLogdata(int clientid, int &errors, int &warnings, 
 				++infos;
 			
 			ret+=convert(le.loglevel);
-			ret+=L"-";
+			ret+="-";
 			ret+=convert(le.time);
-			ret+=L"-";
-			ret+=Server->ConvertToUnicode(le.data);
-			ret+=L"\n";
+			ret+="-";
+			ret+=(le.data);
+			ret+="\n";
 		}
 		
 		return ret;
 	}
 	else
 	{
-		return L"";
+		return "";
 	}
 }
 
-std::string ServerLogger::getWarningLevelTextLogdata(int clientid)
+std::string ServerLogger::getWarningLevelTextLogdata(logid_t logid)
 {
 	IScopedLock lock(mutex);
 
 	std::string ret;
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
 		for(size_t i=0;i<iter->second.size();++i)
@@ -188,18 +204,32 @@ std::string ServerLogger::getWarningLevelTextLogdata(int clientid)
 	}
 }
 
-void ServerLogger::reset(int clientid)
+void ServerLogger::reset(logid_t id)
 {
 	IScopedLock lock(mutex);
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(id);
 	if( iter!=logdata.end() )
 	{
 		iter->second.clear();
 	}
 }
 
-std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, size_t minid )
+void ServerLogger::reset( int clientid )
+{
+	IScopedLock lock(mutex);
+
+	for(std::map<logid_t, int>::iterator it=logid_client.begin();
+		it!=logid_client.end();++it)
+	{
+		if(it->second==clientid)
+		{
+			reset(it->first);
+		}
+	}
+}
+
+std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, size_t minid, logid_t logid)
 {
 	IScopedLock lock(mutex);
 
@@ -207,18 +237,51 @@ std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, s
 	if(iter!=circular_logdata.end())
 	{
 		if(minid==std::string::npos)
-			return iter->second.data;
+			return stripLogIdFilter(iter->second.data, logid);
 
 		for(size_t i=0;i<iter->second.data.size();++i)
 		{
-			if(iter->second.data[i].id>minid &&
-				iter->second.data[i].id!=std::string::npos)
-				return iter->second.data;
+			if (iter->second.data[i].id > minid &&
+				iter->second.data[i].id != std::string::npos &&
+				(logid == logid_t() || iter->second.data[i].logid == logid) )
+			{
+				return stripLogIdFilter(iter->second.data, logid);
+			}
 		}
 		return std::vector<SCircularLogEntry>();
 	}
 	else
 	{
+		if(minid==std::string::npos)
+		{
+			std::vector<SCircularLogEntry> ret;
+			SCircularLogEntry entry;
+			entry.id=0;
+			entry.loglevel=LL_INFO;
+			entry.time=Server->getTimeSeconds();
+			entry.utf8_msg="No log entries yet";
+			ret.push_back(entry);
+			return ret;
+		}
 		return std::vector<SCircularLogEntry>();
 	}
 }
+
+logid_t ServerLogger::getLogId( int clientid )
+{
+	IScopedLock lock(mutex);
+
+	logid_t ret= std::make_pair(++logid_gen.first, 0);
+
+	logid_client[ret] = clientid;
+
+	return ret;
+}
+
+bool ServerLogger::hasClient( logid_t id, int clientid )
+{
+	IScopedLock lock(mutex);
+
+	return logid_client[id] == clientid;
+}
+

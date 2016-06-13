@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2016 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU Affero General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 #include "../stringtools.h"
@@ -7,6 +25,7 @@
 
 #include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../urbackupcommon/os_functions.h"
 
 #include "ClientService.h"
 #include "ImageThread.h"
@@ -19,6 +38,25 @@
 #include <memory>
 
 extern IFSImageFactory *image_fak;
+
+namespace
+{
+	const unsigned char ImageFlag_Persistent=1;
+	const unsigned char ImageFlag_Bitmap=2;
+
+	bool buf_is_zero(unsigned char* buf, size_t buf_size)
+	{
+		for (size_t i = 0; i < buf_size; ++i)
+		{
+			if (buf[i] != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
 
 ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)
 	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token), hashdatafile(hashdatafile)
@@ -55,7 +93,7 @@ void ImageThread::ImageErrRunning(std::string msg)
 const unsigned int c_vhdblocksize=(1024*1024/2);
 const unsigned int c_hashsize=32;
 
-void ImageThread::sendFullImageThread(void)
+bool ImageThread::sendFullImageThread(void)
 {
 	bool has_error=true;
 
@@ -63,6 +101,10 @@ void ImageThread::sendFullImageThread(void)
 	bool with_checksum=image_inf->with_checksum;
 
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
+
+	std::auto_ptr<IFile> hdat_img;
+	std::string hdat_vol;
+	int r_shadow_id = -1;
 
 	bool run=true;
 	while(run)
@@ -88,9 +130,34 @@ void ImageThread::sendFullImageThread(void)
 			{
 				ImageErr("Creating Shadow drive failed. Stopping.");
 				run=false;
+				/*image_inf->shadowdrive="\\\\.\\" + image_inf->image_letter;
+				image_inf->no_shadowcopy=true;*/
 			}
 			mempipe->Write("exit");
 			mempipe=NULL;
+
+			if (run)
+			{
+				hdat_vol = image_inf->image_letter;
+				hdat_img.reset(openHdatF(image_inf->image_letter, true));
+
+				if (hdat_vol.size()==1)
+				{
+					hdat_vol += ":";
+				}
+
+				if (hdat_img.get() != NULL)
+				{
+					hdat_img->Read(0, reinterpret_cast<char*>(&r_shadow_id), sizeof(r_shadow_id));
+
+					if (r_shadow_id == -1
+						|| (r_shadow_id != image_inf->shadow_id
+							&& r_shadow_id != save_id) )
+					{
+						hdat_img.reset();
+					}
+				}
+			}
 		}
 		else
 		{
@@ -98,8 +165,8 @@ void ImageThread::sendFullImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(), true));
+				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -140,18 +207,20 @@ void ImageThread::sendFullImageThread(void)
 				cptr+=sizeof(int64);
 				memcpy(cptr, &blockcnt, sizeof(int64) );
 				cptr+=sizeof(int64);
+				unsigned char* flags = reinterpret_cast<unsigned char*>(cptr);
+				*flags=0;
 	#ifndef VSS_XP //persistence
 	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
+				*flags|=ImageFlag_Persistent;
 	#endif
-	#else
-				*cptr=0;
 	#endif
 				if(image_inf->no_shadowcopy)
 				{
-					*cptr=0;
+					*flags = *flags & (~ImageFlag_Persistent);
+				}
+				if(image_inf->with_bitmap)
+				{
+					*flags|=ImageFlag_Bitmap;
 				}
 				++cptr;
 				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
@@ -179,8 +248,18 @@ void ImageThread::sendFullImageThread(void)
 				}
 			}
 			
+			
+			if(image_inf->with_bitmap)
+			{
+				if (!sendBitmap(fs.get(), drivesize, blocksize))
+				{
+					run = false;
+					break;
+				}
+			}
+			
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "full image transfer");
 
 			unsigned int needed_bufs=64;
 			int64 last_hash_block=-1;
@@ -247,6 +326,16 @@ void ImageThread::sendFullImageThread(void)
 								memcpy(cb+2*sizeof(int64), dig, c_hashsize);
 								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
 								notify_cs=true;
+
+								if (hdat_img.get() != NULL
+									&& IndexThread::getShadowId(hdat_vol, hdat_img.get())==r_shadow_id)
+								{
+									hdat_img->Write(sizeof(int) + (j / vhdblocks)*c_hashsize, reinterpret_cast<char*>(dig), c_hashsize);
+								}
+								else
+								{
+									hdat_img.reset();
+								}
 							}
 							sha256_init(&shactx);
 						}
@@ -322,6 +411,14 @@ void ImageThread::sendFullImageThread(void)
 
 	Server->Log("Sending full image done", LL_INFO);
 
+	bool success = !has_error;
+
+	if (success && !image_inf->no_shadowcopy)
+	{
+		ClientConnector::updateLastBackup();
+		IndexThread::execute_postbackup_hook("postimagebackup");
+	}
+
 #ifdef VSS_XP //persistence
 	has_error=false;
 #endif
@@ -334,6 +431,7 @@ void ImageThread::sendFullImageThread(void)
 		removeShadowCopyThread(save_id);
 	}
 	client->doQuitClient();
+	return success;
 }
 
 void ImageThread::removeShadowCopyThread(int save_id)
@@ -343,7 +441,7 @@ void ImageThread::removeShadowCopyThread(int save_id)
 		IPipe* local_pipe=Server->createMemoryPipe();
 
 		CWData data;
-		data.addChar(3);
+		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
 		data.addVoidPtr(local_pipe);
 		data.addString(image_inf->image_letter);
 		data.addString(server_token);
@@ -362,7 +460,7 @@ void ImageThread::removeShadowCopyThread(int save_id)
 	}
 }
 
-void ImageThread::sendIncrImageThread(void)
+bool ImageThread::sendIncrImageThread(void)
 {
 	char *zeroblockbuf=NULL;
 	std::vector<char*> blockbufs;
@@ -375,6 +473,10 @@ void ImageThread::sendIncrImageThread(void)
 
 	int64 lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
+
+	std::auto_ptr<IFile> hdat_img;
+	std::string hdat_vol;
+	int r_shadow_id = -1;
 
 	bool run=true;
 	while(run)
@@ -403,15 +505,109 @@ void ImageThread::sendIncrImageThread(void)
 			}
 			mempipe->Write("exit");
 			mempipe=NULL;
+
+			if (run)
+			{
+				hdat_vol = image_inf->image_letter;
+				hdat_img.reset(openHdatF(image_inf->image_letter, true));
+
+				if (hdat_vol.size() == 1)
+				{
+					hdat_vol += ":";
+				}
+
+				if (hdat_img.get() != NULL)
+				{
+					hdat_img->Read(0, reinterpret_cast<char*>(&r_shadow_id), sizeof(r_shadow_id));
+
+					if (r_shadow_id==-1
+						|| (r_shadow_id != image_inf->shadow_id
+						     && r_shadow_id != save_id) )
+					{
+						hdat_img.reset();
+					}
+				}
+			}
 		}
 		else
 		{
+			int64 changed_blocks = 0;
+			int64 unchanged_blocks = 0;
+
+			if (hdat_img.get() != NULL)
+			{
+				std::auto_ptr<IFilesystem> fs;
+
+				if (!image_inf->shadowdrive.empty())
+				{
+					fs.reset(image_fak->createFilesystem(image_inf->shadowdrive, false,
+						IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
+				}
+
+				unsigned int blocksize = (unsigned int)fs->getBlocksize();
+				int64 drivesize = fs->getSize();
+
+				std::vector<char> buf;
+				buf.resize(4096);
+
+				hdat_img->Seek(sizeof(int));
+				_u32 read;
+				int64 imgpos = 0;
+				do
+				{
+					read = hdat_img->Read(buf.data(), static_cast<_u32>(buf.size()));
+
+					for (_u32 i = 0; i < read; i += SHA256_DIGEST_SIZE)
+					{
+						if (imgpos<drivesize 
+							&& fs->hasBlock(imgpos / blocksize))
+						{
+							if (buf_is_zero(reinterpret_cast<unsigned char*>(&buf[i]), SHA256_DIGEST_SIZE))
+							{
+								++changed_blocks;
+							}
+							else
+							{
+								bool has_hashdata = false;
+								char hashdata_buf[c_hashsize];
+								int64 hnum = imgpos / c_vhdblocksize;
+								if (hashdatafile->Size() >= (hnum + 1)*c_hashsize)
+								{
+									if (hashdatafile->Read(hnum*c_hashsize, hashdata_buf, c_hashsize) != c_hashsize)
+									{
+										Server->Log("Reading hashdata failed!", LL_ERROR);
+									}
+									else
+									{
+										has_hashdata = true;
+									}
+								}
+
+								if (!has_hashdata
+									|| memcmp(hashdata_buf, &buf[i], c_hashsize) == 0)
+								{
+									++unchanged_blocks;
+								}
+								else
+								{
+									++changed_blocks;
+								}
+							}
+						}
+
+						imgpos += c_vhdblocksize;
+					}
+
+				} while (read > 0);
+			}
+
 			std::auto_ptr<IFilesystem> fs;
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(), true));
+				bool readahead = (hdat_img.get() == NULL || changed_blocks > unchanged_blocks);
+				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), readahead,
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -437,6 +633,13 @@ void ImageThread::sendIncrImageThread(void)
 			int64 currvhdblock=0;
 			int64 numblocks=drivesize/blocksize;
 
+			if (hdat_img.get() != NULL
+				&& unchanged_blocks>0)
+			{
+				blockcnt = (changed_blocks*c_vhdblocksize) / blocksize;
+				blockcnt *= -1;
+			}
+
 			if(image_inf->startpos==0)
 			{
 				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)+c_hashsize];
@@ -447,15 +650,21 @@ void ImageThread::sendIncrImageThread(void)
 				cptr+=sizeof(int64);
 				memcpy(cptr, &blockcnt, sizeof(int64) );
 				cptr+=sizeof(int64);
-	#ifndef VSS_XP //persistence
-	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
-	#endif
-	#else
-				*cptr=0;
-	#endif
+				unsigned char* flags = reinterpret_cast<unsigned char*>(cptr);
+				*flags = 0;
+#ifndef VSS_XP //persistence
+#ifndef VSS_S03
+				*flags |= ImageFlag_Persistent;
+#endif
+#endif
+				if (image_inf->no_shadowcopy)
+				{
+					*flags = *flags & (~ImageFlag_Persistent);
+			}
+				if (image_inf->with_bitmap)
+				{
+					*flags |= ImageFlag_Bitmap;
+				}
 				++cptr;
 				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
 				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
@@ -482,6 +691,15 @@ void ImageThread::sendIncrImageThread(void)
 					break;
 				}
 			}
+
+			if (image_inf->with_bitmap)
+			{
+				if (!sendBitmap(fs.get(), drivesize, blocksize))
+				{
+					run = false;
+					break;
+				}
+			}
 			
 			blockbufs.clear();
 			blockbufs.resize(vhdblocks);
@@ -490,7 +708,7 @@ void ImageThread::sendIncrImageThread(void)
 			memset(zeroblockbuf, 0, blocksize);
 
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
 
 
 			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=vhdblocks)
@@ -498,7 +716,7 @@ void ImageThread::sendIncrImageThread(void)
 				++update_cnt;
 				if(update_cnt>10)
 				{
-					client->updatePCDone2((int)(((float)i/(float)blocks)*100.f+0.5f));
+					ClientConnector::updateRunningPc(image_inf->running_process_id, (int)(((float)i / (float)blocks)*100.f + 0.5f));
 					update_cnt=0;
 				}
 				currvhdblock=i/vhdblocks;
@@ -521,56 +739,85 @@ void ImageThread::sendIncrImageThread(void)
 
 				if(has_data)
 				{
-					sha256_init(&shactx);
-					bool mixed=false;
-					for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
+					unsigned char digest[c_hashsize];
+
+					bool has_hash = false;
+					if (hdat_img.get() != NULL)
 					{
-						char* buf = fs->readBlock(j);
-						if( buf!=NULL )
+						if (IndexThread::getShadowId(hdat_vol, hdat_img.get()) == r_shadow_id)
 						{
-							sha256_update(&shactx, (unsigned char*)buf, blocksize);
-							blockbufs[j-i] = buf;
+							if (hdat_img->Read(sizeof(int) + (i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize) == c_hashsize)
+							{
+								has_hash = !buf_is_zero(digest, c_hashsize);
+							}
 						}
 						else
 						{
-							sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
-							mixed=true;
-							blockbufs[j-i] = NULL;
+							hdat_img.reset();
 						}
 					}
-					if(fs->hasError())
-					{
-						for(size_t i=0;i<blockbufs.size();++i)
-						{
-							if(blockbufs[i]!=NULL)
-							{
-								fs->releaseBuffer(blockbufs[i]);
-								blockbufs[i]=NULL;
-							}
-						}
-						ImageErrRunning("Error while reading from shadow copy device -2");
-						run=false;
-						break;
-					}
-					unsigned char digest[c_hashsize];
-					sha256_final(&shactx, digest);
-					bool has_hashdata=false;
+
+					bool has_hashdata = false;
 					char hashdata_buf[c_hashsize];
-					if(hashdatafile->Size()>=(currvhdblock+1)*c_hashsize)
+					if (hashdatafile->Size() >= (currvhdblock + 1)*c_hashsize)
 					{
-						hashdatafile->Seek(currvhdblock*c_hashsize);						
-						if( hashdatafile->Read(hashdata_buf, c_hashsize)!=c_hashsize )
+						hashdatafile->Seek(currvhdblock*c_hashsize);
+						if (hashdatafile->Read(hashdata_buf, c_hashsize) != c_hashsize)
 						{
 							Server->Log("Reading hashdata failed!", LL_ERROR);
 						}
 						else
 						{
-							has_hashdata=true;
+							has_hashdata = true;
 						}
-					}						
-					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize)!=0)
+					}
+
+					bool mixed = false;
+					if (!has_hash
+						|| (has_hashdata && memcmp(hashdata_buf, digest, c_hashsize) != 0) )
 					{
-						Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
+						sha256_init(&shactx);
+						for (int64 j = i; j < blocks && j < i + vhdblocks; ++j)
+						{
+							char* buf = fs->readBlock(j);
+							if (buf != NULL)
+							{
+								sha256_update(&shactx, (unsigned char*)buf, blocksize);
+								blockbufs[j - i] = buf;
+							}
+							else
+							{
+								sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
+								mixed = true;
+								blockbufs[j - i] = NULL;
+							}
+						}
+						if (fs->hasError())
+						{
+							for (size_t i = 0; i < blockbufs.size(); ++i)
+							{
+								if (blockbufs[i] != NULL)
+								{
+									fs->releaseBuffer(blockbufs[i]);
+									blockbufs[i] = NULL;
+								}
+							}
+							ImageErrRunning("Error while reading from shadow copy device -2");
+							run = false;
+							break;
+						}
+
+						sha256_final(&shactx, digest);
+
+						if (hdat_img.get() != NULL)
+						{
+							hdat_img->Write(sizeof(int) + (i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize);
+						}
+					}
+
+					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize) != 0)
+					{
+						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
 						bool notify_cs=false;
 						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 						{
@@ -611,7 +858,7 @@ void ImageThread::sendIncrImageThread(void)
 					}
 					else
 					{
-						//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
+						//Server->Log("Block didn't change: "+convert(i), LL_DEBUG);
 						int64 tt=Server->getTimeMS();
 						if(tt-lastsendtime>10000)
 						{
@@ -687,11 +934,19 @@ void ImageThread::sendIncrImageThread(void)
 
 	delete [] zeroblockbuf;
 
-	std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
+	std::string hashdatafile_fn=hashdatafile->getFilename();
 	Server->destroy(hashdatafile);
 	Server->deleteFile(hashdatafile_fn);
 
 	Server->Log("Sending image done", LL_INFO);
+
+	bool success = !has_error;
+
+	if (success && !image_inf->no_shadowcopy)
+	{
+		ClientConnector::updateLastBackup();
+		IndexThread::execute_postbackup_hook("postimagebackup");
+	}
 
 #ifdef VSS_XP //persistence
 	has_error=false;
@@ -705,29 +960,23 @@ void ImageThread::sendIncrImageThread(void)
 		removeShadowCopyThread(save_id);
 	}
 	client->doQuitClient();
+
+	return success;
 }
 
 void ImageThread::operator()(void)
 {
-#ifdef _WIN32
-#ifndef _DEBUG
-	if(IndexThread::backgroundBackupsEnabled())
+	ScopedBackgroundPrio background_prio(false);
+	if(IndexThread::backgroundBackupsEnabled(std::string()))
 	{
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-#if defined(VSS_XP) || defined(VSS_S03)
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#endif
-#else
-		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#endif //THREAD_MODE_BACKGROUND_BEGIN
+		background_prio.enable();
 	}
-#endif _DEBUG
-#endif
+
+	bool success = false;
+
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{
-		sendFullImageThread();
+		success = sendFullImageThread();
 	}
 	else if(image_inf->thread_action==TA_INCR_IMAGE)
 	{
@@ -743,11 +992,11 @@ void ImageThread::operator()(void)
 		}
 		if(timeouts>0 && client->isQuitting()==false )
 		{
-			sendIncrImageThread();
+			success = sendIncrImageThread();
 		}
 		else
 		{
-			Server->Log("Error receiving hashdata. timouts="+nconvert(timeouts)+" isquitting="+nconvert(client->isQuitting()), LL_ERROR);
+			Server->Log("Error receiving hashdata. timouts="+convert(timeouts)+" isquitting="+convert(client->isQuitting()), LL_ERROR);
 			if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
 			{
 				mempipe->Write("exit");
@@ -755,12 +1004,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	client->resetImageBackupStatus(this);
-#ifdef _WIN32
-#ifdef THREAD_MODE_BACKGROUND_END
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-#endif
-#endif
+	ClientConnector::removeRunningProcess(image_inf->running_process_id, success);
 }
 
 void ImageThread::updateShadowCopyStarttime( int save_id )
@@ -772,7 +1016,104 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 		data.addVoidPtr(NULL);
 		data.addString(image_inf->image_letter);
 		data.addInt(save_id);
+		data.addString(image_inf->clientsubname);
 
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
+}
+
+bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize)
+{
+	int64 totalblocks = drivesize / blocksize;
+	if (drivesize%blocksize != 0)
+	{
+		++totalblocks;
+	}
+
+	size_t bitmap_size = totalblocks / 8;
+	if (totalblocks % 8 != 0)
+	{
+		++bitmap_size;
+	}
+
+	const unsigned char* bitmap = fs->getBitmap();
+
+	sha256_ctx shactx;
+	sha256_init(&shactx);
+
+	unsigned int endian_blocksize = little_endian(blocksize);
+	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize), 10000, false))
+	{
+		Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
+		return false;
+	}
+
+	sha256_update(&shactx, reinterpret_cast<unsigned char*>(&endian_blocksize), sizeof(endian_blocksize));
+
+	while (bitmap_size>0)
+	{
+		size_t tosend = (std::min)((size_t)4096, bitmap_size);
+
+		sha256_update(&shactx, bitmap, (unsigned int)tosend);
+
+		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend, 10000, false))
+		{
+			Server->Log("Pipe broken while sending bitmap", LL_ERROR);
+			return false;
+		}
+
+		bitmap_size -= tosend;
+		bitmap += tosend;
+	}
+
+	unsigned char dig[c_hashsize];
+	sha256_final(&shactx, dig);
+
+	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize, 10000))
+	{
+		Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
+		return false;
+	}
+
+	return true;
+}
+
+std::string ImageThread::hdatFn(std::string volume)
+{
+	if (!IndexThread::normalizeVolume(volume))
+	{
+		return std::string();
+	}
+
+	return volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat";
+}
+
+IFsFile* ImageThread::openHdatF(std::string volume, bool share)
+{
+	if (!IndexThread::normalizeVolume(volume))
+	{
+		return NULL;
+	}
+
+#ifdef _WIN32
+
+	DWORD share_mode = FILE_SHARE_READ;
+
+	if (share)
+	{
+		share_mode |= FILE_SHARE_WRITE;
+	}
+
+	HANDLE hfile = CreateFileA((volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat").c_str(), GENERIC_WRITE|GENERIC_READ, share_mode, NULL, OPEN_ALWAYS,
+		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM, NULL);
+
+	if (hfile == INVALID_HANDLE_VALUE)
+	{
+		return NULL;
+	}
+
+	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat");
+#else
+	return NULL;
+#endif
 }

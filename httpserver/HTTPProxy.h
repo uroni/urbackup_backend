@@ -19,7 +19,7 @@ struct CBuffer
 class CHTTPProxy : public IThread, public IObject
 {
 public:
-	CHTTPProxy(std::string pHttp_method, std::string pHttp_query, int pHttp_version, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput, IPipe *pNotify, IPipe *pTimeoutPipe);
+	CHTTPProxy(std::string pHttp_method, std::string pHttp_query, int pHttp_version, const std::string pPOSTStr, const str_map &pRawPARAMS, IPipe *pOutput, IPipe *pNotify, IPipe *pTimeoutPipe);
 
 	void operator()(void);
 
@@ -28,7 +28,7 @@ private:
 	std::string http_query;
 	int http_version;
 	std::string POSTStr;
-	str_nmap RawPARAMS;
+	str_map RawPARAMS;
 	IPipe *notify;
 	IPipe *timeoutpipe;
 

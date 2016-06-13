@@ -1,0 +1,22 @@
+.clear {
+	clear: both;
+}
+body.wait *, body.wait {
+cursor:wait !important;
+}
+.progress {
+border: 1px solid black;
+margin-bottom: 0px;
+}
+@media (min-width: 1200px) {
+  .container {
+    width: 1200px;
+  }
+}
+/* Make the entire page show a busy cursor */
+.nprogress-busy body {
+  cursor: wait;
+}
+.panel-body blockquote {	
+	font-size: 14px !important;
+}

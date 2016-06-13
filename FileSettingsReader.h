@@ -11,7 +11,7 @@ struct SSetting
 
 struct SCachedSettings
 {
-	std::map<std::wstring,std::wstring> mSettingsMap;
+	std::map<std::string,std::string> mSettingsMap;
 	IMutex *smutex;
 	int refcount;
 	std::string key;
@@ -25,14 +25,15 @@ public:
 	~CFileSettingsReader();
 
 	virtual bool getValue(std::string key, std::string *value);
-	virtual bool getValue(std::wstring key, std::wstring *value);
 
 	static void cleanup();
 	static void setup();
 
-	virtual std::vector<std::wstring> getKeys();
+	virtual std::vector<std::string> getKeys();
 
 private:
+
+	void read(const std::string& fdata, const std::string& pFile);
 	
 	static std::map<std::string, SCachedSettings*> *settings;
 	static IMutex *settings_mutex;

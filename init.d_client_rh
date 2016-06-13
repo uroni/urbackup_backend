@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# chkconfig: 345 85 15
+# description: Urbackup client daemon
+# config: /etc/sysconfig/urbackupclient
+#
+
+### BEGIN INIT INFO
+# Provides:          urbackupclientbackend
+# Required-Start:    $network $local_fs $remote_fs
+# Required-Stop:     $remote_fs $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Daemon process for UrBackup Client
+# Description:       This software does backups
+#                    with special client software
+#                    
+### END INIT INFO
+
+# Author: kot1grun
+# Author: Martin Raiber <martin@urbackup.org>
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+DESC="UrBackup Client Daemon"             # Introduce a short description here
+NAME="urbackupclientbackend"             # Introduce the short server's name here
+PREFIX="/usr/local"
+DAEMON=$PREFIX/sbin/urbackupclientbackend # Introduce the server's location here
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+prog=urbackupclientbackend
+
+if [ ! -x $DAEMON ]
+then
+    exit 5
+fi
+
+lockfile=/var/lock/subsys/$NAME
+
+# Function that starts the daemon/service
+start()
+{
+    echo -n $"Starting UrBackup client: "
+    daemon $DAEMON --daemon --config "/etc/sysconfig/urbackupclient" --pidfile $PIDFILE
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop()
+{
+    echo -n $"Shutting down UrBackup client: "
+    killproc $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && ( rm -f $lockfile > /dev/null 2>&1 )
+    return $retval
+}
+
+restart()
+{
+    echo -n $"Restarting $DESC" "$NAME"
+    stop
+    start
+}
+
+case "$1" in
+    start|stop|restart)
+        $1
+        ;;
+    force-reload)
+        restart
+        ;;
+    status)
+        status $prog
+        ;;
+    try-restart|condrestart)
+        if status $prog >/dev/null ; then
+            restart
+        fi
+        ;;
+    reload)
+        action $"Service ${0##*/} does not support the reload action: " /bin/false
+        exit 3
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|try-restart|force-reload}"
+        exit 2
+        ;;
+esac
+
+exit $retval

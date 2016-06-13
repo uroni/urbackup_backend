@@ -18,9 +18,6 @@
     <ClCompile Include="bufmgr.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="CampusThread.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="CClientThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -72,12 +69,33 @@
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeSessions.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeFileWin.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeFileBase.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMetadataPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeFileTar.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="CampusThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="CClientThread.h">
@@ -141,6 +159,24 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\common\adler32.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IPermissionCallback.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFile.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeSessions.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFileBase.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFileTar.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

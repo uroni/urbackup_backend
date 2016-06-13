@@ -1,104 +1,121 @@
-<span id="new_version_available"></span>
-<h1>{tBackup status}</h1>
+<div class="alert alert-info" id="new_version_available" style="margin: 0; padding: 0; height: 0; visibility: hidden;"></div>
 
-{nospc_fatal|s}
-{nospc_stalled|s}
-{dir_error|s}
-{tmpdir_error|s}
-{database_error|s}
-{endian_info|s}
+<div class="panel panel-default">
+	<div class="panel-heading">{tBackup status}</div>
+	<div class="panel-body">
+		{nospc_fatal|s}
+		{nospc_stalled|s}
+		{dir_error|s}
+		{tmpdir_error|s}
+		{database_error|s}
+		{endian_info|s}
 
-<br /><br />
-<table cellspacing="0" cellpadding="0" id="status_table" class="dataTableTab">
-<thead>
-<tr>			
-	<th style="width: 150px" class="tabHeader2">{tComputer name}</th>
-	<th style="width: 50px" class="tabHeader2">{tOnline}</th>
-	<th style="width: 100px" class="tabHeader2">{tStatus}</th>
-	<th style="width: 150px" class="tabHeader2">{tLast seen}</th>
-	<th style="width: 150px" class="tabHeader2">{tLast file backup}</th>
-	<th style="width: 150px" class="tabHeader2">{tLast image backup}</th>
-	<th style="width: 130px" class="tabHeader2">{tFile backup status}</th>
-	<th style="width: 130px" class="tabHeader2">{tImage backup status}</th>
-	<th style="width: 50px" class="tabHeader2">{tIP}</th>
-	<th style="width: auto" class="tabHeader2">{tClient version}</th>
-	<th style="width: auto" class="tabHeader2">{tOperating System}</th>
-	{?show_select_box}
-	<th style="width: 50px" class="tabHeader2">&nbsp;</td>
-	{/show_select_box}
-</tr>
-</thead>
-<tbody>
-{rows|s}
-</tbody>
-</table>
-<br /><br />
-{modify_clients|s}
-{?status_can_show_all}
-&#32;| <a href="javascript: g.status_show_all=true; show_status1();">{tShow all clients}</a><br /><br />
-{/status_can_show_all}
-{?removed_clients_table}
-<br /><br />
-<table cellspacing="0" cellpadding="0" id="status_table">
-<thead>
-	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
-	<th style="width: 400px"  class="tabHeaderRight">&nbsp;</th>
-</thead>
-<tbody>
-	{#removed_clients}
-	<tr>
-		<td class="tabFLeft">{name}</td>
-		<td class="tabFRight">{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
-	</tr>
-	{/removed_clients}
-</tbody>
-</table>
-{/removed_clients_table}
-<br />
-{status_client_download|s}
+		<table id="status_table" class="table table-striped dt-responsive" width="100%">
+			<thead>
+				<tr>
+					{?show_select_box}
+					<th>
+						<input type="checkbox" id="status_selected_toggle" onClick="selectClientsToggle()"/>
+						<select onchange="startBackups(I('startbackup_toggle')[I('startbackup_toggle').selectedIndex].value)" id="startbackup_toggle"
+								style="margin-left:5px; display:none;" class="selectpicker" data-width="20px"  data-container="#data_f" data-style="btn btn-xs" title="">
+							<option value="incr_file">{tIncremental file backup}</option>
+							<option value="full_file">{tFull file backup}</option>
+							<option value="incr_image">{tIncremental image backup}</option>
+							<option value="full_image">{tFull image backup}</option>
+							<option value="remove">{tRemove client}</option>
+						</select>
+					</td>
+					{/show_select_box}
+					<th>{tComputer name}</th>
+					<th>{tOnline}</th>
+					<th>{tStatus}</th>
+					<th>{tLast seen}</th>
+					<th>{tLast file backup}</th>
+					<th>{tLast image backup}</th>
+					<th>{tFile backup status}</th>
+					<th>{tImage backup status}</th>
+					<th>{tIP}</th>
+					<th>{tClient version}</th>
+					<th>{tOperating System}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{rows|s}
+			</tbody>
+		</table>
+		
+		<div class="btn-toolbar">
+			{?status_can_show_all}
+			<div class="btn-group">
+				<a class="btn btn-sm btn-default" href="javascript: g.status_show_all=true; show_status1();">{tShow all clients}</a>
+			</div>
+			{/status_can_show_all}
+			{modify_clients|s}
+			{?has_client_download}
+				<div class="btn-group">
+					{status_client_download_windows|s}
+					{status_client_download_mac|s}
+					{status_client_download_linux|s}
+				</div>
+			{/has_client_download}
+			{?allow_add_client}
+				<div class="btn-group">
+					<a class="btn btn-sm btn-primary" href="javascript: addNewClient1();"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {tAdd new client}</a>
+				</div>
+			{/allow_add_client}
+		</div>
+		
+		{?removed_clients_table}
+		<div style="margin-top: 20px">
+			<table id="status_table" class="table table-striped">
+				<thead>
+					<tr>
+						<th>{tComputer name}</th>
+						<th>&nbsp;</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#removed_clients}
+					<tr>
+						<td>{name}</td>
+						<td>{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
+					</tr>
+					{/removed_clients}
+				</tbody>
+			</table>
+		</div>
+		{/removed_clients_table}
+	</div>
+</div>
 
 {?status_extra_clients}
-<br />
-<br />
-<hr style="width: 1070px;" align="left"/>
-<h3>{tInternet clients}</h3>
-<br />
-{internet_client_added|s}
-{tAdd additional internet clients}:
-<form action="#" onsubmit="addInternetClient(); return false;">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tClient name}:</td>
-<td><input type="text" size="40" id="clientname" value=""/> </td>
-<td><input type="submit" value="{tAdd}"/></td>
-</tr>
-</table>
-</form>
-<br />
+	<div class="panel panel-default">
+		<div class="panel-heading">
+			{tClient discovery hints}
+		</div>
+		<div class="panel-body">
+			<table class="table table-hover">
+				<thead>
+					<tr>			
+						<th>{tHostname/IP}</th>
+						<th>{tOnline}</th>
+						<th>{tActions}</th>
+					</tr>
+				</thead>
+				<tbody>
+				{extra_clients_rows|s}
+				</tbody>
+			</table>
 
-<h3>{tExtra clients}</h3>
-
-<table cellspacing="0" cellpadding="0">
-<tr>			
-	<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
-	<th style="width: 200px" class="tabHeader">{tOnline}</th>
-	<th style="width: 200px" class="tabHeaderRight">{tActions}</th>
-</tr>
-{extra_clients_rows|s}
-</table>
-
-<form action="#" onsubmit="addExtraClient(); return false;">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tHostname/IP}:</td>
-<td><input type="text" size="40" id="hostname" value=""/> </td>
-<td><input type="submit" value="{tAdd}"/></td>
-</tr>
-</table>
-</form>
-
-
-<h3>{tServer identity}</h3>
-{server_identity}
-<br>
+			<form class="form" action="#" onsubmit="addExtraClient(); return false;" role="form">
+				<div class="form-group">
+					<label for="hostname">{tAdd hostname/IP as client discovery hint}:</label>
+					<input type="text" class="form-control" id="hostname" value="" placeholder="{tHostname/IP}"/>
+				</div>
+				<input type="submit" class="btn btn-default" value="{tAdd}"/>
+			</form>
+		</div>
+	</div>
 {/status_extra_clients}
+
+</div>

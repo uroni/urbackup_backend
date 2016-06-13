@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -23,6 +23,7 @@
 #endif
 
 CMemoryPipe::CMemoryPipe(void)
+	: has_error(false)
 {
     mutex=Server->createMutex();
     cond=Server->createCondition();
@@ -41,7 +42,7 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	{
 		int64 starttime=Server->getTimeMS();
 		int64 currtime=starttime;
-		while( queue.empty() && starttime+timeoutms>currtime)
+		while( queue.empty() && starttime+timeoutms>currtime && !has_error)
 		{
 			cond->wait( &lock, timeoutms- static_cast<int>(currtime-starttime) );
 			if(queue.empty())
@@ -60,9 +61,14 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 	else
 	{
-		while( queue.size()==0 )
+		while( queue.size()==0 && !has_error )
 		{
 			cond->wait(&lock);		
+		}
+
+		if(has_error)
+		{
+			return 0;
 		}
 	}
 	
@@ -84,7 +90,7 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 }
 
-bool CMemoryPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CMemoryPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	IScopedLock lock(mutex);
 	
@@ -109,7 +115,7 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	{
 		int64 starttime=Server->getTimeMS();
 		int64 currtime=starttime;
-		while( queue.empty() && starttime+timeoutms>currtime)
+		while( queue.empty() && starttime+timeoutms>currtime && !has_error)
 		{
 			cond->wait( &lock, timeoutms- static_cast<int>(currtime-starttime) );
 			if(queue.empty())
@@ -128,9 +134,14 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	}
 	else
 	{
-		while( queue.size()==0 )
+		while( queue.size()==0 && !has_error )
 		{
 			cond->wait(&lock);		
+		}
+
+		if(has_error)
+		{
+			return 0;
 		}
 	}
 	
@@ -147,7 +158,7 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	return fsize;		
 }
 
-bool CMemoryPipe::Write(const std::string &str, int timeoutms)
+bool CMemoryPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
 	IScopedLock lock(mutex);
 	
@@ -184,7 +195,8 @@ bool CMemoryPipe::isReadable(int timeoutms)
 
 bool CMemoryPipe::hasError(void)
 {
-	return false;
+	IScopedLock lock(mutex);
+	return has_error;
 }
 
 size_t CMemoryPipe::getNumElements(void)
@@ -195,6 +207,9 @@ size_t CMemoryPipe::getNumElements(void)
 
 void CMemoryPipe::shutdown(void)
 {
+	IScopedLock lock(mutex);
+	has_error=true;
+	cond->notify_all();
 }
 
 void CMemoryPipe::addThrottler(IPipeThrottler *throttler)
@@ -219,4 +234,9 @@ _i64 CMemoryPipe::getTransferedBytes(void)
 
 void CMemoryPipe::resetTransferedBytes(void)
 {
+}
+
+bool CMemoryPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return true;
 }

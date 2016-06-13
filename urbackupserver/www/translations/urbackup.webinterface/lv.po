@@ -1,20 +1,76 @@
 # UrBackup translation
-# Copyright (C) 2011-2015 See translators
+# Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
-# 
 # Translators:
 # sieks <sieks@inbox.lv>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2015-11-24 09:52+0000\n"
-"Last-Translator: sieks <sieks@inbox.lv>\n"
+"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Latvian (http://www.transifex.com/uroni/urbackup/language/lv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: lv\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);\n"
+
+msgid "nav_item_3"
+msgstr "Žurnālfaili"
+
+msgid "nav_item_1"
+msgstr "Iestatījumi"
+
+msgid "ok"
+msgstr "Labi"
+
+msgid "loglevel_1"
+msgstr ""
+
+msgid "loglevel_2"
+msgstr "Kļūdas"
+
+msgid "tLogs"
+msgstr "Žurnālfaili"
+
+msgid "tErrors"
+msgstr "Kļūdas"
+
+msgid "tWarnings"
+msgstr ""
+
+msgid "tdays"
+msgstr "dienas"
+
+msgid "thours"
+msgstr "stundas"
+
+msgid "tmin"
+msgstr ""
+
+msgid "tAbort"
+msgstr "Atcelt"
+
+msgid "tInfos"
+msgstr "Informācija"
+
+msgid "tFile backups"
+msgstr "Faila rezerves kopija"
+
+msgid "tImage backups"
+msgstr ""
+
+msgid "tClient"
+msgstr "Klients"
+
+msgid "tInternet"
+msgstr "Internets"
+
+msgid "hours"
+msgstr "stundas"
+
+msgid "days"
+msgstr "dienas"
 
 msgid "action_1"
 msgstr "Inkrementālā failu rezerves kopijas izveidošana"
@@ -49,23 +105,14 @@ msgstr "Aktivitātes"
 msgid "nav_item_4"
 msgstr "Rezerves kopijas"
 
-msgid "nav_item_3"
-msgstr "Žurnālfaili"
-
 msgid "nav_item_2"
 msgstr "Statistika"
-
-msgid "nav_item_1"
-msgstr "Iestatījumi"
 
 msgid "unknown"
 msgstr "Nezināms"
 
 msgid "overview"
 msgstr ""
-
-msgid "ok"
-msgstr "Labi"
 
 msgid "no_recent_backup"
 msgstr ""
@@ -184,18 +231,6 @@ msgstr "Viss"
 msgid "loglevel_0"
 msgstr "Info"
 
-msgid "loglevel_1"
-msgstr ""
-
-msgid "loglevel_2"
-msgstr "Kļūdas"
-
-msgid "dir_error_text"
-msgstr ""
-
-msgid "tmpdir_error_text"
-msgstr ""
-
 msgid "starting"
 msgstr ""
 
@@ -207,12 +242,6 @@ msgstr "Lūdzu ievadiet datora nosaukumu vai IP adresi"
 
 msgid "clients"
 msgstr "Klienti"
-
-msgid "validate_text_empty"
-msgstr ""
-
-msgid "validate_text_notint"
-msgstr ""
 
 msgid "validate_name_update_freq_incr"
 msgstr ""
@@ -227,6 +256,255 @@ msgid "validate_name_update_freq_image_incr"
 msgstr ""
 
 msgid "validate_name_max_file_incr"
+msgstr ""
+
+msgid "validate_name_startup_backup_delay"
+msgstr ""
+
+msgid "validate_name_computername"
+msgstr "datora nosaukums"
+
+msgid "too_many_clients_err"
+msgstr "Par daudz klientu"
+
+msgid "computername"
+msgstr "Datora nosaukums"
+
+msgid "storage_usage_pie_graph_title"
+msgstr ""
+
+msgid "storage_usage_pie_graph_colname1"
+msgstr "Datora nosaukums"
+
+msgid "storage_usage_pie_graph_colname2"
+msgstr ""
+
+msgid "storage_usage_bar_graph_title"
+msgstr ""
+
+msgid "storage_usage_bar_graph_colname1"
+msgstr "Datums"
+
+msgid "storage_usage_bar_graph_colname2"
+msgstr ""
+
+msgid "tFiles"
+msgstr "Faili"
+
+msgid "tSum"
+msgstr ""
+
+msgid "tActivities"
+msgstr "Aktivitātes"
+
+msgid "tProgress"
+msgstr "Progress"
+
+msgid "tStarting time"
+msgstr ""
+
+msgid "tUsed Storage"
+msgstr ""
+
+msgid "tClients"
+msgstr "Klienti"
+
+msgid "tReports"
+msgstr "Atskaites"
+
+msgid "tSend reports to"
+msgstr ""
+
+msgid "tSend"
+msgstr "Sūtīt"
+
+msgid "tBackup time"
+msgstr "Rezerves kopijas laiks"
+
+msgid "tStorage usage"
+msgstr ""
+
+msgid "tAll"
+msgstr "Viss"
+
+msgid "tFilter"
+msgstr "Filtrēt"
+
+msgid "tBack"
+msgstr "Atpakaļ"
+
+msgid "tAdd"
+msgstr "Pievienot"
+
+msgid "tRemove"
+msgstr "Noņemt"
+
+msgid "tSave"
+msgstr "Saglabāt"
+
+msgid "tMessage"
+msgstr "Ziņa"
+
+msgid "tLog"
+msgstr ""
+
+msgid "tUsername"
+msgstr "Lietotāja vārds"
+
+msgid "tPassword"
+msgstr "Parole"
+
+msgid "tLogin"
+msgstr ""
+
+msgid "tServer"
+msgstr "Serveris"
+
+msgid "tPermissions"
+msgstr "Tiesības"
+
+msgid "tSelect all"
+msgstr "Iezīmēt visu"
+
+msgid "mins"
+msgstr "minūtes"
+
+msgid "backup_in_progress"
+msgstr ""
+
+msgid "queued_backup"
+msgstr ""
+
+msgid "tFile"
+msgstr "Fails"
+
+msgid "tDomain"
+msgstr "Domēns"
+
+msgid "tTranslation"
+msgstr ""
+
+msgid "tChange"
+msgstr "Labot"
+
+msgid "tFailed"
+msgstr ""
+
+msgid "tInfo"
+msgstr "Info"
+
+msgid "tError"
+msgstr "Kļūda"
+
+msgid "tWarning"
+msgstr ""
+
+msgid "tCurrent version"
+msgstr "Pašreizējā versija"
+
+msgid "tIncremental file backup"
+msgstr "Inkrementālā failu rezerves kopijas izveidošana"
+
+msgid "tFull file backup"
+msgstr "Pilna failu rezerves kopija"
+
+msgid "tIncremental image backup"
+msgstr "Inkrementālā klona rezerves kopijas izveide"
+
+msgid "tFull image backup"
+msgstr "Pilna klona rezerves kopija"
+
+msgid "about_urbackup"
+msgstr ""
+
+msgid "tShow"
+msgstr "Rādīt"
+
+msgid "tIndexing..."
+msgstr "Indeksē..."
+
+msgid "tDelete"
+msgstr "Dzēst"
+
+msgid "tDisable"
+msgstr ""
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tNone"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr "Servera administratora pasta adrese"
+
+msgid "tDownload"
+msgstr "Lejupielādēt"
+
+msgid "tStatus"
+msgstr "Statuss"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "Klienta versija"
+
+msgid "tOperating System"
+msgstr ""
+
+msgid "tShow all clients"
+msgstr "Rādīt visus klientus"
+
+msgid "tThis client is going to be removed. "
+msgstr ""
+
+msgid "First"
+msgstr "Pirmais"
+
+msgid "Last"
+msgstr "Pēdējais"
+
+msgid "Next"
+msgstr "Nākošais"
+
+msgid "Previous"
+msgstr "Iepriekšējais"
+
+msgid "sInfoThousands"
+msgstr ","
+
+msgid "Processing..."
+msgstr "Procesā..."
+
+msgid "Search:"
+msgstr "Meklēt:"
+
+msgid "No matching records found"
+msgstr ""
+
+msgid "Restore to default"
+msgstr "Uzstādīt sākotnējos parametrus"
+
+msgid "Save"
+msgstr "Saglabāt"
+
+msgid "tAllow clients to quit the tray icon"
+msgstr ""
+
+msgid "Show/hide columns"
+msgstr "Rādīt/Slēpt kolonnas"
+
+msgid "dir_error_text"
+msgstr ""
+
+msgid "tmpdir_error_text"
+msgstr ""
+
+msgid "validate_text_empty"
+msgstr ""
+
+msgid "validate_text_notint"
 msgstr ""
 
 msgid "validate_name_min_file_incr"
@@ -250,9 +528,6 @@ msgstr ""
 msgid "validate_name_max_image_full"
 msgstr ""
 
-msgid "validate_name_startup_backup_delay"
-msgstr ""
-
 msgid "validate_err_notregexp_backup_window"
 msgstr ""
 
@@ -265,43 +540,10 @@ msgstr ""
 msgid "validate_name_backupfolder"
 msgstr ""
 
-msgid "validate_name_computername"
-msgstr "datora nosaukums"
-
-msgid "too_many_clients_err"
-msgstr "Par daudz klientu"
-
 msgid "really_remove_client"
 msgstr ""
 
-msgid "computername"
-msgstr "Datora nosaukums"
-
-msgid "storage_usage_pie_graph_title"
-msgstr ""
-
-msgid "storage_usage_pie_graph_colname1"
-msgstr "Datora nosaukums"
-
-msgid "storage_usage_pie_graph_colname2"
-msgstr ""
-
-msgid "storage_usage_bar_graph_title"
-msgstr ""
-
-msgid "storage_usage_bar_graph_colname1"
-msgstr "Datums"
-
-msgid "storage_usage_bar_graph_colname2"
-msgstr ""
-
 msgid "tImages"
-msgstr ""
-
-msgid "tFiles"
-msgstr "Faili"
-
-msgid "tSum"
 msgstr ""
 
 msgid "validate_err_notregexp_cleanup_window"
@@ -313,14 +555,11 @@ msgstr ""
 msgid "upgrade_error_text"
 msgstr ""
 
-msgid "tActivities"
-msgstr "Aktivitātes"
+msgid "creating_filescache_text"
+msgstr ""
 
 msgid "tAction"
 msgstr "Darbība"
-
-msgid "tProgress"
-msgstr "Progress"
 
 msgid "tFiles in queue"
 msgstr "Faili rindā"
@@ -328,50 +567,14 @@ msgstr "Faili rindā"
 msgid "tLast activities"
 msgstr ""
 
-msgid "tStarting time"
-msgstr ""
-
 msgid "tRequired time"
 msgstr "Nepieciešamais laiks"
-
-msgid "tUsed Storage"
-msgstr ""
-
-msgid "tClients"
-msgstr "Klienti"
-
-msgid "tLogs"
-msgstr "Žurnālfaili"
-
-msgid "tReports"
-msgstr "Atskaites"
-
-msgid "tSend reports to"
-msgstr ""
-
-msgid "tSend"
-msgstr "Sūtīt"
 
 msgid "tBackups with a log message of at least log level"
 msgstr ""
 
-msgid "tBackup time"
-msgstr "Rezerves kopijas laiks"
-
-msgid "tErrors"
-msgstr "Kļūdas"
-
-msgid "tWarnings"
-msgstr ""
-
 msgid "tStorage allocation"
 msgstr ""
-
-msgid "tStorage usage"
-msgstr ""
-
-msgid "tAll"
-msgstr "Viss"
 
 msgid "tBackup storage path"
 msgstr ""
@@ -472,15 +675,6 @@ msgstr ""
 msgid "tAllow client-side changing of settings"
 msgstr ""
 
-msgid "tdays"
-msgstr "dienas"
-
-msgid "thours"
-msgstr "stundas"
-
-msgid "tmin"
-msgstr ""
-
 msgid "tMail server name"
 msgstr "E-pasta servera nosaukums"
 
@@ -513,35 +707,11 @@ msgstr ""
 msgid "tSending test mail failed. Error:"
 msgstr ""
 
-msgid "tFilter"
-msgstr "Filtrēt"
-
-msgid "tBack"
-msgstr "Atpakaļ"
-
-msgid "tAdd"
-msgstr "Pievienot"
-
-msgid "tRemove"
-msgstr "Noņemt"
-
-msgid "tSave"
-msgstr "Saglabāt"
-
 msgid "tLevel"
 msgstr ""
 
 msgid "tTime"
 msgstr "Laiks"
-
-msgid "tMessage"
-msgstr "Ziņa"
-
-msgid "tLog"
-msgstr ""
-
-msgid "tUsername"
-msgstr "Lietotāja vārds"
 
 msgid "tRights"
 msgstr "Tiesības"
@@ -552,17 +722,11 @@ msgstr "Nav lietotāju"
 msgid "tCreate user"
 msgstr "Izveidot lietotāju"
 
-msgid "tPassword"
-msgstr "Parole"
-
 msgid "tRepeat password"
 msgstr "Atkārtot paroli"
 
 msgid "tRights for"
 msgstr ""
-
-msgid "tAbort"
-msgstr "Atcelt"
 
 msgid "tCreate"
 msgstr "Izveidot"
@@ -573,35 +737,11 @@ msgstr ""
 msgid "tChange password"
 msgstr "Mainīt paroli"
 
-msgid "tLogin"
-msgstr ""
-
-msgid "tInfos"
-msgstr "Informācija"
-
 msgid "tSeparate settings for this client"
 msgstr ""
 
-msgid "tServer"
-msgstr "Serveris"
-
-msgid "tFile backups"
-msgstr "Faila rezerves kopija"
-
-msgid "tImage backups"
-msgstr ""
-
-msgid "tPermissions"
-msgstr "Tiesības"
-
-msgid "tClient"
-msgstr "Klients"
-
 msgid "tArchival"
 msgstr ""
-
-msgid "tInternet"
-msgstr "Internets"
 
 msgid "tPerform autoupdates silently"
 msgstr ""
@@ -612,9 +752,6 @@ msgstr ""
 msgid "tNo activities"
 msgstr "Nav aktivitātes"
 
-msgid "tSelect all"
-msgstr "Iezīmēt visu"
-
 msgid "tSelect none"
 msgstr "Iezīmēt nevienu"
 
@@ -624,20 +761,8 @@ msgstr "Dzēst iezīmēto"
 msgid "tStart for selected"
 msgstr ""
 
-msgid "tInternet clients"
-msgstr "Interneta klients"
-
-msgid "tAdd additional internet clients"
-msgstr ""
-
-msgid "tClient name"
-msgstr "Klienta vārds"
-
 msgid "tNo entries for this filter"
 msgstr ""
-
-msgid "tNo data"
-msgstr "Nav datu"
 
 msgid "tTotal max backup speed for local network"
 msgstr ""
@@ -684,12 +809,6 @@ msgstr "Saspiesta pārraide:"
 msgid "file_backup"
 msgstr "Faila rezerves kopija"
 
-msgid "hours"
-msgstr "stundas"
-
-msgid "days"
-msgstr "dienas"
-
 msgid "weeks"
 msgstr "nedēļas"
 
@@ -717,9 +836,6 @@ msgstr "gadi"
 msgid "min"
 msgstr "minūte"
 
-msgid "mins"
-msgstr "minūtes"
-
 msgid "validate_name_archive_every"
 msgstr "Arhivēt katru"
 
@@ -729,16 +845,10 @@ msgstr ""
 msgid "forever"
 msgstr "vienmēr"
 
-msgid "backup_in_progress"
-msgstr ""
-
 msgid "really_remove_clients"
 msgstr ""
 
 msgid "no_client_selected"
-msgstr ""
-
-msgid "queued_backup"
 msgstr ""
 
 msgid "starting_backup_failed"
@@ -786,9 +896,6 @@ msgstr "Vecā parole nav pareiza"
 msgid "tID"
 msgstr "ID"
 
-msgid "tFile"
-msgstr "Fails"
-
 msgid "tSize"
 msgstr "Izmērs"
 
@@ -807,17 +914,8 @@ msgstr "Dzēst domēnu"
 msgid "tChange rights for user"
 msgstr ""
 
-msgid "tDomain"
-msgstr "Domēns"
-
-msgid "tTranslation"
-msgstr ""
-
 msgid "tNew domain"
 msgstr "Jauns domēns"
-
-msgid "tChange"
-msgstr "Labot"
 
 msgid "tChange password for user"
 msgstr "Mainīt lietotāja paroli"
@@ -831,23 +929,8 @@ msgstr ""
 msgid "tStop removing client"
 msgstr ""
 
-msgid "tFailed"
-msgstr ""
-
 msgid "tSuccessfull"
 msgstr "Veiksmīgi"
-
-msgid "tInfo"
-msgstr "Info"
-
-msgid "tError"
-msgstr "Kļūda"
-
-msgid "tWarning"
-msgstr ""
-
-msgid "tCurrent version"
-msgstr "Pašreizējā versija"
 
 msgid "tTarget version"
 msgstr ""
@@ -876,23 +959,11 @@ msgstr "vienmēr"
 msgid "tFile backup"
 msgstr "Faila rezerves kopija"
 
-msgid "tIncremental file backup"
-msgstr "Inkrementālā failu rezerves kopijas izveidošana"
-
-msgid "tFull file backup"
-msgstr "Pilna failu rezerves kopija"
-
 msgid "tEnable internet mode"
 msgstr ""
 
 msgid "tInternet auth key"
 msgstr ""
-
-msgid "tIncremental image backup"
-msgstr "Inkrementālā klona rezerves kopijas izveide"
-
-msgid "tFull image backup"
-msgstr "Pilna klona rezerves kopija"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
@@ -910,13 +981,22 @@ msgstr ""
 msgid "tNondefault temporary file directory"
 msgstr ""
 
-msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
-
-msgid "about_urbackup"
-msgstr ""
-
 msgid "loading"
+msgstr ""
+
+msgid "tInternet clients"
+msgstr "Interneta klients"
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr "Klienta vārds"
+
+msgid "tNo data"
+msgstr "Nav datu"
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr ""
 
 msgid "authentication_err"
@@ -935,9 +1015,6 @@ msgid "really_recalculate"
 msgstr ""
 
 msgid "database_error_text"
-msgstr ""
-
-msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tDownload folder as ZIP"
@@ -967,25 +1044,13 @@ msgstr ""
 msgid "tLive Log"
 msgstr ""
 
-msgid "tShow"
-msgstr "Rādīt"
-
 msgid "tThere is a new version of UrBackup server available"
 msgstr ""
-
-msgid "tIndexing..."
-msgstr "Indeksē..."
-
-msgid "tDelete"
-msgstr "Dzēst"
 
 msgid "tDownload client from update server"
 msgstr ""
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
-
-msgid "tDisable"
 msgstr ""
 
 msgid "tImage backup file format"
@@ -1045,9 +1110,6 @@ msgstr ""
 msgid "tLocal incremental file backup transfer mode"
 msgstr ""
 
-msgid "tBlock differences - hashed"
-msgstr ""
-
 msgid "tInternet incremental file backup transfer mode"
 msgstr ""
 
@@ -1057,41 +1119,8 @@ msgstr ""
 msgid "tInternet image backup transfer mode"
 msgstr ""
 
-msgid "tFile hash collection amount"
-msgstr ""
-
-msgid "tFile hash collection timeout"
-msgstr ""
-
-msgid "tFile hash collection database cachesize"
-msgstr ""
-
-msgid "tMB"
-msgstr "MB"
-
-msgid "tUpdate stats database cachesize"
-msgstr ""
-
-msgid "tCache database type for file entries"
-msgstr ""
-
-msgid "tNone"
-msgstr ""
-
-msgid "tCache database size for file entries"
-msgstr ""
-
-msgid "tSuspend index limit"
-msgstr ""
-
 msgid "tUse symlinks during incremental file backups"
 msgstr ""
-
-msgid "tEnd-to-end verification of all file backups"
-msgstr ""
-
-msgid "tServer admin mail address"
-msgstr "Servera administratora pasta adrese"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1102,46 +1131,34 @@ msgstr ""
 msgid "tClient download"
 msgstr ""
 
-msgid "tDownload"
-msgstr "Lejupielādēt"
-
-msgid "tStatus"
-msgstr "Statuss"
-
-msgid "tIP"
-msgstr "IP"
-
-msgid "tClient version"
-msgstr "Klienta versija"
-
-msgid "tOperating System"
-msgstr ""
-
-msgid "tShow all clients"
-msgstr "Rādīt visus klientus"
-
-msgid "tThis client is going to be removed. "
-msgstr ""
-
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
 msgstr ""
 
-msgid "First"
-msgstr "Pirmais"
-
-msgid "Last"
-msgstr "Pēdējais"
-
-msgid "Next"
-msgstr "Nākošais"
-
-msgid "Previous"
-msgstr "Iepriekšējais"
-
 msgid "No data available in table"
+msgstr ""
+
+msgid "Show _MENU_ entries"
+msgstr ""
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr ""
+
+msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr ""
+
+msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
@@ -1153,44 +1170,356 @@ msgstr ""
 msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
-msgid "sInfoThousands"
-msgstr ","
-
-msgid "Show _MENU_ entries"
+msgid "Minimize"
 msgstr ""
 
-msgid "Processing..."
-msgstr "Procesā..."
-
-msgid "Search:"
-msgstr "Meklēt:"
-
-msgid "No matching records found"
+msgid "Maximize"
 msgstr ""
 
-msgid "Restore to default"
-msgstr "Uzstādīt sākotnējos parametrus"
-
-msgid "Save"
-msgstr "Saglabāt"
-
-msgid "tConnect to Internet backup server if connected to local backup server"
+msgid "ldap_settings"
 msgstr ""
 
-msgid "tAllow clients to quit the tray icon"
+msgid "client_exists"
 msgstr ""
 
-msgid "tYou need to create a user to be able to send reports"
+msgid "validate_err_empty_internet_client_name"
 msgstr ""
 
-msgid "Show/hide columns"
-msgstr "Rādīt/Slēpt kolonnas"
-
-msgid "tShow when a new server version is available"
+msgid "validate_err_empty_hostname"
 msgstr ""
 
-msgid "tVHD (Virtual HardDisk)"
+msgid "creating_filesindex_text"
 msgstr ""
 
-msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgid "about"
+msgstr ""
+
+msgid "all_clients"
+msgstr ""
+
+msgid "client_settings"
+msgstr ""
+
+msgid "action_8"
+msgstr ""
+
+msgid "action_9"
+msgstr ""
+
+msgid "action_10"
+msgstr ""
+
+msgid "action_11"
+msgstr ""
+
+msgid "action_12"
+msgstr ""
+
+msgid "action_13"
+msgstr ""
+
+msgid "tAbout UrBackup"
+msgstr ""
+
+msgid "tAdd client"
+msgstr ""
+
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
+msgstr ""
+
+msgid "tDownload the client from:"
+msgstr ""
+
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
+msgstr ""
+
+msgid "tAdd new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tName of new Internet client/client behind NAT"
+msgstr ""
+
+msgid "tDiscover new client via IP/hostname hint"
+msgstr ""
+
+msgid "tIP/hostname of client to be discovered"
+msgstr ""
+
+msgid "tCancel"
+msgstr ""
+
+msgid "tAccess denied"
+msgstr ""
+
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
+msgstr ""
+
+msgid "tLogin with username and password"
+msgstr ""
+
+msgid "tError while accessing backups"
+msgstr ""
+
+msgid "tSorry, something went wrong:"
+msgstr ""
+
+msgid "tCreated"
+msgstr ""
+
+msgid "tLast modified"
+msgstr ""
+
+msgid "tLast accessed"
+msgstr ""
+
+msgid "tList"
+msgstr ""
+
+msgid "tRestore"
+msgstr ""
+
+msgid "tRestore folder to client"
+msgstr ""
+
+msgid "tVersion"
+msgstr ""
+
+msgid "tClient added successfully"
+msgstr ""
+
+msgid "tAdded new client with name:"
+msgstr ""
+
+msgid "tDefault authentication key:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Windows"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Mac OS X"
+msgstr ""
+
+msgid "tInstall it directly in the terminal via:"
+msgstr ""
+
+msgid "tDownload preconfigured client installer for Linux"
+msgstr ""
+
+msgid "tAlternatively after you installed the client from:"
+msgstr ""
+
+msgid "tGo the settings screen on the client"
+msgstr ""
+
+msgid "tEnable the internet mode on the client"
+msgstr ""
+
+msgid "tSet the internet server to:"
+msgstr ""
+
+msgid "tSet the internet server port to:"
+msgstr ""
+
+msgid "tSet the computer name to:"
+msgstr ""
+
+msgid "tSet the authentication key to:"
+msgstr ""
+
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgstr ""
+
+msgid "tWith the command line:"
+msgstr ""
+
+msgid "tPercent finished"
+msgstr ""
+
+msgid "tDetails"
+msgstr ""
+
+msgid "tAdd Email Address"
+msgstr ""
+
+msgid "tFailed without failures caused by client timeout"
+msgstr ""
+
+msgid "tMinimum log level"
+msgstr ""
+
+msgid "tBackups interrupted"
+msgstr ""
+
+msgid "tStop"
+msgstr ""
+
+msgid "tShow log"
+msgstr ""
+
+msgid "tETA"
+msgstr ""
+
+msgid "tSpeed"
+msgstr ""
+
+msgid "tFile Backups"
+msgstr ""
+
+msgid "tImage Backups"
+msgstr ""
+
+msgid "tArchive"
+msgstr ""
+
+msgid "tServer URL"
+msgstr ""
+
+msgid "tMax simultaneous backups"
+msgstr ""
+
+msgid "tMax recently active clients"
+msgstr ""
+
+msgid "tDays"
+msgstr ""
+
+msgid "tRaw copy-on-write file"
+msgstr ""
+
+msgid "tMin"
+msgstr ""
+
+msgid "tVirtual sub client names"
+msgstr ""
+
+msgid "tLocal incremental image style"
+msgstr ""
+
+msgid "tBased on last full image backup"
+msgstr ""
+
+msgid "tBased on last image backup"
+msgstr ""
+
+msgid "tInternet incremental image style"
+msgstr ""
+
+msgid "tLocal full image style"
+msgstr ""
+
+msgid "tSynthetic full image backup"
+msgstr ""
+
+msgid "tInternet full image style"
+msgstr ""
+
+msgid "tDatabase cache size during batch processing"
+msgstr ""
+
+msgid "tDebugging: End-to-end verification of all file backups"
+msgstr ""
+
+msgid "tDebugging: Verify file backups using client side hashes"
+msgstr ""
+
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
+msgstr ""
+
+msgid "tRun backups with background priority on the clients"
+msgstr ""
+
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
+msgstr ""
+
+msgid "tMaximum number of simultaneous jobs per client"
+msgstr ""
+
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
+msgstr ""
+
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
+msgstr ""
+
+msgid "tEnable logins via LDAP/AD"
+msgstr ""
+
+msgid "tLDAP/AD server name"
+msgstr ""
+
+msgid "tLDAP/AD server port"
+msgstr ""
+
+msgid "tLDAP/AD user name prefix"
+msgstr ""
+
+msgid "tLDAP/AD user name suffix"
+msgstr ""
+
+msgid "tLDAP/AD group and class query"
+msgstr ""
+
+msgid "tLDAP/AD group key name in query"
+msgstr ""
+
+msgid "tLDAP/AD class key name in query"
+msgstr ""
+
+msgid "tLDAP/AD group rights map"
+msgstr ""
+
+msgid "tLDAP/AD class rights map"
+msgstr ""
+
+msgid "tTest login with this user"
+msgstr ""
+
+msgid "tPassword for test user"
+msgstr ""
+
+msgid "tTest login succeeded. Rights of user:"
+msgstr ""
+
+msgid "tTest login failed. Error:"
+msgstr ""
+
+msgid "tDownload client for Windows"
+msgstr ""
+
+msgid "tDownload client for Mac OS X"
+msgstr ""
+
+msgid "tDownload client for Linux"
+msgstr ""
+
+msgid "tRemove client"
+msgstr ""
+
+msgid "tAdd new client"
+msgstr ""
+
+msgid "tClient discovery hints"
+msgstr ""
+
+msgid "tAdd hostname/IP as client discovery hint"
+msgstr ""
+
+msgid "tBackup Statistics"
 msgstr ""

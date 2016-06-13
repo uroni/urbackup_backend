@@ -21,7 +21,7 @@ bool PersistentOpenFiles::cycle()
 	bytes_deleted = 0;
 	bytes_written = 0;
 
-	for(std::map<std::wstring, unsigned int>::iterator it=open_files.begin();it!=open_files.end();++it)
+	for(std::map<std::string, unsigned int>::iterator it=open_files.begin();it!=open_files.end();++it)
 	{
 		addf(it->first, it->second);
 	}
@@ -30,12 +30,12 @@ bool PersistentOpenFiles::cycle()
 
 	Server->destroy(persistf);
 
-	if(!os_rename_file(widen(persistent_open_files_new_fn), widen(persistent_open_files_fn)))
+	if(!os_rename_file(persistent_open_files_new_fn, persistent_open_files_fn))
 	{
 		return false;
 	}
 
-	persistf = Server->openFile(widen(persistent_open_files_fn), MODE_RW);
+	persistf = Server->openFile(persistent_open_files_fn, MODE_RW);
 
 	if(!persistf) return false;
 
@@ -65,7 +65,8 @@ bool PersistentOpenFiles::flushf_int(bool allow_cycle)
 	}
 	wdata.clear();
 
-	if(persistf->Size()>20*1024*1024 && allow_cycle)
+	if(persistf->Size()>20*1024*1024 && allow_cycle
+		&& bytes_deleted>5*1024*1024)
 	{
 		return cycle();
 	}
@@ -88,13 +89,13 @@ void PersistentOpenFiles::removef( unsigned int id, size_t fn_size )
 	bytes_deleted+=1+sizeof(int64)+sizeof(_u32)+fn_size+sizeof(id);
 }
 
-void PersistentOpenFiles::addf( const std::wstring& fn, unsigned int id )
+void PersistentOpenFiles::addf( const std::string& fn, unsigned int id )
 {
 	if(!persistf) return;
 
 	wdata.addChar(PERSIST_ADD);
 	wdata.addInt64(Server->getTimeMS());
-	wdata.addString(Server->ConvertToUTF8(fn));
+	wdata.addString((fn));
 	wdata.addUInt(id);
 
 	bytes_written+=1+sizeof(int64)+sizeof(_u32)+fn.size()+sizeof(id);
@@ -122,7 +123,7 @@ bool PersistentOpenFiles::load()
 
 	CRData pdata(data.data(), data.size());
 
-	std::map<std::wstring, unsigned int> new_open_files;
+	std::map<std::string, unsigned int> new_open_files;
 
 	int64 max_time=0;
 
@@ -152,7 +153,7 @@ bool PersistentOpenFiles::load()
 				return false;
 			}
 
-			new_open_files[Server->ConvertToUnicode(fn)]=id;
+			new_open_files[(fn)]=id;
 
 			curr_id=(std::max)(curr_id, id);
 
@@ -182,7 +183,7 @@ bool PersistentOpenFiles::load()
 			}
 
 			bool found=false;
-			for(std::map<std::wstring, unsigned int>::iterator it=new_open_files.begin();it!=new_open_files.end();++it)
+			for(std::map<std::string, unsigned int>::iterator it=new_open_files.begin();it!=new_open_files.end();++it)
 			{
 				if(it->second==id)
 				{
@@ -223,19 +224,19 @@ bool PersistentOpenFiles::load()
 	return true;
 }
 
-std::vector<std::wstring> PersistentOpenFiles::get()
+std::vector<std::string> PersistentOpenFiles::get()
 {
-	std::vector<std::wstring> ret;
-	for(std::map<std::wstring, unsigned int>::iterator it=open_files.begin();it!=open_files.end();++it)
+	std::vector<std::string> ret;
+	for(std::map<std::string, unsigned int>::iterator it=open_files.begin();it!=open_files.end();++it)
 	{
 		ret.push_back(it->first);
 	}
 	return ret;
 }
 
-void PersistentOpenFiles::remove( const std::wstring& fn )
+void PersistentOpenFiles::remove( const std::string& fn )
 {
-	std::map<std::wstring, unsigned int>::iterator it=open_files.find(fn);
+	std::map<std::string, unsigned int>::iterator it=open_files.find(fn);
 	if(it!=open_files.end())
 	{
 		removef(it->second, it->first.size());
@@ -244,7 +245,7 @@ void PersistentOpenFiles::remove( const std::wstring& fn )
 	}
 }
 
-void PersistentOpenFiles::add( const std::wstring& fn )
+void PersistentOpenFiles::add( const std::string& fn )
 {
 	if(open_files.find(fn)==open_files.end())
 	{
@@ -255,7 +256,7 @@ void PersistentOpenFiles::add( const std::wstring& fn )
 	}
 }
 
-bool PersistentOpenFiles::is_present( const std::wstring& fn )
+bool PersistentOpenFiles::is_present( const std::string& fn )
 {
 	return (open_files.find(fn)!=open_files.end());
 }

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+CDIR=`dirname $0`
+
+. "SYSCONFDIR/mariadbdump.conf"
+. "SYSCONFDIR/postgresqldump.conf"
+. "SYSCONFDIR/postgresbase.conf"
+. "SYSCONFDIR/mariadbxtrabackup.conf"
+
+if [ "x$MARIADB_DUMP_ENABLED" != "x0" ]; then echo "scriptname=mariadbdump&outputname=mariadbdump.sql"; fi
+if [ "x$POSTGRESQL_DUMP_ENABLED" != "x0" ]; then echo "scriptname=postgresqldump&outputname=postgresqldump.sql"; fi
+if [ "x$POSTGRESQL_BASE_ENABLED" != "x0" ]; then echo "scriptname=postgresbase&outputname=postgresbase&tar=1&orig_path=$POSTGRESQL_BASE_DIR"; fi
+if [ "x$MARIADB_XTRABACKUP_ENABLED" != "x0" ]; then echo "scriptname=mariadbxtrabackup&outputname=mariadbxtrabackup&tar=1&orig_path=$MARIADB_DATADIR"; fi

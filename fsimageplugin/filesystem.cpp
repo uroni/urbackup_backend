@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/os_functions.h"
 #include <memory.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -65,16 +66,13 @@ namespace
 
 		void operator()()
 		{
-#ifdef _WIN32
+			ScopedBackgroundPrio background_prio(false);
 			if(background_priority)
 			{
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#else
-				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
-#endif //THREAD_MODE_BACKGROUND_BEGIN
-			}
+#ifndef _DEBUG
+				background_prio.enable();
 #endif
+			}
 
 			IScopedLock lock(mutex.get());
 			while(!do_stop)
@@ -113,13 +111,14 @@ namespace
 
 				if(current_block!=-1)
 				{
+					int64 l_current_block = current_block;
 					lock.relock(NULL);
-					char* buf = fs.readBlockInt(current_block, false);
+					char* buf = fs.readBlockInt(l_current_block, false);
 					lock.relock(mutex.get());
 
-					read_blocks[current_block] = buf;
+					read_blocks[l_current_block] = buf;
 
-					current_block = next_used_block(current_block);
+					current_block = next_used_block(l_current_block);
 
 					if(readahead_miss)
 					{
@@ -128,17 +127,6 @@ namespace
 					}
 				}
 			}
-
-#ifdef _WIN32
-			if(background_priority)
-			{
-#ifdef THREAD_MODE_BACKGROUND_END
-				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-#else
-				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-#endif
-			}
-#endif
 		}
 
 		char* getBlock(int64 block)
@@ -234,9 +222,20 @@ namespace
 
 		bool background_priority;
 	};
+
+	unsigned int getLastSystemError()
+	{
+		unsigned int last_error;
+#ifdef _WIN32
+		last_error=GetLastError();
+#else
+		last_error=errno;
+#endif
+		return last_error;
+	}
 }
 
-Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool background_priority)
+Filesystem::Filesystem(const std::string &pDev, bool read_ahead, bool background_priority)
 	: buffer_mutex(Server->createMutex())
 {
 	has_error=false;
@@ -244,13 +243,7 @@ Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool backgroun
 	dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
 	{
-		int last_error;
-#ifdef _WIN32
-		last_error=GetLastError();
-#else
-		last_error=errno;
-#endif
-		Server->Log("Error opening device file. Errorcode: "+nconvert(last_error), LL_ERROR);
+		Server->Log("Error opening device file. Errorcode: "+convert(getLastSystemError()), LL_ERROR);
 		has_error=true;
 	}
 	own_dev=true;
@@ -258,7 +251,7 @@ Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool backgroun
 	if(read_ahead)
 	{
 		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
 	}
 }
 
@@ -271,7 +264,7 @@ Filesystem::Filesystem(IFile *pDev, bool read_ahead, bool background_priority)
 	if(read_ahead)
 	{
 		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
 	}
 }
 
@@ -381,12 +374,12 @@ bool Filesystem::readFromDev(char *buf, _u32 bsize)
 	while(rc<bsize)
 	{
 		Server->wait(200);
-		Server->Log("Reading from device failed. Retrying.", LL_WARNING);
+		Server->Log("Reading from device failed. Retrying. Errorcode: "+convert(getLastSystemError()), LL_WARNING);
 		rc+=dev->Read(buf+rc, bsize-rc);
 		--tries;
 		if(tries<0)
 		{
-			Server->Log("Reading from device failed.", LL_ERROR);
+			Server->Log("Reading from device failed. Errorcode: "+convert(getLastSystemError()), LL_ERROR);
 			return false;
 		}
 	}

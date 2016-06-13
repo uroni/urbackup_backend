@@ -7,19 +7,27 @@
 
 namespace
 {
+	const char* image_file_format_default = "default";
 	const char* image_file_format_vhd = "vhd";
 	const char* image_file_format_vhdz = "vhdz";
+	const char* image_file_format_cowraw = "cowraw";
+
+	const char* full_image_style_full = "full";
+	const char* full_image_style_synthetic = "synthetic";
+
+	const char* incr_image_style_to_full = "to-full";
+	const char* incr_image_style_to_last = "to-last";
 }
 
 struct SSettings
 {
 	int clientid;
-	std::wstring backupfolder;
-	std::wstring backupfolder_uncompr;
-	int update_freq_incr;
-	int update_freq_full;
-	int update_freq_image_full;
-	int update_freq_image_incr;
+	std::string backupfolder;
+	std::string backupfolder_uncompr;
+	std::string update_freq_incr;
+	std::string update_freq_full;
+	std::string update_freq_image_full;
+	std::string update_freq_image_incr;
 	int max_file_incr;
 	int min_file_incr;
 	int max_file_full;
@@ -42,10 +50,11 @@ struct SSettings
 	std::string backup_window_full_file;
 	std::string backup_window_incr_image;
 	std::string backup_window_full_image;
-	std::wstring computername;
-	std::wstring exclude_files;
-	std::wstring include_files;
-	std::wstring default_dirs;
+	std::string computername;
+	std::string virtual_clients;
+	std::string exclude_files;
+	std::string include_files;
+	std::string default_dirs;
 	std::string cleanup_window;
 	bool allow_pause;
 	bool allow_starting_full_file_backups;
@@ -66,51 +75,97 @@ struct SSettings
 	bool internet_encrypt;
 	bool internet_compress;
 	int internet_compression_level;
-	int local_speed;
-	int internet_speed;
-	int global_internet_speed;
-	int global_local_speed;
+	std::string local_speed;
+	std::string internet_speed;
+	std::string global_internet_speed;
+	std::string global_local_speed;
 	bool internet_mode_enabled;
 	bool silent_update;
 	bool use_tmpfiles;
 	bool use_tmpfiles_images;
-	std::wstring tmpdir;
+	std::string tmpdir;
 	std::string local_full_file_transfer_mode;
 	std::string internet_full_file_transfer_mode;
 	std::string local_incr_file_transfer_mode;
 	std::string internet_incr_file_transfer_mode;
 	std::string local_image_transfer_mode;
 	std::string internet_image_transfer_mode;
-	size_t file_hash_collect_amount;
-	size_t file_hash_collect_timeout;
-	size_t file_hash_collect_cachesize;
 	size_t update_stats_cachesize;
 	std::string global_soft_fs_quota;
-	std::string filescache_type;
-	int64 filescache_size;
-	int suspend_index_limit;
 	std::string client_quota;
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;
 	bool use_incremental_symlinks;
 	std::string image_file_format;
-	bool trust_client_hashes;
 	bool internet_connect_always;
 	bool show_server_updates;
+	std::string server_url;
 	bool verify_using_client_hashes;
 	bool internet_readd_file_entries;
+	std::string client_access_key;
+	int max_running_jobs_per_client;
 	bool background_backups;
-	bool follow_symlinks;
+	bool create_linked_user_views;
+	std::string local_incr_image_style;
+	std::string local_full_image_style;
+	std::string internet_incr_image_style;
+	std::string internet_full_image_style;
+	float backup_ok_mod_file;
+	float backup_ok_mod_image;
+	std::string cbt_volumes;
+	std::string cbt_crash_persistent_volumes;
+	bool ignore_disk_errors;
+};
+
+struct SLDAPSettings
+{
+	SLDAPSettings()
+		: server_port(0)
+	{
+
+	}
+
+	bool login_enabled;
+	std::string server_name;
+	int server_port;
+	std::string username_prefix;
+	std::string username_suffix;
+	std::string group_class_query;
+	std::string group_key_name;
+	std::string class_key_name;
+	std::map<std::string, std::string> group_rights_map;
+	std::map<std::string, std::string> class_rights_map;
 };
 
 struct STimeSpan
 {
-	STimeSpan(void): dayofweek(-1) {}
-	STimeSpan(int dayofweek, float start_hour, float stop_hour):dayofweek(dayofweek), start_hour(start_hour), stop_hour(stop_hour) {}
-	STimeSpan(float start_hour, float stop_hour):dayofweek(0), start_hour(start_hour), stop_hour(stop_hour) {}
+	STimeSpan(void): dayofweek(-1), numdays(7) {}
+	STimeSpan(int dayofweek, float start_hour, float stop_hour):dayofweek(dayofweek), start_hour(start_hour), stop_hour(stop_hour), numdays(1) {}
+	STimeSpan(float start_hour, float stop_hour):dayofweek(0), start_hour(start_hour), stop_hour(stop_hour), numdays(1) {}
+
 	int dayofweek;
+	int numdays;
 	float start_hour;
 	float stop_hour;
+
+	float duration()
+	{
+		if(dayofweek==-1)
+		{
+			return 24.f*numdays;
+		}
+		else
+		{
+			if (stop_hour < start_hour)
+			{
+				return (stop_hour + 24 - start_hour)*numdays;
+			}
+			else
+			{
+				return (stop_hour - start_hour)*numdays;
+			}
+		}
+	}
 };
 
 class ServerSettings;
@@ -149,16 +204,39 @@ public:
 	std::vector<STimeSpan> getCleanupWindow(void);
 	std::vector<std::string> getBackupVolumes(const std::string& all_volumes, const std::string& all_nonusb_volumes);
 
+	std::string getImageFileFormat();
+
 	int getUpdateFreqImageIncr();
 	int getUpdateFreqFileIncr();
 	int getUpdateFreqImageFull();
 	int getUpdateFreqFileFull();
 
+	int getLocalSpeed();
+	int getGlobalLocalSpeed();
+	int getInternetSpeed();
+	int getGlobalInternetSpeed();
+
+	static bool isInTimeSpan(std::vector<STimeSpan> bw);
+
+	SLDAPSettings getLDAPSettings();
+
+	std::string ldapMapToString(const std::map<std::string, std::string>& ldap_map);
+
 private:
 	void operator=(const ServerSettings& other){};
 	ServerSettings(const ServerSettings& other){};
 
+	std::string getImageFileFormatInt(const std::string& image_file_format);
+
 	std::vector<STimeSpan> getWindow(std::string window);
+
+	std::vector<STimeSpan> parseTimeSpan(std::string time_span);
+
+	std::vector<std::pair<double, STimeSpan > > parseTimeSpanValue(std::string time_span_value);
+
+	double currentTimeSpanValue(std::string time_span_value);
+
+
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
 	int parseDayOfWeek(std::string dow);
@@ -170,6 +248,7 @@ private:
 	void readSizeClientSetting(const std::string &name, size_t *output);
 	void createSettingsReaders();
 	void updateInternal(bool* was_updated);
+	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 
 	SSettingsCacheItem* settings_cache;
 	SSettings* local_settings;

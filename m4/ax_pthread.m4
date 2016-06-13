@@ -253,6 +253,9 @@ if test "x$ax_pthread_ok" = xyes; then
         if test "x$flag" != xno; then
             PTHREAD_CFLAGS="$flag $PTHREAD_CFLAGS"
         fi
+		
+		AC_TRY_LINK([#include <pthread.h>], [pthread_t ct = pthread_self();pthread_setname_np(ct, "test");],
+                                        [AC_DEFINE([HAVE_PTHREAD_SETNAME_NP], [1], [pthread has GNU extension thread_setname_np])])
 
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"

@@ -1,10 +1,11 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Pipe.h"
 #include "../Interface/Mutex.h"
-#include "fileclient/socket_header.h"
+#include "../urbackupcommon/fileclient/socket_header.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 
-class BackupServerGet;
+class ClientMain;
+class IDatabase;
 
 class ServerSettings;
 namespace {
@@ -14,7 +15,7 @@ class SessionKeepaliveThread;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identiy);
+	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, const std::string& identiy, std::string server_token);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -22,6 +23,8 @@ public:
 	std::string processMsg(const std::string &msg);
 
 	void doExit(void);
+
+    static void initOffset();
 
 private:
 	int64 lasttime;
@@ -31,14 +34,23 @@ private:
 
 	bool hasDownloadImageRights(void);
 
+	int getLastBackupid(IDatabase* db);
+
 	void LOGIN(str_map& params);
 	void SALT(str_map& params);
 
 	void GET_BACKUPCLIENTS(void);
-	void GET_BACKUPIMAGES(const std::wstring& clientname);
+	void GET_BACKUPIMAGES(const std::string& clientname);
+	void GET_FILE_BACKUPS(const std::string& clientname);
+	void GET_FILE_BACKUPS_TOKENS(str_map& params);
+	void GET_FILE_LIST_TOKENS(str_map& params);
 	void DOWNLOAD_IMAGE(str_map& params);
+	void DOWNLOAD_FILES(str_map& params);
+	void DOWNLOAD_FILES_TOKENS(str_map& params);
+	void RESTORE_PERCENT( str_map params );
+	void RESTORE_DONE( str_map params );
 
-	BackupServerGet *server_get;
+	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
 	CTCPStack tcpstack;
@@ -48,18 +60,24 @@ private:
 	IMutex *mutex;
 
 	volatile bool do_exit;
-	bool combat_mode;
 	bool internet_mode;
 
 	std::string salt;
-	std::wstring session;
+	std::string session;
 	std::vector<int> client_right_ids;
 	bool all_client_rights;
 
-	int img_id_offset;
+    static int img_id_offset;
 
-	std::string identity;
 	std::string client_addr;
 
 	SessionKeepaliveThread* keepalive_thread;
+
+	std::string clientname;
+
+	std::string last_fileaccesstokens;
+
+	std::string server_token;
+
+	std::vector<THREADPOOL_TICKET> fileclient_threads;
 };

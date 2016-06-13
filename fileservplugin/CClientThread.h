@@ -26,8 +26,10 @@
 class CTCPFileServ;
 class IPipe;
 class IFile;
+class IFsFile;
 class IMutex;
 class ICondition;
+class ScopedPipeFileUser;
 
 #include "chunk_settings.h"
 #include "packet_ids.h"
@@ -47,13 +49,13 @@ struct SSendData
 struct SChunk
 {
 	SChunk()
-		: msg(ID_ILLEGAL), update_file(NULL)
+		: msg(ID_ILLEGAL), update_file(NULL), pipe_file_user(NULL)
 	{
 
 	}
 
 	explicit SChunk(char msg)
-		: msg(msg), update_file(NULL)
+		: msg(msg), update_file(NULL), pipe_file_user(NULL)
 	{
 
 	}
@@ -65,17 +67,25 @@ struct SChunk
 	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
 	IFile* update_file;
 	_i64 hashsize;
+	int64 requested_filesize;
+	ScopedPipeFileUser* pipe_file_user;
+	bool with_sparse;
+	std::string s_filename;
 };
 
 struct SLPData
 {
 	std::deque<SSendData*> *t_send;
 	std::vector<SLPData*> *t_unsend;
+	unsigned int *errorcode;
+	fileserv::CBufMgr* bufmgr;
 	char* buffer;
 	bool last;
 
 	int filepart;
 	int *sendfilepart;
+
+	bool has_error;
 
 	unsigned int bsize;
 };
@@ -90,7 +100,7 @@ class CClientThread : public IThread
 {
 public:
 	CClientThread(SOCKET pSocket, CTCPFileServ* pParent);
-	CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent);
+	CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent, std::vector<char>* extra_buffer);
 	~CClientThread();
 
 	bool isStopped(void);
@@ -100,25 +110,57 @@ public:
 
 	void StopThread(void);
 
-	int SendInt(const char *buf, size_t bsize);
+    int SendInt(const char *buf, size_t bsize, bool flush=false);
+	bool FlushInt();
 	bool getNextChunk(SChunk *chunk, bool has_error);
 private:
 
+	bool sendFullFile(IFile* file, _i64 start_offset, bool with_hashes);
+
 	bool RecvMessage();
 	bool ProcessPacket(CRData *data);
-	void ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
+	bool ReadFilePart(HANDLE hFile, _i64 offset, bool last, _u32 toread);
 	int SendData();
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
-	void EnableNagle(void);
-	void DisableNagle(void);
-
-	bool GetFileBlockdiff(CRData *data);
+	bool GetFileBlockdiff(CRData *data, bool with_metadata);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 
-	void queueChunk(SChunk chunk);
+	bool GetFileHashAndMetadata(CRData* data);
 
+	void queueChunk(SChunk chunk);
+	bool InformMetadataStreamEnd( CRData * data );
+	bool FinishScript( CRData * data );
+
+	std::string getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id, bool is_dir);
+
+	struct SExtent
+	{
+		SExtent()
+			: offset(-1), size(-1)
+		{
+
+		}
+
+		SExtent(int64 offset, int64 size)
+			: offset(offset), size(size)
+		{}
+
+		bool operator<(const SExtent& other) const
+		{
+			return offset < other.offset;
+		}
+
+		int64 offset;
+		int64 size;
+	};
+
+	int64 getFileExtents(int64 fsize, int64& n_sparse_extents, std::vector<SExtent>& file_extents, bool& has_file_extents, int64& start_offset);
+
+	bool sendExtents(const std::vector<SExtent>& file_extents, int64 fsize, int64 n_sparse_extents);
+
+	bool sendSparseExtents(const std::vector<SExtent>& file_extents);
 
 	volatile bool stopped;
 	volatile bool killable;
@@ -126,12 +168,13 @@ private:
 	int currfilepart;
 	int sendfilepart;
 
-	CBufMgr* bufmgr;
+	fileserv::CBufMgr* bufmgr;
 	CTCPStack stack;
 	char buffer[BUFFERSIZE];
 
 	std::deque<SSendData*> t_send;
 	std::vector<SLPData*> t_unsend;
+	unsigned int errorcode;
 
 	HANDLE hFile;
 
@@ -151,11 +194,14 @@ private:
 	ICondition *cond;
 	std::queue<SChunk> next_chunks;
 
-	uchar cmd_id;
+	bool with_hashes;
 
 	EClientState state;
 	THREADPOOL_TICKET chunk_send_thread_ticket;
+	bool waiting_for_chunk;
 
 	SOCKET int_socket;
 	bool has_socket;
+
+	std::vector<char>* extra_buffer;
 };

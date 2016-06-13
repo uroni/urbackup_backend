@@ -1,28 +1,25 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server.h"
 #include "../Interface/Server.h"
 #include "../Interface/Database.h"
 #include "../Interface/ThreadPool.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "database.h"
 #include "../Interface/SettingsReader.h"
 #include "server_status.h"
@@ -34,8 +31,8 @@
 #include "dao/ServerBackupDao.h"
 #include <memory.h>
 #include <algorithm>
+#include "ThrottleUpdater.h"
 
-const unsigned int waittime=50*1000; //1 min
 const int max_offline=5;
 
 IPipeThrottler *BackupServer::global_internet_throttler=NULL;
@@ -43,9 +40,12 @@ IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
 bool BackupServer::filesystem_transactions_enabled = false;
+bool BackupServer::use_tree_hashing = false;
 volatile bool BackupServer::update_delete_pending_clients=true;
 IMutex* BackupServer::force_offline_mutex=NULL;
-std::vector<std::wstring> BackupServer::force_offline_clients;
+std::vector<std::string> BackupServer::force_offline_clients;
+std::map<std::string, std::vector<std::string> >  BackupServer::virtual_clients;
+IMutex* BackupServer::virtual_clients_mutex=NULL;
 
 
 BackupServer::BackupServer(IPipe *pExitpipe)
@@ -54,6 +54,7 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
 	force_offline_mutex=Server->createMutex();
+	virtual_clients_mutex=Server->createMutex();
 
 	if(Server->getServerParameter("internet_only_mode")=="true")
 		internet_only_mode=true;
@@ -65,6 +66,7 @@ BackupServer::~BackupServer()
 {
 	Server->destroy(throttle_mutex);
 	Server->destroy(force_offline_mutex);
+	Server->destroy(virtual_clients_mutex);
 }
 
 void BackupServer::operator()(void)
@@ -72,17 +74,19 @@ void BackupServer::operator()(void)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
 
+	setupUseTreeHashing();
+
 #ifdef _WIN32
-	std::wstring tmpdir;
-	if(settings->getValue(L"tmpdir", &tmpdir) && !tmpdir.empty())
+	std::string tmpdir;
+	if(settings->getValue("tmpdir", &tmpdir) && !tmpdir.empty())
 	{
-		os_remove_nonempty_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
-		if(!os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp"))
+		os_remove_nonempty_dir(tmpdir+os_file_sep()+"urbackup_tmp");
+		if(!os_create_dir(tmpdir+os_file_sep()+"urbackup_tmp"))
 		{
 			Server->wait(5000);
-			os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+			os_create_dir(tmpdir+os_file_sep()+"urbackup_tmp");
 		}
-		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(tmpdir+os_file_sep()+"urbackup_tmp");
 	}
 	else
 	{
@@ -93,28 +97,28 @@ void BackupServer::operator()(void)
 			wcscpy_s(tmpp,L"C:\\");
 		}
 
-		std::wstring w_tmp=tmpp;
+		std::string w_tmp=Server->ConvertFromWchar(tmpp);
 
 		if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
 		{
 			w_tmp.erase(w_tmp.size()-1, 1);		}
 
 
-		os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
-		if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp"))
+		os_remove_nonempty_dir(w_tmp+os_file_sep()+"urbackup_tmp");
+		if(!os_create_dir(w_tmp+os_file_sep()+"urbackup_tmp"))
 		{
 			Server->wait(5000);
-			os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
+			os_create_dir(w_tmp+os_file_sep()+"urbackup_tmp");
 		}
-		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(w_tmp+os_file_sep()+"urbackup_tmp");
 	}
 #endif
-	std::wstring backupfolder;
-	if( settings->getValue(L"backupfolder", &backupfolder) )
+	std::string backupfolder;
+	if( settings->getValue("backupfolder", &backupfolder) )
 	{
 		if( settings->getValue("use_tmpfiles", "")!="true" )
 		{		
-			std::wstring tmpfile_path=backupfolder+os_file_sep()+L"urbackup_tmp_files";
+			std::string tmpfile_path=backupfolder+os_file_sep()+"urbackup_tmp_files";
 
 			Server->Log("Removing temporary files...");
 			os_remove_nonempty_dir(tmpfile_path);
@@ -128,7 +132,7 @@ void BackupServer::operator()(void)
 
 #ifndef _WIN32
 		os_create_dir("/etc/urbackup");
-		writestring(Server->ConvertToUTF8(backupfolder), "/etc/urbackup/backupfolder");
+		writestring((backupfolder), "/etc/urbackup/backupfolder");
 #endif
 	}
 
@@ -157,7 +161,12 @@ void BackupServer::operator()(void)
 		}
 
 		std::string r;
-		exitpipe->Read(&r, 20000);
+#ifndef _DEBUG
+		int exitpipetimeout = 20000;
+#else
+		int exitpipetimeout = 0;
+#endif
+		exitpipe->Read(&r, exitpipetimeout);
 		if(r=="exit")
 		{
 			removeAllClients();
@@ -181,11 +190,11 @@ void BackupServer::findClients(FileClient &fc)
 		for(size_t i=0;i<res.size();++i)
 		{
 			unsigned int dest;
-			bool b=os_lookuphostname(Server->ConvertToUTF8(res[i][L"hostname"]), &dest);
+			bool b=os_lookuphostname((res[i]["hostname"]), &dest);
 			if(b)
 			{
 				q_update_extra_ip->Bind((_i64)dest);
-				q_update_extra_ip->Bind(res[i][L"id"]);
+				q_update_extra_ip->Bind(res[i]["id"]);
 				q_update_extra_ip->Write();
 				q_update_extra_ip->Reset();
 
@@ -213,81 +222,141 @@ void BackupServer::findClients(FileClient &fc)
 	}
 }
 
+namespace
+{
+	struct SClientInfo
+	{
+		explicit SClientInfo(std::string name)
+			: name(name), internetclient(false), delete_pending(false),
+			filebackup_group_offset(0)
+		{
+
+		}
+
+		SClientInfo() :
+			internetclient(false), delete_pending(false),
+				filebackup_group_offset(0)
+		{
+			
+		}
+
+		bool operator==(const SClientInfo& other) const
+		{
+			return name==other.name;
+		}
+
+		std::string name;
+		std::string subname;
+		std::string mainname;
+		sockaddr_in addr;
+		std::string endpoint_name;
+		bool internetclient;
+		bool delete_pending;
+		int filebackup_group_offset;
+	};
+}
+
 void BackupServer::startClients(FileClient &fc)
 {
-	std::vector<std::wstring> names;
-	std::vector<sockaddr_in> servers;
-	std::vector<std::string> endpoint_names;
+	std::vector<SClientInfo> client_info;
 
 	if(!internet_only_mode)
 	{
-		names=fc.getServerNames();
-		servers=fc.getServers();
-	}
+		std::vector<std::string> names=fc.getServerNames();
+		std::vector<sockaddr_in> servers=fc.getServers();
 
-	endpoint_names.resize(servers.size());
+		client_info.resize(servers.size());
+
+		for(size_t i=0;i<names.size();++i)
+		{
+			client_info[i].name = names[i];
+			client_info[i].addr = servers[i];
+		}
+	}
 
 	maybeUpdateExistingClientsLower();
 
-	for(size_t i=0;i<names.size();++i)
-	{
-		names[i]=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(names[i])));
-
-		fixClientnameCase(names[i]);
-	}
-
-	std::vector<bool> inetclient;
-	inetclient.resize(names.size());
-	std::fill(inetclient.begin(), inetclient.end(), false);
 	std::vector<std::pair<std::string, std::string> > anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i].first));
-		bool skip=false;
-		for(size_t j=0;j<names.size();++j)
+		std::string new_name = (anames[i].first);
+		if(std::find(client_info.begin(), client_info.end(), SClientInfo(new_name))!=client_info.end())
 		{
-			if( new_name==names[j] )
-			{
-				skip=true;
-				break;
-			}
-		}
-		if(skip)
 			continue;
+		}
 
-		fixClientnameCase(new_name);
-		names.push_back(new_name);
-		inetclient.push_back(true);
-		sockaddr_in n;
-		memset(&n, 0, sizeof(sockaddr_in));
-		servers.push_back(n);
-		endpoint_names.push_back(anames[i].second);
+		SClientInfo new_client;
+		new_client.name = new_name;
+		memset(&(new_client.addr), 0, sizeof(sockaddr_in));
+		new_client.endpoint_name = anames[i].second;
+		new_client.internetclient = true;
+
+		client_info.push_back(new_client);
 	}
 
-	std::vector<bool> delete_pending_curr;
-	delete_pending_curr.resize(names.size());
+	for(size_t i=0;i<client_info.size();++i)
+	{
+		client_info[i].name=(conv_filename((client_info[i].name)));
+
+		fixClientnameCase(client_info[i].name);
+
+		client_info[i].mainname=client_info[i].name;
+	}
+
+	{
+		IScopedLock lock(virtual_clients_mutex);
+
+		for(size_t i=0,size=client_info.size();i<size;++i)
+		{
+			std::map<std::string, std::vector<std::string> >::iterator it=virtual_clients.find(client_info[i].name);
+
+			if(it!=virtual_clients.end())
+			{
+				for(size_t j=0;j<it->second.size();++j)
+				{
+					std::string new_name = client_info[i].name+"["+it->second[j]+"]";
+
+					new_name = (conv_filename((new_name)));
+
+					fixClientnameCase(new_name);
+
+					SClientInfo new_client = client_info[i];
+					new_client.name = new_name;
+					new_client.mainname = client_info[i].name;
+					new_client.subname = it->second[j];
+					new_client.filebackup_group_offset = static_cast<int>((j+1)*c_group_size);
+
+					client_info.push_back(new_client);
+				}
+			}
+		}
+	}
+
 	maybeUpdateDeletePendingClients();
 
-	std::vector<std::wstring> local_force_offline_clients;
+	std::vector<std::string> local_force_offline_clients;
 	{
 		IScopedLock lock(force_offline_mutex);
 		local_force_offline_clients = force_offline_clients;
 	}
 
-	for(size_t i=0;i<names.size();++i)
+	for(size_t i=0;i<client_info.size();++i)
 	{
-		delete_pending_curr[i]=isDeletePendingClient(names[i]);
-		delete_pending_curr[i] = delete_pending_curr[i] ||
-			std::find(local_force_offline_clients.begin(), local_force_offline_clients.end(), names[i]) != local_force_offline_clients.end();
+		SClientInfo& curr_info = client_info[i];
+		curr_info.delete_pending=isDeletePendingClient(curr_info.name);
+		curr_info.delete_pending = curr_info.delete_pending ||
+			std::find(local_force_offline_clients.begin(), local_force_offline_clients.end(), curr_info.name) != local_force_offline_clients.end();
 
-		if(delete_pending_curr[i])
+		if(curr_info.delete_pending)
+		{
 			continue;
+		}
 
-		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
+		std::map<std::string, SClient>::iterator it=clients.find(curr_info.name);
 		if( it==clients.end() )
 		{
-			Server->Log(L"New Backupclient: "+names[i]);
-			ServerStatus::setOnline(names[i], true);
+			Server->Log("New Backupclient: "+curr_info.name);
+			ServerStatus::setOnline(curr_info.name, true);
 			IPipe *np=Server->createMemoryPipe();
 
 			update_existing_client_names=true;
@@ -297,73 +366,74 @@ void BackupServer::startClients(FileClient &fc)
 			if(snapshots_enabled)
 				use_reflink=true;
 #endif
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i], snapshots_enabled, use_reflink);
-			Server->getThreadPool()->execute(client);
+			ClientMain *client=new ClientMain(np, curr_info.addr, curr_info.name, curr_info.subname, curr_info.mainname,
+				curr_info.filebackup_group_offset, curr_info.internetclient, snapshots_enabled, use_reflink);
+			Server->getThreadPool()->execute(client, "client main");
 
 			SClient c;
 			c.pipe=np;
 			c.offlinecount=0;
-			c.addr=servers[i];
-			c.internet_connection=inetclient[i];
+			c.changecount = 0;
+			c.addr=curr_info.addr;
+			c.internet_connection=curr_info.internetclient;
 
 			if(c.internet_connection)
 			{
-				ServerStatus::setIP(names[i], inet_addr(endpoint_names[i].c_str()));
+				ServerStatus::setIP(curr_info.name, inet_addr(curr_info.endpoint_name.c_str()));
 			}
 			else
 			{
-				ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+				ServerStatus::setIP(curr_info.name, c.addr.sin_addr.s_addr);
 			}
 
-			clients.insert(std::pair<std::wstring, SClient>(names[i], c) );
+			clients.insert(std::pair<std::string, SClient>(curr_info.name, c) );
 		}
 		else if(it->second.offlinecount<max_offline)
 		{
 			bool found_lan=false;
-			if(inetclient[i]==false && it->second.internet_connection==true)
+			if(!curr_info.internetclient && it->second.internet_connection)
 			{
 				found_lan=true;
 			}
 
-			if(it->second.addr.sin_addr.s_addr==servers[i].sin_addr.s_addr && !found_lan)
+			if(it->second.addr.sin_addr.s_addr==curr_info.addr.sin_addr.s_addr && !found_lan)
 			{
-				it->second.offlinecount=0;
+				it->second.offlinecount = 0;
+				it->second.changecount = 0;
 			}
 			else
 			{
 				bool none_fits=true;
-				for(size_t j=0;j<names.size();++j)
+				for(size_t j=0;j<client_info.size();++j)
 				{
-					if(i!=j && names[j]==names[i] && it->second.addr.sin_addr.s_addr==servers[j].sin_addr.s_addr)
+					if(i!=j && client_info[j].name==curr_info.name 
+						&& it->second.addr.sin_addr.s_addr==client_info[j].addr.sin_addr.s_addr)
 					{
 						none_fits=false;
 						break;
 					}
 				}
-				if(none_fits || found_lan)
+				++it->second.changecount;
+				if( (it->second.changecount>5 && none_fits)
+					|| found_lan)
 				{
-					it->second.addr=servers[i];
-					it->second.internet_connection=inetclient[i];
+					it->second.addr=curr_info.addr;
+					it->second.internet_connection=curr_info.internetclient;
 					std::string msg;
 					msg.resize(7+sizeof(sockaddr_in)+1);
 					msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
 					memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
-					msg[7+sizeof(sockaddr_in)]=(inetclient[i]==true?1:0);
+					msg[7+sizeof(sockaddr_in)]=(curr_info.internetclient?1:0);
 					it->second.pipe->Write(msg);
 
 					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
 
-					Server->Log("New client address: "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_INFO);
+					Server->Log("New client address: "+convert((unsigned char)ip[0])+"."+convert((unsigned char)ip[1])+"."+convert((unsigned char)ip[2])+"."+convert((unsigned char)ip[3]), LL_INFO);
 
-					ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
+					ServerStatus::setIP(curr_info.name, it->second.addr.sin_addr.s_addr);
 
 					it->second.offlinecount=0;
 				}
-				/*else if(found_lan)
-				{
-					force_offline_clients.push_back(names[i]);
-					it->second.offlinecount=max_offline;
-				}*/
 			}
 		}
 	}
@@ -375,15 +445,15 @@ void BackupServer::startClients(FileClient &fc)
 		c=false;
 
 		size_t i_c=0;
-		for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+		for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 		{
 			bool found=false;
-			for(size_t i=0;i<names.size();++i)
+			for(size_t i=0;i<client_info.size();++i)
 			{
-				if(delete_pending_curr[i])
+				if(client_info[i].delete_pending)
 					continue;
 
-				if( it->first==names[i] )
+				if( it->first==client_info[i].name )
 				{
 					found=true;
 					break;
@@ -393,7 +463,7 @@ void BackupServer::startClients(FileClient &fc)
 			{
 				if(it->second.offlinecount==max_offline)
 				{
-					Server->Log(L"Client exited: "+it->first);
+					Server->Log("Client exited: "+it->first);
 					it->second.pipe->Write("exit");
 					++it->second.offlinecount;
 					ServerStatus::setCommPipe(it->first, NULL);
@@ -411,17 +481,27 @@ void BackupServer::startClients(FileClient &fc)
 						}
 						else
 						{
-							Server->Log(L"Client finished: "+it->first);
-							ServerStatus::setDone(it->first, true);
+							Server->Log("Client finished: "+it->first);
+							ServerStatus::removeStatus(it->first);
 							Server->destroy(it->second.pipe);
 
+							{
+								IScopedLock lock(virtual_clients_mutex);
+
+								std::map<std::string, std::vector<std::string> >::iterator virt_it=virtual_clients.find(it->first);
+								if(virt_it!=virtual_clients.end())
+								{
+									virtual_clients.erase(virt_it);
+								}
+							}
+
 							IScopedLock lock(force_offline_mutex);
-							std::vector<std::wstring>::iterator off_iter = std::find(force_offline_clients.begin(),
+							std::vector<std::string>::iterator off_iter = std::find(force_offline_clients.begin(),
 								force_offline_clients.end(),
 								it->first);
 							if(off_iter!= force_offline_clients.end())
 							{
-								Server->Log(L"Client was forced offline: "+it->first);
+								Server->Log("Client was forced offline: "+it->first);
 								force_offline_clients.erase(off_iter);
 							}
 
@@ -448,9 +528,7 @@ void BackupServer::startClients(FileClient &fc)
 				}
 				else if(i_c>=maxi)
 				{
-					SStatusAction s_action=ServerStatus::getStatus(it->first).statusaction;
-
-					if(s_action==sa_none)
+					if(ServerStatus::getStatus(it->first).processes.empty())
 					{
 						++it->second.offlinecount;
 					}
@@ -463,7 +541,7 @@ void BackupServer::startClients(FileClient &fc)
 
 void BackupServer::removeAllClients(void)
 {
-	for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+	for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 	{
 		it->second.pipe->Write("exitnow");
 		std::string msg;
@@ -486,7 +564,8 @@ IPipeThrottler *BackupServer::getGlobalInternetThrottler(size_t speed_bps)
 
 	if(global_internet_throttler==NULL)
 	{
-		global_internet_throttler=Server->createPipeThrottler(speed_bps);
+		global_internet_throttler=Server->createPipeThrottler(speed_bps,
+			new ThrottleUpdater(-1, ThrottleScope_GlobalInternet));
 	}
 	else
 	{
@@ -504,7 +583,8 @@ IPipeThrottler *BackupServer::getGlobalLocalThrottler(size_t speed_bps)
 
 	if(global_local_throttler==NULL)
 	{
-		global_local_throttler=Server->createPipeThrottler(speed_bps);
+		global_local_throttler=Server->createPipeThrottler(speed_bps,
+			new ThrottleUpdater(-1, ThrottleScope_GlobalLocal));
 	}
 	else
 	{
@@ -603,10 +683,10 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 
 	ServerSettings settings(db);
 
-	const std::wstring testdirname = L"FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
-	const std::wstring testdirname_renamed = testdirname+L"_2";
+	const std::string testdirname = "FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
+	const std::string testdirname_renamed = testdirname+"_2";
 
-	std::wstring backupfolder = settings.getSettings()->backupfolder;
+	std::string backupfolder = settings.getSettings()->backupfolder;
 
 	void* transaction = os_start_transaction();
 
@@ -656,7 +736,7 @@ void BackupServer::updateDeletePending()
 	update_delete_pending_clients=true;
 }
 
-bool BackupServer::isDeletePendingClient( const std::wstring& clientname )
+bool BackupServer::isDeletePendingClient( const std::string& clientname )
 {
 	return std::find(delete_pending_clients.begin(), delete_pending_clients.end(), clientname)!=
 		delete_pending_clients.end();
@@ -674,11 +754,11 @@ void BackupServer::maybeUpdateDeletePendingClients()
 	}
 }
 
-void BackupServer::forceOfflineClient( const std::wstring& clientname )
+void BackupServer::forceOfflineClient( const std::string& clientname )
 {
 	IScopedLock lock(force_offline_mutex);
 
-	Server->Log(L"Forcing offline client \""+clientname+L"\"", LL_DEBUG);
+	Server->Log("Forcing offline client \""+clientname+"\"", LL_DEBUG);
 
 	force_offline_clients.push_back(clientname);
 }
@@ -693,17 +773,17 @@ void BackupServer::maybeUpdateExistingClientsLower()
 		existing_client_names_lower.resize(res.size());
 		for(size_t i=0;i<res.size();++i)
 		{
-			existing_client_names[i]=res[i][L"name"];
-			existing_client_names_lower[i]=strlower(res[i][L"name"]);
+			existing_client_names[i]=res[i]["name"];
+			existing_client_names_lower[i]=strlower(res[i]["name"]);
 		}
 
 		update_existing_client_names=false;
 	}
 }
 
-void BackupServer::fixClientnameCase( std::wstring& clientname )
+void BackupServer::fixClientnameCase( std::string& clientname )
 {
-	std::wstring name_lower = strlower(clientname);
+	std::string name_lower = strlower(clientname);
 	for(size_t j=0;j<existing_client_names_lower.size();++j)
 	{
 		if(existing_client_names_lower[j]==name_lower)
@@ -714,4 +794,53 @@ void BackupServer::fixClientnameCase( std::wstring& clientname )
 	}
 }
 
-#endif //CLIENT_ONLY
+void BackupServer::setupUseTreeHashing()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='hashing'");
+
+	if (res.empty())
+	{
+		db_results res_c = db->Read("SELECT COUNT(*) AS c FROM backups");
+		
+		if (!res_c.empty() && watoi(res_c[0]["c"]) == 0)
+		{
+			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('hashing', 'treehash')");
+			use_tree_hashing = true;
+		}
+		else
+		{
+			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('hashing', 'sha512')");
+			use_tree_hashing = false;
+		}
+	}
+	else
+	{
+		std::string val = res[0]["tvalue"];
+
+		if (val == "treehash")
+		{
+			use_tree_hashing = true;
+		}
+		else
+		{
+			use_tree_hashing = false;
+		}
+	}
+}
+
+void BackupServer::setVirtualClients( const std::string& clientname, const std::string& new_virtual_clients )
+{
+	std::vector<std::string> toks;
+	TokenizeMail(new_virtual_clients, toks, "|");
+
+	IScopedLock lock(virtual_clients_mutex);
+	virtual_clients[clientname] = toks;
+}
+
+bool BackupServer::useTreeHashing()
+{
+	return use_tree_hashing;
+}
+

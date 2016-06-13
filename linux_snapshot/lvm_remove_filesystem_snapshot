@@ -1,0 +1,56 @@
+#!/bin/sh
+
+set -e
+
+SNAP_ID=$1
+SNAP_MOUNTPOINT="$2"
+
+if ! test -e $SNAP_MOUNTPOINT
+then
+        echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
+        exit 0
+fi
+
+if ! df -T -P | egrep "${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1
+then
+	echo "Snapshot is not mounted. Already removed"
+	rmdir "${SNAP_MOUNTPOINT}"
+	exit 0
+fi
+
+if lsblk -r --output "NAME,MOUNTPOINT" --paths > /dev/null 2>&1
+then
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" --paths | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+else
+	VOLNAME=`lsblk -r --output "NAME,MOUNTPOINT" | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1`
+	VOLNAME="/dev/mapper/$VOLNAME"
+fi
+
+if [ "x$VOLNAME" = x ]
+then
+    echo "Could not find LVM volume for mountpoint ${SNAP_MOUNTPOINT}"
+    exit 1
+fi
+
+if [ ! -e "$VOLNAME" ]
+then
+	echo "LVM volume for mountpoint ${SNAP_MOUNTPOINT} does not exist"
+    exit 1
+fi
+
+echo "Unmounting $VOLNAME at /mnt/urbackup_snaps/$SNAP_ID..."
+
+if ! umount /mnt/urbackup_snaps/$SNAP_ID
+then
+		lsof | grep /mnt/urbackup_snaps/$SNAP_ID || true
+        sleep 10
+        umount /mnt/urbackup_snaps/$SNAP_ID
+fi
+
+rmdir "${SNAP_MOUNTPOINT}"
+
+echo "Destroying LVM snapshot $VOLNAME..."
+
+export LVM_SUPPRESS_FD_WARNINGS=1
+
+lvremove -f "$VOLNAME"

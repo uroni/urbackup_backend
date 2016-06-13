@@ -16,21 +16,63 @@ const int MODE_READ_DEVICE=6;
 const int MODE_READ_SEQUENTIAL=7;
 const int MODE_READ_SEQUENTIAL_BACKUP=8;
 const int MODE_RW_SEQUENTIAL=9;
+const int MODE_RW_DEVICE = 11;
+const int MODE_RW_RESTORE = 12;
+const int MODE_RW_CREATE_RESTORE = 13;
 //Linux only
 const int MODE_RW_READNONE=10;
 
 class IFile : public IObject
 {
 public:
-	virtual std::string Read(_u32 tr)=0;
-	virtual _u32 Read(char* buffer, _u32 bsize)=0;
-	virtual _u32 Write(const std::string &tw)=0;
-	virtual _u32 Write(const char* buffer, _u32 bsize)=0;
+	virtual std::string Read(_u32 tr, bool *has_error=NULL)=0;
+	virtual std::string Read(int64 spos, _u32 tr, bool *has_error = NULL) = 0;
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL)=0;
+	virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool *has_error = NULL) = 0;
+	virtual _u32 Write(const std::string &tw, bool *has_error=NULL)=0;
+	virtual _u32 Write(int64 spos, const std::string &tw, bool *has_error = NULL) = 0;
+	virtual _u32 Write(const char* buffer, _u32 bsiz, bool *has_error=NULL)=0;
+	virtual _u32 Write(int64 spos, const char* buffer, _u32 bsiz, bool *has_error = NULL) = 0;
 	virtual bool Seek(_i64 spos)=0;
 	virtual _i64 Size(void)=0;
+	virtual _i64 RealSize()=0;
+	virtual bool PunchHole(_i64 spos, _i64 size) = 0;
+	virtual bool Sync() = 0;
 	
 	virtual std::string getFilename(void)=0;
-	virtual std::wstring getFilenameW(void)=0;
+};
+
+class IFsFile : public IFile
+{
+public:
+#pragma pack(push)
+	struct SSparseExtent
+	{
+		SSparseExtent()
+			: offset(-1), size(-1)
+		{
+
+		}
+
+		SSparseExtent(int64 offset, int64 size)
+			: offset(offset), size(size)
+		{
+
+		}
+
+		bool operator<(const SSparseExtent& other) const
+		{
+			return offset < other.offset;
+		}
+		
+		int64 offset;
+		int64 size;
+	};
+#pragma pack(pop)
+
+	virtual void resetSparseExtentIter() = 0;
+	virtual SSparseExtent nextSparseExtent() = 0;
+	virtual bool Resize(int64 new_size) = 0;
 };
 
 class ScopedDeleteFile
@@ -54,7 +96,7 @@ public:
 private:
 	void del() {
 		if(file!=NULL) {
-			std::wstring tmpfn=file->getFilenameW();
+			std::string tmpfn=file->getFilename();
 			file->Remove();
 			Server->deleteFile(tmpfn);
 		}

@@ -1,8 +1,19 @@
 <tr>
-	<td class="tabFLeft">{id}</td>
-	<td class="tabFLeft">{name}</td>
-	<td class="tabFLeft">{action}</td>
-	<td class="tabFLeft">{backuptime}</td>
-	<td class="tabFLeft">{duration}</td>
-	<td class="tabFRight">{size}</td>
+	<td>{id}</td>
+	<td>{name}</td>
+	<td>{action}</td>
+	<td>
+		{?is_image}
+			Volume: {details}
+		{:else}
+			{?file_restore}
+				Path: {details|s}
+			{:else}
+				-
+			{/file_restore}
+		{/is_image}
+	</td>
+	<td>{backuptime}</td>
+	<td>{duration}</td>
+	<td>{size}</td>
 </tr>

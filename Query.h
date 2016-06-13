@@ -3,6 +3,8 @@
 
 #include "Interface/Query.h"
 #include "Interface/Mutex.h"
+#include "Interface/SharedMutex.h"
+#include <memory>
 
 struct sqlite3_stmt;
 struct sqlite3;
@@ -11,7 +13,7 @@ class CDatabase;
 class DatabaseCursor;
 
 #define LOG_WRITE_QUERIES
-//#define LOG_READ_QUERIES
+#define LOG_READ_QUERIES
 
 #if defined(LOG_WRITE_QUERIES) || defined(LOG_READ_QUERIES)
 #define LOG_QUERIES
@@ -28,7 +30,6 @@ public:
 	static void init_mutex(void);
 
 	virtual void Bind(const std::string &str);
-	virtual void Bind(const std::wstring &str);
 	virtual void Bind(int p);
 	virtual void Bind(unsigned int p);
 	virtual void Bind(double p);
@@ -42,7 +43,6 @@ public:
 
 	virtual bool Write(int timeoutms=-1);
 	db_results Read(int *timeoutms=NULL);
-	db_nresults ReadN(int *timeoutms=NULL);
 
 	virtual IDatabaseCursor* Cursor(int *timeoutms=NULL);
 
@@ -50,8 +50,6 @@ public:
 	void shutdownStepping(int err, int *timeoutms, bool& transaction_lock);
 
 	int step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset);
-
-	int stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset);
 
 	bool resultOkay(int rc);
 
@@ -76,6 +74,8 @@ private:
 	static IMutex* active_mutex;
 	static std::vector<std::string> active_queries;
 #endif
+
+	std::auto_ptr<IScopedReadLock> single_use_lock;
 
 	friend class ScopedAddActiveQuery;
 };

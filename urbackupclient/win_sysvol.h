@@ -1,6 +1,11 @@
 #pragma once
 #include <string>
 
-std::wstring getSysVolume(std::wstring &mpath);
-std::wstring getSysVolumeCached(std::wstring &mpath);
-void cacheSysVolume();
+std::string getSysVolume(std::string &mpath);
+
+std::string getEspVolume(std::string &mpath);
+
+std::string getSysVolumeCached(std::string &mpath);
+void cacheVolumes();
+
+std::string getEspVolumeCached(std::string &mpath);

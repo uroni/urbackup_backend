@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -22,7 +22,6 @@
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
-#include "../server_get.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server.h"
 
@@ -42,7 +41,7 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	if(!FileExists("urbackup/UrBackupUpdate.exe"))
 		return false;
 
-	if(!FileExists("urbackup/UrBackupUpdate.sig"))
+	if(!FileExists("urbackup/UrBackupUpdate.sig2"))
 		return false;
 
 	if(crypto_fak==NULL)
@@ -57,8 +56,8 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		int clientid=watoi(res[i][L"id"]);
-		std::wstring clientname=res[i][L"name"];
+		int clientid=watoi(res[i]["id"]);
+		std::string clientname=res[i]["name"];
 
 		bool found=false;
 		if( (clientid_rights_all
@@ -82,8 +81,8 @@ void set_server_version_info(JSON::Object& ret)
 
 	if(infoProperties.get())
 	{
-		std::wstring curr_version_num;
-		if(infoProperties->getValue(L"curr_version_num", &curr_version_num))
+		std::string curr_version_num;
+		if(infoProperties->getValue("curr_version_num", &curr_version_num))
 		{
 			ret.set("curr_version_num", watoi64(curr_version_num));
 		}
@@ -96,11 +95,214 @@ void set_server_version_info(JSON::Object& ret)
 	}
 }
 
+void access_dir_details(std::string folder, std::string& ret)
+{
+	bool has_error = false;
+	getFiles(folder, &has_error);
+	if (has_error)
+	{
+		ret += "Cannot access " + folder + ". " + os_last_error_str() + "\n";
+	}
+	else
+	{
+		ret += "Can access " + folder + "\n";
+	}
+}
+
+std::string access_err_details(std::string folder)
+{
+	std::vector<std::string> toks;
+	TokenizeMail(folder, toks, os_file_sep());
+
+	std::string ret;
+
+	std::string cdir = os_file_sep();
+	access_dir_details(cdir, ret);
+
+	for (size_t i = 0; i < toks.size(); ++i)
+	{
+		if (toks[i].empty()) continue;
+
+		if (cdir!=os_file_sep())
+		{
+			cdir += os_file_sep();
+		}
+		cdir += toks[i];
+
+		access_dir_details(cdir, ret);
+	}
+
+	return ret;
+}
+
+std::string access_dir_hint(std::string folder)
+{
+	if (folder.size() > 1 && folder[1] == ':')
+	{
+		bool has_error = false;
+		getFiles(folder.substr(0, 2) + os_file_sep(), &has_error);
+
+		if (has_error)
+		{
+			return "volume_not_accessible";
+		}
+	}
+
+	if ( (folder.size() > 2 && folder[0] == '\\'
+		&& folder[1] == '\\'
+		&& folder[2] != '?' )
+		|| next(folder, 0, "\\\\?\\UNC") )
+	{
+		bool has_error = false;
+		getFiles(folder, &has_error);
+
+		if (has_error && os_last_error() == 5
+			|| os_last_error()== 1326 )
+		{
+			return "folder_unc_access_denied";
+		}
+	}
+
+	return std::string();
+}
+
+void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::string backupfolder_uncompr,
+	JSON::Object& ret)
+{
+#ifdef _WIN32
+	if (backupfolder.size() == 2 && backupfolder[1] == ':')
+	{
+		backupfolder += os_file_sep();
+	}
+	if (backupfolder_uncompr.size() == 2 && backupfolder_uncompr[1] == ':')
+	{
+		backupfolder_uncompr += os_file_sep();
+	}
+#endif
+
+	if (backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)))
+	{
+		if (!backupfolder.empty())
+		{
+			ret.set("system_err", os_last_error_str());
+		}
+
+		ret.set("dir_error", true);
+		if (settings.getSettings()->backupfolder.empty())
+			ret.set("dir_error_ext", "err_name_empty");
+		else if (!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)))
+			ret.set("dir_error_ext", "err_folder_not_found");
+
+#ifdef _WIN32
+		std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
+		if (!hint.empty())
+		{
+			ret.set("dir_error_hint", hint);
+		}
+#endif
+
+#ifndef _WIN32
+		ret.set("detail_err_str", access_err_details(settings.getSettings()->backupfolder));
+#endif
+	}
+	else if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + "clients")) && !os_create_dir(os_file_prefix(backupfolder + os_file_sep() + "clients")))
+	{
+		ret.set("system_err", os_last_error_str());
+		ret.set("dir_error", true);
+		ret.set("dir_error_ext", "err_cannot_create_subdir");
+
+#ifdef _WIN32
+		std::string hint = access_dir_hint(backupfolder);
+		if (!hint.empty())
+		{
+			ret.set("dir_error_hint", hint);
+		}
+#endif
+	}
+	else
+	{
+		bool has_access_error = false;
+		std::string testfoldername = "testfolderHvfgh---dFFoeRRRf";
+		std::string testfolderpath = backupfolder + os_file_sep() + testfoldername;
+		if (os_directory_exists(os_file_prefix(testfolderpath)))
+		{
+			if (!os_remove_dir(os_file_prefix(testfolderpath)))
+			{
+				ret.set("system_err", os_last_error_str());
+				ret.set("dir_error", true);
+				ret.set("dir_error_ext", "err_cannot_create_subdir");
+				has_access_error = true;
+#ifdef _WIN32
+				std::string hint = access_dir_hint(backupfolder);
+				if (!hint.empty())
+				{
+					ret.set("dir_error_hint", hint);
+				}
+#endif
+			}
+		}
+
+		if (!has_access_error
+			&& !os_create_dir(os_file_prefix(testfolderpath)))
+		{
+			ret.set("system_err", os_last_error_str());
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_cannot_create_subdir");
+
+#ifdef _WIN32
+			std::string hint = access_dir_hint(backupfolder);
+			if (!hint.empty())
+			{
+				ret.set("dir_error_hint", hint);
+			}
+#endif
+			has_access_error = true;
+		}
+
+		if (!settings.getSettings()->no_file_backups)
+		{
+			std::string linkfolderpath = testfolderpath + "_link";
+			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+
+			if (!has_access_error
+				&& !os_link_symbolic(os_file_prefix(testfolderpath), os_file_prefix(linkfolderpath)))
+			{
+				ret.set("system_err", os_last_error_str());
+				ret.set("dir_error", true);
+				ret.set("dir_error_ext", "err_cannot_create_symbolic_links");
+				ret.set("dir_error_hint", "UrBackup cannot create symbolic links on the backup storage. "
+					"Your backup storage must support symbolic links in order for UrBackup to work correctly. "
+					"The UrBackup Server must run as administrative user on Windows (If not you get error code 1314). "
+					"Note: As of 2016-05-07 samba (which is used by many Linux based NAS operating systems for Windows file sharing) has not "
+					"implemented the necessary functionality to support symbolic link creation from Windows (With this you get error code 4390).");
+			}
+
+			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+		}
+
+		if (!has_access_error
+			&& !os_remove_dir(os_file_prefix(testfolderpath)))
+		{
+			ret.set("system_err", os_last_error_str());
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "err_cannot_create_subdir");
+			has_access_error = true;
+		}
+	}
+
+	IFile *tmp = Server->openTemporaryFile();
+	ScopedDeleteFile delete_tmp_file(tmp);
+	if (tmp == NULL)
+	{
+		ret.set("tmpdir_error", true);
+	}
+}
+
 }
 
 ACTION_IMPL(status)
 {
-	Helper helper(tid, &GET, &PARAMS);
+	Helper helper(tid, &POST, &PARAMS);
 	JSON::Object ret;
 
 	std::string rights=helper.getRights("status");
@@ -117,47 +319,14 @@ ACTION_IMPL(status)
 	}
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
 		{
 			ServerSettings settings(db);
-			std::wstring backupfolder = settings.getSettings()->backupfolder;
-			std::wstring backupfolder_uncompr = settings.getSettings()->backupfolder_uncompr;
 
-#ifdef _WIN32
-			if(backupfolder.size()==2 && backupfolder[1]==':')
-			{
-				backupfolder+=os_file_sep();
-			}
-			if(backupfolder_uncompr.size()==2 && backupfolder_uncompr[1]==':')
-			{
-				backupfolder_uncompr+=os_file_sep();
-			}
-#endif
-
-			if(backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)) )
-			{
-				ret.set("dir_error", true);
-				if(settings.getSettings()->backupfolder.empty())
-					ret.set("dir_error_ext", "err_name_empty");
-				else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) )
-					ret.set("dir_error_ext", "err_folder_not_found");
-			}
-			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) )
-			{
-				ret.set("dir_error" ,true);
-				ret.set("dir_error_ext", "err_cannot_create_subdir");
-			}
-			IFile *tmp=Server->openTemporaryFile();
-			if(tmp==NULL)
-			{
-				ret.set("tmpdir_error", true);
-			}
-			else
-			{
-				Server->destroy(tmp);
-			}
+			access_dir_checks(settings, settings.getSettings()->backupfolder,
+				settings.getSettings()->backupfolder_uncompr, ret);
 
 			if(ServerStatus::getServerNospcStalled()>0)
 			{
@@ -169,16 +338,17 @@ ACTION_IMPL(status)
 			}
 
 			if( (Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
-				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) )
+				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) ||
+				(Server->getFailBits() & IServer::FAIL_DATABASE_FULL) )
 			{
 				ret.set("database_error", true);
 			}
 		}
 
-		std::wstring hostname=GET[L"hostname"];
+		std::string hostname=POST["hostname"];
 		if(!hostname.empty() && rights=="all")
 		{
-			if(GET[L"remove"]==L"true")
+			if(POST["remove"]=="true")
 			{
 				IQuery *q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?");
 				q->Bind(hostname);
@@ -194,21 +364,13 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )
-		{
-			bool new_client=false;
-			int id=BackupServerGet::getClientID(db, GET[L"clientname"], NULL, &new_client);
-			if(new_client)
-			{
-				ret.set("added_new_client", true);
-			}
-		}
-		std::wstring s_remove_client=GET[L"remove_client"];
+		
+		std::string s_remove_client=POST["remove_client"];
 		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
 		{
-			std::vector<std::wstring> remove_client;
-			Tokenize(s_remove_client, remove_client, L",");
-			if(GET.find(L"stop_remove_client")!=GET.end())
+			std::vector<std::string> remove_client;
+			Tokenize(s_remove_client, remove_client, ",");
+			if(POST.find("stop_remove_client")!=POST.end())
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{
@@ -222,7 +384,8 @@ ACTION_IMPL(status)
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{
-					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
+					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=? OR virtualmain = (SELECT name FROM clients WHERE id=?)");
+					q->Bind(remove_client[i]);
 					q->Bind(remove_client[i]);
 					q->Write();
 					q->Reset();
@@ -239,26 +402,26 @@ ACTION_IMPL(status)
 			filter=" WHERE ";
 			for(size_t i=0;i<clientids.size();++i)
 			{
-				filter+="id="+nconvert(clientids[i]);
+				filter+="id="+convert(clientids[i]);
 				if(i+1<clientids.size())
 					filter+=" OR ";
 			}
 		}
-		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter+" ORDER BY name");
+		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str FROM clients"+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
 		if(res_t.size()>0)
 		{
-			backup_ok_mod_file=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
+			backup_ok_mod_file=atof((res_t[0]["value"]).c_str());
 		}
 
 		double backup_ok_mod_image=3.;
 		res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_image' AND clientid=0");
 		if(res_t.size()>0)
 		{
-			backup_ok_mod_image=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
+			backup_ok_mod_image=atof((res_t[0]["value"]).c_str());
 		}
 
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
@@ -266,22 +429,25 @@ ACTION_IMPL(status)
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object stat;
-			int clientid=watoi(res[i][L"id"]);
-			std::wstring clientname=res[i][L"name"];
+			int clientid=watoi(res[i]["id"]);
+			std::string clientname=res[i]["name"];
 			stat.set("id", clientid);
 			stat.set("name", clientname);
-			stat.set("lastbackup", res[i][L"lastbackup"]);
-			stat.set("lastseen", res[i][L"lastseen"]);
-			stat.set("lastbackup_image", res[i][L"lastbackup_image"]);
-			stat.set("delete_pending", res[i][L"delete_pending"] );
+			stat.set("lastbackup", watoi64(res[i]["lastbackup"]));
+			stat.set("lastseen", watoi64(res[i]["lastseen"]));
+			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
+			stat.set("delete_pending", res[i]["delete_pending"] );
+			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
 
 			std::string ip="-";
-			std::string client_version_string;
-			std::string os_version_string;
-			int done_pc=-1;
+			std::string client_version_string = res[i]["client_version_str"];
+			std::string os_version_string = res[i]["os_version_str"];
+			std::string os_simple = res[i]["os_simple"];
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
+			JSON::Array processes;
+
 			for(size_t j=0;j<client_status.size();++j)
 			{
 				if(client_status[j].client==clientname)
@@ -291,12 +457,12 @@ ACTION_IMPL(status)
 						curr_status=&client_status[j];
 						online=true;
 					}
+
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
-					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+					ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
-					done_pc=client_status[j].pcdone;
 
 					switch(client_status[j].status_error)
 					{
@@ -307,7 +473,19 @@ ACTION_IMPL(status)
 					case se_authentication_error:
 						i_status=13; break;
 					default:
-						i_status=client_status[j].statusaction; break;
+						if(!client_status[j].processes.empty())
+						{
+							i_status = client_status[j].processes[0].action;
+						}
+					}
+
+					for(size_t k=0;k<client_status[j].processes.size();++k)
+					{
+						SProcess& process = client_status[j].processes[k];
+						JSON::Object proc;
+						proc.set("action", process.action);
+						proc.set("pcdone", process.pcdone);
+						processes.add(proc);
 					}
 				}
 			}
@@ -316,9 +494,9 @@ ACTION_IMPL(status)
 			stat.set("ip", ip);
 			stat.set("client_version_string", client_version_string);
 			stat.set("os_version_string", os_version_string);
+			stat.set("os_simple", os_simple);
 			stat.set("status", i_status);
-			stat.set("done_pc", done_pc);
-			
+			stat.set("processes", processes);
 
 			ServerSettings settings(db, clientid);
 
@@ -330,7 +508,7 @@ ACTION_IMPL(status)
 				time_filebackup=time_filebackup_full;
 			}
 			
-			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
+			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+convert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
 			q->Bind(clientid);
 			db_results res_file_ok=q->Read();
 			q->Reset();
@@ -344,7 +522,7 @@ ACTION_IMPL(status)
 				time_imagebackup=time_imagebackup_full;
 			}
 
-			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+nconvert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
+			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+convert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
 			q->Bind(clientid);
 			res_file_ok=q->Read();
 			q->Reset();
@@ -360,7 +538,7 @@ ACTION_IMPL(status)
 				bool found=false;
 				for(size_t j=0;j<res.size();++j)
 				{
-					if(res[j][L"name"]==client_status[i].client)
+					if(res[j]["name"]==client_status[i].client)
 					{
 						found=true;
 						break;
@@ -379,7 +557,7 @@ ACTION_IMPL(status)
 				stat.set("delete_pending", 0);
 				std::string ip;
 				unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
-				ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+				ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
 				stat.set("ip", ip);
 
 				switch(client_status[i].status_error)
@@ -410,9 +588,9 @@ ACTION_IMPL(status)
 			{
 				JSON::Object extra_client;
 
-				extra_client.set("hostname", res[i][L"hostname"]);
+				extra_client.set("hostname", res[i]["hostname"]);
 
-				_i64 i_ip=os_atoi64(wnarrow(res[i][L"lastip"]));
+				_i64 i_ip=os_atoi64(res[i]["lastip"]);
 
 				bool online=false;
 
@@ -423,7 +601,7 @@ ACTION_IMPL(status)
 						online=true;
 					}
 				}
-				extra_client.set("id", res[i][L"id"]);
+				extra_client.set("id", res[i]["id"]);
 				extra_client.set("online", online);
 
 				extra_clients.add(extra_client);
@@ -445,6 +623,11 @@ ACTION_IMPL(status)
 		if(helper.getRights("start_backup")=="all")
 		{
 			ret.set("allow_modify_clients", true);
+		}
+
+		if (helper.getRights("add_client") == "all")
+		{
+			ret.set("allow_add_client", true);
 		}
 
 		JSON::Array client_downloads;
@@ -472,7 +655,7 @@ ACTION_IMPL(status)
 	{
 		ret.set("error", 1);
 	}
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

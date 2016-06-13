@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -23,12 +23,15 @@
 #include "CompressedFile.h"
 #include <memory.h>
 #include <stdlib.h>
+#include "FileWrapper.h"
+#include "ClientBitmap.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <errno.h>
 #endif
+#include "fs/ntfs.h"
 
 const uint64 def_header_offset=0;
 const uint64 def_dynamic_header_offset=512;
@@ -38,7 +41,7 @@ const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
 
-VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
 	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false),
 	file(NULL)
 {
@@ -47,17 +50,17 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	read_only=pRead_only;
 	is_open=false;
 	curr_offset=0;
-	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
-	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
+	backing_file = Server->openFile(fn, (read_only ? MODE_READ : MODE_RW));
+
 	bool openedExisting = true;
 
 	if(!backing_file)
 	{
 		if(read_only==false)
 		{
-			backing_file=Server->openFile(fn, MODE_RW_CREATE);
+			backing_file = Server->openFile(fn, MODE_RW_CREATE);
 			openedExisting=false;
 		}
 		if(backing_file==NULL)
@@ -99,7 +102,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 		}
 
 		write_header(false);
-		write_dynamicheader(NULL, 0, L"");
+		write_dynamicheader(NULL, 0, "");
 		write_bat();
 
 		nextblock_offset=bat_offset+batsize*sizeof(unsigned int);
@@ -133,7 +136,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	}
 }
 
-VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress)
 	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false), file(NULL)
 {
 	compressed_file=NULL;
@@ -142,7 +145,6 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	read_only=pRead_only;
 	parent=NULL;
 	curr_offset=0;
-	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
 	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
@@ -346,7 +348,7 @@ unsigned int VHDFile::calculate_checksum(const unsigned char * data, size_t dsiz
 	return ~big_endian(checksum);
 }
 
-bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn)
+bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::string parentfn)
 {
 	memset(&dynamicheader, 0, sizeof(VHDDynamicHeader) );
 
@@ -358,11 +360,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 	dynamicheader.cookie[5]='r';
 	dynamicheader.cookie[6]='s';
 	dynamicheader.cookie[7]='e';
-#ifdef _WIN32
-	dynamicheader.dataoffset=0xFFFFFFFFFFFFFFFF;
-#else
 	dynamicheader.dataoffset=0xFFFFFFFFFFFFFFFFLLU;
-#endif
 	dynamicheader.tableoffset=big_endian(bat_offset);
 	dynamicheader.header_version=big_endian((unsigned int)0x00010000);
 	dynamicheader.table_entries=big_endian(batsize);
@@ -373,8 +371,20 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=big_endian(parent_timestamp);
-		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
-		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
+
+		std::string unicodename_source;
+		std::string dirname = ExtractFileName(ExtractFilePath(parentfn));
+		if (dirname.find("Image") != std::string::npos)
+		{
+			unicodename_source = "../" + dirname + "/" + ExtractFileName(parentfn);
+		}
+		else
+		{
+			unicodename_source = ExtractFileName(parentfn);
+		}
+
+		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(unicodename_source));
+		std::string rel_unicodename=Server->ConvertToUTF16(".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
 		unicodename[unicodename.size()-2]=0;
@@ -555,15 +565,39 @@ bool VHDFile::read_dynamicheader(void)
 		parent_unicodename.resize(512);
 		memcpy(&parent_unicodename[0], dynamicheader.parent_unicodename, 512);
 		parent_unicodename=big_endian_utf16(parent_unicodename);
-		std::wstring parent_fn=Server->ConvertFromUTF16(parent_unicodename);
+		std::wstring parent_fn=Server->ConvertToWchar(Server->ConvertFromUTF16(parent_unicodename));
 		parent_fn.resize(wcslen(parent_fn.c_str()));
-		parent_fn=ExtractFilePath(file->getFilenameW())+L"/"+parent_fn;
-		Server->Log(L"VHD-Parent: \""+parent_fn+L"\"", LL_INFO);
-		parent=new VHDFile(parent_fn, true, 0);
+
+		std::string curr_dir = ExtractFilePath(file->getFilename());
+
+		bool is_in_other_folder = false;
+		while(parent_fn.size()>3
+			&& (parent_fn.find(L"../")==0
+				|| parent_fn.find(L"..\\")==0 ) )
+		{
+			curr_dir = ExtractFilePath(curr_dir);
+			parent_fn = parent_fn.substr(3);
+			is_in_other_folder = true;
+		}
+
+		parent_fn=Server->ConvertToWchar(curr_dir)+L"/"+parent_fn;
+		std::string utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+		Server->Log("VHD-Parent: \""+utf8_parent_fn+"\"", LL_INFO);
+
+		if (is_in_other_folder
+			&& !FileExists(utf8_parent_fn))
+		{
+			parent_fn = Server->ConvertToWchar(ExtractFilePath(file->getFilename())) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
+			utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+			Server->Log("Corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+		}
+
+
+		parent=new VHDFile(utf8_parent_fn, true, 0);
 
 		if(parent->isOpen()==false)
 		{
-			Server->Log(L"Error opening Parentvhdfile \""+parent_fn+L"\"", LL_ERROR);
+			Server->Log("Error opening Parentvhdfile \""+utf8_parent_fn+"\"", LL_ERROR);
 			return false;
 		}
 
@@ -593,7 +627,7 @@ void VHDFile::init_bitmap(void)
 	if(bitmap_size%sector_size!=0)
 		bitmap_size+=sector_size-bitmap_size%sector_size;
 
-	bitmap=new unsigned char[bitmap_size];
+	bitmap.resize(bitmap_size);
 }
 
 bool VHDFile::read_bat(void)
@@ -633,7 +667,7 @@ inline bool VHDFile::isBitmapSet(unsigned int offset)
 	return has_bit;
 }
 
-inline void VHDFile::setBitmapBit(unsigned int offset, bool v)
+inline bool VHDFile::setBitmapBit(unsigned int offset, bool v)
 {
 	size_t sector=offset/sector_size;
 	size_t bitmap_byte=(size_t)(sector/8);
@@ -641,13 +675,23 @@ inline void VHDFile::setBitmapBit(unsigned int offset, bool v)
 
 	unsigned char b=bitmap[bitmap_byte];
 
+	bool has_bit = ((b & (1 << (7 - bitmap_bit)))>0);
+
 	if(v==true)
 		b=b|(1<<(7-bitmap_bit));
 	else
 		b=b&(~(1<<(7-bitmap_bit)));
 
 	bitmap[bitmap_byte]=b;
-	bitmap_dirty=true;
+	if (has_bit != v)
+	{
+		bitmap_dirty = true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
@@ -708,11 +752,11 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 
 			if(dataoffset+bitmap_size+blockoffset+bsize>(uint64)file->Size() )
 			{
-				Server->Log("Wrong dataoffset: "+nconvert(dataoffset), LL_ERROR);
+				Server->Log("Wrong dataoffset: "+convert(dataoffset), LL_ERROR);
 				return false;
 			}
 
-			if(file->Read((char*)bitmap, bitmap_size)!=bitmap_size)
+			if(file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size)!=bitmap_size)
 			{
 				Server->Log("Error reading bitmap", LL_ERROR);
 				return false;
@@ -796,16 +840,18 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 	return true;
 }
 
-_u32 VHDFile::Write(const char *buffer, _u32 bsize)
+_u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 {
 	if(read_only)
 	{
 		Server->Log("VHD file is read only", LL_ERROR);
+		if(has_error) *has_error=true;
 		return 0;
 	}
 	if(bsize+curr_offset>dstsize)
 	{
-		Server->Log("VHD file is not large enough. Want to write till "+nconvert(bsize+curr_offset)+" but size is "+nconvert(dstsize), LL_ERROR);
+		Server->Log("VHD file is not large enough. Want to write till "+convert(bsize+curr_offset)+" but size is "+convert(dstsize), LL_ERROR);
+		if(has_error) *has_error=true;
 		return 0;
 	}
 
@@ -845,15 +891,16 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 				Server->Log("Seeking failed", LL_ERROR);
 
 			if(!new_block)
-				file->Read((char*)bitmap, bitmap_size);
+				file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 			else
 			{
-				memset(bitmap, 0, bitmap_size );
-				_u32 rc=file->Write((char*)bitmap, bitmap_size);
+				memset(bitmap.data(), 0, bitmap_size );
+				_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 				if(rc!=bitmap_size)
 				{
 					Server->Log("Writing bitmap failed", LL_ERROR);
 					print_last_error();
+					if(has_error) *has_error=true;
 					return 0;
 				}
 			}
@@ -864,6 +911,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		if(!b)
 		{
 			Server->Log("Seeking in file failed", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 
@@ -888,6 +936,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			if(rc!=wantwrite)
 			{
 				Server->Log("Writing to file failed", LL_ERROR);
+				if(has_error) *has_error=true;
 				print_last_error();
 				return 0;
 			}
@@ -909,11 +958,12 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		if(!fast_mode)
 		{
 			file->Seek(dataoffset);
-			_u32 rc=file->Write((char*)bitmap, bitmap_size);
+			_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 			if(rc!=bitmap_size)
 			{
 				Server->Log("Writing bitmap failed", LL_ERROR);
 				print_last_error();
+				if(has_error) *has_error=true;
 				return 0;
 			}
 		}
@@ -931,11 +981,13 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		if(!write_footer())
 		{
 			Server->Log("Error writing footer", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 		if(!write_bat())
 		{
 			Server->Log("Error writing BAT", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 	}
@@ -945,7 +997,18 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 	return bsize;
 }
 
-bool VHDFile::has_block(void)
+_u32 VHDFile::Write(int64 spos, const char *buffer, _u32 bsize, bool* has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(buffer, bsize, has_error);
+}
+
+bool VHDFile::has_block(bool use_parent)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	size_t blockoffset=curr_offset%blocksize;
@@ -958,7 +1021,7 @@ bool VHDFile::has_block(void)
 	unsigned int bat_off=big_endian(bat[block]);
 	if(bat_off==0xFFFFFFFF)
 	{
-		if(parent==NULL)
+		if(parent==NULL || !use_parent)
 		{
 			return false;
 		}
@@ -978,11 +1041,11 @@ bool VHDFile::has_block(void)
 
 		if(dataoffset+bitmap_size+blockoffset>(uint64)file->Size() )
 		{
-			Server->Log("Wrong dataoffset: "+nconvert(dataoffset), LL_ERROR);
+			Server->Log("Wrong dataoffset: "+convert(dataoffset), LL_ERROR);
 			return false;
 		}
 
-		if(file->Read((char*)bitmap, bitmap_size)!=bitmap_size)
+		if(file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size)!=bitmap_size)
 		{
 			Server->Log("Error reading bitmap", LL_ERROR);
 			return false;
@@ -996,7 +1059,7 @@ bool VHDFile::has_block(void)
 	}
 	else
 	{
-		if(parent!=NULL)
+		if(parent!=NULL && use_parent)
 		{
 			parent->Seek(curr_offset);
 			return parent->has_block();
@@ -1013,7 +1076,7 @@ void VHDFile::switchBitmap(uint64 new_offset)
 	if(fast_mode && !read_only && bitmap_dirty && bitmap_offset!=0)
 	{
 		file->Seek(bitmap_offset);
-		_u32 rc=file->Write((char*)bitmap, bitmap_size);
+		_u32 rc=file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
 		if(rc!=bitmap_size)
 		{
 			Server->Log("Writing bitmap failed", LL_ERROR);
@@ -1055,7 +1118,7 @@ uint64 VHDFile::usedSize(void)
 	return used_size;
 }
 
-bool VHDFile::has_sector(void)
+bool VHDFile::has_sector(_i64 sector_size)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	unsigned int bat_ref=big_endian(bat[block]);
@@ -1075,7 +1138,7 @@ bool VHDFile::has_sector(void)
 	}
 }
 
-bool VHDFile::this_has_sector(void)
+bool VHDFile::this_has_sector(_i64 sector_size)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	unsigned int bat_ref=big_endian(bat[block]);
@@ -1114,12 +1177,7 @@ std::string VHDFile::getFilename(void)
 	return file->getFilename();
 }
 
-std::wstring VHDFile::getFilenameW(void)
-{
-	return file->getFilenameW();
-}
-
-std::string VHDFile::Read(_u32 tr)
+std::string VHDFile::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(4096);
@@ -1127,6 +1185,7 @@ std::string VHDFile::Read(_u32 tr)
 	bool b=Read((char*)ret.c_str(), 4096, read);
 	if(!b)
 	{
+		if(has_error) *has_error=true;
 		ret.clear();
 		return ret;
 	}
@@ -1135,12 +1194,24 @@ std::string VHDFile::Read(_u32 tr)
 	return ret;
 }
 
-_u32 VHDFile::Read(char* buffer, _u32 bsize)
+std::string VHDFile::Read(int64 spos, _u32 tr, bool* has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
+	return Read(tr);
+}
+
+_u32 VHDFile::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	size_t read;
 	bool b=Read(buffer, bsize, read);
 	if(!b)
 	{
+		if(has_error) *has_error=true;
 		return 0;
 	}
 	else
@@ -1149,14 +1220,35 @@ _u32 VHDFile::Read(char* buffer, _u32 bsize)
 	}
 }
 
-_u32 VHDFile::Write(const std::string &tw)
+_u32 VHDFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
 {
-	return Write(tw.c_str(), (_u32)tw.size());
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Read(buffer, bsize);
+}
+
+_u32 VHDFile::Write(const std::string &tw, bool *has_error)
+{
+	return Write(tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 VHDFile::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
 }
 
 _i64 VHDFile::Size(void)
 {
 	return (_i64)getSize();
+}
+
+_i64 VHDFile::RealSize(void)
+{
+	return (_i64)usedSize();
 }
 
 void VHDFile::addVolumeOffset(_i64 offset)
@@ -1167,9 +1259,9 @@ void VHDFile::addVolumeOffset(_i64 offset)
 void VHDFile::print_last_error()
 {
 #ifdef _WIN32
-	Server->Log("Last error: "+nconvert((int)GetLastError()), LL_ERROR);
+	Server->Log("Last error: "+convert((int)GetLastError()), LL_ERROR);
 #else
-	Server->Log("Last error: "+nconvert(errno), LL_ERROR);
+	Server->Log("Last error: "+convert(errno), LL_ERROR);
 #endif
 }
 
@@ -1183,7 +1275,16 @@ bool VHDFile::check_if_compressed()
 
 bool VHDFile::finish()
 {
-	finished=true;
+	if (finished)
+	{
+		return true;
+	}
+
+	if (!is_open)
+	{
+		return false;
+	}
+
 	switchBitmap(0);
 	if(fast_mode && !read_only)
 	{
@@ -1210,12 +1311,27 @@ bool VHDFile::finish()
 	CompressedFile* compfile = dynamic_cast<CompressedFile*>(file);
 	if(compfile!=NULL)
 	{
-		return compfile->finish();
+		if (compfile->finish())
+		{
+			finished = true;
+			return true;
+		}
 	}
 	else
 	{
-		return true;
+		if (read_only)
+		{
+			finished = true;
+			return true;
+		}
+		if (file->Sync())
+		{
+			finished = true;
+			return true;
+		}
 	}
+
+	return false;
 }
 
 VHDFile* VHDFile::getParent()
@@ -1226,4 +1342,276 @@ VHDFile* VHDFile::getParent()
 bool VHDFile::isCompressed()
 {
 	return compressed_file!=NULL;
+}
+
+bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
+{
+	FileWrapper devfile(this, fs_offset);
+	std::auto_ptr<IReadOnlyBitmap> bitmap_source;
+
+	bitmap_source.reset(new ClientBitmap(backing_file->getFilename() + ".cbitmap"));
+
+	if (bitmap_source->hasError())
+	{
+		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
+
+		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+	}
+
+	if(bitmap_source->hasError())
+	{
+		Server->Log("Error opening NTFS bitmap. Cannot convert incremental to full image.", LL_WARNING);
+		return false;
+	}
+
+	unsigned int bitmap_blocksize = static_cast<unsigned int>(bitmap_source->getBlocksize());
+
+	std::vector<char> buffer;
+	buffer.resize(sector_size);
+
+	int64 ntfs_blocks_per_vhd_sector = blocksize / bitmap_blocksize;
+
+	for(int64 ntfs_block=0, n_ntfs_blocks = devfile.Size()/ bitmap_blocksize;
+		ntfs_block<n_ntfs_blocks; ntfs_block+= ntfs_blocks_per_vhd_sector)
+	{
+		bool has_vhd_sector = false;
+		for (int64 i = ntfs_block;
+			i < ntfs_block + ntfs_blocks_per_vhd_sector
+			&& i<n_ntfs_blocks; ++i)
+		{
+			if ( bitmap_source->hasBlock(i) )
+			{
+				has_vhd_sector = true;
+				break;
+			}
+		}
+
+		if(has_vhd_sector)
+		{
+			int64 block_pos = fs_offset + ntfs_block*bitmap_blocksize;
+			int64 max_block_pos = (std::min)(fs_offset + ntfs_block*bitmap_blocksize + blocksize,
+				fs_offset + n_ntfs_blocks*bitmap_blocksize);
+			for(int64 i = block_pos;i<max_block_pos;i+=sector_size)
+			{
+				Seek(i);
+
+				if( !has_block(false)
+					&& has_block(true) )
+				{
+					bool has_error = false;
+					if(Read(buffer.data(), sector_size)!=sector_size)
+					{
+						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+convert(i), LL_WARNING);
+						return false;
+					}
+					
+					if(!write_callback->writeVHD(i, buffer.data(), sector_size))
+					{
+						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+convert(i), LL_WARNING);
+						return false;
+					}
+				}
+			}
+		}
+		else
+		{
+			int64 block_pos = ntfs_block*bitmap_blocksize;
+			int64 max_block_pos = (std::min)(ntfs_block*bitmap_blocksize + blocksize,
+				n_ntfs_blocks*bitmap_blocksize);
+
+			write_callback->emptyVHDBlock(block_pos, max_block_pos);
+		}
+	}
+
+	delete parent;
+	parent = NULL;
+
+	Server->Log("Writing new headers...", LL_INFO);
+
+	/**
+	* For some reason Windows won't open the VHD if
+	* the BAT is not shifted to follow the dynamic header
+	*/
+	bat_offset = def_bat_offset;
+
+	if(!write_header(false) ||
+		!write_dynamicheader(NULL, 0, "") ||
+		!write_footer() ||
+		!write_bat() )
+	{
+		Server->Log("Error writing new headers", LL_WARNING);
+		return false;
+	}
+
+	return true;
+}
+
+bool VHDFile::setUnused(_i64 unused_start, _i64 unused_end)
+{
+	if (!Seek(unused_start))
+	{
+		Server->Log("Error while sseking to "+convert(unused_end)+" in VHD file. Size is "+convert(dstsize)+" -2", LL_ERROR);
+		return false;
+	}
+
+	if (read_only)
+	{
+		Server->Log("VHD file is read only -2", LL_ERROR);
+		return false;
+	}
+
+	if (static_cast<uint64>(unused_end)>dstsize)
+	{
+		Server->Log("VHD file is not large enough. Want to trim till " + convert(unused_end) + " but size is " + convert(dstsize), LL_ERROR);
+		return false;
+	}
+
+	bool dwrite_footer = false;
+
+	uint64 block = curr_offset / ((uint64)blocksize);
+	size_t blockoffset = curr_offset%blocksize;
+	size_t remaining = blocksize - blockoffset;
+	size_t towrite = unused_end- unused_start;
+	size_t bufferoffset = 0;
+	bool firstw = true;
+	std::vector<char> zero_buf;
+
+	while (true)
+	{
+		uint64 dataoffset;
+		unsigned int bat_ref = big_endian(bat[block]);
+		bool new_block = false;
+		if (bat_ref == 0xFFFFFFFF)
+		{
+			dataoffset = nextblock_offset;
+			nextblock_offset += blocksize + bitmap_size;
+			nextblock_offset = nextblock_offset + (sector_size - nextblock_offset%sector_size);
+			dwrite_footer = true;
+			new_block = true;
+			bat[block] = big_endian((unsigned int)(dataoffset / (uint64)(sector_size)));
+		}
+		else
+		{
+			dataoffset = (uint64)bat_ref*(uint64)sector_size;
+		}
+		if (currblock != block)
+		{
+			switchBitmap(dataoffset);
+
+			bool b = file->Seek(dataoffset);
+			if (!b)
+				Server->Log("Seeking failed", LL_ERROR);
+
+			if (!new_block)
+				file->Read(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+			else
+			{
+				memset(bitmap.data(), 0, bitmap_size);
+				_u32 rc = file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+				if (rc != bitmap_size)
+				{
+					Server->Log("Writing bitmap failed", LL_ERROR);
+					print_last_error();
+					return false;
+				}
+			}
+			currblock = block;
+		}
+
+		while (blockoffset < blocksize)
+		{
+			size_t wantwrite = (std::min)((size_t)sector_size, towrite);
+			if (remaining < wantwrite)
+				wantwrite = remaining;
+			if (firstw && blockoffset%sector_size != 0 && wantwrite > sector_size - blockoffset%sector_size)
+			{
+				wantwrite = sector_size - blockoffset%sector_size;
+				firstw = false;
+			}
+			else
+			{
+				firstw = false;
+			}
+
+			/**
+			* This is counter-intuitive. We want it to return zeroes on reads but if we
+			* set the bit to false it will read from the parent. So set it to true
+			* to read the zeroes from the current VHD file.
+			* This only works if we have not written to the same location previously, so
+			* write zeroes in this case.
+			*/
+			if (!setBitmapBit((unsigned int)blockoffset, true))
+			{
+				if (zero_buf.size() != wantwrite)
+				{
+					zero_buf.resize(wantwrite);
+				}
+				_u32 rc = file->Write(dataoffset + bitmap_size + blockoffset, zero_buf.data(), (_u32)wantwrite);
+				if (rc != wantwrite)
+				{
+					Server->Log("Writing to file failed (2)", LL_ERROR);
+					print_last_error();
+					return false;
+				}
+			}
+
+			bufferoffset += wantwrite;
+			blockoffset += wantwrite;
+			remaining -= wantwrite;
+			towrite -= wantwrite;
+			if (towrite == 0)
+			{
+				break;
+			}
+			if (remaining == 0)
+			{
+				break;
+			}
+		}
+
+		if (!fast_mode)
+		{
+			file->Seek(dataoffset);
+			_u32 rc = file->Write(reinterpret_cast<char*>(bitmap.data()), bitmap_size);
+			if (rc != bitmap_size)
+			{
+				Server->Log("Writing bitmap failed", LL_ERROR);
+				print_last_error();
+				return false;
+			}
+		}
+
+		if (towrite == 0)
+			break;
+
+		++block;
+		blockoffset = 0;
+		remaining = blocksize;
+	}
+
+	if (dwrite_footer && !fast_mode)
+	{
+		if (!write_footer())
+		{
+			Server->Log("Error writing footer (2)", LL_ERROR);
+			return false;
+		}
+		if (!write_bat())
+		{
+			Server->Log("Error writing BAT (2)", LL_ERROR);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool VHDFile::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
+bool VHDFile::Sync()
+{
+	return finish();
 }

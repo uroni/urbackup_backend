@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -21,18 +21,15 @@
 #include <iostream>
 #ifdef _WIN32
 #	include <conio.h>
+#	include <ws2tcpip.h>
 #endif
 #include "../Interface/Server.h"
 #include "CTCPFileServ.h"
 #include "settings.h"
 #include "../stringtools.h"
-#include "CampusThread.h"
 #include "log.h"
 
 std::fstream logfile;
-#ifdef CAMPUS
-CCampusThread *ct=NULL;
-#endif
 CTCPFileServ *TCPServer=NULL;
 
 #ifdef LINUX
@@ -46,6 +43,7 @@ CTCPFileServ *TCPServer=NULL;
 #include <syslog.h>
 #include <string.h>
 #endif
+#include <algorithm>
 
 #ifdef DLL_EXPORT
 #	define EXPORT_METHOD_INT 5
@@ -78,10 +76,8 @@ void RestartServer()
 
 bool EnumerateInterfaces()
 {
-	static std::vector<_u32> ips;
+	static std::vector<std::vector<char> > ips;
 	char hostname[MAX_PATH];
-    struct    hostent* h;
-    _u32     address;
 
     _i32 rc=gethostname(hostname, MAX_PATH);
      if(rc==SOCKET_ERROR)
@@ -89,50 +85,34 @@ bool EnumerateInterfaces()
 
 	 bool new_ifs=false;
 
-	 std::vector<_u32> new_ips;
+	 std::vector<std::vector<char> > new_ips;
 
-	 if(NULL != (h = gethostbyname(hostname)))
+	 struct addrinfo* h;
+	 if(getaddrinfo(hostname, NULL, NULL, &h)==0)
      {
-		for(_u32 x = 0; (h->h_addr_list[x]); x++)
-        {
-               
-			((char*)(&address))[0] = h->h_addr_list[x][0];
-			((char*)(&address))[1] = h->h_addr_list[x][1];
-            ((char*)(&address))[2] = h->h_addr_list[x][2];
-            ((char*)(&address))[3] = h->h_addr_list[x][3];
-			
-			bool found=false;
-			for(size_t i=0;i<ips.size();++i)
-			{
-				if(ips[i]==address )
-				{
-					found=true;
-					break;
-				}
-			}
+		 for(addrinfo* ptr = h;ptr!=NULL;ptr=ptr->ai_next)
+		 {
+			 if(ptr->ai_family==AF_INET || ptr->ai_family==AF_INET6)
+			 {
+				 std::vector<char> address;
+				 address.resize(ptr->ai_addrlen);
+				 memcpy(&address[0], ptr->ai_addr, ptr->ai_addrlen);
 
-			if( found==false )
-			{
-				new_ifs=true;
-			}
+				 if(std::find(ips.begin(), ips.end(), address)==ips.end())
+				 {
+					 new_ifs=true;
+				 }
 
-			new_ips.push_back(address);
-        }
+				 new_ips.push_back(address);
+			 }
+		 }
+
+		 freeaddrinfo(h);
      }
 
 	 for(size_t i=0;i<ips.size();++i)
 	 {
-		 bool found=false;
-		 for(size_t j=0;j<new_ips.size();++j)
-		 {
-			 if(ips[i]==new_ips[j])
-			 {
-				 found=true;
-				 break;
-			 }
-		 }
-
-		 if(!found)
+		 if(std::find(new_ips.begin(), new_ips.end(), ips[i])==new_ips.end())
 		 {
 			 new_ifs=true;
 		 }
@@ -173,7 +153,7 @@ bool SetPrivilege(
             lpszPrivilege,   // privilege to lookup 
             &luid ) )        // receives LUID of privilege
     {
-        Log("LookupPrivilegeValue error: "+nconvert((int)GetLastError()), LL_ERROR ); 
+        Log("LookupPrivilegeValue error: "+convert((int)GetLastError()), LL_ERROR ); 
         return false; 
     }
 
@@ -194,7 +174,7 @@ bool SetPrivilege(
            (PTOKEN_PRIVILEGES) NULL, 
            (PDWORD) NULL) )
     { 
-          Log("AdjustTokenPrivileges error: "+nconvert((int)GetLastError()), LL_ERROR ); 
+          Log("AdjustTokenPrivileges error: "+convert((int)GetLastError()), LL_ERROR ); 
           return false; 
     } 
 
@@ -337,6 +317,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		Log("Backup privileges set successfully", LL_DEBUG);
 	}
+	hr=ModifyPrivilege(SE_SECURITY_NAME, TRUE);
+	if(!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges (SE_SECURITY_NAME)", LL_ERROR);
+	}
+	else
+	{
+		Log("Backup privileges set successfully (SE_SECURITY_NAME)", LL_DEBUG);
+	}
+	hr=ModifyPrivilege(SE_RESTORE_NAME, TRUE);
+	if(!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges (SE_RESTORE_NAME)", LL_ERROR);
+	}
+	else
+	{
+		Log("Backup privileges set successfully (SE_RESTORE_NAME)", LL_DEBUG);
+	}
 #endif
 #endif
 
@@ -379,15 +377,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return 99;
 	}
 
-#ifdef CAMPUS
-	ct=new CCampusThread(getServerName());
-	Server->createThread(ct);
-#endif
-	
+
 #ifndef AS_SERVICE
 	while(true)
 	{
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(_WIN32)
 		if( _kbhit() )
 		{
 			break;
@@ -415,9 +409,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #endif //AS_SERVICE
 
 #ifndef AS_SERVICE
-#ifdef CAMPUS
-	delete ct;
-#endif
 	return 2;
 #endif
 #ifdef _DEBUG

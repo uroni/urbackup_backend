@@ -1,15 +1,47 @@
-﻿<a href="javascript: show_backups1()">{tClients}</a> > <a href="javascript: tabMouseClickClients({clientid})">{clientname}</a> > {cpath|s}<br /><br />
+﻿<div class="panel panel-default">
+	<div class="panel-heading">
+		{?show_client_breadcrumb}
+		<a href="javascript: show_backups1()">{tClients}</a> >
+		{/show_client_breadcrumb}
+		<a href="javascript: tabMouseClickClients({clientid})">{clientname}</a> > {cpath|s}
+	</div>
+	<div class="panel-body">
 
-<table cellspacing="0" cellpadding="0">
-<tr>
-	<th style="width: 25px" class="tabHeader">&nbsp;</th>
-	<th style="width: 150px" class="tabHeader">{tFile}</th>
-	<th style="width: 150px" class="tabHeaderRight">{tSize}</th>
-</tr>
-{rows|s}
-</table>
+		<table class="table table-hover">
+			<thead>
+				<tr>
+					<th style="width: 25px" class="tabHeader">&nbsp;</th>
+					<th style="width: 100%" class="tabHeader">{tFile}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tSize}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tCreated}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tLast modified}</th>
+					<th class="tabHeader" style="white-space: nowrap;">{tLast accessed}</th>
+					<th class="tabHeader">&nbsp;</th>
+				</tr>
+			</thead>
+			<tbody>
+			{#files}
+				<tr>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">&nbsp;</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer">{name|s}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{size}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{creat}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{mod}</td>
+					<td onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')" style="cursor: pointer;white-space: nowrap;">{access}</td>
+					<td style="white-space: nowrap;">
+						{?list_items}<a class="btn btn-default" href="#" onClick="tabMouseClick{proc}Access({clientid},{backupid},'{path|j}'); return false">{tList}</a>{/list_items}
+						{?can_restore}<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid}, '{folder_path|j}', {server_confirms_restore}, '{name|s|j}'); return false">{tRestore}</a>{/can_restore}</td>
+					<td>
+				</tr>
+			{/files}
+			</tbody>
+		</table>
 
-{?download_zip}
-<br />
-<a href="javascript: downloadZIP({clientid},{backupid},'{path}')">{tDownload folder as ZIP}</a>
-{/download_zip}
+		{?download_zip}
+		<a class="btn btn-default" href="#" onClick="downloadZIP({clientid}, {backupid}, '{path|j}'); return false">{tDownload folder as ZIP}</a>
+		{/download_zip}
+		{?can_restore}
+		<a class="btn btn-default" href="#" onClick="restoreFiles({clientid}, {backupid},'{path|j}', {server_confirms_restore}); return false">{tRestore folder to client}</a>
+		{/can_restore}
+	</div>
+</div>

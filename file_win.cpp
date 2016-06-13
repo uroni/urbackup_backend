@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -26,15 +26,15 @@
 
 size_t File::tmp_file_index = 0;
 IMutex* File::index_mutex = NULL;
-std::wstring File::random_prefix;
+std::string File::random_prefix;
 
 File::File()
-	: hfile(INVALID_HANDLE_VALUE)
+	: hfile(INVALID_HANDLE_VALUE), is_sparse(false), more_extents(true), curr_extent(0), last_sparse_pos(0)
 {
 
 }
 
-bool File::Open(std::wstring pfn, int mode)
+bool File::Open(std::string pfn, int mode)
 {
 	fn=pfn;
 	DWORD dwCreationDisposition;
@@ -67,11 +67,16 @@ bool File::Open(std::wstring pfn, int mode)
 	else if( mode==MODE_RW 
 		|| mode==MODE_RW_SEQUENTIAL
 		|| mode==MODE_RW_CREATE
-		|| mode==MODE_RW_READNONE)
+		|| mode==MODE_RW_READNONE
+		|| mode== MODE_RW_DEVICE
+		|| mode==MODE_RW_RESTORE
+		|| mode==MODE_RW_CREATE_RESTORE)
 	{
 		if(mode==MODE_RW
 			|| mode==MODE_RW_SEQUENTIAL
-			|| mode==MODE_RW_READNONE)
+			|| mode==MODE_RW_READNONE
+			|| mode== MODE_RW_DEVICE
+			|| mode==MODE_RW_RESTORE)
 		{
 			dwCreationDisposition=OPEN_EXISTING;
 		}
@@ -82,7 +87,8 @@ bool File::Open(std::wstring pfn, int mode)
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
 
-	if(mode==MODE_READ_DEVICE)
+	if(mode==MODE_READ_DEVICE
+		|| mode== MODE_RW_DEVICE)
 	{
 		dwShareMode|=FILE_SHARE_WRITE;
 	}
@@ -94,12 +100,14 @@ bool File::Open(std::wstring pfn, int mode)
 	{
 		flags|=FILE_FLAG_SEQUENTIAL_SCAN;
 	}
-	if(mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if(mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode==MODE_RW_RESTORE
+		|| mode==MODE_RW_CREATE_RESTORE)
 	{
 		flags|=FILE_FLAG_BACKUP_SEMANTICS;
 	}
 	
-	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
+	hfile=CreateFileW( Server->ConvertToWchar(fn).c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
 
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
@@ -117,9 +125,9 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 }
 
-bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
+bool File::OpenTemporaryFile(const std::string &tmpdir, bool first_try)
 {
-	std::wostringstream filename;
+	std::ostringstream filename;
 
 	if(tmpdir.empty())
 	{
@@ -127,10 +135,10 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 		DWORD l;
 		if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
 		{
-			wcscpy_s(tmpp,L"C:\\");
+			wcscpy_s(tmpp, L"C:\\");
 		}
 		
-		filename << tmpp;
+		filename << Server->ConvertFromWchar(tmpp);
 	}
 	else
 	{
@@ -138,25 +146,25 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 
 		if(tmpdir[tmpdir.size()-1]!='\\')
 		{
-			filename << L"\\";
+			filename << "\\";
 		}
 	}
 
-	filename << L"urb" << random_prefix << L"-" << std::hex;
+	filename << "urb" << random_prefix << L"-" << std::hex;
 
 	{
 		IScopedLock lock(index_mutex);
 		filename << ++tmp_file_index;
 	}
 
-	filename << L".tmp";
+	filename << ".tmp";
 
 	if(!Open(filename.str(), MODE_TEMP))
 	{
 		if(first_try)
 		{
-			Server->Log(L"Creating temporary file at \"" + filename.str()+L"\" failed. Creating directory \""+tmpdir+L"\"...", LL_WARNING);
-			BOOL b = CreateDirectoryW(tmpdir.c_str(), NULL);
+			Server->Log("Creating temporary file at \"" + filename.str()+"\" failed. Creating directory \""+tmpdir+"\"...", LL_WARNING);
+			BOOL b = CreateDirectoryW(Server->ConvertToWchar(tmpdir).c_str(), NULL);
 
 			if(b)
 			{
@@ -164,7 +172,7 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 			}
 			else
 			{
-				Server->Log(L"Creating directory \""+tmpdir+L"\" failed.", LL_WARNING);
+				Server->Log("Creating directory \""+tmpdir+"\" failed.", LL_WARNING);
 				return false;
 			}
 		}
@@ -179,9 +187,10 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 	}
 }
 
-bool File::Open(void *handle)
+bool File::Open(void *handle, const std::string& pFilename)
 {
 	hfile=(HANDLE)handle;
+	fn = pFilename;
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
 		return true;
@@ -192,45 +201,109 @@ bool File::Open(void *handle)
 	}
 }
 
-std::string File::Read(_u32 tr)
+std::string File::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(tr);
-	_u32 gc=Read((char*)ret.c_str(), tr);
+	_u32 gc=Read((char*)ret.c_str(), tr, has_error);
 	if( gc<tr )
 		ret.resize( gc );
 	
 	return ret;
 }
 
-_u32 File::Read(char* buffer, _u32 bsize)
+std::string File::Read(int64 spos, _u32 tr, bool *has_error)
+{
+	std::string ret;
+	ret.resize(tr);
+	_u32 gc=Read(spos, (char*)ret.c_str(), tr, has_error);
+	if( gc<tr )
+		ret.resize( gc );
+
+	return ret;
+}
+
+_u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD read;
 	BOOL b=ReadFile(hfile, buffer, bsize, &read, NULL );
-#ifdef _DEBUG
 	if(b==FALSE)
 	{
+#ifdef _DEBUG
 		int err=GetLastError();
-		Server->Log("Read error: "+nconvert(err));
-	}
-	/*if(read!=bsize)
-	{
-		int err=GetLastError();
-		Server->Log("Read error: "+nconvert(err));
-	}*/
+		Server->Log("Read error: "+convert(err));
 #endif
+		if(has_error)
+		{
+			*has_error=true;
+		}
+	}
 	return (_u32)read;
 }
 
-_u32 File::Write(const std::string &tw)
+_u32 File::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
 {
-	return Write( tw.c_str(), (_u32)tw.size() );
+	OVERLAPPED overlapped = {};
+	LARGE_INTEGER li;
+	li.QuadPart = spos;
+	overlapped.Offset = li.LowPart;
+	overlapped.OffsetHigh = li.HighPart;
+
+	DWORD read;
+	BOOL b=ReadFile(hfile, buffer, bsize, &read, &overlapped );
+	if(b==FALSE)
+	{
+#ifdef _DEBUG
+		int err=GetLastError();
+		Server->Log("Read error: "+convert(err));
+#endif
+		if (has_error)
+		{
+			*has_error = true;
+		}
+	}
+	return (_u32)read;
 }
 
-_u32 File::Write(const char* buffer, _u32 bsize)
+_u32 File::Write(const std::string &tw, bool *has_error)
+{
+	return Write( tw.c_str(), (_u32)tw.size(), has_error );
+}
+
+_u32 File::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD written;
-	WriteFile(hfile, buffer, bsize, &written, NULL);
+	if (WriteFile(hfile, buffer, bsize, &written, NULL) == FALSE)
+	{
+		if (has_error)
+		{
+			*has_error = true;
+		}
+	}
+	return written;
+}
+
+_u32 File::Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	OVERLAPPED overlapped = {};
+	LARGE_INTEGER li;
+	li.QuadPart = spos;
+	overlapped.Offset = li.LowPart;
+	overlapped.OffsetHigh = li.HighPart;
+
+	DWORD written;
+	if (WriteFile(hfile, buffer, bsize, &written, &overlapped) == FALSE)
+	{
+		if (has_error)
+		{
+			*has_error = true;
+		}
+	}
 	return written;
 }
 
@@ -255,6 +328,11 @@ _i64 File::Size(void)
 	return fs.QuadPart;
 }
 
+_i64 File::RealSize()
+{
+	return Size();
+}
+
 void File::Close()
 {
 	if( hfile!=NULL )
@@ -274,12 +352,171 @@ void File::init_mutex()
 	memcpy(&rnd[0], &timesec, sizeof(timesec));
 	Server->randomFill(&rnd[4], 4);
 
-	random_prefix = widen(bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size()));
+	random_prefix = bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size());
 }
 
 void File::destroy_mutex()
 {
 	Server->destroy(index_mutex);
+}
+
+bool File::setSparse()
+{
+	if (!is_sparse)
+	{
+		FILE_SET_SPARSE_BUFFER buf = { TRUE };
+		DWORD ret_bytes;
+		BOOL b = DeviceIoControl(hfile, FSCTL_SET_SPARSE, &buf,
+			static_cast<DWORD>(sizeof(buf)), NULL, 0, &ret_bytes, NULL);
+
+		if (!b)
+		{
+			return false;
+		}
+
+		is_sparse = true;
+	}
+
+	return true;
+}
+
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	if (!setSparse())
+	{
+		return false;
+	}
+	
+	FILE_ZERO_DATA_INFORMATION zdi;
+
+	zdi.FileOffset.QuadPart = spos;
+	zdi.BeyondFinalZero.QuadPart = spos + size;
+
+	DWORD ret_bytes;
+	BOOL b = DeviceIoControl(hfile, FSCTL_SET_ZERO_DATA, &zdi,
+		static_cast<DWORD>(sizeof(zdi)), NULL, 0, &ret_bytes, 0);
+
+	if(!b)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool File::Sync()
+{
+	return FlushFileBuffers(hfile)!=0;
+}
+
+bool File::Resize(int64 new_size)
+{
+	int64 fsize = Size();
+
+	if (new_size > fsize)
+	{
+		if (!setSparse())
+		{
+			return false;
+		}
+	}
+
+	LARGE_INTEGER tmp;
+	tmp.QuadPart = 0;
+	LARGE_INTEGER curr_pos;
+	if (SetFilePointerEx(hfile, tmp, &curr_pos, FILE_CURRENT) == FALSE)
+	{
+		return false;
+	}
+
+	tmp.QuadPart = new_size;
+	if (SetFilePointerEx(hfile, tmp, NULL, FILE_BEGIN) == FALSE)
+	{
+		return false;
+	}
+
+	BOOL ret = SetEndOfFile(hfile);
+
+	SetFilePointerEx(hfile, curr_pos, NULL, FILE_BEGIN);
+
+	return ret == TRUE;
+}
+
+void File::resetSparseExtentIter()
+{
+	res_extent_buffer.clear();
+	more_extents = true;
+	curr_extent = 0;
+}
+
+IFsFile::SSparseExtent File::nextSparseExtent()
+{
+	while (!res_extent_buffer.empty()
+		&& curr_extent<res_extent_buffer.size())
+	{
+		if (res_extent_buffer[curr_extent].FileOffset.QuadPart != last_sparse_pos)
+		{
+			IFsFile::SSparseExtent ret(last_sparse_pos, res_extent_buffer[curr_extent].FileOffset.QuadPart - last_sparse_pos);
+			last_sparse_pos = res_extent_buffer[curr_extent].FileOffset.QuadPart + res_extent_buffer[curr_extent].Length.QuadPart;
+			++curr_extent;
+			return ret;
+		}
+		
+		last_sparse_pos = res_extent_buffer[curr_extent].FileOffset.QuadPart + res_extent_buffer[curr_extent].Length.QuadPart;
+		++curr_extent;
+	}
+
+	if (!more_extents)
+	{
+		int64 fsize = Size();
+		if (last_sparse_pos!=-1 && last_sparse_pos != fsize)
+		{
+			IFsFile::SSparseExtent ret = IFsFile::SSparseExtent(last_sparse_pos, fsize - last_sparse_pos);
+			last_sparse_pos = fsize;
+			return ret;
+		}
+
+		return IFsFile::SSparseExtent();
+	}
+
+	int64 fsize = Size();
+
+	FILE_ALLOCATED_RANGE_BUFFER query_range;
+	query_range.FileOffset.QuadPart = last_sparse_pos;
+	query_range.Length.QuadPart = fsize- last_sparse_pos;
+	
+	if (res_extent_buffer.empty())
+	{
+		res_extent_buffer.resize(10);
+	}
+	else
+	{
+		res_extent_buffer.resize(100);
+	}
+
+	DWORD output_bytes;
+	BOOL b = DeviceIoControl(hfile, FSCTL_QUERY_ALLOCATED_RANGES,
+		&query_range, sizeof(query_range), res_extent_buffer.data(), static_cast<DWORD>(res_extent_buffer.size()*sizeof(FILE_ALLOCATED_RANGE_BUFFER)),
+		&output_bytes, NULL);
+
+	more_extents = (!b && GetLastError() == ERROR_MORE_DATA);
+
+	if (more_extents || b)
+	{
+		res_extent_buffer.resize(output_bytes / sizeof(FILE_ALLOCATED_RANGE_BUFFER));
+		curr_extent = 0;
+	}
+	else
+	{
+		res_extent_buffer.clear();
+		more_extents = false;
+		curr_extent = 0;
+		last_sparse_pos = -1;
+	}
+
+	return nextSparseExtent();
 }
 
 #endif

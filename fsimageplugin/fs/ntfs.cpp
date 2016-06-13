@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -38,7 +38,7 @@ private:
 	char* buf;
 };
 
-FSNTFS::FSNTFS(const std::wstring &pDev, bool read_ahead, bool background_priority, bool check_mft_mirror, bool fix)
+FSNTFS::FSNTFS(const std::string &pDev, bool read_ahead, bool background_priority, bool check_mft_mirror, bool fix)
 	: Filesystem(pDev, read_ahead, background_priority), bitmap(NULL)
 {
 	init(check_mft_mirror, fix);
@@ -76,9 +76,9 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 	clustersize=sectorsize*br.sectorspercluster;
 	drivesize=br.numberofsectors*sectorsize;
 
-	Server->Log("Sectorsize: "+nconvert(sectorsize), LL_DEBUG);
-	Server->Log("Clustersize: "+nconvert(clustersize), LL_DEBUG);
-	Server->Log("ClustersPerMFTNode Offset: "+nconvert((uint64)&br.mftlcn-(uint64)&br), LL_DEBUG);
+	Server->Log("Sectorsize: "+convert(sectorsize), LL_DEBUG);
+	Server->Log("Clustersize: "+convert(clustersize), LL_DEBUG);
+	Server->Log("ClustersPerMFTNode Offset: "+convert((uint64)&br.mftlcn-(uint64)&br), LL_DEBUG);
 
 	unsigned int mftrecordsize;
 	if(br.clusterspermftrecord<0)
@@ -91,7 +91,7 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 	}
 
 	uint64 mftstart=br.mftlcn*clustersize;
-	Server->Log("MFTStart: "+nconvert(br.mftlcn), LL_DEBUG);
+	Server->Log("MFTStart: "+convert(br.mftlcn), LL_DEBUG);
 
 	char *mftrecord=new char[mftrecordsize];
 	MemFree mftrecord_free(mftrecord);
@@ -135,9 +135,9 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 			std::string fn_uc;
 			fn_uc.resize(fn.filename_length*2);
 			memcpy(&fn_uc[0], mftrecord+currpos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
-			Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+			Server->Log("Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
 		}
-		Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+		Server->Log("Attribute Type: "+convert(attr.type)+" nonresident="+convert(attr.nonresident)+" length="+convert(attr.length), LL_DEBUG);
 	}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
 
 	if(attr.type==0xFFFFFFFF )
@@ -216,18 +216,18 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 			std::string fn_uc;
 			fn_uc.resize(fn.filename_length*2);
 			memcpy(&fn_uc[0], bitmaprecord+currpos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
-			Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
-			if(Server->ConvertFromUTF16(fn_uc)==L"$Bitmap")
+			Server->Log("Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+			if(Server->ConvertFromUTF16(fn_uc)=="$Bitmap")
 			{
 				is_bitmap=true;
 			}
 		}
-		Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+		Server->Log("Attribute Type: "+convert(attr.type)+" nonresident="+convert(attr.nonresident)+" length="+convert(attr.length), LL_DEBUG);
 	}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
 
 	if(!is_bitmap)
 	{
-		Server->Log(L"Filename attribute not found or filename wrong", LL_ERROR);
+		Server->Log("Filename attribute not found or filename wrong", LL_ERROR);
 		has_error=true;
 		return;
 	}
@@ -257,6 +257,7 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 
 	Runlist bitmaprunlist(bitmaprecord+currpos+bitmapstream.run_offset );
 	
+	Server->Log("Bitmap size="+convert(bitmapstream.real_size), LL_DEBUG);
 	bitmap=new unsigned char[(unsigned int)bitmapstream.real_size];
 	char *buffer=new char[clustersize];
 	MemFree buffer_free(buffer);
@@ -274,7 +275,7 @@ void FSNTFS::init(bool check_mft_mirror, bool fix)
 		rc=dev->Read(buffer, clustersize);
 		if(rc!=clustersize)
 		{
-			Server->Log("Error reading cluster "+nconvert(lcn)+" code: 529", LL_ERROR);
+			Server->Log("Error reading cluster "+convert(lcn)+" code: 529", LL_ERROR);
 			has_error=true;
 			return;
 		}
@@ -406,18 +407,18 @@ bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTF
 			std::string fn_uc;
 			fn_uc.resize(fn.filename_length*2);
 			memcpy(&fn_uc[0], mirrrecord+currpos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
-			Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
-			if(Server->ConvertFromUTF16(fn_uc)==L"$MFTMirr")
+			Server->Log("Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+			if(Server->ConvertFromUTF16(fn_uc)=="$MFTMirr")
 			{
 				is_mftmirr=true;
 			}
 		}
-		Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+		Server->Log("Attribute Type: "+convert(attr.type)+" nonresident="+convert(attr.nonresident)+" length="+convert(attr.length), LL_DEBUG);
 	}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
 
 	if(!is_mftmirr)
 	{
-		Server->Log(L"Filename attribute not found or filename wrong", LL_ERROR);
+		Server->Log("Filename attribute not found or filename wrong", LL_ERROR);
 		return false;
 	}
 
@@ -459,7 +460,7 @@ bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTF
 		rc=dev->Read(buffer, clustersize);
 		if(rc!=clustersize)
 		{
-			Server->Log("Error reading cluster "+nconvert(lcn)+" code: 529", LL_ERROR);
+			Server->Log("Error reading cluster "+convert(lcn)+" code: 529", LL_ERROR);
 			return false;
 		}
 		memcpy(&mftmirr_data[mirr_pos], buffer, (size_t)(std::min)(mftmirrstream.real_size-mirr_pos, (uint64)clustersize) );
@@ -493,12 +494,12 @@ bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTF
 
 		if(A->lsn!=B->lsn)
 		{
-			Server->Log("MFT file record in MFT mirror differs in file record "+nconvert(i)+": Logfile sequence number differs", LL_WARNING);
+			Server->Log("MFT file record in MFT mirror differs in file record "+convert(i)+": Logfile sequence number differs", LL_WARNING);
 		}
 
 		if(memcmp(currfilerecord, mftmirr_data+i*mftrecordsize, mftrecordsize)!=0)
 		{
-			Server->Log("MFT file record in MFT mirror differs in file record "+nconvert(i), LL_WARNING);
+			Server->Log("MFT file record in MFT mirror differs in file record "+convert(i), LL_WARNING);
 			if(fix)
 			{
 				memcpy(mftmirr_data+i*mftrecordsize, currfilerecord, mftrecordsize);
@@ -526,7 +527,7 @@ bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTF
 			rc=dev->Write((const char*)(mftmirr_data+i*clustersize), clustersize);
 			if(rc!=clustersize)
 			{
-				Server->Log("Error writing cluster "+nconvert(lcn)+" code: 652", LL_WARNING);
+				Server->Log("Error writing cluster "+convert(lcn)+" code: 652", LL_WARNING);
 				return false;
 			}
 		}

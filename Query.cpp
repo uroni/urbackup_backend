@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #ifndef NO_SQLITE
@@ -63,6 +63,11 @@ CQuery::~CQuery()
 		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
 	}
 
+	if (err == SQLITE_FULL)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+	}
+
 	delete cursor;
 }
 
@@ -76,28 +81,6 @@ void CQuery::init_mutex(void)
 void CQuery::Bind(const std::string &str)
 {
 	int err=sqlite3_bind_text(ps, curr_idx, str.c_str(), (int)str.size(), SQLITE_TRANSIENT);
-	if( err!=SQLITE_OK )
-		Server->Log("Error binding text to Query  Stmt: ["+stmt_str+"]", LL_ERROR);
-	++curr_idx;
-}
-
-void CQuery::Bind(const std::wstring &str)
-{
-	int err;
-	if( sizeof(wchar_t)==2 )
-	{
-		err=sqlite3_bind_text16(ps, curr_idx, str.c_str(), (int)str.size()*2, SQLITE_TRANSIENT);
-	}
-	else
-	{
-		unsigned short *tmp=new unsigned short[str.size()];
-		for(size_t i=0,l=str.size();i<l;++i)
-		{
-			tmp[i]=str[i];
-		}
-		err=sqlite3_bind_text16(ps, curr_idx, tmp, (int)str.size()*2, SQLITE_TRANSIENT);
-		delete []tmp;
-	}
 	if( err!=SQLITE_OK )
 		Server->Log("Error binding text to Query  Stmt: ["+stmt_str+"]", LL_ERROR);
 	++curr_idx;
@@ -156,6 +139,8 @@ void CQuery::Reset(void)
 
 bool CQuery::Write(int timeoutms)
 {
+	IScopedReadLock lock(db->getSingleUseMutex());
+
 #ifdef LOG_WRITE_QUERIES
 	ScopedAddActiveQuery active_query(this);
 #endif
@@ -173,19 +158,25 @@ bool CQuery::Execute(int timeoutms)
 		sqlite3_busy_timeout(db->getDatabase(), timeoutms);
 	}
 	int err=sqlite3_step(ps);
-	while( err==SQLITE_IOERR_BLOCKED || err==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_LOCKED )
+	while( err==SQLITE_IOERR_BLOCKED 
+			|| err==SQLITE_BUSY 
+			|| err==SQLITE_PROTOCOL 
+			|| err==SQLITE_ROW 
+			|| err==SQLITE_LOCKED )
 	{
 		if(err==SQLITE_IOERR_BLOCKED)
 		{
 			Server->Log("SQlite is blocked!", LL_ERROR);
 		}
-		if(err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED)
+		if(err==SQLITE_BUSY 
+			|| err==SQLITE_IOERR_BLOCKED
+			|| err==SQLITE_PROTOCOL )
 		{
 			if(timeoutms>=0)
 			{
 				break;
 			}
-			else if(!db->isInTransaction() && transaction_lock==false)
+			else if(!db->isInTransaction() && !transaction_lock)
 			{
 				sqlite3_reset(ps);
 				if(db->LockForTransaction())
@@ -212,10 +203,12 @@ bool CQuery::Execute(int timeoutms)
 		}
 		else if(err==SQLITE_LOCKED)
 		{
-			if(!db->isInTransaction() && db->LockForTransaction())
+			if(transaction_lock)
 			{
-				transaction_lock=true;
-			}				
+				db->UnlockForTransaction();
+				transaction_lock=false;
+				Server->Log("UnlockForTransaction in CQuery::Execute after SQLITE_LOCKED Stmt: ["+stmt_str+"]", LL_DEBUG);
+			}			
 			if(!db->WaitForUnlock())
 			{
 				Server->Log("DEADLOCK in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_ERROR);
@@ -253,6 +246,10 @@ bool CQuery::Execute(int timeoutms)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 	}
+	if (err == SQLITE_FULL)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
+	}
 
 	if( err!=SQLITE_DONE )
 	{
@@ -268,6 +265,8 @@ bool CQuery::Execute(int timeoutms)
 
 void CQuery::setupStepping(int *timeoutms)
 {
+	single_use_lock.reset(new IScopedReadLock(db->getSingleUseMutex()));
+
 	if(timeoutms!=NULL && *timeoutms>=0)
 	{
 		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
@@ -306,46 +305,18 @@ void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 	}
-}
-
-db_nresults CQuery::ReadN(int *timeoutms)
-{
-	int err;
-	db_nresults rows;
-
-	bool transaction_lock=false;
-	int tries=60; //10min
-
-#ifdef LOG_READ_QUERIES
-	ScopedAddActiveQuery active_query(this);
-#endif
-
-	setupStepping(timeoutms);
-	
-	db_nsingle_result res;
-	do
+	if (err == SQLITE_FULL)
 	{
-		bool reset=false;
-		err=stepN(res, timeoutms, tries, transaction_lock, reset);
-		if(reset)
-		{
-			rows.clear();
-		}
-		if(err==SQLITE_ROW)
-		{
-			rows.push_back(res);
-			res.clear();
-		}
+		Server->setFailBit(IServer::FAIL_DATABASE_FULL);
 	}
-	while(resultOkay(err));
 
-	shutdownStepping(err, timeoutms, transaction_lock);
-
-	return rows;
+	single_use_lock.reset();
 }
 
 db_results CQuery::Read(int *timeoutms)
 {
+	IScopedReadLock lock(db->getSingleUseMutex());
+
 	int err;
 	db_results rows;
 
@@ -383,8 +354,23 @@ db_results CQuery::Read(int *timeoutms)
 bool CQuery::resultOkay(int rc)
 {
 	return  rc==SQLITE_BUSY ||
+			rc==SQLITE_PROTOCOL ||
 			rc==SQLITE_ROW ||
 			rc==SQLITE_IOERR_BLOCKED;
+}
+
+namespace
+{
+	std::string ustring_sqlite3_column_name(sqlite3_stmt* ps, int N)
+	{
+		const char* c_name = sqlite3_column_name(ps, N);
+		if(c_name==NULL)
+		{
+			return std::string();
+		}
+
+		return std::string(c_name);
+	}
 }
 
 int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset)
@@ -392,13 +378,15 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 	int err=sqlite3_step(ps);
 	if( resultOkay(err) )
 	{
-		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
+		if( err==SQLITE_BUSY 
+			|| err==SQLITE_PROTOCOL
+			|| err==SQLITE_IOERR_BLOCKED )
 		{
 			if(timeoutms!=NULL && *timeoutms>=0)
 			{
 				return SQLITE_ABORT;
 			}
-			else if(!db->isInTransaction() && transaction_lock==false)
+			else if(!db->isInTransaction() && !transaction_lock)
 			{
 				sqlite3_reset(ps);
 				reset=true;
@@ -428,139 +416,23 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 		else if( err==SQLITE_ROW )
 		{
 			int column=0;
-			const unsigned short *c_name;
-			while( (c_name=(const unsigned short*)sqlite3_column_name16(ps, column) )!=NULL )
+			std::string column_name;
+			while( !(column_name=ustring_sqlite3_column_name(ps, column) ).empty() )
 			{
-				std::wstring column_name;
-				if( sizeof(wchar_t)!=2 )
+				const void* data;
+				int data_size;
+				if(sqlite3_column_type(ps, column)==SQLITE_BLOB)
 				{
-					size_t len=0;
-					while(c_name[len]!=0)
-						++len;
-
-					column_name.resize(len);
-					for(size_t i=0;i<len;++i)
-					{
-						column_name[i]=c_name[i];
-					}
+					data = sqlite3_column_blob(ps, column);
+					data_size =sqlite3_column_bytes(ps, column);
 				}
 				else
 				{
-					column_name=(wchar_t*)c_name;
+					data = sqlite3_column_text(ps, column);
+					data_size = sqlite3_column_bytes(ps, column);
 				}
-				std::wstring data;
-				int blob_size=sqlite3_column_bytes16(ps, column);
-				const void *blob=sqlite3_column_blob(ps, column);
-				//int blob_size2=sqlite3_column_bytes(ps, column);
-				if(blob_size>0)
-				{
-					if( sizeof(wchar_t)==2 )
-					{
-						data.resize(blob_size/2+blob_size%2);
-						memcpy(&data[0], blob, blob_size);
-					}
-					else
-					{
-						if( SQLITE_BLOB==sqlite3_column_type(ps, column) )
-						{
-							size_t size=(size_t)(blob_size/sizeof(wchar_t))+((blob_size%sizeof(wchar_t))>0?1:0);
-							
-							data.resize(size);
-							char* ptr=(char*)data.c_str();
-							memcpy(ptr, blob, blob_size);
-
-							if( blob_size%sizeof(wchar_t)>0 )
-							{
-								memset(ptr+blob_size, 0, sizeof(wchar_t)-blob_size%sizeof(wchar_t) );
-							}
-						}
-						else
-						{
-							data.resize(blob_size/sizeof(unsigned short));
-							unsigned short *ip=(unsigned short*)blob;
-							for(int i=0,l=blob_size/sizeof(unsigned short);i<l;++i)
-							{
-						
-								data[i]=*ip;
-								++ip;
-							}
-						}
-					}
-				}
-				res.insert( std::pair<std::wstring, std::wstring>(column_name, data) );
-				++column;
-			}
-		}
-		else
-		{
-			Server->wait(1000);
-			if(timeoutms!=NULL && *timeoutms>=0)
-			{
-				*timeoutms-=1000;
-
-				if(*timeoutms<=0)
-				{
-					return SQLITE_ABORT;
-				}
-			}
-		}
-	}
-	return err;
-}
-
-int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset)
-{
-	int err=sqlite3_step(ps);
-	if(resultOkay(err))
-	{
-		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
-		{
-			if(timeoutms!=NULL && *timeoutms>=0)
-			{
-				return SQLITE_ABORT;
-			}
-			else if(!db->isInTransaction() && transaction_lock==false)
-			{
-				sqlite3_reset(ps);
-				reset=true;
-				if(db->LockForTransaction())
-				{
-					Server->Log("LockForTransaction in CQuery::ReadN Stmt: ["+stmt_str+"]", LL_DEBUG);
-					transaction_lock=true;
-				}
-			}
-			else
-			{
-				sqlite3_reset(ps);
-				reset=true;
-				--tries;
-				if(tries==-1)
-				{
-				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
-				  showActiveQueries(LL_ERROR);
-				}
-				else
-				{
-					Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
-					showActiveQueries(LL_INFO);
-				}
-			}
-		}
-		else if( err==SQLITE_ROW )
-		{
-			int column=0;
-			const char *column_name;
-			while( (column_name=sqlite3_column_name(ps, column) )!=NULL )
-			{
-				std::string data;
-				const void *blob=sqlite3_column_blob(ps, column);
-				int blob_size=sqlite3_column_bytes(ps, column);
-				if(blob_size>0 && blob!=NULL)
-				{
-					data.resize(blob_size);
-					memcpy(&data[0], blob, blob_size);
-				}
-				res.insert( std::pair<std::string, std::string>(column_name, data) );
+				std::string datastr(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data)+data_size);				
+				res.insert( std::pair<std::string, std::string>(column_name, datastr) );
 				++column;
 			}
 		}
@@ -627,7 +499,7 @@ void CQuery::showActiveQueries(int loglevel)
 	IScopedLock lock(active_mutex);
 	for(size_t i=0;i<active_queries.size();++i)
 	{
-		Server->Log("Active query("+nconvert(i)+"): "+active_queries[i], loglevel);
+		Server->Log("Active query("+convert(i)+"): "+active_queries[i], loglevel);
 	}
 #endif
 }

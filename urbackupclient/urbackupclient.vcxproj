@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug WinXP|Win32">
       <Configuration>Debug WinXP</Configuration>
@@ -51,18 +51,29 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
+    <ClCompile Include="..\common\miniz.c" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
-    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
+    <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
-    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp" />
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
+    <ClCompile Include="..\urbackupcommon\glob.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
+    <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
     <ClCompile Include="ChangeJournalWatcher.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientdao.cpp" />
@@ -70,34 +81,53 @@
     <ClCompile Include="ClientService.cpp" />
     <ClCompile Include="ClientServiceCMD.cpp" />
     <ClCompile Include="client_restore.cpp" />
+    <ClCompile Include="cmdline_preprocessor.cpp" />
+    <ClCompile Include="common_tokens.cpp" />
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="file_permissions.cpp" />
-    <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
+    <ClCompile Include="RestoreDownloadThread.cpp" />
+    <ClCompile Include="RestoreFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
-    <ClCompile Include="watchdir\CriticalSection.cpp" />
-    <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
-    <ClCompile Include="watchdir\DirectoryChanges.cpp" />
+    <ClCompile Include="TokenCallback.cpp" />
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
+    <ClCompile Include="watchdir\JournalDAO.cpp" />
     <ClCompile Include="win_all_volumes.cpp" />
+    <ClCompile Include="win_disk_mon.cpp" />
     <ClCompile Include="win_sysvol.cpp" />
+    <ClCompile Include="win_tokens.cpp" />
     <ClCompile Include="win_ver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\adler32.h" />
     <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
-    <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
+    <ClInclude Include="..\urbackupcommon\change_ids.h" />
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
+    <ClInclude Include="..\urbackupcommon\CompressedPipe2.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\ExtentIterator.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
-    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h" />
+    <ClInclude Include="..\urbackupcommon\file_metadata.h" />
+    <ClInclude Include="..\urbackupcommon\glob.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h" />
     <ClInclude Include="..\urbackupcommon\mbrdata.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="..\urbackupcommon\SparseFile.h" />
+    <ClInclude Include="..\urbackupcommon\TreeHash.h" />
     <ClInclude Include="ChangeJournalWatcher.h" />
     <ClInclude Include="client.h" />
     <ClInclude Include="clientdao.h" />
@@ -105,16 +135,20 @@
     <ClInclude Include="ClientService.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
+    <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="PersistentOpenFiles.h" />
+    <ClInclude Include="RestoreDownloadThread.h" />
+    <ClInclude Include="RestoreFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
-    <ClInclude Include="watchdir\CriticalSection.h" />
-    <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />
-    <ClInclude Include="watchdir\DirectoryChanges.h" />
-    <ClInclude Include="watchdir\Event.h" />
+    <ClInclude Include="TokenCallback.h" />
+    <ClInclude Include="tokens.h" />
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
+    <ClInclude Include="watchdir\JournalDAO.h" />
     <ClInclude Include="win_all_volumes.h" />
+    <ClInclude Include="win_disk_mon.h" />
     <ClInclude Include="win_sysvol.h" />
     <ClInclude Include="win_ver.h" />
   </ItemGroup>
@@ -122,63 +156,76 @@
     <ProjectGuid>{28D66E10-BF1E-45E3-B4E0-77920126531B}</ProjectGuid>
     <RootNamespace>urbackup</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release x64|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug WinXP|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server 2003|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release WinXP|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release x64|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug WinXP|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server 2003|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release WinXP|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -298,7 +345,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -306,10 +353,11 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibd_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -329,33 +377,37 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -365,29 +417,31 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;CLIENT_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;CLIENT_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release WinXP|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -396,9 +450,9 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_xp.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -413,8 +467,8 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -423,9 +477,9 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_xp.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -437,8 +491,8 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;%(PreprocessorDefinitions);CLIENT_ONLY;_WIN_PRE_VISTA</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -447,9 +501,9 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_server03.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSS_SDK_DIR)\lib\win2003\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -464,8 +518,8 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;CLIENT_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/../deps/include/zlib;$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_S03;CLIENT_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -474,9 +528,9 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;vssapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_server03.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSS_SDK_DIR)\lib\win2003\obj\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/../deps/libs;$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\win2003\obj\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -487,8 +541,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug WinXP|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(VSS_SDK_DIR)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -498,8 +552,8 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibd_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(VSS_SDK_DIR)\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -511,7 +565,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Programme\Microsoft\VSSSDK72\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;C:\Programme\Microsoft\VSSSDK72\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;VSS_XP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -522,8 +576,8 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi_xp.Lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Programme\Microsoft\VSSSDK72\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi_xp.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;C:\Programme\Microsoft\VSSSDK72\lib\winxp\obj\i386;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
@@ -533,7 +587,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -542,12 +596,13 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release x64|x64'">
@@ -557,21 +612,23 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);CLIENT_ONLY</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlib_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

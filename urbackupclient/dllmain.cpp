@@ -1,18 +1,18 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011-2014 Martin Raiber
+*    Copyright (C) 2011-2016 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
+*    it under the terms of the GNU Affero General Public License as published by
 *    the Free Software Foundation, either version 3 of the License, or
 *    (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
 *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*    GNU Affero General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
+*    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
@@ -25,9 +25,22 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urbackupclient
+#define UnloadActions UnloadActions_urbackupclient
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
@@ -36,11 +49,13 @@ IServer *Server;
 #include "../Interface/Query.h"
 #include "../Interface/Thread.h"
 #include "../Interface/File.h"
+#include "../Interface/SettingsReader.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 
 #include "database.h"
+#include "tokens.h"
 
 #include "ClientService.h"
 #include "client.h"
@@ -54,6 +69,31 @@ IServer *Server;
 #include "InternetClient.h"
 #include <stdlib.h>
 #include "file_permissions.h"
+
+#include "../urbackupcommon/chunk_hasher.h"
+
+#define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
+
+namespace
+{
+#include "backup_client_db.h"
+
+	std::string get_backup_client_db_data()
+	{
+		size_t out_len;
+		void* cdata = tinfl_decompress_mem_to_heap(backup_client_db_z, backup_client_db_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER|TINFL_FLAG_COMPUTE_ADLER32);
+		if (cdata == NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+		mz_free(cdata);
+		return ret;
+	}
+}
 
 
 PLUGIN_ID filesrv_pluginid;
@@ -73,7 +113,7 @@ bool upgrade_client(void);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
-std::string time_format_str="%m/%d/%Y %H:%M";
+std::string time_format_str="%d.%m.%Y %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -88,32 +128,6 @@ const std::string new_file="urbackup/new.txt";
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
 
-namespace
-{
-
-bool copy_file(const std::wstring &src, const std::wstring &dst)
-{
-	IFile *fsrc=Server->openFile(src, MODE_READ);
-	if(fsrc==NULL) return false;
-	IFile *fdst=Server->openFile(dst, MODE_WRITE);
-	if(fdst==NULL)
-	{
-		Server->destroy(fsrc);
-		return false;
-	}
-	char buf[4096];
-	size_t rc;
-	while( (rc=(_u32)fsrc->Read(buf, 4096))>0)
-	{
-		fdst->Write(buf, (_u32)rc);
-	}
-	
-	Server->destroy(fsrc);
-	Server->destroy(fdst);
-	return true;
-}
-
-}
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -122,7 +136,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())
 	{
-		os_remove_nonempty_dir(widen(rmtest));
+		os_remove_nonempty_dir(rmtest);
 		return;
 	}
 
@@ -147,21 +161,28 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		wcscpy_s(tmpp,L"C:\\");
 	}
 
-	std::wstring w_tmp=tmpp;
+	std::string w_tmp=Server->ConvertFromWchar(tmpp);
 
 	if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
 	{
 		w_tmp.erase(w_tmp.size()-1, 1);
 	}
 
-	os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
-	if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp"))
+	os_remove_nonempty_dir(w_tmp+os_file_sep()+"urbackup_client_tmp");
+	if(!os_create_dir(w_tmp+os_file_sep()+"urbackup_client_tmp"))
 	{
 		Server->wait(5000);
-		os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+		os_create_dir(w_tmp+os_file_sep()+"urbackup_client_tmp");
 	}
-	Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+	Server->setTemporaryDirectory(w_tmp+os_file_sep()+"urbackup_client_tmp");
 #endif
+
+	str_map params;
+	crypto_fak = (ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+	if (crypto_fak == NULL)
+	{
+		Server->Log("Error loading Cryptoplugin", LL_ERROR);
+	}
 
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
@@ -190,7 +211,20 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+#ifdef _WIN32
+	std::string restore=Server->getServerParameter("allow_restore");
+	if(restore=="default" && !Server->fileExists(Server->getServerWorkingDir()+"\\UrBackupClient.exe"))
+	{
+		//Client without tray icon
+		Server->setServerParameter("allow_restore", "server-confirms");
+	}
+	else if(restore.empty())
+	{
+		Server->setServerParameter("allow_restore", "default");
+	}
+#endif
 
+	init_chunk_hasher();
 
 	ServerIdentityMgr::init_mutex();
 #ifdef _WIN32
@@ -199,17 +233,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(getFile(pw_file).size()<5)
 	{
-		writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_file);
+		writestring(Server->getSessionMgr()->GenerateSessionIDWithUser("",""), pw_file);
 	}
 	if(getFile(pw_change_file).size()<5)
 	{
-		write_file_only_admin(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_change_file);
+		write_file_only_admin(Server->getSessionMgr()->GenerateSessionIDWithUser("",""), pw_change_file);
 	}
 
-	if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
+	if( !FileExists("urbackup/backup_client.db") )
 	{
-		//Copy file
-		copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
+		writestring(get_backup_client_db_data(), "urbackup/backup_client.db");
 	}
 
 #ifndef _DEBUG
@@ -219,21 +252,87 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
 		Server->Log("Couldn't open Database backup_client.db", LL_ERROR);
-		return;
+		exit(1);
+	}
+
+	if (!upgrade_client())
+	{
+		Server->Log("Upgrading client database failed. Startup failed.", LL_ERROR);
+		exit(1);
 	}
 
 #ifdef _WIN32
 	if( !FileExists("prefilebackup.bat") && FileExists("prefilebackup_new.bat") )
 	{
-		copy_file(L"prefilebackup_new.bat", L"prefilebackup.bat");
+		copy_file("prefilebackup_new.bat", "prefilebackup.bat");
 		Server->deleteFile("prefilebackup_new.bat");
 	}
 #endif
 
-	if( !FileExists("urbackup/data/settings.cfg") && FileExists("initial_settings.cfg") )
+#ifdef _WIN32
+#define INITIAL_SETTINGS_PREFIX ""
+#else
+#define INITIAL_SETTINGS_PREFIX "urbackup/"
+#endif
+
+	if( !FileExists("urbackup/data/settings.cfg") && FileExists(INITIAL_SETTINGS_PREFIX "initial_settings.cfg") )
 	{
-		copy_file(L"initial_settings.cfg", L"urbackup/data/settings.cfg");
-		Server->deleteFile("initial_settings.cfg");
+		std::auto_ptr<ISettingsReader> settings_reader(Server->createFileSettingsReader(INITIAL_SETTINGS_PREFIX "initial_settings.cfg"));
+		std::string access_keys;
+		std::string client_access_keys;
+		if (settings_reader->getValue("access_keys", &access_keys) && !access_keys.empty())
+		{
+			ClientDAO cd(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
+			std::vector<std::string> toks;
+			TokenizeMail(access_keys, toks, ";");
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				std::string username = getuntil(":", toks[i]);
+				std::string access_key = getafter(":", toks[i]);
+				if (username.size() > 1
+					&& !access_key.empty())
+				{
+					bool is_token = username[0] == 't';
+					username = username.substr(1);
+
+					if (!is_token)
+					{
+						bool is_user = username[0] == 'u';
+
+						os_create_dir(tokens::tokens_path);
+
+						std::string token_path;
+						if (is_user)
+						{
+							token_path = std::string(tokens::tokens_path) + os_file_sep() + "user_" + bytesToHex(username);
+						}
+						else
+						{
+							token_path = std::string(tokens::tokens_path) + os_file_sep() + "group_" + bytesToHex(username);
+						}
+
+						tokens::write_token(tokens::get_hostname(), is_user, username, token_path, cd, access_key);
+					}
+					else
+					{
+						client_access_keys += "key." + username + "=" +
+							access_key + "\n";
+
+						client_access_keys += "key_age." + username + "=" +
+							convert(Server->getTimeSeconds()) + "\n";
+					}
+				}				
+			}
+
+			if (!client_access_keys.empty()
+				&& !FileExists("urbackup/access_keys.properties"))
+			{
+				write_file_only_admin(client_access_keys, "urbackup/access_keys.properties");
+			}
+		}
+
+		copy_file(INITIAL_SETTINGS_PREFIX "initial_settings.cfg", "urbackup/data/settings.cfg");
+		Server->deleteFile(INITIAL_SETTINGS_PREFIX "initial_settings.cfg");
 	}
 
 #ifndef _DEBUG
@@ -247,53 +346,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		change_file_permissions_admin_only("urbackup/data/filelist.ub");
 	}
 
+#ifdef _WIN32
 	change_file_permissions_admin_only("urbackup");
+#endif
 	change_file_permissions_admin_only("urbackup/data");
 
 	if(FileExists("debug.log"))
 	{
 		change_file_permissions_admin_only("debug.log");
 	}
-
-
-	if(FileExists(new_file) )
 #endif
-	{
-		Server->Log("Upgrading...", LL_WARNING);
-		Server->deleteFile(new_file);
-		if(!upgrade_client())
-		{
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-			db->Write("DELETE FROM files");			
-			db->Write("CREATE TABLE IF NOT EXISTS logdata (id INTEGER PRIMARY KEY,logid INTEGER,loglevel INTEGER,message TEXT,idx INTEGER);");
-			db->Write("CREATE TABLE IF NOT EXISTS  logs ( id INTEGER PRIMARY KEY, ttime DATE DEFAULT CURRENT_TIMESTAMP);");
-			db->Write("CREATE TABLE IF NOT EXISTS shadowcopies ( id INTEGER PRIMARY KEY, vssid BLOB, ssetid BLOB, target TEXT, path TEXT);");
-			db->Write("CREATE TABLE IF NOT EXISTS mdirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE shadowcopies ADD tname TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD orig_target TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD filesrv INTEGER;");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_ids ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, last_record INTEGER);");
-			db->Write("ALTER TABLE journal_ids ADD index_done INTEGER;");
-			db->Write("UPDATE journal_ids SET index_done=0 WHERE index_done IS NULL");
-			db->Write("CREATE TABLE IF NOT EXISTS map_frn ( id INTEGER PRIMARY KEY, name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC )");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC )");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_data ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, usn INTEGER, reason INTEGER, filename TEXT, frn INTEGER, parent_frn INTEGER, next_usn INTEGER)");
-			db->Write("DELETE FROM journal_ids");
-			db->Write("DELETE FROM journal_data");
-			db->Write("DELETE FROM map_frn");
-			db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
-			db->Write("ALTER TABLE logdata ADD ltime DATE;");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
-			db->Write("ALTER TABLE backupdirs ADD server_default INTEGER;");
-			db->Write("UPDATE backupdirs SET server_default=0 WHERE server_default IS NULL");
-			db->Write("CREATE TABLE IF NOT EXISTS misc (tkey TEXT, tvalue TEXT);");
-			db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('db_version', '1');");
-			upgrade_client();
-		}
-	}
 
 	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
 
@@ -303,35 +365,35 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		urbackup_serviceport = static_cast<unsigned short>(atoi(Server->getServerParameter("urbackup_serviceport").c_str()));
 	}
-	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport);
 
-	str_map params;
-	filesrv_pluginid=Server->StartPlugin("fileserv", params);
-
-	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if( crypto_fak==NULL )
+	IServer::BindTarget serviceport_bind_target = IServer::BindTarget_All;
+	if (Server->getServerParameter("internet_only_mode") == "true")
 	{
-		Server->Log("Error loading Cryptoplugin", LL_ERROR);
+		serviceport_bind_target = IServer::BindTarget_Localhost;
 	}
+
+	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport, -1, serviceport_bind_target);
+
+	filesrv_pluginid=Server->StartPlugin("fileserv", params);
 
 	IndexThread *it=new IndexThread();
 	if(!do_leak_check)
 	{
-		Server->createThread(it);
+		Server->createThread(it, "file indexing");
 	}
 	else
 	{
-		indexthread_ticket=Server->getThreadPool()->execute(it);
+		indexthread_ticket=Server->getThreadPool()->execute(it, "file indexing");
 	}
 
 	internetclient_ticket=InternetClient::start(do_leak_check);
 
 #ifdef _WIN32
-	cacheSysVolume();
+	cacheVolumes();
 #endif
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
-	Server->wait(1000);	
+	Server->wait(1000);
 }
 
 DLLEXPORT void UnloadActions(void)
@@ -349,6 +411,13 @@ DLLEXPORT void UnloadActions(void)
 		Server->destroyAllDatabases();
 	}
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 10);
+}
+#endif
 
 void upgrade_client1_2(IDatabase *db)
 {
@@ -407,7 +476,7 @@ void upgrade_client9_10(IDatabase *db)
 void update_client10_11(IDatabase *db)
 {
 	db->Write("DROP TABLE filehashes");
-	db->Write("DROP INDEX filehashes_idx");
+	db->Write("DROP INDEX IF EXISTS filehashes_idx");
 	db->Write("DELETE FROM files");
 }
 
@@ -417,7 +486,7 @@ void update_client11_12(IDatabase *db)
 	db->Write("DELETE FROM misc WHERE tkey='last_backup_filetime'");
 	if(!res.empty())
 	{
-		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+wnarrow(res[0][L"c"])+"')");
+		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+res[0]["c"]+"')");
 	}
 
 	db_results misc = db->Read("SELECT tkey, tvalue FROM misc");
@@ -427,8 +496,8 @@ void update_client11_12(IDatabase *db)
 	IQuery* q_insert = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)");
 	for(size_t i=0;i<misc.size();++i)
 	{
-		q_insert->Bind(misc[i][L"tkey"]);
-		q_insert->Bind(misc[i][L"tvalue"]);
+		q_insert->Bind(misc[i]["tkey"]);
+		q_insert->Bind(misc[i]["tvalue"]);
 		q_insert->Write();
 		q_insert->Reset();
 	}
@@ -467,6 +536,66 @@ void update_client15_16(IDatabase *db)
 	db->Write("DELETE FROM files");
 }
 
+void update_client16_17(IDatabase *db)
+{
+	db->Write("CREATE TABLE continuous_watch_queue (id INTEGER PRIMARY KEY, data_size INTEGER, data BLOB)");
+	db->Write("ALTER TABLE backupdirs ADD tgroup INTEGER");
+	db->Write("UPDATE backupdirs SET tgroup=0 WHERE tgroup IS NULL");
+	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, accountname TEXT, token TEXT, is_user INTEGER)");
+	db->Write("CREATE UNIQUE INDEX fileaccess_tokens_unique ON fileaccess_tokens(accountname, is_user)");
+}
+
+void update_client17_18(IDatabase* db)
+{
+	db->Write("DROP TABLE mfiles");
+	db->Write("DROP TABLE mfiles_backup");
+}
+
+void update_client18_19(IDatabase* db)
+{
+	db->Write("CREATE TABLE token_group_memberships (uid INTEGER REFERENCES fileaccess_tokens(id) ON DELETE CASCADE, gid INTEGER REFERENCES fileaccess_tokens(id) ON DELETE CASCADE)");
+	db->Write("CREATE UNIQUE INDEX token_group_memberships_unique ON token_group_memberships(uid, gid)");
+}
+
+void update_client19_20(IDatabase* db)
+{
+	db->Write("ALTER TABLE backupdirs ADD symlinked INTEGER DEFAULT 0");
+	db->Write("UPDATE backupdirs SET symlinked=0 WHERE symlinked IS NULL");
+}
+
+void update_client20_21(IDatabase* db)
+{
+	db->Write("ALTER TABLE shadowcopies ADD clientsubname TEXT");
+	db->Write("UPDATE shadowcopies SET clientsubname='' WHERE clientsubname IS NULL");
+}
+
+void update_client21_22(IDatabase* db)
+{
+	db->Write("ALTER TABLE files ADD tgroup INTEGER");
+	db->Write("UPDATE files SET tgroup=0 WHERE tgroup IS NULL");
+}
+
+void update_client22_23(IDatabase* db)
+{
+	db->Write("DROP INDEX files_idx");
+	db->Write("DELETE FROM files");
+	db->Write("CREATE UNIQUE INDEX files_idx ON files (name ASC, tgroup)");
+	db->Write("UPDATE backupdirs SET optional=38 WHERE optional=0");
+}
+
+void update_client23_24(IDatabase* db)
+{
+	db->Write("ALTER TABLE backupdirs ADD reset_keep INTEGER DEFAULT 0");
+	db->Write("UPDATE backupdirs SET reset_keep=0 WHERE reset_keep IS NULL");
+	db->Write("CREATE TABLE virtual_client_group_offsets (id INTEGER PRIMARY KEY, virtual_client TEXT UNIQUE, group_offset INTEGER)");
+}
+
+void update_client24_25(IDatabase* db)
+{
+	db->Write("CREATE TABLE hardlinks (vol TEXT, frn_high INTEGER, frn_low INTEGER, parent_frn_high INTEGER, parent_frn_low INTEGER,"
+		"PRIMARY KEY(vol, frn_high, frn_low, parent_frn_high, parent_frn_low) ) WITHOUT ROWID");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -477,14 +606,27 @@ bool upgrade_client(void)
 	if(res_v.empty())
 		return false;
 	
-	int ver=watoi(res_v[0][L"tvalue"]);
+	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
+	int max_v = 25;
+
+	if (ver > max_v)
+	{
+		Server->Log("Client database version (" + convert(ver) + ") bigger than latest known version (" + convert(max_v) + ")."
+			" This client version cannot run with this database", LL_ERROR);
+		return false;
+	}
+
+	if (ver == max_v)
+	{
+		return true;
+	}
 	
+	db->BeginWriteTransaction();
+
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
-		db->BeginWriteTransaction();
-
 		old_v=ver;
 		switch(ver)
 		{
@@ -548,6 +690,42 @@ bool upgrade_client(void)
 				update_client15_16(db);
 				++ver;
 				break;
+			case 16:
+				update_client16_17(db);
+				++ver;
+				break;
+			case 17:
+				update_client17_18(db);
+				++ver;
+				break;
+			case 18:
+				update_client18_19(db);
+				++ver;
+				break;
+			case 19:
+				update_client19_20(db);
+				++ver;
+				break;
+			case 20:
+				update_client20_21(db);
+				++ver;
+				break;
+			case 21:
+				update_client21_22(db);
+				++ver;
+				break;
+			case 22:
+				update_client22_23(db);
+				++ver;
+				break;
+			case 23:
+				update_client23_24(db);
+				++ver;
+				break;
+			case 24:
+				update_client24_25(db);
+				++ver;
+				break;
 			default:
 				break;
 		}
@@ -558,10 +736,10 @@ bool upgrade_client(void)
 			q_update->Write();
 			q_update->Reset();
 		}
-
-		db->EndTransaction();
 	}
 	while(old_v<ver);
+
+	db->EndTransaction();
 	
 	db->destroyAllQueries();
 	return true;
