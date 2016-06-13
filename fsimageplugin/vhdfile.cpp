@@ -513,7 +513,7 @@ bool VHDFile::process_footer(void)
 {
 	if(big_endian(footer.format_version)!=0x00010000)
 	{
-		Server->Log("Unrecognized vhd format version", LL_ERROR);
+		Server->Log("Unrecognized VHD format version", LL_ERROR);
 		return false;
 	}
 
@@ -609,7 +609,7 @@ bool VHDFile::read_dynamicheader(void)
 
 		if(parent->getTimestamp()!=big_endian(dynamicheader.parent_timestamp) )
 		{
-			Server->Log("Parent timestamp wrong. Parent was modified? Continueing anyways. But this is dangerous!", LL_ERROR);
+			Server->Log("Parent timestamp wrong. Parent was modified? Continuing anyways. But this is dangerous!", LL_ERROR);
 		}
 	}
 

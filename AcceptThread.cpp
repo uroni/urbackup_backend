@@ -111,7 +111,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 
 	listen(s, 10000);
 
-	Server->Log("Server started up sucessfully!",LL_INFO);
+	Server->Log("Server started up successfully!",LL_INFO);
 }
 
 CAcceptThread::~CAcceptThread()

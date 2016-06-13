@@ -317,7 +317,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 
 					ServerLogger::Log(logid, "FATAL: Writing failed after cleanup. "+os_last_error_str(), LL_ERROR);
 					
-					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
+					ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 					has_error=true;
 				}
 			}
@@ -325,14 +325,14 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			{
 				has_error=true;
 				ServerLogger::Log(logid, "FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
-				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
+				ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			}
 		}
 		else
 		{			
 			has_error=true;
 			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+os_last_error_str(), LL_ERROR);
-			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
+			ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}
 

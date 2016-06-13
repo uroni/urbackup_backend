@@ -161,7 +161,7 @@ bool PersistentOpenFiles::load()
 
 			if(max_time>ctime)
 			{
-				Server->Log("Persisted open files list is obsolete (restart occured) (1)", LL_INFO);
+				Server->Log("Persisted open files list is obsolete (restart occurred) (1)", LL_INFO);
 				return false;
 			}
 
@@ -202,7 +202,7 @@ bool PersistentOpenFiles::load()
 
 			if(max_time>ctime)
 			{
-				Server->Log("Persisted open files list is obsolete (restart occured) (2)", LL_INFO);
+				Server->Log("Persisted open files list is obsolete (restart occurred) (2)", LL_INFO);
 				return false;
 			}
 		}
@@ -215,7 +215,7 @@ bool PersistentOpenFiles::load()
 
 	if(max_time>Server->getTimeMS())
 	{
-		Server->Log("Persisted open files list is obsolete (restart occured)", LL_INFO);
+		Server->Log("Persisted open files list is obsolete (restart occurred)", LL_INFO);
 		return false;
 	}
 

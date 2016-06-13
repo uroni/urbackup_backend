@@ -614,7 +614,7 @@ bool FileBackup::doBackup()
 	if(disk_error)
 	{
 		ServerLogger::Log(logid, "FATAL: Backup failed because of disk problems (see previous messages)", LL_ERROR);
-		client_main->sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(logid));
+		client_main->sendMailToAdmins("Fatal error occurred during backup", ServerLogger::getWarningLevelTextLogdata(logid));
 	}
 
 	if((!has_early_error && !backup_result) || disk_error)

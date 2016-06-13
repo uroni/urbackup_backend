@@ -1136,7 +1136,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							if(vhdfile->hasError())
 							{
 								ServerLogger::Log(logid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
-								ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
+								ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 								goto do_image_cleanup;
 							}
 						}
@@ -1275,7 +1275,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									err=getuntil("|#|", err);
 								}
 
-								ServerLogger::Log(logid, "Error on client occured: "+err, LL_ERROR);
+								ServerLogger::Log(logid, "Error on client occurred: "+err, LL_ERROR);
 							}
 							Server->destroy(cc);
 							if(vhdfile!=NULL)
@@ -1619,7 +1619,7 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 				{
 					if(!warned_about_parenthashfile_error)
 					{
-						Server->Log("Seeking in parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+						Server->Log("Seeking in parent hash file failed (may be caused by a volume with increased size)", LL_WARNING);
 						warned_about_parenthashfile_error=true;
 					}
 					hashfile->Write((char*)zero_hash, sha_size);
@@ -1632,7 +1632,7 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 					{
 						if(!warned_about_parenthashfile_error)
 						{
-							Server->Log("Reading from parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+							Server->Log("Reading from parent hash file failed (may be caused by a volume with increased size)", LL_WARNING);
 							warned_about_parenthashfile_error=true;
 						}
 						hashfile->Write((char*)zero_hash, sha_size);

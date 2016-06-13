@@ -188,7 +188,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		}
 	}
 
-	Log("Server started up sucessfully", LL_DEBUG);
+	Log("Server started up successfully", LL_DEBUG);
 
     return true;
 }

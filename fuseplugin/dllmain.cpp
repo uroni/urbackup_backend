@@ -216,7 +216,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	
 	if(rc!=0)
 	{
-		Server->Log("Error occured while processing fuse events", LL_ERROR);	
+		Server->Log("Error occurred while processing fuse events", LL_ERROR);	
 		exit(6);
 	}
 	
