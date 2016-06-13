@@ -395,7 +395,7 @@ namespace
 
 					if(out_pos>max_pos)
 					{
-						Server->Log("Trying to write beyon partition", LL_ERROR);
+						Server->Log("Trying to write beyond partition", LL_ERROR);
 						return false;
 					}
 
@@ -841,7 +841,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				while( read==4096 && is_ok );
 
 				Server->destroy(out);
-				Server->Log("Copy process finished sucessfully.", LL_INFO);
+				Server->Log("Copy process finished successfully.", LL_INFO);
 				exit(0);
 			}
 		}
@@ -1284,7 +1284,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(vhd.isOpen()==false)
 		{
-			Server->Log("Could not open vhd file", LL_ERROR);
+			Server->Log("Could not open VHD file", LL_ERROR);
 			exit(7);
 		}
 

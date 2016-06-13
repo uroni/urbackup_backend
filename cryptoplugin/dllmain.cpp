@@ -69,7 +69,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			bool b=fak.generatePrivatePublicKeyPair(key_name);
 			if(b)
 			{
-				Server->Log("Keys generated sucessfully", LL_INFO);
+				Server->Log("Keys generated successfully", LL_INFO);
 			}
 			else
 			{
@@ -89,7 +89,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 			else
 			{
-				Server->Log("Signed file sucessfully", LL_INFO);
+				Server->Log("Signed file successfully", LL_INFO);
 			}
 		}
 		else if(crypto_action=="sign_file_dsa")
@@ -105,7 +105,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 			else
 			{
-				Server->Log("Signed file sucessfully (DSA)", LL_INFO);
+				Server->Log("Signed file successfully (DSA)", LL_INFO);
 			}
 		}
 		else if(crypto_action=="verify_file")
@@ -121,7 +121,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 			else
 			{
-				Server->Log("Verfifed file sucessfully", LL_INFO);
+				Server->Log("Verfifed file successfully", LL_INFO);
 			}
 		}
 		else

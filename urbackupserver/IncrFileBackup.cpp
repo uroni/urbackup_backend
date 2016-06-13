@@ -1307,7 +1307,7 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if(num_readded_entries>0)
 		{
-			ServerLogger::Log(logid, "Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
+			ServerLogger::Log(logid, "Number of re-added file entries is "+convert(num_readded_entries), LL_INFO);
 		}
 
 		if(num_copied_file_entries>0)
@@ -1415,7 +1415,7 @@ bool IncrFileBackup::doFileBackup()
 	else
 	{
 		ServerLogger::Log(logid, "Fatal error during backup. Backup not completed", LL_ERROR);
-		ClientMain::sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
+		ClientMain::sendMailToAdmins("Fatal error occurred during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
 	}
 
 	running_updater->stop();

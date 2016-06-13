@@ -438,7 +438,7 @@ void ClientMain::operator ()(void)
 		BackupServer::setVirtualClients(clientname, server_settings->getSettings()->virtual_clients);
 	}
 
-	ServerLogger::Log(logid, "Sending backup incr intervall...", LL_DEBUG);
+	ServerLogger::Log(logid, "Sending backup incr interval...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
 
 	int64 last_client_update_check = 0;
@@ -2294,7 +2294,7 @@ bool ClientMain::handle_not_enough_space(const std::string &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(logid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(logid));
+			sendMailToAdmins("Fatal error occurred during backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			return false;
 		}
 	}

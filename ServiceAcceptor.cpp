@@ -99,7 +99,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 	listen(s, 10000);
 
-	Server->Log(name+": Server started up sucessfully!",LL_INFO);
+	Server->Log(name+": Server started up successfully!",LL_INFO);
 }
 
 CServiceAcceptor::~CServiceAcceptor()
