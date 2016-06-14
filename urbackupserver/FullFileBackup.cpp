@@ -813,6 +813,14 @@ bool FullFileBackup::doFileBackup()
 
 		clientlist->Sync();
 		clientlist_delete.release();
+
+		if ( !os_sync(backuppath)
+			|| !os_sync(backuppath_hashes) )
+		{
+			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+		}
+
+		DBScopedSynchronous synchronous(db);
 		backup_dao->setFileBackupDone(backupid);
 		Server->destroy(clientlist);
 	}
