@@ -27,7 +27,7 @@ FORTIFY_ldflags = -Wl,-z,relro
 endif
 
 urbackupclientbackend_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
-urbackupclientbackend_CPPFLAGS = $(FORTIFY_FLAGS) $(SUID_CFLAGS)
+urbackupclientbackend_CPPFLAGS = $(FORTIFY_FLAGS) $(SUID_CFLAGS) -DNDEBUG
 urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"'
 urbackupclientbackend_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY 
 urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS) $(FORTIFY_ldflags)
@@ -54,7 +54,7 @@ endif
 urbackupclientgui_SOURCES = client/gui/GUI.cpp client/main.cpp client/ConfigPath.cpp client/Connector.cpp client/escape.cpp client/FileSettingsReader.cpp client/Info.cpp client/Logs.cpp client/Settings.cpp client/stringtools.cpp client/TaskBarBaloon.cpp client/tcpstack.cpp client/TrayIcon.cpp client/Status.cpp client/jsoncpp.cpp client/TranslationHelper.cpp $(urbackupclientgui_osx_SOURCES) client/gui/GUISetupWizard.cpp client/SetupWizard.cpp
 urbackupclientgui_CXXFLAGS = -DLINUX $(WX_CXXFLAGS_ONLY) -DDATADIR='"$(datadir)"' -DVARDIR='"$(localstatedir)"' -DSBINDIR='"$(sbindir)"' -DBINDIR='"$(bindir)"'
 urbackupclientgui_CFLAGS = $(WX_CFLAGS_ONLY)
-urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS)
+urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS) -DNDEBUG
 urbackupclientgui_LDADD = $(WX_LIBS)
 
 if MACOSX
