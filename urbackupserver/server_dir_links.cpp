@@ -43,6 +43,24 @@ namespace
 	}
 
 	IMutex* dir_link_mutex;
+	std::map<int, IMutex*> dir_link_client_mutexes;
+
+	void lock_client_mutex(int clientid, IScopedLock& lock)
+	{
+		IScopedLock lock2(dir_link_mutex);
+
+		std::map<int, IMutex*>::iterator it = dir_link_client_mutexes.find(clientid);
+		if (it != dir_link_client_mutexes.end())
+		{
+			lock.relock(it->second);
+		}
+		else
+		{
+			IMutex* mut = Server->createMutex();
+			dir_link_client_mutexes.insert(std::make_pair(clientid, mut));
+			lock.relock(mut);
+		}
+	}
 }
 
 std::string escape_glob_sql(const std::string& glob)
@@ -91,7 +109,8 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 
 	DBScopedSynchronous synchonous_link(link_dao->getDatabase());
 
-	IScopedLock lock(dir_link_mutex);
+	IScopedLock lock(NULL);
+	lock_client_mutex(clientid, lock);
 
 	DBScopedWriteTransaction link_transaction(link_dao->getDatabase());
 
@@ -379,7 +398,8 @@ namespace
 
 bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao, int clientid, bool delete_root, bool with_transaction)
 {
-	IScopedLock lock(dir_link_mutex);
+	IScopedLock lock(NULL);
+	lock_client_mutex(clientid, lock);
 
 	SSymlinkCallbackData userdata(&link_dao, clientid, with_transaction);
 	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
