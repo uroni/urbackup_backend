@@ -242,6 +242,17 @@ void ClientMain::operator ()(void)
 					delete this;
 					return;
 				}
+				else if (next(msg, 0, "address"))
+				{
+					updateClientAddress(msg.substr(7));
+
+					tcpstack.setAddChecksum(internet_connection);
+				}
+				else
+				{
+					pipe->Write(msg);
+					Server->wait(retry_time);
+				}
 			}
 			else
 			{
@@ -2857,6 +2868,17 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 				Server->Log("client_main Thread for client \""+clientname+"\" finished and the authentification failed", LL_INFO);
 				pipe->Write(msg);
 				return false;
+			}
+			else if (next(msg, 0, "address"))
+			{
+				updateClientAddress(msg.substr(7));
+
+				tcpstack.setAddChecksum(internet_connection);
+			}
+			else
+			{
+				pipe->Write(msg);
+				Server->wait(ident_err_retry_time);
 			}
 
 			c=true;
