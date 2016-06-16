@@ -52,7 +52,9 @@ namespace
 		std::map<int, IMutex*>::iterator it = dir_link_client_mutexes.find(clientid);
 		if (it != dir_link_client_mutexes.end())
 		{
-			lock.relock(it->second);
+			IMutex* mut = it->second;
+			lock2.relock(NULL);
+			lock.relock(mut);
 		}
 		else
 		{
