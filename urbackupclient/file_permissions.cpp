@@ -167,11 +167,11 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 
 bool write_file_only_admin(const std::string& data, const std::string& fn)
 {
-	int fd = open(fn.c_str(), O_WRONLY|O_CREAT, S_IRWXU);
+	int fd = open(fn.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 
 	if(fd==-1)
 	{
-		Server->Log("Error opening pw file", LL_ERROR);
+		Server->Log("Error opening admin only file", LL_ERROR);
 		return false;
 	}
 
@@ -179,7 +179,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 
 	if(rc<data.size())
 	{
-		Server->Log("Error writing to pw file", LL_ERROR);
+		Server->Log("Error writing to admin only file", LL_ERROR);
 		close(fd);
 		return false;
 	}
