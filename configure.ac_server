@@ -109,7 +109,7 @@ fi
 
 if test "x$with_crypto" != "xno" && test "x$enable_embedded_cryptopp" != "xyes"
 then
-	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or build without crypto support."; exit 44;])
+	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
 fi
 
 WITH_FUSEPLUGIN_CXXFLAGS=""
