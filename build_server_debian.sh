@@ -9,13 +9,13 @@ then
 	sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
 fi
 
-wget http://buildserver.urbackup.org/urbackup-debian_dev.tar.gz -O urbackup-debian.tar.gz
+wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
 if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
-	wget https://www.cryptopp.com/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
+	wget http://buildserver.urbackup.org/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
 	cd cryptoplugin
 	unzip cryptopp563.zip
 	cd ..
