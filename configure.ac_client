@@ -101,7 +101,7 @@ AC_SUBST([DLOPEN_LIBS])
 
 if test "x$enable_embedded_cryptopp" != "xyes"
 then
-	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or run configure with --enable-embedded-cryptopp."; exit 44;])
+	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
