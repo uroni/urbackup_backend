@@ -38,6 +38,11 @@ then
 	sed -i 's/--enable-packaging/--enable-packaging --enable-embedded-cryptopp/g' debian/rules
 fi
 
+if [ "x$LDFLAGS" != "x" ]
+then
+	sed -i "s/LDFLAGS=\"/LDFLAGS=\"${LDFLAGS} /" debian/rules
+fi
+
 dh clean
 fakeroot dh binary
 mkdir output || true
