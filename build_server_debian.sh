@@ -33,6 +33,11 @@ DEBVERSION="${VERSION}-1"
 
 sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian/changelog
 
+if [ "x$EMBEDDED_CRYPTOPP" != "x" ]
+then
+	sed -i 's/--enable-packaging/--enable-packaging --enable-embedded-cryptopp/g' debian/rules
+fi
+
 dh clean
 fakeroot dh binary
 mkdir output || true
