@@ -428,7 +428,7 @@ void BackupServer::startClients(FileClient &fc)
 
 					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
 
-					Server->Log("New client address: "+convert((unsigned char)ip[0])+"."+convert((unsigned char)ip[1])+"."+convert((unsigned char)ip[2])+"."+convert((unsigned char)ip[3]), LL_INFO);
+					Server->Log("New client address: "+convert((unsigned char)ip[0])+"."+convert((unsigned char)ip[1])+"."+convert((unsigned char)ip[2])+"."+convert((unsigned char)ip[3])+" Internet="+convert(curr_info.internetclient), LL_INFO);
 
 					ServerStatus::setIP(curr_info.name, it->second.addr.sin_addr.s_addr);
 
