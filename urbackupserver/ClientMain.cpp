@@ -1430,6 +1430,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.client_bitmap_version = watoi(it->second);
 		}
+		it = params.find("REQ_PREV_CBITMAP");
+		if (it != params.end())
+		{
+			protocol_versions.require_previous_cbitmap = watoi(it->second);
+		}
 		it = params.find("CMD");
 		if (it != params.end())
 		{

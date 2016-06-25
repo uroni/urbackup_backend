@@ -5,6 +5,8 @@
 
 class IFilesystem;
 class IVHDFile;
+class IFile;
+class IReadOnlyBitmap;
 
 class IFSImageFactory : public IPlugin
 {
@@ -25,4 +27,8 @@ public:
 		bool pRead_only, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD)=0;
 
 	virtual void destroyVHDFile(IVHDFile *vhd)=0;
+
+	virtual IReadOnlyBitmap* createClientBitmap(const std::string& fn)=0;
+
+	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
 };

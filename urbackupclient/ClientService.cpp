@@ -239,6 +239,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	local_backup_running_id = 0;
 	run_other = NULL;
 	idle_timeout = 10000;
+	bitmapfile = NULL;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -466,6 +467,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 		}break;
 	case CCSTATE_IMAGE:
 	case CCSTATE_IMAGE_HASHDATA:
+	case CCSTATE_IMAGE_BITMAP:
 		{
 			if(Server->getThreadPool()->isRunning(image_inf.thread_ticket)==false )
 			{
@@ -712,36 +714,86 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		}
 		return;
 	}
-	if(state==CCSTATE_IMAGE_HASHDATA || state==CCSTATE_UPDATE_DATA)
+
+	while(state==CCSTATE_IMAGE_HASHDATA
+		|| state==CCSTATE_UPDATE_DATA
+		|| state== CCSTATE_IMAGE_BITMAP)
 	{
 		lasttime=Server->getTimeMS();
 
-		if(hashdatafile->Write(cmd)!=cmd.size())
+		IFile* datafile;
+		unsigned int* dataleft;
+		if (state == CCSTATE_IMAGE_HASHDATA
+			|| state == CCSTATE_UPDATE_DATA)
 		{
-			Server->Log("Error writing to hashdata temporary file", LL_ERROR);
-			do_quit=true;
-			return;
-		}
-		if(hashdataleft>=cmd.size())
-		{
-			hashdataleft-=(_u32)cmd.size();
-			//Server->Log("Hashdataleft: "+convert(hashdataleft), LL_DEBUG);
+			datafile = hashdatafile;
+			dataleft = &hashdataleft;
 		}
 		else
 		{
-			Server->Log("Too much hashdata - error", LL_ERROR);
+			datafile = bitmapfile;
+			dataleft = &bitmapleft;
 		}
 
-		if(hashdataleft==0)
+		unsigned int towrite = (std::min)(*dataleft, static_cast<unsigned int>(cmd.size()));
+
+		if(datafile->Write(cmd.substr(0, towrite))!=towrite)
 		{
-			hashdataok=true;
-			if(state==CCSTATE_IMAGE_HASHDATA)
-				state=CCSTATE_IMAGE;
-			else if(state==CCSTATE_UPDATE_DATA)
-				state=CCSTATE_UPDATE_FINISH;
+			Server->Log("Error writing to data to temporary file", LL_ERROR);
+			do_quit=true;
+			return;
 		}
 
-		return;
+		*dataleft -= towrite;
+
+		if(*dataleft==0)
+		{
+			if (state == CCSTATE_IMAGE_HASHDATA
+				|| state == CCSTATE_UPDATE_DATA)
+			{
+				if (bitmapfile == NULL)
+				{
+					hashdataok = true;
+					if (state == CCSTATE_IMAGE_HASHDATA)
+						state = CCSTATE_IMAGE;
+					else if (state == CCSTATE_UPDATE_DATA)
+						state = CCSTATE_UPDATE_FINISH;
+
+					if (towrite != cmd.size())
+					{
+						Server->Log("Too much hash data (needed="+convert(towrite)+" got="+convert(cmd.size()), LL_ERROR);
+					}
+
+					return;
+				}
+				else
+				{
+					cmd.erase(0, towrite);
+					state = CCSTATE_IMAGE_BITMAP;
+
+					if (cmd.empty())
+					{
+						return;
+					}
+				}
+			}
+			else
+			{
+				if (towrite != cmd.size())
+				{
+					Server->Log("Too much bitmap data (needed=" + convert(towrite) + " got=" + convert(cmd.size()), LL_ERROR);
+				}
+
+				hashdataok = true;
+				state = CCSTATE_IMAGE;
+
+				return;
+			}			
+		}
+		else
+		{
+			return;
+		}
 	}
 
 	tcpstack.AddData((char*)cmd.c_str(), cmd.size());
@@ -1846,7 +1898,7 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 bool ClientConnector::sendFullImage(void)
 {
 	image_inf.thread_action=TA_FULL_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile, NULL);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
 
@@ -1883,7 +1935,7 @@ bool ClientConnector::sendFullImage(void)
 bool ClientConnector::sendIncrImage(void)
 {
 	image_inf.thread_action=TA_INCR_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile, bitmapfile);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
 
@@ -1913,7 +1965,6 @@ bool ClientConnector::sendIncrImage(void)
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
 	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread, "incr image upload");
-	state=CCSTATE_IMAGE_HASHDATA;
 	
 	return true;
 }

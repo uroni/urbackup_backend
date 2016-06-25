@@ -34,6 +34,7 @@
 #include <errno.h>
 #include "cowfile.h"
 #endif
+#include "ClientBitmap.h"
 
 #ifdef _WIN32
 namespace
@@ -274,4 +275,14 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)
 {
 	delete vhd;
+}
+
+IReadOnlyBitmap * FSImageFactory::createClientBitmap(const std::string & fn)
+{
+	return new ClientBitmap(fn);
+}
+
+IReadOnlyBitmap * FSImageFactory::createClientBitmap(IFile * bitmap_file)
+{
+	return new ClientBitmap(bitmap_file);
 }

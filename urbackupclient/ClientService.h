@@ -25,7 +25,8 @@ enum ClientConnectorState
 	CCSTATE_UPDATE_FINISH=7,
 	CCSTATE_WAIT_FOR_CONTRACTORS=8,
 	CCSTATE_STATUS=9,
-	CCSTATE_FILESERV=10
+	CCSTATE_FILESERV=10,
+	CCSTATE_IMAGE_BITMAP=11
 };
 
 enum ThreadAction
@@ -380,8 +381,10 @@ private:
 	static int64 service_starttime;
 	static SRestoreToken restore_token;
 
-	IFile *hashdatafile;
+	IFile* hashdatafile;
 	unsigned int hashdataleft;
+	IFile* bitmapfile;
+	unsigned int bitmapleft;
 	volatile bool hashdataok;
 	bool silent_update;
 

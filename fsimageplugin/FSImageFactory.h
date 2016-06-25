@@ -15,6 +15,10 @@ public:
 
 	virtual void destroyVHDFile(IVHDFile *vhd);
 
+	virtual IReadOnlyBitmap* createClientBitmap(const std::string& fn);
+
+	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file);
+
 private:
 	bool isNTFS(char *buffer);
 };

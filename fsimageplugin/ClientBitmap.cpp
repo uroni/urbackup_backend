@@ -15,15 +15,28 @@ ClientBitmap::ClientBitmap(std::string fn)
 {
 	std::auto_ptr<IFile> bitmap_file(Server->openFile(fn, MODE_READ));
 
-	if (bitmap_file.get() == NULL)
+	init(bitmap_file.get());
+}
+
+ClientBitmap::ClientBitmap(IFile * bitmap_file)
+	: has_error(false)
+{
+	init(bitmap_file);
+}
+
+void ClientBitmap::init(IFile * bitmap_file)
+{
+	if (bitmap_file == NULL)
 	{
 		has_error = true;
 		return;
 	}
 
+	bitmap_file->Seek(0);
+
 	if (bitmap_file->Read(8) != "UrBBMM8C")
 	{
-		Server->Log("Bitmap file at " + fn + " has wrong magic", LL_ERROR);
+		Server->Log("Bitmap file at " + bitmap_file->getFilename() + " has wrong magic", LL_ERROR);
 		has_error = true;
 		return;
 	}
@@ -33,7 +46,7 @@ ClientBitmap::ClientBitmap(std::string fn)
 
 	if (bitmap_file->Read(reinterpret_cast<char*>(&bitmap_blocksize), sizeof(bitmap_blocksize)) != sizeof(bitmap_blocksize))
 	{
-		Server->Log("Error reading blocksize from bitmap file " + fn, LL_ERROR);
+		Server->Log("Error reading blocksize from bitmap file " + bitmap_file->getFilename(), LL_ERROR);
 		has_error = true;
 		return;
 	}
@@ -46,7 +59,7 @@ ClientBitmap::ClientBitmap(std::string fn)
 
 	if (bitmap_file->Read(bitmap_data.data(), static_cast<_u32>(bitmap_data.size())) != bitmap_data.size())
 	{
-		Server->Log("Error reading bitmap data from " + fn, LL_ERROR);
+		Server->Log("Error reading bitmap data from " + bitmap_file->getFilename(), LL_ERROR);
 		has_error = true;
 		return;
 	}
@@ -57,7 +70,7 @@ ClientBitmap::ClientBitmap(std::string fn)
 
 	if (bitmap_file->Read(sha_dig, sha_size) != sha_size)
 	{
-		Server->Log("Error reading checksum from " + fn, LL_ERROR);
+		Server->Log("Error reading checksum from " + bitmap_file->getFilename(), LL_ERROR);
 		has_error = true;
 		return;
 	}
@@ -67,7 +80,7 @@ ClientBitmap::ClientBitmap(std::string fn)
 
 	if (memcmp(dig, sha_dig, sha_size) != 0)
 	{
-		Server->Log("Checksum of bitmap file " + fn+" wrong", LL_ERROR);
+		Server->Log("Checksum of bitmap file " + bitmap_file->getFilename() + " wrong", LL_ERROR);
 		has_error = true;
 		return;
 	}
