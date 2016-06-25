@@ -239,19 +239,22 @@ bool ImageBackup::doBackup()
 			synthetic_full=false;
 			ServerLogger::Log(logid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
 			ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
-					client_main->getProtocolVersions().client_bitmap_version>0);
+					client_main->getProtocolVersions().client_bitmap_version>0,
+				client_main->getProtocolVersions().require_previous_cbitmap>0);
 		}
 		else
 		{
 			ret = doImage(letter, last.path, last.incremental+1,
 				cowraw_format?0:last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat(),
-				client_main->getProtocolVersions().client_bitmap_version>0);
+				client_main->getProtocolVersions().client_bitmap_version>0,
+				client_main->getProtocolVersions().require_previous_cbitmap>0);
 		}
 	}
 	else
 	{
 		ret = doImage(letter, "", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
-			      client_main->getProtocolVersions().client_bitmap_version>0);
+			      client_main->getProtocolVersions().client_bitmap_version>0,
+			client_main->getProtocolVersions().require_previous_cbitmap>0);
 	}
 
 	if(ret)
@@ -305,7 +308,8 @@ namespace
 }
 
 
-bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format, bool transfer_bitmap)
+bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
+	bool transfer_checksum, std::string image_file_format, bool transfer_bitmap, bool transfer_prev_cbitmap)
 {
 	std::string sletter = pLetter;
 	if (pLetter != "SYSVOL" && pLetter != "ESP")
@@ -392,25 +396,38 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 	else
 	{
-		IFile *hashfile=Server->openFile(os_file_prefix(pParentvhd+".hash"));
-		if(hashfile==NULL)
+		std::auto_ptr<IFile> hashfile(Server->openFile(os_file_prefix(pParentvhd + ".hash")));
+		if(hashfile.get()==NULL)
 		{
-			ServerLogger::Log(logid, "Error opening hashfile", LL_ERROR);
+			ServerLogger::Log(logid, "Error opening hashfile ("+ pParentvhd + ".hash). "+os_last_error_str(), LL_ERROR);
 			Server->Log("Starting image path repair...", LL_INFO);
 			ServerUpdateStats::repairImages();
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str;
+		std::auto_ptr<IFile> prevbitmap;
+		std::string prevbitmap_str;
+		if (transfer_prev_cbitmap)
+		{
+			prevbitmap.reset(Server->openFile(os_file_prefix(pParentvhd + ".cbitmap")));
+			if (prevbitmap.get() == NULL)
+			{
+				ServerLogger::Log(logid, "Error opening previous bitmap ("+ pParentvhd + ".cbitmap). "+os_last_error_str(), LL_ERROR);
+				Server->destroy(cc);
+				return false;
+			}
+			prevbitmap_str = "&cbitmapsize=" + convert(prevbitmap->Size());
+		}
+		
+		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str+ prevbitmap_str;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
 			ServerLogger::Log(logid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
 			Server->destroy(cc);
-			Server->destroy(hashfile);
 			return false;
 		}
-		ESendErr senderr = sendFileToPipe(hashfile, cc, logid);
+		ESendErr senderr = sendFileToPipe(hashfile.get(), cc, logid);
 		if(senderr!=ESendErr_Ok)
 		{
 			if (senderr == ESendErr_Send)
@@ -423,10 +440,27 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Server cannot read necessary data.", LL_ERROR);
 			}
 			Server->destroy(cc);
-			Server->destroy(hashfile);
 			return false;
 		}
-		Server->destroy(hashfile);
+
+		if (prevbitmap.get() != NULL)
+		{
+			ESendErr senderr = sendFileToPipe(prevbitmap.get(), cc, logid);
+			if (senderr != ESendErr_Ok)
+			{
+				if (senderr == ESendErr_Send)
+				{
+					ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Connection to client broke.", LL_ERROR);
+					has_timeout_error = true;
+				}
+				else
+				{
+					ServerLogger::Log(logid, "Exchanging data with client during image backup preparation failed. Server cannot read necessary data.", LL_ERROR);
+				}
+				Server->destroy(cc);
+				return false;
+			}
+		}
 	}
 
 	std::string ret;

@@ -12,7 +12,8 @@ class IFilesystem;
 class ImageThread : public IThread
 {
 public:
-	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile);
+	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf,
+		std::string server_token, IFile *hashdatafile, IFile* bitmapfile);
 
 	void operator()(void);
 
@@ -37,6 +38,7 @@ private:
 	ClientConnector *client;
 	std::string server_token;
 	IFile *hashdatafile;
+	IFile* bitmapfile;
 	
 	ImageInformation *image_inf;
 };

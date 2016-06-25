@@ -299,14 +299,22 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		lock.relock(single_user_mutex);
 	}
 
+	int prepare_tries = 0;
+#ifdef SQLITE_PREPARE_RETRIES
+	prepare_tries = SQLITE_PREPARE_RETRIES;
+#endif
+
 	sqlite3_stmt *prepared_statement;
 	const char* tail;
 	int err;
 	bool transaction_lock=false;
 	while((err=sqlite3_prepare_v2(db, pQuery.c_str(), (int)pQuery.size(), &prepared_statement, &tail) )==SQLITE_LOCKED 
 		|| err==SQLITE_BUSY
-		|| err==SQLITE_PROTOCOL)
+		|| err==SQLITE_PROTOCOL
+		|| (err!=SQLITE_OK && prepare_tries>0) )
 	{
+		--prepare_tries;
+
 		if(err==SQLITE_LOCKED)
 		{
 			if(!transaction_lock && LockForTransaction())
@@ -316,7 +324,8 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 					Server->Log("DATABASE DEADLOCKED in CDatabase::Prepare", LL_ERROR);
 			}
 		}
-		else
+		else if(err== SQLITE_BUSY
+			|| err==SQLITE_PROTOCOL)
 		{
 			if(!transaction_lock)
 			{
@@ -330,6 +339,11 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 			{
 				Server->Log("DATABASE BUSY in CDatabase::Prepare", LL_ERROR);
 			}
+		}
+		else
+		{
+			Server->Log("Error preparing Query [" + pQuery + "]: " + sqlite3_errmsg(db)+". Retrying in 1s...", LL_ERROR);
+			Server->wait(1000);
 		}
 	}
 

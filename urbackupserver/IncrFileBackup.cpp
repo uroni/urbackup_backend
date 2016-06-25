@@ -1346,6 +1346,13 @@ bool IncrFileBackup::doFileBackup()
 			clientlist_delete.release();
 			clientlist->Sync();
 			Server->destroy(clientlist);
+
+			if (!os_sync(backuppath)
+				|| !os_sync(backuppath_hashes))
+			{
+				ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+			}
+
 			DBScopedSynchronous synchronous(db);
 			backup_dao->setFileBackupDone(backupid);
 			if (ServerCleanupThread::isClientlistDeletionAllowed())
@@ -1405,6 +1412,13 @@ bool IncrFileBackup::doFileBackup()
 		clientlist_delete.release();
 		clientlist->Sync();
 		Server->destroy(clientlist);
+
+		if (!os_sync(backuppath)
+			|| !os_sync(backuppath_hashes))
+		{
+			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+		}
+
 		DBScopedSynchronous synchronous(db);
 		backup_dao->setFileBackupDone(backupid);
 		if (ServerCleanupThread::isClientlistDeletionAllowed())

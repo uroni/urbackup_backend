@@ -51,7 +51,7 @@ else
 urbackupclientgui_osx_SOURCES =
 endif
 
-urbackupclientgui_SOURCES = client/gui/GUI.cpp client/main.cpp client/ConfigPath.cpp client/Connector.cpp client/escape.cpp client/FileSettingsReader.cpp client/Info.cpp client/Logs.cpp client/Settings.cpp client/stringtools.cpp client/TaskBarBaloon.cpp client/tcpstack.cpp client/TrayIcon.cpp client/Status.cpp client/jsoncpp.cpp client/TranslationHelper.cpp $(urbackupclientgui_osx_SOURCES) client/gui/GUISetupWizard.cpp client/SetupWizard.cpp
+urbackupclientgui_SOURCES = client/gui/GUI.cpp client/main.cpp client/ConfigPath.cpp client/Connector.cpp client/escape.cpp client/FileSettingsReader.cpp client/Info.cpp client/Logs.cpp client/Settings.cpp client/stringtools.cpp client/TaskBarBaloon.cpp client/tcpstack.cpp client/TrayIcon.cpp client/Status.cpp client/jsoncpp.cpp client/TranslationHelper.cpp $(urbackupclientgui_osx_SOURCES) client/gui/GUISetupWizard.cpp client/SetupWizard.cpp client/CbtStatus.cpp
 urbackupclientgui_CXXFLAGS = -DLINUX $(WX_CXXFLAGS_ONLY) -DDATADIR='"$(datadir)"' -DVARDIR='"$(localstatedir)"' -DSBINDIR='"$(sbindir)"' -DBINDIR='"$(bindir)"'
 urbackupclientgui_CFLAGS = $(WX_CFLAGS_ONLY)
 urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS) -DNDEBUG
@@ -174,7 +174,7 @@ fsimageplugin_headers = fsimageplugin/filesystem.h fsimageplugin/FSImageFactory.
 urbackupclientctl_headers = clientctl/Connector.h clientctl/tcpstack.h clientctl/json/json.h clientctl/json/json-forwards.h
 
 if WITH_GUI_CLIENT
-client_headers = client/ConfigPath.h client/Connector.h client/escape.h client/FileSettingsReader.h client/Info.h client/Logs.h client/main.h client/resource.h client/Settings.h client/stringtools.h client/TaskBarBaloon.h client/tcpstack.h client/TrayIcon.h client/utf8/utf8.h client/utf8/utf8/checked.h client/utf8/utf8/core.h client/utf8/utf8/unchecked.h client/gui/GUI.h client/capa_bits.h client/Status.h client/json/json.h client/json/json-forwards.h client/TranslationHelper.h
+client_headers = client/ConfigPath.h client/Connector.h client/escape.h client/FileSettingsReader.h client/Info.h client/Logs.h client/main.h client/resource.h client/Settings.h client/stringtools.h client/TaskBarBaloon.h client/tcpstack.h client/TrayIcon.h client/utf8/utf8.h client/utf8/utf8/checked.h client/utf8/utf8/core.h client/utf8/utf8/unchecked.h client/gui/GUI.h client/capa_bits.h client/Status.h client/json/json.h client/json/json-forwards.h client/TranslationHelper.h client/CbtStatus.h
 else
 client_headers = 
 endif

@@ -58,8 +58,10 @@ namespace
 }
 
 
-ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)
-	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token), hashdatafile(hashdatafile)
+ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf,
+	std::string server_token, IFile *hashdatafile, IFile* bitmapfile)
+	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token),
+	hashdatafile(hashdatafile), bitmapfile(bitmapfile)
 {
 }
 
@@ -707,6 +709,26 @@ bool ImageThread::sendIncrImageThread(void)
 			zeroblockbuf=new char[blocksize];
 			memset(zeroblockbuf, 0, blocksize);
 
+			std::auto_ptr<IReadOnlyBitmap> previous_bitmap;
+			if (bitmapfile != NULL
+				&& hdat_img.get() != NULL)
+			{
+				previous_bitmap.reset(image_fak->createClientBitmap(bitmapfile));
+				if (previous_bitmap.get() == NULL
+					|| previous_bitmap->hasError())
+				{
+					ImageErr("Error opening previous client bitmap", LL_ERROR);
+					run = false;
+					break;
+				}
+			}
+			else if (hdat_img.get() != NULL)
+			{
+				ImageErr("Need previous client bitmap", LL_ERROR);
+				run = false;
+				break;
+			}
+
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
 
@@ -721,12 +743,25 @@ bool ImageThread::sendIncrImageThread(void)
 				}
 				currvhdblock=i/vhdblocks;
 				bool has_data=false;
+				bool bitmap_diff = false;
 				for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 				{
 					if( fs->hasBlock(j) )
 					{
-						has_data=true;
-						break;
+						if (previous_bitmap.get() != NULL)
+						{
+							has_data = true;
+							if (!previous_bitmap->hasBlock(j))
+							{
+								bitmap_diff = true;
+								break;
+							}
+						}
+						else
+						{
+							has_data = true;
+							break;
+						}
 					}
 				}
 
@@ -742,7 +777,8 @@ bool ImageThread::sendIncrImageThread(void)
 					unsigned char digest[c_hashsize];
 
 					bool has_hash = false;
-					if (hdat_img.get() != NULL)
+					if (hdat_img.get() != NULL
+						&& !bitmap_diff)
 					{
 						if (IndexThread::getShadowId(hdat_vol, hdat_img.get()) == r_shadow_id)
 						{
@@ -938,6 +974,11 @@ bool ImageThread::sendIncrImageThread(void)
 	Server->destroy(hashdatafile);
 	Server->deleteFile(hashdatafile_fn);
 
+	if (bitmapfile != NULL)
+	{
+		ScopedDeleteFile del_bitmap_file(bitmapfile);
+	}
+
 	Server->Log("Sending image done", LL_INFO);
 
 	bool success = !has_error;
@@ -1105,7 +1146,7 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 	}
 
 	HANDLE hfile = CreateFileA((volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat").c_str(), GENERIC_WRITE|GENERIC_READ, share_mode, NULL, OPEN_ALWAYS,
-		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM, NULL);
+		FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if (hfile == INVALID_HANDLE_VALUE)
 	{

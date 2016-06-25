@@ -596,6 +596,16 @@ void update_client24_25(IDatabase* db)
 		"PRIMARY KEY(vol, frn_high, frn_low, parent_frn_high, parent_frn_low) ) WITHOUT ROWID");
 }
 
+void update_client25_26(IDatabase* db)
+{
+#ifdef _WIN32
+	if (FileExists("urbctctl.exe"))
+	{
+		system("urbctctl.exe reset all");
+	}
+#endif
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -608,7 +618,7 @@ bool upgrade_client(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 25;
+	int max_v = 26;
 
 	if (ver > max_v)
 	{
@@ -724,6 +734,10 @@ bool upgrade_client(void)
 				break;
 			case 24:
 				update_client24_25(db);
+				++ver;
+				break;
+			case 25:
+				update_client25_26(db);
 				++ver;
 				break;
 			default:

@@ -1290,6 +1290,24 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.no_shadowcopy=false;
 			image_inf.clientsubname = params["clientsubname"];
 
+			str_map::iterator f_cbitmapsize = params.find("cbitmapsize");
+			if (f_cbitmapsize != params.end())
+			{
+				bitmapleft = watoi(f_cbitmapsize->second);
+
+				bitmapfile = Server->openTemporaryFile();
+				if (bitmapfile == NULL)
+				{
+					Server->Log("Error creating temporary bitmap file in CMD_INCR_IMAGE", LL_ERROR);
+					do_quit = true;
+					return;
+				}
+			}
+			else
+			{
+				bitmapfile = NULL;
+			}
+
 			if(image_inf.startpos==0)
 			{
 				CWData data;
@@ -1321,31 +1339,41 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				return;
 			}
 
-			if(tcpstack.getBuffersize()>0)
+			state = CCSTATE_IMAGE_HASHDATA;
+
+			size_t bufpos = 0;
+			IFile* datafile = hashdatafile;
+			_u32* dataleft = &hashdataleft;
+			while(bufpos<tcpstack.getBuffersize())
 			{
-				if(hashdatafile->Write(tcpstack.getBuffer(), (_u32)tcpstack.getBuffersize())!=tcpstack.getBuffersize())
+				_u32 towrite = (std::min)(static_cast<_u32>(tcpstack.getBuffersize() - bufpos), *dataleft);
+				if(datafile->Write(tcpstack.getBuffer()+ bufpos, towrite)!= towrite)
 				{
-					Server->Log("Error writing to hashdata temporary file in CMD_INCR_IMAGE", LL_ERROR);
+					Server->Log("Error writing to data temporary file in CMD_INCR_IMAGE", LL_ERROR);
 					do_quit=true;
 					return;
 				}
-				if(hashdataleft>=tcpstack.getBuffersize())
-				{
-					hashdataleft-=(_u32)tcpstack.getBuffersize();
-					//Server->Log("Hashdataleft: "+convert(hashdataleft), LL_DEBUG);
-				}
-				else
-				{
-					Server->Log("Too much hashdata - error in CMD_INCR_IMAGE", LL_ERROR);
-				}
+				
+				bufpos += towrite;
+				*dataleft -= towrite;
 
 				tcpstack.reset();
 
-				if(hashdataleft==0)
+				if(*dataleft == 0)
 				{
-					hashdataok=true;
-					state=CCSTATE_IMAGE;
-					return;
+					if (bitmapfile == NULL
+						|| datafile==bitmapfile)
+					{
+						hashdataok = true;
+						state = CCSTATE_IMAGE;
+						break;
+					}
+					else
+					{
+						datafile = bitmapfile;
+						dataleft = &bitmapleft;
+						state = CCSTATE_IMAGE_BITMAP;
+					}
 				}
 			}
 
@@ -2168,10 +2196,16 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		win_nonusb_volumes = get_all_volumes_list(true, volumes_cache);
 	}
 
+	std::string send_prev_cbitmap;
+	if (FileExists("urbctctl.exe"))
+	{
+		send_prev_cbitmap = "&REQ_PREV_CBITMAP=1";
+	}
+
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&OS_SIMPLE=windows");
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&OS_SIMPLE=windows"+ send_prev_cbitmap);
 #else
 
 #ifdef __APPLE__

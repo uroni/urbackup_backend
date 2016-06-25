@@ -1122,38 +1122,38 @@ messages with severity \textsl{warning} or higher. In Windows there is a
 here to \textsl{debug}, \textsl{info} or \textsl{error} to get a different set
 of log messages. You need to restart the server for this change to come into
 effect. On Linux this depends on the distribution. On Debian one changes the
-setting in \textsl{/etc/default/urbackup\_srv}.
+setting in \textsl{/etc/default/urbackupsrv}.
 
 \subsection{Used network ports}
 \label{sec:ports}
 
 The Server binds to following default ports:
 
-\begin{tabular}{|p{0.2\textwidth}|p{0.4\textwidth}|p{0.25\textwidth}|}
+\begin{tabular}{|p{0.2\textwidth}|p{0.3\textwidth}|p{0.25\textwidth}|p{0.1\textwidth}|}
 \hline
-\textbf{Port}  & \textbf{Usage} & \textbf{Incoming/Outgoing} \\
+\textbf{Port}  & \textbf{Usage} & \textbf{Incoming/Outgoing} & \textbf{Protocol} \\
 \hline
-55413 & FastCGI for web interface & Incoming\\
+55413 & FastCGI for web interface & Incoming & TCP\\
 \hline
-55414 & HTTP web interface & Incoming\\
+55414 & HTTP web interface & Incoming & TCP\\
 \hline
-55415 & Internet clients & Incoming \\
+55415 & Internet clients & Incoming & TCP\\
 \hline
-35623 & UDP broadcasts for discovery & Outgoing\\
+35623 & UDP broadcasts for discovery & Outgoing & UDP\\
 \hline
 \end{tabular}\\\\
 
 \noindent The Client binds to following default ports (all incoming):
 
-\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
+\begin{tabular}{|p{0.2\textwidth}|p{0.5\textwidth}|p{0.1\textwidth}|}
 \hline
-\textbf{Port}  & \textbf{Usage} \\
+\textbf{Port}  & \textbf{Usage} & \textbf{Protocol} \\
 \hline
-35621 & Sending files during file backups (file server) \\
+35621 & Sending files during file backups (file server) & TCP\\
 \hline
-35622 & UDP broadcasts for discovery\\
+35622 & UDP broadcasts for discovery & UDP\\
 \hline
-35623 & Commands and image backups \\
+35623 & Commands and image backups & TCP\\
 \hline
 \end{tabular}
 
