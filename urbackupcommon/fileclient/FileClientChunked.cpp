@@ -660,29 +660,33 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 
 		bufptr+=bufptr_bytes_done;
 
-		if( (remote_filesize!=-1 && 
-			next_chunk>=num_total_chunks
-			&& pending_chunks.empty() )
-			|| getfile_done  )
+		if (!ignore_filesize)
 		{
-
-			if(!getfile_done ||
-				(retval==ERR_BASE_DIR_LOST
-				 || retval== ERR_CANNOT_OPEN_FILE
-				 || retval==ERR_SUCCESS) )
+			if ((remote_filesize != -1 &&
+				remote_filesize > 0 &&
+				next_chunk >= num_total_chunks
+				&& pending_chunks.empty())
+				|| getfile_done)
 			{
-				FileClientChunked* next = getNextFileClient();
-				if( next				
-					&& remaining_bufptr_bytes>0)
+
+				if (!getfile_done ||
+					(retval == ERR_BASE_DIR_LOST
+						|| retval == ERR_CANNOT_OPEN_FILE
+						|| retval == ERR_SUCCESS))
 				{
-					next->setInitialBytes(bufptr, remaining_bufptr_bytes);
+					FileClientChunked* next = getNextFileClient();
+					if (next
+						&& remaining_bufptr_bytes > 0)
+					{
+						next->setInitialBytes(bufptr, remaining_bufptr_bytes);
+					}
 				}
-			}
-			
 
-			if(!getfile_done)
-			{
-				return ERR_SUCCESS;
+
+				if (!getfile_done)
+				{
+					return ERR_SUCCESS;
+				}
 			}
 		}
 
