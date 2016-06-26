@@ -72,7 +72,7 @@ private:
 struct SCRef
 {
 #ifdef _WIN32
-	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false) {}
+	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false), for_imagebackup(false){}
 
 	IVssBackupComponents *backupcom;
 #endif
@@ -86,6 +86,7 @@ struct SCRef
 	std::vector<std::string> starttokens;
 	std::string clientsubname;
 	bool cbt;
+	bool for_imagebackup;
 };
 
 struct SCDirs
@@ -98,6 +99,25 @@ struct SCDirs
 	SCRef *ref;
 	int64 starttime;
 	bool fileserv;
+};
+
+struct SCDirServerKey
+{
+	SCDirServerKey(std::string start_token, std::string client_subname, bool for_imagebackup)
+		: start_token(start_token), client_subname(client_subname), for_imagebackup(for_imagebackup)
+	{
+
+	}
+
+	bool operator<(const SCDirServerKey& other) const
+	{
+		return std::make_pair(start_token, std::make_pair(client_subname, for_imagebackup))
+			< std::make_pair(other.start_token, std::make_pair(other.client_subname, other.for_imagebackup));
+	}
+
+	std::string start_token;
+	std::string client_subname;
+	bool for_imagebackup;
 };
 
 struct SHashedFile
@@ -275,7 +295,7 @@ private:
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL);
 
 	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
-		bool consider_only_own_tokens);
+		bool consider_only_own_tokens, bool share_new);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
@@ -300,7 +320,7 @@ private:
 	void VSSLog(const std::string& msg, int loglevel);
 	void VSSLogLines(const std::string& msg, int loglevel);
 
-	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname);
+	SCDirs* getSCDir(const std::string& path, const std::string& clientsubname, bool for_imagebackup);
 
 	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
@@ -420,7 +440,7 @@ private:
 	DirectoryWatcherThread *dwt;
 	THREADPOOL_TICKET dwt_ticket;
 
-	std::map<std::pair<std::string, std::string>, std::map<std::string, SCDirs*> > scdirs;
+	std::map<SCDirServerKey, std::map<std::string, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
 
 	int index_c_db;

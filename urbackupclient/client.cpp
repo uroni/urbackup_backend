@@ -664,7 +664,7 @@ void IndexThread::operator()(void)
 
 			bool reference_sc = action == IndexThreadAction_ReferenceShadowcopy;
 
-			SCDirs *scd = getSCDir(scdir, index_clientsubname);
+			SCDirs *scd = getSCDir(scdir, index_clientsubname, image_backup!=0);
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
 			{
@@ -815,7 +815,7 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
-				SCDirs *scd = getSCDir(scdir, index_clientsubname);
+				SCDirs *scd = getSCDir(scdir, index_clientsubname, image_backup!=0);
 				if (scd->running == false)
 				{
 					if (!release_shadowcopy(scd, image_backup != 0 ? true : false, save_id))
@@ -940,7 +940,7 @@ void IndexThread::operator()(void)
 			index_clientsubname.clear();
 			data.getStr(&index_clientsubname);
 
-			SCDirs *scd = getSCDir(scdir, index_clientsubname);
+			SCDirs *scd = getSCDir(scdir, index_clientsubname, true);
 
 			if(scd!=NULL && scd->ref!=NULL)
 			{
@@ -1120,7 +1120,7 @@ void IndexThread::indexDirs(bool full_backup)
 
 			index_server_default = backup_dirs[i].server_default;
 
-			SCDirs *scd=getSCDir(backup_dirs[i].tname, index_clientsubname);
+			SCDirs *scd=getSCDir(backup_dirs[i].tname, index_clientsubname, false);
 			if(!scd->running)
 			{
 				scd->dir=backup_dirs[i].tname;
@@ -1330,7 +1330,7 @@ void IndexThread::indexDirs(bool full_backup)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
 				{
-					SCDirs *scd=getSCDir(backup_dirs[k].tname, index_clientsubname);
+					SCDirs *scd=getSCDir(backup_dirs[k].tname, index_clientsubname, false);
 					release_shadowcopy(scd);
 				}
 				
@@ -2247,11 +2247,13 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 #endif
 
 bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath,
-	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens)
+	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens,
+	bool share_new)
 {
 	for(size_t i=sc_refs.size();i-- > 0;)
 	{
-		if(sc_refs[i]->target==wpath && sc_refs[i]->ok && sc_refs[i]->clientsubname == index_clientsubname)
+		if(sc_refs[i]->target==wpath && sc_refs[i]->ok 
+			&& sc_refs[i]->clientsubname == index_clientsubname )
 		{
 			bool do_restart = std::find(no_restart_refs.begin(),
 				no_restart_refs.end(), sc_refs[i])==no_restart_refs.end();
@@ -2311,37 +2313,45 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				|| only_own_tokens 
 				|| cannot_open_shadowcopy ) )
 			{
-				if( only_own_tokens)
+				if (sc_refs[i]->for_imagebackup == for_imagebackup)
 				{
-					VSSLog("Restarting shadow copy of " + sc_refs[i]->target + " because it was started by this server", LL_WARNING);
-				}
-				else if(!cannot_open_shadowcopy)
-				{
-					VSSLog("Restarting/not using already existing shadow copy of " + sc_refs[i]->target + " because it is too old", LL_INFO);
-				}
-
-				SCRef *curr=sc_refs[i];
-				std::map<std::string, SCDirs*>& scdirs_server = scdirs[std::make_pair(starttoken, index_clientsubname)];
-
-				std::vector<std::string> paths;
-				for(std::map<std::string, SCDirs*>::iterator it=scdirs_server.begin();
-					it!=scdirs_server.end();++it)
-				{
-					paths.push_back(it->first);
-				}
-
-				for(size_t j=0;j<paths.size();++j)
-				{
-					std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
-					if(it!=scdirs_server.end() 
-						&& it->second->ref==curr)
+					if (only_own_tokens)
 					{
-						VSSLog("Releasing "+it->first+" orig_target="+it->second->orig_target+" target="+it->second->target, LL_DEBUG);
-						release_shadowcopy(it->second, false, -1, dir);
+						VSSLog("Restarting shadow copy of " + sc_refs[i]->target + " because it was started by this server", LL_WARNING);
 					}
+					else if (!cannot_open_shadowcopy)
+					{
+						VSSLog("Restarting/not using already existing shadow copy of " + sc_refs[i]->target + " because it is too old", LL_INFO);
+					}
+
+					SCRef *curr = sc_refs[i];
+					std::map<std::string, SCDirs*>& scdirs_server = scdirs[SCDirServerKey(starttoken, index_clientsubname, for_imagebackup)];
+
+					std::vector<std::string> paths;
+					for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
+						it != scdirs_server.end(); ++it)
+					{
+						paths.push_back(it->first);
+					}
+
+					for (size_t j = 0; j < paths.size(); ++j)
+					{
+						std::map<std::string, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+						if (it != scdirs_server.end()
+							&& it->second->ref == curr)
+						{
+							VSSLog("Releasing " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target, LL_DEBUG);
+							release_shadowcopy(it->second, false, -1, dir);
+						}
+					}
+					dir->target = dir->orig_target;
+					continue;
 				}
-				dir->target=dir->orig_target;
-				continue;
+				else
+				{
+					VSSLog("Not restarting/using existing shadow copy of " + sc_refs[i]->target + 
+						" because it was not created for image backups/file backups (for_imagebackup="+convert(for_imagebackup)+")", LL_INFO);
+				}
 			}
 			else if(!cannot_open_shadowcopy)
 			{
@@ -2369,7 +2379,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 #else
 				dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 #endif
-				if(dir->fileserv)
+				if(dir->fileserv
+					&& share_new)
 				{
 					shareDir(starttoken, dir->dir, dir->target);
 				}
@@ -2450,8 +2461,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 #endif
 
 	
-	if(find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true)
-		|| find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true) )
+	if(find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref)
+		|| find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref) )
 	{
 		return true;
 	}
@@ -2466,6 +2477,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	dir->ref->target=wpath;
 	dir->ref->starttokens.push_back(starttoken);
 	dir->ref->clientsubname = index_clientsubname;
+	dir->ref->for_imagebackup = for_imagebackup;
 	sc_refs.push_back(dir->ref);
 	
 
@@ -2668,7 +2680,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				while(c)
 				{
 					c=false;
-					for(std::map<std::pair<std::string, std::string>, std::map<std::string, SCDirs*> >::iterator server_it = scdirs.begin();
+					for(std::map<SCDirServerKey, std::map<std::string, SCDirs*> >::iterator server_it = scdirs.begin();
 						server_it!=scdirs.end();++server_it)
 					{
 						for(std::map<std::string, SCDirs*>::iterator it=server_it->second.begin();
@@ -2678,7 +2690,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 							{
 								if(it->second->fileserv)
 								{
-									shareDir(server_it->first.first, it->second->dir, it->second->orig_target);
+									shareDir(server_it->first.start_token, it->second->dir, it->second->orig_target);
 								}
 								it->second->target=it->second->orig_target;
 
@@ -3061,9 +3073,9 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 	return "";
 }
 
-SCDirs* IndexThread::getSCDir(const std::string& path, const std::string& clientsubname)
+SCDirs* IndexThread::getSCDir(const std::string& path, const std::string& clientsubname, bool for_imagebackup)
 {
-	std::map<std::string, SCDirs*>& scdirs_server = scdirs[std::make_pair(starttoken, clientsubname)];
+	std::map<std::string, SCDirs*>& scdirs_server = scdirs[SCDirServerKey(starttoken, clientsubname, for_imagebackup)];
 	std::map<std::string, SCDirs*>::iterator it=scdirs_server.find(path);
 	if(it!=scdirs_server.end())
 	{
