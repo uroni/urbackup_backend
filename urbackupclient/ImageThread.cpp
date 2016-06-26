@@ -566,6 +566,19 @@ bool ImageThread::sendIncrImageThread(void)
 						IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
 				}
 
+				if (fs.get() == NULL)
+				{
+					int tloglevel = LL_ERROR;
+					if (image_inf->shadowdrive.empty())
+					{
+						tloglevel = LL_INFO;
+					}
+					ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
+					Server->Log("Device file: \"" + image_inf->shadowdrive + "\"", LL_INFO);
+					run = false;
+					break;
+				}
+
 				unsigned int blocksize = (unsigned int)fs->getBlocksize();
 				int64 drivesize = fs->getSize();
 
@@ -583,7 +596,8 @@ bool ImageThread::sendIncrImageThread(void)
 					{
 						bool fs_has_block = false;
 						bool bitmap_diff = false;
-						for (int64 j = imgpos; j < imgpos + c_vhdblocksize; j += blocksize)
+						for (int64 j = imgpos; j < imgpos + c_vhdblocksize
+							&& j<drivesize; j += blocksize)
 						{
 							if (fs->hasBlock(j / blocksize))
 							{
