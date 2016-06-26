@@ -599,7 +599,7 @@ void update_client24_25(IDatabase* db)
 void update_client25_26(IDatabase* db)
 {
 #ifdef _WIN32
-	if (FileExists("urbctctl.exe"))
+	if (os_get_file_type("urbctctl.exe")!=0)
 	{
 		system("urbctctl.exe reset all");
 	}

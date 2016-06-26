@@ -5055,7 +5055,7 @@ bool IndexThread::prepareCbt(std::string volume)
 
 		
 		if ( (lasterr == ERROR_INVALID_FUNCTION
-				&& FileExists("urbctctl.exe") )
+				&& os_get_file_type("urbctctl.exe")!=0 )
 			|| lasterr !=ERROR_INVALID_FUNCTION )
 		{
 			if (cbtIsEnabled(std::string(), volume))
@@ -5436,7 +5436,7 @@ void IndexThread::enableCbtVol(std::string volume, bool install)
 void IndexThread::updateCbt()
 {
 #ifdef _WIN32
-	if (!FileExists("urbctctl.exe"))
+	if (os_get_file_type("urbctctl.exe")==0)
 	{
 		return;
 	}
