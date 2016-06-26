@@ -536,6 +536,26 @@ bool ImageThread::sendIncrImageThread(void)
 			int64 changed_blocks = 0;
 			int64 unchanged_blocks = 0;
 
+			std::auto_ptr<IReadOnlyBitmap> previous_bitmap;
+			if (bitmapfile != NULL
+				&& hdat_img.get() != NULL)
+			{
+				previous_bitmap.reset(image_fak->createClientBitmap(bitmapfile));
+				if (previous_bitmap.get() == NULL
+					|| previous_bitmap->hasError())
+				{
+					ImageErr("Error opening previous client bitmap", LL_ERROR);
+					run = false;
+					break;
+				}
+			}
+			else if (hdat_img.get() != NULL)
+			{
+				ImageErr("Need previous client bitmap", LL_ERROR);
+				run = false;
+				break;
+			}
+
 			if (hdat_img.get() != NULL)
 			{
 				std::auto_ptr<IFilesystem> fs;
@@ -561,10 +581,26 @@ bool ImageThread::sendIncrImageThread(void)
 
 					for (_u32 i = 0; i < read; i += SHA256_DIGEST_SIZE)
 					{
-						if (imgpos<drivesize 
-							&& fs->hasBlock(imgpos / blocksize))
+						bool fs_has_block = false;
+						bool bitmap_diff = false;
+						for (int64 j = imgpos; j < imgpos + c_vhdblocksize; j += blocksize)
 						{
-							if (buf_is_zero(reinterpret_cast<unsigned char*>(&buf[i]), SHA256_DIGEST_SIZE))
+							if (fs->hasBlock(j / blocksize))
+							{
+								fs_has_block = true;
+								if (!previous_bitmap->hasBlock(j))
+								{
+									bitmap_diff = true;
+									break;
+								}
+							}
+						}
+
+						if (imgpos<drivesize 
+							&& fs_has_block)
+						{
+							if (bitmap_diff
+								|| buf_is_zero(reinterpret_cast<unsigned char*>(&buf[i]), SHA256_DIGEST_SIZE))
 							{
 								++changed_blocks;
 							}
@@ -708,26 +744,6 @@ bool ImageThread::sendIncrImageThread(void)
 			delete []zeroblockbuf;
 			zeroblockbuf=new char[blocksize];
 			memset(zeroblockbuf, 0, blocksize);
-
-			std::auto_ptr<IReadOnlyBitmap> previous_bitmap;
-			if (bitmapfile != NULL
-				&& hdat_img.get() != NULL)
-			{
-				previous_bitmap.reset(image_fak->createClientBitmap(bitmapfile));
-				if (previous_bitmap.get() == NULL
-					|| previous_bitmap->hasError())
-				{
-					ImageErr("Error opening previous client bitmap", LL_ERROR);
-					run = false;
-					break;
-				}
-			}
-			else if (hdat_img.get() != NULL)
-			{
-				ImageErr("Need previous client bitmap", LL_ERROR);
-				run = false;
-				break;
-			}
 
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
