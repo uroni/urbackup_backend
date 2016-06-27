@@ -5260,32 +5260,25 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			return false;
 		}
 
-		if (i + URBT_MAGIC_SIZE >= snap_bitmap_data->BitmapSize)
-		{
-			VSSLog("Snapshot bitmap data too small at pos " + convert((size_t)i)+" size "+convert((size_t)snap_bitmap_data->BitmapSize), LL_ERROR);
-			return false;
-		}
-
-		if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
-		{
-			VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)i), LL_ERROR);
-			return false;
-		}
-
 		DWORD tr = (std::min)(bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE, bitmap_data->SectorSize - URBT_MAGIC_SIZE);
 
-		if (i + URBT_MAGIC_SIZE + tr >= snap_bitmap_data->BitmapSize)
-		{
-			VSSLog("Snapshot bitmap data too small at pos " + convert((size_t)i) + " tr "+convert((size_t)tr)+" size " + convert((size_t)snap_bitmap_data->BitmapSize), LL_ERROR);
-			return false;
-		}
-
-		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr; ++j)
-		{
-			bitmap_data->Bitmap[j] ^= snap_bitmap_data->Bitmap[j];
-		}
-
 		RealBitmapSize += tr;
+
+		if(i + URBT_MAGIC_SIZE < snap_bitmap_data->BitmapSize)
+		{
+			if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+			{
+				VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)i), LL_ERROR);
+				return false;
+			}
+
+			DWORD tr_snap = (std::min)(tr, snap_bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE);
+
+			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr_snap; ++j)
+			{
+				bitmap_data->Bitmap[j] ^= snap_bitmap_data->Bitmap[j];
+			}
+		}
 	}
 
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
