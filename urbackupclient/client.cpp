@@ -5276,7 +5276,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr_snap; ++j)
 			{
-				bitmap_data->Bitmap[j] ^= snap_bitmap_data->Bitmap[j];
+				bitmap_data->Bitmap[j] |= snap_bitmap_data->Bitmap[j];
 			}
 		}
 	}
