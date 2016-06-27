@@ -635,8 +635,8 @@ bool ImageThread::sendIncrImageThread(void)
 									}
 								}
 
-								if (!has_hashdata
-									|| memcmp(hashdata_buf, &buf[i], c_hashsize) == 0)
+								if (has_hashdata
+									&& memcmp(hashdata_buf, &buf[i], c_hashsize) == 0)
 								{
 									++unchanged_blocks;
 								}
