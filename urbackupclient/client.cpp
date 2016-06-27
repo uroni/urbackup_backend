@@ -679,7 +679,9 @@ void IndexThread::operator()(void)
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, image_backup!=0 ? scd->ref->save_id : -1);
+						scd->ref->cbt = finishCbt(scd->orig_target, 
+							image_backup!=0 ? scd->ref->save_id : -1,
+							scd->ref->volpath);
 					}
 
 					if (scd->ref != NULL
@@ -756,7 +758,9 @@ void IndexThread::operator()(void)
 						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, image_backup != 0 ? scd->ref->save_id : -1);
+						scd->ref->cbt = finishCbt(scd->orig_target, 
+							image_backup != 0 ? scd->ref->save_id : -1,
+							scd->ref->volpath);
 					}
 
 					if (scd->ref != NULL
@@ -1226,7 +1230,8 @@ void IndexThread::indexDirs(bool full_backup)
 					if (scd->ref!=NULL
 						&& scd->ref->cbt)
 					{
-						scd->ref->cbt = finishCbt(backup_dirs[i].path, -1);
+						scd->ref->cbt = finishCbt(backup_dirs[i].path, -1,
+							scd->ref->volpath);
 					}
 
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
@@ -5120,7 +5125,7 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	return true;
 }
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id)
+bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume)
 {
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
@@ -5146,6 +5151,17 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		VSSLog("Flushing volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 		return false;
 	}
+
+	HANDLE hSnapVolume = CreateFileA(snap_volume.c_str(), GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (hSnapVolume == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+
+	ScopedCloseWindowsHandle hclosesnap(hSnapVolume);
 
 	GET_LENGTH_INFORMATION lengthInfo;
 	DWORD retBytes;
@@ -5216,8 +5232,23 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 		return false;
 	}
 
+	std::vector<char> buf_snap;
+	buf_snap.resize(buf.size());
+
+	b = DeviceIoControl(hSnapVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), &bytesReturned, NULL);
+
+	if (!b)
+	{
+		std::string errmsg;
+		int64 err = os_last_error(errmsg);
+		VSSLog("Getting changed block data from shadow copy " + snap_volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+		return false;
+	}	
+
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
 	char* urbackupcbt_magic = URBT_MAGIC;
+
+	PURBCT_BITMAP_DATA snap_bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf_snap.data());
 
 	DWORD RealBitmapSize = 0;
 
@@ -5228,7 +5259,32 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id)
 			VSSLog("UrBackup cbt magic wrong at pos "+convert((size_t)i), LL_ERROR);
 			return false;
 		}
+
+		if (i + URBT_MAGIC_SIZE >= snap_bitmap_data->BitmapSize)
+		{
+			VSSLog("Snapshot bitmap data too small at pos " + convert((size_t)i)+" size "+convert((size_t)snap_bitmap_data->BitmapSize), LL_ERROR);
+			return false;
+		}
+
+		if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+		{
+			VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)i), LL_ERROR);
+			return false;
+		}
+
 		DWORD tr = (std::min)(bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE, bitmap_data->SectorSize - URBT_MAGIC_SIZE);
+
+		if (i + URBT_MAGIC_SIZE + tr >= snap_bitmap_data->BitmapSize)
+		{
+			VSSLog("Snapshot bitmap data too small at pos " + convert((size_t)i) + " tr "+convert((size_t)tr)+" size " + convert((size_t)snap_bitmap_data->BitmapSize), LL_ERROR);
+			return false;
+		}
+
+		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr; ++j)
+		{
+			bitmap_data->Bitmap[j] ^= snap_bitmap_data->Bitmap[j];
+		}
+
 		RealBitmapSize += tr;
 	}
 
