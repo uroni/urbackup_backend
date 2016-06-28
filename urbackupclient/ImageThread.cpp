@@ -608,6 +608,10 @@ bool ImageThread::sendIncrImageThread(void)
 									break;
 								}
 							}
+							else if (previous_bitmap->hasBlock(j))
+							{
+								bitmap_diff = true;
+							}
 						}
 
 						if (imgpos<drivesize 
@@ -792,6 +796,11 @@ bool ImageThread::sendIncrImageThread(void)
 							has_data = true;
 							break;
 						}
+					}
+					else if (previous_bitmap.get() != NULL
+						&& previous_bitmap->hasBlock(j))
+					{
+						bitmap_diff = true;
 					}
 				}
 
