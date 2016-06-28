@@ -5296,7 +5296,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
 
-	b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, NULL, NULL);
+	b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, &bytesReturned, NULL);
 
 	if (!b)
 	{
