@@ -5283,7 +5283,10 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 				while (b > 0)
 				{
-					changed_bytes_sc += URBT_BLOCKSIZE;
+					if (b & 1)
+					{
+						changed_bytes_sc += URBT_BLOCKSIZE;
+					}
 					b >>= 1;
 				}
 			}
