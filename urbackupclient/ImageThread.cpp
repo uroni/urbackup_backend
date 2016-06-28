@@ -611,6 +611,11 @@ bool ImageThread::sendIncrImageThread(void)
 							else if (previous_bitmap->hasBlock(j))
 							{
 								bitmap_diff = true;
+
+								if (fs_has_block)
+								{
+									break;
+								}
 							}
 						}
 
@@ -801,6 +806,11 @@ bool ImageThread::sendIncrImageThread(void)
 						&& previous_bitmap->hasBlock(j))
 					{
 						bitmap_diff = true;
+
+						if (has_data)
+						{
+							break;
+						}
 					}
 				}
 

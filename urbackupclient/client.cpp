@@ -5015,6 +5015,7 @@ typedef struct _URBCT_BITMAP_DATA
 #define IOCTL_URBCT_RETRIEVE_BITMAP CTL_CODE(FILE_DEVICE_DISK, 3241, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_URBCT_RESET_FINISH CTL_CODE(FILE_DEVICE_DISK, 3242, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_URBCT_MARK_ALL CTL_CODE(FILE_DEVICE_DISK, 3245, METHOD_BUFFERED, FILE_READ_DATA)
+#define IOCTL_URBCT_APPLY_BITMAP CTL_CODE(FILE_DEVICE_DISK, 3246, METHOD_BUFFERED, FILE_READ_DATA)
 
 namespace
 {
@@ -5294,6 +5295,16 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	}
 
 	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
+
+	b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, NULL, NULL);
+
+	if (!b)
+	{
+		std::string errmsg;
+		int64 err = os_last_error(errmsg);
+		VSSLog("Applying shadow copy changes to " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+		return false;
+	}	
 
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
