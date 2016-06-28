@@ -5252,6 +5252,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	DWORD RealBitmapSize = 0;
 
+	int64 changed_bytes_sc = 0;
+
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
 	{
 		if (memcmp(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
@@ -5268,7 +5270,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		{
 			if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
 			{
-				VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)i), LL_ERROR);
+				VSSLog("UrBackup cbt snap magic wrong at shadow copy bitmap pos " + convert((size_t)i), LL_ERROR);
 				return false;
 			}
 
@@ -5276,10 +5278,19 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr_snap; ++j)
 			{
-				bitmap_data->Bitmap[j] |= snap_bitmap_data->Bitmap[j];
+				BYTE b = snap_bitmap_data->Bitmap[j];
+				bitmap_data->Bitmap[j] |= b;
+
+				while (b > 0)
+				{
+					changed_bytes_sc += URBT_BLOCKSIZE;
+					b >>= 1;
+				}
 			}
 		}
 	}
+
+	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
 
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
