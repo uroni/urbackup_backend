@@ -2197,7 +2197,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	}
 
 	std::string send_prev_cbitmap;
-	if (FileExists("urbctctl.exe"))
+	if (os_get_file_type("urbctctl.exe")!=0)
 	{
 		send_prev_cbitmap = "&REQ_PREV_CBITMAP=1";
 	}

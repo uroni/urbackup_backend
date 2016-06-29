@@ -642,7 +642,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				}
 				else
 				{
-					std::string ts = "INCR IMAGE letter=C:&shadowdrive=" + shadowdrive + "&start=" + convert(continue_block) + "&shadowid=" + convert(shadow_id) + "&hashsize=" + convert(parenthashfile->Size()) + "&status_id=" + convert(status_id);
+					std::string ts = "INCR IMAGE letter=C:&shadowdrive=" + shadowdrive + "&start=" + convert(continue_block) + "&shadowid=" + convert(shadow_id) + "&hashsize=" 
+						+ convert(parenthashfile->Size()) + "&status_id=" + convert(status_id);
 					if(transfer_bitmap)
 					{
 						ts+="&bitmap=1";
@@ -654,6 +655,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					if (!clientsubname.empty())
 					{
 						ts += "&clientsubname=" + EscapeParamString(clientsubname);
+					}
+					std::auto_ptr<IFile> prevbitmap;
+					if (transfer_prev_cbitmap)
+					{
+						prevbitmap.reset(Server->openFile(os_file_prefix(pParentvhd + ".cbitmap")));
+
+						if (prevbitmap.get() != NULL)
+						{
+							ts += "&cbitmapsize=" + convert(prevbitmap->Size());
+						}
+						else
+						{
+							ServerLogger::Log(logid, "Opening previous client bitmap ("+ pParentvhd + ".cbitmap) failed during reconnect", LL_ERROR);
+							goto do_image_cleanup;
+						}
 					}
 					size_t sent=tcpstack.Send(cc, identity+ts);
 					if(sent==0)
@@ -668,7 +684,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					ESendErr rc = sendFileToPipe(parenthashfile, cc, logid);
 					if(rc==ESendErr_Send)
 					{
-						ServerLogger::Log(logid, "Sending hashdata failed", LL_DEBUG);
+						ServerLogger::Log(logid, "Sending hash data failed", LL_DEBUG);
 						transferred_bytes+=cc->getTransferedBytes();
 						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
@@ -679,6 +695,26 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						ServerLogger::Log(logid, "Reading from hashfile failed", LL_ERROR);
 						goto do_image_cleanup;
+					}
+
+					
+					if (prevbitmap.get() != NULL)
+					{
+						rc = sendFileToPipe(prevbitmap.get(), cc, logid);
+						if (rc == ESendErr_Send)
+						{
+							ServerLogger::Log(logid, "Sending bitmap data failed", LL_DEBUG);
+							transferred_bytes += cc->getTransferedBytes();
+							transferred_bytes_real += cc->getRealTransferredBytes();
+							Server->destroy(cc);
+							cc = NULL;
+							continue;
+						}
+						else if (rc != ESendErr_Ok)
+						{
+							ServerLogger::Log(logid, "Reading from bitmap file failed", LL_ERROR);
+							goto do_image_cleanup;
+						}
 					}
 				}
 				off=0;
@@ -726,6 +762,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						if(pLetter!="SYSVOL" && pLetter!="ESP")
 						{
 							ServerLogger::Log(logid, "Request of image backup failed. Reason: "+err, LL_ERROR);
+
+							if (err == "Need previous client bitmap")
+							{
+								client_main->updateCapa();
+							}
 						}
 						else
 						{

@@ -2000,7 +2000,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, "Error downloading "+rfn+" after verification failed", LL_ERROR);
+		ServerLogger::Log(logid, "Error downloading "+rfn+" after verification failed. Errorcode: " + FileClient::getErrorString(rc) + " (" + convert(rc) + ")", LL_ERROR);
 	}
 	else
 	{
