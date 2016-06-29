@@ -762,6 +762,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						if(pLetter!="SYSVOL" && pLetter!="ESP")
 						{
 							ServerLogger::Log(logid, "Request of image backup failed. Reason: "+err, LL_ERROR);
+
+							if (err == "Need previous client bitmap")
+							{
+								client_main->updateCapa();
+							}
 						}
 						else
 						{

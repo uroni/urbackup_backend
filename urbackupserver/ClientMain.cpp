@@ -579,8 +579,11 @@ void ClientMain::operator ()(void)
 				}
 			}
 
-			if(client_updated_time!=0 && Server->getTimeMS()-client_updated_time>6*60*1000)
+			if( (client_updated_time!=0 && Server->getTimeMS()-client_updated_time>6*60*1000)
+				|| update_capa)
 			{
+				update_capa = false;
+
 				updateCapabilities();
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
@@ -2826,6 +2829,11 @@ void ClientMain::stopBackupBarrier()
 {
 	IScopedLock lock(running_backup_mutex);
 	running_backups_allowed=true;
+}
+
+void ClientMain::updateCapa()
+{
+	update_capa = true;
 }
 
 bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)

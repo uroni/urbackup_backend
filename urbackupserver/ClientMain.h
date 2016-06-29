@@ -220,6 +220,8 @@ public:
 
 	static void stopBackupBarrier();
 
+	void updateCapa();
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -358,4 +360,6 @@ private:
 
 	std::auto_ptr<IMutex> restore_mutex;
 	std::vector<SRunningRestore> running_restores;
+
+	volatile bool update_capa;
 };
