@@ -748,7 +748,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 	int backupid;
 	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups max="+convert(max_image_full), LL_DEBUG);
-	while(full_image_num>max_image_full)
+	while(full_image_num>max_image_full
+		&& full_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -794,7 +795,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 
 	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups max="+convert(max_image_incr), LL_DEBUG);
-	while(incr_image_num>max_image_incr)
+	while(incr_image_num>max_image_incr
+		&& incr_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -1061,7 +1063,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	int backupid;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups max="+convert(max_file_full), LL_DEBUG);
-	while(full_file_num>max_file_full )
+	while(full_file_num>max_file_full
+		&& full_file_num>0)
 	{
 		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -1084,7 +1087,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 
 	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups max="+convert(max_file_incr), LL_DEBUG);
-	while(incr_file_num>max_file_incr )
+	while(incr_file_num>max_file_incr
+		&& incr_file_num>0)
 	{
 		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
