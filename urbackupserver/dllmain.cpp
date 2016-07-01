@@ -1814,7 +1814,8 @@ void upgrade(void)
 	}
 
 	db_results cache_res;
-	if(db->getEngineName()=="sqlite")
+	if(db->getEngineName()=="sqlite"
+		&& ver>15)
 	{
 		cache_res=db->Read("PRAGMA cache_size");
 		ServerSettings server_settings(db);
