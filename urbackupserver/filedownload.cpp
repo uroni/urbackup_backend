@@ -113,7 +113,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			hashfile_output=Server->openTemporaryFile();
 
 			Server->Log("Building hashes...");
-			build_chunk_hashs(dstfile, hashfile, NULL, NULL, false, NULL, false);
+			build_chunk_hashs(dstfile, hashfile, NULL, NULL, false, NULL, NULL);
 
 			Server->Log("Downloading file...");
 
