@@ -108,7 +108,7 @@ private:
 
 	int max_removable_incr_images(ServerSettings& settings, int backupid);
 
-	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids);
+	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids, bool cleanup_only_one);
 
 	void cleanup_images(int64 minspace=-1);
 

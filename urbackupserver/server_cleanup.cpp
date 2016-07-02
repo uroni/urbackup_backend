@@ -733,7 +733,7 @@ int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int
 	return max_allowed_del_refs;
 }
 
-bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids)
+bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids, bool cleanup_only_one)
 {
 	ServerSettings settings(db, clientid);
 
@@ -777,6 +777,11 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			else
 			{
 				imageids.push_back(backupid);
+
+				if (cleanup_only_one)
+				{
+					return true;
+				}
 			}
 		}
 
@@ -824,6 +829,11 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			else
 			{
 				imageids.push_back(backupid);
+
+				if (cleanup_only_one)
+				{
+					return true;
+				}
 			}
 		}
 
@@ -869,7 +879,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		int clientid=res[i];
 		
 		std::vector<int> imageids;
-		if(cleanup_images_client(clientid, minspace, imageids))
+		if(cleanup_images_client(clientid, minspace, imageids, false))
 		{
 			if(minspace!=-1)
 			{
@@ -1848,9 +1858,9 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 			int64 space_to_free=used_storage.value-client_quota;
 
-			int64 target_space=available_space-space_to_free;
+			int64 target_minspace=available_space+space_to_free;
 
-			if(target_space<0)
+			if(target_minspace<0)
 			{
 				log << "Error. Target space is negative" << std::endl;
 				return false;
@@ -1859,11 +1869,11 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			if(state==0)
 			{
 				std::vector<int> imageids;
-				cleanup_images_client(clientid, target_space, imageids);
+				cleanup_images_client(clientid, target_minspace, imageids, true);
 				if(!imageids.empty())
 				{
-					log << "Removed " << imageids.size() << " images with ids ";
-					for(size_t i=0;i<imageids.size();++i) log << imageids[i];
+					log << "Removed " << imageids.size() << " image with id ";
+					for(size_t i=0;i<imageids.size();++i) log << imageids[i] << " ";
 					log << std::endl;
 
 					did_remove_something=true;
@@ -1877,13 +1887,13 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			else
 			{
 				int filebid;
-				if(cleanup_one_filebackup_client(clientid, target_space, filebid))
+				if(cleanup_one_filebackup_client(clientid, target_minspace, filebid))
 				{
 					log << "Removed file backup with id " << filebid << std::endl;
 
 					did_remove_something=true;
 					nopc=0;
-					if(hasEnoughFreeSpace(target_space, &client_settings))
+					if(hasEnoughFreeSpace(target_minspace, &client_settings))
 					{
 						break;
 					}
