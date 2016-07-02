@@ -21,7 +21,6 @@
 #define DLLEXPORT extern "C" __declspec (dllexport)
 #else
 #define DLLEXPORT extern "C"
-#define _exit exit
 #include <unistd.h>
 #endif
 
@@ -128,7 +127,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Unknown crypto_action");
 		}
-		_exit(0);
 	}
 
 #ifndef STATIC_PLUGIN
