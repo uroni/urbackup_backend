@@ -30,9 +30,9 @@ ICondition* WalCheckpointThread::cond = NULL;
 std::set<std::string> WalCheckpointThread::locked_dbs;
 std::set<std::string> WalCheckpointThread::tolock_dbs;
 
-WalCheckpointThread::WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id)
+WalCheckpointThread::WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id, std::string db_name)
 	: last_checkpoint_wal_size(0), passive_checkpoint_size(passive_checkpoint_size),
-	full_checkpoint_size(full_checkpoint_size), db_fn(db_fn), db_id(db_id), cannot_open(false)
+	full_checkpoint_size(full_checkpoint_size), db_fn(db_fn), db_id(db_id), cannot_open(false), db_name(db_name)
 {
 }
 
@@ -61,7 +61,14 @@ void WalCheckpointThread::checkpoint()
 
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), db_id);
 			db->lockForSingleUse();
-			db->Write("PRAGMA wal_checkpoint(TRUNCATE)");
+			if (db_name.empty())
+			{
+				db->Write("PRAGMA wal_checkpoint(TRUNCATE)");
+			}
+			else
+			{
+				db->Write("PRAGMA " + db_name + ".wal_checkpoint(TRUNCATE)");
+			}
 			db->unlockForSingleUse();
 
 			Server->Log("Full checkpoint of "+ db_fn + "-wal done.", LL_INFO);

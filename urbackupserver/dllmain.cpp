@@ -278,6 +278,32 @@ void open_server_database(bool init_db)
 			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_links.db\"", LL_ERROR);
 		exit(1);
 	}
+
+	if (!sqlite_mmap_small.empty())
+	{
+		params["mmap_size"] = sqlite_mmap_small;
+	}
+
+	if (!Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS, params))
+	{
+		Server->Log("Couldn't open Database backup_server_settings.db. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_settings.db\"", LL_ERROR);
+		exit(1);
+	}
+
+	if (!sqlite_mmap_small.empty())
+	{
+		params.erase(params.find("mmap_size"));
+	}
+
+	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_SETTINGS, sqlite_data_allocation_chunk_size);
+
+	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_SETTINGS))
+	{
+		Server->Log("Couldn't open backup server database. Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_settings.db\"", LL_ERROR);
+		exit(1);
+	}
 	
 	Server->destroyDatabases(Server->getThreadID());
 }
@@ -558,7 +584,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ClientMain::init_mutex();
 
 	open_settings_database();
-	open_settings_database_full();
 	
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
@@ -793,8 +818,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	Server->createThread(wal_checkpoint_thread, "files checkpoint");
 
 	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER);
+		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER, "main");
 	Server->createThread(wal_checkpoint_thread, "main checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_settings.db", URBACKUPDB_SERVER);
+	Server->createThread(wal_checkpoint_thread, "settings checkpoint");
 
 	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
 		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);

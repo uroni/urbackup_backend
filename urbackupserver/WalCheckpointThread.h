@@ -8,7 +8,7 @@
 class WalCheckpointThread : public IThread
 {
 public:
-	WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id);
+	WalCheckpointThread(int64 passive_checkpoint_size, int64 full_checkpoint_size, const std::string& db_fn, DATABASE_ID db_id, std::string db_name=std::string());
 
 	void checkpoint();
 
@@ -36,6 +36,8 @@ private:
 	DATABASE_ID db_id;
 
 	bool cannot_open;
+
+	std::string db_name;
 
 	static IMutex* mutex;
 	static ICondition* cond;
