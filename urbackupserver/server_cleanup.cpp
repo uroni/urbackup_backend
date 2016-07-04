@@ -1538,151 +1538,109 @@ bool ServerCleanupThread::backup_database(void)
 	if(settings.getSettings()->backup_database)
 	{
 		std::vector<DATABASE_ID> copy_backup_ids;
+		copy_backup_ids.push_back(URBACKUPDB_SERVER);
+		copy_backup_ids.push_back(URBACKUPDB_SERVER_SETTINGS);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_FILES);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINKS);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
 
 		std::vector<std::string> copy_backup;
+		copy_backup.push_back("backup_server.db");
+		copy_backup.push_back("backup_server_settings.db");
 		copy_backup.push_back("backup_server_files.db");
 		copy_backup.push_back("backup_server_links.db");
 		copy_backup.push_back("backup_server_link_journal.db");
 
+		copy_backup.push_back("backup_server.db-wal");
+		copy_backup.push_back("backup_server_settings.db-wal");
 		copy_backup.push_back("backup_server_files.db-wal");
 		copy_backup.push_back("backup_server_links.db-wal");
 		copy_backup.push_back("backup_server_link_journal.db-wal");
 
 
-		bool integrity_ok = false;
+		bool integrity_ok = true;
 		{
 			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 			ScopedProcess check_integrity(std::string(), sa_check_integrity, std::string(), logid, false);
 
-			ServerLogger::Log(logid, "Checking database integrity of main database...", LL_INFO);
-			db_results res = db->Read("PRAGMA quick_check");
-
-			integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
-
-			if (integrity_ok)
+			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
 			{
-				for (size_t i = 0; i < copy_backup_ids.size(); ++i)
+				if (integrity_ok)
 				{
-					if (integrity_ok)
+					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
+					ServerLogger::Log(logid, "Checking integrity of " + copy_backup[i], LL_INFO);
+
+					db_results res = copy_db->Read("PRAGMA quick_check");
+
+					integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
+
+					if (!integrity_ok)
 					{
-						IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
-
-						ServerLogger::Log(logid, "Checking integrity of " + copy_backup[i], LL_INFO);
-
-						db_results res = copy_db->Read("PRAGMA quick_check");
-
-						integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
-
-						if (!integrity_ok)
-						{
-							ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
-						}
+						ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
 					}
 				}
-			}
-			else
-			{
-				ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
 			}
 		}
 
 		if(integrity_ok)
 		{
-			std::vector<std::string> normal_backup;
-			normal_backup.push_back("backup_server.db");
-			normal_backup.push_back("backup_server_settings.db");
-
-			std::vector<std::string> all_backup;
-			all_backup.insert(all_backup.end(), normal_backup.begin(), normal_backup.end());
-			all_backup.insert(all_backup.end(), copy_backup.begin(), copy_backup.end());
-
 			std::string bfolder=settings.getSettings()->backupfolder+os_file_sep()+"urbackup";
 			if(!os_directory_exists(bfolder) )
 			{
 				os_create_dir(bfolder);
 			}
 
-			bool main_backup_ok;
+			bool total_copy_ok = true;
+			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
 			{
+				IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
 				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-				ScopedProcess main_backup(std::string(), sa_backup_database, "backup_server.db, backup_server_settings.db", logid, false);
+				ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
 
-				ServerLogger::Log(logid, "Starting database backup of main db...", LL_INFO);
+				ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
 
-				for (size_t i = 0; i < normal_backup.size(); ++i)
+				ServerLogger::Log(logid, "Stop checkpointing of " + copy_backup[i] + "...", LL_INFO);
+
+				WalCheckpointThread::lockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+
+				ServerLogger::Log(logid, "Stop writes to " + copy_backup[i]+"...", LL_INFO);
+
+				DBScopedWriteTransaction copy_db_transaction(copy_db);
+
+				BackupProgress backup_progress(database_backup.getStatusId());
+
+				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress);
+
+				if (copy_ok)
 				{
-					Server->deleteFile(bfolder + os_file_sep() + normal_backup[i] + "~");
-					Server->deleteFile(bfolder + os_file_sep() + normal_backup[i] + "~-journal");
-				}
+					ServerStatus::setProcessDetails(std::string(), database_backup.getStatusId(), copy_backup[i] + "-wal", -1);
 
-				BackupProgress backup_progress(main_backup.getStatusId());
-				//Using this method the database can be written to during backup
-				// (but it causes the backup to restart)
-				main_backup_ok = db->Backup((bfolder + os_file_sep() + "backup_server.db~"), &backup_progress);
+					BackupProgress backup_progress_wal(database_backup.getStatusId());
 
-				if (main_backup_ok)
-				{
-					ServerLogger::Log(logid, "Database backup done.", LL_INFO);
-				}
-				else
-				{
-					ServerLogger::Log(logid, "Backing up main database failed", LL_ERROR);
-				}
-			}
+					copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal);
 
-			if (main_backup_ok)
-			{			
-				for (size_t i = 0; i < copy_backup_ids.size(); ++i)
-				{
-					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
-
-					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-					ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
-
-					ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
-
-					ServerLogger::Log(logid, "Stop checkpointing of " + copy_backup[i] + "...", LL_INFO);
-
-					WalCheckpointThread::lockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
-
-					ServerLogger::Log(logid, "Stop writes to " + copy_backup[i]+"...", LL_INFO);
-
-					DBScopedWriteTransaction copy_db_transaction(copy_db);
-
-					BackupProgress backup_progress(database_backup.getStatusId());
-
-					bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress);
-
-					if (copy_ok)
+					if (!copy_ok)
 					{
-						ServerStatus::setProcessDetails(std::string(), database_backup.getStatusId(), copy_backup[i] + "-wal", -1);
-
-						BackupProgress backup_progress_wal(database_backup.getStatusId());
-
-						copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal);
-
-						if (!copy_ok)
-						{
-							ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
-						}
-						else
-						{
-							ServerLogger::Log(logid, "Backup of " + copy_backup[i] + " done.", LL_INFO);
-						}
+						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
+						total_copy_ok = false;
 					}
 					else
 					{
-						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
-					}
-
-					WalCheckpointThread::unlockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+						ServerLogger::Log(logid, "Backup of " + copy_backup[i] + " done.", LL_INFO);
+					}				
 				}
-			}		
+				else
+				{
+					ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
+					total_copy_ok = false;
+				}
 
-			return main_backup_ok;
+				WalCheckpointThread::unlockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+			}	
+
+			return total_copy_ok;
 		}
 		else
 		{
