@@ -457,21 +457,33 @@ std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
 
 volatile bool restore_retry_ok=false;
 
-int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth);
+enum EDownloadResult
+{
+	EDownloadResult_Ok = 0,
+	EDownloadResult_ConnectError = 10,
+	EDownloadResult_OpenError = 2,
+	EDownloadResult_SizeReadError = 3,
+	EDownloadResult_TimeoutError2 = 4,
+	EDownloadResult_TimeoutError1 = 5,
+	EDownloadResult_WriteFailed = 6,
+	EDownloadResult_DeviceTooSmall = 11
+};
 
-int retryDownload(int errrc, int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth)
+EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
+
+EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 {
 	if(recur_depth==0)
 	{
 		Server->Log("Read Timeout: Retrying", LL_WARNING);
 
 		int tries=5;
-		int rc;
+		EDownloadResult rc;
 		do
 		{
 			Server->wait(30000);
-			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1);
-			if(rc==0)
+			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1, o_imgsize, o_output_file_size);
+			if(rc== EDownloadResult_Ok)
 			{
 				return rc;
 			}
@@ -483,7 +495,7 @@ int retryDownload(int errrc, int img_id, std::string img_time, std::string outfi
 	return errrc;
 }
 
-int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1, int recur_depth=0)
+EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -493,7 +505,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	if(client_pipe.get()==NULL)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
-		return 10;
+		return EDownloadResult_ConnectError;
 	}
 
 	std::string s_offset;
@@ -510,21 +522,37 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	if(out_file.get()==NULL)
 	{
 		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
-		return 2;
+		return EDownloadResult_OpenError;
+	}
+	else if (o_output_file_size != NULL)
+	{
+		*o_output_file_size = out_file->Size();
 	}
 
 	_i64 imgsize=-1;
 	client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
+
+	if (o_imgsize != NULL)
+	{
+		*o_imgsize = imgsize;
+	}
+
 	if(imgsize==-1)
 	{
 		Server->Log("Error reading size", LL_ERROR);
-		return 3;
+		return EDownloadResult_SizeReadError;
 	}
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
-		int rc=retryDownload(5, img_id, img_time, outfile, mbr, offset, recur_depth);
+		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, outfile, mbr, offset, recur_depth, o_imgsize, o_output_file_size);
 		return rc;
+	}
+
+	if (!mbr && imgsize > out_file->Size())
+	{
+		Server->Log("Output device too small. File size = " + convert(out_file->Size()) + " needed = "+convert(imgsize), LL_ERROR);
+		return EDownloadResult_DeviceTooSmall;
 	}
 
 	const size_t c_buffer_size=32768;
@@ -539,13 +567,13 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
 			if(c_read==0)
 			{
-				int rc=retryDownload(4, img_id, img_time, outfile, mbr, offset, recur_depth);
+				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, offset, recur_depth, o_imgsize, o_output_file_size);
 				return rc;
 			}
 			out_file->Write(buf, (_u32)c_read);
 			read+=c_read;
 		}
-		return 0;
+		return EDownloadResult_Ok;
 	}
 	else
 	{
@@ -569,12 +597,12 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 				out_file.reset(NULL);
 				if(has_data)
 				{
-					return retryDownload(4, img_id, img_time, outfile, mbr, pos, recur_depth);
+					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, pos, recur_depth, o_imgsize, o_output_file_size);
 				}
 				else
 				{
 					Server->Log("Read Timeout: No data", LL_ERROR);
-					return 4;
+					return EDownloadResult_TimeoutError2;
 				}
 			}
 			while(true)
@@ -598,12 +626,12 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 							if(w==0)
 							{
 								Server->Log("Writing to output file failed", LL_ERROR);
-								return 6;
+								return EDownloadResult_WriteFailed;
 							}
 							if (has_write_error)
 							{
 								Server->Log("Writing to output file failed -2", LL_ERROR);
-								return 6;
+								return EDownloadResult_WriteFailed;
 							}
 							woff+=w;
 						}
@@ -647,7 +675,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 							if (!out_file->Seek(*s))
 							{
 								Server->Log("Seeking in output file failed (to position "+convert(*s)+")", LL_ERROR);
-								return 6;
+								return EDownloadResult_WriteFailed;
 							}
 							pos=*s;
 						}
@@ -684,9 +712,9 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			}
 		}
 
-		return 0;
+		return EDownloadResult_Ok;
 	}
-	return 0;
+	return EDownloadResult_Ok;
 }
 
 int downloadFiles(int backupid, std::string backup_time)
@@ -1121,14 +1149,15 @@ void do_restore(void)
 class RestoreThread : public IThread
 {
 public:
-	RestoreThread(int pImg_id, std::string pImg_time, std::string pOutfile) : img_id(pImg_id), img_time(pImg_time), outfile(pOutfile)
+	RestoreThread(int pImg_id, std::string pImg_time, std::string pOutfile) 
+		: img_id(pImg_id), img_time(pImg_time), outfile(pOutfile), imgsize(0), output_file_size(0)
 	{
 		done=false;
 	}
 
 	void operator()(void)
 	{
-		rc=downloadImage(img_id, img_time, outfile, false);
+		rc=downloadImage(img_id, img_time, outfile, false, -1, 0, &imgsize, &output_file_size);
 		done=true;
 	}
 
@@ -1137,16 +1166,30 @@ public:
 		return done;
 	}
 
-	int getRC(void)
+	EDownloadResult getRC(void)
 	{
 		return rc;
 	}
+
+	int64 getImgsize()
+	{
+		return imgsize;
+	}
+
+	int64 getOutputFileSize()
+	{
+		return output_file_size;
+	}
+
 private:
-	int rc;
+	EDownloadResult rc;
 	volatile bool done;
 	int img_id;
 	std::string img_time;
 	std::string outfile;
+
+	int64 imgsize;
+	int64 output_file_size;
 };
 
 bool has_network_device(void)
@@ -1619,8 +1662,8 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				int rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true);
-				if (rc !=0 )
+				EDownloadResult rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true);
+				if (rc != EDownloadResult_Ok )
 				{
 					Server->Log("Error downloading MBR", LL_ERROR);
 					err="cannot_read_mbr";
@@ -1799,16 +1842,18 @@ void restore_wizard(void)
 						restore_retry_ok=false;
 				}
 				Server->getThreadPool()->waitFor(rt_ticket);
-				int rc=rt.getRC();
+				EDownloadResult rc=rt.getRC();
 				std::string errmsg;
 				switch(rc)
 				{
-				case 10: errmsg="`cat urbackup/restore/no_connection`"; break;
-				case 2: errmsg="`cat urbackup/restore/cannot_write_on_partition`"; break;
-				case 3: errmsg="`cat urbackup/restore/wrong_size`"; break;
-				case 4: errmsg="`cat urbackup/restore/server_doesnot_respond`"; break;
-				case 5: errmsg="`cat urbackup/restore/server_connection_timeout`"; break;
-				case 6: errmsg="`cat urbackup/restore/writing_failed`"; break;
+				case EDownloadResult_ConnectError: errmsg="`cat urbackup/restore/no_connection`"; break;
+				case EDownloadResult_OpenError: errmsg="`cat urbackup/restore/cannot_write_on_partition`"; break;
+				case EDownloadResult_SizeReadError: errmsg="`cat urbackup/restore/wrong_size`"; break;
+				case EDownloadResult_TimeoutError2: errmsg="`cat urbackup/restore/server_doesnot_respond`"; break;
+				case EDownloadResult_TimeoutError1: errmsg="`cat urbackup/restore/server_connection_timeout`"; break;
+				case EDownloadResult_WriteFailed: errmsg="`cat urbackup/restore/writing_failed`"; break;
+				case EDownloadResult_DeviceTooSmall: errmsg = greplace("_1_",
+					PrettyPrintBytes(rt.getImgsize()), greplace("_2_", PrettyPrintBytes(rt.getOutputFileSize()), getFile("urbackup/restore/device_too_small"))); break;
 				};
 
 				if(rc!=0)
