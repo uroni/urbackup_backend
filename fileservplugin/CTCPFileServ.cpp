@@ -32,6 +32,7 @@
 #define REFRESH_SECONDS 10
 
 CTCPFileServ::CTCPFileServ(void)
+	: mSocket(-1)
 {
 	udpthread=NULL;
 	udpticket=ILLEGAL_THREADPOOL_TICKET;
@@ -52,7 +53,11 @@ CTCPFileServ::~CTCPFileServ(void)
 
 void CTCPFileServ::KickClients()
 {
-	closesocket(mSocket);
+	if (mSocket != -1)
+	{
+		closesocket(mSocket);
+		mSocket = -1;
+	}
 
 	cs.Enter();
 	for(size_t i=0;i<clientthreads.size();++i)

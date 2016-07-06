@@ -73,7 +73,7 @@
 #endif
 
 File::File()
-	: fd(-1), last_hole_end(0)
+	: fd(-1), last_hole_end(0), last_sparse_pos(0)
 {
 
 }

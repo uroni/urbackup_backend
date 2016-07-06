@@ -189,9 +189,9 @@ void CClientThread::operator()(void)
 					if (next_chunks.front().pipe_file_user == NULL)
 					{
 						FileServ::decrShareActive(next_chunks.front().s_filename);
+						Server->destroy(next_chunks.front().update_file);
 					}
 					delete next_chunks.front().pipe_file_user;
-					Server->destroy(next_chunks.front().update_file);
 				}
 
 				next_chunks.pop();
