@@ -424,11 +424,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			prevbitmap.reset(Server->openFile(os_file_prefix(pParentvhd + ".cbitmap")));
 			if (prevbitmap.get() == NULL)
 			{
-				ServerLogger::Log(logid, "Error opening previous bitmap ("+ pParentvhd + ".cbitmap). "+os_last_error_str(), LL_ERROR);
-				Server->destroy(cc);
-				return false;
+				ServerLogger::Log(logid, "Error opening previous bitmap ("+ pParentvhd + ".cbitmap). "+os_last_error_str()+". Backup will proceed without CBT.", LL_WARNING);
 			}
-			prevbitmap_str = "&cbitmapsize=" + convert(prevbitmap->Size());
+			else
+			{
+				prevbitmap_str = "&cbitmapsize=" + convert(prevbitmap->Size());
+			}
 		}
 		
 		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str+ prevbitmap_str;
@@ -679,8 +680,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
-							ServerLogger::Log(logid, "Opening previous client bitmap ("+ pParentvhd + ".cbitmap) failed during reconnect", LL_ERROR);
-							goto do_image_cleanup;
+							ServerLogger::Log(logid, "Opening previous client bitmap ("+ pParentvhd + ".cbitmap) failed during reconnect. This might cause the backup to fail.", LL_WARNING);
 						}
 					}
 					size_t sent=tcpstack.Send(cc, identity+ts);

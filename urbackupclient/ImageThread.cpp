@@ -551,9 +551,8 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 			else if (hdat_img.get() != NULL)
 			{
-				ImageErr("Need previous client bitmap", LL_ERROR);
-				run = false;
-				break;
+				Server->Log("Need previous client bitmap for image backup with CBT. Disabling CBT.", LL_ERROR);
+				hdat_img.reset();
 			}
 
 			if (hdat_img.get() != NULL)
