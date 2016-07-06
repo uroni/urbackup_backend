@@ -29,7 +29,7 @@
 #include "stringtools.h"
 
 #ifdef MODE_LIN
-
+#include "config.h"
 #include <errno.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -322,7 +322,7 @@ void File::Close()
 	}
 }
 
-bool File::PunchHole( _i64 spos, _i64 size )
+bool File::PunchHole(_i64 spos, _i64 size)
 {
 #ifdef __APPLE__
 	return false;
@@ -335,10 +335,12 @@ bool File::PunchHole( _i64 spos, _i64 size )
 	int rc = fcntl(fd, F_FREESP64, &s);
 	return rc == 0;*/
 	return false;
-#else
-	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
+#elif defined(HAVE_FALLOCATE64) && defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE)
+	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, spos, size);
 
 	return rc == 0;
+#else
+	return false;
 #endif
 }
 
