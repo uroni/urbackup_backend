@@ -335,7 +335,7 @@ bool File::PunchHole(_i64 spos, _i64 size)
 	int rc = fcntl(fd, F_FREESP64, &s);
 	return rc == 0;*/
 	return false;
-#elif defined(HAVE_FALLOCATE64) && defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE)
+#elif defined(HAVE_FALLOCATE64)
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, spos, size);
 
 	return rc == 0;
