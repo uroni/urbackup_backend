@@ -116,7 +116,7 @@ private:
 	bool freeSpace(int64 fs, const std::string &fp);
 	
 	int countFilesInTmp(void);
-	IFsFile* openFileRetry(const std::string &dest, int mode);
+	IFsFile* openFileRetry(const std::string &dest, int mode, std::string& errstr);
 	bool patchFile(IFile *patch, const std::string &source, const std::string &dest, const std::string hash_output, const std::string hash_dest,
 		_i64 tfilesize, ExtentIterator* extent_iterator);
 	
