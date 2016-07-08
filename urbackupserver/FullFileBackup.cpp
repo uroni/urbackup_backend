@@ -357,7 +357,7 @@ bool FullFileBackup::doFileBackup()
 						{
 							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, (orig_sep), true))
 							{
-								ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
+								ServerLogger::Log(logid, "Creating symlink at \""+backuppath+local_curr_os_path+"\" to \""+sym_target->second+"\" failed. " + systemErrorInfo(), LL_ERROR);
 								c_has_error=true;
 								break;
 							}
@@ -473,7 +473,7 @@ bool FullFileBackup::doFileBackup()
                         std::string symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
                         if(!createSymlink(symlink_path, depth, sym_target->second, (orig_sep), false))
                         {
-                            ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+" failed. " + systemErrorInfo(), LL_ERROR);
+                            ServerLogger::Log(logid, "Creating symlink at \""+symlink_path+"\" to \""+sym_target->second+"\" failed. " + systemErrorInfo(), LL_ERROR);
                             c_has_error=true;
                             break;
                         }

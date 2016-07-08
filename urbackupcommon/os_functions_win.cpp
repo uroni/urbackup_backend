@@ -702,7 +702,9 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 	}
 	if(rc==FALSE)
 	{
+		DWORD lasterr = GetLastError();
 		Log("Creating symbolic link from \""+lname+"\" to \""+target+"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
+		SetLastError(lasterr);
 	}
 	return rc==TRUE;
 #else
@@ -762,8 +764,10 @@ bool os_link_symbolic_junctions(const std::string &target, const std::string &ln
 	ret=true;
 
 cleanup:
+	DWORD lasterr;
 	if(!ret)
 	{
+		lasterr = GetLastError();
 		Log("Creating junction failed. Last error="+convert((int)GetLastError()), LL_ERROR);
 	}
 	delete []buf;
@@ -772,6 +776,7 @@ cleanup:
 	if(!ret)
 	{
 		RemoveDirectoryW(ConvertToWchar(lname).c_str());
+		SetLastError(lasterr);
 	}
 	return ret;
 }
