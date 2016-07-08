@@ -490,6 +490,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		return false;
 	}
 #else
+	errno=ENOSYS;
 	return false;
 #endif
 }
