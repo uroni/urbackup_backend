@@ -816,7 +816,7 @@ The server will only start backing up clients within the backup windows. The cli
 Mon-Sun/0-24: An equivalent notation of the above\\
 Mon-Fri/8:00-9:00, 19:30-20:30;Sat,Sun/0-24: On weekdays backup between 8 and 9 and between 19:30 and 20:30. On Saturday and Sunday the whole time.
 \par\null\par
-As one can see a number can denote a day of the week (1-Monday, 2-Tuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Tues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per ",". You can also set multiple window definitions. Separate them with ";".
+As one can see a number can denote a day of the week (1-Monday, 2-Tuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Tues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per ",". If specifying intervals with `-' the starting and ending day are included in the interval. You can also set multiple window definitions. Separate them with ";".
 
 \subsubsection{Advanced backup interval}
 \label{advanced_backup_interval}
@@ -832,7 +832,7 @@ Similar to the backup speed limit (see section \ref{speed_settings}) the backup 
 \noindent If additionally the backup interval should be 6 hours during the week-end:
 
 \begin{verbatim}
-1;4@1-5/18-6;6@5-7/0-24
+1;4@1-5/18-6;6@6,7/0-24
 \end{verbatim}
 
 \subsubsection{Excluded files}
