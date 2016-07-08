@@ -484,7 +484,9 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 	}
 	else
 	{
-		Server->Log("fallocate failed (setting unused image range) with errno "+convert((int)errno), LL_WARNING);
+		int err=errno;
+		Server->Log("fallocate failed (setting unused image range) with errno "+convert(err), LL_WARNING);
+		errno=err;
 		return false;
 	}
 #else
