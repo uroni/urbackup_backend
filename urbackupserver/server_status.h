@@ -27,7 +27,9 @@ enum SStatusAction
 	sa_update=10,
 	sa_check_integrity=11,
 	sa_backup_database=12,
-	sa_recalculate_statistics=13
+	sa_recalculate_statistics=13,
+	sa_nightly_cleanup=14,
+	sa_emergency_cleanup=15
 };
 
 enum SStatusError

@@ -103,6 +103,9 @@ void ServerCleanupThread::operator()(void)
 			break;
 		case ECleanupAction_FreeMinspace:
 			{
+				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false);
+
 				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
 				if(cleanup_action.result!=NULL)
@@ -152,8 +155,13 @@ void ServerCleanupThread::operator()(void)
 			filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 			fileindex.reset(create_lmdb_files_index());
 
-			deletePendingClients();
-			do_cleanup();
+			{
+				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
+
+				deletePendingClients();
+				do_cleanup();
+			}
 			
 			cleanupdao.reset();
 			backupdao.reset();
@@ -259,10 +267,15 @@ void ServerCleanupThread::operator()(void)
 				filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 				fileindex.reset(create_lmdb_files_index());
 
-				deletePendingClients();
-				do_cleanup();
+				{
+					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
 
-				enforce_quotas();
+					deletePendingClients();
+					do_cleanup();
+
+					enforce_quotas();
+				}
 
 				cleanupdao.reset();
 				backupdao.reset();

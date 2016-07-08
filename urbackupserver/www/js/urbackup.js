@@ -610,6 +610,11 @@ function show_progress2(data)
 				data.progress[i].indexing=true;
 			}
 			
+			if(action==14 || action==15 || action==11) //cleanup, check database integrity
+			{
+				data.progress[i].indexing=false;
+			}
+			
 			if(data.progress[i].eta_ms>1000)
 			{
 				data.progress[i].eta = format_time_seconds(data.progress[i].eta_ms/1000);

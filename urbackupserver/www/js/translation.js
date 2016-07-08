@@ -1224,6 +1224,8 @@ translations.en = {
 "action_11": "Checking database integrity",
 "action_12": "Backing up database",
 "action_13": "Recalculating statistics",
+"action_14": "Nightly clean-up",
+"action_15": "Emergency clean-up",
 "tAbout UrBackup": "About UrBackup",
 "tAdd client": "Add client",
 "tUrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered.": "UrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered.",
