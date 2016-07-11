@@ -239,7 +239,7 @@ public:
 	static void share_dirs();
 	static void unshare_dirs();
 	
-	static void execute_postbackup_hook(std::string scriptname);
+	static void execute_postbackup_hook(std::string scriptname, int group, const std::string& clientsubname);
 
 	static void doStop(void);
 	

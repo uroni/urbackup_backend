@@ -671,7 +671,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 		status_updated = true;
 	}
 			
-	IndexThread::execute_postbackup_hook("postfilebackup");
+	IndexThread::execute_postbackup_hook("postfilebackup", 0, std::string());
 }
 
 void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
@@ -704,7 +704,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 		status_updated = true;
 	}
 
-	IndexThread::execute_postbackup_hook("postfilebackup");
+	IndexThread::execute_postbackup_hook("postfilebackup", atoi(params["group"].c_str()), params["clientsubname"]);
 }
 
 int64 ClientConnector::getLastBackupTime()

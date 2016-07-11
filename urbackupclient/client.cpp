@@ -3166,7 +3166,7 @@ int IndexThread::execute_postindex_hook(bool incr, std::string server_token, int
 	return execute_hook(script_name, incr, server_token, &index_group);
 }
 
-void IndexThread::execute_postbackup_hook(std::string scriptname)
+void IndexThread::execute_postbackup_hook(std::string scriptname, int group, const std::string& clientsubname)
 {
 #ifdef _WIN32
 	STARTUPINFOW si;
@@ -3174,7 +3174,14 @@ void IndexThread::execute_postbackup_hook(std::string scriptname)
 	memset(&si, 0, sizeof(STARTUPINFO) );
 	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
 	si.cb=sizeof(STARTUPINFO);
-	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->ConvertToWchar(Server->getServerWorkingDir()+"\\"+scriptname+".bat")+L"\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+
+	std::string clientsubname_san = greplace("\"", "", clientsubname);
+	clientsubname_san = greplace("\\", "", clientsubname_san);
+
+	std::string quoted_script_name = greplace(" ", "\" \"", Server->getServerWorkingDir() + "\\" + scriptname + ".bat");
+
+	if (!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(Server->ConvertToWchar("cmd.exe /C " + quoted_script_name + " " + convert(group) + " \"" + clientsubname_san + "\"")).c_str()
+		, NULL, NULL, false, NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
 	{
 		Server->Log("Executing postfilebackup.bat failed: "+convert((int)GetLastError()), LL_INFO);
 	}
@@ -3195,8 +3202,9 @@ void IndexThread::execute_postbackup_hook(std::string scriptname)
 		{
 			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
 			const char* a1c = fullname.c_str();
+			std::string group = convert(group);
 			char *a1=(char*)a1c;
-			char* const argv[]={ a1, NULL };
+			char* const argv[]={ a1, group.c_str(), clientsubname.c_str(), NULL };
 			execv(a1, argv);
 			exit(1);
 		}
