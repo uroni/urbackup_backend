@@ -3202,9 +3202,9 @@ void IndexThread::execute_postbackup_hook(std::string scriptname, int group, con
 		{
 			std::string fullname = std::string(SYSCONFDIR "/urbackup/") + scriptname;
 			std::string group_str = convert(group);
-			char* const argv[]={ const_cast<char*>(fullname,c_str()), 
+			char* const argv[]={ const_cast<char*>(fullname.c_str()), 
 				const_cast<char*>(group_str.c_str()), const_cast<char*>(clientsubname.c_str()), NULL };
-			execv(a1, argv);
+			execv(const_cast<char*>(fullname.c_str()), argv);
 			exit(1);
 		}
 		else
