@@ -2,11 +2,15 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # Charles Peltier <charles@cl-info.fr>, 2014-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:56+0000\n"
+"PO-Revision-Date: 2016-07-12 20:49+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -46,13 +50,13 @@ msgid "thours"
 msgstr "Heures"
 
 msgid "tmin"
-msgstr "min"
+msgstr "minute"
 
 msgid "tAbort"
 msgstr "Abandonner"
 
 msgid "tInfos"
-msgstr "Information"
+msgstr "Informations"
 
 msgid "tFile backups"
 msgstr "Sauvegarde Fichiers"
@@ -973,7 +977,7 @@ msgid "tArchived"
 msgstr "Archivés"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Il n'y a actuellement pas assez d'espace libre dans le dossier de sauvegarde . UrBackup supprime les anciens fichiers image et fichiers de sauvegardes pour libérer de l'espace disque, dans les limites définies par les paramètres . Pendant ce processus, les performances de sauvegarde sont réduites et les sauvegardes sont en attente."
 
 msgid "nospc_fatal_text"
 msgstr "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup a tenté de purger les anciennes sauvegardes mais ne peut en effacer plus à cause des paramètres définis. Merci de changer ces paramètres à la baisse ou d'augmenter l'espace de stockage alloué afin de permettre à UrBackup de poursuivre."
@@ -1218,6 +1222,12 @@ msgstr "sauvegarde de la base de données"
 msgid "action_13"
 msgstr "Recalcul des statistiques"
 
+msgid "action_14"
+msgstr "Nettoyage nocturne"
+
+msgid "action_15"
+msgstr "Nettoyage d'urgence"
+
 msgid "tAbout UrBackup"
 msgstr "A propos d'UrBackup"
 
@@ -1313,10 +1323,10 @@ msgid "tDownload preconfigured client installer for Linux"
 msgstr "Télécharger le logiciel client pré-configuré pour Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Après l'installation du client à partir de :"
 
-msgid "tGo the settings screen on the client"
-msgstr "Aller sur les paramètres du client"
+msgid "tGo to the settings screen on the client"
+msgstr "Allez à l'écran des paramètres du client"
 
 msgid "tEnable the internet mode on the client"
 msgstr "Activer le mode internet sur le client"
@@ -1337,7 +1347,7 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Sans pare-feu / NAT : Activer le mode Internet seul si vous prévoyez d'utiliser le client via Internet . \nSur Linux en mettant INTERNET_ONLY à true dans /etc/default/urbackupclient ou /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
 msgstr "Sans pare-feu / NAT : Activer seulement le mode internet que si vous ne prévoyez d'utiliser le client via Internet . Sur Linux en changeant INTERNET_ONLY à true dans / etc / default / urbackupclient ou / etc / sysconfig / urbackupclient"
@@ -1349,177 +1359,189 @@ msgid "tDetails"
 msgstr "Détails"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Ajouter une adresse mail"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Arrêt sans erreur à cause d'un dépassement de délai client."
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Niveau de log minimum"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Sauvegarde interrompue"
 
 msgid "tStop"
-msgstr ""
+msgstr "Stop"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Afficher les journaux"
 
 msgid "tETA"
-msgstr ""
+msgstr "Heure de fin prévue"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Vitesse"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Sauvegardes de fichiers"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Sauvegarde de volume"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Archive"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "Adresse du serveur"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Sauvegardes simultanées maximum"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Nombre maximum de clients"
 
 msgid "tDays"
-msgstr ""
+msgstr "Jours"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Copie brut de fichiers"
 
 msgid "tMin"
-msgstr ""
+msgstr "Minimum"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Noms des sous-clients virtuels"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Type d'image incrémentielle"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Basé sur une sauvegarde complète"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Basé sur la dernière sauvegarde"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Image incrémentielle par internet"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Sauvegarde complète locale"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Image complète synthétique"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Image complète via internet"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Taille de la base de données en mémoire cache pendant le traitement par lots"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Débogage : vérification de toutes les sauvegardes de fichiers"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Débogage : vérification de tous les fichiers de sauvegarde utilisant un \"hash\" coté client"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Ajouter périodiquement la liste des fichiers de clients Internet à la base de données (désactivé uniquement si vous ne lancer par de sauvegardes complètes)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Lancer une sauvegarde sur le client avec une priorité d'arrière-plan"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Créer des liens symboliques pour chaque utilisateur sur les clients après les sauvegardes de fichiers"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Nombre de travaux simultanés par client"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Liste des volumes pour lesquels le suivi des changements bloc doit être utilisé (si disponible)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Liste des volumes pour lesquels le suivi des changements de bloc devrait être supprimer définitivement"
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Activer l'authentification LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "Nom du serveur LDAP/AD"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Port du serveur LDAP/AD"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "Préfixe utilisateur LDAP/AD"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "Suffixe utilisateur LDAP/AD"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "Requête sur groupe et classe LDAP/AD"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "Recherche de mots clé dans un groupe LDAP/AD"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "Recherche de mots clé dans une classe LDAP/AD"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "Table des droits des groupes LDAP/AD"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "Table des droits des classes LDAP/AD"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Tester la connexion avec cet utilisateur"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Mot de passe pour l'utilisateur de test"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Connexion de test réussie. Droits de l'utilisateur :"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Échec du test de connexion. Erreur :"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Télécharger le client pour Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Télécharger le client pour Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Télécharger le client pour Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Supprimer le client"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Ajouter un nouveau client"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Affichage des requêtes de découverte client"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Ajout du nom/IP comme une requête client"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Statistiques des sauvegardes"
+
+msgid "completed_with_issues"
+msgstr "Fini mais avec des problèmes"
+
+msgid "not_supported"
+msgstr "Non supporté"
+
+msgid "tPreparing restore. Please be patient..."
+msgstr "Préparation de la restauration. Soyez patient..."
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
+msgstr "Ne pas arrêter les sauvegardes en cas de non-concordance de hachage ou d'erreurs de lecture"

@@ -2,12 +2,16 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# buzzertnl <frank@aced-it.nl>, 2014
-# Pimmetje <pimmetje@gmail.com>, 2014
+# Translators:
+# Translators:
+# Translators:
+# Translators:
+# buzzertnl <frank@aced-it.nl>, 2014,2016
+# Pimmetje <pimmetje@gmail.com>, 2014,2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Dutch (http://www.transifex.com/uroni/urbackup/language/nl/)\n"
 "MIME-Version: 1.0\n"
@@ -557,7 +561,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup is de interne database aan het bijwerken. Dit kan enige tijd duren. De server is niet bereikbaar en zal geen back-ups uitvoeren gedurende de upgrade."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup is een bestandsindex aan het genereren. Afhankelijk van het aantal bestanden kan dit even duren. Even geduld aub. "
 
 msgid "tAction"
 msgstr "Actie"
@@ -974,7 +978,7 @@ msgid "tArchived"
 msgstr "Geachieveerd "
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Er is momenteel niet voldoende ruimte in de back-up map. UrBackup verwijdert oude image- en bestandsback-ups tot het ingestelde maximum. Tijdens dit proces kunnen de prestaties minder zijn en back-up stoppen."
 
 msgid "nospc_fatal_text"
 msgstr "Er is momenteel niet voldoende ruimte in de back-up map. UrBackup heeft geprobeerd oude images en bestand back-ups te verwijderen maar is niet bevoegd er nog meer te verwijderen. Pas de instellingen aan om minder back-ups te bewaren of maak extra ruimte beschikbaar zodat UrBackup verder kan gaan met back-uppen."
@@ -1016,7 +1020,7 @@ msgid "really_recalculate"
 msgstr "Weet u zeker dat alle statistieken wilt herberekenen? Dit kan lange tijd duren!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Er is een fout opgetreden tijdens het opvragen of controleren van de interne UrBackup database. Dit betekend waarschijnlijk dat de database corrupt is of dat er niet voldoende schijfruimte vrij is. Herstel de database als dit probleem zich blijft voordoen (backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db en backup_server_settings.db) uit een back-up. Zie het logboek voor details. "
 
 msgid "tDownload folder as ZIP"
 msgstr "Download map als ZIP-bestand"
@@ -1172,167 +1176,173 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(gefilterd van _MAX_ totaal aantal records)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimaliseren"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maximaliseren"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Een client met deze naam bestaat reeds"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Geef de naam van de nieuwe Internet client/client achter NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Geef het IP/computernaam van de client die gevonden moet worden"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup is bezig met het maken van een bestandenindex. Dit kan enige tijd duren."
 
 msgid "about"
-msgstr ""
+msgstr "Over"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Alle clients"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Client instellingen"
 
 msgid "action_8"
-msgstr ""
+msgstr "Bestand herstellen"
 
 msgid "action_9"
-msgstr ""
+msgstr "Image herstellen"
 
 msgid "action_10"
-msgstr ""
+msgstr "Client updaten"
 
 msgid "action_11"
-msgstr ""
+msgstr "Database integriteit controleren"
 
 msgid "action_12"
-msgstr ""
+msgstr "Database back-up aan het maken"
 
 msgid "action_13"
+msgstr "Herberekenen van statistieken"
+
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
 msgstr ""
 
 msgid "tAbout UrBackup"
 msgstr "Over UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Client toevoegen"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup vindt automatisch clients op het lokale netwerk. Als de client op het zelfde subnet zit zals de server kan die client geinstaleerd worden en wordt deze automatish gevonden. "
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Download de client van:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Als deze client meerdere servers wilt gebruiken, deze server's identiteit is: "
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Voeg een nieuwe internet cliënt of een cliënt achter NAT toe"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Naam van de nieuwe internet of NAT cliënt"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Vindt nieuwe cliënt via IP/hostname hint"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/hostname van de gezochte cliënt"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Annuleren"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Toegang geweigerd"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Sorry, er is iets verkeerd gegaan of je hebt niet de juiste rechten tot de bestanden of mappen."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Inloggen met gebruikersnaam en wachtwoord"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Fout tijdens laden van backup's"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Sorry, er ging iets fout:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Aangemaakt"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Laatst aangepast"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Laatst opgevraagd"
 
 msgid "tList"
-msgstr ""
+msgstr "Lijst"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Hersteld"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Herstel map op cliient"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versie"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Client met succes toegevoegd"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Een client toegevoegd met naam:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Standaard authenticatie sleutel:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Download de voorgeconfigureerde client voor Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Download de voorgeconfigureerde client voor Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Installeer het direct via de terminal:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Download voorgeconfigueerde client voor Linux"
 
 msgid "tAlternatively after you installed the client from:"
 msgstr ""
 
-msgid "tGo the settings screen on the client"
-msgstr ""
+msgid "tGo to the settings screen on the client"
+msgstr "Ga naar het instellingen menu op de cliënt"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Schakel internet mode in op de cliënt"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Stel internet server in: "
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Stel internet server poort in:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Stel de computer naam in:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Stel de authenticatie sleutel in:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
@@ -1341,88 +1351,88 @@ msgid ""
 msgstr ""
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Met de opdrachtregel:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Percentrage afgerond"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Details"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "E-mail adres toevoegen"
 
 msgid "tFailed without failures caused by client timeout"
 msgstr ""
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Minimaal log niveau"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Back-ups onderbroken"
 
 msgid "tStop"
-msgstr ""
+msgstr "Stoppen"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Logboek weergeven"
 
 msgid "tETA"
-msgstr ""
+msgstr "Geschatte resterende tijd"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Snelheid"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Bestands back-ups"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "image back-ups"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Archiveren"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "Server URL"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Maximaal gelijktijdige back-ups"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Maximum recent actieve cliënts"
 
 msgid "tDays"
-msgstr ""
+msgstr "Dagen"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
 
 msgid "tMin"
-msgstr ""
+msgstr "Minimaal"
 
 msgid "tVirtual sub client names"
 msgstr ""
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Lokale incrementele image stijl"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Gebaseerd op de laaste volledige image back-up"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Gebaseerd op de laaste image back-up"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Internet incrementele image stijl"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Lokale voledige image stijl"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Synthetische volledige image back-up"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Internet voledige image stijl"
 
 msgid "tDatabase cache size during batch processing"
 msgstr ""
@@ -1447,7 +1457,7 @@ msgid ""
 msgstr ""
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Maximaal aantal gelijktijdige back-ups per cliënt"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
@@ -1499,22 +1509,22 @@ msgid "tTest login succeeded. Rights of user:"
 msgstr ""
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Test login mislukt. Fout: "
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Download cliënt voor Windows:"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Download cliënt voor Mac OS"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Download cliënt voor Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "cliënt verwijderen"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Nieuwe cliënt toevoegen"
 
 msgid "tClient discovery hints"
 msgstr ""
@@ -1523,4 +1533,16 @@ msgid "tAdd hostname/IP as client discovery hint"
 msgstr ""
 
 msgid "tBackup Statistics"
+msgstr "Back-up statistieken"
+
+msgid "completed_with_issues"
+msgstr "Voltooid met problemen"
+
+msgid "not_supported"
+msgstr "Niet ondersteund"
+
+msgid "tPreparing restore. Please be patient..."
+msgstr "Herstellen voorbereiden. Even wachten aub..."
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""

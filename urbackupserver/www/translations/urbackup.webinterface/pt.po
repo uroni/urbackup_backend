@@ -2,6 +2,10 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # J Almeida, 2015-2016
 # J Almeida, 2015
 # J Almeida, 2016
@@ -9,7 +13,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Portuguese (http://www.transifex.com/uroni/urbackup/language/pt/)\n"
 "MIME-Version: 1.0\n"
@@ -1174,16 +1178,16 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrado de _MAX_ registos )"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimizar"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maximizar"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Já existe um cliente com este nome"
 
 msgid "validate_err_empty_internet_client_name"
 msgstr ""
@@ -1195,37 +1199,43 @@ msgid "creating_filesindex_text"
 msgstr ""
 
 msgid "about"
-msgstr ""
+msgstr "Sobre"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Todos os clientes"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Definições do Cliente"
 
 msgid "action_8"
-msgstr ""
+msgstr "Restauro de ficheiro"
 
 msgid "action_9"
-msgstr ""
+msgstr "Restauro de imagem"
 
 msgid "action_10"
-msgstr ""
+msgstr "Atualizar Cliente"
 
 msgid "action_11"
-msgstr ""
+msgstr "A verificar integridade da base dados"
 
 msgid "action_12"
 msgstr ""
 
 msgid "action_13"
+msgstr "A Recalcular as estatísticas"
+
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
 msgstr ""
 
 msgid "tAbout UrBackup"
 msgstr "Cancelar UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Adicionar cliente"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
@@ -1254,10 +1264,10 @@ msgid "tIP/hostname of client to be discovered"
 msgstr ""
 
 msgid "tCancel"
-msgstr ""
+msgstr "Cancelar"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Acesso recusado"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
@@ -1274,25 +1284,25 @@ msgid "tSorry, something went wrong:"
 msgstr ""
 
 msgid "tCreated"
-msgstr ""
+msgstr "Criado"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Ultima modificação"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Ultimo acesso"
 
 msgid "tList"
-msgstr ""
+msgstr "Lista"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Restaurar"
 
 msgid "tRestore folder to client"
 msgstr ""
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versão"
 
 msgid "tClient added successfully"
 msgstr ""
@@ -1318,7 +1328,7 @@ msgstr ""
 msgid "tAlternatively after you installed the client from:"
 msgstr ""
 
-msgid "tGo the settings screen on the client"
+msgid "tGo to the settings screen on the client"
 msgstr ""
 
 msgid "tEnable the internet mode on the client"
@@ -1349,10 +1359,10 @@ msgid "tPercent finished"
 msgstr ""
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detalhes"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Adicionar Endereço de E-mail"
 
 msgid "tFailed without failures caused by client timeout"
 msgstr ""
@@ -1364,16 +1374,16 @@ msgid "tBackups interrupted"
 msgstr ""
 
 msgid "tStop"
-msgstr ""
+msgstr "Parar"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Apresentar Log"
 
 msgid "tETA"
 msgstr ""
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Velocidade"
 
 msgid "tFile Backups"
 msgstr ""
@@ -1382,7 +1392,7 @@ msgid "tImage Backups"
 msgstr ""
 
 msgid "tArchive"
-msgstr ""
+msgstr "Arquivo"
 
 msgid "tServer URL"
 msgstr ""
@@ -1394,13 +1404,13 @@ msgid "tMax recently active clients"
 msgstr ""
 
 msgid "tDays"
-msgstr ""
+msgstr "Dias"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
 msgstr ""
@@ -1513,10 +1523,10 @@ msgid "tDownload client for Linux"
 msgstr ""
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Remover cliente"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Adicionar novo cliente"
 
 msgid "tClient discovery hints"
 msgstr ""
@@ -1525,4 +1535,16 @@ msgid "tAdd hostname/IP as client discovery hint"
 msgstr ""
 
 msgid "tBackup Statistics"
+msgstr "Estatistica de backups"
+
+msgid "completed_with_issues"
+msgstr ""
+
+msgid "not_supported"
+msgstr ""
+
+msgid "tPreparing restore. Please be patient..."
+msgstr ""
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""

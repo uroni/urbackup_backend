@@ -2,10 +2,14 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: English (http://www.transifex.com/uroni/urbackup/language/en/)\n"
 "MIME-Version: 1.0\n"
@@ -1217,6 +1221,12 @@ msgstr "Backing up database"
 msgid "action_13"
 msgstr "Recalculating statistics"
 
+msgid "action_14"
+msgstr "Nightly clean-up"
+
+msgid "action_15"
+msgstr "Emergency clean-up"
+
 msgid "tAbout UrBackup"
 msgstr "About UrBackup"
 
@@ -1314,8 +1324,8 @@ msgstr "Download preconfigured client installer for Linux"
 msgid "tAlternatively after you installed the client from:"
 msgstr "Alternatively after you installed the client from:"
 
-msgid "tGo the settings screen on the client"
-msgstr "Go the settings screen on the client"
+msgid "tGo to the settings screen on the client"
+msgstr "Go to the settings screen on the client"
 
 msgid "tEnable the internet mode on the client"
 msgstr "Enable the internet mode on the client"
@@ -1522,3 +1532,15 @@ msgstr "Add hostname/IP as client discovery hint"
 
 msgid "tBackup Statistics"
 msgstr "Backup Statistics"
+
+msgid "completed_with_issues"
+msgstr "Completed with issues"
+
+msgid "not_supported"
+msgstr "Not supported"
+
+msgid "tPreparing restore. Please be patient..."
+msgstr "Preparing restore. Please be patient..."
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
+msgstr "Do not fail backups in case of hash mismatches or read errors"
