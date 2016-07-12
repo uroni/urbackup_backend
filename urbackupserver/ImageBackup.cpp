@@ -402,6 +402,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	std::string identity = client_main->getIdentity();
 
+	chksum_str += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
+
 	if(pParentvhd.empty())
 	{
 		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);

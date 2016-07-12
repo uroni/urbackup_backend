@@ -482,6 +482,8 @@ void IndexThread::operator()(void)
 			data.getUInt(&flags);
 			data.getStr(&index_clientsubname);
 			data.getInt(&sha_version);
+			int running_jobs = 2;
+			data.getInt(&running_jobs);
 
 			setFlags(flags);
 
@@ -551,7 +553,7 @@ void IndexThread::operator()(void)
 					last_index = "vfull";
 				}
 
-				indexDirs(false);
+				indexDirs(false, running_jobs>1);
 
 				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
 				{
@@ -586,6 +588,8 @@ void IndexThread::operator()(void)
 			data.getUInt(&flags);
 			data.getStr(&index_clientsubname);
 			data.getInt(&sha_version);
+			int running_jobs = 2;
+			data.getInt(&running_jobs);
 
 			setFlags(flags);
 
@@ -613,7 +617,7 @@ void IndexThread::operator()(void)
 			{
 				last_index = "full";
 
-				indexDirs(true);
+				indexDirs(true, running_jobs>1);
 
 				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
 				{
@@ -644,10 +648,12 @@ void IndexThread::operator()(void)
 			unsigned char fileserv;
 			bool hfs=data.getUChar(&fileserv);
 
+			int running_jobs = 2;
 			index_clientsubname.clear();
 			if (hfs)
 			{
 				data.getStr(&index_clientsubname);
+				data.getInt(&running_jobs);
 			}
 
 			if (image_backup != 0)
@@ -673,7 +679,7 @@ void IndexThread::operator()(void)
 					scd->ref->dontincrement=true;
 				}
 				bool onlyref = reference_sc;
-				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup!=0?true:false))
+				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, running_jobs>1, std::vector<SCRef*>(), image_backup!=0?true:false))
 				{
 					if (scd->ref!=NULL
 						&& scd->ref->cbt
@@ -735,7 +741,7 @@ void IndexThread::operator()(void)
 
 				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_DEBUG);
 				bool onlyref = reference_sc;
-				bool b= start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
+				bool b= start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, running_jobs>1, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
@@ -995,7 +1001,7 @@ namespace
 
 const char * filelist_fn="urbackup/data/filelist_new.ub";
 
-void IndexThread::indexDirs(bool full_backup)
+void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
 		exlude_dirs, include_dirs, include_depth, include_prefix);
@@ -1155,7 +1161,7 @@ void IndexThread::indexDirs(bool full_backup)
 			if(filetype!=0 || !shadowcopy_optional)
 			{
 				VSSLog("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_DEBUG);	
-				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy, &shadowcopy_not_configured);
+				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, simultaneous_other, past_refs, false, &stale_shadowcopy, &shadowcopy_not_configured);
 				VSSLog("done.", LL_DEBUG);
 			}
 			else if(shadowcopy_optional)
@@ -2251,7 +2257,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath,
+bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other, const std::string& wpath,
 	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens,
 	bool share_new)
 {
@@ -2318,7 +2324,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				|| only_own_tokens 
 				|| cannot_open_shadowcopy ) )
 			{
-				if (sc_refs[i]->for_imagebackup == for_imagebackup)
+				if ( (sc_refs[i]->for_imagebackup == for_imagebackup)
+					|| (!simultaneous_other && Server->getTimeSeconds() - sc_refs[i]->starttime>60) )
 				{
 					if (only_own_tokens)
 					{
@@ -2355,7 +2362,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				else
 				{
 					VSSLog("Not restarting/using existing shadow copy of " + sc_refs[i]->target + 
-						" because it was not created for image backups/file backups (for_imagebackup="+convert(for_imagebackup)+")", LL_INFO);
+						" because it was not created for image backups/file backups and there is a simultaneous other backup (for_imagebackup="+convert(for_imagebackup)+")", LL_INFO);
 				}
 			}
 			else if(!cannot_open_shadowcopy)
@@ -2421,7 +2428,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 	return false;
 }
 
-bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart,
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other,
 	std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool* not_configured)
 {
 	bool c_onlyref = false;
@@ -2466,8 +2473,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 #endif
 
 	
-	if(find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref)
-		|| find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref) )
+	if(find_existing_shadowcopy(dir, onlyref, allow_restart, simultaneous_other, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref)
+		|| find_existing_shadowcopy(dir, onlyref, allow_restart, simultaneous_other, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true, !c_onlyref) )
 	{
 		return true;
 	}

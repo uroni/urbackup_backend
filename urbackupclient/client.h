@@ -282,7 +282,7 @@ private:
 
 	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth);
 
-	void indexDirs(bool full_backup);
+	void indexDirs(bool full_backup, bool simultaneous_other);
 
 	void updateDirs(void);
 
@@ -292,9 +292,9 @@ private:
 
 	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes);
 
-	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL);
+	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, bool simultaneous_other=true, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL);
 
-	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::string& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
+	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other, const std::string& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
 		bool consider_only_own_tokens, bool share_new);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
