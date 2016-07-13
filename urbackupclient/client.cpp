@@ -2325,7 +2325,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				|| cannot_open_shadowcopy ) )
 			{
 				if ( (sc_refs[i]->for_imagebackup == for_imagebackup)
-					|| (!simultaneous_other && Server->getTimeSeconds() - sc_refs[i]->starttime>60) )
+					|| !simultaneous_other )
 				{
 					if (only_own_tokens)
 					{
@@ -2337,7 +2337,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					}
 
 					SCRef *curr = sc_refs[i];
-					std::map<std::string, SCDirs*>& scdirs_server = scdirs[SCDirServerKey(starttoken, index_clientsubname, for_imagebackup)];
+					std::map<std::string, SCDirs*>& scdirs_server = scdirs[SCDirServerKey(starttoken, index_clientsubname, sc_refs[i]->for_imagebackup)];
 
 					std::vector<std::string> paths;
 					for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
@@ -4785,12 +4785,14 @@ bool IndexThread::nextLastFilelistItem(SFile& data, str_map* extra, bool with_up
 				Server->Log("Error reading from last file list", LL_ERROR);
 
 				last_filelist.reset();
+				index_follow_last = false;
 				return false;
 			}
 
 			if (read == 0)
 			{
 				last_filelist.reset();
+				index_follow_last = false;
 				return false;
 			}
 
