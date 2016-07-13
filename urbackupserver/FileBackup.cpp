@@ -145,6 +145,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		{
 			start_backup_cmd+="&clientsubname="+EscapeParamString((clientsubname));
 		}
+
+		start_backup_cmd += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 	}
 
 	if(resume && client_main->getProtocolVersions().file_protocol_version_v2>=1)
@@ -178,8 +180,6 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	{
 		start_backup_cmd+="#token="+server_token;
 	}
-
-	start_backup_cmd += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 
 	tcpstack.Send(cc, start_backup_cmd);
 
