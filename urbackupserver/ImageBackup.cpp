@@ -110,7 +110,7 @@ namespace
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
 	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details)
 	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details),
-	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0)
+	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false)
 {
 }
 
@@ -164,7 +164,7 @@ bool ImageBackup::doBackup()
 	int sysvol_id=-1;
 	int esp_id=-1;
 	ScopedLockImageFromCleanup lock_cleanup_sysvol(0);
-	ScopedLockImageFromCleanup lock_esp_sysvol(0);
+	ScopedLockImageFromCleanup lock_cleanup_esp(0);
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
@@ -176,6 +176,12 @@ bool ImageBackup::doBackup()
 		{
 			sysvol_id = sysvol_backup.getBackupId();
 			lock_cleanup_sysvol.reset(sysvol_id);
+		}
+		else if (!sysvol_backup.getNotFound()
+			&& client_main->getProtocolVersions().efi_version > 0)
+		{
+			ServerLogger::Log(logid, "Backing up System Reserved (SYSVOL) partition failed. Image backup failed", LL_ERROR);
+			return false;
 		}
 	
 		ServerLogger::Log(logid, "Backing up SYSVOL done.", LL_DEBUG);
@@ -190,7 +196,13 @@ bool ImageBackup::doBackup()
 			if(esp_backup.getResult())
 			{
 				esp_id = esp_backup.getBackupId();
-				lock_cleanup_sysvol.reset(esp_id);
+				lock_cleanup_esp.reset(esp_id);
+			}
+			else if (!esp_backup.getNotFound()
+				&& client_main->getProtocolVersions().efi_version > 0)
+			{
+				ServerLogger::Log(logid, "Backing up EFI System Partition failed. Image backup failed", LL_ERROR);
+				return false;
 			}
 
 			ServerLogger::Log(logid, "Backing up EFI System Partition done.", LL_DEBUG);
@@ -390,6 +402,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	std::string identity = client_main->getIdentity();
 
+	chksum_str += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
+
 	if(pParentvhd.empty())
 	{
 		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
@@ -412,11 +426,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			prevbitmap.reset(Server->openFile(os_file_prefix(pParentvhd + ".cbitmap")));
 			if (prevbitmap.get() == NULL)
 			{
-				ServerLogger::Log(logid, "Error opening previous bitmap ("+ pParentvhd + ".cbitmap). "+os_last_error_str(), LL_ERROR);
-				Server->destroy(cc);
-				return false;
+				ServerLogger::Log(logid, "Error opening previous bitmap ("+ pParentvhd + ".cbitmap). "+os_last_error_str()+". Backup will proceed without CBT.", LL_WARNING);
 			}
-			prevbitmap_str = "&cbitmapsize=" + convert(prevbitmap->Size());
+			else
+			{
+				prevbitmap_str = "&cbitmapsize=" + convert(prevbitmap->Size());
+			}
 		}
 		
 		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+convert(hashfile->Size())+"&token="+server_token+chksum_str+ prevbitmap_str;
@@ -667,8 +682,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
-							ServerLogger::Log(logid, "Opening previous client bitmap ("+ pParentvhd + ".cbitmap) failed during reconnect", LL_ERROR);
-							goto do_image_cleanup;
+							ServerLogger::Log(logid, "Opening previous client bitmap ("+ pParentvhd + ".cbitmap) failed during reconnect. This might cause the backup to fail.", LL_WARNING);
 						}
 					}
 					size_t sent=tcpstack.Send(cc, identity+ts);
@@ -775,6 +789,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							if (err == "Not found")
 							{
 								loglevel = LL_DEBUG;
+								not_found = true;
 							}
 
 							if(pLetter=="SYSVOL")

@@ -1095,7 +1095,7 @@ ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string 
 	return state.prev;
 }
 
-IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
+IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode, std::string& errstr)
 {
 	IFsFile *dst=NULL;
 	int count_t=0;
@@ -1104,12 +1104,13 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 		dst=Server->openFile(os_file_prefix(dest), mode);
 		if(dst==NULL)
 		{
-			ServerLogger::Log(logid, "Error opening file... \""+dest+"\" retrying... "+os_last_error_str(), LL_DEBUG);
+			errstr = os_last_error_str();
+			ServerLogger::Log(logid, "Error opening file... \""+dest+"\" retrying... "+ errstr, LL_DEBUG);
 			Server->wait(500);
 			++count_t;
 			if(count_t>=10)
 			{
-				ServerLogger::Log(logid, "Error opening file... \""+dest+"\". " + os_last_error_str(), LL_ERROR);
+				ServerLogger::Log(logid, "Error opening file... \""+dest+"\". " + errstr, LL_ERROR);
 				return NULL;
 			}
 		}
@@ -1120,10 +1121,11 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode)
 
 bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator)
 {
-	std::auto_ptr<IFsFile> dst(openFileRetry(dest, MODE_WRITE));
+	std::string errstr;
+	std::auto_ptr<IFsFile> dst(openFileRetry(dest, MODE_WRITE, errstr));
 	if (dst.get() == NULL)
 	{
-		ServerLogger::Log(logid, "Error opening dest file \"" + dest + "\". " + os_last_error_str(), LL_ERROR);
+		ServerLogger::Log(logid, "Error opening dest file \"" + dest + "\". " + errstr, LL_ERROR);
 		return false;
 	}
 
@@ -1217,13 +1219,14 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 
 bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
-	IFsFile *dst=openFileRetry(dest, MODE_WRITE);
+	std::string errstr;
+	IFsFile *dst=openFileRetry(dest, MODE_WRITE, errstr);
 	if(dst==NULL) return false;
 	ObjectScope dst_s(dst);
 
 	if(tf->Size()>0)
 	{
-		IFile *dst_hash=openFileRetry(hash_dest, MODE_RW_CREATE);
+		IFile *dst_hash=openFileRetry(hash_dest, MODE_RW_CREATE, errstr);
 		if(dst_hash==NULL)
 		{
 			return false;
@@ -1344,18 +1347,19 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 			}
 		}
 
-		chunk_output_fn=openFileRetry(dest, has_reflink?MODE_RW:MODE_WRITE);
+		std::string errstr;
+		chunk_output_fn=openFileRetry(dest, has_reflink?MODE_RW:MODE_WRITE, errstr);
 		if (chunk_output_fn == NULL)
 		{
-			ServerLogger::Log(logid, "Error opening chunk output file \"" + dest + "\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error opening chunk output file \"" + dest + "\". "+ errstr, LL_ERROR);
 			return false;
 		}
 		ObjectScope dst_s(chunk_output_fn);
 
-		IFile *f_source=openFileRetry(source, MODE_READ);
+		IFile *f_source=openFileRetry(source, MODE_READ, errstr);
 		if (f_source == NULL)
 		{
-			ServerLogger::Log(logid, "Error opening patch source file \"" + source + "\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error opening patch source file \"" + source + "\". "+errstr, LL_ERROR);
 			return false;
 		}
 		ObjectScope f_source_s(f_source);
@@ -1469,10 +1473,11 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 
 	ServerLogger::Log(logid, "HT: Copying with reflink data from \""+orig_fn+"\"", LL_DEBUG);
 
-	std::auto_ptr<IFile> dst(openFileRetry(dest, MODE_RW));
+	std::string errstr;
+	std::auto_ptr<IFile> dst(openFileRetry(dest, MODE_RW, errstr));
 	if (dst.get() == NULL)
 	{
-		ServerLogger::Log(logid, "Error opening destination file at \"" + dest + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening destination file at \"" + dest + "\". " + errstr, LL_ERROR);
 		return false;
 	}
 
@@ -1579,20 +1584,21 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 
 	ServerLogger::Log(logid, "HT: Copying with hashoutput with reflink data from \""+orig_fn+"\"", LL_DEBUG);
 
-	IFsFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW);
+	std::string errstr;
+	IFsFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW, errstr);
 	if (dst == NULL)
 	{
-		ServerLogger::Log(logid, "Error opening dest file at \"" + dest + "\"", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening dest file at \"" + dest + "\". "+ errstr, LL_ERROR);
 		return false;
 	}
 	ObjectScope dst_s(dst);
 
 	if(tf->Size()>0)
 	{
-		IFile *dst_hash=openFileRetry(os_file_prefix(hash_dest), MODE_WRITE);
+		IFile *dst_hash=openFileRetry(os_file_prefix(hash_dest), MODE_WRITE, errstr);
 		if(dst_hash==NULL)
 		{
-			ServerLogger::Log(logid, "Error opening dest hash file at \"" + hash_dest + "\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error opening dest hash file at \"" + hash_dest + "\". "+ errstr, LL_ERROR);
 			return false;
 		}
 		ObjectScope dst_hash_s(dst_hash);
@@ -1624,7 +1630,8 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &de
 {
 	if(tf->Size()>0)
 	{
-        IFile *dst_hash=openFileRetry(hash_dest, MODE_RW_CREATE);
+		std::string errstr;
+        IFile *dst_hash=openFileRetry(hash_dest, MODE_RW_CREATE, errstr);
 		if(dst_hash==NULL)
 		{
 			return false;

@@ -2,11 +2,16 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
-# Luis M Muñoz <lm@redlm.com>, 2014
+# Translators:
+# Translators:
+# Translators:
+# Translators:
+# Jose G. Jimenez S. <josegjimenez@gmail.com>, 2016
+# Luis M. Muñoz <lm@redlm.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Spanish (http://www.transifex.com/uroni/urbackup/language/es/)\n"
 "MIME-Version: 1.0\n"
@@ -556,7 +561,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup está actualizando su base de datos interna. Esto puede llevar bastante tiempo. El servidor no estará accesible durante ese tiempo y no se realizarán copias de seguridad."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup está creando el índice de entrada de archivo. Dependiendo del número de archivos esto podría tomar un tiempo. Por favor sea paciente."
 
 msgid "tAction"
 msgstr "Acción"
@@ -973,7 +978,7 @@ msgid "tArchived"
 msgstr "Archivado"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "En este momento no hay suficiente espacio libre en la carpeta de copia de seguridad. UrBackup está eliminando copias de seguridad antiguas de archivos de imagen para liberar espacio, dentro de los límites definidos por los ajustes. Durante este proceso, el rendimiento de copia de seguridad se reduce y las copias de seguridad se detienen."
 
 msgid "nospc_fatal_text"
 msgstr "No hay suficiente espacio en la carpeta de backup. Urbackup intentó liberar espacio borrando copias imagen y de archivos antiguas per no tiene permiso para borrar más. Por favor, cambie los ajustes para guardar menos copias o incremente el espacio de almacenamiento para permitir a Urbackup seguir realizando copias."
@@ -1015,7 +1020,7 @@ msgid "really_recalculate"
 msgstr "¿Seguro que quire recalcular las estadísticas? Eso puede llevar bastante tiempo."
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Se produjo un error al acceder a la base de datos o control interno de UrBackup. Esto significa que esta base de datos probablemente está dañada o no hay suficiente espacio libre. Si este error persiste, restaure la base de datos (los archivos backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db y backup_server_settings.db) a partir de una copia de seguridad. Ver los logs para obtener detalles."
 
 msgid "tDownload folder as ZIP"
 msgstr "Descarga de carpeta como ZIP"
@@ -1171,72 +1176,78 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrado de un total de_MAX_ registros)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimizar"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maximizar"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Ya existe un cliente con este nombre"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Por favor, introduzca un nuevo nombre cliente de Internet / cliente detrás de NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Por favor, introduzca una dirección IP/nombre de host del cliente para ser descubierto"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup está creando el índice de entrada de archivo. Esto podría tomar un tiempo."
 
 msgid "about"
-msgstr ""
+msgstr "Sobre"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Todos los clientes"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Ajustes del Cliente"
 
 msgid "action_8"
-msgstr ""
+msgstr "Restaurar Archivo"
 
 msgid "action_9"
-msgstr ""
+msgstr "Restaurar Imagen"
 
 msgid "action_10"
-msgstr ""
+msgstr "Actualizar Cliente"
 
 msgid "action_11"
-msgstr ""
+msgstr "Comprobando la integridad de la base de datos"
 
 msgid "action_12"
-msgstr ""
+msgstr "Copia de seguridad de base de datos"
 
 msgid "action_13"
+msgstr "Recálculo de las estadísticas"
+
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
 msgstr ""
 
 msgid "tAbout UrBackup"
 msgstr "Sobre Urbackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Agregar Cliente"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup detecta automáticamente los clientes de la red local. Si el servidor se encuentra en la misma subred que el cliente sólo tiene que instalar el cliente y esperar a que sea descubierto."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Descargar el cliente desde:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Si desea que un cliente utilice varios servidores de copia de seguridad la identidad de este servidor es:"
 
 msgid "tAdd new Internet client/client behind NAT"
 msgstr ""
@@ -1245,159 +1256,159 @@ msgid "tName of new Internet client/client behind NAT"
 msgstr ""
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Descubrir nuevos clientes a través de IP/nombre de host."
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/nombre de host del cliente para ser descubierto"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Cancelar"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Acceso denegado"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Lo sentimos, algo salió mal o usted no tiene los privilegios necesarios para acceder a este archivo o carpeta."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Ingresar con nombre de usuario y contraseña"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Error al acceder a las copias de seguridad"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Lo sentimos, algo salió mal:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Creado"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Última modificación"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Accedió por última vez"
 
 msgid "tList"
-msgstr ""
+msgstr "Lista"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Restaurar"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Restaurar carpeta a cliente"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versión"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Cliente agregado correctamente"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Agregado un nuevo cliente con nombre:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Clave de autenticación por defecto:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Descargar pre-configuración del cliente instalado para Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Descargar pre-configuración del cliente instalado para Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Instalarlo directamente en el terminal a través de:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Descargar pre-configuración del cliente instalado para Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativa después de instalar el cliente de:"
 
-msgid "tGo the settings screen on the client"
-msgstr ""
+msgid "tGo to the settings screen on the client"
+msgstr "Ir a la pantalla de ajustes en el cliente"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Activar el modo de Internet en el cliente"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Configurar el servidor de Internet para:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Establecer el puerto del servidor de Internet para:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Establecer el nombre del equipo a:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Establecer la clave de autenticación para:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Sin firewall/NAT: Activar el modo de Internet sólo si usted sólo va a utilizar el cliente a través de Internet. En Linux cambiando INTERNET_ONLY en true en /etc/default/urbackupclient ó /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Con la línea de comandos:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Porcentaje terminado"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detalles"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Agregar Dirección de Correo"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Error sin fallas causadas por el tiempo de espera del cliente"
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Mínimo nivel de log"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Copias de seguridad interrumpidas"
 
 msgid "tStop"
-msgstr ""
+msgstr "Detener"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Mostrar log"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Velocidad"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Copias de seguridad de archivos"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Copias de seguridad de imagen"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Archivo"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "URL del servidor"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Número máximo de respaldos simultáneos"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Número máximo de clientes activos recientemente"
 
 msgid "tDays"
-msgstr ""
+msgstr "Días"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
 msgstr ""
@@ -1406,10 +1417,10 @@ msgid "tLocal incremental image style"
 msgstr ""
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Basado en la última copia de seguridad de imagen completa"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Basado en la última copia de seguridad de imagen"
 
 msgid "tInternet incremental image style"
 msgstr ""
@@ -1424,7 +1435,7 @@ msgid "tInternet full image style"
 msgstr ""
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Tamaño de la caché de base de datos durante el procesamiento por lotes"
 
 msgid "tDebugging: End-to-end verification of all file backups"
 msgstr ""
@@ -1459,13 +1470,13 @@ msgid ""
 msgstr ""
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Habilitar los inicios de sesión a través de LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "Nombre de Servidor LDAP/AD"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Puerto del Servidor LDAP/AD"
 
 msgid "tLDAP/AD user name prefix"
 msgstr ""
@@ -1489,31 +1500,31 @@ msgid "tLDAP/AD class rights map"
 msgstr ""
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Inicio de sesión de prueba con este usuario"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Contraseña para el usuario de prueba"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Inicio de sesión de prueba se realizó correctamente. Privilegios del usuario:"
 
 msgid "tTest login failed. Error:"
 msgstr ""
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Descargar cliente para Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Descargar cliente para Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Descargar cliente para Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Eliminar cliente"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Agregar nuevo cliente"
 
 msgid "tClient discovery hints"
 msgstr ""
@@ -1522,4 +1533,16 @@ msgid "tAdd hostname/IP as client discovery hint"
 msgstr ""
 
 msgid "tBackup Statistics"
+msgstr "Copia de seguridad de Estadísticas"
+
+msgid "completed_with_issues"
+msgstr "Completado con problemas"
+
+msgid "not_supported"
+msgstr "No soportado"
+
+msgid "tPreparing restore. Please be patient..."
+msgstr "Preparando restauración. Por favor sea paciente..."
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""

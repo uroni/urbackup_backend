@@ -584,12 +584,20 @@ bool VHDFile::read_dynamicheader(void)
 		std::string utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
 		Server->Log("VHD-Parent: \""+utf8_parent_fn+"\"", LL_INFO);
 
-		if (is_in_other_folder
-			&& !FileExists(utf8_parent_fn))
+		if (!FileExists(utf8_parent_fn))
 		{
-			parent_fn = Server->ConvertToWchar(ExtractFilePath(file->getFilename())) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
-			utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
-			Server->Log("Corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+			if (is_in_other_folder)
+			{
+				parent_fn = Server->ConvertToWchar(ExtractFilePath(file->getFilename())) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
+				utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+				Server->Log("Corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+			}
+			else
+			{
+				parent_fn = Server->ConvertToWchar(ExtractFilePath(ExtractFilePath(file->getFilename()))) + L"/" + Server->ConvertToWchar(ExtractFileName(Server->ConvertFromWchar(parent_fn)));
+				utf8_parent_fn = Server->ConvertFromWchar(parent_fn);
+				Server->Log("Corrected VHD-Parent to: \"" + utf8_parent_fn + "\"", LL_INFO);
+			}
 		}
 
 

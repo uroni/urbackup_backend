@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2000000030;
+g.current_version=2000000031;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -608,6 +608,11 @@ function show_progress2(data)
 			else
 			{
 				data.progress[i].indexing=true;
+			}
+			
+			if(action==14 || action==15 || action==11) //cleanup, check database integrity
+			{
+				data.progress[i].indexing=false;
 			}
 			
 			if(data.progress[i].eta_ms>1000)

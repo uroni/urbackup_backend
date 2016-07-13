@@ -31,7 +31,7 @@ alias errcho='>&2 echo'
 TIME=`date`
 errcho "Starting base backup of PostgreSQL at $TIME..."
 
-pg_basebackup --format=tar --xlog -D -
+su postgres -c "cd ~; pg_basebackup --format=tar --xlog -D -"
 
 TIME=`date`
 errcho "Base backup of PostgreSQL finished at $TIME."

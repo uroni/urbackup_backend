@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [2.0.30.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-server], [2.0.31.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -88,7 +88,7 @@ AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
-AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs])
+AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs fallocate64])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
 

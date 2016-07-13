@@ -21,6 +21,11 @@ public:
 		return backupid;
 	}
 
+	bool getNotFound()
+	{
+		return not_found;
+	}
+
 protected:
 	virtual bool doBackup();
 
@@ -42,6 +47,8 @@ protected:
 	std::string letter;
 
 	bool synthetic_full;
+
+	bool not_found;
 
 	int backupid;
 

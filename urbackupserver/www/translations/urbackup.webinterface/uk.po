@@ -2,12 +2,16 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # Ihor Maydanovich <tenorioua@gmail.com>, 2014
-# Ihor Maydanovich <tenorioua@gmail.com>, 2014
+# Ihor Maydanovich <tenorioua@gmail.com>, 2014,2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 14:37+0000\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/uroni/urbackup/language/uk/)\n"
 "MIME-Version: 1.0\n"
@@ -434,7 +438,7 @@ msgid "tMB"
 msgstr "Мб"
 
 msgid "tNone"
-msgstr ""
+msgstr "Нічого"
 
 msgid "tServer admin mail address"
 msgstr "E-mail адміністратора"
@@ -557,7 +561,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup модернізує внутрішню базу даних. Це може зайняти деякий час. Протягом цього часу сервер буде недоступний, а також не робитимуться жодні резервні копії."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup індексує файли. В залежності від кількості їх кількості це поже зайняти деякий час."
 
 msgid "tAction"
 msgstr "Дія"
@@ -974,7 +978,7 @@ msgid "tArchived"
 msgstr "Архівний"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Наразі закінчився вільний простір в теці для бекапів. UrBackup видаляє старі образи та файли згідно лімітів вказаних в налаштуваннях. Протягом цього процесу продуктивність може знижуватися та бекапи можуть призупинятися"
 
 msgid "nospc_fatal_text"
 msgstr "Наразі закінчився вільний простір в теці для бекапів. UrBackup видаляє старі образи та файли але зараз це заборонено налаштуваннями. Змініть налаштування для зберігання меншої кількості бекапів або збільшіть дисковий простір щоб UrBackup міг продовжувати виконувати бекапи"
@@ -1016,7 +1020,7 @@ msgid "really_recalculate"
 msgstr "Ви дійсно хочете перерахувати статистику? Це може зайняти чимало часу."
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Сталася помилка під час доступу або перевірки вбудованої бази даних UrBackup. База даних можливо пошкоджена або не достатньо місця на диску. Якщо помилка повториться, відновіть базу (файли backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db and backup_server_settings.db) з резервної копії. Деталі в файлі журналу."
 
 msgid "tDownload folder as ZIP"
 msgstr "Завантажити теку як ZIP архів."
@@ -1160,367 +1164,385 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "Зтиснений VHD (Compressed non-standard Virtual HardDisk)"
 
 msgid "tBlock differences - hashed"
-msgstr ""
+msgstr "Різниця блоків - хешована"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr ""
+msgstr "Показано_START_ до _END_ з _TOTAL_  записів"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Показано 0 до 0 з 0  записів"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr ""
+msgstr "(вибрано з _MAX_ записів)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Звернути"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Розгорнути"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Клієнт з таким іменем вже існує"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Введіть назву нового інтернет клієнта/кліента за NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Ведіть IP/назву кліента для пошуку"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup індексує файли. Це може зайняти деякий час."
 
 msgid "about"
-msgstr ""
+msgstr "Про"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Всі клієнти"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Налаштування клієнта"
 
 msgid "action_8"
-msgstr ""
+msgstr "Відновлення файлів"
 
 msgid "action_9"
-msgstr ""
+msgstr "Відновлення образів"
 
 msgid "action_10"
-msgstr ""
+msgstr "Оновлення клієнта"
 
 msgid "action_11"
-msgstr ""
+msgstr "Перевірка цілісності бази даних"
 
 msgid "action_12"
-msgstr ""
+msgstr "Бекап бази данних"
 
 msgid "action_13"
+msgstr "Перерахунок статистики"
+
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
 msgstr ""
 
 msgid "tAbout UrBackup"
 msgstr "Про UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Додати клієнта"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup автоматично знаходить клієнтів в локальній мережі. Якщо сервер та клієнт знаходяться в одній підмережі, просто встановіть клієнта та зачекайте."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Завантажити клієнта з:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Якщо Ви використовуєте клієнта з декількома серверами ідентикувати чей сервер як:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Додати нового інтернет кліента/кліента за NAT"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Назва нового інтернет кліента/кліента за NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Додати нового клієнта за IP/ім'ям"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/назву кліента для пошуку"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Выдміна"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Доступ заборонено"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Отакої, щось пішло не так або у Вас нема доступу до файлу чи каталогу"
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Увійти з іменем та паролем"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Помилка під час доступу до бекапу"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Отакої, щось пішло не так:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Створено"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Востанне змінено"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Останній доступ"
 
 msgid "tList"
-msgstr ""
+msgstr "Список"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Відновити"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Відновити теку на клієнта"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Версія"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Клієнта успішно додано"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Донано нового клієнта з іменем:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Ключ аутентифікації за замовчуванням:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Завантажити налаштованого встановлювача клієнта для Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Завантажити налаштованого встановлювача клієнта для Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Встановити безпосередньо в терміналі через:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Завантажити налаштованого встановлювача клієнта для Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "В якості альтернативи після установки клієнта від:"
 
-msgid "tGo the settings screen on the client"
-msgstr ""
+msgid "tGo to the settings screen on the client"
+msgstr "Перейти до налаштувань клієнта"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Ввімкнути режим Інтернет на клієнті"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Встановити інтернет сервер до:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Встановити порт інтернет серверу:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Встановити ім'я комп'ютера "
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Встановити ключ аутентифікації :"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Без firewall/NAT: Ввімкнути лише інтернет режим якщо Ви плануєте використовувати клієнт тільки через інтернет. В Linux встановіть значення INTERNET_ONLY як true файлі /etc/default/urbackupclient або /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "За допомогою командного рядка:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Відсотків виконано"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Детальніше"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Додати  E-Mail адресу"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Збій без помилок. Сплинув час очікування клієнта"
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Мінімальний рівень журналу"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Бекап перервано"
 
 msgid "tStop"
-msgstr ""
+msgstr "Стоп"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Показати журнал"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Швидкість"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Файлові бекапи"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Образи"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Архів"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "URL серверу"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Максимальна кількість одночасних бекапів"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Максимальна кількість недавно активних клієнтів"
 
 msgid "tDays"
-msgstr ""
+msgstr "Днів"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Raw копіювання-при-записі файлу"
 
 msgid "tMin"
-msgstr ""
+msgstr "Мін"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Імена віртуальних суб-клієнтів"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Стиль локального інкрементного образу"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Заснована на останньому повному бекапі образу"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Заснована на останньому бекапі образу"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Стиль інкрементного образу через інтернет"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Стиль повного локального образу"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Синтетичний повний бекап образу"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Стиль повного образу через інтернет"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Розмір кешу бази даних під час пакетної обробки"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Налагодження: Повна перевірка файлового бекапу"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Налагодження: Перевірити файлові бекапи використовуючи хеші на стороні клієнта"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Періодично читати записи файлів з інтернет клієнтів в базу даних (відключити, тільки якщо Ви не запускаєте повні бекапи) "
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Запуск бекапи з фоном пріоритетом на клієнтах"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Створення символычних посилань для кожного користувача на клієнтах після резервного копіювання файлів"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Максимальна кількість одночасних завдань на клієнті"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr " Список томів, для яких слід відстежувати зміни блоку (якщо можливо)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Список томів, для яких відстеження зміни блоку повинно бути стійким до збоїв"
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Дозволити вхід через LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "LDAP/AD  ім'я серверу"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "LDAP/AD  порт"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "LDAP/AD префікс імені користувача"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "LDAP/AD суфікс імені користувача"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP / AD група і клас запитів"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP / AD група імені ключа в запиті"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP / AD клас імені ключа в запиті"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP/AD group rights map"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "LDAP/AD class rights map"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Тестовий вхід з чим користувачем"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Пароль для тестового користувача"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Тестовий вхід успішний. Права користувача:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Помилка тестового входу"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Завантажити клієнта для Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Завантажити клієнта для Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Download client for Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Видалити клієнта"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Додати нового клієнта"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Підказки додавання кліента"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Додати IP/назву як підказки для пошуку"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Статистика бекапу"
+
+msgid "completed_with_issues"
+msgstr "Завершено з помилками"
+
+msgid "not_supported"
+msgstr "Не підтримується"
+
+msgid "tPreparing restore. Please be patient..."
+msgstr "Підготовка відновлення. Будь-ласка зачекайте..."
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
+msgstr "Не припиняти бекап при помилках хешу або читання"

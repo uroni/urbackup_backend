@@ -179,6 +179,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		start_backup_cmd+="#token="+server_token;
 	}
 
+	start_backup_cmd += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 
 	tcpstack.Send(cc, start_backup_cmd);
 
@@ -927,7 +928,13 @@ void FileBackup::notifyClientBackupSuccessfull(void)
 	}
 	else
 	{
-		std::string params = "status_id="+convert(status_id)+"&server_token="+EscapeParamString(server_token);
+		std::string params = "status_id="+convert(status_id)+"&server_token="+EscapeParamString(server_token)
+			+"&group="+convert(group);
+
+		if (!clientsubname.empty())
+		{
+			params += "&clientsubname=" + EscapeParamString(clientsubname);
+		}
 
 		client_main->sendClientMessageRetry("2DID BACKUP "+ params, "OK", "Sending status (2DID BACKUP) to client failed", 10000, 5);
 	}

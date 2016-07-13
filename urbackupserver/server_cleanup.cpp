@@ -103,6 +103,9 @@ void ServerCleanupThread::operator()(void)
 			break;
 		case ECleanupAction_FreeMinspace:
 			{
+				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false);
+
 				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
 				if(cleanup_action.result!=NULL)
@@ -152,8 +155,13 @@ void ServerCleanupThread::operator()(void)
 			filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 			fileindex.reset(create_lmdb_files_index());
 
-			deletePendingClients();
-			do_cleanup();
+			{
+				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
+
+				deletePendingClients();
+				do_cleanup();
+			}
 			
 			cleanupdao.reset();
 			backupdao.reset();
@@ -259,10 +267,15 @@ void ServerCleanupThread::operator()(void)
 				filesdao.reset(new ServerFilesDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES)));
 				fileindex.reset(create_lmdb_files_index());
 
-				deletePendingClients();
-				do_cleanup();
+				{
+					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
 
-				enforce_quotas();
+					deletePendingClients();
+					do_cleanup();
+
+					enforce_quotas();
+				}
 
 				cleanupdao.reset();
 				backupdao.reset();
@@ -733,7 +746,7 @@ int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int
 	return max_allowed_del_refs;
 }
 
-bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids)
+bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids, bool cleanup_only_one)
 {
 	ServerSettings settings(db, clientid);
 
@@ -748,7 +761,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 	int backupid;
 	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups max="+convert(max_image_full), LL_DEBUG);
-	while(full_image_num>max_image_full)
+	while(full_image_num>max_image_full
+		&& full_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -776,6 +790,11 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			else
 			{
 				imageids.push_back(backupid);
+
+				if (cleanup_only_one)
+				{
+					return true;
+				}
 			}
 		}
 
@@ -794,7 +813,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 
 	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups max="+convert(max_image_incr), LL_DEBUG);
-	while(incr_image_num>max_image_incr)
+	while(incr_image_num>max_image_incr
+		&& incr_image_num>0)
 	{
 		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -822,6 +842,11 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			else
 			{
 				imageids.push_back(backupid);
+
+				if (cleanup_only_one)
+				{
+					return true;
+				}
 			}
 		}
 
@@ -867,7 +892,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		int clientid=res[i];
 		
 		std::vector<int> imageids;
-		if(cleanup_images_client(clientid, minspace, imageids))
+		if(cleanup_images_client(clientid, minspace, imageids, false))
 		{
 			if(minspace!=-1)
 			{
@@ -1061,7 +1086,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	int backupid;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups max="+convert(max_file_full), LL_DEBUG);
-	while(full_file_num>max_file_full )
+	while(full_file_num>max_file_full
+		&& full_file_num>0)
 	{
 		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -1084,7 +1110,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 
 	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
 	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups max="+convert(max_file_incr), LL_DEBUG);
-	while(incr_file_num>max_file_incr )
+	while(incr_file_num>max_file_incr
+		&& incr_file_num>0)
 	{
 		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
@@ -1524,151 +1551,109 @@ bool ServerCleanupThread::backup_database(void)
 	if(settings.getSettings()->backup_database)
 	{
 		std::vector<DATABASE_ID> copy_backup_ids;
+		copy_backup_ids.push_back(URBACKUPDB_SERVER);
+		copy_backup_ids.push_back(URBACKUPDB_SERVER_SETTINGS);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_FILES);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINKS);
 		copy_backup_ids.push_back(URBACKUPDB_SERVER_LINK_JOURNAL);
 
 		std::vector<std::string> copy_backup;
+		copy_backup.push_back("backup_server.db");
+		copy_backup.push_back("backup_server_settings.db");
 		copy_backup.push_back("backup_server_files.db");
 		copy_backup.push_back("backup_server_links.db");
 		copy_backup.push_back("backup_server_link_journal.db");
 
+		copy_backup.push_back("backup_server.db-wal");
+		copy_backup.push_back("backup_server_settings.db-wal");
 		copy_backup.push_back("backup_server_files.db-wal");
 		copy_backup.push_back("backup_server_links.db-wal");
 		copy_backup.push_back("backup_server_link_journal.db-wal");
 
 
-		bool integrity_ok = false;
+		bool integrity_ok = true;
 		{
 			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 			ScopedProcess check_integrity(std::string(), sa_check_integrity, std::string(), logid, false);
 
-			ServerLogger::Log(logid, "Checking database integrity of main database...", LL_INFO);
-			db_results res = db->Read("PRAGMA quick_check");
-
-			integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
-
-			if (integrity_ok)
+			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
 			{
-				for (size_t i = 0; i < copy_backup_ids.size(); ++i)
+				if (integrity_ok)
 				{
-					if (integrity_ok)
+					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
+					ServerLogger::Log(logid, "Checking integrity of " + copy_backup[i], LL_INFO);
+
+					db_results res = copy_db->Read("PRAGMA quick_check");
+
+					integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
+
+					if (!integrity_ok)
 					{
-						IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
-
-						ServerLogger::Log(logid, "Checking integrity of " + copy_backup[i], LL_INFO);
-
-						db_results res = copy_db->Read("PRAGMA quick_check");
-
-						integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
-
-						if (!integrity_ok)
-						{
-							ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
-						}
+						ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
 					}
 				}
-			}
-			else
-			{
-				ServerLogger::Log(logid, "Integrity check failed", LL_ERROR);
 			}
 		}
 
 		if(integrity_ok)
 		{
-			std::vector<std::string> normal_backup;
-			normal_backup.push_back("backup_server.db");
-			normal_backup.push_back("backup_server_settings.db");
-
-			std::vector<std::string> all_backup;
-			all_backup.insert(all_backup.end(), normal_backup.begin(), normal_backup.end());
-			all_backup.insert(all_backup.end(), copy_backup.begin(), copy_backup.end());
-
 			std::string bfolder=settings.getSettings()->backupfolder+os_file_sep()+"urbackup";
 			if(!os_directory_exists(bfolder) )
 			{
 				os_create_dir(bfolder);
 			}
 
-			bool main_backup_ok;
+			bool total_copy_ok = true;
+			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
 			{
+				IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
+
 				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-				ScopedProcess main_backup(std::string(), sa_backup_database, "backup_server.db, backup_server_settings.db", logid, false);
+				ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
 
-				ServerLogger::Log(logid, "Starting database backup of main db...", LL_INFO);
+				ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
 
-				for (size_t i = 0; i < normal_backup.size(); ++i)
+				ServerLogger::Log(logid, "Stop checkpointing of " + copy_backup[i] + "...", LL_INFO);
+
+				WalCheckpointThread::lockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+
+				ServerLogger::Log(logid, "Stop writes to " + copy_backup[i]+"...", LL_INFO);
+
+				DBScopedWriteTransaction copy_db_transaction(copy_db);
+
+				BackupProgress backup_progress(database_backup.getStatusId());
+
+				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress);
+
+				if (copy_ok)
 				{
-					Server->deleteFile(bfolder + os_file_sep() + normal_backup[i] + "~");
-					Server->deleteFile(bfolder + os_file_sep() + normal_backup[i] + "~-journal");
-				}
+					ServerStatus::setProcessDetails(std::string(), database_backup.getStatusId(), copy_backup[i] + "-wal", -1);
 
-				BackupProgress backup_progress(main_backup.getStatusId());
-				//Using this method the database can be written to during backup
-				// (but it causes the backup to restart)
-				main_backup_ok = db->Backup((bfolder + os_file_sep() + "backup_server.db~"), &backup_progress);
+					BackupProgress backup_progress_wal(database_backup.getStatusId());
 
-				if (main_backup_ok)
-				{
-					ServerLogger::Log(logid, "Database backup done.", LL_INFO);
-				}
-				else
-				{
-					ServerLogger::Log(logid, "Backing up main database failed", LL_ERROR);
-				}
-			}
+					copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal);
 
-			if (main_backup_ok)
-			{			
-				for (size_t i = 0; i < copy_backup_ids.size(); ++i)
-				{
-					IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
-
-					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-					ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
-
-					ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
-
-					ServerLogger::Log(logid, "Stop checkpointing of " + copy_backup[i] + "...", LL_INFO);
-
-					WalCheckpointThread::lockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
-
-					ServerLogger::Log(logid, "Stop writes to " + copy_backup[i]+"...", LL_INFO);
-
-					DBScopedWriteTransaction copy_db_transaction(copy_db);
-
-					BackupProgress backup_progress(database_backup.getStatusId());
-
-					bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress);
-
-					if (copy_ok)
+					if (!copy_ok)
 					{
-						ServerStatus::setProcessDetails(std::string(), database_backup.getStatusId(), copy_backup[i] + "-wal", -1);
-
-						BackupProgress backup_progress_wal(database_backup.getStatusId());
-
-						copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal);
-
-						if (!copy_ok)
-						{
-							ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
-						}
-						else
-						{
-							ServerLogger::Log(logid, "Backup of " + copy_backup[i] + " done.", LL_INFO);
-						}
+						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
+						total_copy_ok = false;
 					}
 					else
 					{
-						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
-					}
-
-					WalCheckpointThread::unlockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+						ServerLogger::Log(logid, "Backup of " + copy_backup[i] + " done.", LL_INFO);
+					}				
 				}
-			}		
+				else
+				{
+					ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
+					total_copy_ok = false;
+				}
 
-			return main_backup_ok;
+				WalCheckpointThread::unlockForBackup("urbackup" + os_file_sep() + copy_backup[i]);
+			}	
+
+			return total_copy_ok;
 		}
 		else
 		{
@@ -1844,9 +1829,9 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 
 			int64 space_to_free=used_storage.value-client_quota;
 
-			int64 target_space=available_space-space_to_free;
+			int64 target_minspace=available_space+space_to_free;
 
-			if(target_space<0)
+			if(target_minspace<0)
 			{
 				log << "Error. Target space is negative" << std::endl;
 				return false;
@@ -1855,11 +1840,11 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			if(state==0)
 			{
 				std::vector<int> imageids;
-				cleanup_images_client(clientid, target_space, imageids);
+				cleanup_images_client(clientid, target_minspace, imageids, true);
 				if(!imageids.empty())
 				{
-					log << "Removed " << imageids.size() << " images with ids ";
-					for(size_t i=0;i<imageids.size();++i) log << imageids[i];
+					log << "Removed " << imageids.size() << " image with id ";
+					for(size_t i=0;i<imageids.size();++i) log << imageids[i] << " ";
 					log << std::endl;
 
 					did_remove_something=true;
@@ -1873,13 +1858,13 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			else
 			{
 				int filebid;
-				if(cleanup_one_filebackup_client(clientid, target_space, filebid))
+				if(cleanup_one_filebackup_client(clientid, target_minspace, filebid))
 				{
 					log << "Removed file backup with id " << filebid << std::endl;
 
 					did_remove_something=true;
 					nopc=0;
-					if(hasEnoughFreeSpace(target_space, &client_settings))
+					if(hasEnoughFreeSpace(target_minspace, &client_settings))
 					{
 						break;
 					}

@@ -418,7 +418,7 @@ bool ImageThread::sendFullImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
-		IndexThread::execute_postbackup_hook("postimagebackup");
+		IndexThread::execute_postbackup_hook("postimagebackup", 0, std::string());
 	}
 
 #ifdef VSS_XP //persistence
@@ -551,9 +551,8 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 			else if (hdat_img.get() != NULL)
 			{
-				ImageErr("Need previous client bitmap", LL_ERROR);
-				run = false;
-				break;
+				Server->Log("Need previous client bitmap for image backup with CBT. Disabling CBT.", LL_ERROR);
+				hdat_img.reset();
 			}
 
 			if (hdat_img.get() != NULL)
@@ -1016,7 +1015,7 @@ bool ImageThread::sendIncrImageThread(void)
 	if (success && !image_inf->no_shadowcopy)
 	{
 		ClientConnector::updateLastBackup();
-		IndexThread::execute_postbackup_hook("postimagebackup");
+		IndexThread::execute_postbackup_hook("postimagebackup", 0, std::string());
 	}
 
 #ifdef VSS_XP //persistence

@@ -275,6 +275,13 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		flags |= flag_calc_checksums;
 	}
 
+	int running_jobs = 2;
+	str_map::iterator it_running_jobs = params.find("running_jobs");
+	if (it_running_jobs != params.end())
+	{
+		running_jobs = watoi(it_running_jobs->second);
+	}
+
 	state=CCSTATE_START_FILEBACKUP;
 
 	IScopedLock lock(backup_mutex);
@@ -287,6 +294,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addInt(flags);
 	data.addString(clientsubname);
 	data.addInt(sha_version);
+	data.addInt(running_jobs);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -398,6 +406,13 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		flags |= flag_calc_checksums;
 	}
 
+	int running_jobs = 1;
+	str_map::iterator it_running_jobs = params.find("running_jobs");
+	if (it_running_jobs != params.end())
+	{
+		running_jobs = watoi(it_running_jobs->second);
+	}
+
 	state=CCSTATE_START_FILEBACKUP;
 
 	IScopedLock lock(backup_mutex);
@@ -410,6 +425,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addInt(flags);
 	data.addString(clientsubname);
 	data.addInt(sha_version);
+	data.addInt(running_jobs);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -671,7 +687,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 		status_updated = true;
 	}
 			
-	IndexThread::execute_postbackup_hook("postfilebackup");
+	IndexThread::execute_postbackup_hook("postfilebackup", 0, std::string());
 }
 
 void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
@@ -704,7 +720,7 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 		status_updated = true;
 	}
 
-	IndexThread::execute_postbackup_hook("postfilebackup");
+	IndexThread::execute_postbackup_hook("postfilebackup", atoi(params["group"].c_str()), params["clientsubname"]);
 }
 
 int64 ClientConnector::getLastBackupTime()
@@ -1197,6 +1213,12 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			}
 		}
 
+		int running_jobs = 2;
+		if (params.find("running_jobs") != params.end())
+		{
+			running_jobs = watoi(params["running_jobs"]);
+		}
+
 		if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
 		{
 			CWData data;
@@ -1207,6 +1229,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addUChar(1); //full image backup
 			data.addUChar(0); //filesrv
 			data.addString(image_inf.clientsubname);
+			data.addInt(running_jobs);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner=false;
 		}
@@ -1308,6 +1331,12 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				bitmapfile = NULL;
 			}
 
+			int running_jobs = 2;
+			if (params.find("running_jobs") != params.end())
+			{
+				running_jobs = watoi(params["running_jobs"]);
+			}
+
 			if(image_inf.startpos==0)
 			{
 				CWData data;
@@ -1318,6 +1347,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addUChar(2); //incr image backup
 				data.addUChar(0); //file serv?
 				data.addString(image_inf.clientsubname);
+				data.addInt(running_jobs);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner=false;
 			}

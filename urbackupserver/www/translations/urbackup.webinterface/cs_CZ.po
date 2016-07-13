@@ -2,12 +2,16 @@
 # Copyright (C) 2011-2016 See translators
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # Translators:
+# Translators:
+# Translators:
+# Translators:
+# Translators:
 # Ales Hermann, 2014-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-04-28 15:01+0000\n"
-"Last-Translator: Ales Hermann\n"
+"PO-Revision-Date: 2016-07-08 12:28+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Czech (Czech Republic) (http://www.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1218,6 +1222,12 @@ msgstr "Záloha sdatabáze"
 msgid "action_13"
 msgstr "Přepočet statistik"
 
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
+msgstr ""
+
 msgid "tAbout UrBackup"
 msgstr "O UrBackup"
 
@@ -1295,189 +1305,189 @@ msgid "tClient added successfully"
 msgstr "Klient úspěšně přidán"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Přidán klient s názvem:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Výchozí ověřovací klíč:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Stažení nakonfigurovaného instalátoru klienta pro Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Stažení nakonfigurovaného instalátoru klienta pro Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Nainstalovat jej přímo v terminálu pomocí:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Stažení nakonfigurovaného instalátoru klienta pro Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativě po instalaci klienta od:"
 
-msgid "tGo the settings screen on the client"
+msgid "tGo to the settings screen on the client"
 msgstr ""
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Povolit internet mód pro klienta"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Nastavte internetový server:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Nastavte port internetového serveru:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Nastavte název počítače:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Nastavte ověřovací klíč:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Bez firewallu / NATu: Povolení internet režimu, pouze pokud máte v plánu používat klienta pouze přes internet. Na Linuxu změňte volbu INTERNET_ONLY na hodnotu true v souboru /etc/default/urbackupclient nebo /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Z příkazového řádku:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Hotovo procent"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Podrobnosti"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Přidat e-mailovou adresu"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Nepodařilo se bez chyb způsobených vypršením časového limitu klienta"
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Minimální úroveň logování"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Zálohy přerušeny"
 
 msgid "tStop"
-msgstr ""
+msgstr "Zastavit"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Ukaž log"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Rychlost"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Souborové zálohy"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Záloha disků"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Archiv"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "URL serveru"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Maximální počet současně běžících záloh"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Maximální počet posledních aktivit klientů"
 
 msgid "tDays"
-msgstr ""
+msgstr "Dny"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Raw copy-on-write souborů"
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Virtuální sub klient jméno"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Lokální inkrementální image styl"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Založeno na poslední úplné záloze obrazu disků"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Založeno na poslední záloze obrazu disků"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Internetový inkrementální image styl"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Lokální plný image styl"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Syntetické úplné zálohování obrazů disků"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Internetový styl úplného zálohování obrazů disků"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Velikost databázové mezipaměti během dávkového zpracování"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Ladění: End-to-end ověření všech zálohovaných souborů"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Ladění: Ověření zálohovaných souborů s použitím hash na straně klienta"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Pravidelně opětovně přidávat soubory internetových klientů do databáze (zakázat pouze pokud není v rozporu s plným zálohováním)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Spustit zálohování s prioritou v pozadí na klientech"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Vytvořit symbolické linky pro každého uživatele na klientech po souborové záloze"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Maximální počet souběžných úloh na klienta"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Seznam svazků, u kterých by měly být použity změny sledování (je-li k dispozici)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Seznam svazků, u kterých by měly být použity změny perzistentní crash "
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Povolit přihlášení prostřednictvím LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "Jméno LDAP/AD serveru"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Port LDAP/AD serveru"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "Prefix uživatelského jména LDAP/AD serveru"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "Suffix uživatelského jména LDAP/AD serveru"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD skupina a třída dotaz"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP/AD název skupiny klíče v dotazu"
 
 msgid "tLDAP/AD class key name in query"
 msgstr ""
@@ -1522,4 +1532,16 @@ msgid "tAdd hostname/IP as client discovery hint"
 msgstr ""
 
 msgid "tBackup Statistics"
+msgstr ""
+
+msgid "completed_with_issues"
+msgstr ""
+
+msgid "not_supported"
+msgstr ""
+
+msgid "tPreparing restore. Please be patient..."
+msgstr ""
+
+msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""

@@ -264,6 +264,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	written+=bsize;
 	if(!b)
 	{
+		std::string errstr;
 		int retry=3;
 		for(int i=0;i<retry;++i)
 		{
@@ -272,6 +273,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			vhd->Seek(pos);
 			if(vhd->Write(buf, bsize)==0)
 			{
+				errstr = os_last_error_str();
 				Server->Log("Writing to VHD file failed");
 			}
 			else
@@ -331,7 +333,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 		else
 		{			
 			has_error=true;
-			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+os_last_error_str(), LL_ERROR);
+			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+ errstr, LL_ERROR);
 			ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}

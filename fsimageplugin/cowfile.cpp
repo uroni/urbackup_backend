@@ -42,6 +42,8 @@
 #define fstat64 fstat
 #endif
 
+#include "../config.h"
+
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE    0x1
 #endif
@@ -474,7 +476,7 @@ bool CowFile::hasBitmapRange(uint64 offset_start, uint64 offset_end)
 
 bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && defined(HAVE_FALLOCATE64)
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, unused_start, unused_end-unused_start);
 	if(rc==0)
 	{
@@ -482,10 +484,13 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 	}
 	else
 	{
-		Server->Log("fallocate failed (setting unused image range) with errno "+convert((int)errno), LL_WARNING);
+		int err=errno;
+		Server->Log("fallocate failed (setting unused image range) with errno "+convert(err), LL_WARNING);
+		errno=err;
 		return false;
 	}
 #else
+	errno=ENOSYS;
 	return false;
 #endif
 }
