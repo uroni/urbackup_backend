@@ -164,7 +164,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 		if(!with_transaction)
 		{
 			link_journal_dao->addDirectoryLinkJournalEntry(src_dir, link_src_dir);
-			replay_entry_id = link_dao->getLastId(); 
+			replay_entry_id = link_journal_dao->getLastId();
 		}
 
 		link_transaction.end();
@@ -189,6 +189,12 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			os_finish_transaction(transaction);
 			link_dao->removeDirectoryLink(clientid, src_dir);
 			link_dao->removeDirectoryLink(clientid, target_dir);
+			
+			if (!with_transaction)
+			{
+				link_journal_dao->removeDirectoryLinkJournalEntry(replay_entry_id);
+			}
+
 			return false;
 		}
 
@@ -199,6 +205,12 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			os_finish_transaction(transaction);
 			link_dao->removeDirectoryLink(clientid, src_dir);
 			link_dao->removeDirectoryLink(clientid, target_dir);
+
+			if (!with_transaction)
+			{
+				link_journal_dao->removeDirectoryLinkJournalEntry(replay_entry_id);
+			}
+
 			return false;
 		}
 
@@ -265,7 +277,7 @@ bool replay_directory_link_journal( )
 				os_remove_symlink_dir(os_file_prefix(je.linkname));
 				if(!os_link_symbolic(os_file_prefix(je.linktarget), os_file_prefix(je.linkname)))
 				{
-					Server->Log("Error replaying symlink journal: Could create link at \""+je.linkname+"\" to \""+je.linktarget+"\"", LL_ERROR);
+					Server->Log("Error replaying symlink journal: Could not create link at \""+je.linkname+"\" to \""+je.linktarget+"\". "+os_last_error_str(), LL_ERROR);
 					has_error=true;
 				}
 			}

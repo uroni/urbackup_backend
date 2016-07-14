@@ -7,6 +7,10 @@ public:
 	ServerLinkJournalDao(IDatabase *db);
 	~ServerLinkJournalDao();
 
+	int64 getLastId()
+	{
+		return db->getLastInsertID();
+	}
 
 	//@-SQLGenFunctionsBegin
 	struct JournalEntry
