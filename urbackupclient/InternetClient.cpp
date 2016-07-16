@@ -567,12 +567,14 @@ void InternetClientThread::operator()(void)
 		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
 		if(buf==NULL)
 		{
+			Server->Log("Error receiving challenge packet");
 			goto cleanup;
 		}
 		CRData rd(buf, bufsize);
 		char id;
 		if(!rd.getChar(&id)) 
 		{
+			Server->Log("Error reading id of challenge packet");
 			delete []buf;
 			goto cleanup;
 		}
@@ -670,12 +672,14 @@ void InternetClientThread::operator()(void)
 		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
 		if(buf==NULL)
 		{
+			Server->Log("Error receiving authentication response");
 			goto cleanup;
 		}
 		CRData rd(buf, bufsize);
 		char id;
 		if(!rd.getChar(&id)) 
 		{
+			Server->Log("Error reading id of authentication response");
 			delete []buf;
 			goto cleanup;
 		}
