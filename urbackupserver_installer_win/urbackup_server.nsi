@@ -52,6 +52,21 @@ Section "install"
 		SetRegView 64
 	${EndIf}
 	
+	${If} ${IsWinXP}
+		MessageBox MB_OK "Sorry, installation on Windows XP is not supported."
+		Quit
+	${EndIf}
+	
+	${If} ${IsWin2003}
+		MessageBox MB_OK "Sorry, installation on Windows Server 2003 is not supported."
+		Quit
+	${EndIf}
+	
+	${If} ${IsWin2000}
+		MessageBox MB_OK "Sorry, installation on Windows 2000 is not supported."
+		Quit
+	${EndIf}
+	
 	SetOutPath "$TEMP"
 	${If} ${RunningX64}
 		; Push $R0
