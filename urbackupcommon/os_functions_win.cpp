@@ -437,14 +437,14 @@ SFile getFileMetadata( const std::string &path )
 	return getFileMetadataWin(path, false);
 }
 
-void removeFile(const std::string &path)
+bool removeFile(const std::string &path)
 {
-	_unlink(path.c_str());
+	return _unlink(path.c_str())==0;
 }
 
-void moveFile(const std::string &src, const std::string &dst)
+bool moveFile(const std::string &src, const std::string &dst)
 {
-	rename(src.c_str(), dst.c_str() );
+	return rename(src.c_str(), dst.c_str() )==0;
 }
 
 bool isDirectory(const std::string &path, void* transaction)

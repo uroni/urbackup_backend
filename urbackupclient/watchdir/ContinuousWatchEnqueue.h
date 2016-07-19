@@ -5,6 +5,7 @@
 #include "../../Interface/Database.h"
 #include "JournalDAO.h"
 #include "../../urbackupcommon/change_ids.h"
+#include "../client.h"
 
 class ContinuousWatchEnqueue : public IChangeJournalListener
 {
@@ -88,7 +89,7 @@ private:
 
 	volatile bool update_patterns;
 	std::vector<std::string> exlude_dirs;
-	std::vector<std::string> include_dirs;
+	std::vector<SIndexInclude> include_dirs;
 	std::vector<int> include_depth;
 	std::vector<std::string> include_prefix;
 

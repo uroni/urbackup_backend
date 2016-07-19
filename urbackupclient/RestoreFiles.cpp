@@ -28,7 +28,6 @@
 #include "clientdao.h"
 #include "../Interface/Server.h"
 #include <algorithm>
-#include "client.h"
 #include <stack>
 #include "../urbackupcommon/chunk_hasher.h"
 #include "database.h"
@@ -254,7 +253,7 @@ void RestoreFiles::operator()()
 		}
 
 		IndexThread::readPatterns(tgroup, clientsubname, exclude_dirs,
-			include_dirs, include_depth, include_prefix);
+			include_dirs);
 
 		log("Downloading necessary file data...", LL_INFO);
 
@@ -1093,8 +1092,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					continue;
 				}
 				
-				if (!IndexThread::isIncluded(include_dirs, include_depth, include_prefix, cpath, NULL)
-					&& !IndexThread::isIncluded(include_dirs, include_depth, include_prefix, csharepath, NULL))
+				if (!IndexThread::isIncluded(include_dirs, cpath, NULL)
+					&& !IndexThread::isIncluded(include_dirs, csharepath, NULL))
 				{
 					has_include_exclude = true;
 					continue;

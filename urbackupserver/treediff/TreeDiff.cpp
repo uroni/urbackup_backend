@@ -40,7 +40,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		return ret;
 	}
 
-	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret, modified_inplace_ids, dir_diffs);
+	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], 0, ret, modified_inplace_ids, dir_diffs);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -63,7 +63,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 	return ret;
 }
 
-void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs,
+void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector<size_t> &diffs,
 	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
 {
 	size_t nc_2=t2->getNumChildren();
@@ -92,6 +92,25 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			}
 		}
 
+		//root may be unsorted
+		if (cmp != 0
+			&& depth == 0)
+		{
+			TreeNode* sn = t1->getFirstChild();
+			while (sn != NULL)
+			{
+				if (c2->getType() == sn->getType()
+					&& c2->nameEquals(*sn)
+					&& sn->getMappedNode()==NULL)
+				{
+					cmp = 0;
+					c1 = sn;
+					break;
+				}
+				sn = sn->getNextSibling();
+			}
+		}
+
 		if(cmp==0)
 		{
 			bool equal_dir = (c1->getType()=='d' && c2->getType()=='d');
@@ -106,7 +125,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			if( equal_dir
 				|| data_equals )
 			{
-				gatherDiffs(c1, c2, diffs, modified_inplace_ids, dir_diffs);
+				gatherDiffs(c1, c2, depth+1, diffs, modified_inplace_ids, dir_diffs);
 				c2->setMappedNode(c1);
 				c1->setMappedNode(c2);
 			}

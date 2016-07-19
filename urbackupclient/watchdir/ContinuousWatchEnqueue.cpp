@@ -5,7 +5,6 @@
 #include "../ClientService.h"
 #include <memory>
 #include "../../Interface/SettingsReader.h"
-#include "../client.h"
 #include "../../urbackupserver/database.h"
 
 
@@ -359,7 +358,7 @@ void ContinuousWatchEnqueue::readIncludeExcludePatterns()
 		if(curr_settings->getValue("continuous_include_files", &val)
 			|| curr_settings->getValue("continuous_include_files_def", &val) )
 		{
-			include_dirs = IndexThread::parseIncludePatterns(val, include_depth, include_prefix);
+			include_dirs = IndexThread::parseIncludePatterns(val);
 		}
 	}
 	else
@@ -376,8 +375,8 @@ bool ContinuousWatchEnqueue::pathIncluded( const std::string& path, const std::s
 		return false;
 	}
 
-	if( !IndexThread::isIncluded(include_dirs, include_depth, include_prefix, path, NULL)
-		&& !IndexThread::isIncluded(include_dirs, include_depth, include_prefix, named_path, NULL) )
+	if( !IndexThread::isIncluded(include_dirs, path, NULL)
+		&& !IndexThread::isIncluded(include_dirs, named_path, NULL) )
 	{
 		return false;
 	}

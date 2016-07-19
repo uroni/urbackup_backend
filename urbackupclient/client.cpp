@@ -94,17 +94,6 @@ const size_t max_add_file_buffer_size=2*1024*1024;
 const int64 file_buffer_commit_interval=120*1000;
 
 
-#ifndef SERVER_ONLY
-#define ENABLE_VSS
-#endif
-
-#define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
-#define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code"+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); return false; }}
-#define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
-#define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
-#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed .VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
-#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); }}
-
 void IdleCheckerThread::operator()(void)
 {
 	int lx,ly;
@@ -404,10 +393,7 @@ void IndexThread::operator()(void)
 	Server->waitForStartupComplete();
 
 #ifdef _WIN32
-#ifndef SERVER_ONLY
-	CHECK_COM_RESULT(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED));
-	CHECK_COM_RESULT(CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IDENTIFY, NULL, EOAC_NONE, NULL));
-#endif
+	initVss();
 #endif
 
 	ScopedBackgroundPrio background_prio(false);
@@ -656,6 +642,16 @@ void IndexThread::operator()(void)
 				data.getInt(&running_jobs);
 			}
 
+#ifdef _WIN32
+			if(action==IndexThreadAction_ReferenceShadowcopy
+				&& image_backup==0
+				&& (scdir == "windows_components" || scdir == "windows_components_config") )
+			{
+				contractor->Write("done--");
+				continue;
+			}
+#endif
+
 			if (image_backup != 0)
 			{
 				int rc = execute_preimagebackup_hook(image_backup == 2, starttoken);
@@ -808,6 +804,15 @@ void IndexThread::operator()(void)
 			data.getInt(&save_id);
 			index_clientsubname.clear();
 			data.getStr(&index_clientsubname);
+
+#ifdef _WIN32
+			if (image_backup == 0
+				&& (scdir == "windows_components" || scdir == "windows_components_config"))
+			{
+				contractor->Write("done");
+				continue;
+			}
+#endif
 
 			int64 starttime = Server->getTimeMS();
 
@@ -971,46 +976,27 @@ void IndexThread::operator()(void)
 	delete this;
 }
 
-namespace
-{
-#ifdef _WIN32
-	std::string getVolPath(const std::string& bpath)
-	{
-		std::string prefixedbpath = os_file_prefix(bpath);
-		std::wstring tvolume;
-		tvolume.resize(prefixedbpath.size() + 100);
-		DWORD cchBufferLength = static_cast<DWORD>(tvolume.size());
-		BOOL b = GetVolumePathNameW(Server->ConvertToWchar(prefixedbpath).c_str(), &tvolume[0], cchBufferLength);
-		if (!b)
-		{
-			return std::string();
-		}
-
-		std::string volume =  Server->ConvertFromWchar(tvolume.c_str());
-
-		if (volume.find("\\\\?\\") == 0
-			&& volume.find("\\\\?\\GLOBALROOT") != 0)
-		{
-			volume.erase(0, 4);
-		}
-
-		return volume;
-	}
-#endif
-}
-
 const char * filelist_fn="urbackup/data/filelist_new.ub";
 
 void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
-		exlude_dirs, include_dirs, include_depth, include_prefix);
+		index_exlude_dirs, index_include_dirs);
 
 	updateDirs();
 
 	writeTokens();
 
 	token_cache.reset();
+
+#ifdef _WIN32
+	getVssSettings();
+
+	bool backup_with_vss_components = index_group==0 
+		&& (vss_select_all_components || !vss_select_components.empty());
+#else
+	bool backup_with_vss_components = false;
+#endif
 
 	index_follow_last = false;
 	index_keep_files = false;
@@ -1019,7 +1005,9 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	std::vector<int> selected_dir_db_tgroup;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
-		if(backup_dirs[i].group==index_group)
+		if(backup_dirs[i].group==index_group
+			|| (backup_with_vss_components
+				&& backup_dirs[i].group== c_group_vss_components) )
 		{
 			selected_dirs.push_back(removeDirectorySeparatorAtEnd(backup_dirs[i].path));
 #ifdef _WIN32
@@ -1115,6 +1103,36 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 
 	{
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
+
+#ifdef _WIN32
+		if (index_group == 0)
+		{
+			if (backup_with_vss_components)
+			{
+				index_flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional | EBackupDirFlag_ShareHashes;
+				VSS_ID ssetid;
+				if (!start_shadowcopy_components(ssetid))
+				{
+					index_error = true;
+				}
+				else
+				{
+					addScRefs(ssetid, past_refs);
+
+					if (!vss_all_components.empty())
+					{
+						bool orig_with_sequence = with_sequence;
+						with_sequence = false;
+						indexVssComponents(ssetid, !full_backup, outfile);
+						with_sequence = orig_with_sequence;
+					}
+				}
+			}
+		}
+#endif
+
+		removeUnconfirmedVssDirs();
+
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
 			if(backup_dirs[i].group!=index_group)
@@ -1229,15 +1247,22 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 #ifdef _WIN32
 				if (!shadowcopy_ok || !onlyref)
 				{
-					past_refs.push_back(scd->ref);
+					if (scd->ref != NULL)
+					{
+						addScRefs(scd->ref->ssetid, past_refs);
+					}
 					DirectoryWatcherThread::update_and_wait(open_files);
 					std::sort(open_files.begin(), open_files.end());
 
-					if (scd->ref!=NULL
-						&& scd->ref->cbt)
+					if (scd->ref!=NULL)
 					{
-						scd->ref->cbt = finishCbt(backup_dirs[i].path, -1,
-							scd->ref->volpath);
+						for (size_t k = 0; k < sc_refs.size(); ++k)
+						{
+							if (sc_refs[k]->ssetid == scd->ref->ssetid)
+							{
+								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+							}
+						}
 					}
 
 					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
@@ -1329,7 +1354,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				if (!index_error)
 				{
 					initialCheck(strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0);
+						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0, true, true,
+						index_exlude_dirs, index_include_dirs);
 				}
 
 				commitModifyFilesBuffer();
@@ -1446,13 +1472,29 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 		IScopedLock lock(filelist_mutex);
 		if(index_group==c_group_default)
 		{
-			removeFile("urbackup/data/filelist.ub");
-			moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist.ub");
+			if (FileExists("urbackup/data/filelist.ub")
+				&& !removeFile("urbackup/data/filelist.ub"))
+			{
+				VSSLog("Error deleting file urbackup/data/filelist.ub. "+os_last_error_str(), LL_ERROR);
+			}
+			if (!moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist.ub"))
+			{
+				VSSLog("Error renaming urbackup/data/filelist_new.ub to urbackup/data/filelist.ub. " + os_last_error_str(), LL_ERROR);
+				index_error = true;
+			}
 		}
 		else
 		{
-			removeFile("urbackup/data/filelist_"+convert(index_group)+".ub");
-			moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist_"+convert(index_group)+".ub");
+			if (FileExists("urbackup/data/filelist_" + convert(index_group) + ".ub")
+				&& !removeFile("urbackup/data/filelist_" + convert(index_group) + ".ub"))
+			{
+				VSSLog("Error deleting file urbackup/data/filelist_" + convert(index_group) + ".ub. " + os_last_error_str(), LL_ERROR);
+			}
+			if (!moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist_" + convert(index_group) + ".ub"))
+			{
+				VSSLog("Error renaming urbackup/data/filelist_new.ub to urbackup/data/filelist_"+convert(index_group)+".ub. " + os_last_error_str(), LL_ERROR);
+				index_error = true;
+			}
 		}
 	}
 
@@ -1490,14 +1532,16 @@ void IndexThread::resetFileEntries(void)
 #endif
 }
 
-bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath)
+bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath,
+	const std::vector<std::string>& exlude_dirs,
+	const std::vector<SIndexInclude>& include_dirs)
 {
 	if( isExcluded(exlude_dirs, filepath) || isExcluded(exlude_dirs, namedpath) )
 	{
 		return true;
 	}
-	if( !isIncluded(include_dirs, include_depth, include_prefix, filepath, NULL)
-		&& !isIncluded(include_dirs, include_depth, include_prefix, namedpath, NULL) )
+	if( !isIncluded(include_dirs, filepath, NULL)
+		&& !isIncluded(include_dirs, namedpath, NULL) )
 	{
 		return true;
 	}
@@ -1506,7 +1550,8 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 }
 
 bool IndexThread::initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
-	bool first, int flags, bool use_db, bool symlinked, size_t depth)
+	bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs, const std::vector<std::string>& exclude_dirs,
+	const std::vector<SIndexInclude>& include_dirs, std::string orig_path)
 {
 	bool has_include=false;
 	index_flags=flags;
@@ -1556,7 +1601,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 		if(with_orig_path)
 		{
-			extra+="&orig_path=" + EscapeParamString(orig_dir.empty() ? os_file_sep() : orig_dir)
+			extra += "&orig_path=" + EscapeParamString(orig_path.empty() ? (orig_dir.empty() ? os_file_sep() : orig_dir) : orig_path)
 				+ "&orig_sep=" + EscapeParamString(os_file_sep());
 		}
 
@@ -1595,7 +1640,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		}
 	}
 
-	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db);
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db,
+		exclude_dirs, include_dirs);
 
 	if(index_error)
 	{
@@ -1612,7 +1658,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				continue;
 			}
 
-			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
+			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name,
+				exclude_dirs, include_dirs) )
 			{
 				continue;
 			}
@@ -1679,7 +1726,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		}
 	}
 
-	for(size_t i=0;i<files.size();++i)
+	for(size_t i=0;dir_recurse && i<files.size();++i)
 	{
 		if( files[i].isdir )
 		{
@@ -1689,18 +1736,29 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				continue;
 			}
 
-			if( isExcluded(exlude_dirs, orig_dir+os_file_sep()+files[i].name)
-				|| isExcluded(exlude_dirs, named_path+os_file_sep()+files[i].name) )
-			{
-				continue;
-			}
-			bool curr_included=false;
+			bool curr_included = false;
 			bool adding_worthless1, adding_worthless2;
-			if( isIncluded(include_dirs, include_depth, include_prefix, orig_dir+os_file_sep()+files[i].name, &adding_worthless1)
-				|| isIncluded(include_dirs, include_depth, include_prefix, named_path+os_file_sep()+files[i].name, &adding_worthless2) )
+
+			if (include_exclude_dirs)
 			{
-				has_include=true;
-				curr_included=true;
+				if (isExcluded(exclude_dirs, orig_dir + os_file_sep() + files[i].name)
+					|| isExcluded(exclude_dirs, named_path + os_file_sep() + files[i].name))
+				{
+					continue;
+				}
+				
+				if (isIncluded(include_dirs, orig_dir + os_file_sep() + files[i].name, &adding_worthless1)
+					|| isIncluded(include_dirs, named_path + os_file_sep() + files[i].name, &adding_worthless2))
+				{
+					has_include = true;
+					curr_included = true;
+				}
+			}
+			else
+			{
+				curr_included = true;
+				adding_worthless1 = false;
+				adding_worthless2 = false;
 			}
 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
@@ -1739,7 +1797,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				if(!files[i].issym || !with_proper_symlinks)
 				{
 					b = initialCheck(volume, vssvolume, orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
-							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1);
+							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1,
+						dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs);
 				}
 
 				if(!with_proper_symlinks)
@@ -1958,7 +2017,9 @@ bool IndexThread::readBackupScripts()
 	return !scripts.empty();	
 }
 
-bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path, const std::string& filepath, const std::string& namedpath)
+bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path,
+	const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
+	const std::vector<SIndexInclude>& include_dirs)
 {
 	bool calculated_hash=false;
 
@@ -1973,8 +2034,10 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			if(!fsfile.hash.empty())
 				continue;
 
-			if(skipFile(orig_path+os_file_sep()+fsfile.name, namedpath+os_file_sep()+fsfile.name))
-				continue;			
+			if (skipFile(orig_path + os_file_sep() + fsfile.name, namedpath + os_file_sep() + fsfile.name, exclude_dirs, include_dirs))
+			{
+				continue;
+			}
 
 			bool needs_hashing=true;
 
@@ -2012,8 +2075,10 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			if(!dbfile.hash.empty())
 				continue;
 
-			if(skipFile(orig_path+os_file_sep()+dbfile.name, namedpath+os_file_sep()+dbfile.name))
+			if (skipFile(orig_path + os_file_sep() + dbfile.name, namedpath + os_file_sep() + dbfile.name, exclude_dirs, include_dirs))
+			{
 				continue;
+			}
 
 			dbfile.hash=getShaBinary(filepath+os_file_sep()+dbfile.name);
 			calculated_hash=true;
@@ -2023,7 +2088,9 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 	return calculated_hash;
 }
 
-std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes)
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path,
+	bool use_db, const std::string& fn_filter, bool use_db_hashes, const std::vector<std::string>& exclude_dirs,
+	const std::vector<SIndexInclude>& include_dirs)
 {
 #ifndef _WIN32
 	if(path.empty())
@@ -2133,7 +2200,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 		if(calculate_filehashes_on_client)
 		{
-			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path, path, named_path);
+			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path, path, named_path, exclude_dirs, include_dirs);
 		}
 
 		if( has_files)
@@ -2169,7 +2236,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 			if(calculate_filehashes_on_client)
 			{
-				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path))
+				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path,
+					exclude_dirs, include_dirs))
 				{
 					++index_c_db_update;
 					modifyFilesInt(path_lower, get_db_tgroup(), fs_files);
@@ -2203,7 +2271,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 			if(calculate_filehashes_on_client)
 			{
-				addMissingHashes(NULL, &fs_files, orig_path, path, named_path);
+				addMissingHashes(NULL, &fs_files, orig_path, path, named_path,
+					exclude_dirs, include_dirs);
 			}
 
 			addFilesInt(path_lower, get_db_tgroup(), fs_files);
@@ -2225,45 +2294,20 @@ void IndexThread::stopIndex(void)
 	stop_index=true;
 }
 
-#ifdef _WIN32
-bool IndexThread::wait_for(IVssAsync *vsasync)
-{
-	if(vsasync==NULL)
-	{
-		VSSLog("vsasync is NULL", LL_ERROR);
-		return false;
-	}
-
-	CHECK_COM_RESULT(vsasync->Wait());
-
-	HRESULT res;
-	CHECK_COM_RESULT(vsasync->QueryStatus(&res, NULL));
-
-	while(res==VSS_S_ASYNC_PENDING )
-	{
-		CHECK_COM_RESULT(vsasync->Wait());
-
-		CHECK_COM_RESULT(vsasync->QueryStatus(&res, NULL));
-	}
-
-	if( res!=VSS_S_ASYNC_FINISHED )
-	{
-		VSSLog("res!=VSS_S_ASYNC_FINISHED CCOM fail", LL_ERROR);
-		vsasync->Release();
-		return false;
-	}
-	vsasync->Release();
-	return true;
-}
-#endif
-
 bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other, const std::string& wpath,
 	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens,
 	bool share_new)
 {
 	for(size_t i=sc_refs.size();i-- > 0;)
 	{
-		if(sc_refs[i]->target==wpath && sc_refs[i]->ok 
+#ifndef _WIN32
+		std::string target_lower = sc_refs[i]->target;
+		std::string wpath_lower = wpath;
+#else
+		std::string target_lower = strlower(sc_refs[i]->target);
+		std::string wpath_lower = strlower(wpath);
+#endif
+		if(target_lower == wpath_lower && sc_refs[i]->ok
 			&& sc_refs[i]->clientsubname == index_clientsubname )
 		{
 			bool do_restart = std::find(no_restart_refs.begin(),
@@ -2494,7 +2538,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	
 
 #ifdef _WIN32
-	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, onlyref);
+	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, false, onlyref);
 #else
 	bool b = start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref, not_configured);
 #endif
@@ -2546,47 +2590,7 @@ namespace
 bool IndexThread::deleteShadowcopy(SCDirs *dir)
 {
 #ifdef _WIN32
-	IVssBackupComponents *backupcom=dir->ref->backupcom;
-	IVssAsync *pb_result;
-	bool bcom_ok=true;
-	bool ok=false;
-	CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
-	if(bcom_ok)
-	{
-		wait_for(pb_result);
-	}
-
-	std::string errmsg;
-	check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
-
-#ifndef VSS_XP
-#ifndef VSS_S03
-	if(bcom_ok)
-	{
-		LONG dels; 
-		GUID ndels; 
-		CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
-			&dels, &ndels), bcom_ok);
-
-		if(dels==0)
-		{
-			VSSLog("Deleting shadowcopy failed.", LL_ERROR);
-		}
-		else
-		{
-			ok=true;
-		}
-	}
-#endif
-#endif
-#if defined(VSS_XP) || defined(VSS_S03)
-	ok=true;
-#endif
-
-	backupcom->Release();
-	dir->ref->backupcom=NULL;
-
-	return ok;
+	return deleteShadowcopyWin(dir);
 #else
 	std::string loglines;
 	std::string scriptname;
@@ -2741,32 +2745,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& context )
 {
 #if defined(_WIN32) && !defined(VSS_XP) && !defined(VSS_S03)
-	IVssBackupComponents *backupcom=NULL;
-	if(context.backupcom==NULL)
-	{
-		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&context.backupcom));
-		backupcom = context.backupcom;
-		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
-		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-	}
-	else
-	{
-		backupcom = context.backupcom;
-	}
-
-	LONG dels; 
-	GUID ndels; 
-	CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs.vssid, VSS_OBJECT_SNAPSHOT, TRUE, 
-		&dels, &ndels));
-	cd->deleteShadowcopy(scs.id);
-	if(dels>0)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return deleteSavedShadowCopyWin(scs, context);
 #elif !defined(_WIN32)
 	std::string loglines;
 
@@ -2808,18 +2787,6 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 #endif
 }
 
-
-void IndexThread::clearContext( SShadowCopyContext& context )
-{
-#if _WIN32
-	if(context.backupcom!=NULL)
-	{
-		context.backupcom->Release();
-		context.backupcom=NULL;
-	}
-#endif
-}
-
 bool IndexThread::cleanup_saved_shadowcopies(bool start)
 {
 	std::vector<SShadowCopy> scs=cd->getShadowcopies();
@@ -2851,239 +2818,7 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 	return ok;
 }
 
-#ifdef _WIN32
-#ifdef ENABLE_VSS
 
-bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error)
-{
-#define FAIL_STATE(x) case x: { state=#x; failure=true; } break
-#define OK_STATE(x) case x: { state=#x; } break
-
-	std::string state;
-	bool failure=false;
-	switch(pState)
-	{
-		FAIL_STATE(VSS_WS_UNKNOWN);
-		FAIL_STATE(VSS_WS_FAILED_AT_IDENTIFY);
-		FAIL_STATE(VSS_WS_FAILED_AT_PREPARE_BACKUP);
-		FAIL_STATE(VSS_WS_FAILED_AT_PREPARE_SNAPSHOT);
-		FAIL_STATE(VSS_WS_FAILED_AT_FREEZE);
-		FAIL_STATE(VSS_WS_FAILED_AT_THAW);
-		FAIL_STATE(VSS_WS_FAILED_AT_POST_SNAPSHOT);
-		FAIL_STATE(VSS_WS_FAILED_AT_BACKUP_COMPLETE);
-		FAIL_STATE(VSS_WS_FAILED_AT_PRE_RESTORE);
-		FAIL_STATE(VSS_WS_FAILED_AT_POST_RESTORE);
-#ifndef VSS_XP
-#ifndef VSS_S03
-		FAIL_STATE(VSS_WS_FAILED_AT_BACKUPSHUTDOWN);
-#endif
-#endif
-		OK_STATE(VSS_WS_STABLE);
-		OK_STATE(VSS_WS_WAITING_FOR_FREEZE);
-		OK_STATE(VSS_WS_WAITING_FOR_THAW);
-		OK_STATE(VSS_WS_WAITING_FOR_POST_SNAPSHOT);
-		OK_STATE(VSS_WS_WAITING_FOR_BACKUP_COMPLETE);
-	}
-
-#undef FAIL_STATE
-#undef OK_STATE
-
-	std::string err;
-	bool has_error=false;
-#define HR_ERR(x) case x: { err=#x; has_error=true; } break
-	switch(pHrResultFailure)
-	{
-	case S_OK: { err="S_OK"; } break;
-		HR_ERR(VSS_E_WRITERERROR_INCONSISTENTSNAPSHOT);
-		HR_ERR(VSS_E_WRITERERROR_OUTOFRESOURCES);
-		HR_ERR(VSS_E_WRITERERROR_TIMEOUT);
-		HR_ERR(VSS_E_WRITERERROR_RETRYABLE);
-		HR_ERR(VSS_E_WRITERERROR_NONRETRYABLE);
-		HR_ERR(VSS_E_WRITER_NOT_RESPONDING);
-#ifndef VSS_XP
-#ifndef VSS_S03
-		HR_ERR(VSS_E_WRITER_STATUS_NOT_AVAILABLE);
-#endif
-#endif
-	}
-#undef HR_ERR
-
-	std::string writerName;
-	if(pbstrWriter)
-		writerName=Server->ConvertFromWchar(pbstrWriter);
-	else
-		writerName="(NULL)";
-
-	if(failure || has_error)
-	{
-		const std::string erradd=". UrBackup will continue with the backup but the associated data may not be consistent.";
-		std::string nerrmsg="Writer "+writerName+" has failure state "+state+" with error "+err;
-		if(retryable_error && pHrResultFailure==VSS_E_WRITERERROR_RETRYABLE)
-		{
-			loglevel=LL_INFO;
-			*retryable_error=true;
-		}
-		else
-		{
-			nerrmsg+=erradd;
-		}
-		VSSLog(nerrmsg, loglevel);
-		errmsg+=nerrmsg;
-		return false;
-	}
-	else
-	{
-		VSSLog("Writer "+writerName+" has failure state "+state+" with error "+err+".", LL_DEBUG);
-	}
-
-	return true;
-}
-
-
-bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error)
-{
-	IVssAsync *pb_result;
-	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
-
-	if(!wait_for(pb_result))
-	{
-		VSSLog("Error while waiting for result from GatherWriterStatus", LL_ERROR);
-		return false;
-	}
-
-	UINT nWriters;
-	CHECK_COM_RESULT_RETURN(backupcom->GetWriterStatusCount(&nWriters));
-
-	VSSLog("Number of Writers: "+convert(nWriters), LL_DEBUG);
-
-	bool has_error=false;
-	for(UINT i=0;i<nWriters;++i)
-	{
-		VSS_ID pidInstance;
-		VSS_ID pidWriter;
-		BSTR pbstrWriter;
-		VSS_WRITER_STATE pState;
-		HRESULT pHrResultFailure;
-
-		bool ok=true;
-		CHECK_COM_RESULT_OK(backupcom->GetWriterStatus(i,
-													&pidInstance,
-													&pidWriter,
-													&pbstrWriter,
-													&pState,
-													&pHrResultFailure), ok);
-
-		if(ok)
-		{
-			if(!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, loglevel, retryable_error))
-			{
-				has_error=true;
-			}
-
-			SysFreeString(pbstrWriter);
-		}
-	}
-
-	CHECK_COM_RESULT_RETURN(backupcom->FreeWriterStatus());
-
-	return !has_error;
-}
-#endif //ENABLE_VSS
-#endif //_WIN32
-
-#ifdef _WIN32
-std::string IndexThread::GetErrorHResErrStr(HRESULT res)
-{
-	switch(res)
-	{
-	case E_INVALIDARG:
-		return "E_INVALIDARG";
-	case E_OUTOFMEMORY:
-		return "E_OUTOFMEMORY";
-	case E_UNEXPECTED:
-		return "E_UNEXPECTED";
-	case E_ACCESSDENIED:
-		return "E_ACCESSDENIED";
-	case VSS_E_OBJECT_NOT_FOUND:
-		return "VSS_E_OBJECT_NOT_FOUND";
-	case VSS_E_PROVIDER_VETO:
-		return "VSS_E_PROVIDER_VETO";
-	case VSS_E_UNEXPECTED_PROVIDER_ERROR:
-		return "VSS_E_UNEXPECTED_PROVIDER_ERROR";
-	case VSS_E_BAD_STATE:
-		return "VSS_E_BAD_STATE";
-	case VSS_E_SNAPSHOT_SET_IN_PROGRESS:
-		return "VSS_E_SNAPSHOT_SET_IN_PROGRESS";
-	case VSS_E_MAXIMUM_NUMBER_OF_VOLUMES_REACHED:
-		return "VSS_E_MAXIMUM_NUMBER_OF_VOLUMES_REACHED";
-	case VSS_E_MAXIMUM_NUMBER_OF_SNAPSHOTS_REACHED:
-		return "VSS_E_MAXIMUM_NUMBER_OF_SNAPSHOTS_REACHED";
-	case VSS_E_PROVIDER_NOT_REGISTERED:
-		return "VSS_E_PROVIDER_NOT_REGISTERED";
-	case VSS_E_VOLUME_NOT_SUPPORTED:
-		return "VSS_E_VOLUME_NOT_SUPPORTED";
-	case VSS_E_VOLUME_NOT_SUPPORTED_BY_PROVIDER:
-		return "VSS_E_VOLUME_NOT_SUPPORTED_BY_PROVIDER";
-	};
-	return "UNDEF";
-}
-
-void IndexThread::printProviderInfo(HRESULT res)
-{
-	if (res != VSS_E_UNEXPECTED_PROVIDER_ERROR)
-	{
-		return;
-	}
-
-	std::string data;
-	if (os_popen("vssadmin list providers", data) == 0)
-	{
-		std::vector<std::string> lines;
-		TokenizeMail(data, lines, "\n");
-
-		if (lines.size() > 3)
-		{
-			VSSLog("VSS provider information:", LL_ERROR);
-
-			for (size_t i = 3; i < lines.size(); ++i)
-			{
-				std::string cl = trim(lines[i]);
-				if (!cl.empty())
-				{
-					VSSLog(cl, LL_ERROR);
-				}
-			}
-		}
-	}
-}
-#endif
-
-std::string IndexThread::lookup_shadowcopy(int sid)
-{
-#ifdef _WIN32
-#ifndef SERVER_ONLY
-	std::vector<SShadowCopy> scs=cd->getShadowcopies();
-
-	for(size_t i=0;i<scs.size();++i)
-	{
-		if(scs[i].id==sid)
-		{
-			IVssBackupComponents *backupcom=NULL; 
-			CHECK_COM_RESULT_RELEASE_S(CreateVssBackupComponents(&backupcom));
-			CHECK_COM_RESULT_RELEASE_S(backupcom->InitializeForBackup());
-			CHECK_COM_RESULT_RELEASE_S(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-			VSS_SNAPSHOT_PROP snap_props={}; 
-			CHECK_COM_RESULT_RELEASE_S(backupcom->GetSnapshotProperties(scs[i].vssid, &snap_props));
-			std::string ret=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
-			VssFreeSnapshotProperties(&snap_props);
-			backupcom->Release();
-			return ret;
-		}
-	}
-#endif
-#endif
-	return "";
-}
 
 SCDirs* IndexThread::getSCDir(const std::string& path, const std::string& clientsubname, bool for_imagebackup)
 {
@@ -3273,8 +3008,7 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<std::string>& include_dirs,
-	std::vector<int>& include_depth, std::vector<std::string>& include_prefix)
+void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<SIndexInclude>& include_dirs)
 {
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";
@@ -3307,7 +3041,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 
 		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
 		{
-			include_dirs = parseIncludePatterns(val, include_depth, include_prefix);
+			include_dirs = parseIncludePatterns(val);
 		}
 		Server->destroy(curr_settings);
 	}
@@ -3368,27 +3102,26 @@ std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& va
 	return exclude_dirs;
 }
 
-std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& val, std::vector<int>& include_depth,
-	std::vector<std::string>& include_prefix)
+std::vector<SIndexInclude> IndexThread::parseIncludePatterns(const std::string& val)
 {
 	std::vector<std::string> toks;
 	Tokenize(val, toks, ";");
-	std::vector<std::string> include_dirs=toks;
+	std::vector<SIndexInclude> include_dirs(toks.size());
 #ifdef _WIN32
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		strupper(&include_dirs[i]);
+		include_dirs[i].spec = toks[i];
+		strupper(&include_dirs[i].spec);
 	}
 #endif
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		include_dirs[i]=sanitizePattern(include_dirs[i]);
+		include_dirs[i].spec=sanitizePattern(include_dirs[i].spec);
 	}
 
-	include_depth.resize(include_dirs.size());
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		std::string ip=include_dirs[i];
+		std::string ip=include_dirs[i].spec;
 		if(ip.find("*")==ip.size()-1 || ip.find("*")==std::string::npos)
 		{
 			int depth=0;
@@ -3402,21 +3135,21 @@ std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& va
 					++depth;
 				}
 			}
-			include_depth[i]=depth;
+			include_dirs[i].depth=depth;
 		}
 		else
 		{
-			include_depth[i]=-1;
+			include_dirs[i].depth =-1;
 		}
 	}
-	include_prefix.resize(include_dirs.size());
+
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		size_t f1=include_dirs[i].find_first_of(":");
-		size_t f2=include_dirs[i].find_first_of("[");
-		size_t f3=include_dirs[i].find_first_of("*");
-		while(f2>0 && f2!=std::string::npos && include_dirs[i][f2-1]=='\\')
-			f2=include_dirs[i].find_first_of("[", f2);
+		size_t f1=include_dirs[i].spec.find_first_of(":");
+		size_t f2=include_dirs[i].spec.find_first_of("[");
+		size_t f3=include_dirs[i].spec.find_first_of("*");
+		while(f2>0 && f2!=std::string::npos && include_dirs[i].spec[f2-1]=='\\')
+			f2=include_dirs[i].spec.find_first_of("[", f2);
 
 		size_t f=(std::min)((std::min)(f1,f2), f3);
 
@@ -3424,21 +3157,21 @@ std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& va
 		{
 			if(f>0)
 			{
-				include_prefix[i]=include_dirs[i].substr(0, f);
+				include_dirs[i].prefix=include_dirs[i].prefix.substr(0, f);
 			}
 		}
 		else
 		{
-			include_prefix[i]=include_dirs[i];
+			include_dirs[i].prefix= include_dirs[i].prefix;
 		}
 
 		std::string nep;
-		for(size_t j=0;j<include_prefix[i].size();++j)
+		for(size_t j=0;j<include_dirs[i].prefix.size();++j)
 		{
-			char ch=include_prefix[i][j];
+			char ch= include_dirs[i].prefix[j];
 			if(ch=='/')
 				nep+=os_file_sep();
-			else if(ch=='\\' && j+1<include_prefix[i].size() && include_prefix[i][j+1]=='\\')
+			else if(ch=='\\' && j+1<include_dirs[i].prefix.size() && include_dirs[i].prefix[j+1]=='\\')
 			{
 				nep+=os_file_sep();
 				++j;
@@ -3449,7 +3182,7 @@ std::vector<std::string> IndexThread::parseIncludePatterns(const std::string& va
 			}
 		}			
 
-		include_prefix[i]=nep;
+		include_dirs[i].prefix=nep;
 	}
 
 	return include_dirs;
@@ -3475,8 +3208,7 @@ bool IndexThread::isExcluded(const std::vector<std::string>& exlude_dirs, const 
 	return false;
 }
 
-bool IndexThread::isIncluded(const std::vector<std::string>& include_dirs, const std::vector<int>& include_depth,
-	const std::vector<std::string>& include_prefix, const std::string &path, bool *adding_worthless)
+bool IndexThread::isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless)
 {
 	std::string wpath=path;
 #ifdef _WIN32
@@ -3499,26 +3231,26 @@ bool IndexThread::isIncluded(const std::vector<std::string>& include_dirs, const
 	bool has_pattern=false;
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
-		if(!include_dirs[i].empty())
+		if(!include_dirs[i].spec.empty())
 		{
 			has_pattern=true;
-			bool b=amatch(wpath.c_str(), include_dirs[i].c_str());
+			bool b=amatch(wpath.c_str(), include_dirs[i].spec.c_str());
 			if(b)
 			{
 				return true;
 			}
 			if(adding_worthless!=NULL)
 			{
-				if( include_depth[i]==-1 )
+				if( include_dirs[i].depth==-1 )
 				{
 					*adding_worthless=false;
 				}
 				else
 				{
-					bool has_prefix=(wpath.find(include_prefix[i])==0);
+					bool has_prefix=(wpath.find(include_dirs[i].prefix)==0);
 					if( has_prefix )
 					{
-						if( wpath_level<=include_depth[i])
+						if( wpath_level<= include_dirs[i].depth)
 						{
 							*adding_worthless=false;
 						}
@@ -6006,198 +5738,6 @@ void IndexThread::handleSymlinks(const std::string& orig_dir, std::vector<SFileA
 	}
 }
 
-#ifdef _WIN32
-bool IndexThread::start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref )
-{
-	const char* crash_consistent_explanation = "This means the files open by this application (e.g. databases) will be backed up in a crash consistent "
-		"state instead of a properly shutdown state. Properly written applications can recover from system crashes or power failures.";
-
-	dir->ref->cbt = prepareCbt(wpath);
-
-	int tries=3;
-	bool retryable_error=true;
-	IVssBackupComponents *backupcom=NULL; 
-	while(tries>0 && retryable_error)
-	{		
-		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
-
-		if(!backupcom)
-		{
-			VSSLog("backupcom is NULL", LL_ERROR);
-			return false;
-		}
-
-		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
-
-		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_COPY, FALSE));
-
-		IVssAsync *pb_result;
-
-		CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result));
-		wait_for(pb_result);
-
-#ifndef VSS_XP
-#ifndef VSS_S03
-		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-#endif
-#endif
-
-		std::string errmsg;
-
-		retryable_error=false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
-
-		bool b_ok=true;
-		int tries_snapshot_set=5;
-		while(b_ok==true)
-		{
-			HRESULT r;
-			CHECK_COM_RESULT_OK_HR(backupcom->StartSnapshotSet(&dir->ref->ssetid), b_ok, r);
-			if(b_ok)
-			{
-				break;
-			}
-
-			if(b_ok==false && tries_snapshot_set>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
-			{
-				VSSLog("Retrying starting shadow copy in 30s", LL_WARNING);
-				b_ok=true;
-				--tries_snapshot_set;
-			}
-			Server->wait(30000);
-		}
-
-		if(!b_ok)
-		{
-			CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
-		}
-
-		CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(&(Server->ConvertToWchar(wpath)[0]), GUID_NULL, &dir->ref->ssetid) );
-
-		CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
-		wait_for(pb_result);
-
-		retryable_error=false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
-
-		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
-		wait_for(pb_result);
-
-		retryable_error=false;
-
-		bool snapshot_ok=false;
-		if(tries>1)
-		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
-		}
-		else
-		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
-		}
-		--tries;
-		if(!snapshot_ok && !retryable_error)
-		{
-			VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
-			break;
-		}
-		else if(!snapshot_ok)
-		{
-			if(tries==0)
-			{
-				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
-				break;
-			}
-			else
-			{
-				VSSLog("Snapshotting failed because of Writer. Retrying in 30s...", LL_WARNING);
-			}
-			bool bcom_ok=true;
-			CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
-			if(bcom_ok)
-			{
-				wait_for(pb_result);
-			}
-
-#ifndef VSS_XP
-#ifndef VSS_S03
-			if(bcom_ok)
-			{
-				LONG dels; 
-				GUID ndels;
-				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
-					&dels, &ndels), bcom_ok);
-
-				if(dels==0)
-				{
-					VSSLog("Deleting shadowcopy failed.", LL_ERROR);
-				}
-			}
-#endif
-#endif
-			backupcom->Release();
-			backupcom=NULL;
-
-			Server->wait(30000);			
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	VSS_SNAPSHOT_PROP snap_props = {}; 
-	CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
-
-	if(snap_props.m_pwszSnapshotDeviceObject==NULL)
-	{
-		VSSLog("GetSnapshotProperties did not return a volume path", LL_ERROR);
-		if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();}
-		return false;
-	}
-
-	dir->target.erase(0,wpath.size());
-	dir->ref->volpath=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
-	dir->starttime=Server->getTimeSeconds();
-	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
-	if(dir->fileserv)
-	{
-		shareDir(starttoken, dir->dir, dir->target);
-	}
-
-	SShadowCopy tsc;
-	tsc.vssid=snap_props.m_SnapshotId;
-	tsc.ssetid=snap_props.m_SnapshotSetId;
-	tsc.target=dir->orig_target;
-	tsc.path=Server->ConvertFromWchar(snap_props.m_pwszSnapshotDeviceObject);
-	tsc.orig_target=dir->orig_target;
-	tsc.filesrv=dir->fileserv;
-	tsc.vol=wpath;
-	tsc.tname=dir->dir;
-	tsc.starttoken=starttoken;
-	tsc.clientsubname = index_clientsubname;
-	if(for_imagebackup)
-	{
-		tsc.refs=1;
-	}
-	dir->ref->save_id=cd->addShadowcopy(tsc);
-	dir->ref->ok=true;
-
-	VSSLog("Shadowcopy path: "+tsc.path, LL_DEBUG);
-
-	dir->ref->ssetid=snap_props.m_SnapshotId;
-
-	VssFreeSnapshotProperties(&snap_props);
-
-	dir->ref->backupcom=backupcom;
-	if(onlyref!=NULL)
-	{
-		*onlyref=false;
-	}
-	return true;
-}
-
-#endif //_WIN32
-
 #ifndef _WIN32
 bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured)
 {
@@ -6364,5 +5904,27 @@ int IndexThread::getShadowId(const std::string & volume, IFile* hdat_img)
 		}
 
 		return -1;
+	}
+}
+
+#ifndef _WIN32
+std::string IndexThread::lookup_shadowcopy(int sid)
+{
+	return std::string();
+}
+
+void IndexThread::clearContext(SShadowCopyContext& context)
+{
+}
+#endif
+
+void IndexThread::addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out)
+{
+	for (size_t i = 0; i < sc_refs.size(); ++i)
+	{
+		if (sc_refs[i]->ssetid == ssetid)
+		{
+			out.push_back(sc_refs[i]);
+		}
 	}
 }

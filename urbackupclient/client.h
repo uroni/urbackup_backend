@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Thread.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Pipe.h"
@@ -41,6 +43,7 @@
 #include <fstream>
 #include <sstream>
 
+const int c_group_vss_components = -1;
 const int c_group_default = 0;
 const int c_group_continuous = 1;
 const int c_group_max = 99;
@@ -77,6 +80,7 @@ struct SCRef
 	IVssBackupComponents *backupcom;
 #endif
 	VSS_ID ssetid;
+	VSS_ID volid;
 	std::string volpath;
 	int64 starttime;
 	std::string target;
@@ -206,6 +210,23 @@ struct SReadError
 	std::string msg;
 };
 
+struct SIndexInclude
+{
+	SIndexInclude(std::string spec, int depth, std::string prefix)
+		: spec(spec), depth(depth), prefix(prefix)
+	{
+
+	}
+
+	SIndexInclude()
+		: depth(-1)
+	{}
+
+	std::string spec;
+	int depth;
+	std::string prefix;
+};
+
 class ClientDAO;
 
 class IndexThread : public IThread, public IFileServ::IReadErrorCallback
@@ -246,12 +267,10 @@ public:
 	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
-	static std::vector<std::string> parseIncludePatterns(const std::string& val, std::vector<int>& include_depth,
-		std::vector<std::string>& include_prefix);
+	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
 	static bool isExcluded(const std::vector<std::string>& exlude_dirs, const std::string &path);
-	static bool isIncluded(const std::vector<std::string>& include_dirs, const std::vector<int>& include_depth,
-		const std::vector<std::string>& include_prefix, const std::string &path, bool *adding_worthless);
+	static bool isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless);
 
 	static std::string mapScriptOutputName(const std::string& fn);
 
@@ -261,13 +280,11 @@ public:
 
 	static bool normalizeVolume(std::string& volume);
 
-	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<std::string>& include_dirs,
-		std::vector<int>& include_depth, std::vector<std::string>& include_prefix);
+	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<SIndexInclude>& include_dirs);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 	
 private:
-
 	bool readBackupDirs(void);
 	bool readBackupScripts();
 
@@ -280,7 +297,10 @@ private:
 	std::vector<SFileAndHash> convertToFileAndHash(const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter);
 	void handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files);
 
-	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth);
+	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
+		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, std::string orig_path=std::string());
 
 	void indexDirs(bool full_backup, bool simultaneous_other);
 
@@ -290,7 +310,9 @@ private:
 
 	static std::string sanitizePattern(const std::string &p);	
 
-	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes);
+	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs);
 
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, bool simultaneous_other=true, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL);
 
@@ -300,12 +322,25 @@ private:
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32
-	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref );
-	bool wait_for(IVssAsync *vsasync);
+	bool start_shadowcopy_components(VSS_ID& ssetid);
+	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref );
+	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);
 	std::string GetErrorHResErrStr(HRESULT res);
 	void printProviderInfo(HRESULT res);
 	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error);
 	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error);
+	bool deleteShadowcopyWin(SCDirs *dir);
+	void initVss();
+	bool deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext& context);
+	bool getVssSettings();
+	bool selectVssComponents(IVssBackupComponents *backupcom, std::vector<std::string>& selected_vols);
+	bool addFilespecVol(IVssWMFiledesc* wmFile, std::vector<std::string>& selected_vols);
+	bool addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, std::string named_prefix, bool use_db, const std::vector<std::string>& exclude_files, std::fstream &outfile);
+	static std::string getVolPath(const std::string& bpath);
+	bool indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &outfile);
+	bool getExcludedFiles(IVssExamineWriterMetadata* writerMetadata, UINT nExcludedFiles, std::vector<std::string>& exclude_files);
+	void removeUnconfirmedVssDirs();
+	std::string expandPath(BSTR pathStr);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
 	std::string get_snapshot_script_location(const std::string& name);
@@ -331,9 +366,13 @@ private:
 
 	void start_filesrv(void);
 
-	bool skipFile(const std::string& filepath, const std::string& namedpath);
+	bool skipFile(const std::string& filepath, const std::string& namedpath,
+		const std::vector<std::string>& exlude_dirs,
+		const std::vector<SIndexInclude>& include_dirs);
 
-	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path, const std::string& filepath, const std::string& namedpath);
+	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path,
+		const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs);
 
 	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
@@ -414,6 +453,8 @@ private:
 
 	void createMd5sumsFile(const std::string& path, const std::string& md5sums_path, IFile* output_f);
 
+	void addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -449,10 +490,8 @@ private:
 
 	static volatile bool stop_index;
 
-	std::vector<std::string> exlude_dirs;
-	std::vector<std::string> include_dirs;
-	std::vector<int> include_depth;
-	std::vector<std::string> include_prefix;
+	std::vector<std::string> index_exlude_dirs;
+	std::vector<SIndexInclude> index_include_dirs;
 
 	int64 last_transaction_start;
 
@@ -567,6 +606,26 @@ private:
 
 	std::vector<SReadError> read_errors;
 	IMutex* read_error_mutex;
+
+#ifdef _WIN32
+	struct SComponent
+	{
+		std::string componentName;
+		std::string logicalPath;
+		VSS_ID writerId;
+
+		bool operator==(const SComponent& other) const
+		{
+			return componentName == other.componentName
+				&& logicalPath == other.logicalPath
+				&& writerId == other.writerId;
+		}
+	};
+
+	bool vss_select_all_components;
+	std::vector<std::pair<std::string, std::string> > vss_select_components;
+	std::vector<SComponent> vss_all_components;
+#endif
 };
 
 std::string add_trailing_slash(const std::string &strDirName);

@@ -46,9 +46,9 @@ SFile getFileMetadataWin(const std::string &path, bool with_usn);
 
 SFile getFileMetadata(const std::string &path);
 
-void removeFile(const std::string &path);
+bool removeFile(const std::string &path);
 
-void moveFile(const std::string &src, const std::string &dst);
+bool moveFile(const std::string &src, const std::string &dst);
 
 bool isDirectory(const std::string &path, void* transaction=NULL);
 

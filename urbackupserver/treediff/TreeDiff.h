@@ -11,7 +11,7 @@ public:
 		std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs);
 
 private:
-	static void gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs,
+	static void gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector<size_t> &diffs,
 		std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs);
 	static void gatherDeletes(TreeNode *t1, std::vector<size_t> &deleted_ids);
 	static void gatherLargeUnchangedSubtrees(TreeNode *t2, std::vector<size_t> &changed_subtrees);

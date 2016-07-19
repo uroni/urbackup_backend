@@ -7,6 +7,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Database.h"
+#include "client.h"
 #include <memory>
 #include <stack>
 
@@ -124,9 +125,7 @@ private:
 	int64 speed_set_time;
 
 	std::vector<std::string> exclude_dirs;
-	std::vector<std::string> include_dirs;
-	std::vector<int> include_depth;
-	std::vector<std::string> include_prefix;
+	std::vector<SIndexInclude> include_dirs;
 
 	int tgroup;
 	std::string clientsubname;
