@@ -1752,7 +1752,7 @@ MailServer ClientMain::getMailServerSettings(void)
 	ms.password=settings->getValue("mail_password", "");
 	ms.mailfrom=settings->getValue("mail_from", "");
 	if(ms.mailfrom.empty())
-		ms.mailfrom="report@urbackup.org";
+		ms.mailfrom="report@urbackup.example.com";
 
 	ms.ssl_only=(settings->getValue("mail_ssl_only", "false")=="true")?true:false;
 	ms.check_certificate=(settings->getValue("mail_check_certificate", "false")=="true")?true:false;

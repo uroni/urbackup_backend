@@ -257,3 +257,4 @@ UrBackupBackend.VC.VC.opendb
 urbackup/version_linux.txt
 urbackup/version_osx.txt
 urbackup/hdat_file_*_.dat
+urbackup/windows_components_config/*
