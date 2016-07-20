@@ -243,7 +243,7 @@ namespace
 							return false;
 						}
 
-						os_sync(pool_path + "_incomplete");
+						//os_sync(pool_path + "_incomplete");
 
 						if (!os_rename_file(pool_path + "_incomplete", pool_path, NULL))
 						{
@@ -422,7 +422,7 @@ namespace
 			return false;
 		}
 
-		os_sync(dst_folder);
+		//os_sync(dst_folder);
 
 		std::string src_name = ExtractFileName(src);
 
@@ -645,7 +645,7 @@ int copy_storage(const std::string& dest_folder)
 				return 1;
 			}
 
-			os_sync(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete");
+			//os_sync(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete");
 
 			if (!os_rename_file(os_file_prefix(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete"),
 				os_file_prefix(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path)))
