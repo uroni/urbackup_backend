@@ -409,26 +409,27 @@ void ServerCleanupDao::removeFileBackup(int backupid)
 /**
 * @-SQLGenAccess
 * @func SFileBackupInfo ServerCleanupDao::getFileBackupInfo
-* @return int id, string backuptime, string path
+* @return int id, string backuptime, string path, int done
 * @sql
-*	SELECT id, backuptime, path FROM backups WHERE id=:backupid(int)
+*	SELECT id, backuptime, path, done FROM backups WHERE id=:backupid(int)
 */
 ServerCleanupDao::SFileBackupInfo ServerCleanupDao::getFileBackupInfo(int backupid)
 {
 	if(q_getFileBackupInfo==NULL)
 	{
-		q_getFileBackupInfo=db->Prepare("SELECT id, backuptime, path FROM backups WHERE id=?", false);
+		q_getFileBackupInfo=db->Prepare("SELECT id, backuptime, path, done FROM backups WHERE id=?", false);
 	}
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
 	q_getFileBackupInfo->Reset();
-	SFileBackupInfo ret = { false, 0, "", "" };
+	SFileBackupInfo ret = { false, 0, "", "", 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.id=watoi(res[0]["id"]);
 		ret.backuptime=res[0]["backuptime"];
 		ret.path=res[0]["path"];
+		ret.done=watoi(res[0]["done"]);
 	}
 	return ret;
 }
@@ -436,20 +437,20 @@ ServerCleanupDao::SFileBackupInfo ServerCleanupDao::getFileBackupInfo(int backup
 /**
 * @-SQLGenAccess
 * @func SImageBackupInfo ServerCleanupDao::getImageBackupInfo
-* @return int id, string backuptime, string path, string letter
+* @return int id, string backuptime, string path, string letter, int complete
 * @sql
-*	SELECT id, backuptime, path, letter FROM backup_images WHERE id=:backupid(int)
+*	SELECT id, backuptime, path, letter, complete FROM backup_images WHERE id=:backupid(int)
 */
 ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int backupid)
 {
 	if(q_getImageBackupInfo==NULL)
 	{
-		q_getImageBackupInfo=db->Prepare("SELECT id, backuptime, path, letter FROM backup_images WHERE id=?", false);
+		q_getImageBackupInfo=db->Prepare("SELECT id, backuptime, path, letter, complete FROM backup_images WHERE id=?", false);
 	}
 	q_getImageBackupInfo->Bind(backupid);
 	db_results res=q_getImageBackupInfo->Read();
 	q_getImageBackupInfo->Reset();
-	SImageBackupInfo ret = { false, 0, "", "", "" };
+	SImageBackupInfo ret = { false, 0, "", "", "", 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
@@ -457,6 +458,7 @@ ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int back
 		ret.backuptime=res[0]["backuptime"];
 		ret.path=res[0]["path"];
 		ret.letter=res[0]["letter"];
+		ret.complete=watoi(res[0]["complete"]);
 	}
 	return ret;
 }
@@ -687,15 +689,15 @@ std::vector<ServerCleanupDao::SClientInfo> ServerCleanupDao::getClients(void)
 /**
 * @-SQLGenAccess
 * @func vector<SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient
-* @return int id, string backuptime, string path
+* @return int id, string backuptime, string path, int done
 * @sql
-*	SELECT id, backuptime, path FROM backups WHERE clientid=:clientid(int) ORDER BY backuptime DESC
+*	SELECT id, backuptime, path, done FROM backups WHERE clientid=:clientid(int) ORDER BY backuptime DESC
 */
 std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient(int clientid)
 {
 	if(q_getFileBackupsOfClient==NULL)
 	{
-		q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=? ORDER BY backuptime DESC", false);
+		q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path, done FROM backups WHERE clientid=? ORDER BY backuptime DESC", false);
 	}
 	q_getFileBackupsOfClient->Bind(clientid);
 	db_results res=q_getFileBackupsOfClient->Read();
@@ -708,6 +710,7 @@ std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsO
 		ret[i].id=watoi(res[i]["id"]);
 		ret[i].backuptime=res[i]["backuptime"];
 		ret[i].path=res[i]["path"];
+		ret[i].done=watoi(res[i]["done"]);
 	}
 	return ret;
 }
@@ -722,22 +725,22 @@ std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsO
 */
 std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getOldImageBackupsOfClient(int clientid)
 {
-	if (q_getOldImageBackupsOfClient == NULL)
+	if(q_getOldImageBackupsOfClient==NULL)
 	{
-		q_getOldImageBackupsOfClient = db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=? AND running<datetime('now','-12 hours')", false);
+		q_getOldImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=? AND running<datetime('now','-12 hours')", false);
 	}
 	q_getOldImageBackupsOfClient->Bind(clientid);
-	db_results res = q_getOldImageBackupsOfClient->Read();
+	db_results res=q_getOldImageBackupsOfClient->Read();
 	q_getOldImageBackupsOfClient->Reset();
 	std::vector<ServerCleanupDao::SImageBackupInfo> ret;
 	ret.resize(res.size());
-	for (size_t i = 0; i<res.size(); ++i)
+	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i].exists = true;
-		ret[i].id = watoi(res[i]["id"]);
-		ret[i].backuptime = res[i]["backuptime"];
-		ret[i].letter = res[i]["letter"];
-		ret[i].path = res[i]["path"];
+		ret[i].exists=true;
+		ret[i].id=watoi(res[i]["id"]);
+		ret[i].backuptime=res[i]["backuptime"];
+		ret[i].letter=res[i]["letter"];
+		ret[i].path=res[i]["path"];
 	}
 	return ret;
 }
@@ -745,15 +748,15 @@ std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getOldImageBac
 /**
 * @-SQLGenAccess
 * @func vector<SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient
-* @return int id, string backuptime, string letter, string path
+* @return int id, string backuptime, string letter, string path, int complete
 * @sql
-*	SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=:clientid(int)
+*	SELECT id, backuptime, letter, path, complete FROM backup_images WHERE clientid=:clientid(int)
 */
 std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient(int clientid)
 {
 	if(q_getImageBackupsOfClient==NULL)
 	{
-		q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=?", false);
+		q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path, complete FROM backup_images WHERE clientid=?", false);
 	}
 	q_getImageBackupsOfClient->Bind(clientid);
 	db_results res=q_getImageBackupsOfClient->Read();
@@ -767,6 +770,7 @@ std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getImageBackup
 		ret[i].backuptime=res[i]["backuptime"];
 		ret[i].letter=res[i]["letter"];
 		ret[i].path=res[i]["path"];
+		ret[i].complete=watoi(res[i]["complete"]);
 	}
 	return ret;
 }
@@ -1068,7 +1072,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getImageSize=NULL;
 	q_getClients=NULL;
 	q_getFileBackupsOfClient=NULL;
-	q_getOldImageBackupsOfClient = NULL;
+	q_getOldImageBackupsOfClient=NULL;
 	q_getImageBackupsOfClient=NULL;
 	q_findFileBackup=NULL;
 	q_getUsedStorage=NULL;

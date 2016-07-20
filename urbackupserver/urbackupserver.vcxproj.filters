@@ -339,6 +339,9 @@
     <ClCompile Include="serverinterface\restore_prepare_wait.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="copy_storage.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -612,6 +615,9 @@
       <Filter>dao</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\TreeHash.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="copy_storage.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

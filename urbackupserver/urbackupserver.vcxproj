@@ -304,6 +304,7 @@
     <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="cmdline_preprocessor.cpp" />
     <ClCompile Include="ContinuousBackup.cpp" />
+    <ClCompile Include="copy_storage.cpp" />
     <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
@@ -412,6 +413,7 @@
     <ClInclude Include="Backup.h" />
     <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="ContinuousBackup.h" />
+    <ClInclude Include="copy_storage.h" />
     <ClInclude Include="create_files_cache.h" />
     <ClInclude Include="dao\ServerBackupDao.h" />
     <ClInclude Include="dao\ServerCleanupDAO.h" />

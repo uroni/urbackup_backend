@@ -110,10 +110,10 @@ int64 os_to_windows_filetime(int64 unix_time);
 
 bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified, int64 accessed);
 
-bool copy_file(const std::string &src, const std::string &dst, bool flush = false);
+bool copy_file(const std::string &src, const std::string &dst, bool flush = false, std::string* error_str=NULL);
 
 class IFile;
-bool copy_file(IFile *fsrc, IFile *fdst);
+bool copy_file(IFile *fsrc, IFile *fdst, std::string* error_str = NULL);
 
 bool os_path_absolute(const std::string& path);
 

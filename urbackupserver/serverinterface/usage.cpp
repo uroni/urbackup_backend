@@ -47,7 +47,7 @@ namespace
 		void operator()(void)
 		{
 			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-			ScopedProcess statistics_recalc(std::string(), sa_recalculate_statistics, std::string(), logid, false);
+			ScopedProcess statistics_recalc(std::string(), sa_recalculate_statistics, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 			ServerCleanupThread::disableUpdateStats();
 			ScopedEnableStats reenable_stats_update;

@@ -192,14 +192,14 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
     return tmp;
 }
 
-void removeFile(const std::string &path)
+bool removeFile(const std::string &path)
 {
-    unlink((path).c_str());
+    return unlink((path).c_str())==0;
 }
 
-void moveFile(const std::string &src, const std::string &dst)
+bool moveFile(const std::string &src, const std::string &dst)
 {
-    rename((src).c_str(), (dst).c_str() );
+    return rename((src).c_str(), (dst).c_str() )==0;
 }
 
 bool os_remove_symlink_dir(const std::string &path)
@@ -740,22 +740,39 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool copy_file(const std::string &src, const std::string &dst, bool flush)
+bool copy_file(const std::string &src, const std::string &dst, bool flush, std::string* error_str)
 {
-    IFile *fsrc=Server->openFile(src, MODE_READ);
-	if(fsrc==NULL) return false;
+	IFile *fsrc=Server->openFile(src, MODE_READ);
+	if (fsrc == NULL)
+	{
+		if (error_str != NULL)
+		{
+			*error_str = os_last_error_str();
+		}
+		return false;
+	}
 	IFile *fdst=Server->openFile(dst, MODE_WRITE);
 	if(fdst==NULL)
 	{
+		if (error_str != NULL)
+		{
+			*error_str = os_last_error_str();
+		}
 		Server->destroy(fsrc);
 		return false;
 	}
 
 	bool copy_ok = copy_file(fsrc, fdst);
-	
+
 	if (copy_ok && flush)
 	{
 		copy_ok = fdst->Sync();
+
+		if (!copy_ok
+			&& error_str!=NULL)
+		{
+			*error_str = os_last_error_str();
+		}
 	}
 
 	Server->destroy(fsrc);
@@ -764,13 +781,13 @@ bool copy_file(const std::string &src, const std::string &dst, bool flush)
 	return copy_ok;
 }
 
-bool copy_file(IFile *fsrc, IFile *fdst)
+bool copy_file(IFile *fsrc, IFile *fdst, std::string* error_str)
 {
 	if(fsrc==NULL || fdst==NULL)
 	{
 		return false;
 	}
-	
+
 	if(!fsrc->Seek(0))
 	{
 		return false;
@@ -788,6 +805,10 @@ bool copy_file(IFile *fsrc, IFile *fdst)
 	{
 		if(has_error)
 		{
+			if (error_str != NULL)
+			{
+				*error_str = os_last_error_str();
+			}
 			break;
 		}
 		
@@ -797,6 +818,10 @@ bool copy_file(IFile *fsrc, IFile *fdst)
 
 			if(has_error)
 			{
+				if (error_str != NULL)
+				{
+					*error_str = os_last_error_str();
+				}
 				break;
 			}
 		}

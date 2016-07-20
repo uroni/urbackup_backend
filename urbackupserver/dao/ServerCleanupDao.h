@@ -35,6 +35,7 @@ public:
 		int id;
 		std::string backuptime;
 		std::string path;
+		int done;
 	};
 	struct SHistItem
 	{
@@ -55,6 +56,7 @@ public:
 		std::string backuptime;
 		std::string path;
 		std::string letter;
+		int complete;
 	};
 	struct SImageLetter
 	{

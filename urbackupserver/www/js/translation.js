@@ -1464,7 +1464,8 @@ translations.en = {
 "completed_with_issues": "Completed with issues",
 "not_supported": "Not supported",
 "tPreparing restore. Please be patient...": "Preparing restore. Please be patient...",
-"tDo not fail backups in case of hash mismatches or read errors": "Do not fail backups in case of hash mismatches or read errors"
+"tDo not fail backups in case of hash mismatches or read errors": "Do not fail backups in case of hash mismatches or read errors",
+"action_16": "Storage migration"
 }
 translations.en_US = {
 "tInfos": "About"

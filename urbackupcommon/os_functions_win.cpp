@@ -870,7 +870,8 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 	BOOL b = DeviceIoControl(hJunc, FSCTL_GET_REPARSE_POINT, NULL, 0, &buffer[0], static_cast<DWORD>(buffer.size()), &bytes_returned, NULL);
 	if(!b)
 	{
-		if(GetLastError()!= ERROR_INSUFFICIENT_BUFFER)
+		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER
+			&& GetLastError() != ERROR_MORE_DATA)
 		{
 			CloseHandle(hJunc);
 			return false;
@@ -886,7 +887,8 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 
 	if(!b)
 	{
-		buffer.resize(reparse_buffer->ReparseDataLength);
+		buffer.resize(reparse_buffer->ReparseDataLength+ REPARSE_GUID_DATA_BUFFER_HEADER_SIZE+10);
+		reparse_buffer = reinterpret_cast<const REPARSE_DATA_BUFFER*>(buffer.data());
 		b = DeviceIoControl(hJunc, FSCTL_GET_REPARSE_POINT, NULL, 0, &buffer[0], static_cast<DWORD>(buffer.size()), &bytes_returned, NULL);
 		if(!b)
 		{
@@ -1112,7 +1114,7 @@ void* os_start_transaction()
 	HANDLE htrans = CreateTransaction(NULL, NULL, 0, 0, 0, 0, NULL);
 	if(htrans==INVALID_HANDLE_VALUE)
 	{
-		Log("Creating transaction failed. ec="+convert((int)GetLastError), LL_WARNING);
+		Log("Creating transaction failed. ec="+convert((int)GetLastError()), LL_WARNING);
 		return NULL;
 	}
 	return htrans;
@@ -1131,7 +1133,7 @@ bool os_finish_transaction(void* transaction)
 	BOOL b = CommitTransaction(transaction);
 	if(!b)
 	{
-		Log("Commiting transaction failed. ec="+convert((int)GetLastError), LL_ERROR);
+		Log("Commiting transaction failed. ec="+convert((int)GetLastError()), LL_ERROR);
 		CloseHandle(transaction);
 		return false;
 	}
@@ -1198,13 +1200,24 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool copy_file(const std::string &src, const std::string &dst, bool flush)
+bool copy_file(const std::string &src, const std::string &dst, bool flush, std::string* error_str)
 {
 	IFile *fsrc=Server->openFile(src, MODE_READ);
-	if(fsrc==NULL) return false;
+	if (fsrc == NULL)
+	{
+		if (error_str != NULL)
+		{
+			*error_str = os_last_error_str();
+		}
+		return false;
+	}
 	IFile *fdst=Server->openFile(dst, MODE_WRITE);
 	if(fdst==NULL)
 	{
+		if (error_str != NULL)
+		{
+			*error_str = os_last_error_str();
+		}
 		Server->destroy(fsrc);
 		return false;
 	}
@@ -1214,6 +1227,12 @@ bool copy_file(const std::string &src, const std::string &dst, bool flush)
 	if (copy_ok && flush)
 	{
 		copy_ok = fdst->Sync();
+
+		if (!copy_ok
+			&& error_str!=NULL)
+		{
+			*error_str = os_last_error_str();
+		}
 	}
 
 	Server->destroy(fsrc);
@@ -1222,7 +1241,7 @@ bool copy_file(const std::string &src, const std::string &dst, bool flush)
 	return copy_ok;
 }
 
-bool copy_file(IFile *fsrc, IFile *fdst)
+bool copy_file(IFile *fsrc, IFile *fdst, std::string* error_str)
 {
 	if(fsrc==NULL || fdst==NULL)
 	{
@@ -1246,6 +1265,10 @@ bool copy_file(IFile *fsrc, IFile *fdst)
 	{
 		if(has_error)
 		{
+			if (error_str != NULL)
+			{
+				*error_str = os_last_error_str();
+			}
 			break;
 		}
 		
@@ -1255,6 +1278,10 @@ bool copy_file(IFile *fsrc, IFile *fdst)
 
 			if(has_error)
 			{
+				if (error_str != NULL)
+				{
+					*error_str = os_last_error_str();
+				}
 				break;
 			}
 		}

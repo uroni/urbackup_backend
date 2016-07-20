@@ -42,6 +42,7 @@
 #include <algorithm>
 #include "create_files_index.h"
 #include "WalCheckpointThread.h"
+#include "copy_storage.h"
 #include <assert.h>
 #include <set>
 
@@ -104,7 +105,7 @@ void ServerCleanupThread::operator()(void)
 		case ECleanupAction_FreeMinspace:
 			{
 				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false);
+				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
@@ -130,6 +131,8 @@ void ServerCleanupThread::operator()(void)
 
 	int64 last_cleanup=0;
 
+	Server->waitForStartupComplete();
+
 #ifndef _DEBUG
 	{
 		IScopedLock lock(mutex);
@@ -142,6 +145,26 @@ void ServerCleanupThread::operator()(void)
 		}
 	}
 #endif
+
+	if (FileExists("urbackup/migrate_storage_to"))
+	{
+		std::string migrate_storage_to = trim(getFile("urbackup/migrate_storage_to"));
+		if (!migrate_storage_to.empty())
+		{
+			while (true)
+			{
+				ScopedActiveThread sat;
+				IScopedLock lock(a_mutex);
+
+				if (copy_storage(migrate_storage_to) == 0)
+				{
+					writestring("done", "urbackup/migrate_storage_to.done");
+				}
+
+				Server->wait(10*60000);
+			}
+		}
+	}
 
 	{
 		ScopedActiveThread sat;
@@ -157,7 +180,7 @@ void ServerCleanupThread::operator()(void)
 
 			{
 				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
+				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
 				do_cleanup();
@@ -269,7 +292,7 @@ void ServerCleanupThread::operator()(void)
 
 				{
 					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false);
+					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 					deletePendingClients();
 					do_cleanup();
@@ -1574,7 +1597,7 @@ bool ServerCleanupThread::backup_database(void)
 		bool integrity_ok = true;
 		{
 			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-			ScopedProcess check_integrity(std::string(), sa_check_integrity, std::string(), logid, false);
+			ScopedProcess check_integrity(std::string(), sa_check_integrity, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
 			{
@@ -1610,7 +1633,7 @@ bool ServerCleanupThread::backup_database(void)
 				IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
 
 				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
-				ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false);
+				ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false, LOG_CATEGORY_CLEANUP);
 
 				ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
 

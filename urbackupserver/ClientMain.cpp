@@ -1813,7 +1813,7 @@ void ClientMain::checkClientVersion(void)
 		std::string r=sendClientMessage("VERSION "+version, "Sending version to client failed", 10000);
 		if(r=="update")
 		{
-			ScopedProcess process(clientname, sa_update, version, logid_t(), false);
+			ScopedProcess process(clientname, sa_update, version, logid, false);
 
 			std::string signature_file = "urbackup/UrBackupUpdate.sig2";
 			std::string installer_file = "urbackup/UrBackupUpdate.exe";
