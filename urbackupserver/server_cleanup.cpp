@@ -80,6 +80,7 @@ void ServerCleanupThread::destroyMutex(void)
 ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
 	: cleanup_action(cleanup_action), cleanupdao(NULL), backupdao(NULL)
 {
+	logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 }
 
 ServerCleanupThread::~ServerCleanupThread(void)
@@ -104,7 +105,6 @@ void ServerCleanupThread::operator()(void)
 			break;
 		case ECleanupAction_FreeMinspace:
 			{
-				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
@@ -179,7 +179,7 @@ void ServerCleanupThread::operator()(void)
 			fileindex.reset(create_lmdb_files_index());
 
 			{
-				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 				ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
@@ -302,7 +302,7 @@ void ServerCleanupThread::operator()(void)
 				fileindex.reset(create_lmdb_files_index());
 
 				{
-					logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+					logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 					ScopedProcess nightly_cleanup(std::string(), sa_nightly_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 					deletePendingClients();
@@ -395,21 +395,21 @@ void ServerCleanupThread::do_cleanup(void)
 			int64 amount=cleanup_amount(server_settings.getSettings()->global_soft_fs_quota, db);
 			if(amount<total_space)
 			{
-				Server->Log("Space to free: "+PrettyPrintBytes(total_space-amount), LL_INFO);
+				ServerLogger::Log(logid, "Space to free: "+PrettyPrintBytes(total_space-amount), LL_INFO);
 				cleanup_images(total_space-amount);
 				cleanup_files(total_space-amount);
 			}
 		}
 		else
 		{
-			Server->Log("Error getting total used space of backup folder", LL_ERROR);
+			ServerLogger::Log(logid, "Error getting total used space of backup folder", LL_ERROR);
 		}
 	}
 
-	Server->Log("Updating statistics...", LL_INFO);
+	ServerLogger::Log(logid, "Updating statistics...", LL_INFO);
 	ServerUpdateStats sus;
 	sus();
-	Server->Log("Done updating statistics.", LL_INFO);
+	ServerLogger::Log(logid, "Done updating statistics.", LL_INFO);
 
 	cleanup_other();
 
@@ -435,7 +435,7 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	
 	if(minspace>0)
 	{
-		Server->Log("Space to free: "+PrettyPrintBytes(minspace), LL_INFO);
+		ServerLogger::Log(logid, "Space to free: "+PrettyPrintBytes(minspace), LL_INFO);
 	}
 
 	removeerr.clear();
@@ -454,10 +454,10 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 		db->Write("PRAGMA journal_mode=WAL");
 	}
 
-	Server->Log("Updating statistics...", LL_INFO);
+	ServerLogger::Log(logid, "Updating statistics...", LL_INFO);
 	ServerUpdateStats sus;
 	sus();
-	Server->Log("Done updating statistics.", LL_INFO);
+	ServerLogger::Log(logid, "Done updating statistics.", LL_INFO);
 
 	db->destroyAllQueries();
 
@@ -714,18 +714,18 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 		int64 available_space=os_free_space(os_file_prefix(path));
 		if(available_space==-1)
 		{
-			Server->Log("Error getting free space for path \""+path+"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error getting free space for path \""+path+"\"", LL_ERROR);
 			return -1;
 		}
 		else
 		{
 			if(available_space>minspace)
 			{
-				Server->Log("Enough free space now.", LL_DEBUG);
+				ServerLogger::Log(logid, "Enough free space now.", LL_DEBUG);
 				return 1;
 			}
 		}
-		Server->Log("Free space: "+PrettyPrintBytes(available_space), LL_DEBUG);
+		ServerLogger::Log(logid, "Free space: "+PrettyPrintBytes(available_space), LL_DEBUG);
 	}
 	return 0;
 }
@@ -734,7 +734,7 @@ bool ServerCleanupThread::deleteAndTruncateFile(std::string path)
 {
 	if(!Server->deleteFile(os_file_prefix(path)))
 	{
-		Server->Log("Deleting " + path + " failed. " + os_last_error_str() + " . Truncating it instead.", LL_INFO);
+		ServerLogger::Log(logid, "Deleting " + path + " failed. " + os_last_error_str() + " . Truncating it instead.", LL_WARNING);
 		os_file_truncate(os_file_prefix(path), 0);
 		return false;
 	}
@@ -804,7 +804,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 
 	int backupid;
 	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups max="+convert(max_image_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_image_num)+" full image backups max="+convert(max_image_full), LL_DEBUG);
 	while(full_image_num>max_image_full
 		&& full_image_num>0)
 	{
@@ -812,17 +812,17 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
-			Server->Log("Deleting full image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			ServerLogger::Log(logid, "Deleting full image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 
 		if (isImageLockedFromCleanup(backupid))
 		{
-			Server->Log("Backup image is locked from cleanup");
+			ServerLogger::Log(logid, "Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if(findUncompleteImageRef(backupid) )
 		{		
-			Server->Log("Backup image has dependent image which is not complete");
+			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 		else
@@ -856,7 +856,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		max_image_incr=settings.getSettings()->min_image_incr;
 
 	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
-	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups max="+convert(max_image_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_image_num)+" incremental image backups max="+convert(max_image_incr), LL_DEBUG);
 	while(incr_image_num>max_image_incr
 		&& incr_image_num>0)
 	{
@@ -864,17 +864,17 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
-			Server->Log("Deleting incremental image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			ServerLogger::Log(logid, "Deleting incremental image backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+", letter="+res_info.letter+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 
 		if (isImageLockedFromCleanup(backupid))
 		{
-			Server->Log("Backup image is locked from cleanup");
+			ServerLogger::Log(logid, "Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
 		else if (findUncompleteImageRef(backupid))
 		{
-			Server->Log("Backup image has dependent image which is not complete");
+			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
 			notit.push_back(backupid);
 		}
 		else
@@ -911,10 +911,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	{
 		if (!isImageLockedFromCleanup(incomplete_images[i].id))
 		{
-			Server->Log("Deleting incomplete image file \"" + incomplete_images[i].path + "\"...", LL_INFO);
+			ServerLogger::Log(logid, "Deleting incomplete image file \"" + incomplete_images[i].path + "\"...", LL_INFO);
 			if (!deleteImage(incomplete_images[i].clientname, incomplete_images[i].path))
 			{
-				Server->Log("Deleting incomplete image \"" + incomplete_images[i].path + "\" failed.", LL_WARNING);
+				ServerLogger::Log(logid, "Deleting incomplete image \"" + incomplete_images[i].path + "\" failed.", LL_WARNING);
 			}
 			cleanupdao->removeImage(incomplete_images[i].id);
 		}
@@ -973,7 +973,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 		{
 			if(max_removable_incr_images(*settings, refs[i].id)<=0)
 			{
-				Server->Log("Cannot delete image because incremental image backups referencing this image are not allowed to be deleted", LL_INFO);
+				ServerLogger::Log(logid, "Cannot delete image because incremental image backups referencing this image are not allowed to be deleted", LL_INFO);
 				return false;
 			}
 
@@ -990,7 +990,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 
 		if(!refs.empty())
 		{
-			Server->Log("Cannot delete image because incremental image backups referencing this image exist", LL_INFO);
+			ServerLogger::Log(logid, "Cannot delete image because incremental image backups referencing this image exist", LL_INFO);
 			return false;
 		}
 	}
@@ -1012,7 +1012,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 	ServerCleanupDao::CondString res_clientname = cleanupdao->getImageClientname(backupid);
 	if(res.exists && res_clientname.exists)
 	{
-		Server->Log("Deleting image backup ( id="+convert(backupid)+", path="+res.value+" ) ...", LL_INFO);
+		ServerLogger::Log(logid, "Deleting image backup ( id="+convert(backupid)+", path="+res.value+" ) ...", LL_INFO);
 
 		_i64 stat_id;
 		if(update_stat)
@@ -1030,7 +1030,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 		}
 		else
 		{
-			Server->Log("Deleting image backup failed.", LL_INFO);
+			ServerLogger::Log(logid, "Deleting image backup failed.", LL_INFO);
 			ret=false;
 		}
 
@@ -1129,7 +1129,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 
 	int backupid;
 	int full_file_num=(int)getFilesFullNum(clientid, backupid);
-	Server->Log("Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups max="+convert(max_file_full), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(full_file_num)+" full file backups max="+convert(max_file_full), LL_DEBUG);
 	while(full_file_num>max_file_full
 		&& full_file_num>0)
 	{
@@ -1137,12 +1137,12 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
-			Server->Log("Deleting full file backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			ServerLogger::Log(logid, "Deleting full file backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
 		filebid=backupid;
 				
-		Server->Log("Done.", LL_INFO);
+		ServerLogger::Log(logid, "Done.", LL_INFO);
 
 		if(b)
 		{
@@ -1153,7 +1153,7 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	}
 
 	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-	Server->Log("Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups max="+convert(max_file_incr), LL_DEBUG);
+	ServerLogger::Log(logid, "Client with id="+convert(clientid)+" has "+convert(incr_file_num)+" incremental file backups max="+convert(max_file_incr), LL_DEBUG);
 	while(incr_file_num>max_file_incr
 		&& incr_file_num>0)
 	{
@@ -1161,12 +1161,12 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
-			Server->Log("Deleting incremental file backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
+			ServerLogger::Log(logid, "Deleting incremental file backup ( id="+convert(res_info.id)+", backuptime="+res_info.backuptime+", path="+res_info.path+" ) from client \""+clientname.value+"\" ( id="+convert(clientid)+" ) ...", LL_INFO);
 		}
 		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
 		filebid=backupid;
 
-		Server->Log("Done.", LL_INFO);
+		ServerLogger::Log(logid, "Done.", LL_INFO);
 
 		if(b)
 		{
@@ -1274,7 +1274,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 	ServerCleanupDao::CondString cond_clientname=cleanupdao->getClientName(clientid);
 	if(!cond_clientname.exists)
 	{
-		Server->Log("Error getting clientname in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error getting clientname in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 	std::string &clientname=cond_clientname.value;
@@ -1283,7 +1283,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 	if(!cond_backuppath.exists)
 	{
-		Server->Log("Error getting backuppath in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error getting backuppath in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 
@@ -1291,19 +1291,19 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 	if(backuppath.empty())
 	{
-		Server->Log("Error backuppath empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error backuppath empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 
 	if(backupfolder.empty())
 	{
-		Server->Log("Error backupfolder empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error backupfolder empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 
 	if(clientname.empty())
 	{
-		Server->Log("Error clientname empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		ServerLogger::Log(logid, "Error clientname empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 
@@ -1321,7 +1321,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
 			{
-				Server->Log("Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
+				ServerLogger::Log(logid, "Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
 				b=truncate_files_recurisve(os_file_prefix(path));
 
 				if(b)
@@ -1348,20 +1348,20 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 			{
 			    del=true;
 			}
-			Server->Log("Warning: Directory doesn't exist: \""+path+"\"", LL_WARNING);
+			ServerLogger::Log(logid, "Warning: Directory doesn't exist: \""+path+"\"", LL_WARNING);
 		}
 		else
 		{
 			del=false;
 			removeerr.push_back(backupid);
-			Server->Log("Error removing directory \""+path+"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error removing directory \""+path+"\"", LL_ERROR);
 			err=true;
 		}
 	}
 	if(os_directory_exists(os_file_prefix(path)) )
 	{
 		del=false;
-		Server->Log("Directory still exists. Deleting backup failed. Path: \""+path+"\"", LL_ERROR);
+		ServerLogger::Log(logid, "Directory still exists. Deleting backup failed. Path: \""+path+"\"", LL_ERROR);
 		err=true;
 		removeerr.push_back(backupid);
 	}
@@ -1380,7 +1380,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 void ServerCleanupThread::removeClient(int clientid)
 {
 	std::string clientname=cleanupdao->getClientName(clientid).value;
-	Server->Log("Deleting client with id \""+convert(clientid)+"\" name \""+clientname+"\"", LL_INFO);
+	ServerLogger::Log(logid, "Deleting client with id \""+convert(clientid)+"\" name \""+clientname+"\"", LL_INFO);
 	std::vector<ServerCleanupDao::SImageBackupInfo> res_images;
 	//remove image backups
 	do
@@ -1390,7 +1390,7 @@ void ServerCleanupThread::removeClient(int clientid)
 		if(!res_images.empty())
 		{
 			int backupid=res_images[0].id;
-			Server->Log("Removing image with id \""+convert(backupid)+"\"", LL_INFO);
+			ServerLogger::Log(logid, "Removing image with id \""+convert(backupid)+"\"", LL_INFO);
 			removeImage(backupid, NULL, true, true, false, false);
 		}
 	}while(!res_images.empty());
@@ -1405,20 +1405,23 @@ void ServerCleanupThread::removeClient(int clientid)
 		if(!res_filebackups.empty())
 		{
 			int backupid=res_filebackups[0];
-			Server->Log("Removing file backup with id \""+convert(backupid)+"\"", LL_INFO);
+			ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\"", LL_INFO);
 			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, true);
 			if(b)
-				Server->Log("Removing file backup with id \""+convert(backupid)+"\" successfull.", LL_INFO);
+				ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\" successfull.", LL_INFO);
 			else
-				Server->Log("Removing file backup with id \""+convert(backupid)+"\" failed.", LL_ERROR);
+				ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\" failed.", LL_ERROR);
 		}
 	}while(!res_filebackups.empty());
 
 	//Update stats
 	{
+		ServerLogger::Log(logid, "Updating statistics...", LL_INFO);
 		ServerUpdateStats sus;
 		sus();
 	}
+
+	ServerLogger::Log(logid, "Deleting database table entries of client..", LL_INFO);
 
 	//Remove logentries
 	IQuery *q=db->Prepare("DELETE FROM logs WHERE clientid=?", false);
@@ -1474,7 +1477,7 @@ void ServerCleanupThread::deletePendingClients(void)
 		SStatus status=ServerStatus::getStatus(res[i]["name"]);
 		if(status.has_status==true)
 		{
-			Server->Log("Cannot remove client \""+res[i]["name"]+"\" ( with id "+res[i]["id"]+"): Client is online or backup is in progress", LL_WARNING);
+			ServerLogger::Log(logid, "Cannot remove client \""+res[i]["name"]+"\" ( with id "+res[i]["id"]+"): Client is online or backup is in progress", LL_WARNING);
 			continue;
 		}
 
@@ -1617,7 +1620,7 @@ bool ServerCleanupThread::backup_database(void)
 
 		bool integrity_ok = true;
 		{
-			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+			logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 			ScopedProcess check_integrity(std::string(), sa_check_integrity, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 			for (size_t i = 0; i < copy_backup_ids.size(); ++i)
@@ -1653,7 +1656,7 @@ bool ServerCleanupThread::backup_database(void)
 			{
 				IDatabase* copy_db = Server->getDatabase(Server->getThreadID(), copy_backup_ids[i]);
 
-				logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+				logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 				ScopedProcess database_backup(std::string(), sa_backup_database, copy_backup[i], logid, false, LOG_CATEGORY_CLEANUP);
 
 				ServerLogger::Log(logid, "Starting database backup of " + copy_backup[i] + "...", LL_INFO);
@@ -1701,7 +1704,7 @@ bool ServerCleanupThread::backup_database(void)
 		}
 		else
 		{
-			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
+			ServerLogger::Log(logid, "Database integrity check failed. Skipping Database backup.", LL_ERROR);
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
 			ClientMain::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
 			return false;
@@ -1764,7 +1767,7 @@ bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 			bool b=os_file_truncate(path+os_file_sep()+files[i].name, 0);
 			if(!b)
 			{
-				Server->Log("Truncating file \""+path+os_file_sep()+files[i].name+"\" failed. Stopping truncating.", LL_ERROR);
+				ServerLogger::Log(logid, "Truncating file \""+path+os_file_sep()+files[i].name+"\" failed. Stopping truncating.", LL_ERROR);
 				return false;
 			}
 		}
@@ -1800,18 +1803,18 @@ void ServerCleanupThread::enforce_quotas(void)
 
 	for(size_t i=0;i<clients.size();++i)
 	{
-		Server->Log("Enforcing quota for client \"" + (clients[i].name)+ "\" (id="+convert(clients[i].id)+")", LL_INFO);
+		ServerLogger::Log(logid, "Enforcing quota for client \"" + (clients[i].name)+ "\" (id="+convert(clients[i].id)+")", LL_INFO);
 		std::ostringstream log;
 		log << "Quota enforcement report for client \"" << (clients[i].name) << "\" (id=" << clients[i].id  << ")" << std::endl;
 
 		if(!enforce_quota(clients[i].id, log))
 		{
 			ClientMain::sendMailToAdmins("Quota enforcement failed", log.str());
-			Server->Log(log.str(), LL_ERROR);
+			ServerLogger::Log(logid, log.str(), LL_ERROR);
 		}
 		else
 		{
-			Server->Log(log.str(), LL_DEBUG);
+			ServerLogger::Log(logid, log.str(), LL_DEBUG);
 		}
 	}
 
@@ -2129,23 +2132,23 @@ void ServerCleanupThread::delete_incomplete_file_backups( void )
 	for(size_t i=0;i<incomplete_file_backups.size();++i)
 	{
 		const ServerCleanupDao::SIncompleteFileBackup& backup = incomplete_file_backups[i];
-		Server->Log("Deleting incomplete file backup ( id="+convert(backup.id)+", backuptime="+backup.backuptime+", path="+backup.path+" ) from client \""+backup.clientname+"\" ( id="+convert(backup.clientid)+" ) ...", LL_INFO);
+		ServerLogger::Log(logid, "Deleting incomplete file backup ( id="+convert(backup.id)+", backuptime="+backup.backuptime+", path="+backup.path+" ) from client \""+backup.clientname+"\" ( id="+convert(backup.clientid)+" ) ...", LL_INFO);
 		if(!deleteFileBackup(settings.getSettings()->backupfolder, backup.clientid, backup.id))
 		{
-			Server->Log("Error deleting file backup", LL_WARNING);
+			ServerLogger::Log(logid, "Error deleting file backup", LL_WARNING);
 		}
 		else
 		{
-			Server->Log("done.");
+			ServerLogger::Log(logid, "done.");
 		}
 	}
 }
 
 void ServerCleanupThread::rewrite_history(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping)
 {
-	Server->Log("Reading history...", LL_DEBUG);
+	ServerLogger::Log(logid, "Reading history...", LL_DEBUG);
 	std::vector<ServerCleanupDao::SHistItem> daily_history = cleanupdao->getClientHistory(back_start, back_stop, date_grouping);
-	Server->Log(convert(daily_history.size()) + " history items read", LL_DEBUG);
+	ServerLogger::Log(logid, convert(daily_history.size()) + " history items read", LL_DEBUG);
 
 
 	db_results foreign_keys;
@@ -2159,11 +2162,11 @@ void ServerCleanupThread::rewrite_history(const std::string& back_start, const s
 		DBScopedDetach detachDbs(db);
 		DBScopedWriteTransaction transaction(db);
 
-		Server->Log("Deleting history...", LL_DEBUG);
+		ServerLogger::Log(logid, "Deleting history...", LL_DEBUG);
 		cleanupdao->deleteClientHistoryIds(back_start, back_stop);
 		cleanupdao->deleteClientHistoryItems(back_start, back_stop);
 
-		Server->Log("Writing history...", LL_DEBUG);
+		ServerLogger::Log(logid, "Writing history...", LL_DEBUG);
 		for(size_t i=0;i<daily_history.size();++i)
 		{
 			const ServerCleanupDao::SHistItem& hist_item = daily_history[i];
@@ -2187,11 +2190,11 @@ void ServerCleanupThread::rewrite_history(const std::string& back_start, const s
 
 void ServerCleanupThread::cleanup_client_hist()
 {
-	Server->Log("Rewriting daily history...", LL_INFO);
+	ServerLogger::Log(logid, "Rewriting daily history...", LL_INFO);
 	rewrite_history("-2 days", "-2 month", "%Y-%m-%d");
-	Server->Log("Rewriting monthly history...", LL_INFO);
+	ServerLogger::Log(logid, "Rewriting monthly history...", LL_INFO);
 	rewrite_history("-2 month", "-4 years", "%Y-%m");
-	Server->Log("Rewriting yearly history...", LL_INFO);
+	ServerLogger::Log(logid, "Rewriting yearly history...", LL_INFO);
 	rewrite_history("-2 years", "-1000 years", "%Y");
 }
 
@@ -2221,12 +2224,12 @@ void ServerCleanupThread::cleanup_system_images(int clientid, std::string client
 			if (!cleanupdao->getParentImageBackup(res_image_backups[j].id).exists
 				&& !isImageLockedFromCleanup(res_image_backups[j].id) )
 			{
-				Server->Log("Image backup [id=" + convert(res_image_backups[j].id) + " path=" 
+				ServerLogger::Log(logid, "Image backup [id=" + convert(res_image_backups[j].id) + " path="
 					+ res_image_backups[j].path + " clientname=" + clientname 
 					+ "] is a system reserved or EFI system partition image older than 24h and has no parent image. Deleting it.", LL_INFO);
 				if (!removeImage(res_image_backups[j].id, &settings, false, false, true, false))
 				{
-					Server->Log("Could not remove image backup [id=" + convert(res_image_backups[j].id) + " path=" + res_image_backups[j].path + " clientname=" + clientname + "]", LL_ERROR);
+					ServerLogger::Log(logid, "Could not remove image backup [id=" + convert(res_image_backups[j].id) + " path=" + res_image_backups[j].path + " clientname=" + clientname + "]", LL_ERROR);
 				}
 			}
 		}
@@ -2235,22 +2238,22 @@ void ServerCleanupThread::cleanup_system_images(int clientid, std::string client
 
 void ServerCleanupThread::cleanup_other()
 {
-	Server->Log("Deleting old logs...", LL_INFO);
+	ServerLogger::Log(logid, "Deleting old logs...", LL_INFO);
 	cleanupdao->cleanupBackupLogs();
 	cleanupdao->cleanupAuthLog();
-	Server->Log("Done deleting old logs", LL_INFO);
+	ServerLogger::Log(logid, "Done deleting old logs", LL_INFO);
 
-	Server->Log("Cleaning history...", LL_INFO);
+	ServerLogger::Log(logid, "Cleaning history...", LL_INFO);
 	cleanup_client_hist();
-	Server->Log("Done cleaning history", LL_INFO);
+	ServerLogger::Log(logid, "Done cleaning history", LL_INFO);
 
-	Server->Log("Cleaning deleted backups history...", LL_INFO);
+	ServerLogger::Log(logid, "Cleaning deleted backups history...", LL_INFO);
 	cleanupLastActs();
-	Server->Log("Done cleaning deleted backups history.", LL_INFO);
+	ServerLogger::Log(logid, "Done cleaning deleted backups history.", LL_INFO);
 
-	Server->Log("Cleaning up client lists...", LL_INFO);
+	ServerLogger::Log(logid, "Cleaning up client lists...", LL_INFO);
 	cleanup_clientlists();
-	Server->Log("Done cleaning up client lists.", LL_INFO);
+	ServerLogger::Log(logid, "Done cleaning up client lists.", LL_INFO);
 }
 
 void ServerCleanupThread::removeFileBackupSql( int backupid )
@@ -2370,7 +2373,7 @@ bool ServerCleanupThread::backup_clientlists()
 			{
 				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name), os_file_prefix(bfolder + os_file_sep() + files[i].name+"~"), true))
 				{
-					Server->Log("Error backing up "+files[i].name, LL_ERROR);
+					ServerLogger::Log(logid, "Error backing up "+files[i].name, LL_ERROR);
 					has_error=true;
 				}
 			}
@@ -2449,7 +2452,7 @@ bool ServerCleanupThread::backup_ident()
 	{
 		if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + filelist[i]), os_file_prefix(bfolder + os_file_sep() + filelist[i]+"~"), true))
 		{
-			Server->Log("Error backing up "+filelist[i], LL_ERROR);
+			ServerLogger::Log(logid, "Error backing up "+filelist[i], LL_ERROR);
 			has_error=true;
 		}
 	}

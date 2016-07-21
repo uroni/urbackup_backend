@@ -11,6 +11,7 @@
 #include <memory>
 #include <set>
 #include "FileIndex.h"
+#include "server_log.h"
 
 class ServerSettings;
 
@@ -187,6 +188,8 @@ private:
 	std::auto_ptr<ServerBackupDao> backupdao;
 	std::auto_ptr<ServerFilesDao> filesdao;
 	std::auto_ptr<FileIndex> fileindex;
+
+	logid_t logid;
 
 	static IMutex* cleanup_lock_mutex;
 	static std::set<int> locked_images;
