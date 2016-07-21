@@ -191,14 +191,25 @@ void ServerCleanupThread::operator()(void)
 			filesdao.reset();
 			fileindex.reset();
 
-			setClientlistDeletionAllowed(false);
 
-			if(backup_database() && backup_clientlists() && backup_ident() )
 			{
-				ren_files_backupfolder();
-			}
+				ServerSettings settings(db);
+				if (settings.getSettings()->backupfolder != Server->getServerWorkingDir())
+				{
+					setClientlistDeletionAllowed(false);
 
-			setClientlistDeletionAllowed(true);
+					if (backup_database() && backup_clientlists() && backup_ident())
+					{
+						ren_files_backupfolder();
+					}
+
+					setClientlistDeletionAllowed(true);
+				}
+				else
+				{
+					Server->Log("Not running database backup because backupfolder=working dir", LL_ERROR);
+				}
+			}
 		}
 
 		if( settings->getValue("download_client", "true")=="true" )
@@ -305,14 +316,24 @@ void ServerCleanupThread::operator()(void)
 				filesdao.reset();
 				fileindex.reset();
 
-				setClientlistDeletionAllowed(false);
-
-				if(backup_database() && backup_clientlists() && backup_ident() )
 				{
-					ren_files_backupfolder();
-				}
+					ServerSettings settings(db);
+					if (settings.getSettings()->backupfolder != Server->getServerWorkingDir())
+					{
+						setClientlistDeletionAllowed(false);
 
-				setClientlistDeletionAllowed(true);
+						if (backup_database() && backup_clientlists() && backup_ident())
+						{
+							ren_files_backupfolder();
+						}
+
+						setClientlistDeletionAllowed(true);
+					}
+					else
+					{
+						Server->Log("Not running database backup because backupfolder=working dir", LL_ERROR);
+					}
+				}
 
 				Server->destroy(settings);
 
