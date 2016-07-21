@@ -838,7 +838,7 @@ int action_mount_vhd(std::vector<std::string> args)
 		if(FileExists(tmpmountpoint+"/volume"))
 		{
 			std::cout << "Mounting..." << std::endl;
-			int rc = system(("mount -v -o loop,ro \""+tmpmountpoint+"/volume\" \""+mountpoint_arg.getValue()).c_str());
+			int rc = system(("mount -v -o loop,ro \""+tmpmountpoint+"/volume\" \""+mountpoint_arg.getValue()+"\"").c_str());
 			if(rc!=0)
 			{
 				std::cout << "Mounting failed." << std::endl;
