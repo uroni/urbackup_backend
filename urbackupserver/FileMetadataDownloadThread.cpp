@@ -962,6 +962,9 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 		metadata_size+=metadata_id_size;
 
+		stream_id.dwStreamNameSize = little_endian(stream_id.dwStreamNameSize);
+		stream_id.Size = little_endian(stream_id.Size);
+
 		if(stream_id.dwStreamNameSize>0)
 		{
 			std::vector<char> stream_name;
