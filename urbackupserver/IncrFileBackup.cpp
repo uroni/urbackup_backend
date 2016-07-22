@@ -672,7 +672,8 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(dir_already_exists)
 								{
-									if(!os_remove_symlink_dir(backuppath+local_curr_os_path))
+									if(!os_remove_symlink_dir(os_file_prefix(backuppath+local_curr_os_path))
+										&& !os_remove_dir(os_file_prefix(backuppath + local_curr_os_path)) )
 									{
 										ServerLogger::Log(logid, "Could not remove symbolic link at \""+backuppath+local_curr_os_path+"\" " + systemErrorInfo(), LL_ERROR);
 										c_has_error=true;
