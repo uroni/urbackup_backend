@@ -731,7 +731,8 @@ bool IncrFileBackup::doFileBackup()
 								if(!Server->deleteFile(os_file_prefix(metadata_fn)))
 								{
 									if (sym_target == extra_params.end()
-										|| !os_remove_dir(os_file_prefix(metadata_fn)))
+										|| !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
+											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
 									{
 										ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + "\". " + os_last_error_str(), LL_ERROR);
 										c_has_error = true;
