@@ -1555,7 +1555,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 
 				if(!curr_file.isdir || curr_file.name!="..")
 				{
-					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
+					std::string cname = hash_dir ? escape_metadata_fn(curr_file.name) : curr_file.name;
+					osspecific_name = fixFilenameForOS(cname, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
 				if( hasChange(line, deleted_ids) )
