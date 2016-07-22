@@ -534,6 +534,11 @@ int copy_storage(const std::string& dest_folder)
 				continue;
 			}
 
+			if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path)))
+			{
+				continue;
+			}
+
 			++n_backups;
 		}
 
@@ -544,6 +549,11 @@ int copy_storage(const std::string& dest_folder)
 			ServerCleanupDao::SImageBackupInfo& ibackup = image_backups[j];
 
 			if (ibackup.complete == 0)
+			{
+				continue;
+			}
+
+			if (!FileExists(ibackup.path))
 			{
 				continue;
 			}
@@ -604,6 +614,12 @@ int copy_storage(const std::string& dest_folder)
 
 			if (os_directory_exists(os_file_prefix(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path)))
 			{
+				continue;
+			}
+
+			if (!os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path)))
+			{
+				ServerLogger::Log(logid, "Backup id " + convert(file_backups[j].id) + " path " + file_backups[j].path + " of client \"" + clientname.value + "\" does not exist on current storage. Skipping.", LL_WARNING);
 				continue;
 			}
 
@@ -675,6 +691,12 @@ int copy_storage(const std::string& dest_folder)
 
 			if (ibackup.complete == 0)
 			{
+				continue;
+			}
+
+			if (!FileExists(ibackup.path))
+			{
+				ServerLogger::Log(logid, "Image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " of client \"" + clientname.value + "\" does not exist on current storage. Skipping.", LL_WARNING);
 				continue;
 			}
 
