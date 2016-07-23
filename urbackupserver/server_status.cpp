@@ -494,6 +494,17 @@ bool ServerStatus::canRestore( const std::string &clientname, bool& server_confi
 	return s->online && s->r_online && s->restore!=ERestore_disabled;
 }
 
+void ServerStatus::updateLastseen(const std::string & clientname)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it = status.find(clientname);
+	if (it == status.end())
+	{
+		return;
+	}
+	it->second.lastseen = Server->getTimeSeconds();
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG

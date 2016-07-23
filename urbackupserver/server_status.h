@@ -89,7 +89,9 @@ struct SProcess
 struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
-		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled; }
+		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled;
+		lastseen = 0;
+	}
 
 	std::string client;
 	int clientid;
@@ -104,6 +106,7 @@ struct SStatus
 	std::vector<SProcess> processes;
 	int running_jobs;
 	ERestore restore;
+	int64 lastseen;
 };
 
 class ServerStatus
@@ -124,6 +127,7 @@ public:
 	static void setClientId(const std::string &clientname, int clientid);
 	static void setRestore(const std::string &clientname, ERestore restore);
 	static bool canRestore(const std::string &clientname, bool& server_confirms);
+	static void updateLastseen(const std::string &clientname);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

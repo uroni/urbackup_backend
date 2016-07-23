@@ -434,7 +434,6 @@ ACTION_IMPL(status)
 			stat.set("id", clientid);
 			stat.set("name", clientname);
 			stat.set("lastbackup", watoi64(res[i]["lastbackup"]));
-			stat.set("lastseen", watoi64(res[i]["lastseen"]));
 			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
 			stat.set("delete_pending", res[i]["delete_pending"] );
 			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
@@ -447,6 +446,7 @@ ACTION_IMPL(status)
 			bool online=false;
 			SStatus *curr_status=NULL;
 			JSON::Array processes;
+			int64 lastseen = watoi64(res[i]["lastseen"]);
 
 			for(size_t j=0;j<client_status.size();++j)
 			{
@@ -463,6 +463,11 @@ ACTION_IMPL(status)
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
+
+					if (client_status[j].lastseen > lastseen)
+					{
+						lastseen = client_status[j].lastseen;
+					}
 
 					switch(client_status[j].status_error)
 					{
@@ -497,6 +502,7 @@ ACTION_IMPL(status)
 			stat.set("os_simple", os_simple);
 			stat.set("status", i_status);
 			stat.set("processes", processes);
+			stat.set("lastseen", lastseen);
 
 			ServerSettings settings(db, clientid);
 

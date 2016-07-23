@@ -142,6 +142,7 @@ void BackupServer::operator()(void)
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
 	q_get_clientnames=db->Prepare("SELECT name FROM clients");
+	q_update_lastseen = db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
 
 	FileClient fc(true, "");
 
@@ -357,6 +358,7 @@ void BackupServer::startClients(FileClient &fc)
 		{
 			Server->Log("New Backupclient: "+curr_info.name);
 			ServerStatus::setOnline(curr_info.name, true);
+			ServerStatus::updateLastseen(curr_info.name);
 			IPipe *np=Server->createMemoryPipe();
 
 			update_existing_client_names=true;
@@ -390,6 +392,8 @@ void BackupServer::startClients(FileClient &fc)
 		}
 		else if(it->second.offlinecount<max_offline)
 		{
+			ServerStatus::updateLastseen(curr_info.name);
+
 			bool found_lan=false;
 			if(!curr_info.internetclient && it->second.internet_connection)
 			{
@@ -482,6 +486,17 @@ void BackupServer::startClients(FileClient &fc)
 						else
 						{
 							Server->Log("Client finished: "+it->first);
+
+							SStatus status = ServerStatus::getStatus(it->first);
+							if (status.lastseen != 0
+								&& status.clientid!=0)
+							{
+								q_update_lastseen->Bind(status.lastseen);
+								q_update_lastseen->Bind(status.clientid);
+								q_update_lastseen->Write();
+								q_update_lastseen->Reset();
+							}
+
 							ServerStatus::removeStatus(it->first);
 							Server->destroy(it->second.pipe);
 

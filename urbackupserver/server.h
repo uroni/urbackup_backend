@@ -67,6 +67,7 @@ private:
 	IQuery *q_get_extra_hostnames;
 	IQuery *q_update_extra_ip;
 	IQuery *q_get_clientnames;
+	IQuery *q_update_lastseen;
 
 	IPipe *exitpipe;
 
