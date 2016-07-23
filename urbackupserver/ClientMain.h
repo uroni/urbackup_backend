@@ -225,7 +225,7 @@ public:
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
-	void updateLastseen(void);
+	void updateLastseen(int64 lastseen);
 	bool isUpdateFull(int tgroup);
 	bool isUpdateIncr(int tgroup);
 	bool isUpdateFullImage(void);

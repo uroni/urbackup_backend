@@ -505,6 +505,17 @@ void ServerStatus::updateLastseen(const std::string & clientname)
 	it->second.lastseen = Server->getTimeSeconds();
 }
 
+int64 ServerStatus::getLastseen(const std::string & clientname)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it = status.find(clientname);
+	if (it == status.end())
+	{
+		return 0;
+	}
+	return it->second.lastseen;
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG

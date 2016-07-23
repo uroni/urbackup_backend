@@ -128,6 +128,7 @@ public:
 	static void setRestore(const std::string &clientname, ERestore restore);
 	static bool canRestore(const std::string &clientname, bool& server_confirms);
 	static void updateLastseen(const std::string &clientname);
+	static int64 getLastseen(const std::string &clientname);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

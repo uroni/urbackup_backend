@@ -380,7 +380,8 @@ void ClientMain::operator ()(void)
 
 	prepareSQL();
 
-	updateLastseen();	
+	int64 lastseen = Server->getTimeSeconds();
+	updateLastseen(lastseen);	
 		
 	if(!updateCapabilities())
 	{
@@ -598,6 +599,13 @@ void ClientMain::operator ()(void)
 			{
 				checkClientVersion();
 				last_client_update_check = Server->getTimeMS();
+			}
+
+			if (Server->getTimeSeconds() - lastseen > 5 * 60
+				&& ServerStatus::getLastseen(clientname)>lastseen)
+			{
+				lastseen = ServerStatus::getLastseen(clientname);
+				updateLastseen(lastseen);
 			}
 
 			curr_image_format = server_settings->getImageFileFormat();
@@ -928,7 +936,7 @@ void ClientMain::operator ()(void)
 
 void ClientMain::prepareSQL(void)
 {
-	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
@@ -994,8 +1002,9 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 	}
 }
 
-void ClientMain::updateLastseen(void)
+void ClientMain::updateLastseen(int64 lastseen)
 {
+	q_update_lastseen->Bind(lastseen);
 	q_update_lastseen->Bind(clientid);
 	q_update_lastseen->Write();
 	q_update_lastseen->Reset();
