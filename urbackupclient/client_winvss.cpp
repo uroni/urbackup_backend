@@ -734,7 +734,7 @@ bool IndexThread::getVssSettings()
 	std::string settings_fn = "urbackup/data/settings.cfg";
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	vss_select_components.clear();
-	vss_select_all_components = true;
+	vss_select_all_components = false;
 	bool ret = false;
 	if (curr_settings.get() != NULL)
 	{
@@ -1331,7 +1331,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 		std::string curr_dir = sortHex(i) + "_"+conv_filename(writerNameStrShort) + "_" + convert(writerId);
 		std::string named_path_base = ".symlink_"+ curr_dir;
 
-		std::string pretty_symlink_struct_writer = "d\"" + curr_dir + "\"\n";
+		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\"\n";
 		std::string pretty_struct_base = components_dir + os_file_sep() + curr_dir;
 		if (!os_directory_exists(pretty_struct_base))
 		{
@@ -1517,8 +1517,10 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 
 	pretty_symlink_struct += "u\n";
 
+	addFromLastUpto("windows_components", true, 0, false, outfile);
 	outfile << pretty_symlink_struct;
 
+	addFromLastUpto("windows_components_config", true, 0, false, outfile);
 	outfile << "d\"windows_components_config\"\n";
 	for (size_t i = 0; i < component_config_files.size(); ++i)
 	{
@@ -1690,7 +1692,8 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, std::string na
 
 	std::vector<int> include_depth;
 	std::vector<std::string> include_prefix;
-	std::vector<SIndexInclude> include_files = parseIncludePatterns(Server->ConvertFromWchar(filespec));
+	std::vector<SIndexInclude> include_files = parseIncludePatterns(named_prefix + "\\" + Server->ConvertFromWchar(filespec) + ";"
+		+ named_prefix + "\\*\\" + Server->ConvertFromWchar(filespec));
 
 	if (path.find("127d0a1d-4ef2-11d1-8608-00c04fc295ee") != std::string::npos)
 	{

@@ -1110,6 +1110,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 			if (backup_with_vss_components)
 			{
 				index_flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional | EBackupDirFlag_ShareHashes;
+				index_follow_last = false;
 				VSS_ID ssetid;
 				if (!start_shadowcopy_components(ssetid))
 				{
@@ -1461,7 +1462,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	
 #endif
 
-	if (index_follow_last)
+	if (last_filelist_f!=NULL)
 	{
 		Server->destroy(last_filelist_f);
 		last_filelist_f = NULL;

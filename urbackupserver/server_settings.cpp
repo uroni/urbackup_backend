@@ -330,6 +330,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->cbt_volumes = settings_default->getValue("cbt_volumes", "ALL");
 	settings->cbt_crash_persistent_volumes = settings_default->getValue("cbt_crash_persistent_volumes", "-");
 	settings->ignore_disk_errors = (settings_default->getValue("ignore_disk_errors", "false") == "true");
+	settings->vss_select_components = settings_default->getValue("vss_select_components", "");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -484,6 +485,8 @@ void ServerSettings::readSettingsClient(void)
 	readStringClientSetting("cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
 
 	readBoolClientSetting("ignore_disk_errors", &settings->ignore_disk_errors);
+
+	readStringClientSetting("vss_select_components", &settings->vss_select_components);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

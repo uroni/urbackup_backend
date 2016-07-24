@@ -623,7 +623,7 @@ private:
 	};
 
 	bool vss_select_all_components;
-	std::vector<std::pair<std::string, std::string> > vss_select_components;
+	std::vector<SComponent > vss_select_components;
 	std::vector<SComponent> vss_all_components;
 #endif
 };

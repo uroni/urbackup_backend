@@ -157,6 +157,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(cbt_volumes);
 	SET_SETTING(cbt_crash_persistent_volumes);
 	SET_SETTING(ignore_disk_errors);
+	SET_SETTING(vss_select_components);
 #undef SET_SETTING
 	return ret;
 }
