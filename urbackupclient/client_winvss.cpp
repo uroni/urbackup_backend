@@ -750,13 +750,19 @@ bool IndexThread::getVssSettings()
 			for (str_map::iterator it = comps.begin();
 				it != comps.end(); ++it)
 			{
-				if (next(it->first, 0, "comp_"))
+				if (next(it->first, 0, "writer_"))
 				{
-					std::string name = comps["name_" + getafter("comp_", it->first)];
+					std::string idx = getafter("writer_", it->first);
 
-					if (!name.empty())
+					SComponent component;
+
+					component.componentName = comps["name_" + idx];
+					component.logicalPath = comps["path_" + idx];
+					HRESULT hr = IIDFromString(Server->ConvertToWchar(comps["writer_" + idx]).c_str(), &component.writerId);
+
+					if (hr==S_OK)
 					{
-						vss_select_components.push_back(std::make_pair(name, it->second));
+						vss_select_components.push_back(component);
 						ret = true;
 					}
 				}
@@ -957,7 +963,7 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				{
 					for (size_t k = 0; k < vss_select_components.size(); ++k)
 					{
-						if (vss_select_components[k].first == writerNameStr + "_" + convert(writerId))
+						if (vss_select_components[k].writerId == writerId)
 						{
 							backup_component = true;
 							break;
@@ -984,7 +990,7 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 					else
 					{
 						if (std::find(vss_select_components.begin(), vss_select_components.end(),
-							std::make_pair(writerNameStr, logicalPathStr)) != vss_select_components.end())
+							currComponent) != vss_select_components.end())
 						{
 							hr = backupcom->AddComponent(instanceId, writerId, componentInfo->type, componentInfo->bstrLogicalPath, componentInfo->bstrComponentName);
 
@@ -1039,7 +1045,7 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 						}
 
 						SCOPED_DECLARE_FREE_BSTR(logicalPath);
-						hr = wmDependency->GetComponentName(&logicalPath);
+						hr = wmDependency->GetLogicalPath(&logicalPath);
 
 						if (hr != S_OK)
 						{
