@@ -702,9 +702,6 @@ int copy_storage(const std::string& dest_folder)
 
 			std::string ibackup_name = ExtractFileName(ExtractFilePath(ibackup.path));
 
-
-			ServerLogger::Log(logid, "Copying image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " of client \"" + clientname.value + "\"...", LL_INFO);
-
 			if (ibackup_name.find("Image_") != std::string::npos)
 			{
 				std::string ibackup_dest = dest_folder + os_file_sep() + clientname.value + os_file_sep() + ibackup_name;
@@ -713,6 +710,8 @@ int copy_storage(const std::string& dest_folder)
 				{
 					continue;
 				}
+
+				ServerLogger::Log(logid, "Copying image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " (whole parent folder) of client \"" + clientname.value + "\"...", LL_INFO);
 
 				if (!os_create_dir(ibackup_dest + "_incomplete"))
 				{
@@ -745,6 +744,8 @@ int copy_storage(const std::string& dest_folder)
 				{
 					continue;
 				}
+
+				ServerLogger::Log(logid, "Copying image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " of client \"" + clientname.value + "\"...", LL_INFO);
 
 				if (!copy_image_backup(ibackup.path, dest_folder + os_file_sep() + clientname.value))
 				{
