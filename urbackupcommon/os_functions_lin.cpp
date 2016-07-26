@@ -215,10 +215,10 @@ bool os_remove_dir(const std::string &path)
 bool isDirectory(const std::string &path, void* transaction)
 {
         struct stat64 f_info;
-        int rc=stat64((path).c_str(), &f_info);
+        int rc=stat64(path.c_str(), &f_info);
 		if(rc!=0)
 		{
-            rc = lstat64((path).c_str(), &f_info);
+            rc = lstat64(path.c_str(), &f_info);
 			if(rc!=0)
 			{
 				return false;
@@ -527,7 +527,7 @@ std::string os_file_sep(void)
 
 bool os_link_symbolic(const std::string &target, const std::string &lname, void* transaction, bool* isdir)
 {
-    return symlink((target).c_str(), (lname).c_str())==0;
+    return symlink(target.c_str(), lname.c_str())==0;
 }
 
 bool os_lookuphostname(std::string pServer, unsigned int *dest)
@@ -625,24 +625,21 @@ bool os_create_dir_recursive(std::string fn)
 
 bool os_rename_file(std::string src, std::string dst, void* transaction)
 {
-    int rc=rename((src).c_str(), (dst).c_str());
+    int rc=rename(src.c_str(), dst.c_str());
 	return rc==0;
 }
 
 bool os_get_symlink_target(const std::string &lname, std::string &target)
 {
-    std::string lname_utf8 = (lname);
 	struct stat sb;
-	if(lstat(lname_utf8.c_str(), &sb)==-1)
+	if(lstat(lname.c_str(), &sb)==-1)
 	{
 		return false;
 	}
 	
-	std::string target_buf;
+	target.resize(sb.st_size);
 	
-	target_buf.resize(sb.st_size);
-	
-	ssize_t rc = readlink(lname_utf8.c_str(), &target_buf[0], sb.st_size);
+	ssize_t rc = readlink(lname_utf8.c_str(), &target[0], sb.st_size);
 	
 	if(rc<0)
 	{
@@ -655,10 +652,8 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 	}
 	else if(rc<sb.st_size)
 	{
-		target_buf.resize(rc);
+		target.resize(rc);
 	}
-	
-    target = (target_buf);
 	
 	return true;
 }
@@ -666,7 +661,7 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 bool os_is_symlink(const std::string &lname)
 {
 	struct stat sb;
-    if(lstat((lname).c_str(), &sb)==-1)
+    if(lstat(lname.c_str(), &sb)==-1)
 	{
 		return false;
 	}
@@ -762,7 +757,7 @@ bool copy_file(const std::string &src, const std::string &dst, bool flush, std::
 		return false;
 	}
 
-	bool copy_ok = copy_file(fsrc, fdst);
+	bool copy_ok = copy_file(fsrc, fdst, error_str);
 
 	if (copy_ok && flush)
 	{

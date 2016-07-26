@@ -1222,7 +1222,7 @@ bool copy_file(const std::string &src, const std::string &dst, bool flush, std::
 		return false;
 	}
 
-	bool copy_ok = copy_file(fsrc, fdst);
+	bool copy_ok = copy_file(fsrc, fdst, error_str);
 
 	if (copy_ok && flush)
 	{
