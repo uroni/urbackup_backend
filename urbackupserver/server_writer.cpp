@@ -265,6 +265,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	if(!b)
 	{
 		std::string errstr;
+		int64 errcode = 0;
 		int retry=3;
 		for(int i=0;i<retry;++i)
 		{
@@ -274,6 +275,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			if(vhd->Write(buf, bsize)==0)
 			{
 				errstr = os_last_error_str();
+				errcode = os_last_error();
 				Server->Log("Writing to VHD file failed");
 			}
 			else
@@ -332,6 +334,14 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 		}
 		else
 		{			
+#ifdef _WIN32
+			if (errcode == ERROR_FILE_SYSTEM_LIMITATION)
+			{
+				ServerLogger::Log(logid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
+					" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
+					" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
+			}
+#endif
 			has_error=true;
 			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File. "+ errstr, LL_ERROR);
 			ClientMain::sendMailToAdmins("Fatal error occurred during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
