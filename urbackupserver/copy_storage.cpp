@@ -128,11 +128,26 @@ namespace
 		if (rc)
 		{
 			Server->Log("LMDB: Failed to open LMDB database file (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			mdb_env_close(env);
 			return false;
 		}
 
 		return true;
 	}
+
+	class ScopedCloseLmdbEnv
+	{
+	public:
+		ScopedCloseLmdbEnv(MDB_env* env)
+			: env(env)
+		{}
+		~ScopedCloseLmdbEnv() {
+			mdb_env_close(env);
+		}
+
+	private:
+		MDB_env* env;
+	};
 
 	bool getFileInode(const std::string& fpath, int64& inode)
 	{
@@ -504,6 +519,8 @@ int copy_storage(const std::string& dest_folder)
 		ServerLogger::Log(logid, "Error opening inode db", LL_ERROR);
 		return 1;
 	}
+
+	ScopedCloseLmdbEnv close_env(env);
 
 	ServerBackupDao backup_dao(db);
 	ServerCleanupDao cleanup_dao(db);
