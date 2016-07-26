@@ -639,7 +639,7 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 	
 	target.resize(sb.st_size);
 	
-	ssize_t rc = readlink(lname_utf8.c_str(), &target[0], sb.st_size);
+	ssize_t rc = readlink(lname.c_str(), &target[0], sb.st_size);
 	
 	if(rc<0)
 	{
