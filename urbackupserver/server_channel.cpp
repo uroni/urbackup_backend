@@ -1319,7 +1319,9 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 		else
 		{
 			backup_dao.deleteRestore(restore_id);
-		}		
+		}	
+
+		ServerLogger::reset(log_id);
 
 		client_main->finishRestore(restore_id);
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
