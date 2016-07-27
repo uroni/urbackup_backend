@@ -49,7 +49,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), has_disk_error(false)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), last_snap_num_issues(0), has_disk_error(false)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -1320,10 +1320,29 @@ void ServerDownloadThread::start_shadowcopy(std::string path)
 
 void ServerDownloadThread::stop_shadowcopy(std::string path)
 {
+	bool has_slash = false;
 	if (!clientsubname.empty())
 	{
 		path += "/clientsubname=" + EscapeParamString(clientsubname);
+		has_slash = true;
 	}
+
+	if (filesrv_protocol_version > 2)
+	{
+		size_t add_issues = last_snap_num_issues - num_issues;
+
+		if (add_issues > 0)
+		{
+			if (!has_slash) path += "/";
+			else path += "&";
+
+			has_slash = true;
+
+			path += "issues=" + convert(add_issues);
+		}
+	}
+
+	last_snap_num_issues = num_issues;
 
 	if (fc_chunked != NULL)
 	{

@@ -22,6 +22,7 @@
 #include "../Interface/SettingsReader.h"
 #include "file_permissions.h"
 #include "DirectoryWatcherThread.h"
+#include "../urbackupcommon/json.h"
 
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
 #define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); return false; }}
@@ -35,14 +36,109 @@ namespace
 	std::string sortHex(UINT i)
 	{
 		UINT bi = big_endian(i);
-		return bytesToHex(reinterpret_cast<unsigned char*>(&bi), sizeof(bi));
+		std::string ret= bytesToHex(reinterpret_cast<unsigned char*>(&bi), sizeof(bi));
+		strupper(&ret);
+		return ret;
 	}
+}
+
+namespace
+{
+	template<typename T>
+	class ReleaseIUnknown
+	{
+	public:
+		ReleaseIUnknown(T*& unknown)
+			: unknown(unknown) {}
+
+		~ReleaseIUnknown() {
+			if (unknown != NULL) {
+				unknown->Release();
+			}
+		}
+
+	private:
+		T*& unknown;
+	};
+
+#define TOKENPASTE2(x, y) x ## y
+#define TOKENPASTE(x, y) TOKENPASTE2(x, y)
+
+#define SCOPED_DECLARE_RELEASE_IUNKNOWN(t, x) t* x = NULL; ReleaseIUnknown<t> TOKENPASTE(ReleaseIUnknown_,__LINE__) (x)
+
+	class FreeBStr
+	{
+	public:
+		FreeBStr(BSTR& bstr)
+			: bstr(bstr)
+		{}
+
+		~FreeBStr() {
+			if (bstr != NULL) {
+				SysFreeString(bstr);
+			}
+		}
+	private:
+		BSTR bstr;
+	};
+
+#define SCOPED_DECLARE_FREE_BSTR(x) BSTR x = NULL; FreeBStr TOKENPASTE(FreeBStr_, __LINE__) (x)
+
+	class FreeComponentInfo
+	{
+	public:
+		FreeComponentInfo(IVssWMComponent* wmComponent, PVSSCOMPONENTINFO& componentInfo)
+			: wmComponent(wmComponent), componentInfo(componentInfo)
+		{}
+
+		~FreeComponentInfo() {
+			if (wmComponent != NULL && componentInfo != NULL) {
+				wmComponent->FreeComponentInfo(componentInfo);
+			}
+		}
+	private:
+		IVssWMComponent* wmComponent;
+		PVSSCOMPONENTINFO componentInfo;
+	};
+
+#define SCOPED_DECLARE_FREE_COMPONENTINFO(c, i) PVSSCOMPONENTINFO i = NULL; FreeComponentInfo TOKENPASTE(FreeComponentInfo_,__LINE__) (c, i);
+
+	std::string convert(VSS_ID id)
+	{
+		WCHAR GuidStr[128] = {};
+		int rc = StringFromGUID2(id, GuidStr, 128);
+		if (rc > 0)
+		{
+			return Server->ConvertFromWchar(std::wstring(GuidStr, rc - 1));
+		}
+		return std::string();
+	}
+
+	class ScopedFreeVssInstance
+	{
+	public:
+		ScopedFreeVssInstance(SVssInstance* instance)
+			: instance(instance)
+		{}
+
+		~ScopedFreeVssInstance()
+		{
+			if (instance->refcount == 0)
+			{
+				delete instance;
+			}
+		}
+
+	private:
+		SVssInstance* instance;
+	};
 }
 
 void IndexThread::clearContext(SShadowCopyContext& context)
 {
 	if (context.backupcom != NULL)
 	{
+		removeBackupcomReferences(context.backupcom);
 		context.backupcom->Release();
 		context.backupcom = NULL;
 	}
@@ -322,7 +418,6 @@ bool IndexThread::start_shadowcopy_components(VSS_ID& ssetid)
 	dir.ref = new SCRef;
 	dir.ref->starttime = Server->getTimeSeconds();
 	dir.ref->target = wpath;
-	dir.ref->starttokens.push_back(starttoken);
 	dir.ref->clientsubname = index_clientsubname;
 	dir.ref->for_imagebackup = false;
 	bool only_ref_val = false;
@@ -439,7 +534,6 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			SCRef nref;
 			nref.starttime = Server->getTimeSeconds();
 			nref.target = selected_vols[i];
-			nref.starttokens.push_back(starttoken);
 			nref.clientsubname = index_clientsubname;
 			nref.for_imagebackup = for_imagebackup;
 			nref.ssetid = dir->ref->ssetid;
@@ -610,12 +704,23 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			dir->ref->save_id = cd->addShadowcopy(tsc);
 			dir->ref->ok = true;
 			dir->ref->backupcom = backupcom;
+
+			if (with_components)
+			{
+				dir->ref->with_writers = true;
+			}
+
 		}
 		else
 		{
 			additional_refs[i].save_id = cd->addShadowcopy(tsc);
 			additional_refs[i].ok = true;
 			additional_refs[i].backupcom = backupcom;
+
+			if (with_components)
+			{
+				additional_refs[i].with_writers = true;
+			}
 		}
 
 		VSSLog("Shadowcopy path: " + tsc.path, LL_DEBUG);
@@ -651,6 +756,44 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 	}
 
 	IVssBackupComponents *backupcom = dir->ref->backupcom;
+
+	for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
+		it != vss_name_instances.end();)
+	{
+		std::map<std::string, SVssInstance*>::iterator it_curr = it;
+		++it;
+
+		if (it_curr->second->backupcom == backupcom)
+		{
+			--it_curr->second->refcount;
+
+			if (it_curr->second->refcount == 0)
+			{
+				it_curr->second->backupcom->SetBackupSucceeded(it_curr->second->instanceId,
+					it_curr->second->writerId, it_curr->second->componentType,
+					Server->ConvertToWchar(it_curr->second->logicalPath).c_str(),
+					Server->ConvertToWchar(it_curr->second->componentName).c_str(),
+					FALSE);
+
+				delete it_curr->second;
+			}			
+
+			vss_name_instances.erase(it_curr);
+		}
+	}
+
+	if (dir->ref->with_writers)
+	{
+		SCOPED_DECLARE_FREE_BSTR(xml);
+		HRESULT hr = backupcom->SaveAsXML(&xml);
+
+		if (hr == S_OK)
+		{
+			std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
+			writestring(Server->ConvertFromWchar(xml), component_config_dir + "\\backupcom.xml");
+		}
+	}
+
 	IVssAsync *pb_result;
 	bool bcom_ok = true;
 	bool ok = false;
@@ -669,7 +812,7 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 	{
 		LONG dels;
 		GUID ndels;
-		CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE,
+		CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT_SET, TRUE,
 			&dels, &ndels), bcom_ok);
 
 		if (dels == 0)
@@ -686,6 +829,8 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 #if defined(VSS_XP) || defined(VSS_S03)
 	ok = true;
 #endif
+
+	removeBackupcomReferences(backupcom);
 
 	backupcom->Release();
 	dir->ref->backupcom = NULL;
@@ -777,79 +922,6 @@ bool IndexThread::getVssSettings()
 	}
 
 	return ret;
-}
-
-namespace
-{
-	template<typename T>
-	class ReleaseIUnknown
-	{
-	public:
-		ReleaseIUnknown(T*& unknown)
-			: unknown(unknown) {}
-
-		~ReleaseIUnknown() {
-			if (unknown != NULL) {
-				unknown->Release();
-			}
-		}
-
-	private:
-		T*& unknown;
-	};
-
-#define TOKENPASTE2(x, y) x ## y
-#define TOKENPASTE(x, y) TOKENPASTE2(x, y)
-
-#define SCOPED_DECLARE_RELEASE_IUNKNOWN(t, x) t* x = NULL; ReleaseIUnknown<t> TOKENPASTE(ReleaseIUnknown_,__LINE__) (x)
-
-	class FreeBStr
-	{
-	public:
-		FreeBStr(BSTR& bstr)
-			: bstr(bstr)
-		{}
-
-		~FreeBStr() {
-			if (bstr != NULL) {
-				SysFreeString(bstr);
-			}
-		}
-	private:
-		BSTR bstr;
-	};
-
-#define SCOPED_DECLARE_FREE_BSTR(x) BSTR x = NULL; FreeBStr TOKENPASTE(FreeBStr_, __LINE__) (x)
-
-	class FreeComponentInfo
-	{
-	public:
-		FreeComponentInfo(IVssWMComponent* wmComponent, PVSSCOMPONENTINFO& componentInfo)
-			: wmComponent(wmComponent), componentInfo(componentInfo)
-		{}
-
-		~FreeComponentInfo() {
-			if (wmComponent != NULL && componentInfo != NULL) {
-				wmComponent->FreeComponentInfo(componentInfo);
-			}
-		}
-	private:
-		IVssWMComponent* wmComponent;
-		PVSSCOMPONENTINFO componentInfo;
-	};
-
-#define SCOPED_DECLARE_FREE_COMPONENTINFO(c, i) PVSSCOMPONENTINFO i = NULL; FreeComponentInfo TOKENPASTE(FreeComponentInfo_,__LINE__) (c, i);
-
-	std::string convert(VSS_ID id)
-	{
-		WCHAR GuidStr[128] = {};
-		int rc = StringFromGUID2(id, GuidStr, 128);
-		if (rc > 0)
-		{
-			return Server->ConvertFromWchar(std::wstring(GuidStr, rc - 1));
-		}
-		return std::string();
-	}
 }
 
 bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
@@ -1214,7 +1286,7 @@ std::string IndexThread::getVolPath(const std::string& bpath)
 	return volume;
 }
 
-bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &outfile)
+bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vector<SCRef*>& past_refs, std::fstream &outfile)
 {
 	IVssBackupComponents* backupcom = NULL;
 	for (size_t i = 0; i < sc_refs.size(); ++i)
@@ -1231,6 +1303,18 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 		VSSLog("Could not find backupcom for snapshot set " + convert(ssetid), LL_ERROR);
 		return false;
 	}
+
+	for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
+		it != vss_name_instances.end(); ++it)
+	{
+		--it->second->refcount;
+
+		if (it->second->refcount == 0)
+		{
+			delete it->second;
+		}
+	}
+	vss_name_instances.clear();
 
 	std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
 	std::string components_dir = "urbackup\\windows_components";
@@ -1249,6 +1333,8 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 		VSSLog("Error creating directory \""+ component_config_dir+"\". " + os_last_error_str(), LL_ERROR);
 		return false;
 	}
+
+	writestring("", component_config_dir + "\\backupcom.xml");
 
 	if (!change_file_permissions_admin_only(component_config_dir))
 	{
@@ -1282,6 +1368,9 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 
 	std::vector<std::string> component_config_files;
 	std::vector<int64> component_config_file_size;
+
+	JSON::Object info_json;
+	JSON::Array selected_components_json;
 
 	std::string pretty_symlink_struct = "d\"windows_components\"\n";
 
@@ -1332,7 +1421,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 		std::string named_path_base = ".symlink_"+ curr_dir;
 
 		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\"\n";
-		std::string pretty_struct_base = components_dir + os_file_sep() + curr_dir;
+		std::string pretty_struct_base = components_dir + os_file_sep() + sortHex(i) + "_" + conv_filename(writerNameStrShort);
 		if (!os_directory_exists(pretty_struct_base))
 		{
 			os_create_dir(pretty_struct_base);
@@ -1392,6 +1481,23 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 					}
 				}
 
+				JSON::Object currComponentJson;
+				currComponentJson.set("writerId", convert(writerId));
+				currComponentJson.set("logicalPath", logicalPathStr);
+				currComponentJson.set("componentName", componentNameStr);
+				selected_components_json.add(currComponentJson);
+
+				SVssInstance* vssInstance = new SVssInstance;
+				ScopedFreeVssInstance freeVssInstance(vssInstance);
+
+				vssInstance->refcount = 0;
+				vssInstance->issues = 0;
+				vssInstance->componentName = componentNameStr;
+				vssInstance->logicalPath = logicalPathStr;
+				vssInstance->writerId = writerId;
+				vssInstance->instanceId = instanceId;
+				vssInstance->backupcom = backupcom;
+
 				std::string pretty_struct_component_path = pretty_struct_base + os_file_sep() + curr_dir;
 				if (!os_directory_exists(pretty_struct_component_path))
 				{
@@ -1422,12 +1528,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 					}
 
 					pretty_symlink_struct_writer += "d\"files" + sortHex(k) + "\" 0 0#special=1&sym_target="+ EscapeParamString(named_path + "_files" + sortHex(k))+"\nu\n";
-					if (!addFiles(wmFile, ssetid, named_path+"_files"+ sortHex(k), use_db, exclude_files, outfile))
+					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_files"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing files " + convert(k) + " of component \"" +
 							componentNameStr + "\" of writer \"" + writerNameStr + "\".", LL_ERROR);
 						return false;
 					}
+
+					vss_name_instances[named_path + "_files" + sortHex(k)] = vssInstance;
+					++vssInstance->refcount;
 				}
 
 				for (UINT k = 0; k < componentInfo->cDatabases; ++k)
@@ -1450,12 +1559,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 					}
 
 					pretty_symlink_struct_writer += "d\"database" + sortHex(k) + "\" 0 0#special=1&sym_target=" + EscapeParamString(named_path + "_database" + sortHex(k)) + "\nu\n";
-					if (!addFiles(wmFile, ssetid, named_path+"_database"+ sortHex(k), use_db, exclude_files, outfile))
+					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database file " + sortHex(k) + " of component \"" +
 							componentNameStr + "\" of writer \"" + writerNameStr + "\".", LL_ERROR);
 						return false;
 					}
+
+					vss_name_instances[named_path + "_database" + sortHex(k)] = vssInstance;
+					++vssInstance->refcount;
 				}
 
 				for (UINT k = 0; k < componentInfo->cLogFiles; ++k)
@@ -1478,12 +1590,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 					}
 
 					pretty_symlink_struct_writer += "d\"database_log" + sortHex(k) + "\" 0 0#special=1&sym_target=" + EscapeParamString(named_path + "_database_log" + sortHex(k)) + "\nu\n";
-					if (!addFiles(wmFile, ssetid, named_path+"_database_log"+ sortHex(k), use_db, exclude_files, outfile))
+					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database_log"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database log file " + sortHex(k) + " of component \"" +
 							componentNameStr + "\" of writer \"" + writerNameStr + "\".", LL_ERROR);
 						return false;
 					}
+
+					vss_name_instances[named_path + "_database_log" + sortHex(k)] = vssInstance;
+					++vssInstance->refcount;
 				}
 
 				pretty_symlink_struct_writer += "u\n";
@@ -1521,11 +1636,24 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &o
 	outfile << pretty_symlink_struct;
 
 	addFromLastUpto("windows_components_config", true, 0, false, outfile);
-	outfile << "d\"windows_components_config\"\n";
+	outfile << "d\"windows_components_config\" 0 0#orig_path="+EscapeParamString("C:\\windows_components_config")+"\n";
 	for (size_t i = 0; i < component_config_files.size(); ++i)
 	{
 		int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
 		outfile << "f\"" << component_config_files[i] << "\" " << component_config_file_size[i] << " " << rnd << "\n";
+	}
+
+	info_json.set("selected_components", selected_components_json);
+	std::string selected_components_data = info_json.stringify(false);
+
+	int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
+	outfile << "f\"backupcom.xml\" 0 " << rnd << "\n";
+	outfile << "f\"info.json\" " << selected_components_data.size() << " " << rnd << "\n";
+
+	if (!write_file_only_admin(selected_components_data, component_config_dir + os_file_sep() + "info.json"))
+	{
+		VSSLog("Error writing component info to \"" + component_config_dir + os_file_sep() + "info.json\". " + os_last_error_str(), LL_ERROR);
+		return false;
 	}
 
 	outfile << "u\n";
@@ -1557,7 +1685,29 @@ std::string IndexThread::expandPath(BSTR pathStr)
 	return Server->ConvertFromWchar(tpathRepl.data());
 }
 
-bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, std::string named_prefix, bool use_db,
+void IndexThread::removeBackupcomReferences(IVssBackupComponents * backupcom)
+{
+	for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
+		it != vss_name_instances.end();)
+	{
+		std::map<std::string, SVssInstance*>::iterator it_curr = it;
+		++it;
+
+		if (it_curr->second->backupcom == backupcom)
+		{
+			--it_curr->second->refcount;
+
+			if (it_curr->second->refcount == 0)
+			{
+				delete it_curr->second;
+			}
+
+			vss_name_instances.erase(it_curr);
+		}
+	}
+}
+
+bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vector<SCRef*>& past_refs, std::string named_prefix, bool use_db,
 	const std::vector<std::string>& exclude_files, std::fstream &outfile)
 {
 	SCOPED_DECLARE_FREE_BSTR(bPath);
@@ -1669,6 +1819,45 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, std::string na
 
 		backup_dirs.push_back(backup_dir);
 	}
+
+	SCDirs *scd = getSCDir(named_prefix, index_clientsubname, false);
+	if (!scd->running)
+	{
+		scd->dir = named_prefix;
+		scd->starttime = Server->getTimeSeconds();
+		scd->target = path;
+		scd->orig_target = scd->target;
+	}
+	scd->fileserv = true;
+
+	bool onlyref = true;
+	bool stale_shadowcopy = false;
+	bool shadowcopy_not_configured = false;
+	if (!start_shadowcopy(scd, &onlyref, true, true, past_refs, false, &stale_shadowcopy, &shadowcopy_not_configured))
+	{
+		VSSLog("Starting shadow copy for \"" + named_prefix + "\" failed.", LL_ERROR);
+		return false;
+	}
+
+	if (!onlyref)
+	{
+		VSSLog("Shadow copy for \"" + named_prefix + "\" could not be referenced", LL_ERROR);
+		return false;
+	}
+
+	if (stale_shadowcopy)
+	{
+		VSSLog("Shadow copy for \"" + named_prefix + "\" is stale", LL_ERROR);
+		return false;
+	}
+
+	if (shadowcopy_not_configured)
+	{
+		VSSLog("Shadow copy for \"" + named_prefix + "\" is not configured", LL_ERROR);
+		return false;
+	}
+
+	scd->running = true;
 
 	shareDir(starttoken, named_prefix, volpath);
 		

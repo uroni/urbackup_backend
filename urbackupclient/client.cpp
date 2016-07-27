@@ -804,6 +804,8 @@ void IndexThread::operator()(void)
 			data.getInt(&save_id);
 			index_clientsubname.clear();
 			data.getStr(&index_clientsubname);
+			int issues = 0;
+			data.getInt(&issues);
 
 #ifdef _WIN32
 			if (image_backup == 0
@@ -811,6 +813,26 @@ void IndexThread::operator()(void)
 			{
 				contractor->Write("done");
 				continue;
+			}
+
+			std::map<std::string, SVssInstance*>::iterator it_inst = vss_name_instances.find(scdir);
+			if (it_inst != vss_name_instances.end())
+			{
+				--it_inst->second->refcount;
+				it_inst->second->issues += issues;
+
+				if (it_inst->second->refcount == 0)
+				{
+					it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
+						it_inst->second->writerId, it_inst->second->componentType,
+						Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
+						Server->ConvertToWchar(it_inst->second->componentName).c_str(),
+						it_inst->second->issues == 0 ? TRUE : FALSE);
+
+					delete it_inst->second;
+				}
+
+				vss_name_instances.erase(it_inst);
 			}
 #endif
 
@@ -1124,7 +1146,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 					{
 						bool orig_with_sequence = with_sequence;
 						with_sequence = false;
-						indexVssComponents(ssetid, !full_backup, outfile);
+						indexVssComponents(ssetid, !full_backup, past_refs, outfile);
 						with_sequence = orig_with_sequence;
 					}
 				}

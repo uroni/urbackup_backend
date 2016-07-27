@@ -1978,6 +1978,21 @@ std::string FileBackup::permissionsAllowAll()
 	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
+void FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
+{
+	std::string component_config_dir = backuppath + os_file_sep() + "windows_components_config";
+	if (os_directory_exists(os_file_prefix(component_config_dir)))
+	{
+		ServerLogger::Log(logid, "Loading Windows backup component config XML...", LL_DEBUG);
+		std::auto_ptr<IFsFile> component_config_xml(Server->openFile(os_file_prefix(component_config_dir+os_file_sep()+"backupcom.xml"), MODE_WRITE));
+		_u32 rc = fc.GetFile(server_token + "|windows_components_config/backupcom.xml", component_config_xml.get(), true, false, 0, false, 0);
+		if (rc != ERR_SUCCESS)
+		{
+			ServerLogger::Log(logid, "Error getting Windows backup component config XML: " + fc.getErrorString(rc), LL_ERROR);
+		}
+	}
+}
+
 void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)
 {
 	ServerLogger::Log(logid, "Local hash: "+local_hash+" remote hash: "+remote_hash, LL_INFO);

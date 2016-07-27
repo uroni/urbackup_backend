@@ -290,6 +290,7 @@ private:
 	server::FileMetadataDownloadThread* file_metadata_download;
 
 	size_t num_issues;
+	size_t last_snap_num_issues;
 
 	bool has_disk_error;
 };

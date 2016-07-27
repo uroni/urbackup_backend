@@ -1164,6 +1164,11 @@ bool IncrFileBackup::doFileBackup()
 		disk_error=true;
 	}
 
+	if (!r_offline && !c_has_error && !disk_error)
+	{
+		loadWindowsBackupComponentConfigXml(fc);
+	}
+
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
 
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);

@@ -75,7 +75,7 @@ private:
 struct SCRef
 {
 #ifdef _WIN32
-	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false), for_imagebackup(false){}
+	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false), for_imagebackup(false), with_writers(false) {}
 
 	IVssBackupComponents *backupcom;
 #endif
@@ -91,6 +91,7 @@ struct SCRef
 	std::string clientsubname;
 	bool cbt;
 	bool for_imagebackup;
+	bool with_writers;
 };
 
 struct SCDirs
@@ -227,6 +228,20 @@ struct SIndexInclude
 	std::string prefix;
 };
 
+class IVssBackupComponents;
+
+struct SVssInstance
+{
+	IVssBackupComponents* backupcom;
+	VSS_ID instanceId;
+	VSS_ID writerId;
+	VSS_COMPONENT_TYPE componentType;
+	std::string componentName;
+	std::string logicalPath;
+	size_t refcount;
+	size_t issues;
+};
+
 class ClientDAO;
 
 class IndexThread : public IThread, public IFileServ::IReadErrorCallback
@@ -335,12 +350,14 @@ private:
 	bool getVssSettings();
 	bool selectVssComponents(IVssBackupComponents *backupcom, std::vector<std::string>& selected_vols);
 	bool addFilespecVol(IVssWMFiledesc* wmFile, std::vector<std::string>& selected_vols);
-	bool addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, std::string named_prefix, bool use_db, const std::vector<std::string>& exclude_files, std::fstream &outfile);
+	bool addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vector<SCRef*>& past_refs, std::string named_prefix,
+		bool use_db, const std::vector<std::string>& exclude_files, std::fstream &outfile);
 	static std::string getVolPath(const std::string& bpath);
-	bool indexVssComponents(VSS_ID ssetid, bool use_db, std::fstream &outfile);
+	bool indexVssComponents(VSS_ID ssetid, bool use_db, const std::vector<SCRef*>& past_refs, std::fstream &outfile);
 	bool getExcludedFiles(IVssExamineWriterMetadata* writerMetadata, UINT nExcludedFiles, std::vector<std::string>& exclude_files);
 	void removeUnconfirmedVssDirs();
 	std::string expandPath(BSTR pathStr);
+	void removeBackupcomReferences(IVssBackupComponents *backupcom);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
 	std::string get_snapshot_script_location(const std::string& name);
@@ -625,6 +642,7 @@ private:
 	bool vss_select_all_components;
 	std::vector<SComponent > vss_select_components;
 	std::vector<SComponent> vss_all_components;
+	std::map<std::string, SVssInstance*> vss_name_instances;
 #endif
 };
 

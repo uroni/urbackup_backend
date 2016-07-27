@@ -494,6 +494,7 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		std::string dir=cmd.substr(9, cmd.size()-10);
 
 		std::string clientsubname;
+		int issues = 0;
 		if (dir.find("/") != std::string::npos)
 		{
 			std::string str_params = getafter("/", dir);
@@ -503,6 +504,12 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 			ParseParamStrHttp(str_params, &params);
 
 			clientsubname = params["clientsubname"];
+
+			str_map::iterator it_issues = params.find("issues");
+			if (it_issues != params.end())
+			{
+				issues = watoi(it_issues->second);
+			}
 		}
 
 		CWData data;
@@ -513,6 +520,7 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		data.addUChar(0);
 		data.addInt(-1);
 		data.addString(clientsubname);
+		data.addInt(issues);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
