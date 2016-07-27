@@ -131,8 +131,10 @@ public:
 	CondInt64 hasRecentFullOrIncrImageBackup(const std::string& backup_interval_full, int clientid, const std::string& backup_interval_incr, int image_version, const std::string& letter);
 	CondInt64 hasRecentIncrImageBackup(const std::string& backup_interval, int clientid, int image_version, const std::string& letter);
 	void addRestore(int clientid, const std::string& path, const std::string& identity, int image, const std::string& letter);
+	CondString getRestorePath(int64 restore_id, int clientid);
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
+	void deleteRestore(int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
 	void setVirtualMainClient(const std::string& virtualmain, int64 clientid);
 	void deleteUsedAccessTokens(int clientid);
@@ -203,8 +205,10 @@ private:
 	IQuery* q_hasRecentFullOrIncrImageBackup;
 	IQuery* q_hasRecentIncrImageBackup;
 	IQuery* q_addRestore;
+	IQuery* q_getRestorePath;
 	IQuery* q_getRestoreIdentity;
 	IQuery* q_setRestoreDone;
+	IQuery* q_deleteRestore;
 	IQuery* q_getFileBackupInfo;
 	IQuery* q_setVirtualMainClient;
 	IQuery* q_deleteUsedAccessTokens;

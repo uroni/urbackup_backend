@@ -851,9 +851,9 @@ void ServerBackupDao::setImageBackupComplete(int backupid)
 */
 void ServerBackupDao::setImageBackupIncomplete(int backupid)
 {
-	if (q_setImageBackupIncomplete == NULL)
+	if(q_setImageBackupIncomplete==NULL)
 	{
-		q_setImageBackupIncomplete = db->Prepare("UPDATE backup_images SET complete=0 WHERE id=?", false);
+		q_setImageBackupIncomplete=db->Prepare("UPDATE backup_images SET complete=0 WHERE id=?", false);
 	}
 	q_setImageBackupIncomplete->Bind(backupid);
 	q_setImageBackupIncomplete->Write();
@@ -1201,6 +1201,32 @@ void ServerBackupDao::addRestore(int clientid, const std::string& path, const st
 
 /**
 * @-SQLGenAccess
+* @func string ServerBackupDao::getRestorePath
+* @return string path
+* @sql
+*       SELECT path FROM restores WHERE id=:restore_id(int64) AND clientid=:clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getRestorePath(int64 restore_id, int clientid)
+{
+	if(q_getRestorePath==NULL)
+	{
+		q_getRestorePath=db->Prepare("SELECT path FROM restores WHERE id=? AND clientid=?", false);
+	}
+	q_getRestorePath->Bind(restore_id);
+	q_getRestorePath->Bind(clientid);
+	db_results res=q_getRestorePath->Read();
+	q_getRestorePath->Reset();
+	CondString ret = { false, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["path"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func string ServerBackupDao::getRestoreIdentity
 * @return string identity
 * @sql
@@ -1241,6 +1267,23 @@ void ServerBackupDao::setRestoreDone(int success, int64 restore_id)
 	q_setRestoreDone->Bind(restore_id);
 	q_setRestoreDone->Write();
 	q_setRestoreDone->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteRestore
+* @sql
+*       DELETE FROM restores WHERE id=:restore_id(int64)
+*/
+void ServerBackupDao::deleteRestore(int64 restore_id)
+{
+	if(q_deleteRestore==NULL)
+	{
+		q_deleteRestore=db->Prepare("DELETE FROM restores WHERE id=?", false);
+	}
+	q_deleteRestore->Bind(restore_id);
+	q_deleteRestore->Write();
+	q_deleteRestore->Reset();
 }
 
 /**
@@ -1450,7 +1493,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_setImageSize=NULL;
 	q_addImageSizeToClient=NULL;
 	q_setImageBackupComplete=NULL;
-	q_setImageBackupIncomplete = NULL;
+	q_setImageBackupIncomplete=NULL;
 	q_updateImageBackupRunning=NULL;
 	q_saveImageAssociation=NULL;
 	q_updateClientLastImageBackup=NULL;
@@ -1466,8 +1509,10 @@ void ServerBackupDao::prepareQueries( void )
 	q_hasRecentFullOrIncrImageBackup=NULL;
 	q_hasRecentIncrImageBackup=NULL;
 	q_addRestore=NULL;
+	q_getRestorePath=NULL;
 	q_getRestoreIdentity=NULL;
 	q_setRestoreDone=NULL;
+	q_deleteRestore=NULL;
 	q_getFileBackupInfo=NULL;
 	q_setVirtualMainClient=NULL;
 	q_deleteUsedAccessTokens=NULL;
@@ -1531,8 +1576,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_hasRecentFullOrIncrImageBackup);
 	db->destroyQuery(q_hasRecentIncrImageBackup);
 	db->destroyQuery(q_addRestore);
+	db->destroyQuery(q_getRestorePath);
 	db->destroyQuery(q_getRestoreIdentity);
 	db->destroyQuery(q_setRestoreDone);
+	db->destroyQuery(q_deleteRestore);
 	db->destroyQuery(q_getFileBackupInfo);
 	db->destroyQuery(q_setVirtualMainClient);
 	db->destroyQuery(q_deleteUsedAccessTokens);

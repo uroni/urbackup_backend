@@ -1417,7 +1417,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 			writerNameStrShort = writerNameStr.substr(0, 100);
 		}
 
-		std::string curr_dir = sortHex(i) + "_"+conv_filename(writerNameStrShort) + "_" + convert(writerId);
+		std::string curr_dir = conv_filename(writerNameStrShort) + "_" + convert(writerId);
 		std::string named_path_base = ".symlink_"+ curr_dir;
 
 		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\"\n";

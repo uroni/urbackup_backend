@@ -1299,17 +1299,27 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 			++idx;
 		}		
 
-		int errors=0;
-		int warnings=0;
-		int infos=0;
-		std::string logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
+		ServerBackupDao::CondString restore_path = backup_dao.getRestorePath(restore_id, clientid);
 
-		backup_dao.saveBackupLog(clientid, errors, warnings, infos, 0,
-			0, 0, 1);
+		if (!restore_path.exists
+			|| restore_path.value != "windows_components_config"+os_file_sep())
+		{
+			int errors = 0;
+			int warnings = 0;
+			int infos = 0;
+			std::string logdata = ServerLogger::getLogdata(log_id, errors, warnings, infos);
 
-		backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+			backup_dao.saveBackupLog(clientid, errors, warnings, infos, 0,
+				0, 0, 1);
 
-		backup_dao.setRestoreDone(success?1:0, restore_id);
+			backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+
+			backup_dao.setRestoreDone(success ? 1 : 0, restore_id);
+		}
+		else
+		{
+			backup_dao.deleteRestore(restore_id);
+		}		
 
 		client_main->finishRestore(restore_id);
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
