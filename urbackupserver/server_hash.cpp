@@ -768,7 +768,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 		}
 		else
 		{
-			ServerLogger::Log(logid, "HT: Error creating hardlink from \""+ff_last+"\" to \""+tfn+"\"", LL_WARNING);
+			Server->Log("HT: Error creating hardlink from \""+ff_last+"\" to \""+tfn+"\"", LL_WARNING);
 		}
 		++link_logcnt;
 	}
