@@ -672,7 +672,8 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(dir_already_exists)
 								{
-									if(!os_remove_symlink_dir(backuppath+local_curr_os_path))
+									if(!os_remove_symlink_dir(os_file_prefix(backuppath+local_curr_os_path))
+										&& !os_remove_dir(os_file_prefix(backuppath + local_curr_os_path)) )
 									{
 										ServerLogger::Log(logid, "Could not remove symbolic link at \""+backuppath+local_curr_os_path+"\" " + systemErrorInfo(), LL_ERROR);
 										c_has_error=true;
@@ -729,9 +730,14 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!Server->deleteFile(os_file_prefix(metadata_fn)))
 								{
-									ServerLogger::Log(logid, "Error deleting metadata file \""+metadata_fn+"\".", LL_ERROR);
-									c_has_error=true;
-									break;
+									if (sym_target == extra_params.end()
+										|| !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
+											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
+									{
+										ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + "\". " + os_last_error_str(), LL_ERROR);
+										c_has_error = true;
+										break;
+									}
 								}
 							}
 
