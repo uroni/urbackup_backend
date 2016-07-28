@@ -71,9 +71,13 @@ private:
 
 struct SCRef
 {
+	SCRef(void): ok(false), dontincrement(false), cbt(false), for_imagebackup(false), with_writers(false) {
 #ifdef _WIN32
-	SCRef(void): backupcom(NULL), ok(false), dontincrement(false), cbt(false), for_imagebackup(false){}
+		backupcom = NULL;
+#endif
+	}
 
+#ifdef _WIN32
 	IVssBackupComponents *backupcom;
 #endif
 	VSS_ID ssetid;
@@ -87,6 +91,7 @@ struct SCRef
 	std::string clientsubname;
 	bool cbt;
 	bool for_imagebackup;
+	bool with_writers;
 };
 
 struct SCDirs
