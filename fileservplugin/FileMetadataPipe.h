@@ -118,8 +118,6 @@ private:
 
 	std::string raw_metadata;
 
-	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
-
 	unsigned int curr_checksum;
 
 	IFile* transmit_file;
