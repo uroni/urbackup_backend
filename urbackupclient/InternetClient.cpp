@@ -561,6 +561,12 @@ void InternetClientThread::operator()(void)
 	std::string server_pubkey;
 	bool destroy_cs = true;
 
+	struct SDelBuf {
+		SDelBuf(char* b) : b(b) {}
+		~SDelBuf() { delete[] b; }
+		char* b;
+	};
+
 	{
 		char *buf;
 		size_t bufsize;
@@ -570,12 +576,12 @@ void InternetClientThread::operator()(void)
 			Server->Log("Error receiving challenge packet");
 			goto cleanup;
 		}
+		SDelBuf delBuf(buf);
 		CRData rd(buf, bufsize);
 		char id;
 		if(!rd.getChar(&id)) 
 		{
 			Server->Log("Error reading id of challenge packet");
-			delete []buf;
 			goto cleanup;
 		}
 		if(id==ID_ISC_CHALLENGE)
@@ -588,7 +594,6 @@ void InternetClientThread::operator()(void)
 				std::string error = "Not enough challenge fields -1";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
-				delete []buf;
 				goto cleanup;
 			}
 
@@ -597,7 +602,6 @@ void InternetClientThread::operator()(void)
 				std::string error = "No server public key. Server version probably not new enough.";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
-				delete []buf;
 				goto cleanup;
 			}
 
@@ -606,7 +610,6 @@ void InternetClientThread::operator()(void)
 				std::string error = "Challenge not long enough -1";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
-				delete []buf;
 				goto cleanup;
 			}
 		}
@@ -615,11 +618,8 @@ void InternetClientThread::operator()(void)
 			std::string error = "Unknown response id -2";
 			Server->Log(error, LL_ERROR);
 			InternetClient::setStatusMsg("error:"+error);
-			delete []buf;
 			goto cleanup;
 		}
-
-		delete []buf;
 	}
 	
 	{
@@ -675,12 +675,13 @@ void InternetClientThread::operator()(void)
 			Server->Log("Error receiving authentication response");
 			goto cleanup;
 		}
+		
+		SDelBuf delBuf(buf);
 		CRData rd(buf, bufsize);
 		char id;
 		if(!rd.getChar(&id)) 
 		{
 			Server->Log("Error reading id of authentication response");
-			delete []buf;
 			goto cleanup;
 		}
 		if(id==ID_ISC_AUTH_FAILED)
@@ -700,7 +701,6 @@ void InternetClientThread::operator()(void)
 			}
 			Server->Log("Internet server auth failed. Error: "+errmsg, loglevel);
 			
-			delete []buf;
 			goto cleanup;
 		}
 		else if(id!=ID_ISC_AUTH_OK)
@@ -708,7 +708,6 @@ void InternetClientThread::operator()(void)
 			std::string error = "Unknown response id -1";
 			Server->Log(error, LL_ERROR);
 			InternetClient::setStatusMsg("error:"+error);
-			delete []buf;
 			goto cleanup;
 		}
 		else
@@ -720,7 +719,6 @@ void InternetClientThread::operator()(void)
 				std::string error = "Server authentification failed";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
-				delete []buf;
 				goto cleanup;
 			}
 
@@ -786,16 +784,15 @@ void InternetClientThread::operator()(void)
 			goto cleanup;
 		}
 
+		SDelBuf delBuf(buf);
 		CRData rd(buf, bufsize);
 		char id;
 		if(!rd.getChar(&id)) 
 		{
-			delete []buf;
 			goto cleanup;
 		}
 		if(id==ID_ISC_PING)
 		{
-			delete []buf;
 			CWData data;
 			data.addChar(ID_ISC_PONG);
 			tcpstack.Send(comm_pipe, data);
@@ -804,8 +801,6 @@ void InternetClientThread::operator()(void)
 		{
 			char service=0;
 			rd.getChar(&service);
-
-			delete []buf;
 
 			if(service==SERVICE_COMMANDS || service==SERVICE_FILESRV)
 			{
@@ -841,7 +836,6 @@ void InternetClientThread::operator()(void)
 		}
 		else
 		{
-			delete []buf;
 			Server->Log("Unknown command id", LL_ERROR);
 			goto cleanup;
 		}
