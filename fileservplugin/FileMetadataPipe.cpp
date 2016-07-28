@@ -89,10 +89,7 @@ bool FileMetadataPipe::getExitCode( int& exit_code )
 
 bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes )
 {
-	if(token_callback.get()==NULL)
-	{
-		token_callback.reset(FileServ::newTokenCallback());
-	}
+	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
 
 	if(buf_avail==0)
 	{
