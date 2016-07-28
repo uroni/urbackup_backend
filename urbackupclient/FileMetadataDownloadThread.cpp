@@ -535,6 +535,7 @@ namespace
         if(S_ISLNK(statbuf.st_mode))
         {
 			unlink(fn.c_str());
+			rmdir(fn.c_str());
 
 			if (symlink(symlink_target.c_str(), fn.c_str()) != 0)
 			{
