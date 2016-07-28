@@ -20,7 +20,7 @@ public:
 		virtual IFile* getMetadata(const std::string& path, std::string& orig_path, int64& offset, int64& length, _u32& version)=0;
 	};
 
-	class ITokenCallback
+	class ITokenCallback : public IObject
 	{
 	public:
 		virtual std::string getFileTokens(const std::string& fn) = 0;
