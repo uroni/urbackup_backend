@@ -140,6 +140,27 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 				subtreeChanged(c2);				
 			}
 
+#ifndef _WIN32
+			/**
+			* Stop it from moving directories above symlinks to the directory link
+			* pool on Linux/FreeBSD, as then symbolic links within that directory
+			* would not be able to point to the current backup (symbolic links
+			* are relative to the symbolic link location)
+			* On Windows this works. Could be because it uses junctions for the
+			* symlinks to the directory pool.
+			**/
+			if (c2->getType() == 'd'
+				&& c2->getDataSize() == sizeof(int64))
+			{
+				const int64 symlink_mask = 0x7000000000000000LL;
+				const int64* dataptr = reinterpret_cast<const int64*>(c2->getData().data());
+				if (*dataptr & symlink_mask)
+				{
+					subtreeChanged(c2);
+				}
+			}
+#endif
+
 			c1=c1->getNextSibling();
 			c2=c2->getNextSibling();
 		}
