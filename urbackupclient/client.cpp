@@ -5969,8 +5969,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		{
 			curr->change_indicator += symlink_mask;
 		}
-
-		if (curr->isspecialf)
+		else if (curr->isspecialf)
 		{
 			curr->change_indicator += special_mask;
 		}

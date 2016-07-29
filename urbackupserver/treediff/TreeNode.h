@@ -20,6 +20,7 @@ public:
 
 	std::string getName();
 	std::string getData();
+	const char* getDataPtr();
 
 	bool equals(const TreeNode& other);
 	bool nameEquals(const TreeNode& other);
