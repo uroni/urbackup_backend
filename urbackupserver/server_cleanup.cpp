@@ -156,7 +156,9 @@ void ServerCleanupThread::operator()(void)
 				ScopedActiveThread sat;
 				IScopedLock lock(a_mutex);
 
-				if (copy_storage(migrate_storage_to) == 0)
+				bool ignore_copy_errors = FileExists("urbackup/migrate_storage_to.ignore_copy_errors");
+
+				if (copy_storage(migrate_storage_to, ignore_copy_errors) == 0)
 				{
 					writestring("done", "urbackup/migrate_storage_to.done");
 				}

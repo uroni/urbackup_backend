@@ -219,9 +219,16 @@ namespace
 		return ret;
 	}
 
-	bool copy_filebackup(const std::string& src_folder, const std::string& dst_folder, const std::string& pool_dest, MDB_txn* txn, MDB_dbi dbi)
+	bool copy_filebackup(const std::string& src_folder, const std::string& dst_folder, const std::string& pool_dest, MDB_txn* txn, MDB_dbi dbi, bool ignore_copy_errors)
 	{
-		std::vector<SFile> files = getFiles(src_folder);
+		bool has_error = false;
+		std::vector<SFile> files = getFiles(src_folder, &has_error);
+
+		if (has_error)
+		{
+			Server->Log("Error listing files is directory \"" + src_folder + "\". " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
 
 		for (size_t i = 0; i < files.size(); ++i)
 		{
@@ -253,7 +260,7 @@ namespace
 							return false;
 						}
 
-						if (!copy_filebackup(sym_target, pool_path+ "_incomplete", pool_dest, txn, dbi))
+						if (!copy_filebackup(sym_target, pool_path+ "_incomplete", pool_dest, txn, dbi, ignore_copy_errors))
 						{
 							return false;
 						}
@@ -283,7 +290,7 @@ namespace
 					return false;
 				}
 
-				if (!copy_filebackup(src_folder + os_file_sep() + files[i].name, dst_folder + os_file_sep() + files[i].name, pool_dest, txn, dbi))
+				if (!copy_filebackup(src_folder + os_file_sep() + files[i].name, dst_folder + os_file_sep() + files[i].name, pool_dest, txn, dbi, ignore_copy_errors))
 				{
 					return false;
 				}
@@ -329,7 +336,10 @@ namespace
 					if (!copy_file(os_file_prefix(src_folder + os_file_sep() + files[i].name), os_file_prefix(hl_source), false, &error_str))
 					{
 						Server->Log("Error copying file from \"" + src_folder + os_file_sep() + files[i].name + "\" to \"" + dst_folder + os_file_sep() + files[i].name + "\". " + error_str, LL_ERROR);
-						return false;
+						if (!ignore_copy_errors)
+						{
+							return false;
+						}
 					}
 
 					mdb_tval.mv_data = &hl_source[0];
@@ -490,7 +500,7 @@ namespace
 	}
 }
 
-int copy_storage(const std::string& dest_folder)
+int copy_storage(const std::string& dest_folder, bool ignore_copy_errors)
 {
 	logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 	ScopedProcess storage_migration(std::string(), sa_storage_migration, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
@@ -672,10 +682,10 @@ int copy_storage(const std::string& dest_folder)
 			}
 
 			if (!copy_filebackup(backupfolder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path,
-				dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path+"_incomplete", pool_dest, txn, dbi))
+				dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path+"_incomplete", pool_dest, txn, dbi, ignore_copy_errors))
 			{
 				ServerLogger::Log(logid, "Copying backup id " + convert(file_backups[j].id) + " path " + file_backups[j].path + " of client \"" + clientname.value + "\" failed.", LL_ERROR);
-				return 1;
+				continue;
 			}
 
 			//os_sync(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete");
@@ -739,7 +749,7 @@ int copy_storage(const std::string& dest_folder)
 				if (!copy_folder_contents(ExtractFilePath(ibackup.path), ibackup_dest + "_incomplete"))
 				{
 					ServerLogger::Log(logid, "Copying image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " of client \"" + clientname.value + "\" failed.", LL_ERROR);
-					return 1;
+					continue;
 				}
 
 				if (!os_rename_file(os_file_prefix(ibackup_dest + "_incomplete"),
@@ -767,7 +777,7 @@ int copy_storage(const std::string& dest_folder)
 				if (!copy_image_backup(ibackup.path, dest_folder + os_file_sep() + clientname.value))
 				{
 					ServerLogger::Log(logid, "Copying image backup id " + convert(image_backups[j].id) + " path " + image_backups[j].path + " of client \"" + clientname.value + "\" failed.", LL_ERROR);
-					return 1;
+					continue;
 				}
 			}
 		}
