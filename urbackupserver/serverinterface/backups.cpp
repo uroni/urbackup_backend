@@ -52,7 +52,8 @@ namespace backupaccess
 }
 
 
-bool create_zip_to_output(const std::string& foldername, const std::string& hashfoldername, const std::string& filter, bool token_authentication,
+bool create_zip_to_output(const std::string& folderbase, const std::string& foldername, const std::string& hashfolderbase, 
+	const std::string& hashfoldername, const std::string& filter, bool token_authentication,
 	const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes);
 
 namespace
@@ -86,7 +87,7 @@ namespace
 		}
 	}
 
-	bool sendZip(Helper& helper, std::string foldername, std::string hashfoldername, const std::string& filter, bool token_authentication,
+	bool sendZip(Helper& helper, std::string folderbase, std::string foldername, std::string hashfolderbase, std::string hashfoldername, const std::string& filter, bool token_authentication,
 		const std::vector<backupaccess::SToken>& backup_tokens, const std::vector<std::string>& tokens, bool skip_hashes)
 	{
 		std::string zipname=ExtractFileName(foldername)+".zip";
@@ -112,7 +113,7 @@ namespace
 			}
 		}
 
-		return create_zip_to_output(foldername, hashfoldername, filter, token_authentication,
+		return create_zip_to_output(folderbase, foldername, hashfolderbase, hashfoldername, filter, token_authentication,
 			backup_tokens, tokens, skip_hashes);
 	}
 
@@ -1085,7 +1086,10 @@ ACTION_IMPL(backups)
 						}
 						else if(sa=="zipdl")
 						{
-							sendZip(helper, path_info.full_path, path_info.full_metadata_path, CURRP["filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
+							std::string bpath = backupfolder + os_file_sep() + clientname + os_file_sep() + backuppath;
+							sendZip(helper, bpath, path_info.full_path, bpath + os_file_sep()+".hashes",
+								path_info.full_metadata_path, CURRP["filter"], token_authentication,
+								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
 							return;
 						}
 						else if(sa=="clientdl" && fileserv!=NULL)
