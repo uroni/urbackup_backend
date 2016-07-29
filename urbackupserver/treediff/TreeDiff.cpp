@@ -149,15 +149,24 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			* On Windows this works. Could be because it uses junctions for the
 			* symlinks to the directory pool.
 			**/
+			const int64* dataptr = reinterpret_cast<const int64*>(c2->getDataPtr());
+			int64 change_indicator = 0;
 			if (c2->getType() == 'd'
 				&& c2->getDataSize() == sizeof(int64))
 			{
-				const int64 symlink_mask = 0x7000000000000000LL;
-				const int64* dataptr = reinterpret_cast<const int64*>(c2->getData().data());
-				if (*dataptr & symlink_mask)
-				{
-					subtreeChanged(c2);
-				}
+				change_indicator = *dataptr;
+			}
+			else if (c2->getType() == 'f'
+				&& c2->getDataSize() == 2 * sizeof(int64))
+			{
+				change_indicator = *(dataptr + 1);
+			}
+
+			const int64 symlink_mask = 0x7000000000000000LL;
+			if ( (change_indicator>0 || c2->getType() == 'd')
+				&& (change_indicator & symlink_mask)>0 )
+			{
+				subtreeChanged(c2);
 			}
 #endif
 

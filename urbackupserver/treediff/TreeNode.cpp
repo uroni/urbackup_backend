@@ -57,6 +57,11 @@ std::string TreeNode::getData()
 	}
 }
 
+const char * TreeNode::getDataPtr()
+{
+	return data;
+}
+
 void TreeNode::setName(const char* pName)
 {
 	name=pName;
