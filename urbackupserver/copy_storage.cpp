@@ -670,6 +670,7 @@ int copy_storage(const std::string& dest_folder, bool ignore_copy_errors)
 			if (rc)
 			{
 				ServerLogger::Log(logid, "LMDB: Failed to open database (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+				mdb_txn_abort(txn);
 				return 1;
 			}
 
@@ -678,6 +679,7 @@ int copy_storage(const std::string& dest_folder, bool ignore_copy_errors)
 			if (!os_create_dir(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete"))
 			{
 				ServerLogger::Log(logid, "Error creating folder \""+ dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path + "_incomplete\". "+os_last_error_str(), LL_ERROR);
+				mdb_txn_abort(txn);
 				return 1;
 			}
 
@@ -685,6 +687,7 @@ int copy_storage(const std::string& dest_folder, bool ignore_copy_errors)
 				dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path+"_incomplete", pool_dest, txn, dbi, ignore_copy_errors))
 			{
 				ServerLogger::Log(logid, "Copying backup id " + convert(file_backups[j].id) + " path " + file_backups[j].path + " of client \"" + clientname.value + "\" failed.", LL_ERROR);
+				mdb_txn_abort(txn);
 				continue;
 			}
 
@@ -694,6 +697,7 @@ int copy_storage(const std::string& dest_folder, bool ignore_copy_errors)
 				os_file_prefix(dest_folder + os_file_sep() + clientname.value + os_file_sep() + file_backups[j].path)))
 			{
 				ServerLogger::Log(logid, "Error renaming folder after copying. " + os_last_error_str(), LL_ERROR);
+				mdb_txn_abort(txn);
 				return 1;
 			}
 
