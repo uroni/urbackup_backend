@@ -730,8 +730,40 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!Server->deleteFile(os_file_prefix(metadata_fn)))
 								{
-									if (sym_target == extra_params.end()
-										|| !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
+									if (sym_target == extra_params.end())
+									{
+										//Directory symlink to directory
+										if (!os_remove_symlink_dir(os_file_prefix(backuppath + local_curr_os_path)) )
+										{
+											ServerLogger::Log(logid, "Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" (2). " + systemErrorInfo(), LL_ERROR);
+											c_has_error = true;
+											break;
+										}
+
+										if (!os_create_dir(os_file_prefix(backuppath + local_curr_os_path)))
+										{
+											if (!os_directory_exists(os_file_prefix(backuppath + local_curr_os_path)))
+											{
+												ServerLogger::Log(logid, "Creating directory  \"" + backuppath + local_curr_os_path + "\" failed. - " + systemErrorInfo(), LL_ERROR);
+												c_has_error = true;
+												break;
+											}
+											else
+											{
+												ServerLogger::Log(logid, "Directory \"" + backuppath + local_curr_os_path + "\" does already exist.", LL_WARNING);
+											}
+										}
+
+										std::string metadata_fn_curr = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+										if(!Server->deleteFile(os_file_prefix(metadata_fn_curr)))
+										{
+											ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn_curr + "\". " + os_last_error_str(), LL_ERROR);
+											c_has_error = true;
+										}
+
+										metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+									}
+									else if( !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
 											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
 									{
 										ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + "\". " + os_last_error_str(), LL_ERROR);
