@@ -330,13 +330,22 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 
 	std::string imagefn;
-	std::string mbrd = getMBR(sletter);
+	bool fatal_mbr_error;
+	std::string mbrd = getMBR(sletter, fatal_mbr_error);
 	if (mbrd.empty())
 	{
 		if (pLetter != "SYSVOL" && pLetter != "ESP")
 		{
-			ServerLogger::Log(logid, "Cannot retrieve master boot record (MBR) for the disk from the client.", LL_ERROR);
-			return false;
+			if (fatal_mbr_error)
+			{
+				ServerLogger::Log(logid, "Cannot retrieve master boot record (MBR) for the disk from the client.", LL_ERROR);
+				return false;
+			}
+			else
+			{
+				ServerLogger::Log(logid, "Cannot retrieve master boot record (MBR) for the disk from the client. "
+					"Continuing backup but you will not be able to restore this image backup via restore CD.", LL_WARNING);
+			}
 		}
 	}
 	else
@@ -1896,8 +1905,9 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	}
 }
 
-std::string ImageBackup::getMBR(const std::string &dl)
+std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
 {
+	fatal_error = true;
 	std::string ret=client_main->sendClientMessage("MBR driveletter="+dl, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
 	char b;
@@ -1931,6 +1941,11 @@ std::string ImageBackup::getMBR(const std::string &dl)
 		std::string errmsg;
 		if( r.getStr(&errmsg) && !errmsg.empty())
 		{
+			if (errmsg.find("dynamic volume")!=std::string::npos)
+			{
+				fatal_error = false;
+			}
+
 			errmsg=". Error message: "+errmsg;
 		}
 		ServerLogger::Log(logid, "Could not read MBR"+errmsg, LL_ERROR);
