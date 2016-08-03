@@ -622,6 +622,22 @@ namespace backupaccess
 			return false;
 		}
 
+		bool can_restore = false;
+		bool restore_server_confirms;
+		if (ServerStatus::canRestore(clientname, restore_server_confirms) )
+		{
+			can_restore = true;
+
+			if (fileaccesstokens)
+			{
+				ServerSettings clientsettings(db, t_clientid);
+				if (!clientsettings.getSettings()->allow_file_restore)
+				{
+					can_restore = false;
+				}
+			}
+		}
+
 		std::string path;
 		std::vector<std::string> t_path;
 		Tokenize(u_path, t_path, "/");
@@ -656,11 +672,11 @@ namespace backupaccess
 				ret.set("clientname", clientname);
 				ret.set("clientid", t_clientid);							
 				ret.set("path", u_path);
-				bool server_confirms;
-				if(ServerStatus::canRestore(clientname, server_confirms))
+				
+				if(can_restore)
 				{
 					ret.set("can_restore", true);
-					if(server_confirms)
+					if(restore_server_confirms)
 					{
 						ret.set("server_confirms_restore", true);
 					}

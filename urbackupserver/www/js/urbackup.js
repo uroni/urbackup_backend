@@ -2328,6 +2328,9 @@ function show_settings2(data)
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
+			data.settings.allow_file_restore=getCheckboxValue(data.settings.allow_file_restore);
+			data.settings.allow_component_restore=getCheckboxValue(data.settings.allow_component_restore);
+			data.settings.allow_component_config=getCheckboxValue(data.settings.allow_component_config);
 			
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
@@ -2459,6 +2462,9 @@ function show_settings2(data)
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
+			data.settings.allow_file_restore=getCheckboxValue(data.settings.allow_file_restore);
+			data.settings.allow_component_restore=getCheckboxValue(data.settings.allow_component_restore);
+			data.settings.allow_component_config=getCheckboxValue(data.settings.allow_component_config);
 			
 			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
@@ -2809,6 +2815,9 @@ g.settings_list=[
 "allow_pause",
 "allow_log_view",
 "allow_tray_exit",
+"allow_file_restore",
+"allow_component_restore",
+"allow_component_config",
 "image_letters",
 "internet_authkey",
 "internet_speed",

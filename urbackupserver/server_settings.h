@@ -116,6 +116,9 @@ struct SSettings
 	std::string cbt_crash_persistent_volumes;
 	bool ignore_disk_errors;
 	std::string vss_select_components;
+	bool allow_file_restore;
+	bool allow_component_restore;
+	bool allow_component_config;
 };
 
 struct SLDAPSettings

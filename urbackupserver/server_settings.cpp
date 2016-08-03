@@ -331,6 +331,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings->cbt_crash_persistent_volumes = settings_default->getValue("cbt_crash_persistent_volumes", "-");
 	settings->ignore_disk_errors = (settings_default->getValue("ignore_disk_errors", "false") == "true");
 	settings->vss_select_components = settings_default->getValue("vss_select_components", "");
+	settings->allow_file_restore = settings_default->getValue("allow_file_restore", "true")=="true";
+	settings->allow_component_restore = settings_default->getValue("allow_component_restore", "true") == "true";
+	settings->allow_component_config = settings_default->getValue("allow_component_config", "true") == "true";
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -487,6 +490,10 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("ignore_disk_errors", &settings->ignore_disk_errors);
 
 	readStringClientSetting("vss_select_components", &settings->vss_select_components);
+
+	readBoolClientSetting("allow_file_restore", &settings->allow_file_restore);
+	readBoolClientSetting("allow_component_config", &settings->allow_component_config);
+	readBoolClientSetting("allow_component_restore", &settings->allow_component_restore);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

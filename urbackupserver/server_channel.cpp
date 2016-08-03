@@ -492,6 +492,12 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_EXIT_TRAY_ICON;
 	if(!cs->server_url.empty())
 		capa|=ALLOW_TOKEN_AUTHENTICATION;
+	if (!cs->allow_file_restore)
+		capa |= DONT_ALLOW_FILE_RESTORE;
+	if (!cs->allow_component_restore)
+		capa |= DONT_ALLOW_COMPONENT_RESTORE;
+	if (!cs->allow_component_restore)
+		capa |= DONT_ALLOW_COMPONENT_CONFIG;
 
 	return capa;
 }
