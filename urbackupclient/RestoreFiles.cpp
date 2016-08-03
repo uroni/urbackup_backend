@@ -36,6 +36,13 @@
 
 namespace
 {
+	const int64 restore_flag_no_overwrite = 1 << 0;
+	const int64 restore_flag_no_reboot_overwrite = 1 << 1;
+	const int64 restore_flag_ignore_overwrite_failures = 1 << 2;
+	const int64 restore_flag_mapping_is_alternative = 1 << 3;
+	const int64 restore_flag_open_all_files_first = 1 << 4;
+	const int64 restore_flag_reboot_overwrite_all = 1 << 5;
+
 	class RestoreUpdaterThread : public IThread
 	{
 	public:
@@ -255,13 +262,31 @@ void RestoreFiles::operator()()
 		IndexThread::readPatterns(tgroup, clientsubname, exclude_dirs,
 			include_dirs);
 
+		std::map<std::string, IFsFile*> open_files;
+		if (restore_flags & restore_flag_open_all_files_first)
+		{
+			log("Opening files...", LL_INFO);
+
+			if (!openFiles(open_files))
+			{
+				for (std::map<std::string, IFsFile*>::iterator it = open_files.begin();
+					it != open_files.end(); ++it)
+				{
+					Server->destroy(it->second);
+				}
+
+				restore_failed(*metadata_thread.get(), metadata_dl);
+				return;
+			}
+		}
+
 		log("Downloading necessary file data...", LL_INFO);
 
 		fc.setProgressLogCallback(this);
 
 		restore_updater.update_pc(0, total_size, 0);
 
-		if (!downloadFiles(fc, total_size, restore_updater))
+		if (!downloadFiles(fc, total_size, restore_updater, open_files))
 		{
 			restore_failed(*metadata_thread.get(), metadata_dl);
 			is_offline = true;
@@ -409,7 +434,237 @@ int64 RestoreFiles::calculateDownloadSize()
 	return total_size;
 }
 
-bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater)
+bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files)
+{
+	std::vector<char> buffer;
+	buffer.resize(32768);
+
+	FileListParser filelist_parser;
+
+	_u32 read;
+	SFile data;
+	std::map<std::string, std::string> extra;
+
+	size_t depth = 0;
+
+	std::string restore_path;
+	std::string alt_restore_path;
+
+	size_t line = 0;
+
+	bool has_error = false;
+
+	filelist->Seek(0);
+
+	std::stack<std::vector<std::string> > folder_files;
+	folder_files.push(std::vector<std::string>());
+
+	do
+	{
+		read = filelist->Read(buffer.data(), static_cast<_u32>(buffer.size()));
+
+		for (_u32 i = 0; i<read && !has_error; ++i)
+		{
+			if (filelist_parser.nextEntry(buffer[i], data, &extra))
+			{
+				FileMetadata metadata;
+				metadata.read(extra);
+
+				if (depth == 0
+					&& (!data.isdir || data.name != "..")
+					&& !metadata.orig_path.empty()
+					&& !restore_path.empty()
+					&& !has_error)
+				{
+					if (ExtractFilePath(metadata.orig_path, os_file_sep()) != restore_path)
+					{
+						folder_files.top().clear();
+					}
+				}
+
+				if (data.isdir)
+				{
+					if (data.name != "..")
+					{
+						bool set_orig_path = false;
+						std::string restore_name = data.name;
+						if (!metadata.orig_path.empty())
+						{
+							restore_path = metadata.orig_path;
+							set_orig_path = true;
+							restore_name = ExtractFileName(restore_path, os_file_sep());
+
+							str_map::iterator it_alt_orig_path = extra.find("alt_orig_path");
+							if (it_alt_orig_path != extra.end())
+							{
+								alt_restore_path = it_alt_orig_path->second;
+							}
+							else
+							{
+								alt_restore_path = restore_path;
+							}
+						}
+
+						if (depth == 0)
+						{
+							bool win_root = false;
+
+#ifdef _WIN32
+							if (restore_path.size() <= 3)
+							{
+								win_root = true;
+							}
+#endif
+
+							if (!win_root
+								&& !os_directory_exists(os_file_prefix(restore_path)))
+							{
+								if (!os_create_dir_recursive(os_file_prefix(restore_path)))
+								{
+									log("Error recursively creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
+									has_error = true;
+								}
+							}
+						}
+						else
+						{
+							if (!set_orig_path)
+							{
+								restore_path += os_file_sep() + data.name;
+								alt_restore_path += os_file_sep() + data.name;
+							}
+
+							if (!os_directory_exists(os_file_prefix(restore_path)))
+							{
+								if (!os_create_dir(os_file_prefix(restore_path))
+									&& !createDirectoryWin(restore_path))
+								{
+									log("Error creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
+									has_error = true;
+								}
+							}
+						}
+
+#ifdef _WIN32
+						std::string name_lower = strlower(restore_name);
+#else
+						std::string name_lower = restore_name;
+#endif
+						folder_files.top().push_back(name_lower);
+						folder_files.push(std::vector<std::string>());
+
+						++depth;
+					}
+					else
+					{
+						--depth;
+						restore_path = ExtractFilePath(restore_path, os_file_sep());
+						alt_restore_path = ExtractFilePath(alt_restore_path, os_file_sep());
+						folder_files.pop();
+					}
+				}
+				else
+				{
+					std::string restore_name;
+					std::string local_fn;
+					std::string alt_local_fn;
+					if (!metadata.orig_path.empty())
+					{
+						local_fn = metadata.orig_path;
+						restore_name = ExtractFileName(metadata.orig_path, os_file_sep());
+
+						str_map::iterator it_alt_orig_path = extra.find("alt_orig_path");
+						if (it_alt_orig_path != extra.end())
+						{
+							alt_local_fn = it_alt_orig_path->second;
+							alt_restore_path = ExtractFilePath(alt_local_fn, os_file_sep());
+						}
+						else
+						{
+							alt_local_fn = local_fn;
+						}
+					}
+					else
+					{
+						local_fn = restore_path + os_file_sep() + data.name;
+						restore_name = data.name;
+					}
+					
+
+#ifdef _WIN32
+					std::string name_lower = strlower(restore_name);
+#else
+					std::string name_lower = restore_name;
+#endif
+					folder_files.top().push_back(name_lower);
+
+					str_map::iterator it_orig_path = extra.find("orig_path");
+					if (it_orig_path != extra.end())
+					{
+						local_fn = it_orig_path->second;
+						restore_path = ExtractFilePath(local_fn, os_file_sep());
+					}
+
+					if (restore_flags & restore_flag_mapping_is_alternative)
+					{
+						if (restore_flags & restore_flag_no_overwrite)
+						{
+							if (os_get_file_type(os_file_prefix(alt_local_fn)) == 0)
+							{
+								os_create_dir_recursive(os_file_prefix(ExtractFilePath(alt_local_fn, os_file_sep())));
+								local_fn = alt_local_fn;
+							}
+						}
+					}
+
+					if (os_get_file_type(os_file_prefix(local_fn)) != 0)
+					{
+						if (restore_flags & restore_flag_no_overwrite)
+						{
+							log("File \"" + local_fn + "\" does already exist and the restore is configured to not overwrite existing files.", LL_ERROR);
+							return false;
+						}
+						else
+						{
+							std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
+
+							if (orig_file.get() == NULL)
+							{
+								log("Error opening file \"" + local_fn + "\" for restore. " + os_last_error_str(), LL_ERROR);
+								return false;
+							}
+							else
+							{
+								open_files[local_fn] = orig_file.release();
+							}
+						}
+					}
+					else
+					{
+						std::auto_ptr<IFsFile> restore_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
+
+						if (restore_file.get() == NULL)
+						{
+							log("Error opening new file \"" + local_fn + "\" for restore. " + os_last_error_str(), LL_ERROR);
+							return false;
+						}
+						else
+						{
+							open_files[local_fn] = restore_file.release();
+						}
+					}
+				}
+				++line;
+			}
+		}
+
+	} while (read>0 && !has_error);
+
+	return true;
+}
+
+bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater,
+	std::map<std::string, IFsFile*>& open_files)
 {
 	std::vector<char> buffer;
 	buffer.resize(32768);
@@ -432,6 +687,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	size_t depth = 0;
 
 	std::string restore_path;
+	std::string alt_restore_path;
 	std::string share_path;
 	std::string server_path = "clientdl";
 
@@ -557,6 +813,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							set_share_path = true;
 						}
 
+						str_map::iterator it_alt_orig_path = extra.find("alt_orig_path");
+						if (it_alt_orig_path != extra.end())
+						{
+							alt_restore_path = it_alt_orig_path->second;
+						}
+
 						if(depth==0)
 						{
 							bool win_root = false;
@@ -619,6 +881,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							if(!set_orig_path)
 							{
 								restore_path+=os_file_sep()+data.name;
+								alt_restore_path += os_file_sep() + data.name;
 							}
 
 							if(!os_directory_exists(os_file_prefix(restore_path)))
@@ -661,10 +924,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						--depth;			
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
-                            metadata, false, true, folder_items.back());
+                            metadata, false, true, folder_items.back(), NULL);
 
 						server_path = ExtractFilePath(server_path, "/");
 						restore_path = ExtractFilePath(restore_path, os_file_sep());
+						alt_restore_path = ExtractFilePath(alt_restore_path, os_file_sep());
 						share_path = ExtractFilePath(share_path, os_file_sep());
 
 						folder_items.pop_back();
@@ -675,6 +939,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				{
 					std::string restore_name;
 					std::string local_fn;
+					std::string alt_local_fn;
 					if (!metadata.orig_path.empty())
 					{
 						local_fn = metadata.orig_path;
@@ -684,6 +949,17 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					{
 						local_fn = restore_path + os_file_sep() + data.name;
 						restore_name = data.name;
+					}
+
+					str_map::iterator it_alt_orig_path = extra.find("alt_orig_path");
+					if (it_alt_orig_path != extra.end())
+					{
+						alt_local_fn = it_alt_orig_path->second;
+						alt_restore_path = ExtractFilePath(alt_local_fn, os_file_sep());
+					}
+					else
+					{
+						alt_local_fn = alt_restore_path + os_file_sep() + data.name;
 					}
 					
 #ifdef _WIN32
@@ -754,23 +1030,60 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}							
 						}
 
-						std::auto_ptr<IFsFile> orig_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
+						std::auto_ptr<IFsFile> orig_file;
+						bool use_open_fallback = true;
+
+						if (restore_flags & restore_flag_open_all_files_first)
+						{
+							std::map<std::string, IFsFile*>::iterator it = open_files.find(local_fn);
+							if (it == open_files.end())
+							{
+								log("Cannot find \"" + local_fn + "\" in open file list", LL_ERROR);
+								has_error = true;
+							}
+							else
+							{
+								orig_file.reset(it->second);
+								open_files.erase(it);
+
+								if (orig_file->getFilename() != os_file_prefix(local_fn))
+								{
+									metadata_path_mapping[local_fn] = orig_file->getFilename();
+								}
+							}
+							use_open_fallback = false;
+						}
+						else
+						{
+							if (!(restore_flags & restore_flag_reboot_overwrite_all))
+							{
+								orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
+							}
+
+#ifdef _WIN32
+							if (restore_flags & restore_flag_no_reboot_overwrite)
+							{
+								use_open_fallback = false;
+							}
+#endif
+						}
 
 #ifdef _WIN32
 						if (orig_file.get() == NULL
-							&& os_get_file_type(os_file_prefix(local_fn)) & EFileType_Symlink)
+							&& os_get_file_type(os_file_prefix(local_fn)) & EFileType_Symlink )
 						{
 							Server->deleteFile(os_file_prefix(local_fn));
 							orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
 						}
 
-						if(orig_file.get()==NULL)
+						if( (orig_file.get()==NULL
+							&& use_open_fallback) )
 						{
 							size_t idx=0;
 							std::string old_local_fn=local_fn;
 							while(orig_file.get()==NULL && idx<100)
 							{
-								local_fn=old_local_fn+"_"+convert(idx);
+								local_fn=old_local_fn+"_urbackup_restore_"+convert(idx);
 								++idx;
 								if (!Server->fileExists(os_file_prefix(local_fn)) )
 								{
@@ -792,7 +1105,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							}
 						}
 #else
-						if (orig_file.get() == NULL)
+						if (orig_file.get() == NULL
+							&& use_open_fallback)
 						{
 							log("Cannot open file \"" + local_fn + "\" for writing. Unlinking file and creating new one. " + os_last_error_str(), LL_INFO);
 
@@ -829,7 +1143,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							orig_file.reset();
 
 							restore_download->addToQueueFull(line, server_fn, local_fn,
-								data.size, metadata, false, true, 0);
+								data.size, metadata, false, true, 0, NULL);
 						}
 						else
 						{		
@@ -890,7 +1204,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									skipped_bytes += data.size;
 
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-                                        data.size, metadata, false, true, 0);
+                                        data.size, metadata, false, true, 0, orig_file.release());
 
 									std::string tmpfn = chunkhashes->getFilename();
 									delete chunkhashes;
@@ -901,9 +1215,32 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 					else
 					{
+						IFsFile* orig_file = NULL;
+						if (restore_flags & restore_flag_open_all_files_first)
+						{
+							std::map<std::string, IFsFile*>::iterator it = open_files.find(local_fn);
+							if (it == open_files.end())
+							{
+								log("Cannot find \"" + local_fn + "\" in open file list", LL_ERROR);
+								has_error = true;
+							}
+							else
+							{
+								open_files.erase(it);
+							}
+						}
+
 						if (data.size == 0)
 						{
-							std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
+							std::auto_ptr<IFile> touch_file;
+							if (orig_file == NULL)
+							{
+								touch_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
+							}
+							else
+							{
+								touch_file.reset(orig_file);
+							}
 
 							if (touch_file.get() == NULL)
 							{
@@ -913,13 +1250,13 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							else
 							{
 								restore_download->addToQueueFull(line, server_fn, local_fn,
-									data.size, metadata, false, true, 0);
+									data.size, metadata, false, true, 0, NULL);
 							}
 						}
 						else
 						{
 							restore_download->addToQueueFull(line, server_fn, local_fn,
-								data.size, metadata, false, false, 0);
+								data.size, metadata, false, false, 0, orig_file);
 						}
 					}
 				}
@@ -938,6 +1275,17 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 			has_error=true;
 		}
 	}
+
+	if (!open_files.empty())
+	{
+		log("There are still " + convert(open_files.size()) + " open files.", LL_ERROR);
+		for (std::map<std::string, IFsFile*>::iterator it = open_files.begin();
+			it != open_files.end(); ++it)
+		{
+			Server->destroy(it->second);
+		}
+	}
+
 
     restore_download->queueStop();
 

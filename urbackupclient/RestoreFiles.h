@@ -28,11 +28,11 @@ class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, pu
 public:
 	RestoreFiles(int64 local_process_id, int64 restore_id, int64 status_id, int64 log_id,
 		std::string client_token, std::string server_token, std::string restore_path, bool single_file,
-		bool clean_other, bool ignore_other_fs, int tgroup, std::string clientsubname)
+		bool clean_other, bool ignore_other_fs, int64 restore_flags, int tgroup, std::string clientsubname)
 		: local_process_id(local_process_id), restore_id(restore_id), status_id(status_id),
 		client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
 		log_id(log_id), restore_path(restore_path), single_file(single_file), restore_declined(false), curr_restore_updater(NULL),
-		clean_other(clean_other), ignore_other_fs(ignore_other_fs), last_speed_received_bytes(0), speed_set_time(0),
+		clean_other(clean_other), ignore_other_fs(ignore_other_fs), restore_flags(restore_flags), last_speed_received_bytes(0), speed_set_time(0),
 		tgroup(tgroup), clientsubname(clientsubname), request_restart(false), is_offline(false)
 	{
 
@@ -75,7 +75,9 @@ private:
 
 	int64 calculateDownloadSize();
 
-	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater);
+	bool openFiles(std::map<std::string, IFsFile*>& open_files);
+
+	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater, std::map<std::string, IFsFile*>& open_files);
 
 	bool removeFiles( std::string restore_path, std::string share_path, RestoreDownloadThread* restore_download, 
 		std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude );
@@ -120,6 +122,7 @@ private:
 
 	bool clean_other;
 	bool ignore_other_fs;
+	int64 restore_flags;
 
 	int64 last_speed_received_bytes;
 	int64 speed_set_time;

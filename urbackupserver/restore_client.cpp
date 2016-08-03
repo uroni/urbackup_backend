@@ -194,13 +194,13 @@ namespace
 			const std::string& folder_log_name, int64 restore_id, size_t status_id, logid_t log_id, const std::string& restore_token, const std::string& identity,
 			const std::vector<std::pair<std::string, std::string> >& map_paths,
 			bool clean_other, bool ignore_other_fs, const std::string& share_path,
-			bool follow_symlinks)
+			bool follow_symlinks, int64 restore_flags)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f),
 			skip_special_root(skip_special_root),
 			restore_token(restore_token), identity(identity), restore_id(restore_id), status_id(status_id), log_id(log_id),
 			single_file(false), map_paths(map_paths), clean_other(clean_other), ignore_other_fs(ignore_other_fs),
-			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks)
+			curr_restore_folder_idx(0), follow_symlinks(follow_symlinks), restore_flags(restore_flags)
 		{
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = foldername;
@@ -286,6 +286,7 @@ namespace
 			data.addChar(single_file ? 1 : 0);
 			data.addChar(clean_other ? 1 : 0);
 			data.addChar(ignore_other_fs ? 1 : 0);
+			data.addInt64(restore_flags);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(curr_clientname, msg);
@@ -384,6 +385,7 @@ namespace
 				if(!metadata.orig_path.empty() &&
 					(depth==0 || metadata.orig_path.rfind(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
+					std::string alt_orig_path = metadata.orig_path;
 					for (size_t j = 0; j < map_paths.size(); ++j)
 					{
 						if (next(metadata.orig_path, 0, map_paths[j].first))
@@ -394,6 +396,11 @@ namespace
 					}
 
                     extra="&orig_path="+EscapeParamString(metadata.orig_path);
+
+					if (metadata.orig_path != alt_orig_path)
+					{
+						extra+="&alt_orig_path="+EscapeParamString(alt_orig_path);
+					}
 				}
 
 				if (depth == 0)
@@ -543,6 +550,7 @@ namespace
 		std::vector<SRestoreFolder> restore_folders;
 		size_t curr_restore_folder_idx;
 		bool follow_symlinks;
+		int64 restore_flags;
 	};
 }
 
@@ -550,7 +558,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths, bool clean_other, bool ignore_other_fs, const std::string& share_path,
-	bool follow_symlinks, THREADPOOL_TICKET& ticket)
+	bool follow_symlinks, int64 restore_flags, THREADPOOL_TICKET& ticket)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -594,7 +602,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 
 	ticket = Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid,
 		filelist_f, foldername, hashfoldername, filter, skip_hashes, folder_log_name, restore_id,
-		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks), "frestore preparation");
+		status_id, log_id, restore_token, identity, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, restore_flags), "frestore preparation");
 
 	return true;
 }
@@ -602,7 +610,7 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 bool create_clientdl_thread( int backupid, const std::string& curr_clientname, int curr_clientid,
 	int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token,
 	const std::vector<std::pair<std::string, std::string> >& map_paths,
-	bool clean_other, bool ignore_other_fs, bool follow_symlinks)
+	bool clean_other, bool ignore_other_fs, bool follow_symlinks, int64 restore_flags)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -638,6 +646,6 @@ bool create_clientdl_thread( int backupid, const std::string& curr_clientname, i
 	THREADPOOL_TICKET ticket;
 
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::string(),
-		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, ticket);
+		true, "", restore_id, status_id, log_id, restore_token, map_paths, clean_other, ignore_other_fs, share_path, follow_symlinks, restore_flags, ticket);
 }
 

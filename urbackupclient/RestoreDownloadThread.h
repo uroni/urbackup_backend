@@ -18,7 +18,7 @@ namespace
 
 	struct SPatchDownloadFiles
 	{
-		IFile* orig_file;
+		IFsFile* orig_file;
 		IFile* chunkhashes;
 	};
 
@@ -64,10 +64,10 @@ public:
 	void operator()();
 
 	void addToQueueFull(size_t id, const std::string &remotefn, const std::string &destfn,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, IFsFile* orig_file);
 
 	void addToQueueChunked(size_t id, const std::string &remotefn, const std::string &destfn,
-		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes);
+		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFsFile* orig_file, IFile* chunkhashes);
 
 	void queueSkip();
 

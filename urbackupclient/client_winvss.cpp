@@ -79,7 +79,7 @@ namespace
 			}
 		}
 	private:
-		BSTR bstr;
+		BSTR& bstr;
 	};
 
 #define SCOPED_DECLARE_FREE_BSTR(x) BSTR x = NULL; FreeBStr TOKENPASTE(FreeBStr_, __LINE__) (x)
@@ -460,7 +460,8 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 
 		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
-		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(with_components ? TRUE : FALSE, TRUE, VSS_BT_COPY, FALSE));
+		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(with_components ? TRUE : FALSE, TRUE,
+			with_components ? VSS_BT_FULL : VSS_BT_COPY, FALSE));
 
 		IVssAsync *pb_result;
 
@@ -1035,10 +1036,16 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				{
 					for (size_t k = 0; k < vss_select_components.size(); ++k)
 					{
-						if (vss_select_components[k].writerId == writerId)
+						if (vss_select_components[k].writerId == writerId
+							&& vss_select_components[k].logicalPath.empty()
+							&& vss_select_components[k].componentName.empty())
 						{
 							backup_component = true;
-							break;
+							added_curr_component = true;
+						}
+						else if (vss_select_components[k].writerId == writerId)
+						{
+							backup_component = true;
 						}
 					}
 				}
@@ -1061,7 +1068,8 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 					}
 					else
 					{
-						if (std::find(vss_select_components.begin(), vss_select_components.end(),
+						if (added_curr_component
+							|| std::find(vss_select_components.begin(), vss_select_components.end(),
 							currComponent) != vss_select_components.end())
 						{
 							hr = backupcom->AddComponent(instanceId, writerId, componentInfo->type, componentInfo->bstrLogicalPath, componentInfo->bstrComponentName);

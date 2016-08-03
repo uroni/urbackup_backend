@@ -1121,9 +1121,15 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 		bool clean_other = params["clean_other"] == "1";
 		bool ignore_other_fs = params["ignore_other_fs"] != "0";
 		bool follow_symlinks = params["follow_symlinks"] == "0";
+		int64 restore_flags = 0;
+		str_map::iterator restore_flags_it = params.find("restore_flags");
+		if (restore_flags_it != params.end())
+		{
+			restore_flags = watoi64(restore_flags_it->second);
+		}
 
 		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id,
-			params["restore_token"], map_paths, clean_other, ignore_other_fs, follow_symlinks))
+			params["restore_token"], map_paths, clean_other, ignore_other_fs, follow_symlinks, restore_flags))
 		{
 			JSON::Object ret;
 			ret.set("ok", true);
@@ -1234,11 +1240,17 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		bool clean_other = params["clean_other"] == "1";
 		bool ignore_other_fs = params["ignore_other_fs"] != "0";
 		bool follow_symlinks= params["follow_symlinks"] == "0";
+		int64 restore_flags = 0;
+		str_map::iterator restore_flags_it = params.find("restore_flags");
+		if (restore_flags_it != params.end())
+		{
+			restore_flags = watoi64(restore_flags_it->second);
+		}
 		THREADPOOL_TICKET ticket;
 
 		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, 
 			path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"],
-			map_paths, clean_other, ignore_other_fs, greplace(os_file_sep(), "/", path_info.rel_path), follow_symlinks, ticket))
+			map_paths, clean_other, ignore_other_fs, greplace(os_file_sep(), "/", path_info.rel_path), follow_symlinks, restore_flags, ticket))
 		{
 			ret.set("err", 5);
 			break;

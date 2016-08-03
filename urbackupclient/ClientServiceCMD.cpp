@@ -1826,6 +1826,12 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 		accessparams += "&follow_symlinks=" + EscapeParamString(it_follow_symlinks->second);
 	}
 
+	str_map::iterator it_restore_flags = params.find("restore_flags");
+	if (it_restore_flags != params.end())
+	{
+		accessparams += "&restore_flags=" + EscapeParamString(it_restore_flags->second);
+	}
+
 	for (size_t i = 0; params.find("map_path_source" + convert(i)) != params.end(); ++i)
 	{
 		accessparams += "&map_path_source" + convert(i) + "=" + EscapeParamString(params["map_path_source" + convert(i)]);
@@ -2455,6 +2461,12 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	bool ignore_other_fs = params["ignore_other_fs"] != "0";
 	int tgroup = watoi(params["tgroup"]);
 	std::string clientsubname = params["clientsubname"];
+	int64 restore_flags = 0;
+	str_map::iterator restore_flags_it = params.find("restore_flags");
+	if (restore_flags_it != params.end())
+	{
+		restore_flags = watoi64(restore_flags_it->second);
+	}
 
 	if(restore_process_id==0)
 	{
@@ -2495,7 +2507,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	}
 
 	RestoreFiles* local_restore_files = new RestoreFiles(restore_process_id, restore_id, status_id, log_id,
-		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs,
+		client_token, server_token, restore_path, single_file, clean_other, ignore_other_fs, restore_flags,
 		tgroup, clientsubname);
 
 	if(restore == "client-confirms" && !has_restore_token)

@@ -134,7 +134,7 @@ void RestoreDownloadThread::operator()()
 }
 
 void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remotefn, const std::string &destfn,
-    _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items)
+    _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items, IFsFile* orig_file)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -149,6 +149,7 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remote
 	ni.patch_dl_files.orig_file=NULL;
 	ni.metadata_only = metadata_only;
 	ni.folder_items = folder_items;
+	ni.patch_dl_files.orig_file = orig_file;
 
 	IScopedLock lock(mutex.get());
 	dl_queue.push_back(ni);
@@ -159,7 +160,7 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remote
 }
 
 void RestoreDownloadThread::addToQueueChunked( size_t id, const std::string &remotefn, const std::string &destfn,
-	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes )
+	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFsFile* orig_file, IFile* chunkhashes )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -208,7 +209,14 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 	
     if(!todl.metadata_only)
 	{
-		dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
+		if (todl.patch_dl_files.orig_file == NULL)
+		{
+			dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
+		}
+		else
+		{
+			dest_f.reset(todl.patch_dl_files.orig_file);
+		}
 
 #ifdef _WIN32
 		if(dest_f.get()==NULL)
