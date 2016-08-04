@@ -953,7 +953,7 @@ bool IndexThread::getVssSettings()
 		for (size_t i = 0; i < sizeof(default_writer_ids) / sizeof(default_writer_ids[0]); ++i)
 		{
 			SComponent component;
-			HRESULT hr = IIDFromString(Server->ConvertToWchar(default_writer_ids[i]]).c_str(), &component.writerId);
+			HRESULT hr = IIDFromString(Server->ConvertToWchar(default_writer_ids[i]).c_str(), &component.writerId);
 			if (hr == S_OK)
 			{
 				vss_select_components.push_back(component);
