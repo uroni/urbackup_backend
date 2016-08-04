@@ -1152,9 +1152,9 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				}
 			}
 		}
-#endif
 
 		removeUnconfirmedVssDirs();
+#endif
 
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{

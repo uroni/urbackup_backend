@@ -14,9 +14,11 @@ typedef struct _GUID {
     unsigned short Data3;
     unsigned char  Data4[ 8 ];
 
+#ifndef _WIN32
 	bool operator==(const _GUID& other) const {
 		return memcmp(this, &other, sizeof(unsigned long)+2*sizeof(unsigned short)+8) == 0;
 	}
+#endif
 } GUID;
 #endif
 
