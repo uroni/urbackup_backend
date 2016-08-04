@@ -598,23 +598,43 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		bool snapshot_ok = false;
 		if (tries>1)
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
+			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, &retryable_error);
 		}
 		else
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
+			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, NULL);
 		}
 		--tries;
 		if (!snapshot_ok && !retryable_error)
 		{
-			VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
+			if (!with_components)
+			{
+				VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
+			}
+			else
+			{
+				VSSLog("Writer is in error state during snapshot creation.", LL_ERROR);
+				backupcom->AbortBackup();
+				backupcom->Release();
+				return false;
+			}
 			break;
 		}
 		else if (!snapshot_ok)
 		{
 			if (tries == 0)
 			{
-				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
+				if (!with_components)
+				{
+					VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
+				}
+				else
+				{
+					VSSLog("Creating snapshot failed after three tries. Giving up.", LL_ERROR);
+					backupcom->AbortBackup();
+					backupcom->Release();
+					return false;
+				}
 				break;
 			}
 			else
