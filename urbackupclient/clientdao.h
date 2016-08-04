@@ -7,21 +7,16 @@
 
 #ifndef GUID_DEFINED
 #define GUID_DEFINED
-#if defined(__midl)
-typedef struct {
-    unsigned long  Data1;
-    unsigned short Data2;
-    unsigned short Data3;
-    byte           Data4[ 8 ];
-} GUID;
-#else
 typedef struct _GUID {
     unsigned long  Data1;
     unsigned short Data2;
     unsigned short Data3;
     unsigned char  Data4[ 8 ];
+
+	bool operator==(const _GUID& other) const {
+		return memcmp(this, &other, sizeof(unsigned long)+2*sizeof(unsigned short)+8) == 0;
+	}
 } GUID;
-#endif
 #endif
 
 std::string guidToString(GUID guid);
