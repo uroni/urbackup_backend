@@ -881,12 +881,18 @@ bool IndexThread::getVssSettings()
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	vss_select_components.clear();
 	vss_select_all_components = false;
+	bool select_default_components = false;
 	bool ret = false;
 	if (curr_settings.get() != NULL)
 	{
 		std::string val;
-		if (curr_settings->getValue("vss_select_components", &val) 
-			|| curr_settings->getValue("vss_select_components_def", &val))
+		if (!curr_settings->getValue("vss_select_components", &val)
+			 && !curr_settings->getValue("vss_select_components_def", &val))
+		{
+			val = "default=1";
+		}
+
+		if (!val.empty())
 		{
 			str_map comps;
 			ParseParamStrHttp(val, &comps, false);
@@ -918,6 +924,32 @@ bool IndexThread::getVssSettings()
 				&& comps["all"] != "0")
 			{
 				vss_select_all_components = true;
+			}
+
+			if (!comps["default"].empty()
+				&& comps["default"] != "0")
+			{
+				select_default_components = true;
+			}
+		}
+	}
+
+	if (!vss_select_all_components
+		&& select_default_components)
+	{
+		const char* default_writer_ids[] = {
+			"{a65faa63-5ea8-4ebc-9dbd-a0c4db26912a}", //MS SQL Server 2014
+			"{76fe1ac4-15f7-4bcd-987e-8e1acb462fb7}" //MS Exchange 2010
+		};
+
+		for (size_t i = 0; i < sizeof(default_writer_ids) / sizeof(default_writer_ids[0]); ++i)
+		{
+			SComponent component;
+			HRESULT hr = IIDFromString(Server->ConvertToWchar(default_writer_ids[i]]).c_str(), &component.writerId);
+			if (hr == S_OK)
+			{
+				vss_select_components.push_back(component);
+				ret = true;
 			}
 		}
 	}
