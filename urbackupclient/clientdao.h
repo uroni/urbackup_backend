@@ -4,6 +4,7 @@
 #include "../Interface/Query.h"
 #include "../urbackupcommon/os_functions.h"
 #include <vector>
+#include <memory.h>
 
 #ifndef GUID_DEFINED
 #define GUID_DEFINED
