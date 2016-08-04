@@ -484,6 +484,14 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 				backupcom = NULL;
 				return false;
 			}
+
+			if (vss_all_components.empty())
+			{
+				VSSLog("Selected no components to backup", LL_INFO);
+				backupcom->Release();
+				backupcom = NULL;
+				return true;
+			}
 		}
 
 		if (!wpath.empty()
