@@ -34,6 +34,7 @@
 
 #ifndef _WIN32
 #define VSS_ID GUID
+#define VSS_COMPONENT_TYPE int
 #endif
 
 #include "../fileservplugin/IFileServFactory.h"
