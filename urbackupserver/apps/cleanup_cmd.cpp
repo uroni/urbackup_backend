@@ -164,8 +164,6 @@ int cleanup_cmd(void)
 	return 0;
 }
 
-void open_settings_database_full();
-
 int defrag_database(void)
 {
 	Server->Log("Shutting down all database instances...", LL_INFO);
@@ -173,7 +171,6 @@ int defrag_database(void)
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
 	open_server_database(true);
-	open_settings_database_full();
 
 	std::vector<DATABASE_ID> dbs;
 	dbs.push_back(URBACKUPDB_SERVER);

@@ -142,7 +142,6 @@ bool test_amatch(void);
 bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
-void open_settings_database_full();
 int md5sum_check();
 
 std::string lang="en";
