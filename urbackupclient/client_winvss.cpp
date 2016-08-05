@@ -1076,6 +1076,8 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				bool already_selected = std::find(vss_all_components.begin(), vss_all_components.end(),
 					currComponent)!= vss_all_components.end();
 
+				bool already_added = already_selected;
+
 				if (!already_selected)
 				{
 					for (size_t k = 0; k < explicit_selected_components.size(); ++k)
@@ -1147,7 +1149,8 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 					}
 				}
 
-				if (added_curr_component)
+				if (added_curr_component
+					|| (!already_added && already_selected) )
 				{
 					added_at_least_one_component = true;
 
