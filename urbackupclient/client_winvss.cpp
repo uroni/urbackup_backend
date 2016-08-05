@@ -182,10 +182,11 @@ bool IndexThread::wait_for(IVssAsync *vsasync, const std::string& error_prefix)
 bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error)
 {
 #define FAIL_STATE(x) case x: { state=#x; failure=true; } break
-#define OK_STATE(x) case x: { state=#x; } break
+#define OK_STATE(x) case x: { state=#x; ok_state=true; } break
 
 	std::string state;
 	bool failure = false;
+	bool ok_state = false;
 	switch (pState)
 	{
 		FAIL_STATE(VSS_WS_UNKNOWN);
@@ -239,7 +240,8 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 	else
 		writerName = "(NULL)";
 
-	if (failure || has_error)
+	if (failure 
+		|| (has_error && (!ok_state || pHrResultFailure!= VSS_E_WRITERERROR_RETRYABLE) ) )
 	{
 		const std::string erradd = ". UrBackup will continue with the backup but the associated data may not be consistent.";
 		std::string nerrmsg = "Writer " + writerName + " has failure state " + state + " with error " + err;
