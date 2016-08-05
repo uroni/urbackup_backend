@@ -19,19 +19,9 @@
 #include "app.h"
 #include "../../stringtools.h"
 
-void open_settings_database_full()
-{
-	if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS) )
-	{
-		Server->Log("Couldn't open Database backup_server_settings.db. Exiting.", LL_ERROR);
-		exit(1);
-	}
-}
-
 int repair_cmd(void)
 {
 	open_server_database(true);
-	open_settings_database_full();
 
 	std::vector<DATABASE_ID> dbs;
 	dbs.push_back(URBACKUPDB_SERVER);
