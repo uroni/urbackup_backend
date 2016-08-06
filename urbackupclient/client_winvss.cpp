@@ -1534,8 +1534,14 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				componentNameStrShort = componentNameStr.substr(0, 100);
 			}
 
+			std::string logicalPathHash;
+			if (!logicalPathStr.empty())
+			{
+				logicalPathHash = "_" + Server->GenerateHexMD5(logicalPathStr);
+			}
+
 			curr_dir = sortHex(j) + "_" + conv_filename(componentNameStrShort);
-			std::string named_path = named_path_base + "_" + curr_dir;			
+			std::string named_path = named_path_base + logicalPathHash + "_" + conv_filename(componentNameStrShort);
 
 			SComponent currComponent;
 			currComponent.componentName = componentNameStr;
