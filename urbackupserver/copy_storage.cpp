@@ -222,7 +222,7 @@ namespace
 	bool copy_filebackup(const std::string& src_folder, const std::string& dst_folder, const std::string& pool_dest, MDB_txn* txn, MDB_dbi dbi, bool ignore_copy_errors)
 	{
 		bool has_error = false;
-		std::vector<SFile> files = getFiles(src_folder, &has_error);
+		std::vector<SFile> files = getFiles(os_file_prefix(src_folder), &has_error);
 
 		if (has_error)
 		{
@@ -250,27 +250,34 @@ namespace
 					if (!os_directory_exists(pool_path)
 						&& !os_directory_exists(pool_path + "_incomplete"))
 					{
-						if (ExtractFileName(pool_path) == "0tqhImq1vA1464305186136946866")
-						{
-							int abc = 5;
-						}
 						if (!os_create_dir_recursive(pool_path + "_incomplete"))
 						{
 							Server->Log("Error creating pool path \"" + pool_path + "_incomplete\". "+os_last_error_str(), LL_ERROR);
 							return false;
 						}
 
-						if (!copy_filebackup(sym_target, pool_path+ "_incomplete", pool_dest, txn, dbi, ignore_copy_errors))
+						if (!os_directory_exists(os_file_prefix(sym_target)))
 						{
-							return false;
+							Server->Log("Directory pool path target \"" + sym_target + "\" does not exist", LL_ERROR);
+							if (!ignore_copy_errors)
+							{
+								return false;
+							}
 						}
-
-						//os_sync(pool_path + "_incomplete");
-
-						if (!os_rename_file(pool_path + "_incomplete", pool_path, NULL))
+						else
 						{
-							Server->Log("Error renaming to \"" + pool_path + "\". " + os_last_error_str(), LL_ERROR);
-							return false;
+							if (!copy_filebackup(sym_target, pool_path + "_incomplete", pool_dest, txn, dbi, ignore_copy_errors))
+							{
+								return false;
+							}
+
+							//os_sync(pool_path + "_incomplete");
+
+							if (!os_rename_file(pool_path + "_incomplete", pool_path, NULL))
+							{
+								Server->Log("Error renaming to \"" + pool_path + "\". " + os_last_error_str(), LL_ERROR);
+								return false;
+							}
 						}
 					}
 				}
