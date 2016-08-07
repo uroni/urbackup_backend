@@ -23,6 +23,7 @@
 #include "file_permissions.h"
 #include "DirectoryWatcherThread.h"
 #include "../urbackupcommon/json.h"
+#include <assert.h>
 
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
 #define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed. VSS error code "+GetErrorHResErrStr(r), LL_ERROR); printProviderInfo(r); return false; }}
@@ -798,13 +799,37 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 		{
 			--it_curr->second->refcount;
 
+			for (size_t i = 0; i < it_curr->second->parents.size(); ++i)
+			{
+				++it_curr->second->parents[i]->issues;
+			}
+
 			if (it_curr->second->refcount == 0)
 			{
 				it_curr->second->backupcom->SetBackupSucceeded(it_curr->second->instanceId,
 					it_curr->second->writerId, it_curr->second->componentType,
-					Server->ConvertToWchar(it_curr->second->logicalPath).c_str(),
+					it_curr->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_curr->second->logicalPath).c_str(),
 					Server->ConvertToWchar(it_curr->second->componentName).c_str(),
-					FALSE);
+					false);
+
+				for (size_t i = 0; i < it_curr->second->parents.size(); ++i)
+				{
+					SVssInstance* parent = it_curr->second->parents[i];
+
+					assert(parent->refcount > 0);
+					--parent->refcount;
+
+					if (parent->refcount == 0)
+					{
+						parent->backupcom->SetBackupSucceeded(parent->instanceId,
+							parent->writerId, parent->componentType,
+							parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
+							Server->ConvertToWchar(parent->componentName).c_str(),
+							false);
+
+						delete parent;
+					}
+				}
 
 				delete it_curr->second;
 			}			
@@ -1501,6 +1526,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		}
 
 		std::vector<std::string> exclude_files;
+		std::vector<SVssInstance*> unreferenced_vss_instances;
 
 		for (UINT j = 0; j < nComponents; ++j)
 		{
@@ -1682,7 +1708,84 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					++vssInstance->refcount;
 				}
 
+				std::string completeLogicalPathStr = logicalPathStr;
+				if (completeLogicalPathStr.empty())
+				{
+					completeLogicalPathStr = componentNameStr;
+				}
+				else
+				{
+					completeLogicalPathStr += "\\" + componentNameStr;
+				}
+
+				for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
+					it != vss_name_instances.end(); ++it)
+				{
+					std::string logicalPath = it->second->logicalPath;
+
+					if (logicalPath.empty())
+					{
+						logicalPath = it->second->componentName;
+					}
+					else
+					{
+						logicalPath += "\\" + it->second->componentName;
+					}
+
+					if (it->second != vssInstance
+						&& it->second->writerId == writerId
+						&& completeLogicalPathStr != logicalPath )
+					{
+						if (next(completeLogicalPathStr, 0, logicalPath))
+						{
+							bool already_present = false;
+							for (size_t k = 0; k < vssInstance->parents.size(); ++k)
+							{
+								if (*vssInstance->parents[k] == *it->second)
+								{
+									already_present = true;
+								}
+							}
+							if (!already_present)
+							{
+								vssInstance->parents.push_back(it->second);
+								++it->second->refcount;
+							}
+						}
+						else if(next(logicalPath, 0, completeLogicalPathStr))
+						{
+							bool already_present = false;
+							for (size_t k = 0; k < it->second->parents.size(); ++k)
+							{
+								if (*it->second->parents[k] == *vssInstance)
+								{
+									already_present = true;
+								}
+							}
+							if (!already_present)
+							{
+								it->second->parents.push_back(vssInstance);
+								++vssInstance->refcount;
+							}
+						}
+					}
+				}
+
+				if (vssInstance->refcount == 0)
+				{
+					++vssInstance->refcount;
+					unreferenced_vss_instances.push_back(vssInstance);
+				}
+
 				pretty_symlink_struct_writer += "u\n";
+			}
+		}
+
+		for (size_t j = 0; j < unreferenced_vss_instances.size(); ++j)
+		{
+			if (unreferenced_vss_instances[j]->refcount <= 1)
+			{
+				delete unreferenced_vss_instances[j];
 			}
 		}
 

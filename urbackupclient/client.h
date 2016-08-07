@@ -245,6 +245,17 @@ struct SVssInstance
 	std::string logicalPath;
 	size_t refcount;
 	size_t issues;
+
+	bool operator==(const SVssInstance& other) const
+	{
+		return instanceId == other.instanceId
+			&& writerId == other.writerId
+			&& componentType == other.componentType
+			&& componentName == other.componentName
+			&& logicalPath == other.logicalPath;
+	}
+
+	std::vector<SVssInstance*> parents;
 };
 
 class ClientDAO;

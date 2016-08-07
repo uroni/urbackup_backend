@@ -821,13 +821,37 @@ void IndexThread::operator()(void)
 				--it_inst->second->refcount;
 				it_inst->second->issues += issues;
 
+				for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
+				{
+					it_inst->second->parents[i]->issues += issues;
+				}
+
 				if (it_inst->second->refcount == 0)
 				{
 					it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
 						it_inst->second->writerId, it_inst->second->componentType,
-						Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
+						it_inst->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
 						Server->ConvertToWchar(it_inst->second->componentName).c_str(),
-						it_inst->second->issues == 0 ? TRUE : FALSE);
+						it_inst->second->issues == 0 ? true : false);
+
+					for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
+					{
+						SVssInstance* parent = it_inst->second->parents[i];
+						
+						assert(parent->refcount > 0);
+						--parent->refcount;
+
+						if (parent->refcount == 0)
+						{
+							parent->backupcom->SetBackupSucceeded(parent->instanceId,
+								parent->writerId, parent->componentType,
+								parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
+								Server->ConvertToWchar(parent->componentName).c_str(),
+								parent->issues == 0 ? true : false);
+
+							delete parent;
+						}
+					}
 
 					delete it_inst->second;
 				}
