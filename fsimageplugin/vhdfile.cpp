@@ -384,7 +384,18 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		}
 
 		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(unicodename_source));
-		std::string rel_unicodename=Server->ConvertToUTF16(".\\"+ExtractFileName(parentfn));
+
+		std::string rel_unicodename;
+
+		if (dirname.find("Image") != std::string::npos)
+		{
+			rel_unicodename = Server->ConvertToUTF16("..\\" +dirname+"\\"+ ExtractFileName(parentfn));
+		}
+		else
+		{
+			rel_unicodename = Server->ConvertToUTF16(".\\" + ExtractFileName(parentfn));
+		}
+
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
 		unicodename[unicodename.size()-2]=0;
