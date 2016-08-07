@@ -1403,16 +1403,33 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	}
 
 	for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
-		it != vss_name_instances.end(); ++it)
+		it != vss_name_instances.end();)
 	{
+		if (!next(it->first, 0, starttoken + "|"))
+		{
+			++it;
+			continue;
+		}
+
 		--it->second->refcount;
 
 		if (it->second->refcount == 0)
 		{
+			for (size_t i = 0; i < it->second->parents.size(); ++i)
+			{
+				--it->second->parents[i]->refcount;
+				if (it->second->parents[i]->refcount == 0)
+				{
+					delete it->second->parents[i];
+				}
+			}
+
 			delete it->second;
 		}
+
+		std::map<std::string, SVssInstance*>::iterator delit = it++;
+		vss_name_instances.erase(delit);
 	}
-	vss_name_instances.clear();
 
 	std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
 	std::string components_dir = "urbackup\\windows_components";
@@ -1642,7 +1659,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					vss_name_instances[named_path + "_files" + sortHex(k)] = vssInstance;
+					vss_name_instances[starttoken + "|" + named_path + "_files" + sortHex(k)] = vssInstance;
 					++vssInstance->refcount;
 				}
 
@@ -1673,7 +1690,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					vss_name_instances[named_path + "_database" + sortHex(k)] = vssInstance;
+					vss_name_instances[starttoken + "|" + named_path + "_database" + sortHex(k)] = vssInstance;
 					++vssInstance->refcount;
 				}
 
@@ -1704,7 +1721,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					vss_name_instances[named_path + "_database_log" + sortHex(k)] = vssInstance;
+					vss_name_instances[starttoken + "|" + named_path + "_database_log" + sortHex(k)] = vssInstance;
 					++vssInstance->refcount;
 				}
 
@@ -1883,6 +1900,15 @@ void IndexThread::removeBackupcomReferences(IVssBackupComponents * backupcom)
 
 			if (it_curr->second->refcount == 0)
 			{
+				for (size_t i = 0; i < it_curr->second->parents.size(); ++i)
+				{
+					--it_curr->second->parents[i]->refcount;
+					if (it_curr->second->parents[i]->refcount == 0)
+					{
+						delete it_curr->second->parents[i];
+					}
+				}
+
 				delete it_curr->second;
 			}
 

@@ -815,7 +815,7 @@ void IndexThread::operator()(void)
 				continue;
 			}
 
-			std::map<std::string, SVssInstance*>::iterator it_inst = vss_name_instances.find(scdir);
+			std::map<std::string, SVssInstance*>::iterator it_inst = vss_name_instances.find(starttoken + "|" + scdir);
 			if (it_inst != vss_name_instances.end())
 			{
 				--it_inst->second->refcount;
