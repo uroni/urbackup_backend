@@ -1526,7 +1526,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		}
 
 		std::vector<std::string> exclude_files;
-		std::vector<SVssInstance*> unreferenced_vss_instances;
+		std::vector<SVssInstance*> component_vss_instances;
 
 		for (UINT j = 0; j < nComponents; ++j)
 		{
@@ -1718,22 +1718,21 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					completeLogicalPathStr += "\\" + componentNameStr;
 				}
 
-				for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
-					it != vss_name_instances.end(); ++it)
+				for (std::vector<SVssInstance*>::iterator it = component_vss_instances.begin();
+					it != component_vss_instances.end(); ++it)
 				{
-					std::string logicalPath = it->second->logicalPath;
+					std::string logicalPath = (*it)->logicalPath;
 
 					if (logicalPath.empty())
 					{
-						logicalPath = it->second->componentName;
+						logicalPath = (*it)->componentName;
 					}
 					else
 					{
-						logicalPath += "\\" + it->second->componentName;
+						logicalPath += "\\" + (*it)->componentName;
 					}
 
-					if (it->second != vssInstance
-						&& it->second->writerId == writerId
+					if (*it != vssInstance
 						&& completeLogicalPathStr != logicalPath )
 					{
 						if (next(completeLogicalPathStr, 0, logicalPath))
@@ -1741,51 +1740,48 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 							bool already_present = false;
 							for (size_t k = 0; k < vssInstance->parents.size(); ++k)
 							{
-								if (*vssInstance->parents[k] == *it->second)
+								if (*vssInstance->parents[k] == *(*it))
 								{
 									already_present = true;
 								}
 							}
 							if (!already_present)
 							{
-								vssInstance->parents.push_back(it->second);
-								++it->second->refcount;
+								vssInstance->parents.push_back(*it);
+								++(*it)->refcount;
 							}
 						}
 						else if(next(logicalPath, 0, completeLogicalPathStr))
 						{
 							bool already_present = false;
-							for (size_t k = 0; k < it->second->parents.size(); ++k)
+							for (size_t k = 0; k < (*it)->parents.size(); ++k)
 							{
-								if (*it->second->parents[k] == *vssInstance)
+								if (*(*it)->parents[k] == *vssInstance)
 								{
 									already_present = true;
 								}
 							}
 							if (!already_present)
 							{
-								it->second->parents.push_back(vssInstance);
+								(*it)->parents.push_back(vssInstance);
 								++vssInstance->refcount;
 							}
 						}
 					}
 				}
 
-				if (vssInstance->refcount == 0)
-				{
-					++vssInstance->refcount;
-					unreferenced_vss_instances.push_back(vssInstance);
-				}
+				++vssInstance->refcount;
+				component_vss_instances.push_back(vssInstance);
 
 				pretty_symlink_struct_writer += "u\n";
 			}
 		}
 
-		for (size_t j = 0; j < unreferenced_vss_instances.size(); ++j)
+		for (size_t j = 0; j < component_vss_instances.size(); ++j)
 		{
-			if (unreferenced_vss_instances[j]->refcount <= 1)
+			if (component_vss_instances[j]->refcount <= 1)
 			{
-				delete unreferenced_vss_instances[j];
+				delete component_vss_instances[j];
 			}
 		}
 
