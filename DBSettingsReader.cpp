@@ -76,3 +76,47 @@ std::vector<std::string> CDBSettingsReader::getKeys()
 {
 	return std::vector<std::string>();
 }
+
+CDBMemSettingsReader::CDBMemSettingsReader(THREAD_ID tid, DATABASE_ID did, const std::string & pTable, const std::string & pSQL)
+	: CDBMemSettingsReader(Server->getDatabase(tid, did), pTable, pSQL)
+{
+
+}
+
+CDBMemSettingsReader::CDBMemSettingsReader(IDatabase * pDB, const std::string & pTable, const std::string & pSQL)
+{
+	db_results res;
+	if (pSQL.empty())
+		res = pDB->Read("SELECT key, value FROM " + pTable + " WHERE key=?");
+	else
+		res = pDB->Read(pSQL);
+
+	for (size_t i = 0; i < res.size(); ++i)
+	{
+		table.insert(std::make_pair(res[i]["key"], res[i]["value"]));
+	}
+}
+
+bool CDBMemSettingsReader::getValue(std::string key, std::string * value)
+{
+	str_map::iterator it = table.find(key);
+	if (it != table.end())
+	{
+		*value = it->second;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+std::vector<std::string> CDBMemSettingsReader::getKeys()
+{
+	std::vector<std::string> ret;
+	for (str_map::iterator it = table.begin(); it != table.end(); ++it)
+	{
+		ret.push_back(it->first);
+	}
+	return ret;
+}

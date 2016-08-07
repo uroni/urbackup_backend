@@ -21,6 +21,13 @@ namespace
 
 struct SSettings
 {
+	SSettings()
+		: needs_update(false), refcount(0)
+	{}
+
+	volatile bool needs_update;
+	size_t refcount;
+
 	int clientid;
 	std::string backupfolder;
 	std::string backupfolder_uncompr;
@@ -172,15 +179,6 @@ struct STimeSpan
 	}
 };
 
-class ServerSettings;
-
-struct SSettingsCacheItem
-{
-	SSettings* settings;
-	size_t refcount;
-	bool needs_update;
-};
-
 class ServerSettings
 {
 public:
@@ -189,8 +187,6 @@ public:
 
 	void update(bool force_update);
 
-	void doUpdate(void);
-	
 	SSettings *getSettings(bool *was_updated=NULL);
 
 	static void init_mutex(void);
@@ -244,29 +240,24 @@ private:
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
 	int parseDayOfWeek(std::string dow);
-	void readSettingsDefault(void);
-	void readSettingsClient(void);
-	void readBoolClientSetting(const std::string &name, bool *output);
-	void readStringClientSetting(const std::string &name, std::string *output);
-	void readIntClientSetting(const std::string &name, int *output);
-	void readSizeClientSetting(const std::string &name, size_t *output);
-	void createSettingsReaders();
+	void readSettingsDefault(ISettingsReader* settings_default);
+	void readSettingsClient(ISettingsReader* settings_client);
+	void readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output);
+	void readStringClientSetting(ISettingsReader* settings_client, const std::string &name, std::string *output);
+	void readIntClientSetting(ISettingsReader* settings_client, const std::string &name, int *output);
+	void readSizeClientSetting(ISettingsReader* settings_client, const std::string &name, size_t *output);
+	void createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
+		std::auto_ptr<ISettingsReader>& settings_client);
 	void updateInternal(bool* was_updated);
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 
-	SSettingsCacheItem* settings_cache;
 	SSettings* local_settings;
 
-	ISettingsReader *settings_default;
-	ISettingsReader *settings_client;
 	IDatabase* db;
-
-	volatile bool do_update;
 
 	int clientid;
 
-	static std::map<ServerSettings*, bool> g_settings;
-	static std::map<int, SSettingsCacheItem> g_settings_cache;
+	static std::map<int, SSettings*> g_settings_cache;
 	static IMutex *g_mutex;
 };
 

@@ -1393,6 +1393,16 @@ ISettingsReader* CServer::createDBSettingsReader(IDatabase *db, const std::strin
 	return new CDBSettingsReader(db, pTable, pSQL);
 }
 
+ISettingsReader * CServer::createDBMemSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string & pTable, const std::string & pSQL)
+{
+	return new CDBMemSettingsReader(tid, pIdentifier, pTable, pSQL);
+}
+
+ISettingsReader * CServer::createDBMemSettingsReader(IDatabase * db, const std::string & pTable, const std::string & pSQL)
+{
+	return new CDBMemSettingsReader(db, pTable, pSQL);
+}
+
 ISettingsReader* CServer::createMemorySettingsReader(const std::string &pData)
 {
 	return new CMemorySettingsReader(pData);

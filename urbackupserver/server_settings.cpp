@@ -27,9 +27,8 @@
 #include "../Interface/Server.h"
 #include "server.h"
 
-std::map<ServerSettings*, bool> ServerSettings::g_settings;
 IMutex *ServerSettings::g_mutex=NULL;
-std::map<int, SSettingsCacheItem> ServerSettings::g_settings_cache;
+std::map<int, SSettings*> ServerSettings::g_settings_cache;
 
 //#define CLEAR_SETTINGS_CACHE
 
@@ -51,163 +50,220 @@ void ServerSettings::clear_cache()
 {
 	IScopedLock lock(g_mutex);
 
-	for(std::map<int, SSettingsCacheItem>::iterator it=g_settings_cache.begin();
+	for(std::map<int, SSettings*>::iterator it=g_settings_cache.begin();
 		it!=g_settings_cache.end();)
 	{
-		if(it->second.refcount==0)
+		if(it->second->refcount==0)
 		{
-			std::map<int, SSettingsCacheItem>::iterator delit=it++;
-			delete delit->second.settings;
+			std::map<int, SSettings*>::iterator delit=it++;
+			delete delit->second;
 			g_settings_cache.erase(delit);
 		}
 		else
 		{
-			Server->Log("Refcount for settings for clientid \""+convert(it->second.settings->clientid)+"\" is not 0. Not deleting.", LL_WARNING);
+			Server->Log("Refcount for settings for clientid \""+convert(it->second->clientid)+"\" is not 0. Not deleting.", LL_WARNING);
 			++it;
 		}
 	}
 }
 
 ServerSettings::ServerSettings(IDatabase *db, int pClientid)
-	: local_settings(NULL), clientid(pClientid), settings_default(NULL),
-		settings_client(NULL), db(db)
+	: local_settings(NULL), clientid(pClientid), db(db)
 {
 	IScopedLock lock(g_mutex);
 		
-	g_settings[this]=true;
-
-	std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
+	std::map<int, SSettings*>::iterator iter=g_settings_cache.find(clientid);
 	if(iter!=g_settings_cache.end())
 	{
-		++iter->second.refcount;
-		settings_cache=&iter->second;
-		do_update=settings_cache->needs_update;
-		return;
+		++iter->second->refcount;
+		local_settings = iter->second;
 	}
 	else
 	{
-		SSettings* settings=new SSettings();
-		SSettingsCacheItem cache_item = { settings, 1 , true};
-		std::map<int, SSettingsCacheItem>::iterator iter = g_settings_cache.insert(std::make_pair(clientid, cache_item)).first;
-		settings_cache=&iter->second;
-		update(false);
-		do_update=false;
-	}	
-}
+		lock.relock(NULL);
 
-void ServerSettings::createSettingsReaders()
-{
-	if(settings_default==NULL)
-	{
-		settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
-		if(clientid!=-1)
+		std::auto_ptr<ISettingsReader> settings_client, settings_default;
+		createSettingsReaders(settings_default, settings_client);
+		local_settings = new SSettings();
+		local_settings->refcount = 1;
+		readSettingsDefault(settings_default.get());
+		if (settings_client.get() != NULL)
 		{
-			settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(clientid));
+			readSettingsClient(settings_client.get());
+		}
+
+		lock.relock(g_mutex);
+
+		iter = g_settings_cache.find(clientid);
+
+		if (iter != g_settings_cache.end())
+		{
+			delete local_settings;
+			++iter->second->refcount;
+			local_settings = iter->second;
 		}
 		else
 		{
-			settings_client=NULL;
+			g_settings_cache.insert(std::make_pair(clientid, local_settings));
 		}
+	}	
+}
+
+void ServerSettings::createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
+	std::auto_ptr<ISettingsReader>& settings_client)
+{
+	int settings_default_id = 0;
+	if(clientid!=-1)
+	{
+		settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
+		settings_client->getValue("group_id", 0);
 	}
+		
+	settings_default.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid="+convert(settings_default_id)));
 }
 
 ServerSettings::~ServerSettings(void)
 {
-	if(settings_default!=NULL)
-	{
-		Server->destroy(settings_default);
-	}
-	if(settings_client!=NULL)
-	{
-		Server->destroy(settings_client);
-	}
-
 	{
 		IScopedLock lock(g_mutex);
 
-		std::map<ServerSettings*, bool>::iterator it=g_settings.find(this);
-		assert(it!=g_settings.end());
-		g_settings.erase(it);
+		assert(local_settings->refcount > 0);
+		--local_settings->refcount;
 
-		
-		--settings_cache->refcount;
-#ifdef CLEAR_SETTINGS_CACHE
-		if(settings_cache->refcount==0)
+		if (local_settings->refcount == 0)
 		{
-			std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
-			assert(iter!=g_settings_cache.end());
-			delete iter->second.settings;
-			g_settings_cache.erase(iter);
-		}
+#ifdef CLEAR_SETTINGS_CACHE
+			if (!local_settings->needs_update)
+			{
+				std::map<int, SSettings*>::iterator iter = g_settings_cache.find(clientid);
+				assert(iter != g_settings_cache.end());
+				delete iter->second;
+				g_settings_cache.erase(iter);
+			}
 #endif
-	}
+			if (local_settings->needs_update)
+			{
+				std::map<int, SSettings*>::iterator iter = g_settings_cache.find(clientid);
+				assert(iter != g_settings_cache.end());
+				if (local_settings == iter->second)
+				{
+					g_settings_cache.erase(iter);
+				}
 
-	delete local_settings;
+				delete local_settings;
+			}
+		}
+	}
 }
 
 void ServerSettings::updateAll(void)
 {
 	IScopedLock lock(g_mutex);
 
-	for(std::map<int, SSettingsCacheItem>::iterator it=g_settings_cache.begin();
+	for(std::map<int, SSettings*>::iterator it=g_settings_cache.begin();
 		it!=g_settings_cache.end();)
 	{
-		if(it->second.refcount==0)
+		if(it->second->refcount==0)
 		{
-			std::map<int, SSettingsCacheItem>::iterator delit=it++;
-			delete delit->second.settings;
+			std::map<int, SSettings*>::iterator delit=it++;
+			delete delit->second;
 			g_settings_cache.erase(delit);
 		}
 		else
 		{
-			it->second.needs_update=true;
+			it->second->needs_update=true;
 			++it;
 		}
-	}
-
-	for(std::map<ServerSettings*, bool>::iterator it=g_settings.begin();
-		it!=g_settings.end(); ++it)
-	{
-		it->first->doUpdate();
 	}
 }
 
 void ServerSettings::update(bool force_update)
 {
-	createSettingsReaders();
-
-	IScopedLock lock(g_mutex);
-
-	if(settings_cache->needs_update || force_update)
+	while(local_settings->needs_update || force_update)
 	{
-		readSettingsDefault();
-		if(settings_client!=NULL)
+		force_update = false;
+
+		IScopedLock lock(g_mutex);
+
+		local_settings->needs_update = true;
+
+		assert(local_settings->refcount > 0);
+		--local_settings->refcount;
+
+		if (local_settings->refcount == 0)
 		{
-			readSettingsClient();
+			std::map<int, SSettings*>::iterator iter = g_settings_cache.find(clientid);
+			if (iter != g_settings_cache.end()
+				&& iter->second == local_settings)
+			{
+				delete iter->second;
+				g_settings_cache.erase(iter);
+			}
+			else
+			{
+				if (iter != g_settings_cache.end()
+					&& iter->second != local_settings)
+				{
+					delete local_settings;
+					++iter->second->refcount;
+					local_settings = iter->second;
+					continue;
+				}
+				else
+				{
+					delete local_settings;
+				}
+			}
 		}
-		settings_cache->needs_update=false;
-	}
 
-	if(local_settings!=NULL)
-	{
-		delete local_settings;
-		local_settings=new SSettings(*settings_cache->settings);
-	}
-}
+		std::map<int, SSettings*>::iterator iter = g_settings_cache.find(clientid);
+		if (iter != g_settings_cache.end()
+			&& iter->second != local_settings)
+		{
+			++iter->second->refcount;
+			local_settings = iter->second;
+			continue;
+		}
 
-void ServerSettings::doUpdate(void)
-{
-	do_update=true;
+		SSettings* old_local_settings = local_settings;
+
+		lock.relock(NULL);
+
+		local_settings = new SSettings();
+		local_settings->refcount = 1;
+		std::auto_ptr<ISettingsReader> settings_client, settings_default;
+		createSettingsReaders(settings_default, settings_client);
+		readSettingsDefault(settings_default.get());
+		if (settings_client.get() != NULL)
+		{
+			readSettingsClient(settings_client.get());
+		}
+
+		lock.relock(g_mutex);
+
+		iter = g_settings_cache.find(clientid);
+
+		if (iter==g_settings_cache.end()
+			|| iter->second == old_local_settings)
+		{
+			g_settings_cache[clientid] = local_settings;
+		}
+		else
+		{
+			delete local_settings;
+			++iter->second->refcount;
+			local_settings = iter->second;
+		}
+	}
 }
 
 void ServerSettings::updateInternal(bool* was_updated)
 {
-	if(do_update)
+	if(local_settings->needs_update)
 	{
 		if(was_updated!=NULL)
 			*was_updated=true;
 
-		do_update=false;
 		update(false);
 	}
 	else
@@ -220,19 +276,12 @@ void ServerSettings::updateInternal(bool* was_updated)
 SSettings *ServerSettings::getSettings(bool *was_updated)
 {
 	updateInternal(was_updated);
-
-	if(local_settings==NULL)
-	{
-		IScopedLock lock(g_mutex);
-		local_settings=new SSettings(*settings_cache->settings);
-	}
-
 	return local_settings;
 }
 
-void ServerSettings::readSettingsDefault(void)
+void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
 {
-	SSettings* settings=settings_cache->settings;
+	SSettings* settings = local_settings;
 	settings->clientid=clientid;
 	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
 	settings->update_freq_incr=settings_default->getValue("update_freq_incr", convert(5*60*60) );
@@ -336,9 +385,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings->allow_component_config = settings_default->getValue("allow_component_config", "true") == "true";
 }
 
-void ServerSettings::readSettingsClient(void)
+void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 {	
-	SSettings* settings=settings_cache->settings;
+	SSettings* settings = local_settings;
 	std::string stmp=settings_client->getValue("internet_authkey", std::string());
 	if(!stmp.empty())
 	{
@@ -351,11 +400,11 @@ void ServerSettings::readSettingsClient(void)
 
 	settings->client_access_key = settings_client->getValue("client_access_key", std::string());
 
-	readBoolClientSetting("overwrite", &settings->overwrite);
+	readBoolClientSetting(settings_client, "overwrite", &settings->overwrite);
 
 	if(settings->overwrite)
 	{
-		readBoolClientSetting("allow_overwrite", &settings->allow_overwrite);
+		readBoolClientSetting(settings_client, "allow_overwrite", &settings->allow_overwrite);
 	}
 
 	if(!settings->overwrite && !settings->allow_overwrite)
@@ -422,13 +471,13 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings->local_speed=stmp;
 
-	readBoolClientSetting("client_set_settings", &settings->client_set_settings);
-	readBoolClientSetting("internet_mode_enabled", &settings->internet_mode_enabled);
-	readBoolClientSetting("internet_full_file_backups", &settings->internet_full_file_backups);
-	readBoolClientSetting("internet_image_backups", &settings->internet_image_backups);
-	readBoolClientSetting("internet_compress", &settings->internet_compress);
-	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
-	readBoolClientSetting("internet_connect_always", &settings->internet_connect_always);
+	readBoolClientSetting(settings_client, "client_set_settings", &settings->client_set_settings);
+	readBoolClientSetting(settings_client, "internet_mode_enabled", &settings->internet_mode_enabled);
+	readBoolClientSetting(settings_client, "internet_full_file_backups", &settings->internet_full_file_backups);
+	readBoolClientSetting(settings_client, "internet_image_backups", &settings->internet_image_backups);
+	readBoolClientSetting(settings_client, "internet_compress", &settings->internet_compress);
+	readBoolClientSetting(settings_client, "internet_encrypt", &settings->internet_encrypt);
+	readBoolClientSetting(settings_client, "internet_connect_always", &settings->internet_connect_always);
 
 	if(!settings->overwrite)
 		return;
@@ -454,49 +503,49 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings->image_file_format=stmp;
 
-	readStringClientSetting("local_incr_file_transfer_mode", &settings->local_incr_file_transfer_mode);
-	readStringClientSetting("local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
-	readStringClientSetting("internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
-	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
-	readStringClientSetting("local_image_transfer_mode", &settings->local_image_transfer_mode);
-	readStringClientSetting("internet_image_transfer_mode", &settings->internet_image_transfer_mode);
+	readStringClientSetting(settings_client, "local_incr_file_transfer_mode", &settings->local_incr_file_transfer_mode);
+	readStringClientSetting(settings_client, "local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
+	readStringClientSetting(settings_client, "internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
+	readStringClientSetting(settings_client, "internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
+	readStringClientSetting(settings_client, "local_image_transfer_mode", &settings->local_image_transfer_mode);
+	readStringClientSetting(settings_client, "internet_image_transfer_mode", &settings->internet_image_transfer_mode);
 
-	readBoolClientSetting("end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
-	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
-	readBoolClientSetting("silent_update", &settings->silent_update);
+	readBoolClientSetting(settings_client, "end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
+	readBoolClientSetting(settings_client, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
+	readBoolClientSetting(settings_client, "silent_update", &settings->silent_update);
 
-	readBoolClientSetting("allow_config_paths", &settings->allow_config_paths);
-	readBoolClientSetting("allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);
-	readBoolClientSetting("allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups);
-	readBoolClientSetting("allow_starting_full_image_backups", &settings->allow_starting_full_image_backups);
-	readBoolClientSetting("allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
-	readBoolClientSetting("allow_pause", &settings->allow_pause);
-	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
-	readBoolClientSetting("allow_tray_exit", &settings->allow_tray_exit);
-	readBoolClientSetting("verify_using_client_hashes", &settings->verify_using_client_hashes);
-	readBoolClientSetting("internet_readd_file_entries", &settings->internet_readd_file_entries);
-	readBoolClientSetting("background_backups", &settings->background_backups);
-	readIntClientSetting("max_running_jobs_per_client", &settings->max_running_jobs_per_client);
-	readBoolClientSetting("create_linked_user_views", &settings->create_linked_user_views);
+	readBoolClientSetting(settings_client, "allow_config_paths", &settings->allow_config_paths);
+	readBoolClientSetting(settings_client, "allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);
+	readBoolClientSetting(settings_client, "allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups);
+	readBoolClientSetting(settings_client, "allow_starting_full_image_backups", &settings->allow_starting_full_image_backups);
+	readBoolClientSetting(settings_client, "allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
+	readBoolClientSetting(settings_client, "allow_pause", &settings->allow_pause);
+	readBoolClientSetting(settings_client, "allow_log_view", &settings->allow_log_view);
+	readBoolClientSetting(settings_client, "allow_tray_exit", &settings->allow_tray_exit);
+	readBoolClientSetting(settings_client, "verify_using_client_hashes", &settings->verify_using_client_hashes);
+	readBoolClientSetting(settings_client, "internet_readd_file_entries", &settings->internet_readd_file_entries);
+	readBoolClientSetting(settings_client, "background_backups", &settings->background_backups);
+	readIntClientSetting(settings_client, "max_running_jobs_per_client", &settings->max_running_jobs_per_client);
+	readBoolClientSetting(settings_client, "create_linked_user_views", &settings->create_linked_user_views);
 
-	readStringClientSetting("local_incr_image_style", &settings->local_incr_image_style);
-	readStringClientSetting("local_full_image_style", &settings->local_full_image_style);
-	readStringClientSetting("internet_incr_image_style", &settings->internet_incr_image_style);
-	readStringClientSetting("internet_full_image_style", &settings->internet_full_image_style);
+	readStringClientSetting(settings_client, "local_incr_image_style", &settings->local_incr_image_style);
+	readStringClientSetting(settings_client, "local_full_image_style", &settings->local_full_image_style);
+	readStringClientSetting(settings_client, "internet_incr_image_style", &settings->internet_incr_image_style);
+	readStringClientSetting(settings_client, "internet_full_image_style", &settings->internet_full_image_style);
 
-	readStringClientSetting("cbt_volumes", &settings->cbt_volumes);
-	readStringClientSetting("cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
+	readStringClientSetting(settings_client, "cbt_volumes", &settings->cbt_volumes);
+	readStringClientSetting(settings_client, "cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
 
-	readBoolClientSetting("ignore_disk_errors", &settings->ignore_disk_errors);
+	readBoolClientSetting(settings_client, "ignore_disk_errors", &settings->ignore_disk_errors);
 
-	readStringClientSetting("vss_select_components", &settings->vss_select_components);
+	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
 
-	readBoolClientSetting("allow_file_restore", &settings->allow_file_restore);
-	readBoolClientSetting("allow_component_config", &settings->allow_component_config);
-	readBoolClientSetting("allow_component_restore", &settings->allow_component_restore);
+	readBoolClientSetting(settings_client, "allow_file_restore", &settings->allow_file_restore);
+	readBoolClientSetting(settings_client, "allow_component_config", &settings->allow_component_config);
+	readBoolClientSetting(settings_client, "allow_component_restore", &settings->allow_component_restore);
 }
 
-void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
+void ServerSettings::readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output)
 {
 	std::string value;
 	if(settings_client->getValue(name, &value) && !value.empty())
@@ -508,7 +557,7 @@ void ServerSettings::readBoolClientSetting(const std::string &name, bool *output
 	}
 }
 
-void ServerSettings::readStringClientSetting(const std::string &name, std::string *output)
+void ServerSettings::readStringClientSetting(ISettingsReader* settings_client, const std::string &name, std::string *output)
 {
 	std::string value;
 	if(settings_client->getValue(name, &value) && !value.empty())
@@ -517,7 +566,7 @@ void ServerSettings::readStringClientSetting(const std::string &name, std::strin
 	}
 }
 
-void ServerSettings::readIntClientSetting(const std::string &name, int *output)
+void ServerSettings::readIntClientSetting(ISettingsReader* settings_client, const std::string &name, int *output)
 {
 	std::string value;
 	if(settings_client->getValue(name, &value) && !value.empty())
@@ -526,7 +575,7 @@ void ServerSettings::readIntClientSetting(const std::string &name, int *output)
 	}
 }
 
-void ServerSettings::readSizeClientSetting(const std::string &name, size_t *output)
+void ServerSettings::readSizeClientSetting(ISettingsReader* settings_client, const std::string &name, size_t *output)
 {
 	std::string value;
 	if(settings_client->getValue(name, &value) && !value.empty())
@@ -674,29 +723,25 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 int ServerSettings::getUpdateFreqImageIncr()
 {
 	updateInternal(NULL);
-	IScopedLock lock(g_mutex);
-	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_image_incr)+1);
+	return static_cast<int>(currentTimeSpanValue(local_settings->update_freq_image_incr)+1);
 }
 
 int ServerSettings::getUpdateFreqFileIncr()
 {
 	updateInternal(NULL);
-	IScopedLock lock(g_mutex);
-	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_incr)+1);
+	return static_cast<int>(currentTimeSpanValue(local_settings->update_freq_incr)+1);
 }
 
 int ServerSettings::getUpdateFreqImageFull()
 {
 	updateInternal(NULL);
-	IScopedLock lock(g_mutex);
-	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_image_full)+1);
+	return static_cast<int>(currentTimeSpanValue(local_settings->update_freq_image_full)+1);
 }
 
 int ServerSettings::getUpdateFreqFileFull()
 {
 	updateInternal(NULL);
-	IScopedLock lock(g_mutex);
-	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_full)+1);
+	return static_cast<int>(currentTimeSpanValue(local_settings->update_freq_full)+1);
 }
 
 std::string ServerSettings::getImageFileFormat()
@@ -924,7 +969,8 @@ bool ServerSettings::isInTimeSpan(std::vector<STimeSpan> bw)
 
 SLDAPSettings ServerSettings::getLDAPSettings()
 {
-	createSettingsReaders();
+	std::auto_ptr<ISettingsReader> settings_client, settings_default;
+	createSettingsReaders(settings_default, settings_client);
 	SLDAPSettings ldap_settings;
 	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "false")=="true";
 	

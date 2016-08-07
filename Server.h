@@ -108,6 +108,8 @@ public:
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
+	virtual ISettingsReader* createDBMemSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL = "");
+	virtual ISettingsReader* createDBMemSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL = "");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
 	virtual IPipeThrottler* createPipeThrottler(size_t bps, IPipeThrottlerUpdater* updater=NULL);
 
