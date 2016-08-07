@@ -121,6 +121,8 @@ public:
 
 		FileClient::ProgressLogCallback* getProgressLogCallback();
 
+		void setNoFreeSpaceCallback(FileClient::NoFreeSpaceCallback* cb);
+
 		_u32 Flush();
 
 		bool Reconnect(void);

@@ -55,6 +55,7 @@ void FileMetadataDownloadThread::operator()()
 	orig_progress_log_callback = fc->getProgressLogCallback();
 
 	fc->setProgressLogCallback(NULL);
+	fc->setNoFreeSpaceCallback(NULL);
 
 	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, 0, true, 0);
 
