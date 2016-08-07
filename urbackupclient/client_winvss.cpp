@@ -1779,7 +1779,9 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 
 		for (size_t j = 0; j < component_vss_instances.size(); ++j)
 		{
-			if (component_vss_instances[j]->refcount <= 1)
+			assert(component_vss_instances[j]->refcount>0);
+			--component_vss_instances[j]->refcount;
+			if (component_vss_instances[j]->refcount==0)
 			{
 				delete component_vss_instances[j];
 			}
