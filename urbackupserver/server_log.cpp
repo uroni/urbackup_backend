@@ -62,6 +62,13 @@ void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int 
 
 void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
+	std::map<logid_t, int>::iterator it = logid_client.find(logid);
+
+	if (it != logid_client.end() && it->second <= 0)
+	{
+		return;
+	}
+
 	SLogEntry le;
 	le.data=pStr;
 	le.loglevel=LogLevel;
