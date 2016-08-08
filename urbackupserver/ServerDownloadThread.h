@@ -144,7 +144,7 @@ public:
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot,
-		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download);
+		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal);
 
 	~ServerDownloadThread();
 
@@ -217,9 +217,9 @@ private:
 
 	SPatchDownloadFiles preparePatchDownloadFiles(SQueueItem todl, bool& full_dl);
 
-	void start_shadowcopy(std::string path);
+	bool start_shadowcopy(std::string path);
 
-	void stop_shadowcopy(std::string path);
+	bool stop_shadowcopy(std::string path);
 
 	
 	bool link_or_copy_file(SQueueItem todl);
@@ -232,6 +232,8 @@ private:
 	bool fileHasSnapshot(const SQueueItem& todl);
 
 	std::string tarFnToOsPath(const std::string& tar_path);
+
+	void logVssLogdata();
 
 
 	FileClient& fc;
@@ -293,4 +295,5 @@ private:
 	size_t last_snap_num_issues;
 
 	bool has_disk_error;
+	bool sc_failure_fatal;
 };

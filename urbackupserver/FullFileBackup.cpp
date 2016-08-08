@@ -203,6 +203,10 @@ bool FullFileBackup::doFileBackup()
 
 	bool with_sparse_hashing = client_main->getProtocolVersions().select_sha_version > 0;
 
+	std::vector<size_t> diffs;
+	bool backup_with_components;
+	_i64 files_size = getIncrementalSize(tmp_filelist, diffs, backup_with_components, true);
+
 	std::string last_backuppath;
 	std::string last_backuppath_complete;
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, NULL, backuppath,
@@ -210,15 +214,13 @@ bool FullFileBackup::doFileBackup()
 		hashed_transfer, save_incomplete_files, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get()));
+		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
+		backup_with_components));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
 	THREADPOOL_TICKET server_download_ticket = 
 		Server->getThreadPool()->execute(server_download.get(), "fbackup load");
-
-	std::vector<size_t> diffs;
-	_i64 files_size=getIncrementalSize(tmp_filelist, diffs, true);
 
 	ServerStatus::setProcessTotalBytes(clientname, status_id, files_size);
 

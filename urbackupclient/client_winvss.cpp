@@ -251,7 +251,7 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 			loglevel = LL_INFO;
 			*retryable_error = true;
 		}
-		else
+		else if(loglevel<LL_ERROR)
 		{
 			nerrmsg += erradd;
 		}
@@ -787,6 +787,8 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 		}
 	}
 
+	bool ok = true;
+
 	IVssBackupComponents *backupcom = dir->ref->backupcom;
 
 	for (std::map<std::string, SVssInstance*>::iterator it = vss_name_instances.begin();
@@ -797,6 +799,7 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 
 		if (it_curr->second->backupcom == backupcom)
 		{
+			ok = false;
 			--it_curr->second->refcount;
 
 			for (size_t i = 0; i < it_curr->second->parents.size(); ++i)
@@ -806,11 +809,17 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 
 			if (it_curr->second->refcount == 0)
 			{
-				it_curr->second->backupcom->SetBackupSucceeded(it_curr->second->instanceId,
+				HRESULT hr = it_curr->second->backupcom->SetBackupSucceeded(it_curr->second->instanceId,
 					it_curr->second->writerId, it_curr->second->componentType,
 					it_curr->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_curr->second->logicalPath).c_str(),
 					Server->ConvertToWchar(it_curr->second->componentName).c_str(),
 					false);
+
+				if (hr != S_OK)
+				{
+					VSSLog("Error setting component \"" + it_curr->second->componentName + "\" with logical path \"" + it_curr->second->logicalPath +
+						"\" to failed. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+				}
 
 				for (size_t i = 0; i < it_curr->second->parents.size(); ++i)
 				{
@@ -821,11 +830,17 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 
 					if (parent->refcount == 0)
 					{
-						parent->backupcom->SetBackupSucceeded(parent->instanceId,
+						hr = parent->backupcom->SetBackupSucceeded(parent->instanceId,
 							parent->writerId, parent->componentType,
 							parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
 							Server->ConvertToWchar(parent->componentName).c_str(),
 							false);
+
+						if (hr != S_OK)
+						{
+							VSSLog("Error setting component \"" + parent->componentName + "\" with logical path \"" + parent->logicalPath +
+								"\" to failed. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+						}
 
 						delete parent;
 					}
@@ -840,15 +855,20 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 
 	IVssAsync *pb_result;
 	bool bcom_ok = true;
-	bool ok = false;
 	CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
 	if (bcom_ok)
 	{
-		wait_for(pb_result, "Completing backup failed");
+		if (!wait_for(pb_result, "Completing backup failed"))
+		{
+			ok = false;
+		}
 	}
 
 	std::string errmsg;
-	check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
+	if (!check_writer_status(backupcom, errmsg, LL_ERROR, NULL))
+	{
+		ok = false;
+	}
 
 	if (dir->ref->with_writers)
 	{
@@ -874,16 +894,10 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 		if (dels == 0)
 		{
 			VSSLog("Deleting shadowcopy failed.", LL_ERROR);
-		}
-		else
-		{
-			ok = true;
+			ok = false;
 		}
 	}
 #endif
-#endif
-#if defined(VSS_XP) || defined(VSS_S03)
-	ok = true;
 #endif
 
 	removeBackupcomReferences(backupcom);

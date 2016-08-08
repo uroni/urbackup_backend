@@ -357,12 +357,17 @@ bool IncrFileBackup::doFileBackup()
 
 	bool with_sparse_hashing = client_main->getProtocolVersions().select_sha_version > 0;
 
+	ServerLogger::Log(logid, clientname + ": Calculating tree difference size...", LL_INFO);
+	bool backup_with_components;
+	_i64 files_size = getIncrementalSize(tmp_filelist, diffs, backup_with_components);
+
 	std::auto_ptr<ServerDownloadThread> server_download(new ServerDownloadThread(fc, fc_chunked.get(), backuppath,
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, intra_file_diffs, clientid, clientname, clientsubname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get()));
+		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
+		backup_with_components));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -392,9 +397,6 @@ bool IncrFileBackup::doFileBackup()
 	{
 		fc_chunked->resetReceivedDataBytes(true);
 	}
-
-	ServerLogger::Log(logid, clientname+": Calculating tree difference size...", LL_INFO);
-	_i64 files_size=getIncrementalSize(tmp_filelist, diffs);
 
 	ServerStatus::setProcessTotalBytes(clientname, status_id, files_size);
 

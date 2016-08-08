@@ -626,6 +626,8 @@ void IndexThread::operator()(void)
 		else if(action==IndexThreadAction_CreateShadowcopy
 			 || action==IndexThreadAction_ReferenceShadowcopy )
 		{
+			vsslog.clear();
+
 			std::string scdir;
 			data.getStr(&scdir);
 			data.getStr(&starttoken);
@@ -794,6 +796,8 @@ void IndexThread::operator()(void)
 		}
 		else if(action==IndexThreadAction_ReleaseShadowcopy) // remove shadowcopy
 		{
+			vsslog.clear();
+
 			std::string scdir;
 			data.getStr(&scdir);
 			data.getStr(&starttoken);
@@ -814,51 +818,7 @@ void IndexThread::operator()(void)
 				contractor->Write("done");
 				continue;
 			}
-
-			std::map<std::string, SVssInstance*>::iterator it_inst = vss_name_instances.find(starttoken + "|" + scdir);
-			if (it_inst != vss_name_instances.end())
-			{
-				--it_inst->second->refcount;
-				it_inst->second->issues += issues;
-
-				for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
-				{
-					it_inst->second->parents[i]->issues += issues;
-				}
-
-				if (it_inst->second->refcount == 0)
-				{
-					it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
-						it_inst->second->writerId, it_inst->second->componentType,
-						it_inst->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
-						Server->ConvertToWchar(it_inst->second->componentName).c_str(),
-						it_inst->second->issues == 0 ? true : false);
-
-					for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
-					{
-						SVssInstance* parent = it_inst->second->parents[i];
-						
-						assert(parent->refcount > 0);
-						--parent->refcount;
-
-						if (parent->refcount == 0)
-						{
-							parent->backupcom->SetBackupSucceeded(parent->instanceId,
-								parent->writerId, parent->componentType,
-								parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
-								Server->ConvertToWchar(parent->componentName).c_str(),
-								parent->issues == 0 ? true : false);
-
-							delete parent;
-						}
-					}
-
-					delete it_inst->second;
-				}
-
-				vss_name_instances.erase(it_inst);
-			}
-#endif
+#endif		
 
 			int64 starttime = Server->getTimeMS();
 
@@ -876,6 +836,67 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
+				bool del_error = false;
+#ifdef _WIN32
+				std::map<std::string, SVssInstance*>::iterator it_inst = vss_name_instances.find(starttoken + "|" + scdir);
+				if (it_inst != vss_name_instances.end())
+				{
+					--it_inst->second->refcount;
+					it_inst->second->issues += issues;
+
+					for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
+					{
+						it_inst->second->parents[i]->issues += issues;
+					}
+
+					if (it_inst->second->refcount == 0)
+					{
+						HRESULT hr = it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
+							it_inst->second->writerId, it_inst->second->componentType,
+							it_inst->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
+							Server->ConvertToWchar(it_inst->second->componentName).c_str(),
+							it_inst->second->issues == 0 ? true : false);
+
+						if (hr != S_OK)
+						{
+							VSSLog("Error setting component \"" + it_inst->second->componentName + "\" with logical path \"" + it_inst->second->logicalPath +
+								"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+							del_error = true;
+						}
+
+						for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
+						{
+							SVssInstance* parent = it_inst->second->parents[i];
+
+							assert(parent->refcount > 0);
+							--parent->refcount;
+
+							if (parent->refcount == 0)
+							{
+								hr = parent->backupcom->SetBackupSucceeded(parent->instanceId,
+									parent->writerId, parent->componentType,
+									parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
+									Server->ConvertToWchar(parent->componentName).c_str(),
+									parent->issues == 0 ? true : false);
+
+								if (hr != S_OK)
+								{
+									VSSLog("Error setting component \"" + parent->componentName + "\" with logical path \"" + parent->logicalPath +
+										"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+									del_error = true;
+								}
+
+								delete parent;
+							}
+						}
+
+						delete it_inst->second;
+					}
+
+					vss_name_instances.erase(it_inst);
+				}
+#endif
+
 				SCDirs *scd = getSCDir(scdir, index_clientsubname, image_backup!=0);
 				if (scd->running == false)
 				{
@@ -886,7 +907,7 @@ void IndexThread::operator()(void)
 					}
 					else
 					{
-						contractor->Write("done");
+						contractor->Write(del_error ? "failed" : "done");
 					}
 				}
 				else
@@ -900,7 +921,7 @@ void IndexThread::operator()(void)
 					}
 					else
 					{
-						contractor->Write("done");
+						contractor->Write(del_error ? "failed" : "done");
 					}
 				}
 			}
@@ -2688,8 +2709,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		}
 	}
 
-	bool has_dels=false;
-	bool ok=false;
+	bool ok=true;
 
 	if(dir->ref!=NULL 
 #ifdef _WIN32
@@ -2777,15 +2797,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		}
 	}
 
-	
-	if(has_dels)
-	{
-		return ok;
-	}
-	else
-	{
-		return true;
-	}
+	return ok;
 }
 
 

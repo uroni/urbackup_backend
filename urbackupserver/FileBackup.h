@@ -84,7 +84,7 @@ protected:
 	std::string clientlistName(int ref_backupid);
 	void createHashThreads(bool use_reflink, bool ignore_hash_mismatches);
 	void destroyHashThreads();
-	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
+	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool& backup_with_components, bool all=false);
 	void calculateDownloadSpeed(int64 ctime, FileClient &fc, FileClientChunked* fc_chunked);
 	void calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 		int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );

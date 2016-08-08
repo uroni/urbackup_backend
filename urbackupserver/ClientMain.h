@@ -222,6 +222,8 @@ public:
 
 	void updateCapa();
 
+	std::vector<SLogEntry> parseLogData(int64 max_duration, const std::string& data);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);

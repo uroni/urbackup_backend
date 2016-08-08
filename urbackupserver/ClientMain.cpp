@@ -2848,6 +2848,58 @@ void ClientMain::updateCapa()
 	update_capa = true;
 }
 
+std::vector<SLogEntry> ClientMain::parseLogData(int64 max_duration, const std::string & data)
+{
+	std::vector<SLogEntry> ret;
+	std::vector<std::string> lines;
+	TokenizeMail(data, lines, "\n");
+	int64 initial_time = Server->getTimeSeconds();
+	for (size_t i = 0; i<lines.size(); ++i)
+	{
+		size_t s1 = lines[i].find("-");
+		size_t s2 = lines[i].find("-", s1 + 1);
+
+		if (s1 == std::string::npos)
+		{
+			continue;
+		}
+
+		SLogEntry entry;
+
+		entry.loglevel = atoi(lines[i].substr(0, s1).c_str());
+
+		entry.time = 0;
+
+		if (s2 != std::string::npos)
+		{
+			entry.time = os_atoi64(lines[i].substr(s1 + 1, s2 - s1));
+
+			if (i == 0)
+			{
+				initial_time = entry.time;
+				continue;
+			}
+
+			entry.time = initial_time - entry.time;
+
+			if (entry.time>max_duration + 60)
+			{
+				entry.time = 0;
+			}
+
+			entry.data = lines[i].substr(s2 + 1);
+		}
+		else
+		{
+			entry.data = lines[i].substr(s1 + 1);
+		}
+
+		ret.push_back(entry);
+	}
+
+	return ret;
+}
+
 bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 {
 	if (!needs_authentification)

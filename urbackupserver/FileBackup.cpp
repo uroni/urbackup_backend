@@ -263,56 +263,17 @@ void FileBackup::logVssLogdata(int64 vss_duration_s)
 
 	if(!vsslogdata.empty() && vsslogdata!="ERR")
 	{
-		std::vector<std::string> lines;
-		TokenizeMail(vsslogdata, lines, "\n");
-		int64 initial_time=Server->getTimeSeconds();
-		for(size_t i=0;i<lines.size();++i)
+		std::vector<SLogEntry> entries = client_main->parseLogData(vss_duration_s, vsslogdata);
+
+		for (size_t i = 0; i < entries.size(); ++i)
 		{
-			size_t s1 = lines[i].find("-");
-			size_t s2 = lines[i].find("-", s1+1);
-
-			if(s1==std::string::npos)
-			{
-				continue;
-			}
-
-			int loglevel=atoi(lines[i].substr(0, s1).c_str());
-
-			int64 times = 0;
-
-			std::string msg;
-			
-			if(s2!=std::string::npos)
-			{
-				times = os_atoi64(lines[i].substr(s1+1, s2-s1));
-
-				if(i==0)
-				{
-					initial_time = times;
-					continue;
-				}
-
-				times = initial_time - times;
-
-				if(times>vss_duration_s+60)
-				{
-					times = 0;
-				}
-
-				msg = lines[i].substr(s2+1);
-			}			
-			else
-			{
-				msg = lines[i].substr(s1+1);
-			}
-
-			if (loglevel == LL_ERROR)
+			if (entries[i].loglevel == LL_ERROR)
 			{
 				++num_issues;
 			}
 
-			parseSnapshotFailed(msg);
-			ServerLogger::Log(logid, msg, loglevel);
+			parseSnapshotFailed(entries[i].data);
+			ServerLogger::Log(logid, entries[i].data, entries[i].loglevel);
 		}
 	}
 }
@@ -397,7 +358,7 @@ void FileBackup::destroyHashThreads()
 	bsh_prepare=NULL;
 }
 
-_i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all)
+_i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool& backup_with_components, bool all)
 {
 	f->Seek(0);
 	_i64 rsize=0;
@@ -411,6 +372,7 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 	int depth=0;
 	int indir_curr_depth=0;
 	int changelevel=0;
+	backup_with_components = false;
 
 	if(all)
 	{
@@ -426,6 +388,12 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 			{
 				if(cf.isdir==true)
 				{
+					if (indir_currdepth == 0
+						&& cf.name == "windows_components_config")
+					{
+						backup_with_components = true;
+					}
+
 					if(indirchange==false && hasChange(line, diffs) )
 					{
 						indirchange=true;
