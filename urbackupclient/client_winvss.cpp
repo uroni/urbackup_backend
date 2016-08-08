@@ -838,18 +838,6 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 		}
 	}
 
-	if (dir->ref->with_writers)
-	{
-		SCOPED_DECLARE_FREE_BSTR(xml);
-		HRESULT hr = backupcom->SaveAsXML(&xml);
-
-		if (hr == S_OK)
-		{
-			std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
-			writestring(Server->ConvertFromWchar(xml), component_config_dir + "\\backupcom.xml");
-		}
-	}
-
 	IVssAsync *pb_result;
 	bool bcom_ok = true;
 	bool ok = false;
@@ -861,6 +849,18 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 
 	std::string errmsg;
 	check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
+
+	if (dir->ref->with_writers)
+	{
+		SCOPED_DECLARE_FREE_BSTR(xml);
+		HRESULT hr = backupcom->SaveAsXML(&xml);
+
+		if (hr == S_OK)
+		{
+			std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
+			writestring(Server->ConvertFromWchar(xml), component_config_dir + "\\backupcom.xml");
+		}
+	}
 
 #ifndef VSS_XP
 #ifndef VSS_S03
@@ -1109,8 +1109,18 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				{
 					for (size_t k = 0; k < explicit_selected_components.size(); ++k)
 					{
+						std::string logicalPathFull = explicit_selected_components[k].logicalPath;
+						if (logicalPathFull.empty())
+						{
+							logicalPathFull = explicit_selected_components[k].componentName;
+						}
+						else
+						{
+							logicalPathFull += "\\" + explicit_selected_components[k].componentName;
+						}
+
 						if (explicit_selected_components[k].writerId == writerId
-							&& next(logicalPathStr, 0, explicit_selected_components[k].logicalPath))
+							&& next(logicalPathStr, 0, logicalPathFull))
 						{
 							already_selected = true;
 							break;
@@ -1619,6 +1629,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				vssInstance->writerId = writerId;
 				vssInstance->instanceId = instanceId;
 				vssInstance->backupcom = backupcom;
+				vssInstance->componentType = componentInfo->type;
 
 				std::string pretty_struct_component_path = pretty_struct_base + os_file_sep() + curr_dir;
 				if (!os_directory_exists(pretty_struct_component_path))
