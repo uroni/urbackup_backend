@@ -4346,7 +4346,8 @@ void IndexThread::writeTokens()
 			curr_key=access_keys->getValue(keys[i], std::string());
 			curr_key_age = access_keys->getValue("key_age."+starttoken, Server->getTimeSeconds());
 		}
-		else if(keys[i]!="key."+starttoken)
+		else if(keys[i]!="key."+starttoken
+			&& keys[i]!="last.key."+starttoken)
 		{
 			access_keys_data+=keys[i]+"="+
 				access_keys->getValue(keys[i], std::string())+"\n";
@@ -4354,12 +4355,23 @@ void IndexThread::writeTokens()
 	}
 
 	bool modified_file = false;
+	std::string last_key;
 
 	if(!has_server_key || (Server->getTimeSeconds()-curr_key_age)>7*24*60*60)
 	{
+		if (has_server_key)
+		{
+			last_key = curr_key;
+		}
 		curr_key = Server->secureRandomString(32);
 		curr_key_age = Server->getTimeSeconds();
 		modified_file=true;
+	}
+
+	if (!last_key.empty())
+	{
+		access_keys_data += "last.key." + starttoken + "=" +
+			last_key + "\n";
 	}
 
 	access_keys_data+="key."+starttoken+"="+

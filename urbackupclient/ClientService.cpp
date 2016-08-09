@@ -3040,7 +3040,8 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
-		if (!next(server_token_keys[i], 0, "key."))
+		if (!next(server_token_keys[i], 0, "key.")
+			&& !next(server_token_keys[i], 0, "last.key.") )
 		{
 			continue;
 		}
@@ -3052,7 +3053,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 		{
 			ret += "&tokens"+convert(i)+"="+base64_encode_dash(
 				crypto_fak->encryptAuthenticatedAES(session_key,
-				(server_key), 1));
+				server_key, 1));
 			has_token=true;
 		}
 	}
@@ -3060,7 +3061,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 	if(has_token)
 	{
 		ret += "&token_data="+base64_encode_dash(
-			crypto_fak->encryptAuthenticatedAES((tokens),
+			crypto_fak->encryptAuthenticatedAES(tokens,
 			session_key, 1) );
 	}	
 
