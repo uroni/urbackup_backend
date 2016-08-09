@@ -4,6 +4,7 @@
 #include "../Interface/SettingsReader.h"
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
+#include <memory>
 
 namespace
 {
