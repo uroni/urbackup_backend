@@ -182,7 +182,7 @@ struct STimeSpan
 class ServerSettings
 {
 public:
-	ServerSettings(IDatabase *db, int pClientid=-1);
+	ServerSettings(IDatabase *db, int pClientid=0);
 	~ServerSettings(void);
 
 	void update(bool force_update);

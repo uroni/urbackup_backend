@@ -83,6 +83,8 @@ public:
 	void addToOldBackupfolders(const std::string& backupfolder);
 	std::vector<std::string> getOldBackupfolders(void);
 	std::vector<std::string> getDeletePendingClientNames(void);
+	CondString getGroupName(int groupid);
+	CondInt getClientGroup(int clientid);
 	SClientName getVirtualMainClientname(int clientid);
 	void insertIntoOrigClientSettings(int clientid, const std::string& data);
 	CondString getOrigClientSettings(int clientid);
@@ -157,6 +159,8 @@ private:
 	IQuery* q_addToOldBackupfolders;
 	IQuery* q_getOldBackupfolders;
 	IQuery* q_getDeletePendingClientNames;
+	IQuery* q_getGroupName;
+	IQuery* q_getClientGroup;
 	IQuery* q_getVirtualMainClientname;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;

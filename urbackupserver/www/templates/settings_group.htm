@@ -1,0 +1,70 @@
+<br />
+<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form form-horizontal" role="form">
+			<h1>{tGroup} {groupname}</h1>
+			<ul class="nav nav-pills" id="settings_tabber" data-tabs="tabs">
+				<li class="active"><a href="#group_membership" data-toggle="tab">{tGroup membership}</a></li>
+				<li><a href="#file_backups" data-toggle="tab">{tFile Backups}</a></li>
+				<li><a href="#image_backups" data-toggle="tab">{tImage Backups}</a></li>
+				<li><a href="#permissions" data-toggle="tab">{tPermissions}</a></li>
+				<li><a href="#client" data-toggle="tab">{tClient}</a></li>
+				<li><a href="#archive" data-toggle="tab">{tArchive}</a></li>
+				{internet_settings_start|s}
+				<li><a href="#internet" data-toggle="tab">{tInternet}</a></li>
+				{internet_settings_end|s}
+				<li><a href="#advanced" data-toggle="tab">{tAdvanced}</a></li>
+			</ul>
+			<div class="tab-content">
+				<div class="tab-pane active" id="group_membership">
+					<div class="panel panel-default">
+					<div class="panel-body" style="margin: 20px">
+						<form class="form-horizontal" role="form">
+							<table style="width:100%; padding: 0">
+								<tr>
+									<td style="width:40%">
+										 <div class="form-group">
+										  <select id="group_member_selectpicker" onchange="groupMembershipMgmtGroupChange()" class="selectpicker" data-live-search="true" data-container="body">
+											{#groups}
+												<option id="{id}">{name}</option>
+											{/groups}
+										  </select>
+										  <select style="margin-top:15px" class="form-control" id="selClient1" size="20" onchange="groupMembershipMgmtSelectClient1()" ondblclick="dblClickSelectClient1()" multiple="multiple" >
+											<option>1</option>
+											<option>2</option>
+											<option>3</option>
+											<option>4</option>
+										  </select>
+										</div>
+									</td>
+									<td style="width:20%; padding: 20px" valign="center" align="center">
+										<input type="button" id="addClientButton1" class="btn btn-default" disabled="disabled" value="==>" onclick="addClientToGroup()" />
+										<br />
+										<br />
+										<input type="button" id="addClientButton2" class="btn btn-default" disabled="disabled" value="<==" onclick="removeClientFromGroup()" />										
+									</td>
+									<td style="width:40%">
+										<div class="form-group">
+										  <label for="selClient1">{tSelect client from current group (double-click to change settings):}</label>
+										  <select class="form-control" id="selClient2"  size="20" onchange="groupMembershipMgmtSelectClient2()" ondblclick="dblClickSelectClient2()" multiple="multiple" >
+										  </select>
+										</div>
+									</td>
+								</tr>						
+							</table>
+						</form>
+					</div>
+					</div>
+				</div>
+			
+				{settings_inv|s}
+			</div>
+			<div style="text-align: right">
+				<input type="button" class="btn btn-primary pull-right clearfix" style="margin-left: 20px" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit"/>
+				<a class="btn btn-danger pull-right clearfix" href="javascript: deleteSettingsGroup();" id="delete_group"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> {tDelete group}</a>
+				<br />
+				&nbsp;
+			</div>
+		</form>
+	</div>
+</div>

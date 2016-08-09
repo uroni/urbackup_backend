@@ -113,12 +113,16 @@ void ServerSettings::createSettingsReaders(std::auto_ptr<ISettingsReader>& setti
 	std::auto_ptr<ISettingsReader>& settings_client)
 {
 	int settings_default_id = 0;
-	if(clientid!=-1)
+	if(clientid>0)
 	{
 		settings_client.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=" + convert(clientid)));
-		settings_client->getValue("group_id", 0);
+		settings_default_id = settings_client->getValue("group_id", 0)*-1;
 	}
-		
+	else
+	{
+		settings_default_id = clientid;
+	}
+
 	settings_default.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid="+convert(settings_default_id)));
 }
 

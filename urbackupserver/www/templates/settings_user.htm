@@ -2,8 +2,22 @@
 <div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form form-horizontal" role="form">
-			<h1>{tClient} {clientname}</h1>
-			<div>
+			<div style="display: table; margin-top: 20px; margin-bottom: 10px">
+				<div style="display: table-cell;vertical-align: middle;"><h1 style="margin: 0">{tClient} {clientname}</h1></div>
+				{?groupmod}
+				<div style="display: table-cell;vertical-align: middle; padding-left:20px">
+				Member of group
+				</div>
+				<div style="display: table-cell;vertical-align: middle;padding-left:10px">
+				<select id="group_member_selectpicker" class="selectpicker" data-live-search="true" data-container="body" onchange="changeSettingsGroupMembership({clientid})">
+												{#groups}
+													<option id="{id}">{name}</option>
+												{/groups}
+											  </select>
+				</div>
+				{/groupmod}
+			</div>
+			<div style="clear: left">
 				<div class="form-group" style="margin-left: 10pt">
 					<label><input type="checkbox" onclick="updateUserOverwrite({clientid})" id="overwrite" {overwrite} /></label>
 					<label class="control-label" style="margin-left: 10px" for="overwrite">{tSeparate settings for this client}</label>

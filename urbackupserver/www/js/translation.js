@@ -1465,7 +1465,14 @@ translations.en = {
 "not_supported": "Not supported",
 "tPreparing restore. Please be patient...": "Preparing restore. Please be patient...",
 "tDo not fail backups in case of hash mismatches or read errors": "Do not fail backups in case of hash mismatches or read errors",
-"action_16": "Storage migration"
+"action_16": "Storage migration",
+"default_group": "Default",
+"filter_group": "Groups",
+"add_new_group": "Add new group",
+"enter_group_name": "Enter new group name",
+"group_already_exists": "Group already exists",
+"confirm_delete_settings_group": "Going to remove this group. All clients in this group will be re-assigned to the default group. Proceed?",
+"group_delete_failed": "Removing group failed"
 }
 translations.en_US = {
 "tInfos": "About"

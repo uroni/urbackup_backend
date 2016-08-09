@@ -402,13 +402,14 @@ ACTION_IMPL(status)
 			filter=" WHERE ";
 			for(size_t i=0;i<clientids.size();++i)
 			{
-				filter+="id="+convert(clientids[i]);
+				filter+="c.id="+convert(clientids[i]);
 				if(i+1<clientids.size())
 					filter+=" OR ";
 			}
 		}
-		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str FROM clients"+filter+" ORDER BY name");
+		db_results res=db->Read("SELECT c.id AS id, delete_pending, c.name AS name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname FROM "
+			" clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id "+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
@@ -437,6 +438,7 @@ ACTION_IMPL(status)
 			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
 			stat.set("delete_pending", res[i]["delete_pending"] );
 			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
+			stat.set("groupname", res[i]["groupname"]);
 
 			std::string ip="-";
 			std::string client_version_string = res[i]["client_version_str"];

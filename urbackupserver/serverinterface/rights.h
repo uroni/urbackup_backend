@@ -3,6 +3,7 @@
 
 namespace
 {
+	const char* RIGHT_ALL = "all";
 	const char* RIGHT_SETTINGS="settings";
 	const char* RIGHT_BROWSE_BACKUPS = "browse_backups";
 }

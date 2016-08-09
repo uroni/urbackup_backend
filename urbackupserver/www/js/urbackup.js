@@ -1198,6 +1198,11 @@ function show_status2(data)
 			}
 		}
 		
+		if(obj.groupname.length==0)
+		{
+			obj.groupname = trans("default_group");
+		}
+		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{
 			obj.remove_client=data.remove_client;
@@ -1389,20 +1394,20 @@ function show_status2(data)
 		
 		if(data.no_images)
 		{
-			show_hide_column('status_table', 6, false);
-			show_hide_column('status_table', 8, false);
+			show_hide_column('status_table', 7, false);
+			show_hide_column('status_table', 9, false);
 		}
 		
 		if(data.no_file_backups)
 		{
-			show_hide_column('status_table', 5, false);
-			show_hide_column('status_table', 7, false);
+			show_hide_column('status_table', 6, false);
+			show_hide_column('status_table', 8, false);
 		}
 		
 		var datatable_config = g.datatable_default_config;
 		
 		datatable_config.aoColumnDefs = [
-				{ "bVisible": false, "aTargets": [ 3, 9, 10, 11 ]
+				{ "bVisible": false, "aTargets": [ 2, 4, 10, 11, 12 ]
 				}];
 				
 		if(data.allow_modify_clients)
@@ -1420,26 +1425,26 @@ function show_status2(data)
 		
 		if(data.no_images)
 		{
-			datatable_config.oColVis.aiExclude.push(6);
-			datatable_config.oColVis.aiExclude.push(8);
+			datatable_config.oColVis.aiExclude.push(7);
+			datatable_config.oColVis.aiExclude.push(9);
 		}
 		
 		if(data.no_file_backups)
 		{
-			datatable_config.oColVis.aiExclude.push(5);
-			datatable_config.oColVis.aiExclude.push(7);
+			datatable_config.oColVis.aiExclude.push(6);
+			datatable_config.oColVis.aiExclude.push(8);
 		}
 		
 		var columns = [ 1 ];
 		
 		if(!data.no_file_backups)
-			columns.push(5);		
+			columns.push(6);		
 		if(!data.no_images)
-			columns.push(6);
+			columns.push(7);
 		if(!data.no_file_backups)
-			columns.push(7);		
+			columns.push(8);		
 		if(!data.no_images)
-			columns.push(8);
+			columns.push(9);
 			
 		
 
@@ -2152,6 +2157,7 @@ function show_settings2(data)
 		var nav=data.navitems;
 		var idx=0;
 		g.user_nav_pos_offset=0;
+		g.group_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
 		g.ldap_nav_pos_offset=0;
 		n+="<ul class=\"nav nav-tabs\" role=\"tablist\">";
@@ -2170,6 +2176,7 @@ function show_settings2(data)
 			
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.group_nav_pos_offset;
 			++g.mail_nav_pos_offset;
 			++g.ldap_nav_pos_offset;
 			++g.internet_nav_pos_offset;
@@ -2189,6 +2196,7 @@ function show_settings2(data)
 
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.group_nav_pos_offset;
 			++g.ldap_nav_pos_offset;
 			++g.internet_nav_pos_offset;
 		}
@@ -2207,6 +2215,7 @@ function show_settings2(data)
 
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.group_nav_pos_offset;
 			++g.internet_nav_pos_offset;
 		}
 		if(nav.users)
@@ -2224,6 +2233,7 @@ function show_settings2(data)
 
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.group_nav_pos_offset;
 		}
 		else
 		{
@@ -2251,6 +2261,7 @@ function show_settings2(data)
 
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.group_nav_pos_offset;
 		}
 		if(nav.clients)
 		{
@@ -2260,16 +2271,52 @@ function show_settings2(data)
 			
 			if(nav.clients.length>1)
 			{
+				n+="<span style=\"width: 10px\">&nbsp;</span>";
 				n+="<select id=\"clientpicker\" class=\"selectpicker\" data-live-search=\"true\" data-container=\"body\" title=\""+trans("clients")+"\">";
+				var groupid=-1;
 				for(var i=0;i<nav.clients.length;++i)
 				{		
+					if(nav.clients[i].group!=groupid)
+					{
+						if(groupid!=-1)
+						{
+							n+="</optgroup>";
+						}
+						groupid = nav.clients[i].group;
+						var groupname = nav.clients[i].groupname;
+						if(groupid==0)
+						{
+							groupname = trans("default_group");
+						}
+						n+="<optgroup label=\""+groupname+"\">";
+					}
 					var selected = "";
-					if(g.settings_nav_pos==idx)
+					if(data.sa && data.sa=="clientsettings")
+					{
+						if( data.settings.clientid
+							&& data.settings.clientid==nav.clients[i].id)
+						{
+							selected = "selected=\"selected\"";
+						}
+					}
+					else if(g.settings_nav_pos==idx)
 					{
 						selected = "selected=\"selected\"";
 					}
-					n+="<option value=\""+nav.clients[i].id + ";" + idx + "\" "+selected+">" + nav.clients[i].name + "</option>";
+					
+					var override="";
+					if(nav.clients[i].override)
+					{
+						override="*";
+					}
+					
+					n+="<option value=\""+nav.clients[i].id + ";" + idx + "\" "+selected+">" + nav.clients[i].name + override + "</option>";
 					++idx;
+					++g.group_nav_pos_offset;
+				}
+				if(groupid!=-1)
+				{
+					n+="</optgroup>";
 				}
 				n+="</select>";
 			}
@@ -2284,8 +2331,50 @@ function show_settings2(data)
 					n+="<li id=\"client_settings_el\"><a href=\"javascript: clientSettings("+nav.clients[0].id+", "+idx+");\">"+trans("client_settings")+"</a></li>";
 				}
 				++idx;
+				++g.group_nav_pos_offset;
 			}
 		}
+		if(nav.groups
+			&& (nav.groups.length>1
+			   || data.added_group) )
+		{
+			if(g.settings_nav_pos==-1) g.settings_nav_pos=0;
+			
+			if(data.added_group)
+			{
+				nav.groups.push(data.added_group);
+			}
+			
+			g.settings_groups = nav.groups;
+			
+			n+="<span style=\"width: 10px\">&nbsp;</span>";
+			n+="<select style=\"margin-left: 10px\" id=\"grouppicker\" class=\"selectpicker\" data-live-search=\"true\" data-container=\"body\" title=\""+trans("filter_group")+"\">";
+			for(var i=0;i<nav.groups.length;++i)
+			{		
+				var selected = "";
+				if(g.settings_nav_pos==idx)
+				{
+					selected = "selected=\"selected\"";
+				}
+				if(nav.groups[i].id==0)
+				{
+					nav.groups[i].name = trans("default_group");
+					continue;
+				}
+				n+="<option value=\""+nav.groups[i].id + ";" + idx + "\" "+selected+">" + nav.groups[i].name + "</option>";
+				++idx;
+			}
+			n+="</select>";
+		}
+		if(nav.groupmod)
+		{
+			if(data.sa && data.sa=="clientsettings"
+				&& nav.groups && nav.groups.length>1)
+			{
+				data.settings.groupmod=true;
+			}
+			n+="<a style=\"margin-left: 10px\" class=\"btn btn-default\" href=\"javascript: addNewGroup1();\"><span class=\"glyphicon glyphicon-plus\" aria-hidden=\"true\"></span> "+trans("add_new_group")+"</a>";
+		}		
 		I('nav_pos').innerHTML=n;
 		
 		$("#clientpicker").change(function() {
@@ -2300,9 +2389,26 @@ function show_settings2(data)
 		$('#clientpicker').selectpicker({
 		  style: 'btn',
 		});
+		
+		if(I('grouppicker'))
+		{
+			$("#grouppicker").change(function() {
+				var vals = I("grouppicker")[I("grouppicker").selectedIndex].value.split(";");
+				if(vals[0]=="n")
+				{
+					return;
+				}
+				groupSettings(vals[0], vals[1]);
+			});
+			
+			$('#grouppicker').selectpicker({
+			  style: 'btn',
+			});
+		}
 	}
 	
 	var ndata="";
+	var group_membership_selectpicker=false;
 	var tabber_set_idx=false;
 	if(data.sa)
 	{
@@ -2438,10 +2544,11 @@ function show_settings2(data)
 		}
 		else if(data.sa=="clientsettings")
 		{
-		
-			if( data.settings.allow_overwrite==true
+			var is_group = typeof data.settings.groupid === "undefined" ? false : true;
+			
+			if( is_group || (data.settings.allow_overwrite==true
 				&& data.settings.overwrite==true
-				&& data.settings.client_set_settings==true )
+				&& data.settings.client_set_settings==true ) )
 			{
 				data.settings.overwrite_warning_start="";
 				data.settings.overwrite_warning_end="";
@@ -2452,7 +2559,7 @@ function show_settings2(data)
 				data.settings.overwrite_warning_end="-->";
 			}
 			
-			data.settings.overwrite=getCheckboxValue(data.settings.overwrite);
+			data.settings.overwrite=getCheckboxValue(is_group || data.settings.overwrite);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
 			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
@@ -2519,8 +2626,16 @@ function show_settings2(data)
 			
 			data.settings.file_hash_collect_cachesize/=1024;
 			
-			data.settings.no_compname_start="";
-			data.settings.no_compname_end="";
+			if(is_group)
+			{
+				data.settings.no_compname_start="<!--";
+				data.settings.no_compname_end="-->";
+			}
+			else
+			{
+				data.settings.no_compname_start="";
+				data.settings.no_compname_end="";
+			}
 			data.settings.global_settings_start="<!--";
 			data.settings.global_settings_end="-->";
 			
@@ -2543,10 +2658,41 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 			
-			data.settings.client_settings=true;
+			if(is_group)
+			{
+				data.settings.client_settings=false;
+				
+				if(data.settings.groupid==0)
+				{
+					data.settings.groupname = trans("default_group");
+				}
+				
+				g.settings_current_groupid = data.settings.groupid;
+				
+				data.settings.groups = [];
+				
+				for(var i=0;i<data.navitems.groups.length;++i)
+				{
+					if(data.navitems.groups[i].id!=data.settings.groupid)
+					{
+						data.settings.groups.push(data.navitems.groups[i]);
+					}
+				}
+				
+				g.settings_group_changes=[];
+				
+				data.settings.main_client = true;
+			}
+			else
+			{
+				data.settings.client_settings=true;
+				data.settings.groups = data.navitems.groups;
+			}
+			
+			group_membership_selectpicker=true;
 						
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
-			ndata+=dustRender("settings_user", data.settings);
+			ndata+=dustRender(is_group ? "settings_group" : "settings_user", data.settings);
 			
 			if(data.saved_ok)
 			{
@@ -2718,11 +2864,34 @@ function show_settings2(data)
 		{
 			hideBackupWindowDetails();
 		}
+		
+		if(group_membership_selectpicker)
+		{
+			if(I("selClient1"))
+			{
+				groupMembershipMgmtGroupChange();
+				groupMembershipMgmtUpdateCurrent();
+			}
+			else
+			{
+				for(var i=0;i<data.navitems.groups.length;++i)
+				{
+					if(data.navitems.groups[i].id==data.settings.memberof)
+					{
+						I("group_member_selectpicker").selectedIndex = i;
+						break;
+					}
+				}
+			}
+			
+			$('#group_member_selectpicker').selectpicker({});
+		}
 	}
 	
 	settingsCheckboxChange();
 	
-	if(data.sa && data.sa=="clientsettings")
+	if(data.sa && data.sa=="clientsettings"
+		&& typeof data.settings.groupid === "undefined")
 	{
 		updateUserOverwrite();
 	}
@@ -2756,6 +2925,184 @@ function show_settings2(data)
 	{
 		changePW();
 	}
+}
+function addedNewGroup(data)
+{
+	if(data.alread_exists)
+	{
+		alert(trans("group_already_exists"));
+		stopLoading();
+		return;
+	}
+	
+	g.settings_nav_pos=g.group_nav_pos_offset;
+	
+	if(data.navitems.groups)
+	{
+		g.settings_nav_pos+=data.navitems.groups.length-1;
+	}
+	
+	show_settings2(data);
+}
+function addNewGroup1()
+{
+	if(!startLoading()) return;
+	var new_group_name = prompt(trans("enter_group_name", ""));
+	if(new_group_name!=null
+		&& new_group_name.length>0)
+	{
+		new getJSON("settings", "sa=groupadd&name="+encodeURIComponent(new_group_name), addedNewGroup);
+	}
+	else
+	{
+		stopLoading();
+	}
+}
+function groupMembershipMgmtGroupChange()
+{
+	var groupid = I("group_member_selectpicker")[I("group_member_selectpicker").selectedIndex].id;
+	
+	var n="";
+	
+	for(var i=0;i<g.settings_clients.length;++i)
+	{
+		if(g.settings_clients[i].group == groupid)
+		{
+			n+="<option id=\""+g.settings_clients[i].id+"\">"+g.settings_clients[i].name+"</option>";
+		}
+	}
+	
+	I("selClient1").innerHTML = n;
+	
+	I("addClientButton1").disabled=true;
+}
+function groupMembershipMgmtUpdateCurrent()
+{
+	var groupid = g.settings_current_groupid;
+	
+	var n="";
+	
+	for(var i=0;i<g.settings_clients.length;++i)
+	{
+		if(g.settings_clients[i].group == groupid)
+		{
+			n+="<option id=\""+g.settings_clients[i].id+"\">"+g.settings_clients[i].name+"</option>";
+		}
+	}
+	
+	I("selClient2").innerHTML = n;
+	
+	I("addClientButton2").disabled=true;
+}
+function groupMembershipMgmtSelectClient1()
+{
+	I("addClientButton1").disabled=false;
+}
+function groupMembershipMgmtSelectClient2()
+{
+	I("addClientButton2").disabled=false;
+}
+function selectClientSettings(clientid)
+{
+	for(var i=0;i<g.settings_clients.length;++i)
+	{
+		if(g.settings_clients[i].id==clientid)
+		{
+			clientSettings(clientid, g.user_nav_pos_offset + i);
+			return true;
+		}
+	}
+	return false;
+}
+function deleteSettingsGroup2(data)
+{
+	if(!data.delete_ok)
+	{
+		alert(trans("group_delete_failed"));
+		stopLoading();
+		return;
+	}
+	
+	g.settings_nav_pos=g.group_nav_pos_offset;
+	
+	show_settings2(data);
+}
+function deleteSettingsGroup()
+{
+	if(!startLoading()) return;
+	if(confirm(trans("confirm_delete_settings_group")))
+	{
+		new getJSON("settings", "sa=groupremove&id="+g.settings_current_groupid, deleteSettingsGroup2);
+	}
+	else
+	{
+		stopLoading();
+	}
+}
+function dblClickSelectClient1()
+{
+	var clientid = I("selClient1")[I("selClient1").selectedIndex].id;
+	selectClientSettings(clientid);
+}
+function dblClickSelectClient2()
+{
+	var clientid = I("selClient2")[I("selClient2").selectedIndex].id;
+	selectClientSettings(clientid);
+}
+function recordChange(clientid, groupid)
+{
+	for(var i=0;i<g.settings_group_changes.length;++i)
+	{
+		if(g.settings_group_changes[i].clientid == clientid)
+		{
+			g.settings_group_changes[i].groupid=groupid;
+			return;
+		}
+	}
+	
+	g.settings_group_changes.push( { "clientid": clientid,
+									      "groupid": groupid } );
+}
+function changeClientsGroup(selectedClientids, groupid)
+{
+	for(var j=0;j<selectedClientids.length;++j)
+	{
+		recordChange(selectedClientids[j], groupid);
+	}
+	
+	for(var i=0;i<g.settings_clients.length;++i)
+	{
+		for(var j=0;j<selectedClientids.length;++j)
+		{
+			if(g.settings_clients[i].id == selectedClientids[j])
+			{
+				g.settings_clients[i].group=groupid;
+			}
+		}
+	}
+	
+	groupMembershipMgmtGroupChange();
+	groupMembershipMgmtUpdateCurrent();
+}
+function addClientToGroup()
+{
+	var selectedClientids = [];    
+    $("#selClient1 :selected").each(function(){
+        selectedClientids.push(this.id); 
+    });
+	
+	changeClientsGroup(selectedClientids, g.settings_current_groupid);
+}
+function removeClientFromGroup()
+{
+	var groupid = I("group_member_selectpicker")[I("group_member_selectpicker").selectedIndex].id;
+	
+	var selectedClientids = [];    
+    $("#selClient2 :selected").each(function(){
+        selectedClientids.push(this.id); 
+    });
+	
+	changeClientsGroup(selectedClientids, groupid);
 }
 function settingsCheckboxHandle(cbid)
 {
@@ -3005,6 +3352,12 @@ function clientSettings(clientid, idx)
 	g.settings_nav_pos=idx*1;
 	new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
 }
+function groupSettings(groupid, idx)
+{
+	if(!startLoading()) return;
+	g.settings_nav_pos=idx*1;
+	new getJSON("settings", "sa=clientsettings&t_clientid="+(groupid*-1), show_settings2);
+}
 function generalSettings()
 {
 	if(!startLoading()) return;
@@ -3073,6 +3426,12 @@ function updateUserOverwrite(clientid)
 		saveClientSettings(clientid, true);
 	}
 }
+function changeSettingsGroupMembership(clientid)
+{
+	if(I("overwrite").checked) return;
+	
+	saveClientSettings(clientid, true);
+}
 function saveClientSettings(clientid, skip)
 {
 	if(!startLoading()) return;
@@ -3080,7 +3439,14 @@ function saveClientSettings(clientid, skip)
 	backupWindowChange();
 	
 	var pars="";
-	pars+=getPar("overwrite");
+	if(clientid>0)
+	{
+		pars+=getPar("overwrite");
+	}
+	else //group
+	{
+		pars+="&overwrite=true";
+	}
 	if(!skip)
 	{
 		if(!validateCommonSettings())
@@ -3098,6 +3464,33 @@ function saveClientSettings(clientid, skip)
 	{
 		pars+="&no_ok=true";
 	}
+
+	if(clientid<=0) //group
+	{
+		if(g.settings_group_changes.length>0)
+		{
+			var group_mem_changes="";
+			for(var i=0;i<g.settings_group_changes.length;++i)
+			{
+				if(group_mem_changes.length>0)
+				{
+					group_mem_changes+=";";
+				}
+				group_mem_changes+=g.settings_group_changes[i].clientid+"-"+g.settings_group_changes[i].groupid;
+			}
+			
+			pars+="&group_mem_changes="+group_mem_changes;
+		}
+	}
+	else
+	{
+		if(I("group_member_selectpicker"))
+		{
+			var groupid = I("group_member_selectpicker")[I("group_member_selectpicker").selectedIndex].id;
+			pars+="&memberof="+groupid;
+		}
+	}
+	
 	new getJSON("settings", "sa=clientsettings_save&t_clientid="+clientid+pars, show_settings2);
 }
 function userSettings()

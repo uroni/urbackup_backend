@@ -385,6 +385,21 @@ void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
 	updateSetting("overwrite", settings.overwrite?"true":"false", q_get, q_update, q_insert);
 }
 
+void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
+{
+	IQuery *q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=" + convert(t_clientid));
+	IQuery *q_update = db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=" + convert(t_clientid));
+	IQuery *q_insert = db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?," + convert(t_clientid) + ")");
+
+	updateSetting("group_id", convert(groupid), q_get, q_update, q_insert);
+
+	IQuery* q = db->Prepare("UPDATE clients SET groupid=? WHERE id=?");
+	q->Bind(groupid);
+	q->Bind(t_clientid);
+	q->Write();
+	q->Reset();
+}
+
 void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
@@ -660,6 +675,57 @@ ACTION_IMPL(settings)
 
 	if(session!=NULL && helper.getRights("settings")!="none")
 	{
+		if (t_clientid <= 0
+			&& sa == "clientsettings_save")
+		{
+			std::string group_mem_changes = POST["group_mem_changes"];
+			if (!group_mem_changes.empty()
+				&& helper.getRights("groupmod") == RIGHT_ALL)
+			{
+				std::vector<std::string> changes;
+				TokenizeMail(group_mem_changes, changes, ";");
+				for (size_t i = 0; i < changes.size(); ++i)
+				{
+					int mod_clientid = watoi(getuntil("-", changes[i]));
+					int mod_groupid = watoi(getafter("-", changes[i]));
+
+					updateClientGroup(mod_clientid, mod_groupid, db);
+				}
+			}
+		}
+		else if (t_clientid > 0
+			&& sa == "clientsettings_save"
+			&& helper.getRights("groupmod") == RIGHT_ALL
+			&& POST.find("memberof") != POST.end())
+		{
+			updateClientGroup(t_clientid, watoi(POST["memberof"]), db);
+		}
+		else if (sa == "groupremove" && helper.getRights("groupmod") == RIGHT_ALL)
+		{
+			DBScopedWriteTransaction remove_transaction(db);
+
+			int groupid = watoi(POST["id"]);
+			IQuery* q1 = db->Prepare("UPDATE clients SET groupid=0 WHERE groupid=?");
+			q1->Bind(groupid);
+			q1->Write();
+			q1->Reset();
+
+			IQuery* q2 = db->Prepare("UPDATE settings_db.settings SET value='0' WHERE key='group_id' AND value=?");
+			q2->Bind(groupid);
+			q2->Write();
+			q2->Reset();
+
+			IQuery* q3 = db->Prepare("DELETE FROM settings_db.si_client_groups WHERE id=?");
+			q3->Bind(groupid);
+			q3->Write();
+			q3->Reset();
+
+			remove_transaction.end();
+
+			ret.set("delete_ok", true);
+			sa = "general";
+		}
+
 		//navitems
 		{
 			JSON::Object navitems;
@@ -685,37 +751,87 @@ ACTION_IMPL(settings)
 			{
 				navitems.set("disable_change_pw", true);
 			}
+			if (helper.getRights("groupmod") == "all")
+			{
+				navitems.set("groupmod", true);
+			}
 
 			JSON::Array clients;
 			
+			const std::string clients_tab = " (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON "
+				"c.groupid = cg.id) ";
 			if(rights=="all" )
 			{
-				IQuery *q=db->Prepare("SELECT id,name FROM clients ORDER BY name");
+				IQuery *q=db->Prepare("SELECT c.id AS clientid, c.name AS clientname, groupid, cg.name AS groupname FROM " + clients_tab
+					 + "ORDER BY c.groupid, c.name");
 				db_results res=q->Read();
 				q->Reset();
 				for(size_t i=0;i<res.size();++i)
 				{
 					JSON::Object u;
-					u.set("id",watoi(res[i]["id"]));
-					u.set("name", res[i]["name"]);
+
+					int lclientid = watoi(res[i]["clientid"]);
+					ServerSettings client_settings(db, lclientid);
+
+					u.set("id", lclientid);
+					u.set("name", res[i]["clientname"]);
+					u.set("group", watoi(res[i]["groupid"]));
+					u.set("groupname", res[i]["groupname"]);
+					u.set("override", client_settings.getSettings()->overwrite);
 					clients.add(u);
 				}
 			}
 			else
 			{
-				IQuery *q=db->Prepare("SELECT name FROM clients WHERE id=?");
+				std::map<int, db_single_result> group_res;
+				IQuery *q=db->Prepare("SELECT c.id AS clientid, c.name AS clientname, groupid, cg.name AS groupname FROM "+ clients_tab + " WHERE c.id=?");
 				for(size_t i=0;i<clientid.size();++i)
 				{
 					q->Bind(clientid[i]);
 					db_results res=q->Read();
 					q->Reset();
+					if (!res.empty())
+					{
+						group_res[watoi(res[0]["groupid"])] = res[0];
+					}
+				}
+				for (std::map<int, db_single_result>::iterator it = group_res.begin();
+					it != group_res.end(); ++it)
+				{
 					JSON::Object u;
-					u.set("id", clientid[i]);
-					u.set("name", res[0]["name"]);
+
+					int lclientid = watoi(it->second["id"]);
+					ServerSettings client_settings(db, lclientid);
+					u.set("id", lclientid);
+					u.set("name", it->second["name"]);
+					u.set("group", it->first);
+					u.set("groupname", it->second["groupname"]);
+					u.set("override", client_settings.getSettings()->overwrite);
 					clients.add(u);
 				}
 			}
+			
 			navitems.set("clients", clients);
+
+			{
+				JSON::Array groups;
+
+				JSON::Object u;
+				u.set("id", 0);
+				u.set("name", "");
+				groups.add(u);
+
+				db_results res = db->Read("SELECT id, name FROM settings_db.si_client_groups ORDER BY name");
+				for (size_t i = 0; i<res.size(); ++i)
+				{
+					JSON::Object u;
+					u.set("id", watoi(res[i]["id"]));
+					u.set("name", res[i]["name"]);
+					groups.add(u);
+				}
+
+				navitems.set("groups", groups);
+			}
 
 			if(helper.getRights("general_settings")=="all" )
 			{
@@ -723,6 +839,37 @@ ACTION_IMPL(settings)
 			}
 
 			ret.set("navitems", navitems);
+		}
+
+		if (sa == "groupadd" && helper.getRights("groupmod") == RIGHT_ALL)
+		{
+			std::string name_lower = strlower(POST["name"]);
+			IQuery* q_find = db->Prepare("SELECT id FROM settings_db.si_client_groups WHERE name=?");
+			q_find->Bind(name_lower);
+			db_results res = q_find->Read();
+			q_find->Reset();
+
+			if (res.empty())
+			{
+				IQuery *q = db->Prepare("INSERT INTO settings_db.si_client_groups (name) VALUES (?)");
+				q->Bind(POST["name"]);
+				q->Write();
+				q->Reset();
+
+				ret.set("add_ok", true);
+				JSON::Object u;
+				int groupid = static_cast<int>(db->getLastInsertID());
+				u.set("id", groupid);
+				u.set("name", POST["name"]);
+				ret.set("added_group", u);
+
+				sa = "clientsettings";
+				t_clientid = -1 * groupid;
+			}
+			else
+			{
+				ret.set("already_exists", true);
+			}
 		}
 
 		if(sa=="clientsettings" || sa=="clientsettings_save")
@@ -778,12 +925,22 @@ ACTION_IMPL(settings)
 				ServerSettings settings(db, t_clientid);
 				
 				JSON::Object obj=getJSONClientSettings(settings);
-				s=getClientSettings(db, t_clientid);
-				obj.set("overwrite", s.overwrite);
+				s=getClientSettings(db, t_clientid);				
 				obj.set("clientid", t_clientid);
-				ServerBackupDao::SClientName client_name = backupdao.getVirtualMainClientname(t_clientid);
-				obj.set("main_client", client_name.virtualmain.empty());
-				obj.set("clientname", client_name.name);
+				if (t_clientid <= 0)
+				{
+					obj.set("groupid", t_clientid*-1);
+					obj.set("groupname", backupdao.getGroupName(t_clientid*-1).value);
+					obj.set("overwrite", true);
+				}
+				else
+				{
+					ServerBackupDao::SClientName client_name = backupdao.getVirtualMainClientname(t_clientid);
+					obj.set("main_client", client_name.virtualmain.empty());
+					obj.set("clientname", client_name.name);
+					obj.set("memberof", backupdao.getClientGroup(t_clientid).value);
+					obj.set("overwrite", s.overwrite);
+				}
 
 				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings",  obj);
@@ -827,7 +984,7 @@ ACTION_IMPL(settings)
 
 				int t_userid=(int)db->getLastInsertID();
 
-				std::string s_rights=(POST["rights"]);
+				std::string s_rights = POST["rights"];
 				updateRights(t_userid, s_rights, db);
 			}
 			else
@@ -836,8 +993,8 @@ ACTION_IMPL(settings)
 			}			
 
 			sa="listusers";
-			
 		}
+		
 		if(sa=="changepw" && ( helper.getRights("usermod")=="all" || (POST["userid"]=="own" && helper.getRights("disable_change_pw")!="all") ) )
 		{
 			bool ok=true;

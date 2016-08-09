@@ -105,6 +105,57 @@ std::vector<std::string> ServerBackupDao::getDeletePendingClientNames(void)
 
 /**
 * @-SQLGenAccess
+* @func string ServerBackupDao::getGroupName
+* @return string name
+* @sql
+*      SELECT name FROM settings_db.si_client_groups WHERE id=:groupid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getGroupName(int groupid)
+{
+	if(q_getGroupName==NULL)
+	{
+		q_getGroupName=db->Prepare("SELECT name FROM settings_db.si_client_groups WHERE id=?", false);
+	}
+	q_getGroupName->Bind(groupid);
+	db_results res=q_getGroupName->Read();
+	q_getGroupName->Reset();
+	CondString ret = { false, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["name"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::getClientGroup
+* @return int groupid
+* @sql
+*      SELECT groupid FROM clients WHERE id=:clientid(int)
+*/
+ServerBackupDao::CondInt ServerBackupDao::getClientGroup(int clientid)
+{
+	if(q_getClientGroup==NULL)
+	{
+		q_getClientGroup=db->Prepare("SELECT groupid FROM clients WHERE id=?", false);
+	}
+	q_getClientGroup->Bind(clientid);
+	db_results res=q_getClientGroup->Read();
+	q_getClientGroup->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["groupid"]);
+	}
+	return ret;
+}
+
+
+/**
+* @-SQLGenAccess
 * @func SClientName ServerBackupDao::getVirtualMainClientname
 * @return string virtualmain, string name
 * @sql
@@ -1461,6 +1512,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_addToOldBackupfolders=NULL;
 	q_getOldBackupfolders=NULL;
 	q_getDeletePendingClientNames=NULL;
+	q_getGroupName=NULL;
+	q_getClientGroup=NULL;
 	q_getVirtualMainClientname=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
@@ -1528,6 +1581,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addToOldBackupfolders);
 	db->destroyQuery(q_getOldBackupfolders);
 	db->destroyQuery(q_getDeletePendingClientNames);
+	db->destroyQuery(q_getGroupName);
+	db->destroyQuery(q_getClientGroup);
 	db->destroyQuery(q_getVirtualMainClientname);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);
