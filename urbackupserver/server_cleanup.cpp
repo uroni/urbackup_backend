@@ -1532,7 +1532,7 @@ namespace
 		int64 last_pos;
 	};
 
-	bool copy_db_file(std::string src, std::string dst, IDatabase::IBackupProgress* progress)
+	bool copy_db_file(std::string src, std::string dst, IDatabase::IBackupProgress* progress, std::string& errmsg)
 	{
 		std::auto_ptr<IFile> src_file(Server->openFile(os_file_prefix(src), MODE_READ_DEVICE));
 		std::auto_ptr<IFile> dst_file(Server->openFile(os_file_prefix(dst), MODE_WRITE));
@@ -1552,6 +1552,7 @@ namespace
 			{
 				if (has_error)
 				{
+					errmsg = os_last_error_str();
 					break;
 				}
 
@@ -1563,6 +1564,7 @@ namespace
 
 					if (has_error)
 					{
+						errmsg = os_last_error_str();
 						break;
 					}
 
@@ -1578,6 +1580,11 @@ namespace
 			if (!has_error)
 			{
 				copy_ok = dst_file->Sync();
+
+				if (!copy_ok)
+				{
+					errmsg = os_last_error_str();
+				}
 			}
 			else
 			{
@@ -1586,6 +1593,7 @@ namespace
 		}
 		else
 		{
+			errmsg = os_last_error_str();
 			copy_ok = false;
 		}
 
@@ -1673,7 +1681,9 @@ bool ServerCleanupThread::backup_database(void)
 
 				BackupProgress backup_progress(database_backup.getStatusId());
 
-				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i], bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress);
+				std::string errmsg1;
+				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i],
+					bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress, errmsg1);
 
 				if (copy_ok)
 				{
@@ -1681,11 +1691,13 @@ bool ServerCleanupThread::backup_database(void)
 
 					BackupProgress backup_progress_wal(database_backup.getStatusId());
 
-					copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal", bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal);
+					std::string errmsg2;
+					copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal",
+						bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal, errmsg2);
 
 					if (!copy_ok)
 					{
-						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed", LL_ERROR);
+						ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + "-wal to " + bfolder + os_file_sep() + copy_backup[i] + "-wal~ failed. "+ errmsg2, LL_ERROR);
 						total_copy_ok = false;
 					}
 					else
@@ -1695,7 +1707,7 @@ bool ServerCleanupThread::backup_database(void)
 				}
 				else
 				{
-					ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed", LL_ERROR);
+					ServerLogger::Log(logid, "Backing up database failed. Copying urbackup" + os_file_sep() + copy_backup[i] + " to " + bfolder + os_file_sep() + copy_backup[i] + "~ failed. "+errmsg1, LL_ERROR);
 					total_copy_ok = false;
 				}
 
