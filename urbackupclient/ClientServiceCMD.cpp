@@ -2466,6 +2466,12 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 			{
 				client_token = crypto_fak->decryptAuthenticatedAES(base64_decode_dash(client_token), access_key, 1);
 
+				if (client_token.empty()
+					&& access_keys->getValue("last.key." + server_token, &access_key))
+				{
+					client_token = crypto_fak->decryptAuthenticatedAES(base64_decode_dash(client_token), access_key, 1);
+				}
+
 				if (client_token.empty())
 				{
 					Server->Log("Error decrypting server access token. Access key might be wrong.", LL_ERROR);
