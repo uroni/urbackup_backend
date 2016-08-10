@@ -614,6 +614,8 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 			setBitmapRange(used_start, used_end, true);
 		}
 	}
+	
+	return true;
 }
 
 #endif //__APPLE__
