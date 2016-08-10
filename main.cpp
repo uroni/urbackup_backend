@@ -663,7 +663,7 @@ int main(int argc, char *argv[])
 		strcpy_s(srv_argv[0], strlen(argv[0])+1, argv[0]);
 		for(int i=0;i<lc;++i)
 		{
-			std::string l=getline(i, args);
+			std::string l=trim(getline(i, args));
 			std::cout << l << std::endl;
 			srv_argv[i+1]=new char[l.size()+1];
 			memcpy(srv_argv[i+1], &l[0], l.size());
