@@ -81,6 +81,11 @@ a 64-bit operating system and at least Windows Vista/2008.
      \item Turn on compression for the urbackup folder (in Explorer: Right click and properties). If you are not using a really old computer it should pay off without decreasing the backup speed. Possible exception: If you plan to backup files with more than 50GB or turn off the image compression and plan to backup volumes with more than 50GB you should not turn on compression. NTFS cannot compress files larger than about 50GB.
      \item Alternative to the compression you can use the offline dedup and compression build into Windows Server 2012
      \item Disable 8.3 name generation on the volume. See \url{https://support.microsoft.com/en-us/kb/121007} on how to do this. 8.3 name generation causes errors in rare cases, lowers performance and the 8.3 names are only used in rare cases.
+     \item If you are using Windows Server 2008(R2) (or the equivalent Desktop versions) you should consider consider applying hotfix \url{https://support.microsoft.com/en-us/kb/967351} and then formatting the backup storage volume with \begin{verbatim}
+     Format <Drive:> /FS:NTFS /L
+     \end{verbatim}
+     This prevents a potential issue with large files on those operating systems.
+\end{verbatim}
    \end{itemize}
    \item Continue with the operating system independent installation steps in section \ref{os_independent_installation_steps}. 
 \end{itemize}

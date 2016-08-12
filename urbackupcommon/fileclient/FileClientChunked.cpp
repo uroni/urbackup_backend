@@ -823,7 +823,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 
 									if (max_hashoutput_size < m_hashoutput->Size())
 									{
-										m_hashoutput->Resize(max_hashoutput_size);
+										m_hashoutput->Resize(max_hashoutput_size, false);
 									}
 								}
 							}

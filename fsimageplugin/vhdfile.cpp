@@ -463,10 +463,19 @@ bool VHDFile::write_footer(void)
 {
 	if(!file->Seek(nextblock_offset))return false;
 	_u32 rc=file->Write((char*)&footer, sizeof(VHDFooter));
-	if(rc!=sizeof(VHDFooter))
+	if (rc != sizeof(VHDFooter))
+	{
 		return false;
+	}
 	else
+	{
+		if (file==backing_file 
+			&& backing_file->Size() != nextblock_offset + sizeof(VHDFooter))
+		{
+			backing_file->Resize(nextblock_offset + sizeof(VHDFooter));
+		}
 		return true;
+	}
 }
 
 bool VHDFile::read_footer(void)
@@ -1633,4 +1642,31 @@ bool VHDFile::PunchHole( _i64 spos, _i64 size )
 bool VHDFile::Sync()
 {
 	return finish();
+}
+
+bool VHDFile::setBackingFileSize(_i64 fsize)
+{
+	if (file != backing_file)
+	{
+		return false;
+	}
+
+	_i64 start_offset = bat_offset + batsize * sizeof(unsigned int);
+	start_offset = start_offset + (sector_size - start_offset%sector_size);
+
+	_i64 one_blocksize = blocksize + bitmap_size;
+	one_blocksize = one_blocksize + (sector_size - one_blocksize%sector_size);
+
+	_i64 nblocks = fsize / blocksize + (fsize%blocksize != 0 ? 1 : 0);
+
+	_i64 actual_fsize = start_offset + nblocks*one_blocksize;
+
+	if (actual_fsize > backing_file->Size())
+	{
+		return backing_file->Resize(actual_fsize, false);
+	}
+	else
+	{
+		return false;
+	}
 }

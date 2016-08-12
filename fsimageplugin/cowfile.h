@@ -26,6 +26,7 @@ public:
 	virtual bool syncBitmap(_i64 fs_offset);
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback) { return true; }
 	virtual bool setUnused(_i64 unused_start, _i64 unused_end);
+	virtual bool setBackingFileSize(_i64 fsize);
 
 private:
 	void setupBitmap();

@@ -72,7 +72,7 @@ public:
 
 	virtual void resetSparseExtentIter() = 0;
 	virtual SSparseExtent nextSparseExtent() = 0;
-	virtual bool Resize(int64 new_size) = 0;
+	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
 };
 
 class ScopedDeleteFile

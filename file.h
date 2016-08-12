@@ -58,7 +58,7 @@ public:
 	void Close();
 	bool PunchHole( _i64 spos, _i64 size );
 	bool Sync();
-	bool Resize(int64 new_size);
+	bool Resize(int64 new_size, bool set_sparse=true);
 	void resetSparseExtentIter();
 	SSparseExtent nextSparseExtent();
 

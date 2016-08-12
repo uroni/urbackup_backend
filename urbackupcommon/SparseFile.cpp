@@ -382,7 +382,7 @@ IFsFile::SSparseExtent SparseFile::nextSparseExtent()
 	return SSparseExtent();
 }
 
-bool SparseFile::Resize(int64 new_size)
+bool SparseFile::Resize(int64 new_size, bool set_sparse)
 {
-	return backing_file->Resize(mapToBackingOffset(new_size));
+	return backing_file->Resize(mapToBackingOffset(new_size), set_sparse);
 }

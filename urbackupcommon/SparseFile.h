@@ -44,7 +44,7 @@ public:
 
 	virtual void resetSparseExtentIter();
 	virtual SSparseExtent nextSparseExtent();
-	virtual bool Resize(int64 new_size);
+	virtual bool Resize(int64 new_size, bool set_sparse=true);
 
 private:
 

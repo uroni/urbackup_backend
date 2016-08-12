@@ -315,7 +315,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 					{
 						ServerLogger::Log(logid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
 							" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
-							" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
+							" See https://support.microsoft.com/kb/2891967 and https://support.microsoft.com/en-us/kb/967351 for details and instructions to fix this issue.", LL_ERROR);
 					}
 #endif
 
@@ -339,7 +339,7 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			{
 				ServerLogger::Log(logid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
 					" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
-					" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
+					" See https://support.microsoft.com/kb/2891967 and https://support.microsoft.com/en-us/kb/967351 for details and instructions to fix this issue.", LL_ERROR);
 			}
 #endif
 			has_error=true;
