@@ -419,6 +419,8 @@ private:
 
 	void createMd5sumsFile(const std::string& path, const std::string& md5sums_path, IFile* output_f);
 
+	std::auto_ptr<ScopedBackgroundPrio> background_prio;
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;

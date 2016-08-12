@@ -171,6 +171,15 @@ public:
 		}
 	}
 
+	void disable()
+	{
+		if (background_prio)
+		{
+			os_disable_background_priority(prio_info);
+			background_prio = false;
+		}
+	}
+
 	~ScopedBackgroundPrio()
 	{
 		if (background_prio)
@@ -183,5 +192,28 @@ private:
 	SPrioInfo prio_info;
 };
 
+class ScopedDisableBackgroundPrio
+{
+public:
+	ScopedDisableBackgroundPrio(ScopedBackgroundPrio* background_prio)
+		: background_prio(background_prio)
+	{
+		if (background_prio != NULL)
+		{
+			background_prio->disable();
+		}
+	}
+
+	~ScopedDisableBackgroundPrio()
+	{
+		if (background_prio != NULL)
+		{
+			background_prio->enable();
+		}
+	}
+
+private:
+	ScopedBackgroundPrio* background_prio;
+};
 
 #endif //OS_FUNCTIONS_H
