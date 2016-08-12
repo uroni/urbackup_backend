@@ -30,5 +30,8 @@ public:
 	std::vector<std::string> getKeys();
 
 private:
+
+	void init(IDatabase *pDB, const std::string &pTable, const std::string &pSQL);
+
 	str_map table;
 };
