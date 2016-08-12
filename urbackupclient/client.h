@@ -488,6 +488,8 @@ private:
 
 	void addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out);
 
+	std::auto_ptr<ScopedBackgroundPrio> background_prio;
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;

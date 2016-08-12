@@ -396,11 +396,10 @@ void IndexThread::operator()(void)
 	initVss();
 #endif
 
-	ScopedBackgroundPrio background_prio(false);
 	if(backgroundBackupsEnabled(std::string()))
 	{
 #ifndef _DEBUG
-		background_prio.enable();
+		background_prio.reset(new ScopedBackgroundPrio());
 #endif
 	}
 	
@@ -4961,6 +4960,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	{
 		return false;
 	}
+
+	ScopedDisableBackgroundPrio disable_background_prio(background_prio.get());
 
 	ScopedCloseWindowsHandle hclose(hVolume);
 
