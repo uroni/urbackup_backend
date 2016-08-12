@@ -30,7 +30,8 @@ g.languages=[
 				{ l: "Türk", s: "tr" },
 				{ l: "Português", s: "pt" },
 				{ l: "Svensk", s: "sv" },
-				{ l: "Română", s: "ro" }
+				{ l: "Română", s: "ro" },
+				{ l: "Suomi", s: "fi" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
