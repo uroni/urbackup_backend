@@ -271,6 +271,12 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 		std::string path = escapeParam(res[i].path);
 		std::string name = escapeParam(res[i].name);
 
+		if (name.find("/")==std::string::npos
+			&& !res[i].flags.empty())
+		{
+			name += "/" + res[i].flags;
+		}
+
 		args += "dir_" + convert(i) + "=" + path;
 		args += "&dir_" + convert(i) + "_name=" + name;
 		args += "&dir_" + convert(i) + "_group=" + convert(res[i].group);

@@ -1029,37 +1029,44 @@ int action_add_backupdir(std::vector<std::string> args)
 
 	if (optional_arg.getValue())
 	{
-		flags += ",optional";
+		if (!flags.empty()) flags += ",";
+		flags += "optional";
 	}
 
 	if (!no_follow_symlinks_arg.getValue())
 	{
-		flags += ",follow_symlinks";
+		if (!flags.empty()) flags += ",";
+		flags += "follow_symlinks";
 	}
 
 	if (!symlinks_required_arg.getValue())
 	{
-		flags += ",symlinks_optional";
+		if (!flags.empty()) flags += ",";
+		flags += "symlinks_optional";
 	}
 
 	if (one_filesystem_arg.getValue())
 	{
-		flags += ",one_filesystem";
+		if (!flags.empty()) flags += ",";
+		flags += "one_filesystem";
 	}
 
 	if (require_snapshot_arg.getValue())
 	{
-		flags += ",require_snapshot";
+		if (!flags.empty()) flags += ",";
+		flags += "require_snapshot";
 	}
 
 	if (!separate_hashes_arg.getValue())
 	{
-		flags += ",share_hashes";
+		if (!flags.empty()) flags += ",";
+		flags += "share_hashes";
 	}
 
 	if (keep_arg.getValue())
 	{
-		flags += ",keep";
+		if (!flags.empty()) flags += ",";
+		flags += "keep";
 	}
 
 	std::vector<SBackupDir> backup_dirs = Connector::getSharedPaths(true);
@@ -1081,11 +1088,9 @@ int action_add_backupdir(std::vector<std::string> args)
 		new_dir.name = name_arg.getValue();
 	}
 
-	flags[0] = '/';
-
-	new_dir.name += flags;
-
 	new_dir.group = group_arg.getValue();
+
+	new_dir.flags = flags;
 
 	new_dir.virtual_client = virtual_client_arg.getValue();
 	
