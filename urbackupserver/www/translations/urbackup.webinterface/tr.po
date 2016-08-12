@@ -10,7 +10,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 14:55+0000\n"
+"PO-Revision-Date: 2016-08-01 15:23+0000\n"
 "Last-Translator: Kaya Zeren <kayazeren@gmail.com>\n"
 "Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"
@@ -781,7 +781,7 @@ msgid "tArchive window"
 msgstr "Arşivleme aralığı"
 
 msgid "tBackup type"
-msgstr "Yedekleme tipi"
+msgstr "Yedekleme türü"
 
 msgid "tEnable internet mode (requires server restart)"
 msgstr "İnternet kipi kullanılsın (sunucunun yeniden başlatılması gerekir)"

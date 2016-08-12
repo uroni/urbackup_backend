@@ -11,8 +11,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2016-07-25 12:07+0000\n"
+"Last-Translator: Ihor Maydanovich <tenorioua@gmail.com>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/uroni/urbackup/language/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1224,10 +1224,10 @@ msgid "action_13"
 msgstr "Перерахунок статистики"
 
 msgid "action_14"
-msgstr ""
+msgstr "Нічна очистка"
 
 msgid "action_15"
-msgstr ""
+msgstr "Аварійна очистка"
 
 msgid "tAbout UrBackup"
 msgstr "Про UrBackup"

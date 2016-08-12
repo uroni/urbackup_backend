@@ -6,11 +6,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Jussi Bergström <jbergstr@gmail.com>, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2016-08-09 19:05+0000\n"
+"Last-Translator: Jussi Bergström <jbergstr@gmail.com>\n"
 "Language-Team: Finnish (http://www.transifex.com/uroni/urbackup/language/fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -19,1528 +20,1528 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "Lokit"
 
 msgid "nav_item_1"
-msgstr ""
+msgstr "Asetukset"
 
 msgid "ok"
-msgstr ""
+msgstr "OK"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "Varoitukset"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "Virheet"
 
 msgid "tLogs"
-msgstr ""
+msgstr "Lokit"
 
 msgid "tErrors"
-msgstr ""
+msgstr "Virheet"
 
 msgid "tWarnings"
-msgstr ""
+msgstr "Varoitukset"
 
 msgid "tdays"
-msgstr ""
+msgstr "päivää"
 
 msgid "thours"
-msgstr ""
+msgstr "tuntia"
 
 msgid "tmin"
-msgstr ""
+msgstr "min"
 
 msgid "tAbort"
-msgstr ""
+msgstr "Keskeytä"
 
 msgid "tInfos"
-msgstr ""
+msgstr "Tietoja"
 
 msgid "tFile backups"
-msgstr ""
+msgstr "Tiedostovarmuuskopiointi"
 
 msgid "tImage backups"
-msgstr ""
+msgstr "Näköisvarmuuskopiointi"
 
 msgid "tClient"
-msgstr ""
+msgstr "Työasema"
 
 msgid "tInternet"
-msgstr ""
+msgstr "Internet"
 
 msgid "hours"
-msgstr ""
+msgstr "tuntia"
 
 msgid "days"
-msgstr ""
+msgstr "päivää"
 
 msgid "action_1"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopiointi"
 
 msgid "action_2"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopiointi"
 
 msgid "action_3"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopiointi"
 
 msgid "action_4"
-msgstr ""
+msgstr "Näköistäysvarmuuskopiointi"
 
 msgid "action_1_d"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopion poisto"
 
 msgid "action_2_d"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopion poisto"
 
 msgid "action_3_d"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopion poisto"
 
 msgid "action_4_d"
-msgstr ""
+msgstr "Näköistäysvarmuuskopion poisto"
 
 msgid "nav_item_6"
-msgstr ""
+msgstr "Tila"
 
 msgid "nav_item_5"
-msgstr ""
+msgstr "Toiminta"
 
 msgid "nav_item_4"
-msgstr ""
+msgstr "Varmuuskopiot"
 
 msgid "nav_item_2"
-msgstr ""
+msgstr "Tilastot"
 
 msgid "unknown"
-msgstr ""
+msgstr "Tuntematon"
 
 msgid "overview"
-msgstr ""
+msgstr "Yhteenveto"
 
 msgid "no_recent_backup"
-msgstr ""
+msgstr "Ei ajantasaista varmuuskopiota"
 
 msgid "backup_never"
-msgstr ""
+msgstr "Ei koskaan"
 
 msgid "yes"
-msgstr ""
+msgstr "Kyllä"
 
 msgid "no"
-msgstr ""
+msgstr "Ei"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "Varmuuskopion tila"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "Työasema"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "Yhdistetty viimeksi"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "Viimeisin tiedostovarmuuskopio"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "Viimeisin näköisvarmuuskopio"
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "Tiedostovarmuuskopion tila"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "Näköisvarmuuskopion tila"
 
 msgid "tShow details"
-msgstr ""
+msgstr "Määritä tyypeittäin"
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "Lisätyöasemat"
 
 msgid "tNo extra clients"
-msgstr ""
+msgstr "Ei lisätyöasemia"
 
 msgid "tActions"
-msgstr ""
+msgstr "Toiminnot"
 
 msgid "tOnline"
-msgstr ""
+msgstr "Yhteys"
 
 msgid "tHostname/IP"
-msgstr ""
+msgstr "Isäntänimi tai IP-osoite"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "Palvelimen tunnus"
 
 msgid "users"
-msgstr ""
+msgstr "Käyttäjät"
 
 msgid "general_settings"
-msgstr ""
+msgstr "Yleiset"
 
 msgid "admin"
-msgstr ""
+msgstr "Järjestelmänvalvoja"
 
 msgid "user"
-msgstr ""
+msgstr "Käyttäjä"
 
 msgid "username_empty"
-msgstr ""
+msgstr "Käyttäjätunnus puuttuu."
 
 msgid "password_empty"
-msgstr ""
+msgstr "Salasana puuttuu."
 
 msgid "password_differ"
-msgstr ""
+msgstr "Salasanat eivät täsmää."
 
 msgid "user_n_exist"
-msgstr ""
+msgstr "Käyttäjää ei löydy."
 
 msgid "password_wrong"
-msgstr ""
+msgstr "Väärä salasana."
 
 msgid "user_exists"
-msgstr ""
+msgstr "Käyttäjätunnus on jo käytössä."
 
 msgid "session_timeout"
-msgstr ""
+msgstr "Istuntosi päättyi, koska et käyttänyt ohjelmaa vähään aikaan. Jatka kirjautumalla uudelleen."
 
 msgid "really_del_user"
-msgstr ""
+msgstr "Haluatko varmasti poistaa käyttäjän?"
 
 msgid "user_add_done"
-msgstr ""
+msgstr "Käyttäjä lisätty."
 
 msgid "user_remove_done"
-msgstr ""
+msgstr "Käyttäjä poistettu."
 
 msgid "user_update_right_done"
-msgstr ""
+msgstr "Käyttöoikeudet tallennettu."
 
 msgid "user_pw_change_ok"
-msgstr ""
+msgstr "Salasana muutettu."
 
 msgid "right_all"
-msgstr ""
+msgstr "Kaikki oikeudet"
 
 msgid "right_none"
-msgstr ""
+msgstr "Ei oikeuksia"
 
 msgid "filter"
-msgstr ""
+msgstr "Näytä"
 
 msgid "all"
-msgstr ""
+msgstr "Kaikki"
 
 msgid "loglevel_0"
-msgstr ""
+msgstr "Tiedot"
 
 msgid "starting"
-msgstr ""
+msgstr "Aloitetaan"
 
 msgid "ident_err"
-msgstr ""
+msgstr "Palvelin hylkäsi pyynnön."
 
 msgid "enter_hostname"
-msgstr ""
+msgstr "Anna isäntänimi tai IP-osoite."
 
 msgid "clients"
-msgstr ""
+msgstr "Työasemat"
 
 msgid "validate_name_update_freq_incr"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden aikaväli"
 
 msgid "validate_name_update_freq_full"
-msgstr ""
+msgstr "Täysvarmuuskopioiden aikaväli"
 
 msgid "validate_name_update_freq_image_full"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden aikaväli"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr ""
+msgstr "Täysvarmuuskopioiden aikaväli"
 
 msgid "validate_name_max_file_incr"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden enimmäismäärä"
 
 msgid "validate_name_startup_backup_delay"
-msgstr ""
+msgstr "Odota järjestelmän käynnistymisen jälkeen"
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "Tietokoneen nimi"
 
 msgid "too_many_clients_err"
-msgstr ""
+msgstr "Liikaa työasemia"
 
 msgid "computername"
-msgstr ""
+msgstr "Tietokoneen nimi"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "Tietokoneen nimi"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "Päivämäärä"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "tFiles"
-msgstr ""
+msgstr "Tiedostot"
 
 msgid "tSum"
-msgstr ""
+msgstr "Yhteensä"
 
 msgid "tActivities"
-msgstr ""
+msgstr "Käynnissä oleva toiminta"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Edistyminen"
 
 msgid "tStarting time"
-msgstr ""
+msgstr "Aloitusaika"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "tClients"
-msgstr ""
+msgstr "Työasemat"
 
 msgid "tReports"
-msgstr ""
+msgstr "Raportit"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "Lähetä raportit osoitteeseen"
 
 msgid "tSend"
-msgstr ""
+msgstr "Lähetä"
 
 msgid "tBackup time"
-msgstr ""
+msgstr "Varmuuskopiointiaika"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "tAll"
-msgstr ""
+msgstr "Kaikki"
 
 msgid "tFilter"
-msgstr ""
+msgstr "Näytä"
 
 msgid "tBack"
-msgstr ""
+msgstr "Takaisin"
 
 msgid "tAdd"
-msgstr ""
+msgstr "Lisää"
 
 msgid "tRemove"
-msgstr ""
+msgstr "Poista"
 
 msgid "tSave"
-msgstr ""
+msgstr "Tallenna"
 
 msgid "tMessage"
-msgstr ""
+msgstr "Viesti"
 
 msgid "tLog"
-msgstr ""
+msgstr "Loki"
 
 msgid "tUsername"
-msgstr ""
+msgstr "Käyttäjätunnus"
 
 msgid "tPassword"
-msgstr ""
+msgstr "Salasana"
 
 msgid "tLogin"
-msgstr ""
+msgstr "Kirjaudu"
 
 msgid "tServer"
-msgstr ""
+msgstr "Palvelin"
 
 msgid "tPermissions"
-msgstr ""
+msgstr "Työasemasovellusoikeudet"
 
 msgid "tSelect all"
-msgstr ""
+msgstr "Valitse kaikki"
 
 msgid "mins"
-msgstr ""
+msgstr "minuuttia"
 
 msgid "backup_in_progress"
-msgstr ""
+msgstr "Varmuuskopiointi käynnissä..."
 
 msgid "queued_backup"
-msgstr ""
+msgstr "Varmuuskopiointipyyntö lisätty jonoon"
 
 msgid "tFile"
-msgstr ""
+msgstr "Tiedosto"
 
 msgid "tDomain"
-msgstr ""
+msgstr "Toimialue"
 
 msgid "tTranslation"
-msgstr ""
+msgstr "Tulkinta"
 
 msgid "tChange"
-msgstr ""
+msgstr "Tallenna"
 
 msgid "tFailed"
-msgstr ""
+msgstr "Epäonnistui"
 
 msgid "tInfo"
-msgstr ""
+msgstr "Tiedot"
 
 msgid "tError"
-msgstr ""
+msgstr "Virhe"
 
 msgid "tWarning"
-msgstr ""
+msgstr "Varoitus"
 
 msgid "tCurrent version"
-msgstr ""
+msgstr "Nykyinen versio"
 
 msgid "tIncremental file backup"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopiointi"
 
 msgid "tFull file backup"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopiointi"
 
 msgid "tIncremental image backup"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopiointi"
 
 msgid "tFull image backup"
-msgstr ""
+msgstr "Näköistäysvarmuuskopiointi"
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "Tietoja UrBackupista"
 
 msgid "tShow"
-msgstr ""
+msgstr "Näytä"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indeksointi käynnissä..."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Poista"
 
 msgid "tDisable"
-msgstr ""
+msgstr "Poista käytöstä"
 
 msgid "tMB"
-msgstr ""
+msgstr "Mt"
 
 msgid "tNone"
-msgstr ""
+msgstr "Ei mitään"
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Palvelimen ylläpitäjän sähköpostiosoite"
 
 msgid "tDownload"
-msgstr ""
+msgstr "Lataa"
 
 msgid "tStatus"
-msgstr ""
+msgstr "Tila"
 
 msgid "tIP"
-msgstr ""
+msgstr "IP-osoite"
 
 msgid "tClient version"
-msgstr ""
+msgstr "Työasemasovelluksen versio"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Käyttöjärjestelmä"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "Näytä kaikki työasemat"
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Tämä työasema poistetaan."
 
 msgid "First"
-msgstr ""
+msgstr "<<"
 
 msgid "Last"
-msgstr ""
+msgstr ">>"
 
 msgid "Next"
-msgstr ""
+msgstr ">"
 
 msgid "Previous"
-msgstr ""
+msgstr "<"
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Processing..."
-msgstr ""
+msgstr "Käsitellään..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Etsi:"
 
 msgid "No matching records found"
-msgstr ""
+msgstr "Ei tuloksia."
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Palauta oletukset"
 
 msgid "Save"
-msgstr ""
+msgstr "Tallenna"
 
 msgid "tAllow clients to quit the tray icon"
-msgstr ""
+msgstr "Näytä Lopeta-komento"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Valitse sarakkeet"
 
 msgid "dir_error_text"
-msgstr ""
+msgstr "Hakemistoa, johon UrBackup tallentaa varmuuskopiot, ei voi käyttää. Vaihda hakemisto Asetukset-näkymässä tai anna UrBackupille oikeudet käyttää hakemistoa."
 
 msgid "tmpdir_error_text"
-msgstr ""
+msgstr "Hakemistoa, johon UrBackup tallentaa väliaikaiset tiedostot, ei voi käyttää. Vaihda hakemisto Asetukset-näkymässä tai anna UrBackupille oikeudet käyttää hakemistoa."
 
 msgid "validate_text_empty"
-msgstr ""
+msgstr "{name} puuttuu."
 
 msgid "validate_text_notint"
-msgstr ""
+msgstr "{name} ei ole kelvollinen luku."
 
 msgid "validate_name_min_file_incr"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden vähimmäismäärä"
 
 msgid "validate_name_max_file_full"
-msgstr ""
+msgstr "Täysvarmuuskopioiden enimmäismäärä"
 
 msgid "validate_name_min_file_full"
-msgstr ""
+msgstr "Täysvarmuuskopioiden vähimmäismäärä"
 
 msgid "validate_name_min_image_incr"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden vähimmäismäärä"
 
 msgid "validate_name_max_image_incr"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden enimmäismäärä"
 
 msgid "validate_name_min_image_full"
-msgstr ""
+msgstr "Täysvarmuuskopioiden vähimmäismäärä"
 
 msgid "validate_name_max_image_full"
-msgstr ""
+msgstr "Täysvarmuuskopioiden enimmäismäärä"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr ""
+msgstr "Varmuuskopiointiaikaikkunan muoto ei ole kelvollinen."
 
 msgid "validate_name_max_active_clients"
-msgstr ""
+msgstr "Työasemien tallennettujen yhteyksien enimmäismäärä"
 
 msgid "validate_name_max_sim_backups"
-msgstr ""
+msgstr "Samanaikaisten varmuuskopiointien enimmäismäärä"
 
 msgid "validate_name_backupfolder"
-msgstr ""
+msgstr "Varmuuskopioioiden tallennuspolku"
 
 msgid "really_remove_client"
-msgstr ""
+msgstr "Haluatko varmasti poistaa työaseman tiedot? Myös työasemasta otetut tiedosto- ja näköisvarmuuskopiot poistetaan."
 
 msgid "tImages"
-msgstr ""
+msgstr "Näköisvarmuuskopiot"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
+msgstr "Järjestelytoiminnon aikaikkunan muoto ei ole kelvollinen."
 
 msgid "mail_settings"
-msgstr ""
+msgstr "Sähköposti"
 
 msgid "upgrade_error_text"
-msgstr ""
+msgstr "UrBackup päivittää tietokantaa. Päivityksessä voi kestää hetki. Palvelinta ei voi käyttää eikä varmuuskopioita oteta tänä aikana."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup luo tiedostoindeksiä. Indeksoinnissa voi kestää hetki tiedostojen määrästä riippuen."
 
 msgid "tAction"
-msgstr ""
+msgstr "Toiminto"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "Tiedostoja jonossa"
 
 msgid "tLast activities"
-msgstr ""
+msgstr "Aikaisempi toiminta"
 
 msgid "tRequired time"
-msgstr ""
+msgstr "Käytetty aika"
 
 msgid "tBackups with a log message of at least log level"
-msgstr ""
+msgstr "Varmuuskopiot, joilla on ainakin yksi lokisanoma, jonka taso on"
 
 msgid "tStorage allocation"
-msgstr ""
+msgstr "Tallennustilan käyttö"
 
 msgid "tBackup storage path"
-msgstr ""
+msgstr "Varmuuskopioiden tallennuspolku"
 
 msgid "tDo not do image backups"
-msgstr ""
+msgstr "Älä ota näköisvarmuuskopioita"
 
 msgid "tDo not do file backups"
-msgstr ""
+msgstr "Älä ota tiedostovarmuuskopioita"
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "Sammuta palvelin automaattisesti"
 
 msgid "tAutoupdate clients"
-msgstr ""
+msgstr "Päivitä työasemasovellukset automaattisesti"
 
 msgid "tMax number of simultaneous backups"
-msgstr ""
+msgstr "Samanaikaisten varmuuskopiointien enimmäismäärä"
 
 msgid "tMax number of recently active clients"
-msgstr ""
+msgstr "Työasemien tallennettujen yhteyksien enimmäismäärä"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "Järjestelytoiminnon aikaikkuna"
 
 msgid "tAutomatically backup UrBackup database"
-msgstr ""
+msgstr "Varmuuskopioi UrBackupin tietokanta automaattisesti"
 
 msgid "tInterval for incremental file backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden aikaväli"
 
 msgid "tInterval for full file backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden aikaväli"
 
 msgid "tInterval for incremental image backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden aikaväli"
 
 msgid "tInterval for full image backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden aikaväli"
 
 msgid "tMaximal number of incremental file backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden enimmäismäärä"
 
 msgid "tMinimal number of incremental file backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden vähimmäismäärä"
 
 msgid "tMaximal number of full file backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden enimmäismäärä"
 
 msgid "tMinimal number of full file backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden vähimmäismäärä"
 
 msgid "tMaximal number of incremental image backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden enimmäismäärä"
 
 msgid "tMinimal number of incremental image backups"
-msgstr ""
+msgstr "Muutosvarmuuskopioiden vähimmäismäärä"
 
 msgid "tMaximal number of full image backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden enimmäismäärä"
 
 msgid "tMinimal number of full image backups"
-msgstr ""
+msgstr "Täysvarmuuskopioiden vähimmäismäärä"
 
 msgid "tDelay after system startup"
-msgstr ""
+msgstr "Odota järjestelmän käynnistymisen jälkeen"
 
 msgid "tBackup window"
-msgstr ""
+msgstr "Varmuuskopioinnin aikaikkuna"
 
 msgid "tExcluded files (with wildcards)"
-msgstr ""
+msgstr "Ohita tiedostot (jokerimerkit sallittu)"
 
 msgid "tIncluded files (with wildcards)"
-msgstr ""
+msgstr "Varmuuskopioi tiedostot (jokerimerkit sallittu)"
 
 msgid "tDefault directories to backup"
-msgstr ""
+msgstr "Oletuksena varmuuskopioitavat hakemistot"
 
 msgid "tVolumes to backup"
-msgstr ""
+msgstr "Varmuuskopioitavat asemat"
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr ""
+msgstr "Salli varmuuskopioitavien kansioiden valitseminen"
 
 msgid "tAllow client-side starting of file backups"
-msgstr ""
+msgstr "Salli tiedostovarmuuskopiointien käynnistäminen"
 
 msgid "tAllow client-side starting of image backups"
-msgstr ""
+msgstr "Salli näköisvarmuuskopiointien käynnistäminen"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr ""
+msgstr "Salli varmuuskopiointilokien tarkastelu"
 
 msgid "tAllow client-side pausing of backups"
-msgstr ""
+msgstr "Salli varmuuskopiointien keskeyttäminen"
 
 msgid "tAllow client-side changing of settings"
-msgstr ""
+msgstr "Salli asetusten muokkaaminen"
 
 msgid "tMail server name"
-msgstr ""
+msgstr "Palvelimen isäntänimi tai IP-osoite"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "Portti"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "Käyttäjätunnus (tyhjä = ei todennusta)"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "Salasana"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "Lähettäjän sähköpostiosoite"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "Lähetä sähköpostia vain SSL- tai TLS-yhteyttä käyttäen"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "Tarkista SSL- ja TLS-varmenteet"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr ""
+msgstr "Lähetä testisähköpostiviesti tähän osoitteeseen, kun asetukset tallennetaan (tyhjä = älä lähetä)"
 
 msgid "tTest Mail sent successfully"
-msgstr ""
+msgstr "Testisähköpostiviesti lähetetty."
 
 msgid "tSending test mail failed. Error:"
-msgstr ""
+msgstr "Testisähköpostiviestin lähettäminen epäonnistui. Virhe:"
 
 msgid "tLevel"
-msgstr ""
+msgstr "Taso"
 
 msgid "tTime"
-msgstr ""
+msgstr "Aika"
 
 msgid "tRights"
-msgstr ""
+msgstr "Oikeuksien tyyppi"
 
 msgid "tNo Users"
-msgstr ""
+msgstr "Ei käyttäjiä"
 
 msgid "tCreate user"
-msgstr ""
+msgstr "Lisää käyttäjä"
 
 msgid "tRepeat password"
-msgstr ""
+msgstr "Toista salasana"
 
 msgid "tRights for"
-msgstr ""
+msgstr "Oikeudet työasemaan"
 
 msgid "tCreate"
-msgstr ""
+msgstr "Lisää"
 
 msgid "tChange rights"
-msgstr ""
+msgstr "Muuta oikeuksia"
 
 msgid "tChange password"
-msgstr ""
+msgstr "Vaihda salasana"
 
 msgid "tSeparate settings for this client"
-msgstr ""
+msgstr "Käytä työasemakohtaisia asetuksia"
 
 msgid "tArchival"
-msgstr ""
+msgstr "Arkistointi"
 
 msgid "tPerform autoupdates silently"
-msgstr ""
+msgstr "Piilota automaattisen päivityksen ilmoitukset"
 
 msgid "tMax backup speed for local network"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu siirtonopeus paikallisverkossa"
 
 msgid "tNo activities"
-msgstr ""
+msgstr "Ei toimintoja"
 
 msgid "tSelect none"
-msgstr ""
+msgstr "Tyhjennä valinta"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "Poista valitut"
 
 msgid "tStart for selected"
-msgstr ""
+msgstr "Aloita valituille"
 
 msgid "tNo entries for this filter"
-msgstr ""
+msgstr "Ei näytettäviä tietoja."
 
 msgid "tTotal max backup speed for local network"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu yhteenlaskettu siirtonopeus paikallisverkossa"
 
 msgid "tArchive every"
-msgstr ""
+msgstr "Arkistointiväli"
 
 msgid "tArchive for"
-msgstr ""
+msgstr "Säilytysaika"
 
 msgid "tArchive window"
-msgstr ""
+msgstr "Arkistoinnin aikaikkuna"
 
 msgid "tBackup type"
-msgstr ""
+msgstr "Varmuuskopion tyyppi"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr ""
+msgstr "Ota Internet-tila käyttöön (vaatii palvelinohjelmiston uudelleenkäynnistyksen)"
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "Internet-palvelimen nimi tai IP-osoite"
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "Internet-palvelimen portti"
 
 msgid "tDo image backups over internet"
-msgstr ""
+msgstr "Käytä Internetiä näköisvarmuuskopiointiin"
 
 msgid "tDo full file backups over internet"
-msgstr ""
+msgstr "Käytä Internetiä tiedostotäysvarmuuskopiointiin"
 
 msgid "tMax backup speed for internet connection"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu siirtonopeus Internetissä"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu yhteenlaskettu siirtonopeus Internetissä"
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "Salaa siirrettävät tiedot"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "Pakkaa siirrettävät tiedot"
 
 msgid "file_backup"
-msgstr ""
+msgstr "Tiedostovarmuuskopiointi"
 
 msgid "weeks"
-msgstr ""
+msgstr "viikkoa"
 
 msgid "months"
-msgstr ""
+msgstr "kuukautta"
 
 msgid "year"
-msgstr ""
+msgstr "vuosi"
 
 msgid "hour"
-msgstr ""
+msgstr "tunti"
 
 msgid "day"
-msgstr ""
+msgstr "päivä"
 
 msgid "week"
-msgstr ""
+msgstr "viikko"
 
 msgid "month"
-msgstr ""
+msgstr "kuukausi"
 
 msgid "years"
-msgstr ""
+msgstr "vuotta"
 
 msgid "min"
-msgstr ""
+msgstr "minuutti"
 
 msgid "validate_name_archive_every"
-msgstr ""
+msgstr "Arkistointiväli"
 
 msgid "validate_name_archive_for"
-msgstr ""
+msgstr "Säilytysaika"
 
 msgid "forever"
-msgstr ""
+msgstr "ikuisesti"
 
 msgid "really_remove_clients"
-msgstr ""
+msgstr "Haluatko varmasti poistaa työaseman tiedot? Myös työasemasta otetut tiedosto- ja näköisvarmuuskopiot poistetaan."
 
 msgid "no_client_selected"
-msgstr ""
+msgstr "Valitse vähintään yksi työasema."
 
 msgid "starting_backup_failed"
-msgstr ""
+msgstr "Varmuuskopioinnin käynnistäminen epäonnistui."
 
 msgid "trying_to_stop_backup"
-msgstr ""
+msgstr "Peruutetaan varmuuskopiota. Toiminnossa voi kestää hetken."
 
 msgid "unarchived_in"
-msgstr ""
+msgstr "Arkistointi päättyy"
 
 msgid "validate_err_notregexp_archive_window"
-msgstr ""
+msgstr "Arkistoinnin aikaikkunan muoto ei ole kelvollinen."
 
 msgid "wait_for_archive_window"
-msgstr ""
+msgstr "Odottaa aikaikkunaa tai seuraavaa suorituskertaa"
 
 msgid "validate_err_notregexp_image_letters"
-msgstr ""
+msgstr "Näköisvarmuuskopion merkkijonon muoto ei kelpaa."
 
 msgid "validate_name_global_local_speed"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu yhteenlaskettu siirtonopeus paikallisverkossa"
 
 msgid "validate_name_global_internet_speed"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu yhteenlaskettu siirtonopeus Internetissä"
 
 msgid "validate_name_local_speed"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu siirtonopeus paikallisverkossa"
 
 msgid "validate_name_internet_speed"
-msgstr ""
+msgstr "Varmuuskopioinnin suurin sallittu siirtonopeus Internetissä"
 
 msgid "enter_clientname"
-msgstr ""
+msgstr "Työaseman nimi puuttuu."
 
 msgid "internet_client_added"
-msgstr ""
+msgstr "Työasema lisätty. Palvelinsalasana näkyy työasemakohtaisissa asetuksissa."
 
 msgid "change_pw"
-msgstr ""
+msgstr "Muuta salasana"
 
 msgid "old_pw_wrong"
-msgstr ""
+msgstr "Entinen salasana on väärä."
 
 msgid "tID"
-msgstr ""
+msgstr "Tunniste"
 
 msgid "tSize"
-msgstr ""
+msgstr "Koko"
 
 msgid "tIncremental"
-msgstr ""
+msgstr "Muutosvarmuuskopio"
 
 msgid "tLoading"
-msgstr ""
+msgstr "Ladataan"
 
 msgid "tStorage usage of"
-msgstr ""
+msgstr "Tallennustilan käyttö:"
 
 msgid "tDelete domain"
-msgstr ""
+msgstr "Poista toimialue"
 
 msgid "tChange rights for user"
-msgstr ""
+msgstr "Muokkaa käyttöoikeuksia"
 
 msgid "tNew domain"
-msgstr ""
+msgstr "Uusi toimialue"
 
 msgid "tChange password for user"
-msgstr ""
+msgstr "Vaihda käyttäjän salasana"
 
 msgid "tSaved settings successfully"
-msgstr ""
+msgstr "Asetukset tallennettu."
 
 msgid "tThis client is going to be removed."
-msgstr ""
+msgstr "Tämä työasema poistetaan."
 
 msgid "tStop removing client"
-msgstr ""
+msgstr "Peruuta työaseman poisto"
 
 msgid "tSuccessfull"
-msgstr ""
+msgstr "Toiminto suoritettiin."
 
 msgid "tTarget version"
-msgstr ""
+msgstr "Kohdeversio"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings."
-msgstr ""
+msgstr "Työasemasovelluksessa määritetyt asetukset korvaavat tässä määritetyt asetukset. Jos haluat käyttää tässä määritettyjä asetuksia aina, estä asetusten muuttaminen työasemasovelluksessa."
 
 msgid "tNext archival"
-msgstr ""
+msgstr "Seuraava arkistointi"
 
 msgid "tweeks"
-msgstr ""
+msgstr "viikkoa"
 
 msgid "tmonth"
-msgstr ""
+msgstr "kuukausi"
 
 msgid "tyears"
-msgstr ""
+msgstr "vuotta"
 
 msgid "tforever"
-msgstr ""
+msgstr "ikuisesti"
 
 msgid "tFile backup"
-msgstr ""
+msgstr "Tiedostovarmuuskopiointi"
 
 msgid "tEnable internet mode"
-msgstr ""
+msgstr "Käytä Internetiä varmuuskopiointiin"
 
 msgid "tInternet auth key"
-msgstr ""
+msgstr "Internet-palvelinsalasana"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
-msgstr ""
+msgstr "Työasemien tiedot poistetaan järjestelytoiminnon aikana, jos työasemat ovat pois päältä."
 
 msgid "tArchived"
-msgstr ""
+msgstr "Arkistoitu"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Asemalla, johon varmuuskopiointikansio on sijoitettu, ei ole tällä hetkllä riittävästi tilaa varmuuskopioille. UrBackup vapauttaa tilaa poistamalla vanhoja näköis- ja tiedostovarmuuskopioita asetusten määräämissä rajoissa. Tänä aikana varmuuskopiointi saattaa hidastua."
 
 msgid "nospc_fatal_text"
-msgstr ""
+msgstr "Asemalla, johon varmuuskopiointikansio on sijoitettu, ei ole tällä hetkllä riittävästi tilaa varmuuskopioille. UrBackup yritti vapauttaa tilaa poistamalla vanhoja näköis- ja tiedostovarmuuskopioita asetusten määräämissä rajoissa, mutta tila ei edelleenkään riitä. Muuta asetuksia niin, että otettavien varmuuskopioiden koko on pienempi tai varmuuskopioita tallennetaan vähemmän. Varmuuskopiointia ei voi jatkaa, ennen kuin levylle on vapautettu riittävästi tilaa."
 
 msgid "tNondefault temporary file directory"
-msgstr ""
+msgstr "Mukautettu väliaikaistiedostojen hakemisto"
 
 msgid "loading"
-msgstr ""
+msgstr "Ladataan"
 
 msgid "tInternet clients"
-msgstr ""
+msgstr "Internet-työasemat"
 
 msgid "tAdd additional internet clients"
-msgstr ""
+msgstr "Lisää Internet-työasema"
 
 msgid "tClient name"
-msgstr ""
+msgstr "Työaseman nimi"
 
 msgid "tNo data"
-msgstr ""
+msgstr "Ei tietoja"
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
+msgstr "Työasemien tiedot poistetaan järjestelytoiminnon aikana."
 
 msgid "authentication_err"
-msgstr ""
+msgstr "Palvelintunnistautumisvirhe."
 
 msgid "tInverval for incremental image backups"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopioiden aikaväli"
 
 msgid "action_5"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopioinnin jatkaminen"
 
 msgid "action_6"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopioinnin jatkaminen"
 
 msgid "really_recalculate"
-msgstr ""
+msgstr "Haluatko varmasti laskea tilastot uudelleen? Toiminnossa voi kestää pitkään."
 
 msgid "database_error_text"
-msgstr ""
+msgstr "UrBackupin tietokannan käyttämisessä tai tarkistamisessa tapahtui virhe. Tietokanta on todennäköisesti vioittunut tai levytila on loppu. Mikäli virhe esiintyy edelleen, palauta tietokanta varmuuskopiosta (tiedostot backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db ja backup_server_settings.db). Saat lisätietoja lokitiedostosta."
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Lataa kansio ZIP-pakattuna"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Nykyinen salasana"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Uusi salasana"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Toista uusi salasana"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Salasanan vaihtaminen epäonnistui:"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Salasana vaihdettu."
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Käsiteltyjä tiedostoja"
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "UrBackupin suorituksenaikainen loki"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Suorituksenaikainen loki"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
+msgstr "UrBackup-palvelinohjelmistosta on saatavilla uusi versio"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Lataa työasemasovellus päivityspalvelimelta"
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
+msgstr "Yleinen ohjeellinen tiedostojärjestelmäkiintiö"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Näköisvarmuuskopion tiedostomuoto"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Salli tiedostotäysvarmuuskopiointien käynnistäminen"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr ""
+msgstr "Salli tiedostomuutosvarmuuskopiointien käynnistäminen"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Salli näköistäysvarmuuskopiointien käynnistäminen"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Salli näköismuutosvarmuuskopiointien käynnistäminen"
 
 msgid "tBackup window for incremental file backups"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopioiden aikaikkuna"
 
 msgid "tBackup window for full file backups"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopioiden aikaikkuna"
 
 msgid "tBackup window for incremental image backups"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopioiden aikaikkuna"
 
 msgid "tBackup window for full image backups"
-msgstr ""
+msgstr "Näköistäysvarmuuskopioiden aikaikkuna"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "Työaseman ohjeellinen kiintiö"
 
 msgid "tCalculate file-hashes on the client"
-msgstr ""
+msgstr "Laske tiedostojen hajautusarvot työasemalla"
 
 msgid "tAdvanced"
-msgstr ""
+msgstr "Lisäasetukset"
 
 msgid "tTemporary files as file backup buffer"
-msgstr ""
+msgstr "Käytä väliaikaistiedostoja tiedostovarmuuskopioiden puskurina"
 
 msgid "tTemporary files as image backup buffer"
-msgstr ""
+msgstr "Käytä väliaikaistiedostoja näköisvarmuuskopioiden puskurina"
 
 msgid "tLocal full file backup transfer mode"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopioiden siirtotapa paikallisverkossa"
 
 msgid "tRaw"
-msgstr ""
+msgstr "Vain tiedot"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Hajautusarvoilla varmistettu"
 
 msgid "tInternet full file backup transfer mode"
-msgstr ""
+msgstr "Tiedostotäysvarmuuskopioiden siirtotapa Internetissä"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopioiden siirtotapa paikallisverkossa"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr ""
+msgstr "Tiedostomuutosvarmuuskopioiden siirtotapa Internetissä"
 
 msgid "tLocal image backup transfer mode"
-msgstr ""
+msgstr "Näköisvarmuuskopioiden siirtotapa paikallisverkossa"
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
+msgstr "Näköisvarmuuskopioiden siirtotapa Internetissä"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
+msgstr "Käytä symbolisia linkkejä tiedostomuutosvarmuuskopioissa"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings. "
-msgstr ""
+msgstr "Työasemasovelluksessa määritetyt asetukset korvaavat tässä määritetyt asetukset. Jos haluat käyttää tässä määritettyjä asetuksia aina, estä asetusten muuttaminen työasemasovelluksessa."
 
 msgid "tClient download"
-msgstr ""
+msgstr "Lataa työasemasovellus"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr ""
+msgstr "Työasemien tiedot poistetaan järjestelytoiminnon aikana."
 
 msgid "tRecalculate statistics"
-msgstr ""
+msgstr "Laske tilastot uudelleen"
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Ei tietoja"
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Näytä _MENU_ riviä"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr ""
+msgstr "Yhdistä Internet-palvelimeen, jos yhteys paikallisverkon palvelimeen on olemassa"
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Järjestelmään täytyy lisätä käyttäjä, jotta voit lähettää raportteja."
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Näytä, kun uusi palvelinohjelmiston versio on saatavilla"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "Näennäiskiintolevy (VHD)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "Pakattu näennäiskiintolevy (VHDZ, epästandardi)"
 
 msgid "tBlock differences - hashed"
-msgstr ""
+msgstr "Lohkoeroavaisuudet hajautusarvoilla varmistettuina"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr ""
+msgstr "Rivit _START_–_END_ (yhteensä _TOTAL_)"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Rivit 0–0 (yhteensä 0)"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr ""
+msgstr "(suodatettu, yhteensä _MAX_)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Palauta näkymä"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Leveä näkymä"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP ja AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Annettu nimi on jo jonkin työaseman käytössä."
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Kirjoita työseman nimi."
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Kirjoita työaseman IP-osoite tai isäntänimi"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup luo tiedostoindeksiä. Indeksoinnissa voi kestää hetki."
 
 msgid "about"
-msgstr ""
+msgstr "Tietoja"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Kaikki työasemat"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Työaseman asetukset"
 
 msgid "action_8"
-msgstr ""
+msgstr "Tiedostovarmuuskopion palautus"
 
 msgid "action_9"
-msgstr ""
+msgstr "Näköisvarmuuskopion palautus"
 
 msgid "action_10"
-msgstr ""
+msgstr "Työasemasovelluksen päivitys"
 
 msgid "action_11"
-msgstr ""
+msgstr "Tietokannan eheyden tarkistus"
 
 msgid "action_12"
-msgstr ""
+msgstr "Tietokannan varmuuskopiointi"
 
 msgid "action_13"
-msgstr ""
+msgstr "Tilastojen uudelleenlaskenta"
 
 msgid "action_14"
-msgstr ""
+msgstr "Järjestelytoiminto"
 
 msgid "action_15"
-msgstr ""
+msgstr "Hätäjärjestelytoiminto"
 
 msgid "tAbout UrBackup"
-msgstr ""
+msgstr "Tietoja UrBackupista"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Lisää työasema"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup löytää työasemat automaattisesti paikallisverkosta. Jos palvelin on samassa aliverkossa kuin työasema, työasemasovelluksen asentaminen riittää. Työaseman löytymisessä voi kestää hetki."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Lataa työasemasovellus:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Jos haluat määrittää, että työasema käyttää useita varmuuskopiointipalvelimia, siinä tarvittava tunniste tälle palvelimelle on"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Lisää uusi Internet-yhteyttä käyttävä tai NAT:n takana oleva työasema"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Työaseman nimi"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Lisää työasema, jota ei löydetty automaattisesti"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "Työaseman IP-osoite tai isäntänimi"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Peruuta"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Pääsy estetty"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Tapahtui virhe, tai sinulla ei ole oikeuksia käyttä tätä tiedostoa tai kansiota."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Kirjaudu käyttäjätunnuksella ja salasanalla"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Varmuuskopioita luettaessa tapahtui virhe"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Sovelluksessa on ongelma:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Luotu"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Muokattu viimeksi"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Käytetty viimeksi"
 
 msgid "tList"
-msgstr ""
+msgstr "Luettelo"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Palauta"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Palauta kansio työasemalle"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versio"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Työasema lisätty"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Järjestelmään on lisätty työasema nimellä"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Internet-palvelimen salasana, ellei sitä muuteta työasemakohtaisista asetuksista, on"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Lataa valmiiksi määritetty työasemasovelluksen asennusohjelma Windowsille"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Lataa valmiiksi määritetty työasemasovelluksen asennusohjelma Mac OS X:lle"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Asenna työasemasovellus suoraan komentoriviltä komennolla:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Lataa valmiiksi määritetty työasemasovelluksen asennusohjelma Linuxille"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Voit asentaa työasemasovelluksen myös lataamalla sen osoitteesta"
 
 msgid "tGo to the settings screen on the client"
-msgstr ""
+msgstr "Avaa sovelluksen Asetukset-ikkuna."
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Siirry Internet-välilehdelle ja valitse Käytä Internetiä varmuuskopiointiin."
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Kirjoita Internet-palvelimen nimi tai IP-osoite -kenttään:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Kirjoita Internet-palvelimen portti -kenttään:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Siirry Työasema-välilehdelle ja kirjoita Tietokoneen nimi -kenttään:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Siirry Internet-välilehdelle ja kirjoita Internet-palvelimen salasana -kenttään:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Jos työasemassa ei ole palomuuria, se ei ole NAT:n takana ja käytät vain Internet-yheyttä, ota vain Internet -tila käyttöön. Linuxissa tämä tapahtuu muuttamalla asetuksen INTERNET_ONLY arvoksi true tiedostossa /etc/default/urbackupclient tai /etc/sysconfig/urbackupclient."
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Asetusten määrittäminen komentoriviltä Linux-työasemissa:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "prosenttia valmis"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Tiedot"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Lisää sähköpostiosoite"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Toiminto epäonnistui muusta syystä kuin aikakatkaisusta johtuen."
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Vähimmäislokitaso"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Varmuuskopiot keskeytetty"
 
 msgid "tStop"
-msgstr ""
+msgstr "Peruuta"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Näytä loki"
 
 msgid "tETA"
-msgstr ""
+msgstr "Aikaa jäljellä"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Nopeus"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Tiedostovarmuuskopiot"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Näköisvarmuuskopiot"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Arkistointi"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "Palvelimen verkko-osoite"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Samanaikaisten varmuuskopiointien enimmäismäärä"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Työasemien tallennettujen yhteyksien enimmäismäärä"
 
 msgid "tDays"
-msgstr ""
+msgstr "päivää"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Copy-on-write-tiedosto"
 
 msgid "tMin"
-msgstr ""
+msgstr "min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Näennäiset alityöasemat"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopion muodostus paikallisverkossa"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Edelliseen näköistäysvarmuuskopioon perustuen"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Edelliseen näköisvarmuuskopioon perustuen"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Näköismuutosvarmuuskopion muoto Internetissä"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Näköistäysvarmuuskopion muoto paikallisverkossa"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Siirrä vain muutokset"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Näköistäysvarmuuskopion muoto Internetissä"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Tietokannan välimuistin koko eräajoissa"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Vianetsintä – Tarkista hajautusarvot kaikille tiedostovarmuuskopion tiedostoille työasemalla ja palvelimella"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Vianetsintä – Tarkista työaseman hajautusarvot tiedostovarmuuskopioissa"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Päivitä Internet-työasemien tiedostohajautusarvot väliajoin (poista käytöstä vain, jos et käytä täysvarmuuskopioita)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Käytä työasemasovellukselle taustaprioriteettiä varmuuskopioita otettaessa"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Luo käyttäjäkohtaiset symboliset linkit tiedostovarmuuskopioihin"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Samanaikaisten töiden enimmäismäärä työasemalla"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Asemat, joilla lohkomuutosseuranta on käytössä (jos käytettävissä)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Asemat, joilla lohkomuutosseurannan tulee olla vikasietoinen"
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Käytä LDAP- tai AD-kirjautumista"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "Palvelimen isäntänimi tai IP-osoite"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Portti"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "Käyttäjätunnuksen etuliite"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "Käyttäjätunnuksen jälkiliite"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "Ryhmän ja luokan kysely"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "Ryhmäavaimen nimi kyselyssä"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "Luokka-avaimen nimi kyselyssä"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "Ryhmäoikeuskartoitus"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "Luokkaoikeuskartoitus"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Testaa kirjautumista käyttäjällä"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Testikäyttäjän salasana"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Kirjautuminen onnistui. Käyttäjän oikeudet:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Kirjautuminen epäonnistui. Virhe:"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Windows-työasemasovellus"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Mac OS X -työasemasovellus"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Linux-työasemasovellus"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Poista työasema"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Lisää työasema"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Työaseman etsintäpyynnöt"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Lisää etsintäpyyntö työaseman isäntänimellä tai IP-osoitteella"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Varmuuskopiointitilasto"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Valmis (ongelmia)"
 
 msgid "not_supported"
-msgstr ""
+msgstr "Ei tuettu"
 
 msgid "tPreparing restore. Please be patient..."
-msgstr ""
+msgstr "Valmistellaan palautusta..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Älä hylkää varmuuskopioita, joissa esiintyy hajautusarvo- tai lukuvirheitä"
