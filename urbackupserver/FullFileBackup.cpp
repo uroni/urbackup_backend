@@ -610,7 +610,7 @@ bool FullFileBackup::doFileBackup()
 	if (server_download->getHasDiskError()
 		&& !server_settings->getSettings()->ignore_disk_errors)
 	{
-		disk_error = true;
+		r_offline = true;
 	}
 
 	int64 transfer_stop_time = Server->getTimeMS();

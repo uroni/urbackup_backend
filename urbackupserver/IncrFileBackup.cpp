@@ -1173,7 +1173,7 @@ bool IncrFileBackup::doFileBackup()
 	if (server_download->getHasDiskError()
 		&& !server_settings->getSettings()->ignore_disk_errors )
 	{
-		disk_error = true;
+		r_offline = true;
 	}
 
 	sendBackupOkay(!r_offline && !c_has_error && !disk_error);
