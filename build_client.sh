@@ -14,7 +14,6 @@ then
 	cd ..
 	autoreconf || true
 	automake --add-missing || true
-	libtoolize || true
 	autoreconf --install
 	./configure --enable-embedded-cryptopp
 	touch build_client_ok
