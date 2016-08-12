@@ -616,4 +616,9 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 	}
 }
 
+bool CowFile::setBackingFileSize(_i64 fsize)
+{
+	return false;
+}
+
 #endif //__APPLE__

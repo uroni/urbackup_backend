@@ -411,11 +411,12 @@ bool File::Sync()
 	return FlushFileBuffers(hfile)!=0;
 }
 
-bool File::Resize(int64 new_size)
+bool File::Resize(int64 new_size, bool set_sparse)
 {
 	int64 fsize = Size();
 
-	if (new_size > fsize)
+	if (new_size > fsize
+		&& set_sparse)
 	{
 		if (!setSparse())
 		{

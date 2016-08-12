@@ -820,7 +820,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						{
 							if (orig_file->Size() != 0)
 							{							
-								if (orig_file->Resize(0))
+								if (orig_file->Resize(0, false))
 								{
 									log("Cannot truncate file \"" + local_fn + "\" to zero bytes. " + os_last_error_str(), LL_ERROR);
 									has_error = true;

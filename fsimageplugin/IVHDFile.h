@@ -36,4 +36,5 @@ public:
 	virtual bool syncBitmap(_i64 fs_offset)=0;
 	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback)=0;
 	virtual bool setUnused(_i64 unused_start, _i64 unused_end) = 0;
+	virtual bool setBackingFileSize(_i64 fsize) = 0;
 };

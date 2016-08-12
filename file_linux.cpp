@@ -349,7 +349,7 @@ bool File::Sync()
 	return fsync(fd)==0;
 }
 
-bool File::Resize(int64 new_size)
+bool File::Resize(int64 new_size, bool set_sparse)
 {
 	return ftruncate64(fd, new_size) == 0;
 }

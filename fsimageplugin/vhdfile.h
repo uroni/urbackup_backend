@@ -80,6 +80,7 @@ public:
 	virtual _i64 RealSize(void);
 	virtual bool PunchHole( _i64 spos, _i64 size );
 	virtual bool Sync();
+	virtual bool setBackingFileSize(_i64 fsize);
 	
 	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);
@@ -148,7 +149,7 @@ private:
 
 	bool read_only;
 
-	IFile* backing_file;
+	IFsFile* backing_file;
 	IFile* file;
 	CompressedFile* compressed_file;
 
