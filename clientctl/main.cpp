@@ -450,10 +450,12 @@ int action_start(std::vector<std::string> args)
 
 	cmd.xorAdd(incr_backup, full_backup);
 
+#ifdef _WIN32
 	TCLAP::SwitchArg file_backup("l", "file", "Start file backup");
 	TCLAP::SwitchArg image_backup("m", "image", "Start image backup");
 
 	cmd.xorAdd(file_backup, image_backup);
+#endif
 
 	TCLAP::SwitchArg non_blocking_arg("b", "non-blocking",
 		"Do not show backup progress and block till the backup is finished but return immediately after starting it", cmd);
@@ -471,11 +473,14 @@ int action_start(std::vector<std::string> args)
 
 	std::string type;
 	int rc;
+#ifdef _WIN32
 	if(file_backup.getValue())
 	{
+#endif
 		type = full_backup.getValue() ? "FULL" : "INCR";
 
 		rc = Connector::startBackup(full_backup.getValue());
+#ifdef _WIN32
 	}
 	else
 	{
@@ -483,6 +488,7 @@ int action_start(std::vector<std::string> args)
 
 		rc = Connector::startImage(full_backup.getValue());
 	}
+#endif
 
 	if(rc==2)
 	{
