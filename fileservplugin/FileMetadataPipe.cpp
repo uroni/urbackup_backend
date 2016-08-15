@@ -505,7 +505,12 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						return true;
 					}
 
-					if (!openFileHandle())
+					if (!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
+					{
+						callback = NULL;
+					}
+
+					if (callback==NULL && !openFileHandle())
 					{
 						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
@@ -537,11 +542,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					fn_off = 0;
 					curr_checksum = urb_adler32(0, NULL, 0);
 
-					if (!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
-					{
-						callback = NULL;
-					}
-					else
+					if(callback!=NULL)
 					{
 						std::string orig_path;
 						_u32 version = 0;
