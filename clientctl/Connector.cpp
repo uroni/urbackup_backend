@@ -25,6 +25,8 @@
 #include "json/json.h"
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#include "../config.h"
 #endif
 #include <iostream>
 #include <memory.h>
@@ -490,20 +492,25 @@ std::string Connector::getFileBackupsList(EAccessError& access_error)
 
 bool Connector::readTokens()
 {
-	if(!tokens.empty())
+	if (!tokens.empty())
 	{
 		return true;
 	}
 
 	read_tokens("tokens", tokens);
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 	read_tokens("/var/urbackup/tokens", tokens);
 	read_tokens("/usr/local/var/urbackup/tokens", tokens);
 #endif
 
-#ifdef __APPLE__
-	read_tokens("/usr/var/urbackup/tokens", tokens);
+#ifndef _WIN32
+	std::string vardir = VARDIR;
+	if (vardir != "/var"
+		&& vardir != "/usr/local/var" )
+	{
+		read_tokens(VARDIR "/urbackup/tokens", tokens);
+	}
 #endif
 
 	return !tokens.empty();
