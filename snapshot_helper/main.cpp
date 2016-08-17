@@ -230,6 +230,16 @@ bool remove_subvolume(std::string subvolume_folder)
 #else
 	int compat_rc = exec_wait(find_btrfs_cmd(), false, "subvolume", "delete", "-c", NULL);
 	
+	if(compat_rc==1)
+	{
+		compat_rc = exec_wait("/bin/sh", false, "-c", (find_btrfs_cmd() +
+			" subvolume delete -c 2>&1 | grep \"ERROR: error accessing '-c'\"").c_str(), NULL);
+		if(compat_rc==0)
+		{
+			compat_rc=12;
+		}
+	}
+	
 	int rc;
 	if(compat_rc==12)
 	{
