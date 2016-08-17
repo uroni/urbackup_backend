@@ -189,7 +189,7 @@ void BackupServerPrepareHash::operator()(void)
 					}
 					else
 					{
-						TreeHash treehash;
+						TreeHash treehash(NULL);
 						if (hash_sha(tf, extent_iterator.get(), true, treehash))
 						{
 							h = treehash.finalize();
@@ -214,7 +214,7 @@ void BackupServerPrepareHash::operator()(void)
 					{
 						std::auto_ptr<IFile> l_hashoutput_f(Server->openFile(os_file_prefix(hashoutput_fn), MODE_READ));
 						hashoutput_f = l_hashoutput_f.get();
-						TreeHash treehash;
+						TreeHash treehash(NULL);
 						hashf = &treehash;
 						if (hash_with_patch(old_file, tf, extent_iterator.get(), true))
 						{
@@ -294,7 +294,7 @@ std::string BackupServerPrepareHash::calc_hash(IFsFile * f, std::string method)
 	}
 	else
 	{
-		TreeHash treehash;
+		TreeHash treehash(NULL);
 		if (hash_sha(f, &extent_iterator, true, treehash))
 		{
 			return treehash.finalize();

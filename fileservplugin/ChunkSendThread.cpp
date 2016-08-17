@@ -21,7 +21,6 @@
 #include "packet_ids.h"
 #include "log.h"
 #include "../stringtools.h"
-#include "FileServ.h"
 #include "socket_header.h"
 #include <memory.h>
 #include <assert.h>
@@ -45,11 +44,24 @@ namespace
 		return errno;
 #endif
 	}
+
+	bool buf_is_zero(const char* buf, size_t bsize)
+	{
+		for (size_t i = 0; i < bsize; ++i)
+		{
+			if (buf[i] != 0)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 }
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
-	: parent(parent), file(NULL), has_error(false)
+	: parent(parent), file(NULL), has_error(false), cbt_hash_file_info()
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
@@ -109,7 +121,10 @@ void ChunkSendThread::operator()(void)
 			s_filename = chunk.s_filename;
 			curr_hash_size=chunk.hashsize;
 			curr_file_size=chunk.startpos;
+			cbt_hash_file_info = chunk.cbt_hash_file_info;
 			pipe_file_user.reset(chunk.pipe_file_user);
+			file_extents.clear();
+			has_more_extents = true;
 
 			std::vector<IFsFile::SSparseExtent> sparse_extents;
 			if (chunk.with_sparse)
@@ -350,117 +365,187 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	md5_hash.init();
 	unsigned int small_hash_num=0;
 	bool script_eof=false;
+	bool cbt_unchanged = false;
+	int64 index_chunkhash_pos = -1;
 
-	do
+	if (cbt_hash_file_info.cbt_hash_file!=NULL
+		&&  curr_pos+c_checkpoint_dist<=curr_file_size
+		&& (!file_extents.empty()
+			|| has_more_extents ) )
 	{
-		cptr+=r;
-
-		_u32 to_read = c_chunk_size;
-
-		if(curr_file_size<=curr_pos && curr_file_size>0)
+		if (file_extents.empty())
 		{
-			to_read = 0;
-		}
-		else if(curr_file_size-curr_pos<to_read && curr_file_size>0)
-		{
-			to_read = static_cast<_u32>(curr_file_size-curr_pos);
+			IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+			if (fs_file != NULL
+				&& cbt_hash_file_info.blocksize > 0)
+			{
+				file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+			}
 		}
 
-		bool readerr=false;
-
-		r=file->Read(spos, cptr, to_read, &readerr);
-		spos += r;
-		real_r=r;
-
-		if (readerr)
+		for (size_t i = 0; i < file_extents.size(); ++i)
 		{
-			unsigned int readderr_code = getSystemErrorCode();
-			Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) + " failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
-			FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
-			return sendError(ERR_READING_FAILED, readderr_code);
+			if (file_extents[i].offset <= spos &&
+				file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
+			{
+				int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
+				index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
+
+				char chunkhash[chunkhash_single_size];
+				if (cbt_hash_file_info.cbt_hash_file->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+				{
+					if (memcmp(chunkhash, chunk->big_hash, chunkhash_single_size) == 0)
+					{
+						cbt_unchanged = true;
+						index_chunkhash_pos = -1;
+					}
+					else if (!buf_is_zero(chunkhash, chunkhash_single_size))
+					{
+						index_chunkhash_pos = -1;
+					}
+				}
+				else
+				{
+					index_chunkhash_pos = -1;
+				}
+
+				break;
+			}
 		}
+	}
 
-		while(r<to_read)
+	std::vector<char> new_chunkhashes;
+	if (index_chunkhash_pos != -1)
+	{
+		new_chunkhashes.resize(chunkhash_single_size);
+	}
+
+	if (!cbt_unchanged)
+	{
+		do
 		{
-			_u32 r_add = file->Read(spos, cptr+r, to_read-r, &readerr);
-			spos += r_add;
+			cptr += r;
+
+			_u32 to_read = c_chunk_size;
+
+			if (curr_file_size <= curr_pos && curr_file_size > 0)
+			{
+				to_read = 0;
+			}
+			else if (curr_file_size - curr_pos < to_read && curr_file_size>0)
+			{
+				to_read = static_cast<_u32>(curr_file_size - curr_pos);
+			}
+
+			bool readerr = false;
+
+			r = file->Read(spos, cptr, to_read, &readerr);
+			spos += r;
+			real_r = r;
 
 			if (readerr)
 			{
 				unsigned int readderr_code = getSystemErrorCode();
-				Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) +" failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
+				Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) + " failed (code: " + convert(readderr_code) + ")(2).", LL_ERROR);
 				FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
 				return sendError(ERR_READING_FAILED, readderr_code);
 			}
 
-			if( r_add==0 && file->Size()!=-1 )
+			while (r < to_read)
 			{
-				if(curr_file_size==-1)
+				_u32 r_add = file->Read(spos, cptr + r, to_read - r, &readerr);
+				spos += r_add;
+
+				if (readerr)
 				{
-					if(!script_eof)
+					unsigned int readderr_code = getSystemErrorCode();
+					Server->Log("Reading from file \"" + file->getFilename() + "\" at position " + convert(spos) + " failed (code: " + convert(readderr_code) + ")(3).", LL_ERROR);
+					FileServ::callErrorCallback(s_filename, file->getFilename(), spos, "code: " + convert(readderr_code));
+					return sendError(ERR_READING_FAILED, readderr_code);
+				}
+
+				if (r_add == 0 && file->Size() != -1)
+				{
+					if (curr_file_size == -1)
 					{
-						Log("Script output eof -2", LL_DEBUG);
-						script_eof=true;
+						if (!script_eof)
+						{
+							Log("Script output eof -2", LL_DEBUG);
+							script_eof = true;
+						}
+
+						break;
+					}
+					else
+					{
+						memset(cptr + r, 0, to_read - r);
+						r = to_read;
+					}
+				}
+
+				r += r_add;
+				real_r += r_add;
+			}
+
+			md5_hash.update((unsigned char*)cptr, (unsigned int)r);
+			c_adler = urb_adler32(c_adler, cptr, r);
+
+			read_total += r;
+
+			if (read_total == next_smallhash || r != c_chunk_size)
+			{
+				_u32 adler_other = little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]));
+				if (c_adler != adler_other
+					|| curr_pos + r > curr_hash_size)
+				{
+					sent_update = true;
+					char tmp_backup[c_chunk_padding];
+					memcpy(tmp_backup, cptr - c_chunk_padding, c_chunk_padding);
+
+					*(cptr - c_chunk_padding) = ID_UPDATE_CHUNK;
+					_i64 curr_pos_tmp = little_endian(curr_pos);
+					memcpy(cptr - sizeof(_i64) - sizeof(_u32), &curr_pos_tmp, sizeof(_i64));
+					_u32 r_tmp = little_endian(r);
+					memcpy(cptr - sizeof(_u32), &r_tmp, sizeof(_u32));
+
+					Log("Sending chunk start=" + convert(curr_pos) + " size=" + convert(r), LL_DEBUG);
+
+					if (parent->SendInt(cptr - c_chunk_padding, c_chunk_padding + r) == SOCKET_ERROR)
+					{
+						Log("Error sending chunk", LL_DEBUG);
+						return false;
 					}
 
-					break;
+					if (FileServ::isPause()) Sleep(500);
+
+					memcpy(cptr - c_chunk_padding, tmp_backup, c_chunk_padding);
 				}
-				else
+
+				if (!new_chunkhashes.empty())
 				{
-					memset(cptr+r, 0, to_read-r);
-					r=to_read;
-				}
-			}
-
-			r+=r_add;
-			real_r+=r_add;
-		}
-
-		md5_hash.update((unsigned char*)cptr, (unsigned int)r);
-		c_adler=urb_adler32(c_adler, cptr, r);
-
-		read_total+=r;
-
-		if(read_total==next_smallhash || r!=c_chunk_size)
-		{
-			_u32 adler_other = little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]));
-			if(c_adler!=adler_other
-				|| curr_pos+r>curr_hash_size)
-			{
-				sent_update=true;
-				char tmp_backup[c_chunk_padding];
-				memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
-
-				*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
-				_i64 curr_pos_tmp = little_endian(curr_pos);
-				memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos_tmp, sizeof(_i64));
-				_u32 r_tmp = little_endian(r);
-				memcpy(cptr-sizeof(_u32), &r_tmp, sizeof(_u32));
-
-				Log("Sending chunk start="+convert(curr_pos)+" size="+convert(r), LL_DEBUG);
-
-				if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
-				{
-					Log("Error sending chunk", LL_DEBUG);
-					return false;
+					_u32 little_c_addler = little_endian(c_adler);
+					memcpy(&new_chunkhashes[big_hash_size + small_hash_size*small_hash_num], &little_c_addler, sizeof(little_c_addler));
 				}
 
-				if( FileServ::isPause() ) Sleep(500);
-
-				memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
+				c_adler = urb_adler32(0, NULL, 0);
+				++small_hash_num;
+				next_smallhash += c_small_hash_dist;
 			}
+			curr_pos += r;
 
-			c_adler=urb_adler32(0, NULL, 0);
-			++small_hash_num;
-			next_smallhash+=c_small_hash_dist;
-		}
-		curr_pos+=r;
-
-	}while(real_r==c_chunk_size && read_total<c_checkpoint_dist);
+		} while (real_r == c_chunk_size && read_total < c_checkpoint_dist);
+	}
 
 	md5_hash.finalize();
 
-	if(!sent_update && memcmp(md5_hash.raw_digest_int(), chunk->big_hash, big_hash_size)!=0 )
+	if (!new_chunkhashes.empty()
+		&& *cbt_hash_file_info.snapshot_sequence_id == cbt_hash_file_info.snapshot_sequence_id_reference)
+	{
+		memcpy(new_chunkhashes.data(), md5_hash.raw_digest_int(), big_hash_size);
+		cbt_hash_file_info.cbt_hash_file->Write(index_chunkhash_pos, new_chunkhashes.data(), chunkhash_single_size);
+	}
+
+	if(!sent_update && !cbt_unchanged && memcmp(md5_hash.raw_digest_int(), chunk->big_hash, big_hash_size)!=0 )
 	{
 		Log("Sending whole block(2) start="+convert(chunk->startpos)+" size="+convert(read_total), LL_DEBUG);
 

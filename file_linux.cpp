@@ -88,6 +88,10 @@ bool File::Open(std::string pfn, int mode)
 	{
 		mode = MODE_RW_CREATE;
 	}
+	if (mode == MODE_RW_CREATE_DEVICE)
+	{
+		mode = MODE_RW_CREATE;
+	}
 
 	fn=pfn;
 	int flags=0;
@@ -421,4 +425,9 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
 }
 
+std::vector<SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+{
+	//TODO: Implement using FIEMAP?
+	return std::vector<SFileExtent>();
+}
 #endif

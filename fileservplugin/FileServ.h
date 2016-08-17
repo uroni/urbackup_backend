@@ -1,3 +1,5 @@
+#pragma once
+
 #include "IFileServ.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/ThreadPool.h"
@@ -59,6 +61,10 @@ public:
 
 	static void clearReadErrorFile(const std::string& filepath);
 
+	void setCbtHashFile(const std::string& sharename, const std::string& identity, CbtHashFileInfo hash_file_info);
+
+	static CbtHashFileInfo getCbtHashFile(const std::string& sharename, const std::string& identity);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -97,6 +103,8 @@ private:
 	static IReadErrorCallback* read_error_callback;
 
 	static std::vector<std::string> read_error_files;
+
+	static std::map<std::pair<std::string, std::string>, CbtHashFileInfo> cbt_hash_files;
 };
 
 

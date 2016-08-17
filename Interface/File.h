@@ -19,6 +19,7 @@ const int MODE_RW_SEQUENTIAL=9;
 const int MODE_RW_DEVICE = 11;
 const int MODE_RW_RESTORE = 12;
 const int MODE_RW_CREATE_RESTORE = 13;
+const int MODE_RW_CREATE_DEVICE = 14;
 //Linux only
 const int MODE_RW_READNONE=10;
 
@@ -70,9 +71,21 @@ public:
 	};
 #pragma pack(pop)
 
+	struct SFileExtent
+	{
+		SFileExtent()
+			: offset(-1), size(-1), volume_offset(-1)
+		{}
+
+		int64 offset;
+		int64 size;
+		int64 volume_offset;
+	};
+
 	virtual void resetSparseExtentIter() = 0;
 	virtual SSparseExtent nextSparseExtent() = 0;
 	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
+	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) = 0;
 };
 
 class ScopedDeleteFile

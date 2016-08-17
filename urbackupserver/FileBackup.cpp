@@ -972,8 +972,15 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
-				if( !cf.isdir && remote_path!="urbackup_backup_scripts" )
+				if( !cf.isdir )
 				{
+					if (remote_path == "urbackup_backup_scripts"
+						|| remote_path == "windows_components_config" 
+						|| next(remote_path, 0, "urbackup_backup_scripts/") )
+					{
+						continue;
+					}
+
 					std::string sha256hex=(extras["sha256_verify"]);
 
 					bool is_symlink = extras.find("sym_target")!=extras.end();
@@ -1153,7 +1160,7 @@ std::string FileBackup::getSHADef(const std::string& fn)
 
 	if (BackupServer::useTreeHashing())
 	{
-		TreeHash treehash;
+		TreeHash treehash(NULL);
 		if (!BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, treehash))
 		{
 			return std::string();

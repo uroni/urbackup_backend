@@ -10,6 +10,13 @@ public:
 	virtual void hash(const char* buf, _u32 bsize) = 0;
 	virtual void sparse_hash(const char* buf, _u32 bsize) = 0;
 	virtual std::string finalize() = 0;
+	virtual void addHashAllAdler(const char* h, size_t size, size_t hashed_size) = 0;
+};
+
+class IHashOutput
+{
+public:
+	virtual void hash_output_all_adlers(int64 pos, const char* hash, size_t hsize) = 0;
 };
 
 namespace
@@ -50,6 +57,10 @@ namespace
 
 			return skip_hash;
 		}
+
+		virtual void addHashAllAdler(const char* h, size_t size, size_t hashed_size)
+		{}
+
 
 	private:
 		bool has_sparse;
@@ -94,6 +105,9 @@ namespace
 			return skip_hash;
 		}
 
+		virtual void addHashAllAdler(const char* h, size_t size, size_t hashed_size)
+		{}
+
 	private:
 		bool has_sparse;
 		sha256_ctx ctx;
@@ -108,7 +122,7 @@ const size_t max_level_size = 16;
 class TreeHash : public IHashFunc
 {
 public:
-	TreeHash();
+	TreeHash(IHashOutput* hash_output);
 
 	virtual void hash(const char * buf, _u32 bsize);
 
@@ -117,10 +131,11 @@ public:
 	virtual std::string finalize();
 
 	//64 bytes
-	virtual void addHash(const char* h);
-
+	virtual void addHash(const char* h, size_t hashed_size);
 	//528 bytes
 	virtual void addHashAllAdler(const char* h, size_t size, size_t hashed_size);
+
+	static void allAdlerTo64byteHash(const char * h, size_t size, size_t hashed_size, char * byteout);
 
 private:
 	void finalize_curr();
@@ -132,6 +147,11 @@ private:
 	MD5 md5sum;
 	unsigned int adlers[12];
 	unsigned int offset;
+
+	std::vector<char> hash_all_adlers;
+
+	IHashOutput* hash_output;
+	int64 hash_pos;
 
 	std::vector<std::vector<std::string> > level_hash;
 };

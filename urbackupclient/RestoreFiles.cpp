@@ -1167,7 +1167,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								}
 								else
 								{
-									hashf.reset(new TreeHash);
+									hashf.reset(new TreeHash(NULL));
 									hash_key = "thash";
 								}
 

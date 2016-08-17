@@ -260,7 +260,7 @@ struct SVssInstance
 
 class ClientDAO;
 
-class IndexThread : public IThread, public IFileServ::IReadErrorCallback
+class IndexThread : public IThread, public IFileServ::IReadErrorCallback, IHashOutput
 {
 public:
 	static const char IndexThreadAction_StartFullFileBackup;
@@ -418,7 +418,9 @@ private:
 
 	std::string removeDirectorySeparatorAtEnd(const std::string& path);
 
-	bool getShaBinary(const std::string& fn, IHashFunc& hf);
+	void hash_output_all_adlers(int64 pos, const char * hash, size_t hsize);
+
+	bool getShaBinary(const std::string& fn, IHashFunc& hf, bool with_cbt);
 
 	std::string addDirectorySeparatorAtEnd(const std::string& path);
 
@@ -487,6 +489,8 @@ private:
 	void createMd5sumsFile(const std::string& path, const std::string& md5sums_path, IFile* output_f);
 
 	void addScRefs(VSS_ID ssetid, std::vector<SCRef*>& out);
+
+	void openCbtHdatFile(SCRef* ref, const std::string& sharename, const std::string& volume);
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
 
@@ -574,6 +578,8 @@ private:
 	std::string index_root_path;
 	bool index_error;
 
+	std::string sparse_extent_content;
+
 	std::vector<SVssLogItem> vsslog;
 
 	std::vector<SBackupScript> scripts;
@@ -641,6 +647,11 @@ private:
 
 	std::vector<SReadError> read_errors;
 	IMutex* read_error_mutex;
+
+	std::auto_ptr<IFsFile> index_hdat_file;
+	std::map<std::string, size_t> index_hdat_sequence_ids;
+	int64 index_hdat_fs_block_size;
+	int64 index_chunkhash_pos;
 
 #ifdef _WIN32
 	struct SComponent

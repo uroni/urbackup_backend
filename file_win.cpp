@@ -70,7 +70,8 @@ bool File::Open(std::string pfn, int mode)
 		|| mode==MODE_RW_READNONE
 		|| mode== MODE_RW_DEVICE
 		|| mode==MODE_RW_RESTORE
-		|| mode==MODE_RW_CREATE_RESTORE)
+		|| mode==MODE_RW_CREATE_RESTORE
+		|| mode== MODE_RW_CREATE_DEVICE)
 	{
 		if(mode==MODE_RW
 			|| mode==MODE_RW_SEQUENTIAL
@@ -88,7 +89,8 @@ bool File::Open(std::string pfn, int mode)
 	}
 
 	if(mode==MODE_READ_DEVICE
-		|| mode== MODE_RW_DEVICE)
+		|| mode== MODE_RW_DEVICE
+		|| mode== MODE_RW_CREATE_DEVICE)
 	{
 		dwShareMode|=FILE_SHARE_WRITE;
 	}
@@ -518,6 +520,48 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 	}
 
 	return nextSparseExtent();
+}
+
+std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+{
+	std::vector<IFsFile::SFileExtent> ret;
+
+	STARTING_VCN_INPUT_BUFFER starting_vcn;
+	starting_vcn.StartingVcn.QuadPart = starting_offset / block_size;
+
+	std::vector<char> buf;
+	buf.resize(4096);
+
+	DWORD retBytes;
+	BOOL b = DeviceIoControl(hfile, FSCTL_GET_RETRIEVAL_POINTERS,
+		&starting_vcn, sizeof(starting_vcn),
+		buf.data(), buf.size(), &retBytes, NULL);
+
+	more_data = (!b && GetLastError() == ERROR_MORE_DATA);
+
+	if (more_data || b)
+	{
+		PRETRIEVAL_POINTERS_BUFFER pbuf = reinterpret_cast<PRETRIEVAL_POINTERS_BUFFER>(buf.data());
+		LARGE_INTEGER last_vcn = pbuf->StartingVcn;
+		for (DWORD i = 0; i < pbuf->ExtentCount; ++i)
+		{
+			if (pbuf->Extents[i].Lcn.QuadPart != -1)
+			{
+				int64 count = pbuf->Extents[i].NextVcn.QuadPart - last_vcn.QuadPart;
+
+				IFsFile::SFileExtent ext;
+				ext.offset = last_vcn.QuadPart * block_size;
+				ext.size = count * block_size;
+				ext.volume_offset = pbuf->Extents[i].Lcn.QuadPart * block_size;
+
+				ret.push_back(ext);
+			}
+
+			last_vcn = pbuf->Extents[i].NextVcn;
+		}
+	}
+
+	return ret;
 }
 
 #endif

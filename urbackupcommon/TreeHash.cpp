@@ -6,8 +6,8 @@
 #include <limits.h>
 #include <memory.h>
 
-TreeHash::TreeHash()
-	: offset(0), has_sparse(false)
+TreeHash::TreeHash(IHashOutput* hash_output)
+	: offset(0), has_sparse(false), hash_output(hash_output), hash_pos(0)
 {
 	offset = 0;
 	for (size_t i = 0; i < 12; ++i)
@@ -17,6 +17,11 @@ TreeHash::TreeHash()
 	sha512_init(&sparse_ctx);
 
 	level_hash.push_back(std::vector<std::string>());
+
+	if (hash_output != NULL)
+	{
+		hash_all_adlers.resize(528);
+	}
 }
 
 void TreeHash::hash(const char * buf, _u32 bsize)
@@ -35,10 +40,21 @@ void TreeHash::hash(const char * buf, _u32 bsize)
 			tohash = (std::min)(tohash, treehash_smallblock - offset%treehash_smallblock);
 		}
 
-		adlers[adler_idx] = urb_adler32(adlers[adler_idx], buf + buf_off, tohash);
+		if (hash_output != NULL)
+		{
+			unsigned int adler_curr = urb_adler32(urb_adler32(0, NULL, 0), buf + buf_off, tohash);
+			adlers[adler_idx] = urb_adler32_combine(adlers[adler_idx], adler_curr, tohash);
+			unsigned int adler_le = little_endian(adler_curr);
+			memcpy(hash_all_adlers.data() + 16 + (i / treehash_smallblock) * sizeof(_u32), &adler_le, sizeof(adler_le));
+		}
+		else
+		{
+			adlers[adler_idx] = urb_adler32(adlers[adler_idx], buf + buf_off, tohash);
+		}
 		md5sum.update(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(buf + buf_off)), tohash);
 		offset += tohash;
 		buf_off += tohash;
+		hash_pos += tohash;
 
 		assert(offset <= treehash_blocksize);
 		if (offset == treehash_blocksize)
@@ -112,7 +128,7 @@ std::string TreeHash::finalize()
 	}
 }
 
-void TreeHash::addHash(const char* h)
+void TreeHash::addHash(const char* h, size_t hashed_size)
 {
 	assert(offset == 0);
 
@@ -126,23 +142,33 @@ void TreeHash::addHash(const char* h)
 			finalize_level(i);
 		}
 	}
+
+	hash_pos += hashed_size;
 }
 
 void TreeHash::addHashAllAdler(const char * h, size_t size, size_t hashed_size)
 {
 	assert(offset == 0);
 
+	char nh[64];
+
+	allAdlerTo64byteHash(h, size, hashed_size, nh);
+
+	addHash(nh, hashed_size);
+}
+
+void TreeHash::allAdlerTo64byteHash(const char * h, size_t size, size_t hashed_size, char * byteout)
+{
 	size_t num_adlers = (size - 16) / sizeof(_u32);
 	const unsigned int* input_adler = reinterpret_cast<const unsigned int*>(h + 16);
 
-	char nh[64];
-	memcpy(nh, h, 16);
+	memcpy(byteout, h, 16);
 
-	unsigned int* n_adlers = reinterpret_cast<unsigned int*>(nh + 16);
+	unsigned int* n_adlers = reinterpret_cast<unsigned int*>(byteout + 16);
 
 	for (size_t i = 0; i < 12; ++i)
 	{
-		if (i>=num_adlers)
+		if (i >= num_adlers)
 		{
 			n_adlers[i] = urb_adler32(0, NULL, 0);
 		}
@@ -151,7 +177,6 @@ void TreeHash::addHashAllAdler(const char * h, size_t size, size_t hashed_size)
 			n_adlers[i] = input_adler[i];
 		}
 	}
-	
 
 	for (size_t i = 12; i < num_adlers; ++i)
 	{
@@ -169,10 +194,8 @@ void TreeHash::addHashAllAdler(const char * h, size_t size, size_t hashed_size)
 
 	for (size_t j = 0; j < 12; ++j)
 	{
-		nh[j] = little_endian(nh[j]);
+		n_adlers[j] = little_endian(n_adlers[j]);
 	}
-
-	addHash(nh);
 }
 
 void TreeHash::finalize_curr()
@@ -189,7 +212,13 @@ void TreeHash::finalize_curr()
 
 	memcpy(h + 16, adlers, 12 * sizeof(_u32));
 
-	addHash(h);
+	if (hash_output != NULL)
+	{
+		memcpy(hash_all_adlers.data(), md5sum.raw_digest_int(), 16);
+		hash_output->hash_output_all_adlers(hash_pos, hash_all_adlers.data(), hash_all_adlers.size());
+	}
+
+	addHash(h, 0);
 
 	md5sum.init();
 

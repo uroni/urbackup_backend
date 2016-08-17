@@ -27,6 +27,7 @@
 #include "settings.h"
 #include "../Interface/Server.h"
 #include "map_buffer.h"
+#include "FileServ.h"
 
 struct s_mapl
 {
@@ -54,7 +55,8 @@ std::string getOsDir(std::string input)
 	return input;
 }
 
-std::string map_file(std::string fn, const std::string& identity, bool& allow_exec)
+std::string map_file(std::string fn, const std::string& identity, bool& allow_exec,
+	IFileServ::CbtHashFileInfo* cbt_hash_file_info)
 {
 	allow_exec = false;
 
@@ -122,6 +124,12 @@ std::string map_file(std::string fn, const std::string& identity, bool& allow_ex
 		allow_exec = i->second.allow_exec;
 	    	
 		mapcs.Leave();
+
+		if (cbt_hash_file_info != NULL)
+		{
+			*cbt_hash_file_info = FileServ::getCbtHashFile(ts, std::string());
+		}
+
         return ret;
 	}
 }

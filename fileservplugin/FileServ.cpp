@@ -35,6 +35,7 @@ std::map<std::string, std::string> FileServ::fn_redirects;
 std::map<std::string, size_t> FileServ::active_shares;
 FileServ::IReadErrorCallback* FileServ::read_error_callback = NULL;
 std::vector<std::string> FileServ::read_error_files;
+std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo> FileServ::cbt_hash_files;
 
 
 FileServ::FileServ(bool *pDostop, const std::string &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
@@ -59,6 +60,16 @@ void FileServ::shareDir(const std::string &name, const std::string &path, const 
 
 bool FileServ::removeDir(const std::string &name, const std::string& identity)
 {
+	{
+		IScopedLock lock(mutex);
+
+		std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo>::iterator it = cbt_hash_files.find(std::make_pair(name, identity));
+		if (it != cbt_hash_files.end())
+		{
+			Server->destroy(it->second.cbt_hash_file);
+			cbt_hash_files.erase(it);
+		}
+	}
 	return remove_share_path(name, identity);
 }
 
@@ -71,7 +82,7 @@ void FileServ::stopServer(void)
 std::string FileServ::getShareDir(const std::string &name, const std::string& identity)
 {
 	bool allow_exec;
-	return map_file(name, identity, allow_exec);
+	return map_file(name, identity, allow_exec, NULL);
 }
 
 void FileServ::addIdentity(const std::string &pIdentity)
@@ -157,7 +168,7 @@ bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_da
 		std::string server_ident = getbetween("|", "|", cmd);
 		pcmd = getafter("urbackup/TAR|" + server_ident + "|", cmd);
 
-		std::string map_res = map_file(pcmd, std::string(), allow_exec);
+		std::string map_res = map_file(pcmd, std::string(), allow_exec, NULL);
 		if (map_res.empty())
 		{
 			return false;
@@ -165,7 +176,7 @@ bool FileServ::getExitInformation(const std::string& cmd, std::string& stderr_da
 	}
 	else
 	{
-		pcmd = map_file(cmd, std::string(), allow_exec);
+		pcmd = map_file(cmd, std::string(), allow_exec, NULL);
 	}
 
 	if (!allow_exec)
@@ -358,4 +369,26 @@ void FileServ::clearReadErrorFile(const std::string & filepath)
 	{
 		read_error_files.erase(it);
 	}
+}
+
+void FileServ::setCbtHashFile(const std::string & sharename, const std::string & identity, IFileServ::CbtHashFileInfo cbt_hash_file_info)
+{
+	IScopedLock lock(mutex);
+	std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo>::iterator it = cbt_hash_files.find(std::make_pair(sharename, identity));
+	if (it != cbt_hash_files.end())
+	{
+		Server->destroy(it->second.cbt_hash_file);
+	}
+	cbt_hash_files[std::make_pair(sharename, identity)] = cbt_hash_file_info;
+}
+
+IFileServ::CbtHashFileInfo FileServ::getCbtHashFile(const std::string & sharename, const std::string & identity)
+{
+	IScopedLock lock(mutex);
+	std::map<std::pair<std::string, std::string>, IFileServ::CbtHashFileInfo>::iterator it = cbt_hash_files.find(std::make_pair(sharename, identity));
+	if (it != cbt_hash_files.end())
+	{
+		return it->second;
+	}
+	return IFileServ::CbtHashFileInfo();
 }

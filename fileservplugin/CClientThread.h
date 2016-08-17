@@ -22,6 +22,7 @@
 #include "types.h"
 #include "settings.h"
 #include "../md5.h"
+#include "FileServ.h"
 
 class CTCPFileServ;
 class IPipe;
@@ -49,13 +50,13 @@ struct SSendData
 struct SChunk
 {
 	SChunk()
-		: msg(ID_ILLEGAL), update_file(NULL), pipe_file_user(NULL)
+		: msg(ID_ILLEGAL), update_file(NULL), pipe_file_user(NULL), cbt_hash_file_info()
 	{
 
 	}
 
 	explicit SChunk(char msg)
-		: msg(msg), update_file(NULL), pipe_file_user(NULL)
+		: msg(msg), update_file(NULL), pipe_file_user(NULL), cbt_hash_file_info()
 	{
 
 	}
@@ -71,6 +72,7 @@ struct SChunk
 	ScopedPipeFileUser* pipe_file_user;
 	bool with_sparse;
 	std::string s_filename;
+	IFileServ::CbtHashFileInfo cbt_hash_file_info;
 };
 
 struct SLPData

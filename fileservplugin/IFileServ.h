@@ -59,6 +59,28 @@ public:
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
 	virtual void clearReadErrors() = 0;
+
+	struct CbtHashFileInfo
+	{
+		CbtHashFileInfo(IFsFile* cbt_hash_file,
+			int64 blocksize, size_t* snapshot_sequence_id, size_t snapshot_sequence_id_reference)
+			: cbt_hash_file(cbt_hash_file),
+			blocksize(blocksize), snapshot_sequence_id(snapshot_sequence_id), 
+			snapshot_sequence_id_reference(snapshot_sequence_id_reference)
+		{}
+
+		CbtHashFileInfo()
+			: cbt_hash_file(NULL), snapshot_sequence_id(NULL), blocksize(0)
+		{
+		}
+
+		IFsFile* cbt_hash_file;
+		volatile size_t* snapshot_sequence_id;
+		size_t snapshot_sequence_id_reference;
+		int64 blocksize;
+	};
+
+	virtual void setCbtHashFile(const std::string& sharename, const std::string& identity, CbtHashFileInfo hash_file_info) = 0;
 };
 
 #endif //IFILESERV_H

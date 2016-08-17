@@ -1,13 +1,15 @@
-class CClientThread;
-class IFile;
-struct SChunk;
+#pragma once
 
+#include "FileServ.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Types.h"
+#include "../Interface/File.h"
 #include "../md5.h"
 #include <memory>
 
 class ScopedPipeFileUser;
+class CClientThread;
+struct SChunk;
 
 class ChunkSendThread : public IThread
 {
@@ -29,6 +31,9 @@ private:
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	_i64 curr_hash_size;
 	_i64 curr_file_size;
+	IFileServ::CbtHashFileInfo cbt_hash_file_info;
+	std::vector<IFsFile::SFileExtent> file_extents;
+	bool has_more_extents;
 
 	char *chunk_buf;
 

@@ -150,7 +150,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	std::string calc_dig;
 	if (BackupServer::useTreeHashing())
 	{
-		TreeHash treehash;
+		TreeHash treehash(NULL);
 		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, treehash, &progress_callback))
 		{
 			calc_dig = treehash.finalize();
