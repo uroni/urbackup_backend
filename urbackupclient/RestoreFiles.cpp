@@ -1204,7 +1204,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									skipped_bytes += data.size;
 
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-                                        data.size, metadata, false, true, 0, orig_file.release());
+                                        data.size, metadata, false, true, 0, NULL);
 
 									std::string tmpfn = chunkhashes->getFilename();
 									delete chunkhashes;
