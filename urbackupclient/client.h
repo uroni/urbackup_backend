@@ -273,6 +273,7 @@ public:
 	static const char IndexThreadAction_RemoveWatchdir;
 	static const char IndexThreadAction_UpdateCbt;
 	static const char IndexThreadAction_ReferenceShadowcopy;
+	static const char IndexThreadAction_SnapshotCbt;
 
 	IndexThread(void);
 	~IndexThread();

@@ -38,6 +38,8 @@ public:
 
 	}
 
+	~RestoreFiles();
+
 	void operator()();
 
 	virtual IPipe * new_fileclient_connection( );
@@ -96,6 +98,8 @@ private:
 
 	bool createDirectoryWin(const std::string& dir);
 
+	std::pair<IFile*, int64> getCbtHashFile(const std::string& fn);
+
 	int64 local_process_id;
 
 	int64 restore_id;
@@ -137,4 +141,6 @@ private:
 
 	bool request_restart;
 	bool is_offline;
+
+	std::map<std::string, std::pair<IFile*, int64> > cbt_hash_files;
 };

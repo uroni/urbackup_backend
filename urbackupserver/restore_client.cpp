@@ -31,6 +31,7 @@
 #include "database.h"
 #include "dao/ServerBackupDao.h"
 #include "dao/ServerCleanupDao.h"
+#include "server.h"
 
 extern IFileServ* fileserv;
 
@@ -411,7 +412,14 @@ namespace
 
 				if(!metadata.shahash.empty())
 				{
-					extra+="&shahash="+base64_encode_dash(metadata.shahash);
+					if (BackupServer::useTreeHashing())
+					{
+						extra += "&thash=" + base64_encode_dash(metadata.shahash);
+					}
+					else
+					{
+						extra += "&shahash=" + base64_encode_dash(metadata.shahash);
+					}
 				}
 
 				if(depth==0 &&

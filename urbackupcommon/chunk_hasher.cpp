@@ -85,7 +85,8 @@ void init_chunk_hasher()
 
 bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	IFsFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput,
-	bool show_pc, IHashFunc* hashf, IExtentIterator* extent_iterator)
+	bool show_pc, IHashFunc* hashf, IExtentIterator* extent_iterator,
+	std::pair<IFile*, int64> cbt_hash_file)
 {
 	f->Seek(0);
 
@@ -148,6 +149,17 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 	int64 copy_sparse_extent_start = -1;
 	int64 copy_max_sparse = -1;
 	bool has_sparse_extent = false;
+
+	bool has_more_extents=false;
+	std::vector<IFsFile::SFileExtent> extents;
+	size_t curr_extent_idx = 0;
+	IFsFile* fs_f = dynamic_cast<IFsFile*>(f);
+	if (cbt_hash_file.first!=NULL
+		&& treehash!=NULL
+		&& fs_f!=NULL)
+	{
+		extents = fs_f->getFileExtents(0, cbt_hash_file.second, has_more_extents);
+	}
 
 	for(_i64 pos=0;pos<fsize;)
 	{
@@ -266,6 +278,80 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				return false;
 			}
 			continue;
+		}
+
+		if (!extents.empty()
+			&& cbt_hash_file.first != NULL
+			&& epos <= fsize
+			&& copy==NULL
+			&& treehash!=NULL)
+		{
+			assert(pos%c_checkpoint_dist == 0);
+
+			while (curr_extent_idx < extents.size()
+				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size < pos)
+			{
+				++curr_extent_idx;
+
+				if (curr_extent_idx >= extents.size()
+					&& has_more_extents)
+				{
+					extents = fs_f->getFileExtents(pos, cbt_hash_file.second, has_more_extents);
+					curr_extent_idx = 0;
+				}
+			}
+
+			if (curr_extent_idx < extents.size()
+				&& extents[curr_extent_idx].offset <= pos
+				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= epos)
+			{
+				int64 volume_pos = extents[curr_extent_idx].volume_offset + (pos - extents[curr_extent_idx].offset);
+				int64 index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
+
+				char chunkhash[chunkhash_single_size];
+				if (cbt_hash_file.first->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+				{
+					if (!buf_is_zero(chunkhash, chunkhash_single_size))
+					{
+						if (memcmp(chunkhash, get_sparse_extent_content().data(), chunkhash_single_size) == 0)
+						{
+							if (sparse_extent_start == -1)
+							{
+								sparse_extent_start = pos;
+							}
+						}
+						else
+						{
+							if (sparse_extent_start != -1)
+							{
+								has_sparse_extent = true;
+								int64 end_pos = (pos / c_checkpoint_dist)*c_checkpoint_dist;
+								int64 ext_pos[2] = { sparse_extent_start, end_pos - sparse_extent_start };
+								hashf->sparse_hash(reinterpret_cast<char*>(ext_pos), sizeof(ext_pos));
+								sparse_extent_start = -1;
+							}
+
+							treehash->addHashAllAdler(chunkhash, chunkhash_single_size, c_checkpoint_dist);
+						}
+
+						if (!writeRepeatFreeSpace(hashoutput, chunkhash, chunkhash_single_size, cb))
+						{
+							Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -3", LL_DEBUG);
+							return false;
+						}
+
+						hashoutputpos += chunkhash_single_size;
+
+						pos = epos;
+						if (!f->Seek(pos))
+						{
+							Server->Log("Error seeking in input file (" + f->getFilename() + ")", LL_DEBUG);
+							return false;
+						}
+						continue;
+					}
+				}
+			}
 		}
 
 		copy_sparse_extent_start = -1;

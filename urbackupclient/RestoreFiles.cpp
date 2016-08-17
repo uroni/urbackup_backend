@@ -33,6 +33,7 @@
 #include "database.h"
 #include "FileMetadataDownloadThread.h"
 #include "file_permissions.h"
+#include <assert.h>
 
 namespace
 {
@@ -180,13 +181,22 @@ namespace
 }
 
 
+RestoreFiles::~RestoreFiles()
+{
+	for (std::map<std::string, std::pair<IFile*, int64> >::iterator it = cbt_hash_files.begin();
+		it != cbt_hash_files.end(); ++it)
+	{
+		delete it->second.first;
+	}
+}
+
 void RestoreFiles::operator()()
 {
+	std::auto_ptr<RestoreFiles> delete_this(this);
 	if (restore_declined)
 	{
 		log("Restore was declined by client", LL_ERROR);
 		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
-		delete this;
 		return;
 	}
 
@@ -354,8 +364,6 @@ void RestoreFiles::operator()()
 		log("Restore requested system restart to rename/delete locked files", LL_INFO);
 		ClientConnector::requestRestoreRestart();
 	}
-
-	delete this;
 }
 
 IPipe * RestoreFiles::new_fileclient_connection( )
@@ -1157,17 +1165,20 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							else
 							{
 								std::auto_ptr<IHashFunc> hashf;
+								std::auto_ptr<IHashFunc> hashf2;
 
 								std::string hash_key;
 
 								if (extra.find("shahash") != extra.end())
 								{
 									hashf.reset(new HashSha512);
+									hashf2.reset(new HashSha512);
 									hash_key = "shahash";
 								}
 								else
 								{
 									hashf.reset(new TreeHash(NULL));
+									hashf2.reset(new TreeHash(NULL));
 									hash_key = "thash";
 								}
 
@@ -1177,11 +1188,24 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 									log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
 									FsExtentIterator extent_iterator(orig_file.get(), 512*1024);
 
+									std::pair<IFile*, int64> cbt_hash_file;
+									if (hash_key == "thash")
+									{
+										cbt_hash_file = getCbtHashFile(local_fn);
+									}
+
 									if (build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL,
-										NULL, false, hashf.get(), &extent_iterator))
+										NULL, false, hashf.get(), &extent_iterator, cbt_hash_file))
 									{
 										calc_hashes = true;
 										shahash = hashf->finalize();
+									}
+												
+									IFile* tmp_f = Server->openTemporaryFile();
+									ScopedDeleteFile del_tmp_f(tmp_f);
+									if (build_chunk_hashs(orig_file.get(), tmp_f, NULL, NULL, false, NULL, NULL, false, hashf2.get()))
+									{
+										assert(shahash == hashf2->finalize());
 									}
 								}
 								
@@ -1190,9 +1214,23 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
                                     if(!calc_hashes)
                                     {
                                         log("Calculating hashes of file \""+local_fn+"\"...", LL_DEBUG);
+
+										std::pair<IFile*, int64> cbt_hash_file;
+										if (hash_key == "thash")
+										{
+											cbt_hash_file = getCbtHashFile(local_fn);
+										}
+
 										FsExtentIterator extent_iterator(orig_file.get());
                                         build_chunk_hashs(orig_file.get(), chunkhashes, NULL, NULL, false, NULL, NULL,
-											false, NULL, &extent_iterator);
+											false, hashf.get(), &extent_iterator, cbt_hash_file);
+
+										IFile* tmp_f = Server->openTemporaryFile();
+										ScopedDeleteFile del_tmp_f(tmp_f);
+										if (build_chunk_hashs(orig_file.get(), tmp_f, NULL, NULL, false, NULL, NULL, false, hashf2.get()))
+										{
+											assert(hashf->finalize() == hashf2->finalize());
+										}
                                     }
 
 									IFsFile* r_orig_file = orig_file.release();
@@ -1645,4 +1683,58 @@ bool RestoreFiles::createDirectoryWin(const std::string & dir)
 #else
 	return false;
 #endif
+}
+
+std::pair<IFile*, int64> RestoreFiles::getCbtHashFile(const std::string & fn)
+{
+	std::string vol = fn;
+	IndexThread::normalizeVolume(vol);
+	vol = strlower(vol);
+
+	std::map<std::string, std::pair<IFile*, int64> >::iterator it = cbt_hash_files.find(vol);
+	if (it != cbt_hash_files.end())
+	{
+		return it->second;
+	}
+
+	CWData data;
+	IPipe* localpipe = Server->createMemoryPipe();
+	data.addChar(IndexThread::IndexThreadAction_SnapshotCbt);
+	data.addVoidPtr(localpipe);
+	data.addString(fn);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+	std::string ret;
+	localpipe->Read(&ret);
+	localpipe->Write("exit");
+
+	if (ret == "done")
+	{
+		IFile* cbt_hash_file = Server->openFile("urbackup\\hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DEVICE);
+		int64 cbt_hash_file_blocksize = -1;
+
+#ifdef _WIN32
+		DWORD sectors_per_cluster;
+		DWORD bytes_per_sector;
+		BOOL b = GetDiskFreeSpaceW((Server->ConvertToWchar(vol) + L"\\").c_str(),
+			&sectors_per_cluster, &bytes_per_sector, NULL, NULL);
+		if (!b)
+		{
+			Server->Log("Error in GetDiskFreeSpaceW. " + os_last_error_str(), LL_ERROR);
+		}
+		else
+		{
+			cbt_hash_file_blocksize = bytes_per_sector * sectors_per_cluster;
+		}
+#endif
+
+		cbt_hash_files[vol] = std::make_pair(cbt_hash_file, cbt_hash_file_blocksize);
+		return std::make_pair(cbt_hash_file, cbt_hash_file_blocksize);
+	}
+	else
+	{
+		IFile* nf = NULL;
+		cbt_hash_files[vol] = std::make_pair(nf, -1);
+		return std::make_pair(nf, -1);
+	}
 }

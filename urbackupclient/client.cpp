@@ -81,6 +81,7 @@ const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
 const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
 const char IndexThread::IndexThreadAction_UpdateCbt = 7;
+const char IndexThread::IndexThreadAction_SnapshotCbt = 12;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -1062,6 +1063,21 @@ void IndexThread::operator()(void)
 		else if (action == IndexThreadAction_UpdateCbt)
 		{
 			updateCbt();
+		}
+		else if (action == IndexThreadAction_SnapshotCbt)
+		{
+			std::string volume;
+			data.getStr(&volume);
+
+			if (prepareCbt(volume)
+				&& finishCbt(volume, -1, std::string()))
+			{
+				contractor->Write("done");
+			}
+			else
+			{
+				contractor->Write("failed");
+			}
 		}
 	}
 
@@ -4271,7 +4287,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 
 	int64 fsize = f->Size();
 
-	bool has_more_extents;
+	bool has_more_extents=false;
 	std::vector<IFsFile::SFileExtent> extents;
 	size_t curr_extent_idx = 0;
 	if (with_cbt)
@@ -4990,7 +5006,9 @@ namespace
 		{}
 
 		~ScopedCloseWindowsHandle() {
-			CloseHandle(h);
+			if (h != INVALID_HANDLE_VALUE) {
+				CloseHandle(h);
+			}
 		}
 	private:
 		HANDLE h;
@@ -5118,13 +5136,17 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		return false;
 	}
 
-	HANDLE hSnapVolume = CreateFileA(snap_volume.c_str(), GENERIC_READ | GENERIC_WRITE,
-		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
-
-	if (hSnapVolume == INVALID_HANDLE_VALUE)
+	HANDLE hSnapVolume = INVALID_HANDLE_VALUE;
+	if (!snap_volume.empty())
 	{
-		return false;
+		hSnapVolume = CreateFileA(snap_volume.c_str(), GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+		if (hSnapVolume == INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
 	}
 
 	ScopedCloseWindowsHandle hclosesnap(hSnapVolume);
@@ -5199,17 +5221,20 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	}
 
 	std::vector<char> buf_snap;
-	buf_snap.resize(buf.size());
-
-	b = DeviceIoControl(hSnapVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), &bytesReturned, NULL);
-
-	if (!b)
+	if (hSnapVolume != INVALID_HANDLE_VALUE)
 	{
-		std::string errmsg;
-		int64 err = os_last_error(errmsg);
-		VSSLog("Getting changed block data from shadow copy " + snap_volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-		return false;
-	}	
+		buf_snap.resize(buf.size());
+
+		b = DeviceIoControl(hSnapVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), &bytesReturned, NULL);
+
+		if (!b)
+		{
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			VSSLog("Getting changed block data from shadow copy " + snap_volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+			return false;
+		}
+	}
 
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
 	char* urbackupcbt_magic = URBT_MAGIC;
@@ -5232,7 +5257,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		RealBitmapSize += tr;
 
-		if(i + URBT_MAGIC_SIZE < snap_bitmap_data->BitmapSize)
+		if(hSnapVolume!=INVALID_HANDLE_VALUE
+			&& i + URBT_MAGIC_SIZE < snap_bitmap_data->BitmapSize)
 		{
 			if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
 			{
@@ -5259,17 +5285,20 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		}
 	}
 
-	VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
-
-	b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, &bytesReturned, NULL);
-
-	if (!b)
+	if (hSnapVolume != INVALID_HANDLE_VALUE)
 	{
-		std::string errmsg;
-		int64 err = os_last_error(errmsg);
-		VSSLog("Applying shadow copy changes to " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-		return false;
-	}	
+		VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
+
+		b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, &bytesReturned, NULL);
+
+		if (!b)
+		{
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			VSSLog("Applying shadow copy changes to " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+			return false;
+		}
+	}
 
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
