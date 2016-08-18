@@ -119,8 +119,8 @@ then
 fi
 
 test -e "$PREFIX/var/urbackup/data" || install -c -m 744 -d "$PREFIX/var/urbackup/data"
-test -e "$PREFIX/sbin" || install -c -m 744 -d "$PREFIX/sbin"
-test -e "$PREFIX/bin" || install -c -m 744 -d "$PREFIX/bin"
+test -e "$PREFIX/sbin" || install -c -m 755 -d "$PREFIX/sbin"
+test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
 test -e "$PREFIX/share/urbackup/scripts" || install -c -m 744 -d "$PREFIX/share/urbackup/scripts"
 test -e "$PREFIX/etc/urbackup" || install -c -m 744 -d "$PREFIX/etc/urbackup"
 
