@@ -34,6 +34,7 @@
 #include "FileMetadataDownloadThread.h"
 #include "file_permissions.h"
 #include <assert.h>
+#include "../common/data.h"
 
 namespace
 {
