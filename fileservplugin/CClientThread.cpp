@@ -928,7 +928,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(!share_name.empty())
 					{
 						bool allow_exec;
-						std::string basePath=map_file(share_name+"/", ident, allow_exec);
+						std::string basePath=map_file(share_name+"/", ident, allow_exec, NULL);
 						if(!isDirectory(basePath))
 						{
 							char ch=ID_BASE_DIR_LOST;
