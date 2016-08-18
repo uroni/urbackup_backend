@@ -374,12 +374,12 @@ void PipeSessions::operator()()
 	}
 }
 
-void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn,
+IFileServ::IMetadataCallback* PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn,
 	const std::string& server_token, const std::string& identity, int64 folder_items, int64 metadata_id)
 {
 	if(public_fn.empty() || next(public_fn, 0, "urbackup/"))
 	{
-		return;
+		return NULL;
 	}
 
 	std::string sharename = getuntil("/", public_fn);
@@ -401,9 +401,11 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter_cb = 
 		metadata_callbacks.find(std::make_pair(sharename, identity));
 
+	IFileServ::IMetadataCallback* ret = NULL;
 	if(iter_cb!=metadata_callbacks.end())
 	{
 		data.addVoidPtr(iter_cb->second);
+		ret = iter_cb->second;
 	}
 
 	std::map<std::string, SPipeSession>::iterator it = pipe_files.find("urbackup/FILE_METADATA|"+server_token);
@@ -414,10 +416,8 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
-	else
-	{
-		int dbg = 43;
-	}
+
+	return ret;
 }
 
 void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std::string& metadata, const std::string & server_token, const std::string & identity)

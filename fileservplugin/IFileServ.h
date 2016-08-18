@@ -17,7 +17,7 @@ public:
 	public:
 		virtual ~IMetadataCallback() {}
 
-		virtual IFile* getMetadata(const std::string& path, std::string& orig_path, int64& offset, int64& length, _u32& version)=0;
+		virtual IFile* getMetadata(const std::string& path, std::string* orig_path, int64* offset, int64* length, _u32* version, bool get_hashdata)=0;
 	};
 
 	class ITokenCallback : public IObject
@@ -62,11 +62,12 @@ public:
 
 	struct CbtHashFileInfo
 	{
-		CbtHashFileInfo(IFsFile* cbt_hash_file,
+		CbtHashFileInfo(IFile* cbt_hash_file,
 			int64 blocksize, size_t* snapshot_sequence_id, size_t snapshot_sequence_id_reference)
 			: cbt_hash_file(cbt_hash_file),
 			blocksize(blocksize), snapshot_sequence_id(snapshot_sequence_id), 
-			snapshot_sequence_id_reference(snapshot_sequence_id_reference)
+			snapshot_sequence_id_reference(snapshot_sequence_id_reference),
+			metadata_offset(-1), metadata_size(-1)
 		{}
 
 		CbtHashFileInfo()
@@ -74,10 +75,12 @@ public:
 		{
 		}
 
-		IFsFile* cbt_hash_file;
+		IFile* cbt_hash_file;
 		volatile size_t* snapshot_sequence_id;
 		size_t snapshot_sequence_id_reference;
 		int64 blocksize;
+		int64 metadata_offset;
+		int64 metadata_size;
 	};
 
 	virtual void setCbtHashFile(const std::string& sharename, const std::string& identity, CbtHashFileInfo hash_file_info) = 0;

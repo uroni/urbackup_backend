@@ -81,7 +81,8 @@ namespace
 
 		}
 
-		virtual IFile* getMetadata( const std::string& path, std::string& orig_path, int64& offset, int64& length, _u32& version )
+		virtual IFile* getMetadata( const std::string& path, std::string* orig_path, int64* offset,
+			int64* length, _u32* version, bool get_hashdata)
 		{
 			if(path.empty()) return NULL;
 
@@ -114,60 +115,88 @@ namespace
 				return NULL;
 			}
 
-			FileMetadata metadata;
-
-			if(!read_metadata(metadata_file.get(), metadata))
+			if (orig_path != NULL)
 			{
-				return NULL;
-			}
+				FileMetadata metadata;
 
-			orig_path = metadata.orig_path;
-
-			if (orig_path.empty())
-			{
-				orig_path = reconstructOrigPath(metadata_path, isdir);
-			}
-
-			for (size_t j = 0; j < map_paths.size(); ++j)
-			{
-				if (next(orig_path, 0, map_paths[j].first))
+				if (!read_metadata(metadata_file.get(), metadata))
 				{
-					orig_path.replace(orig_path.begin(), orig_path.begin() + map_paths[j].first.size(), map_paths[j].second);
-					break;
+					return NULL;
+				}
+
+				*orig_path = metadata.orig_path;
+
+				if (orig_path->empty())
+				{
+					*orig_path = reconstructOrigPath(metadata_path, isdir);
+				}
+
+				for (size_t j = 0; j < map_paths.size(); ++j)
+				{
+					if (next(*orig_path, 0, map_paths[j].first))
+					{
+						orig_path->replace(orig_path->begin(), orig_path->begin() + map_paths[j].first.size(), map_paths[j].second);
+						break;
+					}
 				}
 			}
 
-			offset = os_metadata_offset(metadata_file.get());
-			length = metadata_file->Size() - offset;
 
-			int64 metadata_magic_and_size[2];
+			if (!get_hashdata)
+			{
+				int64 m_offset = os_metadata_offset(metadata_file.get());
 
-			if(!metadata_file->Seek(offset))
-			{
-				return NULL;
-			}
+				if (offset != NULL) *offset = m_offset;
 
-			if(metadata_file->Read(reinterpret_cast<char*>(&metadata_magic_and_size), sizeof(metadata_magic_and_size))!=sizeof(metadata_magic_and_size))
-			{
-				return NULL;
-			}
+				int64 m_length = metadata_file->Size() - m_offset;
 
-			if(metadata_magic_and_size[1]==win32_meta_magic)
-			{
-				version=ID_METADATA_V1_WIN;
-			}
-			else if(metadata_magic_and_size[1]==unix_meta_magic)
-			{
-				version=ID_METADATA_V1_UNIX;
+				if (length != NULL) *length = m_length;
+
+				int64 metadata_magic_and_size[2];
+
+				if (!metadata_file->Seek(m_offset))
+				{
+					return NULL;
+				}
+
+				if (metadata_file->Read(reinterpret_cast<char*>(&metadata_magic_and_size), sizeof(metadata_magic_and_size)) != sizeof(metadata_magic_and_size))
+				{
+					return NULL;
+				}
+								
+				if (version != NULL)
+				{
+					if (metadata_magic_and_size[1] == win32_meta_magic)
+					{
+						*version = ID_METADATA_V1_WIN;
+					}
+					else if (metadata_magic_and_size[1] == unix_meta_magic)
+					{
+						*version = ID_METADATA_V1_UNIX;
+					}
+					else
+					{
+						*version = 0;
+					}
+				}
+
+				if (!metadata_file->Seek(m_offset))
+				{
+					return NULL;
+				}
 			}
 			else
 			{
-				version=0;
-			}
+				int64 m_length = get_hashdata_size(metadata_file.get());
 
-			if(!metadata_file->Seek(offset))
-			{
-				return NULL;
+				if (m_length <= sizeof(int64) )
+				{
+					return NULL;
+				}
+
+				if (offset != NULL) *offset = sizeof(int64);
+
+				if (length != NULL) *length = m_length - sizeof(int64);
 			}
 
 			return metadata_file.release();

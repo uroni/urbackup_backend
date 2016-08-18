@@ -66,6 +66,8 @@ int64 os_metadata_offset(IFile* meta_file);
 
 int64 read_hashdata_size(IFile* meta_file);
 
+int64 get_hashdata_size(IFile* meta_file);
+
 bool copy_os_metadata(const std::string& in_fn, const std::string& out_fn, INotEnoughSpaceCallback *cb);
 
 namespace

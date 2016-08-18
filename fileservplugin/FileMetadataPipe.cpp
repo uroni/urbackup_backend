@@ -546,7 +546,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					{
 						std::string orig_path;
 						_u32 version = 0;
-						metadata_file.reset(callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size, version));
+						metadata_file.reset(callback->getMetadata(public_fn, &orig_path, &metadata_file_off, &metadata_file_size, &version, false));
 
 						if (metadata_file.get() == NULL)
 						{

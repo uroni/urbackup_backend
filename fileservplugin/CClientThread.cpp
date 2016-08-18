@@ -1729,6 +1729,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	std::auto_ptr<ScopedPipeFileUser> pipe_file_user;
 	IFile* srv_file = NULL;
 	IFileServ::CbtHashFileInfo cbt_hash_file_info;
+	IFileServ::IMetadataCallback* metadata_callback = NULL;
 	if(is_script)
 	{
 		pipe_file_user.reset(new ScopedPipeFileUser);
@@ -1773,7 +1774,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 	{
 		if(metadata_id!=0 && next(s_filename, 0, "clientdl"))
 		{
-			PipeSessions::transmitFileMetadata(filename,
+			metadata_callback = PipeSessions::transmitFileMetadata(filename,
 				s_filename, ident, ident, 0, metadata_id);
 		}
 		else if(metadata_id!=0 && s_filename.find("|"))
@@ -1820,8 +1821,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 			Log("Could not open file "+filename+". " + errstr, metadata_id != 0 ? LL_ERROR : LL_INFO);
 			return true;
 		}
-
-		map_file(o_filename, ident, allow_exec, &cbt_hash_file_info);
+		
 	}
 
 	currfilepart=0;
@@ -1841,6 +1841,24 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 		curr_filesize=stat_buf.st_size;
 #endif
+
+		if (curr_filesize > c_checkpoint_dist)
+		{
+			map_file(o_filename, ident, allow_exec, &cbt_hash_file_info);
+
+			if (cbt_hash_file_info.cbt_hash_file == NULL
+				&& metadata_callback != NULL)
+			{
+				int64 offset, length;
+				IFile* metadata_f = metadata_callback->getMetadata("f" + s_filename, NULL, &offset, &length, NULL, true);
+				if (metadata_f != NULL)
+				{
+					cbt_hash_file_info.cbt_hash_file = metadata_f;
+					cbt_hash_file_info.metadata_offset = offset;
+					cbt_hash_file_info.metadata_size = length;
+				}
+			}
+		}
 	}
 	else
 	{
@@ -1857,6 +1875,12 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 
 		if(srv_file==NULL)
 		{
+			if (cbt_hash_file_info.cbt_hash_file != NULL
+				&& cbt_hash_file_info.metadata_offset != -1)
+			{
+				Server->destroy(cbt_hash_file_info.cbt_hash_file);
+			}
+
 			CloseHandle(hFile);
 			queueChunk(SChunk(ID_COULDNT_OPEN));
 			Log("Info: Couldn't open file from handle", LL_ERROR);

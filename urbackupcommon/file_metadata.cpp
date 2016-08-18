@@ -490,6 +490,29 @@ int64 read_hashdata_size( IFile* meta_file )
 	return little_endian(hashfilesize);
 }
 
+int64 get_hashdata_size(IFile * meta_file)
+{
+	int64 hashfilesize;
+
+	meta_file->Seek(0);
+	if (meta_file->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize)) != sizeof(hashfilesize))
+	{
+		Server->Log("Error reading file metadata hashfilesize from \"" + meta_file->getFilename() + "\"", LL_DEBUG);
+		return 0;
+	}
+
+	hashfilesize = little_endian(hashfilesize);
+
+	if (hashfilesize>=0)
+	{
+		return get_hashdata_size(hashfilesize);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 void FileMetadata::serialize( CWData& data ) const
 {
 	data.addString(shahash);

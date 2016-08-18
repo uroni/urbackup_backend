@@ -4290,9 +4290,14 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 	bool has_more_extents=false;
 	std::vector<IFsFile::SFileExtent> extents;
 	size_t curr_extent_idx = 0;
-	if (with_cbt)
+	if (with_cbt
+		&& fsize>c_checkpoint_dist)
 	{
 		extents = f->getFileExtents(0, index_hdat_fs_block_size, has_more_extents);
+	}
+	else
+	{
+		with_cbt = false;
 	}
 
 	while(fpos<=fsize && rc>0)

@@ -98,6 +98,13 @@ void ChunkSendThread::operator()(void)
 				file = NULL;
 			}
 			pipe_file_user.reset();
+
+			if (cbt_hash_file_info.cbt_hash_file != NULL
+				&& cbt_hash_file_info.metadata_offset != -1)
+			{
+				Server->destroy(cbt_hash_file_info.cbt_hash_file);
+				cbt_hash_file_info.cbt_hash_file = NULL;
+			}
 		}
 		else if (chunk.msg == ID_FLUSH_SOCKET)
 		{
@@ -115,6 +122,12 @@ void ChunkSendThread::operator()(void)
 				Server->destroy(file);
 				assert(!s_filename.empty());
 				FileServ::decrShareActive(s_filename);
+			}
+			if (cbt_hash_file_info.cbt_hash_file != NULL
+				&& cbt_hash_file_info.metadata_offset != -1)
+			{
+				Server->destroy(cbt_hash_file_info.cbt_hash_file);
+				cbt_hash_file_info.cbt_hash_file = NULL;
 			}
 			file=chunk.update_file;
 			Server->Log("Retaining file " + file->getFilename(), LL_DEBUG);
@@ -207,6 +220,14 @@ void ChunkSendThread::operator()(void)
 		FileServ::decrShareActive(s_filename);
 		file=NULL;
 	}
+
+	if (cbt_hash_file_info.cbt_hash_file != NULL
+		&& cbt_hash_file_info.metadata_offset != -1)
+	{
+		Server->destroy(cbt_hash_file_info.cbt_hash_file);
+		cbt_hash_file_info.cbt_hash_file = NULL;
+	}
+
 	delete this;
 }
 
@@ -370,46 +391,63 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 	if (cbt_hash_file_info.cbt_hash_file!=NULL
 		&&  curr_pos+c_checkpoint_dist<=curr_file_size
-		&& (!file_extents.empty()
+		&& (cbt_hash_file_info.metadata_offset!=-1
+			|| !file_extents.empty()
 			|| has_more_extents ) )
 	{
-		if (file_extents.empty())
+		if (cbt_hash_file_info.metadata_offset == -1)
 		{
-			IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
-			if (fs_file != NULL
-				&& cbt_hash_file_info.blocksize > 0)
+			if (file_extents.empty())
 			{
-				file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+				IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+				if (fs_file != NULL
+					&& cbt_hash_file_info.blocksize > 0)
+				{
+					file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+				}
+			}
+
+			for (size_t i = 0; i < file_extents.size(); ++i)
+			{
+				if (file_extents[i].offset <= spos &&
+					file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
+				{
+					int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
+					index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
+
+					char chunkhash[chunkhash_single_size];
+					if (cbt_hash_file_info.cbt_hash_file->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+					{
+						if (memcmp(chunkhash, chunk->big_hash, chunkhash_single_size) == 0)
+						{
+							cbt_unchanged = true;
+							index_chunkhash_pos = -1;
+						}
+						else if (!buf_is_zero(chunkhash, chunkhash_single_size))
+						{
+							index_chunkhash_pos = -1;
+						}
+					}
+					else
+					{
+						index_chunkhash_pos = -1;
+					}
+
+					break;
+				}
 			}
 		}
-
-		for (size_t i = 0; i < file_extents.size(); ++i)
+		else
 		{
-			if (file_extents[i].offset <= spos &&
-				file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
+			char chunkhash[chunkhash_single_size];
+			int64 hash_rpos = cbt_hash_file_info.metadata_offset + (spos / c_checkpoint_dist)*chunkhash_single_size;
+			if ( hash_rpos + chunkhash_single_size <= cbt_hash_file_info.metadata_offset+cbt_hash_file_info.metadata_size
+				&& cbt_hash_file_info.cbt_hash_file->Read(hash_rpos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
 			{
-				int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
-				index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
-
-				char chunkhash[chunkhash_single_size];
-				if (cbt_hash_file_info.cbt_hash_file->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+				if (memcmp(chunkhash, chunk->big_hash, chunkhash_single_size) == 0)
 				{
-					if (memcmp(chunkhash, chunk->big_hash, chunkhash_single_size) == 0)
-					{
-						cbt_unchanged = true;
-						index_chunkhash_pos = -1;
-					}
-					else if (!buf_is_zero(chunkhash, chunkhash_single_size))
-					{
-						index_chunkhash_pos = -1;
-					}
+					cbt_unchanged = true;
 				}
-				else
-				{
-					index_chunkhash_pos = -1;
-				}
-
-				break;
 			}
 		}
 	}
