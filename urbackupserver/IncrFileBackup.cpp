@@ -1698,19 +1698,24 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 
 void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int incremental)
 {
+	bool update_fileindex = false;
 	int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
 
 	if(entryid==0)
 	{
-		Server->Log("File entry with filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not.", LL_WARNING);
-		return;
+		Server->Log("File entry with filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not.", LL_DEBUG);
+		
+		entryid = fileindex->get_with_cache_prefer_client(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+
+		update_fileindex = true;
 	}
 
 	ServerFilesDao::SFindFileEntry fentry = filesdao->getFileEntry(entryid);
 	if(!fentry.exists)
 	{
-		Server->Log("File entry in database with id " +convert(entryid)+" and filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not.", LL_WARNING);
-		return;
+		Server->Log("File entry in database with id " +convert(entryid)+" and filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not. -2", LL_WARNING);
+		update_fileindex = true;
+		entryid = 0;
 	}
 
 	if(rsize<0)
@@ -1718,8 +1723,13 @@ void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const s
 		rsize=fentry.rsize;
 	}
 
+	if (update_fileindex)
+	{
+		rsize = filesize;
+	}
+
 	BackupServerHash::addFileSQL(*filesdao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
-		shahash, filesize, rsize, entryid, clientid, fentry.next_entry, false);
+		shahash, filesize, rsize, entryid, fentry.clientid, fentry.next_entry, update_fileindex);
 }
 
 void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num,
