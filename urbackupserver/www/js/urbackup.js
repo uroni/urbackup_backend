@@ -1096,18 +1096,10 @@ function show_status2(data)
 				obj.image_ok_t=trans("no_recent_backup");
 			}
 		}
-		
-		if(obj.lastbackup=="") obj.lastbackup=trans("backup_never");
-		else obj.lastbackup = format_unix_timestamp(obj.lastbackup);
-		
-		if(obj.lastbackup_image=="") obj.lastbackup_image=trans("backup_never");
-		else obj.lastbackup_image = format_unix_timestamp(obj.lastbackup_image);
-		
+			
 		if(obj.online) obj.online=trans("yes");
 		else obj.online=trans("no");
-		
-		if(obj.lastseen!="") obj.lastseen = format_unix_timestamp(obj.lastseen);
-		
+				
 		obj.Action_remove_start="";
 		obj.Action_remove_end="";
 		
@@ -1446,7 +1438,62 @@ function show_status2(data)
 			columns.push(8);		
 		if(!data.no_images)
 			columns.push(9);
+
+		var date_sort_fun = function(idx)
+		{
+			var _idx = idx;			
+			this.sort = function( source, type, val ) {
+					if (type === 'set') {
+						var hs = val.indexOf("<");
+						var n1=val;
+						var n2="";
+						if(hs!=-1)
+						{
+							n1 = val.substr(0,hs);
+							n2 = val.substr(hs);
+						}
+						source[idx] = n1;
+						if(n1==="" || n1==="0" )
+						{
+							source["d"+idx] = trans("backup_never");
+						}
+						else
+						{
+							source["d"+idx] = format_unix_timestamp(n1);
+						}
+						source["d"+idx]+=n2;
+						return;
+					}
+					else if (type === 'display') {
+					  return source["d"+idx];
+					}
+					else if (type === 'filter') {
+					  return source["d"+idx];
+					}
+					return source[idx];
+				};
+		}
+		
+		datatable_config.aoColumnDefs.push({
+				"aTargets": [ 5 ],
+				"mData": (new date_sort_fun(5)).sort
+			} );
 			
+		if(!data.no_file_backups)
+		{
+			datatable_config.aoColumnDefs.push({
+				"aTargets": [ 6 ],
+				"mData": (new date_sort_fun(6)).sort
+			} );
+		}
+		
+		if(!data.no_images)
+		{
+			datatable_config.aoColumnDefs.push({
+				"aTargets": [ 7 ],
+				"mData": (new date_sort_fun(7)).sort
+			} );
+		}
 		
 
 		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
