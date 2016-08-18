@@ -425,7 +425,7 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
 }
 
-std::vector<SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
+std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
 {
 	//TODO: Implement using FIEMAP?
 	return std::vector<SFileExtent>();
