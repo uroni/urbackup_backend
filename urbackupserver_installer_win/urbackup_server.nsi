@@ -197,6 +197,8 @@ Section "install"
 	File "data_common\urbackup\www\css\*.css"
 	SetOutPath "$INSTDIR\urbackup\www\js"
 	File "data_common\urbackup\www\js\*.js"
+	SetOutPath "$INSTDIR\urbackup\www\fonts"
+	File "data_common\urbackup\www\fonts\*"
 	
 	CreateDirectory "$SMPROGRAMS\UrBackup Server"
 	CreateShortCut "$SMPROGRAMS\UrBackup Server\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
