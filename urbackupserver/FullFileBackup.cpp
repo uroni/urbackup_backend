@@ -29,6 +29,7 @@
 #include "ServerDownloadThread.h"
 #include "../urbackupcommon/file_metadata.h"
 #include "FileMetadataDownloadThread.h"
+#include "snapshot_helper.h"
 #include <stack>
 
 extern std::string server_identity;
@@ -824,6 +825,14 @@ bool FullFileBackup::doFileBackup()
 			|| !os_sync(backuppath_hashes) )
 		{
 			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+		}
+
+		if (use_snapshots)
+		{
+			if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+			{
+				ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
+			}
 		}
 
 		DBScopedSynchronous synchronous(db);

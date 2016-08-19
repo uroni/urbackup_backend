@@ -1398,6 +1398,14 @@ bool IncrFileBackup::doFileBackup()
 				ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
 			}
 
+			if (use_snapshots)
+			{
+				if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+				{
+					ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
+				}
+			}
+
 			DBScopedSynchronous synchronous(db);
 			backup_dao->setFileBackupDone(backupid);
 			if (ServerCleanupThread::isClientlistDeletionAllowed())
@@ -1462,6 +1470,14 @@ bool IncrFileBackup::doFileBackup()
 			|| !os_sync(backuppath_hashes))
 		{
 			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+		}
+
+		if (use_snapshots)
+		{
+			if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+			{
+				ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
+			}
 		}
 
 		DBScopedSynchronous synchronous(db);

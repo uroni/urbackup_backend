@@ -251,7 +251,17 @@ bool remove_subvolume(std::string subvolume_folder)
 	}
 	return rc==0;
 #endif
-}	
+}
+
+bool make_readonly(std::string subvolume_folder)
+{
+#ifdef _WIN32
+	return false;
+#else
+	rc=exec_wait(find_btrfs_cmd(), true, "property", "set", "-ts", subvolume_folder.c_str(), "ro", "true", NULL);
+	return rc==0;
+#endif
+}
 
 bool is_subvolume(std::string subvolume_folder)
 {
@@ -429,6 +439,21 @@ int main(int argc, char *argv[])
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
 		return is_subvolume(subvolume_folder)?0:1;
+	}
+	else if(cmd=="makereadonly")
+	{
+		if(argc<4)
+		{
+			std::cout << "Not enough parameters for makereadonly" << std::endl;
+			return 1;
+		}
+		
+		std::string clientname=handleFilename(argv[2]);
+		std::string name=handleFilename(argv[3]);
+
+		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
+		
+		return make_readonly(subvolume_folder)?0:1;
 	}
 	else
 	{

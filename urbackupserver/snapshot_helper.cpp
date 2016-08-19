@@ -56,3 +56,9 @@ void SnapshotHelper::setSnapshotHelperCommand(std::string helper_command)
 {
 	helper_name=helper_command;
 }
+
+bool SnapshotHelper::makeReadonly(std::string clientname, std::string name)
+{
+	int rc = system((helper_name + " makereadonly \"" + clientname + "\" \"" + name + "\"").c_str());
+	return rc == 0;
+}
