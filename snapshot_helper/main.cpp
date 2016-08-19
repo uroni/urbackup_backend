@@ -258,7 +258,7 @@ bool make_readonly(std::string subvolume_folder)
 #ifdef _WIN32
 	return false;
 #else
-	rc=exec_wait(find_btrfs_cmd(), true, "property", "set", "-ts", subvolume_folder.c_str(), "ro", "true", NULL);
+	int rc=exec_wait(find_btrfs_cmd(), true, "property", "set", "-ts", subvolume_folder.c_str(), "ro", "true", NULL);
 	return rc==0;
 #endif
 }
