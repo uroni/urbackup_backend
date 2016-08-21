@@ -127,6 +127,8 @@ struct SSettings
 	bool allow_file_restore;
 	bool allow_component_restore;
 	bool allow_component_config;
+	std::string image_snapshot_groups;
+	std::string file_snapshot_groups;
 };
 
 struct SLDAPSettings

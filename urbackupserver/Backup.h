@@ -72,6 +72,11 @@ public:
 		stop_backup_running = b;
 	}
 
+	logid_t getLogId()
+	{
+		return logid;
+	}
+
 protected:
 	virtual bool doBackup() = 0;
 

@@ -4,6 +4,7 @@
 #include "../urbackupcommon/sha2/sha2.h"
 #include "server_status.h"
 
+class IMutex;
 class ServerVHDWriter;
 class IFile;
 class ServerPingThread;
@@ -14,7 +15,8 @@ class ImageBackup : public Backup
 {
 public:
 	ImageBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
-		LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details);
+		LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details,
+		bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo);
 
 	int getBackupId()
 	{
@@ -25,6 +27,19 @@ public:
 	{
 		return not_found;
 	}
+
+	std::string getLetter()
+	{
+		return letter;
+	}
+
+	struct SImageDependency
+	{
+		std::string volume;
+		int64 snapshot_id;
+	};
+
+	std::vector<SImageDependency> getDependencies();
 
 protected:
 	virtual bool doBackup();
@@ -43,6 +58,7 @@ protected:
 	void addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd,
 		int incremental, int incremental_ref, const std::string& imagefn, ScopedLockImageFromCleanup& cleanup_lock,
 		ServerRunningUpdater *running_updater);
+	bool readShadowData(const std::string& shadowdata);
 
 	std::string letter;
 
@@ -56,4 +72,15 @@ protected:
 
 	ServerPingThread* pingthread;
 	THREADPOOL_TICKET pingthread_ticket;
+
+	bool got_dependencies;
+	std::vector<SImageDependency> dependencies;
+
+	bool set_complete;
+
+	int64 snapshot_id;
+
+	std::auto_ptr<IMutex> mutex;
+
+	std::string snapshot_group_loginfo;
 };

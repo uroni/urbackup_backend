@@ -387,6 +387,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
 	settings->allow_file_restore = settings_default->getValue("allow_file_restore", "true")=="true";
 	settings->allow_component_restore = settings_default->getValue("allow_component_restore", "true") == "true";
 	settings->allow_component_config = settings_default->getValue("allow_component_config", "true") == "true";
+	settings->image_snapshot_groups = settings_default->getValue("image_snapshot_groups", "");
+	settings->file_snapshot_groups = settings_default->getValue("file_snapshot_groups", "");
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
@@ -547,6 +549,9 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	readBoolClientSetting(settings_client, "allow_file_restore", &settings->allow_file_restore);
 	readBoolClientSetting(settings_client, "allow_component_config", &settings->allow_component_config);
 	readBoolClientSetting(settings_client, "allow_component_restore", &settings->allow_component_restore);
+
+	readStringClientSetting(settings_client, "image_snapshot_groups", &settings->image_snapshot_groups);
+	readStringClientSetting(settings_client, "file_snapshot_groups", &settings->file_snapshot_groups);
 }
 
 void ServerSettings::readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output)

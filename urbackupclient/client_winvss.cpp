@@ -504,6 +504,27 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			selected_vols.push_back(wpath_lower);
 		}
 
+		std::vector<std::string> norm_selected_vols = selected_vols;
+		for (size_t i = 0; i < norm_selected_vols.size(); ++i)
+		{
+			normalizeVolume(norm_selected_vols[i]);
+		}
+
+		for (size_t i = 0; i < norm_selected_vols.size(); ++i)
+		{
+			std::string& norm_vol = norm_selected_vols[i];
+			std::vector<std::string> add_vols = getSnapshotGroup(norm_vol, for_imagebackup);
+			for (size_t j = 0; j < add_vols.size(); ++j)
+			{
+				if (std::find(norm_selected_vols.begin(), norm_selected_vols.end(), add_vols[j])
+					== norm_selected_vols.end())
+				{
+					norm_selected_vols.push_back(add_vols[j]);
+					selected_vols.push_back(add_vols[j]+"\\");
+				}
+			}
+		}
+
 #ifndef VSS_XP
 #ifndef VSS_S03
 		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK));

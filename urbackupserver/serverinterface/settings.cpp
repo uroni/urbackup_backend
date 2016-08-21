@@ -161,6 +161,8 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(allow_component_config);
 	SET_SETTING(allow_component_restore);
 	SET_SETTING(allow_file_restore);
+	SET_SETTING(file_snapshot_groups);
+	SET_SETTING(image_snapshot_groups);
 #undef SET_SETTING
 	return ret;
 }

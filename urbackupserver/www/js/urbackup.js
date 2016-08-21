@@ -3247,7 +3247,9 @@ g.settings_list=[
 "max_running_jobs_per_client",
 "cbt_volumes",
 "cbt_crash_persistent_volumes",
-"ignore_disk_errors"
+"ignore_disk_errors",
+"image_snapshot_groups",
+"file_snapshot_groups"
 ];
 g.general_settings_list=[
 "backupfolder",

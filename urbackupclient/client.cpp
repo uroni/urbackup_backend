@@ -295,7 +295,7 @@ std::string add_trailing_slash(const std::string &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_scripts(false)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_scripts(false), volumes_cache(NULL)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -362,6 +362,7 @@ IMutex* IndexThread::getFilelistMutex(void)
 void IndexThread::updateDirs(void)
 {
 	readBackupDirs();
+	readSnapshotGroups();
 
 #ifdef _WIN32
 	std::vector<std::string> watching;
@@ -723,7 +724,7 @@ void IndexThread::operator()(void)
 					}
 					else
 					{
-						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + (scd->target));
+						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
 					}
 				}
 				else
@@ -808,7 +809,7 @@ void IndexThread::operator()(void)
 					}
 					else
 					{
-						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + (scd->target));
+						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
 						scd->running = true;
 					}
 
@@ -3158,6 +3159,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 		{
 			include_dirs = parseIncludePatterns(val);
 		}
+
 		Server->destroy(curr_settings);
 	}
 	else
@@ -5590,7 +5592,6 @@ void IndexThread::updateCbt()
 	}
 
 	std::set<std::string> vols;
-	static SVolumesCache* volumes_cache = NULL;
 
 	std::string settings_fn = "urbackup/data/settings.cfg";
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -6285,4 +6286,174 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 	{
 		index_hdat_file.reset();
 	}
+}
+
+void IndexThread::readSnapshotGroups()
+{
+	std::string settings_fn = "urbackup/data/settings.cfg";
+	if (!index_clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_" + conv_filename(index_clientsubname) + ".cfg";
+	}
+
+	image_snapshot_groups.clear();
+	file_snapshot_groups.clear();
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	if (curr_settings.get() != NULL)
+	{
+		readSnapshotGroup(curr_settings.get(), "image_snapshot_groups", image_snapshot_groups);
+		readSnapshotGroup(curr_settings.get(), "file_snapshot_groups", file_snapshot_groups);
+	}
+}
+
+void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::string & settings_name, std::vector<std::vector<std::string>>& groups)
+{
+	bool has_volumes = false;
+	std::string volumes_str;
+	std::vector<std::string> volumes;
+	if (settings_name == "image_snapshot_groups")
+	{
+		if (curr_settings->getValue("image_letters", &volumes_str)
+			|| curr_settings->getValue("image_letters_def", &volumes_str))
+		{
+			if (strlower(volumes_str) == "all")
+			{
+				volumes_str = get_all_volumes_list(false, volumes_cache);
+			}
+			else if (strlower(volumes_str) == "all_nonusb")
+			{
+				volumes_str = get_all_volumes_list(true, volumes_cache);
+			}
+
+			Tokenize(volumes_str, volumes, ";,");
+			for (size_t i = 0; i < volumes.size(); ++i)
+			{
+				normalizeVolume(volumes[i]);
+				volumes[i] = strlower(volumes[i]);
+			}
+			has_volumes = true;
+		}
+	}
+
+	std::string val;
+	if (curr_settings->getValue(settings_name, &val) || curr_settings->getValue(settings_name + "_def", &val))
+	{
+		if (trim(strlower(val)) == "all")
+		{
+			if (settings_name == "image_snapshot_groups")
+			{
+				groups.push_back(volumes);
+				return;
+			}
+			else if (settings_name=="file_snapshot_groups")
+			{
+				std::vector<std::string> groups_mem;
+				for (size_t i = 0; i < backup_dirs.size(); ++i)
+				{
+					if (backup_dirs[i].group == index_group)
+					{
+						std::string vol = backup_dirs[i].path;
+						normalizeVolume(vol);
+
+#ifdef _WIN32
+						vol = strlower(vol);
+#endif
+
+						if (std::find(groups_mem.begin(), groups_mem.end(), vol) == groups_mem.end())
+						{
+							groups_mem.push_back(vol);
+						}
+					}
+				}
+
+				groups.push_back(groups_mem);
+				return;
+			}
+		}
+
+		std::vector<std::string> groups_str;
+		TokenizeMail(val, groups_str, "|");
+
+		for (size_t i = 0; i < groups_str.size(); ++i)
+		{
+			std::vector<std::string> groups_mem;
+			TokenizeMail(groups_str[i], groups_mem, ";,");
+
+			if (!groups_mem.empty())
+			{
+				for (size_t j = 0; j < groups_mem.size();)
+				{
+					normalizeVolume(groups_mem[j]);
+#ifdef _WIN32
+					groups_mem[j] = strlower(groups_mem[j]);
+#endif
+					if (has_volumes
+						&& std::find(volumes.begin(), volumes.end(), groups_mem[j])
+							== volumes.end())
+					{
+						groups_mem.erase(groups_mem.begin() + j);
+						continue;
+					}
+
+					++j;
+				}
+
+				groups.push_back(groups_mem);
+			}
+		}
+	}
+}
+
+std::vector<std::string> IndexThread::getSnapshotGroup(std::string volume, bool for_image)
+{
+	if (!normalizeVolume(volume))
+	{
+		return std::vector<std::string>();
+	}
+
+#ifdef _WIN32
+	volume = strlower(volume);
+#endif
+
+	std::vector< std::vector<std::string> >& groups = for_image ? image_snapshot_groups : file_snapshot_groups;
+
+	for (size_t i = 0; i < groups.size(); ++i)
+	{
+		if (std::find(groups[i].begin(), groups[i].end(), volume) != groups[i].end())
+		{
+
+
+			return groups[i];
+		}
+	}
+
+	return std::vector<std::string>();
+}
+
+std::string IndexThread::otherVolumeInfo(SCDirs * dir, bool onlyref)
+{
+	if (onlyref
+		|| dir->ref==NULL)
+	{
+		return std::string();
+	}
+
+	std::string other_vols;
+	for (size_t i = 0; i < sc_refs.size(); ++i)
+	{
+		if (sc_refs[i]->volid != dir->ref->volid
+			&& sc_refs[i]->ssetid == dir->ref->ssetid)
+		{
+			other_vols += "&vol_" + convert(i) + "=" + EscapeParamString(sc_refs[i]->target);
+			other_vols += "&id_" + convert(i) + "=" + convert(sc_refs[i]->save_id);
+		}
+	}
+
+	if (!other_vols.empty())
+	{
+		other_vols[0] = '|';
+	}
+
+	return other_vols;
 }

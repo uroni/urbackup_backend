@@ -30,6 +30,7 @@ class BackupServerContinuous;
 class ContinuousBackup;
 class Backup;
 class ServerBackupDao;
+class ImageBackup;
 
 const int c_group_default = 0;
 const int c_group_continuous = 1;
@@ -240,6 +241,8 @@ private:
 	bool updateClientSetting(const std::string &key, const std::string &value);
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
+	std::string normalizeVolume(const std::string& volume);
+	bool isImageGroupQueued(const std::string& letter, bool full);
 	bool isRunningFileBackup(int group);	
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
@@ -362,6 +365,8 @@ private:
 
 	std::auto_ptr<IMutex> restore_mutex;
 	std::vector<SRunningRestore> running_restores;
+
+	std::vector< std::map<ImageBackup*, bool>  > running_image_groups;
 
 	volatile bool update_capa;
 };

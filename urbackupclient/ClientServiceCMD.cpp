@@ -1227,7 +1227,17 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			running_jobs = watoi(params["running_jobs"]);
 		}
 
-		if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
+		if (image_inf.shadow_id != -1)
+		{
+			image_inf.shadowdrive.clear();
+			CWData data;
+			data.addChar(4);
+			data.addVoidPtr(mempipe);
+			data.addInt(image_inf.shadow_id);
+			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+			mempipe_owner = false;
+		}
+		else if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
 		{
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
@@ -1241,15 +1251,11 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner=false;
 		}
-		else if(image_inf.shadow_id!=-1)
+		else if(!image_inf.no_shadowcopy)
 		{
-			image_inf.shadowdrive.clear();
-			CWData data;
-			data.addChar(4);
-			data.addVoidPtr(mempipe);
-			data.addInt(image_inf.shadow_id);
-			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-			mempipe_owner=false;
+			Server->Log("Missing shadowid and not a new backup", LL_ERROR);
+			do_quit = true;
+			return;
 		}
 
 		if(image_inf.no_shadowcopy)
@@ -1345,7 +1351,17 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				running_jobs = watoi(params["running_jobs"]);
 			}
 
-			if(image_inf.startpos==0)
+			if (image_inf.shadow_id != -1)
+			{
+				image_inf.shadowdrive.clear();
+				CWData data;
+				data.addChar(4);
+				data.addVoidPtr(mempipe);
+				data.addInt(image_inf.shadow_id);
+				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+				mempipe_owner = false;
+			}
+			else if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
 			{
 				CWData data;
 				data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
@@ -1359,16 +1375,13 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner=false;
 			}
-			else if(image_inf.shadow_id!=-1)
+			else if(!image_inf.no_shadowcopy)
 			{
-				image_inf.shadowdrive.clear();
-				CWData data;
-				data.addChar(4);
-				data.addVoidPtr(mempipe);
-				data.addInt(image_inf.shadow_id);
-				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				mempipe_owner=false;
+				Server->Log("Missing shadowid and not a new backup", LL_ERROR);
+				do_quit = true;
+				return;
 			}
+
 			hashdatafile=Server->openTemporaryFile();
 			if(hashdatafile==NULL)
 			{

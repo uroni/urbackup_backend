@@ -490,6 +490,43 @@ void ClientMain::operator ()(void)
 			{
 				if (backup_queue[i].ticket != ILLEGAL_THREADPOOL_TICKET)
 				{
+					if (!backup_queue[i].backup->isFileBackup())
+					{
+						ImageBackup* ibackup = dynamic_cast<ImageBackup*>(backup_queue[i].backup);
+						if (ibackup != NULL)
+						{
+							std::vector<ImageBackup::SImageDependency> dependencies = ibackup->getDependencies();
+							if (!dependencies.empty())
+							{
+								std::map<ImageBackup*, bool> new_running_image_group;
+								new_running_image_group[ibackup] = false;
+
+								for (size_t j = 0; j < dependencies.size(); ++j)
+								{
+									std::string vols_list = ibackup->getLetter();
+									for (size_t k = 0; k < dependencies.size(); ++k)
+									{
+										if (j == k) continue;
+										vols_list += ", " + dependencies[k].volume;
+									}
+
+									SRunningBackup backup;
+									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
+										ibackup->isIncrementalBackup(), dependencies[j].volume, curr_server_token, dependencies[j].volume, false,
+										dependencies[j].snapshot_id, vols_list);
+									backup.backup = idep;
+									backup.letter = normalizeVolume(dependencies[j].volume);
+
+									new_running_image_group[idep] = false;
+
+									backup_queue.push_back(backup);
+								}
+
+								running_image_groups.push_back(new_running_image_group);
+							}
+						}
+					}
+
 					if (Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0))
 					{
 						ServerStatus::subRunningJob(clientmainname);
@@ -524,7 +561,67 @@ void ClientMain::operator ()(void)
 							last_backup_try = Server->getTimeMS();
 						}
 
-						delete backup_queue[i].backup;
+						bool del_backup = true;
+
+						if (!backup_queue[i].backup->isFileBackup())
+						{
+							ImageBackup* ibackup = dynamic_cast<ImageBackup*>(backup_queue[i].backup);
+							if (ibackup != NULL)
+							{
+								for (size_t j = 0; j < running_image_groups.size();)
+								{
+									{
+										std::map<ImageBackup*, bool>::iterator it = running_image_groups[j].find(ibackup);
+										if (it != running_image_groups[j].end())
+										{
+											ServerCleanupThread::lockImageFromCleanup(ibackup->getBackupId());
+											del_backup = false;
+											it->second = true;
+										}
+									}
+
+									bool finished = true;
+									bool success = true;
+									for (std::map<ImageBackup*, bool>::iterator it = running_image_groups[j].begin();
+										it != running_image_groups[j].end(); ++it)
+									{
+										if (!it->second)
+										{
+											finished = false;
+										}
+										else if (!it->first->getResult())
+										{
+											success = false;
+										}
+									}
+
+									if (finished)
+									{
+										for (std::map<ImageBackup*, bool>::iterator it = running_image_groups[j].begin();
+											it != running_image_groups[j].end(); ++it)
+										{
+											if (success)
+											{
+												backup_dao->setImageBackupComplete(it->first->getBackupId());
+											}
+											ServerCleanupThread::unlockImageFromCleanup(it->first->getBackupId());
+											delete it->first;
+										}
+
+										running_image_groups.erase(running_image_groups.begin() + j);
+										continue;
+									}
+
+									++j;
+								}
+							}
+						}
+
+						if (del_backup)
+						{
+							delete backup_queue[i].backup;
+						}
+
 						send_logdata = true;
 						backup_queue.erase(backup_queue.begin() + i);
 						continue;
@@ -677,12 +774,13 @@ void ClientMain::operator ()(void)
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
-					if( ( (isUpdateFullImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false)) || do_full_image_now) )
+					if( ( (isUpdateFullImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false)) || do_full_image_now)
+						&& !isImageGroupQueued(letter, true) )
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter, curr_server_token, letter);
+							false, letter, curr_server_token, letter, true, 0, std::string());
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -700,11 +798,12 @@ void ClientMain::operator ()(void)
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
-					if( ((isUpdateIncrImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false) ) || do_incr_image_now) )
+					if( ((isUpdateIncrImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false) ) || do_incr_image_now)
+						&& !isImageGroupQueued(letter, false) )
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter, curr_server_token, letter);
+							true, letter, curr_server_token, letter, true, 0, std::string());
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -2638,6 +2737,73 @@ bool ClientMain::isRunningImageBackup(const std::string& letter)
 		if(!backup_queue[i].backup->isFileBackup() && backup_queue[i].letter==letter)
 		{
 			return true;
+		}
+	}
+
+	return false;
+}
+
+std::string ClientMain::normalizeVolume(const std::string & volume)
+{
+	if (volume.size() == 1)
+	{
+		return strlower(volume);
+	}
+
+	if (volume.size() == 2
+		&& volume[1] == ':')
+	{
+		return strlower(volume.substr(0, 1));
+	}
+
+	if (volume.size() == 3
+		&& volume[1] == ':'
+		&& (volume[2] == '\\' || volume[2] == '/'))
+	{
+		return strlower(volume.substr(0, 1));
+	}
+
+	return volume;
+}
+
+bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
+{
+	std::string image_snapshot_groups = server_settings->getSettings()->image_snapshot_groups;
+	std::vector<std::string> groups;
+	TokenizeMail(image_snapshot_groups, groups, "|");
+
+	image_snapshot_groups = strlower(image_snapshot_groups);
+
+	std::string vol = normalizeVolume(letter);
+
+	for (size_t i = 0; i < groups.size(); ++i)
+	{
+		std::vector<std::string> vols;
+		TokenizeMail(groups[i], vols, ";,");
+
+		for (size_t j = 0; j < vols.size(); ++j)
+		{
+			vols[j] = normalizeVolume(vols[j]);
+		}
+
+		if (image_snapshot_groups=="all"
+			|| std::find(vols.begin(), vols.end(), vol) != vols.end())
+		{
+			for (size_t k = 0; k < backup_queue.size(); ++k)
+			{
+				if (backup_queue[k].backup->isIncrementalBackup()
+					&& full)
+				{
+					continue;
+				}
+
+				if (image_snapshot_groups == "all"
+					|| std::find(vols.begin(), vols.end(), normalizeVolume(backup_queue[k].letter))
+						!= vols.end())
+				{
+					return true;
+				}
+			}
 		}
 	}
 

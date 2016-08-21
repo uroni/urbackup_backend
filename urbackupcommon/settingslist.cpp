@@ -93,6 +93,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("allow_file_restore");
 	ret.push_back("allow_component_restore");
 	ret.push_back("allow_component_config");
+	ret.push_back("file_snapshot_groups");
+	ret.push_back("image_snapshot_groups");
 	return ret;
 }
 
@@ -122,6 +124,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("cbt_volumes");
 	ret.push_back("cbt_crash_persistent_volumes");
 	ret.push_back("ignore_disk_errors");
+	ret.push_back("file_snapshot_groups");
+	ret.push_back("image_snapshot_groups");
 	return ret;
 }
 

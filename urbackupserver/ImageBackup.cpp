@@ -108,10 +108,26 @@ namespace
 }
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
-	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details)
+	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details,
+	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo)
 	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details),
-	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false)
+	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false),
+	set_complete(set_complete), snapshot_id(snapshot_id), mutex(Server->createMutex()), got_dependencies(false),
+	snapshot_group_loginfo(snapshot_group_loginfo)
 {
+}
+
+std::vector<ImageBackup::SImageDependency> ImageBackup::getDependencies()
+{
+	IScopedLock lock(mutex.get());
+
+	if (got_dependencies)
+	{
+		return std::vector<ImageBackup::SImageDependency>();
+	}
+
+	got_dependencies = true;
+	return dependencies;
 }
 
 bool ImageBackup::doBackup()
@@ -151,6 +167,11 @@ bool ImageBackup::doBackup()
 		}
 	}
 
+	if (!snapshot_group_loginfo.empty())
+	{
+		ServerLogger::Log(logid, "Image backup is being backed up in a snapshot group together with volumes " + snapshot_group_loginfo, LL_INFO);
+	}
+
 	bool image_hashed_transfer;
 	if(client_main->isOnInternetConnection())
 	{
@@ -168,7 +189,8 @@ bool ImageBackup::doBackup()
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
-		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL", server_token, "SYSVOL");
+		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
+			false, "SYSVOL", server_token, "SYSVOL", false, 0, std::string());
 		sysvol_backup.setStopBackupRunning(false);
 		sysvol_backup();
 
@@ -189,7 +211,8 @@ bool ImageBackup::doBackup()
 		if(client_main->getProtocolVersions().efi_version>0)
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
-			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP", server_token, "ESP");
+			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
+				false, "ESP", server_token, "ESP", false, 0, std::string());
 			esp_backup.setStopBackupRunning(false);
 			esp_backup();
 
@@ -274,26 +297,21 @@ bool ImageBackup::doBackup()
 		if(sysvol_id!=-1)
 		{
 			backup_dao->saveImageAssociation(backupid, sysvol_id);
+			backup_dao->setImageBackupComplete(sysvol_id);
 		}
 
 		if(esp_id!=-1)
 		{
 			backup_dao->saveImageAssociation(backupid, esp_id);
-		}
-	}
-	else
-	{
-		if (sysvol_id!=-1)
-		{
-			backup_dao->setImageBackupIncomplete(sysvol_id);
-		}
-		if (esp_id != -1)
-		{
-			backup_dao->setImageBackupIncomplete(esp_id);
+			backup_dao->setImageBackupComplete(esp_id);
 		}
 	}
 
-	if(ret && letter!="SYSVOL" && letter!="ESP")
+	if(ret
+		&& letter!="SYSVOL"
+		&& letter!="ESP"
+		&& set_complete
+		&& dependencies.empty() )
 	{
 		backup_dao->updateClientLastImageBackup(backupid, clientid);
 	}
@@ -413,6 +431,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	chksum_str += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 
+	if (snapshot_id != 0)
+	{
+		chksum_str += "&shadowid=" + convert(snapshot_id);
+	}
+
 	if(pParentvhd.empty())
 	{
 		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
@@ -510,8 +533,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 totalblocks=0;
 	int64 mbr_offset=0;
 	_u32 off=0;
-	std::string shadowdrive;
-	int shadow_id=-1;
 	bool persistent=false;
 	unsigned char *zeroblockdata=NULL;
 	int64 nextblock=0;
@@ -640,7 +661,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 				if(pParentvhd.empty())
 				{
-					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+convert(continue_block)+"&shadowid="+convert(shadow_id)+ "&status_id=" + convert(status_id);
+					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&start="+convert(continue_block)+"&shadowid="+convert(snapshot_id)+ "&status_id=" + convert(status_id);
 					if(transfer_bitmap)
 					{
 						cmd+="&bitmap=1";
@@ -666,7 +687,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				}
 				else
 				{
-					std::string ts = "INCR IMAGE letter=C:&shadowdrive=" + shadowdrive + "&start=" + convert(continue_block) + "&shadowid=" + convert(shadow_id) + "&hashsize=" 
+					std::string ts = "INCR IMAGE letter="+pLetter+"&start=" + convert(continue_block) + "&shadowid=" + convert(snapshot_id) + "&hashsize="
 						+ convert(parenthashfile->Size()) + "&status_id=" + convert(status_id);
 					if(transfer_bitmap)
 					{
@@ -976,21 +997,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					issmall=true;
 				}
 
-				unsigned int shadowdrive_size=0;
+				unsigned int shadowdata_size=0;
 				csize+=sizeof(unsigned int);
 				if(r>=csize)
 				{
-					memcpy(&shadowdrive_size, &buffer[off], sizeof(unsigned int));
-					shadowdrive_size = little_endian(shadowdrive_size);
+					memcpy(&shadowdata_size, &buffer[off], sizeof(unsigned int));
+					shadowdata_size = little_endian(shadowdata_size);
 					off+=sizeof(unsigned int);
-					if(shadowdrive_size>0)
+					if(shadowdata_size>0)
 					{
-						csize+=shadowdrive_size;
+						csize+= shadowdata_size;
 						if( r>=csize)
 						{
-							shadowdrive.resize(shadowdrive_size);
-							memcpy(&shadowdrive[0],  &buffer[off], shadowdrive_size);
-							off+=shadowdrive_size;
+							std::string shadowdata(&buffer[off], shadowdata_size);
+							readShadowData(shadowdata);
+							off+= shadowdata_size;
 						}
 						else
 						{
@@ -1006,8 +1027,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				csize+=sizeof(int);
 				if(r>=csize)
 				{
+					int shadow_id;
 					memcpy(&shadow_id, &buffer[off], sizeof(int));
-					shadow_id = little_endian(shadow_id);
+					snapshot_id = little_endian(shadow_id);
 					off+=sizeof(int);
 				}
 				else
@@ -1336,11 +1358,27 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								db->BeginWriteTransaction();
 								backup_dao->setImageSize(image_size, backupid);
 								backup_dao->addImageSizeToClient(clientid, image_size);
-								if(vhdfile_err==false)
+								if(!vhdfile_err)
 								{
-									backup_dao->setImageBackupComplete(backupid);
+									if (dependencies.empty())
+									{
+										backup_dao->setImageBackupComplete(backupid);
+									}
+									db->EndTransaction();
+
+									if (image_file_format == image_file_format_cowraw)
+									{
+										if(!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+										{
+											ServerLogger::Log(logid, "Making image backup snapshot read only failed", LL_WARNING);
+										}
+									}
 								}
-								db->EndTransaction();
+								else
+								{
+									db->EndTransaction();
+								}
+								
 								Server->destroy(t_file);
 							}
 
@@ -1997,4 +2035,35 @@ void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::str
 	{
 		running_updater->setBackupid(backupid);
 	}
+}
+
+bool ImageBackup::readShadowData(const std::string & shadowdata)
+{
+	CRData rdata(shadowdata.data(), shadowdata.size());
+	char version=-1;
+	if (!rdata.getChar(&version) || version != 0)
+	{
+		Server->Log("Unknown shadow data version: " + convert(version), LL_ERROR);
+		return false;
+	}
+
+	IScopedLock lock(mutex.get());
+
+	SImageDependency dep;
+	while (rdata.getStr(&dep.volume)
+		&& rdata.getVarInt(&dep.snapshot_id))
+	{
+		dependencies.push_back(dep);
+
+		if (!snapshot_group_loginfo.empty())
+		{
+			snapshot_group_loginfo += ", ";
+		}
+
+		snapshot_group_loginfo += dep.volume;
+	}
+
+	ServerLogger::Log(logid, "Image backup is being backed up in a snapshot group together with volumes " + snapshot_group_loginfo, LL_INFO);
+
+	return true;
 }

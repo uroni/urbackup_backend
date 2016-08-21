@@ -92,6 +92,31 @@ void ImageThread::ImageErrRunning(std::string msg)
 	delete [] buffer;
 }
 
+void ImageThread::createShadowData(str_map & other_vols, CWData & shadow_data)
+{
+	if (!other_vols.empty())
+	{
+		shadow_data.addChar(0);
+
+		for (str_map::iterator it = other_vols.begin();
+			it != other_vols.end(); ++it)
+		{
+			if (next(it->first, 0, "vol_"))
+			{
+				std::string idx = getafter("vol_", it->first);
+
+				str_map::iterator it_id = other_vols.find("id_" + idx);
+
+				if (it_id != other_vols.end())
+				{
+					shadow_data.addString(it->second);
+					shadow_data.addVarInt(watoi(it_id->second));
+				}
+			}
+		}
+	}
+}
+
 const unsigned int c_vhdblocksize=(1024*1024/2);
 const unsigned int c_hashsize=32;
 
@@ -107,6 +132,7 @@ bool ImageThread::sendFullImageThread(void)
 	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
 	int r_shadow_id = -1;
+	str_map other_vols;
 
 	bool run=true;
 	while(run)
@@ -120,6 +146,13 @@ bool ImageThread::sendFullImageThread(void)
 				image_inf->shadowdrive=getafter("-", msg);
 				save_id=atoi(getuntil("-", image_inf->shadowdrive).c_str());
 				image_inf->shadowdrive=getafter("-", image_inf->shadowdrive);
+				
+				if (image_inf->shadowdrive.find("|") != std::string::npos)
+				{
+					ParseParamStrHttp(getafter("|", image_inf->shadowdrive), &other_vols);
+					image_inf->shadowdrive = getuntil("|", image_inf->shadowdrive);
+				}
+
 				if(image_inf->shadowdrive.size()>0 && image_inf->shadowdrive[image_inf->shadowdrive.size()-1]=='\\')
 					image_inf->shadowdrive.erase(image_inf->shadowdrive.begin()+image_inf->shadowdrive.size()-1);
 				if(image_inf->shadowdrive.empty())
@@ -191,6 +224,8 @@ bool ImageThread::sendFullImageThread(void)
 			sha256_ctx shactx;
 			unsigned char *zeroblockbuf=NULL;
 			unsigned int vhdblocks=c_vhdblocksize/blocksize;
+			CWData shadow_data;
+			createShadowData(other_vols, shadow_data);
 
 			if(with_checksum)
 			{
@@ -201,7 +236,7 @@ bool ImageThread::sendFullImageThread(void)
 
 			if(image_inf->startpos==0)
 			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)+c_hashsize];
+				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize()+sizeof(int)+c_hashsize];
 				char *cptr=buffer;
 				memcpy(cptr, &blocksize, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
@@ -225,14 +260,14 @@ bool ImageThread::sendFullImageThread(void)
 					*flags|=ImageFlag_Bitmap;
 				}
 				++cptr;
-				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
-				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
+				unsigned int shadowdata_size=little_endian((unsigned int)shadow_data.getDataSize());
+				memcpy(cptr, &shadowdata_size, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &image_inf->shadowdrive[0], image_inf->shadowdrive.size());
-				cptr+=image_inf->shadowdrive.size();
+				memcpy(cptr, shadow_data.getDataPtr(), shadow_data.getDataSize());
+				cptr+= shadow_data.getDataSize();
 				memcpy(cptr, &save_id, sizeof(int));
 				cptr+=sizeof(int);
-				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int);
+				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize() +sizeof(int);
 				if(with_checksum)
 				{
 					sha256_update(&shactx, (unsigned char*)buffer, (unsigned int)bsize);
@@ -479,6 +514,7 @@ bool ImageThread::sendIncrImageThread(void)
 	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
 	int r_shadow_id = -1;
+	str_map other_vols;
 
 	bool run=true;
 	while(run)
@@ -492,6 +528,11 @@ bool ImageThread::sendIncrImageThread(void)
 				image_inf->shadowdrive=getafter("-", msg);
 				save_id=atoi(getuntil("-", image_inf->shadowdrive).c_str());
 				image_inf->shadowdrive=getafter("-", image_inf->shadowdrive);
+				if (image_inf->shadowdrive.find("|") != std::string::npos)
+				{
+					ParseParamStrHttp(getafter("|", image_inf->shadowdrive), &other_vols);
+					image_inf->shadowdrive = getuntil("|", image_inf->shadowdrive);
+				}
 				if(image_inf->shadowdrive.size()>0 && image_inf->shadowdrive[image_inf->shadowdrive.size()-1]=='\\')
 					image_inf->shadowdrive.erase(image_inf->shadowdrive.begin()+image_inf->shadowdrive.size()-1);
 				if(image_inf->shadowdrive.empty())
@@ -683,6 +724,8 @@ bool ImageThread::sendIncrImageThread(void)
 			vhdblocks=c_vhdblocksize/blocksize;
 			int64 currvhdblock=0;
 			int64 numblocks=drivesize/blocksize;
+			CWData shadow_data;
+			createShadowData(other_vols, shadow_data);
 
 			if (hdat_img.get() != NULL
 				&& unchanged_blocks>0)
@@ -693,7 +736,7 @@ bool ImageThread::sendIncrImageThread(void)
 
 			if(image_inf->startpos==0)
 			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)+c_hashsize];
+				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize() +sizeof(int)+c_hashsize];
 				char *cptr=buffer;
 				memcpy(cptr, &blocksize, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
@@ -717,14 +760,14 @@ bool ImageThread::sendIncrImageThread(void)
 					*flags |= ImageFlag_Bitmap;
 				}
 				++cptr;
-				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
-				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
+				unsigned int shadowdata_size=little_endian((unsigned int)shadow_data.getDataSize());
+				memcpy(cptr, &shadowdata_size, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &image_inf->shadowdrive[0], image_inf->shadowdrive.size());
-				cptr+=image_inf->shadowdrive.size();
+				memcpy(cptr, shadow_data.getDataPtr(), shadow_data.getDataSize());
+				cptr+= shadow_data.getDataSize();
 				memcpy(cptr, &save_id, sizeof(int));
 				cptr+=sizeof(int);
-				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int);
+				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize() +sizeof(int);
 				if(with_checksum)
 				{
 					sha256_init(&shactx);

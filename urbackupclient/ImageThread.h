@@ -25,6 +25,8 @@ private:
 	void ImageErr(const std::string &msg, int loglevel=LL_ERROR);
 	void ImageErrRunning(std::string msg);
 
+	void createShadowData(str_map& other_vols, CWData& shadow_data);
+
 	bool sendFullImageThread(void);
 	bool sendIncrImageThread(void);
 

@@ -259,6 +259,7 @@ struct SVssInstance
 };
 
 class ClientDAO;
+struct SVolumesCache;
 
 class IndexThread : public IThread, public IFileServ::IReadErrorCallback, IHashOutput
 {
@@ -493,11 +494,23 @@ private:
 
 	void openCbtHdatFile(SCRef* ref, const std::string& sharename, const std::string& volume);
 
+	void readSnapshotGroups();
+
+	void readSnapshotGroup(ISettingsReader *curr_settings, const std::string& settings_name, std::vector< std::vector<std::string> >& groups);
+
+	std::vector<std::string> getSnapshotGroup(std::string volume, bool for_image);
+
+	std::string otherVolumeInfo(SCDirs* dir, bool onlyref);
+
+	SVolumesCache* volumes_cache;
+
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
 
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
+	std::vector< std::vector<std::string> > image_snapshot_groups;
+	std::vector< std::vector<std::string> > file_snapshot_groups;
 
 	std::vector<std::string> changed_dirs;
 	std::vector<std::string> open_files;
