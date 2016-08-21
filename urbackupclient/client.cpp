@@ -6296,7 +6296,7 @@ void IndexThread::readSnapshotGroups()
 	}
 }
 
-void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::string & settings_name, std::vector<std::vector<std::string>>& groups)
+void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::string & settings_name, std::vector<std::vector<std::string> >& groups)
 {
 	bool has_volumes = false;
 	std::string volumes_str;
