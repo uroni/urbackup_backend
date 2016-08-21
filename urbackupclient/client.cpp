@@ -6301,6 +6301,7 @@ void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::s
 	bool has_volumes = false;
 	std::string volumes_str;
 	std::vector<std::string> volumes;
+#ifdef _WIN32
 	if (settings_name == "image_snapshot_groups")
 	{
 		if (curr_settings->getValue("image_letters", &volumes_str)
@@ -6324,6 +6325,7 @@ void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::s
 			has_volumes = true;
 		}
 	}
+#endif
 
 	std::string val;
 	if (curr_settings->getValue(settings_name, &val) || curr_settings->getValue(settings_name + "_def", &val))
