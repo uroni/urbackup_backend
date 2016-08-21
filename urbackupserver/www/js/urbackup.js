@@ -1191,7 +1191,8 @@ function show_status2(data)
 			}
 		}
 		
-		if(obj.groupname.length==0)
+		if(typeof obj.groupname==="undefined" 
+			|| obj.groupname.length==0)
 		{
 			obj.groupname = trans("default_group");
 		}
