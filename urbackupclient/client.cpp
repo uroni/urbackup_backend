@@ -3728,17 +3728,6 @@ void IndexThread::addFileExceptions(std::vector<std::string>& exclude_dirs)
 
 		toks[i]=trim(toks[i]);
 
-		size_t epos = toks[i].rfind(' ');
-		if (epos != std::string::npos)
-		{
-			epos = toks[i].rfind(' ', epos - 1);
-		}
-
-		if (epos != std::string::npos)
-		{
-			toks[i] = toks[i].substr(0, epos);
-		}
-
 		if(toks[i].find("\\??\\")==0)
 		{
 			toks[i].erase(0, 4);
