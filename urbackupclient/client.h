@@ -653,6 +653,7 @@ private:
 	std::map<std::string, size_t> index_hdat_sequence_ids;
 	int64 index_hdat_fs_block_size;
 	int64 index_chunkhash_pos;
+	_u16 index_chunkhash_pos_offset;
 
 #ifdef _WIN32
 	struct SComponent

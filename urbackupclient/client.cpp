@@ -4271,7 +4271,11 @@ void IndexThread::hash_output_all_adlers(int64 pos, const char* hash, size_t hsi
 	if (index_chunkhash_pos != -1
 		&& index_hdat_file.get() != NULL)
 	{
-		index_hdat_file->Write(index_chunkhash_pos, hash, hsize);
+		assert(hsize == chunkhash_single_size);
+		char chunkhash[sizeof(_u16) + chunkhash_single_size];
+		memcpy(chunkhash, &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
+		memcpy(chunkhash + sizeof(_u16), hash, chunkhash_single_size);
+		index_hdat_file->Write(index_chunkhash_pos, chunkhash, sizeof(chunkhash));
 	}
 }
 
@@ -4334,7 +4338,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 				skip_start = fpos;
 			}
 			fpos += curr_bsize;
-			rc = curr_bsize;
+			rc = static_cast<_u32>(curr_bsize);
 			continue;
 		}
 
@@ -4364,12 +4368,16 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= fpos + static_cast<int64>(bsize))
 			{
 				int64 volume_pos = extents[curr_extent_idx].volume_offset + (fpos - extents[curr_extent_idx].offset);
-				index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
+				index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);
+				index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
 
-				char chunkhash[chunkhash_single_size];
-				if (index_hdat_file->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+				char chunkhash[sizeof(_u16) + chunkhash_single_size];
+				if (index_hdat_file->Read(index_chunkhash_pos, chunkhash, sizeof(chunkhash)) == sizeof(chunkhash))
 				{
-					if (!buf_is_zero(chunkhash, chunkhash_single_size))
+					_u16 chunkhash_offset;
+					memcpy(&chunkhash_offset, chunkhash, sizeof(chunkhash_offset));
+					if (index_chunkhash_pos_offset == chunkhash_offset
+						&& !buf_is_zero(chunkhash, sizeof(chunkhash)) )
 					{
 						if (sparse_extent_content.empty())
 						{
@@ -4377,7 +4385,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 							assert(sparse_extent_content.size() == chunkhash_single_size);
 						}
 
-						if (memcmp(chunkhash, sparse_extent_content.data(), chunkhash_single_size) == 0)
+						if (memcmp(chunkhash+sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size) == 0)
 						{
 							if (skip_start == -1)
 							{
@@ -4395,7 +4403,7 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 								skip_start = -1;
 							}
 
-							hf.addHashAllAdler(chunkhash, chunkhash_single_size, bsize);
+							hf.addHashAllAdler(chunkhash+sizeof(_u16), chunkhash_single_size, bsize);
 						}
 
 						fpos += bsize;
@@ -4454,7 +4462,10 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 					assert(sparse_extent_content.size() == chunkhash_single_size);
 				}
 
-				index_hdat_file->Write(index_chunkhash_pos, sparse_extent_content.data(), chunkhash_single_size);
+				char chunkhash[sizeof(_u16) + chunkhash_single_size];
+				memcpy(chunkhash, &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
+				memcpy(chunkhash + sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size);
+				index_hdat_file->Write(index_chunkhash_pos,	chunkhash, sizeof(chunkhash));
 			}
 
 			continue;
@@ -5410,13 +5421,15 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		return false;
 	}
 
-	hdat_file->Resize(bitmap_data->BitmapSize * 8 * chunkhash_single_size);
+	hdat_file->Resize(bitmap_data->BitmapSize * 8 * (sizeof(_u16)+chunkhash_single_size));
 
 	VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
 
-	char zero_chunk[chunkhash_single_size] = {};
+	char zero_chunk[sizeof(_u16) + chunkhash_single_size] = {};
 
 	curr_byte = 0;
+	bool last_bit_set = false;
+	bool last_zeroed = false;
 	for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
 	{
 		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
@@ -5425,22 +5438,60 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 			if (ch == 0)
 			{
+				if (last_bit_set)
+				{
+					if (hdat_file->Write(((int64)curr_byte * 8) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+					{
+						std::string errmsg;
+						int64 err = os_last_error(errmsg);
+						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
+						return false;
+					}
+					last_bit_set = false;
+					last_zeroed = false;
+				}
+
 				++curr_byte;
 				continue;
 			}
 
 			for (DWORD bit = 0; bit < 8; ++bit)
 			{
-				if ((ch & (1 << bit))>0)
+				bool has_bit = (ch & (1 << bit)) > 0;
+				if (has_bit
+					|| last_bit_set)
 				{
-					if (hdat_file->Write((curr_byte * 8 + bit)*chunkhash_single_size, zero_chunk, chunkhash_single_size) != chunkhash_single_size)
+					if (!last_bit_set
+						&& !last_zeroed)
+					{
+						int64 last_pos = (int64)curr_byte * 8 + bit;
+						if (last_pos > 0)
+						{
+							--last_pos;
+							if (hdat_file->Write(last_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+							{
+								std::string errmsg;
+								int64 err = os_last_error(errmsg);
+								VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
+								return false;
+							}
+						}
+					}
+
+					if (hdat_file->Write(((int64)curr_byte * 8 + bit)* sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
 					{
 						std::string errmsg;
 						int64 err = os_last_error(errmsg);
 						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 						return false;
 					}
+					last_zeroed = true;
 				}
+				else
+				{
+					last_zeroed = true;
+				}
+				last_bit_set = has_bit;
 			}
 			++curr_byte;
 		}

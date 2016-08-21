@@ -105,6 +105,8 @@ void ChunkSendThread::operator()(void)
 				Server->destroy(cbt_hash_file_info.cbt_hash_file);
 				cbt_hash_file_info.cbt_hash_file = NULL;
 			}
+
+			file_extents.clear();
 		}
 		else if (chunk.msg == ID_FLUSH_SOCKET)
 		{
@@ -388,6 +390,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	bool script_eof=false;
 	bool cbt_unchanged = false;
 	int64 index_chunkhash_pos = -1;
+	_u16 index_chunkhash_pos_offset;
 
 	if (cbt_hash_file_info.cbt_hash_file!=NULL
 		&&  curr_pos+c_checkpoint_dist<=curr_file_size
@@ -397,43 +400,73 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	{
 		if (cbt_hash_file_info.metadata_offset == -1)
 		{
-			if (file_extents.empty())
+			bool found_extent = false;
+			while (!found_extent)
 			{
-				IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
-				if (fs_file != NULL
-					&& cbt_hash_file_info.blocksize > 0)
+				if (file_extents.empty())
 				{
-					file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+					IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+					if (fs_file != NULL
+						&& cbt_hash_file_info.blocksize > 0)
+					{
+						file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+					}
 				}
-			}
 
-			for (size_t i = 0; i < file_extents.size(); ++i)
-			{
-				if (file_extents[i].offset <= spos &&
-					file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
+				for (size_t i = 0; i < file_extents.size(); ++i)
 				{
-					int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
-					index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
-
-					char chunkhash[chunkhash_single_size];
-					if (cbt_hash_file_info.cbt_hash_file->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+					if (file_extents[i].offset <= spos &&
+						file_extents[i].offset + file_extents[i].size >= spos + c_checkpoint_dist)
 					{
-						if (memcmp(chunkhash, chunk->big_hash, chunkhash_single_size) == 0)
+						int64 volume_pos = file_extents[i].volume_offset + (spos - file_extents[i].offset);
+						index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
+						index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);
+
+						char chunkhash[sizeof(_u16) + chunkhash_single_size];
+						if (cbt_hash_file_info.cbt_hash_file->Read(index_chunkhash_pos, chunkhash, sizeof(chunkhash))
+							== sizeof(chunkhash))
 						{
-							cbt_unchanged = true;
+							_u16 chunkhash_pos_offset;
+							memcpy(&chunkhash_pos_offset, chunkhash, sizeof(chunkhash_pos_offset));
+							if (chunkhash_pos_offset == index_chunkhash_pos_offset
+								&& memcmp(chunkhash+sizeof(_u16), chunk->big_hash, chunkhash_single_size) == 0)
+							{
+								cbt_unchanged = true;
+								index_chunkhash_pos = -1;
+							}
+							else if (!buf_is_zero(chunkhash + sizeof(_u16), chunkhash_single_size))
+							{
+								index_chunkhash_pos = -1;
+							}
+						}
+						else
+						{
 							index_chunkhash_pos = -1;
 						}
-						else if (!buf_is_zero(chunkhash, chunkhash_single_size))
+
+						found_extent = true;
+						break;
+					}
+				}
+
+				if (!found_extent)
+				{
+					if (has_more_extents
+						&& !file_extents.empty())
+					{
+						IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+						file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
+
+						if (!file_extents.empty())
 						{
-							index_chunkhash_pos = -1;
+							found_extent = true;
 						}
 					}
-					else
+					else if (!has_more_extents
+						|| file_extents.empty())
 					{
-						index_chunkhash_pos = -1;
+						found_extent = true;
 					}
-
-					break;
 				}
 			}
 		}
@@ -455,7 +488,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	std::vector<char> new_chunkhashes;
 	if (index_chunkhash_pos != -1)
 	{
-		new_chunkhashes.resize(chunkhash_single_size);
+		new_chunkhashes.resize(sizeof(_u16) + chunkhash_single_size);
 	}
 
 	if (!cbt_unchanged)
@@ -562,7 +595,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				if (!new_chunkhashes.empty())
 				{
 					_u32 little_c_addler = little_endian(c_adler);
-					memcpy(&new_chunkhashes[big_hash_size + small_hash_size*small_hash_num], &little_c_addler, sizeof(little_c_addler));
+					memcpy(&new_chunkhashes[sizeof(_u16) + big_hash_size + small_hash_size*small_hash_num], &little_c_addler, sizeof(little_c_addler));
 				}
 
 				c_adler = urb_adler32(0, NULL, 0);
@@ -579,8 +612,9 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	if (!new_chunkhashes.empty()
 		&& *cbt_hash_file_info.snapshot_sequence_id == cbt_hash_file_info.snapshot_sequence_id_reference)
 	{
-		memcpy(new_chunkhashes.data(), md5_hash.raw_digest_int(), big_hash_size);
-		cbt_hash_file_info.cbt_hash_file->Write(index_chunkhash_pos, new_chunkhashes.data(), chunkhash_single_size);
+		memcpy(new_chunkhashes.data(), &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
+		memcpy(new_chunkhashes.data()+sizeof(_u16), md5_hash.raw_digest_int(), big_hash_size);
+		cbt_hash_file_info.cbt_hash_file->Write(index_chunkhash_pos, new_chunkhashes.data(), static_cast<_u32>(new_chunkhashes.size()));
 	}
 
 	if(!sent_update && !cbt_unchanged && memcmp(md5_hash.raw_digest_int(), chunk->big_hash, big_hash_size)!=0 )

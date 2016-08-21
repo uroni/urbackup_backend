@@ -306,14 +306,18 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= epos)
 			{
 				int64 volume_pos = extents[curr_extent_idx].volume_offset + (pos - extents[curr_extent_idx].offset);
-				int64 index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*chunkhash_single_size;
+				int64 index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);
+				_u16 index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
 
-				char chunkhash[chunkhash_single_size];
-				if (cbt_hash_file.first->Read(index_chunkhash_pos, chunkhash, chunkhash_single_size) == chunkhash_single_size)
+				char chunkhash[sizeof(_u16) + chunkhash_single_size];
+				if (cbt_hash_file.first->Read(index_chunkhash_pos, chunkhash, sizeof(chunkhash)) == sizeof(chunkhash))
 				{
-					if (!buf_is_zero(chunkhash, chunkhash_single_size))
+					_u16 chunkhash_offset;
+					memcpy(&chunkhash_offset, chunkhash, sizeof(chunkhash_offset));
+					if (chunkhash_offset == index_chunkhash_pos_offset
+						&& !buf_is_zero(chunkhash, sizeof(chunkhash)))
 					{
-						if (memcmp(chunkhash, get_sparse_extent_content().data(), chunkhash_single_size) == 0)
+						if (memcmp(chunkhash+sizeof(_u16), get_sparse_extent_content().data(), chunkhash_single_size) == 0)
 						{
 							if (sparse_extent_start == -1)
 							{
@@ -331,10 +335,10 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 								sparse_extent_start = -1;
 							}
 
-							treehash->addHashAllAdler(chunkhash, chunkhash_single_size, c_checkpoint_dist);
+							treehash->addHashAllAdler(chunkhash + sizeof(_u16), chunkhash_single_size, c_checkpoint_dist);
 						}
 
-						if (!writeRepeatFreeSpace(hashoutput, chunkhash, chunkhash_single_size, cb))
+						if (!writeRepeatFreeSpace(hashoutput, chunkhash + sizeof(_u16), chunkhash_single_size, cb))
 						{
 							Server->Log("Error writing to hashoutput file (" + hashoutput->getFilename() + ") -3", LL_DEBUG);
 							return false;
