@@ -1563,10 +1563,10 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 								if(std::binary_search(identical_permission_roots.begin(),
 									identical_permission_roots.end(), id))
 								{
-									if(!os_link_symbolic(os_file_prefix(backuppath + curr_path),
+									if(!os_link_symbolic(backuppath + curr_path,
 										os_file_prefix(user_view_home_path + curr_path)))
 									{
-										ServerLogger::Log(logid, "Error creating symbolic link at \""+user_view_home_path + curr_path+"\" for user view (directory)", LL_WARNING);
+										ServerLogger::Log(logid, "Error creating symbolic link at \""+user_view_home_path + curr_path+"\" for user view (directory). "+os_last_error_str(), LL_WARNING);
 										return false;
 									}
 									skip=1;
@@ -1575,11 +1575,12 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 								{
 									if(!os_create_dir(os_file_prefix(user_view_home_path + curr_path)))
 									{
-										ServerLogger::Log(logid, "Error creating directory \""+user_view_home_path+curr_path+"\" for user view", LL_WARNING);
+										ServerLogger::Log(logid, "Error creating directory \""+user_view_home_path+curr_path+"\" for user view. "+os_last_error_str(), LL_WARNING);
 										return false;
 									}
 								}
 								has_perm=true;
+								break;
 							}
 						}
 						
@@ -1605,7 +1606,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						bool denied=false;
 						if(FileMetadata::hasPermission(metadata.file_permissions, ids[j], denied))
 						{
-							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
+							if(!os_link_symbolic(backuppath + filename,
 								os_file_prefix(user_view_home_path + filename)))
 							{
 								ServerLogger::Log(logid, "Error creating symbolic link at \""+user_view_home_path + filename+"\" for user view (file)", LL_WARNING);
