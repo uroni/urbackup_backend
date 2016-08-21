@@ -113,7 +113,7 @@ public:
 	CondString formatUnixtime(int64 unixtime);
 	SImageBackup getLastFullImage(int clientid, int image_version, const std::string& letter);
 	SImageBackup getLastImage(int clientid, int image_version, const std::string& letter);
-	void newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter);
+	void newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime);
 	void setImageSize(int64 size_bytes, int backupid);
 	void addImageSizeToClient(int clientid, int64 add_size);
 	void setImageBackupComplete(int backupid);

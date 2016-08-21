@@ -109,11 +109,11 @@ namespace
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clientname,
 	std::string clientsubname, LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details,
-	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo)
+	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo, int64 backup_starttime)
 	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false),
 	set_complete(set_complete), snapshot_id(snapshot_id), mutex(Server->createMutex()), got_dependencies(false),
-	snapshot_group_loginfo(snapshot_group_loginfo)
+	snapshot_group_loginfo(snapshot_group_loginfo), backup_starttime(backup_starttime)
 {
 }
 
@@ -190,7 +190,7 @@ bool ImageBackup::doBackup()
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-			false, "SYSVOL", server_token, "SYSVOL", false, 0, std::string());
+			false, "SYSVOL", server_token, "SYSVOL", false, 0, std::string(), 0);
 		sysvol_backup.setStopBackupRunning(false);
 		sysvol_backup();
 
@@ -212,7 +212,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-				false, "ESP", server_token, "ESP", false, 0, std::string());
+				false, "ESP", server_token, "ESP", false, 0, std::string(), 0);
 			esp_backup.setStopBackupRunning(false);
 			esp_backup();
 
@@ -2020,13 +2020,18 @@ void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::str
 		return;
 	}
 
+	if (backup_starttime <= 0)
+	{
+		backup_starttime = Server->getTimeSeconds();
+	}
+
 	if (pParentvhd.empty())
 	{
-		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter);
+		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter, backup_starttime);
 	}
 	else
 	{
-		backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter);
+		backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter, backup_starttime);
 	}
 
 	backupid = static_cast<int>(db->getLastInsertID());

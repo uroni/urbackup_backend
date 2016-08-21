@@ -16,7 +16,7 @@ class ImageBackup : public Backup
 public:
 	ImageBackup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
 		LogAction log_action, bool incremental, std::string letter, std::string server_token, std::string details,
-		bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo);
+		bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo, int64 backup_starttime);
 
 	int getBackupId()
 	{
@@ -31,6 +31,11 @@ public:
 	std::string getLetter()
 	{
 		return letter;
+	}
+
+	int64 getBackupStarttime()
+	{
+		return backup_starttime;
 	}
 
 	struct SImageDependency
@@ -83,4 +88,6 @@ protected:
 	std::auto_ptr<IMutex> mutex;
 
 	std::string snapshot_group_loginfo;
+
+	int64 backup_starttime;
 };

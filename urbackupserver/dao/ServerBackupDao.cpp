@@ -821,14 +821,15 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int im
 * @-SQLGenAccess
 * @func void ServerBackupDao::newImageBackup
 * @sql
-*       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter)
-*			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP, 0, :image_version(int), :letter(string) )
+*       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime)
+*			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP,
+*					0, :image_version(int), :letter(string), datetime(:backuptime(int64), 'unixepoch') )
 */
-void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter)
+void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime)
 {
 	if(q_newImageBackup==NULL)
 	{
-		q_newImageBackup=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, ?, ? )", false);
+		q_newImageBackup=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, ?, ?, datetime(?, 'unixepoch') )", false);
 	}
 	q_newImageBackup->Bind(clientid);
 	q_newImageBackup->Bind(path);
@@ -836,6 +837,7 @@ void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int 
 	q_newImageBackup->Bind(incremental_ref);
 	q_newImageBackup->Bind(image_version);
 	q_newImageBackup->Bind(letter);
+	q_newImageBackup->Bind(backuptime);
 	q_newImageBackup->Write();
 	q_newImageBackup->Reset();
 }

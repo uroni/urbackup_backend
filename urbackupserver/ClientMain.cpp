@@ -513,7 +513,7 @@ void ClientMain::operator ()(void)
 									SRunningBackup backup;
 									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
 										ibackup->isIncrementalBackup(), dependencies[j].volume, curr_server_token, dependencies[j].volume, false,
-										dependencies[j].snapshot_id, vols_list);
+										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime());
 									backup.backup = idep;
 									backup.letter = normalizeVolume(dependencies[j].volume);
 
@@ -780,7 +780,7 @@ void ClientMain::operator ()(void)
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter, curr_server_token, letter, true, 0, std::string());
+							false, letter, curr_server_token, letter, true, 0, std::string(), 0);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
@@ -803,7 +803,7 @@ void ClientMain::operator ()(void)
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter, curr_server_token, letter, true, 0, std::string());
+							true, letter, curr_server_token, letter, true, 0, std::string(), 0);
 						backup.letter=letter;
 
 						backup_queue.push_back(backup);
