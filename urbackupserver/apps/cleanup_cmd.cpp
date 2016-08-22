@@ -229,7 +229,7 @@ int remove_unknown(void)
 
 int cleanup_database(void)
 {
-	Server->Log("Going to clean up unnessecary information in database. Waiting 20 seconds...", LL_INFO);
+	Server->Log("Going to clean up unnecessary information in database. Waiting 20 seconds...", LL_INFO);
 
 	Server->wait(20000);
 

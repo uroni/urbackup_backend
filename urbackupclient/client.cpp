@@ -5480,7 +5480,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 				}
 				else
 				{
-					last_zeroed = true;
+					last_zeroed = false;
 				}
 				last_bit_set = has_bit;
 			}
