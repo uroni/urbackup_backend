@@ -506,7 +506,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 	{
 		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
 
-		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, NULL));
 	}
 
 	if (bitmap_source->hasError())
@@ -587,7 +587,7 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 	{
 		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
 
-		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, NULL));
 	}
 
 	if (bitmap_source->hasError())

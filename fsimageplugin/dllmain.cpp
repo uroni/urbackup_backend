@@ -476,7 +476,7 @@ namespace
 
 			FileWrapper* file_wrapper = new FileWrapper(cowfile, 512 * 1024);
 
-			FSNTFS* ntfs = new FSNTFS(file_wrapper, false, false);
+			FSNTFS* ntfs = new FSNTFS(file_wrapper, IFSImageFactory::EReadaheadMode_None, false, NULL);
 
 			if (ntfs->hasError())
 			{
