@@ -230,6 +230,11 @@ std::string SparseFile::getFilename(void)
 	return backing_file->getFilename();
 }
 
+void * SparseFile::getOsHandle()
+{
+	return backing_file->getOsHandle();
+}
+
 _i64 SparseFile::getSparseSize()
 {
 	return sparse_extents_size;

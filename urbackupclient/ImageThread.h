@@ -1,15 +1,17 @@
 #pragma once
 #include <string>
+#include <map>
 #include "../Interface/Pipe.h"
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Server.h"
+#include "../fsimageplugin/IFilesystem.h"
+#include "../common/bitmap.h"
 
 class ClientConnector;
 struct ImageInformation;
-class IFilesystem;
 
-class ImageThread : public IThread
+class ImageThread : public IThread, public IFsNextBlockCallback
 {
 public:
 	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf,
@@ -19,6 +21,8 @@ public:
 
 	static std::string hdatFn(std::string volume);
 	static IFsFile* openHdatF(std::string volume, bool share);
+
+	int64 nextBlock(int64 curr_block);
 
 private:
 
@@ -41,6 +45,11 @@ private:
 	std::string server_token;
 	IFile *hashdatafile;
 	IFile* bitmapfile;
+
+	unsigned int blocks_per_vhdblock;
+	Bitmap cbt_bitmap;
+
+	IFilesystem* curr_fs;
 	
 	ImageInformation *image_inf;
 };

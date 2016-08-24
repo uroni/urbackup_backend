@@ -200,8 +200,8 @@ bool ImageThread::sendFullImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
+				fs.reset(image_fak->createFilesystem(image_inf->shadowdrive, IFSImageFactory::EReadaheadMode_Overlapped,
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter, this));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -216,6 +216,8 @@ bool ImageThread::sendFullImageThread(void)
 				run=false;
 				break;
 			}
+
+			curr_fs = fs.get();
 
 			unsigned int blocksize=(unsigned int)fs->getBlocksize();
 			int64 drivesize=fs->getSize();
@@ -574,6 +576,27 @@ bool ImageThread::sendIncrImageThread(void)
 		}
 		else
 		{
+			std::auto_ptr<IFilesystem> fs;
+			FsShutdownHelper shutdown_helper;
+			if (!image_inf->shadowdrive.empty())
+			{
+				fs.reset(image_fak->createFilesystem(image_inf->shadowdrive, IFSImageFactory::EReadaheadMode_Overlapped,
+					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter, this));
+				shutdown_helper.reset(fs.get());
+			}
+			if (fs.get() == NULL)
+			{
+				int tloglevel = LL_ERROR;
+				if (image_inf->shadowdrive.empty())
+				{
+					tloglevel = LL_INFO;
+				}
+				ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
+				Server->Log("Device file: \"" + image_inf->shadowdrive + "\"", LL_INFO);
+				run = false;
+				break;
+			}
+
 			int64 changed_blocks = 0;
 			int64 unchanged_blocks = 0;
 
@@ -598,29 +621,10 @@ bool ImageThread::sendIncrImageThread(void)
 
 			if (hdat_img.get() != NULL)
 			{
-				std::auto_ptr<IFilesystem> fs;
-
-				if (!image_inf->shadowdrive.empty())
-				{
-					fs.reset(image_fak->createFilesystem(image_inf->shadowdrive, false,
-						IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
-				}
-
-				if (fs.get() == NULL)
-				{
-					int tloglevel = LL_ERROR;
-					if (image_inf->shadowdrive.empty())
-					{
-						tloglevel = LL_INFO;
-					}
-					ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
-					Server->Log("Device file: \"" + image_inf->shadowdrive + "\"", LL_INFO);
-					run = false;
-					break;
-				}
-
 				unsigned int blocksize = (unsigned int)fs->getBlocksize();
 				int64 drivesize = fs->getSize();
+
+				cbt_bitmap.resize(drivesize / c_vhdblocksize + (drivesize % c_vhdblocksize == 0 ? 0 : 1));
 
 				std::vector<char> buf;
 				buf.resize(4096);
@@ -628,11 +632,14 @@ bool ImageThread::sendIncrImageThread(void)
 				hdat_img->Seek(sizeof(int));
 				_u32 read;
 				int64 imgpos = 0;
+				int64 vhdblockpos = 0;
 				do
 				{
 					read = hdat_img->Read(buf.data(), static_cast<_u32>(buf.size()));
 
-					for (_u32 i = 0; i < read; i += SHA256_DIGEST_SIZE)
+					for (_u32 i = 0; i < read; 
+						i += SHA256_DIGEST_SIZE, ++vhdblockpos,
+						imgpos += c_vhdblocksize)
 					{
 						bool fs_has_block = false;
 						bool bitmap_diff = false;
@@ -657,6 +664,7 @@ bool ImageThread::sendIncrImageThread(void)
 								|| buf_is_zero(reinterpret_cast<unsigned char*>(&buf[i]), SHA256_DIGEST_SIZE))
 							{
 								++changed_blocks;
+								cbt_bitmap.set(vhdblockpos, true);
 							}
 							else
 							{
@@ -683,45 +691,35 @@ bool ImageThread::sendIncrImageThread(void)
 								else
 								{
 									++changed_blocks;
+									cbt_bitmap.set(vhdblockpos, true);
 								}
 							}
 						}
-
-						imgpos += c_vhdblocksize;
 					}
 
 				} while (read > 0);
+
+				previous_bitmap.reset();
+
+				while (imgpos < drivesize)
+				{
+					int64 vhdblock = imgpos / c_vhdblocksize;
+
+					++changed_blocks;
+					cbt_bitmap.set(vhdblock, true);
+
+					imgpos += c_vhdblocksize;
+				}
 			}
 
-			std::auto_ptr<IFilesystem> fs;
-			FsShutdownHelper shutdown_helper;
-			if(!image_inf->shadowdrive.empty())
-			{
-				bool readahead = (hdat_img.get() == NULL || changed_blocks > unchanged_blocks);
-				fs.reset(image_fak->createFilesystem((image_inf->shadowdrive), readahead,
-					IndexThread::backgroundBackupsEnabled(std::string()), image_inf->image_letter));
-				shutdown_helper.reset(fs.get());
-			}
-			if(fs.get()==NULL)
-			{
-				int tloglevel=LL_ERROR;
-				if(image_inf->shadowdrive.empty())
-				{
-					tloglevel=LL_INFO;
-				}
-				ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
-				Server->Log("Device file: \""+image_inf->shadowdrive+"\"", LL_INFO);
-				run=false;
-				break;
-			}
+			curr_fs = fs.get();
 
 			sha256_ctx shactx;
-			unsigned int vhdblocks;
 
 			unsigned int blocksize=(unsigned int)fs->getBlocksize();
 			int64 drivesize=fs->getSize();
 			int64 blockcnt=fs->calculateUsedSpace()/blocksize;
-			vhdblocks=c_vhdblocksize/blocksize;
+			blocks_per_vhdblock =c_vhdblocksize/blocksize;
 			int64 currvhdblock=0;
 			int64 numblocks=drivesize/blocksize;
 			CWData shadow_data;
@@ -796,7 +794,7 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 			
 			blockbufs.clear();
-			blockbufs.resize(vhdblocks);
+			blockbufs.resize(blocks_per_vhdblock);
 			delete []zeroblockbuf;
 			zeroblockbuf=new char[blocksize];
 			memset(zeroblockbuf, 0, blocksize);
@@ -805,7 +803,7 @@ bool ImageThread::sendIncrImageThread(void)
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
 
 
-			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=vhdblocks)
+			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+= blocks_per_vhdblock)
 			{
 				++update_cnt;
 				if(update_cnt>10)
@@ -813,58 +811,34 @@ bool ImageThread::sendIncrImageThread(void)
 					ClientConnector::updateRunningPc(image_inf->running_process_id, (int)(((float)i / (float)blocks)*100.f + 0.5f));
 					update_cnt=0;
 				}
-				currvhdblock=i/vhdblocks;
-				bool has_data=false;
-				bool bitmap_diff = false;
-				for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-				{
-					if( fs->hasBlock(j) )
-					{
-						if (previous_bitmap.get() != NULL)
-						{
-							has_data = true;
-							if (!previous_bitmap->hasBlock(j))
-							{
-								bitmap_diff = true;
-								break;
-							}
-						}
-						else
-						{
-							has_data = true;
-							break;
-						}
-					}
-				}
+				currvhdblock=i/ blocks_per_vhdblock;
 
 #ifdef _DEBUG
-				for(size_t k=0;k<blockbufs.size();++k)
+				for (size_t k = 0; k<blockbufs.size(); ++k)
 				{
-					assert(blockbufs[k]==NULL);
+					assert(blockbufs[k] == NULL);
 				}
 #endif
 
-				if(has_data)
-				{
-					unsigned char digest[c_hashsize];
+				bool has_data = false;
 
-					bool has_hash = false;
-					if (hdat_img.get() != NULL
-						&& !bitmap_diff)
+				if (cbt_bitmap.empty())
+				{
+					for (int64 j = i; j < blocks && j < i + blocks_per_vhdblock; ++j)
 					{
-						if (IndexThread::getShadowId(hdat_vol, hdat_img.get()) == r_shadow_id)
+						if (fs->hasBlock(j))
 						{
-							if (hdat_img->Read(sizeof(int) + (i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize) == c_hashsize)
-							{
-								has_hash = !buf_is_zero(digest, c_hashsize);
-							}
-						}
-						else
-						{
-							hdat_img.reset();
+							has_data = true;
 						}
 					}
+				}
+				else
+				{
+					has_data = cbt_bitmap.get(currvhdblock);
+				}
 
+				if(has_data)
+				{
 					bool has_hashdata = false;
 					char hashdata_buf[c_hashsize];
 					if (hashdatafile->Size() >= (currvhdblock + 1)*c_hashsize)
@@ -881,11 +855,11 @@ bool ImageThread::sendIncrImageThread(void)
 					}
 
 					bool mixed = false;
-					if (!has_hash
-						|| (has_hashdata && memcmp(hashdata_buf, digest, c_hashsize) != 0) )
+					unsigned char digest[SHA256_DIGEST_SIZE];
+					if (has_hashdata)
 					{
 						sha256_init(&shactx);
-						for (int64 j = i; j < blocks && j < i + vhdblocks; ++j)
+						for (int64 j = i; j < blocks && j < i + blocks_per_vhdblock; ++j)
 						{
 							char* buf = fs->readBlock(j);
 							if (buf != NULL)
@@ -919,7 +893,15 @@ bool ImageThread::sendIncrImageThread(void)
 
 						if (hdat_img.get() != NULL)
 						{
-							hdat_img->Write(sizeof(int) + (i / vhdblocks)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize);
+							if (IndexThread::getShadowId(hdat_vol, hdat_img.get()) != r_shadow_id)
+							{
+								hdat_img.reset();
+							}
+						}
+
+						if (hdat_img.get() != NULL)
+						{
+							hdat_img->Write(sizeof(int) + (i / blocks_per_vhdblock)*c_hashsize, reinterpret_cast<char*>(digest), c_hashsize);
 						}
 					}
 
@@ -927,7 +909,7 @@ bool ImageThread::sendIncrImageThread(void)
 					{
 						Server->Log("Block did change: "+convert(i)+" mixed="+convert(mixed), LL_DEBUG);
 						bool notify_cs=false;
-						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
+						for(int64 j=i;j<blocks && j<i+ blocks_per_vhdblock;++j)
 						{
 							if(blockbufs[j-i]!=NULL)
 							{
@@ -956,7 +938,7 @@ bool ImageThread::sendIncrImageThread(void)
 						{
 							char* cb=cs->getBuffer();
 							int64 bs=-126;
-							int64 nextblock=(std::min)(blocks, i+vhdblocks);
+							int64 nextblock=(std::min)(blocks, i+ blocks_per_vhdblock);
 							memcpy(cb, &bs, sizeof(int64) );
 							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
 							memcpy(cb+2*sizeof(int64), digest, c_hashsize);
@@ -1016,9 +998,7 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 
 			cs->doExit();
-			std::vector<THREADPOOL_TICKET> wf;
-			wf.push_back(send_ticket);
-			Server->getThreadPool()->waitFor(wf);
+			Server->getThreadPool()->waitFor(send_ticket);
 			delete cs;
 
 			if(!run)break;
@@ -1229,4 +1209,32 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 #else
 	return NULL;
 #endif
+}
+
+int64 ImageThread::nextBlock(int64 curr_block)
+{
+	int64 size_blocks = curr_fs->getSize() / curr_fs->getBlocksize();
+
+	while (curr_block + 1<size_blocks)
+	{
+		if (!cbt_bitmap.empty()
+			&& (curr_block + 1) % blocks_per_vhdblock == 0)
+		{
+			int64 vhdblock = (curr_block + 1) / blocks_per_vhdblock;
+			if (!cbt_bitmap.get(vhdblock))
+			{
+				curr_block += blocks_per_vhdblock;
+				continue;
+			}
+		}
+
+		++curr_block;
+
+		if (curr_fs->hasBlock(curr_block))
+		{
+			return curr_block;
+		}
+	}
+
+	return -1;
 }

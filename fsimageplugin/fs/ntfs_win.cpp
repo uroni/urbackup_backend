@@ -21,8 +21,8 @@
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
 
-FSNTFSWIN::FSNTFSWIN(const std::string &pDev, bool read_ahead, bool background_priority)
-	: Filesystem(pDev, read_ahead, background_priority), bitmap(NULL)
+FSNTFSWIN::FSNTFSWIN(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
+	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
 {
 	HANDLE hDev=CreateFileW( Server->ConvertToWchar(pDev).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
@@ -96,6 +96,8 @@ FSNTFSWIN::FSNTFSWIN(const std::string &pDev, bool read_ahead, bool background_p
 	delete []vbb;
 
 	CloseHandle(hDev);
+
+	initReadahead(read_ahead, background_priority);
 }
 
 FSNTFSWIN::~FSNTFSWIN(void)

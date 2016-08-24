@@ -43,7 +43,8 @@ bool File::Open(std::string pfn, int mode)
 	if( mode==MODE_READ
 		|| mode==MODE_READ_DEVICE
 		|| mode==MODE_READ_SEQUENTIAL
-		|| mode==MODE_READ_SEQUENTIAL_BACKUP)
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode== MODE_READ_DEVICE_OVERLAPPED)
 	{
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_READ;
@@ -90,7 +91,8 @@ bool File::Open(std::string pfn, int mode)
 
 	if(mode==MODE_READ_DEVICE
 		|| mode== MODE_RW_DEVICE
-		|| mode== MODE_RW_CREATE_DEVICE)
+		|| mode== MODE_RW_CREATE_DEVICE
+		|| mode== MODE_READ_DEVICE_OVERLAPPED)
 	{
 		dwShareMode|=FILE_SHARE_WRITE;
 	}
@@ -107,6 +109,10 @@ bool File::Open(std::string pfn, int mode)
 		|| mode==MODE_RW_CREATE_RESTORE)
 	{
 		flags|=FILE_FLAG_BACKUP_SEMANTICS;
+	}
+	if (mode == MODE_READ_DEVICE_OVERLAPPED)
+	{
+		flags |= FILE_FLAG_OVERLAPPED| FILE_FLAG_NO_BUFFERING;
 	}
 	
 	hfile=CreateFileW( Server->ConvertToWchar(fn).c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
@@ -342,6 +348,11 @@ void File::Close()
 		BOOL b=CloseHandle( hfile );
 		hfile=NULL;
 	}
+}
+
+void * File::getOsHandle()
+{
+	return reinterpret_cast<void*>(hfile);
 }
 
 void File::init_mutex()

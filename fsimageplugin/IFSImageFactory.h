@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 
 #include "../Interface/Types.h"
@@ -7,11 +8,20 @@ class IFilesystem;
 class IVHDFile;
 class IFile;
 class IReadOnlyBitmap;
+class IFsNextBlockCallback;
 
 class IFSImageFactory : public IPlugin
 {
 public:
-	virtual IFilesystem *createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)=0;
+	enum EReadaheadMode
+	{
+		EReadaheadMode_None = 0,
+		EReadaheadMode_Thread = 1,
+		EReadaheadMode_Overlapped = 2
+	};
+
+	virtual IFilesystem *createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
+		bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)=0;
 
 	enum ImageFormat
 	{

@@ -4,7 +4,7 @@
 class FSNTFSWIN : public Filesystem
 {
 public:
-	FSNTFSWIN(const std::string &pDev, bool read_ahead, bool backgournd_priority);
+	FSNTFSWIN(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback);
 	~FSNTFSWIN(void);
 
 	int64 getBlocksize(void);

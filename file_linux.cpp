@@ -92,6 +92,10 @@ bool File::Open(std::string pfn, int mode)
 	{
 		mode = MODE_RW_CREATE;
 	}
+	if (mode == MODE_READ_DEVICE_OVERLAPPED)
+	{
+		mode = MODE_READ_DEVICE;
+	}
 
 	fn=pfn;
 	int flags=0;
@@ -429,5 +433,10 @@ std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, in
 {
 	//TODO: Implement using FIEMAP?
 	return std::vector<SFileExtent>();
+}
+
+void* File::getOsHandle()
+{
+	return reinterpret_cast<void*>(fd);
 }
 #endif

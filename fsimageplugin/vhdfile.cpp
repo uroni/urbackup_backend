@@ -1383,7 +1383,7 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 	{
 		Server->Log("Error reading client bitmap. Falling back to reading bitmap from NTFS", LL_WARNING);
 
-		bitmap_source.reset(new FSNTFS(&devfile, false, false));
+		bitmap_source.reset(new FSNTFS(&devfile, IFSImageFactory::EReadaheadMode_None, false, NULL));
 	}
 
 	if(bitmap_source->hasError())

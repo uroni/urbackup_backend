@@ -129,8 +129,8 @@ class IFile;
 class FSNTFS : public Filesystem
 {
 public:
-	FSNTFS(const std::string &pDev, bool read_ahead, bool background_priority, bool check_mft_mirror=false, bool fix=false);
-	FSNTFS(IFile *pDev, bool read_ahead, bool background_priority, bool check_mft_mirror=false, bool fix=false);
+	FSNTFS(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback, bool check_mft_mirror=false, bool fix=false);
+	FSNTFS(IFile *pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback, bool check_mft_mirror=false, bool fix=false);
 	~FSNTFS(void);
 
 	int64 getBlocksize(void);

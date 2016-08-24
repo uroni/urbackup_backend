@@ -105,7 +105,7 @@ namespace
 					it = read_blocks.find(current_block);
 					if(it!=read_blocks.end())
 					{
-						current_block = next_used_block(current_block);
+						current_block = fs.nextBlockInt(current_block);
 					}
 				} while (it!=read_blocks.end());
 
@@ -118,7 +118,7 @@ namespace
 
 					read_blocks[l_current_block] = buf;
 
-					current_block = next_used_block(l_current_block);
+					current_block = fs.nextBlockInt(l_current_block);
 
 					if(readahead_miss)
 					{
@@ -190,23 +190,6 @@ namespace
 			}
 		}
 
-		int64 next_used_block(int64 pBlock)
-		{
-			int64 size = fs.getSize();
-
-			while(pBlock+1<size/fs.getBlocksize())
-			{
-				++pBlock;
-
-				if(fs.hasBlock(pBlock))
-				{
-					return pBlock;
-				}
-			}
-
-			return -1;
-		}
-
 		std::auto_ptr<IMutex> mutex;
 		std::auto_ptr<ICondition> start_readahead_cond;
 		std::auto_ptr<ICondition> read_block_cond;
@@ -233,39 +216,51 @@ namespace
 #endif
 		return last_error;
 	}
+
+#ifdef _WIN32
+	void WINAPI FileIOCompletionRoutine(__in DWORD dwErrorCode,
+		__in    DWORD dwNumberOfBytesTransfered,
+		__inout LPOVERLAPPED lpOverlapped)
+	{
+		LARGE_INTEGER li;
+		li.LowPart = lpOverlapped->Offset;
+		li.HighPart = lpOverlapped->OffsetHigh;
+
+		SNextBlock* block = reinterpret_cast<SNextBlock*>(lpOverlapped->hEvent);
+
+		block->fs->overlappedIoCompletion(block, dwErrorCode, dwNumberOfBytesTransfered, li.QuadPart);
+	}
+#endif
 }
 
-Filesystem::Filesystem(const std::string &pDev, bool read_ahead, bool background_priority)
-	: buffer_mutex(Server->createMutex())
+Filesystem::Filesystem(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, IFsNextBlockCallback* next_block_callback)
+	: buffer_mutex(Server->createMutex()), next_block_callback(next_block_callback), overlapped_next_block(-1),
+	num_uncompleted_blocks(0)
 {
 	has_error=false;
 
-	dev=Server->openFile(pDev, MODE_READ_DEVICE);
+	if (read_ahead == IFSImageFactory::EReadaheadMode_Overlapped)
+	{
+		dev = Server->openFile(pDev, MODE_READ_DEVICE_OVERLAPPED);
+	}
+	else
+	{
+		dev = Server->openFile(pDev, MODE_READ_DEVICE);
+	}
 	if(dev==NULL)
 	{
 		Server->Log("Error opening device file. Errorcode: "+convert(getLastSystemError()), LL_ERROR);
 		has_error=true;
 	}
 	own_dev=true;
-
-	if(read_ahead)
-	{
-		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
-	}
 }
 
-Filesystem::Filesystem(IFile *pDev, bool read_ahead, bool background_priority)
-	: dev(pDev)
+Filesystem::Filesystem(IFile *pDev, IFsNextBlockCallback* next_block_callback)
+	: dev(pDev), next_block_callback(next_block_callback), overlapped_next_block(-1),
+	num_uncompleted_blocks(0)
 {
 	has_error=false;
 	own_dev=false;
-
-	if(read_ahead)
-	{
-		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
-		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
-	}
 }
 
 Filesystem::~Filesystem()
@@ -280,6 +275,18 @@ Filesystem::~Filesystem()
 	for(size_t i=0;i<buffers.size();++i)
 	{
 		delete[] buffers[i];
+	}
+
+	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
+	{
+		for (size_t i = 0; i < next_blocks.size(); ++i)
+		{
+#ifdef _WIN32
+			VirtualFree(next_blocks[i].buffer, 0, MEM_RELEASE);
+#else
+			delete[] next_blocks[i].buffer;
+#endif
+		}
 	}
 }
 
@@ -318,7 +325,17 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
 	if(!has_bit)
 		return NULL;
 	
-	if(!use_readahead)
+	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
+	{
+		SNextBlock* next_block = completionGetBlock(pBlock);
+		used_next_blocks[next_block->buffer] = next_block;
+		return next_block->buffer;
+	}
+	else if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Thread)
+	{
+		return readahead_thread->getBlock(pBlock);
+	}
+	else
 	{
 		bool b=dev->Seek(pBlock*blocksize);
 		if(!b)
@@ -337,10 +354,52 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
 
 		return buf;
 	}
+}
+
+int64 Filesystem::nextBlockInt(int64 curr_block)
+{
+	return next_block_callback->nextBlock(curr_block);
+}
+
+#ifdef _WIN32
+void Filesystem::overlappedIoCompletion(SNextBlock * block, DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered, int64 offset)
+{
+	--num_uncompleted_blocks;
+
+	if (dwErrorCode != ERROR_SUCCESS)
+	{
+		Server->Log("Reading from device at position "+convert(offset)+" failed. System error code "+convert((int64)dwErrorCode), LL_ERROR);
+		has_error = true;
+		block->state = ENextBlockState_Error;
+	}
+	else if (dwNumberOfBytesTransfered != getBlocksize())
+	{
+		Server->Log("Reading from device at position " + convert(offset) + " failed. OS returned only "+convert((int64)dwNumberOfBytesTransfered)+" bytes", LL_ERROR);
+		has_error = true;
+		block->state = ENextBlockState_Error;
+	}
 	else
 	{
-		return readahead_thread->getBlock(pBlock);
+		block->state = ENextBlockState_Ready;
 	}
+}
+#endif
+
+int64 Filesystem::nextBlock(int64 curr_block)
+{
+	int64 size_blocks = getSize() / getBlocksize();
+
+	while (curr_block + 1<size_blocks)
+	{
+		++curr_block;
+
+		if (hasBlock(curr_block))
+		{
+			return curr_block;
+		}
+	}
+
+	return -1;
 }
 
 std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
@@ -353,14 +412,32 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 
 	for(int64 i=pStartBlock;i<pStartBlock+n;++i)
 	{
-		char* buf = readBlock(i);
-		if(buf!=NULL)
+		if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 		{
-			memcpy(buffers[currbuf]+buffer_offset, buf, blocksize);
-			++currbuf;
-			ret.push_back(i);
+			if (hasBlock(i))
+			{
+				SNextBlock* next_block = completionGetBlock(i);
+				if (next_block != NULL)
+				{
+					memcpy(buffers[currbuf] + buffer_offset, next_block->buffer, blocksize);
+					++currbuf;
+					ret.push_back(i);
 
-			releaseBuffer(buf);
+					free_next_blocks.push(next_block);
+				}
+			}
+		}
+		else
+		{
+			char* buf = readBlock(i);
+			if (buf != NULL)
+			{
+				memcpy(buffers[currbuf] + buffer_offset, buf, blocksize);
+				++currbuf;
+				ret.push_back(i);
+
+				releaseBuffer(buf);
+			}
 		}
 	}
 
@@ -369,6 +446,8 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 
 bool Filesystem::readFromDev(char *buf, _u32 bsize)
 {
+	assert(read_ahead_mode != IFSImageFactory::EReadaheadMode_Overlapped);
+
 	int tries=20;
 	_u32 rc=dev->Read(buf, bsize);
 	while(rc<bsize)
@@ -384,6 +463,161 @@ bool Filesystem::readFromDev(char *buf, _u32 bsize)
 		}
 	}
 	return true;
+}
+
+void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool background_priority)
+{
+	read_ahead_mode = read_ahead;
+
+	if (read_ahead== IFSImageFactory::EReadaheadMode_Overlapped)
+	{
+		next_blocks.resize(readahead_num_blocks);
+
+		for (size_t i = 0; i < next_blocks.size(); ++i)
+		{
+#ifdef _WIN32
+			next_blocks[i].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+#else
+			next_blocks[i].buffer = new char[getBlocksize()];
+#endif
+			if (next_blocks[i].buffer == NULL)
+			{
+				has_error = true;
+			}
+			next_blocks[i].state = ENextBlockState_Queued;
+			next_blocks[i].fs = this;
+
+			free_next_blocks.push(&next_blocks[i]);
+		}
+
+#ifdef _WIN32
+		IFsFile* fs_dev = dynamic_cast<IFsFile*>(dev);
+		if (fs_dev != NULL)
+		{
+			hVol = reinterpret_cast<HANDLE>(fs_dev->getOsHandle());
+		}
+#endif
+	}
+	else if (read_ahead == IFSImageFactory::EReadaheadMode_Thread)
+	{
+		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
+	}
+
+	if (read_ahead != IFSImageFactory::EReadaheadMode_None
+		&& next_block_callback==NULL)
+	{
+		next_block_callback = this;
+	}
+}
+
+bool Filesystem::queueOverlappedReads(bool force_queue)
+{
+	bool ret = false;
+	if (usedNextBlocks() < readahead_low_level_blocks
+		|| force_queue)
+	{
+		unsigned int blocksize = static_cast<unsigned int>(getBlocksize());
+		while (!free_next_blocks.empty()
+			&& overlapped_next_block>=0)
+		{
+			SNextBlock* block = free_next_blocks.top();
+			free_next_blocks.pop();
+			block->state = ENextBlockState_Queued;
+			++num_uncompleted_blocks;
+			queued_next_blocks[overlapped_next_block] = block;
+#ifdef _WIN32
+			memset(&block->ovl, 0, sizeof(block->ovl));
+			LARGE_INTEGER offset;
+			offset.QuadPart = overlapped_next_block*getBlocksize();
+			block->ovl.Offset = offset.LowPart;
+			block->ovl.OffsetHigh = offset.HighPart;
+			block->ovl.hEvent = block;
+
+			/*DWORD read_bytes;
+			OVERLAPPED hovl = {};
+			hovl.Offset = offset.LowPart;
+			hovl.OffsetHigh = offset.HighPart;
+			hovl.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			BOOL b2 = ReadFile(hVol, block->buffer, blocksize, &read_bytes, &hovl);
+			if (b2)
+			{
+				int syn_io = 123;
+			}
+			else if (GetLastError() == ERROR_IO_PENDING)
+			{
+				int async_io = 123;
+			}
+			DWORD cbResult;
+			GetOverlappedResult(hVol, &hovl, &cbResult, TRUE);*/
+
+
+			BOOL b = ReadFileEx(hVol, block->buffer, blocksize, &block->ovl, FileIOCompletionRoutine);
+			if (!b)
+			{
+				--num_uncompleted_blocks;
+				Server->Log("Error starting overlapped read operation. System error code " + convert(getLastSystemError()), LL_ERROR);
+				has_error = true;
+				return false;
+			}
+#endif	
+			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
+			ret = true;
+		}
+	}
+
+	return ret;
+}
+
+bool Filesystem::waitForCompletion(unsigned int wtimems)
+{
+#ifdef _WIN32
+	return SleepEx(wtimems, TRUE)== WAIT_IO_COMPLETION;
+#endif
+}
+
+size_t Filesystem::usedNextBlocks()
+{
+	return next_blocks.size() - free_next_blocks.size();
+}
+
+SNextBlock* Filesystem::completionGetBlock(int64 pBlock)
+{
+	std::map<int64, SNextBlock*>::iterator it = queued_next_blocks.find(pBlock);
+	if (it == queued_next_blocks.end())
+	{
+		do
+		{
+			overlapped_next_block = pBlock;
+			queueOverlappedReads(true);
+			it = queued_next_blocks.find(pBlock);
+			if (it == queued_next_blocks.end())
+			{
+				waitForCompletion(100);
+				it = queued_next_blocks.find(pBlock);
+			}
+		} while (it == queued_next_blocks.end());
+	}
+	else
+	{
+		queueOverlappedReads(false);
+	}
+
+	SNextBlock* next_block = it->second;
+	queued_next_blocks.erase(it);
+
+	while (next_block->state == ENextBlockState_Queued)
+	{
+		waitForCompletion(1000);
+	}
+
+	if (next_block->state != ENextBlockState_Ready)
+	{
+		free_next_blocks.push(next_block);
+		return NULL;
+	}
+
+	return next_block;
 }
 
 int64 Filesystem::calculateUsedSpace(void)
@@ -422,6 +656,8 @@ bool Filesystem::hasError(void)
 
 char* Filesystem::getBuffer()
 {
+	assert(read_ahead_mode != IFSImageFactory::EReadaheadMode_Overlapped);
+
 	{
 		IScopedLock lock(buffer_mutex.get());
 
@@ -438,6 +674,20 @@ char* Filesystem::getBuffer()
 
 void Filesystem::releaseBuffer(char* buf)
 {
+	if(read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
+	{
+		std::map<char*, SNextBlock*>::iterator it = used_next_blocks.find(buf);
+
+		if (it != used_next_blocks.end())
+		{
+			free_next_blocks.push(it->second);
+			used_next_blocks.erase(it);
+			return;
+		}
+
+		assert(false);
+	}
+
 	{
 		IScopedLock lock(buffer_mutex.get());
 		
@@ -458,6 +708,11 @@ void Filesystem::shutdownReadahead()
 		readahead_thread->stop();
 		Server->getThreadPool()->waitFor(readahead_thread_ticket);
 		readahead_thread.reset();
+	}
+
+	while (num_uncompleted_blocks > 0)
+	{
+		waitForCompletion(100);
 	}
 }
 

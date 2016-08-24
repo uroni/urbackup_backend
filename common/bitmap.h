@@ -25,10 +25,15 @@ public:
 		if(bitmap!=NULL)
 		{
 			delete[] bitmap;
+			bitmap = NULL;
 		}
 
 		bitmap_size = n/8 + (n%8==0 ? 0 : 1);
-		bitmap = new char[bitmap_size];
+		if (bitmap_size > 0)
+		{
+			bitmap = new char[bitmap_size];
+			memset(bitmap, 0, bitmap_size);
+		}
 	}
 
 	void set(size_t i, bool v)
@@ -71,6 +76,11 @@ public:
 	void setRaw(char* raw)
 	{
 		memcpy(bitmap, raw, bitmap_size);
+	}
+
+	bool empty()
+	{
+		return bitmap == NULL;
 	}
 private:
 	char* bitmap;

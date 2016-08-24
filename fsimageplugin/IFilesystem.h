@@ -48,6 +48,12 @@ public:
 	virtual bool hasError(void) = 0;
 };
 
+class IFsNextBlockCallback
+{
+public:
+	virtual int64 nextBlock(int64 curr_block) = 0;
+};
+
 class IFilesystem : public IReadOnlyBitmap
 {
 public:

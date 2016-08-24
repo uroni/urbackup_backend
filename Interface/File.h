@@ -20,6 +20,7 @@ const int MODE_RW_DEVICE = 11;
 const int MODE_RW_RESTORE = 12;
 const int MODE_RW_CREATE_RESTORE = 13;
 const int MODE_RW_CREATE_DEVICE = 14;
+const int MODE_READ_DEVICE_OVERLAPPED = 15;
 //Linux only
 const int MODE_RW_READNONE=10;
 
@@ -86,6 +87,7 @@ public:
 	virtual SSparseExtent nextSparseExtent() = 0;
 	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
 	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) = 0;
+	virtual void* getOsHandle() = 0;
 };
 
 class ScopedDeleteFile

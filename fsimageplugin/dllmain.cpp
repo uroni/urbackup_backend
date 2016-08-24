@@ -314,7 +314,7 @@ namespace
 
 			input_files[i] = new FileWrapper(in, skip);
 
-			FSNTFS *ntfs = new FSNTFS(input_files[i], false, false);
+			FSNTFS *ntfs = new FSNTFS(input_files[i], IFSImageFactory::EReadaheadMode_None, false, NULL);
 
 			if(!ntfs->hasError())
 			{
@@ -723,7 +723,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs("\\\\.\\"+devinfo+":", false, true);
+		FSNTFS ntfs("\\\\.\\"+devinfo+":", IFSImageFactory::EReadaheadMode_None, false, NULL);
 	
 		if(!ntfs.hasError())
 		{
@@ -1054,7 +1054,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		int skip=1024*512;
 		FileWrapper wrapper(in.get(), skip);
-		FSNTFS fs(&wrapper, false, false);
+		FSNTFS fs(&wrapper, IFSImageFactory::EReadaheadMode_None, false, NULL);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -1290,7 +1290,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(Server->getServerParameter("fix")!="true")
 		{
-			FSNTFS fs(&vhd, true, false);
+			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, NULL);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);
@@ -1299,7 +1299,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else
 		{
-			FSNTFS fs(&vhd, true, true);
+			FSNTFS fs(&vhd, IFSImageFactory::EReadaheadMode_None, false, NULL);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);

@@ -26,8 +26,8 @@
 
 #define DEF_BLOCKSIZE 4096
 
-FSUnknown::FSUnknown(const std::string &pDev, bool read_ahead, bool background_priority)
-	: Filesystem(pDev, read_ahead, background_priority)
+FSUnknown::FSUnknown(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
+	: Filesystem(pDev, read_ahead, next_block_callback)
 {
 	if(has_error)
 		return;
@@ -44,11 +44,11 @@ FSUnknown::FSUnknown(const std::string &pDev, bool read_ahead, bool background_p
 	DWORD r_bytes;
 	GET_LENGTH_INFORMATION li;
 	BOOL b=DeviceIoControl(hDev, IOCTL_DISK_GET_LENGTH_INFO,  NULL,  0, &li,  sizeof(GET_LENGTH_INFORMATION), &r_bytes, NULL);
+	CloseHandle(hDev);
 	if(!b)
 	{
 		Server->Log("Error in DeviceIoControl(IOCTL_DISK_GET_LENGTH_INFO)", LL_ERROR);
 		has_error=true;
-		CloseHandle(hDev);
 		return;
 	}
 	drivesize=li.Length.QuadPart;
@@ -67,6 +67,8 @@ FSUnknown::FSUnknown(const std::string &pDev, bool read_ahead, bool background_p
 
 	bitmap=new unsigned char[bitmap_bytes];
 	memset(bitmap, 0xFF, bitmap_bytes);
+
+	initReadahead(read_ahead, background_priority);
 }
 
 FSUnknown::~FSUnknown(void)

@@ -4,7 +4,7 @@
 class FSUnknown : public Filesystem
 {
 public:
-	FSUnknown(const std::string &pDev, bool read_ahead, bool background_priority);
+	FSUnknown(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback);
 	~FSUnknown(void);
 
 	int64 getBlocksize(void);

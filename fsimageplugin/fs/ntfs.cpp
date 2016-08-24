@@ -38,16 +38,18 @@ private:
 	char* buf;
 };
 
-FSNTFS::FSNTFS(const std::string &pDev, bool read_ahead, bool background_priority, bool check_mft_mirror, bool fix)
-	: Filesystem(pDev, read_ahead, background_priority), bitmap(NULL)
+FSNTFS::FSNTFS(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback, bool check_mft_mirror, bool fix)
+	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
 {
 	init(check_mft_mirror, fix);
+	initReadahead(read_ahead, background_priority);
 }
 
-FSNTFS::FSNTFS(IFile *pDev, bool read_ahead, bool background_priority, bool check_mft_mirror, bool fix)
-	: Filesystem(pDev, read_ahead, background_priority), bitmap(NULL)
+FSNTFS::FSNTFS(IFile *pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback, bool check_mft_mirror, bool fix)
+	: Filesystem(pDev, next_block_callback), bitmap(NULL)
 {
 	init(check_mft_mirror, fix);
+	initReadahead(read_ahead, background_priority);
 }
 
 void FSNTFS::init(bool check_mft_mirror, bool fix)

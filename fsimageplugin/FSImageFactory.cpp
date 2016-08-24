@@ -64,9 +64,11 @@ void PrintInfo(IFilesystem *fs)
 	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read_ahead, bool background_priority, std::string orig_letter)
+IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
+	bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)
 {
-	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
+	IFile *dev = Server->openFile(pDev, MODE_READ_DEVICE);
+
 	if(dev==NULL)
 	{
 		int last_error;
@@ -91,7 +93,8 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 	if(isNTFS(buffer) )
 	{
 		Server->Log("Filesystem type is ntfs ("+pDev+")", LL_DEBUG);
-		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
+
+		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority, next_block_callback);
 
 
 #ifdef _WIN32
@@ -197,7 +200,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 			delete fs;
 
 			Server->Log("Unknown filesystem type", LL_DEBUG);
-			FSUnknown *fs2=new FSUnknown(pDev, read_ahead, background_priority);
+			FSUnknown *fs2=new FSUnknown(pDev, read_ahead, background_priority, next_block_callback);
 			if(fs2->hasError())
 			{
 				delete fs2;
@@ -212,7 +215,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, bool read
 	else
 	{
 		Server->Log("Unknown filesystem type", LL_DEBUG);
-		FSUnknown *fs=new FSUnknown(pDev, read_ahead, background_priority);
+		FSUnknown *fs=new FSUnknown(pDev, read_ahead, background_priority, next_block_callback);
 		if(fs->hasError())
 		{
 			delete fs;
