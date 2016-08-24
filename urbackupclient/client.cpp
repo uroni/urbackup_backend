@@ -5438,9 +5438,10 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
 						return false;
 					}
-					last_bit_set = false;
-					last_zeroed = false;
 				}
+
+				last_bit_set = false;
+				last_zeroed = false;
 
 				++curr_byte;
 				continue;
