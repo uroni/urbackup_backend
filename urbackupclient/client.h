@@ -502,6 +502,10 @@ private:
 
 	std::string otherVolumeInfo(SCDirs* dir, bool onlyref);
 
+	void postSnapshotProcessing(SCDirs* scd, bool full_backup);
+
+	void postSnapshotProcessing(SCRef* ref, bool full_backup);
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;

@@ -1229,6 +1229,9 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				{
 					addScRefs(ssetid, past_refs);
 
+					SCDirs* empty = NULL;
+					postSnapshotProcessing(empty, full_backup);
+
 					for (size_t k = 0; k < sc_refs.size(); ++k)
 					{
 						if (sc_refs[k]->ssetid == ssetid)
@@ -1237,6 +1240,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 							{
 								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
 							}
+							postSnapshotProcessing(sc_refs[k], full_backup);
 						}
 					}
 
@@ -1372,60 +1376,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 					{
 						addScRefs(scd->ref->ssetid, past_refs);
 					}
-					DirectoryWatcherThread::update_and_wait(open_files);
-					std::sort(open_files.begin(), open_files.end());
-
-					if (scd->ref!=NULL)
-					{
-						for (size_t k = 0; k < sc_refs.size(); ++k)
-						{
-							if (sc_refs[k]->ssetid == scd->ref->ssetid)
-							{
-								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
-							}
-						}
-					}
-
-					int db_tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);
 					
-					if (!full_backup)
-					{
-						std::string volpath = getVolPath(backup_dirs[i].path);
-
-						if (volpath.empty())
-						{
-							VSSLog("Error getting volume path for " + backup_dirs[i].path, LL_WARNING);
-						}
-
-						volpath = strlower(removeDirectorySeparatorAtEnd(volpath));
-
-
-						std::vector<std::string> acd = cd->getChangedDirs(volpath, false);
-						for (size_t j = 0; j < acd.size(); ++j)
-						{
-							if (!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
-							{
-								changed_dirs.push_back(acd[j]);
-							}
-						}
-						std::sort(changed_dirs.begin(), changed_dirs.end());
-
-						VSSLog("Removing deleted directories from index for \"" + volpath + "\"...", LL_DEBUG);
-						std::vector<std::string> deldirs = cd->getDelDirs(volpath, false);
-						DBScopedWriteTransaction write_transaction(db);
-						for (size_t j = 0; j < deldirs.size(); ++j)
-						{
-							cd->removeDeletedDir(deldirs[j], db_tgroup);
-						}
-					}
-
-#if !defined(VSS_XP) && !defined(VSS_S03)
-					if (!full_backup)
-					{
-						VSSLog("Scanning for changed hard links on volume of \"" + backup_dirs[i].tname + "\"...", LL_INFO);
-						handleHardLinks(backup_dirs[i].path, mod_path, strlower(volume));
-					}
-#endif
+					postSnapshotProcessing(scd, full_backup);
 				}
 
 				if (scd->ref != NULL
@@ -6448,4 +6400,88 @@ std::string IndexThread::otherVolumeInfo(SCDirs * dir, bool onlyref)
 	}
 
 	return other_vols;
+}
+
+void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
+{
+	if (!full_backup)
+	{
+		DirectoryWatcherThread::update_and_wait(open_files);
+		std::sort(open_files.begin(), open_files.end());
+	}
+
+	if (scd!=NULL 
+		&& scd->ref != NULL)
+	{
+		for (size_t k = 0; k < sc_refs.size(); ++k)
+		{
+			if (sc_refs[k]->ssetid == scd->ref->ssetid)
+			{
+				sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+
+				postSnapshotProcessing(sc_refs[k], full_backup);
+			}
+		}
+	}	
+}
+
+void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
+{
+	if (full_backup)
+	{
+		return;
+	}
+
+	std::string volpath = removeDirectorySeparatorAtEnd(getVolPath(ref->target));
+
+#ifdef _WIN32
+	volpath = strlower(volpath);
+#endif
+
+	if (volpath.empty())
+	{
+		VSSLog("Error getting volume path for " + ref->target, LL_WARNING);
+	}
+
+	std::vector<int> db_tgroup;
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		std::string path = backup_dirs[i].path;
+#ifdef _WIN32
+		path = strlower(path);
+#endif
+		if (backup_dirs[i].group == index_group
+			&& next(path, 0, volpath))
+		{
+			int tgroup = (backup_dirs[i].flags & EBackupDirFlag_ShareHashes) ? 0 : (backup_dirs[i].group + 1);;
+			if (std::find(db_tgroup.begin(), db_tgroup.end(), tgroup) == db_tgroup.end())
+			{
+				db_tgroup.push_back(tgroup);
+			}
+		}
+	}
+
+	std::vector<std::string> acd = cd->getChangedDirs(volpath, false);
+	for (size_t j = 0; j < acd.size(); ++j)
+	{
+		if (!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
+		{
+			changed_dirs.push_back(acd[j]);
+		}
+	}
+	std::sort(changed_dirs.begin(), changed_dirs.end());
+
+	VSSLog("Removing deleted directories from index for \"" + volpath + "\"...", LL_DEBUG);
+	std::vector<std::string> deldirs = cd->getDelDirs(volpath, false);
+	DBScopedWriteTransaction write_transaction(db);
+	for (size_t j = 0; j < deldirs.size(); ++j)
+	{
+		for (size_t i = 0; i < db_tgroup.size(); ++i)
+		{
+			cd->removeDeletedDir(deldirs[j], db_tgroup[i]);
+		}
+	}
+
+	VSSLog("Scanning for changed hard links on volume of \"" + ref->target + "\"...", LL_INFO);
+	handleHardLinks(ref->target, ref->volpath, volpath);
 }
