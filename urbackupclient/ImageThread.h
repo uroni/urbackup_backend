@@ -10,6 +10,7 @@
 
 class ClientConnector;
 struct ImageInformation;
+class ClientSend;
 
 class ImageThread : public IThread, public IFsNextBlockCallback
 {
@@ -23,6 +24,10 @@ public:
 	static IFsFile* openHdatF(std::string volume, bool share);
 
 	int64 nextBlock(int64 curr_block);
+
+	virtual void slowReadWarning(int64 passed_time_ms, int64 curr_block);
+
+	virtual void waitingForBlockCallback(int64 curr_block);
 
 private:
 
@@ -38,6 +43,7 @@ private:
 	void updateShadowCopyStarttime(int save_id);
 
 	bool sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize);
+	std::string getFsErrMsg();
 
 	IPipe *pipe;
 	IPipe *mempipe;
@@ -52,4 +58,7 @@ private:
 	IFilesystem* curr_fs;
 	
 	ImageInformation *image_inf;
+
+	int64 lastsendtime;
+	ClientSend* clientSend;
 };

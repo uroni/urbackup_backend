@@ -684,14 +684,21 @@ int64 os_last_error()
 	return errno;
 }
 
-int64 os_last_error(std::string& message)
+std::string os_format_errcode(int64 errcode)
 {
-	int err = errno;
+	int err = static_cast<int>(errcode);
 	char* str = strerror(err);
 	if(str!=NULL)
 	{
-		message = (str);
+		return str;
 	}
+	return std::string();
+}
+
+int64 os_last_error(std::string& message)
+{
+	int err = errno;
+	message = os_format_errcode(err);
 	return err;
 }
 

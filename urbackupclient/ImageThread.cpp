@@ -297,15 +297,15 @@ bool ImageThread::sendFullImageThread(void)
 				}
 			}
 			
-			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "full image transfer");
+			clientSend=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(clientSend, "full image transfer");
 
 			unsigned int needed_bufs=64;
 			int64 last_hash_block=-1;
 			std::vector<char*> bufs;
 			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=64)
 			{
-				std::vector<char*> n_bufs=cs->getBuffers(needed_bufs);
+				std::vector<char*> n_bufs= clientSend->getBuffers(needed_bufs);
 				bufs.insert(bufs.end(), n_bufs.begin(), n_bufs.end() );
 				needed_bufs=0;
 
@@ -313,7 +313,7 @@ bool ImageThread::sendFullImageThread(void)
 				std::vector<int64> secs=fs->readBlocks(i, n, bufs, sizeof(int64));
 				if(fs->hasError())
 				{
-					ImageErrRunning("Error while reading from shadow copy device -1");
+					ImageErrRunning("Error while reading from shadow copy device (1). "+getFsErrMsg());
 					run=false;
 					has_error=true;
 					break;
@@ -340,7 +340,7 @@ bool ImageThread::sendFullImageThread(void)
 
 							memcpy(bufs[idx], &secs[idx], sizeof(int64) );
 							sha256_update(&shactx, (unsigned char*)bufs[idx]+sizeof(int64), blocksize);
-							cs->sendBuffer(bufs[idx], sizeof(int64)+blocksize, false);
+							clientSend->sendBuffer(bufs[idx], sizeof(int64)+blocksize, false);
 							++idx;
 							notify_cs=true;
 							last_hash_block=j;
@@ -357,13 +357,13 @@ bool ImageThread::sendFullImageThread(void)
 
 								unsigned char dig[c_hashsize];
 								sha256_final(&shactx, dig);							
-								char* cb=cs->getBuffer();
+								char* cb=clientSend->getBuffer();
 								int64 bs=-126;
 								int64 nextblock=j+1;
 								memcpy(cb, &bs, sizeof(int64) );
 								memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
 								memcpy(cb+2*sizeof(int64), dig, c_hashsize);
-								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
+								clientSend->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
 								notify_cs=true;
 
 								if (hdat_img.get() != NULL
@@ -385,18 +385,18 @@ bool ImageThread::sendFullImageThread(void)
 					for(size_t j=0;j<secs.size();++j)
 					{
 						memcpy(bufs[j], &secs[j], sizeof(int64) );
-						cs->sendBuffer(bufs[j], sizeof(int64)+blocksize, false);
+						clientSend->sendBuffer(bufs[j], sizeof(int64)+blocksize, false);
 						notify_cs=true;
 					}
 				}
 				if(notify_cs)
 				{
-					cs->notifySendBuffer();
+					clientSend->notifySendBuffer();
 				}
 
 				if(!secs.empty())
 					bufs.erase(bufs.begin(), bufs.begin()+secs.size() );
-				if(cs->hasError() )
+				if(clientSend->hasError() )
 				{
 					Server->Log("Pipe broken -2", LL_ERROR);
 					run=false;
@@ -420,13 +420,13 @@ bool ImageThread::sendFullImageThread(void)
 
 			for(size_t i=0;i<bufs.size();++i)
 			{
-				cs->freeBuffer(bufs[i]);
+				clientSend->freeBuffer(bufs[i]);
 			}
-			cs->doExit();
+			clientSend->doExit();
 			std::vector<THREADPOOL_TICKET> wf;
 			wf.push_back(send_ticket);
 			Server->getThreadPool()->waitFor(wf);
-			delete cs;
+			delete clientSend;
 
 			if(!run)break;
 
@@ -510,7 +510,7 @@ bool ImageThread::sendIncrImageThread(void)
 	int save_id=-1;
 	int update_cnt=0;
 
-	int64 lastsendtime=Server->getTimeMS();
+	lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
 	std::auto_ptr<IFile> hdat_img;
@@ -799,8 +799,8 @@ bool ImageThread::sendIncrImageThread(void)
 			zeroblockbuf=new char[blocksize];
 			memset(zeroblockbuf, 0, blocksize);
 
-			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs, "incr image transfer");
+			clientSend = new ClientSend(pipe, blocksize+sizeof(int64), 2000);
+			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(clientSend, "incr image transfer");
 
 
 			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+= blocks_per_vhdblock)
@@ -869,6 +869,10 @@ bool ImageThread::sendIncrImageThread(void)
 							}
 							else
 							{
+								if (fs->hasError())
+								{
+									break;
+								}
 								sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
 								mixed = true;
 								blockbufs[j - i] = NULL;
@@ -884,7 +888,8 @@ bool ImageThread::sendIncrImageThread(void)
 									blockbufs[i] = NULL;
 								}
 							}
-							ImageErrRunning("Error while reading from shadow copy device -2");
+							std::string oserrmsg;
+							ImageErrRunning("Error while reading from shadow copy device (2). "+getFsErrMsg());
 							run = false;
 							break;
 						}
@@ -913,10 +918,10 @@ bool ImageThread::sendIncrImageThread(void)
 						{
 							if(blockbufs[j-i]!=NULL)
 							{
-								char* cb=cs->getBuffer();
+								char* cb=clientSend->getBuffer();
 								memcpy(cb, &j, sizeof(int64) );
 								memcpy(&cb[sizeof(int64)], blockbufs[j-i], blocksize);
-								cs->sendBuffer(cb, sizeof(int64)+blocksize, false);
+								clientSend->sendBuffer(cb, sizeof(int64)+blocksize, false);
 								notify_cs=true;
 								lastsendtime=Server->getTimeMS();
 								fs->releaseBuffer(blockbufs[j-i]);
@@ -926,8 +931,8 @@ bool ImageThread::sendIncrImageThread(void)
 
 						if(notify_cs)
 						{
-							cs->notifySendBuffer();
-							if(cs->hasError())
+							clientSend->notifySendBuffer();
+							if(clientSend->hasError())
 							{
 								Server->Log("Pipe broken -2", LL_ERROR);
 								run=false;
@@ -936,13 +941,13 @@ bool ImageThread::sendIncrImageThread(void)
 
 						if(with_checksum)
 						{
-							char* cb=cs->getBuffer();
+							char* cb=clientSend->getBuffer();
 							int64 bs=-126;
 							int64 nextblock=(std::min)(blocks, i+ blocks_per_vhdblock);
 							memcpy(cb, &bs, sizeof(int64) );
 							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
 							memcpy(cb+2*sizeof(int64), digest, c_hashsize);
-							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, true);
+							clientSend->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, true);
 							//Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
 						}
 					}
@@ -953,9 +958,9 @@ bool ImageThread::sendIncrImageThread(void)
 						if(tt-lastsendtime>10000)
 						{
 							int64 bs=-125;
-							char* buffer=cs->getBuffer();
+							char* buffer=clientSend->getBuffer();
 							memcpy(buffer, &bs, sizeof(int64) );
-							cs->sendBuffer(buffer, sizeof(int64), true);
+							clientSend->sendBuffer(buffer, sizeof(int64), true);
 
 							lastsendtime=tt;
 						}
@@ -977,9 +982,9 @@ bool ImageThread::sendIncrImageThread(void)
 					if(tt-lastsendtime>10000)
 					{
 						int64 bs=-125;
-						char* buffer=cs->getBuffer();
+						char* buffer=clientSend->getBuffer();
 						memcpy(buffer, &bs, sizeof(int64) );
-						cs->sendBuffer(buffer, sizeof(int64), true);
+						clientSend->sendBuffer(buffer, sizeof(int64), true);
 
 						lastsendtime=tt;
 					}
@@ -997,9 +1002,9 @@ bool ImageThread::sendIncrImageThread(void)
 				}
 			}
 
-			cs->doExit();
+			clientSend->doExit();
 			Server->getThreadPool()->waitFor(send_ticket);
-			delete cs;
+			delete clientSend;
 
 			if(!run)break;
 
@@ -1171,6 +1176,22 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	return true;
 }
 
+std::string ImageThread::getFsErrMsg()
+{
+	if (curr_fs->getOsErrorCode() == fs_error_read_timeout)
+	{
+		return " Timeout while reading block from disk";
+	}
+	else if (curr_fs->getOsErrorCode() != 0)
+	{
+		return " " + os_format_errcode(curr_fs->getOsErrorCode());
+	}
+	else
+	{
+		return "";
+	}
+}
+
 std::string ImageThread::hdatFn(std::string volume)
 {
 	if (!IndexThread::normalizeVolume(volume))
@@ -1237,4 +1258,24 @@ int64 ImageThread::nextBlock(int64 curr_block)
 	}
 
 	return -1;
+}
+
+void ImageThread::slowReadWarning(int64 passed_time_ms, int64 curr_block)
+{
+	Server->Log("Waiting for block " + convert(curr_block) + 
+		" since " + PrettyPrintTime(passed_time_ms), LL_WARNING);
+}
+
+void ImageThread::waitingForBlockCallback(int64 curr_block)
+{
+	int64 tt = Server->getTimeMS();
+	if (tt - lastsendtime>10000)
+	{
+		int64 bs = -125;
+		char* buffer = clientSend->getBuffer();
+		memcpy(buffer, &bs, sizeof(int64));
+		clientSend->sendBuffer(buffer, sizeof(int64), true);
+
+		lastsendtime = tt;
+	}
 }

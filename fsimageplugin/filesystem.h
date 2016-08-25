@@ -73,6 +73,12 @@ public:
 
 	virtual int64 nextBlock(int64 curr_block);
 
+	virtual void slowReadWarning(int64 passed_time_ms, int64 curr_block);
+
+	virtual void waitingForBlockCallback(int64 curr_block);
+
+	virtual int64 getOsErrorCode();
+
 protected:
 	bool readFromDev(char *buf, _u32 bsize);
 	void initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool background_priority);
@@ -84,6 +90,7 @@ protected:
 	SNextBlock* completionGetBlock(int64 pBlock);
 
 	bool has_error;
+	int64 errcode;
 
 	bool own_dev;
 

@@ -52,7 +52,11 @@ class IFsNextBlockCallback
 {
 public:
 	virtual int64 nextBlock(int64 curr_block) = 0;
+	virtual void slowReadWarning(int64 passed_time_ms, int64 curr_block) = 0;
+	virtual void waitingForBlockCallback(int64 curr_block) = 0;
 };
+
+const int64 fs_error_read_timeout = -1;
 
 class IFilesystem : public IReadOnlyBitmap
 {
@@ -70,6 +74,8 @@ public:
 	virtual void releaseBuffer(char* buf)=0;
 
 	virtual void shutdownReadahead()=0;
+
+	virtual int64 getOsErrorCode() = 0;
 };
 
 class FsShutdownHelper

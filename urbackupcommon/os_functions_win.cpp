@@ -1394,12 +1394,21 @@ int64 os_last_error(std::string& message)
 {
 	DWORD last_error = GetLastError();
 
-	wchar_t* output=NULL;
+	message = os_format_errcode(last_error);
 
-	DWORD r = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
+	return last_error;
+}
+
+std::string os_format_errcode(int64 errcode)
+{
+	DWORD last_error = static_cast<DWORD>(errcode);
+	wchar_t* output = NULL;
+
+	DWORD r = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, HRESULT_FROM_WIN32(last_error), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&output), 0, NULL);
 
-	if(r>0 && output!=NULL)
+	std::string message;
+	if (r>0 && output != NULL)
 	{
 		std::wstring wmessage;
 		wmessage.resize(r);
@@ -1407,12 +1416,12 @@ int64 os_last_error(std::string& message)
 		message = trim(ConvertFromWchar(wmessage));
 	}
 
-	if(output!=NULL)
+	if (output != NULL)
 	{
 		LocalFree(output);
 	}
 
-	return last_error;
+	return message;
 }
 
 bool os_enable_background_priority(SPrioInfo& prio_info)
