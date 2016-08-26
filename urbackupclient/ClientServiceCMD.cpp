@@ -1160,11 +1160,11 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		image_inf.shadowdrive=(params["shadowdrive"]);
 		if(params.find("start")!=params.end())
 		{
-			image_inf.startpos=(uint64)_atoi64((params["start"]).c_str());
+			image_inf.startpos=watoi64(params["start"]);
 		}
 		else
 		{
-			image_inf.startpos=0;
+			image_inf.startpos=-1;
 		}
 		if(params.find("shadowid")!=params.end())
 		{
@@ -1237,7 +1237,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner = false;
 		}
-		else if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
+		else if(!image_inf.no_shadowcopy)
 		{
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
@@ -1250,12 +1250,6 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addInt(running_jobs);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			mempipe_owner=false;
-		}
-		else if(!image_inf.no_shadowcopy)
-		{
-			Server->Log("Missing shadowid and not a new backup", LL_ERROR);
-			do_quit = true;
-			return;
 		}
 
 		if(image_inf.no_shadowcopy)
@@ -1297,11 +1291,11 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.server_status_id = watoi(params["status_id"]);
 			if(params.find("start")!=params.end())
 			{
-				image_inf.startpos=(uint64)_atoi64((params["start"]).c_str());
+				image_inf.startpos=watoi64(params["start"]);
 			}
 			else
 			{
-				image_inf.startpos=0;
+				image_inf.startpos=-1;
 			}
 			if(params.find("shadowid")!=params.end())
 			{
@@ -1361,7 +1355,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner = false;
 			}
-			else if(image_inf.startpos==0 && !image_inf.no_shadowcopy)
+			else if(!image_inf.no_shadowcopy)
 			{
 				CWData data;
 				data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
@@ -1374,12 +1368,6 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addInt(running_jobs);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				mempipe_owner=false;
-			}
-			else if(!image_inf.no_shadowcopy)
-			{
-				Server->Log("Missing shadowid and not a new backup", LL_ERROR);
-				do_quit = true;
-				return;
 			}
 
 			hashdatafile=Server->openTemporaryFile();

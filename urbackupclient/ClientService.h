@@ -106,7 +106,7 @@ struct ImageInformation
 	ThreadAction thread_action;
 	THREADPOOL_TICKET thread_ticket;
 	std::string shadowdrive;
-	uint64 startpos;
+	int64 startpos;
 	int shadow_id;
 	std::string image_letter;
 	std::string orig_image_letter;

@@ -2048,7 +2048,10 @@ bool ImageBackup::readShadowData(const std::string & shadowdata)
 	char version=-1;
 	if (!rdata.getChar(&version) || version != 0)
 	{
-		Server->Log("Unknown shadow data version: " + convert(version), LL_ERROR);
+		if (version != 92) //sent by clients < version 2.1
+		{
+			ServerLogger::Log(logid, "Unknown shadow data version: " + convert(version), LL_ERROR);
+		}
 		return false;
 	}
 

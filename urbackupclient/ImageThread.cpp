@@ -236,7 +236,7 @@ bool ImageThread::sendFullImageThread(void)
 				memset(zeroblockbuf, 0, blocksize);
 			}
 
-			if(image_inf->startpos==0)
+			if(image_inf->startpos<0)
 			{
 				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize()+sizeof(int)+c_hashsize];
 				char *cptr=buffer;
@@ -303,7 +303,8 @@ bool ImageThread::sendFullImageThread(void)
 			unsigned int needed_bufs=64;
 			int64 last_hash_block=-1;
 			std::vector<char*> bufs;
-			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=64)
+			int64 startpos = image_inf->startpos < 0 ? 0 : image_inf->startpos;
+			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+=64)
 			{
 				std::vector<char*> n_bufs= clientSend->getBuffers(needed_bufs);
 				bufs.insert(bufs.end(), n_bufs.begin(), n_bufs.end() );
@@ -732,7 +733,7 @@ bool ImageThread::sendIncrImageThread(void)
 				blockcnt *= -1;
 			}
 
-			if(image_inf->startpos==0)
+			if(image_inf->startpos<0)
 			{
 				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+ shadow_data.getDataSize() +sizeof(int)+c_hashsize];
 				char *cptr=buffer;
@@ -802,8 +803,8 @@ bool ImageThread::sendIncrImageThread(void)
 			clientSend = new ClientSend(pipe, blocksize+sizeof(int64), 2000);
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(clientSend, "incr image transfer");
 
-
-			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+= blocks_per_vhdblock)
+			int64 startpos = image_inf->startpos < 0 ? 0 : image_inf->startpos;
+			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+= blocks_per_vhdblock)
 			{
 				++update_cnt;
 				if(update_cnt>10)
