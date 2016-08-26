@@ -36,8 +36,10 @@ namespace
 class FileMetadataDownloadThread : public IThread
 {
 public:
-	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid, int backupid, int clientid);
-	FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid, int clientid);
+	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid, int backupid, int clientid,
+		bool use_tmpfiles, std::string tmpfile_path);
+	FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid, int clientid,
+		bool use_tmpfiles, std::string tmpfile_path);
 	~FileMetadataDownloadThread();
 
 	virtual void operator()();
@@ -93,6 +95,9 @@ private:
 	int clientid;
 
 	FileClient::ProgressLogCallback* orig_progress_log_callback;
+
+	bool use_tmpfiles;
+	std::string tmpfile_path;
 };
 
 int check_metadata();

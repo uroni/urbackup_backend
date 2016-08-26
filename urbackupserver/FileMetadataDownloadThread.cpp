@@ -34,21 +34,27 @@ const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = 1<<3;
 const _u32 ID_RAW_FILE = 1 << 4;
 
-FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid, int backupid, int clientid)
-	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false)
+FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid,
+	int backupid, int clientid, bool use_tmpfiles, std::string tmpfile_path)
+	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false),
+	backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
+	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path)
 {
 
 }
 
-FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn, int backupid, int clientid)
-	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn), dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false)
+FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server_token, std::string metadata_tmp_fn,
+	int backupid, int clientid, bool use_tmpfiles, std::string tmpfile_path)
+	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn),
+	dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
+	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path)
 {
 
 }
 
 void FileMetadataDownloadThread::operator()()
 {
-	std::auto_ptr<IFsFile> tmp_f(ClientMain::getTemporaryFileRetry(true, std::string(), logid));
+	std::auto_ptr<IFsFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid));
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
 
@@ -1436,7 +1442,8 @@ int check_metadata()
 	std::string metadata_file = Server->getServerParameter("metadata_file");
 
 	std::string dummy_server_token;
-	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file, 0, 0);
+	FileMetadataDownloadThread metadata_thread(dummy_server_token, metadata_file,
+		0, 0, true, std::string());
 
 	str_map corrections;
 	size_t num_embedded_files = 0;

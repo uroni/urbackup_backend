@@ -1786,7 +1786,8 @@ bool FileBackup::startFileMetadataDownloadThread()
 
 		fc_metadata_stream->setProgressLogCallback(this);
 
-        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid, backupid, clientid));
+        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token,
+			logid, backupid, clientid, use_tmpfiles, tmpfile_path));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get(), "fbackup meta");
 
