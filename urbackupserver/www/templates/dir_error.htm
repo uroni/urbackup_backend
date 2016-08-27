@@ -4,7 +4,12 @@
 		{?generic_text}
 			{dir_error_text}
 		{/generic_text}
-		{ext_text|s}</th>
+		{ext_text|s}
+		{?stop_show_key}
+		<br> <br>
+		<a href="javascript: stopShowError('{stop_show_key}')">{tOk. Stop showing this error}</a>
+		{/stop_show_key}
+	</th>
 </tr>
 <br>
 <br>

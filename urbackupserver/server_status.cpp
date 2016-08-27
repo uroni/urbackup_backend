@@ -158,6 +158,12 @@ bool ServerStatus::isActive(void)
 	}
 }
 
+void ServerStatus::resetServerNospcStalled()
+{
+	IScopedLock lock(mutex);
+	server_nospc_stalled = 0;
+}
+
 void ServerStatus::incrementServerNospcStalled(int add)
 {
 	IScopedLock lock(mutex);

@@ -139,6 +139,7 @@ public:
 	static bool isActive(void);
 	static void updateActive(void);
 
+	static void resetServerNospcStalled();
 	static void incrementServerNospcStalled(int add);
 	static void setServerNospcFatal(bool b);
 

@@ -75,23 +75,37 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	return has_client;
 }
 
-void set_server_version_info(JSON::Object& ret)
+std::string get_stop_show_version(IDatabase *db)
+{
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='stop_show_version'");
+	if (!res.empty())
+	{
+		return res[0]["tvalue"];
+	}
+	return std::string();
+}
+
+void set_server_version_info(IDatabase* db, JSON::Object& ret)
 {
 	std::auto_ptr<ISettingsReader> infoProperties(Server->createFileSettingsReader("urbackup/server_version_info.properties"));
 
 	if(infoProperties.get())
 	{
-		std::string curr_version_num;
-		if(infoProperties->getValue("curr_version_num", &curr_version_num))
-		{
-			ret.set("curr_version_num", watoi64(curr_version_num));
-		}
-
+		std::string stop_show_version = get_stop_show_version(db);
 		std::string curr_version_str;
-		if(infoProperties->getValue("curr_version_str", &curr_version_str))
+		if (infoProperties->getValue("curr_version_str", &curr_version_str))
 		{
-			ret.set("curr_version_str", curr_version_str);
-		}
+			if (stop_show_version != curr_version_str)
+			{
+				ret.set("curr_version_str", curr_version_str);
+
+				std::string curr_version_num;
+				if (infoProperties->getValue("curr_version_num", &curr_version_num))
+				{
+					ret.set("curr_version_num", watoi64(curr_version_num));
+				}
+			}
+		}		
 	}
 }
 
@@ -166,7 +180,91 @@ std::string access_dir_hint(std::string folder)
 	return std::string();
 }
 
-void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::string backupfolder_uncompr,
+void add_remove_stop_show(IDatabase* db, std::string stop_show, bool add)
+{
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='stop_show'");
+	if (!res.empty())
+	{
+		std::vector<std::string> toks;
+		TokenizeMail(res[0]["tvalue"], toks, ",");
+		std::vector<std::string>::iterator it = std::find(toks.begin(), toks.end(), stop_show);
+		if (add)
+		{
+			if (it == toks.end())
+			{
+				toks.push_back(stop_show);
+			}
+		}
+		else
+		{
+			if (it != toks.end())
+			{
+				toks.erase(it);
+			}
+		}
+
+		std::string nval;
+		for (size_t i = 0; i < toks.size(); ++i)
+		{
+			if (!nval.empty()) nval += ",";
+			nval += toks[i];
+		}
+
+		IQuery* q = db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='stop_show'");
+		q->Bind(nval);
+		q->Write();
+		q->Reset();
+	}
+	else
+	{
+		IQuery* q = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES ('stop_show', ?)");
+		q->Bind(stop_show);
+		q->Write();
+		q->Reset();
+	}
+}
+
+bool is_stop_show(IDatabase* db, std::string stop_key)
+{
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='stop_show'");
+	if (!res.empty())
+	{
+		std::vector<std::string> toks;
+		TokenizeMail(res[0]["tvalue"], toks, ",");
+		return std::find(toks.begin(), toks.end(), stop_key) != toks.end();
+	}
+	return false;
+}
+
+void set_stop_show_version(IDatabase* db, std::string ver)
+{
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='stop_show_version'");
+	if (!res.empty())
+	{
+		IQuery* q = db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='stop_show_version'");
+		q->Bind(ver);
+		q->Write();
+		q->Reset();
+	}
+	else
+	{
+		IQuery* q = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES ('stop_show_version', ?)");
+		q->Bind(ver);
+		q->Write();
+		q->Reset();
+	}
+}
+
+void add_stop_show(IDatabase* db, JSON::Object& ret, std::string dir_error_stop_show_key)
+{
+	ret.set("dir_error_stop_show_key", dir_error_stop_show_key);
+	if (is_stop_show(db, dir_error_stop_show_key))
+	{
+		ret.set("dir_error_show", false);
+	}
+}
+
+void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string backupfolder, std::string backupfolder_uncompr,
 	JSON::Object& ret)
 {
 #ifdef _WIN32
@@ -188,10 +286,20 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 		}
 
 		ret.set("dir_error", true);
+
 		if (settings.getSettings()->backupfolder.empty())
+		{
 			ret.set("dir_error_ext", "err_name_empty");
+		}
 		else if (!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)))
+		{
 			ret.set("dir_error_ext", "err_folder_not_found");
+			add_stop_show(db, ret, "dir_error_not_found");
+		}
+		else
+		{
+			add_stop_show(db, ret, "dir_error_misc");
+		}
 
 #ifdef _WIN32
 		std::string hint = access_dir_hint(settings.getSettings()->backupfolder);
@@ -210,6 +318,8 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 		ret.set("system_err", os_last_error_str());
 		ret.set("dir_error", true);
 		ret.set("dir_error_ext", "err_cannot_create_subdir");
+
+		add_stop_show(db, ret, "dir_error_cannot_create_subdir");
 
 #ifdef _WIN32
 		std::string hint = access_dir_hint(backupfolder);
@@ -231,6 +341,7 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 				ret.set("system_err", os_last_error_str());
 				ret.set("dir_error", true);
 				ret.set("dir_error_ext", "err_cannot_create_subdir");
+				add_stop_show(db, ret, "dir_error_cannot_create_subdir2");
 				has_access_error = true;
 #ifdef _WIN32
 				std::string hint = access_dir_hint(backupfolder);
@@ -248,6 +359,7 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 			ret.set("system_err", os_last_error_str());
 			ret.set("dir_error", true);
 			ret.set("dir_error_ext", "err_cannot_create_subdir");
+			add_stop_show(db, ret, "dir_error_cannot_create_subdir3");
 
 #ifdef _WIN32
 			std::string hint = access_dir_hint(backupfolder);
@@ -275,6 +387,7 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 					"The UrBackup Server must run as administrative user on Windows (If not you get error code 1314). "
 					"Note: As of 2016-05-07 samba (which is used by many Linux based NAS operating systems for Windows file sharing) has not "
 					"implemented the necessary functionality to support symbolic link creation from Windows (With this you get error code 4390).");
+				add_stop_show(db, ret, "dir_error_cannot_create_symbolic_links");
 			}
 
 			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
@@ -286,6 +399,7 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 			ret.set("system_err", os_last_error_str());
 			ret.set("dir_error", true);
 			ret.set("dir_error_ext", "err_cannot_create_subdir");
+			add_stop_show(db, ret, "dir_error_cannot_create_subdir4");
 			has_access_error = true;
 		}
 	}
@@ -295,6 +409,11 @@ void access_dir_checks(ServerSettings& settings, std::string backupfolder, std::
 	if (tmp == NULL)
 	{
 		ret.set("tmpdir_error", true);
+		ret.set("tmpdir_error_stop_show_key", "tmpdir_error");
+		if (is_stop_show(db, "tmpdir_error"))
+		{
+			ret.set("tmpdir_error_show", false);
+		}
 	}
 }
 
@@ -322,10 +441,40 @@ ACTION_IMPL(status)
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
+		if (rights == "all" && POST.find("stop_show") != POST.end())
+		{
+			add_remove_stop_show(db, POST["stop_show"], true);
+		}
+
+		if (rights == "all" && POST.find("stop_show_version") != POST.end())
+		{
+			set_stop_show_version(db, POST["stop_show_version"]);
+		}
+
+		if (rights == "all" && POST.find("reset_error") != POST.end())
+		{
+			std::string reset_error = POST["reset_error"];
+			if (reset_error == "nospc_stalled")
+			{
+				ServerStatus::resetServerNospcStalled();
+			}
+			else if (reset_error == "nospc_fatal")
+			{
+				ServerStatus::setServerNospcFatal(false);
+			}
+			else if (reset_error == "database_error")
+			{
+				Server->clearFailBit(IServer::FAIL_DATABASE_CORRUPTED);
+				Server->clearFailBit(IServer::FAIL_DATABASE_IOERR);
+				Server->clearFailBit(IServer::FAIL_DATABASE_FULL);
+			}
+		}
+
+		if(rights=="all")
 		{
 			ServerSettings settings(db);
 
-			access_dir_checks(settings, settings.getSettings()->backupfolder,
+			access_dir_checks(db, settings, settings.getSettings()->backupfolder,
 				settings.getSettings()->backupfolder_uncompr, ret);
 
 			if(ServerStatus::getServerNospcStalled()>0)
@@ -392,7 +541,7 @@ ACTION_IMPL(status)
 				}
 			}
 			BackupServer::updateDeletePending();
-		}		
+		}
 
 		JSON::Array status;
 		IDatabase *db=helper.getDatabase();
@@ -541,6 +690,7 @@ ACTION_IMPL(status)
 
 		if(rights=="all")
 		{
+			bool has_ident_error_clients = false;
 			for(size_t i=0;i<client_status.size();++i)
 			{
 				bool found=false;
@@ -571,7 +721,9 @@ ACTION_IMPL(status)
 				switch(client_status[i].status_error)
 				{
 				case se_ident_error:
-					stat.set("status", 11); break;
+					stat.set("status", 11); 
+					has_ident_error_clients = true;
+					break;
 				case se_too_many_clients:
 					stat.set("status", 12); break;
 				case se_authentication_error:
@@ -585,6 +737,16 @@ ACTION_IMPL(status)
 				stat.set("rejected", true);
 
 				status.add(stat);
+			}
+
+			if (has_ident_error_clients)
+			{
+				ret.set("has_ident_error_clients", true);
+				ret.set("has_ident_error_clients_stop_show_key", "has_ident_error_clients");
+				if (is_stop_show(db, "has_ident_error_clients"))
+				{
+					ret.set("show_has_ident_error_clients", false);
+				}
 			}
 		}
 		JSON::Array extra_clients;
@@ -651,7 +813,7 @@ ACTION_IMPL(status)
 		if(helper.getRights("all")=="all")
 		{
 			ret.set("admin", JSON::Value(true));
-			set_server_version_info(ret);
+			set_server_version_info(db, ret);
 		}
 
 		if(is_big_endian())

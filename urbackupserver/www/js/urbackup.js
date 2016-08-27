@@ -992,6 +992,12 @@ function stat_client(id, name)
 	}
 }
 
+g.status_action_add_hostname=0;
+g.status_action_remove_hostname=1;
+g.status_action_add_internetclient=2;
+g.status_action_stop_show=3;
+g.status_action_reset_error=4;
+g.status_action_stop_show_new_version=5;
 function show_status1(hostname, action, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
@@ -1005,18 +1011,31 @@ function show_status1(hostname, action, remove_client, stop_client_remove)
 		{
 			pars+="&";
 		}
-		if(typeof action=="undefined" || action==0 || action==1)
+		if(typeof action=="undefined" 
+			|| action==g.status_action_add_hostname || action==g.status_action_remove_hostname)
 		{
 			pars+="hostname="+hostname;
 			
-			if(action==1)
+			if(action==g.status_action_remove_hostname)
 			{
 				pars+="&remove=true";
 			}
 		}
-		else if(action==2)
+		else if(action==g.status_action_add_internetclient)
 		{
 			pars+="clientname="+hostname;			
+		}
+		else if(action==g.status_action_stop_show)
+		{
+			pars+="stop_show="+hostname;
+		}
+		else if(action==g.status_action_reset_error)
+		{
+			pars+="reset_error="+hostname;
+		}
+		else if(action==g.status_action_stop_show_new_version)
+		{
+			pars+="stop_show_version="+hostname;
 		}
 	}
 	else if(remove_client && remove_client.length>0)
@@ -1211,7 +1230,8 @@ function show_status2(data)
 		}
 	}
 	var dir_error="";
-	if(data.dir_error)
+	if(data.dir_error
+		&& (typeof data.dir_error_show === "undefined" || data.dir_error_show===true)  )
 	{
 		var ext_text="";
 		var generic_text=true;
@@ -1245,13 +1265,15 @@ function show_status2(data)
 			ext_text+="<br><br>Detailed error info:<br><pre>"+data.detail_err_str+"</pre>";
 		}
 		
-		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text"), generic_text: generic_text});
+		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text"), generic_text: generic_text,
+											stop_show_key: data.dir_error_stop_show_key });
 	}
 	
 	var tmpdir_error="";
-	if(data.tmpdir_error)
+	if(data.tmpdir_error
+		&& (typeof data.tmpdir_error_show === "undefined" || data.tmpdir_error_show===true )  )
 	{
-		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text")});
+		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
 	}
 	
 	var endian_info="";
@@ -1304,14 +1326,16 @@ function show_status2(data)
 	var status_can_show_all=false;
 	var status_extra_clients=false;
 	
-	if(data.allow_extra_clients
-		&& data.extra_clients.length>0)
+	if(data.allow_extra_clients)
 	{
 		if(!g.status_show_all)
 		{
 			status_can_show_all=true;
 		}
-		status_extra_clients=true;
+		if( data.extra_clients.length>0)
+		{
+			status_extra_clients=true;
+		}
 	}
 	
 	var allow_add_client=false;
@@ -1530,10 +1554,40 @@ function show_status2(data)
 	{
 		g.checkForNewVersion(data.curr_version_num, data.curr_version_str);
 	}
+	else if(I('new_version_available'))
+	{
+		I('new_version_available').style="margin: 0; padding: 0; height: 0; visibility: hidden;";
+	}
+	
+	if(data.has_ident_error_clients
+		&& I("has_ident_error_clients")
+		&& (typeof data.show_has_ident_error_clients==="undefined" || data.show_has_ident_error_clients===true) )
+	{
+		I('has_ident_error_clients').innerHTML=dustRender("has_ident_error_clients", {stop_show_key: data.has_ident_error_clients_stop_show_key} );
+		I('has_ident_error_clients').style="visibility: visible";
+	}
+	else if(I('has_ident_error_clients'))
+	{
+		I('has_ident_error_clients').style="margin: 0; padding: 0; height: 0; visibility: hidden;";
+	}
 	
 	g.status_show_all=false;
 }
 
+function stopShowError(stop_show_key)
+{
+	show_status1(stop_show_key, g.status_action_stop_show);
+}
+
+function resetStatusError(reset_key)
+{
+	show_status1(reset_key, g.status_action_reset_error);
+}
+
+function stopShowNewVersion(version_str)
+{
+	show_status1(version_str, g.status_action_stop_show_new_version);
+}
 
 g.checkForNewVersion = function(curr_version_num, curr_version_str)
 {
@@ -1621,13 +1675,13 @@ function addInternetClient()
 		return;
 	}
 	
-	show_status1(I('clientname').value, 2);
+	show_status1(I('clientname').value, g.status_action_add_internetclient);
 }
 
 
 function removeExtraClient(id)
 {
-	show_status1(id+"", 1);
+	show_status1(id+"", g.status_action_remove_hostname);
 }
 
 
