@@ -1576,12 +1576,13 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		return false;
 	}
 	
-	IFsFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	IFsFile *tmp=getTemporaryFileRetry(true, std::string(), logid);
 	if(tmp==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
 		return false;
 	}
+	ScopedDeleteFile delete_tmp(tmp);
 
 	std::string settings_fn = "urbackup/settings.cfg";
 
@@ -1594,9 +1595,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(logid, "Error getting Client settings of "+clientname+". Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
-		std::string tmp_fn=tmp->getFilename();
-		Server->destroy(tmp);
-		Server->deleteFile(tmp_fn);
 
 		if(rc== ERR_CANNOT_OPEN_FILE)
 		{
@@ -1607,8 +1605,12 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	}
 
 	std::string settings_data = readToString(tmp);
+	std::string tmp_fn = tmp->getFilename();
+	delete_tmp.release();
+	ScopedDeleteFn delete_fn(tmp_fn);
+	Server->destroy(tmp);
 
-	ISettingsReader *sr=Server->createFileSettingsReader(tmp->getFilename());
+	std::auto_ptr<ISettingsReader> sr(Server->createFileSettingsReader(tmp_fn));
 
 	std::vector<std::string> setting_names=getSettingsList();
 
@@ -1619,10 +1621,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		std::string tmp_str;
 		if(!sr->getValue("client_set_settings", &tmp_str) || tmp_str!="true" )
 		{
-			Server->destroy(sr);
-			std::string tmp_fn=tmp->getFilename();
-			Server->destroy(tmp);
-			Server->deleteFile(tmp_fn);
 			return true;
 		}
 		else
@@ -1642,10 +1640,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 				}
 				else
 				{
-					Server->destroy(sr);
-					std::string tmp_fn=tmp->getFilename();
-					Server->destroy(tmp);
-					Server->deleteFile(tmp_fn);
 					return true;
 				}
 			}
@@ -1678,12 +1672,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 				mod=true;
 		}
 	}
-
-	Server->destroy(sr);
-	
-	std::string tmp_fn=tmp->getFilename();
-	Server->destroy(tmp);
-	Server->deleteFile(tmp_fn);
 
 	if(mod)
 	{
