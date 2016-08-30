@@ -90,6 +90,34 @@ public:
 	virtual void* getOsHandle() = 0;
 };
 
+class ScopedDeleteFn
+{
+public:
+	ScopedDeleteFn(std::string fn)
+		: fn(fn) {}
+	~ScopedDeleteFn(void) {
+		del();
+	}
+	void clear() {
+		del();
+	}
+	void reset(std::string pfn) {
+		del();
+		fn = pfn;
+	}
+	void release() {
+		fn.clear();
+	}
+private:
+	void del() {
+		if (!fn.empty()) {
+			Server->deleteFile(fn);
+		}
+		fn.clear();
+	}
+	std::string fn;
+};
+
 class ScopedDeleteFile
 {
 public:
