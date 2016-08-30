@@ -776,7 +776,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 					_u32 toread;
 					if (has_file_extents)
 					{
-						toread = (std::min)(static_cast<_u32>(file_extents[extent_pos].offset + file_extents[extent_pos].size - i), (_u32)READSIZE);
+						assert(file_extents[extent_pos].offset + file_extents[extent_pos].size > i);
+						assert(file_extents[extent_pos].offset <= i);
+
+						toread = static_cast<_u32>((std::min)(file_extents[extent_pos].offset + file_extents[extent_pos].size - i, static_cast<int64>(READSIZE)));
 
 						if (i + toread == file_extents[extent_pos].offset + file_extents[extent_pos].size
 							&& extent_pos + 1 >= file_extents.size())
