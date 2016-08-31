@@ -26,6 +26,7 @@ public:
 protected:
 
 	virtual bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
+	virtual void finishStdout();
 	virtual bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
 #ifdef _WIN32
 	bool readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read_bytes);

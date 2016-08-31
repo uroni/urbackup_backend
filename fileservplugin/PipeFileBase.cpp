@@ -304,6 +304,8 @@ void PipeFileBase::operator()()
 		{
 			Server->wait(100);
 		}
+
+		finishStdout();
 	}
 	else
 	{

@@ -131,6 +131,10 @@ bool PipeFile::readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_by
 	return readIntoBuffer(hStdout, buf, buf_avail, read_bytes);
 }
 
+void PipeFile::finishStdout()
+{
+}
+
 bool PipeFile::readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes)
 {
 	return readIntoBuffer(hStderr, buf, buf_avail, read_bytes);

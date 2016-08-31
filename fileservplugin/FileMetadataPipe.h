@@ -38,6 +38,8 @@ public:
 protected:
 	virtual bool readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes );
 
+	virtual void finishStdout();
+
 	virtual bool readStderrIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes );
 
 	virtual void cleanupOnForceShutdown();
@@ -123,6 +125,8 @@ private:
 	IFile* transmit_file;
 	IPipe* transmit_wait_pipe;
 	sha512_ctx transmit_file_ctx;
+
+	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
 };
 
 #ifndef _WIN32

@@ -78,6 +78,7 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::string& cmd )
 
 FileMetadataPipe::~FileMetadataPipe()
 {
+	assert(token_callback.get() == NULL);
 }
 
 
@@ -89,7 +90,10 @@ bool FileMetadataPipe::getExitCode( int& exit_code )
 
 bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes )
 {
-	std::auto_ptr<IFileServ::ITokenCallback> token_callback(FileServ::newTokenCallback());
+	if (token_callback.get() == NULL)
+	{
+		token_callback.reset(FileServ::newTokenCallback());
+	}
 
 	if(buf_avail==0)
 	{
@@ -611,6 +615,11 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			}
 		}
 	}	
+}
+
+void FileMetadataPipe::finishStdout()
+{
+	token_callback.reset();
 }
 
 bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes )
