@@ -74,6 +74,7 @@ protected:
 	void init();
 
 	virtual bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes) = 0;
+	virtual void finishStdout() = 0;
 	virtual bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes) = 0;
 
 	bool has_error;
