@@ -3056,11 +3056,6 @@ std::vector<SLogEntry> ClientMain::parseLogData(int64 max_duration, const std::s
 
 bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 {
-	if (!needs_authentification)
-	{
-		return true;
-	}
-
 	{
 		IScopedLock lock(clientaddr_mutex);
 
@@ -3080,7 +3075,7 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 		c=false;
 
 		bool b = authenticatePubKey();
-		if(!b)
+		if(!b && needs_authentification)
 		{
 			ServerStatus::setStatusError(clientname, se_authentication_error);
 
