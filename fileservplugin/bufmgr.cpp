@@ -19,6 +19,9 @@
 #include "../vld.h"
 #include "bufmgr.h"
 #include "log.h"
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 namespace fileserv
 {
@@ -27,57 +30,56 @@ CBufMgr::CBufMgr(unsigned int nbuf, unsigned int bsize)
 {
 	for(unsigned int i=0;i<nbuf;++i)
 	{
-		SBuffer buf;
-		buf.buffer=new char[bsize+1];
-		buf.used=false;
-		buffers.push_back( buf );
+		char* buffer;
+#ifndef _WIN32
+		buffer=new char[bsize];
+#else
+		buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, bsize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+#endif
+		buffers.push_back( buffer );
+		free_buffers.push(buffer);
 	}
-	freebufs=nbuf;
 }
 
 CBufMgr::~CBufMgr(void)
 {
+	if (free_buffers.size() != buffers.size())
+	{
+		Log("There are used buffers when freeing buffer manager", LL_ERROR);
+	}
+
 	for(size_t i=0;i<buffers.size();++i)
 	{
-		if( buffers[i].used==true )
-		{
-			Log("Warning: Deleting used Buffer!");
-		}
-		delete[] buffers[i].buffer;
+#ifndef _WIN32
+		delete[] buffers[i];
+#else
+		VirtualFree(buffers[i], 0, MEM_RELEASE);
+#endif
 	}
 }
 
 char* CBufMgr::getBuffer(void)
 {
-	for(size_t i=0;i<buffers.size();++i)
+	if (!free_buffers.empty())
 	{
-		if( buffers[i].used==false )
-		{
-			buffers[i].used=true;
-			--freebufs;
-			return buffers[i].buffer;
-		}
+		char* buffer = free_buffers.top();
+		free_buffers.pop();
+		return buffer;
 	}
-	return NULL;
+	else
+	{
+		return NULL;
+	}
 }
 
 void CBufMgr::releaseBuffer(char* buf)
 {
-	for(size_t i=0;i<buffers.size();++i)
-	{
-		if( buffers[i].buffer==buf )
-		{
-			++freebufs;
-			buffers[i].used=false;
-			return;
-		}		
-	}
-	Log("Warning: Buffer to free not found!");
+	free_buffers.push(buf);
 }
 
 unsigned int CBufMgr::nfreeBufffer(void)
 {
-	return freebufs;
+	return static_cast<unsigned int>(free_buffers.size());
 }
 
 } //namespace fileserv

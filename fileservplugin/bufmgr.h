@@ -1,13 +1,9 @@
+#pragma once
 #include <vector>
+#include <stack>
 
 namespace fileserv
 {
-	struct SBuffer
-	{
-		char* buffer;
-		bool used;
-	};
-
 	class CBufMgr
 	{
 	public:
@@ -20,9 +16,8 @@ namespace fileserv
 
 	private:
 
-		std::vector<SBuffer> buffers;
-		unsigned int freebufs;
-
+		std::vector<char*> buffers;
+		std::stack<char*> free_buffers;
 	};
 }
 
