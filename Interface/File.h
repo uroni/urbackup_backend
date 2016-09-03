@@ -21,6 +21,8 @@ const int MODE_RW_RESTORE = 12;
 const int MODE_RW_CREATE_RESTORE = 13;
 const int MODE_RW_CREATE_DEVICE = 14;
 const int MODE_READ_DEVICE_OVERLAPPED = 15;
+const int MODE_RW_DIRECT = 16;
+const int MODE_RW_CREATE_DIRECT = 17;
 //Linux only
 const int MODE_RW_READNONE=10;
 

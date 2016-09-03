@@ -120,13 +120,22 @@ bool File::Open(std::string pfn, int mode)
 		|| mode==MODE_RW_SEQUENTIAL
 		|| mode==MODE_RW_CREATE
 		|| mode==MODE_RW_READNONE
-		|| mode==MODE_RW_DEVICE)
+		|| mode==MODE_RW_DEVICE
+		|| mode==MODE_RW_DIRECT
+		|| mode==MODE_RW_CREATE_DIRECT)
 	{
 		flags=O_RDWR;
-		if( mode==MODE_RW_CREATE )
+		if( mode==MODE_RW_CREATE
+			|| mode==MODE_RW_CREATE_DIRECT )
 		{
 			flags|=O_CREAT;
 		}
+	}
+	
+	if( mode==MODE_RW_CREATE_DIRECT
+		|| mode==MODE_RW_DIRECT )
+	{
+		flags|=O_DIRECT;
 	}
 	
 	struct stat buf;

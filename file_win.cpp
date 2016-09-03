@@ -36,6 +36,11 @@ File::File()
 
 bool File::Open(std::string pfn, int mode)
 {
+	if(mode==MODE_RW_DIRECT)
+		mode = MODE_RW;
+	if(mode==MODE_RW_CREATE_DIRECT)
+		mode = MODE_RW_CREATE;
+	
 	fn=pfn;
 	DWORD dwCreationDisposition;
 	DWORD dwDesiredAccess;
