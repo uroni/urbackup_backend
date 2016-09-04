@@ -2385,9 +2385,11 @@ bool ServerCleanupThread::backup_clientlists()
 		{
 			if(files[i].name.find("clientlist_b_")==0)
 			{
-				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name), os_file_prefix(bfolder + os_file_sep() + files[i].name+"~"), true))
+				std::string error_str;
+				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name),
+					os_file_prefix(bfolder + os_file_sep() + files[i].name+"~"), true, &error_str))
 				{
-					ServerLogger::Log(logid, "Error backing up "+files[i].name, LL_ERROR);
+					ServerLogger::Log(logid, "Error backing up "+files[i].name+". "+error_str, LL_ERROR);
 					has_error=true;
 				}
 			}

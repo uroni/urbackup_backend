@@ -32,8 +32,11 @@ bool TreeReader::readTree(const std::string &fn)
 {
 	std::fstream in;
 	in.open(fn.c_str(), std::ios::in | std::ios::binary );
-	if(!in.is_open())
+	if (!in.is_open())
+	{
+		Log("Cannot read file tree from file \"" + fn + "\"");
 		return false;
+	}
 
 	size_t read;
 	char buffer[buffer_size];

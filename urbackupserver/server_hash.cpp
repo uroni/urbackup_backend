@@ -1193,7 +1193,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 		bool b=writeRepeatFreeSpace(dst.get(), buf, read, this);
 		if(!b)
 		{
-			ServerLogger::Log(logid, "Error writing to file \""+dest+"\" -2", LL_ERROR);
+			ServerLogger::Log(logid, "Error writing to file \""+dest+"\" -2. "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 		else
@@ -1258,12 +1258,12 @@ bool BackupServerHash::handle_not_enough_space(const std::string &path)
 	{
 		if(space_logcnt==0)
 		{
-			ServerLogger::Log(logid, "Error writing to file \""+path+"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error writing to file \""+path+"\". "+os_last_error_str(), LL_ERROR);
 			++space_logcnt;
 		}
 		else
 		{
-			ServerLogger::Log(logid, "Error writing to file \""+path+"\"", LL_ERROR);
+			ServerLogger::Log(logid, "Error writing to file \""+path+"\". "+os_last_error_str(), LL_ERROR);
 		}
 		return false;
 	}
@@ -1301,7 +1301,7 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 			bool b = writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
 			if (!b)
 			{
-				ServerLogger::Log(logid, "Error writing to file \"" + chunk_output_fn->getFilename() + "\" -3", LL_ERROR);
+				ServerLogger::Log(logid, "Error writing to file \"" + chunk_output_fn->getFilename() + "\" -3. "+os_last_error_str(), LL_ERROR);
 				chunk_patcher_has_error = true;
 			}
 		}
@@ -1547,7 +1547,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 			bool b=writeRepeatFreeSpace(dst.get(), buf1, read1, this);
 			if(!b)
 			{
-				ServerLogger::Log(logid, "Error writing to file \""+dest+"\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error writing to file \""+dest+"\" -2. "+os_last_error_str(), LL_ERROR);
 				return false;
 			}
 		}

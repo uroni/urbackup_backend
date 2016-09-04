@@ -934,6 +934,12 @@ std::string os_last_error_str()
 {
 	std::string msg;
 	int64 code = os_last_error(msg);
+	
+	if(code==0)
+	{
+		return "Code 0";
+	}
+	
 	return trim(msg) + " (code: " + convert(code) + ")";
 }
 
