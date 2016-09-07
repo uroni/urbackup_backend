@@ -245,6 +245,7 @@ struct SVssInstance
 	std::string logicalPath;
 	size_t refcount;
 	size_t issues;
+	bool set_succeeded;
 
 	bool operator==(const SVssInstance& other) const
 	{
@@ -689,6 +690,7 @@ private:
 
 	bool vss_select_all_components;
 	std::vector<SComponent > vss_select_components;
+	std::vector<SComponent> vss_explicitly_selected_components;
 	std::vector<SComponent> vss_all_components;
 	std::map<std::string, SVssInstance*> vss_name_instances;
 #endif

@@ -1054,9 +1054,9 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 	UINT nwriters;
 	CHECK_COM_RESULT_RETURN(backupcom->GetWriterMetadataCount(&nwriters));
 
-	std::vector<SComponent> explicit_selected_components;
 	std::vector<SComponent> required_dependencies;
 	vss_all_components.clear();
+	vss_explicitly_selected_components.clear();
 
 	bool added_at_least_one_component;
 	do
@@ -1143,19 +1143,19 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 
 				if (!already_selected)
 				{
-					for (size_t k = 0; k < explicit_selected_components.size(); ++k)
+					for (size_t k = 0; k < vss_explicitly_selected_components.size(); ++k)
 					{
-						std::string logicalPathFull = explicit_selected_components[k].logicalPath;
+						std::string logicalPathFull = vss_explicitly_selected_components[k].logicalPath;
 						if (logicalPathFull.empty())
 						{
-							logicalPathFull = explicit_selected_components[k].componentName;
+							logicalPathFull = vss_explicitly_selected_components[k].componentName;
 						}
 						else
 						{
-							logicalPathFull += "\\" + explicit_selected_components[k].componentName;
+							logicalPathFull += "\\" + vss_explicitly_selected_components[k].componentName;
 						}
 
-						if (explicit_selected_components[k].writerId == writerId
+						if (vss_explicitly_selected_components[k].writerId == writerId
 							&& next(logicalPathStr, 0, logicalPathFull))
 						{
 							already_selected = true;
@@ -1216,7 +1216,7 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 							else
 							{
 								added_curr_component = true;
-								explicit_selected_components.push_back(currComponent);
+								vss_explicitly_selected_components.push_back(currComponent);
 							}							
 						}
 					}
@@ -1666,6 +1666,8 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				vssInstance->instanceId = instanceId;
 				vssInstance->backupcom = backupcom;
 				vssInstance->componentType = componentInfo->type;
+				vssInstance->set_succeeded = std::find(vss_explicitly_selected_components.begin(),
+					vss_explicitly_selected_components.end(), currComponent) != vss_explicitly_selected_components.end();
 
 				std::string pretty_struct_component_path = pretty_struct_base + os_file_sep() + curr_dir;
 				if (!os_directory_exists(pretty_struct_component_path))

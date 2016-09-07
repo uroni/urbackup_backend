@@ -878,17 +878,20 @@ void IndexThread::operator()(void)
 
 					if (it_inst->second->refcount == 0)
 					{
-						HRESULT hr = it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
-							it_inst->second->writerId, it_inst->second->componentType,
-							it_inst->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
-							Server->ConvertToWchar(it_inst->second->componentName).c_str(),
-							it_inst->second->issues == 0 ? true : false);
-
-						if (hr != S_OK)
+						if(it_inst->second->set_succeeded)
 						{
-							VSSLog("Error setting component \"" + it_inst->second->componentName + "\" with logical path \"" + it_inst->second->logicalPath +
-								"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
-							del_error = true;
+							HRESULT hr = it_inst->second->backupcom->SetBackupSucceeded(it_inst->second->instanceId,
+								it_inst->second->writerId, it_inst->second->componentType,
+								it_inst->second->logicalPath.empty() ? NULL : Server->ConvertToWchar(it_inst->second->logicalPath).c_str(),
+								Server->ConvertToWchar(it_inst->second->componentName).c_str(),
+								it_inst->second->issues == 0 ? true : false);
+
+							if (hr != S_OK)
+							{
+								VSSLog("Error setting component \"" + it_inst->second->componentName + "\" with logical path \"" + it_inst->second->logicalPath +
+									"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+								del_error = true;
+							}
 						}
 
 						for (size_t i = 0; i < it_inst->second->parents.size(); ++i)
@@ -900,17 +903,20 @@ void IndexThread::operator()(void)
 
 							if (parent->refcount == 0)
 							{
-								hr = parent->backupcom->SetBackupSucceeded(parent->instanceId,
-									parent->writerId, parent->componentType,
-									parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
-									Server->ConvertToWchar(parent->componentName).c_str(),
-									parent->issues == 0 ? true : false);
-
-								if (hr != S_OK)
+								if(parent->set_succeeded)
 								{
-									VSSLog("Error setting component \"" + parent->componentName + "\" with logical path \"" + parent->logicalPath +
-										"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
-									del_error = true;
+									HRESULT hr = parent->backupcom->SetBackupSucceeded(parent->instanceId,
+										parent->writerId, parent->componentType,
+										parent->logicalPath.empty() ? NULL : Server->ConvertToWchar(parent->logicalPath).c_str(),
+										Server->ConvertToWchar(parent->componentName).c_str(),
+										parent->issues == 0 ? true : false);
+
+									if (hr != S_OK)
+									{
+										VSSLog("Error setting component \"" + parent->componentName + "\" with logical path \"" + parent->logicalPath +
+											"\" to succeeded. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
+										del_error = true;
+									}
 								}
 
 								delete parent;
