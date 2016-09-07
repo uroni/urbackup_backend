@@ -463,8 +463,9 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 
 		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
-		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(with_components ? TRUE : FALSE, TRUE,
-			with_components ? VSS_BT_FULL : VSS_BT_COPY, FALSE));
+		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(with_components ? true : false, 
+			with_components ? false : true,
+			with_components ? VSS_BT_FULL : VSS_BT_COPY, false));
 
 		IVssAsync *pb_result;
 
@@ -475,6 +476,12 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			backupcom->Release();
 			return false;
 		}
+
+#ifndef VSS_XP
+#ifndef VSS_S03
+		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK));
+#endif
+#endif
 
 		selected_vols.clear();
 
@@ -524,12 +531,6 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 				}
 			}
 		}
-
-#ifndef VSS_XP
-#ifndef VSS_S03
-		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK));
-#endif
-#endif
 
 		std::string errmsg;
 
