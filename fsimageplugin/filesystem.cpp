@@ -547,6 +547,7 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 	if (usedNextBlocks() < readahead_low_level_blocks
 		|| force_queue)
 	{
+		int64 queue_starttime = Server->getTimeMS();
 		unsigned int blocksize = static_cast<unsigned int>(getBlocksize());
 		while (!free_next_blocks.empty()
 			&& overlapped_next_block>=0)
@@ -573,8 +574,14 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 				return false;
 			}
 #endif	
-			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 			ret = true;
+
+			if (Server->getTimeMS() - queue_starttime > 500)
+			{
+				return true;
+			}
+
+			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 		}
 	}
 
