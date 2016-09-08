@@ -356,7 +356,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				IScopedLock lock(backup_mutex);
 				removeRunningProcess(local_backup_running_id, false);
 			}
-			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
+			else if( ( file_version>1 || state==CCSTATE_START_FILEBACKUP_ASYNC)
+				&& Server->getTimeMS()-last_update_time>30000 )
 			{
 				last_update_time=Server->getTimeMS();
 				tcpstack.Send(pipe, "BUSY");
