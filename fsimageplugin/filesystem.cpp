@@ -575,13 +575,12 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 			}
 #endif	
 			ret = true;
+			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 
 			if (Server->getTimeMS() - queue_starttime > 500)
 			{
 				return true;
 			}
-
-			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 		}
 	}
 
