@@ -50,6 +50,9 @@ const int c_group_continuous = 1;
 const int c_group_max = 99;
 const int c_group_size = 100;
 
+const int64 async_index_timeout = 5 * 60 * 1000;
+const int64 async_index_timeout_with_grace = 5 * 60 * 1000 + 30000;
+
 const unsigned int flag_end_to_end_verification = 2;
 const unsigned int flag_with_scripts = 4;
 const unsigned int flag_calc_checksums = 8;

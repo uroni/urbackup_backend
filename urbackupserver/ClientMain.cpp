@@ -1559,6 +1559,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.os_simple = it->second;
 		}
+		it = params.find("ASYNC_INDEX");
+		if (it != params.end())
+		{
+			protocol_versions.async_index_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{

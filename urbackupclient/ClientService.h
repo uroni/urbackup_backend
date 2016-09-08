@@ -26,7 +26,8 @@ enum ClientConnectorState
 	CCSTATE_WAIT_FOR_CONTRACTORS=8,
 	CCSTATE_STATUS=9,
 	CCSTATE_FILESERV=10,
-	CCSTATE_IMAGE_BITMAP=11
+	CCSTATE_IMAGE_BITMAP=11,
+	CCSTATE_START_FILEBACKUP_ASYNC=12
 };
 
 enum ThreadAction
@@ -162,6 +163,12 @@ struct SChannel
 	int capa;
 };
 
+struct SAsyncFileList
+{
+	int64 last_update;
+	IPipe* mempipe;
+};
+
 struct SVolumesCache;
 class RestoreFiles;
 
@@ -263,6 +270,7 @@ private:
 	void CMD_SIGNATURE(const std::string &identity, const std::string &cmd);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
 	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
+	void CMD_WAIT_FOR_INDEX(const std::string &cmd);
 	void CMD_START_SHADOWCOPY(const std::string &cmd);
 	void CMD_STOP_SHADOWCOPY(const std::string &cmd);
 	void CMD_SET_INCRINTERVAL(const std::string &cmd);
@@ -318,6 +326,8 @@ private:
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
+	static void timeoutAsyncFileIndex();
+
 	static SRunningProcess* getRunningProcess(RunningAction action, std::string server_token);
 	static SRunningProcess* getRunningFileBackupProcess( std::string server_token, int64 server_id);
 	static SRunningProcess* getRunningBackupProcess(std::string server_token, int64 server_id);
@@ -344,6 +354,7 @@ private:
 	static int64 curr_backup_running_id;
 	static IMutex *backup_mutex;
 	static IMutex *process_mutex;
+	static std::map<std::string, SAsyncFileList> async_file_index;
 	static int backup_interval;
 	static int backup_alert_delay;
 	static std::vector<SChannel> channel_pipes;
@@ -408,6 +419,8 @@ private:
 	IRunOtherCallback* run_other;
 
 	int64 idle_timeout;
+
+	std::string async_file_list_id;
 };
 
 class ScopedRemoveRunningBackup

@@ -105,7 +105,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	}
 
 	unsigned int timeout_time=full_backup_construct_timeout;
-	if(client_main->getProtocolVersions().file_protocol_version>=2)
+	if(client_main->getProtocolVersions().file_protocol_version>=2
+		|| client_main->getProtocolVersions().async_index_version>0)
 	{
 		timeout_time=120000;
 	}
@@ -176,6 +177,14 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		start_backup_cmd += "&status_id=" + convert(status_id);
 	}
 
+	bool async_index = false;
+	if (client_main->getProtocolVersions().async_index_version > 0)
+	{
+		async_index = true;
+
+		start_backup_cmd += "&async=1";
+	}
+
 	if(with_token)
 	{
 		start_backup_cmd+="#token="+server_token;
@@ -183,16 +192,62 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 
 	tcpstack.Send(cc, start_backup_cmd);
 
+	std::string async_id;
+
 	ServerLogger::Log(logid, clientname+": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	int64 total_starttime_s = Server->getTimeSeconds();
 	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
+		if (cc == NULL)
+		{
+			if (async_id.empty())
+			{
+				break;
+			}
+
+			while (Server->getTimeMS() - starttime <= timeout_time)
+			{
+				ServerLogger::Log(logid, clientname + ": Connecting for filelist (async)...", LL_DEBUG);
+				IPipe *cc = client_main->getClientCommandConnection(10000);
+				if (cc == NULL)
+				{
+					Server->wait(10000);
+				}
+			}
+
+			if (cc == NULL)
+			{
+				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed - CONNECT error during filelist construction (2)", LL_ERROR);
+				has_timeout_error = true;
+				should_backoff = false;
+				return false;
+			}
+
+			tcpstack.reset();
+
+			std::string cmd = identity + "WAIT FOR INDEX async_id=" + async_id;
+
+			if (with_token)
+			{
+				cmd += "#token=" + server_token;
+			}
+
+			tcpstack.Send(cc, cmd);
+		}
+
 		size_t rc=cc->Read(&ret, 60000);
 		if(rc==0)
-		{			
-			if(client_main->getProtocolVersions().file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
+		{		
+			if (!async_id.empty())
+			{
+				Server->destroy(cc);
+				cc = NULL;
+				continue;
+			}
+			else if(client_main->getProtocolVersions().file_protocol_version<2
+				&& Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
 				ServerLogger::Log(logid, clientname+": Trying old filelist request", LL_WARNING);
@@ -223,7 +278,17 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				if(ret=="BUSY")
+				if (async_id.empty()
+					&& next(ret, 0, "ASYNC-"))
+				{
+					str_map params;
+					ParseParamStrHttp(ret.substr(6), &params);
+
+					async_id = params["async_id"];
+					Server->destroy(cc);
+					cc = NULL;
+				}
+				else if(ret=="BUSY")
 				{
 					starttime=Server->getTimeMS();
 				}
@@ -248,6 +313,12 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			}
 		}
 	}
+
+	ServerLogger::Log(logid, "Constructing of filelist of \"" + clientname + "\" failed - TIMEOUT(3)", LL_ERROR);
+
+	has_timeout_error = true;
+	should_backoff = false;
+
 	Server->destroy(cc);
 	return false;
 }

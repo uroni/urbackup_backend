@@ -62,6 +62,7 @@ struct SProtocolVersions
 	int client_bitmap_version;
 	int cmd_version;
 	int require_previous_cbitmap;
+	int async_index_version;
 	std::string os_simple;
 };
 

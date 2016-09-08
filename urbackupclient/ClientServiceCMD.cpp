@@ -200,6 +200,8 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 
 void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 {
+	timeoutAsyncFileIndex();
+
 	std::string s_params;
 	if(next(cmd, 0, "3START BACKUP"))
 	{
@@ -282,7 +284,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		running_jobs = watoi(it_running_jobs->second);
 	}
 
-	state=CCSTATE_START_FILEBACKUP;
+	bool async_list = params.find("async") != params.end()
+		&& params["async"] == "1";
 
 	IScopedLock lock(backup_mutex);
 
@@ -295,6 +298,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addString(clientsubname);
 	data.addInt(sha_version);
 	data.addInt(running_jobs);
+	data.addChar(async_list ? 1 : 0);
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -330,10 +335,36 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	status_updated = true;
 
 	end_to_end_file_backup_verification_enabled=false;
+
+	if (!async_list)
+	{
+		state = CCSTATE_START_FILEBACKUP;
+	}
+	else
+	{
+		process_lock.relock(NULL);
+
+		std::string async_id;
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+
+		SAsyncFileList new_async_file_list = {
+			Server->getTimeMS(),
+			mempipe
+		};
+
+		async_file_index[async_id] = new_async_file_list;
+
+		lock.relock(NULL);
+
+		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+	}
 }
 
 void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 {
+	timeoutAsyncFileIndex();
+
 	std::string s_params;
 	if(cmd=="2START FULL BACKUP")
 	{
@@ -413,7 +444,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		running_jobs = watoi(it_running_jobs->second);
 	}
 
-	state=CCSTATE_START_FILEBACKUP;
+	bool async_list = params.find("async") != params.end()
+		&& params["async"] == "1";
 
 	IScopedLock lock(backup_mutex);
 
@@ -426,6 +458,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addString(clientsubname);
 	data.addInt(sha_version);
 	data.addInt(running_jobs);
+	data.addChar(async_list ? 1 : 0);
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -447,6 +481,65 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	running_processes.push_back(new_proc);
 
 	status_updated = true;
+
+	if (!async_list)
+	{
+		state = CCSTATE_START_FILEBACKUP;
+	}
+	else
+	{
+		process_lock.relock(NULL);
+
+		std::string async_id;
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+
+		SAsyncFileList new_async_file_list = {
+			Server->getTimeMS(),
+			mempipe
+		};
+
+		async_file_index[async_id] = new_async_file_list;
+
+		lock.relock(NULL);
+
+		tcpstack.Send(pipe, "ASYNC-async_id="+ bytesToHex(async_id));
+	}
+}
+
+void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
+{
+	str_map params;
+	ParseParamStrHttp(cmd.substr(15), &params);
+
+	IScopedLock lock(backup_mutex);
+
+	std::string async_id = params["async_id"];
+	async_file_list_id = hexToBytes(async_id);
+	std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
+	if (it == async_file_index.end())
+	{
+		lock.relock(NULL);
+
+		tcpstack.Send(pipe, "error - Async indexing process not found");
+	}
+	else if (Server->getTimeMS() - it->second.last_update > async_index_timeout)
+	{
+		async_file_index.erase(it);
+		lock.relock(NULL);
+
+		tcpstack.Send(pipe, "error - Async indexing process timeout");
+	}
+	else
+	{
+		state = CCSTATE_START_FILEBACKUP_ASYNC;
+		if (mempipe_owner)
+		{
+			Server->destroy(mempipe);
+		}
+		mempipe = it->second.mempipe;
+		mempipe_owner = false;
+	}
 }
 
 void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
@@ -2247,7 +2340,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		send_prev_cbitmap = "&REQ_PREV_CBITMAP=1";
 	}
 
-	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2"
+	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&OS_SIMPLE=windows"+ send_prev_cbitmap);
@@ -2263,7 +2356,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 
 
 	std::string os_version_str=get_lin_os_version();
-	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2"
+	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
 		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CMD=1&OS_SIMPLE="+os_simple);
 #endif

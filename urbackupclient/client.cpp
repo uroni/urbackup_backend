@@ -447,13 +447,17 @@ void IndexThread::operator()(void)
 	updateCbt();
 
 	std::string last_index;
+	bool async_timeout = false;
+	int64 async_timeout_starttime = 0;
 
 	while(true)
 	{
 		std::string msg;
 		if(contractor!=NULL)
 		{
-			while(msg!="exit")
+			while(msg!="exit"
+				&& (!async_timeout
+					|| Server->getTimeMS() - async_timeout_starttime < async_index_timeout_with_grace) )
 			{
 				contractor->Read(&msg);
 				if(msg!="exit")
@@ -467,6 +471,7 @@ void IndexThread::operator()(void)
 		}
 		msgpipe->Read(&msg);
 
+		async_timeout = false;
 		CRData data(&msg);
 		char action;
 		data.getChar(&action);
@@ -497,6 +502,13 @@ void IndexThread::operator()(void)
 			data.getInt(&sha_version);
 			int running_jobs = 2;
 			data.getInt(&running_jobs);
+			char async_index = 0;
+			data.getChar(&async_index);
+
+			if (async_index == 1)
+			{
+				async_timeout = true;
+			}
 
 			setFlags(flags);
 
@@ -589,6 +601,11 @@ void IndexThread::operator()(void)
 			{
 				contractor->Write("error - stop_index 1");
 			}
+
+			if (async_timeout)
+			{
+				async_timeout_starttime = Server->getTimeMS();
+			}
 		}
 		else if(action==IndexThreadAction_StartFullFileBackup)
 		{
@@ -603,6 +620,13 @@ void IndexThread::operator()(void)
 			data.getInt(&sha_version);
 			int running_jobs = 2;
 			data.getInt(&running_jobs);
+			char async_index = 0;
+			data.getChar(&async_index);
+
+			if (async_index == 1)
+			{
+				async_timeout = true;
+			}
 
 			setFlags(flags);
 
@@ -648,6 +672,11 @@ void IndexThread::operator()(void)
 				{
 					contractor->Write("done");
 				}
+			}
+
+			if (async_timeout)
+			{
+				async_timeout_starttime = Server->getTimeMS();
 			}
 		}
 		else if(action==IndexThreadAction_CreateShadowcopy

@@ -96,6 +96,7 @@ size_t ClientConnector::needs_restore_restart = 0;
 size_t ClientConnector::ask_restore_ok = 0;
 int64 ClientConnector::service_starttime = 0;
 SRestoreToken ClientConnector::restore_token;
+std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
 
 
 #ifdef _WIN32
@@ -263,7 +264,10 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 	if(do_quit)
 	{
-		if(state!=CCSTATE_START_FILEBACKUP && state!=CCSTATE_SHADOWCOPY && state!=CCSTATE_WAIT_FOR_CONTRACTORS)
+		if(state!=CCSTATE_START_FILEBACKUP 
+			&& state!=CCSTATE_START_FILEBACKUP_ASYNC
+			&& state!=CCSTATE_SHADOWCOPY 
+			&& state!=CCSTATE_WAIT_FOR_CONTRACTORS)
 		{
 			if(is_channel)
 			{
@@ -306,10 +310,18 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			return false;
 		}
 		return true;
+	case CCSTATE_START_FILEBACKUP_ASYNC:
 	case CCSTATE_START_FILEBACKUP:
 		{
 			std::string msg;
 			mempipe->Read(&msg, 0);
+
+			if (state == CCSTATE_START_FILEBACKUP_ASYNC)
+			{
+				IScopedLock lock(backup_mutex);
+				async_file_index[async_file_list_id].last_update = Server->getTimeMS();
+			}
+
 			if(msg=="exit")
 			{
 				mempipe->Write("exit");
@@ -884,6 +896,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP" || next(cmd, 0, "3START FULL BACKUP") )
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
+			}
+			else if (next(cmd, 0, "WAIT FOR INDEX "))
+			{
+				CMD_WAIT_FOR_INDEX(cmd); continue;
 			}
 			else if(next(cmd, 0, "START SC \"") )
 			{
@@ -3206,6 +3222,26 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 				ServerIdentityMgr::checkServerSessionIdentity(channel_pipes[i].server_identity, endpoint_name);
 			}
 			break;
+		}
+	}
+}
+
+void ClientConnector::timeoutAsyncFileIndex()
+{
+	int64 ctime = Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	for (std::map<std::string, SAsyncFileList>::iterator it = async_file_index.begin();
+		it != async_file_index.end();)
+	{
+		if (ctime - it->second.last_update > async_index_timeout * 2)
+		{
+			std::map<std::string, SAsyncFileList>::iterator it_curr = it;
+			++it;
+			async_file_index.erase(it_curr);
+		}
+		else
+		{
+			++it;
 		}
 	}
 }
