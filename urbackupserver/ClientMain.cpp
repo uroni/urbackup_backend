@@ -2341,7 +2341,9 @@ IFsFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::string&
 				IScopedLock lock(tmpfile_mutex);
 				num=tmpfile_num++;
 			}
-			pfd=Server->openFile(os_file_prefix(tmpfile_path+os_file_sep()+convert(num)), MODE_RW_CREATE);
+			std::string fn = tmpfile_path + os_file_sep() + convert(num);
+			Server->deleteFile(os_file_prefix(fn));
+			pfd=Server->openFile(os_file_prefix(fn), MODE_RW_CREATE);
 		}
 
 		if(pfd==NULL)
