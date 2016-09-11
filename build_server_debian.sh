@@ -51,12 +51,12 @@ fi
 
 if [ "x$EXTRA_FLAGS" != "x" ]
 then
-	sed -i "s/-flto/-flto $EXTRA_FLAGS/" debian/rules
+	sed -i "s/-flto/-flto $EXTRA_FLAGS/g" debian/rules
 fi
 
 if [ "x$NO_LTO" != "x" ]
 then
-	sed -i "s/-flto//" debian/rules
+	sed -i "s/-flto//g" debian/rules
 fi
 
 dh clean
