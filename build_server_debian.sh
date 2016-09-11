@@ -12,6 +12,12 @@ fi
 wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
+LTO_FLAG="-flto"
+if [ "x$NO_LTO" != "x" ]
+then
+	LTO_FLAG=""
+fi
+
 if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
@@ -20,7 +26,7 @@ then
 	unzip cryptopp563.zip
 	cd ..
 	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
+	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS $LTO_FLAG" CPPFLAGS="$LTO_FLAG"
 	touch build_server_debian_ok
 fi
 
@@ -41,6 +47,16 @@ fi
 if [ "x$LDFLAGS" != "x" ]
 then
 	sed -i "s/LDFLAGS=\"/LDFLAGS=\"${LDFLAGS} /" debian/rules
+fi
+
+if [ "x$EXTRA_FLAGS" != "x" ]
+then
+	sed -i "s/-flto/-flto $EXTRA_FLAGS/" debian/rules
+fi
+
+if [ "x$NO_LTO" != "x" ]
+then
+	sed -i "s/-flto//" debian/rules
 fi
 
 dh clean
