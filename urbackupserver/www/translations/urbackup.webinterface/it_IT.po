@@ -15,8 +15,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2016-09-06 13:52+0000\n"
+"Last-Translator: Daniele Renda <daniele.renda@gmail.com>\n"
 "Language-Team: Italian (Italy) (http://www.transifex.com/uroni/urbackup/language/it_IT/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1180,78 +1180,78 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrato da _MAX_ voci)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimizza"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Massimizza"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Esiste già un client con questo nome"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Inserisci un nome per il nuovo client dietro NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Inserisci un IP/hostname del client da ricercare"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup sta creando il file di indicizzazione. Questo potrebbe richiedere un po' di tempo."
 
 msgid "about"
 msgstr ""
 
 msgid "all_clients"
-msgstr ""
+msgstr "Tutti i client"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Impostazioni client"
 
 msgid "action_8"
-msgstr ""
+msgstr "Ripristino file"
 
 msgid "action_9"
-msgstr ""
+msgstr "Ripristino immagine"
 
 msgid "action_10"
-msgstr ""
+msgstr "Aggiornamento client"
 
 msgid "action_11"
-msgstr ""
+msgstr "Verifica integrità database"
 
 msgid "action_12"
 msgstr ""
 
 msgid "action_13"
-msgstr ""
+msgstr "Ricalcolo statistiche"
 
 msgid "action_14"
-msgstr ""
+msgstr "Pulizia notturna"
 
 msgid "action_15"
-msgstr ""
+msgstr "Pulizia di emergenza"
 
 msgid "tAbout UrBackup"
 msgstr "About UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Aggiungi client"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup trova automaticamente i client nella tua rete locale. Se il server è nella stessa sottorete dei client, installa il client e attendi che venga identificato."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Scarica il client da:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Se vuoi che il client usi più server di backup, l'identità di questo server è:"
 
 msgid "tAdd new Internet client/client behind NAT"
 msgstr ""
@@ -1266,10 +1266,10 @@ msgid "tIP/hostname of client to be discovered"
 msgstr ""
 
 msgid "tCancel"
-msgstr ""
+msgstr "Annulla"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Accesso negato"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
@@ -1280,40 +1280,40 @@ msgid "tLogin with username and password"
 msgstr ""
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Errore durante l'accesso ai backup"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Ci dispiace, qualcosa è andato storto:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Creato"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Ultima modifica"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Ultimo accesso"
 
 msgid "tList"
-msgstr ""
+msgstr "Lista"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Ripristina"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Ripristina cartella sul client"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versione"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Client aggiunto con successo"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Aggiunto nuovo client con nome:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Chiave di autenticazione di default:"
 
 msgid "tDownload preconfigured client installer for Windows"
 msgstr ""
@@ -1331,10 +1331,10 @@ msgid "tAlternatively after you installed the client from:"
 msgstr ""
 
 msgid "tGo to the settings screen on the client"
-msgstr ""
+msgstr "Vai nella schermata delle impostazioni sul client"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Abilita Internet mode nel client"
 
 msgid "tSet the internet server to:"
 msgstr ""
@@ -1343,10 +1343,10 @@ msgid "tSet the internet server port to:"
 msgstr ""
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Imposta il nome computer a:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Imposta la chiave di autenticazione a:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
@@ -1358,34 +1358,34 @@ msgid "tWith the command line:"
 msgstr ""
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Percentuale completata"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Dettagli"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Aggiungi indirizzo email"
 
 msgid "tFailed without failures caused by client timeout"
 msgstr ""
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Livello log minimo"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Backup interrotti"
 
 msgid "tStop"
-msgstr ""
+msgstr "Arresta"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Visualizza log"
 
 msgid "tETA"
 msgstr ""
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Velocità"
 
 msgid "tFile Backups"
 msgstr ""
@@ -1394,25 +1394,25 @@ msgid "tImage Backups"
 msgstr ""
 
 msgid "tArchive"
-msgstr ""
+msgstr "Archivio"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "URL server"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Massimo numero di backup simultanei"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Massimo numero di client attivi di recente"
 
 msgid "tDays"
-msgstr ""
+msgstr "Giorni"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
 msgstr ""
@@ -1474,10 +1474,10 @@ msgid ""
 msgstr ""
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Abilita login tramite LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "nome server LDAP/AD"
 
 msgid "tLDAP/AD server port"
 msgstr ""
@@ -1504,31 +1504,31 @@ msgid "tLDAP/AD class rights map"
 msgstr ""
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Testa il login con questo utente"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Password per l'utente di test"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Il test ha avuto esito positivo. Diritti dell'utente:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Test fallito. Errore:"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Scarica client per Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Scarica client per Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Scarica client per Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Rimuovi client"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Aggiungi nuovo client"
 
 msgid "tClient discovery hints"
 msgstr ""
@@ -1537,16 +1537,16 @@ msgid "tAdd hostname/IP as client discovery hint"
 msgstr ""
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Statistiche dei backup"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Completati con errori"
 
 msgid "not_supported"
-msgstr ""
+msgstr "Non supportato"
 
 msgid "tPreparing restore. Please be patient..."
-msgstr ""
+msgstr "Preparazione del ripristino. Attendere per favore..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""

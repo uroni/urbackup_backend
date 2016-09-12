@@ -6,13 +6,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Benny Bepunkt, 2016
 # Ettore Atalan <atalanttore@googlemail.com>, 2014,2016
 # uroni <urpc@gmx.de>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 15:40+0000\n"
-"Last-Translator: Ettore Atalan <atalanttore@googlemail.com>\n"
+"PO-Revision-Date: 2016-09-06 09:54+0000\n"
+"Last-Translator: Benny Bepunkt\n"
 "Language-Team: German (http://www.transifex.com/uroni/urbackup/language/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -561,7 +562,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung kann nicht auf den Server zugegriffen werden es werden keine Sicherungen ausgeführt."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup erstellt den Dateiindex. Abhängig von der Anzahl an Dateien kann dies einen Moment dauern. Bitte warten."
 
 msgid "tAction"
 msgstr "Aktion"
@@ -978,7 +979,7 @@ msgid "tArchived"
 msgstr "Archiviert"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Das Backupverzeichnis ist voll. UrBackup räumt alte Images und Dateisicherungen nach den Systemeinstellungen auf. Während des Prozesses ist die Performance beeinträchtigt und Backups pausiert."
 
 msgid "nospc_fatal_text"
 msgstr "Es ist momentan nicht genügend freier Speicher im Sicherungsordner vorhanden. UrBackup hat versucht alte Abbild- und Dateisicherungen zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen, sodass weniger Datensicherungen gespeichert werden oder erhöhen Sie die Speichermenge, um UrBackup das Fortsetzen der Sicherungen zu ermöglichen."
@@ -1020,7 +1021,7 @@ msgid "really_recalculate"
 msgstr "Wollen Sie wirklich alle Statistiken neu berechnen? Dies könnte einige Zeit beanspruchen!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Es ist ein Fehler beim Zugriff oder Prüfen der internern Datenbank von UrBackup aufgetreten. Dies bedeutet, dass die Datenbank entweder defekt oder zuwenig freier Speicher verfügbar ist. Wenn dieses Problem weiterhin existiert muss die Datenbank von einem Backup wiederhergestellt werden (Dateien backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db und backup_server_settings.db). Mehr Details in der Logdatei."
 
 msgid "tDownload folder as ZIP"
 msgstr "Ordner als ZIP-Datei herunterladen"
@@ -1104,7 +1105,7 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Übertragungsmodus für die lokale vollständige Abbildsicherung"
 
 msgid "tRaw"
-msgstr "Roh"
+msgstr "Raw"
 
 msgid "tHashed"
 msgstr "Gehasht"
@@ -1239,7 +1240,7 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "Wenn sich Server und die Clients um selben Subnetz befinden, entdeckt UrBackup automatisch die Clients im LAN. Dieser Vorgang dauert ein wenig."
 
 msgid "tDownload the client from:"
 msgstr "Client herunterladen von:"
@@ -1247,10 +1248,10 @@ msgstr "Client herunterladen von:"
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Serveridentität im Client im Falle mehrerer Backupserver: "
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Neuen Internetclient / Client hinter NAT hinzufügen"
 
 msgid "tName of new Internet client/client behind NAT"
 msgstr "Name des neuen Internet-Clients/Client hinter NAT"
@@ -1270,7 +1271,7 @@ msgstr "Zugriff verweigert"
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Leider ist etwas schief gelaufen oder du hast nicht die erforderlichen Rechte um auf die Datei oder Ordner zuzugreifen"
 
 msgid "tLogin with username and password"
 msgstr "Anmeldung mit Benutzername und Passwort"
@@ -1306,7 +1307,7 @@ msgid "tClient added successfully"
 msgstr "Client erfolgreich hinzugefügt"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "Neuer Client hinzugefügt mit dem Namen:"
 
 msgid "tDefault authentication key:"
 msgstr "Standard-Authentifizierungsschlüssel:"
@@ -1318,13 +1319,13 @@ msgid "tDownload preconfigured client installer for Mac OS X"
 msgstr "Vorkonfiguriertes Client-Installationsprogramm für Mac OS X herunterladen"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Direkt im Terminal installieren via:"
 
 msgid "tDownload preconfigured client installer for Linux"
 msgstr "Vorkonfiguriertes Client-Installationsprogramm für Linux herunterladen"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativ nachdem du den Client installiert hast von:"
 
 msgid "tGo to the settings screen on the client"
 msgstr "Gehen Sie zum Einstellungsbildschirm auf dem Client"
@@ -1348,7 +1349,7 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Ohne Firewall/NAT: Aktiveren Sie den Internetmodus nur, wenn das Backup wirklich über das Internet erstellen möchten. In Linux setze INTERNET_ONLY auf true in /etc/default/urbackupclient oder /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
 msgstr "Mit der Befehlszeile:"
@@ -1363,13 +1364,13 @@ msgid "tAdd Email Address"
 msgstr "E-Mail-Adresse hinzufügen"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Fehlgeschlagen ohne Timeout-bedingten Fehler des Clients"
 
 msgid "tMinimum log level"
 msgstr "Minimale Protokollierungsstufe"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Backups unterbrochen"
 
 msgid "tStop"
 msgstr "Stopp"
@@ -1399,19 +1400,19 @@ msgid "tMax simultaneous backups"
 msgstr "Max. gleichzeitige Sicherungen"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Maximale Anzahl der zu letzt aktiven Clients"
 
 msgid "tDays"
 msgstr "Tage"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Binärkopie bei Lesevorgang"
 
 msgid "tMin"
 msgstr "Min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Virtuelle Clientennamen"
 
 msgid "tLocal incremental image style"
 msgstr "Lokaler inkrementeller Abbildstil"
@@ -1423,51 +1424,51 @@ msgid "tBased on last image backup"
 msgstr "Basiert auf letzter Abbildsicherung"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Internetbasiertes Inkrementalimage"
 
 msgid "tLocal full image style"
 msgstr "Lokaler vollständiger Abbildstil"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Synthetisches Vollimagebackup"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Internet Vollimagebackup"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Größe des Datenbankcache während der Stapelverarbeitung"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Debugging: Ende-zu-Ende Verifikation aller gesicherten Dateien"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Debugging: Verifizere gesicherte Dateien mittels Client-Hashes"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "In regelmäßigen Abständen erneut Dateieinträge von Internet-Clients zur Datenbank hinzufügen (nur deaktivieren, wenn keine Vollsicherungen laufen)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Starte Backups mit Hintergrundpriorität auf den Clients"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Erstelle Verknüpfung für jeden Benutzer auf den Clients nach Dateisicherung"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Maximale Anzahl an gleichzeitigen Jobs per Client"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Liste an Volumes für welche das Blocktracking genutzt werden soll (falls verfügbar)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Liste der Volumes mit Change Block Tracking sollte absturzpersistent sein"
 
 msgid "tEnable logins via LDAP/AD"
 msgstr "Anmeldungen über LDAP/AD aktivieren"
@@ -1485,19 +1486,19 @@ msgid "tLDAP/AD user name suffix"
 msgstr "LDAP/AD-Benutzernamensuffix"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD Gruppe und Klassenabfrage"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP/AD Gruppenschlüsselname in Abfrage"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP/AD Klassenschlüsselname in Abfrage"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP/AD Gruppenrechte mappen"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "LDAP/AD Klassenrechte mappen"
 
 msgid "tTest login with this user"
 msgstr "Anmeldung mit diesem Benutzer testen"
@@ -1527,16 +1528,16 @@ msgid "tAdd new client"
 msgstr "Neuen Client hinzufügen"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Hinweis zur Client-Discovery"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Füge Hinweis zur Client-Discovery hinzu"
 
 msgid "tBackup Statistics"
 msgstr "Sicherungsstatistiken"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Mit Problemen fertiggestellt"
 
 msgid "not_supported"
 msgstr "Nicht unterstützt"
@@ -1545,4 +1546,4 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Wiederherstellen wird vorbereitet. Bitte haben Sie Geduld..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Backup trotz Hash- oder Lesefehlern abschließen"
