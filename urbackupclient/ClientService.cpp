@@ -1573,8 +1573,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 				std::string nv;
 				if(new_settings->getValue(key, &nv) )
 				{
-					if(key=="internet_server" && nv.empty() && !v.empty()
-						|| key=="computername" && nv.empty() && !v.empty())
+					if( (key=="internet_server" || key=="internet_server_def") && nv.empty() && !v.empty()
+						|| (key=="computername" || key=="computername_def" ) && nv.empty() && !v.empty())
 					{
 						new_settings_str+=key+"="+v+"\n";
 					}
@@ -1587,8 +1587,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 						}
 					}
 				}
-				else if(key=="internet_server" && !v.empty()
-					|| key=="computername" && !v.empty())
+				else if( (key == "internet_server" || key == "internet_server_def") && !v.empty()
+					|| (key == "computername" || key == "computername_def") && !v.empty())
 				{
 					new_settings_str+=key+"="+v+"\n";
 				}

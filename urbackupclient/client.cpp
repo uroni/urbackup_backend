@@ -3563,7 +3563,8 @@ void IndexThread::start_filesrv(void)
 		if(curr_settings!=NULL)
 		{
 			std::string val;
-			if(curr_settings->getValue("computername", &val))
+			if(curr_settings->getValue("computername", &val)
+				|| curr_settings->getValue("computername_def", &val) )
 			{
 				if(!val.empty())
 				{
