@@ -6442,7 +6442,9 @@ void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
 {
 	if (!full_backup)
 	{
+#ifdef _WIN32
 		DirectoryWatcherThread::update_and_wait(open_files);
+#endif
 		std::sort(open_files.begin(), open_files.end());
 	}
 
@@ -6468,10 +6470,12 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 		return;
 	}
 
+#ifdef _WIN32
 	std::string volpath = removeDirectorySeparatorAtEnd(getVolPath(ref->target));
 
-#ifdef _WIN32
 	volpath = strlower(volpath);
+#else
+	std::string volpath = ref->target;
 #endif
 
 	if (volpath.empty())
