@@ -1,6 +1,6 @@
 /*! Dust - Asynchronous Templating - v2.5.1
 * http://linkedin.github.io/dustjs/
-* Copyright (c) 2015 Aleksander Williams; Released under the MIT License */
+* Copyright (c) 2016 Aleksander Williams; Released under the MIT License */
 (function(root) {
   var dust = {},
       NONE = 'NONE',
@@ -378,11 +378,11 @@
             path[0] === 't' &&
             typeof window.curr_trans[path] !== "undefined")
           {
-                return window.curr_trans[path];
+                return { t: window.curr_trans[path] };
           }
         else if( path[0] === 't' )
         {
-            return path.substring(1);
+            return { t: path.substring(1).replace(/#[0-9]+/g, "") };
         }
         dust.log('Cannot find the value for reference [{' + down.join('.') + '}] in template [' + this.getTemplateName() + ']');
       }
@@ -634,8 +634,16 @@
         return elem;
       }
     }
+	var isTrans = typeof elem === 'object' && elem.t;
+	if( isTrans ) {
+        elem = elem.t;
+	}
     if (!dust.isEmpty(elem)) {
-      return this.write(dust.filter(elem, auto, filters));
+      if(isTrans) {
+          return this.write(dust.filter(elem, auto, filters).replace(/&amp;nbsp;/g, "&nbsp").replace(/&amp;shy;/g, "&shy;"));
+      } else {
+          return this.write(dust.filter(elem, auto, filters));
+      }
     } else {
       return this;
     }
@@ -1046,8 +1054,8 @@
         peg$c60 = { type: "other", description: "key" },
         peg$c61 = /^[ a-zA-Z_$]/,
         peg$c62 = { type: "class", value: "[ a-zA-Z_$]", description: "[ a-zA-Z_$]" },
-        peg$c63 = /^[ 0-9a-zA-Z(),\/\\_$-:]/,
-        peg$c64 = { type: "class", value: "[ 0-9a-zA-Z(),\\/\\\\_$-:]", description: "[ 0-9a-zA-Z(),\\/\\\\_$-:]" },
+        peg$c63 = /^[ 0-9a-zA-Z(),\/\\_$-:#]/,
+        peg$c64 = { type: "class", value: "[ 0-9a-zA-Z(),\\/\\\\_$-:#]", description: "[ 0-9a-zA-Z(),\\/\\\\_$-:#]" },
         peg$c65 = function(h, t) { return h + t.join('')  },
         peg$c66 = { type: "other", description: "array" },
         peg$c67 = function(n) {return n.join('')},

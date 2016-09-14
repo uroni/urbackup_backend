@@ -42,26 +42,27 @@ function init_datatables()
 	g.datatable_default_config = {
 				"scrollX": true,
 				"iDisplayLength" : 25,
-				"sDom" : 'CT<"clear">lfrtip',
-				"oColVis": {
-					"bRestore": true,
-					"sRestore": trans("Restore to default"),
-					"buttonText": trans("Show/hide columns")
-				},
-				"oTableTools": {
-					"aButtons": [
-						{
-							"sExtends":    "collection",
-							"sButtonText": trans("Save"),
-							"aButtons":    [ "csv", "xls", 
-							{
-								"sExtends": "pdf"
-							}
-							]
-						}					
-					],
-					"sSwfPath": "copy_csv_xls_pdf.swf"
-				},
+				"sDom" : 'r<"pull-left"f><"clear"><"pull-left"l><"pull-right"B>tip',
+				"buttons": [
+					{
+						extend: 'colvis', className: 'btn btn-default'
+					},
+					{ extend: 'copy', className: 'btn btn-default glyphicon glyphicon-duplicate',
+					  exportOptions: { columns: ':not(:first-child)' }
+					},
+					{ extend: 'csv', className: 'btn btn-default glyphicon glyphicon-save-file',
+					  exportOptions: { columns: ':not(:first-child)' }
+					},
+					{ extend: 'excel', className: 'btn btn-default glyphicon glyphicon-list-alt',
+					  exportOptions: { columns: ':not(:first-child)' }
+					},
+					{ extend: 'pdf', className: 'btn btn-default glyphicon glyphicon-file',
+					  exportOptions: { columns: ':not(:first-child)' }
+					},
+					{ extend: 'print', className: 'btn btn-default glyphicon glyphicon-print',
+					  exportOptions: { columns: ':not(:first-child)' }
+					}
+				],
 				"sPaginationType": "full_numbers",
 				//"sScrollX": "100%",
 				"bScrollCollapse": true,
@@ -82,8 +83,12 @@ function init_datatables()
 					"sLengthMenu": trans("Show _MENU_ entries"),
 					"sProcessing": trans("Processing..."),
 					"sSearch": trans("Search:"),
-					"sZeroRecords": trans("No matching records found")
-				}
+					"sZeroRecords": trans("No matching records found"),
+					buttons: {
+						colvis: trans("Show/hide columns")
+					}
+				},
+				select: true
 	};
 }
 
@@ -928,7 +933,7 @@ function show_statistics3(data)
 		
 		createUsageGraph(0, "");
 		
-		var datatable_config = g.datatable_default_config;
+		var datatable_config = jQuery.extend(true, {}, g.datatable_default_config);
 		var sort_fun = function(idx)
 		{
 			var _idx = idx;			
@@ -963,11 +968,6 @@ function show_statistics3(data)
 			}];
 		
 		datatable_config.aaSorting = [[ 3, "desc" ]];
-		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
-		save_buttons[2].mColumns = [0, 1, 2, 3];
-		save_buttons[2].sTitle = "UrBackup statistics - " + getISODatestamp();
-		save_buttons = set_button_filename(save_buttons, "UrBackup statistics");
-		datatable_config.oTableTools.aButtons[0].aButtons = save_buttons;
 		$("#statistics_table").dataTable(datatable_config);
 		
 		g.data_f=ndata;
@@ -1422,7 +1422,7 @@ function show_status2(data)
 			show_hide_column('status_table', 8, false);
 		}
 		
-		var datatable_config = g.datatable_default_config;
+		var datatable_config = jQuery.extend(true, {}, g.datatable_default_config);
 		
 		datatable_config.aoColumnDefs = [
 				{ "bVisible": false, "aTargets": [ 2, 4, 10, 11, 12 ]
@@ -1432,26 +1432,32 @@ function show_status2(data)
 		{
 			datatable_config.aoColumnDefs.push({ "bSortable": false, 'aTargets': [ 0 ] });
 		}
+		
+		var colvis = datatable_config.buttons[0];
 			
-		datatable_config.oColVis.aiExclude = [ 1 ];
+		colvis.columns = [ 2, 3, 4, 5 ];
 		
 		if(data.allow_modify_clients)
 		{
-			datatable_config.oColVis.aiExclude.push(0);
 			datatable_config.aoColumnDefs.push({ "bVisible": true, "aTargets": [0]});
 		}
 		
-		if(data.no_images)
+		if(!data.no_images)
 		{
-			datatable_config.oColVis.aiExclude.push(7);
-			datatable_config.oColVis.aiExclude.push(9);
+			colvis.columns.push(7);
+			colvis.columns.push(9);
 		}
 		
-		if(data.no_file_backups)
+		if(!data.no_file_backups)
 		{
-			datatable_config.oColVis.aiExclude.push(6);
-			datatable_config.oColVis.aiExclude.push(8);
+			colvis.columns.push(6);
+			colvis.columns.push(8);
 		}
+		
+		colvis.columns.push(10);
+		colvis.columns.push(11);
+		colvis.columns.push(12);
+		
 		
 		var columns = [ 1 ];
 		
@@ -1520,14 +1526,6 @@ function show_status2(data)
 			} );
 		}
 		
-
-		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
-		save_buttons[2].mColumns = columns;
-		save_buttons[2].sTitle = "UrBackup client status - " + getISODatestamp();
-		save_buttons = set_button_filename(save_buttons, "UrBackup client status");
-		datatable_config.oTableTools.aButtons[0].aButtons = save_buttons;			
-		
-		datatable_config.oTableTools.aButtons[0].aButtons[2].mColumns = columns;
 		
 		datatable_config.drawCallback = function(settings) {
 			$('select[id^="startbackup_"]').filter(
@@ -3611,6 +3609,8 @@ function createUser()
 		d="disabled=\"disabled\"";
 		
 	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+" class=\"selectpicker\" data-container=\"body\" data-live-search=\"true\">";
+	var admin_str = trans("admin_create");
+	if(!admin_str) admin_str = trans("admin");	
 	rights+="<option value=\"-1\">"+trans("admin")+"</option>";
 	
 	for(var i=0;i<g.settings_clients.length;++i)

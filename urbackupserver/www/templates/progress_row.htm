@@ -3,13 +3,13 @@
 	<td class="tabFLeft">{action}</td>
 	<td class="tabFLeft">
 		{?image}
-			Volume: {details}
+			{tVolume:} {details}
 		{:else}
 			{?client_update}
-				To version: {details}
+				{tTo version:} {details}
 			{:else}
 				{?file_restore}
-					Path: {details|s}
+					{tPath:} {details|s}
 				{:else}
 					-
 				{/file_restore}
