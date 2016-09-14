@@ -82,7 +82,7 @@ endif
 	chown urbackup:urbackup "$(DESTDIR)$(localstatedir)/urbackup"
 endif
 
-install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserver/www/*.htm urbackupserver/www/css/*.css urbackupserver/www/images/*.png urbackupserver/www/images/*.gif urbackupserver/www/fonts/* urbackupserver/urbackup_ecdsa409k1.pub urbackupserver/www/*.swf server-license.txt
+install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserver/www/*.htm urbackupserver/www/css/*.css urbackupserver/www/images/*.png urbackupserver/www/images/*.gif urbackupserver/www/fonts/* urbackupserver/urbackup_ecdsa409k1.pub urbackupserver/www/swf/* server-license.txt
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup"
 	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup"
@@ -92,11 +92,13 @@ install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserve
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/js"
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/fonts"
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/images"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(datadir)/urbackup/www/swf"
 if !PACKAGING
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/css"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/fonts"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/images"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/swf"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup"
 endif
@@ -105,7 +107,7 @@ endif
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/css/*.css "$(DESTDIR)$(datadir)/urbackup/www/css/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.png "$(DESTDIR)$(datadir)/urbackup/www/images/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.gif "$(DESTDIR)$(datadir)/urbackup/www/images/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.swf "$(DESTDIR)$(datadir)/urbackup/www/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/swf/* "$(DESTDIR)$(datadir)/urbackup/www/swf/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/fonts/* "$(DESTDIR)$(datadir)/urbackup/www/fonts/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/urbackup_ecdsa409k1.pub "$(DESTDIR)$(datadir)/urbackup/urbackup_ecdsa409k1.pub"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/server-license.txt "$(DESTDIR)$(datadir)/urbackup/server-license.txt"
