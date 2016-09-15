@@ -200,6 +200,12 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
+		if (ServerStatus::getProcess(clientname, status_id).stop)
+		{
+			ServerLogger::Log(logid, "Sever admin stopped backup during indexing", LL_WARNING);
+			break;
+		}
+
 		if (cc == NULL)
 		{
 			if (async_id.empty())
@@ -207,21 +213,35 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				break;
 			}
 
-			while (Server->getTimeMS() - starttime <= timeout_time)
+			while (cc==NULL
+				&& Server->getTimeMS() - starttime <= timeout_time)
 			{
 				ServerLogger::Log(logid, clientname + ": Connecting for filelist (async)...", LL_DEBUG);
-				IPipe *cc = client_main->getClientCommandConnection(10000);
+				cc = client_main->getClientCommandConnection(10000);
+
+				if (ServerStatus::getProcess(clientname, status_id).stop)
+				{
+					Server->destroy(cc);
+					cc = NULL;
+					ServerLogger::Log(logid, "Sever admin stopped backup during indexing (2)", LL_WARNING);
+					break;
+				}
+
 				if (cc == NULL)
 				{
+					ServerLogger::Log(logid, clientname + ": Failed to connect to client. Retrying in 10s", LL_DEBUG);
 					Server->wait(10000);
 				}
 			}
 
 			if (cc == NULL)
 			{
-				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed - CONNECT error during filelist construction (2)", LL_ERROR);
-				has_timeout_error = true;
-				should_backoff = false;
+				if (!ServerStatus::getProcess(clientname, status_id).stop)
+				{
+					ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed - CONNECT error during filelist construction (2)", LL_ERROR);
+					has_timeout_error = true;
+					should_backoff = false;
+				}
 				return false;
 			}
 
@@ -314,10 +334,13 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		}
 	}
 
-	ServerLogger::Log(logid, "Constructing of filelist of \"" + clientname + "\" failed - TIMEOUT(3)", LL_ERROR);
+	if (!ServerStatus::getProcess(clientname, status_id).stop)
+	{
+		ServerLogger::Log(logid, "Constructing of filelist of \"" + clientname + "\" failed - TIMEOUT(3)", LL_ERROR);
 
-	has_timeout_error = true;
-	should_backoff = false;
+		has_timeout_error = true;
+		should_backoff = false;
+	}
 
 	Server->destroy(cc);
 	return false;

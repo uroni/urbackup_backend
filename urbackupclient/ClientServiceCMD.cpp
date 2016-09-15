@@ -353,6 +353,9 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 			mempipe
 		};
 
+		mempipe = Server->createMemoryPipe();
+		mempipe_owner = true;
+
 		async_file_index[async_id] = new_async_file_list;
 
 		lock.relock(NULL);
@@ -498,6 +501,9 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 			Server->getTimeMS(),
 			mempipe
 		};
+
+		mempipe = Server->createMemoryPipe();
+		mempipe_owner = true;
 
 		async_file_index[async_id] = new_async_file_list;
 
