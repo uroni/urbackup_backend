@@ -296,13 +296,19 @@ _i64 ChangeJournalWatcher::hasRoot(const std::string &root)
 	}
 }
 
-void ChangeJournalWatcher::deleteWithChildren(uint128 frn, _i64 rid)
+void ChangeJournalWatcher::deleteWithChildren(uint128 frn, _i64 rid, bool has_children)
 {
-	std::vector<uint128> children=getChildren(frn, rid);
+	std::vector<uint128> children;
+	if (has_children)
+	{
+		children = getChildren(frn, rid);
+	}
+
 	deleteEntry(frn, rid);
+
 	for(size_t i=0;i<children.size();++i)
 	{
-		deleteWithChildren(children[i], rid);
+		deleteWithChildren(children[i], rid, has_children);
 	}
 }
 
@@ -1235,7 +1241,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 
 						hardlinkDelete(vol, UsnRecord->FileReferenceNumber);
 					}
-					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);
+					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid, UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY);
 				}
 				else if(UsnRecord->Reason & watch_flags )
 				{
@@ -1270,6 +1276,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
 		{
+			bool fallback_update = false;
 			if(fallback_to_mft)
 			{
 				Server->Log("Parent of file with FRN "+convert(UsnRecord->FileReferenceNumber.lowPart)+" (Name \""+UsnRecord->Filename+"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+" not found. Searching via MFT as fallback.", LL_WARNING);
@@ -1292,12 +1299,41 @@ void ChangeJournalWatcher::updateWithUsn(const std::string &vol, const SChangeJo
 				{
 					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
 					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files);
+					fallback_update = true;
 				}
 			}
 			else
 			{
 				Server->Log("Error: Parent of file "+UsnRecord->Filename+" not found -4", LL_ERROR);
 				curr_has_error = true;
+			}
+
+			if (!fallback_update
+				&& !curr_has_error)
+			{
+				//Assume file was deleted
+				if (UsnRecord->Reason & (USN_REASON_RENAME_NEW_NAME|USN_REASON_CLOSE)
+					&& !rename_old_name.empty() )
+				{				
+					if (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY)
+					{
+						++num_changes;
+
+						for (size_t i = 0; i<listeners.size(); ++i)
+							listeners[i]->On_DirRemoved(rename_old_name, closed);
+					}
+					else
+					{
+						++num_changes;
+
+						for (size_t i = 0; i<listeners.size(); ++i)
+							listeners[i]->On_FileRemoved(rename_old_name, closed);
+
+						hardlinkDelete(vol, UsnRecord->FileReferenceNumber);
+					}
+
+					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid, UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY);
+				}
 			}
 		}
 		else

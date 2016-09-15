@@ -138,7 +138,7 @@ private:
 	void deleteJournalData(const std::string &vol);
 	void deleteJournalId(const std::string &vol);
 
-	void deleteWithChildren( uint128 frn, _i64 rid);
+	void deleteWithChildren( uint128 frn, _i64 rid, bool has_children);
 	std::string getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
 	void indexRootDirs(_i64 rid, const std::string &root, uint128 parent, size_t& nDirFrns);
