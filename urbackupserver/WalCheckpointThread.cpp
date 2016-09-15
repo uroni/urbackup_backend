@@ -179,12 +179,13 @@ void WalCheckpointThread::sync_database()
 	rw_mode = MODE_RW_DEVICE;
 #endif
 
+	if (db_file.get() == NULL)
 	{
-		std::auto_ptr<IFile> db_file(Server->openFile(db_fn, rw_mode));
-		if (db_file.get() != NULL)
-		{
-			db_file->Sync();
-		}
+		db_file.reset(Server->openFile(db_fn, rw_mode));
+	}
+	if (db_file.get() != NULL)
+	{
+		db_file->Sync();
 	}
 
 	Server->Log("Syncing wal file " + db_fn + "-wal...", LL_DEBUG);
