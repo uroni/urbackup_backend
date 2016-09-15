@@ -139,6 +139,12 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 		if (it != params.end())
 		{
 			Write("PRAGMA wal_autocheckpoint=" + it->second);
+
+			if (watoi(it->second)<=0)
+			{
+				int enable = 1;
+				sqlite3_file_control(db, NULL, SQLITE_FCNTL_PERSIST_WAL, &enable);
+			}
 		}
 
 		it = params.find("page_size");
