@@ -22,6 +22,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 mkdir data_common\urbackup
 mkdir data_common\urbackup\www
 mkdir data_common\urbackup\www\js
+mkdir data_common\urbackup\www\swf
 mkdir data_common\urbackup\www\css
 mkdir data_common\urbackup\www\images
 mkdir data_common\urbackup\www\fonts
@@ -36,6 +37,8 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 copy /Y "..\urbackupserver\www\images\*.png" "data_common\urbackup\www\images\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 copy /Y "..\urbackupserver\www\images\*.gif" "data_common\urbackup\www\images\"
+if %errorlevel% neq 0 exit /b %errorlevel% 
+copy /Y "..\urbackupserver\www\swf\*" "data_common\urbackup\www\swf\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 copy /Y "..\Release\httpserver.dll" "data\httpserver.dll"
