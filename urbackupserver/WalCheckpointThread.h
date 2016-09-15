@@ -5,6 +5,8 @@
 #include "../Interface/Condition.h"
 #include <set>
 
+class IFile;
+
 class WalCheckpointThread : public IThread
 {
 public:
@@ -38,6 +40,8 @@ private:
 	bool cannot_open;
 
 	std::string db_name;
+
+	std::auto_ptr<IFile> db_file; //must not be closed
 
 	static IMutex* mutex;
 	static ICondition* cond;

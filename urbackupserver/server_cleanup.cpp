@@ -1507,13 +1507,33 @@ namespace
 		int64 last_pos;
 	};
 
-	bool copy_db_file(std::string src, std::string dst, IDatabase::IBackupProgress* progress, std::string& errmsg)
+	bool copy_db_file(std::string src, std::string dst, IDatabase::IBackupProgress* progress, std::string& errmsg, bool close_src)
 	{
-		std::auto_ptr<IFile> src_file(Server->openFile(os_file_prefix(src), MODE_READ_DEVICE));
+		static std::map<std::string, IFile*> db_src_files;
+
+		IFile* src_file;
+		ObjectScope src_file_destroy(NULL);
+		if (!close_src)
+		{
+			src_file = db_src_files[src];
+
+			if (src_file == NULL)
+			{
+				src_file = Server->openFile(os_file_prefix(src), MODE_READ_DEVICE);
+
+				db_src_files[src] = src_file;
+			}
+		}
+		else
+		{
+			src_file = Server->openFile(os_file_prefix(src), MODE_READ_DEVICE);
+			src_file_destroy.reset(src_file);
+		}
+
 		std::auto_ptr<IFile> dst_file(Server->openFile(os_file_prefix(dst), MODE_WRITE));
 
 		bool copy_ok = true;
-		if (src_file.get() != NULL
+		if (src_file != NULL
 			&& dst_file.get() != NULL)
 		{
 			std::vector<char> buf;
@@ -1658,7 +1678,7 @@ bool ServerCleanupThread::backup_database(void)
 
 				std::string errmsg1;
 				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i],
-					bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress, errmsg1);
+					bfolder + os_file_sep() + copy_backup[i] + "~", &backup_progress, errmsg1, false);
 
 				if (copy_ok)
 				{
@@ -1668,7 +1688,7 @@ bool ServerCleanupThread::backup_database(void)
 
 					std::string errmsg2;
 					copy_ok = copy_db_file(Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i]+"-wal",
-						bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal, errmsg2);
+						bfolder + os_file_sep() + copy_backup[i]+"-wal~", &backup_progress_wal, errmsg2, true);
 
 					if (!copy_ok)
 					{
