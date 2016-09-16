@@ -132,11 +132,13 @@ bool File::Open(std::string pfn, int mode)
 		}
 	}
 	
+#ifdef __linux__
 	if( mode==MODE_RW_CREATE_DIRECT
 		|| mode==MODE_RW_DIRECT )
 	{
 		flags|=O_DIRECT;
 	}
+#endif
 	
 	struct stat buf;
 	if(stat((fn).c_str(), &buf)==0)
