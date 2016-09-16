@@ -47,20 +47,15 @@ function init_datatables()
 					{
 						extend: 'colvis', className: 'btn btn-default'
 					},
-					{ extend: 'copy', className: 'btn btn-default glyphicon glyphicon-duplicate',
-					  exportOptions: { columns: ':not(:first-child)' }
+					{ extend: 'copy', className: 'btn btn-default glyphicon glyphicon-duplicate'
 					},
-					{ extend: 'csv', className: 'btn btn-default glyphicon glyphicon-save-file',
-					  exportOptions: { columns: ':not(:first-child)' }
+					{ extend: 'csv', className: 'btn btn-default glyphicon glyphicon-save-file'
 					},
-					{ extend: 'excel', className: 'btn btn-default glyphicon glyphicon-list-alt',
-					  exportOptions: { columns: ':not(:first-child)' }
+					{ extend: 'excel', className: 'btn btn-default glyphicon glyphicon-list-alt'
 					},
-					{ extend: 'pdf', className: 'btn btn-default glyphicon glyphicon-file',
-					  exportOptions: { columns: ':not(:first-child)' }
+					{ extend: 'pdf', className: 'btn btn-default glyphicon glyphicon-file'
 					},
-					{ extend: 'print', className: 'btn btn-default glyphicon glyphicon-print',
-					  exportOptions: { columns: ':not(:first-child)' }
+					{ extend: 'print', className: 'btn btn-default glyphicon glyphicon-print'
 					}
 				],
 				"sPaginationType": "full_numbers",
@@ -1423,6 +1418,32 @@ function show_status2(data)
 		}
 		
 		var datatable_config = jQuery.extend(true, {}, g.datatable_default_config);
+		
+		for(var i=0;i<datatable_config.buttons.length;++i)
+		{
+			if(datatable_config.buttons[i].extend=="pdf")
+			{
+				var cols = [2, 3, 6 ];
+				
+				if(!data.no_images)
+				{
+					cols.push(7);
+					cols.push(9);
+				}
+				
+				if(!data.no_file_backups)
+				{
+					cols.push(6);
+					cols.push(8);
+				}
+				
+				datatable_config.buttons[i].exportOptions = { columns: cols };				
+			}
+			else if(datatable_config.buttons[i].extend!="colvis")
+			{
+				datatable_config.buttons[i].exportOptions = { columns: ':not(:first-child)' };
+			}
+		}
 		
 		datatable_config.aoColumnDefs = [
 				{ "bVisible": false, "aTargets": [ 2, 4, 10, 11, 12 ]
