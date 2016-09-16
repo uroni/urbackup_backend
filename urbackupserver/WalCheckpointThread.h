@@ -4,6 +4,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include <set>
+#include <memory>
 
 class IFile;
 
