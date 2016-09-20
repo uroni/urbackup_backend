@@ -6465,7 +6465,10 @@ void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
 		{
 			if (sc_refs[k]->ssetid == scd->ref->ssetid)
 			{
-				sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+				if (sc_refs[k]->cbt)
+				{
+					sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+				}
 
 				postSnapshotProcessing(sc_refs[k], full_backup);
 			}
