@@ -3322,7 +3322,8 @@ g.settings_list=[
 "cbt_crash_persistent_volumes",
 "ignore_disk_errors",
 "image_snapshot_groups",
-"file_snapshot_groups"
+"file_snapshot_groups",
+"vss_select_components"
 ];
 g.general_settings_list=[
 "backupfolder",
