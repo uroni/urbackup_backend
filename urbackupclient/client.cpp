@@ -2071,7 +2071,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		bool has_error;
 		std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
 		filterEncryptedFiles(path, orig_path, os_files);
-		fs_files = convertToFileAndHash(orig_path, named_path, exclude_dirs, include_dirs, os_files, fn_filter);
+		fs_files = convertToFileAndHash(orig_path, os_files, fn_filter);
 
 		if (has_error)
 		{
@@ -2178,7 +2178,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		{
 			++index_c_db;
 
-			handleSymlinks(orig_path, named_path, exclude_dirs, include_dirs, fs_files);
+			handleSymlinks(orig_path, fs_files);
 
 			if(calculate_filehashes_on_client)
 			{
@@ -2200,7 +2200,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			bool has_error;
 			std::vector<SFile> os_files = getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem) > 0);
 			filterEncryptedFiles(path, orig_path, os_files);
-			fs_files=convertToFileAndHash(orig_path, named_path, exclude_dirs, include_dirs, os_files, fn_filter);
+			fs_files=convertToFileAndHash(orig_path, os_files, fn_filter);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -5949,8 +5949,7 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, const std::strin
 	}
 }
 
-std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::string& named_path, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs, const std::vector<SFile> files, const std::string& fn_filter)
+std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::vector<SFile> files, const std::string& fn_filter)
 {
 	const int64 symlink_mask = 0x7000000000000000LL;
 	const int64 special_mask = 0x3000000000000000LL;
@@ -6006,9 +6005,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 			curr->change_indicator += special_mask;
 		}
 
-		if(curr->issym && with_proper_symlinks
-			&& !skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
-				exclude_dirs, include_dirs) )
+		if(curr->issym && with_proper_symlinks)
 		{
 			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target, ret[i].output_symlink_target))
 			{
@@ -6022,19 +6019,12 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 	return ret;
 }
 
-void IndexThread::handleSymlinks(const std::string& orig_dir, std::string named_path, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs, std::vector<SFileAndHash>& files)
+void IndexThread::handleSymlinks(const std::string& orig_dir, std::vector<SFileAndHash>& files)
 {
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		if (files[i].issym)
 		{
-			if (skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
-				exclude_dirs, include_dirs))
-			{
-				continue;
-			}
-
 			if (!getAbsSymlinkTarget(orig_dir + os_file_sep() + files[i].name, orig_dir, files[i].symlink_target, files[i].output_symlink_target))
 			{
 				if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
