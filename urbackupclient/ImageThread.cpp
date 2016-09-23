@@ -102,7 +102,7 @@ bool ImageThread::sendFullImageThread(void)
 	int save_id=-1;
 	bool with_checksum=image_inf->with_checksum;
 
-	int64 last_shadowcopy_update = Server->getTimeSeconds();
+	int64 last_shadowcopy_update = Server->getTimeMS();
 
 	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
@@ -374,10 +374,10 @@ bool ImageThread::sendFullImageThread(void)
 					Server->wait(30000);
 				}
 
-				if(Server->getTimeSeconds() - last_shadowcopy_update > 1*60*60)
+				if(Server->getTimeMS() - last_shadowcopy_update > 1*60*60*1000)
 				{
 					updateShadowCopyStarttime(save_id);
-					last_shadowcopy_update = Server->getTimeSeconds();
+					last_shadowcopy_update = Server->getTimeMS();
 				}
 			}
 
@@ -474,7 +474,7 @@ bool ImageThread::sendIncrImageThread(void)
 	int update_cnt=0;
 
 	int64 lastsendtime=Server->getTimeMS();
-	int64 last_shadowcopy_update = Server->getTimeSeconds();
+	int64 last_shadowcopy_update = Server->getTimeMS();
 
 	std::auto_ptr<IFile> hdat_img;
 	std::string hdat_vol;
@@ -965,10 +965,10 @@ bool ImageThread::sendIncrImageThread(void)
 					Server->wait(30000);
 				}
 
-				if(Server->getTimeSeconds() - last_shadowcopy_update > 1*60*60)
+				if(Server->getTimeMS() - last_shadowcopy_update > 1*60*60*1000)
 				{
 					updateShadowCopyStarttime(save_id);
-					last_shadowcopy_update = Server->getTimeSeconds();
+					last_shadowcopy_update = Server->getTimeMS();
 				}
 			}
 
