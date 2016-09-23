@@ -632,9 +632,11 @@ SNextBlock* Filesystem::completionGetBlock(int64 pBlock)
 			next_block_callback->waitingForBlockCallback(pBlock);
 		}
 
-		waitForCompletion(1000);
+		if (!waitForCompletion(1000))
+		{
+			++nwait;
+		}
 
-		++nwait;
 		if (nwait == slow_read_warning_seconds)
 		{
 			next_block_callback->slowReadWarning(nwait * 1000, pBlock);
