@@ -1090,6 +1090,10 @@ void IndexThread::operator()(void)
 			{
 				scd->ref->starttime = Server->getTimeSeconds();
 			}
+			if (scd != NULL)
+			{
+				scd->starttime = Server->getTimeSeconds();
+			}
 
 			if(save_id!=-1)
 			{
@@ -2474,6 +2478,10 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				{
 					VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
 				}
+			}
+			else
+			{
+				Server->Log("Could not open snapshot at \"" + sc_refs[i]->volpath + "\"", LL_WARNING);
 			}
 			
 			if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
