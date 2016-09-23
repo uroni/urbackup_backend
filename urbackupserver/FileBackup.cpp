@@ -2007,7 +2007,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 
 void FileBackup::parseSnapshotFailed(const std::string & logline)
 {
-	std::string share = getbetween("Creating snapshot of \"", "\" failed.", logline);
+	std::string share = getbetween("Creating snapshot of \"", "\" failed", logline);
 	if (!share.empty())
 	{
 		shares_without_snapshot.push_back(share);
