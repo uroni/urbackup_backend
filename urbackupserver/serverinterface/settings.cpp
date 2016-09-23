@@ -722,7 +722,14 @@ ACTION_IMPL(settings)
 			q3->Write();
 			q3->Reset();
 
+			IQuery* q4 = db->Prepare("DELETE FROM settings_db.settings WHERE clientid = ?");
+			q4->Bind(groupid*-1);
+			q4->Write();
+			q4->Reset();
+
 			remove_transaction.end();
+
+			ServerSettings::updateAll();
 
 			ret.set("delete_ok", true);
 			sa = "general";
@@ -867,6 +874,18 @@ ACTION_IMPL(settings)
 
 				sa = "clientsettings";
 				t_clientid = -1 * groupid;
+
+				q = db->Prepare("DELETE FROM settings_db.settings WHERE clientid = ?");
+				q->Bind(t_clientid);
+				q->Write();
+				q->Reset();
+
+				q = db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) SELECT key, value, ? AS clientid FROM settings_db.settings WHERE clientid = 0");
+				q->Bind(t_clientid);
+				q->Write();
+				q->Reset();
+
+				ServerSettings::updateAll();
 			}
 			else
 			{
