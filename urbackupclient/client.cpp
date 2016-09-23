@@ -1000,6 +1000,16 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
+					for (size_t i = 0; i < sc_refs.size(); ++i)
+					{
+						if (sc_refs[i]->save_id == save_id)
+						{
+							sc_refs[i]->starttime = Server->getTimeSeconds();
+						}
+					}
+
+					cd->updateShadowCopyStarttime(save_id);
+
 					contractor->Write("done-"+convert(save_id)+"-"+path);
 				}
 			}
