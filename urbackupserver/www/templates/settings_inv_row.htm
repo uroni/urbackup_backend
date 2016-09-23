@@ -406,7 +406,7 @@
 	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
-			{global_settings_start_inet|s}
+			{?global_settings}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode (requires server restart)}:</label>
 				<div class="col-sm-6">
@@ -425,22 +425,24 @@
 					<input type="text" class="form-control" id="internet_server_port" value="{internet_server_port}"/>
 				</div>
 			</div>
-			{global_settings_end_inet|s}
+			{/global_settings}
 			{?main_client}
-			{no_compname_start_inet|s}
+			{^global_settings}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
 				</div>
 			</div>
+			{/global_settings}
+			{?with_authkey}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_authkey">{tInternet auth key}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="internet_authkey" value="{internet_authkey|s}"/></label>
 				</div>
 			</div>
-			{no_compname_end_inet|s}
+			{/with_authkey}
 			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_image_backups">{tDo image backups over internet}:</label>
@@ -463,7 +465,7 @@
 					</div>
 				</div>
 			</div>
-			{global_settings_start_inet|s}
+			{?global_settings}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="global_internet_speed">{tTotal max backup speed for internet connection}:</label>
 				<div class="col-sm-6">
@@ -473,7 +475,7 @@
 					</div>
 				</div>
 			</div>
-			{global_settings_end_inet|s}
+			{/global_settings}
 			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_encrypt">{tEncrypted transfer}:</label>

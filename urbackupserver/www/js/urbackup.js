@@ -2628,6 +2628,7 @@ function show_settings2(data)
 			data.settings.global_settings_end="";
 			
 			data.settings.main_client = true;
+			data.settings.global_settings=true;
 			
 			data.settings.client_plural="s";
 			
@@ -2638,8 +2639,6 @@ function show_settings2(data)
 			{
 				data.settings.internet_settings_start="";
 				data.settings.internet_settings_end="";
-				data.settings.global_settings_start_inet=data.settings.global_settings_start;
-				data.settings.global_settings_end_inet=data.settings.global_settings_end;
 				data.settings.no_compname_start_inet=data.settings.no_compname_start;
 				data.settings.no_compname_end_inet=data.settings.no_compname_end;
 			}
@@ -2647,8 +2646,6 @@ function show_settings2(data)
 			{
 				data.settings.internet_settings_start="<!--";
 				data.settings.internet_settings_end="-->";
-				data.settings.global_settings_start_inet="";
-				data.settings.global_settings_end_inet="";
 				data.settings.no_compname_start_inet="";
 				data.settings.no_compname_end_inet="";
 			}
@@ -2757,6 +2754,7 @@ function show_settings2(data)
 			{
 				data.settings.no_compname_start="";
 				data.settings.no_compname_end="";
+				data.settings.with_authkey=true;
 			}
 			data.settings.global_settings_start="<!--";
 			data.settings.global_settings_end="-->";
@@ -2766,18 +2764,12 @@ function show_settings2(data)
 				data.settings.internet_settings_start="";
 				data.settings.internet_settings_end="";
 				data.settings.global_settings_start_inet=data.settings.global_settings_start;
-				data.settings.global_settings_end_inet=data.settings.global_settings_end;
-				data.settings.no_compname_start_inet=data.settings.no_compname_start;
-				data.settings.no_compname_end_inet=data.settings.no_compname_end;
 			}
 			else
 			{
 				data.settings.internet_settings_start="<!--";
 				data.settings.internet_settings_end="-->";
 				data.settings.global_settings_start_inet="";
-				data.settings.global_settings_end_inet="";
-				data.settings.no_compname_start_inet="";
-				data.settings.no_compname_end_inet="";
 			}
 			
 			if(is_group)
