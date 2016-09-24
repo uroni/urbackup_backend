@@ -6,6 +6,8 @@ set -e
 #SNAP_SIZE="-L20G"
 SNAP_SIZE="-l50%FREE"
 
+CDIR=`dirname $0`
+
 mkdir -p /mnt/urbackup_snaps
 
 SNAP_ID=$1
@@ -21,6 +23,20 @@ else
 fi
 
 TYPE=`df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
+
+if [ "x$TYPE" == "x" ]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [ "x$TYPE" == "xbtrfs" ]
+then
+    $CDIR/btrfs_create_filesystem_snapshot "$@"
+    exit $?
+fi
 
 if [ "x$VOLNAME" = x ]
 then

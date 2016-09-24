@@ -5,10 +5,28 @@ set -e
 SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 
+CDIR=`dirname $0`
+
 if ! test -e $SNAP_MOUNTPOINT
 then
         echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
         exit 0
+fi
+
+TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+
+if [ "x$TYPE" == "x" ]
+then
+        if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
+        then
+                TYPE="btrfs"
+        fi
+fi
+
+if [ "x$TYPE" == "xbtrfs" ]
+then
+    $CDIR/btrfs_remove_filesystem_snapshot "$@"
+    exit $?
 fi
 
 if ! df -T -P | egrep "${SNAP_MOUNTPOINT}\$" > /dev/null 2>&1

@@ -379,7 +379,7 @@ then
 
         if [ $BTRFS != no ]
         then
-            echo "3) btrfs filesystem snapshots"
+            echo "3) btrfs filesystem snapshots (dattobd and LVM will automatically use btrfs snapshots for btrfs filesystems)"
         fi
 
         echo "4) Use no snapshot mechanism"
