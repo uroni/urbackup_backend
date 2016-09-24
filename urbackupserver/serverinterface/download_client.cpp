@@ -148,6 +148,9 @@ ACTION_IMPL(download_client)
 	if( !authkey.empty()
 		|| (session!=NULL && (all_client_rights || !clientids.empty()) ) )
 	{
+		helper.releaseAll();
+		session = NULL;
+
 		int clientid=watoi(GET["clientid"]);
 
 		if(!authkey.empty() || all_client_rights ||
