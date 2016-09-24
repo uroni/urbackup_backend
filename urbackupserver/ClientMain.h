@@ -70,7 +70,7 @@ struct SRunningBackup
 {
 	SRunningBackup()
 		: backup(NULL), ticket(ILLEGAL_THREADPOOL_TICKET),
-		group(c_group_default)
+		group(c_group_default), scheduled(true)
 	{
 
 	}
@@ -80,6 +80,7 @@ struct SRunningBackup
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
+	bool scheduled;
 };
 
 struct SRunningRestore
@@ -250,6 +251,7 @@ private:
 	bool isBackupsRunningOkay(bool file, bool incr=false);	
 	bool updateCapabilities(void);
 	IPipeThrottler *getThrottler(size_t speed_bps);
+	bool inBackupWindow(Backup* backup);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);

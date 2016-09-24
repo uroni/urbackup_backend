@@ -516,6 +516,7 @@ void ClientMain::operator ()(void)
 										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime());
 									backup.backup = idep;
 									backup.letter = normalizeVolume(dependencies[j].volume);
+									backup.scheduled = backup_queue[i].scheduled;
 
 									new_running_image_group[idep] = false;
 
@@ -743,6 +744,7 @@ void ClientMain::operator ()(void)
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
 					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
 				backup.group=filebackup_group_offset + c_group_default;
+				backup.scheduled = !do_full_backup_now;
 
 				backup_queue.push_back(backup);
 
@@ -759,6 +761,7 @@ void ClientMain::operator ()(void)
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
 					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
 				backup.group=filebackup_group_offset + c_group_default;
+				backup.scheduled = !do_incr_backup_now;
 
 				backup_queue.push_back(backup);
 
@@ -782,6 +785,7 @@ void ClientMain::operator ()(void)
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							false, letter, curr_server_token, letter, true, 0, std::string(), 0);
 						backup.letter=letter;
+						backup.scheduled = !do_full_image_now;
 
 						backup_queue.push_back(backup);
 					}
@@ -802,9 +806,10 @@ void ClientMain::operator ()(void)
 						&& !isImageGroupQueued(letter, false) )
 					{
 						SRunningBackup backup;
-						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
+						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_incr_image_now ?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							true, letter, curr_server_token, letter, true, 0, std::string(), 0);
 						backup.letter=letter;
+						backup.scheduled = !do_incr_image_now;
 
 						backup_queue.push_back(backup);
 					}
@@ -842,7 +847,8 @@ void ClientMain::operator ()(void)
 					bool started_job=false;
 					for(size_t i=0;i<backup_queue.size();++i)
 					{
-						if(backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET)
+						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
+							&& (!backup_queue[i].scheduled || inBackupWindow(backup_queue[i].backup) ) )
 						{
 							bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
 
@@ -2139,6 +2145,32 @@ IPipeThrottler *ClientMain::getThrottler(size_t speed_bps)
 	}
 
 	return client_throttler;
+}
+
+bool ClientMain::inBackupWindow(Backup * backup)
+{
+	if (backup->isFileBackup())
+	{
+		if (backup->isIncrementalBackup())
+		{
+			return ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile());
+		}
+		else
+		{
+			return ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile());
+		}
+	}
+	else
+	{
+		if (backup->isIncrementalBackup())
+		{
+			return ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage());
+		}
+		else
+		{
+			return ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage());
+		}
+	}
 }
 
 IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* clientaddr)
