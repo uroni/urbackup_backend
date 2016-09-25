@@ -51,26 +51,44 @@ std::string loginMethodToString(LoginMethod lm)
 	return std::string();
 }
 
+std::string getRemoteAddr(str_map& PARAMS)
+{
+	std::string remote_addr;
+	str_map::iterator it_remote = PARAMS.find("HTTP_X_FORWARDED_FOR");
+	if (it_remote != PARAMS.end())
+	{
+		remote_addr = it_remote->second;
+	}
+	else
+	{
+		remote_addr = PARAMS["REMOTE_ADDR"];
+	}
+
+	return remote_addr;
+}
+
 void logSuccessfullLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 	IQuery* q = helper.getDatabase()->Prepare("INSERT INTO settings_db.login_access_log (username, ip, method)"
 		" VALUES (?, ?, ?)");
 
+	std::string remote_addr = getRemoteAddr(PARAMS);
+
 	q->Bind(username);
-	q->Bind(PARAMS["REMOTE_ADDR"]);
+	q->Bind(remote_addr);
 	q->Bind(static_cast<int>(method));
 	q->Write();
 	q->Reset();
 
 #ifndef _WIN32
-	syslog(LOG_AUTH|LOG_INFO, "Login successful for %s from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+	syslog(LOG_AUTH|LOG_INFO, "Login successful for %s from %s via %s", username.c_str(), remote_addr.c_str(), loginMethodToString(method).c_str());
 #endif
 }
 
 void logFailedLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 #ifndef _WIN32
-	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %s from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %s from %s via %s", username.c_str(), getRemoteAddr(PARAMS).c_str(), loginMethodToString(method).c_str());
 #endif
 }
 

@@ -47,6 +47,9 @@ public:
 
 	bool ldapEnabled();
 private:
+
+	std::string getIdentData();
+
 	std::string getRightsInt(const std::string &domain);
 	std::map<std::string, std::string> parseRightsString(const std::string& rights);
 

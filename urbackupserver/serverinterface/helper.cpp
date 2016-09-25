@@ -50,7 +50,7 @@ void Helper::update(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 
 	if( session==NULL )
 	{	
-		session=Server->getSessionMgr()->getUser( (*POST)["ses"], (*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"] );
+		session=Server->getSessionMgr()->getUser( (*POST)["ses"], getIdentData() );
 
 		if(session!=NULL)
 		{
@@ -192,7 +192,7 @@ IDatabase *Helper::getDatabase(void)
 
 std::string Helper::generateSession(std::string username)
 {
-	return Server->getSessionMgr()->GenerateSessionIDWithUser( username, (*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"] );
+	return Server->getSessionMgr()->GenerateSessionIDWithUser( username, getIdentData());
 }
 
 std::string Helper::getRights(const std::string &domain)
@@ -205,6 +205,19 @@ std::string Helper::getRights(const std::string &domain)
 		return "all";
 
 	return getRightsInt(domain);
+}
+
+std::string Helper::getIdentData()
+{
+	std::string user_agent = (*PARAMS)["HTTP_USER_AGENT"];
+
+	str_map::iterator it_remote = PARAMS->find("HTTP_X_FORWARDED_FOR");
+	if (it_remote != PARAMS->end())
+	{
+		return it_remote->second + user_agent;
+	}
+
+	return (*PARAMS)["REMOTE_ADDR"] + user_agent;
 }
 
 std::string Helper::getRightsInt(const std::string &domain)
