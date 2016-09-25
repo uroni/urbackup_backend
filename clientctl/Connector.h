@@ -125,7 +125,7 @@ struct SStatusDetails
 	std::vector<SRunningProcess> running_processes;
 	std::vector<SFinishedProcess> finished_processes;
 	std::vector<SUrBackupServer> servers;
-	unsigned int time_since_last_lan_connection;
+	int64 time_since_last_lan_connection;
 	bool internet_connected;
 	std::string internet_status;
 

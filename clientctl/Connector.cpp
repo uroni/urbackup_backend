@@ -675,7 +675,7 @@ SStatusDetails Connector::getStatusDetails()
 			servers[i].name = json_servers[i]["name"].asString();
 		}
 		ret.servers = servers;
-		ret.time_since_last_lan_connection = root["time_since_last_lan_connection"].asInt();
+		ret.time_since_last_lan_connection = root["time_since_last_lan_connection"].asInt64();
 		ret.internet_connected = root["internet_connected"].asBool();
 		ret.internet_status = root["internet_status"].asString();
 
