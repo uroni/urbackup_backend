@@ -58,6 +58,11 @@ std::string getRemoteAddr(str_map& PARAMS)
 	if (it_remote != PARAMS.end())
 	{
 		remote_addr = it_remote->second;
+
+		if (remote_addr.find(",") != std::string::npos)
+		{
+			remote_addr = trim(getuntil(",", remote_addr));
+		}
 	}
 	else
 	{

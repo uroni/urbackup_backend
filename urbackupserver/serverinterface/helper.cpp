@@ -214,6 +214,11 @@ std::string Helper::getIdentData()
 	str_map::iterator it_remote = PARAMS->find("HTTP_X_FORWARDED_FOR");
 	if (it_remote != PARAMS->end())
 	{
+		if (it_remote->second.find(",") != std::string::npos)
+		{
+			return trim(getuntil(",", it_remote->second)) + user_agent;
+		}
+
 		return it_remote->second + user_agent;
 	}
 
