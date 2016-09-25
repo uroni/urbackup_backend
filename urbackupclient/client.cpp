@@ -722,6 +722,10 @@ void IndexThread::operator()(void)
 						Server->Log("Deleting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
 					}
 				}
+				else if (reference_sc)
+				{
+					Server->Log("Could not find shadowcopy for \"" + scd->dir + "\". The client was probably restarted.", LL_WARNING);
+				}
 
 				scd->dir=scdir;
 				scd->starttime=Server->getTimeSeconds();
