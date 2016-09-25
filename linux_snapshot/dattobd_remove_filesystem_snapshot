@@ -31,7 +31,7 @@ fi
 
 TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
 
-if [ "x$TYPE" == "x" ]
+if [ "x$TYPE" = "x" ]
 then
         if btrfs subvolume list -o "$SNAP_MOUNTPOINT" > /dev/null 2>&1
         then
@@ -39,7 +39,7 @@ then
         fi
 fi
 
-if [ "x$TYPE" == "xbtrfs" ]
+if [ "x$TYPE" = "xbtrfs" ]
 then
     $CDIR/btrfs_remove_filesystem_snapshot "$@"
     exit $?
