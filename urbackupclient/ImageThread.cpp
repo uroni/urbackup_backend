@@ -1185,7 +1185,17 @@ std::string ImageThread::getFsErrMsg()
 	}
 	else if (curr_fs->getOsErrorCode() != 0)
 	{
-		return " " + os_format_errcode(curr_fs->getOsErrorCode());
+		std::string extra_info;
+		if (!image_inf->shadowdrive.empty())
+		{
+			std::auto_ptr<IFile> dev(Server->openFile(image_inf->shadowdrive, MODE_READ_DEVICE));
+			if (dev.get() == NULL)
+			{
+				extra_info += ". Shadow copy " + image_inf->shadowdrive + " not present anymore. May have been removed";
+			}
+		}
+
+		return " " + os_format_errcode(curr_fs->getOsErrorCode()) + extra_info;
 	}
 	else
 	{
