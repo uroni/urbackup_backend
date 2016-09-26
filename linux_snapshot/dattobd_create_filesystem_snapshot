@@ -52,26 +52,26 @@ echo "Using /dev/datto$NUM..."
 
 sync
 
-dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_$SNAP_ID" $NUM
+dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $NUM
 
 echo $NUM > ${SNAP_DEST}-num
 
 DEV_SIZE=`blockdev --getsize /dev/datto$NUM`
 
-truncate -s100M $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+truncate -s100M $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
 
 LODEV=`losetup -f`
 
 if [ "x$LODEV" = x ]
 then
 	rm "${SNAP_DEST}-num"
-	rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+	rm $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
 	dbdctl destroy $NUM
     exit 1
 fi
 	
 
-losetup $LODEV $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+losetup $LODEV $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
 
 echo "0 $DEV_SIZE snapshot /dev/datto$NUM $LODEV N 8" | dmsetup create "wsnap-$SNAP_ID"
 
@@ -93,7 +93,7 @@ then
     rm "${SNAP_DEST}-num"
     dmsetup remove "wsnap-$SNAP_ID"
 	losetup -d $LODEV
-    rm $SNAP_MOUNTPOINT/.overlay_$SNAP_ID
+    rm $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
     dbdctl destroy $NUM
     exit 1
 fi

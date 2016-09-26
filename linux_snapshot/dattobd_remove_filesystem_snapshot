@@ -9,21 +9,21 @@ SNAP_ORIG_PATH="$5"
 CDIR=`dirname $0`
 
 remove_overlay() {
-	if test -e "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+	if test -e "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
 	then
-		LODEV=`losetup -j "$SNAP_ORIG_PATH/.overlay_$SNAP_ID" | cut -d':' -f1`
+		LODEV=`losetup -j "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID" | cut -d':' -f1`
 		if [ "x$LODEV" != x ]
 		then
 			losetup -d $LODEV
 		fi
-		rm "$SNAP_ORIG_PATH/.overlay_$SNAP_ID"
+		rm "$SNAP_ORIG_PATH/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID"
 	fi
 }
 
 if ! test -e $SNAP_MOUNTPOINT
 then
     echo "Snapshot at $SNAP_MOUNTPOINT was already removed"
-    [ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
+    [ ! -e "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID"
     [ ! -e "${SNAP_MOUNTPOINT}-num" ] || rm "${SNAP_MOUNTPOINT}-num"
 	remove_overlay
     exit 0
@@ -50,7 +50,7 @@ then
     echo "Snapshot is not mounted. Already removed"
     rm "${SNAP_MOUNTPOINT}-num"
     rmdir "${SNAP_MOUNTPOINT}"
-    [ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
+    [ ! -e "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID"
     remove_overlay
     exit 0
 fi
@@ -87,6 +87,6 @@ echo "Destroying dattobd snapshot /dev/datto$NUM..."
 
 dbdctl destroy $NUM
 
-[ ! -e "$SNAP_ORIG_PATH/.datto_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_$SNAP_ID"
+[ ! -e "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID"
 
 exit 0
