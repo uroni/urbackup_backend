@@ -784,7 +784,7 @@ void ClientMain::operator ()(void)
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							false, letter, curr_server_token, letter, true, 0, std::string(), 0);
-						backup.letter=letter;
+						backup.letter=normalizeVolume(letter);
 						backup.scheduled = !do_full_image_now;
 
 						backup_queue.push_back(backup);
@@ -808,7 +808,7 @@ void ClientMain::operator ()(void)
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_incr_image_now ?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							true, letter, curr_server_token, letter, true, 0, std::string(), 0);
-						backup.letter=letter;
+						backup.letter= normalizeVolume(letter);
 						backup.scheduled = !do_incr_image_now;
 
 						backup_queue.push_back(backup);
@@ -2761,7 +2761,8 @@ bool ClientMain::isRunningImageBackup(const std::string& letter)
 {
 	for(size_t i=0;i<backup_queue.size();++i)
 	{
-		if(!backup_queue[i].backup->isFileBackup() && backup_queue[i].letter==letter)
+		if(!backup_queue[i].backup->isFileBackup()
+			&& backup_queue[i].letter==normalizeVolume(letter) )
 		{
 			return true;
 		}
