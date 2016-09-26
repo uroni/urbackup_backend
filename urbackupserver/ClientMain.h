@@ -70,7 +70,7 @@ struct SRunningBackup
 {
 	SRunningBackup()
 		: backup(NULL), ticket(ILLEGAL_THREADPOOL_TICKET),
-		group(c_group_default), scheduled(true)
+		group(c_group_default)
 	{
 
 	}
@@ -80,7 +80,6 @@ struct SRunningBackup
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
-	bool scheduled;
 };
 
 struct SRunningRestore

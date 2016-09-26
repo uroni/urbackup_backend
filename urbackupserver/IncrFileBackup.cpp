@@ -47,8 +47,8 @@ namespace
 }
 
 IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
-	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token, std::string details)
-	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details), 
+	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token, std::string details, bool scheduled)
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled), 
 	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL), filesdao(NULL), link_dao(NULL), link_journal_dao(NULL)
 {
 
@@ -61,7 +61,7 @@ bool IncrFileBackup::doFileBackup()
 	ScopedFreeObjRef<ServerLinkDao*> free_link_dao(link_dao);
 	ScopedFreeObjRef<ServerLinkJournalDao*> free_link_journal_dao(link_journal_dao);
 
-	ServerLogger::Log(logid, "Starting incremental file backup...", LL_INFO);
+	ServerLogger::Log(logid, std::string("Starting ") + (scheduled ? "scheduled" : "unscheduled") + " incremental file backup...", LL_INFO);
 
 	if(with_hashes)
 	{
@@ -1807,7 +1807,7 @@ bool IncrFileBackup::doFullBackup()
 	ServerStatus::stopProcess(clientname, status_id);
 
 	FullFileBackup full_backup(client_main, clientid, clientname, clientsubname, log_action,
-		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details);
+		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled);
 	full_backup();
 
 	disk_error = full_backup.hasDiskError();

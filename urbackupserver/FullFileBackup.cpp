@@ -37,9 +37,9 @@ extern std::string server_identity;
 
 FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
 	LogAction log_action, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots,
-	std::string server_token, std::string details)
+	std::string server_token, std::string details, bool scheduled)
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group,
-	use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details)
+	use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled)
 {
 
 }
@@ -62,7 +62,7 @@ SBackup FullFileBackup::getLastFullDurations( void )
 
 bool FullFileBackup::doFileBackup()
 {
-	ServerLogger::Log(logid, "Starting full file backup...", LL_INFO);
+	ServerLogger::Log(logid, std::string("Starting ") + (scheduled ? "scheduled" : "unscheduled") + " full file backup...", LL_INFO);
 
 	SBackup last_backup_info = getLastFullDurations();
 

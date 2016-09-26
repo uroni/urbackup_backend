@@ -513,10 +513,9 @@ void ClientMain::operator ()(void)
 									SRunningBackup backup;
 									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
 										ibackup->isIncrementalBackup(), dependencies[j].volume, curr_server_token, dependencies[j].volume, false,
-										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime());
+										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime(), ibackup->isScheduled());
 									backup.backup = idep;
 									backup.letter = normalizeVolume(dependencies[j].volume);
-									backup.scheduled = backup_queue[i].scheduled;
 
 									new_running_image_group[idep] = false;
 
@@ -742,9 +741,8 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
 				backup.group=filebackup_group_offset + c_group_default;
-				backup.scheduled = !do_full_backup_now;
 
 				backup_queue.push_back(backup);
 
@@ -759,9 +757,8 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default));
+					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
 				backup.group=filebackup_group_offset + c_group_default;
-				backup.scheduled = !do_incr_backup_now;
 
 				backup_queue.push_back(backup);
 
@@ -783,9 +780,8 @@ void ClientMain::operator ()(void)
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							false, letter, curr_server_token, letter, true, 0, std::string(), 0);
+							false, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_full_image_now);
 						backup.letter=normalizeVolume(letter);
-						backup.scheduled = !do_full_image_now;
 
 						backup_queue.push_back(backup);
 					}
@@ -807,9 +803,8 @@ void ClientMain::operator ()(void)
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_incr_image_now ?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
-							true, letter, curr_server_token, letter, true, 0, std::string(), 0);
+							true, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_incr_image_now);
 						backup.letter= normalizeVolume(letter);
-						backup.scheduled = !do_incr_image_now;
 
 						backup_queue.push_back(backup);
 					}
@@ -824,7 +819,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new ContinuousBackup(this, clientid, clientname, clientsubname,
 					LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_continuous, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, convert(c_group_continuous));
+					tmpfile_path, use_reflink, use_snapshots, convert(c_group_continuous), false);
 				backup.group=filebackup_group_offset + c_group_continuous;
 
 				backup_queue.push_back(backup);
@@ -848,7 +843,7 @@ void ClientMain::operator ()(void)
 					for(size_t i=0;i<backup_queue.size();++i)
 					{
 						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
-							&& (!backup_queue[i].scheduled || inBackupWindow(backup_queue[i].backup) ) )
+							&& (!backup_queue[i].backup->isScheduled() || inBackupWindow(backup_queue[i].backup) ) )
 						{
 							bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
 

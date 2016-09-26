@@ -22,9 +22,9 @@
 #include "IncrFileBackup.h"
 
 ContinuousBackup::ContinuousBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
-	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string details)
+	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string details, bool scheduled)
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action,
-	true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details)
+	true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled)
 {
 	cdp_path=true;
 }
@@ -61,7 +61,7 @@ bool ContinuousBackup::doFileBackup()
 	}
 
 	IncrFileBackup incr_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging,
-		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details);
+		group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled);
 	incr_backup.setStopBackupRunning(false);
 	incr_backup();
 

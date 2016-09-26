@@ -48,8 +48,9 @@ const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
 
 FileBackup::FileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
-	bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token, std::string details)
-	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental, server_token, details),
+	bool is_incremental, int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token,
+	std::string details, bool scheduled)
+	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental, server_token, details, scheduled),
 	group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),

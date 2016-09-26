@@ -54,11 +54,11 @@ namespace
 }
 
 Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname,
-	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details)
+	LogAction log_action, bool is_file_backup, bool is_incremental, std::string server_token, std::string details, bool scheduled)
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
-	server_token(server_token), details(details), num_issues(0), stop_backup_running(true)
+	server_token(server_token), details(details), num_issues(0), stop_backup_running(true), scheduled(scheduled)
 {
 	
 }
