@@ -243,14 +243,14 @@ private:
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
 	int parseDayOfWeek(std::string dow);
-	void readSettingsDefault(ISettingsReader* settings_default);
+	void readSettingsDefault(ISettingsReader* settings_default, ISettingsReader* settings_global);
 	void readSettingsClient(ISettingsReader* settings_client);
 	void readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output);
 	void readStringClientSetting(ISettingsReader* settings_client, const std::string &name, std::string *output);
 	void readIntClientSetting(ISettingsReader* settings_client, const std::string &name, int *output);
 	void readSizeClientSetting(ISettingsReader* settings_client, const std::string &name, size_t *output);
 	void createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
-		std::auto_ptr<ISettingsReader>& settings_client);
+		std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global);
 	void updateInternal(bool* was_updated);
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 

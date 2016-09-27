@@ -82,11 +82,12 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 	{
 		lock.relock(NULL);
 
-		std::auto_ptr<ISettingsReader> settings_client, settings_default;
-		createSettingsReaders(settings_default, settings_client);
+		std::auto_ptr<ISettingsReader> settings_client, settings_default, setting_global;
+		createSettingsReaders(settings_default, settings_client, setting_global);
 		local_settings = new SSettings();
 		local_settings->refcount = 1;
-		readSettingsDefault(settings_default.get());
+		readSettingsDefault(settings_default.get(), 
+			setting_global.get()!=NULL ? setting_global.get() : settings_default.get());
 		if (settings_client.get() != NULL)
 		{
 			readSettingsClient(settings_client.get());
@@ -110,7 +111,7 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 }
 
 void ServerSettings::createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
-	std::auto_ptr<ISettingsReader>& settings_client)
+	std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global)
 {
 	int settings_default_id = 0;
 	if(clientid>0)
@@ -124,6 +125,11 @@ void ServerSettings::createSettingsReaders(std::auto_ptr<ISettingsReader>& setti
 	}
 
 	settings_default.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid="+convert(settings_default_id)));
+
+	if (settings_default_id < 0)
+	{
+		settings_global.reset(Server->createDBMemSettingsReader(db, "settings", "SELECT key,value FROM settings_db.settings WHERE clientid=0"));
+	}
 }
 
 ServerSettings::~ServerSettings(void)
@@ -235,9 +241,10 @@ void ServerSettings::update(bool force_update)
 
 		local_settings = new SSettings();
 		local_settings->refcount = 1;
-		std::auto_ptr<ISettingsReader> settings_client, settings_default;
-		createSettingsReaders(settings_default, settings_client);
-		readSettingsDefault(settings_default.get());
+		std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+		createSettingsReaders(settings_default, settings_client, settings_global);
+		readSettingsDefault(settings_default.get(),
+			settings_global.get() != NULL ? settings_global.get() : settings_default.get());
 		if (settings_client.get() != NULL)
 		{
 			readSettingsClient(settings_client.get());
@@ -283,7 +290,8 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 	return local_settings;
 }
 
-void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
+void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
+	ISettingsReader* settings_global)
 {
 	SSettings* settings = local_settings;
 	settings->clientid=clientid;
@@ -307,26 +315,26 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
 	settings->max_image_incr=settings_default->getValue("max_image_incr", 30);
 	settings->min_image_full=settings_default->getValue("min_image_full", 2);
 	settings->max_image_full=settings_default->getValue("max_image_full", 5);
-	settings->no_images=(settings_default->getValue("no_images", "false")=="true");
-	settings->no_file_backups=(settings_default->getValue("no_file_backups", "false")=="true");
+	settings->no_images=(settings_global->getValue("no_images", "false")=="true");
+	settings->no_file_backups=(settings_global->getValue("no_file_backups", "false")=="true");
 	settings->overwrite=false;
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
-	settings->backupfolder=trim(settings_default->getValue("backupfolder", "C:\\urbackup"));
-	settings->backupfolder_uncompr=trim(settings_default->getValue("backupfolder_uncompr", settings->backupfolder));
-	settings->autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
+	settings->backupfolder=trim(settings_global->getValue("backupfolder", "C:\\urbackup"));
+	settings->backupfolder_uncompr=trim(settings_global->getValue("backupfolder_uncompr", settings->backupfolder));
+	settings->autoshutdown=(settings_global->getValue("autoshutdown", "false")=="true");;
 	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
-	settings->download_client=(settings_default->getValue("download_client", "true")=="true");
-	settings->autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
+	settings->download_client=(settings_global->getValue("download_client", "true")=="true");
+	settings->autoupdate_clients=(settings_global->getValue("autoupdate_clients", "true")=="true");
 	settings->backup_window_incr_file=settings_default->getValue("backup_window_incr_file", "1-7/0-24");
 	settings->backup_window_full_file=settings_default->getValue("backup_window_full_file", "1-7/0-24");
 	settings->backup_window_incr_image=settings_default->getValue("backup_window_incr_image", "1-7/0-24");
 	settings->backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
-	settings->max_active_clients=settings_default->getValue("max_active_clients", 100);
-	settings->max_sim_backups=settings_default->getValue("max_sim_backups", 10);
+	settings->max_active_clients= settings_global->getValue("max_active_clients", 100);
+	settings->max_sim_backups= settings_global->getValue("max_sim_backups", 10);
 	settings->exclude_files=settings_default->getValue("exclude_files", "");
 	settings->include_files=settings_default->getValue("include_files", "");
 	settings->default_dirs=settings_default->getValue("default_dirs", "");
-	settings->cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
+	settings->cleanup_window= settings_global->getValue("cleanup_window", "1-7/3-4");
 	settings->allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
 	settings->allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
 	settings->allow_starting_incr_file_backups=(settings_default->getValue("allow_starting_incr_file_backups", "true")=="true");
@@ -336,10 +344,10 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
 	settings->allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 	settings->allow_tray_exit=(settings_default->getValue("allow_tray_exit", "true")=="true");
 	settings->image_letters=settings_default->getValue("image_letters", "C");
-	settings->backup_database=(settings_default->getValue("backup_database", "true")=="true");
-	settings->internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
+	settings->backup_database=(settings_global->getValue("backup_database", "true")=="true");
+	settings->internet_server_port=(unsigned short)(atoi(settings_global->getValue("internet_server_port", "55415").c_str()));
 	settings->client_set_settings=false;
-	settings->internet_server=settings_default->getValue("internet_server", "");
+	settings->internet_server= settings_global->getValue("internet_server", "");
 	settings->internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
 	settings->internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
 	settings->internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
@@ -347,28 +355,28 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default)
 	settings->internet_compression_level=atoi(settings_default->getValue("internet_compression_level", "6").c_str());
 	settings->internet_speed=settings_default->getValue("internet_speed", "-1");
 	settings->local_speed=settings_default->getValue("local_speed", "-1");
-	settings->global_internet_speed=settings_default->getValue("global_internet_speed", "-1");
-	settings->global_local_speed=settings_default->getValue("global_local_speed", "-1");
+	settings->global_internet_speed= settings_global->getValue("global_internet_speed", "-1");
+	settings->global_local_speed= settings_global->getValue("global_local_speed", "-1");
 	settings->internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
 	settings->silent_update=(settings_default->getValue("silent_update", "false")=="true");
-	settings->use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
-	settings->use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
-	settings->tmpdir=settings_default->getValue("tmpdir","");
+	settings->use_tmpfiles=(settings_global->getValue("use_tmpfiles", "false")=="true");
+	settings->use_tmpfiles_images=(settings_global->getValue("use_tmpfiles_images", "false")=="true");
+	settings->tmpdir= settings_global->getValue("tmpdir","");
 	settings->local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
 	settings->internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "raw");
 	settings->local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
 	settings->internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
 	settings->local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
 	settings->internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "raw");
-	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 200*1024));
-	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
+	settings->update_stats_cachesize=static_cast<size_t>(settings_global->getValue("update_stats_cachesize", 200*1024));
+	settings->global_soft_fs_quota= settings_global->getValue("global_soft_fs_quota", "100%");
 	settings->client_quota=settings_default->getValue("client_quota", "");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
-	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
+	settings->use_incremental_symlinks=(settings_global->getValue("use_incremental_symlinks", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
-	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
-	settings->server_url=settings_default->getValue("server_url", "");
+	settings->show_server_updates=(settings_global->getValue("show_server_updates", "true")=="true");
+	settings->server_url= trim(settings_global->getValue("server_url", ""));
 	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
@@ -978,8 +986,8 @@ bool ServerSettings::isInTimeSpan(std::vector<STimeSpan> bw)
 
 SLDAPSettings ServerSettings::getLDAPSettings()
 {
-	std::auto_ptr<ISettingsReader> settings_client, settings_default;
-	createSettingsReaders(settings_default, settings_client);
+	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	createSettingsReaders(settings_default, settings_client, settings_global);
 	SLDAPSettings ldap_settings;
 	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "false")=="true";
 	
