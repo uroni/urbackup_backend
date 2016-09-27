@@ -106,8 +106,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	}
 
 	unsigned int timeout_time=full_backup_construct_timeout;
-	if(client_main->getProtocolVersions().file_protocol_version>=2
-		|| client_main->getProtocolVersions().async_index_version>0)
+	if (client_main->getProtocolVersions().async_index_version > 0)
+	{
+		timeout_time = 10 * 60 * 1000;
+	}
+	else if(client_main->getProtocolVersions().file_protocol_version>=2)
 	{
 		timeout_time=120000;
 	}
@@ -308,6 +311,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 					async_id = params["async_id"];
 					Server->destroy(cc);
 					cc = NULL;
+					starttime = Server->getTimeMS();
 				}
 				else if(ret=="BUSY")
 				{
