@@ -34,7 +34,17 @@ public:
 	static void cleanupThrottlers(void);
 
 	static void testSnapshotAvailability(IDatabase *db);
-	static bool isSnapshotsEnabled(void);
+	static bool isFileSnapshotsEnabled();
+	static bool isImageSnapshotsEnabled();
+
+	enum ESnapshotMethod
+	{
+		ESnapshotMethod_None = -1,
+		ESnapshotMethod_Btrfs = 0,
+		ESnapshotMethod_Zfs = 1
+	};
+
+	static ESnapshotMethod getSnapshotMethod();
 
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static bool isFilesystemTransactionEnabled();
@@ -57,6 +67,7 @@ private:
 	bool isDeletePendingClient(const std::string& clientname);
 	void maybeUpdateExistingClientsLower();
 	void fixClientnameCase(std::string& clientname);
+	static void enableSnapshots(int method);
 
 	std::map<std::string, SClient> clients;
 
@@ -77,7 +88,9 @@ private:
 
 	bool internet_only_mode;
 
-	static bool snapshots_enabled;
+	static bool file_snapshots_enabled;
+	static bool image_snapshots_enabled;
+	static ESnapshotMethod snapshot_method;
 	static bool filesystem_transactions_enabled;
 	static bool use_tree_hashing;
 

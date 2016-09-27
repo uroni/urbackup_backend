@@ -116,7 +116,8 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 	public FileClient::ProgressLogCallback
 {
 public:
-	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
+	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset,
+		bool internet_connection, bool use_file_snapshots, bool use_image_snapshots, bool use_reflink);
 	~ClientMain(void);
 
 	void operator()(void);
@@ -317,7 +318,8 @@ private:
 	std::string all_volumes;
 	std::string all_nonusb_volumes;
 
-	bool use_snapshots;
+	bool use_file_snapshots;
+	bool use_image_snapshots;
 	bool use_reflink;
 	bool use_tmpfiles;
 	bool use_tmpfiles_images;

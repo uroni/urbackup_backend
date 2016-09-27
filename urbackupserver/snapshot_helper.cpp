@@ -19,36 +19,44 @@
 #include "snapshot_helper.h"
 #include "../Interface/Server.h"
 #include <stdlib.h>
+#include "../stringtools.h"
+#include "server.h"
 
 std::string SnapshotHelper::helper_name="urbackup_snapshot_helper";
 
-bool SnapshotHelper::isAvailable(void)
+int SnapshotHelper::isAvailable(void)
 {
 	int rc=system((helper_name+" test").c_str());
-	return rc==0;
+
+	if (rc > 10)
+	{
+		return rc - 10;
+	}
+
+	return -1;
 }
 
 bool SnapshotHelper::createEmptyFilesystem(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" create \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " create \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
 bool SnapshotHelper::snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name)
 {
-	int rc=system((helper_name+" snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\"").c_str());
+	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\"").c_str());
 	return rc==0;
 }
 
 bool SnapshotHelper::removeFilesystem(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
 bool SnapshotHelper::isSubvolume(std::string clientname, std::string name)
 {
-	int rc=system((helper_name+" issubvolume \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=system((helper_name + " "+convert(BackupServer::getSnapshotMethod())+" issubvolume \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 

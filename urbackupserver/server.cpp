@@ -38,7 +38,9 @@ const int max_offline=5;
 IPipeThrottler *BackupServer::global_internet_throttler=NULL;
 IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
-bool BackupServer::snapshots_enabled=false;
+bool BackupServer::file_snapshots_enabled=false;
+bool BackupServer::image_snapshots_enabled = false;
+BackupServer::ESnapshotMethod BackupServer::snapshot_method = BackupServer::ESnapshotMethod_None;
 bool BackupServer::filesystem_transactions_enabled = false;
 bool BackupServer::use_tree_hashing = false;
 volatile bool BackupServer::update_delete_pending_clients=true;
@@ -365,11 +367,11 @@ void BackupServer::startClients(FileClient &fc)
 
 			bool use_reflink=false;
 #ifndef _WIN32
-			if(snapshots_enabled)
+			if(file_snapshots_enabled)
 				use_reflink=true;
 #endif
 			ClientMain *client=new ClientMain(np, curr_info.addr, curr_info.name, curr_info.subname, curr_info.mainname,
-				curr_info.filebackup_group_offset, curr_info.internetclient, snapshots_enabled, use_reflink);
+				curr_info.filebackup_group_offset, curr_info.internetclient, file_snapshots_enabled, image_snapshots_enabled, use_reflink);
 			Server->getThreadPool()->execute(client, "client main");
 
 			SClient c;
@@ -620,9 +622,19 @@ void BackupServer::cleanupThrottlers(void)
 	}
 }
 
-bool BackupServer::isSnapshotsEnabled(void)
+bool BackupServer::isFileSnapshotsEnabled()
 {
-	return snapshots_enabled;
+	return file_snapshots_enabled;
+}
+
+bool BackupServer::isImageSnapshotsEnabled()
+{
+	return image_snapshots_enabled;
+}
+
+BackupServer::ESnapshotMethod BackupServer::getSnapshotMethod()
+{
+	return snapshot_method;
 }
 
 void BackupServer::testSnapshotAvailability(IDatabase *db)
@@ -637,28 +649,29 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 	}
 
 	std::string cow_mode=settings->getValue("cow_mode", "false");
-	if(!SnapshotHelper::isAvailable())
+	int method = SnapshotHelper::isAvailable();
+	if(method<0)
 	{
-		if(cow_mode!="true")
+		if (cow_mode != "true")
 		{
-			snapshots_enabled=false;
+			image_snapshots_enabled = false;
+			file_snapshots_enabled = false;
 		}
 		else
 		{
 			size_t n=10;
-			bool available;
 			do
 			{
 				Server->wait(10000);
 				Server->Log("Waiting for backup destination to support snapshots...", LL_INFO);
 				--n;
-				available=SnapshotHelper::isAvailable();
+				method =SnapshotHelper::isAvailable();
 			}
-			while(!available && n>0);
+			while(method<0 && n>0);
 
-			if(available)
+			if(method >=0)
 			{					
-				snapshots_enabled=true;
+				enableSnapshots(method);
 			}
 			else
 			{
@@ -667,22 +680,32 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 				db->Write("DELETE FROM settings_db.settings WHERE key='cow_mode' AND clientid=0");
 				db->Write("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'false', 0)");
 				db->EndTransaction();
-				snapshots_enabled=false;
+
+				image_snapshots_enabled = false;
+				file_snapshots_enabled = false;
 			}
 		}
 	}
 	else
 	{
-		snapshots_enabled=true;
+		enableSnapshots(method);
+
 		db->BeginWriteTransaction();
 		db->Write("DELETE FROM settings_db.settings WHERE key='cow_mode' AND clientid=0");
 		db->Write("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'true', 0)");
 		db->EndTransaction();
 	}
 
-	if(snapshots_enabled)
+	if(image_snapshots_enabled || file_snapshots_enabled)
 	{
-		Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
+		if (file_snapshots_enabled && image_snapshots_enabled)
+		{
+			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled for image and file backups.", LL_INFO);
+		}
+		else
+		{
+			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled for image backups.", LL_INFO);
+		}
 	}
 	else
 	{
@@ -807,6 +830,22 @@ void BackupServer::fixClientnameCase( std::string& clientname )
 			break;
 		}
 	}
+}
+
+void BackupServer::enableSnapshots(int method)
+{
+	if (method < 0)
+	{
+		return;
+	}
+
+	image_snapshots_enabled = true;
+	if (method == 0)
+	{
+		file_snapshots_enabled = false;
+	}
+
+	snapshot_method = static_cast<ESnapshotMethod>(method);
 }
 
 void BackupServer::setupUseTreeHashing()

@@ -40,6 +40,7 @@
 #include "../urbackupcommon/mbrdata.h"
 #include "server_ping.h"
 #include "snapshot_helper.h"
+#include "server.h"
 
 const unsigned int status_update_intervall=1000;
 const unsigned int eta_update_intervall=60000;
@@ -1862,6 +1863,10 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single))
 			{
 				return std::string();
+			}
+			else if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			{
+
 			}
 		}
 	}

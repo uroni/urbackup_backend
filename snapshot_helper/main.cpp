@@ -18,6 +18,8 @@ extern char **environ;
 #define DEF_Server
 #include "../Server.h"
 
+const int mode_btrfs=0;
+const int mode_zfs=1;
 
 CServer *Server;
 
@@ -199,26 +201,97 @@ std::string find_btrfs_cmd()
 		return btrfs_cmd;
 	}
 }
+
+std::string find_zfs_cmd()
+{
+	static std::string zfs_cmd;
+	
+	if(!zfs_cmd.empty())
+	{
+		return zfs_cmd;
+	}
+	
+	if(exec_wait("zfs", false, "--version", NULL)==2)
+	{
+		zfs_cmd="zfs";
+		return zfs_cmd;
+	}
+	else if(exec_wait("/sbin/zfs", false, "--version", NULL)==2)
+	{
+		zfs_cmd="/sbin/zfs";
+		return zfs_cmd;
+	}
+	else if(exec_wait("/bin/zfs", false, "--version", NULL)==2)
+	{
+		zfs_cmd="/bin/zfs";
+		return zfs_cmd;
+	}
+	else if(exec_wait("/usr/sbin/zfs", false, "--version", NULL)==2)
+	{
+		zfs_cmd="/usr/sbin/zfs";
+		return zfs_cmd;
+	}
+	else if(exec_wait("/usr/bin/zfs", false, "--version", NULL)==2)
+	{
+		zfs_cmd="/usr/bin/zfs";
+		return zfs_cmd;
+	}
+	else
+	{
+		zfs_cmd="zfs";
+		return zfs_cmd;
+	}
+}
 #endif
 
-bool create_subvolume(std::string subvolume_folder)
+bool create_subvolume(int mode, std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return os_create_dir(subvolume_folder);
 #else
-	int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "create", subvolume_folder.c_str(), NULL);
-	chown_dir(subvolume_folder);
-	return rc==0;
+	if(mode==mode_btrfs)
+	{
+		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "create", subvolume_folder.c_str(), NULL);
+		chown_dir(subvolume_folder);
+		return rc==0;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), true, "create", "-p", subvolume_folder.c_str(), NULL);
+		chown_dir(subvolume_folder);
+		return rc==0;
+	}
 #endif
 }
 
-bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
+bool get_mountpoint(int mode, std::string subvolume_folder)
+{
+#ifdef _WIN32
+	std::cout << subvolume_folder << std::endl;
+	return true;
+#else
+	if(mode==mode_btrfs)
+	{
+		std::cout << subvolume_folder << std::endl;
+		return true;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), true, "get", "mountpoint", "-H", "-o", "value", subvolume_folder.c_str(), NULL);
+		return rc==0;
+	}
+#endif
+}
+
+bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_dst)
 {
 #ifdef _WIN32
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
-	int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
-	chown_dir(snapshot_dst);
+	if(mode==mode_btrfs)
+	{
+		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
+		chown_dir(snapshot_dst);
 	return rc==0;
 #endif
 }
@@ -280,8 +353,23 @@ int main(int argc, char *argv[])
 		std::cout << "Not enough parameters" << std::endl;
 		return 1;
 	}
-
-	std::string cmd=argv[1];
+	
+	std::string cmd;
+	int mode;
+	if((std::string)argv[1]!="test")
+	{
+		if(argc<3)
+		{
+			std::cout << "Not enough parameters" << std::endl;
+			return 1;
+		}
+		cmd=argv[2];
+		mode=atoi(argv[1]);
+	}
+	else
+	{
+		cmd=argv[1];
+	}	
 
 	std::string backupfolder=getBackupfolderPath();
 
@@ -301,30 +389,45 @@ int main(int argc, char *argv[])
 
 	if(cmd=="create")
 	{
-		if(argc<4)
+		if(argc<5)
 		{
 			std::cout << "Not enough parameters for create" << std::endl;
 			return 1;
 		}
 
-		std::string clientname=handleFilename(argv[2]);
-		std::string name=handleFilename(argv[3]);
+		std::string clientname=handleFilename(argv[3]);
+		std::string name=handleFilename(argv[4]);
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
 		return create_subvolume(subvolume_folder)?0:1;
 	}
-	else if(cmd=="snapshot")
+	else if(cmd=="mountpoint")
 	{
 		if(argc<5)
+		{
+			std::cout << "Not enough parameters for mountpoint" << std::endl;
+			return 1;
+		}
+
+		std::string clientname=handleFilename(argv[3]);
+		std::string name=handleFilename(argv[4]);
+
+		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
+		
+		return get_mountpoint(subvolume_folder)?0:1;
+	}
+	else if(cmd=="snapshot")
+	{
+		if(argc<6)
 		{
 			std::cout << "Not enough parameters for snapshot" << std::endl;
 			return 1;
 		}
 
-		std::string clientname=handleFilename(argv[2]);
-		std::string src_name=handleFilename(argv[3]);
-		std::string dst_name=handleFilename(argv[4]);
+		std::string clientname=handleFilename(argv[3]);
+		std::string src_name=handleFilename(argv[4]);
+		std::string dst_name=handleFilename(argv[5]);
 
 		std::string subvolume_src_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+src_name;
 		std::string subvolume_dst_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+dst_name;
@@ -333,14 +436,14 @@ int main(int argc, char *argv[])
 	}
 	else if(cmd=="remove")
 	{
-		if(argc<4)
+		if(argc<5)
 		{
 			std::cout << "Not enough parameters for remove" << std::endl;
 			return 1;
 		}
 
-		std::string clientname=handleFilename(argv[2]);
-		std::string name=handleFilename(argv[3]);
+		std::string clientname=handleFilename(argv[3]);
+		std::string name=handleFilename(argv[4]);
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
@@ -427,14 +530,14 @@ int main(int argc, char *argv[])
 	}
 	else if(cmd=="issubvolume")
 	{
-		if(argc<4)
+		if(argc<5)
 		{
 			std::cout << "Not enough parameters for issubvolume" << std::endl;
 			return 1;
 		}
 
-		std::string clientname=handleFilename(argv[2]);
-		std::string name=handleFilename(argv[3]);
+		std::string clientname=handleFilename(argv[3]);
+		std::string name=handleFilename(argv[4]);
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		

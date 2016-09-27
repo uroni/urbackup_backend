@@ -97,9 +97,10 @@ bool ClientMain::running_backups_allowed=true;
 
 
 ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName,
-	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink)
+	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
+	bool use_file_snapshots, bool use_image_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
-	  use_snapshots(use_snapshots), use_reflink(use_reflink),
+	  use_file_snapshots(use_file_snapshots), use_image_snapshots(use_image_snapshots), use_reflink(use_reflink),
 	  backup_dao(NULL), client_updated_time(0), continuous_backup(NULL),
 	  clientsubname(pSubName), filebackup_group_offset(filebackup_group_offset), needs_authentification(false),
 	restore_mutex(Server->createMutex())
@@ -400,7 +401,7 @@ void ClientMain::operator ()(void)
 
 	bool use_reflink=false;
 #ifndef _WIN32
-	if( use_snapshots )
+	if( use_file_snapshots )
 		use_reflink=true;
 #endif
 	use_tmpfiles=server_settings->getSettings()->use_tmpfiles;

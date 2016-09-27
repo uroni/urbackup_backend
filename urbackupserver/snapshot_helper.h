@@ -3,7 +3,7 @@
 class SnapshotHelper
 {
 public:
-	static bool isAvailable(void);
+	static int isAvailable(void);
 	static bool isSubvolume(std::string clientname, std::string name);
 	static bool createEmptyFilesystem(std::string clientname, std::string name);
 	static bool snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name);
