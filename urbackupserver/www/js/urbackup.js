@@ -3413,7 +3413,7 @@ function saveGeneralSettings()
 	if(I('global_internet_speed') && I('global_internet_speed').value!="-" && !validate_text_regex([{id: "global_internet_speed", regexp: g.time_span_regex}])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
-	if(!validate_text_regex([{ id: "server_url", regexp: /^(http|https):\/\/[\w-]+(\.[\w-]*)+([\w.,@?^=%&amp;:/~+#-]*[\w@?^=%&amp;\/~+#-])?$/i }])) return;
+	if(!validate_text_regex([{ id: "server_url", regexp: /(^(http|https):\/\/[\w-]+(\.[\w-]*)+([\w.,@?^=%&amp;:/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return;
 	
 	var internet_pars=getInternetSettings();
 	if(internet_pars==null) return;
@@ -3457,7 +3457,7 @@ function getInternetSettings()
 {	
 	if(!I('internet_server_port')) return "";
 	if(!validate_text_int(["internet_server_port"]) ) return null;
-	if(!validate_text_regex([{ id: "internet_server", regexp: /(^[\w-]+(\.[\w-]*)*$)|^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/i }])) return null;
+	if(!validate_text_regex([{ id: "internet_server", regexp: /(^[\w-]+(\.[\w-]*)*$)|(^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$)|(^$)/i }])) return null;
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
