@@ -58,13 +58,27 @@ bool CopyFolder(std::wstring src, std::wstring dst)
 #endif
 
 
-std::string getBackupfolderPath(void)
+std::string getBackupfolderPath(int mode)
 {
+	std::string fn_name;
+	if(mode==mode_btrfs)
+	{
+		fn_name = "backupfolder";
+	}
+	else if(mode==mode_zfs)
+	{
+		fn_name = "dataset";
+	}
+	else
+	{
+		return std::string();
+	}
+
 	std::string fn;
 #ifdef _WIN32
-	fn=trim(getFile("backupfolder"));
+	fn=trim(getFile(fn_name));
 #else
-	fn=trim(getFile("/etc/urbackup/backupfolder"));
+	fn=trim(getFile("/etc/urbackup/"+fn_name));
 #endif
 	if(fn.find("\n")!=std::string::npos)
 		fn=getuntil("\n", fn);
@@ -261,6 +275,7 @@ bool create_subvolume(int mode, std::string subvolume_folder)
 		chown_dir(subvolume_folder);
 		return rc==0;
 	}
+	return false;
 #endif
 }
 
@@ -280,6 +295,7 @@ bool get_mountpoint(int mode, std::string subvolume_folder)
 		int rc=exec_wait(find_zfs_cmd(), true, "get", "mountpoint", "-H", "-o", "value", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
+	return false;
 #endif
 }
 
@@ -292,59 +308,119 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
 	{
 		int rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
 		chown_dir(snapshot_dst);
-	return rc==0;
+		return rc==0;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), true, "clone", (snapshot_src+"@ro").c_str(), snapshot_dst.c_str(), NULL);
+		chown_dir(snapshot_dst);
+		return rc==0;
+	}
+	return false;
 #endif
 }
 
-bool remove_subvolume(std::string subvolume_folder)
+bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 {
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int compat_rc = exec_wait(find_btrfs_cmd(), false, "subvolume", "delete", "-c", NULL);
-	
-	if(compat_rc==1)
+	if(mode==mode_btrfs)
 	{
-		compat_rc = exec_wait("/bin/sh", false, "-c", (find_btrfs_cmd() +
-			" subvolume delete -c 2>&1 | grep \"ERROR: error accessing '-c'\"").c_str(), NULL);
-		if(compat_rc==0)
+		int compat_rc = exec_wait(find_btrfs_cmd(), false, "subvolume", "delete", "-c", NULL);
+		
+		if(compat_rc==1)
 		{
-			compat_rc=12;
+			compat_rc = exec_wait("/bin/sh", false, "-c", (find_btrfs_cmd() +
+				" subvolume delete -c 2>&1 | grep \"ERROR: error accessing '-c'\"").c_str(), NULL);
+			if(compat_rc==0)
+			{
+				compat_rc=12;
+			}
 		}
+		
+		int rc;
+		if(compat_rc==12)
+		{
+			rc=exec_wait(find_btrfs_cmd(), !quiet, "subvolume", "delete", subvolume_folder.c_str(), NULL);
+		}
+		else
+		{
+			rc=exec_wait(find_btrfs_cmd(), !quiet, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
+		}
+		return rc==0;
 	}
-	
-	int rc;
-	if(compat_rc==12)
+	else if(mode==mode_zfs)
 	{
-		rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "delete", subvolume_folder.c_str(), NULL);
+		exec_wait(find_zfs_cmd(), false, "destroy", (subvolume_folder+"@ro").c_str(), NULL);
+		int rc = exec_wait(find_zfs_cmd(), !quiet, "destroy", subvolume_folder.c_str(), NULL);
+		return rc==0;
 	}
-	else
-	{
-		rc=exec_wait(find_btrfs_cmd(), true, "subvolume", "delete", "-c", subvolume_folder.c_str(), NULL);
-	}
-	return rc==0;
+	return false;
 #endif
 }
 
-bool make_readonly(std::string subvolume_folder)
+bool make_readonly(int mode, std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return false;
 #else
-	int rc=exec_wait(find_btrfs_cmd(), true, "property", "set", "-ts", subvolume_folder.c_str(), "ro", "true", NULL);
-	return rc==0;
+	if(mode==mode_btrfs)
+	{
+		int rc=exec_wait(find_btrfs_cmd(), true, "property", "set", "-ts", subvolume_folder.c_str(), "ro", "true", NULL);
+		return rc==0;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), true, "snapshot", (subvolume_folder+"@ro").c_str(), NULL);
+		return rc==0;
+	}
+	return false;
 #endif
 }
 
-bool is_subvolume(std::string subvolume_folder)
+bool is_subvolume(int mode, std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return true;
 #else
-	int rc=exec_wait(find_btrfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
-	return rc==0;
+	if(mode==mode_btrfs)
+	{
+		int rc=exec_wait(find_btrfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
+		return rc==0;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
+		return rc==0;
+	}
 #endif
-}	
+}
+
+int zfs_test()
+{
+	std::cout << "Testing for zfs..." << std::endl;
+				
+	if(getBackupfolderPath(mode_zfs).empty())
+	{
+		std::cout << "TEST FAILED: Dataset is not set via /etc/urbackup/dataset" << std::endl;
+		return 1;
+	}
+	
+	std::string clientdir=getBackupfolderPath(mode_zfs)+os_file_sep()+"testA54hj5luZtlorr494";
+	
+	if(create_subvolume(mode_zfs, clientdir)
+		&& remove_subvolume(mode_zfs, clientdir) )
+	{
+		std::cout << "ZFS TEST OK" << std::endl;
+		return 10 + mode_zfs;
+	}
+	else
+	{
+		std::cout << "TEST FAILED: Creating test zfs volume \"" << clientdir << "\" failed" << std::endl;
+	}
+	return 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -355,7 +431,7 @@ int main(int argc, char *argv[])
 	}
 	
 	std::string cmd;
-	int mode;
+	int mode = 0;
 	if((std::string)argv[1]!="test")
 	{
 		if(argc<3)
@@ -371,11 +447,22 @@ int main(int argc, char *argv[])
 		cmd=argv[1];
 	}	
 
-	std::string backupfolder=getBackupfolderPath();
-
+	std::string backupfolder=getBackupfolderPath(mode);
+	
 	if(backupfolder.empty())
-	{
-		std::cout << "Backupfolder not set" << std::endl;
+	{	
+		if(mode==mode_btrfs)
+		{
+			std::cout << "Backupfolder not set" << std::endl;
+		}
+		else if(mode==mode_zfs)
+		{
+			std::cout << "Dataset not set" << std::endl;
+		}
+		else
+		{
+			std::cout << "Unknown mode: " << mode << std::endl;
+		}
 		return 1;
 	}
 	
@@ -400,7 +487,7 @@ int main(int argc, char *argv[])
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
-		return create_subvolume(subvolume_folder)?0:1;
+		return create_subvolume(mode, subvolume_folder)?0:1;
 	}
 	else if(cmd=="mountpoint")
 	{
@@ -415,7 +502,7 @@ int main(int argc, char *argv[])
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
-		return get_mountpoint(subvolume_folder)?0:1;
+		return get_mountpoint(mode, subvolume_folder)?0:1;
 	}
 	else if(cmd=="snapshot")
 	{
@@ -432,7 +519,7 @@ int main(int argc, char *argv[])
 		std::string subvolume_src_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+src_name;
 		std::string subvolume_dst_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+dst_name;
 
-		return create_snapshot(subvolume_src_folder, subvolume_dst_folder)?0:1;
+		return create_snapshot(mode, subvolume_src_folder, subvolume_dst_folder)?0:1;
 	}
 	else if(cmd=="remove")
 	{
@@ -447,32 +534,35 @@ int main(int argc, char *argv[])
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
-		return remove_subvolume(subvolume_folder)?0:1;
+		return remove_subvolume(mode, subvolume_folder)?0:1;
 	}
 	else if(cmd=="test")
 	{
+		std::cout << "Testing for btrfs..." << std::endl;
 		std::string clientdir=backupfolder+os_file_sep()+"testA54hj5luZtlorr494";
 		
 		bool create_dir_rc=os_create_dir(clientdir);
 		if(!create_dir_rc)
 		{	
-			remove_subvolume(clientdir+os_file_sep()+"A");
-			remove_subvolume(clientdir+os_file_sep()+"B");
+			remove_subvolume(mode_zfs, clientdir, true);
+			remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"A", true);
+			remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"B", true);
 			os_remove_dir(clientdir);
 		}
 		create_dir_rc = create_dir_rc || os_create_dir(clientdir);
 		if(create_dir_rc)
 		{	
-			if(!create_subvolume(clientdir+os_file_sep()+"A") )
+			if(!create_subvolume(mode_btrfs, clientdir+os_file_sep()+"A") )
 			{
-				std::cout << "TEST FAILED: Creating test subvolume failed" << std::endl;
+				std::cout << "TEST FAILED: Creating test btrfs subvolume failed" << std::endl;
 				os_remove_dir(clientdir);
-				return 1;
+				
+				return zfs_test();
 			}
 			
 			bool suc=true;
 
-			if(!create_snapshot(clientdir+os_file_sep()+"A", clientdir+os_file_sep()+"B") )
+			if(!create_snapshot(mode_btrfs, clientdir+os_file_sep()+"A", clientdir+os_file_sep()+"B") )
 			{
 				std::cout << "TEST FAILED: Creating test snapshot failed" << std::endl;
 				suc=false;
@@ -497,13 +587,13 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			if(!remove_subvolume(clientdir+os_file_sep()+"A") )
+			if(!remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"A") )
 			{
 				std::cout << "TEST FAILED: Removing subvolume A failed" << std::endl;
 				suc=false;
 			}
 
-			if(!remove_subvolume(clientdir+os_file_sep()+"B") )
+			if(!remove_subvolume(mode_btrfs, clientdir+os_file_sep()+"B") )
 			{
 				std::cout << "TEST FAILED: Removing subvolume B failed" << std::endl;
 				suc=false;
@@ -523,10 +613,11 @@ int main(int argc, char *argv[])
 		else
 		{
 			std::cout << "TEST FAILED: Creating test clientdir \"" << clientdir << "\" failed" << std::endl;
-			return 1;
+						
+			return zfs_test();
 		}
-		std::cout << "TEST OK" << std::endl;
-		return 0;
+		std::cout << "BTRFS TEST OK" << std::endl;
+		return 10 + mode_btrfs;
 	}
 	else if(cmd=="issubvolume")
 	{
@@ -541,22 +632,22 @@ int main(int argc, char *argv[])
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
-		return is_subvolume(subvolume_folder)?0:1;
+		return is_subvolume(mode, subvolume_folder)?0:1;
 	}
 	else if(cmd=="makereadonly")
 	{
-		if(argc<4)
+		if(argc<5)
 		{
 			std::cout << "Not enough parameters for makereadonly" << std::endl;
 			return 1;
 		}
 		
-		std::string clientname=handleFilename(argv[2]);
-		std::string name=handleFilename(argv[3]);
+		std::string clientname=handleFilename(argv[3]);
+		std::string name=handleFilename(argv[4]);
 
 		std::string subvolume_folder=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
 		
-		return make_readonly(subvolume_folder)?0:1;
+		return make_readonly(mode, subvolume_folder)?0:1;
 	}
 	else
 	{

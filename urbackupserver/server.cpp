@@ -134,7 +134,7 @@ void BackupServer::operator()(void)
 
 #ifndef _WIN32
 		os_create_dir("/etc/urbackup");
-		writestring((backupfolder), "/etc/urbackup/backupfolder");
+		writestring(backupfolder, "/etc/urbackup/backupfolder");
 #endif
 	}
 

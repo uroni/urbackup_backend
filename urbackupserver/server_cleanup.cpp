@@ -564,7 +564,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 					{
 						Server->Log("File backup \"" + cf.name + "\" of client \"" + clientname + "\" not found in database. Deleting it.", LL_WARNING);
 						bool remove_folder = false;
-						if (BackupServer::isSnapshotsEnabled())
+						if (BackupServer::isFileSnapshotsEnabled())
 						{
 							if (!SnapshotHelper::removeFilesystem(clientname, cf.name))
 							{
@@ -1311,7 +1311,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 	std::string path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath;
 	bool b=false;
-	if( BackupServer::isSnapshotsEnabled())
+	if( BackupServer::isFileSnapshotsEnabled())
 	{
 		b=SnapshotHelper::removeFilesystem(clientname, backuppath);
 

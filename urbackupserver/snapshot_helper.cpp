@@ -21,6 +21,13 @@
 #include <stdlib.h>
 #include "../stringtools.h"
 #include "server.h"
+#include "../urbackupcommon/os_functions.h"
+#ifdef _WIN32
+#define WEXITSTATUS(x) x
+#else
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
 
 std::string SnapshotHelper::helper_name="urbackup_snapshot_helper";
 
@@ -28,6 +35,7 @@ int SnapshotHelper::isAvailable(void)
 {
 	int rc=system((helper_name+" test").c_str());
 
+	rc = WEXITSTATUS(rc);
 	if (rc > 10)
 	{
 		return rc - 10;
@@ -67,6 +75,20 @@ void SnapshotHelper::setSnapshotHelperCommand(std::string helper_command)
 
 bool SnapshotHelper::makeReadonly(std::string clientname, std::string name)
 {
-	int rc = system((helper_name + " makereadonly \"" + clientname + "\" \"" + name + "\"").c_str());
+	int rc = system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " makereadonly \"" + clientname + "\" \"" + name + "\"").c_str());
 	return rc == 0;
+}
+
+std::string SnapshotHelper::getMountpoint(std::string clientname, std::string name)
+{
+	std::string ret;
+	int rc = os_popen(helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " mountpoint \"" + clientname + "\" \"" + name + "\"",
+		ret);
+
+	if (rc != 0)
+	{
+		return std::string();
+	}
+
+	return trim(ret);
 }

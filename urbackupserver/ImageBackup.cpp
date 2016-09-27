@@ -1866,7 +1866,18 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 			}
 			else if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
 			{
+				std::string mountpoint = SnapshotHelper::getMountpoint(clientname, backuppath_single);
+				if (mountpoint.empty())
+				{
+					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
+					return std::string();
+				}
 
+				if (!os_link_symbolic(mountpoint, image_folder))
+				{
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint, LL_ERROR);
+					return std::string();
+				}
 			}
 		}
 	}
@@ -1896,6 +1907,22 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		}
 		else
 		{
+			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			{
+				std::string mountpoint = SnapshotHelper::getMountpoint(clientname, backuppath_single);
+				if (mountpoint.empty())
+				{
+					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname+ " path "+ backuppath_single, LL_ERROR);
+					return std::string();
+				}
+
+				if (!os_link_symbolic(mountpoint, image_folder))
+				{
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint, LL_ERROR);
+					return std::string();
+				}
+			}
+
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".hash");
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".cbitmap");
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".mbr");

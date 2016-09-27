@@ -10,6 +10,7 @@ public:
 	static bool removeFilesystem(std::string clientname, std::string name);
 	static void setSnapshotHelperCommand(std::string helper_command);
 	static bool makeReadonly(std::string clientname, std::string name);
+	static std::string getMountpoint(std::string clientname, std::string name);
 private:
 	static std::string helper_name;
 };

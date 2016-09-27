@@ -742,7 +742,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
+					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_full_backup_now);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -758,7 +758,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_default, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
+					tmpfile_path, use_reflink, use_file_snapshots, curr_server_token, convert(c_group_default), !do_incr_backup_now);
 				backup.group=filebackup_group_offset + c_group_default;
 
 				backup_queue.push_back(backup);
@@ -820,7 +820,7 @@ void ClientMain::operator ()(void)
 				SRunningBackup backup;
 				backup.backup = new ContinuousBackup(this, clientid, clientname, clientsubname,
 					LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_continuous, use_tmpfiles,
-					tmpfile_path, use_reflink, use_snapshots, convert(c_group_continuous), false);
+					tmpfile_path, use_reflink, use_file_snapshots, convert(c_group_continuous), false);
 				backup.group=filebackup_group_offset + c_group_continuous;
 
 				backup_queue.push_back(backup);
