@@ -36,7 +36,7 @@ int SnapshotHelper::isAvailable(void)
 	int rc=system((helper_name+" test").c_str());
 
 	rc = WEXITSTATUS(rc);
-	if (rc > 10)
+	if (rc >= 10)
 	{
 		return rc - 10;
 	}
