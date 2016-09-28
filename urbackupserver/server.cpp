@@ -845,12 +845,13 @@ void BackupServer::enableSnapshots(int method)
 	}
 
 	image_snapshots_enabled = true;
-	if (method == 0)
-	{
-		file_snapshots_enabled = false;
-	}
 
 	snapshot_method = static_cast<ESnapshotMethod>(method);
+
+	if (snapshot_method == ESnapshotMethod_Btrfs)
+	{
+		file_snapshots_enabled = true;
+	}	
 }
 
 void BackupServer::setupUseTreeHashing()
