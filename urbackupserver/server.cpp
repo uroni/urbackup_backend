@@ -282,8 +282,13 @@ void BackupServer::startClients(FileClient &fc)
 	std::vector<std::pair<std::string, std::string> > anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		std::string new_name = (anames[i].first);
+		std::string new_name = anames[i].first;
 		if(std::find(client_info.begin(), client_info.end(), SClientInfo(new_name))!=client_info.end())
+		{
+			continue;
+		}
+
+		if (new_name.empty())
 		{
 			continue;
 		}
@@ -299,7 +304,7 @@ void BackupServer::startClients(FileClient &fc)
 
 	for(size_t i=0;i<client_info.size();++i)
 	{
-		client_info[i].name=(conv_filename((client_info[i].name)));
+		client_info[i].name=conv_filename(client_info[i].name);
 
 		fixClientnameCase(client_info[i].name);
 
@@ -319,7 +324,7 @@ void BackupServer::startClients(FileClient &fc)
 				{
 					std::string new_name = client_info[i].name+"["+it->second[j]+"]";
 
-					new_name = (conv_filename((new_name)));
+					new_name = conv_filename(new_name);
 
 					fixClientnameCase(new_name);
 

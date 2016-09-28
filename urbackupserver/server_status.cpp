@@ -24,6 +24,7 @@
 #include "action_header.h"
 #include <time.h>
 #include <algorithm>
+#include <assert.h>
 
 IMutex *ServerStatus::mutex=NULL;
 std::map<std::string, SStatus> ServerStatus::status;
@@ -55,6 +56,8 @@ void ServerStatus::updateActive(void)
 
 void ServerStatus::setOnline(const std::string &clientname, bool bonline)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	if(bonline)
@@ -73,6 +76,8 @@ void ServerStatus::setOnline(const std::string &clientname, bool bonline)
 
 void ServerStatus::setROnline(const std::string &clientname, bool bonline)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->r_online=bonline;
@@ -84,6 +89,8 @@ void ServerStatus::setROnline(const std::string &clientname, bool bonline)
 
 void ServerStatus::setIP(const std::string &clientname, unsigned int ip)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->ip_addr=ip;
@@ -91,6 +98,8 @@ void ServerStatus::setIP(const std::string &clientname, unsigned int ip)
 
 void ServerStatus::setStatusError(const std::string &clientname, SStatusError se)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->status_error=se;
@@ -98,6 +107,8 @@ void ServerStatus::setStatusError(const std::string &clientname, SStatusError se
 
 void ServerStatus::setCommPipe(const std::string &clientname, IPipe *p)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->comm_pipe=p;
@@ -190,6 +201,8 @@ bool ServerStatus::getServerNospcFatal(void)
 
 void ServerStatus::setClientVersionString(const std::string &clientname, const std::string& client_version_string)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->client_version_string=client_version_string;
@@ -197,6 +210,8 @@ void ServerStatus::setClientVersionString(const std::string &clientname, const s
 
 void ServerStatus::setOSVersionString(const std::string &clientname, const std::string& os_version_string)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->os_version_string=os_version_string;
@@ -204,6 +219,8 @@ void ServerStatus::setOSVersionString(const std::string &clientname, const std::
 
 bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::string& msg )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	if(s->comm_pipe==NULL)
@@ -217,6 +234,8 @@ bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::str
 size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action,
 	const std::string& details, logid_t logid, bool can_stop, int clientid)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
@@ -240,6 +259,8 @@ size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction 
 
 bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
@@ -258,6 +279,8 @@ bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 
 bool ServerStatus::changeProcess(const std::string & clientname, size_t id, SStatusAction action)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s = &status[clientname];
 
@@ -276,6 +299,8 @@ bool ServerStatus::changeProcess(const std::string & clientname, size_t id, SSta
 
 SProcess* ServerStatus::getProcessInt( const std::string &clientname, size_t id )
 {
+	assert(!clientname.empty());
+
 	SStatus *s=&status[clientname];
 
 	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none, std::string()));
@@ -454,6 +479,8 @@ void ServerStatus::setProcessEtaSetTime( const std::string &clientname, size_t i
 
 void ServerStatus::setClientId( const std::string &clientname, int clientid)
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->clientid = clientid;
@@ -461,6 +488,8 @@ void ServerStatus::setClientId( const std::string &clientname, int clientid)
 
 void ServerStatus::addRunningJob( const std::string &clientname )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->running_jobs+=1;
@@ -468,6 +497,8 @@ void ServerStatus::addRunningJob( const std::string &clientname )
 
 void ServerStatus::subRunningJob( const std::string &clientname )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->running_jobs-=1;
@@ -475,6 +506,8 @@ void ServerStatus::subRunningJob( const std::string &clientname )
 
 int ServerStatus::numRunningJobs( const std::string &clientname )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	return s->running_jobs;
@@ -482,6 +515,8 @@ int ServerStatus::numRunningJobs( const std::string &clientname )
 
 void ServerStatus::setRestore( const std::string &clientname, ERestore restore )
 {
+	assert(!clientname.empty());
+
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->restore = restore;

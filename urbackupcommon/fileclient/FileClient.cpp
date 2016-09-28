@@ -521,13 +521,16 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 							int version=(unsigned char)buffer[1];
 							if(version==VERSION)
 							{
-								servers.push_back(sender);
-
 								std::string sn;
-								sn.resize(err-2);
-								memcpy((char*)sn.c_str(), &buffer[2], err-2);
 
-								servernames.push_back((sn));
+								sn.resize(err - 2);
+								memcpy((char*)sn.c_str(), &buffer[2], err - 2);
+
+								if (!sn.empty())
+								{
+									servers.push_back(sender);
+									servernames.push_back(sn);
+								}
 							}
 							else
 							{
