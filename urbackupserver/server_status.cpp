@@ -234,8 +234,6 @@ bool ServerStatus::sendToCommPipe( const std::string &clientname, const std::str
 size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction action,
 	const std::string& details, logid_t logid, bool can_stop, int clientid)
 {
-	assert(!clientname.empty());
-
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
@@ -259,8 +257,6 @@ size_t ServerStatus::startProcess( const std::string &clientname, SStatusAction 
 
 bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 {
-	assert(!clientname.empty());
-
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 
@@ -279,8 +275,6 @@ bool ServerStatus::stopProcess( const std::string &clientname, size_t id )
 
 bool ServerStatus::changeProcess(const std::string & clientname, size_t id, SStatusAction action)
 {
-	assert(!clientname.empty());
-
 	IScopedLock lock(mutex);
 	SStatus *s = &status[clientname];
 
@@ -299,8 +293,6 @@ bool ServerStatus::changeProcess(const std::string & clientname, size_t id, SSta
 
 SProcess* ServerStatus::getProcessInt( const std::string &clientname, size_t id )
 {
-	assert(!clientname.empty());
-
 	SStatus *s=&status[clientname];
 
 	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none, std::string()));

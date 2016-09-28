@@ -703,7 +703,7 @@ ACTION_IMPL(status)
 					}
 				}
 
-				if(found) continue;
+				if(found || client_status[i].client.empty()) continue;
 
 				JSON::Object stat;
 				stat.set("id", (std::string)"-");
