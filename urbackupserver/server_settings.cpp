@@ -391,7 +391,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->cbt_volumes = settings_default->getValue("cbt_volumes", "ALL");
 	settings->cbt_crash_persistent_volumes = settings_default->getValue("cbt_crash_persistent_volumes", "-");
 	settings->ignore_disk_errors = (settings_default->getValue("ignore_disk_errors", "false") == "true");
-	settings->vss_select_components = settings_default->getValue("vss_select_components", "");
+	settings->vss_select_components = settings_default->getValue("vss_select_components", "default=1");
 	settings->allow_file_restore = settings_default->getValue("allow_file_restore", "true")=="true";
 	settings->allow_component_restore = settings_default->getValue("allow_component_restore", "true") == "true";
 	settings->allow_component_config = settings_default->getValue("allow_component_config", "true") == "true";
