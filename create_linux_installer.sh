@@ -37,6 +37,8 @@ cp init.d_client install-data/
 cp init.d_client_rh install-data/
 cp defaults_client install-data/
 cp linux_snapshot/* install-data/
+cp uninstall_urbackupclient install-data/
+chmod +x install-data/uninstall_urbackupclient
 chmod +x install-data/*_filesystem_snapshot
 
 cp -R install-data/* install-data-dbg/

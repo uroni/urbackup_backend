@@ -1,0 +1,85 @@
+#!/bin/sh
+
+set -e
+
+PREFIX=/usr/local
+
+USER=`whoami`
+
+if [ "x$USER" != "xroot" ]
+then
+	echo "Sorry, you must be super user to uninstall UrBackup Client. Try again with sudo?"
+	exit 6
+fi
+
+echo "Complete uninstallation of UrBackup Client (purge).. Proceed ? [Y/n]"
+read yn
+if [ "x$yn" = xn ]
+then
+	exit 5
+fi
+
+if command -v systemctl >/dev/null 2>&1
+then
+	systemctl stop urbackupclientbackend.service || true
+fi
+
+if [ -e /etc/init.d/urbackupclientbackend ]
+then
+	/etc/init.d/urbackupclientbackend stop || true
+fi
+
+
+if [ ! -e "$PREFIX/var/urbackup/backup_server.db" ]
+then
+	rm -R "$PREFIX/var/urbackup"
+else
+	[ ! -e "$PREFIX/var/urbackup/data" ] || rm -R "$PREFIX/var/urbackup/data"
+	[ ! -e "$PREFIX/var/urbackup/tokens" ] || rm -R "$PREFIX/var/urbackup/tokens"
+	[ ! -e "$PREFIX/var/urbackup/backup_client.db" ] || rm "$PREFIX/var/urbackup/backup_client.db*"
+	[ ! -e "$PREFIX/var/urbackup/server_idents.txt" ] || rm "$PREFIX/var/urbackup/server_idents.txt"
+	[ ! -e "$PREFIX/var/urbackup/session_idents.txt" ] || rm "$PREFIX/var/urbackup/session_idents.txt"
+	[ ! -e "$PREFIX/var/urbackup/access_keys.properties" ] || rm "$PREFIX/var/urbackup/access_keys.properties"
+	[ ! -e "$PREFIX/var/urbackup/initial_settings.cfg" ] || rm "$PREFIX/var/urbackup/initial_settings.cfg"
+	[ ! -e "$PREFIX/var/urbackup/new_server_idents.txt" ] || rm "$PREFIX/var/urbackup/new_server_idents.txt"
+	[ ! -e "$PREFIX/var/urbackup/pw.txt" ] || rm "$PREFIX/var/urbackup/pw.txt"
+	[ ! -e "$PREFIX/var/urbackup/pw_change.txt" ] || rm "$PREFIX/var/urbackup/pw_change.txt"
+	[ ! -e "$PREFIX/var/urbackup/new_server_idents.txt" ] || rm "$PREFIX/var/urbackup/new_server_idents.txt"
+	[ ! -e "$PREFIX/var/urbackup/updates_h.dat" ] || rm "$PREFIX/var/urbackup/updates_h.dat"
+	[ ! -e "$PREFIX/var/urbackup/version_new.txt" ] || rm "$PREFIX/var/urbackup/version_new.txt"
+fi
+
+rm "$PREFIX/sbin/urbackupclientbackend"
+rm "$PREFIX/bin/urbackupclientctl"
+
+rm -R "$PREFIX/share/urbackup/scripts"
+
+rm -R "$PREFIX/share/urbackup"
+
+rm -R "$PREFIX/etc/urbackup"
+
+[ ! -e /etc/default/urbackupclient ] || rm /etc/default/urbackupclient
+[ ! -e /etc/sysconfig/urbackupclient ] || rm /etc/sysconfig/urbackupclient
+
+if command -v systemctl >/dev/null 2>&1
+then
+	SYSTEMD_DIR=""
+	if command -v pkg-config >/dev/null 2>&1
+	then
+		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
+	fi
+
+	if [ "x$SYSTEMD_DIR" = x ]
+	then
+		echo "Cannot find systemd unit dir. Assuming /lib/systemd/system"
+		SYSTEMD_DIR="/lib/systemd/system"
+	fi
+	
+	systemctl disable urbackupclientbackend.service || true
+	rm "$SYSTEMD_DIR/urbackupclientbackend.service"
+	systemctl daemon-reload
+fi
+
+[ ! -e /etc/init.d/urbackupclientbackend ] || rm /etc/init.d/urbackupclientbackend
+
+echo "UrBackup client uninstall complete."
