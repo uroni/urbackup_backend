@@ -2739,7 +2739,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 	}
 
 	int rc = os_popen(scriptlocation +" "+guidToString(dir->ref->ssetid)+" "+escapeDirParam(dir->ref->volpath)
-		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->orig_target)
+		+" "+escapeDirParam(dir->dir)+" "+escapeDirParam(dir->target)+" "+escapeDirParam(dir->ref->target)
 		+ (dir->ref->clientsubname.empty() ? "" : (" " + escapeDirParam(dir->ref->clientsubname)))+" 2>&1", loglines);
 	if(rc!=0)
 	{
