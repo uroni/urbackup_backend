@@ -19,7 +19,7 @@ bool link_directory_pool(int clientid, const std::string& target_dir, const std:
 
 bool replay_directory_link_journal();
 
-bool remove_directory_link(const std::string &path, ServerLinkDao& link_dao, int clientid,
+bool remove_directory_link(const std::string &path, bool isdir, ServerLinkDao& link_dao, int clientid,
 	std::auto_ptr<DBScopedSynchronous>& synchronous_link_dao, bool with_transaction=true);
 
 bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao, int clientid, bool delete_root=true, bool with_transaction=true);
