@@ -22,7 +22,7 @@ fi
 
 if [ $SILENT = no ]
 then
-	echo "Installation of UrBackup Client $version_short$... Proceed ? [Y/n]"
+	echo "Installation of UrBackup Client $version_short$ to $PREFIX ... Proceed ? [Y/n]"
 	read yn
 	if [ "x$yn" = xn ]
 	then
