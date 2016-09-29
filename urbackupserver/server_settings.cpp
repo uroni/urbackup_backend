@@ -493,8 +493,12 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	readBoolClientSetting(settings_client, "internet_encrypt", &settings->internet_encrypt);
 	readBoolClientSetting(settings_client, "internet_connect_always", &settings->internet_connect_always);
 
+	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
+
 	if(!settings->overwrite)
 		return;
+
+	//Following settings are not configurable by the client
 
 	stmp=settings_client->getValue("backup_window_incr_file", "");
 	if(!stmp.empty())
@@ -551,8 +555,6 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	readStringClientSetting(settings_client, "cbt_crash_persistent_volumes", &settings->cbt_crash_persistent_volumes);
 
 	readBoolClientSetting(settings_client, "ignore_disk_errors", &settings->ignore_disk_errors);
-
-	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
 
 	readBoolClientSetting(settings_client, "allow_file_restore", &settings->allow_file_restore);
 	readBoolClientSetting(settings_client, "allow_component_config", &settings->allow_component_config);
