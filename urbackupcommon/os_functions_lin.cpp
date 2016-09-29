@@ -435,7 +435,7 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
 					{
 						if(symlink_callback!=NULL)
 						{
-                            symlink_callback((upath+"/"+(std::string)dirp->d_name), userdata);
+                            symlink_callback((upath+"/"+(std::string)dirp->d_name), false, userdata);
 						}
 						else
 						{
@@ -483,7 +483,7 @@ bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symli
 			{
 				if(symlink_callback!=NULL)
 				{
-                    symlink_callback((upath+"/"+(std::string)dirp->d_name), userdata);
+                    symlink_callback((upath+"/"+(std::string)dirp->d_name), false, userdata);
 				}
 				else
 				{
