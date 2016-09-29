@@ -125,7 +125,7 @@ test -e "$PREFIX/share/urbackup/scripts" || install -c -m 744 -d "$PREFIX/share/
 test -e "$PREFIX/etc/urbackup" || install -c -m 744 -d "$PREFIX/etc/urbackup"
 
 install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
-install -c "$TARGET/uninstall_urbackupclient" "$PREFIX/sbin"
+install -c "uninstall_urbackupclient" "$PREFIX/sbin"
 install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 
 for script in backup_scripts/*
