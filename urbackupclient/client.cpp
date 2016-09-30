@@ -4326,14 +4326,14 @@ bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_
 
 		if (curr_sparse_extent.offset != -1
 			&& curr_sparse_extent.offset <= fpos
-			&& curr_sparse_extent.offset + curr_sparse_extent.size >= fpos + static_cast<int64>(curr_bsize))
+			&& curr_sparse_extent.offset + curr_sparse_extent.size >= fpos + static_cast<int64>(bsize))
 		{
 			if (skip_start == -1)
 			{
 				skip_start = fpos;
 			}
-			fpos += curr_bsize;
-			rc = static_cast<_u32>(curr_bsize);
+			fpos += bsize;
+			rc = static_cast<_u32>(bsize);
 			continue;
 		}
 
