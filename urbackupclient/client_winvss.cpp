@@ -941,14 +941,14 @@ bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext&
 	IVssBackupComponents *backupcom = NULL;
 	if (context.backupcom == NULL)
 	{
-		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&context.backupcom));
-		backupcom = context.backupcom;
+		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
 		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK));
 	}
 	else
 	{
 		backupcom = context.backupcom;
+		context.backupcom = NULL;
 	}
 
 	LONG dels;
@@ -956,6 +956,9 @@ bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext&
 	CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs.vssid, VSS_OBJECT_SNAPSHOT, TRUE,
 		&dels, &ndels));
 	cd->deleteShadowcopy(scs.id);
+
+	context.backupcom = backupcom;
+
 	if (dels>0)
 	{
 		return true;
