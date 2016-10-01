@@ -496,7 +496,7 @@ void ClientMain::operator ()(void)
 						ImageBackup* ibackup = dynamic_cast<ImageBackup*>(backup_queue[i].backup);
 						if (ibackup != NULL)
 						{
-							std::vector<ImageBackup::SImageDependency> dependencies = ibackup->getDependencies();
+							std::vector<ImageBackup::SImageDependency> dependencies = ibackup->getDependencies(true);
 							if (!dependencies.empty())
 							{
 								std::map<ImageBackup*, bool> new_running_image_group;
@@ -535,7 +535,9 @@ void ClientMain::operator ()(void)
 						}
 					}
 
-					if (Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0))
+					if ( Server->getThreadPool()->waitFor(backup_queue[i].ticket, 0)
+						 && (dynamic_cast<ImageBackup*>(backup_queue[i].backup)==NULL 
+							 || dynamic_cast<ImageBackup*>(backup_queue[i].backup)->getDependencies(false).empty()) )
 					{
 						ServerStatus::subRunningJob(clientmainname);
 

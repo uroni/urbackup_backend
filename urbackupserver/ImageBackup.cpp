@@ -113,22 +113,20 @@ ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clie
 	bool set_complete, int64 snapshot_id, std::string snapshot_group_loginfo, int64 backup_starttime, bool scheduled)
 	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental, server_token, details, scheduled),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false), backupid(0), not_found(false),
-	set_complete(set_complete), snapshot_id(snapshot_id), mutex(Server->createMutex()), got_dependencies(false),
+	set_complete(set_complete), snapshot_id(snapshot_id), mutex(Server->createMutex()),
 	snapshot_group_loginfo(snapshot_group_loginfo), backup_starttime(backup_starttime)
 {
 }
 
-std::vector<ImageBackup::SImageDependency> ImageBackup::getDependencies()
+std::vector<ImageBackup::SImageDependency> ImageBackup::getDependencies(bool reset)
 {
 	IScopedLock lock(mutex.get());
-
-	if (got_dependencies)
+	std::vector<ImageBackup::SImageDependency> ret = dependencies;
+	if (reset)
 	{
-		return std::vector<ImageBackup::SImageDependency>();
+		dependencies.clear();
 	}
-
-	got_dependencies = true;
-	return dependencies;
+	return ret;
 }
 
 bool ImageBackup::doBackup()
@@ -2125,5 +2123,7 @@ bool ImageBackup::readShadowData(const std::string & shadowdata)
 
 	ServerLogger::Log(logid, "Image backup is being backed up in a snapshot group together with volumes " + snapshot_group_loginfo, LL_INFO);
 
+	client_main->sendToPipe("WAKEUP");
+	
 	return true;
 }

@@ -44,7 +44,7 @@ public:
 		int64 snapshot_id;
 	};
 
-	std::vector<SImageDependency> getDependencies();
+	std::vector<SImageDependency> getDependencies(bool reset);
 
 protected:
 	virtual bool doBackup();
@@ -78,7 +78,6 @@ protected:
 	ServerPingThread* pingthread;
 	THREADPOOL_TICKET pingthread_ticket;
 
-	bool got_dependencies;
 	std::vector<SImageDependency> dependencies;
 
 	bool set_complete;
