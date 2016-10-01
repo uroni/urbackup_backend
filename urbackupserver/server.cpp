@@ -18,17 +18,21 @@
 #include "server.h"
 #include "../Interface/Server.h"
 #include "../Interface/Database.h"
+#include "../Interface/File.h"
+#include "../Interface/DatabaseCursor.h"
 #include "../Interface/ThreadPool.h"
 #include "ClientMain.h"
 #include "database.h"
 #include "../Interface/SettingsReader.h"
 #include "server_status.h"
+#include "server_cleanup.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
 #include "dao/ServerBackupDao.h"
+#include "FileBackup.h"
 #include <memory.h>
 #include <algorithm>
 #include "ThrottleUpdater.h"
@@ -140,6 +144,7 @@ void BackupServer::operator()(void)
 
 	testSnapshotAvailability(db);
 	testFilesystemTransactionAvailabiliy(db);
+	runServerRecovery(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
@@ -852,6 +857,229 @@ void BackupServer::enableSnapshots(int method)
 	{
 		file_snapshots_enabled = true;
 	}	
+}
+
+void BackupServer::runServerRecovery(IDatabase * db)
+{
+	logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+	ScopedProcess recovery_process(std::string(), sa_startup_recovery, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
+
+	ServerSettings settings(db);
+
+	std::string backupfolder = settings.getSettings()->backupfolder;
+
+	if (!os_directory_exists(backupfolder))
+	{
+		ServerLogger::Log(logid, "Backupfolder \"" + backupfolder + "\" does not exist. Not running recovery.", LL_WARNING);
+		return;
+	}
+
+	bool delete_missing = false;
+
+	IQuery* q_all = db->Prepare("SELECT name, path FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE done=1");
+	IDatabaseCursor* cur = q_all->Cursor();
+
+	db_single_result res;
+	while (cur->next(res))
+	{
+		std::string backuppath = backupfolder + os_file_sep() + res["name"] + os_file_sep() + res["path"];
+		if (os_directory_exists(os_file_prefix(backuppath)))
+		{
+			delete_missing = true;
+			cur->shutdown();
+			break;
+		}
+	}
+
+	if (!delete_missing)
+	{
+		q_all = db->Prepare("SELECT path FROM backup_images WHERE complete=1");
+		cur = q_all->Cursor();
+
+		while (cur->next(res))
+		{
+			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(res["path"])));
+			if (f.get()!=NULL)
+			{
+				delete_missing = true;
+				cur->shutdown();
+				break;
+			}
+		}
+	}
+
+	std::vector<db_single_result> to_delete;
+
+	size_t num_extra_check = 30;
+
+	IQuery* q_synced = db->Prepare("SELECT backups.id AS backupid, name, path, clientid, backuptime FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE synctime IS NOT NULL ORDER BY synctime DESC");
+	cur = q_synced->Cursor();
+	while (cur->next(res))
+	{
+		std::string backuppath = backupfolder + os_file_sep() + res["name"] + os_file_sep() + res["path"];
+		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
+
+		bool delete_backup = false;
+
+		if (!os_directory_exists(os_file_prefix(backuppath)))
+		{
+			if (delete_missing)
+			{
+				ServerLogger::Log(logid, "File backup " + backupinfo + " does not exist on backup storage. Deleting it from database.", LL_WARNING);
+				delete_backup = true;
+			}
+		}
+		else
+		{
+			std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath + os_file_sep() + ".hashes" + os_file_sep() + sync_fn), MODE_READ));
+
+			if (sync_f.get() == NULL)
+			{
+				ServerLogger::Log(logid, "File backup " + backupinfo + " is not synced to backup storage. Deleting it.", LL_WARNING);
+				delete_backup = true;
+			}
+		}
+
+		if (delete_backup)
+		{
+			to_delete.push_back(res);
+		}
+		else
+		{
+			--num_extra_check;
+			if (num_extra_check == 0)
+			{
+				cur->shutdown();
+				break;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < to_delete.size(); ++i)
+	{
+		res = to_delete[i];
+		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
+		ServerLogger::Log(logid, "Deleting file backup "+backupinfo+"...", LL_WARNING);
+		Server->getThreadPool()->executeWait(
+			new ServerCleanupThread(CleanupAction(backupfolder, watoi(res["clientid"]), watoi(res["backupid"]), true)),
+			"delete fbackup");
+	}
+
+	to_delete.clear();
+
+	num_extra_check = 30;
+
+	std::vector<db_single_result> todelete_images;
+
+	q_synced = db->Prepare("SELECT backup_images.id AS backupid, name, path, clientid, backuptime FROM (backup_images INNER JOIN clients ON backup_images.clientid=clients.id) WHERE synctime IS NOT NULL ORDER BY synctime DESC");
+	cur = q_synced->Cursor();
+	while (cur->next(res))
+	{
+		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
+
+		std::auto_ptr<IFile> image_f(Server->openFile(os_file_prefix(res["path"]), MODE_READ));
+
+		bool delete_backup = false;
+
+		if (image_f.get() == NULL)
+		{
+			if (delete_missing)
+			{
+				ServerLogger::Log(logid, "Image backup " + backupinfo + " does not exist on backup storage. Deleting it from database.", LL_WARNING);
+				delete_backup = true;
+			}
+		}
+		else
+		{
+			std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(res["path"] + ".sync"), MODE_READ));
+
+			if (sync_f.get() == NULL)
+			{
+				ServerLogger::Log(logid, "Image backup " + backupinfo + " is not synced to backup storage. Deleting it.", LL_WARNING);
+				delete_backup = true;
+			}
+		}
+
+		if (delete_backup)
+		{
+			to_delete.push_back(res);
+		}
+		else
+		{
+			--num_extra_check;
+			if (num_extra_check == 0)
+			{
+				cur->shutdown();
+				break;
+			}
+		}
+	}
+
+	IQuery* q_delete_image = db->Prepare("DELETE FROM backup_images WHERE id=?");
+	for (size_t i = 0; i < to_delete.size(); ++i)
+	{
+		res = to_delete[i];
+		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
+		ServerLogger::Log(logid, "Deleting image backup " + backupinfo + "...", LL_WARNING);
+
+		ServerCleanupThread::deleteImage(logid, res["name"], res["path"]);
+
+		q_delete_image->Bind(watoi(res["backupid"]));
+		q_delete_image->Write();
+		q_delete_image->Reset();
+	}
+
+	to_delete.clear();
+
+	std::string db_backupfolder = backupfolder + os_file_sep() + "urbackup";
+
+	IQuery* q_last_backups = db->Prepare("SELECT b.id AS backupid FROM backups b WHERE NOT EXISTS (SELECT id FROM backups a WHERE a.id!=b.id AND a.backuptime>b.backuptime AND a.done=1 AND a.clientid=b.clientid AND a.tgroup=b.tgroup) AND b.done=1");
+	cur = q_last_backups->Cursor();
+
+	while (cur->next(res))
+	{
+		std::string clientlist_fn = "clientlist_b_" + res["backupid"] + ".ub";
+
+		if (!Server->fileExists("urbackup" + os_file_sep() + clientlist_fn))
+		{
+			std::string bfile = findFile(db_backupfolder, clientlist_fn);
+
+			if (!bfile.empty())
+			{
+				ServerLogger::Log(logid, "Recovering " + clientlist_fn + " from backup...");
+
+				copy_file(bfile, "urbackup" + os_file_sep() + clientlist_fn);
+			}
+			else
+			{
+				ServerLogger::Log(logid, "File " + clientlist_fn + " is missing/cannot be accessed", LL_WARNING);
+			}
+		}
+	}
+
+	db->destroyAllQueries();
+}
+
+std::string BackupServer::findFile(const std::string & path, const std::string & fn)
+{
+	std::vector<SFile> files = getFiles(path);
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].isdir)
+		{
+			std::string res = findFile(path + os_file_sep() + files[i].name, fn);
+			if (!res.empty())
+			{
+				return res;
+			}
+		}
+		else if(files[i].name==fn)
+		{
+			return path + os_file_sep() + fn;
+		}
+	}
+
+	return std::string();
 }
 
 void BackupServer::setupUseTreeHashing()

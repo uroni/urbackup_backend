@@ -534,6 +534,23 @@ void ServerBackupDao::setFileBackupDone(int backupid)
 
 /**
 * @-SQLGenAccess
+* @func void ServerBackupDao::setFileBackupSynced
+* @sql
+*       UPDATE backups SET synctime=strftime('%s', 'now') WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setFileBackupSynced(int backupid)
+{
+	if(q_setFileBackupSynced==NULL)
+	{
+		q_setFileBackupSynced=db->Prepare("UPDATE backups SET synctime=strftime('%s', 'now') WHERE id=?", false);
+	}
+	q_setFileBackupSynced->Bind(backupid);
+	q_setFileBackupSynced->Write();
+	q_setFileBackupSynced->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func SLastIncremental ServerBackupDao::getLastIncrementalFileBackup
 * @return int incremental, string path, int resumed, int complete, int id
 * @sql
@@ -877,6 +894,23 @@ void ServerBackupDao::addImageSizeToClient(int clientid, int64 add_size)
 	q_addImageSizeToClient->Bind(clientid);
 	q_addImageSizeToClient->Write();
 	q_addImageSizeToClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setImageBackupSynctime
+* @sql
+*       UPDATE backup_images SET synctime=strftime('%s', 'now') WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageBackupSynctime(int backupid)
+{
+	if(q_setImageBackupSynctime==NULL)
+	{
+		q_setImageBackupSynctime=db->Prepare("UPDATE backup_images SET synctime=strftime('%s', 'now') WHERE id=?", false);
+	}
+	q_setImageBackupSynctime->Bind(backupid);
+	q_setImageBackupSynctime->Write();
+	q_setImageBackupSynctime->Reset();
 }
 
 /**
@@ -1533,6 +1567,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_newFileBackup=NULL;
 	q_updateFileBackupRunning=NULL;
 	q_setFileBackupDone=NULL;
+	q_setFileBackupSynced=NULL;
 	q_getLastIncrementalFileBackup=NULL;
 	q_getLastIncrementalCompleteFileBackup=NULL;
 	q_updateFileBackupSetComplete=NULL;
@@ -1547,6 +1582,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_newImageBackup=NULL;
 	q_setImageSize=NULL;
 	q_addImageSizeToClient=NULL;
+	q_setImageBackupSynctime=NULL;
 	q_setImageBackupComplete=NULL;
 	q_setImageBackupIncomplete=NULL;
 	q_updateImageBackupRunning=NULL;
@@ -1602,6 +1638,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_newFileBackup);
 	db->destroyQuery(q_updateFileBackupRunning);
 	db->destroyQuery(q_setFileBackupDone);
+	db->destroyQuery(q_setFileBackupSynced);
 	db->destroyQuery(q_getLastIncrementalFileBackup);
 	db->destroyQuery(q_getLastIncrementalCompleteFileBackup);
 	db->destroyQuery(q_updateFileBackupSetComplete);
@@ -1616,6 +1653,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_newImageBackup);
 	db->destroyQuery(q_setImageSize);
 	db->destroyQuery(q_addImageSizeToClient);
+	db->destroyQuery(q_setImageBackupSynctime);
 	db->destroyQuery(q_setImageBackupComplete);
 	db->destroyQuery(q_setImageBackupIncomplete);
 	db->destroyQuery(q_updateImageBackupRunning);

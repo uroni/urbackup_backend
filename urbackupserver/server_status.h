@@ -30,7 +30,8 @@ enum SStatusAction
 	sa_recalculate_statistics=13,
 	sa_nightly_cleanup=14,
 	sa_emergency_cleanup=15,
-	sa_storage_migration=16
+	sa_storage_migration=16,
+	sa_startup_recovery=17
 };
 
 enum SStatusError

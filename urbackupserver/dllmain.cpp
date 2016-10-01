@@ -1789,10 +1789,10 @@ bool upgrade46_47()
 
 	bool b = true;
 
-	b &= db->Write("ALTER TABLE clients ADD last_filebackup_issues DEFAULT 0");
-	b &= db->Write("ALTER TABLE clients ADD os_simple");
-	b &= db->Write("ALTER TABLE clients ADD os_version_str");
-	b &= db->Write("ALTER TABLE clients ADD client_version_str");
+	b &= db->Write("ALTER TABLE clients ADD last_filebackup_issues INTEGER DEFAULT 0");
+	b &= db->Write("ALTER TABLE clients ADD os_simple TEXT");
+	b &= db->Write("ALTER TABLE clients ADD os_version_str TEXT");
+	b &= db->Write("ALTER TABLE clients ADD client_version_str TEXT");
 
 	return b;
 }
@@ -1803,13 +1803,26 @@ bool upgrade47_48()
 
 	bool b = true;
 
-	b &= db->Write("ALTER TABLE clients ADD groupid DEFAULT 0");
+	b &= db->Write("ALTER TABLE clients ADD groupid INTEGER DEFAULT 0");
 
 	b &= db->Write("UPDATE clients SET groupid=0 WHERE groupid IS NULL");
 	
 	b &= db->Write("CREATE TABLE settings_db.si_client_groups ("
 		"id INTEGER PRIMARY KEY,"
 		"name TEXT)");
+
+	return b;
+}
+
+bool upgrade48_49()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE backups ADD synctime INTEGER");
+
+	b &= db->Write("ALTER TABLE backup_images ADD synctime INTEGER");
 
 	return b;
 }
@@ -1836,7 +1849,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=48;
+	int max_v=49;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2107,6 +2120,13 @@ void upgrade(void)
 				break;
 			case 47:
 				if (!upgrade47_48())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 48:
+				if (!upgrade48_49())
 				{
 					has_error = true;
 				}

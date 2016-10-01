@@ -454,6 +454,11 @@ namespace
 			return false;
 		}
 
+		if (!copy_with_ext(src, dst_folder + os_file_sep() + src_name_incomplete, ".sync"))
+		{
+			return false;
+		}
+
 		//os_sync(dst_folder);
 
 		std::string src_name = ExtractFileName(src);
@@ -482,6 +487,13 @@ namespace
 		if (FileExists(dst_folder + os_file_sep() + src_name_incomplete + ".cbitmap")
 			&& !rename_with_ext(dst_folder + os_file_sep() + src_name_incomplete,
 			dst_folder + os_file_sep() + src_name, ".cbitmap"))
+		{
+			return false;
+		}
+
+		if (FileExists(dst_folder + os_file_sep() + src_name_incomplete + ".sync")
+			&& !rename_with_ext(dst_folder + os_file_sep() + src_name_incomplete,
+				dst_folder + os_file_sep() + src_name, ".sync"))
 		{
 			return false;
 		}

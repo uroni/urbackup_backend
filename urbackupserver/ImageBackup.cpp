@@ -1355,6 +1355,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							IFile *t_file=Server->openFile(os_file_prefix(imagefn), MODE_READ);
 							if(t_file!=NULL)
 							{
+								std::auto_ptr<IFile> sync_f;
+								if (!vhdfile_err)
+								{
+									if (!os_sync(imagefn))
+									{
+										ServerLogger::Log(logid, "Syncing file system failed. Image backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+									}
+
+									sync_f.reset(Server->openFile(os_file_prefix(imagefn + ".sync"), MODE_WRITE));
+								}
+
 								int64 image_size = t_file->RealSize();
 								db->BeginWriteTransaction();
 								backup_dao->setImageSize(image_size, backupid);
@@ -1364,6 +1375,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									if (dependencies.empty())
 									{
 										backup_dao->setImageBackupComplete(backupid);
+									}
+									if (sync_f.get() != NULL)
+									{
+										backup_dao->setImageBackupSynctime(backupid);
+									}
+									else
+									{
+										ServerLogger::Log(logid, "Error creating sync file at " + imagefn + ".sync", LL_WARNING);
 									}
 									db->EndTransaction();
 
@@ -1926,6 +1945,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".hash");
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".cbitmap");
 			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".mbr");
+			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".sync");
 			os_rename_file(image_folder + os_file_sep() + parent_fn + ".bitmap", imgpath+".bitmap");
 			if (!os_rename_file(image_folder + os_file_sep() + parent_fn, imgpath))
 			{

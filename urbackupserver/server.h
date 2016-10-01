@@ -68,6 +68,8 @@ private:
 	void maybeUpdateExistingClientsLower();
 	void fixClientnameCase(std::string& clientname);
 	static void enableSnapshots(int method);
+	void runServerRecovery(IDatabase* db);
+	std::string findFile(const std::string& path, const std::string& fn);
 
 	std::map<std::string, SClient> clients;
 

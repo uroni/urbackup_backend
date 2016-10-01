@@ -1475,7 +1475,8 @@ translations.en = {
 "confirm_delete_settings_group": "Going to remove this group. All clients in this group will be re-assigned to the default group. Proceed?",
 "group_delete_failed": "Removing group failed",
 "validate_err_notregexp_internet_server": "The internet server name should be a host name or IP",
-"validate_err_notregexp_server_url": "The server URL should be an URL starting with http:// or https://"
+"validate_err_notregexp_server_url": "The server URL should be an URL starting with http:// or https://",
+"action_17": "Start-up recovery"
 }
 translations.en_US = {
 "tInfos": "About"

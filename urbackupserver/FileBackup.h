@@ -24,6 +24,7 @@ namespace
 {
 	const unsigned int status_update_intervall=1000;
 	const unsigned int eta_update_intervall=60000;
+	const char* sync_fn = ".sync_f3a50226-f49a-4195-afef-c75b21781ae1";
 }
 
 struct SContinuousSequence

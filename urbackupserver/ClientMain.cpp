@@ -511,9 +511,16 @@ void ClientMain::operator ()(void)
 										vols_list += ", " + dependencies[k].volume;
 									}
 
+									std::string letter = normalizeVolume(dependencies[j].volume);
+
+									if (letter.size() == 1)
+									{
+										letter += ":";
+									}
+
 									SRunningBackup backup;
 									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
-										ibackup->isIncrementalBackup(), dependencies[j].volume, curr_server_token, dependencies[j].volume, false,
+										ibackup->isIncrementalBackup(), letter, curr_server_token, letter, false,
 										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime(), ibackup->isScheduled());
 									backup.backup = idep;
 									backup.letter = normalizeVolume(dependencies[j].volume);

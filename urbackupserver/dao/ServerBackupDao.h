@@ -102,6 +102,7 @@ public:
 	void newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
 	void updateFileBackupRunning(int backupid);
 	void setFileBackupDone(int backupid);
+	void setFileBackupSynced(int backupid);
 	SLastIncremental getLastIncrementalFileBackup(int clientid, int tgroup);
 	SLastIncremental getLastIncrementalCompleteFileBackup(int clientid, int tgroup);
 	void updateFileBackupSetComplete(int backupid);
@@ -116,6 +117,7 @@ public:
 	void newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime);
 	void setImageSize(int64 size_bytes, int backupid);
 	void addImageSizeToClient(int clientid, int64 add_size);
+	void setImageBackupSynctime(int backupid);
 	void setImageBackupComplete(int backupid);
 	void setImageBackupIncomplete(int backupid);
 	void updateImageBackupRunning(int backupid);
@@ -178,6 +180,7 @@ private:
 	IQuery* q_newFileBackup;
 	IQuery* q_updateFileBackupRunning;
 	IQuery* q_setFileBackupDone;
+	IQuery* q_setFileBackupSynced;
 	IQuery* q_getLastIncrementalFileBackup;
 	IQuery* q_getLastIncrementalCompleteFileBackup;
 	IQuery* q_updateFileBackupSetComplete;
@@ -192,6 +195,7 @@ private:
 	IQuery* q_newImageBackup;
 	IQuery* q_setImageSize;
 	IQuery* q_addImageSizeToClient;
+	IQuery* q_setImageBackupSynctime;
 	IQuery* q_setImageBackupComplete;
 	IQuery* q_setImageBackupIncomplete;
 	IQuery* q_updateImageBackupRunning;

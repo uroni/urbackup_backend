@@ -668,6 +668,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 					}
 					Server->deleteFile(rm_file+".bitmap");
 					Server->deleteFile(rm_file+".cbitmap");
+					Server->deleteFile(rm_file + ".sync");
 				}
 			}
 		}
@@ -732,37 +733,49 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 	return 0;
 }
 
-bool ServerCleanupThread::deleteAndTruncateFile(std::string path)
+bool ServerCleanupThread::deleteAndTruncateFile(logid_t logid, std::string path)
 {
 	if(!Server->deleteFile(os_file_prefix(path)))
 	{
-		ServerLogger::Log(logid, "Deleting " + path + " failed. " + os_last_error_str() + " . Truncating it instead.", LL_WARNING);
-		os_file_truncate(os_file_prefix(path), 0);
+		std::string errmsg = os_last_error_str();
+		if (os_get_file_type(os_file_prefix(path)) & EFileType_File)
+		{
+			ServerLogger::Log(logid, "Deleting " + path + " failed. " + errmsg + " . Truncating it instead.", LL_WARNING);
+			os_file_truncate(os_file_prefix(path), 0);	
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Deleting " + path + " failed. " + errmsg, LL_WARNING);
+		}
 		return false;
 	}
 	return true;
 }
 
-bool ServerCleanupThread::deleteImage(std::string clientname, std::string path)
+bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std::string path)
 {
 	std::string image_extension = findextension(path);
 
 	if (image_extension != "raw")
 	{
 		bool b = true;
-		if (!deleteAndTruncateFile(path))
+		if (!deleteAndTruncateFile(logid, path))
 		{
 			b = false;
 		}
-		if (!deleteAndTruncateFile(path + ".hash"))
+		if (!deleteAndTruncateFile(logid, path + ".hash"))
 		{
 			b = false;
 		}
-		if (!deleteAndTruncateFile(path + ".mbr"))
+		if (!deleteAndTruncateFile(logid, path + ".mbr"))
 		{
-			b = false;
+			if (os_get_file_type(os_file_prefix(path + ".mbr")) & EFileType_File)
+			{
+				b = false;
+			}
 		}
-		deleteAndTruncateFile(path + ".cbitmap");
+		deleteAndTruncateFile(logid, path + ".cbitmap");
+		deleteAndTruncateFile(logid, path + ".sync");
 
 		if (b && ExtractFileName(ExtractFilePath(path)) != clientname)
 		{
@@ -914,7 +927,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		if (!isImageLockedFromCleanup(incomplete_images[i].id))
 		{
 			ServerLogger::Log(logid, "Deleting incomplete image file \"" + incomplete_images[i].path + "\"...", LL_INFO);
-			if (!deleteImage(incomplete_images[i].clientname, incomplete_images[i].path))
+			if (!deleteImage(logid, incomplete_images[i].clientname, incomplete_images[i].path))
 			{
 				ServerLogger::Log(logid, "Deleting incomplete image \"" + incomplete_images[i].path + "\" failed.", LL_WARNING);
 			}
@@ -1023,7 +1036,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 			stat_id=db->getLastInsertID();
 		}
 
-		if( deleteImage(res_clientname.value, res.value) || force_remove )
+		if( deleteImage(logid, res_clientname.value, res.value) || force_remove )
 		{
 			db->BeginWriteTransaction();
 			cleanupdao->removeImage(backupid);

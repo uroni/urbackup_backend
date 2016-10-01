@@ -94,6 +94,8 @@ public:
 	static bool isImageLockedFromCleanup(int backupid);
 
 	static bool isClientlistDeletionAllowed();
+
+	static bool deleteImage(logid_t logid, std::string clientname, std::string path);
 private:
 
 	void do_cleanup(void);
@@ -148,8 +150,8 @@ private:
 
 	bool backup_database(void);
 
-	bool deleteAndTruncateFile(std::string path);
-	bool deleteImage(std::string clientname, std::string path);
+	static bool deleteAndTruncateFile(logid_t logid, std::string path);
+	
 	int64 getImageSize(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);

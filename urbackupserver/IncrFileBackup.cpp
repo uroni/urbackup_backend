@@ -1398,6 +1398,8 @@ bool IncrFileBackup::doFileBackup()
 				ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
 			}
 
+			std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
+
 			if (use_snapshots)
 			{
 				if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
@@ -1408,6 +1410,16 @@ bool IncrFileBackup::doFileBackup()
 
 			DBScopedSynchronous synchronous(db);
 			backup_dao->setFileBackupDone(backupid);
+
+			if (sync_f.get() != NULL)
+			{
+				backup_dao->setFileBackupSynced(backupid);
+			}
+			else
+			{
+				ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn, LL_WARNING);
+			}
+
 			if (ServerCleanupThread::isClientlistDeletionAllowed())
 			{
 				Server->deleteFile(clientlist_name);
@@ -1472,6 +1484,8 @@ bool IncrFileBackup::doFileBackup()
 			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
 		}
 
+		std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
+
 		if (use_snapshots)
 		{
 			if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
@@ -1482,6 +1496,16 @@ bool IncrFileBackup::doFileBackup()
 
 		DBScopedSynchronous synchronous(db);
 		backup_dao->setFileBackupDone(backupid);
+
+		if (sync_f.get() != NULL)
+		{
+			backup_dao->setFileBackupSynced(backupid);
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn, LL_WARNING);
+		}
+
 		if (ServerCleanupThread::isClientlistDeletionAllowed())
 		{
 			Server->deleteFile(clientlist_name);
