@@ -329,8 +329,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->backup_window_full_file=settings_default->getValue("backup_window_full_file", "1-7/0-24");
 	settings->backup_window_incr_image=settings_default->getValue("backup_window_incr_image", "1-7/0-24");
 	settings->backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
-	settings->max_active_clients= settings_global->getValue("max_active_clients", 100);
-	settings->max_sim_backups= settings_global->getValue("max_sim_backups", 10);
+	settings->max_active_clients= settings_global->getValue("max_active_clients", 10000);
+	settings->max_sim_backups= settings_global->getValue("max_sim_backups", 100);
 	settings->exclude_files=settings_default->getValue("exclude_files", "");
 	settings->include_files=settings_default->getValue("include_files", "");
 	settings->default_dirs=settings_default->getValue("default_dirs", "");
