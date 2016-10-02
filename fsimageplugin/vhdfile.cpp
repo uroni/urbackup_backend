@@ -819,7 +819,16 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 
 			if( isBitmapSet((unsigned int)blockoffset) )
 			{
-				wantread=(size_t)file->Read(&buffer[read], (_u32)wantread );
+				_u32 curr_tread = (_u32)wantread;
+				bool has_read_error = false;
+				wantread=(size_t)file->Read(&buffer[read], curr_tread, &has_read_error);
+				if (curr_tread != wantread
+					&& has_read_error)
+				{
+					Server->Log("Error reading from VHD file at position " + convert(dataoffset + bitmap_size + blockoffset) + ".");
+					print_last_error();
+					return false;
+				}
 			}
 			else
 			{

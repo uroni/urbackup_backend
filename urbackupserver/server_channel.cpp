@@ -1016,9 +1016,13 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					is_ok=vhdfile->Read(buffer, 4096, read);
 					if(read<4096)
 					{
-						Server->Log("Padding zero bytes...", LL_WARNING);
+						Server->Log("Padding "+convert(4096 - read)+" zero bytes during restore...", LL_WARNING);
 						memset(&buffer[read], 0, 4096-read);
 						read=4096;
+					}
+					if (!is_ok)
+					{
+						Server->Log("Error reading from VHD file during restore. "+os_last_error_str(), LL_ERROR);
 					}
 						
 					uint64 currpos_endian = little_endian(currpos);
