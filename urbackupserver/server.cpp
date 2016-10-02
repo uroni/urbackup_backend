@@ -912,7 +912,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 	size_t num_extra_check = 30;
 
-	IQuery* q_synced = db->Prepare("SELECT backups.id AS backupid, name, path, clientid, backuptime FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE synctime IS NOT NULL ORDER BY synctime DESC");
+	IQuery* q_synced = db->Prepare("SELECT backups.id AS backupid, name, path, clientid, backuptime, done FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE synctime IS NOT NULL OR done=0 ORDER BY synctime DESC");
 	cur = q_synced->Cursor();
 	while (cur->next(res))
 	{
@@ -921,7 +921,12 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 		bool delete_backup = false;
 
-		if (!os_directory_exists(os_file_prefix(backuppath)))
+		if (res["done"] == "0")
+		{
+			ServerLogger::Log(logid, "File backup " + backupinfo + " is incomplete. Deleting it.", LL_WARNING);
+			delete_backup = true;
+		}
+		else if (!os_directory_exists(os_file_prefix(backuppath)))
 		{
 			if (delete_missing)
 			{
