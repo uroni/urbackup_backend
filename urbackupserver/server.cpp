@@ -912,7 +912,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 	size_t num_extra_check = 30;
 
-	IQuery* q_synced = db->Prepare("SELECT backups.id AS backupid, name, path, clientid, backuptime, done FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE synctime IS NOT NULL OR done=0 ORDER BY synctime DESC");
+	IQuery* q_synced = db->Prepare("SELECT backups.id AS backupid, name, path, clientid, backuptime, done FROM (backups INNER JOIN clients ON backups.clientid=clients.id) WHERE synctime IS NOT NULL OR done=0 ORDER BY done ASC, synctime DESC");
 	cur = q_synced->Cursor();
 	while (cur->next(res))
 	{
