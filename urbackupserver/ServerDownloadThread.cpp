@@ -212,7 +212,7 @@ void ServerDownloadThread::operator()( void )
 		{
 			if(curr.script_end)
 			{
-				fc.FinishScript(curr.fn);
+				fc.FinishScript(getDLPath(curr));
 			}
 			else
 			{
@@ -368,17 +368,19 @@ void ServerDownloadThread::addToQueueStopShadowcopy(const std::string& fn)
 	cond->notify_one();
 }
 
-void ServerDownloadThread::queueScriptEnd(const std::string &fn)
+void ServerDownloadThread::queueScriptEnd(const SQueueItem &todl)
 {
 	SQueueItem ni;
 	ni.action = EQueueAction_Fileclient;
-	ni.fn=fn;
+	ni.fn=todl.fn;
+	ni.curr_path = todl.curr_path;
 	ni.id=std::string::npos;
 	ni.patch_dl_files.prepared=false;
 	ni.patch_dl_files.prepare_error=false;
 	ni.is_script=true;
 	ni.metadata_only=false;
 	ni.script_end=true;
+	ni.script_random = todl.script_random;
 
 	IScopedLock lock(mutex);
 
@@ -567,7 +569,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		hash_file = true;
 		if(todl.is_script)
 		{
-			queueScriptEnd(cfn);
+			queueScriptEnd(todl);
 
 			if (!todl.metadata_only)
 			{
@@ -891,7 +893,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(todl.is_script)
 		{
-			queueScriptEnd(cfn);
+			queueScriptEnd(todl);
 
 			if (!todl.metadata_only)
 			{

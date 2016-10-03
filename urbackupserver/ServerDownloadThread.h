@@ -165,7 +165,7 @@ public:
 
 	void queueSkip();
 
-	void queueScriptEnd(const std::string &fn);
+	void queueScriptEnd(const SQueueItem &todl);
 	
 	bool load_file(SQueueItem todl);
 		
