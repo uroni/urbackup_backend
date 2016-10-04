@@ -94,7 +94,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 
 	if(metadata_f.get()==NULL)
 	{
-		ServerLogger::Log(logid, "Error opening metadata file. Cannot save file metadata.", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening metadata file at \""+ metadata_tmp_fn+"\". Cannot save file metadata. "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 

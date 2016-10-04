@@ -93,7 +93,7 @@ bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
 
 	if(metadata_f.get()==NULL)
 	{
-		restore.log("Error opening metadata file. Cannot save file metadata.", LL_ERROR);
+		restore.log("Error opening metadata file at \""+ metadata_tmp_fn+"\". Cannot save file metadata. "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 
