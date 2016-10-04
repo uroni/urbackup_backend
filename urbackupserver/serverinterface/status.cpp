@@ -375,6 +375,7 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 		{
 			std::string linkfolderpath = testfolderpath + "_link";
 			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+			Server->deleteFile(os_file_prefix(linkfolderpath));
 
 			if (!has_access_error
 				&& !os_link_symbolic(os_file_prefix(testfolderpath), os_file_prefix(linkfolderpath)))
