@@ -1134,8 +1134,6 @@ void IndexThread::operator()(void)
 	delete this;
 }
 
-const char * filelist_fn="urbackup/data/filelist_new.ub";
-
 void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
@@ -1244,11 +1242,17 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	last_tmp_update_time=Server->getTimeMS();
 	index_error=false;
 
+	std::string filelist_dest_fn = "urbackup/data/filelist.ub";
+	if (index_group != c_group_default)
+	{
+		filelist_dest_fn = "urbackup/data/filelist_" + convert(index_group) + ".ub";
+	}
+
 	IFile* last_filelist_f = NULL;
 	ScopedFreeObjRef<IFile*> last_filelist_f_scope(last_filelist_f);
 	if (index_follow_last)
 	{
-		last_filelist_f = Server->openFile("urbackup/data/filelist.ub", MODE_READ);
+		last_filelist_f = Server->openFile(filelist_dest_fn, MODE_READ);
 
 		if (last_filelist_f == NULL)
 		{
@@ -1258,6 +1262,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 		last_filelist.reset(new SLastFileList);
 		last_filelist->f = last_filelist_f;
 	}
+
+	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
 
 	{
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
@@ -1598,27 +1604,27 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 		IScopedLock lock(filelist_mutex);
 		if(index_group==c_group_default)
 		{
-			if (FileExists("urbackup/data/filelist.ub")
-				&& !removeFile("urbackup/data/filelist.ub"))
+			if (FileExists(filelist_dest_fn)
+				&& !removeFile(filelist_dest_fn))
 			{
-				VSSLog("Error deleting file urbackup/data/filelist.ub. "+os_last_error_str(), LL_ERROR);
+				VSSLog("Error deleting file "+ filelist_dest_fn+". "+os_last_error_str(), LL_ERROR);
 			}
-			if (!moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist.ub"))
+			if (!moveFile(filelist_fn, filelist_dest_fn))
 			{
-				VSSLog("Error renaming urbackup/data/filelist_new.ub to urbackup/data/filelist.ub. " + os_last_error_str(), LL_ERROR);
+				VSSLog("Error renaming "+ filelist_fn+" to "+ filelist_dest_fn+". " + os_last_error_str(), LL_ERROR);
 				index_error = true;
 			}
 		}
 		else
 		{
-			if (FileExists("urbackup/data/filelist_" + convert(index_group) + ".ub")
-				&& !removeFile("urbackup/data/filelist_" + convert(index_group) + ".ub"))
+			if (FileExists(filelist_dest_fn)
+				&& !removeFile(filelist_dest_fn))
 			{
-				VSSLog("Error deleting file urbackup/data/filelist_" + convert(index_group) + ".ub. " + os_last_error_str(), LL_ERROR);
+				VSSLog("Error deleting file "+ filelist_dest_fn+". " + os_last_error_str(), LL_ERROR);
 			}
-			if (!moveFile("urbackup/data/filelist_new.ub", "urbackup/data/filelist_" + convert(index_group) + ".ub"))
+			if (!moveFile(filelist_fn, filelist_dest_fn))
 			{
-				VSSLog("Error renaming urbackup/data/filelist_new.ub to urbackup/data/filelist_"+convert(index_group)+".ub. " + os_last_error_str(), LL_ERROR);
+				VSSLog("Error renaming "+ filelist_fn+" to "+ filelist_dest_fn+". " + os_last_error_str(), LL_ERROR);
 				index_error = true;
 			}
 		}
