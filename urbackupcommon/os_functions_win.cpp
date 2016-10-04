@@ -1457,3 +1457,12 @@ SPrioInfo::SPrioInfo()
 SPrioInfo::~SPrioInfo()
 {
 }
+bool os_enable_prioritize(SPrioInfo & prio_info)
+{
+	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) == TRUE;
+}
+
+bool os_disable_prioritize(SPrioInfo & prio_info)
+{
+	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL) == TRUE;
+}

@@ -1053,6 +1053,34 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	return true;
 }
 
+bool os_enable_prioritize(SPrioInfo& prio_info)
+{
+	pid_t tid = gettid();
+	
+	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
+	prio_info.prio_info->cpu_prio = getpriority(IOPRIO_WHO_PROCESS, tid);
+	
+	int ioprio = 0;
+	int ioprio_class = IOPRIO_CLASS_BE;
+	
+	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
+	{
+		return false;
+	}
+	int cpuprio = -10;
+	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+bool os_disable_prioritize(SPrioInfo& prio_info)
+{
+	return os_disable_background_priority(prio_info);
+}
+
 #else //__NR_ioprio_set
 
 SPrioInfo::SPrioInfo()
@@ -1069,6 +1097,16 @@ bool os_enable_background_priority(SPrioInfo& prio_info)
 }
 
 bool os_disable_background_priority(SPrioInfo& prio_info)
+{
+	return false;
+}
+
+bool os_enable_prioritize(SPrioInfo& prio_info)
+{
+	return false;
+}
+
+bool os_disable_prioritize(SPrioInfo& prio_info)
 {
 	return false;
 }
@@ -1103,3 +1141,4 @@ bool os_sync(const std::string & path)
 	return true;
 #endif
 }
+

@@ -218,4 +218,8 @@ private:
 	ScopedBackgroundPrio* background_prio;
 };
 
+bool os_enable_prioritize(SPrioInfo& prio_info);
+
+bool os_disable_prioritize(SPrioInfo& prio_info);
+
 #endif //OS_FUNCTIONS_H

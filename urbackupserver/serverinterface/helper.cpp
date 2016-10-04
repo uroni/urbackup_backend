@@ -33,6 +33,7 @@ extern ICryptoFactory *crypto_fak;
 
 Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
+	prioritized = os_enable_prioritize(prio_info);
 	session=NULL;
 	update(pTID,pPOST,pPARAMS);
 }
@@ -172,6 +173,10 @@ Helper::~Helper(void)
 	for(size_t i=0;i<templates.size();++i)
 	{
 		Server->destroy( templates[i] );
+	}
+	if (prioritized)
+	{
+		os_disable_prioritize(prio_info);
 	}
 }
 

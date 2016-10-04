@@ -5,6 +5,7 @@
 #include "../../Interface/SessionMgr.h"
 #include "../../Interface/Template.h"
 #include "../../Interface/Mutex.h"
+#include "../../urbackupcommon/os_functions.h"
 
 const int SESSION_ID_ADMIN = 0;
 const int SESSION_ID_INVALID = -1;
@@ -66,6 +67,9 @@ private:
 	std::map<std::string, std::string> ldap_rights;
 
 	THREAD_ID tid;
+
+	bool prioritized;
+	SPrioInfo prio_info;
 };
 
 struct SStartupStatus
