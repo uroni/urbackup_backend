@@ -1521,11 +1521,6 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 			removeUnconfirmedSymlinkDirs(i+1);
 		}
 
-		if (index_keep_files)
-		{
-			addFromLastUpto("urbackup_backup_scripts", true, 0, false, outfile);
-		}
-
 		if (outfile.is_open())
 		{
 			addBackupScripts(outfile);
@@ -1933,6 +1928,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 						dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs);
 				}
 
+				addFromLastLiftDepth(depth, outfile);
+
 				if(!with_proper_symlinks)
 				{
 					outfile << "d\"..\"\n";
@@ -1970,6 +1967,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 	if(close_dir)
 	{
+		addFromLastLiftDepth(depth - 1, outfile);
 		if(!with_proper_symlinks)
 		{
 			outfile << "d\"..\"\n";
@@ -2430,8 +2428,12 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens,
 	bool share_new)
 {
-	for(size_t i=sc_refs.size();i-- > 0;)
+	for (size_t i = sc_refs.size(); i-- > 0;)
 	{
+		if (i >= sc_refs.size())
+		{
+			continue;
+		}
 #ifndef _WIN32
 		std::string target_lower = sc_refs[i]->target;
 		std::string wpath_lower = wpath;
@@ -4859,6 +4861,42 @@ void IndexThread::addFromLastUpto(const std::string& fname, bool isdir, size_t d
 			}
 		}
 	} while (nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false));
+}
+
+void IndexThread::addFromLastLiftDepth(size_t depth, std::fstream & outfile)
+{
+	if (!index_follow_last || last_filelist.get() == NULL)
+	{
+		return;
+	}
+
+	if (last_filelist->item.name.empty())
+	{
+		if (!nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false))
+		{
+			return;
+		}
+	}
+
+	while (last_filelist->depth > depth)
+	{
+		if (index_keep_files)
+		{
+			if (last_filelist->item.isdir)
+			{
+				addDirFromLast(outfile);
+			}
+			else
+			{
+				addFileFromLast(outfile);
+			}
+		}
+
+		if (!nextLastFilelistItem(last_filelist->item, &last_filelist->extra, false))
+		{
+			return;
+		}
+	}
 }
 
 void IndexThread::addDirFromLast(std::fstream & outfile)

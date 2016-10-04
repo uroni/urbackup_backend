@@ -471,6 +471,8 @@ private:
 
 	void addFromLastUpto(const std::string& fname, bool isdir, size_t depth, bool finish, std::fstream &outfile);
 
+	void addFromLastLiftDepth(size_t depth, std::fstream &outfile);
+
 	void addDirFromLast(std::fstream &outfile);
 	void addFileFromLast(std::fstream &outfile);
 
