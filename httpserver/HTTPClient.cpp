@@ -534,6 +534,9 @@ bool CHTTPClient::processRequest(void)
 				if( path[i]!=".." && path[i]!="." )
 					rp+="/"+path[i];
 			}
+#ifdef _WIN32
+			rp = greplace("\\", "_", rp);
+#endif
 			CHTTPFile *file_handler=new CHTTPFile(http_service->getRoot()+rp, pipe);
 			request_ticket=Server->getThreadPool()->execute(file_handler);
 			request_handler=file_handler;
