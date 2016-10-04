@@ -949,6 +949,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 #if defined(O_CLOEXEC)
 				flags |= O_CLOEXEC;
 #endif
+#if defined(O_NOATIME)
+				flags |= O_NOATIME;
+#endif
 				hFile=open64(filename.c_str(), flags);
 				
 				if(hFile == INVALID_HANDLE_VALUE)
@@ -1826,6 +1829,9 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 #if defined(O_CLOEXEC)
 		flags |= O_CLOEXEC;
 #endif
+#if defined(O_NOATIME)
+		flags |= O_NOATIME;
+#endif
 		hFile=open64(filename.c_str(), flags);
 #endif //_WIN32
 
@@ -2079,6 +2085,9 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	int flags = O_RDONLY | O_LARGEFILE;
 #if defined(O_CLOEXEC)
 	flags |= O_CLOEXEC;
+#endif
+#if defined(O_NOATIME)
+	flags |= O_NOATIME;
 #endif
 	hFile=open64(filename.c_str(), flags);
 #endif //_WIN32
