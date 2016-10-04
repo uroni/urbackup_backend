@@ -319,7 +319,18 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			if (state == CCSTATE_START_FILEBACKUP_ASYNC)
 			{
 				IScopedLock lock(backup_mutex);
-				async_file_index[async_file_list_id].last_update = Server->getTimeMS();
+				std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
+				if (it != async_file_index.end())
+				{
+					if (!msg.empty())
+					{
+						async_file_index.erase(it);
+					}
+					else
+					{
+						it->second.last_update = Server->getTimeMS();
+					}
+				}
 			}
 
 			if(msg=="exit")
