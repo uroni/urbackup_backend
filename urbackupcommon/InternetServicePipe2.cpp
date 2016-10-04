@@ -168,7 +168,8 @@ size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 			return 0;
 		}
 
-	} while (timeoutms>0 && Server->getTimeMS()-starttime<timeoutms);	
+	} while (timeoutms<0 
+				|| (timeoutms>0 && Server->getTimeMS()-starttime<timeoutms) );	
 
 	return 0;
 }
