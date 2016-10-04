@@ -1542,7 +1542,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				VSSLog("Error changing filelist size", LL_ERROR);
 			}
 
-			outfile.open(filelist_fn, std::ios::in|std::ios::out|std::ios::binary);
+			outfile.open(filelist_fn.c_str(), std::ios::in|std::ios::out|std::ios::binary);
 			if(outfile.is_open())
 			{
 				outfile.seekp(0, std::ios::end);
