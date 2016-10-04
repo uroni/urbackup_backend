@@ -1266,7 +1266,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
 
 	{
-		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
+		std::fstream outfile(filelist_fn.c_str(), std::ios::out|std::ios::binary);
 
 #ifdef _WIN32
 		if (index_group == 0)
