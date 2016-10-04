@@ -951,9 +951,22 @@ bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext&
 		context.backupcom = NULL;
 	}
 
+	std::vector<SShadowCopy> ascs = cd->getShadowcopies();
+	bool set_last = true;
+	for (size_t i = 0; i < ascs.size(); ++i)
+	{
+		if (ascs[i].vssid != scs.vssid
+			&& ascs[i].ssetid == scs.ssetid)
+		{
+			set_last = false;
+			break;
+		}
+	}
+
 	LONG dels;
 	GUID ndels;
-	CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs.vssid, VSS_OBJECT_SNAPSHOT, TRUE,
+	CHECK_COM_RESULT(backupcom->DeleteSnapshots(set_last ? scs.ssetid : scs.vssid, 
+		set_last ? VSS_OBJECT_SNAPSHOT_SET : VSS_OBJECT_SNAPSHOT, TRUE,
 		&dels, &ndels));
 	cd->deleteShadowcopy(scs.id);
 

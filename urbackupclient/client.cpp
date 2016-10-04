@@ -683,6 +683,10 @@ void IndexThread::operator()(void)
 			 || action==IndexThreadAction_ReferenceShadowcopy )
 		{
 			vsslog.clear();
+			if (action == IndexThreadAction_CreateShadowcopy)
+			{
+				readSnapshotGroups();
+			}
 
 			std::string scdir;
 			data.getStr(&scdir);
@@ -736,12 +740,19 @@ void IndexThread::operator()(void)
 				if(start_shadowcopy(scd, &onlyref, image_backup!=0?true:false, running_jobs>1, std::vector<SCRef*>(), image_backup!=0?true:false))
 				{
 					if (scd->ref!=NULL
-						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, 
-							image_backup!=0 ? scd->ref->save_id : -1,
-							scd->ref->volpath);
+						for (size_t k = 0; k < sc_refs.size(); ++k)
+						{
+							if (sc_refs[k]->ssetid == scd->ref->ssetid)
+							{
+								if (sc_refs[k]->cbt)
+								{
+									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target,
+										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath);
+								}
+							}
+						}
 					}
 
 					if (scd->ref != NULL
@@ -815,12 +826,19 @@ void IndexThread::operator()(void)
 				else
 				{
 					if (scd->ref != NULL
-						&& scd->ref->cbt
 						&& !onlyref)
 					{
-						scd->ref->cbt = finishCbt(scd->orig_target, 
-							image_backup != 0 ? scd->ref->save_id : -1,
-							scd->ref->volpath);
+						for (size_t k = 0; k < sc_refs.size(); ++k)
+						{
+							if (sc_refs[k]->ssetid == scd->ref->ssetid)
+							{
+								if (sc_refs[k]->cbt)
+								{
+									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, 
+										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath);
+								}
+							}
+						}
 					}
 
 					if (scd->ref != NULL
@@ -2926,7 +2944,8 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 		bool f2=true;
 		for(size_t j=0;j<sc_refs.size();++j)
 		{
-			if(sc_refs[j]->save_id==scs[i].id)
+			if(sc_refs[j]->save_id==scs[i].id
+				|| sc_refs[j]->ssetid==scs[i].ssetid)
 			{
 				f2=false;
 				break;
