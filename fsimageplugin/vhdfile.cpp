@@ -23,6 +23,7 @@
 #include "CompressedFile.h"
 #include <memory.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "FileWrapper.h"
 #include "ClientBitmap.h"
 
@@ -904,7 +905,14 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 			nextblock_offset=nextblock_offset+(sector_size-nextblock_offset%sector_size);
 			dwrite_footer=true;
 			new_block=true;
-			bat[block]=big_endian((unsigned int)(dataoffset/(uint64)(sector_size)));
+			int64 bat_offset = dataoffset / (uint64)(sector_size);
+			if (bat_offset >= UINT_MAX)
+			{
+				Server->Log("Too much data in VHD file. BAT table overflow. Next BAT entry would be to offset " + convert(bat_offset), LL_ERROR);
+				if (has_error) *has_error = true;
+				return 0;
+			}
+			bat[block]=big_endian((unsigned int)(bat_offset));
 		}
 		else
 		{

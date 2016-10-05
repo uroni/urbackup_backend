@@ -963,13 +963,24 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if (!has_parent || blockcnt<0)
 					{
+						int64 vhd_size = -1;
 						if (has_parent && blockcnt < 0)
 						{
 							ServerLogger::Log(logid, "Change block tracking active. Max "+PrettyPrintBytes(-blockcnt*blocksize)+" have changed.", LL_INFO);
+							vhd_size = mbr_offset + -blockcnt*blocksize;
 						}
 						else if (!has_parent && blockcnt>0)
 						{
 							r_vhdfile->setBackingFileSize(mbr_offset + blockcnt*blocksize);
+							vhd_size = mbr_offset + blockcnt*blocksize;
+						}
+
+						if (vhd_size>0 && vhd_size >= 2040LL * 1024 * 1024 * 1024
+							&& image_file_format != image_file_format_cowraw)
+						{
+							ServerLogger::Log(logid, "Data on volume is to large for VHD files with " + PrettyPrintBytes(vhd_size) +
+								". VHD files have a maximum size of 2040GB. Please use another image file format.", LL_ERROR);
+							goto do_image_cleanup;
 						}
 
 						ServerStatus::setProcessTotalBytes(clientname, status_id, (blockcnt<0 ? -blockcnt : blockcnt)*blocksize);
