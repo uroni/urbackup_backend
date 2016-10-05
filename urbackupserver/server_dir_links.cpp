@@ -289,7 +289,7 @@ bool replay_directory_link_journal( )
 	return has_error;
 }
 
-bool remove_directory_link(const std::string & path, bool isdir, ServerLinkDao & link_dao, int clientid,
+bool remove_directory_link(const std::string & path, ServerLinkDao & link_dao, int clientid,
 	std::auto_ptr<DBScopedSynchronous>& synchronous_link_dao, bool with_transaction)
 {
 	std::string pool_path;
@@ -313,21 +313,10 @@ bool remove_directory_link(const std::string & path, bool isdir, ServerLinkDao &
 	{
 		//Other symlink. Simply delete
 
-		if (isdir)
+		if (!os_remove_symlink_dir(os_file_prefix(path)))
 		{
-			if (!os_remove_symlink_dir(os_file_prefix(path)))
-			{
-				Server->Log("Error removing symlink dir \"" + path + "\"", LL_ERROR);
-			}
+			Server->Log("Error removing symlink dir \"" + path + "\"", LL_ERROR);
 		}
-		else
-		{
-			if (!Server->deleteFile(os_file_prefix(path)))
-			{
-				Server->Log("Error removing symlink file \"" + path + "\"", LL_ERROR);
-			}
-		}	
-
 		return true;
 	}
 
@@ -413,11 +402,20 @@ namespace
 		bool with_transaction;
 	};
 
-	bool symlink_callback(const std::string &path, bool isdir, void* userdata)
+	bool symlink_callback(const std::string &path, bool* isdir, void* userdata)
 	{
+		if (isdir!=NULL && !*isdir)
+		{
+			if (!Server->deleteFile(os_file_prefix(path)))
+			{
+				Server->Log("Error removing symlink file \"" + path + "\"", LL_ERROR);
+			}
+			return true;
+		}
+
 		SSymlinkCallbackData* data = reinterpret_cast<SSymlinkCallbackData*>(userdata);
 
-		return remove_directory_link(path, isdir, *data->link_dao, data->clientid,
+		return remove_directory_link(path, *data->link_dao, data->clientid,
 			data->synchronous_link_dao, data->with_transaction);
 	}
 }

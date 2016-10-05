@@ -652,7 +652,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									std::auto_ptr<DBScopedSynchronous> link_dao_synchronous;
-									if (!remove_directory_link(backuppath + local_curr_os_path, true, *link_dao, clientid, link_dao_synchronous))
+									if (!remove_directory_link(backuppath + local_curr_os_path, *link_dao, clientid, link_dao_synchronous))
 									{
 										ServerLogger::Log(logid, "Could not remove symlinked directory \"" + backuppath + local_curr_os_path + "\" after symlinking metadata directory failed.", LL_ERROR);
 										c_has_error = true;

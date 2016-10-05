@@ -622,7 +622,8 @@ bool os_remove_nonempty_dir_int(const std::wstring &path, os_symlink_callback_t 
 					&& (wfd.dwReserved0==IO_REPARSE_TAG_MOUNT_POINT
 					|| wfd.dwReserved0==IO_REPARSE_TAG_SYMLINK) )
 				{
-					symlink_callback(ConvertFromWchar(path+L"\\"+wfd.cFileName), (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)>0, userdata);
+					bool isdir = (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) > 0;
+					symlink_callback(ConvertFromWchar(path+L"\\"+wfd.cFileName), &isdir, userdata);
 				}
 				else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
