@@ -873,7 +873,7 @@ int action_reset_keep(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Reset keeping files during incremental backups", ' ', cmdline_version);
 
-	PwClientCmd pw_client_cmd(cmd, false);
+	PwClientCmd pw_client_cmd(cmd, true);
 
 	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
 		"Virtual client name",
