@@ -527,10 +527,10 @@ void IndexThread::operator()(void)
 
 				std::vector<std::string> gaps=cd->getGapDirs();
 
-				std::string q_str="DELETE FROM files";
+				std::string q_str="DELETE FROM files WHERE (tgroup=0 OR tgroup=?)";
 				if(!gaps.empty())
 				{
-					q_str+=" WHERE ";
+					q_str+=" AND (";
 				}
 				for(size_t i=0;i<gaps.size();++i)
 				{
@@ -538,8 +538,13 @@ void IndexThread::operator()(void)
 					if(i+1<gaps.size())
 						q_str+=" OR ";
 				}
+				if (!gaps.empty())
+				{
+					q_str += ")";
+				}
 
 				IQuery *q=db->Prepare(q_str, false);
+				q->Bind(index_group+1);
 				for(size_t i=0;i<gaps.size();++i)
 				{
 					Server->Log("Deleting file-index from drive \""+gaps[i]+"\"", LL_INFO);
@@ -1669,7 +1674,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 
 void IndexThread::resetFileEntries(void)
 {
-	db->Write("DELETE FROM files");
+	db->Write("DELETE FROM files WHERE tgroup=0 OR tgroup="+convert(index_group+1));
 	cd->deleteSavedChangedDirs();
 	cd->resetAllHardlinks();
 #ifdef _WIN32
