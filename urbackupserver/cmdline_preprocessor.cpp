@@ -456,6 +456,12 @@ int action_run(std::vector<std::string> args)
 	if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
 		std::cerr << "Raising maximum file descriptor to "<< limit.rlim_max << " failed. This may cause problems with many clients. (errno=" << errno <<")" << std::endl;
 	}
+
+	limit.rlim_cur = 35;
+	limit.rlim_max = 35;
+	if (setrlimit(RLIMIT_NICE, &limit) != 0) {
+		std::cerr << "Raising nice-ceiling to " << limit.rlim_max << " failed. (errno=" << errno << ")" << std::endl;
+	}
 #endif
 
 	return run_real_main(real_args);
