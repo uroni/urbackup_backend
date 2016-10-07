@@ -1013,7 +1013,7 @@ bool os_enable_background_priority(SPrioInfo& prio_info)
 	pid_t tid = gettid();
 	
 	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
-	prio_info.prio_info->cpu_prio = getpriority(IOPRIO_WHO_PROCESS, tid);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, tid);
 	
 	int ioprio = 7;
 	int ioprio_class = IOPRIO_CLASS_IDLE;
@@ -1025,6 +1025,7 @@ bool os_enable_background_priority(SPrioInfo& prio_info)
 	int cpuprio = 19;
 	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
 	{
+		os_disable_background_priority(prio_info);
 		return false;
 	}
 	
@@ -1058,7 +1059,7 @@ bool os_enable_prioritize(SPrioInfo& prio_info)
 	pid_t tid = gettid();
 	
 	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
-	prio_info.prio_info->cpu_prio = getpriority(IOPRIO_WHO_PROCESS, tid);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, tid);
 	
 	int ioprio = 0;
 	int ioprio_class = IOPRIO_CLASS_BE;
@@ -1070,6 +1071,7 @@ bool os_enable_prioritize(SPrioInfo& prio_info)
 	int cpuprio = -10;
 	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
 	{
+		os_disable_prioritize(prio_info);
 		return false;
 	}
 	
