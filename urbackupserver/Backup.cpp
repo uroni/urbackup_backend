@@ -162,8 +162,8 @@ void Backup::operator()()
 
 void Backup::setErrors(Backup& other)
 {
-	should_backoff = other->shouldBackoff();
-	has_timeout_error = other->hasTimeoutError();
+	should_backoff = other.shouldBackoff();
+	has_timeout_error = other.hasTimeoutError();
 }
 
 bool Backup::createDirectoryForClient(void)
