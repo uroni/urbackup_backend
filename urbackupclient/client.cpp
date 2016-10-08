@@ -514,7 +514,7 @@ void IndexThread::operator()(void)
 
 			//incr backup
 			bool has_dirs = readBackupDirs();
-			bool has_scripts = readBackupScripts();
+			bool has_scripts = readBackupScripts(action == IndexThreadAction_StartFullFileBackup);
 			if( !has_dirs && !has_scripts )
 			{
 				contractor->Write("no backup dirs");
@@ -636,7 +636,7 @@ void IndexThread::operator()(void)
 			setFlags(flags);
 
 			bool has_dirs = readBackupDirs();
-			bool has_scripts = readBackupScripts();
+			bool has_scripts = readBackupScripts(true);
 			if(!has_dirs && !has_scripts)
 			{
 				contractor->Write("no backup dirs");
@@ -2025,7 +2025,7 @@ bool IndexThread::readBackupDirs(void)
 	return has_backup_dir;
 }
 
-bool IndexThread::readBackupScripts()
+bool IndexThread::readBackupScripts(bool full_backup)
 {
 	scripts.clear();
 
@@ -2075,7 +2075,7 @@ bool IndexThread::readBackupScripts()
 			continue;
 		}
 
-		std::string output = execute_script(script_cmd);
+		std::string output = execute_script(script_cmd, full_backup?"0":"1");
 
 		std::vector<std::string> lines;
 		Tokenize(output, lines, "\n");
@@ -4689,10 +4689,10 @@ void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with
 	}
 }
 
-std::string IndexThread::execute_script(const std::string& cmd)
+std::string IndexThread::execute_script(const std::string& cmd, const std::string& args)
 {
 	std::string output;
-	int rc = os_popen("\""+cmd+"\"", output);
+	int rc = os_popen("\""+cmd+"\"" + (args.empty() ? "" : (" "+args)), output);
 
 	if(rc!=0)
 	{

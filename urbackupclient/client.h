@@ -323,7 +323,7 @@ public:
 	
 private:
 	bool readBackupDirs(void);
-	bool readBackupScripts();
+	bool readBackupScripts(bool full_backup);
 
 	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target, std::string& output_target);
 	void addSymlinkBackupDir(const std::string& target, std::string& output_target);
@@ -401,7 +401,7 @@ private:
 	int execute_hook(std::string script_name, bool incr, std::string server_token, int* index_group);
 	int execute_prebackup_hook(bool incr, std::string server_token, int index_group);
 	int execute_postindex_hook(bool incr, std::string server_token, int index_group);
-	std::string execute_script(const std::string& cmd);
+	std::string execute_script(const std::string& cmd, const std::string& args);
 
 	int execute_preimagebackup_hook(bool incr, std::string server_token);
 
