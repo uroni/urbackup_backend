@@ -201,6 +201,7 @@ bool ImageBackup::doBackup()
 		else if (!sysvol_backup.getNotFound()
 			&& client_main->getProtocolVersions().efi_version > 0)
 		{
+			setErrors(sysvol_backup);
 			ServerLogger::Log(logid, "Backing up System Reserved (SYSVOL) partition failed. Image backup failed", LL_ERROR);
 			return false;
 		}
@@ -223,6 +224,7 @@ bool ImageBackup::doBackup()
 			else if (!esp_backup.getNotFound()
 				&& client_main->getProtocolVersions().efi_version > 0)
 			{
+				setErrors(esp_backup);
 				ServerLogger::Log(logid, "Backing up EFI System Partition failed. Image backup failed", LL_ERROR);
 				return false;
 			}

@@ -160,6 +160,12 @@ void Backup::operator()()
 	Server->getThreadPool()->execute(new DelayedWakeup(client_main));
 }
 
+void Backup::setErrors(Backup& other)
+{
+	should_backoff = other->shouldBackoff();
+	has_timeout_error = other->hasTimeoutError();
+}
+
 bool Backup::createDirectoryForClient(void)
 {
 	std::string backupfolder=server_settings->getSettings()->backupfolder;

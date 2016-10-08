@@ -85,6 +85,8 @@ public:
 protected:
 	virtual bool doBackup() = 0;
 
+	void setErrors(Backup& other);
+
 	bool createDirectoryForClient();
 	void saveClientLogdata(int image, int incremental, bool r_success, bool resumed);
 	void sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::string &data);
