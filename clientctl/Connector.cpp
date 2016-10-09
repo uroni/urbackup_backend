@@ -264,12 +264,10 @@ std::string Connector::escapeParam(const std::string &name)
 
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
-	std::string args;
+	std::string args="all_virtual_clients=1";
 	for (size_t i = 0; i<res.size(); ++i)
 	{
-		if (i != 0)
-			args += "&";
-
+		args += "&";
 		std::string path = escapeParam(res[i].path);
 		std::string name = escapeParam(res[i].name);
 

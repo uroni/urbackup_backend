@@ -1171,7 +1171,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
-	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN "+convert(group_offset)+" AND "+convert(group_offset+c_group_max))->Write();
+	if (args.find("all_virtual_clients") != args.end())
+	{
+		db->Write("DELETE FROM backupdirs WHERE symlinked=0");
+	}
+	else
+	{
+		db->Write("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+	}
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings
