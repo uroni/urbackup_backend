@@ -4728,7 +4728,12 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 			if (!scripts[i].orig_path.empty())
 			{
-				outfile << "#orig_path=" << EscapeParamString(scripts[i].orig_path) << "&orig_sep=" << EscapeParamString(os_file_sep());
+				std::string orig_path = scripts[i].orig_path;
+				if (orig_path.size() > 1 && orig_path[orig_path.size() - 1] == os_file_sep()[0])
+				{
+					orig_path.erase(orig_path.size() - 1, 1);
+				}
+				outfile << "#orig_path=" << EscapeParamString(orig_path) << "&orig_sep=" << EscapeParamString(os_file_sep());
 			}
 			
 			outfile << "\n";
