@@ -370,6 +370,25 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 #endif
 			has_access_error = true;
 		}
+#ifdef _WIN32
+		else if (!settings.getSettings()->no_file_backups
+			&& os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + "testfo~1")))
+		{
+			ret.set("dir_error", true);
+			ret.set("dir_error_ext", "dos_names_created");
+			add_stop_show(db, ret, "dos_names_created");
+			ret.set("dir_error_hint", "dos_names_created");
+			if (backupfolder.size() > 2
+				&& backupfolder[1]==':')
+			{
+				ret.set("dir_error_volume", backupfolder.substr(0, 2));
+			}
+			else
+			{
+				ret.set("dir_error_volume", "<VOLUME>");
+			}
+		}
+#endif
 
 		if (!settings.getSettings()->no_file_backups)
 		{

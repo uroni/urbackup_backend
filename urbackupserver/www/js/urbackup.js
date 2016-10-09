@@ -1243,6 +1243,11 @@ function show_status2(data)
 			{
 				ext_text+="<br>UrBackup is denied access to the network share, probably because it does not have the correct credentials to access the server. To setup UrBackup server to backup to a network share please see the FAQ: <a href=\"https://www.urbackup.org/faq.html#use_shares\">https://www.urbackup.org/faq.html#use_shares</a>";
 			}
+			else if(data.dir_error_hint=="dos_names_created")
+			{
+				ext_text+="<br>MS-DOS 8.3 compatibility names are created on the backup storage. This can lead to problems. You can disable 8.3 name generation by runnning <br>"
+					+ "<code><pre>fsutil 8dot3name set "+data.dir_error_volume+" 1</pre></code><br>as administrator. UrBackup will stop showing this error after you run this command.";
+			}
 			else
 			{
 				ext_text+="<br>"+data.dir_error_hint;
@@ -1250,7 +1255,8 @@ function show_status2(data)
 		}
 		
 		if( data.dir_error_ext
-			&& data.dir_error_ext=="err_cannot_create_symbolic_links")
+			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
+				|| data.dir_error_ext=="dos_names_created") )
 		{
 			generic_text=false;
 		}
