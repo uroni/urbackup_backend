@@ -72,6 +72,7 @@ void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
 	wakeup_cond=Server->createCondition();
+	last_lan_connection = Server->getTimeMS();
 	onetime_token_mutex=Server->createMutex();
 }
 
