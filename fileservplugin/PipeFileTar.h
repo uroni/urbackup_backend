@@ -3,7 +3,9 @@
 #include "../Interface/Mutex.h"
 #include "PipeFile.h"
 #include <memory>
+#include <set>
 #include <sys/stat.h>
+#include "../stringtools.h"
 
 #if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
 #define stat64 stat
@@ -49,9 +51,38 @@ public:
 			++refcount;
 		}
 
+		void add_path(const std::string& path)
+		{
+			IScopedLock lock(mutex.get());
+			std::set<std::string>::iterator it = paths.lower_bound(path);
+			if (it == paths.end())
+			{
+				paths.insert(path);
+				return;
+			}
+
+			if ((*it) != path)
+			{
+				if (next(path, 0, *it))
+				{
+					paths.erase(it);
+				}
+				paths.insert(path);
+			}
+		}
+
+		bool has_path(const std::string& path)
+		{
+			IScopedLock lock(mutex.get());
+			std::set<std::string>::iterator it = paths.lower_bound(path);
+			return it!=paths.end() && (*it == path
+							|| next(*it, 0, path) );
+		}
+
 		size_t refcount;
 		IPipeFile* pipe_file;
 		std::auto_ptr<IMutex> mutex;
+		std::set<std::string> paths;
 	};
 
 	PipeFileTar(const std::string& pCmd, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity);

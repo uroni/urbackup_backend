@@ -1434,6 +1434,13 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
+				if ( curr_path == os_file_sep() + "urbackup_backup_scripts"
+					&& !data.isdir
+					&& os_directory_exists(os_file_prefix(metadata_home_path + curr_path + os_file_sep() + osspecific_name)) )
+				{
+					data.isdir = true;
+				}
+
 				if(data.isdir)
 				{
 					if(data.name=="..")
@@ -1624,6 +1631,13 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 				if(!data.isdir || data.name!="..")
 				{
 					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path, false, logid, filepath_corrections);
+				}
+
+				if (curr_path == os_file_sep() + "urbackup_backup_scripts"
+					&& !data.isdir
+					&& os_directory_exists(os_file_prefix(metadata_home_path + curr_path + os_file_sep() + osspecific_name)))
+				{
+					data.isdir = true;
 				}
 
 				if(data.isdir)

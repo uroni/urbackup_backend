@@ -115,6 +115,8 @@ public:
     int SendInt(const char *buf, size_t bsize, bool flush=false);
 	bool FlushInt();
 	bool getNextChunk(SChunk *chunk, bool has_error);
+
+	static std::string getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id, bool is_dir);
 private:
 
 	bool sendFullFile(IFile* file, _i64 start_offset, bool with_hashes);
@@ -134,8 +136,6 @@ private:
 	void queueChunk(SChunk chunk);
 	bool InformMetadataStreamEnd( CRData * data );
 	bool FinishScript( CRData * data );
-
-	std::string getDummyMetadata(std::string output_fn, int64 folder_items, int64 metadata_id, bool is_dir);
 
 	struct SExtent
 	{

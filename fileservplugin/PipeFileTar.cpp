@@ -1,3 +1,4 @@
+#include "CClientThread.h"
 #include "PipeFileTar.h"
 #include <algorithm>
 #include "../common/data.h"
@@ -582,6 +583,37 @@ std::string PipeFileTar::getStdErr()
 				fn = fn.substr(2);
 			}
 
+			size_t slash_pos=0;
+			while ( (slash_pos=fn.find('/', slash_pos+1))!=std::string::npos)
+			{
+				std::string csubdir = fn.substr(0, slash_pos);
+				if (!pipe_file->has_path(csubdir))
+				{
+					std::string public_fn = "urbackup_backup_scripts/" + output_fn + (csubdir.empty() ? "" : ("/" + csubdir));
+
+					CWData data;
+					data.addString(public_fn);
+					data.addChar(1);
+					data.addChar(0);
+					data.addChar(0);
+					data.addString(std::string());
+					data.addVarInt(0);
+					data.addUInt(static_cast<unsigned int>(fn_random));
+
+					CWData header;
+					header.addChar(2);
+					header.addUInt(data.getDataSize());
+
+					stderr_ret.append(header.getDataPtr(), header.getDataSize());
+					stderr_ret.append(data.getDataPtr(), data.getDataSize());
+
+					PipeSessions::transmitFileMetadata(public_fn, CClientThread::getDummyMetadata(public_fn, 0, 0, true), server_token, identity);
+
+					pipe_file->add_path(csubdir);
+				}
+			}
+
+
 			std::string public_fn = "urbackup_backup_scripts/" + output_fn + (fn.empty() ? "" : ("/" + fn));
 
 			if (is_dir
@@ -627,6 +659,11 @@ std::string PipeFileTar::getStdErr()
 				else
 				{
 					PipeSessions::transmitFileMetadata(public_fn, buildCurrMetadata(), server_token, identity);
+				}
+
+				if (is_dir)
+				{
+					pipe_file->add_path(fn);
 				}
 			}
 			else
