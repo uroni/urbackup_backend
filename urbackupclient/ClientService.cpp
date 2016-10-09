@@ -1520,6 +1520,13 @@ void ClientConnector::updateSettings(const std::string &pData)
 		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+server_token+".cfg";
 		group_offset = atoi(str_group_offset.c_str());
 
+		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+		if (!res_old_client.empty()
+			&& res_old_client[0]["virtual_client"]!=clientsubname)
+		{
+			db->Write("DELETE FROM backupdirs WHERE tgroup=" + convert(group_offset));
+			db->Write("DELETE FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
+		}
 		IQuery* q = db->Prepare("INSERT OR REPLACE INTO virtual_client_group_offsets (virtual_client, group_offset) VALUES (?,?)", false);
 		q->Bind(clientsubname);
 		q->Bind(group_offset);
