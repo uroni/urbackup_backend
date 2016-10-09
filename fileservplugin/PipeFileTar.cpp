@@ -371,7 +371,13 @@ std::string PipeFileTar::buildCurrMetadata()
 
 bool PipeFileTar::readHeader(bool* has_error)
 {
-	std::string header = pipe_file->pipe_file->Read(file_offset+ roundUp(tar_file.size, 512), 512);
+	int64 header_pos = file_offset + roundUp(tar_file.size, 512);
+	int64 csize = pipe_file->pipe_file->Size();
+	if ( csize < header_pos)
+	{
+		pipe_file->pipe_file->Read(csize, header_pos - csize);
+	}
+	std::string header = pipe_file->pipe_file->Read(header_pos, 512);
 
 	if (header.size() != 512)
 	{
