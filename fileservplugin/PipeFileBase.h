@@ -17,6 +17,7 @@ public:
 	virtual void addUser() = 0;
 	virtual void removeUser() = 0;
 	virtual bool hasUser() = 0;
+	virtual int64 getPos() = 0;
 };
 
 class PipeFileBase : public IPipeFile, public IThread
@@ -66,6 +67,8 @@ public:
 	virtual void removeUser();
 
 	virtual bool hasUser();
+
+	virtual int64 getPos();
 
 protected:
 

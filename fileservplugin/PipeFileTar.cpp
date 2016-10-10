@@ -372,10 +372,10 @@ std::string PipeFileTar::buildCurrMetadata()
 bool PipeFileTar::readHeader(bool* has_error)
 {
 	int64 header_pos = file_offset + roundUp(tar_file.size, 512);
-	int64 csize = pipe_file->pipe_file->Size();
-	if ( csize < header_pos)
+	int64 cpos = pipe_file->pipe_file->getPos();
+	if ( cpos < header_pos)
 	{
-		pipe_file->pipe_file->Read(csize, header_pos - csize);
+		pipe_file->pipe_file->Read(cpos, header_pos - cpos);
 	}
 	std::string header = pipe_file->pipe_file->Read(header_pos, 512);
 
@@ -735,4 +735,10 @@ void PipeFileTar::removeUser()
 bool PipeFileTar::hasUser()
 {
 	return pipe_file->pipe_file->hasUser();
+}
+
+int64 PipeFileTar::getPos()
+{
+	IScopedLock lock(mutex.get());
+	return tar_file.pos;
 }

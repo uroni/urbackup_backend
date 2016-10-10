@@ -566,3 +566,9 @@ bool PipeFileBase::hasUser()
 	IScopedLock lock(buffer_mutex.get());
 	return n_users > 0;
 }
+
+int64 PipeFileBase::getPos()
+{
+	IScopedLock lock(buffer_mutex.get());
+	return curr_pos;
+}

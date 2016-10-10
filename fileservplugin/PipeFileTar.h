@@ -120,6 +120,7 @@ public:
 	virtual void addUser();
 	virtual void removeUser();
 	virtual bool hasUser();
+	virtual int64 getPos();
 
 private:
 
