@@ -123,8 +123,12 @@ void PipeFileBase::init()
 
 std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 {
-	IScopedLock lock(buffer_mutex.get());
-	return Read(curr_pos, tr, has_error);
+	int64 rpos;
+	{
+		IScopedLock lock(buffer_mutex.get());
+		rpos = curr_pos;
+	}	
+	return Read(rpos, tr, has_error);
 }
 
 std::string PipeFileBase::Read(int64 spos, _u32 tr, bool * has_error)

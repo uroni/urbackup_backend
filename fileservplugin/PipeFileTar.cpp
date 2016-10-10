@@ -683,6 +683,7 @@ std::string PipeFileTar::getStdErr()
 		}
 		else
 		{
+			pipe_file->pipe_file->Read(512);
 			break;
 		}
 	}
