@@ -1,0 +1,208 @@
+#!/bin/sh
+#
+# Copyright (c) 2014-2016 Martin Raiber
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+
+. SYSCONFDIR/mariadbxtrabackup.conf
+
+if [ "x$MARIADB_XTRABACKUP_ENABLED" = x0 ]
+then
+	echo "MARIADB_XTRABACKUP_ENABLED not enabled in SYSCONFDIR/mariadbxtrabackup.conf. Please enable."
+	exit 1
+fi
+
+if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
+then
+	echo "Mariadb incremental temp dir is empty"
+	exit 1
+fi
+
+show_incr() {
+	if [ x$LAST_BT != x ]
+	then
+		for ibt in $BACKUPTIMES_INCR
+		do
+			if [ $ibt -gt $LAST_BT ] && ( [ x$bt = x ] || [ $ibt -lt $bt ] )
+			then
+				FBT=`date -d @$ibt`
+				FNUM=`printf %03d $NUM`
+				echo "$FNUM) Incr backup at $FBT"
+				NUM=$((NUM+1))
+			fi
+		done
+	fi
+}
+
+if ! command -v jq > /dev/null 2>&1
+then
+	echo "Error: jq not installed. Please install jq"
+	exit 1
+fi
+
+echo "Retrieving backups..."
+
+BACKUPS=`urbackupclientctl browse`
+BACKUPS_INCR=`urbackupclientctl browse -v incr`
+
+BACKUPTIMES=`echo "$BACKUPS" | jq ".[].backuptime" | sort`
+BACKUPTIMES_INCR=`echo "$BACKUPS_INCR" | jq ".[].backuptime" | sort`
+
+LAST_BT=""
+NUM=0
+for bt in $BACKUPTIMES
+do
+	show_incr
+	LAST_BT=$bt
+	FBT=`date -d @$bt`
+	FNUM=`printf %03d $NUM`
+	echo "$FNUM) Full backup at $FBT"
+	NUM=$((NUM+1))
+done
+
+bt=""
+show_incr
+
+RESTORE_FULL_BACKUP=""
+RESTORE_INCR_BACKUP=""
+
+restore_incr() {
+	if [ x$LAST_BT != x ]
+	then
+		for ibt in $BACKUPTIMES_INCR
+                do
+                        if [ $ibt -gt $LAST_BT ] && ( [ x$bt = x ] || [ $ibt -lt $bt ] )
+                        then
+				if [ x$NUM = x$rnum ]
+				then
+					RESTORE_INCR_BACKUP=`echo "$BACKUPS_INCR" | jq ".[] | select(.backuptime == $ibt) | .id"`
+					RESTORE_FULL_BACKUP=`echo "$BACKUPS" | jq ".[] | select(.backuptime == $LAST_BT) | .id"`
+					break
+				fi
+                                NUM=$((NUM+1))
+                        fi
+                done
+        fi
+}
+
+while true
+do
+	echo -n "Please select the backup to restore: "
+
+	NUM=0
+	read rnum
+
+	rnum=$((rnum + 1 - 1))
+
+	for bt in $BACKUPTIMES
+	do
+        	restore_incr
+	        LAST_BT=$bt
+		if [ x$NUM = x$rnum ]
+		then
+			RESTORE_FULL_BACKUP=`echo "$BACKUPS" | jq ".[] | select(.backuptime == $bt) | .id"`
+			break
+		fi
+	        NUM=$((NUM+1))
+	done
+
+	if [ x$RESTORE_FULL_BACKUP = x ]
+	then
+		bt=""
+		restore_incr
+	fi
+
+	if [ x$RESTORE_FULL_BACKUP != x ]
+	then
+		break
+	fi
+done
+
+echo "Stoping MariaDB/MySQL..."
+if command -v systemctl >/dev/null 2>&1
+then
+	systemctl stop mysql.service || true
+	systemctl stop mariadb.service || true
+else
+	service mariadb stop || true
+	service mysql stop || true
+fi
+
+REBUILD_INDEXES=""
+if [ "x$MARIADB_BACKUP_INDEXES" = x0 ]
+then
+	REBUILD_INDEXES="--rebuild_indexes"
+fi
+
+
+echo "Restoring full database backup..."
+urbackupclientctl restore-start -b $RESTORE_FULL_BACKUP -d urbackup_backup_scripts/mariadbxtrabackup
+
+if [ x$RESTORE_INCR_BACKUP != x ]
+then
+	echo "Preparing full backup..."
+	xtrabackup --prepare --apply-log-only --target-dir="$MARIADB_DATADIR"
+
+	echo "Restoring incremental database backups..."
+	INCR_BACKUP=`urbackupclientctl browse -v incr -b $RESTORE_INCR_BACKUP -d mariadbbackup | jq -r ".[].name | select(startswith(\"incr_\"))" | sort`
+
+	MAXNUM=0
+	for incr in $INCR_BACKUP
+	do
+		MAXNUM=$((MAXNUM+1))
+	done
+
+	NUM=0
+	for incr in $INCR_BACKUP
+	do
+		echo "Restoring incremental backup $incr..."
+		mkdir -p "$MARIADB_TEMP_INCRDIR/$incr"
+		urbackupclientctl restore-start -v incr -b $RESTORE_INCR_BACKUP -d mariadbbackup/$incr
+		NUM=$((NUM+1))
+		EXTRA_PARM="--apply-log-only"
+		if [ $NUM = $MAXNUM ]
+		then
+			EXTRA_PARM=$REBUILD_INDEXES
+		fi
+		echo "Merging incremental backup $incr..."
+		xtrabackup --prepare $EXTRA_PARM --target-dir="$MARIADB_DATADIR" --incremental-dir="$MARIADB_TEMP_INCRDIR/$incr"
+		rm -R "$MARIADB_TEMP_INCRDIR/$incr"
+	done
+else
+	echo "Preparing full backup..."
+	xtrabackup --prepare --target-dir="$MARIADB_DATADIR" $REBUILD_INDEXES
+fi
+
+chown -R mysql:mysql "$MARIADB_DATADIR"
+find "$MARIADB_DATADIR" -type d -exec chmod 770 "{}" \;
+
+echo "Starting MariaDB/MySQL..."
+if command -v systemctl >/dev/null 2>&1
+then
+	( systemctl start mysql.service && echo "Successfully started MySQL." ) || true
+	( systemctl start mariadb.service && echo "Successfully started MariaDB." ) || true
+else
+	( service mariadb start && echo "Successfully started MariaDB." ) || true
+	( service mysql start && echo "Successfully started MySQL." ) || true
+fi
+
+echo "Backup restored."

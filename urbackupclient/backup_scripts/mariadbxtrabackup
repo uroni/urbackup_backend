@@ -39,7 +39,13 @@ fi
 [ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
 mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
 
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD"
+COMPACT=""
+if [ "x$MARIADB_BACKUP_INDEXES" = x0 ]
+then
+	COMPACT="--compact"
+fi
+
+xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD" $COMPACT
 
 TIME=`date`
 errcho "Backup of MariaDB finished at $TIME."
