@@ -323,6 +323,7 @@ private:
 	void CMD_RESTORE_OK(str_map &params);
 
 	int getCapabilities();
+	bool multipleChannelServers();
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 

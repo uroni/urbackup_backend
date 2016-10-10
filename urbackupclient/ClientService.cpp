@@ -2844,6 +2844,24 @@ int ClientConnector::getCapabilities()
 	return capa;
 }
 
+bool ClientConnector::multipleChannelServers()
+{
+	if (channel_pipes.size() <= 1)
+	{
+		return false;
+	}
+
+	std::string last_token = channel_pipes[0].token;
+	for (size_t i = 1; i < channel_pipes.size(); ++i)
+	{
+		if (last_token != channel_pipes[i].token)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
 {
 	IScopedLock lock(backup_mutex);

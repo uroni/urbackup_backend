@@ -1659,7 +1659,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 		std::string filebackups;
 		std::string accessparams;
 
-		if(channel_pipes.size()==1)
+		if(!multipleChannelServers())
 		{
 			accessparams+=" with_id_offset=false";
 		}
@@ -1760,7 +1760,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams+="&backupid="+EscapeParamString((it_backupid->second));
 		}
 
-		if(channel_pipes.size()==1)
+		if(!multipleChannelServers())
 		{
 			accessparams+="&with_id_offset=false";
 		}
@@ -1889,7 +1889,7 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	
 	accessparams+="&backupid="+EscapeParamString((it_backupid->second));
 	
-	if(channel_pipes.size()==1)
+	if(!multipleChannelServers())
 	{
 		accessparams+="&with_id_offset=false";
 	}

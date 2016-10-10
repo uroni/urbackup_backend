@@ -828,11 +828,15 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	int backupid=0;
 	if(has_backupid)
 	{
-		backupid=watoi(params["backupid"])-local_id_offset;
+		backupid = watoi(params["backupid"]);
 
 		if (backupid == 0)
 		{
 			backupid = getLastBackupid(db);
+		}
+		else
+		{
+			backupid -= local_id_offset;
 		}
 	}
 
