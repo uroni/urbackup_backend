@@ -2860,10 +2860,19 @@ bool ClientConnector::multipleChannelServers()
 		return false;
 	}
 
-	std::string last_token = channel_pipes[0].token;
+	std::string min_token = channel_pipes[0].token;
 	for (size_t i = 1; i < channel_pipes.size(); ++i)
 	{
-		if (last_token != channel_pipes[i].token)
+		if (channel_pipes[i].token.size() < min_token.size())
+		{
+			min_token = channel_pipes[i].token;
+		}
+	}
+
+	for (size_t i = 0; i < channel_pipes.size(); ++i)
+	{
+		if (min_token != channel_pipes[i].token
+			&& !next(channel_pipes[i].token, 0, min_token) )
 		{
 			return true;
 		}
