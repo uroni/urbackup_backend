@@ -2048,7 +2048,13 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map
 	{
 		IPipe *c=channel_pipes[i].pipe;
 
-		tcpstack.Send(c, "DOWNLOAD FILES backupid="+params["backupid"]+"&time="+params["time"]);
+		std::string with_id_offset = "";
+		if (!multipleChannelServers())
+		{
+			with_id_offset += "&with_id_offset=false";
+		}
+
+		tcpstack.Send(c, "DOWNLOAD FILES backupid="+params["backupid"]+"&time="+params["time"]+ with_id_offset);
 
 		Server->Log("Start downloading files from channel "+convert((int)i), LL_DEBUG);
 
