@@ -1110,7 +1110,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		token=params["token"];
 
 		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token,
-			&make_fileserv, identity, capa, watoi(params["restore_version"])));
+			&make_fileserv, identity, capa, watoi(params["restore_version"]), params["virtual_client"]));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -1142,24 +1142,24 @@ void ClientConnector::CMD_CHANNEL_PING(const std::string &cmd, const std::string
 	refreshSessionFromChannel(endpoint_name);
 }
 
-void ClientConnector::CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_FILE);
+	tochannelSendStartbackup(RUNNING_INCR_FILE, params["virtual_client"]);
 }
 
-void ClientConnector::CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_FILE);
+	tochannelSendStartbackup(RUNNING_FULL_FILE, params["virtual_client"]);
 }
 
-void ClientConnector::CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_FULL_IMAGE);
+	tochannelSendStartbackup(RUNNING_FULL_IMAGE, params["virtual_client"]);
 }
 
-void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd)
+void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params)
 {
-	tochannelSendStartbackup(RUNNING_INCR_IMAGE);
+	tochannelSendStartbackup(RUNNING_INCR_IMAGE, params["virtual_client"]);
 }
 
 void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
@@ -1655,9 +1655,10 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 	else
 	{
 
-		std::string utf8_tokens = (params["tokens"]);
+		std::string utf8_tokens = params["tokens"];
 		std::string filebackups;
 		std::string accessparams;
+		std::string virtual_client = params["virtual_client"];
 
 		if(!multipleChannelServers())
 		{
@@ -1668,13 +1669,18 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (channel_pipes[i].virtual_client != virtual_client)
+			{
+				continue;
+			}
+
 			for(size_t j=0;j<2;++j)
 			{
 				if(channel_pipes[i].last_tokens!=utf8_tokens)
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
+						std::string token_params = getAccessTokensParams(params["tokens"], true, virtual_client);
 
 						if(token_params.empty())
 						{
@@ -1772,18 +1778,24 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams[0]=' ';
 		}
 
-		std::string utf8_tokens = (params["tokens"]);
+		std::string utf8_tokens = params["tokens"];
+		std::string virtual_client = params["virtual_client"];
 		bool has_token_params=false;
 		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
+			if (channel_pipes[i].virtual_client != virtual_client)
+			{
+				continue;
+			}
+
 			for(size_t j=0;j<2;++j)
 			{
 				if(channel_pipes[i].last_tokens!=utf8_tokens)
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
+						std::string token_params = getAccessTokensParams(params["tokens"], true, virtual_client);
 
 						if(token_params.empty())
 						{
@@ -1943,17 +1955,23 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 	accessparams[0]=' ';
 
 	std::string utf8_tokens = params["tokens"];
+	std::string virtual_client = params["virtual_client"];
 	bool has_token_params=false;
 	std::string last_err;
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
+		if (channel_pipes[i].virtual_client != virtual_client)
+		{
+			continue;
+		}
+
 		for(size_t j=0;j<2;++j)
 		{
 			if(channel_pipes[i].last_tokens!=utf8_tokens)
 			{
 				if(!has_token_params)
 				{
-					std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
+					std::string token_params = getAccessTokensParams(params["tokens"], true, virtual_client);
 
 					if(token_params.empty())
 					{

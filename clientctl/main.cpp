@@ -460,6 +460,10 @@ int action_start(std::vector<std::string> args)
 	TCLAP::SwitchArg non_blocking_arg("b", "non-blocking",
 		"Do not show backup progress and block till the backup is finished but return immediately after starting it", cmd);
 
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
 	PwClientCmd pw_client_cmd(cmd, false);
 
 	cmd.parse(args);
@@ -479,14 +483,14 @@ int action_start(std::vector<std::string> args)
 #endif
 		type = full_backup.getValue() ? "FULL" : "INCR";
 
-		rc = Connector::startBackup(full_backup.getValue());
+		rc = Connector::startBackup(virtual_client_arg.getValue(), full_backup.getValue());
 #ifdef _WIN32
 	}
 	else
 	{
 		type = full_backup.getValue() ? "FULLI" : "INCRI";
 
-		rc = Connector::startImage(full_backup.getValue());
+		rc = Connector::startImage(virtual_client_arg.getValue(), full_backup.getValue());
 	}
 #endif
 

@@ -135,10 +135,11 @@ struct SChannel
 {
 	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name,
 		std::string token, bool* make_fileserv, std::string server_identity,
-		int capa, int restore_version)
+		int capa, int restore_version, std::string virtual_client)
 		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
 		  token(token), make_fileserv(make_fileserv), server_identity(server_identity),
-		state(EChannelState_Idle), capa(capa), restore_version(restore_version) {}
+		state(EChannelState_Idle), capa(capa), restore_version(restore_version),
+		virtual_client(virtual_client) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false), make_fileserv(NULL),
 		state(EChannelState_Idle), capa(0), restore_version(0) {}
@@ -151,6 +152,7 @@ struct SChannel
 	std::string last_tokens;
 	std::string server_identity;
 	int restore_version;
+	std::string virtual_client;
 
 	enum EChannelState
 	{
@@ -244,7 +246,7 @@ private:
 	bool writeUpdateFile(IFile *datafile, std::string outfn);
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
-	void tochannelSendStartbackup(RunningAction backup_type);
+	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
 	bool calculateFilehashesOnClient(const std::string& clientsubname);
@@ -286,10 +288,10 @@ private:
 	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, const std::string& identity);
 	void CMD_CHANNEL_PONG(const std::string &cmd, const std::string& endpoint_name);
 	void CMD_CHANNEL_PING(const std::string &cmd, const std::string& endpoint_name);
-	void CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd);
-	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd);
-	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd);
-	void CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd);
+	void CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd, str_map &params);
+	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd, str_map &params);
+	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd, str_map &params);
+	void CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd, str_map &params);
 	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd);
 	void CMD_LOGDATA(const std::string &cmd);
 	void CMD_PAUSE(const std::string &cmd);

@@ -15,7 +15,8 @@ class SessionKeepaliveThread;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, const std::string& identiy, std::string server_token);
+	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, 
+		const std::string& identiy, std::string server_token, const std::string& virtual_client);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -74,6 +75,8 @@ private:
 	SessionKeepaliveThread* keepalive_thread;
 
 	std::string clientname;
+
+	std::string virtual_client;
 
 	std::string last_fileaccesstokens;
 

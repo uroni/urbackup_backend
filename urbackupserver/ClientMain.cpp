@@ -269,7 +269,7 @@ void ClientMain::operator ()(void)
 			clientid = restore_client_id--;
 		}
 
-		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity, curr_server_token);
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity, curr_server_token, clientsubname);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
@@ -417,7 +417,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity, curr_server_token);
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity, curr_server_token, clientsubname);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;

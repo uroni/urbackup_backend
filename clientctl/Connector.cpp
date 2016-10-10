@@ -322,7 +322,7 @@ SStatus Connector::getStatus(void)
 	return ret;
 }
 
-int Connector::startBackup(bool full)
+int Connector::startBackup(const std::string& virtual_client, bool full)
 {
 	std::string s;
 	if(full)
@@ -330,7 +330,7 @@ int Connector::startBackup(bool full)
 	else
 		s="START BACKUP INCR";
 
-	std::string d=getResponse(s,"",false);
+	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client),false);
 
 	if(d=="RUNNING")
 		return 2;
@@ -342,7 +342,7 @@ int Connector::startBackup(bool full)
 		return 1;
 }
 
-int Connector::startImage(bool full)
+int Connector::startImage(const std::string& virtual_client, bool full)
 {
 	std::string s;
 	if(full)
@@ -350,7 +350,7 @@ int Connector::startImage(bool full)
 	else
 		s="START IMAGE INCR";
 
-	std::string d=getResponse(s,"",false);
+	std::string d=getResponse(s, virtual_client.empty() ? "" : "virtual_client=" + EscapeParamString(virtual_client),false);
 
 	if(d=="RUNNING")
 		return 2;
@@ -465,7 +465,7 @@ std::string Connector::getFileBackupsList(const std::string& virtual_client, EAc
 	}
 
 	std::string list = getResponse("GET FILE BACKUPS TOKENS", "tokens="+
-		tokens+(virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client)), false);
+		tokens+(virtual_client.empty() ? "" : "&virtual_client="+EscapeParamString(virtual_client)), false);
 
 	if(!list.empty())
 	{

@@ -146,9 +146,10 @@ void ServerChannelThread::initOffset()
 }
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
-	bool internet_mode, const std::string& identity, std::string server_token) :
+	bool internet_mode, const std::string& identity, std::string server_token, const std::string& virtual_client) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
-		internet_mode(internet_mode), keepalive_thread(NULL), server_token(server_token)
+		internet_mode(internet_mode), keepalive_thread(NULL), server_token(server_token),
+	virtual_client(virtual_client)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -188,7 +189,7 @@ void ServerChannelThread::operator()(void)
 					input=np;
 				}
 				curr_ident = client_main->getIdentity();
-				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1");
+				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&virtual_client="+EscapeParamString(clientname));
 
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;

@@ -1034,19 +1034,19 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 			else if(cmd=="START BACKUP INCR" )
 			{
-				CMD_TOCHANNEL_START_INCR_FILEBACKUP(cmd); continue;			
+				CMD_TOCHANNEL_START_INCR_FILEBACKUP(cmd, params); continue;			
 			}
 			else if(cmd=="START BACKUP FULL" )
 			{
-				CMD_TOCHANNEL_START_FULL_FILEBACKUP(cmd); continue;
+				CMD_TOCHANNEL_START_FULL_FILEBACKUP(cmd, params); continue;
 			}
 			else if(cmd=="START IMAGE FULL" )
 			{
-				CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(cmd); continue;
+				CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(cmd, params); continue;
 			}
 			else if(cmd=="START IMAGE INCR" )
 			{
-				CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(cmd); continue;
+				CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(cmd, params); continue;
 			}			
 			else if(next(cmd, 0, "PAUSE ") )
 			{
@@ -2659,7 +2659,7 @@ int64 ClientConnector::getLastTokenTime(const std::string & tok)
 	}
 }
 
-void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
+void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client)
 {
 	std::string ts;
 	if(backup_type==RUNNING_INCR_FILE)
@@ -2681,11 +2681,20 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 	}
 	else
 	{
-		bool ok=false;
-		if(!channel_pipes.empty())
+		size_t selidx = 0;
+		for (size_t i = 0; i < channel_pipes.size(); ++i)
 		{
-			CTCPStack tmpstack(channel_pipes.front().internet_connection);
-			_u32 rc=(_u32)tmpstack.Send(channel_pipes.front().pipe, ts);
+			if (channel_pipes[i].virtual_client == virtual_client)
+			{
+				selidx = i;
+			}
+		}
+
+		bool ok=false;
+		if(selidx<channel_pipes.size())
+		{
+			CTCPStack tmpstack(channel_pipes[selidx].internet_connection);
+			_u32 rc=(_u32)tmpstack.Send(channel_pipes[selidx].pipe, ts);
 			if(rc!=0)
 				ok=true;
 
@@ -3142,7 +3151,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 
         if(!computername.empty())
         {
-			if (virtual_client.empty())
+			if (!virtual_client.empty())
 			{
 				computername += "[" + virtual_client + "]";
 			}

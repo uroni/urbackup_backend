@@ -152,8 +152,8 @@ public:
 	static std::string getSharedPathsRaw();
 	static bool saveSharedPaths(const std::vector<SBackupDir> &res);
 	static SStatus getStatus(void);
-	static int startBackup(bool full);
-	static int startImage(bool full);
+	static int startBackup(const std::string& virtual_client, bool full);
+	static int startImage(const std::string& virtual_client, bool full);
 	static bool updateSettings(const std::string &sdata, bool& no_perm);
 	static std::vector<SLogEntry> getLogEntries(void);
 	static std::vector<SLogLine> getLogdata(int logid, int loglevel);
