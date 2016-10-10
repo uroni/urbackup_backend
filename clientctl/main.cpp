@@ -578,6 +578,10 @@ int action_browse(std::vector<std::string> args)
 		"Path of folder/file to which to browse",
 		false, "", "path", cmd);
 
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
 	cmd.parse(args);
 
 	if (!pw_client_cmd.set())
@@ -588,7 +592,7 @@ int action_browse(std::vector<std::string> args)
 	if(path_arg.getValue().empty() && !backupid_arg.isSet())
 	{
 		Connector::EAccessError access_error;
-		std::string filebackups = Connector::getFileBackupsList(access_error);
+		std::string filebackups = Connector::getFileBackupsList(virtual_client_arg.getValue(), access_error);
 
 		if(!filebackups.empty())
 		{
@@ -634,7 +638,7 @@ int action_browse(std::vector<std::string> args)
 			pbackupid = &backupid;
 		}
 		Connector::EAccessError access_error;
-		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, access_error);
+		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid, virtual_client_arg.getValue(), access_error);
 
 		if(!filelist.empty())
 		{
@@ -728,6 +732,10 @@ int action_start_restore(std::vector<std::string> args)
 	TCLAP::SwitchArg no_follow_symlinks("s", "no-follow-symlinks",
 		"Do not follow symlinks outside of restored path during restore", cmd);
 
+	TCLAP::ValueArg<std::string> virtual_client_arg("v", "virtual-client",
+		"Virtual client name",
+		false, "", "client name", cmd);
+
 	cmd.parse(args);
 
 	if (map_from_arg.getValue().size() != map_to_arg.getValue().size())
@@ -777,7 +785,7 @@ int action_start_restore(std::vector<std::string> args)
 	}
 
 	Connector::EAccessError access_error;
-	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid,
+	std::string restore_info = Connector::startRestore(path_arg.getValue(), backupid, virtual_client_arg.getValue(),
 		path_map, access_error, !no_remove_arg.getValue(), !consider_other_fs_arg.getValue(),
 		!no_follow_symlinks.getValue());
 

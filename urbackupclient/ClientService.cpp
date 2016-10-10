@@ -3073,7 +3073,7 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 	return false;
 }
 
-std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bool with_clientname )
+std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client)
 {
     if(tokens.empty())
     {
@@ -3137,11 +3137,16 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
         }
         if(computername.empty())
         {
-            computername = (IndexThread::getFileSrv()->getServerName());
+            computername = IndexThread::getFileSrv()->getServerName();
         }
 
         if(!computername.empty())
         {
+			if (virtual_client.empty())
+			{
+				computername += "[" + virtual_client + "]";
+			}
+
             ret+="&clientname="+EscapeParamString(computername);
 		}
 	}

@@ -454,7 +454,7 @@ void Connector::setClient(const std::string &pClient)
 	client=pClient;
 }
 
-std::string Connector::getFileBackupsList(EAccessError& access_error)
+std::string Connector::getFileBackupsList(const std::string& virtual_client, EAccessError& access_error)
 {
 	access_error = EAccessError_Ok;
 
@@ -464,7 +464,8 @@ std::string Connector::getFileBackupsList(EAccessError& access_error)
 		return std::string();
 	}
 
-	std::string list = getResponse("GET FILE BACKUPS TOKENS", "tokens="+tokens, false);
+	std::string list = getResponse("GET FILE BACKUPS TOKENS", "tokens="+
+		tokens+(virtual_client.empty() ? "" : "virtual_client="+EscapeParamString(virtual_client)), false);
 
 	if(!list.empty())
 	{
@@ -514,7 +515,7 @@ bool Connector::readTokens()
 	return !tokens.empty();
 }
 
-std::string Connector::getFileList( const std::string& path, int* backupid, EAccessError& access_error)
+std::string Connector::getFileList( const std::string& path, int* backupid, const std::string& virtual_client, EAccessError& access_error)
 {
 	access_error = EAccessError_Ok;
 
@@ -534,6 +535,11 @@ std::string Connector::getFileList( const std::string& path, int* backupid, EAcc
 	if(backupid!=NULL)
 	{
 		params+="&backupid="+convert(*backupid);
+	}
+
+	if (!virtual_client.empty())
+	{
+		params += "&virtual_client=" + EscapeParamString(virtual_client);
 	}
 
 	std::string list = getResponse("GET FILE LIST TOKENS",
@@ -561,7 +567,7 @@ std::string Connector::getFileList( const std::string& path, int* backupid, EAcc
 	}
 }
 
-std::string Connector::startRestore( const std::string& path, int backupid,
+std::string Connector::startRestore( const std::string& path, int backupid, const std::string& virtual_client,
 	const std::vector<SPathMap>& map_paths, EAccessError& access_error, bool clean_other,
 	bool ignore_other_fs, bool follow_symlinks)
 {
@@ -576,6 +582,11 @@ std::string Connector::startRestore( const std::string& path, int backupid,
 	std::string params = "tokens="+tokens;
 	params+="&path="+EscapeParamString(path);
 	params+="&backupid="+convert(backupid);
+
+	if (!virtual_client.empty())
+	{
+		params += "&virtual_client=" + EscapeParamString(virtual_client);
+	}
 
 	for (size_t i = 0; i < map_paths.size(); ++i)
 	{

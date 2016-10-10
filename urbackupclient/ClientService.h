@@ -253,7 +253,7 @@ private:
 	bool versionNeedsUpdate(const std::string& local_version, const std::string& server_version);
 	int parseVersion(const std::string& version, std::vector<std::string>& features);
 
-	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname);
+	std::string getAccessTokensParams(const std::string& tokens, bool with_clientname, const std::string& virtual_client);
 
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 

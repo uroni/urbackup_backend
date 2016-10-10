@@ -1674,7 +1674,7 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params["tokens"], true);
+						std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
 
 						if(token_params.empty())
 						{
@@ -1783,7 +1783,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 				{
 					if(!has_token_params)
 					{
-						std::string token_params = getAccessTokensParams(params["tokens"], true);
+						std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
 
 						if(token_params.empty())
 						{
@@ -1887,7 +1887,7 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 		return;
 	}
 	
-	accessparams+="&backupid="+EscapeParamString((it_backupid->second));
+	accessparams+="&backupid="+EscapeParamString(it_backupid->second);
 	
 	if(!multipleChannelServers())
 	{
@@ -1953,7 +1953,7 @@ void ClientConnector::CMD_DOWNLOAD_FILES_TOKENS(const std::string &cmd, str_map 
 			{
 				if(!has_token_params)
 				{
-					std::string token_params = getAccessTokensParams(params["tokens"], true);
+					std::string token_params = getAccessTokensParams(params["tokens"], true, params["virtual_client"]);
 
 					if(token_params.empty())
 					{
@@ -2474,7 +2474,7 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 		return;
 	}
 
-	std::string ret = getAccessTokensParams(tokens, true);
+	std::string ret = getAccessTokensParams(tokens, true, params["virtual_client"]);
 
 	if(!ret.empty())
 	{

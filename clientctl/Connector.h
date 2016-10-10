@@ -166,9 +166,9 @@ public:
 		EAccessError_NoTokens
 	};
 
-	static std::string getFileBackupsList(EAccessError& access_error);
-	static std::string getFileList(const std::string& path, int* backupid, EAccessError& access_error);
-	static std::string startRestore( const std::string& path, int backupid,
+	static std::string getFileBackupsList(const std::string& virtual_client, EAccessError& access_error);
+	static std::string getFileList(const std::string& path, int* backupid, const std::string& virtual_client, EAccessError& access_error);
+	static std::string startRestore( const std::string& path, int backupid, const std::string& virtual_client,
 		const std::vector<SPathMap>& map_paths, EAccessError& access_error, bool clean_other,
 		bool ignore_other_fs, bool follow_symlinks);
 
