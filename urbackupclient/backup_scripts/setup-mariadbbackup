@@ -25,23 +25,38 @@ set -e
 
 . SYSCONFDIR/mariadbxtrabackup.conf
 
-alias errcho='>&2 echo'
-
-TIME=`date`
-errcho "Starting binary backup of MariaDB at $TIME..."
-
-if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
+if [ "x$MARIADB_XTRABACKUP_ENABLED" = x0 ]
 then
-	errcho "Mariadb incremental temp dir is empty"
+	echo "MARIADB_XTRABACKUP_ENABLED not enabled in SYSCONFDIR/mariadbxtrabackup.conf. Please enable."
 	exit 1
 fi
 
-[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
-mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
+echo "Temporary folder for incremental backups: $MARIADB_TEMP_INCRDIR (configure in SYSCONFDIR/mariadbxtrabackup.conf)"
 
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD"
+CDIR=`dirname "$0"`
+echo "Installing pre/postfilebackup scripts..."
 
-TIME=`date`
-errcho "Backup of MariaDB finished at $TIME."
+if [ -e SYSCONFDIR/prefilebackup ]
+then
+	echo "ERROR: SYSCONFDIR/prefilebackup already present."
+	exit 1
+fi
 
-exit 0
+if [ -e SYSCONFDIR/postfilebackup ]
+then
+	echo "ERROR: SYSCONFDIR/postfilebackup already present."
+	exit 1
+fi
+
+cp "$CDIR/mariadbprebackup" SYSCONFDIR/prefilebackup
+cp "$CDIR/mariadbpostbackup" SYSCONFDIR/postfilebackup
+
+echo "Configuring virtual client 'incr'..."
+
+urbackupclientctl set-settings -v virtual_clients -k incr
+
+echo "Adding path to backup..."
+
+urbackupclientctl add-backupdir --keep -d $MARIADB_TEMP_INCRDIR -v incr
+
+echo "Configured MariaDB backup successfully."

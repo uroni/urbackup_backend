@@ -23,25 +23,10 @@
 
 set -e
 
-. SYSCONFDIR/mariadbxtrabackup.conf
+exists() { [ -e $1 ]; }
 
-alias errcho='>&2 echo'
-
-TIME=`date`
-errcho "Starting binary backup of MariaDB at $TIME..."
-
-if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
+# Argument three not null means virtual client
+if [ $3 != 0 ] && exists /var/lib/walarchive/staging/*
 then
-	errcho "Mariadb incremental temp dir is empty"
-	exit 1
+    mv /var/lib/walarchive/staging/* /var/lib/walarchive/backup/
 fi
-
-[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
-mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
-
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD"
-
-TIME=`date`
-errcho "Backup of MariaDB finished at $TIME."
-
-exit 0

@@ -24,24 +24,23 @@
 set -e
 
 . SYSCONFDIR/mariadbxtrabackup.conf
-
-alias errcho='>&2 echo'
-
-TIME=`date`
-errcho "Starting binary backup of MariaDB at $TIME..."
+exists() { [[ -e $1 ]]; }
 
 if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
 then
-	errcho "Mariadb incremental temp dir is empty"
+	echo "Mariadb incremental temp dir is empty"
 	exit 1
 fi
 
-[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
-mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
+[ ! -e "$MARIADB_TEMP_INCRDIR/last" ] || rm -R "$MARIADB_TEMP_INCRDIR/last"
+mv $MARIADB_TEMP_INCRDIR/last.new $MARIADB_TEMP_INCRDIR/last
+if exists $MARIADB_TEMP_INCRDIR/incr_*
+then
+	rm -R $MARIADB_TEMP_INCRDIR/incr_*
+fi
 
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD"
-
-TIME=`date`
-errcho "Backup of MariaDB finished at $TIME."
-
-exit 0
+# Argument one null means main client
+if [ $1 = 0 ]
+then
+    urbackupclientctl reset-keep -v incr
+fi

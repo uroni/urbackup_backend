@@ -23,25 +23,43 @@
 
 set -e
 
-. SYSCONFDIR/mariadbxtrabackup.conf
+. SYSCONFDIR/postgresbase.conf
 
-alias errcho='>&2 echo'
-
-TIME=`date`
-errcho "Starting binary backup of MariaDB at $TIME..."
-
-if [ "x$MARIADB_TEMP_INCRDIR" = "x" ]
+if [ "x$POSTGRESQL_BASE_ENABLED" = x0 ]
 then
-	errcho "Mariadb incremental temp dir is empty"
+	echo "POSTGRESQL_BASE_ENABLED not enabled in SYSCONFDIR/postgresbase.conf. Please enable."
 	exit 1
 fi
 
-[ ! -e "$MARIADB_TEMP_INCRDIR/last.new" ] || rm -R "$MARIADB_TEMP_INCRDIR/last.new"
-mkdir -p "$MARIADB_TEMP_INCRDIR/last.new"
+echo "Temporary folder for WAL files: $POSTGRESQL_WAL_DIR (configure in SYSCONFDIR/postgresbase.conf)"
 
-xtrabackup --backup --stream=tar --extra-lsndir="$MARIADB_TEMP_INCRDIR/last.new" --user="$MARIADB_USER" --password="$MARIADB_PASSWORD"
+CDIR=`dirname "$0"`
+echo "Installing pre/postfilebackup scripts..."
 
-TIME=`date`
-errcho "Backup of MariaDB finished at $TIME."
+if [ -e SYSCONFDIR/prefilebackup ]
+then
+	echo "ERROR: SYSCONFDIR/prefilebackup already present."
+	exit 1
+fi
 
-exit 0
+if [ -e SYSCONFDIR/postfilebackup ]
+then
+	echo "ERROR: SYSCONFDIR/postfilebackup already present."
+	exit 1
+fi
+
+cp "$CDIR/postgresqlprebackup" SYSCONFDIR/prefilebackup
+cp "$CDIR/postgresqlpostbackup" SYSCONFDIR/postfilebackup
+
+echo "Configuring virtual client 'wal'..."
+
+urbackupclientctl set-settings -v virtual_clients -k wal
+
+echo "Adding path to backup..."
+
+mkdir -p $POSTGRESQL_WAL_DIR/{incoming,staging,backup}
+chown postgres:postgres $POSTGRESQL_WAL_DIR/{incoming,staging,backup}
+
+urbackupclientctl add-backupdir --keep -d $POSTGRESQL_WAL_DIR/backup -v wal
+
+echo "Configured PostgreSQL backup successfully."
