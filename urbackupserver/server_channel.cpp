@@ -1175,13 +1175,13 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		}
 
 		int local_id_offset;
-		if (params["with_id_offset"] == "false")
+		if (params["with_id_offset"] == "true")
 		{
-			local_id_offset = 0;
+			local_id_offset = img_id_offset;
 		}
 		else
 		{
-			local_id_offset = img_id_offset;
+			local_id_offset = 0;
 		}
 
 		bool has_backupid=params.find("backupid")!=params.end();
