@@ -14,7 +14,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 2.0.x}
+\title{Administration Manual for\\UrBackup Server 2.1.x}
 
 \maketitle
 
@@ -1228,6 +1228,19 @@ urbackupsrv -a /full/path/Image_C_XXXXX.vhdz -a /full/path/Image_SYSVOL_XXXXX.vh
 
 \noindent This tool can also be used to decompress images without decompressing their parents by selecting a single VHD file as input.
 
+\subsection{Migrate non-btrfs backup storage}
+
+UrBackup has a build-in migration function which allows you to migrate the backup storage to different devices with minimal downtime. This only works with plain backup storage, that is, it does not work with the special btrfs mode described in section \ref{subsec_btrfs_setup} or copy-on-write images described in section \ref{subsec_ZFS_setup}. The migration functionality is only suited for migration and not for e.g. mirroring the backups. Compared to using e.g. \textsl{rsync}, the build-in migration has some advantages:
+
+\begin{itemize}
+  \item It can resume the migration at backup level
+  \item It automatically disables all clean-ups to minimize the amount of necessary changes during migration
+  \item UrBackup continues to backup clients which are not currently being migrated and migrates new backups automatically
+  \item UrBackup handles the hard-links correctly
+\end{itemize}
+
+\noindent Create a file named \textsl{``migrate\_storage\_to''} in \textsl{/var/urbackup} or \textsl{C:\textbackslash\allowbreak Program Files\textbackslash\allowbreak UrBackupServer\textbackslash\allowbreak urbackup} with the only content of the file being the path where you want to migrate the backups to. Afterwards restart UrBackup server and the migration should begin. You can see the migration progress on the activities page. After the migration is finished change the backup storage path to the new location in the settings or mount the new backup storage at the old location. Afterwards run ``remove unknown'' described in section \ref{subsec:remove_unknown}.
+
 \section{Storage}
 
 The UrBackup server storage system is designed in a way that it is able to save
@@ -1267,6 +1280,7 @@ Where $x$ is the percent of space to free on the backup storage or the number of
 use ``0\%''.
 
 \subsection{Cleaning the storage folder of files not known by UrBackup}
+\label{subsec:remove_unknown}
 
 Sometimes, e.g., by using a database backup, there are backups in the storage directory which UrBackup does not know about, i.e., there are no entries for those backups in the database. Or there are entries in the database which are not in the storage directory (any more).
 In those cases the command
@@ -1362,17 +1376,17 @@ NTFS is pretty much the only option you have if you run the UrBackup server unde
 
 Btrfs is a next generation Linux file system comparable to ZFS.
 It supports compression and offline block-level deduplication. UrBackup has a special snapshotting backup
-mode which makes incremental backups and deleting file backups much faster with btrfs. With btrfs UrBackup also does a cheap (in terms of CPU und memory requirements) block-level deduplication on incremental file backups. See \ref{subsec_btrfs_setup} for details. UrBackup also has a special btrfs image backup format which allows ``incremental forever'' style image backups.
+mode which makes incremental backups and deleting file backups much faster with btrfs. With btrfs UrBackup also does a cheap (in terms of CPU und memory requirements) block-level deduplication on incremental file backups. See \ref{subsec_btrfs_setup} for details. UrBackup also has a special copy-on-write raw image backup format which allows ``incremental forever'' style image backups.
 
 \subsubsection{ZFS}
 
 ZFS is a file system originating from Solaris.
 It is available as a fuse module for Linux (zfs-fuse) and as a kernel module (ZFSOnLinux).
 There are licensing issues which are preventing ZFS from directly integrating with Linux.
-If you want the most performance and stability an option would be using a BSD (e.g. FreeBSD, FreeNAS).
-ZFS has some pretty neat features like compression, block-level de-duplication, snapshots and build
+If you want the most performance and stability an option would be using FreeBSD (e.g. as FreeNAS).
+ZFS has some neat features like compression, block-level de-duplication, snapshots and build
 in raid support that make it well suited for backup storage.
-How to build a UrBackup server with ZFS is described in detail in section \ref{subsec_ZFS_setup}.
+How to build a UrBackup server with ZFS is described in detail in section \ref{subsec_ZFS_setup}. UrBackup also has a special copy-on-write raw image backup format which allows ``incremental forever'' style image backups which works on ZFS. Section \ref{subsec_ZFS_setup} describes how to set it up.
 
 
 \subsection{Storage setup proposals}
@@ -1383,10 +1397,10 @@ backups via Internet or via tape like manual off-site storage and a storage setu
 using the Linux file system btrfs using the btrfs snapshot mechanism to speed
 up file backup creation and destruction and to save the file backups more efficiently.
 
-\subsubsection{Mirrored storage with ZFS}
+\subsubsection{ZFS}
 \label{subsec_ZFS_setup}
 
-Note: It is assumed that UrBackup runs on a UNIX like system such as Linux or BSD. An example would be Debian/Linux or Debian/kFreeBSD with the kFreeBSD kernel being preferred, because of its better ZFS performance. We will use all ZFS features such as compression, de-duplication and snapshots. It is assumed that the server has two hard drives (sdb,sdc) dedicated to backups and a hot swappable hard drive slot (sdd). It is assumed there is a caching device to speed up de-duplication as well in /dev/sde. Even a fast USB stick can speed up de-duplication because it has better random access performance than normal hard disks. Use SSDs for best performance. 
+Note: It is assumed that UrBackup runs on a UNIX like system such as Linux or BSD that supports ZFS. We will use all ZFS features such as compression, de-duplication and snapshots. It is assumed that the server has two hard drives (sdb,sdc) dedicated to backups and a hot swappable hard drive slot (sdd). It is assumed there is a caching device to speed up de-duplication as well in /dev/sde. Even a fast USB stick can speed up de-duplication because it has better random access performance than normal hard disks. Use SSDs for best performance. 
 
 First setup the server such that the temporary directory (/tmp) is on a sufficiently large performant file system. If you have a raid setup you could set /tmp to be on a striped device. We will now create a backup storage file system in /media/BACKUP.\\
 Create a ZFS-pool 'backup' from the two hard drives. The two are mirrored. Put a hard drive of the same size into the hot swappable hard drive slot. We will mirror it as well:
@@ -1426,6 +1440,35 @@ ssh -l root otherserver zfs rename backup@last backup@now
 \end{verbatim}
 You can also save these full and incremental zfs streams into files on the other server and not directly into a ZFS file system.
 
+\paragraph{Copy-on-write raw image backups with ZFS}
+Since UrBackup 2.1.x ZFS storage also allows the copy-on-write raw image backup format to be used.
+This format has no size limitation and allows for an ``incremental forever'' style image backup.
+UrBackup puts each image backup into a separate dataset and stores the image
+as a single big file. Compression and unused area management are done by ZFS.
+
+\noindent In order to create and remove ZFS snapshots UrBackup installs a setuid
+executable \textsl{urbackup\_ snapshot\_helper}. However, currently ZFSOnLinux calls
+\textsl{mount} in turn which will fail when \textsl{urbackup\_ snapshot\_helper} is run
+as non-priviledged user. So you must run UrBackup server as \textsl{root} user
+(\textsl{urbackupsrv run -u root}). You should create a separate ZFS dataset in which
+the image backups will be stored e.g. \textsl{tank/images}. UrBackup server will read
+this dataset from \textsl{/etc/urbackup/dataset}. Setup by e.g.
+\begin{verbatim}
+mkdir -p /etc/urbackup
+echo "tank/images" > /etc/urbackup/dataset
+\end{verbatim}
+Afterwards test if everything works correctly by running as root:
+\begin{verbatim}
+urbackup_snapshot_helper test
+\end{verbatim}
+
+\noindent You should then be able to enjoy much faster incremental file backups which use less storage space
+and ``incremental forever'' style image backups.
+
+Other caveats: UrBackup uses ``file hole punching'' to remove unused areas from the image file
+after an incremental backup. FreeBSD currently does not support this, so it will not be able
+to remove those unused areas after incremental image backups on FreeBSD.
+
 \subsubsection{Btrfs}
 \label{subsec_btrfs_setup}
 
@@ -1452,7 +1495,7 @@ cost in form of a massive decrease of read and write performance and high CPU an
 memory requirements.\\
 
 With btrfs UrBackup can also use a special raw image file format. This format has
-not size limitation and allows for an ``incremental forever'' style image backup.
+no size limitation and allows for an ``incremental forever'' style image backup.
 UrBackup puts each image backup into a separate subvolume and stores the image
 as a single big file. Compression and unused area management are done by btrfs.
 
