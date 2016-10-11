@@ -461,7 +461,7 @@ std::string getSysVolume(std::string &mpath)
 
 	for(size_t i=0;i<system_vols.size();++i)
 	{
-		DWORD curr_dev_type;
+		DWORD curr_dev_type = -1;
 		DWORD curr_dev_num=getDevNum((PWCHAR)system_vols[i].volname.c_str(), curr_dev_type);
 		if(curr_dev_num==c_drive_num)
 		{
