@@ -72,7 +72,7 @@ DWORD getDevNum(std::wstring VolumeName, DWORD& device_type)
 	HANDLE hVolume=CreateFileW(VolumeName.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		Log("Cannot open volume", LL_DEBUG);
+		Log("Cannot open volume. Errno " + convert((int64)GetLastError()), LL_DEBUG);
 		return -1;
 	}
 
@@ -82,7 +82,7 @@ DWORD getDevNum(std::wstring VolumeName, DWORD& device_type)
 	CloseHandle(hVolume);
 	if(b==0)
 	{
-		Log("Cannot get storage device number", LL_DEBUG);
+		Log("Cannot get storage device number. Errno " + convert((int64)GetLastError()), LL_DEBUG);
 		return -1;
 	}
 
@@ -178,6 +178,7 @@ bool isBootable(const PWCHAR VolumeName)
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
 		Log(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
+		Log("Errno " + convert((int64)GetLastError()), LL_INFO);
 		return false;
 	}
 
@@ -189,6 +190,7 @@ bool isBootable(const PWCHAR VolumeName)
 	if(b==FALSE)
 	{
 		Log(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
+		Log("Errno " + convert((int64)GetLastError()), LL_INFO);
 		return false;
 	}
 
@@ -244,7 +246,7 @@ std::string findGptUuid(int device_num, GUID uuid)
 	HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+ConvertToWchar(convert(device_num))).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hDevice==INVALID_HANDLE_VALUE)
 	{
-		Log("CreateFile of device '"+convert(device_num)+"' failed.", LL_ERROR);
+		Log("CreateFile of device '"+convert(device_num)+"' failed. Errno " + convert((int64)GetLastError()), LL_ERROR);
 		return std::string();
 	}
 
