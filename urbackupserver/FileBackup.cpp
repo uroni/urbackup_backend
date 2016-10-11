@@ -202,7 +202,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	std::string ret;
 	int64 total_starttime_s = Server->getTimeSeconds();
 	int64 starttime=Server->getTimeMS();
-	while(Server->getTimeMS()-starttime<=timeout_time)
+	bool has_total_timeout;
+	while( !(has_total_timeout=Server->getTimeMS()-starttime>timeout_time) )
 	{
 		if (ServerStatus::getProcess(clientname, status_id).stop)
 		{
@@ -214,6 +215,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		{
 			if (async_id.empty())
 			{
+				ServerLogger::Log(logid, "Async id is empty", LL_ERROR);
 				break;
 			}
 
@@ -339,7 +341,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		}
 	}
 
-	if (!ServerStatus::getProcess(clientname, status_id).stop)
+	if (has_total_timeout)
 	{
 		ServerLogger::Log(logid, "Constructing of filelist of \"" + clientname + "\" failed - TIMEOUT(3)", LL_ERROR);
 
