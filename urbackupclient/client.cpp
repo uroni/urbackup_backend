@@ -2463,7 +2463,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		}
 	}
 
-	cleanup_saved_shadowcopies(true);
+	cleanup_saved_shadowcopies(!simultaneous_other);
 
 #ifdef _WIN32
 	WCHAR volume_path[MAX_PATH];
