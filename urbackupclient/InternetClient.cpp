@@ -336,6 +336,7 @@ void InternetClient::doUpdateSettings(void)
 		else
 		{
 			Server->Log("Internet server not configured", LL_INFO);
+			connected = false;
 		}
 	}
 	std::string tmp;
