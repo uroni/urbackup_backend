@@ -36,6 +36,8 @@ Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 	prioritized = os_enable_prioritize(prio_info);
 	session=NULL;
 	update(pTID,pPOST,pPARAMS);
+
+	Server->addHeader(pTID, "X-Frame-Options: DENY");
 }
 
 void Helper::update(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
