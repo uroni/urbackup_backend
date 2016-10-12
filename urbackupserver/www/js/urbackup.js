@@ -2538,6 +2538,7 @@ function show_settings2(data)
 	var ndata="";
 	var group_membership_selectpicker=false;
 	var tabber_set_idx=false;
+	var is_group=false;
 	if(data.sa)
 	{
 		if(data.sa=="general")
@@ -2635,6 +2636,7 @@ function show_settings2(data)
 			
 			data.settings.main_client = true;
 			data.settings.global_settings=true;
+			data.settings.archive_global=true;
 			
 			data.settings.client_plural="s";
 			
@@ -2669,7 +2671,7 @@ function show_settings2(data)
 		}
 		else if(data.sa=="clientsettings")
 		{
-			var is_group = typeof data.settings.groupid === "undefined" ? false : true;
+			is_group = typeof data.settings.groupid === "undefined" ? false : true;
 			
 			if( is_group || (data.settings.allow_overwrite==true
 				&& data.settings.overwrite==true
@@ -2755,6 +2757,7 @@ function show_settings2(data)
 			{
 				data.settings.no_compname_start="<!--";
 				data.settings.no_compname_end="-->";
+				data.settings.archive_global=true;
 			}
 			else
 			{
@@ -3033,7 +3036,8 @@ function show_settings2(data)
 		{
 			var obj=data.archive_settings[i];
 			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
-					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft, data.sa=="general");
+					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft, 
+					data.sa=="general" || is_group);
 		}
 	}
 	

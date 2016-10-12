@@ -521,7 +521,7 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 		++i;
 	}
 
-	if(clientid!=0)
+	if(clientid>0)
 	{		
 		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
 		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
@@ -557,16 +557,25 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
+	q_get->Bind("group_id");
+	db_results res = q_get->Read();
+	q_get->Reset();
+	int group_id = 0;
+	if (!res.empty())
+	{
+		group_id = watoi(res[0]["value"])*-1;
+	}
+
 	q_get->Bind("overwrite");
-	db_results res=q_get->Read();
+	res=q_get->Read();
 	q_get->Reset();
 	if(res.empty() || res[0]["value"]!="true")
-		clientid=0;
+		clientid = group_id;
 
 	q_get->Bind("overwrite_archive_settings");
 	res=q_get->Read();
 	if(res.empty() || res[0]["value"]!="true")
-		clientid=0;
+		clientid = group_id;
 
 	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
@@ -586,7 +595,7 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
 		ca.set("archive_window", res[i]["archive_window"]);
 
-		if(archive_next>0 && clientid!=0)
+		if(archive_next>0 && clientid>0)
 		{
 			_i64 tl=archive_next-(_i64)Server->getTimeSeconds();
 			ca.set("archive_timeleft", tl);
@@ -726,6 +735,11 @@ ACTION_IMPL(settings)
 			q4->Bind(groupid*-1);
 			q4->Write();
 			q4->Reset();
+
+			IQuery* q5 = db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid = ?");
+			q5->Bind(groupid*-1);
+			q5->Write();
+			q5->Reset();
 
 			remove_transaction.end();
 
@@ -885,6 +899,17 @@ ACTION_IMPL(settings)
 				q->Write();
 				q->Reset();
 
+				q = db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid = ?");
+				q->Bind(t_clientid);
+				q->Write();
+				q->Reset();
+
+				q = db->Prepare("INSERT INTO settings_db.automatic_archival (clientid, interval, interval_unit, length, length_unit, backup_types, archive_window) "
+					"SELECT ? AS clientid, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=0");
+				q->Bind(t_clientid);
+				q->Write();
+				q->Reset();
+
 				ServerSettings::updateAll();
 			}
 			else
@@ -922,7 +947,10 @@ ACTION_IMPL(settings)
 					{
 						db->BeginWriteTransaction();
 						updateClientSettings(t_clientid, POST, db);
-						updateArchiveSettings(t_clientid, POST, db);
+						if (POST["no_ok"] != "true")
+						{
+							updateArchiveSettings(t_clientid, POST, db);
+						}
 						db->EndTransaction();
 					}
 					

@@ -30,7 +30,7 @@ private:
 
 	bool isInArchiveWindow(const std::string &window_def);
 
-	void copyArchiveSettings(int clientid);
+	void copyArchiveSettings(int source_id, int clientid);
 
 	IDatabase *db;
 

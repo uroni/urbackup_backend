@@ -72,20 +72,30 @@ void ServerAutomaticArchive::archiveBackups(void)
 	{
 		int clientid=watoi(res_clients[i]["id"]);
 		int r_clientid=clientid;
+		int group_id = 0;
 		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
 		q_get->Bind(clientid);
+		q_get->Bind("group_id");
+		db_results res = q_get->Read();
+		q_get->Reset();
+		if (!res.empty())
+		{
+			group_id = watoi(res[0]["value"])*-1;
+		}
+
+		q_get->Bind(clientid);
 		q_get->Bind("overwrite");
-		db_results res=q_get->Read();
+		res=q_get->Read();
 		q_get->Reset();
 		if(res.empty() || res[0]["value"]!="true")
-			r_clientid=0;
+			r_clientid= group_id;
 
 		q_get->Bind(clientid);
 		q_get->Bind("overwrite_archive_settings");
 		res=q_get->Read();
 		q_get->Reset();
 		if(res.empty() || res[0]["value"]!="true")
-			r_clientid=0;
+			r_clientid= group_id;
 
 		bool archive_settings_copied=false;
 		q_get->Bind(clientid);
@@ -94,9 +104,9 @@ void ServerAutomaticArchive::archiveBackups(void)
 		if(!res.empty() && res[0]["value"]=="true")
 			archive_settings_copied=true;
 
-		if(r_clientid==0 && !archive_settings_copied)
+		if(r_clientid<=0 && !archive_settings_copied)
 		{
-			copyArchiveSettings(clientid);
+			copyArchiveSettings(r_clientid, clientid);
 		}
 
 		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
@@ -201,9 +211,9 @@ std::string ServerAutomaticArchive::getBackupType(int backup_types)
 	return "";
 }
 
-void ServerAutomaticArchive::copyArchiveSettings(int clientid)
+void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 {
-	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=0");
+	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid="+convert(source_id));
 
 
 	std::vector<std::string> next_archivals;
@@ -217,7 +227,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		std::string next_archival=res_all[i]["next_archival"];
 
 		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=?");
-		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid=0 AND interval=? AND length=? AND backup_types=? AND archive_window=? AND id<?");
+		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid="+convert(source_id)+" AND interval=? AND length=? AND backup_types=? AND archive_window=? AND id<?");
 
 		q_num->Bind(interval);
 		q_num->Bind(length);
