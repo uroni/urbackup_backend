@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
 			real_args.push_back("--restore_cmd");
 			real_args.push_back("mbrinfo");
 			real_args.push_back("--mbr_filename");
-			real_args.push_back(restore_mbr_arg.getValue());
+			real_args.push_back(mbr_info_arg.getValue());
 		}
 		else if (restore_image_arg.isSet())
 		{
