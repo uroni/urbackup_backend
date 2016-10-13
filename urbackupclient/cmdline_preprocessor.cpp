@@ -384,6 +384,10 @@ int main(int argc, char* argv[])
 			"MBR file to restore to out_device",
 			false, "", "path");
 
+		TCLAP::ValueArg<std::string> mbr_info_arg("j", "mbr-info",
+			"Show contents of .mbr file",
+			false, "", "path");
+
 		TCLAP::ValueArg<std::string> out_device_arg("o", "out-device",
 			"Device file to restore to",
 			false, "", "path", cmd);
@@ -404,6 +408,7 @@ int main(int argc, char* argv[])
 
 		std::vector<TCLAP::Arg*> xorArgs;
 		xorArgs.push_back(&restore_mbr_arg);
+		xorArgs.push_back(&mbr_info_arg);
 		xorArgs.push_back(&restore_image_arg);
 		xorArgs.push_back(&restore_wizard_arg);
 		xorArgs.push_back(&restore_client_arg);
@@ -466,6 +471,16 @@ int main(int argc, char* argv[])
 			real_args.push_back(restore_mbr_arg.getValue());
 			real_args.push_back("--out_device");
 			real_args.push_back(out_device_arg.getValue());
+		}
+		else if (mbr_info_arg.isSet())
+		{
+			real_args.push_back("--no-server");
+			real_args.push_back("--restore");
+			real_args.push_back("true");
+			real_args.push_back("--restore_cmd");
+			real_args.push_back("mbrinfo");
+			real_args.push_back("--mbr_filename");
+			real_args.push_back(restore_mbr_arg.getValue());
 		}
 		else if (restore_image_arg.isSet())
 		{

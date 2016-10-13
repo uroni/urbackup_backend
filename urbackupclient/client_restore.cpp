@@ -963,8 +963,42 @@ void do_restore(void)
 		}
 		dev->Seek(0);
 		Server->Log("Writing MBR data...", LL_INFO);
-		dev->Write(mbrdata.mbr_data);
-		Server->Log("done.", LL_INFO);
+		if (dev->Write(mbrdata.mbr_data) != mbrdata.mbr_data.size())
+		{
+			Server->Log("Writing MBR data failed. " + os_last_error_str(), LL_ERROR);
+		}
+		else
+		{
+			Server->Log("done.", LL_INFO);
+		}
+
+		if (mbrdata.gpt_style)
+		{
+			Server->Log("Writing GPT header...");
+			if (dev->Write(mbrdata.gpt_header_pos, mbrdata.gpt_header) != mbrdata.gpt_header.size() )
+			{
+				Server->Log("Writing GPT header failed. " + os_last_error_str(), LL_ERROR);
+			}
+
+			Server->Log("Writing GPT table...");
+			if (dev->Write(mbrdata.gpt_table_pos, mbrdata.gpt_table) != mbrdata.gpt_table.size())
+			{
+				Server->Log("Writing GPT table failed. " + os_last_error_str(), LL_ERROR);
+			}
+
+			Server->Log("Writing GPT backup header...");
+			if (dev->Write(mbrdata.backup_gpt_header_pos, mbrdata.backup_gpt_header) != mbrdata.backup_gpt_header.size())
+			{
+				Server->Log("Writing GPT backup header failed. " + os_last_error_str(), LL_ERROR);
+			}
+
+			Server->Log("Writing GPT backup table...");
+			if (dev->Write(mbrdata.backup_gpt_table_pos, mbrdata.backup_gpt_table) != mbrdata.backup_gpt_table.size())
+			{
+				Server->Log("Writing backup GPT table failed. " + os_last_error_str(), LL_ERROR);
+			}
+		}
+
 		Server->destroy(dev);
 
 		delete []buf;

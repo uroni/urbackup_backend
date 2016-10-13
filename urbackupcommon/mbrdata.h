@@ -127,7 +127,14 @@ public:
 		ADD_INFO_STR(volume_name);
 		ADD_INFO_STR(fsn);
 		ret+=std::string("mbr_data (")+convert(mbr_data.size())+" bytes)\n";
-		ADD_INFO_STR(errmsg);
+		if (gpt_style)
+		{
+			ret += std::string("gpt_data (") + convert(gpt_header.size()+ gpt_table.size()) + " bytes)\n";
+		}
+		if (!errmsg.empty())
+		{
+			ADD_INFO_STR(errmsg);
+		}
 	#undef ADD_INFO
 	#undef ADD_INFO_STR
 		return ret;
