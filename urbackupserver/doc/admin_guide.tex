@@ -1060,6 +1060,26 @@ Those views can then be made accessible e.g. via samba file sharing.
 
 Maximum number of simultaneous jobs per client and all its virtual sub-clients. Increase this if you want it to e.g. simultaneously perform image and file backups.
 
+\subsection{Volumes to snapshot in groups during image backups}
+
+Specifies which volumes UrBackup should snapshot together when doing image backups. When snapshotted together
+volumes are consistent with each other. If for example one volume contains the database and the other the database log file, volumes should be snapshotted together to get a valid backup.
+
+Can either be ``all'' to snapshot all volumes simultaneously, a list of volumes separated by comma (e.g. ``C,D'') or a list of lists separated by the pipe symbol (e.g. ``C,D|E,F'').
+
+\subsection{Volumes to snapshot in groups during file backups}
+
+Specifies which volumes UrBackup should snapshot together when doing file backups. Currently only the supported via the Windows client. When snapshotted together
+volumes are consistent with each other. If for example one volume contains the database and the other the database log file, volumes should be snapshotted together to get a valid backup.
+
+Can either be ``all'' to snapshot all volumes simultaneously, a list of volumes separated by comma (e.g. ``C,D'') or a list of lists separated by the pipe symbol (e.g. ``C,D|E,F'').
+
+\subsection{Windows components backup configuration}
+
+Configuration of the Windows component backup via Windows backup API. Currently, this is best configured on the client via GUI (accessible from the tray icon or by running \textsl{UrBackupClient.exe selectWindowsComponents} ) or copy and pasting from a client configured via GUI.
+
+A setting of ``$default=1$'' (the default) will automatically backup Microsoft Exchange, Microsoft SQL Server and Microsoft Hyper-V. A setting of ``$default=0$'' will disable Windows component backup. 
+
 \section{Restoring backups}
 
 UrBackup protects whole machines from disaster by creating image backups and a users or servers files by creating file backups. Because the file backups size can usually be reduced by focusing on the most important data on a machine they can usually be run more often than the image backups. It makes sense to use image and file backups in tandem, backing up the whole machine less regularily than the important files via file backups.
