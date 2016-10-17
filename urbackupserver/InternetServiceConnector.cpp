@@ -452,7 +452,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 							{
 								is_pipe->setBackendPipe(comm_pipe);
 								comm_pipe=is_pipe;
-								capa_debug_str + "encrypted";
+								capa_debug_str += "encrypted";
 							}	
 							if(capa & IPC_COMPRESSED )
 							{
