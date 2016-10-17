@@ -18,6 +18,7 @@
 #include "AESGCMDecryption.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
+#include <assert.h>
 
 #define VLOG(x)
 
@@ -151,8 +152,9 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 				VLOG(Server->Log("Message end. Size: "+convert(decryption_filter.MaxRetrievable()), LL_DEBUG));
 				decryption_filter.MessageEnd();
 			}
-			catch (CryptoPP::Exception&)
+			catch (CryptoPP::Exception& e)
 			{
+				Server->Log(std::string("Exception during decryption (message end): ") + e.what(), LL_DEBUG);
 				return false;
 			}
 			

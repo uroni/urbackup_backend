@@ -447,10 +447,12 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 						if( rd.getUInt(&capa) )
 						{
 							comm_pipe=cs;
+							std::string capa_debug_str;
 							if(capa & IPC_ENCRYPTED )
 							{
 								is_pipe->setBackendPipe(comm_pipe);
 								comm_pipe=is_pipe;
+								capa_debug_str + "encrypted";
 							}	
 							if(capa & IPC_COMPRESSED )
 							{
@@ -469,6 +471,9 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								}
 								
 								comm_pipe=comp_pipe;
+
+								if (!capa_debug_str.empty()) capa_debug_str + ", ";
+								capa_debug_str += "compressed";
 							}
 
 
@@ -484,7 +489,9 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
 
-							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+convert(spare_connections_num)+" spare connections", LL_DEBUG);
+							Server->Log("Authed+capa for client '"+clientname+"' "
+								+( token_auth ? ("(token auth, "+ capa_debug_str+")") : ("(" + capa_debug_str + ")") )
+								+" - "+convert(spare_connections_num)+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
 						}
