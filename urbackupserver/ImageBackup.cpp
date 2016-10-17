@@ -547,7 +547,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	ETransferState transfer_state = ETransferState_First;
 	unsigned char image_flags=0;
 	size_t bitmap_read = 0;
-	
+	int64 last_reconnect = 0;
+	int64 continue_block = 0;
 
 	int num_hash_errors=0;
 
@@ -574,7 +575,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			ServerStatus::setProcessEta(clientname, status_id, -1);
 			if(persistent && nextblock!=0)
 			{
-				int64 continue_block=nextblock;
+				continue_block=nextblock;
 				if(continue_block%vhd_blocksize!=0 )
 				{
 					continue_block=(continue_block/vhd_blocksize)*vhd_blocksize;
@@ -603,7 +604,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 					else
 					{
-						Server->Log("Trying to reconnect in doImage", LL_DEBUG);
+						Server->Log("Trying to reconnect in doImage ("+clientname+")", LL_DEBUG);
 						cc = client_main->getClientCommandConnection(10000);
 						if (cc == NULL)
 						{
@@ -611,7 +612,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
-							Server->Log("Connected. Authenticating...", LL_DEBUG);
+							Server->Log("Connected. Authenticating ("+clientname+")...", LL_DEBUG);
 							if (!client_main->authenticateIfNeeded(false,
 								internet_connection!=client_main->isOnInternetConnection()))
 							{
@@ -624,7 +625,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								identity = client_main->getIdentity();
 								reconnected = true;
 								ServerStatus::setROnline(clientname, true);
-								Server->Log("Reconnected.", LL_DEBUG);
+								Server->Log("Reconnected ("+clientname+").", LL_DEBUG);
 								internet_connection = client_main->isOnInternetConnection();
 								break;
 							}
@@ -637,6 +638,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					ServerLogger::Log(logid, "Timeout while trying to reconnect", LL_ERROR);
 					goto do_image_cleanup;
 				}
+
+				last_reconnect = Server->getTimeMS();
 
 				if(pParentvhd.empty())
 				{
@@ -1410,7 +1413,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								memcpy(&hblock, &buffer[off+sizeof(int64)], sizeof(int64));
 								hblock = little_endian(hblock);
 								memcpy(&dig, &buffer[off+2*sizeof(int64)], sha_size);
-
+								int64 orig_nextblock = nextblock;
 
 								if( (nextblock<hblock || (hblock==blocks && nextblock%vhd_blocksize!=0) ) && hblock>0)
 								{
@@ -1431,7 +1434,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 								if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
-									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock), LL_DEBUG);
+									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock)
+										+" Time since last reconnect=" + (last_reconnect>0 ? PrettyPrintTime(Server->getTimeMS()- last_reconnect) : "never")
+										+" orig_nextblock="+convert(orig_nextblock)+" nextblock="+convert(nextblock)+" last_verified_block="+convert(last_verified_block)+
+										" continue_block="+convert(continue_block), LL_DEBUG);
 									if(num_hash_errors<max_num_hash_errors)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
