@@ -450,7 +450,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 							{
 								is_pipe->setBackendPipe(comm_pipe);
 								comm_pipe=is_pipe;
-								capa_debug_str += "encrypted";
+								capa_debug_str += std::string("encrypted-") + (conn_version==2 ? "v2" : "v1");
 							}	
 							if(capa & IPC_COMPRESSED )
 							{
@@ -470,8 +470,8 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								
 								comm_pipe=comp_pipe;
 
-								if (!capa_debug_str.empty()) capa_debug_str + ", ";
-								capa_debug_str += "compressed";
+								if (!capa_debug_str.empty()) capa_debug_str += ", ";
+								capa_debug_str += std::string("compressed-") + (conn_version == 2 ? "v2" : "v1");
 							}
 
 
@@ -487,8 +487,14 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
 
+							if (token_auth)
+							{
+								if (!capa_debug_str.empty()) capa_debug_str += ", ";
+								capa_debug_str += "token auth";
+							}
+
 							Server->Log("Authed+capa for client '"+clientname+"' "
-								+( token_auth ? ("(token auth, "+ capa_debug_str+")") : ("(" + capa_debug_str + ")") )
+								+"("+ capa_debug_str+")"
 								+" - "+convert(spare_connections_num)+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
