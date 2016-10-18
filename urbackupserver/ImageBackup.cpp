@@ -550,6 +550,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 last_reconnect = 0;
 	int64 continue_block = 0;
 	int64 continue_nextblock = 0;
+	std::string bitmap_info;
+	std::string last_bitmap_info;
 
 	int num_hash_errors=0;
 
@@ -627,7 +629,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								identity = client_main->getIdentity();
 								reconnected = true;
 								ServerStatus::setROnline(clientname, true);
-								Server->Log("Reconnected ("+clientname+").", LL_DEBUG);
+								Server->Log("Reconnected ("+clientname+"). bitmap_info="+bitmap_info+" last_bitmap_info="+last_bitmap_info, LL_DEBUG);
 								internet_connection = client_main->isOnInternetConnection();
 								break;
 							}
@@ -1226,9 +1228,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata,
 								has_parent, vhdfile, hashfile, parenthashfile,
 								blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-								-1, vhdfile, 0);
+								-1, vhdfile, 0, bitmap_info, last_bitmap_info);
 
 							sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
+							bitmap_info += "1";
 
 							vhdfile->writeBuffer(mbr_offset+currblock*blocksize, blockdata, blocksize);
 							blockdata=vhdfile->getBuffer();
@@ -1239,6 +1242,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								sha256_final(&shactx, verify_checksum);
 								hashfile->Write((char*)verify_checksum, sha_size);
 								sha256_init(&shactx);
+								last_bitmap_info = bitmap_info;
+								bitmap_info.clear();
 							}
 
 							if(vhdfile->hasError())
@@ -1285,7 +1290,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							{
 								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-									-1, vhdfile, 0);
+									-1, vhdfile, 0, bitmap_info, last_bitmap_info);
 
 								if(nextblock!=0)
 								{
@@ -1293,6 +1298,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									unsigned char dig[sha_size];
 									sha256_final(&shactx, dig);
 									hashfile->Write((char*)dig, sha_size);
+									last_bitmap_info = bitmap_info;
+									bitmap_info.clear();
 								}
 							}
 
@@ -1423,14 +1430,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									{
 										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent,
 											vhdfile, hashfile, parenthashfile, blocksize, mbr_offset,
-											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile, 1);
-										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
+											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile, 1, bitmap_info, last_bitmap_info);
+										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);
+										bitmap_info += "0";
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
 									{
 										sha256_final(&shactx, verify_checksum);
 										hashfile->Write((char*)verify_checksum, sha_size);
 										sha256_init(&shactx);
+										last_bitmap_info = bitmap_info;
+										bitmap_info.clear();
 									}
 								}
 
@@ -1439,7 +1449,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock)
 										+" Time since last reconnect=" + (last_reconnect>0 ? PrettyPrintTime(Server->getTimeMS()- last_reconnect) : "never")
 										+" orig_nextblock="+convert(orig_nextblock)+" nextblock="+convert(nextblock)+" last_verified_block="+convert(last_verified_block)+
-										" continue_block="+convert(continue_block)+" continue_nextblock="+convert(continue_nextblock), LL_DEBUG);
+										" continue_block="+convert(continue_block)+" continue_nextblock="+convert(continue_nextblock)
+										+" bitmap_info = "+bitmap_info+" last_bitmap_info = "+last_bitmap_info, LL_DEBUG);
 									if(num_hash_errors<max_num_hash_errors)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
@@ -1485,7 +1496,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								vhdblock = little_endian(vhdblock);
 								nextblock = updateNextblock(nextblock, vhdblock+vhd_blocksize, &shactx, zeroblockdata, has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
-									vhdblock, vhdfile, 0);
+									vhdblock, vhdfile, 0, bitmap_info, last_bitmap_info);
 							}
 							else
 							{
@@ -1666,7 +1677,7 @@ unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
 int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn,
 	ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize,
 	int64 mbr_offset, int64 vhd_blocksize, bool& warned_about_parenthashfile_error, int64 empty_vhdblock_start,
-	ServerVHDWriter* vhdfile, int64 trim_add)
+	ServerVHDWriter* vhdfile, int64 trim_add, std::string& bitmap_info, std::string& last_bitmap_info)
 {
 	if(trim_add>0
 		&& vhdfile != NULL
@@ -1697,6 +1708,7 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 
 				sha256_update(shactx, zeroblockdata, blocksize);
 				++nextblock;
+				bitmap_info += "0";
 
 				if(nextblock%vhd_blocksize==0 && nextblock!=0)
 				{
@@ -1704,6 +1716,8 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 					sha256_final(shactx, dig);
 					hashfile->Write((char*)dig, sha_size);
 					sha256_init(shactx);
+					last_bitmap_info = bitmap_info;
+					bitmap_info.clear();
 					break;
 				}
 			}
@@ -1769,12 +1783,15 @@ int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx 
 
 		sha256_update(shactx, zeroblockdata, blocksize);
 		++nextblock;
+		bitmap_info += "0";
 		if(nextblock%vhd_blocksize==0 && nextblock!=0)
 		{
 			unsigned char dig[sha_size];
 			sha256_final(shactx, dig);
 			hashfile->Write((char*)dig, sha_size);
 			sha256_init(shactx);
+			last_bitmap_info = bitmap_info;
+			bitmap_info.clear();
 		}
 	}
 	
