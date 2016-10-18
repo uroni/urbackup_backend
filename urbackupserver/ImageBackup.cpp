@@ -549,6 +549,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	size_t bitmap_read = 0;
 	int64 last_reconnect = 0;
 	int64 continue_block = 0;
+	int64 continue_nextblock = 0;
 
 	int num_hash_errors=0;
 
@@ -575,6 +576,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			ServerStatus::setProcessEta(clientname, status_id, -1);
 			if(persistent && nextblock!=0)
 			{
+				continue_nextblock = nextblock;
 				continue_block=nextblock;
 				if(continue_block%vhd_blocksize!=0 )
 				{
@@ -1437,7 +1439,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+convert(hblock)
 										+" Time since last reconnect=" + (last_reconnect>0 ? PrettyPrintTime(Server->getTimeMS()- last_reconnect) : "never")
 										+" orig_nextblock="+convert(orig_nextblock)+" nextblock="+convert(nextblock)+" last_verified_block="+convert(last_verified_block)+
-										" continue_block="+convert(continue_block), LL_DEBUG);
+										" continue_block="+convert(continue_block)+" continue_nextblock="+convert(continue_nextblock), LL_DEBUG);
 									if(num_hash_errors<max_num_hash_errors)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
