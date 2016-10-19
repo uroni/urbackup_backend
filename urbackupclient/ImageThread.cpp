@@ -253,10 +253,6 @@ bool ImageThread::sendFullImageThread(void)
 				*flags|=ImageFlag_Persistent;
 	#endif
 	#endif
-				if(image_inf->no_shadowcopy)
-				{
-					*flags = *flags & (~ImageFlag_Persistent);
-				}
 				if(image_inf->with_bitmap)
 				{
 					*flags|=ImageFlag_Bitmap;
