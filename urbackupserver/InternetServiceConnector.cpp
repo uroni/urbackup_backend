@@ -119,10 +119,8 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 		unsigned int capa=0;
 		ServerSettings server_settings(Server->getDatabase(pTID, URBACKUPDB_SERVER));
 		SSettings *settings=server_settings.getSettings();
-		if(settings->internet_encrypt)
-			capa|=IPC_ENCRYPTED;
-		if(settings->internet_compress)
-			capa|=IPC_COMPRESSED;
+		capa|=IPC_ENCRYPTED;
+		capa|=IPC_COMPRESSED;
 
 		compression_level=settings->internet_compression_level;
 		data.addUInt(capa);
