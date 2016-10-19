@@ -196,7 +196,7 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 		return false;
 	}
 
-	if(do_connect && state==ISS_AUTHED )
+	if(do_connect && !pinging && state==ISS_AUTHED )
 	{
 		CWData data;
 		{
