@@ -200,6 +200,11 @@ bool CTCPStack::getPacket( std::string& msg )
 	}
 }
 
+void CTCPStack::removeFront(size_t b)
+{
+	buffer.erase(buffer.begin(), buffer.begin() + (std::min)(b, buffer.size()));
+}
+
 void CTCPStack::reset(void)
 {
         buffer.clear();

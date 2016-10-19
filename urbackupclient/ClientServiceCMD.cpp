@@ -1495,7 +1495,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				bufpos += towrite;
 				*dataleft -= towrite;
 
-				tcpstack.reset();
+				tcpstack.removeFront(towrite);
 
 				if(*dataleft == 0)
 				{

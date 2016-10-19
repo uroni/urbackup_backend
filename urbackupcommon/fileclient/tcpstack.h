@@ -25,6 +25,7 @@ public:
 	size_t Send(IPipe* p, CWData data, int timeoutms = c_default_timeout, bool flush=true);
 	size_t Send(IPipe* p, const std::string &msg, int timeoutms = c_default_timeout, bool flush=true);
 
+	void removeFront(size_t b);
     void reset(void);
 
 	char *getBuffer();
