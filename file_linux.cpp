@@ -38,6 +38,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#ifdef __linux__
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE    0x1
 #endif
@@ -51,6 +52,7 @@
 #ifndef SEEK_HOLE
 #define SEEK_HOLE 4
 #endif
+#endif //__linux__
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
@@ -73,7 +75,7 @@
 #endif
 
 File::File()
-	: fd(-1), last_hole_end(0), last_sparse_pos(0)
+	: fd(-1), last_sparse_pos(0)
 {
 
 }
@@ -381,7 +383,7 @@ bool File::Resize(int64 new_size, bool set_sparse)
 
 void File::resetSparseExtentIter()
 {
-	last_hole_end = 0;
+	last_sparse_pos = 0;
 }
 
 namespace
@@ -406,6 +408,7 @@ namespace
 
 IFsFile::SSparseExtent File::nextSparseExtent()
 {
+#ifdef SEEK_HOLE
 	if (last_sparse_pos == -1)
 	{
 		return SSparseExtent();
@@ -444,6 +447,9 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 	}
 
 	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
+#else //SEEK_HOLE
+	return SSparseExtent();
+#endif 
 }
 
 std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)

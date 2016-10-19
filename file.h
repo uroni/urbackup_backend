@@ -81,7 +81,6 @@ private:
 #endif
 #ifdef MODE_LIN
 	int fd;
-	int64 last_hole_end;
 #endif
 	std::string fn;
 
