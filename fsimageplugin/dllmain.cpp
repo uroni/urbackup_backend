@@ -673,8 +673,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			filter += L"*.vhd";
 			filter += '\0';*/
 			filter += '\0';
-			input_files = file_via_dialog("Please select all the images to assemble into one image",
-				filter, true, true, "");
+			std::vector<std::string> new_input_files;
+			do
+			{
+				new_input_files = file_via_dialog("Please select all the images to assemble into one image. Cancel once finished.",
+					filter, true, true, "");
+				input_files.insert(input_files.end(), new_input_files.begin(), new_input_files.end());
+			} while (!new_input_files.empty());
 
 			filter.clear();
 			filter += "Image file (*.vhd)";
