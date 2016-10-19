@@ -601,6 +601,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				{
 					continue_block=(continue_block/vhd_blocksize)*vhd_blocksize;
 				}
+				else if (with_checksum 
+					&& continue_block != (last_verified_block+ vhd_blocksize)
+					&& continue_block != last_verified_block)
+				{
+					//We haven't received a checksum for this block yet. Start one block back.
+					continue_block = ((continue_block / vhd_blocksize)-1)*vhd_blocksize;
+				}
+
 				bool reconnected=false;
 				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
@@ -1286,6 +1294,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								Server->destroy(cc);
 								cc = NULL;
 								nextblock = last_verified_block;
+								hashfile->Seek((nextblock / vhd_blocksize)*sha_size);
 								++num_hash_errors;
 								break;
 							}
@@ -1508,6 +1517,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 										Server->destroy(cc);
 										cc=NULL;
 										nextblock=last_verified_block;
+										hashfile->Seek((nextblock / vhd_blocksize)*sha_size);
 										++num_hash_errors;
 										break;
 									}
@@ -1564,6 +1574,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								Server->destroy(cc);
 								cc = NULL;
 								nextblock = last_verified_block;
+								hashfile->Seek((nextblock / vhd_blocksize)*sha_size);
 								++num_hash_errors;
 								break;
 							}
@@ -1609,7 +1620,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						off += available;
 					}
 
-					if( off>=r )
+					if( off>=r
+						&& blockleft>0
+						&& currblock!=-1)
 					{
 						off=0;
 						break;
