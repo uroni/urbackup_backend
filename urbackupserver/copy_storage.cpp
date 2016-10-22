@@ -114,7 +114,7 @@ namespace
 			return false;
 		}
 
-		rc = mdb_env_set_mapsize(env, 64ULL*1024*1024*1024); //64GB
+		rc = mdb_env_set_mapsize(env, 1ULL*1024*1024*1024*1024); //1TB
 
 		if (rc)
 		{
