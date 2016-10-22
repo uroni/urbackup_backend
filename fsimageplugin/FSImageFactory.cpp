@@ -84,7 +84,13 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadahea
 	_u32 rc=dev->Read(buffer, 1024);
 	if(rc!=1024)
 	{
-		Server->Log("Error reading data from device ("+pDev+")", LL_ERROR);
+		int last_error;
+#ifdef _WIN32
+		last_error = GetLastError();
+#else
+		last_error = errno;
+#endif
+		Server->Log("Error reading data from device ("+pDev+"). Errorcode: " + convert(last_error), LL_ERROR);
 		return NULL;
 	}
 
