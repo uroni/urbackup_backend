@@ -889,7 +889,10 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 	std::string errmsg;
 	if (!check_writer_status(backupcom, errmsg, LL_ERROR, NULL))
 	{
-		ok = false;
+		if (dir->ref->with_writers)
+		{
+			ok = false;
+		}
 	}
 
 	if (dir->ref->with_writers)
