@@ -243,7 +243,7 @@ private:
 	bool updateClientSetting(const std::string &key, const std::string &value);
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
-	std::string normalizeVolume(const std::string& volume);
+	std::string normalizeVolumeUpper(std::string volume);
 	bool isImageGroupQueued(const std::string& letter, bool full);
 	bool isRunningFileBackup(int group);	
 	void checkClientVersion(void);

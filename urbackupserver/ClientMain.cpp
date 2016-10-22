@@ -511,19 +511,14 @@ void ClientMain::operator ()(void)
 										vols_list += ", " + dependencies[k].volume;
 									}
 
-									std::string letter = normalizeVolume(dependencies[j].volume);
-
-									if (letter.size() == 1)
-									{
-										letter += ":";
-									}
+									std::string letter = normalizeVolumeUpper(dependencies[j].volume);
 
 									SRunningBackup backup;
 									ImageBackup* idep = new ImageBackup(this, clientid, clientname, clientsubname, LogAction_LogIfNotDisabled,
 										ibackup->isIncrementalBackup(), letter, curr_server_token, letter, false,
 										dependencies[j].snapshot_id, vols_list, ibackup->getBackupStarttime(), ibackup->isScheduled());
 									backup.backup = idep;
-									backup.letter = normalizeVolume(dependencies[j].volume);
+									backup.letter = letter;
 
 									new_running_image_group[idep] = false;
 
@@ -783,7 +778,7 @@ void ClientMain::operator ()(void)
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
-					std::string letter=vols[i]+":";
+					std::string letter=normalizeVolumeUpper(vols[i]);
 					if( ( (isUpdateFullImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false)) || do_full_image_now)
 						&& !isImageGroupQueued(letter, true) )
 					{
@@ -791,7 +786,7 @@ void ClientMain::operator ()(void)
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname,
 							do_full_image_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							false, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_full_image_now);
-						backup.letter=normalizeVolume(letter);
+						backup.letter=letter;
 
 						backup_queue.push_back(backup);
 					}
@@ -807,14 +802,14 @@ void ClientMain::operator ()(void)
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
-					std::string letter=vols[i]+":";
+					std::string letter= normalizeVolumeUpper(vols[i]);
 					if( ((isUpdateIncrImage(letter) && !isRunningImageBackup(letter) && isBackupsRunningOkay(false) ) || do_incr_image_now)
 						&& !isImageGroupQueued(letter, false) )
 					{
 						SRunningBackup backup;
 						backup.backup = new ImageBackup(this, clientid, clientname, clientsubname, do_incr_image_now ?LogAction_AlwaysLog:LogAction_LogIfNotDisabled,
 							true, letter, curr_server_token, letter, true, 0, std::string(), 0, !do_incr_image_now);
-						backup.letter= normalizeVolume(letter);
+						backup.letter=letter;
 
 						backup_queue.push_back(backup);
 					}
@@ -1158,7 +1153,7 @@ bool ClientMain::isUpdateFullImage(const std::string &letter)
 		update_freq_incr=0;
 
 	return !backup_dao->hasRecentFullOrIncrImageBackup(convert(-1*update_freq_full)+" seconds",
-		clientid, convert(-1*update_freq_incr)+" seconds", curr_image_version, letter).exists;
+		clientid, convert(-1*update_freq_incr)+" seconds", curr_image_version, normalizeVolumeUpper(letter)).exists;
 }
 
 bool ClientMain::isUpdateFullImage(void)
@@ -1194,7 +1189,7 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 		return false;
 
 	return !backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+" seconds",
-		clientid, curr_image_version, letter).exists;
+		clientid, curr_image_version, normalizeVolumeUpper(letter)).exists;
 }
 
 std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
@@ -2767,7 +2762,7 @@ bool ClientMain::isRunningImageBackup(const std::string& letter)
 	for(size_t i=0;i<backup_queue.size();++i)
 	{
 		if(!backup_queue[i].backup->isFileBackup()
-			&& backup_queue[i].letter==normalizeVolume(letter) )
+			&& backup_queue[i].letter== normalizeVolumeUpper(letter) )
 		{
 			return true;
 		}
@@ -2776,24 +2771,27 @@ bool ClientMain::isRunningImageBackup(const std::string& letter)
 	return false;
 }
 
-std::string ClientMain::normalizeVolume(const std::string & volume)
+std::string ClientMain::normalizeVolumeUpper(std::string volume)
 {
 	if (volume.size() == 1)
 	{
-		return strlower(volume);
+		strupper(&volume);
+		return volume + ":";
 	}
 
 	if (volume.size() == 2
 		&& volume[1] == ':')
 	{
-		return strlower(volume.substr(0, 1));
+		strupper(&volume);
+		return volume;
 	}
 
 	if (volume.size() == 3
 		&& volume[1] == ':'
 		&& (volume[2] == '\\' || volume[2] == '/'))
 	{
-		return strlower(volume.substr(0, 1));
+		strupper(&volume);
+		return volume.substr(0, 2);
 	}
 
 	return volume;
@@ -2807,7 +2805,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 
 	image_snapshot_groups = strlower(image_snapshot_groups);
 
-	std::string vol = normalizeVolume(letter);
+	std::string vol = normalizeVolumeUpper(letter);
 
 	for (size_t i = 0; i < groups.size(); ++i)
 	{
@@ -2816,7 +2814,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 
 		for (size_t j = 0; j < vols.size(); ++j)
 		{
-			vols[j] = normalizeVolume(vols[j]);
+			vols[j] = normalizeVolumeUpper(vols[j]);
 		}
 
 		if (image_snapshot_groups=="all"
@@ -2831,7 +2829,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 				}
 
 				if (image_snapshot_groups == "all"
-					|| std::find(vols.begin(), vols.end(), normalizeVolume(backup_queue[k].letter))
+					|| std::find(vols.begin(), vols.end(), normalizeVolumeUpper(backup_queue[k].letter))
 						!= vols.end())
 				{
 					return true;
