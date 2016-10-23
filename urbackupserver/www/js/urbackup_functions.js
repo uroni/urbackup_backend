@@ -758,6 +758,10 @@ function validate_text_int_or_empty(a)
 
 function validate_text_regex(a)
 {
+	if(typeof a == "object")
+	{
+		a = [a];
+	}
 	for(var i=0;i<a.length;++i)
 	{
 		if(!a[i].regexp.test(I(a[i].id).value))
