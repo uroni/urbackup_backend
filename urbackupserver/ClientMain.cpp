@@ -1192,7 +1192,8 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 		clientid, curr_image_version, normalizeVolumeUpper(letter)).exists;
 }
 
-std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
+std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout,
+	size_t retry, bool logerr, int max_loglevel, unsigned int timeout_after_first)
 {
 	std::string res;
 	do
@@ -1204,6 +1205,10 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 		{
 			if(retry>0)
 			{
+				if (timeout_after_first > 0)
+				{
+					timeout = timeout_after_first;
+				}
 				--retry;
 
 				int64 passed_time=Server->getTimeMS()-starttime;

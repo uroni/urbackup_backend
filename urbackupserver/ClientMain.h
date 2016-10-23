@@ -138,7 +138,7 @@ public:
 	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL, SConnection* conn=NULL);
 	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
 	std::string sendClientMessage(const std::string &msg, const std::string &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
-	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
+	std::string sendClientMessageRetry(const std::string &msg, const std::string &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, unsigned int timeout_after_first=0);
 	void sendToPipe(const std::string &msg);
 
 	bool createDirectoryForClient();
