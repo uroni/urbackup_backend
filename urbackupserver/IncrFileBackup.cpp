@@ -383,7 +383,7 @@ bool IncrFileBackup::doFileBackup()
 	std::string orig_sep;
 	SFile cf;
 	int depth=0;
-	int line=0;
+	size_t line=0;
 	int link_logcnt=0;
 	bool indirchange=false;
 	int changelevel;
