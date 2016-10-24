@@ -185,7 +185,6 @@ public:
 	static bool isBusy(void);
 
 private:
-	static std::string escapeParam(const std::string &name);
 	static bool readTokens();
 
 	static std::string getResponse(const std::string &cmd, const std::string &args, bool change_command);
