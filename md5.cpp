@@ -318,7 +318,7 @@ char *MD5::hex_digest(){
 
 ostream& operator<<(ostream &stream, MD5 context){
 
-  stream << context.hex_digest();
+  stream << context.raw_digest_int();
   return stream;
 }
 

@@ -146,8 +146,6 @@ private:
 
 	std::string output_fn;
 
-	bool reading_header;
-
 	std::string server_token;
 	std::string identity;
 };
