@@ -1035,6 +1035,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	if (ioctlsocket(s, FIONBIO, &nonBlocking) == SOCKET_ERROR)
 	{
 		Server->Log("Error setting socket to non-blocking. Err: " + convert(WSAGetLastError()), LL_ERROR);
+		closesocket(s);
 		return NULL;
 	}
 #else
@@ -1042,12 +1043,14 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	if (flags == -1)
 	{
 		Server->Log("Error getting socket flags. Errno: " + convert(errno), LL_ERROR);
+		closesocket(s);
 		return NULL;
 	}
 
 	if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1)
 	{
 		Server->Log("Error setting socket to non-blocking. Err: " + convert(errno), LL_ERROR);
+		closesocket(s);
 		return NULL;
 	}
 #endif
