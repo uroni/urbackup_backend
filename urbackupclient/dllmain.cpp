@@ -259,6 +259,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(1);
 	}
 
+	WalCheckpointThread::init_mutex();
+
 	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 200 * 1024 * 1024,
 		"urbackup" + os_file_sep() + "backup_client.db", URBACKUPDB_CLIENT);
 	Server->createThread(wal_checkpoint_thread, "db checkpoint");
