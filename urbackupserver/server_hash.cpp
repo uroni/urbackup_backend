@@ -785,7 +785,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 		cow_filesize=0;
 		if(fs>0)
 		{
-			available_space=os_free_space(os_file_prefix(ExtractFilePath(tfn)));
+			available_space=os_free_space(os_file_prefix(ExtractFilePath(tfn, os_file_sep())));
 		}
 		if(available_space==-1)
 		{
@@ -928,7 +928,7 @@ bool BackupServerHash::freeSpace(int64 fs, const std::string &fp)
 {
 	IScopedLock lock(delete_mutex);
 
-	int64 available_space=os_free_space(ExtractFilePath(fp));
+	int64 available_space=os_free_space(ExtractFilePath(fp, os_file_sep()));
 	if(available_space==-1)
 	{
 		if(space_logcnt==0)
