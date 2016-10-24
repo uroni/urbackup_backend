@@ -3,7 +3,7 @@
 set -e
 
 CRYPTOPP_NAME="cryptopp565.zip"
-EXPECTED_SHA256="c67c64693f32195e69d3d7e5bdf47afbd91e8b69d0407a2bc68a745d9dbebb26"
+EXPECTED_SHA256="a75ef486fe3128008bbb201efee3dcdcffbe791120952910883b26337ec32c34"
 
 cd cryptoplugin
 wget http://buildserver.urbackup.org/$CRYPTOPP_NAME -O $CRYPTOPP_NAME
