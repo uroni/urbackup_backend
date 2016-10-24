@@ -15,10 +15,7 @@ tar xzf urbackup-debian.tar.gz
 if ! test -e build_server_debian_ok
 then
 	./switch_build.sh server
-	wget http://buildserver.urbackup.org/cryptopp563.zip -O cryptoplugin/cryptopp563.zip
-	cd cryptoplugin
-	unzip cryptopp563.zip
-	cd ..
+	./download_cryptopp.sh
 	autoreconf --install
 	./configure --enable-packaging --enable-install_initd --with-mountvhd LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
 	touch build_server_debian_ok
