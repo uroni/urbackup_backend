@@ -253,15 +253,6 @@ std::vector<SBackupDir> Connector::getSharedPaths(bool use_change_pw)
 	return ret;
 }
 
-std::string Connector::escapeParam(const std::string &name)
-{
-	std::string tmp = greplace("%", "%25", name);
-	tmp = greplace("=", "%3D", tmp);
-	tmp = greplace("&", "%26", tmp);
-	tmp = greplace("$", "%24", tmp);
-	return tmp;
-}
-
 bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 {
 	std::string args;
@@ -270,8 +261,8 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 		if (i != 0)
 			args += "&";
 
-		std::string path = escapeParam(res[i].path);
-		std::string name = escapeParam(res[i].name);
+		std::string path = EscapeParamString(res[i].path);
+		std::string name = EscapeParamString(res[i].name);
 
 		if (name.find("/")==std::string::npos
 			&& !res[i].flags.empty())
@@ -285,7 +276,7 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 
 		if (!res[i].virtual_client.empty())
 		{
-			args += "&dir_" + convert(i) + "_virtual_client=" + escapeParam(res[i].virtual_client);
+			args += "&dir_" + convert(i) + "_virtual_client=" + EscapeParamString(res[i].virtual_client);
 		}
 	}
 
