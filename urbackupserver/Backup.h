@@ -13,6 +13,10 @@ class ServerBackupDao;
 
 struct SBackup
 {
+	SBackup()
+		: incremental(0), incremental_ref(0), is_complete(false),
+		  is_resumed(false), backupid(0), indexing_time_ms(0), backup_time_ms(0) {}
+
 	int incremental;
 	std::string path;
 	int incremental_ref;

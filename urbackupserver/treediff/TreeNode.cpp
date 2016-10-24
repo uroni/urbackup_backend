@@ -23,13 +23,13 @@
 
 TreeNode::TreeNode(const char* name, const char* data, TreeNode *parent, char node_type)
 	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL),
-	  subtree_changed(false), node_type(node_type)
+	  subtree_changed(false), node_type(node_type), id(0)
 {
 }
 
 TreeNode::TreeNode(void)
 	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL),
-	name(NULL), data(NULL), node_type(0)
+	name(NULL), data(NULL), node_type(0), id(0)
 {
 }
 

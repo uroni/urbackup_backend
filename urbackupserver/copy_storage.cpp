@@ -111,6 +111,7 @@ namespace
 		if (rc)
 		{
 			Server->Log("LMDB: Failed to set max readers (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			mdb_env_close(env);
 			return false;
 		}
 
@@ -119,6 +120,7 @@ namespace
 		if (rc)
 		{
 			Server->Log("LMDB: Failed to set map size (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			mdb_env_close(env);
 			return false;
 		}
 

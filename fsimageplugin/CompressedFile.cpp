@@ -353,7 +353,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 		}
 	}
 	
-	mz_ulong rdecomp;
+	mz_ulong rdecomp=0;
 	if(mode==mode_zlib)
 	{
 		rdecomp = blocksize;

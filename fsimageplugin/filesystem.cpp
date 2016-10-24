@@ -591,6 +591,8 @@ bool Filesystem::waitForCompletion(unsigned int wtimems)
 {
 #ifdef _WIN32
 	return SleepEx(wtimems, TRUE)== WAIT_IO_COMPLETION;
+#else
+	return false;
 #endif
 }
 

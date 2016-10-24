@@ -448,6 +448,7 @@ namespace
 	}
 
 #ifdef __linux__
+#ifdef _DEBUG
 	void fibmap_test(std::string fn, std::string bitmap_source)
 	{
 #ifdef FIBMAP
@@ -552,6 +553,7 @@ namespace
 		}
 #endif //FIBMAP
 	}
+#endif
 #endif //__linux__
 }
 
@@ -1314,6 +1316,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(0);
 	}
 
+#ifdef _DEBUG
 	std::string fibmap_test_fn = Server->getServerParameter("fibmap_test");
 	if (!fibmap_test_fn.empty())
 	{
@@ -1322,6 +1325,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #endif
 		exit(0);
 	}
+#endif
 
 	imagepluginmgr=new CImagePluginMgr;
 

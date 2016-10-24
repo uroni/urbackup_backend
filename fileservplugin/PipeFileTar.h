@@ -86,7 +86,7 @@ public:
 	};
 
 	PipeFileTar(const std::string& pCmd, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity);
-	PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity);
+	PipeFileTar(PipeFileStore* pipe_file, const STarFile& tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity);
 	~PipeFileTar();
 
 	virtual std::string Read(_u32 tr, bool *has_error = NULL);

@@ -117,7 +117,7 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 
 	int64 starttime=Server->getTimeMS();
-	size_t rc;
+	size_t rc=0;
 	do
 	{
 		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);

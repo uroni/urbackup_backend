@@ -508,7 +508,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(is_script)
 				{
 					ScopedPipeFileUser pipe_file_user;
-					IFile* file;
+					IFile* file = NULL;
 					bool sent_metadata = false;
 					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
 					{
@@ -2000,7 +2000,7 @@ bool CClientThread::getNextChunk(SChunk *chunk, bool has_error)
 	}
 }
 
-void CClientThread::queueChunk( SChunk chunk )
+void CClientThread::queueChunk(const SChunk& chunk )
 {
 	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
 	{
@@ -2401,7 +2401,7 @@ bool CClientThread::FinishScript( CRData * data )
 	}
 
 	ScopedPipeFileUser pipe_file_user;
-	IFile* file;
+	IFile* file = NULL;
 	std::string f_name;
 	bool sent_metadata = false;
 	if(next(s_filename, 0, "urbackup/FILE_METADATA|"))

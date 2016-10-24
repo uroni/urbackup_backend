@@ -390,7 +390,7 @@ void ServerDownloadThread::queueScriptEnd(const SQueueItem &todl)
 }
 
 
-size_t ServerDownloadThread::insertFullQueueEarliest( SQueueItem ni, bool after_switched)
+size_t ServerDownloadThread::insertFullQueueEarliest(const SQueueItem& ni, bool after_switched)
 {
 	size_t idx=0;
 	size_t earlies_other_idx;
@@ -643,7 +643,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	return ret;
 }
 
-bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
+bool ServerDownloadThread::link_or_copy_file(const SQueueItem& todl)
 {
 	SPatchDownloadFiles dlfiles = todl.patch_dl_files;
 	
@@ -1102,7 +1102,7 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 	return std::string();
 }
 
-std::string ServerDownloadThread::getDLPath( SQueueItem todl )
+std::string ServerDownloadThread::getDLPath( const SQueueItem& todl )
 {
 	std::string cfn=todl.curr_path+"/"+todl.fn;
 	if(cfn[0]=='/')
@@ -1216,7 +1216,7 @@ void ServerDownloadThread::resetQueueChunked()
 	}
 }
 
-SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem todl, bool& full_dl )
+SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueueItem& todl, bool& full_dl )
 {
 	SPatchDownloadFiles dlfiles = {};
 	dlfiles.prepare_error=true;
@@ -1534,7 +1534,7 @@ bool ServerDownloadThread::logScriptOutput(std::string cfn, const SQueueItem &to
 
 			std::string line;
 			int64 curr_time=Server->getTimeSeconds();
-			int64 timems;
+			int64 timems = last_timems;
 			for(size_t i=0;i<script_output.size();)
 			{
 				if(script_output[i]==0)

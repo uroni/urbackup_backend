@@ -220,6 +220,7 @@ void BackupServerPrepareHash::operator()(void)
 						{
 							h = treehash.finalize();
 						}
+						hashoutput_f = NULL;
 					}
 				}
 

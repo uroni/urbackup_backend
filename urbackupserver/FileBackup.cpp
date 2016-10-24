@@ -296,12 +296,9 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
-		size_t packetsize;
-		char *pck=tcpstack.getPacket(&packetsize);
-		if(pck!=NULL && packetsize>0)
+		std::string ret;
+		if(tcpstack.getPacket(ret))
 		{
-			ret=pck;
-			delete [] pck;
 			if(ret!="DONE")
 			{
 				if (async_id.empty()

@@ -447,6 +447,7 @@ bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTF
 	Runlist mirrrunlist(mirrrecord+currpos+mftmirrstream.run_offset );
 	
 	unsigned char *mftmirr_data=new unsigned char[(unsigned int)mftmirrstream.real_size];
+	MemFree mftmirr_data_free(reinterpret_cast<char*>(mftmirr_data));
 	char *buffer=new char[clustersize];
 	MemFree buffer_free(buffer);
 	mirr_pos=0;

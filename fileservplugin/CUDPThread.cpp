@@ -138,6 +138,7 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		}
 
 		sockaddr_in addr_udp;
+		memset(&addr_udp, 0, sizeof(addr_udp));
 
 		addr_udp.sin_family=AF_INET;
 		addr_udp.sin_port=htons(udpport);

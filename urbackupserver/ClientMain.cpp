@@ -1264,13 +1264,8 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
-		size_t packetsize;
-		char *pck=tcpstack.getPacket(&packetsize);
-		if(pck!=NULL && packetsize>0)
+		if(tcpstack.getPacket(ret))
 		{
-			ret.resize(packetsize);
-			memcpy(&ret[0], pck, packetsize);
-			delete [] pck;
 			Server->destroy(cc);
 			return ret;
 		}

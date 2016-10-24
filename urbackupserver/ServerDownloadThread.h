@@ -213,18 +213,18 @@ public:
 	bool getHasDiskError();
 
 private:
-	std::string getDLPath(SQueueItem todl);
+	std::string getDLPath(const SQueueItem& todl);
 
-	SPatchDownloadFiles preparePatchDownloadFiles(SQueueItem todl, bool& full_dl);
+	SPatchDownloadFiles preparePatchDownloadFiles(const SQueueItem& todl, bool& full_dl);
 
 	bool start_shadowcopy(std::string path);
 
 	bool stop_shadowcopy(std::string path);
 
 	
-	bool link_or_copy_file(SQueueItem todl);
+	bool link_or_copy_file(const SQueueItem& todl);
 
-	size_t insertFullQueueEarliest(SQueueItem ni, bool after_switched);
+	size_t insertFullQueueEarliest(const SQueueItem& ni, bool after_switched);
 	bool hasFullQueuedAfter(std::deque<SQueueItem>::iterator it);
 
 	void postponeQuitStop(size_t idx);

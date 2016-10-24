@@ -106,6 +106,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
+	next_header.patch_size = 0;
 	bool has_header=true;
 	_i64 file_pos;
 	_i64 size;

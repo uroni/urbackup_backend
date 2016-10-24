@@ -394,6 +394,7 @@ bool is_subvolume(int mode, std::string subvolume_folder)
 		int rc=exec_wait(find_zfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
+	return false;
 #endif
 }
 

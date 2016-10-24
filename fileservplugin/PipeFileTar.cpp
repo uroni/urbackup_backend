@@ -141,7 +141,7 @@ PipeFileTar::PipeFileTar(const std::string & pCmd, int backupnum, int64 fn_rando
 	sha_def_init(&sha_ctx);
 }
 
-PipeFileTar::PipeFileTar(PipeFileStore* pipe_file, const STarFile tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
+PipeFileTar::PipeFileTar(PipeFileStore* pipe_file, const STarFile& tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
 	: pipe_file(pipe_file), tar_file(tar_file), file_offset(file_offset), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random),
 	server_token(server_token), identity(identity)
 {

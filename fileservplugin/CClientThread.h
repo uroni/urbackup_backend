@@ -133,7 +133,7 @@ private:
 
 	bool GetFileHashAndMetadata(CRData* data);
 
-	void queueChunk(SChunk chunk);
+	void queueChunk(const SChunk& chunk);
 	bool InformMetadataStreamEnd( CRData * data );
 	bool FinishScript( CRData * data );
 

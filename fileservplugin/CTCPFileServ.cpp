@@ -235,7 +235,7 @@ bool CTCPFileServ::TcpStep(void)
 	{
 		sockaddr_in naddr;
 		SOCKET ns=accept(mSocket, (sockaddr*)&naddr, &addrsize);
-		if(ns>0)
+		if(ns!=SOCKET_ERROR)
 		{
 #ifdef __APPLE__
 			int optval = 1;

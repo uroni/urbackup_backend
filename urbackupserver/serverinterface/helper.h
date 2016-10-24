@@ -77,7 +77,11 @@ struct SStartupStatus
 	SStartupStatus(void)
 		: upgrading_database(false),
 		  creating_filesindex(false),
-		  pc_done(-1.0) {}
+		  pc_done(-1.0),
+		curr_db_version(0),
+		target_db_version(0),
+		processed_file_entries(0),
+		mutex(NULL) {}
 
 	bool upgrading_database;
 	int curr_db_version;

@@ -1016,25 +1016,40 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	sockaddr_in server;
 	memset(&server, 0, sizeof(server));
 	LookupBlocking(pServer, &server.sin_addr);
-	server.sin_port=htons(pPort);
-	server.sin_family=AF_INET;
+	server.sin_port = htons(pPort);
+	server.sin_family = AF_INET;
 
 	int type = SOCK_STREAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 	type |= SOCK_CLOEXEC;
 #endif
 
-	SOCKET s=socket(AF_INET, type, 0);
-	if(s==SOCKET_ERROR)
+	SOCKET s = socket(AF_INET, type, 0);
+	if (s == SOCKET_ERROR)
 	{
 		return NULL;
 	}
 
 #ifdef _WIN32
-	u_long nonBlocking=1;
-	ioctlsocket(s,FIONBIO,&nonBlocking);
+	u_long nonBlocking = 1;
+	if (ioctlsocket(s, FIONBIO, &nonBlocking) == SOCKET_ERROR)
+	{
+		Server->Log("Error setting socket to non-blocking. Err: " + convert(WSAGetLastError()), LL_ERROR);
+		return NULL;
+	}
 #else
-	fcntl(s,F_SETFL,fcntl(s, F_GETFL, 0) | O_NONBLOCK);
+	int flags = fcntl(s, F_GETFL, 0);
+	if (flags == -1)
+	{
+		Server->Log("Error getting socket flags. Errno: " + convert(errno), LL_ERROR);
+		return NULL;
+	}
+
+	if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		Server->Log("Error setting socket to non-blocking. Err: " + convert(errno), LL_ERROR);
+		return NULL;
+	}
 #endif
 
 #ifdef __APPLE__

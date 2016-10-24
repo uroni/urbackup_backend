@@ -535,7 +535,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	int64 mbr_offset=0;
 	_u32 off=0;
 	bool persistent=false;
-	unsigned char *zeroblockdata=NULL;
+	std::vector<unsigned char> zeroblockdata;
 	int64 nextblock=0;
 	int64 last_verified_block=0;
 	int64 vhd_blocksize=(1024*1024)/2;
@@ -858,8 +858,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					if(drivesize%blocksize!=0)
 						++totalblocks;
 
-					zeroblockdata=new unsigned char[blocksize];
-					memset(zeroblockdata, 0, blocksize);
+					zeroblockdata.resize(blocksize);
 
 					if (imagefn.empty())
 					{
@@ -1260,7 +1259,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								}
 							}
 
-							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata,
+							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata.data(),
 								has_parent, vhdfile, hashfile, parenthashfile,
 								blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
 								-1, vhdfile, 0);
@@ -1321,7 +1320,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 							if(nextblock<=totalblocks)
 							{
-								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
+								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata.data(), has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
 									-1, vhdfile, 0);
 
@@ -1471,7 +1470,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							if(hashfile!=NULL) Server->destroy(hashfile);
 							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 							running_updater->stop();
-							delete []zeroblockdata;
 							return false;
 						}
 						else if(currblock==-125) //ping
@@ -1494,10 +1492,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								{
 									if(nextblock<hblock)
 									{
-										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent,
+										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata.data(), has_parent,
 											vhdfile, hashfile, parenthashfile, blocksize, mbr_offset,
 											vhd_blocksize, warned_about_parenthashfile_error, -1, vhdfile, 1);
-										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
+										sha256_update(&shactx, zeroblockdata.data(), blocksize);						
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
 									{
@@ -1554,7 +1552,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								int64 vhdblock;
 								memcpy(&vhdblock, &buffer[off+sizeof(int64)], sizeof(int64));
 								vhdblock = little_endian(vhdblock);
-								nextblock = updateNextblock(nextblock, vhdblock+vhd_blocksize, &shactx, zeroblockdata, has_parent, vhdfile,
+								nextblock = updateNextblock(nextblock, vhdblock+vhd_blocksize, &shactx, zeroblockdata.data(), has_parent, vhdfile,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
 									vhdblock, vhdfile, 0);
 							}
@@ -1672,7 +1670,6 @@ do_image_cleanup:
 	}
 	if(hashfile!=NULL) Server->destroy(hashfile);
 	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-	delete []zeroblockdata;
 	return false;
 }
 
