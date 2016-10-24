@@ -207,6 +207,7 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
+    <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp" />
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
@@ -283,7 +284,6 @@
     <ClCompile Include="treediff\TreeNode.cpp" />
     <ClCompile Include="treediff\TreeReader.cpp" />
     <ClCompile Include="verify_hashes.cpp" />
-    <ClCompile Include="WalCheckpointThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\adler32.h" />
@@ -315,6 +315,7 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="..\urbackupcommon\SparseFile.h" />
     <ClInclude Include="..\urbackupcommon\TreeHash.h" />
+    <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="apps\app.h" />
@@ -377,7 +378,6 @@
     <ClInclude Include="treediff\TreeNode.h" />
     <ClInclude Include="treediff\TreeReader.h" />
     <ClInclude Include="server_status.h" />
-    <ClInclude Include="WalCheckpointThread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

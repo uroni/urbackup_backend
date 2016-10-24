@@ -71,6 +71,7 @@ extern IServer* Server;
 #include "file_permissions.h"
 
 #include "../urbackupcommon/chunk_hasher.h"
+#include "../urbackupcommon/WalCheckpointThread.h"
 
 #define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
@@ -249,11 +250,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	change_file_permissions_admin_only("urbackup/backup_client.db");
 #endif
 
-	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
+	str_map db_params;
+	db_params["wal_autocheckpoint"] = "0";
+
+	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT, db_params) )
 	{
 		Server->Log("Couldn't open Database backup_client.db", LL_ERROR);
 		exit(1);
 	}
+
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 200 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_client.db", URBACKUPDB_CLIENT);
+	Server->createThread(wal_checkpoint_thread, "db checkpoint");
 
 	if (!upgrade_client())
 	{
@@ -615,7 +623,6 @@ bool upgrade_client(void)
 	db_results res_v=q->Read();
 	if(res_v.empty())
 		return false;
-	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
 	int max_v = 26;
@@ -626,6 +633,8 @@ bool upgrade_client(void)
 			" This client version cannot run with this database", LL_ERROR);
 		return false;
 	}
+
+	db->Write("PRAGMA journal_mode=WAL");
 
 	if (ver == max_v)
 	{

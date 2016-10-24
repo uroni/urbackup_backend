@@ -9,3 +9,4 @@
 void open_server_database(bool init_db);
 void open_settings_database();
 void delete_file_index(void);
+void start_wal_checkpoint_threads();

@@ -24,7 +24,6 @@
 #include "../server.h"
 #include "../serverinterface/helper.h"
 #include "../create_files_index.h"
-#include "../WalCheckpointThread.h"
 
 extern SStartupStatus startup_status;
 
@@ -109,19 +108,9 @@ int cleanup_cmd(void)
 		return 1;
 	}
 
-	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
-	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
-
-	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
-	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
+	start_wal_checkpoint_threads();
 
 	BackupServer::testSnapshotAvailability(db);
-
-	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
-	db->Write("PRAGMA journal_mode = DELETE");
-	db_files->Write("PRAGMA journal_mode = DELETE");
 
 	std::string cleanup_pc=Server->getServerParameter("cleanup_amount");
 
@@ -164,14 +153,8 @@ int cleanup_cmd(void)
 	return 0;
 }
 
-int defrag_database(void)
+int vacuum_databases()
 {
-	Server->Log("Shutting down all database instances...", LL_INFO);
-	Server->destroyAllDatabases();
-
-	Server->Log("Opening urbackup server database...", LL_INFO);
-	open_server_database(true);
-
 	std::vector<DATABASE_ID> dbs;
 	dbs.push_back(URBACKUPDB_SERVER);
 	dbs.push_back(URBACKUPDB_SERVER_SETTINGS);
@@ -194,6 +177,23 @@ int defrag_database(void)
 		Server->Log("Rebuilding Database...", LL_INFO);
 		db->Write("PRAGMA page_size = 4096");
 		db->Write("VACUUM");
+	}
+
+	return 0;
+}
+
+int defrag_database(void)
+{
+	Server->Log("Shutting down all database instances...", LL_INFO);
+	Server->destroyAllDatabases();
+
+	Server->Log("Opening urbackup server database...", LL_INFO);
+	open_server_database(true);
+
+	int rc = vacuum_databases();
+	if (rc != 0)
+	{
+		return rc;
 	}
 
 	Server->Log("Rebuilding Database successfull.", LL_INFO);
@@ -247,8 +247,7 @@ int cleanup_database(void)
 		return 1;
 	}
 
-	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
-	db->Write("PRAGMA journal_mode = DELETE");
+	start_wal_checkpoint_threads();
 
 	db_results res=db->Read("SELECT * FROM sqlite_master WHERE type='table'");
 
@@ -271,8 +270,12 @@ int cleanup_database(void)
 		}
 	}
 
-	Server->Log("Cleaning up database...", LL_INFO);
-	db->Write("VACUUM");
+	Server->Log("Cleaning up database (VACUUM)...", LL_INFO);
+	int ret = vacuum_databases();
+	if (ret != 0)
+	{
+		return ret;
+	}
 
 	return 0;
 }

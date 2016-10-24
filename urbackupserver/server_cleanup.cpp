@@ -41,7 +41,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include "create_files_index.h"
-#include "WalCheckpointThread.h"
+#include "../urbackupcommon/WalCheckpointThread.h"
 #include "copy_storage.h"
 #include <assert.h>
 #include <set>
@@ -108,7 +108,7 @@ void ServerCleanupThread::operator()(void)
 				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
 				deletePendingClients();
-				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
+				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.cleanup_other);
 				if(cleanup_action.result!=NULL)
 				{
 					*(cleanup_action.result)=b;
@@ -422,7 +422,7 @@ void ServerCleanupThread::do_cleanup(void)
 	}
 }
 
-bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
+bool ServerCleanupThread::do_cleanup(int64 minspace, bool do_cleanup_other)
 {
 	ServerStatus::incrementServerNospcStalled(1);
 	IScopedLock lock(a_mutex);
@@ -446,14 +446,9 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	cleanup_images();
 	cleanup_files();
 
-	if(switch_to_wal)
+	if(do_cleanup_other)
 	{
 		cleanup_other();
-	}
-
-	if(switch_to_wal==true)
-	{
-		db->Write("PRAGMA journal_mode=WAL");
 	}
 
 	ServerLogger::Log(logid, "Updating statistics...", LL_INFO);
@@ -1822,10 +1817,10 @@ bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 	return true;
 }
 
-bool ServerCleanupThread::cleanupSpace(int64 minspace, bool switch_to_wal)
+bool ServerCleanupThread::cleanupSpace(int64 minspace, bool do_cleanup_other)
 {
 	bool result;
-	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, switch_to_wal)),
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, do_cleanup_other)),
 		"free space");
 	return result;
 }

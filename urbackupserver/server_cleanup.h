@@ -40,8 +40,8 @@ struct CleanupAction
 	}
 
 	//Free minspace
-	CleanupAction(int64 minspace, bool *result, bool switch_to_wal)
-		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result), switch_to_wal(switch_to_wal)
+	CleanupAction(int64 minspace, bool *result, bool cleanup_other)
+		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result), cleanup_other(cleanup_other)
 	{
 	}
 
@@ -57,7 +57,7 @@ struct CleanupAction
 	int clientid;
 	int backupid;
 	bool force_remove;
-	bool switch_to_wal;
+	bool cleanup_other;
 
 	int64 minspace;
 	bool *result;
@@ -72,7 +72,7 @@ public:
 
 	void operator()(void);
 
-	static bool cleanupSpace(int64 minspace, bool switch_to_wal=false);
+	static bool cleanupSpace(int64 minspace, bool do_cleanup_other=false);
 
 	static void removeUnknown(void);
 
@@ -99,7 +99,7 @@ public:
 private:
 
 	void do_cleanup(void);
-	bool do_cleanup(int64 minspace, bool switch_to_wal=false);
+	bool do_cleanup(int64 minspace, bool do_cleanup_other=false);
 
 	void do_remove_unknown(void);
 

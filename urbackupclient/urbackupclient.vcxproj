@@ -42,6 +42,7 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
+    <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp" />
     <ClCompile Include="ChangeJournalWatcher.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientdao.cpp" />
@@ -97,6 +98,7 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="..\urbackupcommon\SparseFile.h" />
     <ClInclude Include="..\urbackupcommon\TreeHash.h" />
+    <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h" />
     <ClInclude Include="ChangeJournalWatcher.h" />
     <ClInclude Include="client.h" />
     <ClInclude Include="clientdao.h" />

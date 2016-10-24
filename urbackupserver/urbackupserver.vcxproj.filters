@@ -294,9 +294,6 @@
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="WalCheckpointThread.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -340,6 +337,9 @@
       <Filter>serverinterface</Filter>
     </ClCompile>
     <ClCompile Include="copy_storage.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -581,9 +581,6 @@
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="WalCheckpointThread.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -618,6 +615,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="copy_storage.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

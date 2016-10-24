@@ -177,6 +177,9 @@
     <ClCompile Include="client_winvss.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -321,6 +324,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\TreeHash.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

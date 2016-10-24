@@ -20,7 +20,6 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
-#include "database.h"
 #include "../Interface/Database.h"
 #include "../stringtools.h"
 #include <memory>

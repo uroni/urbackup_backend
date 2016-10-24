@@ -88,7 +88,7 @@ SStartupStatus startup_status;
 #include "../fileservplugin/IFileServ.h"
 #include "../fileservplugin/IFileServFactory.h"
 #include "restore_client.h"
-#include "WalCheckpointThread.h"
+#include "../urbackupcommon/WalCheckpointThread.h"
 #include "FileMetadataDownloadThread.h"
 #include "../urbackupcommon/chunk_hasher.h"
 
@@ -312,6 +312,29 @@ void open_settings_database()
 	std::string aname="urbackup/backup_server_settings.db";
 
 	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);	
+}
+
+void start_wal_checkpoint_threads()
+{
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_files.db", URBACKUPDB_SERVER_FILES);
+	Server->createThread(wal_checkpoint_thread, "files checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER, "main");
+	Server->createThread(wal_checkpoint_thread, "main checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_settings.db", URBACKUPDB_SERVER);
+	Server->createThread(wal_checkpoint_thread, "settings checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
+	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
+
+	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
+		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
+	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
 }
 
 bool attach_other_dbs(IDatabase* db)
@@ -812,25 +835,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	Server->setLogCircularBufferSize(20);
 
-	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread(100*1024*1024, 1000*1024*1024,
-		"urbackup"+os_file_sep()+"backup_server_files.db", URBACKUPDB_SERVER_FILES);
-	Server->createThread(wal_checkpoint_thread, "files checkpoint");
-
-	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server.db", URBACKUPDB_SERVER, "main");
-	Server->createThread(wal_checkpoint_thread, "main checkpoint");
-
-	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server_settings.db", URBACKUPDB_SERVER);
-	Server->createThread(wal_checkpoint_thread, "settings checkpoint");
-
-	wal_checkpoint_thread = new WalCheckpointThread(10 * 1024 * 1024, 100 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server_link_journal.db", URBACKUPDB_SERVER_LINK_JOURNAL);
-	Server->createThread(wal_checkpoint_thread, "lnk jour checkpoint");
-
-	wal_checkpoint_thread = new WalCheckpointThread(100 * 1024 * 1024, 1000 * 1024 * 1024,
-		"urbackup" + os_file_sep() + "backup_server_links.db", URBACKUPDB_SERVER_LINKS);
-	Server->createThread(wal_checkpoint_thread, "lnk checkpoint");
+	start_wal_checkpoint_threads();
 
 	Server->clearDatabases(Server->getThreadID());
 
@@ -1860,15 +1865,12 @@ void upgrade(void)
 	{
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
-		Server->Log("Converting database to delete journal mode...", LL_WARNING);
 
 		if (!attach_other_dbs(db))
 		{
 			Server->Log("Attaching other databases failed", LL_ERROR);
 			return;
 		}
-
-		db->Write("PRAGMA journal_mode=DELETE");
 	}
 
 	db_results cache_res;
