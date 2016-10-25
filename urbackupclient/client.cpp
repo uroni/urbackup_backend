@@ -754,7 +754,8 @@ void IndexThread::operator()(void)
 								if (sc_refs[k]->cbt)
 								{
 									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target,
-										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath);
+										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath,
+										image_backup != 0);
 								}
 							}
 						}
@@ -840,7 +841,8 @@ void IndexThread::operator()(void)
 								if (sc_refs[k]->cbt)
 								{
 									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, 
-										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath);
+										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath,
+										image_backup != 0);
 								}
 							}
 						}
@@ -1143,7 +1145,7 @@ void IndexThread::operator()(void)
 			data.getStr(&volume);
 
 			if (prepareCbt(volume)
-				&& finishCbt(volume, -1, std::string()))
+				&& finishCbt(volume, -1, std::string(), false))
 			{
 				contractor->Write("done");
 			}
@@ -1316,7 +1318,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 						{
 							if (sc_refs[k]->cbt)
 							{
-								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false);
 							}
 							postSnapshotProcessing(sc_refs[k], full_backup);
 						}
@@ -5108,6 +5110,172 @@ namespace
 	private:
 		HANDLE h;
 	};
+
+	PURBCT_BITMAP_DATA readBitmap(std::string fn, std::vector<char>& data)
+	{
+		std::auto_ptr<IFile> f(Server->openFile(fn, MODE_READ));
+
+		if (f.get() == NULL)
+		{
+			Server->Log("Error opening file " + fn + ". " + os_last_error_str(), LL_ERROR);
+			return NULL;
+		}
+
+		if (f->Size() < 16)
+		{
+			return NULL;
+		}
+
+		std::string md5sum = f->Read(16);
+
+		if (md5sum.size() != 16)
+		{
+			return NULL;
+		}
+
+		data.resize(f->Size()-16);
+
+		size_t read = 0;
+		while (read < data.size())
+		{
+			bool has_read_error = false;
+			_u32 radd = f->Read(data.data() + read, static_cast<_u32>(data.size() - read), &has_read_error);
+
+			read += radd;
+
+			if (has_read_error || radd==0)
+			{
+				Server->Log("Error reading from file " + fn + ". " + os_last_error_str(), LL_ERROR);
+				return NULL;
+			}
+		}
+
+		MD5 md;
+		md.update(reinterpret_cast<unsigned char*>(data.data()), static_cast<_u32>(data.size()));
+		md.finalize();
+
+		if (memcmp(md5sum.data(), md.raw_digest_int(), md5sum.size()) != 0)
+		{
+			Server->Log("Checksum of " + fn + " wrong", LL_ERROR);
+			return NULL;
+		}
+
+		return reinterpret_cast<PURBCT_BITMAP_DATA>(data.data());
+	}
+
+	bool mergeBitmap(PURBCT_BITMAP_DATA src, PURBCT_BITMAP_DATA dst)
+	{
+		if (src->SectorSize != dst->SectorSize)
+		{
+			return false;
+		}
+
+		DWORD curr_byte = 0;
+		for (DWORD i = 0; i < src->BitmapSize && i<dst->BitmapSize; i += src->SectorSize)
+		{
+			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + src->SectorSize; ++j)
+			{
+				dst->Bitmap[j] |= src->Bitmap[j];
+			}
+		}
+
+		return true;
+	}
+
+	bool readMergeBitmap(std::string fn, PURBCT_BITMAP_DATA bitmap)
+	{
+		if (!FileExists(fn))
+		{
+			Server->Log("Bitmap " + fn + " does not exist. Nothing to merge.", LL_DEBUG);
+			return true;
+		}
+
+		PURBCT_BITMAP_DATA old_bitmap;
+		std::vector<char> old_bitmap_data;
+
+		old_bitmap = readBitmap(fn, old_bitmap_data);
+
+		if (old_bitmap == NULL)
+		{
+			return false;
+		}
+
+		return mergeBitmap(old_bitmap, bitmap);
+	}
+
+	bool saveMergeBitmap(std::string fn, PURBCT_BITMAP_DATA bitmap)
+	{
+		PURBCT_BITMAP_DATA old_bitmap=NULL;
+		std::vector<char> old_bitmap_data;
+
+		if (FileExists(fn))
+		{
+			old_bitmap = readBitmap(fn, old_bitmap_data);
+
+			if (old_bitmap == NULL)
+			{
+				return false;
+			}
+		}
+
+		std::auto_ptr<IFile> f(Server->openFile(fn+".new", MODE_WRITE));
+
+		if (f.get() == NULL)
+		{
+			Server->Log("Error creating file " + fn + ".new. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+
+		if (old_bitmap != NULL)
+		{
+			if (!mergeBitmap(bitmap, old_bitmap))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			old_bitmap = bitmap;
+		}
+
+		size_t dsize = old_bitmap->BitmapSize + sizeof(DWORD) + sizeof(ULONG);
+
+		MD5 md;
+		md.update(reinterpret_cast<unsigned char*>(old_bitmap), static_cast<_u32>(dsize));
+		md.finalize();
+
+		if (f->Write(reinterpret_cast<char*>(md.raw_digest_int()), 16) != 16)
+		{
+			Server->Log("Error writing bitmap checksum. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+
+		if (f->Write(reinterpret_cast<char*>(old_bitmap), static_cast<_u32>(dsize)) != dsize)
+		{
+			Server->Log("Error writing bitmap. " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+
+		f->Sync();
+		f.reset();
+
+		if (!os_rename_file(fn + ".new", fn))
+		{
+			Server->Log("Error renaming " + fn + ".new to " + fn + ". " + os_last_error_str(), LL_ERROR);
+			return false;
+		}
+
+		f.reset(Server->openFile(fn, MODE_RW));
+
+		if (f.get() == NULL)
+		{
+			return false;
+		}
+		
+		f->Sync();
+
+		return true;
+	}
 }
 
 #endif
@@ -5202,7 +5370,7 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	return true;
 }
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume)
+bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 {
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
@@ -5395,178 +5563,215 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		}
 	}
 
-	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
+	VSSLog("Change block tracking active on volume " + volume, LL_INFO);
 
-	bool concurrent_active = false;
-
-	if (hdat_img.get() == NULL)
+	if (for_image_backup)
 	{
-		hdat_img.reset(ImageThread::openHdatF(volume, true));
-
-		if (hdat_img.get() != NULL)
+		if (!saveMergeBitmap("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt", bitmap_data))
 		{
-			concurrent_active = true;
+			VSSLog("Error saving CBT bitmap for file backup", LL_ERROR);
+			return false;
 		}
-	}	
 
-	if (hdat_img.get() == NULL)
-	{
-		std::string errmsg;
-		int64 err = os_last_error(errmsg);
-		VSSLog("Cannot open image hash data file for change block tracking. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-		return false;
-	}
-
-	hdat_img->Resize(sizeof(shadow_id) + RealBitmapSize * 8 * SHA256_DIGEST_SIZE);
-
-	if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
-	{
-		VSSLog("Error writing shadow id", LL_ERROR);
-		return false;
-	}
-
-	{
-		IScopedLock lock(cbt_shadow_id_mutex);
-		cbt_shadow_ids[strlower(volume)] = shadow_id;
-		++index_hdat_sequence_ids[strlower(volume)];
-	}
-
-	if (concurrent_active)
-	{
-		Server->wait(10000);
-	}
-
-	char zero_sha[SHA256_DIGEST_SIZE] = {};
-
-	VSSLog("Zeroing image hash data of volume "+volume+"...", LL_DEBUG);
-
-	int64 changed_bytes = 0;
-
-	DWORD curr_byte = 0;
-	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
-	{
-		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
+		if (!readMergeBitmap("urbackup\\hdat_img_" + conv_filename(strlower(volume)) + ".cbt", bitmap_data))
 		{
-			BYTE ch = bitmap_data->Bitmap[j];
-
-			if (ch == 0)
-			{
-				++curr_byte;
-				continue;
-			}
-
-			for (DWORD bit = 0; bit < 8; ++bit)
-			{
-				if ((ch & (1 << bit))>0)
-				{
-					if (hdat_img->Write(sizeof(shadow_id) + (curr_byte * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
-					{
-						std::string errmsg;
-						int64 err = os_last_error(errmsg);
-						VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-						return false;
-					}
-
-					changed_bytes += URBT_BLOCKSIZE;
-				}
-			}
-
-			++curr_byte;
+			VSSLog("Error reading last bitmap data for CBT for image backup", LL_ERROR);
+			return false;
 		}
-	}
 
-	hdat_img->Sync();
+		std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(volume, false));
 
-	VSSLog("Change block tracking active on volume "+ volume, LL_INFO);
+		bool concurrent_active = false;
 
-	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DEVICE));
-
-	if (hdat_file.get() == NULL)
-	{
-		std::string errmsg;
-		int64 err = os_last_error(errmsg);
-		VSSLog("Cannot open file hash data file for change block tracking. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-		return false;
-	}
-
-	hdat_file->Resize(bitmap_data->BitmapSize * 8 * (sizeof(_u16)+chunkhash_single_size));
-
-	VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
-
-	char zero_chunk[sizeof(_u16) + chunkhash_single_size] = {};
-
-	curr_byte = 0;
-	bool last_bit_set = false;
-	bool last_zeroed = false;
-	for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
-	{
-		for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
+		if (hdat_img.get() == NULL)
 		{
-			BYTE ch = bitmap_data->Bitmap[j];
+			hdat_img.reset(ImageThread::openHdatF(volume, true));
 
-			if (ch == 0)
+			if (hdat_img.get() != NULL)
 			{
-				if (last_bit_set)
+				concurrent_active = true;
+			}
+		}
+
+		if (hdat_img.get() == NULL)
+		{
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			VSSLog("Cannot open image hash data file for change block tracking. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+			return false;
+		}
+
+		hdat_img->Resize(sizeof(shadow_id) + RealBitmapSize * 8 * SHA256_DIGEST_SIZE);
+
+		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+		{
+			VSSLog("Error writing shadow id", LL_ERROR);
+			return false;
+		}
+
+		{
+			IScopedLock lock(cbt_shadow_id_mutex);
+			cbt_shadow_ids[strlower(volume)] = shadow_id;
+		}
+
+		if (concurrent_active)
+		{
+			Server->wait(10000);
+		}
+
+		char zero_sha[SHA256_DIGEST_SIZE] = {};
+
+		VSSLog("Zeroing image hash data of volume " + volume + "...", LL_DEBUG);
+
+		int64 changed_bytes = 0;
+
+		DWORD curr_byte = 0;
+		for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
+		{
+			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
+			{
+				BYTE ch = bitmap_data->Bitmap[j];
+
+				if (ch == 0)
 				{
-					if (hdat_file->Write(((int64)curr_byte * 8) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
-					{
-						std::string errmsg;
-						int64 err = os_last_error(errmsg);
-						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
-						return false;
-					}
+					++curr_byte;
+					continue;
 				}
 
-				last_bit_set = false;
-				last_zeroed = false;
-
-				++curr_byte;
-				continue;
-			}
-
-			for (DWORD bit = 0; bit < 8; ++bit)
-			{
-				bool has_bit = (ch & (1 << bit)) > 0;
-				if (has_bit
-					|| last_bit_set)
+				for (DWORD bit = 0; bit < 8; ++bit)
 				{
-					if (!last_bit_set
-						&& !last_zeroed)
+					if ((ch & (1 << bit)) > 0)
 					{
-						int64 last_pos = (int64)curr_byte * 8 + bit;
-						if (last_pos > 0)
+						if (hdat_img->Write(sizeof(shadow_id) + (curr_byte * 8 + bit)*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
 						{
-							--last_pos;
-							if (hdat_file->Write(last_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
-							{
-								std::string errmsg;
-								int64 err = os_last_error(errmsg);
-								VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
-								return false;
-							}
+							std::string errmsg;
+							int64 err = os_last_error(errmsg);
+							VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+							return false;
+						}
+
+						changed_bytes += URBT_BLOCKSIZE;
+					}
+				}
+
+				++curr_byte;
+			}
+		}
+
+		hdat_img->Sync();
+
+		Server->deleteFile("urbackup\\hdat_img_" + conv_filename(strlower(volume)) + ".cbt");
+	}
+	else //!for_image_backup
+	{
+		if (!saveMergeBitmap("urbackup\\hdat_img_" + conv_filename(strlower(volume)) + ".cbt", bitmap_data))
+		{
+			VSSLog("Error saving CBT bitmap for image backup", LL_ERROR);
+			return false;
+		}
+
+		if (!readMergeBitmap("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt", bitmap_data))
+		{
+			VSSLog("Error reading last bitmap data for CBT for image backup", LL_ERROR);
+			return false;
+		}
+
+		{
+			IScopedLock lock(cbt_shadow_id_mutex);
+			++index_hdat_sequence_ids[strlower(volume)];
+		}
+		
+		std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DEVICE));
+
+		if (hdat_file.get() == NULL)
+		{
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			VSSLog("Cannot open file hash data file for change block tracking. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+			return false;
+		}
+
+		hdat_file->Resize(bitmap_data->BitmapSize * 8 * (sizeof(_u16) + chunkhash_single_size));
+
+		VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
+
+		char zero_chunk[sizeof(_u16) + chunkhash_single_size] = {};
+
+		DWORD curr_byte = 0;
+		bool last_bit_set = false;
+		bool last_zeroed = false;
+		for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
+		{
+			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + bitmap_data->SectorSize; ++j)
+			{
+				BYTE ch = bitmap_data->Bitmap[j];
+
+				if (ch == 0)
+				{
+					if (last_bit_set)
+					{
+						if (hdat_file->Write(((int64)curr_byte * 8) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+						{
+							std::string errmsg;
+							int64 err = os_last_error(errmsg);
+							VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -1", LL_ERROR);
+							return false;
 						}
 					}
 
-					if (hdat_file->Write(((int64)curr_byte * 8 + bit)* sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
-					{
-						std::string errmsg;
-						int64 err = os_last_error(errmsg);
-						VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-						return false;
-					}
-					last_zeroed = true;
-				}
-				else
-				{
+					last_bit_set = false;
 					last_zeroed = false;
-				}
-				last_bit_set = has_bit;
-			}
-			++curr_byte;
-		}
-	}
 
-	hdat_file->Sync();
+					++curr_byte;
+					continue;
+				}
+
+				for (DWORD bit = 0; bit < 8; ++bit)
+				{
+					bool has_bit = (ch & (1 << bit)) > 0;
+					if (has_bit
+						|| last_bit_set)
+					{
+						if (!last_bit_set
+							&& !last_zeroed)
+						{
+							int64 last_pos = (int64)curr_byte * 8 + bit;
+							if (last_pos > 0)
+							{
+								--last_pos;
+								if (hdat_file->Write(last_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+								{
+									std::string errmsg;
+									int64 err = os_last_error(errmsg);
+									VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
+									return false;
+								}
+							}
+						}
+
+						if (hdat_file->Write(((int64)curr_byte * 8 + bit) * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+						{
+							std::string errmsg;
+							int64 err = os_last_error(errmsg);
+							VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+							return false;
+						}
+						last_zeroed = true;
+					}
+					else
+					{
+						last_zeroed = false;
+					}
+					last_bit_set = has_bit;
+				}
+				++curr_byte;
+			}
+		}
+
+		hdat_file->Sync();
+
+		Server->deleteFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".cbt");
+	} //for_image_backup
 
 	b = DeviceIoControl(hVolume, IOCTL_URBCT_RESET_FINISH, NULL, 0, NULL, 0, &bytesReturned, NULL);
 
@@ -6556,7 +6761,7 @@ void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
 			{
 				if (sc_refs[k]->cbt)
 				{
-					sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath);
+					sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false);
 				}
 
 				postSnapshotProcessing(sc_refs[k], full_backup);

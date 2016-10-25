@@ -486,7 +486,7 @@ private:
 
 	bool prepareCbt(std::string volume);
 
-	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume);
+	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup);
 
 	bool disableCbt(std::string volume);
 
