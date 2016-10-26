@@ -758,7 +758,8 @@ function validate_text_int_or_empty(a)
 
 function validate_text_regex(a)
 {
-	if(typeof a == "object")
+	if(typeof a == "object"
+		&& !(a instanceof Array) )
 	{
 		a = [a];
 	}
