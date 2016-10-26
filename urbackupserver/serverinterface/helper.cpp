@@ -453,6 +453,11 @@ bool Helper::ldapLogin( const std::string &username, const std::string &password
 	ServerSettings settings(getDatabase());
 	SLDAPSettings ldap_settings = settings.getLDAPSettings();
 
+	if (!ldap_settings.login_enabled)
+	{
+		return false;
+	}
+
 	std::string sanitized_username = username;
 	std::string to_sanitize = "\"[]:;|=+*?<>/\\,";
 	for(size_t i=0;i<sanitized_username.size();++i)
