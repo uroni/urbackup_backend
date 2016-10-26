@@ -163,7 +163,14 @@ bool ImageThread::sendFullImageThread(void)
 			}
 			else
 			{
-				ImageErr("Creating Shadow drive failed. Stopping.");
+				if (image_inf->shadow_id == -1)
+				{
+					ImageErr("Creating shadow copy failed. See client log file for details.");
+				}
+				else
+				{
+					ImageErr("Shadow copy not found. May have been deleted.");
+				}
 				run=false;
 				/*image_inf->shadowdrive="\\\\.\\" + image_inf->image_letter;
 				image_inf->no_shadowcopy=true;*/
@@ -542,7 +549,14 @@ bool ImageThread::sendIncrImageThread(void)
 			}
 			else
 			{
-				ImageErr("Creating Shadow drive failed. Stopping.");
+				if (image_inf->shadow_id == -1)
+				{
+					ImageErr("Creating shadow copy failed. See client log file for details.");
+				}
+				else
+				{
+					ImageErr("Shadow copy not found. May have been deleted.");
+				}
 				run=false;
 			}
 			mempipe->Write("exit");
