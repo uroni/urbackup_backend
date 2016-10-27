@@ -2474,6 +2474,7 @@ function show_settings2(data)
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
 			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
+			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
