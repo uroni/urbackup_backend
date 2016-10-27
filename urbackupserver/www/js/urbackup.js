@@ -2811,9 +2811,8 @@ function show_settings2(data)
 			{
 				data.settings.client_settings=true;
 				data.settings.groups = data.navitems.groups;
+				group_membership_selectpicker=true;
 			}
-			
-			group_membership_selectpicker=true;
 						
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
 			ndata+=dustRender(is_group ? "settings_group" : "settings_user", data.settings);
@@ -2989,7 +2988,8 @@ function show_settings2(data)
 			hideBackupWindowDetails();
 		}
 		
-		if(group_membership_selectpicker)
+		if(group_membership_selectpicker
+			&& I("group_member_selectpicker") )
 		{
 			if(I("selClient1"))
 			{
