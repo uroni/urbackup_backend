@@ -135,11 +135,11 @@ bool ImageBackup::doBackup()
 
 	if(r_incremental)
 	{
-		ServerLogger::Log(logid, std::string("Starting ")+(scheduled?"scheduled" : "unscheduled")+ " incremental image backup...", LL_INFO);
+		ServerLogger::Log(logid, std::string("Starting ")+(scheduled?"scheduled" : "unscheduled")+ " incremental image backup of volume \""+letter+"\"...", LL_INFO);
 	}
 	else
 	{
-		ServerLogger::Log(logid, std::string("Starting ") + (scheduled ? "scheduled" : "unscheduled") + " full image backup...", LL_INFO);
+		ServerLogger::Log(logid, std::string("Starting ") + (scheduled ? "scheduled" : "unscheduled") + " full image backup of volume \""+letter+"\"...", LL_INFO);
 
 		if(cowraw_format)
 		{
