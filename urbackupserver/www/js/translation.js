@@ -962,7 +962,12 @@ translations.de = {
 "tAdd new client": "Neuen Client hinzufügen",
 "tBackup Statistics": "Sicherungsstatistiken",
 "not_supported": "Nicht unterstützt",
-"tPreparing restore. Please be patient...": "Wiederherstellen wird vorbereitet. Bitte haben Sie Geduld..."
+"tPreparing restore. Please be patient...": "Wiederherstellen wird vorbereitet. Bitte haben Sie Geduld...",
+"bit/s": "bit/s",
+"Kbit/s": "KBit/s",
+"Mbit/s": "MBit/s",
+"Gbit/s": "GBit/s",
+"Tbit/s": "TBit/s"
 }
 translations.en = {
 "nav_item_3": "Logs",
@@ -1476,7 +1481,12 @@ translations.en = {
 "group_delete_failed": "Removing group failed",
 "validate_err_notregexp_internet_server": "The internet server name should be a host name or IP",
 "validate_err_notregexp_server_url": "The server URL should be an URL starting with http:// or https://",
-"action_17": "Start-up recovery"
+"action_17": "Start-up recovery",
+"bit/s": "bit/s",
+"Kbit/s": "Kbit/s",
+"Mbit/s": "Mbit/s",
+"Gbit/s": "Gbit/s",
+"Tbit/s": "Tbit/s"
 }
 translations.en_US = {
 "tInfos": "About"

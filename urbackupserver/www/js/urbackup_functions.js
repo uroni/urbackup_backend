@@ -516,28 +516,60 @@ function format_size_bits(s)
 	if(s>1000)
 	{
 		s/=1000.0;
-		suffix="KBit";
+		suffix="Kbit";
 	}
 	if(s>1000)
 	{
 		s/=1000.0;
-		suffix="MBit";
+		suffix="Mbit";
 	}
 	if(s>1000)
 	{
 		s/=1000.0;
-		suffix="GBit";
+		suffix="Gbit";
 	}
 	if(s>1000)
 	{
 		s/=1000.0;
-		suffix="TBit";
+		suffix="Tbit";
 	}
 	
 	s*=100;
 	s=Math.round(s);
 	s/=100.0;
-	return s+" "+suffix;
+	suffix_trans = trans(suffix)
+	return s+" "+ (suffix_trans!=null ? suffix_trans : suffix);
+}
+
+function format_speed_bits(s)
+{
+	var suffix="bit/s";
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="Kbit/s";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="Mbit/s";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="Gbit/s";
+	}
+	if(s>1000)
+	{
+		s/=1000.0;
+		suffix="Tbit/s";
+	}
+	
+	s*=100;
+	s=Math.round(s);
+	s/=100.0;
+	suffix_trans = trans(suffix)
+	return s+" "+ (suffix_trans!=null ? suffix_trans : suffix);
 }
 
 function format_time_seconds(t, s)

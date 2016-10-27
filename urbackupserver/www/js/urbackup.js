@@ -627,7 +627,7 @@ function show_progress2(data)
 			
 			if(data.progress[i].speed_bpms>1)
 			{
-				data.progress[i].speed = format_size_bits(data.progress[i].speed_bpms*8000) + "/s";
+				data.progress[i].speed = format_speed_bits(data.progress[i].speed_bpms*8000);
 			}
 			else
 			{
