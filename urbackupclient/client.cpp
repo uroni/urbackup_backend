@@ -6011,7 +6011,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		if(curr->issym && with_proper_symlinks
 			&& !skipFile(orig_dir + os_file_sep() + files[i].name, named_dir + os_file_sep() + files[i].name) )
 		{
-			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target, ret[i].output_symlink_target))
+			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, curr->symlink_target, curr->output_symlink_target))
 			{
 				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
 				{
