@@ -691,7 +691,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name=?");
+			IQuery *q=db->Prepare("UPDATE settings_db.si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name=?");
 			q->Bind(password_md5);
 			q->Bind(new_salt);
 			q->Bind(pbkdf2_rounds);
@@ -703,7 +703,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		{
-			IQuery *q=db->Prepare("SELECT id FROM si_users WHERE name=?");
+			IQuery *q=db->Prepare("SELECT id FROM settings_db.si_users WHERE name=?");
 			q->Bind(set_admin_username);
 			db_results res = q->Read();
 			q->Reset();
