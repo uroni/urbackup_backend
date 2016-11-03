@@ -126,6 +126,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("ignore_disk_errors");
 	ret.push_back("file_snapshot_groups");
 	ret.push_back("image_snapshot_groups");
+	ret.push_back("server_url");
 	return ret;
 }
 

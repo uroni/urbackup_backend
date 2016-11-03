@@ -1562,6 +1562,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 		}
 	}
 
+	std::vector<std::string> only_server_settings_names;
+	if (client_set_settings)
+	{
+		only_server_settings_names = getOnlyServerClientSettingsList();
+	}
+
 	for(size_t i=0;i<settings_names.size();++i)
 	{
 		std::string key=settings_names[i];
@@ -1594,10 +1600,13 @@ void ClientConnector::updateSettings(const std::string &pData)
 			{
 				std::string orig_v;
 				std::string nv;
-				if(new_settings->getValue(key+"_orig", &orig_v) &&
-					orig_v==v &&
-					(new_settings->getValue(key, &nv) ||
-					 new_settings->getValue(key+"_def", &nv) ) )
+				if( ( (new_settings->getValue(key+"_orig", &orig_v) &&
+					   orig_v==v )
+					   || std::find(only_server_settings_names.begin(), only_server_settings_names.end(),
+						            key) != only_server_settings_names.end() )
+					 && (new_settings->getValue(key, &nv) ||
+					  new_settings->getValue(key+"_def", &nv) ) 
+				   )
 				{
 					new_settings_str+=key+"="+nv+"\n";
 					if(nv!=v)
