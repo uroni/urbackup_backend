@@ -225,6 +225,9 @@ public:
 
 	std::string ldapMapToString(const std::map<std::string, std::string>& ldap_map);
 
+	void createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
+		std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global);
+
 private:
 	void operator=(const ServerSettings& other){};
 	ServerSettings(const ServerSettings& other){};
@@ -249,8 +252,6 @@ private:
 	void readStringClientSetting(ISettingsReader* settings_client, const std::string &name, std::string *output);
 	void readIntClientSetting(ISettingsReader* settings_client, const std::string &name, int *output);
 	void readSizeClientSetting(ISettingsReader* settings_client, const std::string &name, size_t *output);
-	void createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
-		std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global);
 	void updateInternal(bool* was_updated);
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
 

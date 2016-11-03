@@ -1316,7 +1316,7 @@ bool ServerDownloadThread::start_shadowcopy(std::string path)
 	}
 
 	std::string ret = client_main->sendClientMessageRetry("START SC \"" + path + "\"#token=" + server_token,
-		"Referencing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed", 120000, 10, 10000);
+		"Referencing snapshot on \"" + clientname + "\" for path \"" + path + "\" failed", 120000, 10, true, 2, 10000);
 
 	if (ret != "DONE")
 	{
@@ -1374,7 +1374,7 @@ bool ServerDownloadThread::stop_shadowcopy(std::string path)
 	do
 	{
 		std::string ret = client_main->sendClientMessageRetry("STOP SC \"" + path + "\"#token=" + server_token, 
-			"Removing snapshot on \"" + clientname + "\" for path \"" + path+"\" failed", 120000, 10, 10000);
+			"Removing snapshot on \"" + clientname + "\" for path \"" + path+"\" failed", 120000, 10, true, 2, 10000);
 
 		in_use = false;
 

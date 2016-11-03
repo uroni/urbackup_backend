@@ -289,12 +289,11 @@ private:
 
 	int clientid;
 
-	ISettingsReader *settings;
-	ISettingsReader *settings_client;
 	ServerSettings *server_settings;
 
 	IQuery *q_update_lastseen;
 	IQuery *q_update_setting;
+	IQuery *q_get_setting;
 	IQuery *q_insert_setting;
 	IQuery *q_get_unsent_logdata;
 	IQuery *q_set_logdata_sent;

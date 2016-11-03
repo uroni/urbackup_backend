@@ -127,9 +127,6 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 
 	tcpstack.setAddChecksum(internet_connection);
 
-	settings=NULL;
-	settings_client=NULL;
-
 	last_backup_try = 0;
 
 	last_image_backup_try=0;
@@ -169,9 +166,6 @@ ClientMain::~ClientMain(void)
 		Server->destroy(client_throttler);
 	}
 
-	if(settings!=NULL) Server->destroy(settings);
-	if(settings_client!=NULL) Server->destroy(settings_client);
-
 	Server->destroy(continuous_mutex);
 	Server->destroy(throttle_mutex);
 }
@@ -195,6 +189,7 @@ void ClientMain::unloadSQL(void)
 	db->destroyQuery(q_update_lastseen);
 	db->destroyQuery(q_update_setting);
 	db->destroyQuery(q_insert_setting);
+	db->destroyQuery(q_get_setting);
 	db->destroyQuery(q_get_unsent_logdata);
 	db->destroyQuery(q_set_logdata_sent);
 }
@@ -332,9 +327,6 @@ void ClientMain::operator ()(void)
 	}
 
 	logid = ServerLogger::getLogId(clientid);
-
-	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
-	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(clientid));
 
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
@@ -1030,10 +1022,6 @@ void ClientMain::operator ()(void)
 	ServerLogger::reset(clientid);
 	
 	
-	Server->destroy(settings);
-	settings=NULL;
-	Server->destroy(settings_client);
-	settings_client=NULL;
 	delete server_settings;
 	server_settings=NULL;
 	pipe->Write("ok");
@@ -1047,6 +1035,7 @@ void ClientMain::prepareSQL(void)
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
+	q_get_setting = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?`", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -1609,22 +1598,13 @@ void ClientMain::sendSettings(void)
 	std::vector<std::string> local_settings_names=getLocalizedSettingsList();
 	std::vector<std::string> only_server_settings_names=getOnlyServerClientSettingsList();
 
-	std::string stmp=settings_client->getValue("overwrite", "");
-	bool overwrite=true;
-	if(!stmp.empty())
-		overwrite=(stmp=="true");
+	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	server_settings->createSettingsReaders(settings_default, settings_client, settings_global);
 
-	bool allow_overwrite=true;
-	if(overwrite)
-	{
-		stmp=settings_client->getValue("allow_overwrite", "");
-	}
+	SSettings* settings = server_settings->getSettings();
 
-	if(stmp.empty())
-		stmp=settings->getValue("allow_overwrite", "");
-
-	if(!stmp.empty())
-		allow_overwrite=(stmp=="true");
+	bool overwrite = settings->overwrite;
+	bool allow_overwrite = settings->allow_overwrite;
 
 	ServerBackupDao::CondString origSettingsData = backup_dao->getOrigClientSettings(clientid);
 
@@ -1644,8 +1624,16 @@ void ClientMain::sendSettings(void)
 
 		if( globalized || (!overwrite && !allow_overwrite && !localized) || !settings_client->getValue(key, &value) )
 		{
-			if(!settings->getValue(key, &value) )
-				key="";
+			if (globalized)
+			{
+				if (!settings_global->getValue(key, &value))
+					key = "";
+			}
+			else
+			{
+				if (!settings_default->getValue(key, &value))
+					key = "";
+			}
 		}
 
 		if(!key.empty())
@@ -1660,21 +1648,28 @@ void ClientMain::sendSettings(void)
 				if( (origSettings->getValue(key, &orig_v) ||
 					origSettings->getValue(key+"_def", &orig_v) ) && orig_v!=value)
 				{
-					s_settings+=(key)+"_orig="+(orig_v)+"\n";
+					s_settings += key + "_orig=" + orig_v + "\n";
 				}
 			}
 
-			if(!overwrite && 
+			if(!overwrite &&
 				std::find(only_server_settings_names.begin(), only_server_settings_names.end(), key)!=only_server_settings_names.end())
 			{
-				settings->getValue(key, &value);
+				if (globalized)
+				{
+					settings_global->getValue(key, &value);
+				}
+				else
+				{
+					settings_default->getValue(key, &value);
+				}
 				key+="_def";
-				s_settings+=(key)+"="+(value)+"\n";				
+				s_settings += key + "="  + value + "\n";				
 			}
 			else
 			{
 				key+="_def";
-				s_settings+=(key)+"="+(value)+"\n";
+				s_settings += key + "=" + value + "\n";
 			}
 		}
 	}
@@ -1805,8 +1800,12 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 bool ClientMain::updateClientSetting(const std::string &key, const std::string &value)
 {
-	std::string tmp;
-	if(settings_client->getValue(key, &tmp)==false )
+	q_get_setting->Bind(clientid);
+	q_get_setting->Bind(key);
+	db_results res = q_get_setting->Read();
+	q_get_setting->Reset();
+
+	if(res.empty())
 	{
 		q_insert_setting->Bind(key);
 		q_insert_setting->Bind(value);
@@ -1815,7 +1814,7 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		q_insert_setting->Reset();
 		return true;
 	}
-	else if(tmp!=value)
+	else if(res[0]["value"]!=value)
 	{
 		q_update_setting->Bind(value);
 		q_update_setting->Bind(key);
