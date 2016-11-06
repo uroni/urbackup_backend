@@ -1492,6 +1492,7 @@ void ClientMain::sendSettings(void)
 	if(!stmp.empty())
 		overwrite=(stmp=="true");
 
+	stmp.clear();
 	bool allow_overwrite=true;
 	if(overwrite)
 	{
