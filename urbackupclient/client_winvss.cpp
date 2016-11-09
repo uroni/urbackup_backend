@@ -414,7 +414,7 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 	return "";
 }
 
-bool IndexThread::start_shadowcopy_components(VSS_ID& ssetid)
+bool IndexThread::start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction)
 {
 	std::string wpath;
 	SCDirs dir;
@@ -425,7 +425,7 @@ bool IndexThread::start_shadowcopy_components(VSS_ID& ssetid)
 	dir.ref->for_imagebackup = false;
 	bool only_ref_val = false;
 	bool* only_ref=&only_ref_val;
-	bool ret = start_shadowcopy_win(&dir, wpath, false, true, only_ref);
+	bool ret = start_shadowcopy_win(&dir, wpath, false, true, only_ref, has_active_transaction);
 
 	if (ret)
 	{
@@ -435,7 +435,8 @@ bool IndexThread::start_shadowcopy_components(VSS_ID& ssetid)
 	return ret;
 }
 
-bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref)
+bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref,
+	bool* has_active_transaction)
 {
 	const char* crash_consistent_explanation = "This means the files open by this application (e.g. databases) will be backed up in a crash consistent "
 		"state instead of a properly shutdown state. Properly written applications can recover from system crashes or power failures.";
@@ -774,6 +775,29 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			if (with_components)
 			{
 				additional_refs[i].with_writers = true;
+			}
+		}
+
+		if (has_active_transaction!=NULL)
+		{
+			HANDLE hVolume = CreateFileW((Server->ConvertToWchar(tsc.path)+L"\\").c_str(), GENERIC_READ,
+				FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if (hVolume != INVALID_HANDLE_VALUE)
+			{
+				TXFS_TRANSACTION_ACTIVE_INFO trans_active= {};
+				DWORD ret_bytes;
+				BOOL b = DeviceIoControl(hVolume, FSCTL_TXFS_TRANSACTION_ACTIVE, NULL, 0, &trans_active,
+					sizeof(trans_active), &ret_bytes, NULL);
+
+				if (b && trans_active.TransactionsActiveAtSnapshot)
+				{
+					Server->Log("Shadow copy has active NTFS transaction", LL_INFO);
+					*has_active_transaction = true;
+				}
+
+				CloseHandle(hVolume);
 			}
 		}
 

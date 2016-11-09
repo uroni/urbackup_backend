@@ -1253,6 +1253,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 #endif
 
 	bool has_stale_shadowcopy=false;
+	bool has_active_transaction = false;
 
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
@@ -1301,7 +1302,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				index_flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional | EBackupDirFlag_ShareHashes;
 				index_follow_last = false;
 				VSS_ID ssetid;
-				if (!start_shadowcopy_components(ssetid))
+				if (!start_shadowcopy_components(ssetid, &has_active_transaction))
 				{
 					index_error = true;
 				}
@@ -1384,7 +1385,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 			if(filetype!=0 || !shadowcopy_optional)
 			{
 				VSSLog("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_DEBUG);	
-				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, simultaneous_other, past_refs, false, &stale_shadowcopy, &shadowcopy_not_configured);
+				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, simultaneous_other, past_refs,
+					false, &stale_shadowcopy, &shadowcopy_not_configured, &has_active_transaction);
 				VSSLog("done.", LL_DEBUG);
 			}
 			else if(shadowcopy_optional)
@@ -1581,7 +1583,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	index_hdat_file.reset();
 
 #ifdef _WIN32
-	if(!has_stale_shadowcopy)
+	if(!has_stale_shadowcopy
+		&& !has_active_transaction)
 	{
 		if(!index_error)
 		{
@@ -1604,7 +1607,14 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	}
 	else
 	{
-		VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
+		if (has_stale_shadowcopy)
+		{
+			VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
+		}
+		if (has_active_transaction)
+		{
+			VSSLog("Did not delete backup of changed dirs because at least one volume had an active NTFS transaction.", LL_INFO);
+		}
 	}
 
 	DirectoryWatcherThread::unfreeze();
@@ -2634,7 +2644,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 }
 
 bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other,
-	std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool* not_configured)
+	std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool* not_configured,
+	bool* has_active_transaction)
 {
 	bool c_onlyref = false;
 	if (onlyref != NULL)
@@ -2699,7 +2710,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	
 
 #ifdef _WIN32
-	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, false, onlyref);
+	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, false, onlyref, has_active_transaction);
 #else
 	bool b = start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref, not_configured);
 #endif

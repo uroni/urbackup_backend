@@ -353,7 +353,8 @@ private:
 		const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs);
 
-	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, bool simultaneous_other=true, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL);
+	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, bool simultaneous_other=true, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(),
+		bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL, bool* has_active_transaction=NULL);
 
 	bool find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, bool simultaneous_other, const std::string& wpath, const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy,
 		bool consider_only_own_tokens, bool share_new);
@@ -361,8 +362,8 @@ private:
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32
-	bool start_shadowcopy_components(VSS_ID& ssetid);
-	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref );
+	bool start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction);
+	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref, bool* has_active_transaction);
 	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);
 	std::string GetErrorHResErrStr(HRESULT res);
 	void printProviderInfo(HRESULT res);
