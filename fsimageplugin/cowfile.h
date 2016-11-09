@@ -50,6 +50,8 @@ private:
 	std::vector<unsigned char> bitmap;
 
 	bool finished;
+	bool trim_warned;
+	std::vector<char> zero_buf;
 };
 
 #endif //__APPLE__

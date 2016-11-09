@@ -54,7 +54,7 @@
 const unsigned int blocksize = 4096;
 
 CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
- : bitmap_dirty(false), finished(false), curr_offset(0)
+ : bitmap_dirty(false), finished(false), curr_offset(0), trim_warned(false)
 {
 	filename = fn;
 	read_only = pRead_only;
@@ -490,8 +490,46 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		return false;
 	}
 #else
-	errno=ENOSYS;
-	return false;
+	if(!trim_warned)
+	{
+		Server->Log("Trim syscall not available (file hole punching). Falling back to writing zeros. This works if the file is compressed but isn't as performant", LL_WARNING);
+		trim_warned=true;
+	}
+
+	int64 orig_pos = curr_offset;
+
+	if(zero_buf.empty())
+	{
+		zero_buf.resize(32768);
+	}
+	
+	if (Seek(offset))
+	{
+		int64 size = unused_end - unused_start;
+		for (int64 written = 0; written < size;)
+		{
+			_u32 towrite = static_cast<_u32>((std::min)(size - written, static_cast<int64>(zero_buf.size())));
+			if (Write(zero_buf.data(), towrite)!=towrite)
+			{
+				int eno = errno;
+				Server->Log("Error writing zeros to file while trimming.", LL_ERROR);
+				Seek(orig_pos);
+				errno = eno;
+				return false;
+			}
+			written += towrite;
+		}
+	}
+	else
+	{
+		int eno = errno;
+		Server->Log("Seeking in device for trimming failed", LL_ERROR);
+		Seek(orig_pos);
+		errno = eno;
+		return false;
+	}
+
+	return Seek(orig_pos);
 #endif
 }
 
