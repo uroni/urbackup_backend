@@ -509,7 +509,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		for (int64 written = 0; written < size;)
 		{
 			_u32 towrite = static_cast<_u32>((std::min)(size - written, static_cast<int64>(zero_buf.size())));
-			if (Write(zero_buf.data(), towrite)!=towrite)
+			if (Write(zero_buf.data(), towrite, NULL)!=towrite)
 			{
 				int eno = errno;
 				Server->Log("Error writing zeros to file while trimming.", LL_ERROR);
