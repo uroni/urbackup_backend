@@ -950,7 +950,7 @@ void action_help(std::string cmd)
 	std::cout << "\t\t" "Mount VHD file" << std::endl;
 	std::cout << std::endl;
 #endif
-	std::cout << "\t" "urbackupsrv assemble" << std::endl;
+	std::cout << "\t" << cmd << " assemble" << std::endl;
 	std::cout << "\t\t" "Assemble VHD(Z) volumes into one disk VHD file" << std::endl;
 	std::cout << std::endl;
 }
