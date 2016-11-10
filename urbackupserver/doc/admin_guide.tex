@@ -1472,10 +1472,11 @@ executable \textsl{urbackup\_ snapshot\_helper}. However, currently ZFSOnLinux c
 as non-priviledged user. So you must run UrBackup server as \textsl{root} user
 (\textsl{urbackupsrv run -u root}). You should create a separate ZFS dataset in which
 the image backups will be stored e.g. \textsl{tank/images}. UrBackup server will read
-this dataset from \textsl{/etc/urbackup/dataset}. Setup by e.g.
+this dataset from \textsl{/etc/urbackup/dataset} and the backup storage path from \textsl{/etc/urbackup/backupfolder}. Setup by e.g.
 \begin{verbatim}
 mkdir -p /etc/urbackup
 echo "tank/images" > /etc/urbackup/dataset
+echo "/mnt/BACKUP/urbackup" > /etc/urbackup/backupfolder
 \end{verbatim}
 Afterwards test if everything works correctly by running as root:
 \begin{verbatim}
