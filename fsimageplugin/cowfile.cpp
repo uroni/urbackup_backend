@@ -503,7 +503,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		zero_buf.resize(32768);
 	}
 	
-	if (Seek(offset))
+	if (Seek(unused_start))
 	{
 		int64 size = unused_end - unused_start;
 		for (int64 written = 0; written < size;)
