@@ -1,4 +1,5 @@
 #include <string>
+#include <string>
 #include <iostream>
 #include <vector>
 #include "../stringtools.h"
@@ -292,7 +293,7 @@ bool get_mountpoint(int mode, std::string subvolume_folder)
 	}
 	else if(mode==mode_zfs)
 	{
-		int rc=exec_wait(find_zfs_cmd(), true, "get", "mountpoint", "-H", "-o", "value", subvolume_folder.c_str(), NULL);
+		int rc=exec_wait(find_zfs_cmd(), true, "get", "-H", "-o", "value", "mountpoint", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
 	return false;
