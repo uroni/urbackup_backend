@@ -16,7 +16,7 @@ public:
 
 	virtual int64 getUpdateIntervalMs();
 
-	virtual size_t getThrottleLimit();
+	virtual size_t getThrottleLimit(bool& percent_max);
 
 private:
 	int clientid;

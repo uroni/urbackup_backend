@@ -1832,6 +1832,18 @@ bool upgrade48_49()
 	return b;
 }
 
+bool upgrade49_50()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("UPDATE settings_db.settings SET value='0' WHERE value='-1' "
+		"AND (key='local_speed' OR key='internet_speed' OR key='global_local_speed' OR key='global_internet_speed')");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1854,7 +1866,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=49;
+	int max_v=50;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2129,6 +2141,13 @@ void upgrade(void)
 				break;
 			case 48:
 				if (!upgrade48_49())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 49:
+				if (!upgrade49_50())
 				{
 					has_error = true;
 				}

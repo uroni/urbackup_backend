@@ -33,23 +33,36 @@ int64 ThrottleUpdater::getUpdateIntervalMs()
 	return 10*60*1000; //10 min
 }
 
-size_t ThrottleUpdater::getThrottleLimit()
+size_t ThrottleUpdater::getThrottleLimit(bool& percent_max)
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerSettings server_settings(db, clientid);
 
+	int ret;
 	switch(throttle_scope)
 	{
 	case ThrottleScope_GlobalInternet:
-		return server_settings.getGlobalInternetSpeed();
+		ret = server_settings.getGlobalInternetSpeed();
 	case ThrottleScope_GlobalLocal:
-		return server_settings.getGlobalLocalSpeed();
+		ret = server_settings.getGlobalLocalSpeed();
 	case ThrottleScope_Internet:
-		return server_settings.getInternetSpeed();
+		ret = server_settings.getInternetSpeed();
 	case ThrottleScope_Local:
-		return server_settings.getLocalSpeed();
+		ret = server_settings.getLocalSpeed();
 	default:
+		percent_max = false;
 		return std::string::npos;
+	}
+
+	if (ret < 0)
+	{
+		percent_max = true;
+		return ret*-1;
+	}
+	else
+	{
+		percent_max = false;
+		return ret;
 	}
 }
 

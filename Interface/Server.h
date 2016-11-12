@@ -104,7 +104,8 @@ public:
 	virtual ISettingsReader* createDBMemSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL = "") = 0;
 	virtual ISettingsReader* createDBMemSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL = "") = 0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
-	virtual IPipeThrottler* createPipeThrottler(size_t bps, IPipeThrottlerUpdater* updater=NULL)=0;
+	virtual IPipeThrottler* createPipeThrottler(size_t bps, bool percent_max) = 0;
+	virtual IPipeThrottler* createPipeThrottler(IPipeThrottlerUpdater* updater) = 0;
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params = str_map(), std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;

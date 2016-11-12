@@ -1745,11 +1745,18 @@ void CServer::startupComplete(void)
 }
 
 IPipeThrottler* CServer::createPipeThrottler(size_t bps,
-	IPipeThrottlerUpdater* updater)
+	bool percent_max)
 {
-	return new PipeThrottler(bps, updater);
+	return new PipeThrottler(bps, percent_max, NULL);
 }
 
+IPipeThrottler* CServer::createPipeThrottler(
+	IPipeThrottlerUpdater* updater)
+{
+	bool percent_max = false;
+	size_t bps = updater->getThrottleLimit(percent_max);
+	return new PipeThrottler(bps, percent_max, updater);
+}
 
 void CServer::shutdown(void)
 {

@@ -250,7 +250,7 @@ private:
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	bool isBackupsRunningOkay(bool file, bool incr=false);	
 	bool updateCapabilities(void);
-	IPipeThrottler *getThrottler(size_t speed_bps);
+	IPipeThrottler *getThrottler(int speed_bps);
 	bool inBackupWindow(Backup* backup);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
