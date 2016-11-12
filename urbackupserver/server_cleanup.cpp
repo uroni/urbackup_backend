@@ -549,7 +549,10 @@ void ServerCleanupThread::do_remove_unknown(void)
 			if(cf.name==".directory_pool")
 				continue;
 
-			if(cf.isdir)
+			if(cf.isdir
+				|| ( cf.issym 
+						&& cf.name.find(".")==std::string::npos
+					    && cf.name.find("Image")!=std::string::npos ) )
 			{
 				if (cf.name.find("Image") == std::string::npos)
 				{
@@ -623,7 +626,15 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 					if (!found_image)
 					{
-						os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
+						if (cf.issym)
+						{
+							SnapshotHelper::removeFilesystem(clientname, cf.name);
+							Server->deleteFile(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
+						}
+						else
+						{
+							os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
+						}
 					}
 				}
 			}

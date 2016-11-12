@@ -1900,8 +1900,23 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		create_folder = false;
 		if (full_backup)
 		{
+			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			{
+				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
+				if (touch_f.get())
+				{
+					ServerLogger::Log(logid, "Could not touch file " + image_folder + ". " + os_last_error_str(), LL_ERROR);
+					return std::string();
+				}
+				touch_f->Sync();
+			}
+
 			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single))
 			{
+				if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+				{
+					Server->deleteFile(image_folder);
+				}
 				return std::string();
 			}
 			else if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
@@ -1913,9 +1928,15 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 					return std::string();
 				}
 
-				if (!os_link_symbolic(mountpoint, image_folder))
+				if (!os_link_symbolic(mountpoint, image_folder+"_new"))
 				{
-					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint, LL_ERROR);
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint+". "+os_last_error_str(), LL_ERROR);
+					return std::string();
+				}
+
+				if (!os_rename_file(image_folder + "_new", image_folder))
+				{
+					ServerLogger::Log(logid, "Could rename symlink at " + image_folder + "_new to " + image_folder + ". " + os_last_error_str(), LL_ERROR);
 					return std::string();
 				}
 			}
@@ -1939,10 +1960,25 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
 		std::string parent_fn = ExtractFileName(pParentvhd);
 
+		if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+		{
+			std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
+			if(touch_f.get())
+			{
+				ServerLogger::Log(logid, "Could not touch file " + image_folder + ". "+os_last_error_str(), LL_ERROR);
+				return std::string();
+			}
+			touch_f->Sync();
+		}
+
 		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
 		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
 		{
 			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single, LL_ERROR);
+			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			{
+				Server->deleteFile(image_folder);
+			}
 			return std::string();
 		}
 		else
@@ -1956,9 +1992,15 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 					return std::string();
 				}
 
-				if (!os_link_symbolic(mountpoint, image_folder))
+				if (!os_link_symbolic(mountpoint, image_folder+"_new"))
 				{
-					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint, LL_ERROR);
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint+". "+os_last_error_str(), LL_ERROR);
+					return std::string();
+				}
+
+				if (!os_rename_file(image_folder + "_new", image_folder))
+				{
+					ServerLogger::Log(logid, "Could rename symlink at " + image_folder + "_new to " + image_folder + ". " + os_last_error_str(), LL_ERROR);
 					return std::string();
 				}
 			}
