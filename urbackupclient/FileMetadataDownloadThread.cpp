@@ -693,6 +693,10 @@ namespace
 
             if(bufsize==-1)
             {
+				if (errno == EOPNOTSUPP)
+				{
+					return true;
+				}
                 Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno), LL_ERROR);
                 return false;
             }
