@@ -196,7 +196,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 				return false;
 			}
 #ifndef _WIN32
-			int fd = *reinterpret_cast<int*>(&add_file->getOsHandle());
+			void* osh = add_file->getOsHandle();
+			int fd = *reinterpret_cast<int*>(&osh);
 #else
 			int fd =_open_osfhandle(reinterpret_cast<intptr_t>(add_file->getOsHandle()), _O_RDONLY);
 			if (fd == -1)
