@@ -40,6 +40,9 @@
     <Filter Include="filesindex">
       <UniqueIdentifier>{3ec8a037-dfb3-443f-aa14-dd5a1f016e35}</UniqueIdentifier>
     </Filter>
+    <Filter Include="miniz">
+      <UniqueIdentifier>{c5f185c0-de01-43f8-9a80-28684380f19c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -342,6 +345,18 @@
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz_tdef.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz_tinfl.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz_zip.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -619,6 +634,21 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz\miniz.h">
+      <Filter>miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz\miniz_common.h">
+      <Filter>miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz\miniz_tdef.h">
+      <Filter>miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz\miniz_tinfl.h">
+      <Filter>miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz\miniz_zip.h">
+      <Filter>miniz</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
