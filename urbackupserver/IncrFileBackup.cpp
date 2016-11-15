@@ -297,10 +297,12 @@ bool IncrFileBackup::doFileBackup()
 
 	getTokenFile(fc, hashed_transfer);
 
+	bool reflink_files = !intra_file_diffs;
+
 	if(use_snapshots)
 	{
 		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size())+")", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false) )
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false, reflink_files ? NULL : &modified_inplace_ids) )
 		{
 			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -308,7 +310,7 @@ bool IncrFileBackup::doFileBackup()
 		}
 
 		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true, true))
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true, true, NULL))
 		{
 			ServerLogger::Log(logid, "Deleting files in hash snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -698,9 +700,10 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)) )
 								{
+									std::string errstr = os_last_error_str();
 									if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 									{
-										ServerLogger::Log(logid, "Creating directory  \""+backuppath+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
+										ServerLogger::Log(logid, "Creating directory  \""+backuppath+local_curr_os_path+"\" failed. - " + errstr, LL_ERROR);
 										c_has_error=true;
 										break;
 									}
@@ -715,15 +718,16 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
+									std::string errstr = os_last_error_str();
 									if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 									{
-										ServerLogger::Log(logid, "Creating directory  \""+backuppath_hashes+local_curr_os_path+"\" failed. - " + systemErrorInfo(), LL_ERROR);
+										ServerLogger::Log(logid, "Creating directory  \""+backuppath_hashes+local_curr_os_path+"\" failed. - " + errstr, LL_ERROR);
 										c_has_error=true;
 										break;
 									}
 									else
 									{
-										ServerLogger::Log(logid, "Directory  \""+backuppath_hashes+local_curr_os_path+"\" does already exist. - " + systemErrorInfo(), LL_WARNING);
+										ServerLogger::Log(logid, "Directory  \""+backuppath_hashes+local_curr_os_path+"\" does already exist. - " + errstr, LL_WARNING);
 									}
 								}								
 							}
@@ -1587,7 +1591,8 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 	}
 }
 
-bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::string snapshot_path, bool no_error, bool hash_dir)
+bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids,
+	std::string snapshot_path, bool no_error, bool hash_dir, std::vector<size_t>* modified_inplace_ids)
 {
 	if(os_directory_exists(os_file_prefix(backuppath + os_file_sep() + "user_views")))
 	{
@@ -1638,7 +1643,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					osspecific_name = fixFilenameForOS(cname, folder_files.top(), curr_path, false, logid, filepath_corrections);
 				}
 
-				if( hasChange(line, deleted_ids) )
+				if( hasChange(line, deleted_ids) 
+					&& (modified_inplace_ids==NULL || !hasChange(line, *modified_inplace_ids) ) )
 				{					
 					std::string curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)

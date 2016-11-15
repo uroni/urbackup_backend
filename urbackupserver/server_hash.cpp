@@ -1337,7 +1337,8 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		has_reflink=false;
 		if( use_reflink )
 		{
-			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
+			if( (os_get_file_type(os_file_prefix(dest)) & EFileType_File)==0
+				&& !os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
 			{
 				ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed", LL_WARNING);
 			}

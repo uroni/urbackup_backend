@@ -664,7 +664,8 @@ bool ServerDownloadThread::link_or_copy_file(const SQueueItem& todl)
 	}
 	
 	
-	if( os_create_hardlink(os_file_prefix(dstpath), dlfiles.orig_file->getFilename(), use_reflink, NULL)
+	if( ( os_get_file_type(os_file_prefix(dstpath))!=0
+			|| os_create_hardlink(os_file_prefix(dstpath), dlfiles.orig_file->getFilename(), use_reflink, NULL) )
 	    && os_create_hardlink(os_file_prefix(dsthashpath), dlfiles.chunkhashes->getFilename(), use_reflink, NULL) )
 	{
 		return true;
@@ -1239,6 +1240,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 
 	if(file_old.get()==NULL)
 	{
+		Server->deleteFile(dstpath);
 		if(!last_backuppath_complete.empty())
 		{
 			filepath_old=last_backuppath_complete+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
