@@ -22,6 +22,7 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../Interface/File.h"
 #include "backups.h"
+#include <memory>
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../../common/miniz/miniz.h"
