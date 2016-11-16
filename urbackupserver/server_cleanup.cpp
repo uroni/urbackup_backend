@@ -136,7 +136,7 @@ void ServerCleanupThread::operator()(void)
 #ifndef _DEBUG
 	{
 		IScopedLock lock(mutex);
-		cond->wait(&lock, 60000);
+		cond->wait(&lock, 1000);
 
 		if(do_quit)
 		{
