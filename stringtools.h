@@ -22,7 +22,7 @@ std::string getuntilinc(std::string str,std::string data);
 std::string getline(int line,const std::string &str);
 int linecount(const std::string &str);
 std::string getFile(std::string filename);
-std::string getFileUTF8(std::string filename);
+std::string getStreamFile(const std::string& fn);
 std::string ExtractFileName(std::string fulln, std::string separators="/\\");
 std::string ExtractFilePath(std::string fulln, std::string separators="/\\");
 std::string convert(bool pBool);

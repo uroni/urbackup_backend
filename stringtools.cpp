@@ -218,6 +218,22 @@ std::string getFile(std::string filename)
         return ret;
 }
 
+std::string getStreamFile(const std::string& fn)
+{
+	std::fstream fin(fn.c_str(), std::ios::binary | std::ios::in);
+	if (!fin.is_open())
+		return std::string();
+
+	std::string ret;
+	while (!fin.eof())
+	{
+		char buf[512];
+		fin.read(buf, sizeof(buf));
+		ret.insert(ret.end(), buf, buf + fin.gcount());
+	}
+	return ret;
+}
+
 void strupper_utf8(std::string *pStr)
 {
 	std::wstring tmp;
