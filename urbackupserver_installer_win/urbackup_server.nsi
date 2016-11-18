@@ -212,7 +212,7 @@ Section "install"
 	${Unicode2Ansi} "UrBackup Windows Server" $R1
 	${Unicode2Ansi} "16" $R2
 	${Unicode2Ansi} "2" $R3
-	${Unicode2Ansi} '"$INSTDIR\urbackup_srv.exe"' $R4
+	${Unicode2Ansi} "$INSTDIR\urbackup_srv.exe" $R4
 	SimpleSC::ExistsService "$R0"
 	Pop $0
 	${If} $0 != '0'
