@@ -12,6 +12,8 @@ OutFile "UrBackup Server $version_short$.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
 
+!include "servicelib.nsh"
+
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -134,13 +136,12 @@ Section "install"
 		${EndIf}
 	${EndIf}
 	
-	${Unicode2Ansi} "UrBackupWinServer" $R0
-	SimpleSC::ExistsService "$R0"
-	Pop $0
-	${If} $0 == '0'
-		SimpleSC::StopService "$R0"
-		Pop $0
-	${EndIf}
+	!insertmacro SERVICE running "UrBackupWinServer" "action=service_stop;"
+	Goto skip_service_stop
+service_stop:
+	!insertmacro SERVICE stop "UrBackupWinServer" ""
+	!insertmacro SERVICE waitfor "UrBackupWinServer" "status=stopped"
+skip_service_stop:
 	
 	Sleep 500
 	
@@ -208,20 +209,10 @@ Section "install"
 	liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
 	Pop $0
 	
-	
-	${Unicode2Ansi} "UrBackupWinServer" $R0
-	${Unicode2Ansi} "UrBackup Windows Server" $R1
-	${Unicode2Ansi} "16" $R2
-	${Unicode2Ansi} "2" $R3
-	${Unicode2Ansi} '"$INSTDIR\urbackup_srv.exe"' $R4
-	SimpleSC::ExistsService "$R0"
-	Pop $0
-	${If} $0 != '0'
-		SimpleSC::InstallService "$R0" "$R1" "$R2" "$R3" "$R4" "" "" ""
-		Pop $0
-	${EndIf}	
-	SimpleSC::StartService "$R0" ""
-	Pop $0
+	!insertmacro SERVICE installed "UrBackupWinServer" "action=skip_service_install;"
+	!insertmacro SERVICE create "UrBackupWinServer" 'path="$INSTDIR\urbackup_srv.exe";autostart=1;interact=0;display=UrBackup Windows Server;description=UrBackup Windows Server;'
+skip_service_install:
+	!insertmacro SERVICE start "UrBackupWinServer" ""
 	
 	${If} ${RunningX64}
 		!insertmacro EnableX64FSRedirection
@@ -235,12 +226,10 @@ Section "Uninstall"
 		!insertmacro DisableX64FSRedirection
 		SetRegView 64
 	${EndIf}
-
-	${Unicode2Ansi} "UrBackupWinServer" $R0
-	SimpleSC::StopService "$R0"
-	Pop $0
-	SimpleSC::RemoveService "$R0"
-	Pop $0
+	
+	!insertmacro SERVICE stop "UrBackupWinServer" ""
+	!insertmacro SERVICE waitfor "UrBackupWinServer" "status=stopped"
+	!insertmacro SERVICE delete "UrBackupWinServer" ""
 	
 	Sleep 500
 
