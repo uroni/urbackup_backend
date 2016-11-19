@@ -158,6 +158,8 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 
 	std::string clientsubname = params["clientsubname"];
 
+	IScopedLock lock(ident_mutex);
+
 	std::map<std::pair<std::string, std::string>, std::string>::iterator challenge_it = challenges.find(std::make_pair(identity, clientsubname));
 
 	if(challenge_it==challenges.end() || challenge_it->second.empty())
