@@ -1496,6 +1496,12 @@ namespace
 				last_pos = pos;
 				last_update = ctime;
 
+				if (total > 0)
+				{
+					int done_pc = (pos*100) / total;
+					ServerStatus::setProcessPcDone(std::string(), status_id, done_pc);
+				}
+
 				ServerStatus::setProcessDoneBytes(std::string(), status_id, pos, total);
 				ServerStatus::setProcessSpeed(std::string(), status_id, static_cast<double>(new_bytes) / passed);
 			}
@@ -1522,6 +1528,11 @@ namespace
 				src_file = Server->openFile(os_file_prefix(src), MODE_READ_DEVICE);
 
 				db_src_files[src] = src_file;
+			}
+
+			if (!src_file->Seek(0))
+			{
+				return false;
 			}
 		}
 		else
@@ -1675,6 +1686,8 @@ bool ServerCleanupThread::backup_database(void)
 				DBScopedWriteTransaction copy_db_transaction(copy_db);
 
 				BackupProgress backup_progress(database_backup.getStatusId());
+
+				ServerLogger::Log(logid, "Copying " + copy_backup[i] + " to "+ bfolder+"...", LL_INFO);
 
 				std::string errmsg1;
 				bool copy_ok = copy_db_file(Server->getServerWorkingDir()+ os_file_sep() + "urbackup" + os_file_sep() + copy_backup[i],
