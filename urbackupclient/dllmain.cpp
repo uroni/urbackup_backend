@@ -73,9 +73,8 @@ extern IServer* Server;
 #include "../urbackupcommon/chunk_hasher.h"
 #include "../urbackupcommon/WalCheckpointThread.h"
 
-#define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.c"
+#include "../common/miniz/miniz.h"
 
 namespace
 {

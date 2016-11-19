@@ -21,7 +21,9 @@
   <ItemGroup>
     <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
-    <ClCompile Include="..\common\miniz.c" />
+    <ClCompile Include="..\common\miniz\miniz.c" />
+    <ClCompile Include="..\common\miniz\miniz_tdef.c" />
+    <ClCompile Include="..\common\miniz\miniz_tinfl.c" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />

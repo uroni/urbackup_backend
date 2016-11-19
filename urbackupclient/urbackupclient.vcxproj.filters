@@ -22,6 +22,9 @@
     <Filter Include="fileclient">
       <UniqueIdentifier>{5cdf5545-d6e8-4bee-8076-81b308b385b1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="miniz">
+      <UniqueIdentifier>{57e1a23e-39c3-4298-92a8-ec6466ada5a4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
@@ -156,9 +159,6 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\miniz.c">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="cmdline_preprocessor.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -179,6 +179,15 @@
     </ClCompile>
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz_tinfl.c">
+      <Filter>miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\miniz\miniz_tdef.c">
+      <Filter>miniz</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
