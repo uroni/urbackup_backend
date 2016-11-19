@@ -867,7 +867,7 @@ bool ImageThread::sendIncrImageThread(void)
 
 					bool mixed = false;
 					unsigned char digest[SHA256_DIGEST_SIZE];
-					if (has_hashdata)
+					if (has_hashdata || with_checksum)
 					{
 						sha256_init(&shactx);
 						for (int64 j = i; j < blocks && j < i + blocks_per_vhdblock; ++j)
