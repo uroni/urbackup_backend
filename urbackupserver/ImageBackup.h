@@ -53,7 +53,7 @@ protected:
 		bool transfer_checksum, std::string image_file_format, bool transfer_bitmap, bool transfer_prev_cbitmap);
 	unsigned int writeMBR(ServerVHDWriter* vhdfile, uint64 volsize);
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx* shactx, unsigned char* zeroblockdata,
-		bool parent_fn, ServerVHDWriter* parentfile, IFile* hashfile, IFile* parenthashfile, unsigned int blocksize,
+		bool parent_fn, IFile* hashfile, IFile* parenthashfile, unsigned int blocksize,
 		int64 mbr_offset, int64 vhd_blocksize, bool &warned_about_parenthashfile_error, int64 empty_vhdblock_start,
 		ServerVHDWriter* vhdfile, int64 trim_add);
 	SBackup getLastImage(const std::string &letter, bool incr);
