@@ -405,7 +405,7 @@ function multiplyTimeSpan(ts, m, allow_percent)
 		if(idx!=-1)
 		{
 			var idx_pc = timespans[i].indexOf("%");
-			if(idx_pc!=-1 && allow_pc )
+			if(idx_pc!=-1 && allow_percent )
 			{
 				var d=parseFloat(timespans[i].substr(0, idx_pc));
 				ret+=d*-1 + timespans[i].substr(idx, timespans[i].length - idx);
@@ -429,7 +429,7 @@ function multiplyTimeSpan(ts, m, allow_percent)
 		else
 		{
 			var idx_pc = timespans[i].indexOf("%");
-			if(idx_pc!=-1 && allow_pc )
+			if(idx_pc!=-1 && allow_percent )
 			{
 				var d=parseFloat(timespans[i].substr(0, idx_pc));
 				ret+=d*-1;
@@ -446,8 +446,6 @@ function multiplyTimeSpan(ts, m, allow_percent)
 				{
 					ret+=d*m;
 				}
-				
-				ret+=d*m;
 			}
 		}
 	}
@@ -3419,6 +3417,7 @@ g.ldap_settings_list=[
 ];
 
 g.time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
+g.time_span_speed_regex = /^([\d.]*[%]?(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
 
 function validateCommonSettings()
 {
@@ -3429,8 +3428,8 @@ function validateCommonSettings()
 	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
-	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_regex})) return false;
-	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_regex })) return false;
+	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_speed_regex})) return false;
+	if(I('internet_speed') && I('internet_speed').value!="-" && I('internet_speed').value!="" && !validate_text_regex({id: "internet_speed", regexp: g.time_span_speed_regex })) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
 	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
@@ -3459,8 +3458,8 @@ function saveGeneralSettings()
 	backupWindowChange();
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
-	if(I('global_local_speed').value!="-" && !validate_text_regex([{id: "global_local_speed", regexp: g.time_span_regex}])) return;
-	if(I('global_internet_speed') && I('global_internet_speed').value!="-" && !validate_text_regex([{id: "global_internet_speed", regexp: g.time_span_regex}])) return;
+	if(I('global_local_speed').value!="-" && !validate_text_regex([{id: "global_local_speed", regexp: g.time_span_speed_regex}])) return;
+	if(I('global_internet_speed') && I('global_internet_speed').value!="-" && !validate_text_regex([{id: "global_internet_speed", regexp: g.time_span_speed_regex}])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
 	if(!validate_text_regex([{ id: "server_url", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return;
