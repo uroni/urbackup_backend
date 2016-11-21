@@ -23,12 +23,14 @@
 #include "../../Interface/File.h"
 #include "backups.h"
 #include <memory>
+#include "../../common/data.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../../common/miniz/miniz.h"
 #include "../../common/miniz/miniz_zip.h"
 #ifndef _WIN32
 #define _fdopen fdopen
+#define _close close
 #else
 #include <io.h>
 #include <fcntl.h>
@@ -68,7 +70,8 @@ bool my_miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 	return true;
 }
 
-bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, const std::string& folderbase, const std::string& foldername, const std::string& hashfolderbase, const std::string& hashfoldername, const std::string& filter,
+bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, const std::string& folderbase, const std::string& foldername, const std::string& start_foldername,
+	    const std::string& hashfolderbase, const std::string& hashfoldername, const std::string& filter,
 		bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
 {
 	bool has_error=false;
@@ -171,6 +174,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 
 		time_t* last_modified=NULL;
 		time_t last_modified_wt;
+		CWData extra_data_local;
+		CWData extra_data_central;
 		if(has_metadata)
 		{
 #ifdef _WIN32
@@ -179,13 +184,59 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 			last_modified_wt=static_cast<time_t>(metadata.last_modified);
 #endif
 			last_modified=&last_modified_wt;
+
+			if (metadata.created > 0)
+			{
+				//NTFS extra field
+				CWData ntfs_extra;
+				ntfs_extra.addUShort(0x000a);
+				ntfs_extra.addUShort(4 + 2 + 2 + 8 + 8 + 8);
+				ntfs_extra.addUInt(0);
+				ntfs_extra.addUShort(0x0001);
+				ntfs_extra.addUShort(3 * 8);
+				//TODO: Get higher resolution NTFS timestamps from metadata and use it here
+				ntfs_extra.addInt64(os_to_windows_filetime(metadata.last_modified));
+				ntfs_extra.addInt64(os_to_windows_filetime(metadata.accessed));
+				ntfs_extra.addInt64(os_to_windows_filetime(metadata.created));
+
+				extra_data_local.addBuffer(ntfs_extra.getDataPtr(), ntfs_extra.getDataSize());
+				extra_data_central.addBuffer(ntfs_extra.getDataPtr(), ntfs_extra.getDataSize());
+			}
+
+			unsigned char flags = 0 << 1 | 1 << 1;
+			unsigned short local_size = 1 + sizeof(_u32) * 2;
+
+			if (metadata.created > 0)
+			{
+				flags |= 1 << 2;
+				local_size += sizeof(_u32);
+			}
+
+			//Extended Timestamp Extra Field
+			extra_data_local.addUShort(0x5455);
+			extra_data_local.addUShort(local_size);
+			extra_data_local.addUChar(flags);
+			extra_data_local.addUInt(static_cast<_u32>(metadata.last_modified));
+			extra_data_local.addUInt(static_cast<_u32>(metadata.accessed));
+			if (metadata.created>0)
+			{
+				extra_data_local.addUInt(static_cast<_u32>(metadata.created));
+			}
+			
+			extra_data_central.addUShort(0x5455);
+			extra_data_central.addUShort(1 + sizeof(_u32));
+			extra_data_central.addUChar(flags);
+			extra_data_central.addUInt(static_cast<_u32>(metadata.last_modified));
 		}
+
+		//TODO: ZIP has extensions for NTFS/Unix/MacOS attributes, symbolic links, NTFS ACL, ... use them
 
 		mz_bool rc;
 		if(file.isdir)
 		{
 			rc = mz_zip_writer_add_mem_ex(&zip_archive, (archivename + "/").c_str(), NULL, 0, NULL, 0, MZ_DEFAULT_LEVEL,
-											0, 0, 1<<11, last_modified);
+											0, 0, 1<<11, last_modified, extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
+											extra_data_central.getDataPtr(), extra_data_central.getDataSize());
 		}
 		else
 		{	
@@ -195,6 +246,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 				Server->Log("Error opening file \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
 				return false;
 			}
+			int64 fsize = add_file->Size();
 #ifndef _WIN32
 			void* osh = add_file->getOsHandle();
 			int fd = *reinterpret_cast<int*>(&osh);
@@ -205,32 +257,66 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 				Server->Log("Error opening file fd for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
 				return false;
 			}
+			add_file.release();
 #endif
 
 			FILE* file = _fdopen(fd, "r");
 			if (file != NULL)
 			{
-				rc = mz_zip_writer_add_cfile(&zip_archive, archivename.c_str(), file, add_file->Size(), last_modified, NULL, 0, MZ_DEFAULT_LEVEL);
+				rc = mz_zip_writer_add_cfile(&zip_archive, archivename.c_str(), file, fsize, last_modified, NULL, 0, MZ_DEFAULT_LEVEL, 
+					extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
+					extra_data_central.getDataPtr(), extra_data_central.getDataSize());
 
 				fclose(file);
 			}
 			else
 			{
 				Server->Log("Error opening FILE handle for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
+				_close(fd);
 				return false;
 			}
 		}
 
 		if(rc==MZ_FALSE)
 		{
-			Server->Log("Error while adding file \""+filename+"\" to ZIP file. RC="+convert((int)rc), LL_ERROR);
+			mz_zip_error err = mz_zip_get_last_error(&zip_archive);
+			Server->Log("Error while adding file \""+filename+"\" to ZIP file. Error: "+mz_zip_get_error_string(err), LL_ERROR);
 			return false;
 		}
 
 		if(file.isdir)
 		{
-			add_dir(zip_archive, archivename, folderbase, filename, hashfolderbase, next_hashfoldername, filter,
-				token_authentication, backup_tokens, tokens, false);
+			
+			bool symlink_loop = false;
+			bool symlink_outside = true;
+			std::string orig_filename = foldername + os_file_sep() + file.name;
+			if (is_dir_link)
+			{
+				if (next(orig_filename + os_file_sep(), 0, filename + os_file_sep()) )
+				{
+					symlink_loop = true;
+				}
+				if (next(filename + os_file_sep(), 0, start_foldername + os_file_sep()))
+				{
+					symlink_outside = false;
+				}
+			}
+
+			if (!symlink_loop && symlink_outside)
+			{
+				if (!add_dir(zip_archive, archivename, folderbase, filename, start_foldername, hashfolderbase, next_hashfoldername, filter,
+								token_authentication, backup_tokens, tokens, false))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				if(symlink_loop)
+					Server->Log("Not following looping symbolic link at \"" + orig_filename + "\" to \""+filename+"\"", LL_INFO);
+				else if(!symlink_outside)
+					Server->Log("Not following symbolic link at \"" + orig_filename + "\" to \""+filename+"\" because its contents are already in the ZIP file", LL_INFO);
+			}
 		}
 	}
 
@@ -256,7 +342,7 @@ bool create_zip_to_output(const std::string& folderbase, const std::string& fold
 		return false;
 	}
 
-	if(!add_dir(zip_archive, "", folderbase, foldername, hashfolderbase, 
+	if(!add_dir(zip_archive, "", folderbase, foldername, foldername, hashfolderbase,
 		hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes))
 	{
 		Server->Log("Error while adding files and folders to ZIP archive", LL_ERROR);
