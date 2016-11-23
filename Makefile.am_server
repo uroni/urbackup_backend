@@ -62,10 +62,10 @@ if INSTALL_INITD
 if PACKAGING
 	$(INSTALL) -D "$(srcdir)/init.d_server" "$(DESTDIR)$(sysconfdir)/init.d/urbackupsrv"
 	$(INSTALL) -D "$(srcdir)/defaults_server" "$(DESTDIR)$(sysconfdir)/default/urbackupsrv"
-	$(INSTALL) -D "$(srcdir)/logrotate_urbackupsrv" "$(DESTDIR)$(sysconfdir)/logrotate.d/urbackupsrv"
+	$(INSTALL) -m 644 -D "$(srcdir)/logrotate_urbackupsrv" "$(DESTDIR)$(sysconfdir)/logrotate.d/urbackupsrv"
 else
 	$(INSTALL) -D "$(srcdir)/init.d_server" "$(sysconfdir)/init.d/urbackupsrv"
-	$(INSTALL) -D "$(srcdir)/logrotate_urbackupsrv" "$(sysconfdir)/logrotate.d/urbackupsrv"
+	$(INSTALL) -m 644 -D "$(srcdir)/logrotate_urbackupsrv" "$(sysconfdir)/logrotate.d/urbackupsrv"
 	if ! test -e "$(sysconfdir)/default/urbackupsrv"; then $(INSTALL) -D "$(srcdir)/defaults_server" "$(sysconfdir)/default/urbackupsrv"; fi
 endif
 endif
