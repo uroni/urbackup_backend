@@ -243,6 +243,7 @@ bool IncrFileBackup::doFileBackup()
 	std::vector<size_t> *large_unchanged_subtrees_ref=NULL;
 	if(use_directory_links) large_unchanged_subtrees_ref=&large_unchanged_subtrees;
 	std::vector<size_t> modified_inplace_ids;
+	std::vector<size_t> deleted_inplace_ids;
 	std::vector<size_t> dir_diffs;
 
 	std::string clientlist_name = clientlistName(last.backupid);
@@ -252,7 +253,8 @@ bool IncrFileBackup::doFileBackup()
 	}
 
 	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlist_name, tmpfilename,
-		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids, dir_diffs);
+		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids, 
+		dir_diffs, &deleted_inplace_ids);
 
 	if(error)
 	{
@@ -301,15 +303,15 @@ bool IncrFileBackup::doFileBackup()
 
 	if(use_snapshots)
 	{
-		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size())+")", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false, reflink_files ? NULL : &modified_inplace_ids) )
+		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size() - (reflink_files ? 0 : deleted_inplace_ids.size()) )+")", LL_INFO);
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false, reflink_files ? NULL : &deleted_inplace_ids) )
 		{
 			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
 			return false;
 		}
 
-		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...", LL_INFO);
+		ServerLogger::Log(logid, clientname+": Deleting files in hash snapshot...("+convert(deleted_ids.size())+")", LL_INFO);
 		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath_hashes, true, true, NULL))
 		{
 			ServerLogger::Log(logid, "Deleting files in hash snapshot failed (Server error)", LL_ERROR);
@@ -771,7 +773,7 @@ bool IncrFileBackup::doFileBackup()
 											metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
 										}
 									}
-									else if(os_get_file_type(os_file_prefix(backuppath + local_curr_os_path)) & EFileType_Symlink == 0 )
+									else if( (os_get_file_type(os_file_prefix(backuppath + local_curr_os_path)) & EFileType_Symlink) == 0 )
 									{
 										if( !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
 											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
@@ -1595,7 +1597,7 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 }
 
 bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids,
-	std::string snapshot_path, bool no_error, bool hash_dir, std::vector<size_t>* modified_inplace_ids)
+	std::string snapshot_path, bool no_error, bool hash_dir, std::vector<size_t>* deleted_inplace_ids)
 {
 	if(os_directory_exists(os_file_prefix(backuppath + os_file_sep() + "user_views")))
 	{
@@ -1647,7 +1649,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				}
 
 				if( hasChange(line, deleted_ids) 
-					&& (modified_inplace_ids==NULL || !hasChange(line, *modified_inplace_ids) ) )
+					&& (deleted_inplace_ids ==NULL || !hasChange(line, *deleted_inplace_ids) ) )
 				{					
 					std::string curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)

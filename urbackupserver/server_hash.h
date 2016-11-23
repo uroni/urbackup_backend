@@ -43,7 +43,7 @@ public:
 		EAction_Copy
 	};
 
-	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid);
+	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid, bool snapshot_file_inplace);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -168,4 +168,6 @@ private:
 	logid_t logid;
 
 	bool enabled_sparse;
+
+	bool snapshot_file_inplace;
 };

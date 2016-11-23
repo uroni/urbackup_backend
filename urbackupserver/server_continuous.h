@@ -77,7 +77,7 @@ public:
 
 		logid = ServerLogger::getLogId(clientid);
 
-		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
+		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots));
 	}
 
 	~BackupServerContinuous()

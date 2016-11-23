@@ -22,7 +22,8 @@
 
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
 	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
-	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
+	std::vector<size_t> *deleted_inplace_ids)
 {
 	std::vector<size_t> ret;
 
@@ -40,7 +41,8 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		return ret;
 	}
 
-	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], 0, ret, modified_inplace_ids, dir_diffs);
+	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], 0, ret, modified_inplace_ids, 
+		dir_diffs, deleted_inplace_ids);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -60,11 +62,17 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		std::sort(modified_inplace_ids->begin(), modified_inplace_ids->end());
 	}
 
+	if (deleted_inplace_ids != NULL)
+	{
+		std::sort(deleted_inplace_ids->begin(), deleted_inplace_ids->end());
+	}
+
 	return ret;
 }
 
 void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector<size_t> &diffs,
-	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
+	std::vector<size_t> *deleted_inplace_ids)
 {
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
@@ -125,15 +133,23 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			if( equal_dir
 				|| data_equals )
 			{
-				gatherDiffs(c1, c2, depth+1, diffs, modified_inplace_ids, dir_diffs);
+				gatherDiffs(c1, c2, depth+1, diffs, modified_inplace_ids, 
+					dir_diffs, deleted_inplace_ids);
 				c2->setMappedNode(c1);
 				c1->setMappedNode(c2);
 			}
 			else
 			{
-				if(modified_inplace_ids!=NULL)
+				if( modified_inplace_ids!=NULL
+					&& c1->getType() == c2->getType() )
 				{
 					modified_inplace_ids->push_back(c2->getId());
+				}
+
+				if (deleted_inplace_ids != NULL
+					&& c1->getType() == c2->getType())
+				{
+					deleted_inplace_ids->push_back(c1->getId());
 				}
 				
 				diffs.push_back(c2->getId());

@@ -52,9 +52,10 @@ void destroy_mutex1(void)
 	Server->destroy(delete_mutex);
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid)
+BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid,
+	bool snapshot_file_inplace)
 	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), filesdao(NULL), old_backupfolders_loaded(false),
-	  logid(logid)
+	  logid(logid), snapshot_file_inplace(snapshot_file_inplace)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -525,6 +526,11 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		ff_last=existing_file.fullpath;
 		tries_once=true;
 		bool too_many_hardlinks;
+		if (use_snapshots
+			&& snapshot_file_inplace)
+		{
+			Server->deleteFile(os_file_prefix(tfn));
+		}
 		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
 		if(!b)
 		{
@@ -743,6 +749,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 next_entryid = 0;
 	int64 rsize = 0;
 	if(t_filesize>= link_file_min_size
+		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024)
 		&& findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, false, extent_iterator))
@@ -1337,7 +1344,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		has_reflink=false;
 		if( use_reflink )
 		{
-			if( (os_get_file_type(os_file_prefix(dest)) & EFileType_File)==0
+			if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File)==0)
 				&& !os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
 			{
 				ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed", LL_WARNING);
@@ -1465,7 +1472,8 @@ const size_t RP_COPY_BLOCKSIZE=1024;
 
 bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
-	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
+		&& ! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -2", LL_ERROR);
 
@@ -1576,7 +1584,8 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &dest,
 	const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
-	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
+		&& !os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -3", LL_ERROR);
 
