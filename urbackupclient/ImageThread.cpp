@@ -41,6 +41,9 @@ extern IFSImageFactory *image_fak;
 
 namespace
 {
+	const int initial_send_timeout = 10*60*1000;
+	const int running_send_timeout = initial_send_timeout;
+
 	const unsigned char ImageFlag_Persistent=1;
 	const unsigned char ImageFlag_Bitmap=2;
 
@@ -76,7 +79,7 @@ void ImageThread::ImageErr(const std::string &msg, int loglevel)
 	char *buffer=new char[sizeof(uint64)+msg.size()];
 	memcpy(buffer, &bs, sizeof(uint64) );
 	memcpy(&buffer[sizeof(uint64)], msg.c_str(), msg.size());
-	pipe->Write(buffer, sizeof(uint64)+msg.size());
+	pipe->Write(buffer, sizeof(uint64)+msg.size(), running_send_timeout);
 	delete [] buffer;
 }
 
@@ -88,7 +91,7 @@ void ImageThread::ImageErrRunning(std::string msg)
 	char *buffer=new char[sizeof(int64)+msg.size()];
 	memcpy(buffer, &bs, sizeof(int64) );
 	memcpy(&buffer[sizeof(int64)], msg.c_str(), msg.size());
-	pipe->Write(buffer, sizeof(int64)+msg.size());
+	pipe->Write(buffer, sizeof(int64)+msg.size(), running_send_timeout);
 	delete [] buffer;
 }
 
@@ -280,7 +283,7 @@ bool ImageThread::sendFullImageThread(void)
 					bsize+=c_hashsize;
 					sha256_init(&shactx);
 				}
-				bool b=pipe->Write(buffer, bsize );
+				bool b=pipe->Write(buffer, bsize, initial_send_timeout);
 				delete []buffer;
 				if(!b)
 				{
@@ -437,7 +440,7 @@ bool ImageThread::sendFullImageThread(void)
 			char lastbuffer[sizeof(int64)];
 			int64 lastn=-123;
 			memcpy(lastbuffer,&lastn, sizeof(int64));
-			bool b=pipe->Write(lastbuffer, sizeof(int64));
+			bool b=pipe->Write(lastbuffer, sizeof(int64), running_send_timeout);
 			if(!b)
 			{
 				Server->Log("Pipe broken -3", LL_ERROR);
@@ -785,7 +788,7 @@ bool ImageThread::sendIncrImageThread(void)
 					bsize+=c_hashsize;
 					sha256_init(&shactx);
 				}
-				bool b=pipe->Write(buffer, bsize);
+				bool b=pipe->Write(buffer, bsize, initial_send_timeout);
 				delete []buffer;
 				if(!b)
 				{
@@ -1022,7 +1025,7 @@ bool ImageThread::sendIncrImageThread(void)
 			char lastbuffer[sizeof(int64)];
 			int64 lastn=-123;
 			memcpy(lastbuffer,&lastn, sizeof(int64));
-			bool b=pipe->Write(lastbuffer, sizeof(int64));
+			bool b=pipe->Write(lastbuffer, sizeof(int64), running_send_timeout);
 			if(!b)
 			{
 				Server->Log("Pipe broken -3", LL_ERROR);
@@ -1151,7 +1154,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	sha256_init(&shactx);
 
 	unsigned int endian_blocksize = little_endian(blocksize);
-	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize), 60000, false))
+	if (!pipe->Write(reinterpret_cast<char*>(&endian_blocksize), sizeof(endian_blocksize), initial_send_timeout, false))
 	{
 		Server->Log("Pipe broken while sending bitmap blocksize", LL_ERROR);
 		return false;
@@ -1165,7 +1168,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 
 		sha256_update(&shactx, bitmap, (unsigned int)tosend);
 
-		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend, 60000, false))
+		if (!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend, initial_send_timeout, false))
 		{
 			Server->Log("Pipe broken while sending bitmap", LL_ERROR);
 			return false;
@@ -1178,7 +1181,7 @@ bool ImageThread::sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int bloc
 	unsigned char dig[c_hashsize];
 	sha256_final(&shactx, dig);
 
-	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize, 60000))
+	if (!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize, initial_send_timeout))
 	{
 		Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
 		return false;
