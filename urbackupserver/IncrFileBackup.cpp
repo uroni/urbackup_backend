@@ -1403,6 +1403,9 @@ bool IncrFileBackup::doFileBackup()
 		{
 			FileIndex::flush();
 			clientlist_delete.release();
+
+			ServerLogger::Log(logid, "Syncing file system...", LL_DEBUG);
+
 			clientlist->Sync();
 			Server->destroy(clientlist);
 
@@ -1489,6 +1492,9 @@ bool IncrFileBackup::doFileBackup()
 
 		FileIndex::flush();
 		clientlist_delete.release();
+
+		ServerLogger::Log(logid, "Syncing file system...", LL_DEBUG);
+
 		clientlist->Sync();
 		Server->destroy(clientlist);
 

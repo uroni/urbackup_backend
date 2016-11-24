@@ -818,6 +818,8 @@ bool FullFileBackup::doFileBackup()
 	{
 		FileIndex::flush();
 
+		ServerLogger::Log(logid, "Syncing file system...", LL_DEBUG);
+
 		clientlist->Sync();
 		clientlist_delete.release();
 
