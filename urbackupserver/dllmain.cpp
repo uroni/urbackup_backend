@@ -92,9 +92,8 @@ SStartupStatus startup_status;
 #include "FileMetadataDownloadThread.h"
 #include "../urbackupcommon/chunk_hasher.h"
 
-#define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz/miniz.h"
+#include "../common/miniz.h"
 
 namespace
 {

@@ -345,16 +345,7 @@
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz_tdef.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz_tinfl.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz_zip.c">
+    <ClCompile Include="..\common\miniz.c">
       <Filter>miniz</Filter>
     </ClCompile>
   </ItemGroup>
@@ -635,19 +626,7 @@
     <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\miniz\miniz.h">
-      <Filter>miniz</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\miniz\miniz_common.h">
-      <Filter>miniz</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\miniz\miniz_tdef.h">
-      <Filter>miniz</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\miniz\miniz_tinfl.h">
-      <Filter>miniz</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\miniz\miniz_zip.h">
+    <ClInclude Include="..\common\miniz.h">
       <Filter>miniz</Filter>
     </ClInclude>
   </ItemGroup>

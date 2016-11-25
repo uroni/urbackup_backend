@@ -186,10 +186,7 @@
   <ItemGroup>
     <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
-    <ClCompile Include="..\common\miniz\miniz.c" />
-    <ClCompile Include="..\common\miniz\miniz_tdef.c" />
-    <ClCompile Include="..\common\miniz\miniz_tinfl.c" />
-    <ClCompile Include="..\common\miniz\miniz_zip.c" />
+    <ClCompile Include="..\common\miniz.c" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
@@ -292,11 +289,7 @@
   <ItemGroup>
     <ClInclude Include="..\common\adler32.h" />
     <ClInclude Include="..\common\data.h" />
-    <ClInclude Include="..\common\miniz\miniz.h" />
-    <ClInclude Include="..\common\miniz\miniz_common.h" />
-    <ClInclude Include="..\common\miniz\miniz_tdef.h" />
-    <ClInclude Include="..\common\miniz\miniz_tinfl.h" />
-    <ClInclude Include="..\common\miniz\miniz_zip.h" />
+    <ClInclude Include="..\common\miniz.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />

@@ -180,13 +180,7 @@
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz_tinfl.c">
-      <Filter>miniz</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\miniz\miniz_tdef.c">
+    <ClCompile Include="..\common\miniz.c">
       <Filter>miniz</Filter>
     </ClCompile>
   </ItemGroup>
@@ -337,6 +331,9 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\miniz.h">
+      <Filter>miniz</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

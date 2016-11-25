@@ -26,8 +26,7 @@
 #include "../../common/data.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../../common/miniz/miniz.h"
-#include "../../common/miniz/miniz_zip.h"
+#include "../../common/miniz.h"
 #ifndef _WIN32
 #define _fdopen fdopen
 #define _close close

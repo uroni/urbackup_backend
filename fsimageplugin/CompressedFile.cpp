@@ -24,13 +24,7 @@
 #include <memory.h>
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz/miniz.h"
-
-#ifdef _WIN32
-#include "../common/miniz/miniz.c"
-#include "../common/miniz/miniz_tdef.c"
-#include "../common/miniz/miniz_tinfl.c"
-#endif
+#include "../common/miniz.h"
 
 const size_t c_cacheBuffersize = 2*1024*1024;
 const size_t c_ncacheItems = 5;
