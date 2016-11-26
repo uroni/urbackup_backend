@@ -235,6 +235,8 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, clientname+": Calculating file tree differences...", LL_INFO);
 
+	bool reflink_files = !intra_file_diffs;
+
 	bool error=false;
 	std::vector<size_t> deleted_ids;
 	std::vector<size_t> *deleted_ids_ref=NULL;
@@ -244,6 +246,8 @@ bool IncrFileBackup::doFileBackup()
 	if(use_directory_links) large_unchanged_subtrees_ref=&large_unchanged_subtrees;
 	std::vector<size_t> modified_inplace_ids;
 	std::vector<size_t> deleted_inplace_ids;
+	std::vector<size_t>* deleted_inplace_ids_ref = NULL;
+	if (!reflink_files) deleted_inplace_ids_ref = &deleted_inplace_ids;
 	std::vector<size_t> dir_diffs;
 
 	std::string clientlist_name = clientlistName(last.backupid);
@@ -254,7 +258,7 @@ bool IncrFileBackup::doFileBackup()
 
 	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlist_name, tmpfilename,
 		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids, 
-		dir_diffs, &deleted_inplace_ids);
+		dir_diffs, deleted_inplace_ids_ref);
 
 	if(error)
 	{
@@ -299,12 +303,10 @@ bool IncrFileBackup::doFileBackup()
 
 	getTokenFile(fc, hashed_transfer);
 
-	bool reflink_files = !intra_file_diffs;
-
 	if(use_snapshots)
 	{
-		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size() - (reflink_files ? 0 : deleted_inplace_ids.size()) )+")", LL_INFO);
-		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false, reflink_files ? NULL : &deleted_inplace_ids) )
+		ServerLogger::Log(logid, clientname+": Deleting files in snapshot... ("+convert(deleted_ids.size() - deleted_inplace_ids.size())+")", LL_INFO);
+		if(!deleteFilesInSnapshot(clientlist_name, deleted_ids, backuppath, false, false, deleted_inplace_ids_ref) )
 		{
 			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
@@ -929,7 +931,7 @@ bool IncrFileBackup::doFileBackup()
 					{
 						std::string symlink_path = backuppath+local_curr_os_path;
 
-						if (use_snapshots && !use_reflink)
+						if (use_snapshots && !reflink_files)
 						{
 							Server->deleteFile(os_file_prefix(symlink_path));
 						}
