@@ -633,7 +633,9 @@ void ServerCleanupThread::do_remove_unknown(void)
 						}
 						else
 						{
-							if ( !os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name))
+							os_remove_nonempty_dir(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
+
+							if(os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name))
 								&& BackupServer::isImageSnapshotsEnabled() )
 							{
 								SnapshotHelper::removeFilesystem(clientname, cf.name);
