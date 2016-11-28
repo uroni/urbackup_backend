@@ -1,0 +1,34 @@
+## UrBackup
+
+Please see the website at https://www.urbackup.org for more informations, wiki, forums and the issue tracker.
+
+### Building on Linux/MacOS
+
+Use
+
+  ./switch_build.sh server
+
+to switch to a server build and
+
+  ./switch_build.sh client
+  git clone https://github.com/uroni/urbackup_frontend_wx client
+  cd client && git checkout BRANCH
+  
+to switch to building a client.
+
+Afterwards build the client/server using
+
+  ./configure
+  make -j8
+
+### Building on Windows
+
+If git is in PATH you can download all dependencies by running `update_deps.bat`.
+
+Afterwards opening and compiling the solution `UrBackupBackend.sln` with
+Microsoft Visual Studio 2015 should work.
+
+`build_client.bat` and `build_server.bat` build the installers but you need
+to install a lot of dependencies like WiX, NSIS plus plugins, etc.
+
+[![Build Status](https://travis-ci.org/uroni/urbackup_backend.svg?branch=dev)](https://travis-ci.org/uroni/urbackup_backend)
