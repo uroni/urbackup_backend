@@ -23,6 +23,7 @@ to switch to building a client.
 Afterwards build the client/server using
 
 ```bash
+autoreconf --install
 ./configure
 make -j8
 ```
