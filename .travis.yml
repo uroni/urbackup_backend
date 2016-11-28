@@ -1,6 +1,6 @@
 language: cpp
 compiler:
-  - clang
+#  - clang
   - gcc
 addons:
   apt:
@@ -8,4 +8,4 @@ addons:
       - libfuse-dev
       - libcurl4-nss-dev
       - libcrypto++-dev
-script: ./switch_build.sh server && autoreconf --install && ./configure --with-mountvhd && make && make dist && ./switch_build.sh client && autoreconf --install && ./configure --enable-headless && make && make dist
+script: ./switch_build.sh server && autoreconf --install && ./configure --with-mountvhd && make && ./switch_build.sh client && autoreconf --install && ./configure --enable-headless && make
