@@ -398,7 +398,10 @@ function determine_date_format()
 	var dateSeperator = "/";
 	var pointPos = lds.indexOf(".");
 	if (pointPos != -1)
-	dateSeperator = ".";
+		dateSeperator = ".";
+	dashPos = lds.indexOf("-");
+	if (dashPos != -1)
+		dateSeperator = "-";
 
 	//Sometimes the month is displayed by the month name so guess where it is
 	if(mPosi == -1)
@@ -436,7 +439,10 @@ function determine_date_format()
 			
 		if(order[i] == yPosi)
 		{
-			formatString += "YYYY";
+			if(i==0)
+				formatString += "YYYY";
+			else
+				formatString += "YY";
 		}else if(order[i] == dPosi){
 			formatString += "DD";
 		}else if(order[i] == mPosi){
@@ -470,7 +476,8 @@ function format_date(d)
 	if( min<10 )
 		min="0"+min;
 		
-	return g.dateFormatString.replace("YYYY", j).
+	return g.dateFormatString.replace("YYYY", d.getFullYear()).
+			replace("YY", j).
 			replace("MM", m).replace("DD", wt) +
 				" "+h+":"+min;
 }
