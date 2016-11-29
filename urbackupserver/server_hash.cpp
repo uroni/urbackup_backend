@@ -393,6 +393,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		//client does not have this file anymore
 		std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(pHash, filesize), true);
 
+		int64 target_entryid = 0;
 		std::string clients;
 		if(!all_clients.empty())
 		{			
@@ -406,6 +407,11 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 					}
 
 					clients+=convert(it->first);
+
+					if (it->second == clientid)
+					{
+						target_entryid = it->second;
+					}
 				}
 			}
 		}
@@ -414,14 +420,39 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 			FILEENTRY_DEBUG(Server->Log("File entry with id "+convert(id)+" with filesize "+convert(filesize)+" not found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
 			clients+=convert(clientid);
 		}
+
+		if (target_entryid == 0)
+		{
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " not found "
+				"for clientid "+convert(clientid)+" in file entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
+
+			if (!clients.empty())
+			{
+				clients += ",";
+			}
+
+			clients += convert(clientid);
+		}
+		else if (target_entryid != id)
+		{
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " is the last file entry for this file and to be deleted. "
+				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. The file entry index may be damaged. Not deleting entry from file entry index", LL_WARNING));
+		}
+
+		if (!pointed_to)
+		{
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " is the last file entry for this file and to be deleted. "
+				"However, pointed_to is zero, so it won't be deleted from the file entry index. The file entry index may be damaged.", LL_WARNING));
+		}
 		
 
 		filesdao.addIncomingFile(filesize, clientid, backupid, clients,
 			with_backupstat? ServerFilesDao::c_direction_outgoing : ServerFilesDao::c_direction_outgoing_nobackupstat,
 			incremental);
 
-		if(pointed_to
-			&& !all_clients.empty())
+		if( pointed_to
+			&& !all_clients.empty()
+			&& (target_entryid==0 || target_entryid==id) )
 		{
 			FILEENTRY_DEBUG(Server->Log("Delete file index entry " + convert(id), LL_DEBUG));
 			fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));

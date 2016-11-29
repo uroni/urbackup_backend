@@ -2344,6 +2344,8 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	q_iterate->Bind(backupid);
 	IDatabaseCursor* cursor = q_iterate->Cursor();
 
+	bool modified_file_entry_index = false;
+
 	db_single_result res;
 	while(cursor->next(res))
 	{
@@ -2397,6 +2399,11 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 			correction.pointed_to.erase(it_pointed_to);
 		}
 
+		if (pointed_to)
+		{
+			modified_file_entry_index = true;
+		}
+
 		BackupServerHash::deleteFileSQL(*filesdao, *fileindex.get(), res["shahash"].c_str(),
 			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true, &correction);
 	}
@@ -2421,6 +2428,11 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	}
 
 	filesdao->deleteFiles(backupid);
+
+	if (modified_file_entry_index)
+	{
+		FileIndex::flush();
+	}
 
 	filesdao->endTransaction();
 
