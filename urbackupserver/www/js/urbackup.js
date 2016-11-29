@@ -1758,6 +1758,58 @@ function show_backups1()
 	I('nav_pos').innerHTML="";
 }
 
+function prepareBackupObj(data, obj, image)
+{
+	obj.size_bytes=format_size(obj.size_bytes);
+	obj.incr=obj.incremental>0;
+	if( obj.incr )
+		obj.incr=trans("yes");
+	else
+		obj.incr=trans("no");
+		
+	var link_title="";
+	var stopwatch_img="";
+	
+	if(obj.archive_timeout!=0)
+	{
+		link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
+		stopwatch_img='<img src="images/stopwatch.png" />';
+	}
+	
+	if(image && obj.id>0)
+		obj.id*=-1;
+	
+	if(data.can_archive)
+	{
+		if( obj.archived>0 )
+			obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
+		else
+			obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
+	}
+	else
+	{
+		if( obj.archived>0 )
+			obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
+		else
+			obj.archived='☐';
+	}
+	
+	obj.clientid=data.clientid;
+	
+	if(obj.backuptime!=0)
+	{
+		obj.backuptime = format_unix_timestamp(obj.backuptime);
+	}
+	else
+	{
+		obj.backuptime = "-";
+	}
+	
+	if(image && obj.id<0)
+		obj.id*=-1;
+	
+	return obj;
+}
 
 function show_backups2(data)
 {
@@ -1799,59 +1851,21 @@ function show_backups2(data)
 		var rows="";
 		for(var i=0;i<data.backups.length;++i)
 		{
-			var obj=data.backups[i];			
-			obj.size_bytes=format_size(obj.size_bytes);
-			obj.incr=obj.incremental>0;
-			if( obj.incr )
-				obj.incr=trans("yes");
-			else
-				obj.incr=trans("no");
-				
-			var link_title="";
-			var stopwatch_img="";
-			
-			if(obj.archive_timeout!=0)
-			{
-				link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
-				stopwatch_img='<img src="images/stopwatch.png" />';
-			}
-			
-			
-			if(data.can_archive)
-			{
-				if( obj.archived>0 )
-					obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
-				else
-					obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
-			}
-			else
-			{
-				if( obj.archived>0 )
-					obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
-				else
-					obj.archived='☐';
-			}
-			
-			obj.clientid=data.clientid;
-			
-			if(obj.backuptime!=0)
-			{
-				obj.backuptime = format_unix_timestamp(obj.backuptime);
-			}
-			else
-			{
-				obj.backuptime = "-";
-			}
-				
-			rows+=dustRender("backups_backups_row", obj);
+			data.backups[i] = prepareBackupObj(data, data.backups[i], false);			
 		}
+		
+		for(var i=0;i<data.backup_images.length;++i)
+		{
+			data.backup_images[i] = prepareBackupObj(data, data.backup_images[i], true);
+		}
+		
 		var show_client_breadcrumb=false;
 		if(!data.token_authentication)
 		{
 			show_client_breadcrumb=true;
 		}
 		
-		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
+		ndata=dustRender("backups_backups", {backups: data.backups, backup_images: data.backup_images, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
 	}
 	else if(data.files && !data.single_item)
 	{
@@ -1956,11 +1970,19 @@ function show_backups2(data)
 			server_confirms_restore="true";
 		}
 		
+		var image_backup_info=null;
+		if(data.image_backup_info)
+		{
+			image_backup_info = [prepareBackupObj(data, data.image_backup_info)];
+			image_backup_info[0].volume_size = format_size(image_backup_info[0].volume_size);
+		}
+		
 		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
 		var obj = {files: data.files, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
-			backupid: data.backupid, path: folder_path, folder_path: folder_path };
+			backupid: data.backupid, path: folder_path, folder_path: folder_path,
+			image_backup_info: image_backup_info };
 			
 		if(!data.token_authentication)
 		{
@@ -4696,6 +4718,9 @@ function backupTypeStr(bt)
 	if(bt=="incr_file") return trans("action_1");
 	else if(bt=="full_file") return trans("action_2");
 	else if(bt=="file") return trans("file_backup");
+	else if(bt=="image") return trans("image_backup");
+	else if(bt=="incr_image") return trans("action_3");
+	else if(bt=="full_image") return trans("action_4");
 }
 function getArchiveTable()
 {

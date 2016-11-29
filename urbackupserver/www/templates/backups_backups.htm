@@ -6,17 +6,57 @@
 		<strong>{clientname}</strong>
 	</div>
 	<div class="panel-body">
-
+		{?backups}
+		<h2>{tFile backups}</h2>
 		<table class="table table-hover">
-		<tr>
-			<th>&nbsp;</th>
-			<th>{tBackup time}</th>
-			<th>{tIncremental}</th>
-			<th>{tSize}</th>
-			<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
-		</tr>
-		{rows|s}
+			<tr>
+				<th>&nbsp;</th>
+				<th>{tBackup time}</th>
+				<th>{tIncremental}</th>
+				<th>{tSize}</th>
+				<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
+			</tr>
+			{#backups}
+				<tr onclick="tabMouseClickBackups({clientid}, {id})" style="cursor: pointer">
+					<td>&nbsp;</td>
+					<td>{backuptime}</td>
+					<td>{incr}</td>
+					<td>{size_bytes}</td>
+					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
+				</tr>
+			{/backups}
 		</table>
-	
+		{/backups}
+		
+		{?backup_images}
+		<h2>{tImage backups}</h2>
+		<table class="table table-hover">
+			<tr>
+				<th>&nbsp;</th>
+				<th>{tBackup time}</th>
+				<th>{tVolume}</th>
+				<th>{tIncremental}</th>				
+				<th>{tSize}</th>
+				<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
+			</tr>
+			{#backup_images}
+				<tr onclick="tabMouseClickBackups({clientid}, -{id})" style="cursor: pointer">
+					<td>&nbsp;</td>
+					<td>{backuptime}</td>
+					<td>{letter}</td>
+					<td>{incr}</td>
+					<td>{size_bytes}</td>
+					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
+				</tr>
+			{/backup_images}
+		</table>
+		{/backup_images}
+		
+		{^backups}
+			{^backup_images}
+				<h2>{tNo backups}</h2>
+				{tNo backups of this client yet}
+			{/backup_images}
+		{/backups}
 	</div>
 </div>

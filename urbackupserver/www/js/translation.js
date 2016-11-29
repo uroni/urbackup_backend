@@ -1235,6 +1235,7 @@ translations.en = {
 "tEncrypted transfer": "Encrypted transfer",
 "tCompressed transfer": "Compressed transfer",
 "file_backup": "File backup",
+"image_backup": "Image backup",
 "weeks": "weeks",
 "months": "months",
 "year": "year",

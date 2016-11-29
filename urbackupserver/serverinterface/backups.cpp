@@ -20,12 +20,16 @@
 #include "../../Interface/File.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../urbackupcommon/file_metadata.h"
+#include "../../urbackupcommon/mbrdata.h"
 #include "../../Interface/SettingsReader.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
+#include "../../fsimageplugin/IFSImageFactory.h"
+#include "../../fsimageplugin/IVHDFile.h"
 #include "../server_settings.h"
 #include "backups.h"
 #include <memory>
 #include <algorithm>
+#include <assert.h>
 #include "../../fileservplugin/IFileServ.h"
 #include "../server_status.h"
 #include "../restore_client.h"
@@ -34,6 +38,7 @@
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
+extern IFSImageFactory *image_fak;
 
 namespace backupaccess
 {
@@ -814,6 +819,141 @@ namespace backupaccess
 		return has_access;
 	}
 
+	JSON::Array get_backup_images(IDatabase * db, int t_clientid, std::string clientname, int backupid_offset)
+	{
+		std::string backupfolder = getBackupFolder(db);
+
+		Helper helper(Server->getThreadID(), NULL, NULL);
+
+		IQuery *q = db->Prepare("SELECT id, strftime('" + helper.getTimeFormatString() + "', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path, letter FROM backup_images WHERE complete=1 AND clientid=? ORDER BY backuptime DESC");
+		q->Bind(t_clientid);
+		db_results res = q->Read();
+		JSON::Array backups;
+
+		for (size_t i = 0; i<res.size(); ++i)
+		{
+			JSON::Object obj;
+			obj.set("id", watoi(res[i]["id"]) + backupid_offset);
+			obj.set("backuptime", watoi64(res[i]["t_backuptime"]));
+			obj.set("incremental", watoi(res[i]["incremental"]));
+			obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
+			obj.set("letter", res[i]["letter"]);
+			int archived = watoi(res[i]["archived"]);
+			obj.set("archived", watoi(res[i]["archived"]));
+			_i64 archive_timeout = 0;
+			if (!res[i]["archive_timeout"].empty())
+			{
+				archive_timeout = watoi64(res[i]["archive_timeout"]);
+				if (archive_timeout != 0)
+				{
+					archive_timeout -= Server->getTimeSeconds();
+				}
+			}
+			if (archived != 0)
+			{
+				obj.set("archive_timeout", archive_timeout);
+			}
+			backups.add(obj);
+		}
+
+		return backups;
+	}
+
+	JSON::Object get_image_info(IDatabase* db, int backupid, int t_clientid, int backupid_offset)
+	{
+		Helper helper(Server->getThreadID(), NULL, NULL);
+
+		IQuery *q = db->Prepare("SELECT id, strftime('" + helper.getTimeFormatString() + "', backuptime) AS t_backuptime, incremental, "
+			"size_bytes, archived, archive_timeout, path, letter FROM backup_images WHERE complete=1 AND clientid=? AND id=?");
+		q->Bind(t_clientid);
+		q->Bind(backupid);
+		db_results res = q->Read();
+		JSON::Object ret;
+		if (!res.empty())
+		{
+			ret.set("id", watoi(res[0]["id"]) + backupid_offset);
+			ret.set("backuptime", watoi64(res[0]["t_backuptime"]));
+			ret.set("incremental", watoi(res[0]["incremental"]));
+			ret.set("size_bytes", watoi64(res[0]["size_bytes"]));
+			ret.set("letter", res[0]["letter"]);
+			int archived = watoi(res[0]["archived"]);
+			ret.set("archived", watoi(res[0]["archived"]));
+			_i64 archive_timeout = 0;
+			if (!res[0]["archive_timeout"].empty())
+			{
+				archive_timeout = watoi64(res[0]["archive_timeout"]);
+				if (archive_timeout != 0)
+				{
+					archive_timeout -= Server->getTimeSeconds();
+				}
+			}
+			if (archived != 0)
+			{
+				ret.set("archive_timeout", archive_timeout);
+			}
+
+			std::string path = res[0]["path"];
+			std::string filename = ExtractFileName(path);
+			std::string extension = findextension(filename);
+
+			if (extension == "vhd" || extension == "vhdz")
+			{
+				std::auto_ptr<IVHDFile> vhdfile(image_fak->createVHDFile(path, true, 0));
+				if (vhdfile.get() != NULL)
+				{
+					ret.set("volume_size", vhdfile->getSize());
+				}
+			}
+			else if (extension == "raw")
+			{
+				std::auto_ptr<IFile> rawfile(Server->openFile(os_file_prefix(path), MODE_READ));
+				if (rawfile.get() != NULL)
+				{
+					ret.set("volume_size", rawfile->Size());
+				}
+			}
+			else
+			{
+				assert(false);
+			}
+
+			std::auto_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
+			if (mbrfile.get() && mbrfile->Size()<10*1024*1024)
+			{
+				std::string mbrdata = mbrfile->Read(mbrfile->Size());
+				if (mbrdata.size() == mbrfile->Size())
+				{
+					CRData mbrdata_view(mbrdata.data(), mbrdata.size());
+					SMBRData mbr(mbrdata_view);
+					if (!mbr.hasError())
+					{
+						ret.set("part_table", mbr.gpt_style ? "GPT" : "MBR");
+						ret.set("disk_number", mbr.device_number);
+						ret.set("partition_number", mbr.partition_number);
+						ret.set("volume_name", mbr.volume_name);
+						ret.set("fs_type", mbr.fsn);
+						ret.set("serial_number", mbr.serial_number);
+					}
+				}
+			}
+		}
+		return ret;
+	}
+
+	bool get_image_files(IDatabase* db, int backupid, int t_clientid, std::string clientname,
+			const std::string& u_path, int backupid_offset, JSON::Object& ret)
+	{
+		JSON::Object image_backup_info = get_image_info(db, backupid, t_clientid, backupid_offset);
+		ret.set("image_backup_info", image_backup_info);
+		ret.set("single_item", false);
+		JSON::Array files;
+		ret.set("files", files);
+		ret.set("backuptime", image_backup_info.get("backuptime"));
+		ret.set("backupid", backupid + backupid_offset);
+		return true;
+	}
+
+
 } //namespace backupaccess
 
 ACTION_IMPL(backups)
@@ -991,16 +1131,29 @@ ACTION_IMPL(backups)
 			{
 				if(archive_ok)
 				{
+					std::string tbl = "backups";				
 					if(CURRP.find("archive")!=CURRP.end())
 					{
-						IQuery *q=db->Prepare("UPDATE backups SET archived=1, archive_timeout=0 WHERE id=?");
-						q->Bind(watoi(CURRP["archive"]));
+						int archive_id = watoi(CURRP["archive"]);
+						if (archive_id < 0)
+						{
+							tbl = "backup_images";
+							archive_id *= -1;
+						}
+						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=0 WHERE id=?");
+						q->Bind(archive_id);
 						q->Write();
 					}
 					else if(CURRP.find("unarchive")!=CURRP.end())
 					{
-						IQuery *q=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
-						q->Bind(watoi(CURRP["unarchive"]));
+						int unarchive_id = watoi(CURRP["unarchive"]);
+						if (unarchive_id  < 0)
+						{
+							tbl = "backup_images";
+							unarchive_id *= -1;
+						}
+						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=0 WHERE id=?");
+						q->Bind(unarchive_id);
 						q->Write();
 					}
 				}
@@ -1019,6 +1172,12 @@ ACTION_IMPL(backups)
 				}
 
 				ret.set("backups", backups);
+
+				if (r_ok)
+				{
+					ret.set("backup_images", backupaccess::get_backup_images(db, t_clientid, clientname, 0));
+				}
+
 				ret.set("can_archive", archive_ok);
 
 				ret.set("clientname", clientname);
@@ -1033,6 +1192,15 @@ ACTION_IMPL(backups)
 		{
 			int t_clientid;
 			std::string clientname;
+			if (token_authentication
+				&& CURRP.find("backupid") != CURRP.end()
+				&& watoi(CURRP["backupid"]) < 0)
+			{
+				ret.set("error", "2");
+				helper.Write(ret.stringify(false));
+				return;
+			}
+
 			if(token_authentication && CURRP.find("clientid")==CURRP.end())
 			{
 				clientname=CURRP["clientname"];
@@ -1146,14 +1314,27 @@ ACTION_IMPL(backups)
 					}
 					else
 					{
-						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
-                                u_path, 0, ret))
+						if (has_backupid && backupid < 0)
 						{
-							JSON::Object err_ret;
-							err_ret.set("err", "access_denied");
-							err_ret.set("errcode", "path_browse_access_denied");
-							helper.Write(err_ret.stringify(false));
-							return;
+							if (!backupaccess::get_image_files(db, -1 * backupid, t_clientid, clientname, u_path, 0, ret))
+							{
+								JSON::Object err_ret;
+								err_ret.set("err", "internal_error");
+								helper.Write(err_ret.stringify(false));
+								return;
+							}
+						}
+						else
+						{
+							if (!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
+								u_path, 0, ret))
+							{
+								JSON::Object err_ret;
+								err_ret.set("err", "access_denied");
+								err_ret.set("errcode", "path_browse_access_denied");
+								helper.Write(err_ret.stringify(false));
+								return;
+							}
 						}
 
 						ret.set("clientname", clientname);
