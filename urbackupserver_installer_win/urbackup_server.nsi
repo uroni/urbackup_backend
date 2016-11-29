@@ -136,12 +136,13 @@ Section "install"
 		${EndIf}
 	${EndIf}
 	
-	!insertmacro SERVICE running "UrBackupWinServer" "action=service_stop;"
-	Goto skip_service_stop
-service_stop:
-	!insertmacro SERVICE stop "UrBackupWinServer" ""
-	!insertmacro SERVICE waitfor "UrBackupWinServer" "status=stopped"
-skip_service_stop:
+	
+	!insertmacro SERVICE running "UrBackupWinServer" ""
+	Pop $0
+	${If} $0 == "true"
+		!insertmacro SERVICE stop "UrBackupWinServer" ""
+		!insertmacro SERVICE waitfor "UrBackupWinServer" "status=stopped"
+	${EndIf}
 	
 	Sleep 500
 	
@@ -209,9 +210,11 @@ skip_service_stop:
 	liteFirewallW::AddRule "$INSTDIR\urbackup_srv.exe" "UrBackup Windows Server"
 	Pop $0
 	
-	!insertmacro SERVICE installed "UrBackupWinServer" "action=skip_service_install;"
-	!insertmacro SERVICE create "UrBackupWinServer" 'path="$INSTDIR\urbackup_srv.exe";autostart=1;interact=0;display=UrBackup Windows Server;description=UrBackup Windows Server;'
-skip_service_install:
+	!insertmacro SERVICE installed "UrBackupWinServer" ""
+	Pop $0
+	${If} $0 != "true"
+		!insertmacro SERVICE create "UrBackupWinServer" 'path="$INSTDIR\urbackup_srv.exe";autostart=1;interact=0;display=UrBackup Windows Server;description=UrBackup Windows Server;'
+	${EndIf}	
 	!insertmacro SERVICE start "UrBackupWinServer" ""
 	
 	${If} ${RunningX64}
