@@ -195,7 +195,8 @@ void RestoreFiles::operator()()
 {
 	if (client_token.empty())
 	{
-		log("Client token empty. See client log file for error details.", LL_ERROR);
+		log("Client token empty. See client log file for error details. "
+			"Running a file backup may fix this issue.", LL_ERROR);
 	}
 
 	std::auto_ptr<RestoreFiles> delete_this(this);
