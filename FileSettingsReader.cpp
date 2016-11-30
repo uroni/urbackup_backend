@@ -23,82 +23,19 @@
 #include <memory>
 #include "Interface/File.h"
 
-std::map<std::string, SCachedSettings*>* CFileSettingsReader::settings=new std::map<std::string, SCachedSettings*>;
-IMutex* CFileSettingsReader::settings_mutex=NULL;
-
-namespace
-{
-	std::string readFile(const std::string& fn)
-	{
-		std::auto_ptr<IFile> file(Server->openFile(fn));
-		if(file.get()==NULL)
-		{
-			return std::string();
-		}
-
-		std::string ret;
-		ret.resize(file->Size());
-
-		size_t read=0;
-		while(read<ret.size())
-		{
-			read+=file->Read(&ret[read], static_cast<_u32>(ret.size()-read));
-		}
-
-		return ret;
-	}
-}
-
 CFileSettingsReader::CFileSettingsReader(std::string pFile)
 {
-	IScopedLock lock(settings_mutex);
-	std::map<std::string, SCachedSettings*>::iterator iter 
-		= settings->find(pFile);
-
-	if( iter==settings->end() )
-	{
-		lock.relock(NULL);
-
-		std::auto_ptr<IFile> f(Server->openFile(pFile, MODE_READ));
-		std::string fdata;
-		if (f.get() != NULL)
-		{
-			fdata = f->Read(static_cast<_u32>(f->Size()));
-			f.reset();
-		}
-
-		read(fdata, pFile);
-	}
-	else
-	{
-		cached_settings=iter->second;
-		++cached_settings->refcount;
-	}
-
+	read(pFile);
 }
 
 CFileSettingsReader::~CFileSettingsReader()
 {
-	IScopedLock lock(settings_mutex);
-	--cached_settings->refcount;
-	if(cached_settings->refcount<=0)
-	{
-		std::map<std::string, SCachedSettings*>::iterator it=settings->find(cached_settings->key);
-		if(it!=settings->end())
-		{
-			settings->erase(it);
-		}
-		Server->destroy(cached_settings->smutex);
-		delete cached_settings;
-	}
 }
 
 bool CFileSettingsReader::getValue(std::string key, std::string *value)
 {
-	IScopedLock lock(cached_settings->smutex);
-
-	std::map<std::string,std::string>::iterator i=cached_settings->mSettingsMap.find(key);
-	if( i!= cached_settings->mSettingsMap.end() )
+	std::map<std::string,std::string>::iterator i=mSettingsMap.find(key);
+	if( i!= mSettingsMap.end() )
 	{
 		*value=i->second;
 		return true;
@@ -106,88 +43,86 @@ bool CFileSettingsReader::getValue(std::string key, std::string *value)
 	return false;
 }
 
-void CFileSettingsReader::cleanup()
-{
-	{
-		IScopedLock lock(settings_mutex);
-		for(std::map<std::string, SCachedSettings*>::iterator iter=settings->begin();iter!=settings->end();++iter)
-		{
-			Server->destroy(iter->second->smutex);
-			delete iter->second;
-		}
-	}
-	Server->destroy(settings_mutex);
-	delete settings;
-}
-
-void CFileSettingsReader::setup()
-{
-	settings_mutex=Server->createMutex();
-}
-
 std::vector<std::string> CFileSettingsReader::getKeys()
 {
-	IScopedLock lock(cached_settings->smutex);
-
 	std::vector<std::string> ret;
-	for(std::map<std::string,std::string>::iterator i=cached_settings->mSettingsMap.begin();
-		i!=cached_settings->mSettingsMap.end();++i)
+	for(std::map<std::string,std::string>::iterator i=mSettingsMap.begin();
+		i!=mSettingsMap.end();++i)
 	{
 		ret.push_back(i->first);
 	}
 	return ret;
 }
 
-void CFileSettingsReader::read( const std::string& fdata, const std::string& pFile )
+void CFileSettingsReader::read(const std::string& pFile )
 {
-	std::vector<SSetting> mSettings;
-	int num_lines=linecount(fdata);
-	for(int i=0;i<num_lines;++i)
+	std::auto_ptr<IFile> file(Server->openFile(pFile));
+	if (file.get() == NULL)
 	{
-		std::string line=getline(i,fdata);
+		return;
+	}
 
-		if(line.size()<2 || line[0]=='#' )
-			continue;
+	char buf[4096];
 
-		SSetting setting;
-		setting.key=getuntil("=",line);
+	int state = 0;
+	std::string key;
+	std::string value;
 
-		if(setting.key=="")
-			setting.value=line;
-		else
+	_u32 read;
+	do
+	{
+		read = file->Read(buf, sizeof(buf));
+		for (_u32 i = 0; i < read; ++i)
 		{
-			line.erase(0,setting.key.size()+1);
-			setting.value=line;
-		}		
-
-		mSettings.push_back(setting);
-	}
-
-	cached_settings=new SCachedSettings;
-	cached_settings->smutex=Server->createMutex();
-
-	for(size_t i=0;i<mSettings.size();++i)
-	{
-		cached_settings->mSettingsMap[(mSettings[i].key)]=(mSettings[i].value);
-	}
-
-	cached_settings->refcount=1;
-	cached_settings->key=pFile;
-
-	IScopedLock lock(settings_mutex);
-
-	std::map<std::string, SCachedSettings*>::iterator iter = settings->find(pFile);
-
-	if (iter == settings->end())
-	{
-		settings->insert(std::pair<std::string, SCachedSettings*>(pFile, cached_settings));
-	}
-	else
-	{
-		Server->destroy(cached_settings->smutex);
-		delete cached_settings;
-
-		cached_settings = iter->second;
-		++cached_settings->refcount;
-	}	
+			char ch = buf[i];
+			switch (state)
+			{
+			case 0:
+				if (ch == '#')
+				{
+					state = 1;
+				}
+				else if(ch!='\n')
+				{
+					key += ch;
+					state = 2;
+				}
+				break;
+			case 1:
+				if (ch == '\n')
+				{
+					state = 0;
+				}
+				break;
+			case 2:
+				if (ch == '\n')
+				{
+					mSettingsMap[""] = key;
+					key.clear();
+				}
+				else if (ch == '=')
+				{
+					state = 3;
+				}
+				else
+				{
+					key += ch;
+				}
+				break;
+			case 3:
+				if (ch == '\n')
+				{
+					mSettingsMap[key] = value;
+					key.clear();
+					value.clear();
+					state = 0;
+				}
+				else
+				{
+					value += ch;
+				}
+				break;
+			}
+		}
+	} while (read == sizeof(buf));
 }
