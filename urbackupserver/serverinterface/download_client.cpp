@@ -188,23 +188,25 @@ ACTION_IMPL(download_client)
 
 				std::string access_keys;
 
-				if ( (os == "linux" || os == "osx" || os=="mac")
-					&& ( all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() ) )
+				if (  all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() )
 				{
 					bool all_browse_backups;
 					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
 					if (all_browse_backups
 						|| std::find(browse_backups_rights.begin(), browse_backups_rights.end(), clientid) != browse_backups_rights.end() )
 					{
-						//There is only ~4KB available space. Add only root for now
-						IQuery* q_root_token = helper.getDatabase()->Prepare("SELECT token FROM user_tokens WHERE username='root' AND tgroup IS NULL AND clientid = ? ORDER BY created DESC");
-						q_root_token->Bind(clientid);
-						db_results res_root_token = q_root_token->Read();
-						q_root_token->Reset();
-
-						if (!res_root_token.empty())
+						if (os == "linux" || os == "osx" || os == "mac")
 						{
-							access_keys = "uroot:"+res_root_token[0]["token"];
+							//There is only ~4KB available space. Add only root for now
+							IQuery* q_root_token = helper.getDatabase()->Prepare("SELECT token FROM user_tokens WHERE username='root' AND tgroup IS NULL AND clientid = ? ORDER BY created DESC");
+							q_root_token->Bind(clientid);
+							db_results res_root_token = q_root_token->Read();
+							q_root_token->Reset();
+
+							if (!res_root_token.empty())
+							{
+								access_keys = "uroot:" + res_root_token[0]["token"];
+							}
 						}
 
 						ServerSettings settings(helper.getDatabase(), clientid);
