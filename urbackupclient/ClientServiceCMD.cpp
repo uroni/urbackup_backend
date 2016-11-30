@@ -30,6 +30,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/json.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "file_permissions.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -1101,6 +1102,11 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 
 	if(!img_download_running)
 	{
+		if (!FileExists("urbackup/access_keys.properties"))
+		{
+			tcpstack.Send(pipe, "UPDATE ACCESS KEY");
+		}
+
 		g_lock->relock(backup_mutex);
 
 		std::string token;
@@ -2699,4 +2705,35 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 
 	ret.set("ok", true);
 	tcpstack.Send(pipe, ret.stringify(false));
+}
+
+void ClientConnector::CMD_CLIENT_ACCESS_KEY(const std::string& cmd)
+{
+	str_map params;
+	ParseParamStrHttp(cmd, &params);
+
+	std::string key = params["key"];
+	std::string token = params["token"];
+
+	if (!key.empty()
+		&& !token.empty()
+		&& !FileExists("urbackup/access_keys.properties") )
+	{
+		std::string access_keys_data;
+		access_keys_data += "key." + token + "=" +
+			key + "\n";
+
+		access_keys_data += "key_age." + token + "=" +
+			convert(Server->getTimeSeconds()) + "\n";
+
+		write_file_only_admin(access_keys_data, "urbackup/access_keys.properties.new");
+		os_rename_file("urbackup/access_keys.properties.new",
+			"urbackup/access_keys.properties");
+
+		tcpstack.Send(pipe, "OK");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "err: key or token empty");
+	}
 }

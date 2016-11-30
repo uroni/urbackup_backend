@@ -195,7 +195,8 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 	static void clear_cache();
-	static void updateAll(void);
+	static void updateAll();
+	static void updateClient(int clientid);
 	static std::string generateRandomAuthKey(size_t len=10);
 	static std::string generateRandomBinaryKey(void);
 

@@ -187,6 +187,27 @@ void ServerSettings::updateAll(void)
 	}
 }
 
+void ServerSettings::updateClient(int clientid)
+{
+	IScopedLock lock(g_mutex);
+
+	std::map<int, SSettings*>::iterator it = g_settings_cache.find(clientid);
+	if(it!=g_settings_cache.end())
+	{
+		if (it->second->refcount == 0)
+		{
+			std::map<int, SSettings*>::iterator delit = it++;
+			delete delit->second;
+			g_settings_cache.erase(delit);
+		}
+		else
+		{
+			it->second->needs_update = true;
+			++it;
+		}
+	}
+}
+
 void ServerSettings::update(bool force_update)
 {
 	while(local_settings->needs_update || force_update)

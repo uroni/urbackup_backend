@@ -989,6 +989,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_FILE_RESTORE(cmd.substr(13)); continue;
 			}
+			else if (next(cmd, 0, "CLIENT ACCESS KEY "))
+			{
+				CMD_CLIENT_ACCESS_KEY(cmd.substr(18)); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{

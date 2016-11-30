@@ -411,7 +411,7 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 			backup_dao->deleteUsedAccessTokens(clientid);
 		}
 
-		server_settings->update(true);
+		ServerSettings::updateClient(clientid);
 	}
 	
 	return has_token_file;

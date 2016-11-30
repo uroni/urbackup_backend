@@ -966,7 +966,14 @@ ACTION_IMPL(settings)
 						ret.set("saved_part", true);
 					}
 
-					ServerSettings::updateAll();
+					if (t_clientid > 0)
+					{
+						ServerSettings::updateClient(t_clientid);
+					}
+					else
+					{
+						ServerSettings::updateAll();
+					}
 
 					updateOnlineClientSettings(db, t_clientid);
 				}

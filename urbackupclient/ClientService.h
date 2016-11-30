@@ -323,6 +323,7 @@ private:
 	void CMD_SCRIPT_STDERR(const std::string& cmd);
 	void CMD_FILE_RESTORE(const std::string& cmd);
 	void CMD_RESTORE_OK(str_map &params);
+	void CMD_CLIENT_ACCESS_KEY(const std::string& cmd);
 
 	int getCapabilities();
 	bool multipleChannelServers();

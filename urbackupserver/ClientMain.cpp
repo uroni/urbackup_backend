@@ -118,6 +118,7 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	do_update_settings=false;
 	do_full_image_now=false;
 	do_incr_image_now=false;
+	do_update_access_key = false;
 	cdp_needs_sync=true;
 
 	can_backup_images=true;
@@ -728,6 +729,11 @@ void ClientMain::operator ()(void)
 					ServerLogger::Log(logid, "Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
+			if (do_update_access_key)
+			{
+				do_update_access_key = false;
+				updateClientAccessKey();
+			}
 
 			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
@@ -893,6 +899,7 @@ void ClientMain::operator ()(void)
 		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
 		else if(msg=="START IMAGE INCR") do_incr_image_now=true;
 		else if(msg=="START IMAGE FULL") do_full_image_now=true;
+		else if (msg == "UPDATE ACCESS KEY") do_update_access_key = true;
 		else if(next(msg, 0, "address"))
 		{
 			updateClientAddress(msg.substr(7));
@@ -2144,6 +2151,16 @@ IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 	}
 
 	return client_throttler;
+}
+
+void ClientMain::updateClientAccessKey()
+{
+	std::string access_key = ServerSettings::generateRandomAuthKey(32);
+	backup_dao->updateOrInsertSetting(clientid, "client_access_key", access_key);
+	ServerSettings::updateClient(clientid);
+
+	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",
+		"Error sending client access key", 10000, 10, false);
 }
 
 bool ClientMain::inBackupWindow(Backup * backup)

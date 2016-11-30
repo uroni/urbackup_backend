@@ -325,6 +325,10 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		client_main->sendToPipe("START IMAGE INCR");
 	}
+	else if (msg == "UPDATE ACCESS KEY")
+	{
+		client_main->sendToPipe("UPDATE ACCESS KEY");
+	}
 	else if(next(msg, 0, "LOGIN ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(6);

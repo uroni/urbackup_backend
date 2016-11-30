@@ -252,6 +252,7 @@ private:
 	bool updateCapabilities(void);
 	IPipeThrottler *getThrottler(int speed_bps);
 	bool inBackupWindow(Backup* backup);
+	void updateClientAccessKey();
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
@@ -305,6 +306,7 @@ private:
 	bool do_update_settings;
 	bool do_full_image_now;
 	bool do_incr_image_now;
+	bool do_update_access_key;
 	bool cdp_needs_sync;
 
 	static int running_backups;
