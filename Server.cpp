@@ -194,8 +194,6 @@ CServer::CServer()
 
 void CServer::setup(void)
 {
-	CFileSettingsReader::setup();
-	
 	sessmgr=new CSessionMgr();
 	threadpool=new CThreadPool();
 
@@ -248,9 +246,6 @@ CServer::~CServer()
 	{
 		return;
 	}
-
-	Log("deleting cached settings...");
-	CFileSettingsReader::cleanup();
 	
 	Log("deleting stream services...");
 	//Delete extra Services
