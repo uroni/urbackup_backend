@@ -24,6 +24,7 @@
 #include "Interface/File.h"
 
 CFileSettingsReader::CFileSettingsReader(std::string pFile)
+	: has_error(false)
 {
 	read(pFile);
 }
@@ -54,11 +55,17 @@ std::vector<std::string> CFileSettingsReader::getKeys()
 	return ret;
 }
 
+bool CFileSettingsReader::hasError()
+{
+	return has_error;
+}
+
 void CFileSettingsReader::read(const std::string& pFile )
 {
 	std::auto_ptr<IFile> file(Server->openFile(pFile));
 	if (file.get() == NULL)
 	{
+		has_error = true;
 		return;
 	}
 
