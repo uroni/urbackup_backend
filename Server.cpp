@@ -1393,13 +1393,7 @@ IThreadPool *CServer::getThreadPool(void)
 
 ISettingsReader* CServer::createFileSettingsReader(const std::string& pFile)
 {
-	CFileSettingsReader* ret = new CFileSettingsReader(pFile);
-	if (ret->hasError())
-	{
-		delete ret;
-		return NULL;
-	}
-	return ret;
+	return new CFileSettingsReader(pFile);
 }
 
 ISettingsReader* CServer::createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL)
