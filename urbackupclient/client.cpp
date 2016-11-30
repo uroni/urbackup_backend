@@ -4609,7 +4609,8 @@ void IndexThread::writeTokens()
 
 	if(modified_file)
 	{
-		write_file_only_admin(access_keys_data, "urbackup/access_keys.properties");
+		write_file_only_admin(access_keys_data, "urbackup/access_keys.properties.new");
+		os_rename_file("urbackup/access_keys.properties.new", "urbackup/access_keys.properties");
 	}	
 
 	tokens::write_tokens();
