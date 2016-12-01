@@ -1041,7 +1041,15 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	
 	pid_t tid = gettid();
 	
-	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, prio_info.prio_info->io_prio)==-1)
+	int io_prio =  prio_info.prio_info->io_prio;
+	
+	//Setting a IO prio with IOPRIO_CLASS_NONE fails
+	if(io_prio>>IOPRIO_CLASS_SHIFT == IOPRIO_CLASS_NONE)
+	{
+		io_prio|=IOPRIO_CLASS_BE<<IOPRIO_CLASS_SHIFT;
+	}
+	
+	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, io_prio)==-1)
 	{
 		return false;
 	}
