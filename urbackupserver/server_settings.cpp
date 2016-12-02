@@ -21,6 +21,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 #ifndef CLIENT_ONLY
 
 #include "server_settings.h"
@@ -924,22 +925,22 @@ std::vector<std::pair<double, STimeSpan > > ServerSettings::parseTimeSpanValue(s
 
 int ServerSettings::getLocalSpeed()
 {
-	return static_cast<int>(currentTimeSpanValue(getSettings()->local_speed)+0.5);
+	return static_cast<int>(round(currentTimeSpanValue(getSettings()->local_speed)));
 }
 
 int ServerSettings::getGlobalLocalSpeed()
 {
-	return static_cast<int>(currentTimeSpanValue(getSettings()->global_local_speed)+0.5);
+	return static_cast<int>(round(currentTimeSpanValue(getSettings()->global_local_speed)));
 }
 
 int ServerSettings::getInternetSpeed()
 {
-	return static_cast<int>(currentTimeSpanValue(getSettings()->internet_speed)+0.5);
+	return static_cast<int>(round(currentTimeSpanValue(getSettings()->internet_speed)));
 }
 
 int ServerSettings::getGlobalInternetSpeed()
 {
-	return static_cast<int>(currentTimeSpanValue(getSettings()->global_internet_speed)+0.5);
+	return static_cast<int>(round(currentTimeSpanValue(getSettings()->global_internet_speed)));
 }
 
 double ServerSettings::currentTimeSpanValue(std::string time_span_value)

@@ -500,10 +500,10 @@ function getPar(p)
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
 		{ val=multiplyTimeSpan(val, 60.0*60.0*24.0); if(obj.disabled) val=makeTimeSpanNegative(val); }
 	if(p=="startup_backup_delay") val*=60;
-	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
-	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, 1024/8, true); }
-	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
-	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, 1024/8, true); }
+	if(p=="local_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
+	if(p=="internet_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, 1024/8, true); }
+	if(p=="global_local_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
+	if(p=="global_internet_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, 1024/8, true); }
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
 		
 	return "&"+p+"="+encodeURIComponent(val+"");

@@ -43,12 +43,16 @@ size_t ThrottleUpdater::getThrottleLimit(bool& percent_max)
 	{
 	case ThrottleScope_GlobalInternet:
 		ret = server_settings.getGlobalInternetSpeed();
+		break;
 	case ThrottleScope_GlobalLocal:
 		ret = server_settings.getGlobalLocalSpeed();
+		break;
 	case ThrottleScope_Internet:
 		ret = server_settings.getInternetSpeed();
+		break;
 	case ThrottleScope_Local:
 		ret = server_settings.getLocalSpeed();
+		break;
 	default:
 		percent_max = false;
 		return std::string::npos;
