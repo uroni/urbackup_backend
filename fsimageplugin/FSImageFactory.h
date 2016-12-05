@@ -20,6 +20,8 @@ public:
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file);
 
+	virtual void startImDiskSrv();
+
 private:
 	bool isNTFS(char *buffer);
 };

@@ -1273,7 +1273,7 @@ function show_status2(data)
 		{
 			if(data.dir_error_hint=="volume_not_accessible")
 			{
-				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\servername\share).";
+				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\\\servername\\share).";
 			}
 			else if(data.dir_error_hint=="folder_unc_access_denied")
 			{
@@ -1869,6 +1869,11 @@ function show_backups2(data)
 	}
 	else if(data.files && !data.single_item)
 	{
+		if(data.image_backup_info)
+		{
+			data.backupid = -1*data.backupid;
+		}
+	
 		var rows="";		
 		var path=unescapeHTML(data.path);
 		g.last_browse_backupid = data.backupid;
@@ -1939,7 +1944,10 @@ function show_backups2(data)
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
-			obj.list_items=true;
+			if(data.backupid>0)
+			{
+				obj.list_items=true;
+			}
 			
 			data.files[i]=obj;
 		}
@@ -1978,7 +1986,7 @@ function show_backups2(data)
 		}
 		
 		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
-		var obj = {files: data.files, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
+		var obj = {files: data.files, can_mount: data.can_mount, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: folder_path, folder_path: folder_path,
@@ -2232,10 +2240,10 @@ function tabMouseClickBackups(clientid, backupid)
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path=%2F", show_backups2);
 }
-function tabMouseClickFiles(clientid, backupid, path)
+function tabMouseClickFiles(clientid, backupid, path, mount)
 {
 	if(!startLoading()) return;
-	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"), show_backups2);
+	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F")+(mount?"&mount=1":""), show_backups2);
 }
 function tabMouseClickFilesDL(clientid, backupid, path)
 {

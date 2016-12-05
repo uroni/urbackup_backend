@@ -1542,6 +1542,120 @@ ServerBackupDao::CondInt ServerBackupDao::getClientidByImageid(int backupid)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::getImageMounttime
+* @return int mounttime
+* @sql
+*       SELECT mounttime FROM backup_images WHERE id=:backupid(int)
+*/
+ServerBackupDao::CondInt ServerBackupDao::getImageMounttime(int backupid)
+{
+	if(q_getImageMounttime==NULL)
+	{
+		q_getImageMounttime=db->Prepare("SELECT mounttime FROM backup_images WHERE id=?", false);
+	}
+	q_getImageMounttime->Bind(backupid);
+	db_results res=q_getImageMounttime->Read();
+	q_getImageMounttime->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["mounttime"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setImageMounted
+* @sql
+*       UPDATE backup_images SET mounttime=strftime('%s','now') WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageMounted(int backupid)
+{
+	if(q_setImageMounted==NULL)
+	{
+		q_setImageMounted=db->Prepare("UPDATE backup_images SET mounttime=strftime('%s','now') WHERE id=?", false);
+	}
+	q_setImageMounted->Bind(backupid);
+	q_setImageMounted->Write();
+	q_setImageMounted->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setImageUnmounted
+* @sql
+*       UPDATE backup_images SET mounttime=0 WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageUnmounted(int backupid)
+{
+	if(q_setImageUnmounted==NULL)
+	{
+		q_setImageUnmounted=db->Prepare("UPDATE backup_images SET mounttime=0 WHERE id=?", false);
+	}
+	q_setImageUnmounted->Bind(backupid);
+	q_setImageUnmounted->Write();
+	q_setImageUnmounted->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func SMountedImage ServerBackupDao::getMountedImage
+* @return int id, string path, int64 mounttime
+* @sql
+*       SELECT id, path, mounttime FROM backup_images WHERE id=:backupid(int)
+*/
+ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid)
+{
+	if(q_getMountedImage==NULL)
+	{
+		q_getMountedImage=db->Prepare("SELECT id, path, mounttime FROM backup_images WHERE id=?", false);
+	}
+	q_getMountedImage->Bind(backupid);
+	db_results res=q_getMountedImage->Read();
+	q_getMountedImage->Reset();
+	SMountedImage ret = { false, 0, "", 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi(res[0]["id"]);
+		ret.path=res[0]["path"];
+		ret.mounttime=watoi64(res[0]["mounttime"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<SMountedImage> ServerBackupDao::getOldMountedImages
+* @return int id, string path, int64 mounttime
+* @sql
+*       SELECT id, path, mounttime FROM backup_images WHERE mounttime!=0 AND mounttime<(strftime('%s','now')-:times(int64))
+*/
+std::vector<ServerBackupDao::SMountedImage> ServerBackupDao::getOldMountedImages(int64 times)
+{
+	if(q_getOldMountedImages==NULL)
+	{
+		q_getOldMountedImages=db->Prepare("SELECT id, path, mounttime FROM backup_images WHERE mounttime!=0 AND mounttime<(strftime('%s','now')-?)", false);
+	}
+	q_getOldMountedImages->Bind(times);
+	db_results res=q_getOldMountedImages->Read();
+	q_getOldMountedImages->Reset();
+	std::vector<ServerBackupDao::SMountedImage> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].exists=true;
+		ret[i].id=watoi(res[i]["id"]);
+		ret[i].path=res[i]["path"];
+		ret[i].mounttime=watoi64(res[i]["mounttime"]);
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -1611,6 +1725,11 @@ void ServerBackupDao::prepareQueries( void )
 	q_addUsedAccessToken=NULL;
 	q_getClientnameByImageid=NULL;
 	q_getClientidByImageid=NULL;
+	q_getImageMounttime=NULL;
+	q_setImageMounted=NULL;
+	q_setImageUnmounted=NULL;
+	q_getMountedImage=NULL;
+	q_getOldMountedImages=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1682,6 +1801,11 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addUsedAccessToken);
 	db->destroyQuery(q_getClientnameByImageid);
 	db->destroyQuery(q_getClientidByImageid);
+	db->destroyQuery(q_getImageMounttime);
+	db->destroyQuery(q_setImageMounted);
+	db->destroyQuery(q_setImageUnmounted);
+	db->destroyQuery(q_getMountedImage);
+	db->destroyQuery(q_getOldMountedImages);
 }
 
 

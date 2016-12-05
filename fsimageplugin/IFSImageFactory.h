@@ -41,4 +41,6 @@ public:
 	virtual IReadOnlyBitmap* createClientBitmap(const std::string& fn)=0;
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
+
+	virtual void startImDiskSrv() = 0;
 };

@@ -32,7 +32,10 @@
 		</div>
 		{/image_backup_info}
 
-		{^image_backup_info}
+		{?can_mount}
+		<br><br>
+		<div class="text-center"><a class="btn btn-default" href="#" onClick="tabMouseClickFiles({clientid},{backupid},'{path}', true); return false">{tMount image}</a></div>
+		{:else}
 		<table class="table table-hover">
 			<thead>
 				<tr>
@@ -62,7 +65,7 @@
 			{/files}
 			</tbody>
 		</table>
-		{/image_backup_info}
+		{/can_mount}
 
 		{?download_zip}
 		<a class="btn btn-default" href="#" onClick="downloadZIP({clientid}, {backupid}, '{path|j}'); return false">{tDownload folder as ZIP}</a>

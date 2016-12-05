@@ -71,6 +71,13 @@ public:
 		int complete;
 		int id;
 	};
+	struct SMountedImage
+	{
+		bool exists;
+		int id;
+		std::string path;
+		int64 mounttime;
+	};
 	struct SReportSettings
 	{
 		bool exists;
@@ -146,6 +153,11 @@ public:
 	void addUsedAccessToken(int clientid, const std::string& tokenhash);
 	CondString getClientnameByImageid(int backupid);
 	CondInt getClientidByImageid(int backupid);
+	CondInt getImageMounttime(int backupid);
+	void setImageMounted(int backupid);
+	void setImageUnmounted(int backupid);
+	SMountedImage getMountedImage(int backupid);
+	std::vector<SMountedImage> getOldMountedImages(int64 times);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
@@ -224,6 +236,11 @@ private:
 	IQuery* q_addUsedAccessToken;
 	IQuery* q_getClientnameByImageid;
 	IQuery* q_getClientidByImageid;
+	IQuery* q_getImageMounttime;
+	IQuery* q_setImageMounted;
+	IQuery* q_setImageUnmounted;
+	IQuery* q_getMountedImage;
+	IQuery* q_getOldMountedImages;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

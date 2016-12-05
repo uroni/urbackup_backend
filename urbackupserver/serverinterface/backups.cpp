@@ -35,6 +35,7 @@
 #include "../restore_client.h"
 #include "../dao/ServerBackupDao.h"
 #include "../server_dir_links.h"
+#include "../ImageMount.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -483,6 +484,13 @@ namespace backupaccess
 		return backups;
 	}
 
+	bool valid_path_component(const std::string& t_path)
+	{
+		return !t_path.empty() && t_path != " " && t_path != "." && t_path != ".."
+			&& t_path.find("/") == std::string::npos
+			&& t_path.find("\\") == std::string::npos;
+	}
+
 	SPathInfo get_metadata_path_with_tokens(const std::string& u_path, std::string* fileaccesstokens, std::string clientname, std::string backupfolder, int* backupid, std::string backuppath)
 	{
 		SPathInfo ret;
@@ -500,11 +508,8 @@ namespace backupaccess
 
 		for(size_t i=0;i<t_path.size();++i)
 		{
-			if(!t_path[i].empty() && t_path[i]!=" " && t_path[i]!="." && t_path[i]!=".."
-				&& t_path[i].find("/")==std::string::npos
-				&& t_path[i].find("\\")==std::string::npos )
+			if(valid_path_component(t_path[i]))
 			{
-			
 				ret.rel_path+=UnescapeSQLString(t_path[i]);
 				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]));
 				
@@ -567,6 +572,34 @@ namespace backupaccess
 
 		ret.full_metadata_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+".hashes"+(ret.rel_metadata_path.empty()?"":(os_file_sep()+ret.rel_metadata_path));
 		ret.full_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?"":(os_file_sep()+ret.rel_path));
+
+		return ret;
+	}
+
+	SPathInfo get_image_path_info(const std::string& u_path, std::string clientname, std::string backupfolder, int backupid, std::string backuppath)
+	{
+		std::vector<std::string> t_path;
+		Tokenize(u_path, t_path, "/");
+
+		std::string rel_path;
+		for (size_t i = 0; i < t_path.size(); ++i)
+		{
+			if (valid_path_component(t_path[i]))
+			{
+				rel_path += os_file_sep() + t_path[i];
+			}
+		}
+
+		std::string content_path = backuppath + rel_path;
+
+		int ftype = os_get_file_type(os_file_prefix(content_path));
+
+		SPathInfo ret;
+		ret.can_access_path = ftype!=0;
+		ret.full_path = content_path;
+		ret.is_file = (ftype & EFileType_File) > 0;
+		ret.is_symlink = (ftype & EFileType_Symlink) > 0;
+		ret.rel_path = !rel_path.empty() ? rel_path.substr(1) : rel_path;
 
 		return ret;
 	}
@@ -859,7 +892,7 @@ namespace backupaccess
 		return backups;
 	}
 
-	JSON::Object get_image_info(IDatabase* db, int backupid, int t_clientid, int backupid_offset)
+	JSON::Object get_image_info(IDatabase* db, int backupid, int t_clientid, int backupid_offset, std::string& path)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -871,6 +904,7 @@ namespace backupaccess
 		JSON::Object ret;
 		if (!res.empty())
 		{
+			path = res[0]["path"];
 			ret.set("id", watoi(res[0]["id"]) + backupid_offset);
 			ret.set("backuptime", watoi64(res[0]["t_backuptime"]));
 			ret.set("incremental", watoi(res[0]["incremental"]));
@@ -920,7 +954,7 @@ namespace backupaccess
 			std::auto_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
 			if (mbrfile.get() && mbrfile->Size()<10*1024*1024)
 			{
-				std::string mbrdata = mbrfile->Read(mbrfile->Size());
+				std::string mbrdata = mbrfile->Read(static_cast<_u32>(mbrfile->Size()));
 				if (mbrdata.size() == mbrfile->Size())
 				{
 					CRData mbrdata_view(mbrdata.data(), mbrdata.size());
@@ -941,13 +975,89 @@ namespace backupaccess
 	}
 
 	bool get_image_files(IDatabase* db, int backupid, int t_clientid, std::string clientname,
-			const std::string& u_path, int backupid_offset, JSON::Object& ret)
+			const std::string& u_path, int backupid_offset, bool do_mount, JSON::Object& ret)
 	{
-		JSON::Object image_backup_info = get_image_info(db, backupid, t_clientid, backupid_offset);
+		std::string path;
+		JSON::Object image_backup_info = get_image_info(db, backupid, t_clientid, backupid_offset, path);
 		ret.set("image_backup_info", image_backup_info);
 		ret.set("single_item", false);
-		JSON::Array files;
-		ret.set("files", files);
+		
+		if (!path.empty())
+		{
+			std::string content_path = ImageMount::get_mount_path(backupid);
+
+			if (content_path.empty()
+				|| !os_directory_exists(content_path) )
+			{
+				if (!do_mount)
+				{
+					ret.set("can_mount", true);
+					content_path.clear();
+				}
+				else
+				{
+					if (!ImageMount::mount_image(backupid))
+					{
+						content_path.clear();
+					}
+					else
+					{
+						content_path = ImageMount::get_mount_path(backupid);
+					}
+				}
+			}			
+			
+			JSON::Array files;
+
+			if (!content_path.empty())
+			{
+				std::vector<std::string> t_path;
+				Tokenize(u_path, t_path, "/");
+
+				for (size_t i = 0; i < t_path.size(); ++i)
+				{
+					if (valid_path_component(t_path[i]))
+					{
+						content_path += os_file_sep() + t_path[i];
+					}
+				}
+
+				std::vector<SFile> tfiles = getFiles(os_file_prefix(content_path), NULL);
+
+				for (size_t i = 0; i<tfiles.size(); ++i)
+				{
+					if (tfiles[i].isdir)
+					{
+						JSON::Object obj;
+						obj.set("name", tfiles[i].name);
+						obj.set("dir", tfiles[i].isdir);
+						obj.set("mod", tfiles[i].last_modified);
+						obj.set("creat", tfiles[i].created);
+						obj.set("access", tfiles[i].accessed);
+						files.add(obj);
+					}
+				}
+
+				for (size_t i = 0; i<tfiles.size(); ++i)
+				{
+					if (!tfiles[i].isdir)
+					{
+						JSON::Object obj;
+						obj.set("name", tfiles[i].name);
+						obj.set("dir", tfiles[i].isdir);
+						obj.set("mod", tfiles[i].last_modified);
+						obj.set("creat", tfiles[i].created);
+						obj.set("access", tfiles[i].accessed);
+						obj.set("size", tfiles[i].size);
+						files.add(obj);
+					}
+				}
+			}
+
+			ret.set("files", files);
+		}
+
+	
 		ret.set("backuptime", image_backup_info.get("backuptime"));
 		ret.set("backupid", backupid + backupid_offset);
 		return true;
@@ -1230,20 +1340,36 @@ ACTION_IMPL(backups)
 				}
 				std::string u_path=UnescapeHTML(UnescapeSQLString(CURRP["path"]));
 
+				if (backupid < 0
+					&& token_authentication)
+				{
+					clientname.clear();
+				}
+
 				if(!clientname.empty() )
 				{
 					if( (sa=="filesdl" || sa=="zipdl" || sa=="clientdl") && has_backupid)
 					{
 						std::string backupfolder = backupaccess::getBackupFolder(db);
-						std::string backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
 
-						if(backupfolder.empty())
+						if (backupfolder.empty())
 						{
 							return;
 						}
 
-						backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, token_authentication ? &fileaccesstokens : NULL,
-							clientname, backupfolder, has_backupid ? &backupid : NULL, backuppath);
+						std::string backuppath;
+						backupaccess::SPathInfo path_info;
+						if (backupid >= 0)
+						{
+							backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
+							path_info = backupaccess::get_metadata_path_with_tokens(u_path, token_authentication ? &fileaccesstokens : NULL,
+								clientname, backupfolder, has_backupid ? &backupid : NULL, backuppath);
+						}
+						else
+						{
+							backuppath = ImageMount::get_mount_path(-1*backupid);
+							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
+						}
 
 						if(token_authentication && !path_info.can_access_path)
 						{
@@ -1271,9 +1397,9 @@ ACTION_IMPL(backups)
 						else if(sa=="zipdl")
 						{
 							std::string bpath = backupfolder + os_file_sep() + clientname + os_file_sep() + backuppath;
-							sendZip(helper, bpath, path_info.full_path, bpath + os_file_sep()+".hashes",
+							sendZip(helper, bpath, path_info.full_path, backupid<0 ? "" : bpath + os_file_sep()+".hashes",
 								path_info.full_metadata_path, CURRP["filter"], token_authentication,
-								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
+								path_info.backup_tokens.tokens, tokens, backupid<0 ? false : path_info.rel_path.empty());
 							return;
 						}
 						else if(sa=="clientdl" && fileserv!=NULL)
@@ -1316,7 +1442,7 @@ ACTION_IMPL(backups)
 					{
 						if (has_backupid && backupid < 0)
 						{
-							if (!backupaccess::get_image_files(db, -1 * backupid, t_clientid, clientname, u_path, 0, ret))
+							if (!backupaccess::get_image_files(db, -1 * backupid, t_clientid, clientname, u_path, 0, CURRP["mount"]=="1", ret))
 							{
 								JSON::Object err_ret;
 								err_ret.set("err", "internal_error");

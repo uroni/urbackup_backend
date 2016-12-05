@@ -95,7 +95,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		}
 
 		std::string archivename = archivefoldername + (archivefoldername.empty()?"":"/") + file.name;
-		std::string metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
+		std::string metadataname = hashfolderbase.empty() ? "" : (hashfoldername + os_file_sep() + escape_metadata_fn(file.name));
 		std::string filename = foldername + os_file_sep() + file.name;
 
 		std::string next_hashfoldername = metadataname;
@@ -105,7 +105,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 
 		bool is_dir_link = false;
 
-		if(file.isdir)
+		if(file.isdir
+			&& !metadataname.empty())
 		{
 			if (!os_directory_exists(os_file_prefix(metadataname)))
 			{
@@ -114,6 +115,13 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 			else
 			{
 				metadataname += os_file_sep() + metadata_dir_fn;
+			}
+		}
+		else if (metadataname.empty())
+		{
+			if (os_get_file_type(os_file_prefix(filename)) & EFileType_Symlink)
+			{
+				continue;
 			}
 		}
 
@@ -163,13 +171,22 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		{
 			continue;
 		}
-		else if(!token_authentication)
+		else if(!token_authentication
+			&& !metadataname.empty())
 		{
 			has_metadata = read_metadata(metadataname, metadata);
 		}
 		else
 		{
 			has_metadata = true;
+			if (!token_authentication)
+			{
+				metadata.last_modified = file.last_modified;
+#ifdef _WIN32
+				metadata.created = file.created;
+#endif
+				metadata.accessed = file.accessed;
+			}
 		}
 
 		time_t* last_modified=NULL;
@@ -241,10 +258,10 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		}
 		else
 		{	
-			std::auto_ptr<IFsFile> add_file(Server->openFile(os_file_prefix(filename)));
+			std::auto_ptr<IFsFile> add_file(Server->openFile(os_file_prefix(filename), MODE_READ_SEQUENTIAL_BACKUP));
 			if (add_file.get() == NULL)
 			{
-				Server->Log("Error opening file \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
+				Server->Log("Error opening file \"" + filename + "\" for ZIP file download. " + os_last_error_str(), LL_ERROR);
 				return false;
 			}
 			int64 fsize = add_file->Size();

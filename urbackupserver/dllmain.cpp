@@ -581,6 +581,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Error loading fsimageplugin", LL_ERROR);
 		}
+		else
+		{
+			image_fak->startImDiskSrv();
+		}
 	}
 
 	{
@@ -1852,6 +1856,8 @@ bool upgrade50_51()
 	b &= db->Write("ALTER TABLE backup_images ADD archived INTEGER");
 	b &= db->Write("UPDATE backup_images SET archived=0 WHERE archived IS NULL");
 	b &= db->Write("ALTER TABLE backup_images ADD archive_timeout INTEGER");
+	b &= db->Write("ALTER TABLE backup_images ADD mounttime INTEGER");
+	b &= db->Write("UPDATE backup_images SET mounttime=0 WHERE mounttime IS NULL");
 
 	return b;
 }

@@ -713,28 +713,12 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 #endif
 }
 
-bool os_link_symbolic_junctions(const std::string &target, const std::string &lname)
+bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname)
 {
-	bool ret=false;
-	std::wstring wtarget=ConvertToWchar(target);
-	HANDLE hJunc=INVALID_HANDLE_VALUE;
-	char *buf=NULL;
-
-	if(wtarget.find(L"\\\\?\\UNC")==0)
-	{
-		wtarget.erase(0, 7);
-		wtarget=L"\\"+wtarget;
-	}
-	else if(wtarget.find(os_file_prefix(L""))==0)
-	{
-		wtarget.erase(0, os_file_prefix(L"").size());
-	}
-
-	if(!wtarget.empty() && wtarget[0]!='\\')
-		wtarget=L"\\??\\"+wtarget;
-
-	if(!wtarget.empty() && wtarget[wtarget.size()-1]=='\\')
-		wtarget.erase(wtarget.size()-1, 1);
+	bool ret = false;
+	HANDLE hJunc;
+	char* buf;
+	std::wstring wtarget = ConvertToWchar(target);
 
 	std::wstring wlname = ConvertToWchar(lname);
 	if(!CreateDirectoryW(wlname.c_str(), NULL) )
@@ -780,6 +764,29 @@ cleanup:
 		SetLastError(lasterr);
 	}
 	return ret;
+}
+
+bool os_link_symbolic_junctions(const std::string &target, const std::string &lname)
+{
+	std::string wtarget = target;
+
+	if (wtarget.find("\\\\?\\UNC") == 0)
+	{
+		wtarget.erase(0, 7);
+		wtarget = "\\" + wtarget;
+	}
+	else if (wtarget.find(os_file_prefix("")) == 0)
+	{
+		wtarget.erase(0, os_file_prefix("").size());
+	}
+
+	if (!wtarget.empty() && wtarget[0] != '\\')
+		wtarget = "\\??\\" + wtarget;
+
+	if (!wtarget.empty() && wtarget[wtarget.size() - 1] == '\\')
+		wtarget.erase(wtarget.size() - 1, 1);
+
+	return os_link_symbolic_junctions_raw(wtarget, lname);
 }
 
 #ifndef OS_FUNC_NO_NET
