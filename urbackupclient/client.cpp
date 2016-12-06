@@ -1758,7 +1758,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				index_error=true;
 
 #ifdef _WIN32
-				if (getbetween("%", "%", orig_dir).empty())
+				if (!getbetween("%", "%", orig_dir).empty())
 				{
 					VSSLog("Hint: The path to backup contains Windows environment variables. This is not supported. "
 						"UrBackup Clients runs as user independent system service. See https://www.urbackup.org/faq.html#include_files for what you probably want to do.", LL_WARNING);
