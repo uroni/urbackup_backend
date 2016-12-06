@@ -1313,6 +1313,13 @@ function show_status2(data)
 		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
 	}
 	
+	var virus_error="";
+	if(data.virus_error
+		&& (typeof data.virus_error_show === "undefined" || data.virus_error_show===true )  )
+	{
+		virus_error=dustRender("virus_error", {stop_show_key: data.virus_error_stop_show_key, virus_error_path: data.virus_error_path});
+	}
+	
 	var endian_info="";
 	if(data.big_endian)
 	{
@@ -1433,7 +1440,7 @@ function show_status2(data)
 	g.server_identity = data.server_identity;
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
-		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info, virus_error: virus_error,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
