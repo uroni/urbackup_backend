@@ -60,6 +60,7 @@ extern IServer* Server;
 #include "serverinterface/helper.h"
 SStartupStatus startup_status;
 #include "server.h"
+#include "ImageMount.h"
 
 
 #include "../stringtools.h"
@@ -835,6 +836,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->createThread(server_cleanup, "backup cleanup");
 		Server->createThread(new ServerAutomaticArchive, "backup archival");
 	}
+
+	Server->createThread(new ImageMount, "image umount");
 
 	Server->setLogCircularBufferSize(20);
 
