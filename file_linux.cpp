@@ -458,8 +458,13 @@ std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, in
 	return std::vector<SFileExtent>();
 }
 
-void* File::getOsHandle()
+IFsFile::os_file_handle File::getOsHandle(bool release_handle)
 {
-	return reinterpret_cast<void*>(fd);
+	int ret = fd;
+	if (release_handle)
+	{
+		fd = -1;
+	}
+	return ret;
 }
 #endif

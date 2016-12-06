@@ -233,6 +233,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 
 		//TODO: ZIP has extensions for NTFS/Unix/MacOS attributes, symbolic links, NTFS ACL, ... use them
 
+		std::string os_err;
+
 		mz_bool rc;
 		if(file.isdir)
 		{
@@ -240,6 +242,11 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 											MZ_DEFAULT_LEVEL|MZ_ZIP_FLAG_UTF8_FILENAME,
 											0, 0, last_modified, extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
 											extra_data_central.getDataPtr(), extra_data_central.getDataSize());
+
+			if (rc == MZ_FALSE)
+			{
+				os_err = os_last_error_str();
+			}
 		}
 		else
 		{	
@@ -251,17 +258,16 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 			}
 			int64 fsize = add_file->Size();
 #ifndef _WIN32
-			void* osh = add_file->getOsHandle();
-			int fd = *reinterpret_cast<int*>(&osh);
+			int fd = add_file->getOsHandle(true);
 #else
-			int fd =_open_osfhandle(reinterpret_cast<intptr_t>(add_file->getOsHandle()), _O_RDONLY);
+			int fd =_open_osfhandle(reinterpret_cast<intptr_t>(add_file->getOsHandle(true)), _O_RDONLY);
 			if (fd == -1)
 			{
 				Server->Log("Error opening file fd for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
 				return false;
 			}
 #endif
-			add_file.release();
+			add_file.reset();
 
 			FILE* file = _fdopen(fd, "r");
 			if (file != NULL)
@@ -270,6 +276,11 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 					MZ_DEFAULT_LEVEL|MZ_ZIP_FLAG_UTF8_FILENAME,
 					extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
 					extra_data_central.getDataPtr(), extra_data_central.getDataSize());
+
+				if (rc == MZ_FALSE)
+				{
+					os_err = os_last_error_str();
+				}
 
 				fclose(file);
 			}
@@ -284,7 +295,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		if(rc==MZ_FALSE)
 		{
 			mz_zip_error err = mz_zip_get_last_error(&zip_archive);
-			Server->Log("Error while adding file \""+filename+"\" to ZIP file. Error: "+mz_zip_get_error_string(err), LL_ERROR);
+			Server->Log("Error while adding file \""+filename+"\" to ZIP file. Error: "+mz_zip_get_error_string(err)+ (os_err.empty() ? "" : (". OS error: "+os_err)), LL_ERROR);
 			return false;
 		}
 

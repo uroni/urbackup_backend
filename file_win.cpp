@@ -133,7 +133,6 @@ bool File::Open(std::string pfn, int mode)
 	else
 	{
 		DWORD err = GetLastError();
-		hfile=NULL;
 		return false;
 	}
 }
@@ -348,16 +347,21 @@ _i64 File::RealSize()
 
 void File::Close()
 {
-	if( hfile!=NULL )
+	if( hfile!=INVALID_HANDLE_VALUE )
 	{
 		BOOL b=CloseHandle( hfile );
-		hfile=NULL;
+		hfile=INVALID_HANDLE_VALUE;
 	}
 }
 
-void * File::getOsHandle()
+IFsFile::os_file_handle File::getOsHandle(bool release_handle)
 {
-	return reinterpret_cast<void*>(hfile);
+	HANDLE ret = hfile;
+	if (release_handle)
+	{
+		hfile = INVALID_HANDLE_VALUE;
+	}
+	return ret;
 }
 
 void File::init_mutex()

@@ -62,7 +62,7 @@ public:
 	void resetSparseExtentIter();
 	SSparseExtent nextSparseExtent();
 	std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data);
-	void* getOsHandle();
+	IFsFile::os_file_handle getOsHandle(bool release_handle = false);
 
 #ifdef _WIN32
 	static void init_mutex();

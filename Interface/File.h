@@ -89,7 +89,14 @@ public:
 	virtual SSparseExtent nextSparseExtent() = 0;
 	virtual bool Resize(int64 new_size, bool set_sparse=true) = 0;
 	virtual std::vector<SFileExtent> getFileExtents(int64 starting_offset, int64 block_size, bool& more_data) = 0;
-	virtual void* getOsHandle() = 0;
+
+#ifdef _WIN32
+	typedef void* os_file_handle;
+#else
+	typedef int os_file_handle;
+#endif
+
+	virtual os_file_handle getOsHandle(bool release_handle = false) = 0;
 };
 
 class ScopedDeleteFn

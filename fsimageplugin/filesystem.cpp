@@ -524,7 +524,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 		IFsFile* fs_dev = dynamic_cast<IFsFile*>(dev);
 		if (fs_dev != NULL)
 		{
-			hVol = reinterpret_cast<HANDLE>(fs_dev->getOsHandle());
+			hVol = fs_dev->getOsHandle();
 		}
 #endif
 	}

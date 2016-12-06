@@ -230,9 +230,9 @@ std::string SparseFile::getFilename(void)
 	return backing_file->getFilename();
 }
 
-void * SparseFile::getOsHandle()
+IFsFile::os_file_handle SparseFile::getOsHandle(bool release_handle)
 {
-	return backing_file->getOsHandle();
+	return backing_file->getOsHandle(release_handle);
 }
 
 _i64 SparseFile::getSparseSize()
