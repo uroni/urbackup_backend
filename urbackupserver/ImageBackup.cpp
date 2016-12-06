@@ -1903,7 +1903,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
 			{
 				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
-				if (touch_f.get())
+				if (touch_f.get()==NULL)
 				{
 					ServerLogger::Log(logid, "Could not touch file " + image_folder + ". " + os_last_error_str(), LL_ERROR);
 					return std::string();
@@ -1963,7 +1963,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
 		{
 			std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
-			if(touch_f.get())
+			if(touch_f.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Could not touch file " + image_folder + ". "+os_last_error_str(), LL_ERROR);
 				return std::string();
