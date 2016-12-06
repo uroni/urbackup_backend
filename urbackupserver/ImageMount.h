@@ -14,7 +14,7 @@ public:
 	void operator()();
 
 	static bool mount_image(int backupid, ScopedMountedImage& mounted_image);
-	static std::string get_mount_path(int backupid, ScopedMountedImage& mounted_image);
+	static std::string get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image);
 
 	static void incrImageMounted(int backupid);
 	static void decrImageMounted(int backupid);

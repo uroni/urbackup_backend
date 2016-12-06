@@ -985,7 +985,8 @@ namespace backupaccess
 		if (!path.empty())
 		{
 			ScopedMountedImage mounted_image;
-			std::string content_path = ImageMount::get_mount_path(backupid, mounted_image);
+			std::string content_path = ImageMount::get_mount_path(backupid, 
+				!u_path.empty() && u_path!="/", mounted_image);
 
 			if (content_path.empty()
 				|| !os_directory_exists(content_path) )
@@ -997,14 +998,7 @@ namespace backupaccess
 				}
 				else
 				{
-					if (!ImageMount::mount_image(backupid, mounted_image))
-					{
-						content_path.clear();
-					}
-					else
-					{
-						content_path = ImageMount::get_mount_path(backupid, mounted_image);
-					}
+					content_path = ImageMount::get_mount_path(backupid, true, mounted_image);
 				}
 			}			
 			
@@ -1369,7 +1363,7 @@ ACTION_IMPL(backups)
 						}
 						else
 						{
-							backuppath = ImageMount::get_mount_path(-1*backupid, mounted_image);
+							backuppath = ImageMount::get_mount_path(-1*backupid, true, mounted_image);
 							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
 						}
 

@@ -309,7 +309,7 @@ bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image)
 	return true;
 }
 
-std::string ImageMount::get_mount_path(int backupid, ScopedMountedImage& mounted_image)
+std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image)
 {
 	ScopedLockImage lock_image(backupid);
 
@@ -324,12 +324,19 @@ std::string ImageMount::get_mount_path(int backupid, ScopedMountedImage& mounted
 
 	if (image_inf.mounttime == 0)
 	{
-		lock_image.reset();
-		if (!mount_image(backupid, mounted_image))
+		if (do_mount)
+		{
+			lock_image.reset();
+			if (!mount_image(backupid, mounted_image))
+			{
+				return std::string();
+			}
+			lock_image.reset(backupid);
+		}
+		else
 		{
 			return std::string();
 		}
-		lock_image.reset(backupid);
 	}
 
 	std::string ret = ExtractFilePath(image_inf.path) + os_file_sep() + "contents";
