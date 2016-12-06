@@ -1756,6 +1756,25 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 				VSSLog("Cannot access path to backup: \""+dir+"\" Errorcode: "+convert(errcode)+" - "+trim(err_msg), LL_ERROR);
 				index_error=true;
+
+#ifdef _WIN32
+				if (getbetween("%", "%", orig_dir).empty())
+				{
+					VSSLog("Hint: The path to backup contains Windows environment variables. This is not supported. "
+						"UrBackup Clients runs as user independent system service. See https://www.urbackup.org/faq.html#include_files for what you probably want to do.", LL_WARNING);
+				}
+#endif
+				if (!os_directory_exists(orig_dir))
+				{
+					if (orig_dir.find("*") != std::string::npos || orig_dir.find("?") != std::string::npos)
+					{
+						VSSLog("Hint: The directory to backup contains wild cards. This is not supported. "
+							"Please use the include and exclude settings to accomplish what you want", LL_WARNING);
+					}
+
+					VSSLog("Hint: Directory to backup (\"" + orig_dir + "\") does not exist. It may have been deleted or renamed. "
+						"Set the \"optional\" directory flag if you do not want backups to fail if directories are missing.", LL_WARNING);
+				}
 			}
 
 			return false;
