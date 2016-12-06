@@ -50,6 +50,8 @@ size_t my_mz_write_func(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, siz
   MiniZFileInfo* fileInfo = reinterpret_cast<MiniZFileInfo*>(pOpaque);
   if(fileInfo->file_offset!=file_ofs)
   {
+	  Server->Log("Streaming ZIP file failed at file offset " + convert(file_ofs) + " bufsize " + convert(n)+
+		  " stream offset "+convert(fileInfo->file_offset), LL_ERROR);
 	  return 0;
   }
 
@@ -258,8 +260,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 				Server->Log("Error opening file fd for \"" + filename + "\" for ZIP file download." + os_last_error_str(), LL_ERROR);
 				return false;
 			}
-			add_file.release();
 #endif
+			add_file.release();
 
 			FILE* file = _fdopen(fd, "r");
 			if (file != NULL)
