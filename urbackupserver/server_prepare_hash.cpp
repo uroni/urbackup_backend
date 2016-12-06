@@ -145,7 +145,7 @@ void BackupServerPrepareHash::operator()(void)
 				old_file=Server->openFile(os_file_prefix((old_file_fn)), MODE_READ);
 				if(old_file==NULL)
 				{
-					ServerLogger::Log(logid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file ec="+convert(os_last_error()), LL_ERROR);
+					ServerLogger::Log(logid, "Error opening file \""+old_file_fn+"\" for reading. File: old_file. "+os_last_error_str()+" Target path: \""+tfn+"\"", LL_ERROR);
 					has_error=true;
 					if(tf!=NULL) Server->destroy(tf);
 					continue;
@@ -154,7 +154,7 @@ void BackupServerPrepareHash::operator()(void)
 
 			if(tf==NULL)
 			{
-				ServerLogger::Log(logid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn ec="+convert(os_last_error()), LL_ERROR);
+				ServerLogger::Log(logid, "Error opening file \""+temp_fn+"\" for reading file. File: temp_fn. "+os_last_error_str()+" Target path: \""+tfn+"\"", LL_ERROR);
 				has_error=true;
 				if(old_file!=NULL)
 				{
