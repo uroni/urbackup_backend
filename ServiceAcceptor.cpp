@@ -178,7 +178,7 @@ void CServiceAcceptor::operator()(void)
 #endif
 			{
 				sockaddr_in naddr;
-				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
+				SOCKET ns= ACCEPT_CLOEXEC(s, (sockaddr*)&naddr, &addrsize);
 				if(ns!=SOCKET_ERROR)
 				{
 #ifdef __APPLE__

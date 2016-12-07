@@ -24,6 +24,7 @@
 #include "../stringtools.h"
 #include "packet_ids.h"
 #include "map_buffer.h"
+#include "../socket_header.h"
 #include "log.h"
 #include <memory.h>
 
@@ -234,7 +235,7 @@ bool CTCPFileServ::TcpStep(void)
 	if(rc>0)
 	{
 		sockaddr_in naddr;
-		SOCKET ns=accept(mSocket, (sockaddr*)&naddr, &addrsize);
+		SOCKET ns= ACCEPT_CLOEXEC(mSocket, (sockaddr*)&naddr, &addrsize);
 		if(ns!=SOCKET_ERROR)
 		{
 #ifdef __APPLE__

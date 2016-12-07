@@ -22,3 +22,8 @@
 #if defined(__sun__) || defined(__APPLE__)
 #	define MSG_NOSIGNAL 0
 #endif
+#ifdef SOCK_CLOEXEC
+#define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4(sockfd, addr, addrlen, SOCK_CLOEXEC)
+#else
+#define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept(sockfd, addr, addrlen)
+#endif
