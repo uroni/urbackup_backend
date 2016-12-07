@@ -138,7 +138,6 @@ Section "install"
 	
 	SetOutPath "$INSTDIR\imdisk"
 	File /r "..\deps\redist\imdiskinst\*"
-	File "..\deps\redist\imdisk_source_2.0.9.7z"
 	System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("IMDISK_SILENT_SETUP", "1").r0'
 	nsExec::ExecToLog '"$INSTDIR\imdisk\install.cmd"'
 	

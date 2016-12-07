@@ -65,7 +65,13 @@
 	
 	<Icon Id="backup_ok_ico" SourceFile="backup-ok.ico" />
 	<Property Id="ARPPRODUCTICON" Value="backup_ok_ico" />
-	<Property Id="ARPHELPLINK" Value="http://www.urbackup.org/" />
+	<Property Id="ARPHELPLINK" Value="https://www.urbackup.org/" />
+	
+	<Property Id="WixShellExecTarget" Value="[#imdisk\install.cmd]" />
+	<CustomAction Id="InstallImdisk" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+	
+	<Property Id="WixShellExecTarget" Value="[#imdisk\uninstall_imdisk.cmd]" />
+	<CustomAction Id="UninstallImdisk" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" Execute="deferred" Return="asyncWait">REMOVE="ALL"</CustomAction>
 		
     <Feature Id='urbackup_server' Title='UrBackup Server' Level='1'>
 	  <ComponentGroupRef Id='UrBackupData' />
@@ -75,6 +81,10 @@
 	<Feature Id="VCRedist" Title="Visual C++ 2010 Runtime" AllowAdvertise="no" Display="hidden" Level="1">
 		<MergeRef Id="VCRedist"/>
 	</Feature>
+	
+	<InstallExecuteSequence>
+		<Custom Action="InstallImdisk" Before="InstallFiles">NOT Installed</Custom>
+	</InstallExecuteSequence>
   </Product>
 	
   
@@ -113,6 +123,8 @@
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
             <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
             <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+			Event="DoAction" 
+					Value="LaunchApplication"
             
             <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" Order="1">NOT Installed</Publish>
             <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2">Installed AND NOT PATCH</Publish>
