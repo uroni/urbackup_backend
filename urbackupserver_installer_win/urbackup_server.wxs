@@ -70,8 +70,13 @@
 	<Property Id="ARPPRODUCTICON" Value="backup_ok_ico" />
 	<Property Id="ARPHELPLINK" Value="https://www.urbackup.org/" />
 	
-	<CustomAction Id="InstallImdisk" FileKey="install_imdisk_silent.cmd" Execute="deferred" Return="asyncWait" ExeCommand="">((NOT INSTALLED) OR INSTALLED)</CustomAction>
-	<CustomAction Id="UninstallImdisk" FileKey="uninstall_imdisk_silent.cmd" Execute="deferred" Return="asyncWait" ExeCommand="">REMOVE="ALL"</CustomAction>
+	<CustomAction Id="UninstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" uninstall_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="check"/>
+	<CustomAction Id="InstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" install_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="check"/>
+	
+	<InstallExecuteSequence>
+		<Custom Action="InstallImdisk" After="InstallFiles" >NOT Installed</Custom>
+		<Custom Action="UninstallImdisk" After="InstallInitialize" >REMOVE="ALL"</Custom>
+	</InstallExecuteSequence>
 		
     <Feature Id='urbackup_server' Title='UrBackup Server' Level='1'>
 	  <ComponentGroupRef Id='UrBackupData' />
@@ -82,10 +87,6 @@
 	<Feature Id="VCRedist" Title="Visual C++ 2010 Runtime" AllowAdvertise="no" Display="hidden" Level="1">
 		<MergeRef Id="VCRedist"/>
 	</Feature>
-	
-	<InstallExecuteSequence>
-		<Custom Action="InstallImdisk" Before="InstallFiles">NOT Installed</Custom>
-	</InstallExecuteSequence>
   </Product>
 	
   
