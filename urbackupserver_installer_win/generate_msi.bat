@@ -22,7 +22,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 candle -denv.data_common=%data_common% -arch %arch% urbackup_files_data_common.wxs
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
-heat dir ..\deps\redist\imdiskinst -nologo -sfrag -suid -ag -srd -dir ..\deps\redist\imdiskinst -out urbackup_files_imdisk.wxs -cg UrBackupImdisk -dr URBACKUPDIR\imdisk -var env.imdisk
+heat dir ..\deps\redist\imdiskinst -nologo -sfrag -suid -ag -srd -dir imdisk -out urbackup_files_imdisk.wxs -cg UrBackupImdisk -dr URBACKUPDIR_imdisk -var env.imdisk
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 candle -denv.imdisk=%imdisk% -arch %arch% urbackup_files_imdisk.wxs
@@ -31,5 +31,5 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 candle urbackup_server.wxs -ext WixFirewallExtension
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
-light urbackup_server.wixobj urbackup_files_data.wixobj urbackup_files_data_common.wixobj urbackup_files_imdisk.wxobj -ext WixFirewallExtension -ext WixUIExtension -out "UrBackup Server %version%(%arch%).msi"
+light urbackup_server.wixobj urbackup_files_data.wixobj urbackup_files_data_common.wixobj urbackup_files_imdisk.wixobj -ext WixFirewallExtension -ext WixUIExtension -out "UrBackup Server %version%(%arch%).msi"
 if %errorlevel% neq 0 exit /b %errorlevel%
