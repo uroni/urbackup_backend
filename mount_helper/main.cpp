@@ -20,6 +20,8 @@ extern char **environ;
 #include "../Server.h"
 #include "../config.h"
 
+#define LO_FLAGS_DIRECT_IO_LOCAL 16
+
 CServer *Server;
 
 
@@ -260,7 +262,7 @@ bool mount_image(const std::string& imagepath)
 		
 		loop_info64 linfo = {};
 		linfo.lo_offset = 512*1024;
-		linfo.lo_flags = LO_FLAGS_READ_ONLY|LO_FLAGS_AUTOCLEAR|LO_FLAGS_DIRECT_IO;
+		linfo.lo_flags = LO_FLAGS_READ_ONLY|LO_FLAGS_AUTOCLEAR|LO_FLAGS_DIRECT_IO_LOCAL;
 		int rc = ioctl(loopd, LOOP_SET_STATUS64, &linfo);
 		if(rc)
 		{

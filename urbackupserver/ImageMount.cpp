@@ -96,7 +96,7 @@ namespace
 		return true;
 	}
 
-	bool os_unmount_image(const std::string& mountpoint, int backupid)
+	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid)
 	{
 		std::string target;
 		if (!os_get_symlink_target(mountpoint, target)
@@ -188,16 +188,16 @@ namespace
 		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		ServerBackupDao backup_dao(db);
 
-		ServerBackupDao clientname = backup_dao.getClientnameByImageid(backupid);
+		ServerBackupDao::CondString clientname = backup_dao.getClientnameByImageid(backupid);
 		if (!clientname.exists)
 		{
 			return false;
 		}
 
-		std::string folername = ExtractFileName(ExtractFilePath(path));
+		std::string foldername = ExtractFileName(ExtractFilePath(path));
 		std::string imagename = ExtractFileName(path);
 
-		return system(("urbackup_mount_helper " + action + " \"" + clientname + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
+		return system(("urbackup_mount_helper " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
 	}
 
 	bool os_mount_image(const std::string& path, int backupid)
@@ -205,7 +205,7 @@ namespace
 		return image_helper_action(path, backupid, "mount");
 	}
 
-	bool os_unmount_image(const std::string& mountpoint, int backupid)
+	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid)
 	{
 		return image_helper_action(path, backupid, "umount");
 	}
@@ -255,6 +255,7 @@ namespace
 
 		std::string mountpoint = ExtractFilePath(image_inf.path) + os_file_sep() + "contents";
 
+#ifdef _WIN32
 		if (!os_directory_exists(mountpoint))
 		{
 			mountpoint = alt_mount_path + os_file_sep() + convert(backupid);
@@ -264,8 +265,9 @@ namespace
 		{
 			return false;
 		}
+#endif
 
-		return os_unmount_image(mountpoint, backupid);
+		return os_unmount_image(mountpoint, image_inf.path, backupid);
 	}
 }
 
@@ -377,6 +379,7 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 		return ret;
 	}
 
+#ifdef _WIN32
 	ret = alt_mount_path + os_file_sep() + convert(backupid);
 
 	if (os_directory_exists(ret))
@@ -385,6 +388,7 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 		backup_dao.setImageMounted(backupid);
 		return ret;
 	}
+#endif
 
 	return std::string();
 }
