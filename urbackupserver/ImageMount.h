@@ -23,6 +23,7 @@ public:
 	static void unlockImage(int backupid);
 
 private:
+	static bool mount_image_int(int backupid, ScopedMountedImage& mounted_image);
 
 	static std::map<int, size_t> mounted_images;
 	static std::set<int> locked_images;
