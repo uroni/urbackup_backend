@@ -28,6 +28,8 @@
 #ifdef _WIN32
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept(sockfd, addr, addrlen)
 #else
+#ifndef ACCEPT_CLOEXEC_DEFINED
+#define ACCEPT_CLOEXEC_DEFINED
 namespace {
 	int ACCEPT_CLOEXEC(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 		int rc = accept(sockfd, addr, addrlen);
@@ -35,5 +37,6 @@ namespace {
 		return rc;
 	}
 }
-#endif
-#endif
+#endif //ACCEPT_CLOEXEC_DEFINED
+#endif //!_WIN32
+#endif //!SOCK_CLOEXEC
