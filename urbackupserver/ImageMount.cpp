@@ -359,7 +359,7 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 	{
 		if (do_mount)
 		{
-			if (!mount_image(backupid, mounted_image))
+			if (!mount_image_int(backupid, mounted_image))
 			{
 				return std::string();
 			}
