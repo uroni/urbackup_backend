@@ -36,6 +36,7 @@
 #include <memory.h>
 #include <algorithm>
 #include "ThrottleUpdater.h"
+#include "../fsimageplugin/IFSImageFactory.h"
 
 const int max_offline=5;
 
@@ -52,7 +53,9 @@ IMutex* BackupServer::force_offline_mutex=NULL;
 std::vector<std::string> BackupServer::force_offline_clients;
 std::map<std::string, std::vector<std::string> >  BackupServer::virtual_clients;
 IMutex* BackupServer::virtual_clients_mutex=NULL;
+bool BackupServer::can_mount_images = false;
 
+extern IFSImageFactory *image_fak;
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 	: update_existing_client_names(true)
@@ -144,6 +147,10 @@ void BackupServer::operator()(void)
 
 	testSnapshotAvailability(db);
 	testFilesystemTransactionAvailabiliy(db);
+	if (image_fak != NULL)
+	{
+		can_mount_images = image_fak->initializeImageMounting();
+	}
 	runServerRecovery(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
@@ -778,6 +785,11 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 bool BackupServer::isFilesystemTransactionEnabled()
 {
 	return filesystem_transactions_enabled;
+}
+
+bool BackupServer::canMountImages()
+{
+	return can_mount_images;
 }
 
 void BackupServer::updateDeletePending()

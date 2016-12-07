@@ -48,6 +48,7 @@ public:
 
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static bool isFilesystemTransactionEnabled();
+	static bool canMountImages();
 
 	static void updateDeletePending();
 
@@ -104,6 +105,8 @@ private:
 
 	static IMutex* virtual_clients_mutex;
 	static std::map<std::string, std::vector<std::string> > virtual_clients;
+
+	static bool can_mount_images;
 };
 
 #endif //URB_SERVER_H

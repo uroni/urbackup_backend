@@ -24,6 +24,7 @@
 #include "../server_status.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server.h"
+#include "../ClientMain.h"
 
 #include <algorithm>
 #include <memory>
@@ -353,6 +354,8 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 			}
 		}
 
+		SSettings* server_settings = settings.getSettings();
+
 		if (!has_access_error
 			&& !os_create_dir(os_file_prefix(testfolderpath)))
 		{
@@ -371,7 +374,7 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 			has_access_error = true;
 		}
 #ifdef _WIN32
-		else if (!settings.getSettings()->no_file_backups
+		else if (!server_settings->no_file_backups
 			&& os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + "testfo~1")))
 		{
 			ret.set("dir_error", true);
@@ -390,7 +393,7 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 		}
 #endif
 
-		if (!settings.getSettings()->no_file_backups)
+		if (!server_settings->no_file_backups)
 		{
 			std::string linkfolderpath = testfolderpath + "_link";
 			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
@@ -411,6 +414,55 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 			}
 
 			os_remove_symlink_dir(os_file_prefix(linkfolderpath));
+		}
+
+		if (!server_settings->no_file_backups)
+		{
+			bool use_tmpfiles = server_settings->use_tmpfiles;
+			std::string tmpfile_path;
+			if (!use_tmpfiles)
+			{
+				tmpfile_path = server_settings->backupfolder + os_file_sep() + "urbackup_tmp_files";
+			}
+			
+			std::auto_ptr<IFile> tmp_f(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid_t()));
+
+			if (tmp_f.get() == NULL)
+			{
+				ret.set("tmpdir_error", true);
+				ret.set("tmpdir_error_stop_show_key", "tmpdir_error");
+				if (is_stop_show(db, "tmpdir_error"))
+				{
+					ret.set("tmpdir_error_show", false);
+				}
+			}
+			else
+			{
+				std::string teststring = base64_decode("WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=");
+				tmp_f->Write(teststring);
+				std::string tmp_fn = tmp_f->getFilename();
+				tmp_f.reset(Server->openFile(tmp_fn, MODE_RW));
+
+				std::string readstring;
+				if (tmp_f.get() != NULL)
+				{
+					readstring = tmp_f->Read(teststring.size());
+				}
+
+				tmp_f.reset();
+				Server->deleteFile(tmp_fn);
+
+				if (teststring != readstring)
+				{
+					ret.set("virus_error", true);
+					ret.set("virus_error_path", ExtractFilePath(tmp_fn));
+					ret.set("virus_error_stop_show_key", "virus_error");
+					if (is_stop_show(db, "virus_error"))
+					{
+						ret.set("virus_error_show", false);
+					}
+				}
+			}
 		}
 
 		if (!has_access_error

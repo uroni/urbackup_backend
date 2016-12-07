@@ -724,7 +724,7 @@ void FileClientChunked::State_First(void)
 	case ID_BLOCK_HASH: need_bytes=sizeof(_i64)+big_hash_size; break;
 	case ID_BLOCK_ERROR: need_bytes=sizeof(_u32)*2; break;
 	default:
-		Server->Log("Unknown Packet ID in State_First", LL_ERROR);
+		Server->Log("Unknown Packet ID "+convert(static_cast<int>(curr_id))+" in State_First", LL_ERROR);
 		need_bytes = 0;
 		getfile_done = true;
 		retval = ERR_ERROR;
@@ -1216,6 +1216,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			invalidateLastPatches();
 
 			size_t backup_remaining_bufptr_bytes=remaining_bufptr_bytes;
+			size_t backup_bufptr_bytes_done = bufptr_bytes_done;
 			Server->Log("remaining_bufptr_bytes="+convert(remaining_bufptr_bytes), LL_DEBUG);
 			remaining_bufptr_bytes = 0;
 			char* backup_bufptr = bufptr;
@@ -1227,6 +1228,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
 			bufptr = backup_bufptr;
 			packet_buf_off = backup_packet_buf_off;
+			bufptr_bytes_done = backup_bufptr_bytes_done;
 			memcpy(packet_buf, backup_packet_buf, sizeof(backup_packet_buf));
 		}
 		else

@@ -123,11 +123,13 @@ void ServerAutomaticArchive::archiveBackups(void)
 			_i64 curr_time=Server->getTimeSeconds();
 			if(next_archival<curr_time && (archive_window.empty() || isInArchiveWindow(archive_window)) )
 			{
-				int backupid=getNonArchivedFileBackup(watoi(res_archived[j]["backup_types"]), clientid);
+				int backup_types = watoi(res_archived[j]["backup_types"]);
+				bool image = (backup_types & (backup_type_full_image | backup_type_incr_image)) > 0;
+				int backupid=getNonArchivedBackup(backup_types, clientid, image);
 				if(backupid!=0)
 				{
 					int length=watoi(res_archived[j]["length"]);
-					archiveFileBackup(backupid, length);
+					archiveFileBackup(backupid, length, image);
 					Server->Log("Archived file backup with id="+convert(backupid)+" for "+convert(length)+" seconds", LL_INFO);
 					updateInterval(watoi(res_archived[j]["id"]), watoi(res_archived[j]["interval"]));
 				}
@@ -152,17 +154,31 @@ void ServerAutomaticArchive::updateInterval(int archiveid, int interval)
 	q_update_interval->Write();
 }
 
-int ServerAutomaticArchive::getNonArchivedFileBackup(int backup_types, int clientid)
+int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid, bool image)
 {
+	int type_incr = backup_type_incr_file;
+	int type_full = backup_type_full_file;
+
+	if (image)
+	{
+		type_incr = backup_type_incr_image;
+		type_full = backup_type_full_image;
+	}
+
 	std::string incremental;
-	if(backup_types & backup_type_full_file && backup_types & backup_type_incr_file)
+	if(backup_types & type_full && backup_types & type_incr)
 		incremental="";
-	else if( backup_types & backup_type_incr_file )
+	else if( backup_types & type_incr )
 		incremental=" AND incremental<>0";
-	else if( backup_types & backup_type_full_file)
+	else if( backup_types & type_full)
 		incremental=" AND incremental=0";
 
-	IQuery *q_get_backups=db->Prepare("SELECT id FROM backups WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
+	std::string tbl = "backups";
+	if (image)
+	{
+		tbl = "backup_images";
+	}
+	IQuery *q_get_backups=db->Prepare("SELECT id FROM "+tbl+" WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
 	q_get_backups->Bind(clientid);
 	db_results res=q_get_backups->Read();
 	if(!res.empty())
@@ -171,9 +187,14 @@ int ServerAutomaticArchive::getNonArchivedFileBackup(int backup_types, int clien
 		return 0;
 }
 
-void ServerAutomaticArchive::archiveFileBackup(int backupid, int length)
+void ServerAutomaticArchive::archiveFileBackup(int backupid, int length, bool image)
 {
-	IQuery *q_archive=db->Prepare("UPDATE backups SET archived=1, archive_timeout=? WHERE id=?");
+	std::string tbl = "backups";
+	if (image)
+	{
+		tbl = "backup_images";
+	}
+	IQuery *q_archive=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=? WHERE id=?");
 	if(length!=-1)
 	{
 		q_archive->Bind(Server->getTimeSeconds()+length);
@@ -189,24 +210,36 @@ void ServerAutomaticArchive::archiveFileBackup(int backupid, int length)
 int ServerAutomaticArchive::getBackupTypes(const std::string &backup_type_name)
 {
 	int type=0;
-	if(backup_type_name=="incr_file")
-		type|=backup_type_incr_file;
-	else if(backup_type_name=="full_file")
-		type|=backup_type_full_file;
-	else if(backup_type_name=="file")
-		type|=backup_type_incr_file|backup_type_full_file;
+	if (backup_type_name == "incr_file")
+		type |= backup_type_incr_file;
+	else if (backup_type_name == "full_file")
+		type |= backup_type_full_file;
+	else if (backup_type_name == "file")
+		type |= backup_type_incr_file | backup_type_full_file;
+	else if (backup_type_name == "image")
+		type |= backup_type_full_image | backup_type_incr_image;
+	else if (backup_type_name == "incr_image")
+		type |= backup_type_incr_image;
+	else if (backup_type_name == "full_image")
+		type |= backup_type_full_image;
 
 	return type;
 }
 
 std::string ServerAutomaticArchive::getBackupType(int backup_types)
 {
-	if( backup_types & backup_type_full_file && backup_types & backup_type_incr_file )
+	if (backup_types & backup_type_full_file && backup_types & backup_type_incr_file)
 		return "file";
-	else if( backup_types & backup_type_full_file )
+	else if (backup_types & backup_type_full_file)
 		return "full_file";
-	else if( backup_types & backup_type_incr_file)
+	else if (backup_types & backup_type_incr_file)
 		return "incr_file";
+	else if (backup_types & backup_type_full_image && backup_type_incr_image)
+		return "image";
+	else if (backup_types & backup_type_full_image)
+		return "full_image";
+	else if (backup_types & backup_type_incr_image)
+		return "incr_image";
 
 	return "";
 }

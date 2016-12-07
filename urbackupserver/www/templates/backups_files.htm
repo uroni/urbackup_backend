@@ -6,7 +6,48 @@
 		<a href="javascript: tabMouseClickClients({clientid})">{clientname}</a> > {cpath|s}
 	</div>
 	<div class="panel-body">
+	
+		{#image_backup_info}
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				{tImage backup information}
+			</div>
+			<div class="panel-body">
+				<div class="row">
+					<div style="float:left; margin-right: 40px; margin-left:10px"><strong>{tId}: </strong>{id}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tBackup time}: </strong>{backuptime}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tIncremental}: </strong>{incr}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tSize}: </strong>{size_bytes}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tVolume}: </strong>{letter}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tArchived}: </strong>{archived|s}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tVolume size}: </strong>{volume_size}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tPartition style}: </strong>{part_table}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tDisk number}: </strong>{disk_number}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tPartition number}: </strong>{partition_number}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tFile system type}: </strong>{fs_type}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tVolume name}: </strong>{volume_name}</div>
+					<div style="float:left; margin-right: 40px"><strong>{tSerial number}: </strong>{serial_number}</div>
+				</div>
+			</div>
+		</div>
+		{/image_backup_info}
 
+		{?can_mount}
+		<br><br>
+		<div class="text-center">
+			<a class="btn btn-default" href="#" onClick="tabMouseClickFiles({clientid},{backupid},'{path}', true); return false">{tMount image}</a>
+			{?os_mount}
+			<br>
+			<font color="red">{tUrBackup will use non-sandboxed server operating system functionality to mount the image. Only mount the image if you trust its source.}</font>
+			{/os_mount}
+			</div>
+		{:else}
+		{^no_files}
+		{?mount_failed}
+		<div class="alert alert-danger">
+		  {tMounting image failed. Please see server log file for details.}
+		</div>
+		{:else}
 		<table class="table table-hover">
 			<thead>
 				<tr>
@@ -36,6 +77,9 @@
 			{/files}
 			</tbody>
 		</table>
+		{/mount_failed}
+		{/no_files}
+		{/can_mount}
 
 		{?download_zip}
 		<a class="btn btn-default" href="#" onClick="downloadZIP({clientid}, {backupid}, '{path|j}'); return false">{tDownload folder as ZIP}</a>

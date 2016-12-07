@@ -35,6 +35,7 @@
 #include "cowfile.h"
 #endif
 #include "ClientBitmap.h"
+#include "ImdiskSrv.h"
 
 #ifdef _WIN32
 namespace
@@ -294,4 +295,22 @@ IReadOnlyBitmap * FSImageFactory::createClientBitmap(const std::string & fn)
 IReadOnlyBitmap * FSImageFactory::createClientBitmap(IFile * bitmap_file)
 {
 	return new ClientBitmap(bitmap_file);
+}
+
+bool FSImageFactory::initializeImageMounting()
+{
+#ifdef _WIN32
+	if (ImdiskSrv::installed())
+	{
+		Server->createThread(new ImdiskSrv, "imdisk srv");
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+#else
+	int rc = system("urbackup_mount_helper test");
+	return rc == 0;
+#endif
 }

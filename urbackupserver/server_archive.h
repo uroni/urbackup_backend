@@ -6,8 +6,10 @@
 
 class IDatabase;
 
-const int backup_type_incr_file=1;
-const int backup_type_full_file=2;
+const int backup_type_incr_file = 1 << 0;
+const int backup_type_full_file = 1 << 1;
+const int backup_type_full_image = 1 << 2;
+const int backup_type_incr_image = 1 << 3;
 
 class ServerAutomaticArchive : public IThread
 {
@@ -24,8 +26,8 @@ public:
 private:
 	void archiveTimeout(void);
 	void archiveBackups(void);
-	int getNonArchivedFileBackup(int backup_types, int clientid);
-	void archiveFileBackup(int backupid, int length);
+	int getNonArchivedBackup(int backup_types, int clientid, bool image);
+	void archiveFileBackup(int backupid, int length, bool image);
 	void updateInterval(int archiveid, int interval);
 
 	bool isInArchiveWindow(const std::string &window_def);

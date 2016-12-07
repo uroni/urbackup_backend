@@ -60,6 +60,7 @@ extern IServer* Server;
 #include "serverinterface/helper.h"
 SStartupStatus startup_status;
 #include "server.h"
+#include "ImageMount.h"
 
 
 #include "../stringtools.h"
@@ -831,6 +832,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->createThread(server_cleanup, "backup cleanup");
 		Server->createThread(new ServerAutomaticArchive, "backup archival");
 	}
+
+	Server->createThread(new ImageMount, "image umount");
 
 	Server->setLogCircularBufferSize(20);
 
@@ -1843,6 +1846,20 @@ bool upgrade49_50()
 	return b;
 }
 
+bool upgrade50_51()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE backup_images ADD archived INTEGER");
+	b &= db->Write("UPDATE backup_images SET archived=0 WHERE archived IS NULL");
+	b &= db->Write("ALTER TABLE backup_images ADD archive_timeout INTEGER");
+	b &= db->Write("ALTER TABLE backup_images ADD mounttime INTEGER");
+	b &= db->Write("UPDATE backup_images SET mounttime=0 WHERE mounttime IS NULL");
+
+	return b;
+}
 
 void upgrade(void)
 {
@@ -1865,7 +1882,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=50;
+	int max_v=51;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2147,6 +2164,13 @@ void upgrade(void)
 				break;
 			case 49:
 				if (!upgrade49_50())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 50:
+				if (!upgrade50_51())
 				{
 					has_error = true;
 				}

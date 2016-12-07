@@ -756,9 +756,20 @@ int action_mount_vhd(std::vector<std::string> args)
 		"Use this directory as temporary mountpoint",
 		false, "", "path", cmd);
 
+	TCLAP::ValueArg<std::string> mount_options_arg("o", "mountoptions",
+		"Mount options when mounting device",
+		false, "ro", "mount options", cmd);
+
 	TCLAP::ValueArg<std::string> logfile_arg("l", "logfile",
 		"Specifies the log file name for the background VHD-reading process",
 		false, "/var/log/urbackup-fuse.log", "path", cmd);
+
+	TCLAP::SwitchArg guestmount_arg("g", "guestmount", 
+		"Use libguestfs guestmount to mount the file system", cmd, false);
+
+	TCLAP::ValueArg<std::string> guestmount_user_arg("u", "guestmount-user",
+		"User when mounting device",
+		false, "urbackup", "mount options", cmd);
 
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
@@ -839,14 +850,39 @@ int action_mount_vhd(std::vector<std::string> args)
 		}
 	}
 
+	if (guestmount_arg.getValue())
+	{
+		passwd* user_info = getpwnam(guestmount_user_arg.getValue().c_str());
+		if (user_info)
+		{
+			if (setgid(user_info->pw_gid))
+			{
+				Server->Log("Error setting uid", LL_ERROR);
+			}
+
+			if (setuid(user_info->pw_uid))
+			{
+				Server->Log("Error setting uid", LL_ERROR);
+			}
+		}
+	}
+
 	std::cout << "Waiting for background process to become available..." << std::endl;
 	int64 starttime = get_time_ms();
-	while(get_time_ms()-starttime<20000)
+	while(get_time_ms()-starttime<5*60*1000)
 	{
 		if(FileExists(tmpmountpoint+"/volume"))
 		{
 			std::cout << "Mounting..." << std::endl;
-			int rc = system(("mount -v -o loop,ro \""+tmpmountpoint+"/volume\" \""+mountpoint_arg.getValue()+"\"").c_str());
+			int rc;
+			if (guestmount_arg.getValue())
+			{
+				rc = system(("guestmount -r --format=raw -a \"" + tmpmountpoint + "/volume\" -o \"" + mount_options_arg.getValue() + "\" -m /dev/sda \"" + mountpoint_arg.getValue() + "\"").c_str());
+			}
+			else
+			{
+				rc = system(("mount -v -o \"" + mount_options_arg.getValue() + "\" \"" + tmpmountpoint + "/volume\" \"" + mountpoint_arg.getValue() + "\"").c_str());
+			}
 			if(rc!=0)
 			{
 				std::cout << "Mounting failed." << std::endl;

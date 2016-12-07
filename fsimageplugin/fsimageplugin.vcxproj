@@ -100,6 +100,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SolutionDir)/deps/include/imdisk</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -119,6 +120,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SolutionDir)/deps/include/imdisk</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -143,6 +145,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SolutionDir)/deps/include/imdisk</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -165,6 +168,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SolutionDir)/deps/include/imdisk</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -187,6 +191,7 @@
     <ClCompile Include="FileWrapper.cpp" />
     <ClCompile Include="FSImageFactory.cpp" />
     <ClCompile Include="fs\ntfs_win.cpp" />
+    <ClCompile Include="ImdiskSrv.cpp" />
     <ClCompile Include="LRUMemCache.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
@@ -206,6 +211,7 @@
     <ClInclude Include="fs\ntfs_win.h" />
     <ClInclude Include="IFilesystem.h" />
     <ClInclude Include="IFSImageFactory.h" />
+    <ClInclude Include="ImdiskSrv.h" />
     <ClInclude Include="IVHDFile.h" />
     <ClInclude Include="LRUMemCache.h" />
     <ClInclude Include="pluginmgr.h" />

@@ -1273,7 +1273,7 @@ function show_status2(data)
 		{
 			if(data.dir_error_hint=="volume_not_accessible")
 			{
-				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\servername\share).";
+				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\\\servername\\share).";
 			}
 			else if(data.dir_error_hint=="folder_unc_access_denied")
 			{
@@ -1311,6 +1311,13 @@ function show_status2(data)
 		&& (typeof data.tmpdir_error_show === "undefined" || data.tmpdir_error_show===true )  )
 	{
 		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
+	}
+	
+	var virus_error="";
+	if(data.virus_error
+		&& (typeof data.virus_error_show === "undefined" || data.virus_error_show===true )  )
+	{
+		virus_error=dustRender("virus_error", {stop_show_key: data.virus_error_stop_show_key, virus_error_path: data.virus_error_path});
 	}
 	
 	var endian_info="";
@@ -1433,7 +1440,7 @@ function show_status2(data)
 	g.server_identity = data.server_identity;
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
-		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info, virus_error: virus_error,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
@@ -1758,6 +1765,58 @@ function show_backups1()
 	I('nav_pos').innerHTML="";
 }
 
+function prepareBackupObj(data, obj, image)
+{
+	obj.size_bytes=format_size(obj.size_bytes);
+	obj.incr=obj.incremental>0;
+	if( obj.incr )
+		obj.incr=trans("yes");
+	else
+		obj.incr=trans("no");
+		
+	var link_title="";
+	var stopwatch_img="";
+	
+	if(obj.archive_timeout!=0)
+	{
+		link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
+		stopwatch_img='<img src="images/stopwatch.png" />';
+	}
+	
+	if(image && obj.id>0)
+		obj.id*=-1;
+	
+	if(data.can_archive)
+	{
+		if( obj.archived>0 )
+			obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
+		else
+			obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
+	}
+	else
+	{
+		if( obj.archived>0 )
+			obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
+		else
+			obj.archived='☐';
+	}
+	
+	obj.clientid=data.clientid;
+	
+	if(obj.backuptime!=0)
+	{
+		obj.backuptime = format_unix_timestamp(obj.backuptime);
+	}
+	else
+	{
+		obj.backuptime = "-";
+	}
+	
+	if(image && obj.id<0)
+		obj.id*=-1;
+	
+	return obj;
+}
 
 function show_backups2(data)
 {
@@ -1799,62 +1858,29 @@ function show_backups2(data)
 		var rows="";
 		for(var i=0;i<data.backups.length;++i)
 		{
-			var obj=data.backups[i];			
-			obj.size_bytes=format_size(obj.size_bytes);
-			obj.incr=obj.incremental>0;
-			if( obj.incr )
-				obj.incr=trans("yes");
-			else
-				obj.incr=trans("no");
-				
-			var link_title="";
-			var stopwatch_img="";
-			
-			if(obj.archive_timeout!=0)
-			{
-				link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
-				stopwatch_img='<img src="images/stopwatch.png" />';
-			}
-			
-			
-			if(data.can_archive)
-			{
-				if( obj.archived>0 )
-					obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
-				else
-					obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
-			}
-			else
-			{
-				if( obj.archived>0 )
-					obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
-				else
-					obj.archived='☐';
-			}
-			
-			obj.clientid=data.clientid;
-			
-			if(obj.backuptime!=0)
-			{
-				obj.backuptime = format_unix_timestamp(obj.backuptime);
-			}
-			else
-			{
-				obj.backuptime = "-";
-			}
-				
-			rows+=dustRender("backups_backups_row", obj);
+			data.backups[i] = prepareBackupObj(data, data.backups[i], false);			
 		}
+		
+		for(var i=0;i<data.backup_images.length;++i)
+		{
+			data.backup_images[i] = prepareBackupObj(data, data.backup_images[i], true);
+		}
+		
 		var show_client_breadcrumb=false;
 		if(!data.token_authentication)
 		{
 			show_client_breadcrumb=true;
 		}
 		
-		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
+		ndata=dustRender("backups_backups", {backups: data.backups, backup_images: data.backup_images, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
 	}
 	else if(data.files && !data.single_item)
 	{
+		if(data.image_backup_info)
+		{
+			data.backupid = -1*data.backupid;
+		}
+	
 		var rows="";		
 		var path=unescapeHTML(data.path);
 		g.last_browse_backupid = data.backupid;
@@ -1925,7 +1951,10 @@ function show_backups2(data)
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
-			obj.list_items=true;
+			if(data.backupid>0)
+			{
+				obj.list_items=true;
+			}
 			
 			data.files[i]=obj;
 		}
@@ -1956,11 +1985,20 @@ function show_backups2(data)
 			server_confirms_restore="true";
 		}
 		
+		var image_backup_info=null;
+		if(data.image_backup_info)
+		{
+			image_backup_info = [prepareBackupObj(data, data.image_backup_info)];
+			image_backup_info[0].volume_size = format_size(image_backup_info[0].volume_size);
+		}
+		
 		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
-		var obj = {files: data.files, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
+		var obj = {files: data.files, can_mount: data.can_mount, os_mount: data.os_mount, no_files: data.no_files,
+			can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
-			backupid: data.backupid, path: folder_path, folder_path: folder_path };
+			backupid: data.backupid, path: folder_path, folder_path: folder_path,
+			image_backup_info: image_backup_info };
 			
 		if(!data.token_authentication)
 		{
@@ -2210,10 +2248,10 @@ function tabMouseClickBackups(clientid, backupid)
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path=%2F", show_backups2);
 }
-function tabMouseClickFiles(clientid, backupid, path)
+function tabMouseClickFiles(clientid, backupid, path, mount)
 {
 	if(!startLoading()) return;
-	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"), show_backups2);
+	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F")+(mount?"&mount=1":""), show_backups2);
 }
 function tabMouseClickFilesDL(clientid, backupid, path)
 {
@@ -4696,6 +4734,9 @@ function backupTypeStr(bt)
 	if(bt=="incr_file") return trans("action_1");
 	else if(bt=="full_file") return trans("action_2");
 	else if(bt=="file") return trans("file_backup");
+	else if(bt=="image") return trans("image_backup");
+	else if(bt=="incr_image") return trans("action_3");
+	else if(bt=="full_image") return trans("action_4");
 }
 function getArchiveTable()
 {
