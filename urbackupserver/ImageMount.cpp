@@ -265,6 +265,16 @@ namespace
 		{
 			return false;
 		}
+#else
+		if (!os_directory_exists(mountpoint))
+		{
+			mountpoint = ExtractFilePath(image_inf.path) + "_mnt";
+		}
+
+		if (!os_directory_exists(mountpoint))
+		{
+			return false;
+		}
 #endif
 
 		return os_unmount_image(mountpoint, image_inf.path, backupid);
@@ -381,6 +391,15 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 
 #ifdef _WIN32
 	ret = alt_mount_path + os_file_sep() + convert(backupid);
+
+	if (os_directory_exists(ret))
+	{
+		mounted_image.reset(backupid);
+		backup_dao.setImageMounted(backupid);
+		return ret;
+	}
+#else
+	ret = ExtractFilePath(image_inf.path) + "_mnt";
 
 	if (os_directory_exists(ret))
 	{
