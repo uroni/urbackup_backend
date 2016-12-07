@@ -4,6 +4,7 @@
 #include "database.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"
+#include "server_cleanup.h"
 #include <assert.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -415,6 +416,12 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 void ImageMount::incrImageMounted(int backupid)
 {
 	IScopedLock lock(mounted_images_mutex);
+	std::map<int, size_t>::iterator it = mounted_images.find(backupid);
+	if (it == mounted_images.end())
+	{
+		ServerCleanupThread::lockImageFromCleanup(backupid);
+	}
+
 	++mounted_images[backupid];
 }
 
@@ -432,6 +439,7 @@ void ImageMount::decrImageMounted(int backupid)
 	if (it->second == 0)
 	{
 		mounted_images.erase(it);
+		ServerCleanupThread::unlockImageFromCleanup(backupid);
 	}
 }
 
