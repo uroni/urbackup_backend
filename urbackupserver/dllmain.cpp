@@ -1857,6 +1857,8 @@ bool upgrade50_51()
 	b &= db->Write("ALTER TABLE backup_images ADD archive_timeout INTEGER");
 	b &= db->Write("ALTER TABLE backup_images ADD mounttime INTEGER");
 	b &= db->Write("UPDATE backup_images SET mounttime=0 WHERE mounttime IS NULL");
+	b &= db->Write("UPDATE settings_db.settings SET value='0' WHERE value='-1' "
+		"AND (key='local_speed' OR key='internet_speed' OR key='global_local_speed' OR key='global_internet_speed')");
 
 	return b;
 }
