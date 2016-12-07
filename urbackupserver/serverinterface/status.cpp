@@ -441,6 +441,7 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 				std::string teststring = base64_decode("WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=");
 				tmp_f->Write(teststring);
 				std::string tmp_fn = tmp_f->getFilename();
+				tmp_f.reset();
 				tmp_f.reset(Server->openFile(tmp_fn, MODE_RW));
 
 				std::string readstring;
