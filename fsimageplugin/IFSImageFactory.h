@@ -42,5 +42,5 @@ public:
 
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
 
-	virtual void startImDiskSrv() = 0;
+	virtual bool initializeImageMounting() = 0;
 };

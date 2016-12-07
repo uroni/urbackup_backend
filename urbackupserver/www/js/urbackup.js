@@ -1993,7 +1993,8 @@ function show_backups2(data)
 		}
 		
 		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
-		var obj = {files: data.files, can_mount: data.can_mount, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
+		var obj = {files: data.files, can_mount: data.can_mount, os_mount: data.os_mount, no_files: data.no_files,
+			can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: folder_path, folder_path: folder_path,

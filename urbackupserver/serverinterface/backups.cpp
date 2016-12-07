@@ -36,6 +36,7 @@
 #include "../dao/ServerBackupDao.h"
 #include "../server_dir_links.h"
 #include "../ImageMount.h"
+#include "../server.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -993,7 +994,17 @@ namespace backupaccess
 			{
 				if (!do_mount)
 				{
-					ret.set("can_mount", true);
+					if (BackupServer::canMountImages())
+					{
+						ret.set("can_mount", true);
+#ifdef _WIN32
+						ret.set("os_mount", true);
+#endif
+					}
+					else
+					{
+						ret.set("no_files", true);
+					}
 					content_path.clear();
 				}
 				else

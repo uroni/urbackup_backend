@@ -582,10 +582,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Error loading fsimageplugin", LL_ERROR);
 		}
-		else
-		{
-			image_fak->startImDiskSrv();
-		}
 	}
 
 	{

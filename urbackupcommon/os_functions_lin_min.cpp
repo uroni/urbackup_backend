@@ -104,3 +104,31 @@ bool os_create_dir(const std::string &path)
 	return mkdir(path.c_str(), S_IRWXU | S_IRWXG)==0;
 }
 
+bool isDirectory(const std::string &path, void* transaction)
+{
+        struct stat64 f_info;
+        int rc=stat64(path.c_str(), &f_info);
+		if(rc!=0)
+		{
+            rc = lstat64(path.c_str(), &f_info);
+			if(rc!=0)
+			{
+				return false;
+			}
+		}
+
+        if ( S_ISDIR(f_info.st_mode) )
+        {
+                return true;
+        }
+        else
+        {
+                return false;
+        }
+}
+
+bool os_directory_exists(const std::string &path)
+{
+	return isDirectory(path);
+}
+

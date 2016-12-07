@@ -7,5 +7,7 @@ class ImdiskSrv : public IThread
 public:
 	ImdiskSrv();
 
+	static bool installed();
+
 	void operator()();
 };

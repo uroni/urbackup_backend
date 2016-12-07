@@ -18,6 +18,7 @@ std::set<int> ImageMount::locked_images;
 
 namespace
 {
+#ifdef _WIN32
 	const std::string alt_mount_path = "C:\\UrBackupMounts";
 
 	bool os_mount_image(const std::string& path, int backupid)
@@ -29,7 +30,7 @@ namespace
 
 		std::wstring filename = Server->ConvertToWchar(path);
 
-		std::vector<char> create_data_buf ( sizeof(IMDISK_CREATE_DATA) + filename.size()*sizeof(wchar_t) );
+		std::vector<char> create_data_buf(sizeof(IMDISK_CREATE_DATA) + filename.size() * sizeof(wchar_t));
 		IMDISK_CREATE_DATA* create_data = reinterpret_cast<IMDISK_CREATE_DATA*>(create_data_buf.data());
 
 		create_data->FileNameLength = static_cast<USHORT>(filename.size() * sizeof(wchar_t));
@@ -64,14 +65,14 @@ namespace
 
 		CloseHandle(hDriver);
 
-		std::string device_path = Server->ConvertFromWchar(IMDISK_DEVICE_BASE_NAME)+
-			convert(static_cast<int64>(create_data->DeviceNumber))+"\\";
+		std::string device_path = Server->ConvertFromWchar(IMDISK_DEVICE_BASE_NAME) +
+			convert(static_cast<int64>(create_data->DeviceNumber)) + "\\";
 
 		std::string mountpoint = ExtractFilePath(path) + os_file_sep() + "contents";
 
 		if (!os_link_symbolic_junctions_raw(device_path, mountpoint))
 		{
-			Server->Log("Error creating junction on ImDisk mountpoint at \""+mountpoint+"\". " + os_last_error_str(), LL_WARNING);
+			Server->Log("Error creating junction on ImDisk mountpoint at \"" + mountpoint + "\". " + os_last_error_str(), LL_WARNING);
 
 			mountpoint = alt_mount_path + os_file_sep() + convert(backupid);
 
@@ -87,7 +88,7 @@ namespace
 		bool has_error = false;
 		while (getFiles(mountpoint, &has_error).empty()
 			&& has_error
-			&& Server->getTimeMS()-starttime < 60*1000 )
+			&& Server->getTimeMS() - starttime < 60 * 1000)
 		{
 			Server->wait(1000);
 		}
@@ -95,7 +96,7 @@ namespace
 		return true;
 	}
 
-	bool os_unmount_image(const std::string& mountpoint)
+	bool os_unmount_image(const std::string& mountpoint, int backupid)
 	{
 		std::string target;
 		if (!os_get_symlink_target(mountpoint, target)
@@ -110,7 +111,7 @@ namespace
 			target.erase(target.size() - 1, 1);
 		}
 
-		HANDLE hDevice = CreateFile(Server->ConvertToWchar("\\\\?\\GLOBALROOT"+target).c_str(),
+		HANDLE hDevice = CreateFile(Server->ConvertToWchar("\\\\?\\GLOBALROOT" + target).c_str(),
 			GENERIC_READ | GENERIC_WRITE,
 			FILE_SHARE_READ | FILE_SHARE_WRITE,
 			NULL,
@@ -175,12 +176,40 @@ namespace
 
 			CloseHandle(hDriver);
 		}
-		
+
 		DeviceIoControl(hDevice, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &bytes_returned, NULL);
 		CloseHandle(hDevice);
 
 		return os_remove_symlink_dir(mountpoint);
 	}
+#else
+	bool image_helper_action(const std::string& path, int backupid, const std::string& action)
+	{
+		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		ServerBackupDao backup_dao(db);
+
+		ServerBackupDao clientname = backup_dao.getClientnameByImageid(backupid);
+		if (!clientname.exists)
+		{
+			return false;
+		}
+
+		std::string folername = ExtractFileName(ExtractFilePath(path));
+		std::string imagename = ExtractFileName(path);
+
+		return system(("urbackup_mount_helper " + action + " \"" + clientname + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
+	}
+
+	bool os_mount_image(const std::string& path, int backupid)
+	{
+		return image_helper_action(path, backupid, "mount");
+	}
+
+	bool os_unmount_image(const std::string& mountpoint, int backupid)
+	{
+		return image_helper_action(path, backupid, "umount");
+	}
+#endif
 
 
 	class ScopedLockImage
@@ -236,7 +265,7 @@ namespace
 			return false;
 		}
 
-		return os_unmount_image(mountpoint);
+		return os_unmount_image(mountpoint, backupid);
 	}
 }
 

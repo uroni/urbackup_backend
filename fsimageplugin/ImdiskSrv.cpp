@@ -343,6 +343,25 @@ namespace
 
 ImdiskSrv::ImdiskSrv()
 {
+	
+}
+
+bool ImdiskSrv::installed()
+{
+	HANDLE hDriver = CreateFile(IMDISK_CTL_DOSDEV_NAME,
+		GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,
+		OPEN_EXISTING,
+		0,
+		NULL);
+
+	if (hDriver != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(hDriver);
+	}
+
+	return hDriver != INVALID_HANDLE_VALUE;
 }
 
 void ImdiskSrv::operator()()
