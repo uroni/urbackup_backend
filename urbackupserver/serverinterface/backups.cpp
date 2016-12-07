@@ -1010,6 +1010,10 @@ namespace backupaccess
 				else
 				{
 					content_path = ImageMount::get_mount_path(backupid, true, mounted_image);
+					if (content_path.empty())
+					{
+						ret.set("mount_failed", true);
+					}
 				}
 			}			
 			
