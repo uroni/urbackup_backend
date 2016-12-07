@@ -30,12 +30,12 @@
 #include "../stringtools.h"
 #ifdef _WIN32
 #include <Windows.h>
+#include "ImdiskSrv.h"
 #else
 #include <errno.h>
 #include "cowfile.h"
 #endif
 #include "ClientBitmap.h"
-#include "ImdiskSrv.h"
 #include <stdlib.h>
 
 #ifdef _WIN32
