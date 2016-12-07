@@ -18,6 +18,7 @@
 
 #include "FileIndex.h"
 #include "../Interface/Server.h"
+#include "create_files_index.h"
 
 const size_t max_buffer_size=100000;
 #ifdef _DEBUG
@@ -94,10 +95,12 @@ void FileIndex::operator()(void)
 		{
 			if(it->second!=0)
 			{
+				FILEENTRY_DEBUG(Server->Log("LMDB: PUT clientid=" + convert(it->first.getClientid()) + " filesize=" + convert(it->first.getFilesize()) + " target=" + convert(it->second), LL_DEBUG));
 				put(it->first, it->second);
 			}
 			else
 			{
+				FILEENTRY_DEBUG(Server->Log("LMDB: DEL clientid=" + convert(it->first.getClientid()) + " filesize=" + convert(it->first.getFilesize()), LL_DEBUG));
 				del(it->first);
 			}
 		}
