@@ -63,6 +63,49 @@ namespace
 		return hr;
 	}
 
+	bool stopImdiskSvc()
+	{
+		SC_HANDLE sc = OpenSCManager(NULL, NULL,
+			SC_MANAGER_ALL_ACCESS);
+
+		if (sc == NULL)
+		{
+			return false;
+		}
+
+		SC_HANDLE service = OpenService(
+			sc, L"ImDskSvc",
+			SERVICE_STOP |	SERVICE_QUERY_STATUS |
+			SERVICE_CHANGE_CONFIG);
+
+		if (service == NULL)
+		{
+			CloseServiceHandle(sc);
+			return false;
+		}
+
+		bool ret = true;
+		do
+		{
+			SERVICE_STATUS ssp;
+			if (!ControlService(service, SERVICE_CONTROL_STOP, &ssp))
+			{
+				ret = false;
+			}
+
+			if (!ChangeServiceConfig(service, SERVICE_NO_CHANGE, SERVICE_DEMAND_START, SERVICE_NO_CHANGE, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
+			{
+				ret = false;
+			}
+
+		} while (0);
+
+		CloseServiceHandle(sc);
+		CloseServiceHandle(service);
+
+		return ret;
+	}
+
 	class ScopedCloseHandle
 	{
 	public:
@@ -372,6 +415,8 @@ void ImdiskSrv::operator()()
 		Server->Log("Failed to modify SE_TCB privilege. VHD mounting won't work.", LL_ERROR);
 		return;
 	}
+
+	stopImdiskSvc();
 
 	while (true)
 	{

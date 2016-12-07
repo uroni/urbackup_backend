@@ -136,6 +136,11 @@ Section "install"
 		${EndIf}
 	${EndIf}
 	
+	SetOutPath "$INSTDIR\imdisk"
+	File /r "..\deps\redist\imdiskinst\*"
+	File "..\deps\redist\imdisk_source_2.0.9.7z"
+	System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("IMDISK_SILENT_SETUP", "1").r0'
+	nsExec::ExecToLog '"$INSTDIR\imdisk\install.cmd"'
 	
 	!insertmacro SERVICE running "UrBackupWinServer" ""
 	Pop $0
@@ -229,6 +234,9 @@ Section "Uninstall"
 		!insertmacro DisableX64FSRedirection
 		SetRegView 64
 	${EndIf}
+	
+	System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("IMDISK_SILENT_SETUP", "1").r0'
+	nsExec::ExecToLog '"$INSTDIR\imdisk\uninstall_imdisk.cmd"'
 	
 	!insertmacro SERVICE stop "UrBackupWinServer" ""
 	!insertmacro SERVICE waitfor "UrBackupWinServer" "status=stopped"
