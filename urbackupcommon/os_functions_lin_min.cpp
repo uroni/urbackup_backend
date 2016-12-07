@@ -40,6 +40,8 @@
 
 #if defined(__FreeBSD__)
 #define open64 open
+#define stat64 stat
+#define lstat64 lstat
 #endif
 
 

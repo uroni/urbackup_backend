@@ -997,7 +997,7 @@ namespace backupaccess
 					if (BackupServer::canMountImages())
 					{
 						ret.set("can_mount", true);
-#ifdef _WIN32
+#ifndef __linux__
 						ret.set("os_mount", true);
 #endif
 					}
