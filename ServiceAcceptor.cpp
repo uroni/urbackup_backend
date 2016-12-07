@@ -60,7 +60,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 		return;
 	}
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(s, F_SETFD, FD_CLOEXEC);
+	fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 	int optval=1;

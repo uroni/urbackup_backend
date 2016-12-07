@@ -818,7 +818,7 @@ namespace
 		SOCKET udpsock=socket(AF_INET, type,0);
 
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-		fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+		fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 		std::string server=Server->getServerParameter("ping_server");
@@ -1256,7 +1256,7 @@ bool has_network_device(void)
 		return true;
 	}
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(sck, F_SETFD, FD_CLOEXEC);
+	fcntl(sck, F_SETFD, fcntl(sck, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 /* Query available interfaces. */

@@ -174,7 +174,7 @@ void FileClient::bindToNewInterfaces()
 					continue;
 				}
 #if !defined(SOCK_CLOEXEC)
-				fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+				fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 				BOOL val=TRUE;
@@ -236,7 +236,7 @@ void FileClient::bindToNewInterfaces()
 		else
 		{
 #if !defined(SOCK_CLOEXEC)
-			fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+			fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 			BOOL val=TRUE;
 			int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));

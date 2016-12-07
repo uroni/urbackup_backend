@@ -127,7 +127,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		if(mSocket<1) return false;
 
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-		fcntl(mSocket, F_SETFD, FD_CLOEXEC);
+		fcntl(mSocket, F_SETFD, fcntl(mSocket, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 #ifndef DISABLE_WINDOW_SIZE

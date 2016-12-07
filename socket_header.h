@@ -33,7 +33,7 @@
 namespace {
 	int ACCEPT_CLOEXEC(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 		int rc = accept(sockfd, addr, addrlen);
-		if(rc) fcntl(rc, F_SETFD, FD_CLOEXEC);
+		if(rc) fcntl(rc, F_SETFD, fcntl(rc, F_GETFD, 0) | FD_CLOEXEC);
 		return rc;
 	}
 }

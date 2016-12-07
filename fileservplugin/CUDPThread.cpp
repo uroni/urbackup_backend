@@ -130,7 +130,7 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		udpsock=socket(AF_INET, type, 0);
 
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-		fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+		fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
 		int optval=1;
