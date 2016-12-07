@@ -301,7 +301,7 @@ void ImageMount::operator()()
 			backup_dao.getOldMountedImages(oldtimes);
 
 		waittimems = 60 * 1000;
-		oldtimes = 5 * 60;
+		oldtimes = 60 * 60;
 
 		IScopedLock lock(mounted_images_mutex);
 		for (size_t i = 0; i < old_mounted_images.size(); ++i)
