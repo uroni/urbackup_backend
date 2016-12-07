@@ -1025,6 +1025,10 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		return NULL;
 	}
 
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(s, F_SETFD, FD_CLOEXEC);
+#endif
+
 #ifdef _WIN32
 	u_long nonBlocking = 1;
 	if (ioctlsocket(s, FIONBIO, &nonBlocking) == SOCKET_ERROR)

@@ -25,5 +25,15 @@
 #ifdef SOCK_CLOEXEC
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4(sockfd, addr, addrlen, SOCK_CLOEXEC)
 #else
+#ifdef _WIN32
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept(sockfd, addr, addrlen)
+#else
+namespace {
+	int ACCEPT_CLOEXEC(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
+		int rc = accept(sockfd, addr, addrlen);
+		if(rc) fcntl(rc, F_SETFD, FD_CLOEXEC);
+		return rc;
+	}
+}
+#endif
 #endif

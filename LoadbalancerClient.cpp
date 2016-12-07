@@ -48,6 +48,9 @@ void CLoadbalancerClient::operator ()(void)
 		Server->Log("Creating SOCKET failed (LB)",LL_ERROR);
 		return;
 	}
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(s, F_SETFD, FD_CLOEXEC);
+#endif
 
 	sockaddr_in addr;
 

@@ -127,6 +127,9 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 #endif
 	SOCKET p=socket(AF_INET, type, 0);
 
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(p, F_SETFD, FD_CLOEXEC);
+#endif
 #ifdef __APPLE__
 	int optval = 1;
 	setsockopt(p, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));

@@ -817,6 +817,10 @@ namespace
 #endif
 		SOCKET udpsock=socket(AF_INET, type,0);
 
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+		fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+#endif
+
 		std::string server=Server->getServerParameter("ping_server");
 
 		if(server.empty())
@@ -1251,6 +1255,9 @@ bool has_network_device(void)
 	{
 		return true;
 	}
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(sck, F_SETFD, FD_CLOEXEC);
+#endif
 
 /* Query available interfaces. */
 	ifc.ifc_len = sizeof(buf);

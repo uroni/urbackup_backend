@@ -80,6 +80,9 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 		error=true;
 		return;
 	}
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(s, F_SETFD, FD_CLOEXEC);
+#endif
 
 	int optval=1;
 	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));

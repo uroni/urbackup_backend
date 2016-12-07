@@ -173,6 +173,9 @@ void FileClient::bindToNewInterfaces()
 					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 					continue;
 				}
+#if !defined(SOCK_CLOEXEC)
+				fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+#endif
 
 				BOOL val=TRUE;
 				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
@@ -232,6 +235,9 @@ void FileClient::bindToNewInterfaces()
 		}
 		else
 		{
+#if !defined(SOCK_CLOEXEC)
+			fcntl(udpsock, F_SETFD, FD_CLOEXEC);
+#endif
 			BOOL val=TRUE;
 			int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
 			if(rc<0)
