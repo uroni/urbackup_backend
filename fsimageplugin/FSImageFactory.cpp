@@ -36,6 +36,7 @@
 #endif
 #include "ClientBitmap.h"
 #include "ImdiskSrv.h"
+#include <stdlib.h>
 
 #ifdef _WIN32
 namespace
