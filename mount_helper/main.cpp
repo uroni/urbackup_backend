@@ -526,6 +526,10 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
+#ifdef __FreeBSD__
+		//system() on FreeBSD seems to not close file descriptors
+		for (int fd=3; fd<10000; fd++) close(fd);
+#endif
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 		std::string imagename=handleFilename(argv[4]);
