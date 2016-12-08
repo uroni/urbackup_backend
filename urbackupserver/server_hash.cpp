@@ -363,7 +363,9 @@ void BackupServerHash::addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex
 
 	if(new_for_client || update_fileindex)
 	{
-		FILEENTRY_DEBUG(Server->Log("New fileindex entry for \"" + fp + "\" id=" + convert(entryid), LL_DEBUG));
+		FILEENTRY_DEBUG(Server->Log("New fileindex entry for \"" + fp + "\""
+			" id=" + convert(entryid)
+			+" hash="+base64_encode(reinterpret_cast<const unsigned char*>(shahash.c_str()), bytes_in_index), LL_DEBUG));
 		fileindex.put_delayed(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid), entryid);
 	}
 }
@@ -417,14 +419,17 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		}
 		else
 		{
-			FILEENTRY_DEBUG(Server->Log("File entry with id "+convert(id)+" with filesize "+convert(filesize)+" not found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
+			FILEENTRY_DEBUG(Server->Log("File entry with id "+convert(id)+" with filesize="+convert(filesize)
+				+ " hash="+base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+				+ " not found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
 			clients+=convert(clientid);
 		}
 
 		if (target_entryid == 0)
 		{
-			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " not found "
-				"for clientid "+convert(clientid)+" in file entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize=" + convert(filesize)
+				+ " hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+				+ " not found for clientid "+convert(clientid)+" in file entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING));
 
 			if (!clients.empty())
 			{
@@ -435,13 +440,15 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		}
 		else if (target_entryid != id)
 		{
-			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " is the last file entry for this file and to be deleted. "
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize=" + convert(filesize) +
+				" hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index) + " is the last file entry for this file and to be deleted. "
 				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. The file entry index may be damaged. Not deleting entry from file entry index", LL_WARNING));
 		}
 
 		if (!pointed_to)
 		{
-			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize " + convert(filesize) + " is the last file entry for this file and to be deleted. "
+			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize=" + convert(filesize) 
+				+ " hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index) + " is the last file entry for this file and to be deleted. "
 				"However, pointed_to is zero, so it won't be deleted from the file entry index. The file entry index may be damaged.", LL_WARNING));
 		}
 		
@@ -454,7 +461,8 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 			&& !all_clients.empty()
 			&& (target_entryid==0 || target_entryid==id) )
 		{
-			FILEENTRY_DEBUG(Server->Log("Delete file index entry " + convert(id), LL_DEBUG));
+			FILEENTRY_DEBUG(Server->Log("Delete file index entry id=" + convert(id)+ " filesize="+convert(filesize)+" hash=" 
+				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index), LL_DEBUG));
 			fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));
 		}
 	}
@@ -476,7 +484,9 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
 
-			FILEENTRY_DEBUG(Server->Log("Changed file index entry from " + convert(id) + " to " + convert(next_id) + " (next)"+str_correction, LL_DEBUG));
+			FILEENTRY_DEBUG(Server->Log("Changed file index entry filesize="+convert(filesize)+" hash=" 
+				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+				+ " from " + convert(id) + " to " + convert(next_id) + " (next)"+str_correction, LL_DEBUG));
 		}
 		else
 		{
@@ -495,7 +505,9 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
 
-			FILEENTRY_DEBUG(Server->Log("Changed file index entry from " + convert(id) + " to " + convert(prev_id) + " (prev)"+str_correction, LL_DEBUG));
+			FILEENTRY_DEBUG(Server->Log("Changed file index entry filesize="+convert(filesize)+" hash = " 
+				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+				+ " from " + convert(id) + " to " + convert(prev_id) + " (prev)"+str_correction, LL_DEBUG));
 		}
 	}
 

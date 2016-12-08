@@ -95,12 +95,17 @@ void FileIndex::operator()(void)
 		{
 			if(it->second!=0)
 			{
-				FILEENTRY_DEBUG(Server->Log("LMDB: PUT clientid=" + convert(it->first.getClientid()) + " filesize=" + convert(it->first.getFilesize()) + " target=" + convert(it->second), LL_DEBUG));
+				FILEENTRY_DEBUG(Server->Log("LMDB: PUT clientid=" + convert(it->first.getClientid()) 
+					+ " filesize=" + convert(it->first.getFilesize())
+					+ " hash=" + base64_encode(reinterpret_cast<const unsigned char*>(it->first.getHash()), bytes_in_index)
+					+ " target=" + convert(it->second), LL_DEBUG));
 				put(it->first, it->second);
 			}
 			else
 			{
-				FILEENTRY_DEBUG(Server->Log("LMDB: DEL clientid=" + convert(it->first.getClientid()) + " filesize=" + convert(it->first.getFilesize()), LL_DEBUG));
+				FILEENTRY_DEBUG(Server->Log("LMDB: DEL clientid=" + convert(it->first.getClientid()) 
+					+ " filesize=" + convert(it->first.getFilesize())
+					+ " hash="+base64_encode(reinterpret_cast<const unsigned char*>(it->first.getHash()), bytes_in_index), LL_DEBUG));
 				del(it->first);
 			}
 		}
