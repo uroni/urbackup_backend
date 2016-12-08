@@ -445,7 +445,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 
 					clients+=convert(it->first);
 
-					if (it->second == clientid)
+					if (it->first == clientid)
 					{
 						target_entryid = it->second;
 					}
