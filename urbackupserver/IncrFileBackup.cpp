@@ -1763,35 +1763,45 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int incremental)
 {
 	bool update_fileindex = false;
-	int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+	int64 entryid = 0;
 	int last_entry_clientid = 0;
 	int next_entry = 0;
-
-	if(entryid==0)
+	
+	if (filesize >= link_file_min_size)
 	{
-		Server->Log("File entry with filesize "+convert(filesize)+" to file with path \""+fp+"\" should exist but does not.", LL_DEBUG);
-		
-		entryid = fileindex->get_with_cache_prefer_client(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+		entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
 
-		update_fileindex = true;
-	}
-
-	if (entryid != 0)
-	{
-		ServerFilesDao::SFindFileEntry fentry = filesdao->getFileEntry(entryid);
-		if (!fentry.exists)
+		if (entryid == 0)
 		{
-			Server->Log("File entry in database with id " + convert(entryid) + " and filesize " + convert(filesize) + " to file with path \"" + fp + "\" should exist but does not. -2", LL_WARNING);
+			Server->Log("File entry with filesize=" + convert(filesize) 
+				+ " hash="+base64_encode(reinterpret_cast<const unsigned char*>(shahash.c_str()), bytes_in_index)
+				+ " to file with path \"" + fp + "\" should exist but does not.", LL_DEBUG);
+
+			entryid = fileindex->get_with_cache_prefer_client(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+
 			update_fileindex = true;
-			entryid = 0;
 		}
-		else
+
+		if (entryid != 0)
 		{
-			last_entry_clientid = fentry.clientid;
-			next_entry = fentry.next_entry;
-			if (rsize<0)
+			ServerFilesDao::SFindFileEntry fentry = filesdao->getFileEntry(entryid);
+			if (!fentry.exists)
 			{
-				rsize = fentry.rsize;
+				Server->Log("File entry in database with id=" + convert(entryid) 
+					+ " filesize=" + convert(filesize) 
+					+ " hash=" + base64_encode(reinterpret_cast<const unsigned char*>(shahash.c_str()), bytes_in_index)
+					+ " to file with path \"" + fp + "\" should exist but does not. -2", LL_WARNING);
+				update_fileindex = true;
+				entryid = 0;
+			}
+			else
+			{
+				last_entry_clientid = fentry.clientid;
+				next_entry = fentry.next_entry;
+				if (rsize < 0)
+				{
+					rsize = fentry.rsize;
+				}
 			}
 		}
 	}
