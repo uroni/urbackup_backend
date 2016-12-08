@@ -275,6 +275,16 @@ void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, c
 void BackupServerHash::addFileSQL(ServerFilesDao& filesdao, FileIndex& fileindex, int backupid, const int clientid, int incremental, const std::string &fp,
 	const std::string &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex)
 {
+	if (filesize < link_file_min_size)
+	{
+		assert(prev_entry_clientid == 0);
+		assert(prev_entry == 0);
+		assert(next_entry == 0);
+		filesdao.addIncomingFile(filesize, clientid, backupid, std::string(), ServerFilesDao::c_direction_incoming, incremental);
+		filesdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, 0);
+		return;
+	}
+
 	bool new_for_client=false;
 
 	if(prev_entry_clientid!=clientid || prev_entry==0)
@@ -392,6 +402,31 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 
 	if(prev_id==0 && next_id==0)
 	{
+		if (filesize < link_file_min_size)
+		{
+			if (pointed_to != 0)
+			{
+				FILEENTRY_DEBUG(Server->Log("Small file entry with id " + convert(id) + " with filesize=" + convert(filesize)
+					+ " hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+					+ " has pointed_to!=0 but should be zero. The file entry index may be damaged.", LL_WARNING));
+			}
+
+			filesdao.addIncomingFile(filesize, clientid, backupid, convert(clientid),
+				with_backupstat ? ServerFilesDao::c_direction_outgoing : ServerFilesDao::c_direction_outgoing_nobackupstat,
+				incremental);
+
+			if (del_entry)
+			{
+				filesdao.delFileEntry(id);
+			}
+
+			if (use_transaction)
+			{
+				filesdao.endTransaction();
+			}
+			return;
+		}
+
 		//client does not have this file anymore
 		std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(pHash, filesize), true);
 
