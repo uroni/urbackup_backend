@@ -311,7 +311,12 @@ bool FSImageFactory::initializeImageMounting()
 		return false;
 	}
 #else
-	int rc = system("urbackup_mount_helper test");
+	std::string mount_helper = Server->getServerParameter("mount_helper");
+	if (mount_helper.empty())
+	{
+		mount_helper = "urbackup_mount_helper";
+	}
+	int rc = system((mount_helper + " test").c_str());
 	return rc == 0;
 #endif
 }

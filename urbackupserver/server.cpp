@@ -150,6 +150,23 @@ void BackupServer::operator()(void)
 	if (image_fak != NULL)
 	{
 		can_mount_images = image_fak->initializeImageMounting();
+
+		if (!can_mount_images)
+		{
+#ifdef _WIN32
+			Server->Log("Image mounting disabled. Install ImDisk to enable image mounting.", LL_INFO);
+#else
+			std::string mount_helper = Server->getServerParameter("mount_helper");
+			if (mount_helper.empty())
+			{
+				mount_helper = "urbackup_mount_helper";
+			}
+
+			std::string res;
+			os_popen((mount_helper + " test 2>&1").c_str(), res);
+			Server->Log("Image mounting disabled: " + trim(res), LL_INFO);
+#endif
+		}
 	}
 	runServerRecovery(db);
 

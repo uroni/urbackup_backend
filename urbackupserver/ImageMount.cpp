@@ -198,7 +198,13 @@ namespace
 		std::string foldername = ExtractFileName(ExtractFilePath(path));
 		std::string imagename = ExtractFileName(path);
 
-		return system(("urbackup_mount_helper " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
+		std::string mount_helper = Server->getServerParameter("mount_helper");
+		if (mount_helper.empty())
+		{
+			mount_helper = "urbackup_mount_helper";
+		}
+
+		return system((mount_helper + " " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
 	}
 
 	bool os_mount_image(const std::string& path, int backupid)

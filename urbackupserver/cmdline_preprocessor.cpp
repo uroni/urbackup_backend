@@ -380,6 +380,8 @@ int action_run(std::vector<std::string> args)
 	real_args.push_back(DATADIR "/urbackup/urbackup_ecdsa409k1.pub");
 	real_args.push_back("--snapshot_helper");
 	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
+	real_args.push_back("--mount_helper");
+	real_args.push_back(BINDIR "/urbackup_mount_helper");
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	if(!sqlite_tmpdir_arg.getValue().empty())
