@@ -38,8 +38,10 @@ void ServerAutomaticArchive::operator()(void)
 
 	while(!do_quit)
 	{
-		archiveTimeout();
+		archiveTimeoutFileBackups();
+		archiveTimeoutImageBackups();
 		archiveBackups();
+		Server->clearDatabases(Server->getThreadID());
 		IScopedLock lock(mutex);
 		cond->wait(&lock, 60*60*1000);
 	}
@@ -47,7 +49,7 @@ void ServerAutomaticArchive::operator()(void)
 	delete this;
 }
 
-void ServerAutomaticArchive::archiveTimeout(void)
+void ServerAutomaticArchive::archiveTimeoutFileBackups()
 {
 	IQuery *q_timeout=db->Prepare("SELECT id FROM backups WHERE archived=1 AND archive_timeout<>0 AND archive_timeout<?");
 	if(q_timeout==NULL) return;
@@ -58,6 +60,24 @@ void ServerAutomaticArchive::archiveTimeout(void)
 	IQuery *q_unarchive=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
 	if(q_unarchive==NULL) return;
 	for(size_t i=0;i<res_timeout.size();++i)
+	{
+		q_unarchive->Bind(res_timeout[i]["id"]);
+		q_unarchive->Write();
+		q_unarchive->Reset();
+	}
+}
+
+void ServerAutomaticArchive::archiveTimeoutImageBackups()
+{
+	IQuery *q_timeout = db->Prepare("SELECT id FROM backup_images WHERE archived=1 AND archive_timeout<>0 AND archive_timeout<?");
+	if (q_timeout == NULL) return;
+
+	q_timeout->Bind(Server->getTimeSeconds());
+	db_results res_timeout = q_timeout->Read();
+
+	IQuery *q_unarchive = db->Prepare("UPDATE backup_images SET archived=0 WHERE id=?");
+	if (q_unarchive == NULL) return;
+	for (size_t i = 0; i<res_timeout.size(); ++i)
 	{
 		q_unarchive->Bind(res_timeout[i]["id"]);
 		q_unarchive->Write();

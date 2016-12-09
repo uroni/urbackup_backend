@@ -24,7 +24,8 @@ public:
 	static void destroyMutex(void);
 
 private:
-	void archiveTimeout(void);
+	void archiveTimeoutFileBackups();
+	void archiveTimeoutImageBackups();
 	void archiveBackups(void);
 	int getNonArchivedBackup(int backup_types, int clientid, bool image);
 	void archiveFileBackup(int backupid, int length, bool image);
