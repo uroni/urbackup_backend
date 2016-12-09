@@ -9,7 +9,7 @@ then
 	sed -i 's/\$(CRYPTOPP_LIBS)/\/usr\/local\/lib\/libcryptopp.a/g' Makefile.am_server
 fi
 
-wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
+wget http://buildserver.urbackup.org/urbackup-debian2.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz
 
 if ! test -e build_server_debian_ok
