@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
 	std::string cmd = argv[1];
 	if(cmd=="mount")
 	{
-		if(argc<4)
+		if(argc<5)
 		{
 			std::cout << "Not enough parameters for mount" << std::endl;
 			return 1;
