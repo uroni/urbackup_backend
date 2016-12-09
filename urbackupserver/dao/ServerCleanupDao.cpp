@@ -39,14 +39,14 @@ ServerCleanupDao::~ServerCleanupDao(void)
 *   SELECT b.id AS id, b.path AS path, c.name AS clientname
 *   FROM backup_images b, clients c
 *   WHERE 
-*     complete=0 AND running<datetime('now','-300 seconds')
+*     complete=0 AND archived=0 AND running<datetime('now','-300 seconds')
 *	  AND b.clientid=c.id
 */
 std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncompleteImages(void)
 {
 	if(q_getIncompleteImages==NULL)
 	{
-		q_getIncompleteImages=db->Prepare("SELECT b.id AS id, b.path AS path, c.name AS clientname FROM backup_images b, clients c WHERE  complete=0 AND running<datetime('now','-300 seconds') AND b.clientid=c.id", false);
+		q_getIncompleteImages=db->Prepare("SELECT b.id AS id, b.path AS path, c.name AS clientname FROM backup_images b, clients c WHERE  complete=0 AND archived=0 AND running<datetime('now','-300 seconds') AND b.clientid=c.id", false);
 	}
 	db_results res=q_getIncompleteImages->Read();
 	std::vector<ServerCleanupDao::SIncompleteImages> ret;
@@ -134,14 +134,14 @@ std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 * @return int id, string letter
 * @sql
 *   SELECT id, letter FROM backup_images 
-*	WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND length(letter)<=2
+*	WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND length(letter)<=2 AND archived=0
 *	ORDER BY backuptime ASC
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getFullNumImages(int clientid)
 {
 	if(q_getFullNumImages==NULL)
 	{
-		q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
+		q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 AND archived=0 ORDER BY backuptime ASC", false);
 	}
 	q_getFullNumImages->Bind(clientid);
 	db_results res=q_getFullNumImages->Read();
@@ -240,14 +240,14 @@ ServerCleanupDao::CondString ServerCleanupDao::getImagePath(int id)
 * @return int id, string letter
 * @sql
 *	SELECT id,letter FROM backup_images
-*	WHERE clientid=:clientid(int) AND incremental<>0 AND complete=1 AND length(letter)<=2
+*	WHERE clientid=:clientid(int) AND incremental<>0 AND complete=1 AND length(letter)<=2 AND archived=0
 *	ORDER BY backuptime ASC
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(int clientid)
 {
 	if(q_getIncrNumImages==NULL)
 	{
-		q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
+		q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 AND archived=0 ORDER BY backuptime ASC", false);
 	}
 	q_getIncrNumImages->Bind(clientid);
 	db_results res=q_getIncrNumImages->Read();
@@ -269,13 +269,13 @@ std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(i
 * @sql
 *	SELECT COUNT(id) AS c FROM backup_images
 *	WHERE clientid=(SELECT clientid FROM backup_images WHERE id=:backupid(int))
-*			AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=:backupid(int))
+*			AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=:backupid(int)) AND archived=0
 */
 int ServerCleanupDao::getIncrNumImagesForBackup(int backupid)
 {
 	if(q_getIncrNumImagesForBackup==NULL)
 	{
-		q_getIncrNumImagesForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backup_images WHERE clientid=(SELECT clientid FROM backup_images WHERE id=?) AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=?)", false);
+		q_getIncrNumImagesForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backup_images WHERE clientid=(SELECT clientid FROM backup_images WHERE id=?) AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=?) AND archived=0", false);
 	}
 	q_getIncrNumImagesForBackup->Bind(backupid);
 	q_getIncrNumImagesForBackup->Bind(backupid);
