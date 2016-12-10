@@ -771,12 +771,17 @@ bool IncrFileBackup::doFileBackup()
 											{
 												ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn_curr + "\". " + os_last_error_str(), LL_WARNING);
 											}
+											if (!os_create_dir(os_file_prefix(backuppath_hashes + local_curr_os_path)))
+											{
+												ServerLogger::Log(logid, "Error creating metadata directory \"" + backuppath_hashes + local_curr_os_path + "\". " + os_last_error_str(), LL_WARNING);
+											}
 
 											metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
 										}
 									}
 									else if( (os_get_file_type(os_file_prefix(backuppath + local_curr_os_path)) & EFileType_Symlink) == 0 )
 									{
+										//Directory to directory symlink
 										if( !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
 											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
 										{
