@@ -1862,7 +1862,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 			
 			addFromLastUpto(listname, false, depth, false, outfile);
 
-			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
+			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << static_cast<int64>(files[i].change_indicator);
 		
 			if(calculate_filehashes_on_client
 				&& !files[i].hash.empty() )
@@ -2370,11 +2370,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 					{
 						VSSLog("File is open: " + fs_files[i].name, LL_DEBUG);
 
-						fs_files[i].change_indicator*=(std::max)((unsigned int)2, Server->getRandomNumber());
-						if(fs_files[i].change_indicator>0)
-							fs_files[i].change_indicator*=-1;
-						else if(fs_files[i].change_indicator==0)
-							fs_files[i].change_indicator=-1 * Server->getRandomNumber();
+						if (fs_files[i].change_indicator == 0)
+							fs_files[i].change_indicator += Server->getRandomNumber();
+
+						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
+						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
 					}
 				}
 			}
@@ -4700,13 +4700,13 @@ void IndexThread::writeTokens()
 	write_file_only_admin(data, "urbackup"+os_file_sep()+"data"+os_file_sep()+"tokens_"+starttoken+".properties");
 }
 
-void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with_change, int64 change_identicator, const std::string& extra)
+void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with_change, uint64 change_identicator, const std::string& extra)
 {
 	out << "d\"" << escapeListName((name)) << "\"";
 
 	if(with_change)
 	{
-		out << " 0 " << change_identicator;
+		out << " 0 " << static_cast<int64>(change_identicator);
 	}
 
 	if(!extra.empty())
@@ -6273,8 +6273,9 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, const std::strin
 std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::string& named_path, const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs, const std::vector<SFile> files, const std::string& fn_filter)
 {
-	const int64 symlink_mask = 0x7000000000000000LL;
-	const int64 special_mask = 0x3000000000000000LL;
+	const uint64 symlink_bit = 0x4000000000000000ULL;
+	const uint64 special_bit = 0x2000000000000000ULL;
+	const uint64 all_bits = symlink_bit | special_bit;
 
 	std::vector<SFileAndHash> ret;
 	if(fn_filter.empty())
@@ -6320,11 +6321,15 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 
 		if (curr->issym)
 		{
-			curr->change_indicator += symlink_mask;
+			curr->change_indicator |= (symlink_bit | special_bit);
 		}
 		else if (curr->isspecialf)
 		{
-			curr->change_indicator += special_mask;
+			curr->change_indicator |= special_bit;
+		}
+		else
+		{
+			curr->change_indicator &= ~all_bits;
 		}
 
 		if(curr->issym && with_proper_symlinks

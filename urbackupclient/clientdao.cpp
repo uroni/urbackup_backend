@@ -191,8 +191,8 @@ bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash>
 		ptr+=ss;
 		memcpy(&f.size, ptr, sizeof(int64));
 		ptr+=sizeof(int64);
-		memcpy(&f.change_indicator, ptr, sizeof(int64));
-		ptr+=sizeof(int64);
+		memcpy(&f.change_indicator, ptr, sizeof(uint64));
+		ptr+=sizeof(uint64);
 		char isdir=*ptr;
 		++ptr;
 		if(isdir==0)
@@ -272,8 +272,8 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=ss;
 		memcpy(ptr, (char*)&data[i].size, sizeof(int64));
 		ptr+=sizeof(int64);
-		memcpy(ptr, (char*)&data[i].change_indicator, sizeof(int64));
-		ptr+=sizeof(int64);
+		memcpy(ptr, (char*)&data[i].change_indicator, sizeof(uint64));
+		ptr+=sizeof(uint64);
 		char isdir=1;
 		if(!data[i].isdir)
 			isdir=0;

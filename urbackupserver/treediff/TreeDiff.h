@@ -19,4 +19,5 @@ private:
 	static void gatherLargeUnchangedSubtrees(TreeNode *t2, std::vector<size_t> &changed_subtrees);
 	static void subtreeChanged(TreeNode* t2);
 	static size_t getTreesize(TreeNode* t, size_t limit);
+	static bool isSymlink(TreeNode* n);
 };

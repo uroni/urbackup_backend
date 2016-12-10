@@ -1721,7 +1721,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				pretty_symlink_struct_writer += "d\"" + curr_dir + "\"\n";
 
 				has_component = true;
-				const int64 symlink_mask = 0x7000000000000000LL;
+				const uint64 symlink_mask = 0x7000000000000000ULL;
 				std::string symlink_change_indicator = convert(symlink_mask);
 
 				for (UINT k = 0; k < componentInfo->cFileCount; ++k)

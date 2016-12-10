@@ -75,7 +75,7 @@ struct SFileAndHash
 {
 	std::string name;
 	int64 size;
-	int64 change_indicator;
+	uint64 change_indicator;
 	bool isdir;
 	std::string hash;
 	bool issym;

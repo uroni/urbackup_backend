@@ -1030,7 +1030,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							SFile metadata = getFileMetadataWin(local_fn, true);
 							if(!metadata.name.empty())
 							{
-								int64 change_indicator = metadata.last_modified;
+								uint64 change_indicator = metadata.last_modified;
 								if(metadata.usn!=0)
 								{
 									change_indicator = metadata.usn;

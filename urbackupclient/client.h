@@ -461,7 +461,7 @@ private:
 
 	void setFlags(unsigned int flags);
 
-	void writeDir(std::fstream& out, const std::string& name, bool with_change, int64 change_identicator, const std::string& extra=std::string());
+	void writeDir(std::fstream& out, const std::string& name, bool with_change, uint64 change_identicator, const std::string& extra=std::string());
 	bool addBackupScripts(std::fstream& outfile);
 
 	void monitor_disk_failures();

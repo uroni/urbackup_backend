@@ -147,7 +147,8 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 				}
 
 				if (deleted_inplace_ids != NULL
-					&& c1->getType() == c2->getType())
+					&& c1->getType() == c2->getType()
+					&& isSymlink(c1) == isSymlink(c2) )
 				{
 					deleted_inplace_ids->push_back(c1->getId());
 				}
@@ -165,22 +166,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			* On Windows this works. Could be because it uses junctions for the
 			* symlinks to the directory pool.
 			**/
-			const int64* dataptr = reinterpret_cast<const int64*>(c2->getDataPtr());
-			int64 change_indicator = 0;
-			if (c2->getType() == 'd'
-				&& c2->getDataSize() == sizeof(int64))
-			{
-				change_indicator = *dataptr;
-			}
-			else if (c2->getType() == 'f'
-				&& c2->getDataSize() == 2 * sizeof(int64))
-			{
-				change_indicator = *(dataptr + 1);
-			}
-
-			const int64 symlink_mask = 0x7000000000000000LL;
-			if ( (change_indicator>0 || c2->getType() == 'd')
-				&& (change_indicator & symlink_mask)>0 )
+			if (isSymlink(c2))
 			{
 				subtreeChanged(c2);
 			}
@@ -268,4 +254,28 @@ size_t TreeDiff::getTreesize( TreeNode* t, size_t limit )
 		c=c->getNextSibling();
 	}
 	return treesize;
+}
+
+bool TreeDiff::isSymlink(TreeNode * n)
+{
+	const uint64* dataptr = reinterpret_cast<const uint64*>(n->getDataPtr());
+	uint64 change_indicator = 0;
+	if (n->getType() == 'd'
+		&& n->getDataSize() == sizeof(uint64))
+	{
+		change_indicator = *dataptr;
+	}
+	else if (n->getType() == 'f'
+		&& n->getDataSize() == 2 * sizeof(uint64))
+	{
+		change_indicator = *(dataptr + 1);
+	}
+
+	const uint64 symlink_bit = 0x4000000000000000ULL;
+	if ( change_indicator & symlink_bit)
+	{
+		return true;
+	}
+	
+	return false;
 }
