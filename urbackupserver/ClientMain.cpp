@@ -1566,6 +1566,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.async_index_version = watoi(it->second);
 		}
+		it = params.find("SYMBIT");
+		if (it != params.end())
+		{
+			protocol_versions.symbit_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{

@@ -23,7 +23,7 @@
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
 	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
 	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
-	std::vector<size_t> *deleted_inplace_ids)
+	std::vector<size_t> *deleted_inplace_ids, bool has_symbit, bool is_windows)
 {
 	std::vector<size_t> ret;
 
@@ -42,7 +42,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 	}
 
 	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], 0, ret, modified_inplace_ids, 
-		dir_diffs, deleted_inplace_ids);
+		dir_diffs, deleted_inplace_ids, has_symbit, is_windows);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -72,7 +72,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 
 void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector<size_t> &diffs,
 	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs,
-	std::vector<size_t> *deleted_inplace_ids)
+	std::vector<size_t> *deleted_inplace_ids, bool has_symbit, bool is_windows)
 {
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
@@ -134,7 +134,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 				|| data_equals )
 			{
 				gatherDiffs(c1, c2, depth+1, diffs, modified_inplace_ids, 
-					dir_diffs, deleted_inplace_ids);
+					dir_diffs, deleted_inplace_ids, has_symbit, is_windows);
 				c2->setMappedNode(c1);
 				c1->setMappedNode(c2);
 			}
@@ -148,7 +148,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 
 				if (deleted_inplace_ids != NULL
 					&& c1->getType() == c2->getType()
-					&& isSymlink(c1) == isSymlink(c2) )
+					&& isSymlink(c1, has_symbit, is_windows) == isSymlink(c2, has_symbit, is_windows) )
 				{
 					deleted_inplace_ids->push_back(c1->getId());
 				}
@@ -256,7 +256,7 @@ size_t TreeDiff::getTreesize( TreeNode* t, size_t limit )
 	return treesize;
 }
 
-bool TreeDiff::isSymlink(TreeNode * n)
+bool TreeDiff::isSymlink(TreeNode * n, bool has_symbit, bool is_windows)
 {
 	const uint64* dataptr = reinterpret_cast<const uint64*>(n->getDataPtr());
 	uint64 change_indicator = 0;
@@ -271,11 +271,37 @@ bool TreeDiff::isSymlink(TreeNode * n)
 		change_indicator = *(dataptr + 1);
 	}
 
-	const uint64 symlink_bit = 0x4000000000000000ULL;
-	if ( change_indicator & symlink_bit)
+	if (has_symbit)
 	{
-		return true;
+		const uint64 symlink_bit = 0x4000000000000000ULL;
+		if (change_indicator & symlink_bit)
+		{
+			return true;
+		}
+
+		return false;
 	}
-	
-	return false;
+	else
+	{
+		const uint64 neg_bit = 0x8000000000000000ULL;
+		const uint64 symlink_mask = 0x4000000000000000ULL;
+
+		if (is_windows)
+		{
+			if ((!(change_indicator & neg_bit) || n->getType() == 'd')
+				&& (change_indicator & symlink_mask) > 0)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			if (change_indicator & neg_bit)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 }

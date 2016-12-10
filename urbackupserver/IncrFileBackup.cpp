@@ -256,9 +256,15 @@ bool IncrFileBackup::doFileBackup()
 		clientlist_name="urbackup/clientlist_"+convert(clientid)+".ub";
 	}
 
-	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlist_name, tmpfilename,
-		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids, 
-		dir_diffs, deleted_inplace_ids_ref);
+	std::vector<size_t> diffs;
+	{
+		bool has_symbit = client_main->getProtocolVersions().symbit_version > 0;
+		std::string os_simple = client_main->getProtocolVersions().os_simple;
+		bool is_windows = (os_simple == "windows" || os_simple.empty());
+		diffs = TreeDiff::diffTrees(clientlist_name, tmpfilename,
+			error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids,
+			dir_diffs, deleted_inplace_ids_ref, has_symbit, is_windows);
+	}
 
 	if(error)
 	{
