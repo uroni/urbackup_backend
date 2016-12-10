@@ -62,6 +62,7 @@
 #include "ContinuousBackup.h"
 #include "ThrottleUpdater.h"
 #include "../fileservplugin/IFileServ.h"
+#include "DataplanDb.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -737,7 +738,7 @@ void ClientMain::operator ()(void)
 
 			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
-				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_full_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now && !do_incr_backup_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
@@ -753,7 +754,7 @@ void ClientMain::operator ()(void)
 			}
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
-				&& exponentialBackoffFile() && pauseRetryBackup() ) || do_incr_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
@@ -769,7 +770,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_full_image_now)
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
-				&& exponentialBackoffImage() && pauseRetryBackup() ) || do_full_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
 
@@ -794,7 +795,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_incr_image_now)
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
-				&& exponentialBackoffImage() && pauseRetryBackup() ) || do_incr_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
 			{
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
@@ -2166,6 +2167,65 @@ void ClientMain::updateClientAccessKey()
 
 	sendClientMessageRetry("CLIENT ACCESS KEY key=" + access_key + "&token=" + server_token, "OK",
 		"Error sending client access key", 10000, 10, false);
+}
+
+bool ClientMain::isDataplanOkay(bool file)
+{
+	return isDataplanOkay(server_settings, file);
+}
+
+bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
+{
+	if (!internet_connection)
+	{
+		return true;
+	}
+
+	unsigned int addr = ServerStatus::getStatus(clientname).ip_addr;
+	unsigned char *ips = reinterpret_cast<unsigned char*>(&addr);
+	std::string	ip = convert(ips[0]) + "." + convert(ips[1]) + "." + convert(ips[2]) + "." + convert(ips[3]);
+
+	std::string hostname = Server->LookupHostname(ip);
+	if (hostname.empty())
+	{
+		return true;
+	}
+
+	int64 limit;
+	std::string pattern;
+	if (!DataplanDb::getInstance()->getLimit(hostname, pattern, limit))
+	{
+		return true;
+	}
+
+	if (local_settings == NULL)
+	{
+		return true;
+	}
+
+	int64 appl_limit;
+	if (file)
+	{
+		appl_limit = local_settings->getSettings()->internet_file_dataplan_limit;
+	}
+	else
+	{
+		appl_limit = local_settings->getSettings()->internet_image_dataplan_limit;
+	}
+
+	if (limit >= appl_limit)
+	{
+		return true;
+	}
+
+	ServerLogger::Log(logid, std::string("Not running ") + (file ? "file" : "image") 
+		+ " backup because currently estimated data plan of "
+		+ PrettyPrintBytes(limit) + " per month "
+		"with pattern \""+pattern+"\" for hostname \""+hostname
+		+"\" is smaller than configured limit of "
+		+ PrettyPrintBytes(appl_limit) + " per month", LL_DEBUG);
+
+	return false;
 }
 
 bool ClientMain::inBackupWindow(Backup * backup)

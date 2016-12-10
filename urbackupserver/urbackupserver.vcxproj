@@ -226,6 +226,7 @@
     <ClCompile Include="dao\ServerFilesDao.cpp" />
     <ClCompile Include="dao\ServerLinkDao.cpp" />
     <ClCompile Include="dao\ServerLinkJournalDao.cpp" />
+    <ClCompile Include="DataplanDb.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileBackup.cpp" />
     <ClCompile Include="FileMetadataDownloadThread.cpp" />
@@ -338,6 +339,7 @@
     <ClInclude Include="dao\ServerLinkDao.h" />
     <ClInclude Include="dao\ServerLinkJournalDao.h" />
     <ClInclude Include="database.h" />
+    <ClInclude Include="DataplanDb.h" />
     <ClInclude Include="FileBackup.h" />
     <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="FullFileBackup.h" />

@@ -95,6 +95,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("allow_component_config");
 	ret.push_back("file_snapshot_groups");
 	ret.push_back("image_snapshot_groups");
+	ret.push_back("internet_file_dataplan_limit");
+	ret.push_back("internet_image_dataplan_limit");
 	return ret;
 }
 
@@ -127,6 +129,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("file_snapshot_groups");
 	ret.push_back("image_snapshot_groups");
 	ret.push_back("server_url");
+	ret.push_back("internet_file_dataplan_limit");
+	ret.push_back("internet_image_dataplan_limit");
 	return ret;
 }
 
@@ -171,6 +175,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("show_server_updates");
 	ret.push_back("server_url");
 	ret.push_back("use_incremental_symlinks");
+	ret.push_back("update_dataplan_db");
 	return ret;
 }
 

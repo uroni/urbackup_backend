@@ -505,6 +505,7 @@ function getPar(p)
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, 1024/8, true); }
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
+	if(p=="internet_file_dataplan_limit" || p=="internet_image_dataplan_limit") val=Math.round(val*1024*1024);
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -2701,6 +2702,9 @@ function show_settings2(data)
 			data.settings.file_hash_collect_cachesize/=1024;
 			data.settings.update_stats_cachesize/=1024;
 			
+			data.settings.internet_file_dataplan_limit/=1024*1024;
+			data.settings.internet_image_dataplan_limit/=1024*1024;
+			data.settings.update_dataplan_db=getCheckboxValue(data.settings.update_dataplan_db);
 			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
@@ -2827,6 +2831,9 @@ function show_settings2(data)
 			else data.settings.internet_speed=multiplyTimeSpan(data.settings.internet_speed, 1/(1024/8), true);
 			
 			data.settings.file_hash_collect_cachesize/=1024;
+			
+			data.settings.internet_file_dataplan_limit/=1024*1024;
+			data.settings.internet_image_dataplan_limit/=1024*1024;
 			
 			if(is_group)
 			{
@@ -3401,7 +3408,10 @@ g.settings_list=[
 "ignore_disk_errors",
 "image_snapshot_groups",
 "file_snapshot_groups",
-"vss_select_components"
+"vss_select_components",
+"internet_file_dataplan_limit",
+"internet_image_dataplan_limit",
+"update_dataplan_db"
 ];
 g.general_settings_list=[
 "backupfolder",

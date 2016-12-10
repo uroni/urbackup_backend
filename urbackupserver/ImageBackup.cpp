@@ -626,14 +626,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						cc = NULL;
 					}
 
-					if (!internet_connection && client_main->isOnInternetConnection())
+					if (!internet_connection 
+						&& client_main->isOnInternetConnection()
+						&& !server_settings->getSettings()->internet_image_backups )
 					{
-						Server->Log("Image client is connected via Internet now. Waiting for client to return to local network...", LL_DEBUG);
+						Server->Log(clientname+": Image client is connected via Internet now. Waiting for client to return to local network...", LL_DEBUG);
+						Server->wait(60000);
+					}
+					else if (!client_main->isDataplanOkay(server_settings.get(), false))
+					{
+						Server->Log(clientname+": Image client is on a limited data plan now. Waiting for client to return to a better dataplan...", LL_DEBUG);
 						Server->wait(60000);
 					}
 					else
 					{
-						Server->Log("Trying to reconnect in doImage", LL_DEBUG);
+						Server->Log(clientname +": Trying to reconnect in doImage", LL_DEBUG);
 						cc = client_main->getClientCommandConnection(10000);
 						if (cc == NULL)
 						{
@@ -641,7 +648,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						}
 						else
 						{
-							Server->Log("Connected. Authenticating...", LL_DEBUG);
+							Server->Log(clientname + ": Connected. Authenticating...", LL_DEBUG);
 							if (!client_main->authenticateIfNeeded(false,
 								internet_connection!=client_main->isOnInternetConnection()))
 							{
@@ -654,7 +661,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								identity = client_main->getIdentity();
 								reconnected = true;
 								ServerStatus::setROnline(clientname, true);
-								Server->Log("Reconnected.", LL_DEBUG);
+								Server->Log(clientname + ": Reconnected.", LL_DEBUG);
 								internet_connection = client_main->isOnInternetConnection();
 								break;
 							}

@@ -351,6 +351,9 @@
     <ClCompile Include="ImageMount.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="DataplanDb.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -633,6 +636,9 @@
       <Filter>miniz</Filter>
     </ClInclude>
     <ClInclude Include="ImageMount.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="DataplanDb.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

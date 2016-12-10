@@ -40,6 +40,8 @@ copy /Y "..\urbackupserver\www\images\*.gif" "data_common\urbackup\www\images\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 copy /Y "..\urbackupserver\www\swf\*" "data_common\urbackup\www\swf\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
+copy /Y "..\urbackup\dataplan_db.txt "data_common\urbackup\dataplan_db.txt"
+if %errorlevel% neq 0 exit /b %errorlevel% 
 
 copy /Y "..\Release\httpserver.dll" "data\httpserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%

@@ -81,6 +81,7 @@ SStartupStatus startup_status;
 #include "create_files_index.h"
 #include "server_dir_links.h"
 #include "server_channel.h"
+#include "DataplanDb.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -604,6 +605,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerStatus::init_mutex();
 	ServerSettings::init_mutex();
 	ClientMain::init_mutex();
+	DataplanDb::init();
 
 	open_settings_database();
 	

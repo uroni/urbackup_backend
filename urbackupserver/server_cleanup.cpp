@@ -228,6 +228,13 @@ void ServerCleanupThread::operator()(void)
 			upd.update_server_version_info();
 		}
 
+		if (settings->getValue("update_dataplan_db", "true") == "true")
+		{
+			IScopedLock lock(a_mutex);
+			ServerUpdate upd;
+			upd.update_dataplan_db();
+		}
+
 		Server->destroy(settings);
 	}
 
@@ -296,6 +303,13 @@ void ServerCleanupThread::operator()(void)
 					IScopedLock lock(a_mutex);
 					ServerUpdate upd;
 					upd.update_server_version_info();
+				}
+
+				if (settings->getValue("update_dataplan_db", "true") == "true")
+				{
+					IScopedLock lock(a_mutex);
+					ServerUpdate upd;
+					upd.update_dataplan_db();
 				}
 
 				cleanupdao.reset(new ServerCleanupDao(db));

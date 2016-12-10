@@ -1147,6 +1147,17 @@ void CServer::DisconnectStream(IPipe *pipe)
 	closesocket(s);
 }
 
+std::string CServer::LookupHostname(const std::string & pIp)
+{
+	std::string hostname;
+	if (!::LookupHostname(pIp, hostname))
+	{
+		return std::string();
+	}
+
+	return hostname;
+}
+
 bool CServer::RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName)
 {
 	IScopedLock lock(plugin_mutex);

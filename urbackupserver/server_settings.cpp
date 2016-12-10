@@ -419,6 +419,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->allow_component_config = settings_default->getValue("allow_component_config", "true") == "true";
 	settings->image_snapshot_groups = settings_default->getValue("image_snapshot_groups", "");
 	settings->file_snapshot_groups = settings_default->getValue("file_snapshot_groups", "");
+	settings->internet_file_dataplan_limit = settings_default->getValue("internet_file_dataplan_limit", 5LL*1000*1024*1024);
+	settings->internet_image_dataplan_limit = settings_default->getValue("internet_image_dataplan_limit", 20LL * 1000* 1024 * 1024);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
@@ -584,6 +586,9 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	readStringClientSetting(settings_client, "image_snapshot_groups", &settings->image_snapshot_groups);
 	readStringClientSetting(settings_client, "file_snapshot_groups", &settings->file_snapshot_groups);
+
+	readInt64ClientSetting(settings_client, "internet_file_dataplan_limit", &settings->internet_file_dataplan_limit);
+	readInt64ClientSetting(settings_client, "internet_image_dataplan_limit", &settings->internet_image_dataplan_limit);
 }
 
 void ServerSettings::readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output)
@@ -613,6 +618,15 @@ void ServerSettings::readIntClientSetting(ISettingsReader* settings_client, cons
 	if(settings_client->getValue(name, &value) && !value.empty())
 	{
 		*output=atoi(value.c_str());
+	}
+}
+
+void ServerSettings::readInt64ClientSetting(ISettingsReader* settings_client, const std::string &name, int64 *output)
+{
+	std::string value;
+	if (settings_client->getValue(name, &value) && !value.empty())
+	{
+		*output = atoi(value.c_str());
 	}
 }
 

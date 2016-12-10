@@ -511,6 +511,32 @@
 				</div>
 			</div>
 			{/main_client}
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_file_dataplan_limit">{tDo not start file backups if current estimated data usage limit per month is smaller than}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="internet_file_dataplan_limit" value="{internet_file_dataplan_limit}"/>
+						<div class="input-group-addon">{tMB}</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_image_dataplan_limit">{tDo not start image backups if current estimated data usage limit per month is smaller than}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="internet_image_dataplan_limit" value="{internet_image_dataplan_limit}"/>
+						<div class="input-group-addon">{tMB}</div>
+					</div>
+				</div>
+			</div>
+			{?global_settings}
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="update_dataplan_db">{tUpdate data limit estimation database}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="update_dataplan_db" value="true" {update_dataplan_db}/></label>
+				</div>
+			</div>
+			{/global_settings}
 		</form>
 	</div>
 	</div>

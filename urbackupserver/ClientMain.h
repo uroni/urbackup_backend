@@ -229,6 +229,8 @@ public:
 
 	std::vector<SLogEntry> parseLogData(int64 max_duration, const std::string& data);
 
+	bool isDataplanOkay(ServerSettings* local_settings, bool file);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -255,6 +257,7 @@ private:
 	IPipeThrottler *getThrottler(int speed_bps);
 	bool inBackupWindow(Backup* backup);
 	void updateClientAccessKey();
+	bool isDataplanOkay(bool file);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);

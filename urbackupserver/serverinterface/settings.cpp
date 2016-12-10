@@ -163,6 +163,8 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(allow_file_restore);
 	SET_SETTING(file_snapshot_groups);
 	SET_SETTING(image_snapshot_groups);
+	SET_SETTING(internet_file_dataplan_limit);
+	SET_SETTING(internet_image_dataplan_limit);
 #undef SET_SETTING
 	return ret;
 }
@@ -175,7 +177,10 @@ struct SClientSettings
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
 {
+	std::auto_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings"));
 #define SET_SETTING(x) obj.set(#x, settings.getSettings()->x);
+#define SET_SETTING_DB(x, def) obj.set(#x, settings_db->getValue(#x, (def)))
+#define SET_SETTING_DB_BOOL(x, def) obj.set(#x, settings_db->getValue(#x, convert(def))=="true")
 
 	SET_SETTING(backupfolder);
 	SET_SETTING(no_images);
@@ -199,8 +204,10 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(use_incremental_symlinks);
 	SET_SETTING(show_server_updates);
 	SET_SETTING(server_url);
+	SET_SETTING_DB_BOOL(update_dataplan_db, true);
 
 #undef SET_SETTING
+#undef SET_SETTING_DB
 }
 
 void getMailSettings(JSON::Object &obj, IDatabase *db)

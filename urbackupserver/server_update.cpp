@@ -20,6 +20,8 @@
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/os_functions.h"
+#include "DataplanDb.h"
 #include <stdlib.h>
 #include <memory>
 
@@ -168,11 +170,11 @@ void ServerUpdate::update_server_version_info()
 	std::string errmsg;
 	Server->Log("Downloading server version info...", LL_INFO);
 
-	std::auto_ptr<IFile> server_version_info(Server->openFile("urbackup/server_version_info.properties", MODE_WRITE));
+	std::auto_ptr<IFile> server_version_info(Server->openFile("urbackup/server_version_info.properties.new", MODE_WRITE));
 
 	if(!server_version_info.get())
 	{
-		Server->Log("Error opening urbackup/server_version_info.properties for writing", LL_ERROR);
+		Server->Log("Error opening urbackup/server_version_info.properties.new for writing", LL_ERROR);
 	}
 	else
 	{
@@ -181,7 +183,58 @@ void ServerUpdate::update_server_version_info()
 		{
 			Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
 		}
+		else
+		{
+			server_version_info.reset();
+			if (!os_rename_file("urbackup/server_version_info.properties.new",
+								"urbackup/server_version_info.properties"))
+			{
+				Server->Log("Error renaming server_version_info.properties . " + os_last_error_str(), LL_ERROR);
+			}
+		}
 	}	
+}
+
+void ServerUpdate::update_dataplan_db()
+{
+	if (url_fak == NULL)
+	{
+		Server->Log("Urlplugin not found. Cannot download dataplan database.", LL_ERROR);
+		return;
+	}
+
+	read_update_location();
+
+	std::string http_proxy = Server->getServerParameter("http_proxy");
+
+	std::string errmsg;
+	Server->Log("Downloading dataplan database...", LL_INFO);
+
+	std::auto_ptr<IFile> dataplan_db(Server->openFile("urbackup/dataplan_db.txt.new", MODE_WRITE));
+	if (!dataplan_db.get())
+	{
+		Server->Log("Error opening urbackup/dataplan_db.txt.new for writing", LL_ERROR);
+	}
+	else
+	{
+		if (!url_fak->downloadFile(urbackup_update_url + "dataplan_db.txt",
+			dataplan_db.get(), http_proxy, &errmsg))
+		{
+			Server->Log("Error downloading dataplan database: " + errmsg, LL_ERROR);
+		}
+		else
+		{
+			dataplan_db.reset();
+			if (!os_rename_file("urbackup/dataplan_db.txt.new",
+				"urbackup/dataplan_db.txt"))
+			{
+				Server->Log("Error renaming urbackup/dataplan_db.txt. " + os_last_error_str(), LL_ERROR);
+			}
+
+			DataplanDb::getInstance()->read("urbackup/dataplan_db.txt");
+		}
+
+	}
 }
 
 void ServerUpdate::read_update_location()

@@ -138,6 +138,7 @@ public:
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
+	virtual std::string LookupHostname(const std::string& pIp);
 
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName);
 	virtual bool RegisterPluginThreadsafeModel(IPluginMgr *pPluginMgr, std::string pName);

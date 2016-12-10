@@ -20,6 +20,7 @@
 #include <string>
 #ifndef _WIN32
 #include <memory.h>
+#include "LookupService.h"
 #endif
 
 bool LookupBlocking(std::string pServer, in_addr *dest)
@@ -59,6 +60,31 @@ bool LookupBlocking(std::string pServer, in_addr *dest)
 		}
 	}
 	return true;
+}
+
+bool LookupHostname(const std::string & pIp, std::string& hostname)
+{
+	sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_addr.s_addr = inet_addr(pIp.c_str());
+	if (addr.sin_addr.s_addr == INADDR_NONE)
+	{
+		return false;
+	}
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(80);
+
+	char buf[NI_MAXHOST];
+
+	int rc = getnameinfo(reinterpret_cast<sockaddr*>(&addr), sizeof(addr), buf, sizeof(buf), NULL, 0, NI_NAMEREQD);
+
+	if (rc == 0)
+	{
+		hostname = buf;
+	}
+
+	return rc == 0;
 }
 
 

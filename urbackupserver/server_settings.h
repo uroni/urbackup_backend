@@ -129,6 +129,8 @@ struct SSettings
 	bool allow_component_config;
 	std::string image_snapshot_groups;
 	std::string file_snapshot_groups;
+	int64 internet_file_dataplan_limit;
+	int64 internet_image_dataplan_limit;
 };
 
 struct SLDAPSettings
@@ -252,6 +254,7 @@ private:
 	void readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output);
 	void readStringClientSetting(ISettingsReader* settings_client, const std::string &name, std::string *output);
 	void readIntClientSetting(ISettingsReader* settings_client, const std::string &name, int *output);
+	void readInt64ClientSetting(ISettingsReader* settings_client, const std::string &name, int64 *output);
 	void readSizeClientSetting(ISettingsReader* settings_client, const std::string &name, size_t *output);
 	void updateInternal(bool* was_updated);
 	std::map<std::string, std::string> parseLdapMap(const std::string& data);
