@@ -166,7 +166,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 			* On Windows this works. Could be because it uses junctions for the
 			* symlinks to the directory pool.
 			**/
-			if (isSymlink(c2))
+			if (isSymlink(c2, has_symbit, is_windows))
 			{
 				subtreeChanged(c2);
 			}
@@ -283,8 +283,9 @@ bool TreeDiff::isSymlink(TreeNode * n, bool has_symbit, bool is_windows)
 	}
 	else
 	{
+		//Work-around for broken old versions
 		const uint64 neg_bit = 0x8000000000000000ULL;
-		const uint64 symlink_mask = 0x4000000000000000ULL;
+		const uint64 symlink_mask = 0x7000000000000000ULL;
 
 		if (is_windows)
 		{
