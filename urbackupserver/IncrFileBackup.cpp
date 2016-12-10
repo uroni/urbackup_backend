@@ -1776,7 +1776,7 @@ void IncrFileBackup::addFileEntrySQLWithExisting( const std::string &fp, const s
 	bool update_fileindex = false;
 	int64 entryid = 0;
 	int last_entry_clientid = 0;
-	int next_entry = 0;
+	int64 next_entry = 0;
 	
 	if (filesize >= link_file_min_size)
 	{

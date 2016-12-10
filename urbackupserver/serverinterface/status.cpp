@@ -447,7 +447,7 @@ void access_dir_checks(IDatabase* db, ServerSettings& settings, std::string back
 				std::string readstring;
 				if (tmp_f.get() != NULL)
 				{
-					readstring = tmp_f->Read(teststring.size());
+					readstring = tmp_f->Read(static_cast<_u32>(teststring.size()));
 				}
 
 				tmp_f.reset();
