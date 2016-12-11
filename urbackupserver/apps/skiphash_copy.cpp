@@ -68,6 +68,12 @@ bool skiphash_copy(const std::string& src_path,
 		{
 			skipped_pc = 100.f - 100.f*src->Size()/inplace_written;
 		}
+
+		if (ret
+			&& dst->Size()!=src->Size())
+		{
+			ret = dst->Resize(src->Size());
+		}
 		
 		Server->Log("Wrote "+PrettyPrintBytes(inplace_written)
 			+". Skipped "+PrettyPrintBytes(src->Size()-inplace_written)+" ("+
