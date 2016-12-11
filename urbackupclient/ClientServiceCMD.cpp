@@ -36,6 +36,7 @@
 #include "win_ver.h"
 #include "win_all_volumes.h"
 #include "DirectoryWatcherThread.h"
+#include "win_network_cost.h"
 #else
 #include "lin_ver.h"
 std::string getSysVolumeCached(std::string &mpath){ return ""; }
@@ -1106,6 +1107,20 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock, c
 		{
 			tcpstack.Send(pipe, "UPDATE ACCESS KEY");
 		}
+
+#ifdef _WIN32
+		bool metered;
+		if (AllCurrentConnectionsMetered(metered))
+		{
+			IScopedLock lock(ident_mutex);
+			if (last_metered != metered)
+			{
+				last_metered = metered;
+				lock.relock(NULL);
+				tcpstack.Send(pipe, std::string("METERED metered=") + (metered ? "1" : "0"));
+			}
+		}
+#endif
 
 		g_lock->relock(backup_mutex);
 
@@ -2378,10 +2393,20 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		send_prev_cbitmap = "&REQ_PREV_CBITMAP=1";
 	}
 
+	std::string conn_metered = "";
+	bool metered;
+	if (AllCurrentConnectionsMetered(metered))
+	{
+		conn_metered = std::string("METERED=") + (metered ? "1" : "0");
+		IScopedLock lock(ident_mutex);
+		last_metered = metered;
+	}
+
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&OS_SIMPLE=windows"+ send_prev_cbitmap);
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&OS_SIMPLE=windows"+ send_prev_cbitmap+
+		conn_metered);
 #else
 
 #ifdef __APPLE__

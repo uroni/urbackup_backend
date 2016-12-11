@@ -371,6 +371,7 @@ private:
 	static bool end_to_end_file_backup_verification_enabled;
 	static std::map<std::pair<std::string, std::string>, std::string> challenges;
 	static bool has_file_changes;
+	static bool last_metered;
 
 	struct SFilesrvConnection
 	{
