@@ -329,6 +329,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		client_main->sendToPipe("UPDATE ACCESS KEY");
 	}
+	else if (next(msg, 0, "METERED "))
+	{
+		std::string s_params = msg.substr(8);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+		client_main->setConnectionMetered(params["metered"] == "1");
+	}
 	else if(next(msg, 0, "LOGIN ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(6);

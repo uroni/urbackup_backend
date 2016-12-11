@@ -154,6 +154,7 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 	}
 
 	session_identity_refreshtime = 0;
+	connection_metered = false;
 }
 
 ClientMain::~ClientMain(void)
@@ -1572,6 +1573,12 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.symbit_version = watoi(it->second);
 		}
+		it = params.find("METERED");
+		if (it != params.end()
+			&& it->second=="1")
+		{
+			connection_metered = true;
+		}		
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{
@@ -2181,21 +2188,31 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 		return true;
 	}
 
-	unsigned int addr = ServerStatus::getStatus(clientname).ip_addr;
-	unsigned char *ips = reinterpret_cast<unsigned char*>(&addr);
-	std::string	ip = convert(ips[0]) + "." + convert(ips[1]) + "." + convert(ips[2]) + "." + convert(ips[3]);
-
-	std::string hostname = Server->LookupHostname(ip);
-	if (hostname.empty())
-	{
-		return true;
-	}
-
 	int64 limit;
 	std::string pattern;
-	if (!DataplanDb::getInstance()->getLimit(hostname, pattern, limit))
+	std::string hostname;
+	if (!connection_metered)
 	{
-		return true;
+		unsigned int addr = ServerStatus::getStatus(clientname).ip_addr;
+		unsigned char *ips = reinterpret_cast<unsigned char*>(&addr);
+		std::string	ip = convert(ips[0]) + "." + convert(ips[1]) + "." + convert(ips[2]) + "." + convert(ips[3]);
+
+		hostname = Server->LookupHostname(ip);
+		if (hostname.empty())
+		{
+			return true;
+		}
+
+		if (!DataplanDb::getInstance()->getLimit(hostname, pattern, limit))
+		{
+			limit = 1LL * 1024 * 1024 * 1024 * 1024;
+		}
+	}
+	else
+	{
+		limit = 1LL * 1024 * 1024 * 1024;
+		pattern = "*info from client*";
+		hostname = "*not retrieved*";
 	}
 
 	if (local_settings == NULL)
@@ -2213,7 +2230,7 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 		appl_limit = local_settings->getSettings()->internet_image_dataplan_limit;
 	}
 
-	if (limit >= appl_limit)
+	if (limit<0 || limit >= appl_limit)
 	{
 		return true;
 	}
@@ -2226,6 +2243,11 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 		+ PrettyPrintBytes(appl_limit) + " per month", LL_DEBUG);
 
 	return false;
+}
+
+void ClientMain::setConnectionMetered(bool b)
+{
+	connection_metered = b;
 }
 
 bool ClientMain::inBackupWindow(Backup * backup)

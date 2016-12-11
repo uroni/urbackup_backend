@@ -231,6 +231,8 @@ public:
 
 	bool isDataplanOkay(ServerSettings* local_settings, bool file);
 
+	void setConnectionMetered(bool b);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -320,6 +322,7 @@ private:
 
 	SProtocolVersions protocol_versions;
 	volatile bool internet_connection;
+	volatile bool connection_metered;
 	int update_version;
 	std::string all_volumes;
 	std::string all_nonusb_volumes;
