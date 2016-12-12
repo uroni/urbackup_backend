@@ -27,6 +27,8 @@ const unsigned int max_waiting_threads=2;
 #if defined(_WIN32) && defined(_DEBUG)
 #include <Windows.h>
 #include <assert.h>
+#elif defined(__linux__)
+void assert_process_priority();
 #endif
 
 namespace
@@ -35,6 +37,8 @@ namespace
 	{
 #if defined(_WIN32) && defined(_DEBUG)
 		assert(GetThreadPriority(GetCurrentThread()) == THREAD_PRIORITY_NORMAL);
+#elif defined(__linux__)
+		assert_process_priority();
 #endif
 	}
 }
