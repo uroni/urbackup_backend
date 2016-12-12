@@ -145,7 +145,6 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			}
 			
 			f.usn = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
-			if(f.usn<0) f.usn*=-1;
 			
 			if(!f.isdir)
 			{
