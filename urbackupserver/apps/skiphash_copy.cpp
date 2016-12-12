@@ -66,7 +66,14 @@ bool skiphash_copy(const std::string& src_path,
 		float skipped_pc=0;
 		if(src->Size()>0)
 		{
-			skipped_pc = 100.f - 100.f*src->Size()/inplace_written;
+			if (inplace_written == 0)
+			{
+				skipped_pc = 100.f;
+			}
+			else
+			{
+				skipped_pc = 100.f - (100.f*src->Size()) / inplace_written;
+			}
 		}
 
 		if (ret
@@ -76,7 +83,7 @@ bool skiphash_copy(const std::string& src_path,
 		}
 		
 		Server->Log("Wrote "+PrettyPrintBytes(inplace_written)
-			+". Skipped "+PrettyPrintBytes(src->Size()-inplace_written)+" ("+
+			+". Skipped "+PrettyPrintBytes((std::max)(0LL, src->Size()-inplace_written))+" ("+
 			convert(static_cast<int>(skipped_pc+0.5f))+"%)", LL_INFO);
 
 		return ret;

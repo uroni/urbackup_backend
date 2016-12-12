@@ -554,6 +554,8 @@ bool build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
 			return false;
 		}
 
+		hashoutputpos += big_hash_size + chunkidx*small_hash_size;
+
 		if(copy!=NULL && chunk_hashes.get() && modify_inplace)
 		{
 			big_hash_copy_control.finalize();
