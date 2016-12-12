@@ -19,6 +19,7 @@
 #include "os_functions.h"
 #include "../stringtools.h"
 #include "server_compat.h"
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -1002,27 +1003,20 @@ SPrioInfo::~SPrioInfo()
 	delete prio_info;
 }
 
-pid_t gettid()
-{
-	return (pid_t) syscall (SYS_gettid);
-}
-
 bool os_enable_background_priority(SPrioInfo& prio_info)
 {	
-	pid_t tid = gettid();
-	
-	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
-	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, tid);
+	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, 0);
 	
 	int ioprio = 7;
 	int ioprio_class = IOPRIO_CLASS_IDLE;
 	
-	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
+	if(ioprio_set(IOPRIO_WHO_PROCESS, 0, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
 	{
 		return false;
 	}
 	int cpuprio = 19;
-	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
+	if(setpriority(PRIO_PROCESS, 0, cpuprio)==-1)
 	{
 		os_disable_background_priority(prio_info);
 		return false;
@@ -1037,9 +1031,7 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	{
 		return false;
 	}
-	
-	pid_t tid = gettid();
-	
+		
 	int io_prio =  prio_info.prio_info->io_prio;
 	
 	//Setting a IO prio with IOPRIO_CLASS_NONE fails
@@ -1048,12 +1040,12 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 		io_prio|=IOPRIO_CLASS_BE<<IOPRIO_CLASS_SHIFT;
 	}
 	
-	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, io_prio)==-1)
+	if(ioprio_set(IOPRIO_WHO_PROCESS, 0, io_prio)==-1)
 	{
 		return false;
 	}
 	
-	if(setpriority(PRIO_PROCESS, tid, prio_info.prio_info->cpu_prio)==-1)
+	if(setpriority(PRIO_PROCESS, 0, prio_info.prio_info->cpu_prio)==-1)
 	{
 		return false;
 	}
@@ -1062,27 +1054,34 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 }
 
 bool os_enable_prioritize(SPrioInfo& prio_info)
-{
-	pid_t tid = gettid();
-	
-	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, tid);
-	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, tid);
+{	
+	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
+	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, 0);
 	
 	int ioprio = 0;
 	int ioprio_class = IOPRIO_CLASS_BE;
 	
-	if(ioprio_set(IOPRIO_WHO_PROCESS, tid, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
+	if(ioprio_set(IOPRIO_WHO_PROCESS, 0, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
 	{
 		return false;
 	}
 	int cpuprio = -10;
-	if(setpriority(PRIO_PROCESS, tid, cpuprio)==-1)
+	if(setpriority(PRIO_PROCESS, 0, cpuprio)==-1)
 	{
 		os_disable_prioritize(prio_info);
 		return false;
 	}
 	
 	return true;
+}
+
+void assert_process_priority()
+{
+	int io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
+	int cpu_prio = getpriority(PRIO_PROCESS, 0);
+	
+	assert( io_prio == (4 | IOPRIO_CLASS_BE<<IOPRIO_CLASS_BE) );
+	assert( cpu_prio==0 );
 }
 
 bool os_disable_prioritize(SPrioInfo& prio_info)

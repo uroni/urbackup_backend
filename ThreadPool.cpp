@@ -24,6 +24,21 @@
 
 const unsigned int max_waiting_threads=2;
 
+#if defined(_WIN32) && defined(_DEBUG)
+#include <Windows.h>
+#include <assert.h>
+#endif
+
+namespace
+{
+	void checkThreadPriority()
+	{
+#if defined(_WIN32) && defined(_DEBUG)
+		assert(GetThreadPriority(GetCurrentThread()) == THREAD_PRIORITY_NORMAL);
+#endif
+	}
+}
+
 CPoolThread::CPoolThread(CThreadPool *pMgr)
 {
 	mgr=pMgr;
@@ -48,6 +63,7 @@ void CPoolThread::operator()(void)
 			Server->setCurrentThreadName("unnamed");
 		}
 		(*tr)();
+		checkThreadPriority();
 		Server->clearDatabases(tid);
 	}
 
@@ -69,6 +85,7 @@ void CPoolThread::operator()(void)
 					Server->setCurrentThreadName("unnamed");
 				}
 				(*tr)();
+				checkThreadPriority();
 				Server->clearDatabases(tid);
 			}
 			else if(stop)

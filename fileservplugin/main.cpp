@@ -325,6 +325,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		delete TCPServer;
 		TCPServer=NULL;
+
+#ifdef _WIN32
+		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+#endif
 		return 99;
 	}
 
@@ -358,6 +362,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	delete TCPServer;
 #endif //AS_SERVICE
+
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+#endif
 
 #ifndef AS_SERVICE
 	return 2;
