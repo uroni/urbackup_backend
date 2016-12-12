@@ -476,7 +476,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			if(!dry_run && output_f.get() != NULL && !is_dir && !win_is_symlink
 				&& !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
 			{
-				ServerLogger::Log(logid, "Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
+				ServerLogger::Log(logid, "Error setting file time of "+backup_dir+os_file_sep()+os_path+" . "+os_last_error_str(), LL_WARNING);
 			}
 
 			if(!dry_run && output_f.get() != NULL)
@@ -1315,10 +1315,11 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::stri
 		{
 			if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
 			{
+				std::string err = os_last_error_str();
 				int ftype = os_get_file_type(os_file_prefix(os_path));
 				if (!(ftype & EFileType_Symlink))
 				{
-					ServerLogger::Log(logid, "Error setting file time of " + os_path, LL_WARNING);
+					ServerLogger::Log(logid, "Error setting file time of " + os_path+" . "+err, LL_WARNING);
 				}
 			}
 			return;
@@ -1332,7 +1333,7 @@ void FileMetadataDownloadThread::addFolderItem(std::string path, const std::stri
 				{
 					if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
 					{
-						ServerLogger::Log(logid, "Error setting file time of "+os_path, LL_WARNING);
+						ServerLogger::Log(logid, "Error setting file time of "+os_path+" . "+os_last_error_str(), LL_WARNING);
 					}
 					saved_folder_items.erase(saved_folder_items.begin()+i);
 				}
@@ -1373,7 +1374,7 @@ void FileMetadataDownloadThread::addSingleFileItem( std::string dir_path )
 			{
 				if(!os_set_file_time(os_file_prefix(saved_folder_items[i].os_path), saved_folder_items[i].created, saved_folder_items[i].modified, saved_folder_items[i].accessed))
 				{
-					ServerLogger::Log(logid, "Error setting file time of "+saved_folder_items[i].os_path, LL_WARNING);
+					ServerLogger::Log(logid, "Error setting file time of "+saved_folder_items[i].os_path + " . "+os_last_error_str(), LL_WARNING);
 				}
 				saved_folder_items.erase(saved_folder_items.begin()+i);
 			}
