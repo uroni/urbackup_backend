@@ -1102,6 +1102,12 @@ bool os_disable_prioritize(SPrioInfo& prio_info)
 	return os_disable_background_priority(prio_info);
 }
 
+void os_reset_io_priority()
+{
+	ioprio_set(IOPRIO_WHO_PROCESS, 0, 4 | IOPRIO_CLASS_BE << IOPRIO_CLASS_SHIFT);
+}
+
+
 #else //__NR_ioprio_set
 
 SPrioInfo::SPrioInfo()
@@ -1131,6 +1137,15 @@ bool os_disable_prioritize(SPrioInfo& prio_info)
 {
 	return false;
 }
+
+void assert_process_priority()
+{
+}
+
+void os_reset_io_priority()
+{
+}
+
 #endif //__NR_ioprio_set
 
 bool os_sync(const std::string & path)
