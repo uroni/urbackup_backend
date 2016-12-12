@@ -1005,6 +1005,12 @@ SPrioInfo::~SPrioInfo()
 
 bool os_enable_background_priority(SPrioInfo& prio_info)
 {	
+	if(getpid() == syscall(SYS_gettid))
+	{
+		//This would set it for the whole process
+		return false;
+	}
+	
 	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
 	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, 0);
 	
@@ -1055,6 +1061,12 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 
 bool os_enable_prioritize(SPrioInfo& prio_info)
 {	
+	if(getpid() == syscall(SYS_gettid))
+	{
+		//This would set it for the whole process
+		return false;
+	}
+
 	prio_info.prio_info->io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
 	prio_info.prio_info->cpu_prio = getpriority(PRIO_PROCESS, 0);
 	
@@ -1080,7 +1092,8 @@ void assert_process_priority()
 	int io_prio = ioprio_get(IOPRIO_WHO_PROCESS, 0);
 	int cpu_prio = getpriority(PRIO_PROCESS, 0);
 	
-	assert( io_prio == (4 | IOPRIO_CLASS_BE<<IOPRIO_CLASS_BE) );
+	assert( io_prio == (4 | IOPRIO_CLASS_BE<<IOPRIO_CLASS_SHIFT)
+               || io_prio== (4 | IOPRIO_CLASS_NONE<<IOPRIO_CLASS_SHIFT));
 	assert( cpu_prio==0 );
 }
 

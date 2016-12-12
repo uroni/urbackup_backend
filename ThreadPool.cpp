@@ -51,6 +51,8 @@ CPoolThread::CPoolThread(CThreadPool *pMgr)
 
 void CPoolThread::operator()(void)
 {
+	checkThreadPriority();
+
 	THREAD_ID tid = Server->getThreadID();
 	THREADPOOL_TICKET ticket;
 	bool stop=false;
