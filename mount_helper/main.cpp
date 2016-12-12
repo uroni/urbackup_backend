@@ -173,11 +173,11 @@ bool chown_dir(const std::string& dir)
 #ifdef __linux__
 bool mount_linux_loop(const std::string& imagepath)
 {
-	int loopc = open("/dev/loop-control", O_RDWR|O_CLOEXEC);
+	int loopc = open64("/dev/loop-control", O_RDWR|O_CLOEXEC);
 	if(loopc==-1)
 	{
 		exec_wait("modprobe", true, "loop", NULL);
-		loopc = open("/dev/loop-control", O_RDWR|O_CLOEXEC);
+		loopc = open64("/dev/loop-control", O_RDWR|O_CLOEXEC);
 	}
 	
 	if(loopc==-1)
@@ -186,7 +186,7 @@ bool mount_linux_loop(const std::string& imagepath)
 		return false;
 	}
 	
-	int bd = open(imagepath.c_str(), O_RDONLY|O_CLOEXEC);
+	int bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC);
 	if(bd==-1)
 	{
 		std::cerr << "Error opening backing file " << imagepath << std::endl;
