@@ -1862,6 +1862,8 @@ bool upgrade50_51()
 	b &= db->Write("UPDATE settings_db.settings SET value='0' WHERE value='-1' "
 		"AND (key='local_speed' OR key='internet_speed' OR key='global_local_speed' OR key='global_internet_speed')");
 
+	ServerSettings::updateAll();
+
 	return b;
 }
 
