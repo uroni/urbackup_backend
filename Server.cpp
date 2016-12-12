@@ -1316,12 +1316,12 @@ void thread_helper_f(IThread *t, const std::string& name)
 #endif
 }
 #else //_WIN32
-void os_reset_io_priority();
+void os_reset_priority();
 
 void* thread_helper_f(void * t)
 {
 #ifdef __linux__
-	os_reset_io_priority();
+	os_reset_priority();
 #endif
 	IThread *tmp=(IThread*)t;
 	(*tmp)();

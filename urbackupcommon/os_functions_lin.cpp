@@ -1102,11 +1102,11 @@ bool os_disable_prioritize(SPrioInfo& prio_info)
 	return os_disable_background_priority(prio_info);
 }
 
-void os_reset_io_priority()
+void os_reset_priority()
 {
 	ioprio_set(IOPRIO_WHO_PROCESS, 0, 4 | IOPRIO_CLASS_BE << IOPRIO_CLASS_SHIFT);
+	setpriority(PRIO_PROCESS, 0, 9);
 }
-
 
 #else //__NR_ioprio_set
 
@@ -1142,7 +1142,7 @@ void assert_process_priority()
 {
 }
 
-void os_reset_io_priority()
+void os_reset_priority()
 {
 }
 
