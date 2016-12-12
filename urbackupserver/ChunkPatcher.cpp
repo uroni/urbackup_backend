@@ -104,6 +104,12 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 		curr_sparse_extent = extent_iterator->nextExtent();
 	}
 
+	unsigned int max_read = UINT_MAX;
+	if (unchanged_align != 0)
+	{
+		max_read -= UINT_MAX%unchanged_align;
+	}
+
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
 	next_header.patch_size = 0;
@@ -135,7 +141,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 			break;
 		}
 
-		unsigned int tr = UINT_MAX;
+		unsigned int tr = max_read;
 		if(next_header.patch_off!=-1)
 		{
 			_i64 hoff=next_header.patch_off-file_pos;
