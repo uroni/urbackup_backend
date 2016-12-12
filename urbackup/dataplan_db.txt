@@ -1,0 +1,2 @@
+*.web.vodafone.de 500
+*.dyn.telefonica.de -1
