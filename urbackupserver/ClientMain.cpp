@@ -155,6 +155,7 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName
 
 	session_identity_refreshtime = 0;
 	connection_metered = false;
+	do_reauthenticate = false;
 }
 
 ClientMain::~ClientMain(void)
@@ -686,6 +687,15 @@ void ClientMain::operator ()(void)
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
 				if (!authenticateIfNeeded(true, false))
+				{
+					skip_checking = true;
+				}
+			}
+
+			if (do_reauthenticate)
+			{
+				do_reauthenticate = false;
+				if (!authenticateIfNeeded(true, true))
 				{
 					skip_checking = true;
 				}
@@ -2248,6 +2258,11 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 void ClientMain::setConnectionMetered(bool b)
 {
 	connection_metered = b;
+}
+
+void ClientMain::forceReauthenticate()
+{
+	do_reauthenticate = true;
 }
 
 bool ClientMain::inBackupWindow(Backup * backup)

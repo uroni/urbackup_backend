@@ -233,6 +233,8 @@ public:
 
 	void setConnectionMetered(bool b);
 
+	void forceReauthenticate();
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -382,4 +384,6 @@ private:
 	std::vector< std::map<ImageBackup*, bool>  > running_image_groups;
 
 	volatile bool update_capa;
+
+	volatile bool do_reauthenticate;
 };

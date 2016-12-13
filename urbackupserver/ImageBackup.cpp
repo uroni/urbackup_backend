@@ -819,6 +819,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						std::string err;
 						err.resize(r-sizeof(uint64) );
 						memcpy(&err[0], &buffer[off], r-off);
+
+						if (next(err, 0, "Ident reset"))
+						{
+							client_main->forceReauthenticate();
+						}
+
 						if(pLetter!="SYSVOL" && pLetter!="ESP")
 						{
 							ServerLogger::Log(logid, "Request of image backup failed. Reason: "+err, LL_ERROR);
@@ -1460,6 +1466,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								if(err.find("|#|")!=std::string::npos)
 								{
 									err=getuntil("|#|", err);
+								}
+
+								if (next(err, 0, "Ident reset"))
+								{
+									client_main->forceReauthenticate();
 								}
 
 								ServerLogger::Log(logid, "Error on client occurred: "+err, LL_ERROR);

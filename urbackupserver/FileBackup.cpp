@@ -318,6 +318,10 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				}
 				else if(ret!="no backup dirs")
 				{
+					if (ret == "ERR")
+					{
+						client_main->forceReauthenticate();
+					}
 					logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
 					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
 					break;
