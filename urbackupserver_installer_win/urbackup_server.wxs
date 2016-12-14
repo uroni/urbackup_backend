@@ -70,8 +70,8 @@
 	<Property Id="ARPPRODUCTICON" Value="backup_ok_ico" />
 	<Property Id="ARPHELPLINK" Value="https://www.urbackup.org/" />
 	
-	<CustomAction Id="UninstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" uninstall_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="check"/>
-	<CustomAction Id="InstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" install_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="check"/>
+	<CustomAction Id="UninstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" uninstall_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="ignore"/>
+	<CustomAction Id="InstallImdisk" ExeCommand='"[URBACKUPDIR_imdisk]\runwaitw.exe" install_imdisk_silent.cmd' Directory="URBACKUPDIR_imdisk" Execute="deferred" Return="ignore"/>
 	
 	<InstallExecuteSequence>
 		<Custom Action="InstallImdisk" After="InstallFiles" >NOT Installed</Custom>
