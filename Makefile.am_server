@@ -57,7 +57,7 @@ urbackup_snapshot_helper_LDFLAGS=$(SUID_LDFLAGS) $(FORTIFY_ldflags)
 
 urbackup_mount_helper_SOURCES = mount_helper/main.cpp urbackupcommon/os_functions_lin_min.cpp stringtools.cpp 
 urbackup_mount_helper_LDADD = 
-urbackup_mount_helper_CXXFLAGS=-DOS_FUNC_NO_NET -DOS_FUNC_NO_IFACE_SERVER -DLINUX  $(WITH_FUSEPLUGIN_CXXFLAGS) 
+urbackup_mount_helper_CXXFLAGS=-DOS_FUNC_NO_NET -DOS_FUNC_NO_IFACE_SERVER -DLINUX  $(WITH_FUSEPLUGIN_CXXFLAGS) -DBINDIR='"$(bindir)"'
 urbackup_mount_helper_CFLAGS=$(SUID_CFLAGS)
 urbackup_mount_helper_CPPFLAGS=$(FORTIFY_FLAGS)
 urbackup_mount_helper_LDFLAGS=$(SUID_LDFLAGS) $(FORTIFY_ldflags)
