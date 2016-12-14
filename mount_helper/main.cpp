@@ -125,7 +125,12 @@ std::string find_urbackupsrv_cmd()
 		return urbackupsrv_cmd;
 	}
 	
-	if(exec_wait("/usr/local/bin/urbackupsrv", false, "--version", NULL)==1)
+	if(exec_wait(BINDIR "/urbackupsrv", false, "--version", NULL)==1)
+	{
+		urbackupsrv_cmd = BINDIR "/urbackupsrv";
+		return urbackupsrv_cmd;
+	}
+	else if(exec_wait("/usr/local/bin/urbackupsrv", false, "--version", NULL)==1)
 	{
 		urbackupsrv_cmd="/usr/local/bin/urbackupsrv";
 		return urbackupsrv_cmd;
