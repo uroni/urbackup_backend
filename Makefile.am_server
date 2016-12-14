@@ -1,5 +1,4 @@
 ACLOCAL_AMFLAGS = -I m4
-sbin_PROGRAMS = urbackupsrv
 bin_PROGRAMS = urbackupsrv urbackup_snapshot_helper urbackup_mount_helper
 urbackupsrv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c sqlite/shell.c SQLiteFactory.cpp PipeThrottler.cpp mt19937ar.cpp DatabaseCursor.cpp SharedMutex_lin.cpp StaticPluginRegistration.cpp common/data.cpp common/adler32.cpp common/miniz.c
 
