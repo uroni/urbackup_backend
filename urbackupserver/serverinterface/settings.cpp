@@ -573,16 +573,19 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		group_id = watoi(res[0]["value"])*-1;
 	}
 
-	q_get->Bind("overwrite");
-	res=q_get->Read();
-	q_get->Reset();
-	if(res.empty() || res[0]["value"]!="true")
-		clientid = group_id;
+	if (clientid >= 0)
+	{
+		q_get->Bind("overwrite");
+		res = q_get->Read();
+		q_get->Reset();
+		if (res.empty() || res[0]["value"] != "true")
+			clientid = group_id;
 
-	q_get->Bind("overwrite_archive_settings");
-	res=q_get->Read();
-	if(res.empty() || res[0]["value"]!="true")
-		clientid = group_id;
+		q_get->Bind("overwrite_archive_settings");
+		res = q_get->Read();
+		if (res.empty() || res[0]["value"] != "true")
+			clientid = group_id;
+	}
 
 	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
