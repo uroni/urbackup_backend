@@ -93,6 +93,7 @@ public:
 	std::vector<int> getClientsSortImagebackups(void);
 	std::vector<SImageLetter> getFullNumImages(int clientid);
 	std::vector<SImageRef> getImageRefs(int incremental_ref);
+	std::vector<SImageRef> getImageRefsReverse(int backupid);
 	CondInt getImageClientId(int id);
 	CondInt getFileBackupClientId(int id);
 	CondString getImageClientname(int id);
@@ -114,6 +115,7 @@ public:
 	CondInt getParentImageBackup(int assoc_id);
 	CondInt getImageArchived(int backupid);
 	std::vector<int> getAssocImageBackups(int img_id);
+	std::vector<int> getAssocImageBackupsReverse(int assoc_id);
 	CondInt64 getImageSize(int backupid);
 	std::vector<SClientInfo> getClients(void);
 	std::vector<SFileBackupInfo> getFileBackupsOfClient(int clientid);
@@ -147,6 +149,7 @@ private:
 	IQuery* q_getClientsSortImagebackups;
 	IQuery* q_getFullNumImages;
 	IQuery* q_getImageRefs;
+	IQuery* q_getImageRefsReverse;
 	IQuery* q_getImageClientId;
 	IQuery* q_getFileBackupClientId;
 	IQuery* q_getImageClientname;
@@ -168,6 +171,7 @@ private:
 	IQuery* q_getParentImageBackup;
 	IQuery* q_getImageArchived;
 	IQuery* q_getAssocImageBackups;
+	IQuery* q_getAssocImageBackupsReverse;
 	IQuery* q_getImageSize;
 	IQuery* q_getClients;
 	IQuery* q_getFileBackupsOfClient;

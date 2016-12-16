@@ -1129,6 +1129,9 @@ namespace
 		std::vector<ServerCleanupDao::SImageRef> refs = cleanup_dao.getImageRefs(backupid);
 		for (size_t i = 0; i < refs.size(); ++i)
 		{
+			std::vector<ServerCleanupDao::SImageRef> new_refs = cleanup_dao.getImageRefs(refs[i].id);
+			refs.insert(refs.end(), new_refs.begin(), new_refs.end());
+
 			if (mark_only)
 			{
 				q->Bind(refs[i].id);
@@ -1180,6 +1183,52 @@ namespace
 		}
 
 		return std::string();
+	}
+
+	void unmarkImageBackup(IDatabase* db, int backupid, int clientid)
+	{
+		ServerCleanupDao cleanup_dao(db);
+		if (cleanup_dao.getImageClientId(backupid).value != clientid)
+		{
+			return;
+		}
+
+		IQuery *q = db->Prepare("UPDATE backup_images SET delete_pending=0 WHERE id=? AND clientid=?");
+
+		std::vector<int> assoc_images = cleanup_dao.getAssocImageBackups(backupid);
+		for (size_t i = 0; i < assoc_images.size(); ++i)
+		{
+			q->Bind(assoc_images[i]);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+
+		assoc_images = cleanup_dao.getAssocImageBackupsReverse(backupid);
+		for (size_t i = 0; i < assoc_images.size(); ++i)
+		{
+			q->Bind(assoc_images[i]);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+
+		std::vector<ServerCleanupDao::SImageRef> refs = cleanup_dao.getImageRefsReverse(backupid);
+		for (size_t i = 0; i < refs.size(); ++i)
+		{
+			std::vector<ServerCleanupDao::SImageRef> new_refs = cleanup_dao.getImageRefsReverse(refs[i].id);
+			refs.insert(refs.end(), new_refs.begin(), new_refs.end());
+
+			q->Bind(refs[i].id);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+
+		q->Bind(backupid);
+		q->Bind(clientid);
+		q->Write();
+		q->Reset();
 	}
 } // unnamed namespace
 
@@ -1416,19 +1465,19 @@ ACTION_IMPL(backups)
 					}
 					if (CURRP.find("stop_delete") != CURRP.end())
 					{
-						std::string tbl = "backups";
-
 						int stop_delete_id = watoi(CURRP["stop_delete"]);
 						if (stop_delete_id < 0)
 						{
-							tbl = "backup_images";
 							stop_delete_id *= -1;
+							unmarkImageBackup(db, stop_delete_id, t_clientid);
 						}
-
-						IQuery *q = db->Prepare("UPDATE " + tbl + " SET delete_pending=0 WHERE id=? AND clientid=?");
-						q->Bind(stop_delete_id);
-						q->Bind(t_clientid);
-						q->Write();
+						else
+						{
+							IQuery *q = db->Prepare("UPDATE backups SET delete_pending=0 WHERE id=? AND clientid=?");
+							q->Bind(stop_delete_id);
+							q->Bind(t_clientid);
+							q->Write();
+						}
 					}
 					if (CURRP.find("delete_now") != CURRP.end())
 					{

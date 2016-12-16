@@ -214,6 +214,34 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incr
 
 /**
 * @-SQLGenAccess
+* @func std::vector<SImageRef> ServerCleanupDao::getImageRefsReverse
+* @return int id, int complete, int archived
+* @sql
+*	SELECT id, complete, archived FROM backup_images
+*	WHERE id = (SELECT incremental_ref FROM backup_images WHERE id=:backupid(int))
+*/
+std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefsReverse(int backupid)
+{
+	if(q_getImageRefsReverse==NULL)
+	{
+		q_getImageRefsReverse=db->Prepare("SELECT id, complete, archived FROM backup_images WHERE id = (SELECT incremental_ref FROM backup_images WHERE id=?)", false);
+	}
+	q_getImageRefsReverse->Bind(backupid);
+	db_results res=q_getImageRefsReverse->Read();
+	q_getImageRefsReverse->Reset();
+	std::vector<ServerCleanupDao::SImageRef> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi(res[i]["id"]);
+		ret[i].complete=watoi(res[i]["complete"]);
+		ret[i].archived=watoi(res[i]["archived"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func string ServerCleanupDao::getImageClientId
 * @return int clientid
 * @sql
@@ -742,6 +770,32 @@ std::vector<int> ServerCleanupDao::getAssocImageBackups(int img_id)
 
 /**
 * @-SQLGenAccess
+* @func vector<int> ServerCleanupDao::getAssocImageBackupsReverse
+* @return int img_id
+* @sql
+*	SELECT img_id FROM assoc_images WHERE assoc_id=:assoc_id(int)
+*/
+std::vector<int> ServerCleanupDao::getAssocImageBackupsReverse(int assoc_id)
+{
+	if(q_getAssocImageBackupsReverse==NULL)
+	{
+		q_getAssocImageBackupsReverse=db->Prepare("SELECT img_id FROM assoc_images WHERE assoc_id=?", false);
+	}
+	q_getAssocImageBackupsReverse->Bind(assoc_id);
+	db_results res=q_getAssocImageBackupsReverse->Read();
+	q_getAssocImageBackupsReverse->Reset();
+	std::vector<int> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=watoi(res[i]["img_id"]);
+	}
+	return ret;
+}
+
+
+/**
+* @-SQLGenAccess
 * @func int64 ServerCleanupDao::getImageSize
 * @return int64 size_bytes
 * @sql
@@ -1186,6 +1240,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getClientsSortImagebackups=NULL;
 	q_getFullNumImages=NULL;
 	q_getImageRefs=NULL;
+	q_getImageRefsReverse=NULL;
 	q_getImageClientId=NULL;
 	q_getFileBackupClientId=NULL;
 	q_getImageClientname=NULL;
@@ -1207,6 +1262,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getParentImageBackup=NULL;
 	q_getImageArchived=NULL;
 	q_getAssocImageBackups=NULL;
+	q_getAssocImageBackupsReverse=NULL;
 	q_getImageSize=NULL;
 	q_getClients=NULL;
 	q_getFileBackupsOfClient=NULL;
@@ -1236,6 +1292,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getClientsSortImagebackups);
 	db->destroyQuery(q_getFullNumImages);
 	db->destroyQuery(q_getImageRefs);
+	db->destroyQuery(q_getImageRefsReverse);
 	db->destroyQuery(q_getImageClientId);
 	db->destroyQuery(q_getFileBackupClientId);
 	db->destroyQuery(q_getImageClientname);
@@ -1257,6 +1314,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getParentImageBackup);
 	db->destroyQuery(q_getImageArchived);
 	db->destroyQuery(q_getAssocImageBackups);
+	db->destroyQuery(q_getAssocImageBackupsReverse);
 	db->destroyQuery(q_getImageSize);
 	db->destroyQuery(q_getClients);
 	db->destroyQuery(q_getFileBackupsOfClient);
