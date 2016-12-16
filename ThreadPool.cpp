@@ -36,7 +36,9 @@ namespace
 	void checkThreadPriority()
 	{
 #if defined(_WIN32) && defined(_DEBUG)
-		assert(GetThreadPriority(GetCurrentThread()) == THREAD_PRIORITY_NORMAL);
+		int thread_prio = GetThreadPriority(GetCurrentThread());
+		assert(thread_prio== THREAD_PRIORITY_ERROR_RETURN 
+			|| thread_prio == THREAD_PRIORITY_NORMAL);
 #elif defined(__linux__)
 		assert_process_priority();
 #endif
