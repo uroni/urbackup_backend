@@ -121,10 +121,10 @@ ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::string clie
 std::vector<ImageBackup::SImageDependency> ImageBackup::getDependencies(bool reset)
 {
 	IScopedLock lock(mutex.get());
-	std::vector<ImageBackup::SImageDependency> ret = dependencies;
+	std::vector<ImageBackup::SImageDependency> ret = ret_dependencies;
 	if (reset)
 	{
-		dependencies.clear();
+		ret_dependencies.clear();
 	}
 	return ret;
 }
@@ -1404,7 +1404,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								backup_dao->addImageSizeToClient(clientid, image_size);
 								if(!vhdfile_err)
 								{
-									if (dependencies.empty())
+									if ( dependencies.empty()
+										 && set_complete )
 									{
 										backup_dao->setImageBackupComplete(backupid);
 									}
@@ -2190,6 +2191,9 @@ bool ImageBackup::readShadowData(const std::string & shadowdata)
 
 	IScopedLock lock(mutex.get());
 
+	snapshot_group_loginfo.clear();
+	dependencies.clear();
+
 	SImageDependency dep;
 	while (rdata.getStr(&dep.volume)
 		&& rdata.getVarInt(&dep.snapshot_id))
@@ -2203,6 +2207,8 @@ bool ImageBackup::readShadowData(const std::string & shadowdata)
 
 		snapshot_group_loginfo += dep.volume;
 	}
+
+	ret_dependencies = dependencies;
 
 	ServerLogger::Log(logid, "Image backup is being backed up in a snapshot group together with volumes " + snapshot_group_loginfo, LL_INFO);
 

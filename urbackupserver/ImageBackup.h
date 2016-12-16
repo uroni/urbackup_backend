@@ -79,6 +79,7 @@ protected:
 	THREADPOOL_TICKET pingthread_ticket;
 
 	std::vector<SImageDependency> dependencies;
+	std::vector<SImageDependency> ret_dependencies;
 
 	bool set_complete;
 
