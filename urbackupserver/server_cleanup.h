@@ -194,7 +194,7 @@ private:
 	logid_t logid;
 
 	static IMutex* cleanup_lock_mutex;
-	static std::set<int> locked_images;
+	static std::map<int, size_t> locked_images;
 
 	static bool allow_clientlist_deletion;
 };

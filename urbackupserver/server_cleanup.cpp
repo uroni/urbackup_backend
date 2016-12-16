@@ -53,7 +53,7 @@ IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
 volatile bool ServerCleanupThread::do_quit=false;
 bool ServerCleanupThread::update_stats_disabled = false;
-std::set<int> ServerCleanupThread::locked_images;
+std::map<int, size_t> ServerCleanupThread::locked_images;
 IMutex* ServerCleanupThread::cleanup_lock_mutex = NULL;
 bool ServerCleanupThread::allow_clientlist_deletion = true;
 
@@ -1562,7 +1562,7 @@ namespace
 
 				if (total > 0)
 				{
-					int done_pc = (pos*100) / total;
+					int done_pc = static_cast<int>((pos*100) / total);
 					ServerStatus::setProcessPcDone(std::string(), status_id, done_pc);
 				}
 
@@ -1809,16 +1809,21 @@ void ServerCleanupThread::doQuit(void)
 void ServerCleanupThread::lockImageFromCleanup(int backupid)
 {
 	IScopedLock lock(cleanup_lock_mutex);
-	locked_images.insert(backupid);
+	++locked_images[backupid];
 }
 
 void ServerCleanupThread::unlockImageFromCleanup(int backupid)
 {
 	IScopedLock lock(cleanup_lock_mutex);
-	std::set<int>::iterator it = locked_images.find(backupid);
+	std::map<int, size_t>::iterator it = locked_images.find(backupid);
 	if (it != locked_images.end())
 	{
-		locked_images.erase(it);
+		assert(it->second > 0);
+		--it->second;
+		if (it->second == 0)
+		{
+			locked_images.erase(it);
+		}
 	}
 }
 
