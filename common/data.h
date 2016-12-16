@@ -19,12 +19,12 @@ public:
 	void addUInt64(uint64 ta);
 	void addFloat(float ta);
 	void addUShort(unsigned short ta);
-	void addString(std::string ta);
+	void addString(const std::string& ta);
+	void addString2(const std::string& ta);
 	void addChar(char ta);
 	void addUChar(unsigned char ta);
 	void addVoidPtr(void *ptr);
 	void addBuffer(const char* buffer, size_t bsize);
-
 	void addVarInt(int64 ta);
 
 	void clear();
@@ -49,6 +49,7 @@ public:
 	bool getFloat(float *ret);
 	bool getUShort( unsigned short *ret);
 	bool getStr(std::string *ret);
+	bool getStr2(std::string *ret);
 	bool getChar(char *ret);
 	bool getUChar(unsigned char *ret);
 	bool getVoidPtr(void **ret);

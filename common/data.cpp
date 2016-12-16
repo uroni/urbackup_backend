@@ -338,90 +338,75 @@ unsigned long CWData::getDataSize(void)
 void CWData::addInt(int ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(int) );
-	memcpy(&data[cpos],&ta,sizeof(int) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta)+sizeof(int));
 }
 
 void CWData::addUInt(unsigned int ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(unsigned int) );
-	memcpy(&data[cpos],&ta,sizeof(unsigned int) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(unsigned int));
 }
 
 void CWData::addInt64(_i64 ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(_i64) );
-	memcpy(&data[cpos],&ta,sizeof(_i64) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(_i64));
 }
 
 void CWData::addUInt64(uint64 ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(uint64) );
-	memcpy(&data[cpos],&ta,sizeof(uint64) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(uint64));
 }
 
 void CWData::addFloat(float ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(float) );
-	memcpy(&data[cpos],&ta,sizeof(float) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(float));
 }
 
 void CWData::addUShort(unsigned short ta)
 {
 	ta=little_endian(ta);
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(unsigned short) );
-	memcpy(&data[cpos],&ta,sizeof(unsigned short) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(unsigned short));
 }	
 
-void CWData::addString(std::string ta)
+void CWData::addString(const std::string& ta)
 {
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(unsigned int)+ta.size() );
-	unsigned int len=little_endian((unsigned int)ta.size());
-	memcpy(&data[cpos], &len, sizeof(unsigned int) );
-	cpos+=sizeof(unsigned int);
+	addUInt(static_cast<unsigned int>(ta.size()));
 	if(!ta.empty())
 	{
-		memcpy(&data[cpos],ta.c_str(), ta.size() );
+		data.insert(data.end(), ta.begin(), ta.end());
+	}
+}
+
+void CWData::addString2(const std::string& ta)
+{
+	addVarInt(ta.size());
+	if (!ta.empty())
+	{
+		data.insert(data.end(), ta.begin(), ta.end());
 	}
 }
 
 void CWData::addChar(char ta)
 {
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(char) );
-	data[cpos]=ta;
+	data.insert(data.end(), ta);
 }
 
 void CWData::addUChar(unsigned char ta)
 {
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(unsigned char) );
-	data[cpos]=ta;
+	data.insert(data.end(), static_cast<char>(ta));
 }
 
 void CWData::addVoidPtr(void* ta)
 {
-	size_t cpos=data.size();
-	data.resize(cpos+sizeof(void*) );
-	memcpy(&data[cpos],&ta,sizeof(void*) );
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(void*));
 }
 
 void CWData::addBuffer(const char* buffer, size_t bsize)
 {
-	size_t cpos=data.size();
-	data.resize(cpos+bsize);
-	memcpy(&data[cpos], buffer, bsize);
+	data.insert(data.end(), buffer, buffer + bsize);
 }
 
 void CWData::clear()
@@ -465,7 +450,7 @@ void CRData::set(const char* c,size_t datalength, bool pCopy)
 		if( data!=NULL )
 			delete [] data;
 		data=new char[datalen];
-		memcpy((void*)data, c, datalen);
+		memcpy(const_cast<char*>(data), c, datalen);
 	}
 	streampos=0;
 }
@@ -477,7 +462,7 @@ CRData::CRData(const std::string *str)
 
 CRData::~CRData()
 {
-	if( copy==true )
+	if( copy )
 		delete []data;
 }
 
@@ -548,16 +533,11 @@ bool CRData::getUShort( unsigned short *ret)
 
 bool CRData::getStr(std::string *ret)
 {
-	if(streampos+sizeof(unsigned int)>datalen )
+	unsigned int strlen;
+	if (!getUInt(&strlen))
 	{
 		return false;
 	}
-
-	unsigned int strlen;
-	memcpy(&strlen,&data[streampos], sizeof(unsigned int) );
-	streampos+=sizeof(unsigned int);
-
-	strlen = little_endian(strlen);
 
 	if(strlen>10*1024*1024)
 	{
@@ -571,14 +551,43 @@ bool CRData::getStr(std::string *ret)
 
 	if(strlen>0)
 	{
-		ret->resize(strlen);
-		memcpy((char*)ret->c_str(), &data[streampos], strlen);
+		ret->assign(&data[streampos], strlen);
 	}
 	else
 	{
 		ret->clear();
 	}
 	streampos+=strlen;
+	return true;
+}
+
+bool CRData::getStr2(std::string *ret)
+{
+	int64 strlen;
+	if (!getVarInt(&strlen))
+	{
+		return false;
+	}
+
+	if (strlen>10 * 1024 * 1024)
+	{
+		return false;
+	}
+
+	if (streampos + strlen>datalen)
+	{
+		return false;
+	}
+
+	if (strlen>0)
+	{
+		ret->assign(&data[streampos], strlen);
+	}
+	else
+	{
+		ret->clear();
+	}
+	streampos += strlen;
 	return true;
 }
 
@@ -629,17 +638,17 @@ bool CRData::getVarInt( int64* ret )
 
 unsigned int CRData::getSize(void)
 {
-	return (unsigned int)datalen;
+	return static_cast<unsigned int>(datalen);
 }
 
 unsigned int CRData::getLeft(void)
 {
-	return (unsigned int)(datalen-streampos);
+	return static_cast<unsigned int>(datalen - streampos);
 }
 
 unsigned int CRData::getStreampos(void)
 {
-	return (unsigned int)streampos;
+	return static_cast<unsigned int>(streampos);
 }
 
 const char *CRData::getDataPtr(void)
@@ -662,7 +671,7 @@ void CRData::setStreampos(unsigned int spos)
 
 bool CRData::incrementPtr(unsigned int amount)
 {
-	if((unsigned int)amount>getLeft())
+	if(amount>getLeft())
 		return false;
 
 	streampos+=amount;
