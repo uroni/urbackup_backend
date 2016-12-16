@@ -81,7 +81,8 @@ BackupServer::~BackupServer()
 void BackupServer::operator()(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
-	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings",
+		"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 
 	setupUseTreeHashing();
 
@@ -675,7 +676,8 @@ BackupServer::ESnapshotMethod BackupServer::getSnapshotMethod()
 
 void BackupServer::testSnapshotAvailability(IDatabase *db)
 {
-	ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
+	ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings",
+		"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 	Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
 
 	std::string snapshot_helper_cmd=Server->getServerParameter("snapshot_helper");
@@ -997,7 +999,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 		ServerLogger::Log(logid, "Deleting file backup "+backupinfo+"...", LL_WARNING);
 		Server->getThreadPool()->executeWait(
-			new ServerCleanupThread(CleanupAction(backupfolder, watoi(res["clientid"]), watoi(res["backupid"]), true)),
+			new ServerCleanupThread(CleanupAction(backupfolder, watoi(res["clientid"]), watoi(res["backupid"]), true, NULL)),
 			"delete fbackup");
 	}
 

@@ -1790,14 +1790,20 @@ function prepareBackupObj(data, obj, image)
 	if(data.can_archive)
 	{
 		if( obj.archived>0 )
+		{
 			obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
+			obj.is_archived=true;
+		}
 		else
 			obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
 	}
 	else
 	{
 		if( obj.archived>0 )
+		{
 			obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
+			obj.is_archived=true;
+		}
 		else
 			obj.archived='☐';
 	}
@@ -1827,6 +1833,26 @@ function show_backups2(data)
 	if(data.session && g.session.length==0)
 	{
 		g.session=data.session;
+	}
+	
+	if(data.delete_err)
+	{
+		var errmsg=trans(data.delete_err);
+		if(errmsg==null)
+		{
+			errmsg=data.delete_err;
+		}
+		alert(trans("delete_err")+errmsg);
+	}
+	
+	if(data.delete_now_err)
+	{
+		var errmsg=trans(data.delete_now_err);
+		if(errmsg==null)
+		{
+			errmsg=data.delete_now_err;
+		}
+		alert(trans("delete_now_err")+errmsg);
 	}
 	
 	if(data.err)
@@ -1873,7 +1899,15 @@ function show_backups2(data)
 			show_client_breadcrumb=true;
 		}
 		
-		ndata=dustRender("backups_backups", {backups: data.backups, backup_images: data.backup_images, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
+		var has_actions=false;
+		if(data.can_delete)
+		{
+			has_actions=true;
+		}	
+		
+		ndata=dustRender("backups_backups", {backups: data.backups, backup_images: data.backup_images, ses: g.session, 
+					clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb,
+					has_actions: has_actions, can_delete: data.can_delete});
 	}
 	else if(data.files && !data.single_item)
 	{
@@ -1991,7 +2025,7 @@ function show_backups2(data)
 		{
 			image_backup_info = [prepareBackupObj(data, data.image_backup_info)];
 			image_backup_info[0].volume_size = format_size(image_backup_info[0].volume_size);
-		}
+		}	
 		
 		var folder_path = encodeURIComponent(path).replace(/'/g,"%27");
 		var obj = {files: data.files, can_mount: data.can_mount, os_mount: data.os_mount, no_files: data.no_files,
@@ -4669,6 +4703,21 @@ function archive_single(backupid, clientid)
 {
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=backups&clientid="+clientid+"&archive="+backupid, show_backups2);
+}
+function deleteBackup(clientid, backupid)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=backups&clientid="+clientid+"&delete="+backupid, show_backups2);
+}
+function stopDeleteBackup(clientid, backupid)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=backups&clientid="+clientid+"&stop_delete="+backupid, show_backups2);
+}
+function deleteBackupNow(clientid, backupid)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=backups&clientid="+clientid+"&delete_now="+backupid, show_backups2);
 }
 function addArchiveItem(global)
 {

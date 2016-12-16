@@ -1487,7 +1487,15 @@ translations.en = {
 "Kbit/s": "Kbit/s",
 "Mbit/s": "Mbit/s",
 "Gbit/s": "Gbit/s",
-"Tbit/s": "Tbit/s"
+"Tbit/s": "Tbit/s",
+"delete_err": "Error marking backup for deletion: ",
+"delete_now_err": "Error deleting backup: ",
+"image_locked": "Image backup is currently in use",
+"locked_ref": "Incremental image backup based on this backup is currently in use",
+"incomplete_ref": "Incremental image backup based on this backup is currently running",
+"archived_ref": "Image backup dependant on this backup is archived",
+"remove_image_failed": "See server log file for details",
+"delete_file_backup_failed": "See server log file for details"
 }
 translations.en_US = {
 "tInfos": "About"

@@ -1867,6 +1867,18 @@ bool upgrade50_51()
 	return b;
 }
 
+bool upgrade51_52()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE backups ADD delete_pending INTEGER");
+	b &= db->Write("ALTER TABLE backup_images ADD delete_pending INTEGER");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1888,7 +1900,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=51;
+	int max_v=52;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2177,6 +2189,13 @@ void upgrade(void)
 				break;
 			case 50:
 				if (!upgrade50_51())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 51:
+				if (!upgrade51_52())
 				{
 					has_error = true;
 				}

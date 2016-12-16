@@ -67,6 +67,7 @@ public:
 	{
 		int id;
 		int complete;
+		int archived;
 	};
 	struct SIncompleteFileBackup
 	{
@@ -86,11 +87,14 @@ public:
 
 
 	std::vector<SIncompleteImages> getIncompleteImages(void);
+	std::vector<SIncompleteImages> getDeletePendingImages(void);
 	void removeImage(int id);
 	std::vector<int> getClientsSortFilebackups(void);
 	std::vector<int> getClientsSortImagebackups(void);
 	std::vector<SImageLetter> getFullNumImages(int clientid);
 	std::vector<SImageRef> getImageRefs(int incremental_ref);
+	CondInt getImageClientId(int id);
+	CondInt getFileBackupClientId(int id);
 	CondString getImageClientname(int id);
 	CondString getImagePath(int id);
 	std::vector<SImageLetter> getIncrNumImages(int clientid);
@@ -108,6 +112,7 @@ public:
 	std::vector<SImageBackupInfo> getClientImages(int clientid);
 	std::vector<int> getClientFileBackups(int clientid);
 	CondInt getParentImageBackup(int assoc_id);
+	CondInt getImageArchived(int backupid);
 	std::vector<int> getAssocImageBackups(int img_id);
 	CondInt64 getImageSize(int backupid);
 	std::vector<SClientInfo> getClients(void);
@@ -119,6 +124,7 @@ public:
 	void cleanupBackupLogs(void);
 	void cleanupAuthLog(void);
 	std::vector<SIncompleteFileBackup> getIncompleteFileBackups(void);
+	std::vector<SIncompleteFileBackup> getDeletePendingFileBackups(void);
 	std::vector<SHistItem> getClientHistory(const std::string& back_start, const std::string& back_stop, const std::string& date_grouping);
 	void deleteClientHistoryIds(const std::string& back_start, const std::string& back_stop);
 	void deleteClientHistoryItems(const std::string& back_start, const std::string& back_stop);
@@ -135,11 +141,14 @@ private:
 
 	//@-SQLGenVariablesBegin
 	IQuery* q_getIncompleteImages;
+	IQuery* q_getDeletePendingImages;
 	IQuery* q_removeImage;
 	IQuery* q_getClientsSortFilebackups;
 	IQuery* q_getClientsSortImagebackups;
 	IQuery* q_getFullNumImages;
 	IQuery* q_getImageRefs;
+	IQuery* q_getImageClientId;
+	IQuery* q_getFileBackupClientId;
 	IQuery* q_getImageClientname;
 	IQuery* q_getImagePath;
 	IQuery* q_getIncrNumImages;
@@ -157,6 +166,7 @@ private:
 	IQuery* q_getClientImages;
 	IQuery* q_getClientFileBackups;
 	IQuery* q_getParentImageBackup;
+	IQuery* q_getImageArchived;
 	IQuery* q_getAssocImageBackups;
 	IQuery* q_getImageSize;
 	IQuery* q_getClients;
@@ -168,6 +178,7 @@ private:
 	IQuery* q_cleanupBackupLogs;
 	IQuery* q_cleanupAuthLog;
 	IQuery* q_getIncompleteFileBackups;
+	IQuery* q_getDeletePendingFileBackups;
 	IQuery* q_getClientHistory;
 	IQuery* q_deleteClientHistoryIds;
 	IQuery* q_deleteClientHistoryItems;

@@ -15,6 +15,7 @@
 				<th>{tIncremental}</th>
 				<th>{tSize}</th>
 				<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
+				{?has_actions}<th>{tActions}</th>{/has_actions}
 			</tr>
 			{#backups}
 				<tr onclick="tabMouseClickBackups({clientid}, {id})" style="cursor: pointer">
@@ -23,6 +24,20 @@
 					<td>{incr}</td>
 					<td>{size_bytes}</td>
 					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
+					{?has_actions}
+						<th onclick="g.no_tab_mouse_click=true; return false;">
+							{^is_archived}
+							{?can_delete}
+								{?delete_pending}
+									<a class="btn btn-sm btn-primary" href="#" onclick="stopDeleteBackup({clientid}, {id}); return false;">{tBackup is marked for deletion. Do not delete}</a>
+									<a class="btn btn-xs btn-danger" href="#" onclick="deleteBackupNow({clientid}, {id}); return false;"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> {tDelete now}</a>
+								{:else}
+									<a class="btn btn-xs btn-danger" href="#" onclick="deleteBackup({clientid}, {id}); return false;"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> {tDelete}</a>
+								{/delete_pending}
+							{/can_delete}
+							{/is_archived}
+						</th>
+					{/has_actions}
 				</tr>
 			{/backups}
 		</table>
@@ -38,6 +53,7 @@
 				<th>{tIncremental}</th>				
 				<th>{tSize}</th>
 				<th>{tArchived}<a href="help.htm#archived" target="_blank">?</a></th>
+				{?has_actions}<th>{tActions}</th>{/has_actions}
 			</tr>
 			{#backup_images}
 				<tr onclick="tabMouseClickBackups({clientid}, -{id})" style="cursor: pointer">
@@ -47,6 +63,20 @@
 					<td>{incr}</td>
 					<td>{size_bytes}</td>
 					<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
+					{?has_actions}
+						<th onclick="g.no_tab_mouse_click=true; return false;">
+							{^is_archived}
+							{?can_delete}
+								{?delete_pending}
+									<a class="btn btn-sm btn-primary" href="#" onclick="stopDeleteBackup({clientid}, -{id}); return false;">{tBackup is marked for deletion. Do not delete}</a>
+									<a class="btn btn-xs btn-danger" href="#" onclick="deleteBackupNow({clientid}, -{id}); return false;"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> {tDelete now}</a>
+								{:else}
+									<a class="btn btn-xs btn-danger" href="#" onclick="deleteBackup({clientid}, -{id}); return false;"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> {tDelete}</a>
+								{/delete_pending}
+							{/can_delete}
+							{/is_archived}
+						</th>
+					{/has_actions}
 				</tr>
 			{/backup_images}
 		</table>

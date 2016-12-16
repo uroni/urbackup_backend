@@ -101,8 +101,22 @@ void ServerCleanupThread::operator()(void)
 		switch(cleanup_action.action)
 		{
 		case ECleanupAction_DeleteFilebackup:
-			deleteFileBackup(cleanup_action.backupfolder, cleanup_action.clientid, cleanup_action.backupid, cleanup_action.force_remove);
-			break;
+		{
+			bool b = deleteFileBackup(cleanup_action.backupfolder, cleanup_action.clientid, cleanup_action.backupid, cleanup_action.force_remove);
+			if (cleanup_action.result != NULL)
+			{
+				*cleanup_action.result = b;
+			}
+		}	break;
+		case ECleanupAction_DeleteImagebackup:
+		{
+			ServerSettings settings(db);
+			bool b =removeImage(cleanup_action.backupid, &settings, true, cleanup_action.force_remove, true, true);
+			if (cleanup_action.result != NULL)
+			{
+				*cleanup_action.result = b;
+			}
+		}	break;
 		case ECleanupAction_FreeMinspace:
 			{
 				ScopedProcess nightly_cleanup(std::string(), sa_emergency_cleanup, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
@@ -170,7 +184,8 @@ void ServerCleanupThread::operator()(void)
 
 	{
 		ScopedActiveThread sat;
-		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
+		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings",
+			"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 		if( settings->getValue("autoshutdown", "false")=="true" )
 		{
 			IScopedLock lock(a_mutex);
@@ -288,7 +303,8 @@ void ServerCleanupThread::operator()(void)
 			{
 				IScopedLock lock(a_mutex);
 
-				ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
+				ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings",
+					"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 
 				ScopedActiveThread sat;
 
@@ -861,9 +877,19 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			ServerLogger::Log(logid, "Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
-		else if(findUncompleteImageRef(backupid) )
+		else if(findUncompleteImageRef(cleanupdao.get(), backupid) )
 		{		
 			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
+			notit.push_back(backupid);
+		}
+		else if (findLockedImageRef(cleanupdao.get(), backupid))
+		{
+			ServerLogger::Log(logid, "Backup image has dependent image which is currently locked from cleanup");
+			notit.push_back(backupid);
+		}
+		else if (findArchivedImageRef(cleanupdao.get(), backupid))
+		{
+			ServerLogger::Log(logid, "Backup image has dependent image which is currently archived");
 			notit.push_back(backupid);
 		}
 		else
@@ -913,9 +939,19 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 			ServerLogger::Log(logid, "Backup image is locked from cleanup");
 			notit.push_back(backupid);
 		}
-		else if (findUncompleteImageRef(backupid))
+		else if (findUncompleteImageRef(cleanupdao.get(), backupid))
 		{
 			ServerLogger::Log(logid, "Backup image has dependent image which is not complete");
+			notit.push_back(backupid);
+		}
+		else if (findLockedImageRef(cleanupdao.get(), backupid))
+		{
+			ServerLogger::Log(logid, "Backup image has dependent image which is currently locked from cleanup");
+			notit.push_back(backupid);
+		}
+		else if (findArchivedImageRef(cleanupdao.get(), backupid))
+		{
+			ServerLogger::Log(logid, "Backup image has dependent image which is currently archived");
 			notit.push_back(backupid);
 		}
 		else
@@ -958,6 +994,29 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 				ServerLogger::Log(logid, "Deleting incomplete image \"" + incomplete_images[i].path + "\" failed.", LL_WARNING);
 			}
 			cleanupdao->removeImage(incomplete_images[i].id);
+		}
+	}
+
+	std::vector<ServerCleanupDao::SIncompleteImages> delete_pending_images = cleanupdao->getDeletePendingImages();
+
+	if (!delete_pending_images.empty())
+	{
+		ServerSettings settings(db);
+
+		for (size_t i = 0; i < delete_pending_images.size(); ++i)
+		{
+			if ( !isImageLockedFromCleanup(delete_pending_images[i].id)
+					&& !findLockedImageRef(cleanupdao.get(), delete_pending_images[i].id)
+					&& !findUncompleteImageRef(cleanupdao.get(), delete_pending_images[i].id)
+					&& !findArchivedImageRef(cleanupdao.get(), delete_pending_images[i].id)
+					&& cleanupdao->getImageArchived(delete_pending_images[i].id).value==0 )
+			{
+				ServerLogger::Log(logid, "Deleting image file \"" + incomplete_images[i].path + "\" because it was manually set to be deleted...", LL_INFO);
+				if (!removeImage(delete_pending_images[i].id, &settings, true, false, true, true))
+				{
+					ServerLogger::Log(logid, "Deleting image \"" + incomplete_images[i].path + "\" (manually set to be deleted) failed.", LL_WARNING);
+				}
+			}
 		}
 	}
 
@@ -1090,13 +1149,49 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 	return ret;
 }
 
-bool ServerCleanupThread::findUncompleteImageRef(int backupid)
+bool ServerCleanupThread::findUncompleteImageRef(ServerCleanupDao* cleanupdao, int backupid)
 {
 	std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
 
 	for(size_t i=0;i<refs.size();++i)
 	{
-		if( refs[i].complete!=1 || findUncompleteImageRef(refs[i].id) )
+		if( refs[i].complete!=1 
+			|| findUncompleteImageRef(cleanupdao, refs[i].id) )
+			return true;
+	}
+	return false;
+}
+
+bool ServerCleanupThread::findLockedImageRef(ServerCleanupDao* cleanupdao, int backupid)
+{
+	std::vector<ServerCleanupDao::SImageRef> refs = cleanupdao->getImageRefs(backupid);
+
+	for (size_t i = 0; i<refs.size(); ++i)
+	{
+		if (ServerCleanupThread::isImageLockedFromCleanup(refs[i].id)
+			|| findLockedImageRef(cleanupdao, refs[i].id))
+			return true;
+	}
+	return false;
+}
+
+bool ServerCleanupThread::findArchivedImageRef(ServerCleanupDao* cleanupdao, int backupid)
+{
+	std::vector<int> assoc = cleanupdao->getAssocImageBackups(backupid);
+	for (size_t i = 0; i < assoc.size(); ++i)
+	{
+		if (cleanupdao->getImageArchived(assoc[i]).value == 1)
+		{
+			return true;
+		}
+	}
+
+	std::vector<ServerCleanupDao::SImageRef> refs = cleanupdao->getImageRefs(backupid);
+
+	for (size_t i = 0; i<refs.size(); ++i)
+	{
+		if (refs[i].archived==1
+			|| findArchivedImageRef(cleanupdao, refs[i].id))
 			return true;
 	}
 	return false;
@@ -1224,6 +1319,7 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 	ServerSettings settings(db);
 
 	delete_incomplete_file_backups();
+	delete_pending_file_backups();
 
 	bool deleted_something=true;
 	while(deleted_something)
@@ -1319,6 +1415,12 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 		return false;
 	}
 	std::string &clientname=cond_clientname.value;
+
+	if (cleanupdao->getFileBackupClientId(backupid).value != clientid)
+	{
+		ServerLogger::Log(logid, "Clientid does not match clientid in backup in ServerCleanupThread::deleteFileBackup", LL_ERROR);
+		return false;
+	}
 
 	ServerCleanupDao::CondString cond_backuppath=cleanupdao->getFileBackupPath(backupid);
 
@@ -2225,6 +2327,28 @@ void ServerCleanupThread::delete_incomplete_file_backups( void )
 		const ServerCleanupDao::SIncompleteFileBackup& backup = incomplete_file_backups[i];
 		ServerLogger::Log(logid, "Deleting incomplete file backup ( id="+convert(backup.id)+", backuptime="+backup.backuptime+", path="+backup.path+" ) from client \""+backup.clientname+"\" ( id="+convert(backup.clientid)+" ) ...", LL_INFO);
 		if(!deleteFileBackup(settings.getSettings()->backupfolder, backup.clientid, backup.id))
+		{
+			ServerLogger::Log(logid, "Error deleting file backup", LL_WARNING);
+		}
+		else
+		{
+			ServerLogger::Log(logid, "done.");
+		}
+	}
+}
+
+void ServerCleanupThread::delete_pending_file_backups()
+{
+	std::vector<ServerCleanupDao::SIncompleteFileBackup> delete_pending_file_backups =
+		cleanupdao->getDeletePendingFileBackups();
+
+	ServerSettings settings(db);
+
+	for (size_t i = 0; i<delete_pending_file_backups.size(); ++i)
+	{
+		const ServerCleanupDao::SIncompleteFileBackup& backup = delete_pending_file_backups[i];
+		ServerLogger::Log(logid, "Deleting manually marked to be deleted file backup ( id=" + convert(backup.id) + ", backuptime=" + backup.backuptime + ", path=" + backup.path + " ) from client \"" + backup.clientname + "\" ( id=" + convert(backup.clientid) + " ) ...", LL_INFO);
+		if (!deleteFileBackup(settings.getSettings()->backupfolder, backup.clientid, backup.id))
 		{
 			ServerLogger::Log(logid, "Error deleting file backup", LL_WARNING);
 		}

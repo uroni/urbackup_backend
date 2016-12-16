@@ -20,6 +20,7 @@ enum ECleanupAction
 	ECleanupAction_None,
 	ECleanupAction_FreeMinspace,
 	ECleanupAction_DeleteFilebackup,
+	ECleanupAction_DeleteImagebackup,
 	ECleanupAction_RemoveUnknown
 };
 
@@ -32,9 +33,17 @@ struct CleanupAction
 	}
 
 	//Delete file backup
-	CleanupAction(std::string backupfolder, int clientid, int backupid, bool force_remove)
+	CleanupAction(std::string backupfolder, int clientid, int backupid, bool force_remove, bool *result)
 		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid),
-		  force_remove(force_remove)
+		  force_remove(force_remove), result(result)
+	{
+
+	}
+
+	//Delete image backup
+	CleanupAction(int backupid, bool force_remove, bool *result)
+		: action(ECleanupAction_DeleteImagebackup), clientid(0), backupid(backupid),
+		force_remove(force_remove), result(result)
 	{
 
 	}
@@ -96,6 +105,12 @@ public:
 	static bool isClientlistDeletionAllowed();
 
 	static bool deleteImage(logid_t logid, std::string clientname, std::string path);
+
+	static bool findUncompleteImageRef(ServerCleanupDao* cleanupdao, int backupid);
+
+	static bool findLockedImageRef(ServerCleanupDao* cleanupdao, int backupid);
+
+	static bool findArchivedImageRef(ServerCleanupDao* cleanupdao, int backupid);
 private:
 
 	void do_cleanup(void);
@@ -138,7 +153,6 @@ private:
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
 	bool removeImage(int backupid, ServerSettings* settings, bool update_stat, bool force_remove, bool remove_associated, bool remove_references);
-	bool findUncompleteImageRef(int backupid);
 
 	void removeClient(int clientid);
 
@@ -162,7 +176,8 @@ private:
 
 	bool enforce_quota(int clientid, std::ostringstream& log);
 
-	void delete_incomplete_file_backups(void);
+	void delete_incomplete_file_backups();
+	void delete_pending_file_backups();
 	bool backup_clientlists();
 	bool backup_ident();
 	void ren_files_backupfolder();

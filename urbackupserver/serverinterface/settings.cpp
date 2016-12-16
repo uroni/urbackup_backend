@@ -177,7 +177,8 @@ struct SClientSettings
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
 {
-	std::auto_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings"));
+	std::auto_ptr<ISettingsReader> settings_db(Server->createDBSettingsReader(db, "settings_db.settings",
+		"SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
 #define SET_SETTING(x) obj.set(#x, settings.getSettings()->x);
 #define SET_SETTING_DB(x, def) obj.set(#x, settings_db->getValue(#x, (def)))
 #define SET_SETTING_DB_BOOL(x, def) obj.set(#x, settings_db->getValue(#x, convert(def))=="true")

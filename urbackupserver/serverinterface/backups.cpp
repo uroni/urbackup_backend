@@ -37,6 +37,8 @@
 #include "../server_dir_links.h"
 #include "../ImageMount.h"
 #include "../server.h"
+#include "../server_cleanup.h"
+#include "../dao/ServerCleanupDao.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -438,7 +440,7 @@ namespace backupaccess
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
-		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path, delete_pending FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
@@ -466,6 +468,10 @@ namespace backupaccess
             obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
             int archived = watoi(res[i]["archived"]);
             obj.set("archived", watoi(res[i]["archived"]));
+			if (res[i]["delete_pending"] == "1")
+			{
+				obj.set("delete_pending", true);
+			}
 			_i64 archive_timeout=0;
 			if(!res[i]["archive_timeout"].empty())
 			{
@@ -859,7 +865,7 @@ namespace backupaccess
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
-		IQuery *q = db->Prepare("SELECT id, strftime('" + helper.getTimeFormatString() + "', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path, letter FROM backup_images WHERE complete=1 AND clientid=? ORDER BY backuptime DESC");
+		IQuery *q = db->Prepare("SELECT id, strftime('" + helper.getTimeFormatString() + "', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path, letter, delete_pending FROM backup_images WHERE complete=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res = q->Read();
 		JSON::Array backups;
@@ -874,6 +880,10 @@ namespace backupaccess
 			obj.set("letter", res[i]["letter"]);
 			int archived = watoi(res[i]["archived"]);
 			obj.set("archived", watoi(res[i]["archived"]));
+			if (res[i]["delete_pending"] == "1")
+			{
+				obj.set("delete_pending", true);
+			}			
 			_i64 archive_timeout = 0;
 			if (!res[i]["archive_timeout"].empty())
 			{
@@ -1072,9 +1082,106 @@ namespace backupaccess
 		ret.set("backupid", backupid + backupid_offset);
 		return true;
 	}
-
-
 } //namespace backupaccess
+
+namespace
+{
+	bool removeImageBackup(int backupid)
+	{
+		bool result = false;
+		Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(backupid, false, &result)));
+		return result;
+	}
+
+	std::string deleteOrMarkImageBackup(IDatabase* db, int backupid, int clientid, bool mark_only)
+	{
+		ServerCleanupDao cleanup_dao(db);
+		if (cleanup_dao.getImageClientId(backupid).value != clientid)
+		{
+			return "wrong_clientid";
+		}
+
+		if (ServerCleanupThread::findArchivedImageRef(&cleanup_dao, backupid))
+		{
+			return "archived_ref";
+		}
+
+		if (!mark_only)
+		{
+			if (ServerCleanupThread::isImageLockedFromCleanup(backupid))
+			{
+				return "image_locked";
+			}
+
+			if (ServerCleanupThread::findLockedImageRef(&cleanup_dao, backupid))
+			{
+				return "locked_ref";
+			}
+
+			if (ServerCleanupThread::findUncompleteImageRef(&cleanup_dao, backupid))
+			{
+				return "incomplete_ref";
+			}
+		}
+
+		IQuery *q = db->Prepare("UPDATE backup_images SET delete_pending=1 WHERE id=? AND clientid=?");
+
+		std::vector<ServerCleanupDao::SImageRef> refs = cleanup_dao.getImageRefs(backupid);
+		for (size_t i = 0; i < refs.size(); ++i)
+		{
+			if (mark_only)
+			{
+				q->Bind(refs[i].id);
+				q->Bind(clientid);
+				q->Write();
+				q->Reset();
+			}
+			else
+			{
+				if (!removeImageBackup(refs[i].id))
+				{
+					return "remove_image_failed";
+				}
+			}
+		}
+
+		std::vector<int> assoc_images = cleanup_dao.getAssocImageBackups(backupid);
+		for (size_t i = 0; i < assoc_images.size(); ++i)
+		{
+			if (mark_only)
+			{
+				q->Bind(assoc_images[i]);
+				q->Bind(clientid);
+				q->Write();
+				q->Reset();
+			}
+			else
+			{
+				if (!removeImageBackup(assoc_images[i]))
+				{
+					return "remove_image_failed";
+				}
+			}
+		}
+
+		if (mark_only)
+		{
+			q->Bind(backupid);
+			q->Bind(clientid);
+			q->Write();
+			q->Reset();
+		}
+		else
+		{
+			if (!removeImageBackup(backupid))
+			{
+				return "remove_image_failed";
+			}
+		}
+
+		return std::string();
+	}
+} // unnamed namespace
 
 ACTION_IMPL(backups)
 {
@@ -1139,12 +1246,14 @@ ACTION_IMPL(backups)
 	std::string sa=CURRP["sa"];
 	std::string rights=helper.getRights("browse_backups");
 	std::string archive_rights=helper.getRights("manual_archive");
+	std::string delete_rights = helper.getRights("delete_backups");
 	std::vector<int> clientid;
 	if(rights!="tokens")
 	{
 		clientid = helper.getRightIDs(rights);
 	}
 	std::vector<int> clientid_archive=helper.getRightIDs(archive_rights);
+	std::vector<int> clientid_delete = helper.getRightIDs(delete_rights);
 	if(clientid.size()==1 && sa.empty() )
 	{
 		sa="backups";
@@ -1246,6 +1355,7 @@ ACTION_IMPL(backups)
 
 			bool r_ok=token_authentication?false:helper.hasRights(t_clientid, rights, clientid);
 			bool archive_ok=token_authentication?false:helper.hasRights(t_clientid, archive_rights, clientid_archive);
+			bool delete_ok= token_authentication ? false : helper.hasRights(t_clientid, delete_rights, clientid_delete);
 
 			if(r_ok || token_authentication)
 			{
@@ -1260,8 +1370,9 @@ ACTION_IMPL(backups)
 							tbl = "backup_images";
 							archive_id *= -1;
 						}
-						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=0 WHERE id=?");
+						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=0 WHERE id=? AND clientid=?");
 						q->Bind(archive_id);
+						q->Bind(t_clientid);
 						q->Write();
 					}
 					else if(CURRP.find("unarchive")!=CURRP.end())
@@ -1272,9 +1383,75 @@ ACTION_IMPL(backups)
 							tbl = "backup_images";
 							unarchive_id *= -1;
 						}
-						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=0 WHERE id=?");
+						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=0 WHERE id=? AND clientid=?");
 						q->Bind(unarchive_id);
+						q->Bind(t_clientid);
 						q->Write();
+					}
+				}
+
+				if (delete_ok)
+				{
+					if (CURRP.find("delete") != CURRP.end())
+					{
+						int delete_id = watoi(CURRP["delete"]);
+						
+						if (delete_id < 0)
+						{
+							delete_id *= -1;
+							std::string err = deleteOrMarkImageBackup(db, delete_id, t_clientid, true);
+							if (!err.empty())
+							{
+								ret.set("delete_err", err);
+							}
+						}
+						else
+						{
+							IQuery *q = db->Prepare("UPDATE backups SET delete_pending=1 WHERE id=? AND clientid=?");
+							q->Bind(delete_id);
+							q->Bind(t_clientid);
+							q->Write();
+							q->Reset();
+						}
+					}
+					if (CURRP.find("stop_delete") != CURRP.end())
+					{
+						std::string tbl = "backups";
+
+						int stop_delete_id = watoi(CURRP["stop_delete"]);
+						if (stop_delete_id < 0)
+						{
+							tbl = "backup_images";
+							stop_delete_id *= -1;
+						}
+
+						IQuery *q = db->Prepare("UPDATE " + tbl + " SET delete_pending=0 WHERE id=? AND clientid=?");
+						q->Bind(stop_delete_id);
+						q->Bind(t_clientid);
+						q->Write();
+					}
+					if (CURRP.find("delete_now") != CURRP.end())
+					{
+						int delete_now_id = watoi(CURRP["delete_now"]);
+						if (delete_now_id < 0)
+						{
+							delete_now_id *= -1;
+							std::string err = deleteOrMarkImageBackup(db, delete_now_id, t_clientid, false);
+							if (!err.empty())
+							{
+								ret.set("delete_now_err", err);
+							}
+						}
+						else
+						{
+							ServerSettings settings(db);
+							bool result = false;
+							Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(settings.getSettings()->backupfolder, t_clientid, delete_now_id, false, &result)));
+							if (!result)
+							{
+								ret.set("delete_now_err", "delete_file_backup_failed");
+							}
+						}
 					}
 				}
 
@@ -1299,6 +1476,7 @@ ACTION_IMPL(backups)
 				}
 
 				ret.set("can_archive", archive_ok);
+				ret.set("can_delete", delete_ok);
 
 				ret.set("clientname", clientname);
 				ret.set("clientid", t_clientid);
