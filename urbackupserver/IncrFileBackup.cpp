@@ -1232,6 +1232,8 @@ bool IncrFileBackup::doFileBackup()
 
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
 
+	server_download->deleteTempFolder();
+
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
 	Server->deleteFile(clientlistName(backupid));

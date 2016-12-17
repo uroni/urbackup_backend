@@ -38,6 +38,8 @@ namespace
 	const size_t max_queue_size = 500;
 	const size_t queue_items_full = 1;
 	const size_t queue_items_chunked = 4;
+
+	const char* tmpfile_dirname = ".b68xO+K9SCOF35cLk4Bf9Q";
 }
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
@@ -49,7 +51,8 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
-	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), last_snap_num_issues(0), has_disk_error(false), sc_failure_fatal(sc_failure_fatal)
+	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), last_snap_num_issues(0), has_disk_error(false), sc_failure_fatal(sc_failure_fatal),
+	tmpfile_num(0)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -474,7 +477,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	IFsFile *fd=NULL;
     if(!todl.metadata_only)
 	{
-		fd = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+		fd = getTempFile();
 		if(fd==NULL)
 		{
 			ServerLogger::Log(logid, "Error creating temporary file 'fd' in load_file. " + os_last_error_str(), LL_ERROR);
@@ -768,14 +771,14 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		ServerLogger::Log(logid, "Corrupted data while loading patch for \"" + todl.fn + "\". Retrying...", LL_WARNING);
 
 		dlfiles.orig_file->Seek(0);
-		dlfiles.patchfile=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+		dlfiles.patchfile= getTempFile();
 		if(dlfiles.patchfile==NULL)
 		{
 			ServerLogger::Log(logid, "Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
 			return false;
 		}
 		pfd_destroy.reset(dlfiles.patchfile);
-		dlfiles.hashoutput=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+		dlfiles.hashoutput= getTempFile();
 		if(dlfiles.hashoutput==NULL)
 		{
 			ServerLogger::Log(logid, "Error creating temporary file 'hash_tmp' in load_file_patch -2", LL_ERROR);
@@ -1103,6 +1106,52 @@ std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& m
 	return std::string();
 }
 
+IFsFile * ServerDownloadThread::getTempFile()
+{
+	if (use_tmpfiles)
+	{
+		return ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	}
+
+	int tries = 50;
+	IFsFile *pfd = NULL;
+	while (pfd == NULL)
+	{
+		size_t num = tmpfile_num++;
+			
+		std::string fn = backuppath + os_file_sep() + tmpfile_dirname + os_file_sep() + convert(num);
+		pfd = Server->openFile(os_file_prefix(fn), MODE_RW_CREATE);
+
+		if (pfd == NULL)
+		{
+			if (!os_directory_exists(os_file_prefix(backuppath + os_file_sep() + tmpfile_dirname)))
+			{
+				if (num != 0)
+				{
+					ServerLogger::Log(logid, "Temporary file path did not exist. Creating it. (ServerDownloadThread)", LL_DEBUG);
+				}
+
+				if (!os_create_dir_recursive(os_file_prefix(backuppath + os_file_sep() + tmpfile_dirname)))
+				{
+					ServerLogger::Log(logid, "Error creating temporary file path at \""
+						+ backuppath + os_file_sep() + tmpfile_dirname+"\". " + os_last_error_str(), LL_WARNING);
+				}
+			}
+			if (num != 0)
+			{
+				ServerLogger::Log(logid, "Error opening temporary file. Retrying...", LL_WARNING);
+				--tries;
+				if (tries < 0)
+				{
+					return NULL;
+				}
+				Server->wait(1000);
+			}
+		}
+	}
+	return pfd;
+}
+
 std::string ServerDownloadThread::getDLPath( const SQueueItem& todl )
 {
 	std::string cfn=todl.curr_path+"/"+todl.fn;
@@ -1255,14 +1304,14 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 		hashpath_old=last_backuppath_complete+os_file_sep()+".hashes"+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 	}
 
-	IFile *pfd=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	IFile *pfd=getTempFile();
 	if(pfd==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
 		return dlfiles;
 	}
 	ScopedDeleteFile pfd_delete(pfd);
-	IFsFile *hash_tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+	IFsFile *hash_tmp= getTempFile();
 	if(hash_tmp==NULL)
 	{
 		ServerLogger::Log(logid, "Error creating temporary file 'hash_tmp' in load_file_patch", LL_ERROR);
@@ -1284,7 +1333,7 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 		  && file_old.get()!=NULL )
 	{
 		ServerLogger::Log(logid, "Hashes for file \""+filepath_old+"\" not available. Calulating hashes...", LL_DEBUG);
-		hashfile_old.reset(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid));
+		hashfile_old.reset(getTempFile());
 		if(hashfile_old.get()==NULL)
 		{
 			ServerLogger::Log(logid, "Error creating temporary file 'hashfile_old' in load_file_patch", LL_ERROR);
@@ -1453,6 +1502,20 @@ size_t ServerDownloadThread::getNumIssues()
 bool ServerDownloadThread::getHasDiskError()
 {
 	return has_disk_error;
+}
+
+bool ServerDownloadThread::deleteTempFolder()
+{
+	if (os_directory_exists(backuppath + os_file_sep() + tmpfile_dirname))
+	{
+		if (!os_remove_dir(backuppath + os_file_sep() + tmpfile_dirname))
+		{
+			ServerLogger::Log(logid, "Error removing temporary directory \"" + backuppath + os_file_sep() + tmpfile_dirname + "\". " + os_last_error_str(), LL_WARNING);
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void ServerDownloadThread::queueSkip()

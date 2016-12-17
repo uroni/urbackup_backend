@@ -212,7 +212,12 @@ public:
 
 	bool getHasDiskError();
 
+	bool deleteTempFolder();
+
 private:
+
+	IFsFile* getTempFile();
+
 	std::string getDLPath(const SQueueItem& todl);
 
 	SPatchDownloadFiles preparePatchDownloadFiles(const SQueueItem& todl, bool& full_dl);
@@ -296,4 +301,6 @@ private:
 
 	bool has_disk_error;
 	bool sc_failure_fatal;
+
+	size_t tmpfile_num;
 };

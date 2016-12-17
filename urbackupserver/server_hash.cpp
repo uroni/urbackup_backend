@@ -1733,27 +1733,8 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &de
 		}
 	}
 
-	std::string tf_fn=tf->getFilename();
 
-	Server->destroy(tf);
-
-	if(!use_reflink)
-	{
-		return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
-	}
-	else
-	{
-		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL) )
-		{
-			ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -3", LL_ERROR);
-
-			return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest));
-		}
-		
-		Server->deleteFile(os_file_prefix(tf_fn));
-		
-		return true;
-	}
+	return renameFile(tf, dest);
 }
 
 bool BackupServerHash::renameFile(IFile *tf, const std::string &dest)
@@ -1761,23 +1742,22 @@ bool BackupServerHash::renameFile(IFile *tf, const std::string &dest)
 	std::string tf_fn=tf->getFilename();
 	Server->destroy(tf);
 
-	if(!use_reflink)
+	if (!os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest)))
 	{
-		return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
-	}
-	else
-	{
-		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL) )
+		std::string err = os_last_error_str();
+		if (use_reflink &&
+			os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL))
 		{
-			ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -4", LL_ERROR);
-
-			return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
+			Server->deleteFile(os_file_prefix(tf_fn));
 		}
-		
-		Server->deleteFile(os_file_prefix(tf_fn));
-		
-		return true;
+		else
+		{
+			ServerLogger::Log(logid, "Renaming file \""+ tf_fn+"\" to \"" + dest + "\" failed -4. "+err, LL_ERROR);
+			return false;
+		}
 	}
+
+	return true;
 }
 
 bool BackupServerHash::correctPath( std::string& ff, std::string& f_hashpath )

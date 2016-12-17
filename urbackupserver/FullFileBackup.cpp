@@ -650,6 +650,8 @@ bool FullFileBackup::doFileBackup()
 
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
 
+	server_download->deleteTempFolder();
+
 	ServerLogger::Log(logid, "Writing new file list...", LL_INFO);
 
 	bool has_all_metadata=true;
