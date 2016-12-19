@@ -607,12 +607,37 @@ void BackupServer::removeAllClients(void)
 	}
 }
 
+size_t BackupServer::throttleSpeedToBps(int speed_bps, bool & percent_max)
+{
+	size_t bps;
+	if (speed_bps > 0)
+	{
+		bps = speed_bps;
+		percent_max = false;
+	}
+	else if (speed_bps<-1)
+	{
+		bps = -1 * speed_bps - 1;
+		percent_max = true;
+	}
+	else
+	{
+		bps = 0;
+		percent_max = false;
+	}
+	return bps;
+}
+
 IPipeThrottler *BackupServer::getGlobalInternetThrottler(int speed_bps)
 {
 	IScopedLock lock(throttle_mutex);
 
-	if(global_internet_throttler==NULL && speed_bps==0 )
+	if(global_internet_throttler==NULL 
+		&& (speed_bps == 0
+			|| speed_bps == -1) )
+	{
 		return NULL;
+	}
 
 	if(global_internet_throttler==NULL)
 	{
@@ -621,8 +646,10 @@ IPipeThrottler *BackupServer::getGlobalInternetThrottler(int speed_bps)
 	}
 	else
 	{
-		global_internet_throttler->changeThrottleLimit(speed_bps>=0 ? speed_bps : -1*speed_bps,
-			speed_bps<0);
+		bool percent_max;
+		size_t bps = BackupServer::throttleSpeedToBps(speed_bps, percent_max);
+		global_internet_throttler->changeThrottleLimit(bps,
+			percent_max);
 	}
 	return global_internet_throttler;
 }
@@ -631,8 +658,12 @@ IPipeThrottler *BackupServer::getGlobalLocalThrottler(int speed_bps)
 {
 	IScopedLock lock(throttle_mutex);
 
-	if(global_local_throttler==NULL && speed_bps==0 )
+	if (global_local_throttler == NULL
+		&& (speed_bps == 0
+			|| speed_bps == -1) )
+	{
 		return NULL;
+	}
 
 	if(global_local_throttler==NULL)
 	{
@@ -641,8 +672,10 @@ IPipeThrottler *BackupServer::getGlobalLocalThrottler(int speed_bps)
 	}
 	else
 	{
-		global_local_throttler->changeThrottleLimit(speed_bps >= 0 ? speed_bps : -1 * speed_bps,
-			speed_bps<0);
+		bool percent_max;
+		size_t bps = BackupServer::throttleSpeedToBps(speed_bps, percent_max);
+		global_local_throttler->changeThrottleLimit(bps,
+			percent_max);
 	}
 	return global_local_throttler;
 }

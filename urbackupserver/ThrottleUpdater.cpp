@@ -58,15 +58,15 @@ size_t ThrottleUpdater::getThrottleLimit(bool& percent_max)
 		return std::string::npos;
 	}
 
-	if (ret < 0)
+	if (ret < -1)
 	{
 		percent_max = true;
-		return ret*-1;
+		return ret*-1 - 1;
 	}
 	else
 	{
 		percent_max = false;
-		return ret;
+		return ret<0 ? 0 : ret;
 	}
 }
 

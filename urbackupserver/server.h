@@ -28,6 +28,7 @@ public:
 
 	void operator()(void);
 
+	static size_t throttleSpeedToBps(int speed_bps, bool& percent_max);
 	static IPipeThrottler *getGlobalInternetThrottler(int speed_bps);
 	static IPipeThrottler *getGlobalLocalThrottler(int speed_bps);
 

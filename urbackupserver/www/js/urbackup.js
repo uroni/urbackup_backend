@@ -408,15 +408,15 @@ function multiplyTimeSpan(ts, m, allow_percent)
 			if(idx_pc!=-1 && allow_percent )
 			{
 				var d=parseFloat(timespans[i].substr(0, idx_pc));
-				ret+=d*-1 + timespans[i].substr(idx, timespans[i].length - idx);
+				ret+= (d*-1 - 1) + timespans[i].substr(idx, timespans[i].length - idx);
 			}
 			else
 			{
 				var d=parseFloat(timespans[i].substr(0, idx));
 				
-				if(d<0 && m<1 && allow_percent)
+				if(d<-1 && m<1 && allow_percent)
 				{
-					ret+=(d*-1)+"%";
+					ret+=(d*-1 -1)+"%";
 				}
 				else
 				{
@@ -432,15 +432,15 @@ function multiplyTimeSpan(ts, m, allow_percent)
 			if(idx_pc!=-1 && allow_percent )
 			{
 				var d=parseFloat(timespans[i].substr(0, idx_pc));
-				ret+=d*-1;
+				ret+=d*-1 -1;
 			}
 			else
 			{
 				var d=parseFloat(timespans[i]);
 				
-				if(d<0 && m<1 && allow_percent)
+				if(d<-1 && m<1 && allow_percent)
 				{
-					ret+=(d*-1)+"%";
+					ret+=(d*-1 - 1)+"%";
 				}
 				else
 				{
@@ -2723,14 +2723,14 @@ function show_settings2(data)
 			data.settings.update_freq_image_full=multiplyTimeSpan(data.settings.update_freq_image_full, 1/(60.0*60.0*24.0));
 			data.settings.startup_backup_delay/=60;
 			
-			if(data.settings.local_speed=="0") data.settings.local_speed="-";
+			if(data.settings.local_speed=="0" || data.settings.local_speed=="-1") data.settings.local_speed="-";
 			else data.settings.local_speed=multiplyTimeSpan(data.settings.local_speed, 1/((1024*1024)/8), true);
-			if(data.settings.internet_speed=="0") data.settings.internet_speed="-";
+			if(data.settings.internet_speed=="0" || data.settings.internet_speed=="-1") data.settings.internet_speed="-";
 			else data.settings.internet_speed=multiplyTimeSpan(data.settings.internet_speed, 1/(1024/8), true);
 			
-			if(data.settings.global_local_speed=="0") data.settings.global_local_speed="-";
+			if(data.settings.global_local_speed=="0" || data.settings.global_local_speed=="-1") data.settings.global_local_speed="-";
 			else data.settings.global_local_speed=multiplyTimeSpan(data.settings.global_local_speed, 1/((1024*1024)/8), true);
-			if(data.settings.global_internet_speed=="0") data.settings.global_internet_speed="-";
+			if(data.settings.global_internet_speed=="0" || data.settings.global_internet_speed=="-1") data.settings.global_internet_speed="-";
 			else data.settings.global_internet_speed=multiplyTimeSpan(data.settings.global_internet_speed, 1/(1024/8), true);
 			
 			data.settings.file_hash_collect_cachesize/=1024;
@@ -2859,9 +2859,9 @@ function show_settings2(data)
 			data.settings.update_freq_image_full=multiplyTimeSpan(data.settings.update_freq_image_full, 1/(60.0*60.0*24.0));
 			data.settings.startup_backup_delay/=60;
 			
-			if(data.settings.local_speed=="0") data.settings.local_speed="-";
+			if(data.settings.local_speed=="0" || data.settings.local_speed=="-1") data.settings.local_speed="-";
 			else data.settings.local_speed=multiplyTimeSpan(data.settings.local_speed, 1/((1024*1024)/8), true);
-			if(data.settings.internet_speed=="0") data.settings.internet_speed="-";
+			if(data.settings.internet_speed=="0" || data.settings.internet_speed=="-1") data.settings.internet_speed="-";
 			else data.settings.internet_speed=multiplyTimeSpan(data.settings.internet_speed, 1/(1024/8), true);
 			
 			data.settings.file_hash_collect_cachesize/=1024;

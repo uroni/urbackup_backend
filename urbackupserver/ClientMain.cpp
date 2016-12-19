@@ -2169,8 +2169,10 @@ IPipeThrottler *ClientMain::getThrottler(int speed_bps)
 	}
 	else
 	{
-		client_throttler->changeThrottleLimit(speed_bps>=0 ? speed_bps : -1*speed_bps,
-			speed_bps<0);
+		bool percent_max;
+		size_t bps = BackupServer::throttleSpeedToBps(speed_bps, percent_max);
+		client_throttler->changeThrottleLimit(bps,
+			percent_max);
 	}
 
 	return client_throttler;
@@ -2311,12 +2313,14 @@ IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* client
 		if(server_settings!=NULL && ret!=NULL)
 		{
 			int internet_speed=server_settings->getInternetSpeed();
-			if(internet_speed!=0)
+			if(internet_speed!=0
+				&& internet_speed!=-1)
 			{
 				ret->addThrottler(getThrottler(internet_speed));
 			}
 			int global_internet_speed=server_settings->getGlobalInternetSpeed();
-			if(global_internet_speed!=0)
+			if(global_internet_speed!=0
+				&& global_internet_speed!=-1)
 			{
 				ret->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
 			}
@@ -2329,12 +2333,14 @@ IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* client
 		if(server_settings!=NULL && ret!=NULL)
 		{
 			int local_speed=server_settings->getLocalSpeed();
-			if(local_speed>0)
+			if(local_speed!=0
+				&& local_speed!=-1)
 			{
 				ret->addThrottler(getThrottler(local_speed));
 			}
 			int global_local_speed=server_settings->getGlobalLocalSpeed();
-			if(global_local_speed>0)
+			if(global_local_speed!=0
+				&& global_local_speed!=-1)
 			{
 				ret->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
 			}
@@ -2361,12 +2367,14 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 		if(server_settings!=NULL)
 		{
 			int internet_speed=server_settings->getInternetSpeed();
-			if(internet_speed!=0)
+			if(internet_speed!=0
+				&& internet_speed!=-1)
 			{
 				fc->addThrottler(getThrottler(internet_speed));
 			}
 			int global_internet_speed=server_settings->getGlobalInternetSpeed();
-			if(global_internet_speed!=0)
+			if(global_internet_speed!=0
+				&& global_internet_speed!=-1)
 			{
 				fc->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
 			}
@@ -2384,12 +2392,14 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 		if(server_settings!=NULL)
 		{
 			int local_speed=server_settings->getLocalSpeed();
-			if(local_speed!=0)
+			if(local_speed!=0
+				&& local_speed!=-1)
 			{
 				fc->addThrottler(getThrottler(local_speed));
 			}
 			int global_local_speed=server_settings->getGlobalLocalSpeed();
-			if(global_local_speed!=0)
+			if(global_local_speed!=0
+				&& global_local_speed!=-1)
 			{
 				fc->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
 			}
