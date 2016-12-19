@@ -248,13 +248,15 @@ int ServerAutomaticArchive::getBackupTypes(const std::string &backup_type_name)
 
 std::string ServerAutomaticArchive::getBackupType(int backup_types)
 {
-	if (backup_types & backup_type_full_file && backup_types & backup_type_incr_file)
+	if ( (backup_types & backup_type_full_file) 
+		&& (backup_types & backup_type_incr_file) )
 		return "file";
 	else if (backup_types & backup_type_full_file)
 		return "full_file";
 	else if (backup_types & backup_type_incr_file)
 		return "incr_file";
-	else if (backup_types & backup_type_full_image && backup_type_incr_image)
+	else if ( (backup_types & backup_type_full_image)
+		&& (backup_types & backup_type_incr_image) )
 		return "image";
 	else if (backup_types & backup_type_full_image)
 		return "full_image";
