@@ -573,6 +573,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			nref.for_imagebackup = for_imagebackup;
 			nref.ssetid = dir->ref->ssetid;
 			nref.backupcom = backupcom;
+			nref.starttokens.push_back(starttoken);
 			additional_refs.push_back(nref);
 		}
 
@@ -815,6 +816,28 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			SCRef* nref = new SCRef;
 			*nref = additional_refs[i];
 			sc_refs.push_back(nref);
+
+			if (for_imagebackup)
+			{
+				std::string letter = selected_vols[i];
+				if (letter.size() == 3
+					&& letter[1] == ':')
+				{
+					letter = letter.substr(0, 2);
+					strupper(&letter);
+				}
+
+				SCDirs* other_dir = getSCDir(letter, index_clientsubname, for_imagebackup);
+				if (other_dir != NULL)
+				{
+					other_dir->dir = selected_vols[i];
+					other_dir->fileserv = dir->fileserv;
+					other_dir->ref = nref;
+					other_dir->running = dir->running;
+					other_dir->starttime = dir->starttime;
+					other_dir->target = selected_vols[i];
+				}
+			}
 		}
 	}
 
