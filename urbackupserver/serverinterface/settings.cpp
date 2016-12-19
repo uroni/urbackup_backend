@@ -503,7 +503,7 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 
 		if(archive_next<0)
 		{
-			if(clientid==0)
+			if(clientid<=0)
 			{
 				q->Bind(0);
 			}
@@ -529,23 +529,33 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 		++i;
 	}
 
+	db_results res = db->Read("SELECT value FROM settings_db.settings WHERE clientid=" + convert(clientid) + " AND key='group_id'");
+	int group_id = 0;
+	if (!res.empty())
+	{
+		group_id = watoi(res[0]["value"])*-1;
+	}
+
 	if(clientid>0)
 	{		
+		std::string str_group_id = convert(group_id);
+
 		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
 		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
 		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
 
 		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window "
-			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=0)"
+			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=?)"
 			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window");
 		q_identical_config->Bind(clientid);
+		q_identical_config->Bind(group_id);
 		db_results res = q_identical_config->Read();
 		q_identical_config->Reset();
 
 		std::string overwrite_archive_settings = "false";
 		for(size_t i=0;i<res.size();++i)
 		{
-			if(res[i]["min_clientid"]!="0" ||
+			if(res[i]["min_clientid"]!=str_group_id ||
 				res[i]["max_clientid"]!=convert(clientid) ||
 				watoi(res[i]["c"])%2!=0)
 			{
@@ -574,7 +584,7 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		group_id = watoi(res[0]["value"])*-1;
 	}
 
-	if (clientid >= 0)
+	if (clientid > 0)
 	{
 		q_get->Bind("overwrite");
 		res = q_get->Read();
