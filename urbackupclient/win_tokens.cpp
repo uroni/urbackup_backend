@@ -79,6 +79,70 @@ void TokenCache::reset(TokenCacheInt* cache)
 	token_cache.reset(cache);
 }
 
+std::wstring get_dc_name()
+{
+	LPBYTE dc_name;
+	if (NetGetDCName(NULL, NULL, &dc_name) != NERR_Success)
+	{
+		return std::wstring();
+	}
+	
+	std::wstring ret(reinterpret_cast<wchar_t*>(dc_name));
+	NetApiBufferFree(dc_name);
+
+	return ret;
+}
+
+std::vector<std::string> get_dc_users()
+{
+	std::wstring dc_name = get_dc_name();
+	if (dc_name.empty())
+	{
+		return std::vector<std::string>();
+	}
+
+	std::string dc_prefix = Server->ConvertFromWchar(dc_name);
+	if (next(dc_prefix, 0, "\\\\"))
+	{
+		dc_prefix = dc_prefix.substr(2);
+	}
+
+	LPUSER_INFO_0 buf;
+	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+	DWORD entriesread = 0;
+	DWORD totalentries = 0;
+	DWORD resume_handle = 0;
+	NET_API_STATUS status;
+	std::vector<std::string> ret;
+
+	do
+	{
+		status = NetUserEnum(dc_name.c_str(), 0, 0,
+			(LPBYTE*)&buf, prefmaxlen, &entriesread,
+			&totalentries, &resume_handle);
+
+		if (status == NERR_Success || status == ERROR_MORE_DATA)
+		{
+			for (DWORD i = 0; i<entriesread; ++i)
+			{
+				LPUSER_INFO_0 user_info = (buf + i);
+				ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(user_info->usri0_name));
+			}
+		}
+		else
+		{
+			Server->Log("Error while enumerating DC users: " + convert((int)status), LL_ERROR);
+		}
+
+		if (buf != NULL)
+		{
+			NetApiBufferFree(buf);
+		}
+	} while (status == ERROR_MORE_DATA);
+
+	return ret;
+}
+
 std::vector<std::string> get_users()
 {
 	LPUSER_INFO_0 buf;
@@ -88,12 +152,13 @@ std::vector<std::string> get_users()
 	DWORD resume_handle = 0;
 	NET_API_STATUS status;
 	std::vector<std::string> ret;
+
 	do 
 	{
-		 status = NetUserEnum(NULL, 0, FILTER_NORMAL_ACCOUNT,
+		 status = NetUserEnum(NULL, 0, 0,
 			(LPBYTE*)&buf, prefmaxlen, &entriesread,
 			&totalentries, &resume_handle);
-
+		 
 		 if (status == NERR_Success || status == ERROR_MORE_DATA)
 		 {
 			 for(DWORD i=0;i<entriesread;++i)
@@ -114,11 +179,61 @@ std::vector<std::string> get_users()
 	}
 	while (status == ERROR_MORE_DATA);
 
+	std::vector<std::string> dc_users = get_dc_users();
+	ret.insert(ret.end(), dc_users.begin(), dc_users.end());
+
+	return ret;
+}
+
+
+std::vector<std::string> get_dc_user_groups(std::string username)
+{
+	assert(username.find("\\") != std::string::npos);
+	std::wstring dc_name = Server->ConvertToWchar("\\\\" + getuntil("\\", username));
+
+	std::string dc_prefix = getuntil("\\", username);
+	username = getafter("\\", username);
+
+	LPGROUP_USERS_INFO_0 buf;
+	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+	DWORD entriesread = 0;
+	DWORD totalentries = 0;
+	DWORD resume_handle = 0;
+	NET_API_STATUS status;
+	std::vector<std::string> ret;
+
+	status = NetUserGetGroups(dc_name.c_str(), Server->ConvertToWchar(username).c_str(), 0,
+		(LPBYTE*)&buf, prefmaxlen, &entriesread,
+		&totalentries);
+
+	if (status == NERR_Success)
+	{
+		for (DWORD i = 0; i<entriesread; ++i)
+		{
+			LPGROUP_USERS_INFO_0 user_info = (buf + i);
+			ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(user_info->grui0_name));
+		}
+	}
+	else
+	{
+		Server->Log("Error while enumerating DC user groups: " + convert((int)status), LL_ERROR);
+	}
+
+	if (buf != NULL)
+	{
+		NetApiBufferFree(buf);
+	}
+
 	return ret;
 }
 
 std::vector<std::string> get_user_groups(const std::string& username)
 {
+	if (username.find("\\") != std::string::npos)
+	{
+		return get_dc_user_groups(username);
+	}
+
 	LPLOCALGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
 	DWORD entriesread = 0;
@@ -141,7 +256,7 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	}
 	else
 	{
-		Server->Log("Error while enumerating users: "+ convert((int)status), LL_ERROR);
+		Server->Log("Error while enumerating user groups: "+ convert((int)status), LL_ERROR);
 	}
 
 	if(buf!=NULL)
@@ -150,7 +265,53 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	}
 
 	return ret;
-	
+}
+
+std::vector<std::string> get_dc_groups()
+{
+	std::vector<std::string> ret;
+	std::wstring dc_name = get_dc_name();
+	if (!dc_name.empty())
+	{
+		std::string dc_prefix = Server->ConvertFromWchar(dc_name);
+		if (next(dc_prefix, 0, "\\\\"))
+		{
+			dc_prefix = dc_prefix.substr(2);
+		}
+
+		DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+		DWORD entriesread = 0;
+		DWORD totalentries = 0;
+		NET_API_STATUS status;
+		DWORD_PTR resume_handle = 0;
+		LPGROUP_INFO_0 buf2;
+		do
+		{
+			status = NetGroupEnum(dc_name.c_str(), 0,
+				(LPBYTE*)&buf2, prefmaxlen, &entriesread,
+				&totalentries, &resume_handle);
+
+			if (status == NERR_Success || status == ERROR_MORE_DATA)
+			{
+				for (DWORD i = 0; i < entriesread; ++i)
+				{
+					LPGROUP_INFO_0 group_info = (buf2 + i);
+					ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(group_info->grpi0_name));
+				}
+			}
+			else
+			{
+				Server->Log("Error while enumerating groups: " + convert((int)status), LL_ERROR);
+			}
+
+			if (buf2 != NULL)
+			{
+				NetApiBufferFree(buf2);
+			}
+		} while (status == ERROR_MORE_DATA);
+	}
+
+	return ret;
 }
 
 std::vector<std::string> get_groups()
@@ -162,7 +323,7 @@ std::vector<std::string> get_groups()
 	NET_API_STATUS status;
 	std::vector<std::string> ret;
 	DWORD_PTR resume_handle = 0;
-	do 
+	do
 	{
 		status = NetLocalGroupEnum(NULL, 0,
 			(LPBYTE*)&buf, prefmaxlen, &entriesread,
@@ -170,27 +331,41 @@ std::vector<std::string> get_groups()
 
 		if (status == NERR_Success || status == ERROR_MORE_DATA)
 		{
-			for(DWORD i=0;i<entriesread;++i)
+			for (DWORD i = 0; i<entriesread; ++i)
 			{
-				LPLOCALGROUP_INFO_0 group_info = (buf+i);
+				LPLOCALGROUP_INFO_0 group_info = (buf + i);
 				ret.push_back(Server->ConvertFromWchar(group_info->lgrpi0_name));
 			}
 		}
 		else
 		{
-			Server->Log("Error while enumerating groups: "+ convert((int)status), LL_ERROR);
+			Server->Log("Error while enumerating groups: " + convert((int)status), LL_ERROR);
 		}
 
-		if(buf!=NULL)
+		if (buf != NULL)
 		{
 			NetApiBufferFree(buf);
 		}
-	}
-	while (status == ERROR_MORE_DATA);
+	} while (status == ERROR_MORE_DATA);
+
+	std::vector<std::string> dc_groups = get_dc_groups();
+	ret.insert(ret.end(), dc_groups.begin(), dc_groups.end());
 
 	return ret;
 }
 
+bool sid_has_profile(const std::string& account_sid)
+{
+	HKEY res;
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+		Server->ConvertToWchar("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\" + account_sid).c_str(),
+		0, KEY_READ, &res) == ERROR_SUCCESS)
+	{
+		RegCloseKey(res);
+		return true;
+	}
+	return false;
+}
 
 bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token)
 {
@@ -208,7 +383,20 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	bool lookup_user = is_user;
 	while (!b)
 	{
-		b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
+		std::string local_username = accountname;
+		std::string local_hostname;
+		if (local_username.find("\\") != std::string::npos)
+		{
+			local_hostname = getuntil("\\", local_username);
+			local_username = getafter("\\", local_username);
+		}
+		else if (lookup_user)
+		{
+			local_username = hostname + "\\" + accountname;
+		}
+
+		b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+			Server->ConvertToWchar(local_username).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 
@@ -216,7 +404,8 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		{
 			referenced_domain.resize(referenced_domain_size);
 			sid_buffer.resize(account_sid_size);
-			b = LookupAccountNameW(NULL, Server->ConvertToWchar(((lookup_user ? hostname : "") + accountname)).c_str(),
+			b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+				Server->ConvertToWchar(local_username).c_str(),
 				&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 				&referenced_domain_size, &sid_name_use);
 		}
@@ -253,6 +442,8 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 
 	std::wstring dacl = std::wstring(L"D:(A;OICI;GA;;;") + str_account_sid + L")"
 		+ L"(A;OICI;GA;;;BA)";
+
+	std::string local_account_sid = Server->ConvertFromWchar(str_account_sid);
 
 	LocalFree(str_account_sid);
 
@@ -293,7 +484,25 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		token = ext_token;
 	}
 
-	dao.updateFileAccessToken(accountname, token, is_user?1:0);
+	int i_is_user;
+	if (is_user)
+	{
+		if (sid_has_profile(local_account_sid))
+		{
+			i_is_user = ClientDAO::c_is_user;
+		}
+		else
+		{
+			i_is_user = ClientDAO::c_is_system_user;
+		}		
+	}
+	else
+	{
+		i_is_user = ClientDAO::c_is_group;
+	}
+	
+
+	dao.updateFileAccessToken(accountname, token, i_is_user);
 
 	DWORD written=0;
 	while(written<token.size())
@@ -348,9 +557,16 @@ bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string
 
 	BOOL b = FALSE;
 
+	std::string local_username = accountname;
+	if (local_username.find("\\") == std::string::npos
+		&& is_user )
+	{
+		local_username = hostname + accountname;
+	}
+
 	while (!b)
 	{
-		b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
+		b = LookupAccountNameW(NULL, Server->ConvertToWchar(local_username).c_str(),
 			&sid[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 
@@ -358,7 +574,7 @@ bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string
 		{
 			referenced_domain.resize(referenced_domain_size);
 			sid.resize(account_sid_size);
-			b = LookupAccountNameW(NULL, Server->ConvertToWchar(((is_user ? hostname : "") + accountname)).c_str(),
+			b = LookupAccountNameW(NULL, Server->ConvertToWchar(local_username).c_str(),
 				&sid[0], &account_sid_size, &referenced_domain[0],
 				&referenced_domain_size, &sid_name_use);
 		}
