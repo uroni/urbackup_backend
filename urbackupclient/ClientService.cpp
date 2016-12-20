@@ -325,6 +325,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				{
 					if (!msg.empty())
 					{
+						Server->Log("Async index " + bytesToHex(it->first) + " finished with \"" + msg + "\"", LL_DEBUG);
 						async_file_index.erase(it);
 					}
 					else
@@ -3317,6 +3318,7 @@ void ClientConnector::timeoutAsyncFileIndex()
 	{
 		if (ctime - it->second.last_update > async_index_timeout * 2)
 		{
+			Server->Log("Async index timeout: " + bytesToHex(it->first), LL_DEBUG);
 			std::map<std::string, SAsyncFileList>::iterator it_curr = it;
 			++it;
 			async_file_index.erase(it_curr);
