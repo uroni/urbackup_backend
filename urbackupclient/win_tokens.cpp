@@ -131,7 +131,7 @@ std::vector<std::string> get_dc_users()
 		}
 		else
 		{
-			Server->Log("Error while enumerating users: " + convert((int)status), LL_ERROR);
+			Server->Log("Error while enumerating DC users: " + convert((int)status), LL_ERROR);
 		}
 
 		if (buf != NULL)
@@ -186,19 +186,13 @@ std::vector<std::string> get_users()
 }
 
 
-std::vector<std::string> get_dc_user_groups(const std::string& username)
+std::vector<std::string> get_dc_user_groups(std::string username)
 {
-	std::wstring dc_name = get_dc_name();
-	if (dc_name.empty())
-	{
-		return std::vector<std::string>();
-	}
+	assert(username.find("\\") != std::string::npos);
+	std::wstring dc_name = Server->ConvertToWchar("\\\\" + getuntil("\\", username));
 
-	std::string dc_prefix = Server->ConvertFromWchar(dc_name);
-	if (next(dc_prefix, 0, "\\\\"))
-	{
-		dc_prefix = dc_prefix.substr(2);
-	}
+	std::string dc_prefix = getuntil("\\", username);
+	username = getafter("\\", username);
 
 	LPGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
@@ -222,7 +216,7 @@ std::vector<std::string> get_dc_user_groups(const std::string& username)
 	}
 	else
 	{
-		Server->Log("Error while enumerating users: " + convert((int)status), LL_ERROR);
+		Server->Log("Error while enumerating DC user groups: " + convert((int)status), LL_ERROR);
 	}
 
 	if (buf != NULL)
@@ -235,6 +229,11 @@ std::vector<std::string> get_dc_user_groups(const std::string& username)
 
 std::vector<std::string> get_user_groups(const std::string& username)
 {
+	if (username.find("\\") != std::string::npos)
+	{
+		return get_dc_user_groups(username);
+	}
+
 	LPLOCALGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
 	DWORD entriesread = 0;
@@ -257,16 +256,13 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	}
 	else
 	{
-		Server->Log("Error while enumerating users: "+ convert((int)status), LL_ERROR);
+		Server->Log("Error while enumerating user groups: "+ convert((int)status), LL_ERROR);
 	}
 
 	if(buf!=NULL)
 	{
 		NetApiBufferFree(buf);
 	}
-
-	std::vector<std::string> dc_user_groups = get_dc_user_groups(username);
-	ret.insert(ret.end(), dc_user_groups.begin(), dc_user_groups.end());
 
 	return ret;
 }
@@ -388,13 +384,19 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	while (!b)
 	{
 		std::string local_username = accountname;
-		if (local_username.find("\\") == std::string::npos
-			&& lookup_user)
+		std::string local_hostname;
+		if (local_username.find("\\") != std::string::npos)
 		{
-			local_username = hostname + accountname;
+			local_hostname = getuntil("\\", local_username);
+			local_username = getafter("\\", local_username);
+		}
+		else if (lookup_user)
+		{
+			local_username = hostname + "\\" + accountname;
 		}
 
-		b = LookupAccountNameW(NULL, Server->ConvertToWchar(local_username).c_str(),
+		b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+			Server->ConvertToWchar(local_username).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 
@@ -402,7 +404,8 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		{
 			referenced_domain.resize(referenced_domain_size);
 			sid_buffer.resize(account_sid_size);
-			b = LookupAccountNameW(NULL, Server->ConvertToWchar(local_username).c_str(),
+			b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+				Server->ConvertToWchar(local_username).c_str(),
 				&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 				&referenced_domain_size, &sid_name_use);
 		}
