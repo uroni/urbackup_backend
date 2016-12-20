@@ -532,7 +532,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	{
 		lock.relock(NULL);
 
-		Server->Log("Async index " + async_file_list_id + " not found", LL_DEBUG);
+		Server->Log("Async index " + async_id + " not found", LL_DEBUG);
 
 		tcpstack.Send(pipe, "error - Async indexing process not found");
 	}
@@ -541,13 +541,13 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 		async_file_index.erase(it);
 		lock.relock(NULL);
 
-		Server->Log("Async index " + async_file_list_id + " timeout", LL_DEBUG);
+		Server->Log("Async index " + async_id + " timeout", LL_DEBUG);
 
 		tcpstack.Send(pipe, "error - Async indexing process timeout");
 	}
 	else
 	{
-		Server->Log("Wait for async index " + async_file_list_id, LL_DEBUG);
+		Server->Log("Wait for async index " + async_id, LL_DEBUG);
 		state = CCSTATE_START_FILEBACKUP_ASYNC;
 		if (mempipe_owner)
 		{
