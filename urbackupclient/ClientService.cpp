@@ -355,6 +355,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
+				idle_timeout = 5*60*1000;
 				state=CCSTATE_NORMAL;
 			}
 			else if(!msg.empty())
