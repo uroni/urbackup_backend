@@ -500,9 +500,16 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	{
 		i_is_user = ClientDAO::c_is_group;
 	}
+
+	std::string pub_accountname = accountname;
+	if (pub_accountname.find("\\") != std::string::npos
+		&& referenced_domain_size>0)
+	{
+		pub_accountname = Server->ConvertFromWchar(referenced_domain) + "\\" + getafter("\\", pub_accountname);
+	}
 	
 
-	dao.updateFileAccessToken(accountname, token, i_is_user);
+	dao.updateFileAccessToken(pub_accountname, token, i_is_user);
 
 	DWORD written=0;
 	while(written<token.size())
