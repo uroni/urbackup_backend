@@ -1777,7 +1777,7 @@ void FileBackup::saveUsersOnClient()
 		return;
 	}
 
-	std::string s_uids = urbackup_tokens->getValue("uids", "");
+	std::string s_uids = urbackup_tokens->getValue("real_uids", "");
 	std::vector<std::string> uids;
 	Tokenize(s_uids, uids, ",");
 

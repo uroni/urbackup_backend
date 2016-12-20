@@ -504,7 +504,7 @@ bool Helper::ldapLogin( const std::string &username, const std::string &password
 		}
 
 		IQuery* q = getDatabase()->Prepare("SELECT clientid FROM users_on_client WHERE username=?");
-		q->Bind(username);
+		q->Bind(ldap_settings.username_prefix + username + ldap_settings.username_suffix);
 		db_results db_res = q->Read();
 		q->Reset();
 
