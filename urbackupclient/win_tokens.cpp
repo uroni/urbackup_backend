@@ -482,6 +482,11 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		return false;
 	}
 
+	if (referenced_domain.size() != referenced_domain_size)
+	{
+		referenced_domain.resize(referenced_domain_size);
+	}
+
 	SID* account_sid = reinterpret_cast<SID*>(&sid_buffer[0]);
 
 	LPWSTR str_account_sid;
@@ -561,7 +566,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	}
 	
 
-	dao.updateFileAccessToken(pub_accountname, token, i_is_user);
+	dao.updateFileAccessToken(strlower(pub_accountname), token, i_is_user);
 
 	DWORD written=0;
 	while(written<token.size())

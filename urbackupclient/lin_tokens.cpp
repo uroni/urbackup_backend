@@ -297,7 +297,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		token = ext_token;
 	}
 	
-	dao.updateFileAccessToken(accountname, token,
+	dao.updateFileAccessToken(strlower(accountname), token,
 			is_user ? (is_system_user ? ClientDAO::c_is_system_user : ClientDAO::c_is_user) : ClientDAO::c_is_group  );
 
 	size_t written = 0;

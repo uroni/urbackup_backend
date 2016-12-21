@@ -333,11 +333,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 				}
 
 				bool get_whole_block = false;
+				char buf[chunkhash_single_size + 2 * sizeof(char) + sizeof(_i64)];
+				size_t buf_size = sizeof(buf);
 
 				if(next_chunk<num_chunks
 					&& m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size))
-				{
-					char buf[chunkhash_single_size+2*sizeof(char)+sizeof(_i64)];
+				{					
 					buf[0]=ID_BLOCK_REQUEST;
 					*((_i64*)(buf+1))=little_endian(next_chunk*c_checkpoint_dist);
 					buf[1+sizeof(_i64)]=0;
@@ -352,13 +353,6 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 						{
 							memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
 						}
-						const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
-						if(stack->Send( getPipe(), buf, send_size, c_default_timeout, false) != send_size)
-						{
-							break;
-						}
-						needs_flush=true;
-
 						char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
 						SChunkHashes chhash;
 						memcpy(chhash.big_hash, sptr, big_hash_size);
@@ -373,18 +367,33 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 				
 				if(get_whole_block)
 				{
-					CWData data;
-					data.addUChar(ID_BLOCK_REQUEST);
-					data.addInt64(next_chunk*c_checkpoint_dist);
-					data.addChar(1);
-					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize() )
-					{
-						break;
-					}
-					needs_flush=true;
+					buf[0] = ID_BLOCK_REQUEST;
+					*((_i64*)(buf + 1)) = little_endian(next_chunk*c_checkpoint_dist);
+					buf[1 + sizeof(_i64)] = 1;
+					buf_size = sizeof(char) * 2 + sizeof(_i64);
 
 					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
+
+				int tries = 10;
+				while (stack->Send(getPipe(), buf, buf_size, c_default_timeout, false) != buf_size)
+				{
+					Server->Log("Timeout during chunk request of chunk "+convert(next_chunk*c_checkpoint_dist)+". Reconnecting...", LL_DEBUG);
+
+					--tries;
+
+					if (tries == 0
+						|| !Reconnect(true))
+					{
+						Server->Log("Timeout during chunk request of chunk "+convert(next_chunk*c_checkpoint_dist), LL_ERROR);
+						if (!queue_only)
+							adjustOutputFilesizeOnFailure(filesize_out);
+						return ERR_CONN_LOST;
+					}
+				}
+
+				needs_flush = true;
+
 				incrQueuedChunks();
 				++next_chunk;
 			}
