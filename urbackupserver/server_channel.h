@@ -27,6 +27,8 @@ public:
 
     static void initOffset();
 
+	bool isOnline();
+
 private:
 	int64 lasttime;
 	int clientid;

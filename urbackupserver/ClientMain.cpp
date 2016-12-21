@@ -749,7 +749,7 @@ void ClientMain::operator ()(void)
 
 			if( !server_settings->getSettings()->no_file_backups && (!internet_no_full_file || do_full_backup_now) &&
 				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
-				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) ) || do_full_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) && isOnline(channel_thread) ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now && !do_incr_backup_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
@@ -765,7 +765,7 @@ void ClientMain::operator ()(void)
 			}
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
-				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) ) || do_incr_backup_now )
+				&& exponentialBackoffFile() && pauseRetryBackup() && isDataplanOkay(true) && isOnline(channel_thread) ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_incr_image_now
 				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
@@ -781,7 +781,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_full_image_now)
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
-				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) ) || do_full_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
 
@@ -806,7 +806,7 @@ void ClientMain::operator ()(void)
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && (!internet_no_images || do_incr_image_now)
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
-				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) ) || do_incr_image_now)
+				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
 			{
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
@@ -2191,6 +2191,11 @@ void ClientMain::updateClientAccessKey()
 bool ClientMain::isDataplanOkay(bool file)
 {
 	return isDataplanOkay(server_settings, file);
+}
+
+bool ClientMain::isOnline(ServerChannelThread& channel_thread)
+{
+	return ServerStatus::getStatus(clientname).r_online || channel_thread.isOnline();
 }
 
 bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)

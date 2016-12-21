@@ -145,6 +145,12 @@ void ServerChannelThread::initOffset()
     }
 }
 
+bool ServerChannelThread::isOnline()
+{
+	IScopedLock lock(mutex);
+	return input!=NULL
+}
+
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
 	bool internet_mode, const std::string& identity, std::string server_token, const std::string& virtual_client) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),

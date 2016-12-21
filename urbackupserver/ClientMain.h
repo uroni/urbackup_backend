@@ -31,6 +31,7 @@ class ContinuousBackup;
 class Backup;
 class ServerBackupDao;
 class ImageBackup;
+class ServerChannelThread;
 
 const int c_group_default = 0;
 const int c_group_continuous = 1;
@@ -262,6 +263,7 @@ private:
 	bool inBackupWindow(Backup* backup);
 	void updateClientAccessKey();
 	bool isDataplanOkay(bool file);
+	bool isOnline(ServerChannelThread& channel_thread);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
