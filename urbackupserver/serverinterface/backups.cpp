@@ -1523,6 +1523,11 @@ ACTION_IMPL(backups)
 				{
 					ret.set("backup_images", backupaccess::get_backup_images(db, t_clientid, clientname, 0));
 				}
+				else
+				{
+					JSON::Array empty;
+					ret.set("backup_images", empty);
+				}
 
 				ret.set("can_archive", archive_ok);
 				ret.set("can_delete", delete_ok);
