@@ -110,7 +110,7 @@ bool write_tokens()
 				{
 					for(size_t j=0;j<user_groups.size();++j)
 					{
-						dao.updateGroupMembership(uid.value, user_groups[j]);
+						dao.updateGroupMembership(uid.value, get_domain_account(user_groups[j]));
 					}
 				}
 

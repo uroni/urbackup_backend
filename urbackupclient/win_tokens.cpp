@@ -367,6 +367,58 @@ bool sid_has_profile(const std::string& account_sid)
 	return false;
 }
 
+std::string get_domain_account(const std::string& accountname)
+{
+	if (accountname.find("\\") == std::string::npos)
+	{
+		return accountname;
+	}
+
+	std::string local_username = accountname;
+	std::string local_hostname;
+	if (local_username.find("\\") != std::string::npos)
+	{
+		local_hostname = getuntil("\\", local_username);
+		local_username = getafter("\\", local_username);
+	}
+
+	std::vector<char> sid_buffer;
+	sid_buffer.resize(sizeof(SID));
+	DWORD account_sid_size = sizeof(SID);
+	SID_NAME_USE sid_name_use;
+	std::wstring referenced_domain;
+	referenced_domain.resize(1);
+	DWORD referenced_domain_size = 1;
+
+	BOOL b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+		Server->ConvertToWchar(local_username).c_str(),
+		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+		&referenced_domain_size, &sid_name_use);
+
+	if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	{
+		referenced_domain.resize(referenced_domain_size);
+		sid_buffer.resize(account_sid_size);
+		b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+			Server->ConvertToWchar(local_username).c_str(),
+			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+			&referenced_domain_size, &sid_name_use);
+	}
+
+	if (referenced_domain.size() != referenced_domain_size)
+	{
+		referenced_domain.resize(referenced_domain_size);
+	}
+
+	std::string pub_accountname = accountname;
+	if ( referenced_domain_size>0 )
+	{
+		pub_accountname = Server->ConvertFromWchar(referenced_domain) + "\\" + getafter("\\", pub_accountname);
+	}
+
+	return pub_accountname;
+}
+
 bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token)
 {
 	std::vector<char> sid_buffer;

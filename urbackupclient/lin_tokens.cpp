@@ -498,4 +498,9 @@ std::string permissions_allow_all()
 	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
+std::string get_domain_account(const std::string& accountname)
+{
+	return accountname;
+}
+
 } //namespace tokens

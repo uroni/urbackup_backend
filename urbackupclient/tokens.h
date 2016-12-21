@@ -49,6 +49,8 @@ namespace tokens
 
 	std::vector<std::string> get_user_groups(const std::string& username);
 
+	std::string get_domain_account(const std::string& accountname);
+
 	bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token=std::string());
 
 	std::string permissions_allow_all();
