@@ -105,7 +105,7 @@ namespace usn
 	{
 		if(version==0)
 		{
-			MFT_ENUM_DATA med;
+			MFT_ENUM_DATA_V0 med;
 			med.StartFileReferenceNumber = StartFileReferenceNumber;
 			med.LowUsn = 0;
 			med.HighUsn = MAXLONGLONG;
@@ -817,7 +817,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 		while(c)
 		{
 			c=false;
-			READ_USN_JOURNAL_DATA data;
+			READ_USN_JOURNAL_DATA_V0 data;
 			data.StartUsn=it->second.last_record;
 			data.ReasonMask=0xFFFFFFFF;
 			data.ReturnOnlyOnClose=0;
@@ -827,7 +827,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 
 			DWORD read;
 			memset(buffer, 0, BUF_LEN);
-			BOOL b=DeviceIoControl(it->second.hVolume, FSCTL_READ_USN_JOURNAL, &data, sizeof(READ_USN_JOURNAL_DATA), buffer, BUF_LEN, &read, NULL);
+			BOOL b=DeviceIoControl(it->second.hVolume, FSCTL_READ_USN_JOURNAL, &data, sizeof(data), buffer, BUF_LEN, &read, NULL);
 			if(b!=0)
 			{
 				DWORD dwRetBytes=read-sizeof(USN);
