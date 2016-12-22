@@ -233,7 +233,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 
 		if (queue_only)
 		{
-			if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), 0, false) != data.getDataSize())
+			if (stack->Send(getPipe(), data.getDataPtr(), data.getDataSize(), c_default_timeout, false) != data.getDataSize())
 			{
 				Server->Log("Timeout during file queue request (3)", LL_ERROR);
 				return ERR_TIMEOUT;
@@ -375,20 +375,24 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
 
-				int tries = 10;
-				while (stack->Send(getPipe(), buf, buf_size, c_default_timeout, false) != buf_size)
+				if (stack->Send(getPipe(), buf, buf_size, c_default_timeout, false) != buf_size)
 				{
 					Server->Log("Timeout during chunk request of chunk "+convert(next_chunk*c_checkpoint_dist)+". Reconnecting...", LL_DEBUG);
 
-					--tries;
+					if (queue_only)
+					{
+						return ERR_TIMEOUT;
+					}
 
-					if (tries == 0
-						|| !Reconnect(true))
+					if (!Reconnect(true))
 					{
 						Server->Log("Timeout during chunk request of chunk "+convert(next_chunk*c_checkpoint_dist), LL_ERROR);
-						if (!queue_only)
-							adjustOutputFilesizeOnFailure(filesize_out);
-						return ERR_CONN_LOST;
+						adjustOutputFilesizeOnFailure(filesize_out);
+						return ERR_TIMEOUT;
+					}
+					else
+					{
+						break;
 					}
 				}
 
@@ -506,6 +510,13 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 							}
 
 							queue_callback->unqueueFileChunked(remotefn);
+
+							if (!Reconnect(true))
+							{
+								Server->Log("Timeout after queueing next file", LL_ERROR);
+								adjustOutputFilesizeOnFailure(filesize_out);
+								return ERR_TIMEOUT;
+							}
 						}
 						else
 						{
