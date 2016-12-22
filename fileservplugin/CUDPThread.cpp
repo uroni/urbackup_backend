@@ -251,6 +251,10 @@ void CUDPThread::operator()(void)
 	{
 		delete this;
 	}
+
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+#endif
 }
 
 bool CUDPThread::UdpStep(void)
