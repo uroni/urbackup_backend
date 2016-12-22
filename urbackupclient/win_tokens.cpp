@@ -93,18 +93,51 @@ std::wstring get_dc_name()
 	return ret;
 }
 
+std::string get_domain_account(const wchar_t* hostname, const wchar_t* accountname)
+{
+	std::vector<char> sid_buffer;
+	sid_buffer.resize(sizeof(SID));
+	DWORD account_sid_size = sizeof(SID);
+	SID_NAME_USE sid_name_use;
+	std::wstring referenced_domain;
+	referenced_domain.resize(1);
+	DWORD referenced_domain_size = 1;
+
+	BOOL b = LookupAccountNameW(hostname,
+		accountname,
+		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+		&referenced_domain_size, &sid_name_use);
+
+	if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	{
+		referenced_domain.resize(referenced_domain_size);
+		sid_buffer.resize(account_sid_size);
+		b = LookupAccountNameW(hostname,
+			accountname,
+			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
+			&referenced_domain_size, &sid_name_use);
+	}
+
+	if (referenced_domain.size() != referenced_domain_size)
+	{
+		referenced_domain.resize(referenced_domain_size);
+	}
+
+	std::string pub_accountname = Server->ConvertFromWchar(accountname);
+	if (referenced_domain_size>0)
+	{
+		pub_accountname = Server->ConvertFromWchar(referenced_domain) + "\\" + pub_accountname;
+	}
+
+	return pub_accountname;
+}
+
 std::vector<std::string> get_dc_users()
 {
 	std::wstring dc_name = get_dc_name();
 	if (dc_name.empty())
 	{
 		return std::vector<std::string>();
-	}
-
-	std::string dc_prefix = Server->ConvertFromWchar(dc_name);
-	if (next(dc_prefix, 0, "\\\\"))
-	{
-		dc_prefix = dc_prefix.substr(2);
 	}
 
 	LPUSER_INFO_0 buf;
@@ -126,7 +159,7 @@ std::vector<std::string> get_dc_users()
 			for (DWORD i = 0; i<entriesread; ++i)
 			{
 				LPUSER_INFO_0 user_info = (buf + i);
-				ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(user_info->usri0_name));
+				ret.push_back(get_domain_account(dc_name.c_str(), user_info->usri0_name));
 			}
 		}
 		else
@@ -188,11 +221,16 @@ std::vector<std::string> get_users()
 
 std::vector<std::string> get_dc_user_groups(std::string username)
 {
-	assert(username.find("\\") != std::string::npos);
-	std::wstring dc_name = Server->ConvertToWchar("\\\\" + getuntil("\\", username));
+	std::wstring dc_name = get_dc_name();
+	if (dc_name.empty())
+	{
+		return std::vector<std::string>();
+	}
 
-	std::string dc_prefix = getuntil("\\", username);
-	username = getafter("\\", username);
+	if (username.find("\\") != std::string::npos)
+	{
+		username = getafter("\\", username);
+	}
 
 	LPGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
@@ -211,7 +249,7 @@ std::vector<std::string> get_dc_user_groups(std::string username)
 		for (DWORD i = 0; i<entriesread; ++i)
 		{
 			LPGROUP_USERS_INFO_0 user_info = (buf + i);
-			ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(user_info->grui0_name));
+			ret.push_back(get_domain_account(dc_name.c_str(), user_info->grui0_name));
 		}
 	}
 	else
@@ -229,11 +267,6 @@ std::vector<std::string> get_dc_user_groups(std::string username)
 
 std::vector<std::string> get_user_groups(const std::string& username)
 {
-	if (username.find("\\") != std::string::npos)
-	{
-		return get_dc_user_groups(username);
-	}
-
 	LPLOCALGROUP_USERS_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
 	DWORD entriesread = 0;
@@ -262,6 +295,12 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	if(buf!=NULL)
 	{
 		NetApiBufferFree(buf);
+	}
+
+	if (username.find("\\") != std::string::npos)
+	{
+		std::vector<std::string> dc_user_groups = get_dc_user_groups(username);
+		ret.insert(ret.end(), dc_user_groups.begin(), dc_user_groups.end());
 	}
 
 	return ret;
@@ -296,7 +335,7 @@ std::vector<std::string> get_dc_groups()
 				for (DWORD i = 0; i < entriesread; ++i)
 				{
 					LPGROUP_INFO_0 group_info = (buf2 + i);
-					ret.push_back(dc_prefix + "\\" + Server->ConvertFromWchar(group_info->grpi0_name));
+					ret.push_back(get_domain_account(dc_name.c_str(), group_info->grpi0_name));
 				}
 			}
 			else
@@ -367,58 +406,6 @@ bool sid_has_profile(const std::string& account_sid)
 	return false;
 }
 
-std::string get_domain_account(const std::string& accountname)
-{
-	if (accountname.find("\\") == std::string::npos)
-	{
-		return accountname;
-	}
-
-	std::string local_username = accountname;
-	std::string local_hostname;
-	if (local_username.find("\\") != std::string::npos)
-	{
-		local_hostname = getuntil("\\", local_username);
-		local_username = getafter("\\", local_username);
-	}
-
-	std::vector<char> sid_buffer;
-	sid_buffer.resize(sizeof(SID));
-	DWORD account_sid_size = sizeof(SID);
-	SID_NAME_USE sid_name_use;
-	std::wstring referenced_domain;
-	referenced_domain.resize(1);
-	DWORD referenced_domain_size = 1;
-
-	BOOL b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
-		Server->ConvertToWchar(local_username).c_str(),
-		&sid_buffer[0], &account_sid_size, &referenced_domain[0],
-		&referenced_domain_size, &sid_name_use);
-
-	if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-	{
-		referenced_domain.resize(referenced_domain_size);
-		sid_buffer.resize(account_sid_size);
-		b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
-			Server->ConvertToWchar(local_username).c_str(),
-			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
-			&referenced_domain_size, &sid_name_use);
-	}
-
-	if (referenced_domain.size() != referenced_domain_size)
-	{
-		referenced_domain.resize(referenced_domain_size);
-	}
-
-	std::string pub_accountname = accountname;
-	if ( referenced_domain_size>0 )
-	{
-		pub_accountname = Server->ConvertFromWchar(referenced_domain) + "\\" + getafter("\\", pub_accountname);
-	}
-
-	return pub_accountname;
-}
-
 bool write_token( std::string hostname, bool is_user, std::string accountname, const std::string &token_fn, ClientDAO &dao, const std::string& ext_token)
 {
 	std::vector<char> sid_buffer;
@@ -435,19 +422,17 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	bool lookup_user = is_user;
 	while (!b)
 	{
-		std::string local_username = accountname;
-		std::string local_hostname;
-		if (local_username.find("\\") != std::string::npos)
+		std::string local_username;
+		if (accountname.find("\\") != std::string::npos)
 		{
-			local_hostname = getuntil("\\", local_username);
-			local_username = getafter("\\", local_username);
+			local_username = accountname;
 		}
 		else if (lookup_user)
 		{
 			local_username = hostname + "\\" + accountname;
 		}
 
-		b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+		b = LookupAccountNameW(NULL,
 			Server->ConvertToWchar(local_username).c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
@@ -456,7 +441,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		{
 			referenced_domain.resize(referenced_domain_size);
 			sid_buffer.resize(account_sid_size);
-			b = LookupAccountNameW(local_hostname.empty() ? NULL : Server->ConvertToWchar(local_hostname).c_str(),
+			b = LookupAccountNameW(NULL,
 				Server->ConvertToWchar(local_username).c_str(),
 				&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 				&referenced_domain_size, &sid_name_use);
@@ -558,15 +543,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		i_is_user = ClientDAO::c_is_group;
 	}
 
-	std::string pub_accountname = accountname;
-	if (pub_accountname.find("\\") != std::string::npos
-		&& referenced_domain_size>0)
-	{
-		pub_accountname = Server->ConvertFromWchar(referenced_domain) + "\\" + getafter("\\", pub_accountname);
-	}
-	
-
-	dao.updateFileAccessToken(strlower(pub_accountname), token, i_is_user);
+	dao.updateFileAccessToken(strlower(accountname), token, i_is_user);
 
 	DWORD written=0;
 	while(written<token.size())
@@ -693,7 +670,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(users[i], 1);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -722,7 +699,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(groups[i], 0);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(strlower(groups[i]), ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{

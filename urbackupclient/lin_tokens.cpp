@@ -372,7 +372,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -395,7 +395,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(groups[i], ClientDAO::c_is_group);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(strlower(groups[i]), ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{

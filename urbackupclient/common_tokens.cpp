@@ -105,15 +105,14 @@ bool write_tokens()
 			{
 				std::vector<std::string> user_groups = get_user_groups(users[i]);
 
-				ClientDAO::CondInt64 uid = dao.getFileAccessTokenId(users[i], 1);
+				ClientDAO::CondInt64 uid = dao.getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_system_user, ClientDAO::c_is_user);
 				if(uid.exists)
 				{
 					for(size_t j=0;j<user_groups.size();++j)
 					{
-						dao.updateGroupMembership(uid.value, get_domain_account(user_groups[j]));
+						dao.updateGroupMembership(uid.value, strlower(user_groups[j]));
 					}
 				}
-
 			}
 		}
 	}
