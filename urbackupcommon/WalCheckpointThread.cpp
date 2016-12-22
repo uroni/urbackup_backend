@@ -35,7 +35,7 @@ WalCheckpointThread::WalCheckpointThread(int64 passive_checkpoint_size, int64 fu
 {
 }
 
-void WalCheckpointThread::checkpoint()
+void WalCheckpointThread::checkpoint(bool init)
 {
 	int mode = MODE_READ;
 #ifdef _WIN32
@@ -48,6 +48,14 @@ void WalCheckpointThread::checkpoint()
 		cannot_open = false;
 
 		int64 wal_size = wal_file->Size();
+
+		if (init
+			&& wal_size < full_checkpoint_size
+			&& last_checkpoint_wal_size == 0)
+		{
+			last_checkpoint_wal_size = wal_size - wal_size%passive_checkpoint_size;
+		}
+
 		if (wal_size > full_checkpoint_size)
 		{
 			wal_file.reset();
@@ -99,10 +107,12 @@ void WalCheckpointThread::checkpoint()
 
 void WalCheckpointThread::operator()()
 {
+	bool init = true;
 	while(true)
 	{
 		waitAndLockForBackup();
-		checkpoint();
+		checkpoint(init);
+		init = false;
 	}
 }
 
