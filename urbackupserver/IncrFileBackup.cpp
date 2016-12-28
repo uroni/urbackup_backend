@@ -686,12 +686,33 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(dir_already_exists)
 								{
-									if(!os_remove_symlink_dir(os_file_prefix(backuppath+local_curr_os_path))
-										&& !os_remove_dir(os_file_prefix(backuppath + local_curr_os_path)) )
+									bool prev_is_symlink = (os_get_file_type(os_file_prefix(backuppath + local_curr_os_path)) & EFileType_Symlink)>0;
+
+									if (prev_is_symlink)
 									{
-										ServerLogger::Log(logid, "Could not remove symbolic link at \""+backuppath+local_curr_os_path+"\" " + systemErrorInfo(), LL_ERROR);
-										c_has_error=true;
-										break;
+										if (!os_remove_symlink_dir(os_file_prefix(backuppath + local_curr_os_path)) )
+										{
+											ServerLogger::Log(logid, "Could not remove symbolic link at \"" + backuppath + local_curr_os_path + "\" " + systemErrorInfo(), LL_ERROR);
+											c_has_error = true;
+											break;
+										}
+
+										metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+									}
+									else
+									{
+										//Directory to directory symlink
+										if (!os_remove_dir(os_file_prefix(backuppath + local_curr_os_path)) )
+										{
+											ServerLogger::Log(logid, "Could not remove directory at \"" + backuppath + local_curr_os_path + "\" " + systemErrorInfo(), LL_ERROR);
+											c_has_error = true;
+											break;
+										}
+
+										if ( !Server->deleteFile(os_file_prefix(metadata_fn)) )
+										{
+											ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + "\". " + os_last_error_str(), LL_WARNING);
+										}
 									}
 								}
 
@@ -703,7 +724,7 @@ bool IncrFileBackup::doFileBackup()
 								}					
 
 								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
-								metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name)); 
+								
 								symlinked_file=true;
 							}
 							else if( !dir_already_exists )
@@ -785,13 +806,11 @@ bool IncrFileBackup::doFileBackup()
 											metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
 										}
 									}
-									else if( (os_get_file_type(os_file_prefix(backuppath + local_curr_os_path)) & EFileType_Symlink) == 0 )
+									else
 									{
-										//Directory to directory symlink
-										if( !Server->deleteFile(os_file_prefix(metadata_fn + os_file_sep() + metadata_dir_fn))
-											|| !os_remove_dir(os_file_prefix(metadata_fn)) )
+										if(!os_remove_dir(os_file_prefix(metadata_fn)))
 										{
-											ServerLogger::Log(logid, "Error deleting metadata file \"" + metadata_fn + os_file_sep() + metadata_dir_fn + "\". " + os_last_error_str(), LL_WARNING);
+											ServerLogger::Log(logid, "Error deleting metadata directory \"" + metadata_fn + "\". " + os_last_error_str(), LL_WARNING);
 										}
 									}
 								}
