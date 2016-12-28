@@ -471,7 +471,7 @@ void ClientMain::operator ()(void)
 		skip_checking=true;
 	}
 
-	ServerSettings server_settings_updated(db);
+	ServerSettings server_settings_updated(db, clientid);
 
 	bool do_exit_now=false;
 	

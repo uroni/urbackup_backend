@@ -197,14 +197,12 @@ void ServerSettings::updateClient(int clientid)
 	{
 		if (it->second->refcount == 0)
 		{
-			std::map<int, SSettings*>::iterator delit = it++;
-			delete delit->second;
-			g_settings_cache.erase(delit);
+			delete it->second;
+			g_settings_cache.erase(it);
 		}
 		else
 		{
 			it->second->needs_update = true;
-			++it;
 		}
 	}
 }
