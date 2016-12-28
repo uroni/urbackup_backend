@@ -604,6 +604,7 @@ void ClientMain::operator ()(void)
 											if (success)
 											{
 												backup_dao->setImageBackupComplete(it->first->getBackupId());
+												backup_dao->updateClientLastImageBackup(it->first->getBackupId(), clientid);
 											}
 											ServerCleanupThread::unlockImageFromCleanup(it->first->getBackupId());
 											delete it->first;
