@@ -2464,7 +2464,8 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		{
 			speed=server_settings->getLocalSpeed();
 		}
-		if(speed!=0)
+		if(speed!=0
+			&& speed!=-1)
 		{
 			fc_chunked->addThrottler(getThrottler(speed));
 		}
@@ -2472,7 +2473,8 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		if(internet_connection)
 		{
 			int global_speed=server_settings->getGlobalInternetSpeed();
-			if(global_speed!=0)
+			if(global_speed!=0
+				&& global_speed!=-1)
 			{
 				fc_chunked->addThrottler(BackupServer::getGlobalInternetThrottler(global_speed));
 			}
@@ -2480,7 +2482,8 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		else
 		{
 			int global_speed=server_settings->getGlobalLocalSpeed();
-			if(global_speed!=0)
+			if(global_speed!=0
+				&& global_speed!=-1)
 			{
 				fc_chunked->addThrottler(BackupServer::getGlobalLocalThrottler(global_speed));
 			}
