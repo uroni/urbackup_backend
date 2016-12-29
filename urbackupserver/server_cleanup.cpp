@@ -1011,10 +1011,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 					&& !findArchivedImageRef(cleanupdao.get(), delete_pending_images[i].id)
 					&& cleanupdao->getImageArchived(delete_pending_images[i].id).value==0 )
 			{
-				ServerLogger::Log(logid, "Deleting image file \"" + incomplete_images[i].path + "\" because it was manually set to be deleted...", LL_INFO);
+				ServerLogger::Log(logid, "Deleting image file \"" + delete_pending_images[i].path + "\" because it was manually set to be deleted...", LL_INFO);
 				if (!removeImage(delete_pending_images[i].id, &settings, true, false, true, true))
 				{
-					ServerLogger::Log(logid, "Deleting image \"" + incomplete_images[i].path + "\" (manually set to be deleted) failed.", LL_WARNING);
+					ServerLogger::Log(logid, "Deleting image \"" + delete_pending_images[i].path + "\" (manually set to be deleted) failed.", LL_WARNING);
 				}
 			}
 		}
