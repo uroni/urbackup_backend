@@ -1230,6 +1230,32 @@ namespace
 		q->Write();
 		q->Reset();
 	}
+
+	void archiveBackup(IDatabase* db, int t_clientid, int backupid, int archive)
+	{
+		std::string tbl = "backups";
+		std::vector<int> toarchive;
+		if (backupid < 0)
+		{
+			tbl = "backup_images";
+			backupid *= -1;
+
+			ServerCleanupDao cleanupdao(db);
+			std::vector<int> assoc_images = cleanupdao.getAssocImageBackups(backupid);
+			toarchive.insert(toarchive.end(), assoc_images.begin(), assoc_images.end());
+			assoc_images = cleanupdao.getAssocImageBackupsReverse(backupid);
+			toarchive.insert(toarchive.end(), assoc_images.begin(), assoc_images.end());
+		}
+		toarchive.push_back(backupid);
+		IQuery *q = db->Prepare("UPDATE " + tbl + " SET archived="+convert(archive)+", archive_timeout=0 WHERE id=? AND clientid=?");
+		for (size_t i = 0; i < toarchive.size(); ++i)
+		{
+			q->Bind(toarchive[i]);
+			q->Bind(t_clientid);
+			q->Write();
+			q->Reset();
+		}
+	}
 } // unnamed namespace
 
 ACTION_IMPL(backups)
@@ -1413,29 +1439,11 @@ ACTION_IMPL(backups)
 					std::string tbl = "backups";				
 					if(CURRP.find("archive")!=CURRP.end())
 					{
-						int archive_id = watoi(CURRP["archive"]);
-						if (archive_id < 0)
-						{
-							tbl = "backup_images";
-							archive_id *= -1;
-						}
-						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=0 WHERE id=? AND clientid=?");
-						q->Bind(archive_id);
-						q->Bind(t_clientid);
-						q->Write();
+						archiveBackup(db, t_clientid, watoi(CURRP["archive"]), 1);
 					}
 					else if(CURRP.find("unarchive")!=CURRP.end())
 					{
-						int unarchive_id = watoi(CURRP["unarchive"]);
-						if (unarchive_id  < 0)
-						{
-							tbl = "backup_images";
-							unarchive_id *= -1;
-						}
-						IQuery *q=db->Prepare("UPDATE "+tbl+" SET archived=0 WHERE id=? AND clientid=?");
-						q->Bind(unarchive_id);
-						q->Bind(t_clientid);
-						q->Write();
+						archiveBackup(db, t_clientid, watoi(CURRP["unarchive"]), 0);
 					}
 				}
 
