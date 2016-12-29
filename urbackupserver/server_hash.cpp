@@ -605,12 +605,25 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		ff_last=existing_file.fullpath;
 		tries_once=true;
 		bool too_many_hardlinks;
+		bool b = false;
 		if (use_snapshots
 			&& snapshot_file_inplace)
 		{
-			Server->deleteFile(os_file_prefix(tfn));
+			if (tf->Size() <= 8
+				&& os_get_file_type(os_file_prefix(tfn)) != 0)
+			{
+				//zero patch
+				b = true;
+			}
+			else
+			{
+				Server->deleteFile(os_file_prefix(tfn));
+			}
 		}
-		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+		if (!b)
+		{
+			b = os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+		}
 		if(!b)
 		{
 			if(too_many_hardlinks)
@@ -828,7 +841,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 next_entryid = 0;
 	int64 rsize = 0;
 	if(t_filesize>= link_file_min_size
-		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024)
+		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024 || tf->Size()<=8)
 		&& findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, false, extent_iterator))
