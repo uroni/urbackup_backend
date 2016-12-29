@@ -477,7 +477,8 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		{
 			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize=" + convert(filesize) +
 				" hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index) + " is the last file entry for this file and to be deleted. "
-				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. The file entry index may be damaged. Not deleting entry from file entry index", LL_WARNING));
+				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. "
+				"The file entry index may be damaged or this was a small patch and the files are backed up with snapshots. Not deleting entry from file entry index", LL_WARNING));
 		}
 
 		if (!pointed_to)
