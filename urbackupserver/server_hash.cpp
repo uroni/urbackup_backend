@@ -609,7 +609,8 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		if (use_snapshots
 			&& snapshot_file_inplace)
 		{
-			if (tf->Size() <= 8
+			if (tf!=NULL
+				&& tf->Size() <= 8
 				&& os_get_file_type(os_file_prefix(tfn)) != 0)
 			{
 				//zero patch
