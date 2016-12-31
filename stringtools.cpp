@@ -592,7 +592,7 @@ void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std:
 	while(true)
 	{ 
 		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps.c_str(), pos0);
+		pos1 = (s32)str.find_first_of(seps, pos0);
 		// find the next \" 
 	    
 		// if the end is reached..

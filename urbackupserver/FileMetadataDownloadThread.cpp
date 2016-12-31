@@ -1179,6 +1179,13 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         metadata_size+=sizeof(key_size);
         key_size = little_endian(key_size);
 
+		if (key_size > 1 * 1024 * 1024)
+		{
+			ServerLogger::Log(logid, "Eattry key "+convert(i)+" for  \"" + (output_f != NULL ? output_f->getFilename() : "NONE") + "\" too large with size " + PrettyPrintBytes(key_size)
+				+ " in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			return false;
+		}
+
         std::string eattr_key;
         eattr_key.resize(key_size);
 
@@ -1217,6 +1224,18 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
         metadata_size+=sizeof(val_size);
         val_size = little_endian(val_size);
+
+		if (val_size == UINT_MAX)
+		{
+			continue;
+		}
+
+		if (val_size > 10 * 1024 * 1024)
+		{
+			ServerLogger::Log(logid, "Eattry value for eattr \""+eattr_key+"\" for \""+ (output_f!=NULL ? output_f->getFilename(): "NONE")+"\" too large with size "+PrettyPrintBytes(val_size)
+				+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			return false;
+		}
 
         std::string eattr_val;
         eattr_val.resize(val_size);

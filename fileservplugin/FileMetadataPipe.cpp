@@ -27,6 +27,7 @@
 #include "FileServ.h"
 #include "PipeSessions.h"
 #include "../common/adler32.h"
+#include <limits.h>
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -990,14 +991,23 @@ namespace
 				return false;
 			}
 
-			TokenizeMail(buf, keys, "\0");
+			TokenizeMail(buf, keys, std::string(1, '\0'));
 
-            for(size_t i=0;i<keys.size();++i)
+            for(size_t i=0;i<keys.size();)
             {
-                unsigned int ksize = keys[i].size();
+				if (keys[i].empty()
+					|| keys[i].size()>=MAX_UINT)
+				{
+					keys.erase(keys.begin() + i);
+					continue;
+				}
+
+                unsigned int ksize = static_cast<unsigned int>(keys[i].size());
                 ksize = little_endian(ksize);
 
                 keys[i].insert(0, reinterpret_cast<char*>(&ksize), sizeof(ksize));
+
+				++i;
             }
 
 			return true;
@@ -1013,7 +1023,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute "+key+" of file "+fn+" errno: "+convert(errno), LL_ERROR);
+				Server->Log("Error getting extended attribute \""+key+"\" of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
 				return false;
 			}
 
@@ -1029,7 +1039,7 @@ namespace
 
 			if(bufsize==-1)
 			{
-				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno)+" (2)", LL_ERROR);
+				Server->Log("Error getting extended attribute \""+key+"\" of file \""+fn+"\" errno: "+convert(errno)+" (2)", LL_ERROR);
 				return false;
 			}
 
@@ -1158,7 +1168,9 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 		{			
             if(!get_xattr(local_fn, eattr_keys[eattr_idx], eattr_val))
 			{
-				return false;
+				eattr_val.resize(sizeof(_u32));
+				unsigned int umax = MAX_UINT;
+				memcpy(&eattr_val[0], &umax, sizeof(umax));
 			}
 			backup_state = BackupState_EAttr_Vals_Val;
 			eattr_val_off=0;
