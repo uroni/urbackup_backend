@@ -996,7 +996,7 @@ namespace
             for(size_t i=0;i<keys.size();)
             {
 				if (keys[i].empty()
-					|| keys[i].size()>=MAX_UINT)
+					|| keys[i].size()>=UINT_MAX)
 				{
 					keys.erase(keys.begin() + i);
 					continue;
