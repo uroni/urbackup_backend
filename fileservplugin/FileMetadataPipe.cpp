@@ -1169,7 +1169,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
             if(!get_xattr(local_fn, eattr_keys[eattr_idx], eattr_val))
 			{
 				eattr_val.resize(sizeof(_u32));
-				unsigned int umax = MAX_UINT;
+				unsigned int umax = UINT_MAX;
 				memcpy(&eattr_val[0], &umax, sizeof(umax));
 			}
 			backup_state = BackupState_EAttr_Vals_Val;

@@ -22,6 +22,7 @@
 #include "../urbackupcommon/file_metadata.h"
 #include "../common/data.h"
 #include <memory>
+#include <limits.h>
 #include "../common/adler32.h"
 #include "FileBackup.h"
 
