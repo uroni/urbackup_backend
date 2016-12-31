@@ -73,6 +73,8 @@ db_results create_callback(size_t n_done, size_t n_rows, void *userdata)
 
 bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 {
+	Server->destroyAllDatabases();
+
 	IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
 	IDatabase* db_files_new = NULL;
 

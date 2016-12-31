@@ -310,18 +310,27 @@ void CStreamPipe::resetTransferedBytes(void)
 
 void CStreamPipe::addThrottler(IPipeThrottler *throttler)
 {
-	incoming_throttlers.push_back(throttler);
-	outgoing_throttlers.push_back(throttler);
+	if (throttler != NULL)
+	{
+		incoming_throttlers.push_back(throttler);
+		outgoing_throttlers.push_back(throttler);
+	}
 }
 
 void CStreamPipe::addOutgoingThrottler(IPipeThrottler *throttler)
 {
-	outgoing_throttlers.push_back(throttler);
+	if (throttler != NULL)
+	{
+		outgoing_throttlers.push_back(throttler);
+	}
 }
 
 void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
 {
-	incoming_throttlers.push_back(throttler);
+	if (throttler != NULL)
+	{
+		incoming_throttlers.push_back(throttler);
+	}
 }
 
 bool CStreamPipe::Flush( int timeoutms/*=-1 */ )

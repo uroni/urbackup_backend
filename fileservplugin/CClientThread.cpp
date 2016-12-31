@@ -743,9 +743,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 				size_t extent_pos = 0;
 
 				while (has_file_extents
-					&& file_extents[extent_pos].offset<start_offset)
+					&& file_extents[extent_pos].offset<=start_offset)
 				{
-					if (extent_pos + 1 < file_extents.size())
+					if (file_extents[extent_pos].offset + file_extents[extent_pos].size > start_offset)
+					{
+						break;
+					}
+					else if (extent_pos + 1 < file_extents.size())
 					{
 						++extent_pos;
 					}

@@ -477,7 +477,8 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 		{
 			FILEENTRY_DEBUG(Server->Log("File entry with id " + convert(id) + " with filesize=" + convert(filesize) +
 				" hash=" + base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index) + " is the last file entry for this file and to be deleted. "
-				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. The file entry index may be damaged. Not deleting entry from file entry index", LL_WARNING));
+				"However, the file entry index points to entry id "+convert(target_entryid)+" which differs. "
+				"The file entry index may be damaged or this was a small patch and the files are backed up with snapshots. Not deleting entry from file entry index", LL_WARNING));
 		}
 
 		if (!pointed_to)
@@ -604,12 +605,26 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		ff_last=existing_file.fullpath;
 		tries_once=true;
 		bool too_many_hardlinks;
+		bool b = false;
 		if (use_snapshots
 			&& snapshot_file_inplace)
 		{
-			Server->deleteFile(os_file_prefix(tfn));
+			if (tf!=NULL
+				&& tf->Size() <= 8
+				&& os_get_file_type(os_file_prefix(tfn)) != 0)
+			{
+				//zero patch
+				b = true;
+			}
+			else
+			{
+				Server->deleteFile(os_file_prefix(tfn));
+			}
 		}
-		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+		if (!b)
+		{
+			b = os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+		}
 		if(!b)
 		{
 			if(too_many_hardlinks)
@@ -827,7 +842,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 next_entryid = 0;
 	int64 rsize = 0;
 	if(t_filesize>= link_file_min_size
-		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024)
+		&& (!snapshot_file_inplace || t_filesize<50*1024*1024 || tf->Size()>10*1024 || tf->Size()<=8)
 		&& findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, false, extent_iterator))

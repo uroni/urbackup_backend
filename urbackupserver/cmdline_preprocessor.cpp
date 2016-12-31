@@ -273,6 +273,16 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("USER", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--user");
+				real_args.push_back(val);
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -382,8 +392,11 @@ int action_run(std::vector<std::string> args)
 	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 	real_args.push_back("--mount_helper");
 	real_args.push_back(BINDIR "/urbackup_mount_helper");
-	real_args.push_back("--user");
-	real_args.push_back(user_arg.getValue());
+	if (std::find(real_args.begin(), real_args.end(), "--user") == real_args.end())
+	{
+		real_args.push_back("--user");
+		real_args.push_back(user_arg.getValue());
+	}
 	if(!sqlite_tmpdir_arg.getValue().empty())
 	{
 		real_args.push_back("--sqlite_tmpdir");

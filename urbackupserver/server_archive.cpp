@@ -22,6 +22,7 @@
 #include "database.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "dao/ServerCleanupDao.h"
 #include <algorithm>
 #include <stdlib.h>
 
@@ -77,11 +78,24 @@ void ServerAutomaticArchive::archiveTimeoutImageBackups()
 
 	IQuery *q_unarchive = db->Prepare("UPDATE backup_images SET archived=0 WHERE id=?");
 	if (q_unarchive == NULL) return;
+
+	ServerCleanupDao cleanupdao(db);
 	for (size_t i = 0; i<res_timeout.size(); ++i)
 	{
-		q_unarchive->Bind(res_timeout[i]["id"]);
-		q_unarchive->Write();
-		q_unarchive->Reset();
+		std::vector<int> tounarchive;
+		int backupid = watoi(res_timeout[i]["id"]);
+		tounarchive.push_back(backupid);
+		std::vector<int> assoc_images = cleanupdao.getAssocImageBackups(backupid);
+		tounarchive.insert(tounarchive.end(), assoc_images.begin(), assoc_images.end());
+		assoc_images = cleanupdao.getAssocImageBackupsReverse(backupid);
+		tounarchive.insert(tounarchive.end(), assoc_images.begin(), assoc_images.end());
+
+		for (size_t j = 0; j < tounarchive.size(); ++j)
+		{
+			q_unarchive->Bind(tounarchive[j]);
+			q_unarchive->Write();
+			q_unarchive->Reset();
+		}		
 	}
 }
 
@@ -149,13 +163,13 @@ void ServerAutomaticArchive::archiveBackups(void)
 				if(backupid!=0)
 				{
 					int length=watoi(res_archived[j]["length"]);
-					archiveFileBackup(backupid, length, image);
-					Server->Log("Archived file backup with id="+convert(backupid)+" for "+convert(length)+" seconds", LL_INFO);
+					archiveBackup(backupid, length, image);
+					Server->Log("Archived backup with id="+convert(backupid)+" image="+convert(image)+" for "+convert(length)+" seconds", LL_INFO);
 					updateInterval(watoi(res_archived[j]["id"]), watoi(res_archived[j]["interval"]));
 				}
 				else
 				{
-					Server->Log("Did not find file backup suitable for archiving with backup_type="+convert(watoi(res_archived[j]["backup_types"])), LL_INFO);
+					Server->Log("Did not find backup suitable for archiving with backup_type="+convert(watoi(res_archived[j]["backup_types"]))+" image="+convert(image), LL_INFO);
 				}
 			}
 		}
@@ -197,6 +211,7 @@ int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid,
 	if (image)
 	{
 		tbl = "backup_images";
+		incremental += " AND letter!='SYSVOL' AND letter!='ESP'";
 	}
 	IQuery *q_get_backups=db->Prepare("SELECT id FROM "+tbl+" WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
 	q_get_backups->Bind(clientid);
@@ -207,24 +222,36 @@ int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid,
 		return 0;
 }
 
-void ServerAutomaticArchive::archiveFileBackup(int backupid, int length, bool image)
+void ServerAutomaticArchive::archiveBackup(int backupid, int length, bool image)
 {
+	std::vector<int> toarchive;
+	toarchive.push_back(backupid);
 	std::string tbl = "backups";
 	if (image)
 	{
 		tbl = "backup_images";
+
+		ServerCleanupDao cleanupdao(db);
+		std::vector<int> assoc_images = cleanupdao.getAssocImageBackups(backupid);
+		toarchive.insert(toarchive.end(), assoc_images.begin(), assoc_images.end());
+		assoc_images = cleanupdao.getAssocImageBackupsReverse(backupid);
+		toarchive.insert(toarchive.end(), assoc_images.begin(), assoc_images.end());
 	}
-	IQuery *q_archive=db->Prepare("UPDATE "+tbl+" SET archived=1, archive_timeout=? WHERE id=?");
-	if(length!=-1)
+	for (size_t i = 0; i < toarchive.size(); ++i)
 	{
-		q_archive->Bind(Server->getTimeSeconds()+length);
-	}
-	else
-	{
-		q_archive->Bind(-1);
-	}
-	q_archive->Bind(backupid);
-	q_archive->Write();
+		IQuery *q_archive = db->Prepare("UPDATE " + tbl + " SET archived=1, archive_timeout=? WHERE id=?");
+		if (length != -1)
+		{
+			q_archive->Bind(Server->getTimeSeconds() + length);
+		}
+		else
+		{
+			q_archive->Bind(-1);
+		}
+		q_archive->Bind(toarchive[i]);
+		q_archive->Write();
+		q_archive->Reset();
+	}	
 }
 
 int ServerAutomaticArchive::getBackupTypes(const std::string &backup_type_name)

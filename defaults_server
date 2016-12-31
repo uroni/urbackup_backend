@@ -34,3 +34,6 @@ SQLITE_TMPDIR=""
 #Interfaces from which to send broadcasts. (Default: all).
 #Comma separated -- e.g. "eth0,eth1"
 BROADCAST_INTERFACES=""
+
+#User the urbackupsrv process runs as
+USER="urbackup"

@@ -28,7 +28,7 @@ private:
 	void archiveTimeoutImageBackups();
 	void archiveBackups(void);
 	int getNonArchivedBackup(int backup_types, int clientid, bool image);
-	void archiveFileBackup(int backupid, int length, bool image);
+	void archiveBackup(int backupid, int length, bool image);
 	void updateInterval(int archiveid, int interval);
 
 	bool isInArchiveWindow(const std::string &window_def);

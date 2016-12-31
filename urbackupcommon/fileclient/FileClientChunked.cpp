@@ -511,6 +511,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 
 							queue_callback->unqueueFileChunked(remotefn);
 
+							Server->Log("Reconnecting after pipeline queuing failure", LL_DEBUG);
+
 							if (!Reconnect(true))
 							{
 								Server->Log("Timeout after queueing next file", LL_ERROR);
@@ -1678,6 +1680,7 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			did_queue_fc=false;
 			md5_hash.init();
 			reconnected=true;
+			initial_bytes.clear();
 
 			_i64 fileoffset=0;
 
