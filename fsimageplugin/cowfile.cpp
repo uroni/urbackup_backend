@@ -40,6 +40,7 @@
 #define lseek64 lseek
 #define stat64 stat
 #define fstat64 fstat
+#define off64_t off_t
 #endif
 
 #include "../config.h"
@@ -235,7 +236,7 @@ bool CowFile::Seek(_i64 offset)
 
 	curr_offset = offset;
 
-	off_t off = lseek64(fd, curr_offset, SEEK_SET);
+	off64_t off = lseek64(fd, curr_offset, SEEK_SET);
 
 	if(off!=curr_offset)
 	{
