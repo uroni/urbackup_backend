@@ -218,6 +218,15 @@ void open_server_database(bool init_db)
 		params.erase(params.find("mmap_size"));
 	}
 
+	str_map params_nil;
+
+	if (!Server->openDatabase("urbackup/backup_server_files.db", URBACKUPDB_SERVER_FILES_DEL, params_nil))
+	{
+		Server->Log("Couldn't open Database backup_server_files.db (2). Exiting. Expecting database at \"" +
+			Server->getServerWorkingDir() + os_file_sep() + "urbackup" + os_file_sep() + "backup_server_files.db\"", LL_ERROR);
+		exit(1);
+	}
+
 	Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER_FILES, sqlite_data_allocation_chunk_size);
 
 	if (!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES))

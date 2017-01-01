@@ -75,7 +75,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 {
 	Server->destroyAllDatabases();
 
-	IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES);
+	IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_FILES_DEL);
 	IDatabase* db_files_new = NULL;
 
 	if(db->getEngineName()=="sqlite")
