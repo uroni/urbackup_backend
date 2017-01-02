@@ -367,8 +367,8 @@ private:
 	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);
 	std::string GetErrorHResErrStr(HRESULT res);
 	void printProviderInfo(HRESULT res);
-	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error);
-	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error);
+	bool check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool continue_on_failure, bool* retryable_error);
+	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool continue_on_failure, bool* retryable_error);
 	bool deleteShadowcopyWin(SCDirs *dir);
 	void initVss();
 	bool deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext& context);

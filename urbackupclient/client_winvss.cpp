@@ -180,7 +180,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync, const std::string& error_prefix)
 	return true;
 }
 
-bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool* retryable_error)
+bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::string& errmsg, int loglevel, bool continue_on_failure, bool* retryable_error)
 {
 #define FAIL_STATE(x) case x: { state=#x; failure=true; } break
 #define OK_STATE(x) case x: { state=#x; ok_state=true; } break
@@ -251,7 +251,8 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 			loglevel = LL_INFO;
 			*retryable_error = true;
 		}
-		else if(loglevel<LL_ERROR)
+		else if(loglevel<LL_ERROR
+			&& continue_on_failure)
 		{
 			nerrmsg += erradd;
 		}
@@ -268,7 +269,7 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 }
 
 
-bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool* retryable_error)
+bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool continue_on_failure, bool* retryable_error)
 {
 	IVssAsync *pb_result;
 	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
@@ -303,7 +304,7 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::stri
 
 		if (ok)
 		{
-			if (!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, loglevel, retryable_error))
+			if (!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, loglevel, continue_on_failure, retryable_error))
 			{
 				has_error = true;
 			}
@@ -536,7 +537,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		std::string errmsg;
 
 		retryable_error = false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, !with_components, &retryable_error);
 
 		bool b_ok = true;
 		int tries_snapshot_set = 5;
@@ -610,7 +611,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		}
 
 		retryable_error = false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, !with_components, &retryable_error);
 
 		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 		if (!wait_for(pb_result, "Starting snapshot set failed"))
@@ -625,13 +626,17 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		bool snapshot_ok = false;
 		if (tries>1)
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, &retryable_error);
+			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, !with_components, &retryable_error);
 		}
 		else
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, NULL);
+			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, !with_components, NULL);
 		}
 		--tries;
+		const char* windows_component_exp = "This client is configured to backup Windows components. "
+			"When backing up Windows components writer failures are fatal indexing errors. "
+			"To fix this issue, either configure UrBackup to not backup Windows components or diagnose and repair the "
+			"failing Windows component. More error details are sometimes in the Windows event log.";
 		if (!snapshot_ok && !retryable_error)
 		{
 			if (!with_components)
@@ -640,7 +645,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			}
 			else
 			{
-				VSSLog("Writer is in error state during snapshot creation.", LL_ERROR);
+				VSSLog(std::string("Writer is in error state during snapshot creation. ")+windows_component_exp, LL_ERROR);
 				backupcom->AbortBackup();
 				backupcom->Release();
 				return false;
@@ -657,7 +662,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 				}
 				else
 				{
-					VSSLog("Creating snapshot failed after three tries. Giving up.", LL_ERROR);
+					VSSLog(std::string("Creating snapshot failed after three tries. Giving up. ")+windows_component_exp, LL_ERROR);
 					backupcom->AbortBackup();
 					backupcom->Release();
 					return false;
@@ -934,7 +939,7 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 	}
 
 	std::string errmsg;
-	if (!check_writer_status(backupcom, errmsg, LL_ERROR, NULL))
+	if (!check_writer_status(backupcom, errmsg, LL_ERROR, !dir->ref->with_writers, NULL))
 	{
 		if (dir->ref->with_writers)
 		{
