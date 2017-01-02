@@ -715,6 +715,10 @@ bool IncrFileBackup::doFileBackup()
 										}
 									}
 								}
+								else
+								{
+									metadata_srcpath = last_backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + "/" + escape_metadata_fn(cf.name));
+								}
 
 								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, orig_sep, true))
 								{
