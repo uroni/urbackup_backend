@@ -22,6 +22,7 @@
 #include "../common/data.h"
 #include "../common/adler32.h"
 #include <assert.h>
+#include <limits.h>
 #ifdef _WIN32
 #include <Windows.h>
 #else
@@ -718,7 +719,7 @@ namespace
                 return false;
             }
 
-            TokenizeMail(buf, keys, "\0");
+            TokenizeMail(buf, keys, std::string(1, '\0'));
 
             return true;
         }
@@ -734,6 +735,11 @@ namespace
 
         for(size_t i=0;i<keys.size();++i)
         {
+			if (keys[i].empty())
+			{
+				continue;
+			}
+
             if(lremovexattr(fn.c_str(), keys[i].c_str())!=0)
             {
                 Server->Log("Error removing xattr "+keys[i]+" from "+fn+" errno: "+convert(errno), LL_ERROR);
@@ -841,6 +847,13 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 
         key_size = little_endian(key_size);
 
+		if (key_size > 1 * 1024 * 1024)
+		{
+			restore.log("Eattr key " + convert(i) + " for  \"" + output_fn + "\" too large with size " + PrettyPrintBytes(key_size)
+				+ " in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			return false;
+		}
+
         std::string eattr_key;
         eattr_key.resize(key_size);
 
@@ -862,6 +875,18 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		data_checksum = urb_adler32(data_checksum, reinterpret_cast<char*>(&val_size), sizeof(val_size));
 
         val_size = little_endian(val_size);
+
+		if (val_size == UINT_MAX)
+		{
+			continue;
+		}
+
+		if (val_size > 10 * 1024 * 1024)
+		{
+			restore.log("Eattr value for eattr \"" + eattr_key + "\" for \"" + output_fn + "\" too large with size " + PrettyPrintBytes(val_size)
+				+ " in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
+			return false;
+		}
 
         std::string eattr_val;
         eattr_val.resize(val_size);
