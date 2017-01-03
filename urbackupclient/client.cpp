@@ -2573,6 +2573,8 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 					SCRef *curr = sc_refs[i];
 					std::map<std::string, SCDirs*>& scdirs_server = scdirs[SCDirServerKey(starttoken, index_clientsubname, sc_refs[i]->for_imagebackup)];
 
+					VSS_ID ssetid = curr->ssetid;
+
 					std::vector<std::string> paths;
 					for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
 						it != scdirs_server.end(); ++it)
@@ -2588,6 +2590,25 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 						{
 							VSSLog("Releasing " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
+						}
+					}
+
+					bool retry = true;
+					while (retry)
+					{
+						retry = false;
+						for (std::map<std::string, SCDirs*>::iterator it = scdirs_server.begin();
+							it != scdirs_server.end();++it)
+						{
+							if (it->second->ref != NULL
+								&& it->second->ref != curr
+								&& it->second->ref->ssetid == ssetid)
+							{
+								VSSLog("Releasing group shadow copy " + it->first + " orig_target=" + it->second->orig_target + " target=" + it->second->target, LL_DEBUG);
+								release_shadowcopy(it->second, false, -1, dir);
+								retry = true;
+								break;
+							}
 						}
 					}
 					dir->target = dir->orig_target;

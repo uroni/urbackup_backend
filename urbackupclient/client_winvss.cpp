@@ -686,7 +686,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			{
 				LONG dels;
 				GUID ndels;
-				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE,
+				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT_SET, TRUE,
 					&dels, &ndels), bcom_ok);
 
 				if (dels == 0)
