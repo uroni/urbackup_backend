@@ -129,8 +129,6 @@ void RestoreDownloadThread::operator()()
 			Server->Log("Error informing client about metadata stream end. Errorcode: "+fc.getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
 		}
 	}
-
-	delete this;
 }
 
 void RestoreDownloadThread::addToQueueFull( size_t id, const std::string &remotefn, const std::string &destfn,

@@ -706,8 +706,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string share_path;
 	std::string server_path = "clientdl";
 
-	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping);
-    THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download, "file restore download");
+	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping));
+    THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download.get(), "file restore download");
 
 	std::string curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
@@ -757,7 +757,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						if (!single_item && clean_other)
 						{
 							bool has_include_exclude = false;
-							if (!removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
+							if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
 							{
 								has_error = true;
 							}
@@ -1315,7 +1315,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 		&& !has_error)
 	{
 		bool has_include_exclude = false;
-		if(!removeFiles(restore_path, share_path, restore_download, folder_files, deletion_queue, has_include_exclude))
+		if(!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
 		{
 			has_error=true;
 		}
