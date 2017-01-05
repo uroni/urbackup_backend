@@ -165,6 +165,73 @@ int exec_wait(const std::string& path, bool keep_stdout, ...)
 	}
 }
 
+int exec_wait(const std::string& path, std::string& stdout, ...)
+{
+	va_list vl;
+	va_start(vl, stdout);
+	
+	std::vector<char*> args;
+	args.push_back(const_cast<char*>(path.c_str()));
+	
+	while(true)
+	{
+		const char* p = va_arg(vl, const char*);
+		if(p==NULL) break;
+		args.push_back(const_cast<char*>(p));
+	}
+	va_end(vl);
+	
+	args.push_back(NULL);
+	
+	int pipefd[2];
+	if (pipe(pipefd) == -1)
+	{
+		return -1;
+	}
+	
+	pid_t child_pid = fork();
+	
+	if(child_pid==0)
+	{
+		environ = new char*[1];
+		*environ=NULL;
+		
+		close(pipefd[0]);
+		
+		if(dup2(pipefd[1], 1)==-1)
+		{
+			return -1;
+		}
+		
+		int rc = execvp(path.c_str(), args.data());
+		exit(rc);
+	}
+	else
+	{
+		close(pipefd[1]);
+		
+		char buf[512];
+		int r;
+		while( (r=read(pipefd[0], buf, 512))>0)
+		{
+			stdout.insert(stdout.end(), buf, buf+r);
+		}
+		
+		close(pipefd[0]);
+	
+		int status;
+		waitpid(child_pid, &status, 0);
+		if(WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+}
+
 bool chown_dir(const std::string& dir)
 {
 	passwd* user_info = getpwnam("urbackup");
@@ -321,6 +388,68 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
 #endif
 }
 
+bool is_subvolume(int mode, std::string subvolume_folder)
+{
+#ifdef _WIN32
+	return true;
+#else
+	if(mode==mode_btrfs)
+	{
+		int rc=exec_wait(find_btrfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
+		return rc==0;
+	}
+	else if(mode==mode_zfs)
+	{
+		int rc=exec_wait(find_zfs_cmd(), false, "list", subvolume_folder.c_str(), NULL);
+		return rc==0;
+	}
+	return false;
+#endif
+}
+
+bool promote_dependencies(const std::string& snapshot, std::vector<std::string>& dependencies)
+{
+	std::cout << "Searching for origin " << snapshot << std::endl;
+	
+	std::string snap_data;
+	int rc = exec_wait(find_zfs_cmd(), snap_data, "list", "-H", "-o", "name", NULL);
+	if(rc!=0)
+		return false;
+	
+	std::vector<std::string> snaps;
+	TokenizeMail(snap_data, snaps, "\n");
+		
+	std::string snap_folder = ExtractFilePath(snapshot);
+	for(size_t i=0;i<snaps.size();++i)
+	{	
+		if( !next(trim(snaps[i]), 0, snap_folder)
+			|| trim(snaps[i]).size()<=snap_folder.size() )
+			continue;
+		
+		std::string stdout;
+		std::string subvolume_folder = snaps[i];
+		int rc=exec_wait(find_zfs_cmd(), stdout, "get", "-H", "-o", "value", "origin", subvolume_folder.c_str(), NULL);
+		if(rc==0)
+		{
+			stdout=trim(stdout);
+			
+			if(stdout==snapshot)
+			{	
+				std::cout << "Origin is " << subvolume_folder << std::endl;
+				
+				if(exec_wait(find_zfs_cmd(), true, "promote", subvolume_folder.c_str(), NULL)!=0)
+				{
+					return false;
+				}
+				
+				dependencies.push_back(subvolume_folder);
+			}
+		}
+	}
+	
+	return true;
+}
+
 bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 {
 #ifdef _WIN32
@@ -354,7 +483,41 @@ bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 	else if(mode==mode_zfs)
 	{
 		exec_wait(find_zfs_cmd(), false, "destroy", (subvolume_folder+"@ro").c_str(), NULL);
-		int rc = exec_wait(find_zfs_cmd(), !quiet, "destroy", subvolume_folder.c_str(), NULL);
+		int rc = exec_wait(find_zfs_cmd(), false, "destroy", subvolume_folder.c_str(), NULL);
+		if(rc!=0)
+		{
+			std::cout << "Destroying subvol " << subvolume_folder << " failed. Promoting dependencies..." << std::endl;
+			std::string rename_name = ExtractFileName(subvolume_folder);
+			if(exec_wait(find_zfs_cmd(), true, "rename", (subvolume_folder+"@ro").c_str(), (subvolume_folder+"@"+rename_name).c_str(), NULL)!=0
+				&& is_subvolume(mode, subvolume_folder+"@ro") )
+			{
+				return false;
+			}
+			
+			std::vector<std::string> dependencies;
+			if(!promote_dependencies(subvolume_folder+"@"+rename_name, dependencies))
+			{
+				return false;
+			}
+
+			rc = exec_wait(find_zfs_cmd(), true, "destroy", subvolume_folder.c_str(), NULL);
+			
+			if(rc==0)
+			{
+				for(size_t i=0;i<dependencies.size();++i)
+				{
+					if(is_subvolume(mode, dependencies[i]+"@"+rename_name))
+					{
+						rc = exec_wait(find_zfs_cmd(), true, "destroy", (dependencies[i]+"@"+rename_name).c_str(), NULL);
+						if(rc!=0)
+						{
+							break;
+						}
+					}
+				}
+			}
+		}
+		
 		return rc==0;
 	}
 	return false;
@@ -374,25 +537,6 @@ bool make_readonly(int mode, std::string subvolume_folder)
 	else if(mode==mode_zfs)
 	{
 		int rc=exec_wait(find_zfs_cmd(), true, "snapshot", (subvolume_folder+"@ro").c_str(), NULL);
-		return rc==0;
-	}
-	return false;
-#endif
-}
-
-bool is_subvolume(int mode, std::string subvolume_folder)
-{
-#ifdef _WIN32
-	return true;
-#else
-	if(mode==mode_btrfs)
-	{
-		int rc=exec_wait(find_btrfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
-		return rc==0;
-	}
-	else if(mode==mode_zfs)
-	{
-		int rc=exec_wait(find_zfs_cmd(), false, "subvolume", "list", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
 	return false;
