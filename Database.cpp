@@ -144,6 +144,8 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 			{
 				int enable = 1;
 				sqlite3_file_control(db, NULL, SQLITE_FCNTL_PERSIST_WAL, &enable);
+				int was_enabled = 0;
+				sqlite3_db_config(db, SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, 1, &was_enabled);
 			}
 		}
 
