@@ -3013,7 +3013,10 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 			|| scs[i].passedtime>shadowcopy_timeout/1000
 			|| (start && !scs[i].filesrv && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==starttoken && scs[i].clientsubname==index_clientsubname ) ) )
 		{
-			ok = ok && deleteSavedShadowCopy(scs[i], context);
+			if (!deleteSavedShadowCopy(scs[i], context))
+			{
+				ok = false;
+			}
 		}
 	}
 

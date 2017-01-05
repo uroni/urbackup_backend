@@ -1013,17 +1013,30 @@ bool IndexThread::deleteSavedShadowCopyWin(SShadowCopy& scs, SShadowCopyContext&
 		if (ascs[i].vssid != scs.vssid
 			&& ascs[i].ssetid == scs.ssetid)
 		{
+			VSSLog("Snapshot " + convert(scs.vssid) + " not last snapshot in set " + convert(scs.ssetid) + ". Other snapshot: " + convert(ascs[i].vssid), LL_DEBUG);
 			set_last = false;
 			break;
 		}
 	}
 
-	LONG dels;
+	LONG dels = 0;
 	GUID ndels;
 	CHECK_COM_RESULT(backupcom->DeleteSnapshots(set_last ? scs.ssetid : scs.vssid, 
 		set_last ? VSS_OBJECT_SNAPSHOT_SET : VSS_OBJECT_SNAPSHOT, TRUE,
 		&dels, &ndels));
 	cd->deleteShadowcopy(scs.id);
+
+	if (dels == 0)
+	{
+		if (set_last)
+		{
+			VSSLog("Error deleting snapshot set " + convert(scs.ssetid), LL_WARNING);
+		}
+		else
+		{
+			VSSLog("Error deleting snapshot " + convert(scs.vssid), LL_WARNING);
+		}
+	}
 
 	context.backupcom = backupcom;
 
