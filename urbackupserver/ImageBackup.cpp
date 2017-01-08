@@ -677,7 +677,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 				if(pParentvhd.empty())
 				{
-					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&start="+convert(continue_block)+"&shadowid="+convert(snapshot_id)+ "&status_id=" + convert(status_id);
+					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&start="+convert(continue_block)
+						+"&shadowid="+convert(snapshot_id)+ "&status_id=" + convert(status_id)+"&token="+ server_token;
 					if(transfer_bitmap)
 					{
 						cmd+="&bitmap=1";
@@ -704,7 +705,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				else
 				{
 					std::string ts = "INCR IMAGE letter="+pLetter+"&start=" + convert(continue_block) + "&shadowid=" + convert(snapshot_id) + "&hashsize="
-						+ convert(parenthashfile->Size()) + "&status_id=" + convert(status_id);
+						+ convert(parenthashfile->Size()) + "&status_id=" + convert(status_id) + "&token=" + server_token;
 					if(transfer_bitmap)
 					{
 						ts+="&bitmap=1";
