@@ -336,6 +336,11 @@ private:
 	void handleSymlinks(const std::string& orig_dir, std::string named_path, const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs, std::vector<SFileAndHash>& files);
 
+	int64 randomChangeIndicator();
+
+	int64 getChangeIndicator(const std::string& path);
+	int64 getChangeIndicator(const SFile& file);
+
 	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
 		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
 		const std::vector<std::string>& exclude_dirs,
@@ -702,6 +707,10 @@ private:
 	std::vector<SComponent> vss_all_components;
 	std::map<std::string, SVssInstance*> vss_name_instances;
 #endif
+
+	const uint64 symlink_bit = 0x4000000000000000ULL;
+	const uint64 special_bit = 0x2000000000000000ULL;
+	const uint64 all_bits = symlink_bit | special_bit;
 };
 
 std::string add_trailing_slash(const std::string &strDirName);

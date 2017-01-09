@@ -1617,7 +1617,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	JSON::Object info_json;
 	JSON::Array selected_components_json;
 
-	std::string pretty_symlink_struct = "d\"windows_components\"\n";
+	std::string pretty_symlink_struct = "d\"windows_components\" 0 "+convert(getChangeIndicator(Server->getServerWorkingDir() + os_file_sep() + components_dir))+"\n";
 
 	for (UINT i = 0; i < nwriters; ++i)
 	{
@@ -1665,12 +1665,13 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		std::string curr_dir = conv_filename(writerNameStrShort) + "_" + convert(writerId);
 		std::string named_path_base = ".symlink_"+ curr_dir;
 
-		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\"\n";
+		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\" 0 ";
 		std::string pretty_struct_base = components_dir + os_file_sep() + sortHex(i) + "_" + conv_filename(writerNameStrShort);
 		if (!os_directory_exists(pretty_struct_base))
 		{
 			os_create_dir(pretty_struct_base);
 		}
+		pretty_symlink_struct_writer += convert(getChangeIndicator(pretty_struct_base)) + "\n";
 
 		std::vector<std::string> exclude_files;
 		std::vector<SVssInstance*> component_vss_instances;
@@ -1759,11 +1760,9 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					os_create_dir(pretty_struct_component_path);
 				}
 
-				pretty_symlink_struct_writer += "d\"" + curr_dir + "\"\n";
+				pretty_symlink_struct_writer += "d\"" + curr_dir + "\" 0 "+convert(getChangeIndicator(pretty_struct_component_path))+"\n";
 
 				has_component = true;
-				const uint64 symlink_mask = 0x7000000000000000ULL;
-				std::string symlink_change_indicator = convert(symlink_mask);
 
 				for (UINT k = 0; k < componentInfo->cFileCount; ++k)
 				{
@@ -1777,14 +1776,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					if (!os_directory_exists(pretty_struct_component_path +os_file_sep()+"files"+ sortHex(k)))
+					std::string symlink_fn = Server->getServerWorkingDir() + pretty_struct_component_path + os_file_sep() + "files" + sortHex(k);
+					if (!os_directory_exists(os_file_prefix(symlink_fn)))
 					{
 						bool is_dir = true;
 						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
-							os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "files" + sortHex(k)), NULL, &is_dir);
+							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 
-					pretty_symlink_struct_writer += "d\"files" + sortHex(k) + "\" 0 "+ symlink_change_indicator+"#special=1&sym_target="+ EscapeParamString(named_path + "_files" + sortHex(k))+"\nu\n";
+					pretty_symlink_struct_writer += "d\"files" + sortHex(k) + "\" 0 "+ convert(getChangeIndicator(symlink_fn))+"#special=1&sym_target="+ EscapeParamString(named_path + "_files" + sortHex(k))+"\nu\n";
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_files"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing files " + convert(k) + " of component \"" +
@@ -1808,14 +1808,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					if (!os_directory_exists(os_file_prefix(pretty_struct_component_path + os_file_sep() + "database" + sortHex(k))))
+					std::string symlink_fn = Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database" + sortHex(k);
+					if (!os_directory_exists(os_file_prefix(symlink_fn)))
 					{
 						bool is_dir = true;
 						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
-							os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database" + sortHex(k)), NULL, &is_dir);
+							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 
-					pretty_symlink_struct_writer += "d\"database" + sortHex(k) + "\" 0 " + symlink_change_indicator + "#special=1&sym_target=" + EscapeParamString(named_path + "_database" + sortHex(k)) + "\nu\n";
+					pretty_symlink_struct_writer += "d\"database" + sortHex(k) + "\" 0 " + convert(getChangeIndicator(symlink_fn)) + "#special=1&sym_target=" + EscapeParamString(named_path + "_database" + sortHex(k)) + "\nu\n";
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database file " + sortHex(k) + " of component \"" +
@@ -1839,14 +1840,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					if (!os_directory_exists(pretty_struct_component_path + os_file_sep() + "database_log" + convert(k)))
+					std::string symlink_fn = Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database_log" + sortHex(k);
+					if (!os_directory_exists(os_file_prefix(symlink_fn)))
 					{
 						bool is_dir = true;
 						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
-							os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database_log" + sortHex(k)), NULL, &is_dir);
+							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 
-					pretty_symlink_struct_writer += "d\"database_log" + sortHex(k) + "\" 0 " + symlink_change_indicator + "#special=1&sym_target=" + EscapeParamString(named_path + "_database_log" + sortHex(k)) + "\nu\n";
+					pretty_symlink_struct_writer += "d\"database_log" + sortHex(k) + "\" 0 " + convert(getChangeIndicator(symlink_fn))+ "#special=1&sym_target=" + EscapeParamString(named_path + "_database_log" + sortHex(k)) + "\nu\n";
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database_log"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database log file " + sortHex(k) + " of component \"" +
@@ -1968,21 +1970,19 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	outfile << pretty_symlink_struct;
 
 	addFromLastUpto("windows_components_config", true, 0, false, outfile);
-	outfile << "d\"windows_components_config\" 0 0#orig_path="+EscapeParamString("C:\\windows_components_config")+"\n";
+	outfile << "d\"windows_components_config\" 0 "
+		<< getChangeIndicator(Server->getServerWorkingDir() + os_file_sep() + component_config_dir) 
+		<< "#orig_path=" << EscapeParamString("C:\\windows_components_config")<<"\n";
 	for (size_t i = 0; i < component_config_files.size(); ++i)
 	{
-		int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
-		if (rnd > 0) rnd *= -1;
-		outfile << "f\"" << component_config_files[i] << "\" " << component_config_file_size[i] << " " << rnd << "\n";
+		outfile << "f\"" << component_config_files[i] << "\" " << component_config_file_size[i] << " " << randomChangeIndicator() << "\n";
 	}
 
 	info_json.set("selected_components", selected_components_json);
 	std::string selected_components_data = info_json.stringify(false);
 
-	int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
-	if (rnd > 0) rnd *= -1;
-	outfile << "f\"backupcom.xml\" 0 " << rnd << "\n";
-	outfile << "f\"info.json\" " << selected_components_data.size() << " " << rnd << "\n";
+	outfile << "f\"backupcom.xml\" 0 " << randomChangeIndicator() << "\n";
+	outfile << "f\"info.json\" " << selected_components_data.size() << " " << randomChangeIndicator() << "\n";
 
 	if (!write_file_only_admin(selected_components_data, component_config_dir + os_file_sep() + "info.json"))
 	{

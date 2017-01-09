@@ -6297,10 +6297,6 @@ void IndexThread::filterEncryptedFiles(const std::string & dir, const std::strin
 std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& orig_dir, const std::string& named_path, const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs, const std::vector<SFile> files, const std::string& fn_filter)
 {
-	const uint64 symlink_bit = 0x4000000000000000ULL;
-	const uint64 special_bit = 0x2000000000000000ULL;
-	const uint64 all_bits = symlink_bit | special_bit;
-
 	std::vector<SFileAndHash> ret;
 	if(fn_filter.empty())
 	{
@@ -6329,32 +6325,12 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 		
 
 		curr->isdir=files[i].isdir;
-		if(files[i].usn==0)
-		{
-			curr->change_indicator=files[i].last_modified;
-		}
-		else
-		{
-			curr->change_indicator=files[i].usn;
-		}
+		curr->change_indicator = getChangeIndicator(files[i]);
 		curr->name=files[i].name;
 		curr->size=files[i].size;
 		curr->issym=files[i].issym;
 		curr->isspecialf=files[i].isspecialf;
 		curr->nlinks = files[i].nlinks;
-
-		if (curr->issym)
-		{
-			curr->change_indicator |= (symlink_bit | special_bit);
-		}
-		else if (curr->isspecialf)
-		{
-			curr->change_indicator |= special_bit;
-		}
-		else
-		{
-			curr->change_indicator &= ~all_bits;
-		}
 
 		if(curr->issym && with_proper_symlinks
 			&& !skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
@@ -6394,6 +6370,46 @@ void IndexThread::handleSymlinks(const std::string& orig_dir, std::string named_
 			}
 		}
 	}
+}
+
+int64 IndexThread::randomChangeIndicator()
+{
+	int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
+	rnd &= ~all_bits;
+	return rnd;
+}
+
+int64 IndexThread::getChangeIndicator(const std::string& path)
+{
+	SFile file = getFileMetadata(os_file_prefix(path));
+	return getChangeIndicator(file);
+}
+
+int64 IndexThread::getChangeIndicator(const SFile & file)
+{
+	int64 change_indicator;
+	if (file.usn == 0)
+	{
+		change_indicator = file.last_modified;
+	}
+	else
+	{
+		change_indicator = file.usn;
+	}
+
+	if (file.issym)
+	{
+		change_indicator |= (symlink_bit | special_bit);
+	}
+	else if (file.isspecialf)
+	{
+		change_indicator |= special_bit;
+	}
+	else
+	{
+		change_indicator &= ~all_bits;
+	}
+	return change_indicator;
 }
 
 #ifndef _WIN32
