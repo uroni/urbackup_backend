@@ -5,6 +5,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 
 #include <map>
+#include <deque>
 
 class ClientService : public IService
 {
@@ -359,6 +360,7 @@ private:
 	static IMutex *backup_mutex;
 	static IMutex *process_mutex;
 	static std::map<std::string, SAsyncFileList> async_file_index;
+	static std::deque<std::pair<std::string, std::string> > finished_async_file_index;
 	static int backup_interval;
 	static int backup_alert_delay;
 	static std::vector<SChannel> channel_pipes;

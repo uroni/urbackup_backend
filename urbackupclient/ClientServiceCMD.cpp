@@ -530,6 +530,25 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
 	if (it == async_file_index.end())
 	{
+		for (std::deque<std::pair<std::string, std::string> >::iterator it2 = finished_async_file_index.begin();
+			it2 != finished_async_file_index.end(); ++it2)
+		{
+			if (it2->first == async_file_list_id)
+			{
+				Server->Log("Previously finished async index " + async_id + " with \"" + it2->second + "\"", LL_DEBUG);
+				if (it2->second == "DONE")
+				{
+					tcpstack.Send(pipe, "done");
+				}
+				else
+				{
+					tcpstack.Send(pipe, it2->second);
+				}
+
+				return;
+			}
+		}
+
 		lock.relock(NULL);
 
 		Server->Log("Async index " + async_id + " not found", LL_DEBUG);

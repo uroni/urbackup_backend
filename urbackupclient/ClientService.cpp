@@ -97,6 +97,7 @@ size_t ClientConnector::ask_restore_ok = 0;
 int64 ClientConnector::service_starttime = 0;
 SRestoreToken ClientConnector::restore_token;
 std::map<std::string, SAsyncFileList> ClientConnector::async_file_index;
+std::deque<std::pair<std::string, std::string> > ClientConnector::finished_async_file_index;
 bool ClientConnector::last_metered = false;
 
 
@@ -326,6 +327,11 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					if (!msg.empty())
 					{
 						Server->Log("Async index " + bytesToHex(it->first) + " finished with \"" + msg + "\"", LL_DEBUG);
+						finished_async_file_index.push_back(std::make_pair(it->first, msg));
+						while (finished_async_file_index.size() > 10)
+						{
+							finished_async_file_index.pop_front();
+						}
 						async_file_index.erase(it);
 					}
 					else
