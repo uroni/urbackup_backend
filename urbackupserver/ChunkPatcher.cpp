@@ -190,6 +190,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				}
 				else
 				{
+					assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == file_pos);
 					cb->next_chunk_patcher_bytes(buf.data(), r, true);
 				}				
 				next_header.patch_size-=r;
@@ -219,18 +220,28 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				&& curr_sparse_extent.offset <= file_pos
 				&& curr_sparse_extent.offset + curr_sparse_extent.size >= file_pos + tr)
 			{
-				if (with_sparse)
+				if (unchanged_align == 0
+					|| file_pos%unchanged_align == 0)
 				{
-					nextChunkPatcherBytes(file_pos, NULL, tr, false, true);
-					file_pos += tr;
+					VLOG(Server->Log("Sparse extent at " + convert(file_pos) + " length=" + convert(tr), LL_DEBUG));
+					if (with_sparse)
+					{
+						nextChunkPatcherBytes(file_pos, NULL, tr, false, true);
+						file_pos += tr;
+					}
+					else
+					{
+						bool is_sparse = true;
+						assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == file_pos);
+						cb->next_chunk_patcher_bytes(NULL, tr, false, &is_sparse);
+						file_pos += tr;
+					}
+					was_sparse = true;
 				}
 				else
 				{
-					bool is_sparse = true;
-					cb->next_chunk_patcher_bytes(NULL, tr, false, &is_sparse);
-					file_pos += tr;
+					tr = (std::min)(tr, static_cast<unsigned int>(unchanged_align - file_pos%unchanged_align));
 				}
-				was_sparse = true;
 			}
 
 			while(!was_sparse
@@ -278,6 +289,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						Server->Log("Read error while reading unchanged data from \""+file->getFilename()+"\"", LL_ERROR);
 						return false;
 					}
+
+					VLOG(Server->Log("Unchanged required extent at " + convert(file_pos) + " length=" + convert(r), LL_DEBUG));
 					
 					if (with_sparse)
 					{
@@ -285,6 +298,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 					}
 					else
 					{
+						assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == file_pos);
 						cb->next_chunk_patcher_bytes(buf.data(), r, false);
 					}
 					
@@ -298,6 +312,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						tr=static_cast<unsigned int>(size-file_pos);
 					}
 
+					VLOG(Server->Log("Unchanged skipped extent at " + convert(file_pos) + " length=" + convert(tr), LL_DEBUG));
+
 					bool is_sparse = false;
 					bool* p_is_sparse = &is_sparse;
 
@@ -308,6 +324,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 						p_is_sparse = NULL;
 					}
 
+					assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == file_pos);
 					cb->next_chunk_patcher_bytes(NULL, tr, false, p_is_sparse);
 					last_unchanged = true;
 
@@ -396,12 +413,15 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 
 	if (sparse)
 	{
+		assert(pos%sparse_blocksize == 0);
+
 		if (last_sparse_start == -1)
 		{
 			last_sparse_start = roundUp(pos, sparse_blocksize);
 		}
 
 		bool is_sparse = true;
+		assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos);
 		cb->next_chunk_patcher_bytes(NULL, bsize, changed, &is_sparse);
 
 		return;
@@ -421,6 +441,7 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 				}
 
 				bool is_sparse = true;
+				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos);
 				cb->next_chunk_patcher_bytes(NULL, bsize, changed, &is_sparse);
 
 				return;
@@ -430,6 +451,7 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 				finishSparse(pos);
 			}
 
+			assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos);
 			cb->next_chunk_patcher_bytes(buf, bsize, changed);
 
 			curr_only_zeros = true;
@@ -479,11 +501,13 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 			if (!curr_only_zeros)
 			{
 				cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_blocksize, curr_changed);
+				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos+bsize);
 			}
 			else
 			{
 				bool is_sparse = true;
 				cb->next_chunk_patcher_bytes(NULL, sparse_blocksize, curr_changed, &is_sparse);
+				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos + bsize);
 			}
 
 			curr_only_zeros = true;
@@ -504,6 +528,7 @@ void ChunkPatcher::finishChunkPatcher(int64 pos)
 	if (sparse_buf_used > 0 && !last_unchanged)
 	{
 		cb->next_chunk_patcher_bytes(sparse_buf.data(), static_cast<size_t>(sparse_buf_used), curr_changed);
+		assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos);
 	}
 }
 

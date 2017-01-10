@@ -354,6 +354,9 @@
     <ClCompile Include="DataplanDb.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="apps\patch.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -640,6 +643,9 @@
     </ClInclude>
     <ClInclude Include="DataplanDb.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\patch.h">
+      <Filter>apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -78,6 +78,7 @@ SStartupStatus startup_status;
 #include "apps/repair_cmd.h"
 #include "apps/export_auth_log.h"
 #include "apps/skiphash_copy.h"
+#include "apps/patch.h"
 #include "create_files_index.h"
 #include "server_dir_links.h"
 #include "server_channel.h"
@@ -488,6 +489,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else if (app == "md5sum_check")
 		{
 			rc = md5sum_check();
+		}
+		else if (app == "patch_hash")
+		{
+			rc = patch_hash();
 		}
 		else if (app == "hash")
 		{

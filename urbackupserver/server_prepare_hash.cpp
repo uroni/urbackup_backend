@@ -475,6 +475,11 @@ void BackupServerPrepareHash::next_sparse_extent_bytes(const char * buf, size_t 
 	hashf->sparse_hash(buf, (unsigned int)bsize);
 }
 
+int64 BackupServerPrepareHash::chunk_patcher_pos()
+{
+	return file_pos;
+}
+
 void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse)
 {
 	if (buf != NULL)

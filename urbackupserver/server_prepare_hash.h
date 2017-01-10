@@ -43,6 +43,8 @@ public:
 
 	void next_sparse_extent_bytes(const char * buf, size_t bsize);
 
+	int64 chunk_patcher_pos();
+
 	bool hasError(void);
 
 	class IHashProgressCallback

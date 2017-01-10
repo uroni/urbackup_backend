@@ -1429,6 +1429,11 @@ void BackupServerHash::next_sparse_extent_bytes(const char * buf, size_t bsize)
 {
 }
 
+int64 BackupServerHash::chunk_patcher_pos()
+{
+	return chunk_patch_pos;
+}
+
 bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const std::string &dest,
 	const std::string hash_output, const std::string hash_dest, _i64 tfilesize, ExtentIterator* extent_iterator)
 {

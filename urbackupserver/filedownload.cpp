@@ -250,7 +250,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			m_chunkpatchfile=tmpfile;
 			ChunkPatcher patcher;
 			patcher.setCallback(this);
-			chunk_patch_pos=0;
+			curr_chunk_patch_pos =0;
 			Server->Log("Patching temporary...");
 			patcher.ApplyPatch(dstfile, patchfile, NULL);
 
@@ -353,13 +353,13 @@ void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool 
 {
 	if(changed)
 	{
-		if(!m_chunkpatchfile->Seek(chunk_patch_pos) || m_chunkpatchfile->Write(buf, (_u32)bsize)!=bsize)
+		if(!m_chunkpatchfile->Seek(curr_chunk_patch_pos) || m_chunkpatchfile->Write(buf, (_u32)bsize)!=bsize)
 		{
 			Server->Log("Writing to file failed", LL_ERROR);
 			exit(3);
 		}
 	}
-	chunk_patch_pos+=bsize;
+	curr_chunk_patch_pos +=bsize;
 }
 
 void FileDownload::next_sparse_extent_bytes(const char * buf, size_t bsize)
@@ -371,6 +371,11 @@ void FileDownload::cleanup_tmpfile(IFile *tmpfile)
 	std::string fn=tmpfile->getFilename();
 	Server->destroy(tmpfile);
 	Server->deleteFile(fn);
+}
+
+int64 FileDownload::chunk_patcher_pos()
+{
+	return curr_chunk_patch_pos;
 }
 
 bool FileDownload::getQueuedFileChunked( std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script)

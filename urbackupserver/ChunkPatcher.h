@@ -16,6 +16,7 @@ class IChunkPatcherCallback
 public:
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse=NULL)=0;
 	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize) = 0;
+	virtual int64 chunk_patcher_pos() = 0;
 };
 
 class ChunkPatcher

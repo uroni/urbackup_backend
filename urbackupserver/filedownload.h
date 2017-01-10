@@ -42,6 +42,7 @@ public:
 	virtual IPipe * new_fileclient_connection(void);
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed, bool* is_sparse);
 	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize);
+	virtual int64 chunk_patcher_pos();
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
 	virtual void unqueueFileChunked(const std::string& remotefn);
@@ -58,7 +59,7 @@ private:
 	std::string m_servername;
 	unsigned int m_tcpport;
 	IFile *m_chunkpatchfile;
-	int64 chunk_patch_pos;
+	int64 curr_chunk_patch_pos;
 
 	CTCPStack tcpstack;
 	std::auto_ptr<FileClientChunked> fc_chunked;

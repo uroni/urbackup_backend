@@ -58,6 +58,8 @@ public:
 
 	virtual void next_sparse_extent_bytes(const char *buf, size_t bsize);
 
+	virtual int64 chunk_patcher_pos();
+
 	void setupDatabase(void);
 	void deinitDatabase(void);
 

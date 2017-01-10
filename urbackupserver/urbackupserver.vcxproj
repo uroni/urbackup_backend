@@ -213,6 +213,7 @@
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
     <ClCompile Include="apps\md5sum_check.cpp" />
+    <ClCompile Include="apps\patch.cpp" />
     <ClCompile Include="apps\repair_cmd.cpp" />
     <ClCompile Include="apps\skiphash_copy.cpp" />
     <ClCompile Include="Backup.cpp" />
@@ -326,6 +327,7 @@
     <ClInclude Include="apps\check_files_index.h" />
     <ClInclude Include="apps\cleanup_cmd.h" />
     <ClInclude Include="apps\export_auth_log.h" />
+    <ClInclude Include="apps\patch.h" />
     <ClInclude Include="apps\repair_cmd.h" />
     <ClInclude Include="apps\skiphash_copy.h" />
     <ClInclude Include="Backup.h" />
