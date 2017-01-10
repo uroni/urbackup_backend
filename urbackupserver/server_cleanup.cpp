@@ -1815,7 +1815,7 @@ bool ServerCleanupThread::backup_database(void)
 
 					db_results res = copy_db->Read("PRAGMA quick_check");
 
-					integrity_ok = !res.empty() && res[0]["integrity_check"] == "ok";
+					integrity_ok = !res.empty() && res[0]["quick_check"] == "ok";
 
 					if (!integrity_ok)
 					{
