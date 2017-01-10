@@ -1305,6 +1305,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				if (!start_shadowcopy_components(ssetid, &has_active_transaction))
 				{
 					index_error = true;
+					VSSLog("Indexing Windows components failed", LL_ERROR);
+					return;
 				}
 				else
 				{

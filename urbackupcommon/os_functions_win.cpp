@@ -717,7 +717,7 @@ bool os_link_symbolic_junctions_raw(const std::string &target, const std::string
 {
 	bool ret = false;
 	HANDLE hJunc;
-	char* buf;
+	char* buf = NULL;
 	std::wstring wtarget = ConvertToWchar(target);
 
 	std::wstring wlname = ConvertToWchar(lname);

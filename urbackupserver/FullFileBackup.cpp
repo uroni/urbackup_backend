@@ -645,7 +645,10 @@ bool FullFileBackup::doFileBackup()
 
 	if (!r_offline && !c_has_error && !disk_error)
 	{
-		loadWindowsBackupComponentConfigXml(fc);
+		if (!loadWindowsBackupComponentConfigXml(fc))
+		{
+			c_has_error = true;
+		}
 	}
 
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());

@@ -715,6 +715,8 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			cdir.set("path", res[i]["path"]);
 			int tgroup = watoi(res[i]["tgroup"]);
 			cdir.set("group", tgroup%c_group_size);
+
+			if (tgroup < 0) continue;
 			
 			if (tgroup >= c_group_size)
 			{

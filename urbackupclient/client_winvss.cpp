@@ -574,7 +574,10 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			nref.for_imagebackup = for_imagebackup;
 			nref.ssetid = dir->ref->ssetid;
 			nref.backupcom = backupcom;
-			nref.starttokens.push_back(starttoken);
+			if (for_imagebackup)
+			{
+				nref.starttokens.push_back(starttoken);
+			}
 			additional_refs.push_back(nref);
 		}
 
@@ -1561,8 +1564,8 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		vss_name_instances.erase(delit);
 	}
 
-	std::string component_config_dir = "urbackup\\windows_components_config\\" + conv_filename(starttoken);
-	std::string components_dir = "urbackup\\windows_components";
+	std::string component_config_dir = Server->getServerWorkingDir() + "\\urbackup\\windows_components_config\\" + conv_filename(starttoken);
+	std::string components_dir = Server->getServerWorkingDir()+"\\urbackup\\windows_components";
 
 	if (os_directory_exists(component_config_dir))
 	{
@@ -1605,8 +1608,8 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		}
 	}
 
-	shareDir(starttoken, "windows_components_config", Server->getServerWorkingDir() + os_file_sep() + component_config_dir);
-	shareDir(starttoken, "windows_components", Server->getServerWorkingDir() + os_file_sep() + components_dir);
+	shareDir(starttoken, "windows_components_config", component_config_dir);
+	shareDir(starttoken, "windows_components", components_dir);
 
 	UINT nwriters;
 	CHECK_COM_RESULT_RETURN(backupcom->GetWriterMetadataCount(&nwriters));
@@ -1617,7 +1620,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	JSON::Object info_json;
 	JSON::Array selected_components_json;
 
-	std::string pretty_symlink_struct = "d\"windows_components\" 0 "+convert(getChangeIndicator(Server->getServerWorkingDir() + os_file_sep() + components_dir))+"\n";
+	std::string pretty_symlink_struct = "d\"windows_components\" 0 "+convert(getChangeIndicator(components_dir))+"\n";
 
 	for (UINT i = 0; i < nwriters; ++i)
 	{
@@ -1755,9 +1758,9 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					vss_explicitly_selected_components.end(), currComponent) != vss_explicitly_selected_components.end();
 
 				std::string pretty_struct_component_path = pretty_struct_base + os_file_sep() + curr_dir;
-				if (!os_directory_exists(pretty_struct_component_path))
+				if (!os_directory_exists(os_file_prefix(pretty_struct_component_path)))
 				{
-					os_create_dir(pretty_struct_component_path);
+					os_create_dir(os_file_prefix(pretty_struct_component_path));
 				}
 
 				pretty_symlink_struct_writer += "d\"" + curr_dir + "\" 0 "+convert(getChangeIndicator(pretty_struct_component_path))+"\n";
@@ -1776,11 +1779,11 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					std::string symlink_fn = Server->getServerWorkingDir() + pretty_struct_component_path + os_file_sep() + "files" + sortHex(k);
-					if (!os_directory_exists(os_file_prefix(symlink_fn)))
+					std::string symlink_fn = pretty_struct_component_path + os_file_sep() + "files" + sortHex(k);
+					if ((os_get_file_type(os_file_prefix(symlink_fn)) & EFileType_Symlink) == 0)
 					{
 						bool is_dir = true;
-						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
+						os_link_symbolic(os_file_prefix(components_dir + os_file_sep() + "dummy"),
 							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 
@@ -1808,11 +1811,11 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					std::string symlink_fn = Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database" + sortHex(k);
-					if (!os_directory_exists(os_file_prefix(symlink_fn)))
+					std::string symlink_fn = pretty_struct_component_path + os_file_sep() + "database" + sortHex(k);
+					if ((os_get_file_type(os_file_prefix(symlink_fn)) & EFileType_Symlink) == 0)
 					{
 						bool is_dir = true;
-						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
+						os_link_symbolic(os_file_prefix( components_dir + os_file_sep() + "dummy"),
 							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 
@@ -1840,11 +1843,11 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 						return false;
 					}
 
-					std::string symlink_fn = Server->getServerWorkingDir() + os_file_sep() + pretty_struct_component_path + os_file_sep() + "database_log" + sortHex(k);
-					if (!os_directory_exists(os_file_prefix(symlink_fn)))
+					std::string symlink_fn = pretty_struct_component_path + os_file_sep() + "database_log" + sortHex(k);
+					if ((os_get_file_type(os_file_prefix(symlink_fn)) & EFileType_Symlink) == 0)
 					{
 						bool is_dir = true;
-						os_link_symbolic(os_file_prefix(Server->getServerWorkingDir() + os_file_sep() + components_dir + os_file_sep() + "dummy"),
+						os_link_symbolic(os_file_prefix( components_dir + os_file_sep() + "dummy"),
 							os_file_prefix(symlink_fn), NULL, &is_dir);
 					}
 

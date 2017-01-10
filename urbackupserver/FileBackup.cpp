@@ -2071,7 +2071,7 @@ std::string FileBackup::permissionsAllowAll()
 	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
-void FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
+bool FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
 {
 	std::string component_config_dir = backuppath + os_file_sep() + "windows_components_config";
 	if (os_directory_exists(os_file_prefix(component_config_dir)))
@@ -2082,8 +2082,16 @@ void FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
 		if (rc != ERR_SUCCESS)
 		{
 			ServerLogger::Log(logid, "Error getting Windows backup component config XML: " + fc.getErrorString(rc), LL_ERROR);
+			return false;
+		}
+		if (component_config_xml->Size() == 0)
+		{
+			ServerLogger::Log(logid, "Windows backup component config XML is empty", LL_ERROR);
+			return false;
 		}
 	}
+
+	return true;
 }
 
 void FileBackup::save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash)

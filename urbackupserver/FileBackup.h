@@ -114,7 +114,7 @@ protected:
 	void parseSnapshotFailed(const std::string& logline);
 	void addFilePathCorrections(const std::map<std::string, std::string>& c);
 	std::string permissionsAllowAll();
-	void loadWindowsBackupComponentConfigXml(FileClient &fc);
+	bool loadWindowsBackupComponentConfigXml(FileClient &fc);
 
 	int group;
 	bool use_tmpfiles;
