@@ -60,6 +60,10 @@ const unsigned int flag_with_orig_path = 16;
 const unsigned int flag_with_sequence = 32;
 const unsigned int flag_with_proper_symlinks = 64;
 
+const uint64 change_indicator_symlink_bit = 0x4000000000000000ULL;
+const uint64 change_indicator_special_bit = 0x2000000000000000ULL;
+const uint64 change_indicator_all_bits = change_indicator_symlink_bit | change_indicator_special_bit;
+
 class DirectoryWatcherThread;
 
 class IdleCheckerThread : public IThread
@@ -707,10 +711,6 @@ private:
 	std::vector<SComponent> vss_all_components;
 	std::map<std::string, SVssInstance*> vss_name_instances;
 #endif
-
-	const uint64 symlink_bit = 0x4000000000000000ULL;
-	const uint64 special_bit = 0x2000000000000000ULL;
-	const uint64 all_bits = symlink_bit | special_bit;
 };
 
 std::string add_trailing_slash(const std::string &strDirName);

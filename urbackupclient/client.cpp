@@ -6389,7 +6389,7 @@ void IndexThread::handleSymlinks(const std::string& orig_dir, std::string named_
 int64 IndexThread::randomChangeIndicator()
 {
 	int64 rnd = Server->getTimeSeconds() << 32 | Server->getRandomNumber();
-	rnd &= ~all_bits;
+	rnd &= ~change_indicator_all_bits;
 	return rnd;
 }
 
@@ -6413,15 +6413,15 @@ int64 IndexThread::getChangeIndicator(const SFile & file)
 
 	if (file.issym)
 	{
-		change_indicator |= (symlink_bit | special_bit);
+		change_indicator |= (change_indicator_symlink_bit | change_indicator_special_bit);
 	}
 	else if (file.isspecialf)
 	{
-		change_indicator |= special_bit;
+		change_indicator |= change_indicator_special_bit;
 	}
 	else
 	{
-		change_indicator &= ~all_bits;
+		change_indicator &= ~change_indicator_all_bits;
 	}
 	return change_indicator;
 }
