@@ -2424,7 +2424,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	bool metered;
 	if (AllCurrentConnectionsMetered(metered))
 	{
-		conn_metered = std::string("METERED=") + (metered ? "1" : "0");
+		conn_metered = std::string("&METERED=") + (metered ? "1" : "0");
 		IScopedLock lock(ident_mutex);
 		last_metered = metered;
 	}
