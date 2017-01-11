@@ -518,6 +518,12 @@ void IndexThread::operator()(void)
 			if( !has_dirs && !has_scripts )
 			{
 				contractor->Write("no backup dirs");
+
+				if (async_timeout)
+				{
+					async_timeout_starttime = Server->getTimeMS();
+				}
+
 				continue;
 			}
 #ifdef _WIN32
@@ -640,6 +646,12 @@ void IndexThread::operator()(void)
 			if(!has_dirs && !has_scripts)
 			{
 				contractor->Write("no backup dirs");
+
+				if (async_timeout)
+				{
+					async_timeout_starttime = Server->getTimeMS();
+				}
+
 				continue;
 			}
 			//full backup
