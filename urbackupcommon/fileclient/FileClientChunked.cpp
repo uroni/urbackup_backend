@@ -895,6 +895,8 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 						Server->destroy(*sparse_extents_f);
 						Server->deleteFile(tmp_fn);
 						*sparse_extents_f = NULL;
+						extent_iterator.reset();
+						curr_sparse_extent.offset = -1;
 					}
 
 					if (sparse_extents_f != NULL && *sparse_extents_f == NULL)
