@@ -176,6 +176,13 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 
 		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
 
+#if defined(_DEBUG) || (!defined(_WIN32) && !defined(NDEBUG))
+		if (Server->getRandomNumber() % 2 == 0)
+		{
+			Write("PRAGMA reverse_unordered_selects = ON");
+		}
+#endif
+
 		AttachDBs();
 
 		return true;
