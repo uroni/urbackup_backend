@@ -48,6 +48,10 @@ SharedMutex::SharedMutex()
 		Server->Log("Error destroing rwlockattr rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
+	
+#ifdef SHARED_MUTEX_CHECK
+	check_mutex.reset(Server->createMutex());
+#endif
 }
 
 SharedMutex::~SharedMutex()
@@ -62,7 +66,15 @@ SharedMutex::~SharedMutex()
 
 ILock* SharedMutex::readLock()
 {
-	return new ReadLock(&lock);
+#ifdef SHARED_MUTEX_CHECK
+	{
+		IScopedLock lock(check_mutex.get());
+		std::pair<std::set<pthread_t>::iterator, bool> ins = check_threads.insert(pthread_self());
+		assert(ins.second);
+	}
+#endif
+	return new ReadLock(&lock
+				SHARED_MUTEX_CHECK_P(this));
 }
 
 ILock* SharedMutex::writeLock()
@@ -70,9 +82,19 @@ ILock* SharedMutex::writeLock()
 	return new WriteLock(&lock);
 }
 
+#ifdef SHARED_MUTEX_CHECK
+void SharedMutex::rmLockCheck()
+{
+	IScopedLock lock(check_mutex.get());
+	assert(check_threads.erase(pthread_self()) == 1);
+}
+#endif
 
-ReadLock::ReadLock( pthread_rwlock_t* read_lock )
+
+ReadLock::ReadLock( pthread_rwlock_t* read_lock
+	SHARED_MUTEX_CHECK_P(SharedMutex* shared_mutex))
 	: read_lock(read_lock)
+		SHARED_MUTEX_CHECK_P(shared_mutex(shared_mutex))
 {
 	int rc = pthread_rwlock_rdlock(read_lock);
 	if(rc)
@@ -90,6 +112,9 @@ ReadLock::~ReadLock()
 		Server->Log("Error unlocking rwlock rc="+convert(rc), LL_ERROR);
 		assert(false);
 	}
+#ifdef SHARED_MUTEX_CHECK
+	shared_mutex->rmLockCheck();
+#endif
 }
 
 WriteLock::WriteLock( pthread_rwlock_t* write_lock )

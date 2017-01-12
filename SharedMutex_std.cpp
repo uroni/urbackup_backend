@@ -17,11 +17,21 @@
 **************************************************************************/
 
 #include "SharedMutex_std.h"
-
+#ifdef SHARED_MUTEX_CHECK
+#include <assert.h>
+#endif
 
 ILock* SharedMutex::readLock()
 {
-	return new ReadLock(new std::shared_lock<std::shared_timed_mutex>(mutex));
+#ifdef SHARED_MUTEX_CHECK
+	{
+		std::unique_lock<std::mutex> n_lock(check_mutex);
+		std::pair<std::set<std::thread::id>::iterator, bool> ins = check_threads.insert(std::this_thread::get_id());
+		assert(ins.second);
+	}
+#endif
+	return new ReadLock(new std::shared_lock<std::shared_timed_mutex>(mutex)
+		SHARED_MUTEX_CHECK_P(this));
 }
 
 ILock* SharedMutex::writeLock()
@@ -29,9 +39,18 @@ ILock* SharedMutex::writeLock()
 	return new WriteLock(new std::unique_lock<std::shared_timed_mutex>(mutex));
 }
 
+#ifdef SHARED_MUTEX_CHECK
+void SharedMutex::rmLockCheck()
+{
+	std::unique_lock<std::mutex> n_lock(check_mutex);
+	assert(check_threads.erase(std::this_thread::get_id()) == 1);
+}
+#endif
 
-ReadLock::ReadLock( std::shared_lock<std::shared_timed_mutex>* read_lock )
+ReadLock::ReadLock( std::shared_lock<std::shared_timed_mutex>* read_lock 
+	SHARED_MUTEX_CHECK_P(SharedMutex* shared_mutex))
 	: read_lock(read_lock)
+	  SHARED_MUTEX_CHECK_P(shared_mutex(shared_mutex))
 {
 
 }
