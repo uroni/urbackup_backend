@@ -446,6 +446,12 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 		return SSparseExtent(next_hole_start, fsize - next_hole_start);
 	}
 
+	if(next_hole_start == last_sparse_pos)
+	{
+		last_sparse_pos = -1;
+		return SSparseExtent();
+	}
+
 	return SSparseExtent(next_hole_start, last_sparse_pos - next_hole_start);
 #else //SEEK_HOLE
 	return SSparseExtent();

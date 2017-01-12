@@ -2662,6 +2662,10 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents, std::v
 			break;
 		}
 
+		if (sparse_hole_start == last_sparse_pos)
+		{
+			break;
+		}
 
 		if (sparse_hole_start <= start_offset)
 		{
