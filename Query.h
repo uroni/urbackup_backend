@@ -46,7 +46,7 @@ public:
 
 	virtual IDatabaseCursor* Cursor(int *timeoutms=NULL);
 
-	void setupStepping(int *timeoutms);
+	void setupStepping(int *timeoutms, bool with_read_lock);
 	void shutdownStepping(int err, int *timeoutms, bool& transaction_lock);
 
 	int step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset);

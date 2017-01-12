@@ -263,9 +263,12 @@ bool CQuery::Execute(int timeoutms)
 	return true;
 }
 
-void CQuery::setupStepping(int *timeoutms)
+void CQuery::setupStepping(int *timeoutms, bool with_read_lock)
 {
-	single_use_lock.reset(new IScopedReadLock(db->getSingleUseMutex()));
+	if (with_read_lock)
+	{
+		single_use_lock.reset(new IScopedReadLock(db->getSingleUseMutex()));
+	}
 
 	if(timeoutms!=NULL && *timeoutms>=0)
 	{
@@ -327,7 +330,7 @@ db_results CQuery::Read(int *timeoutms)
 	ScopedAddActiveQuery active_query(this);
 #endif
 
-	setupStepping(timeoutms);
+	setupStepping(timeoutms, false);
 
 	db_single_result res;
 	do

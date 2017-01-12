@@ -25,7 +25,7 @@ DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms),
 	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
 {
-	query->setupStepping(timeoutms);
+	query->setupStepping(timeoutms, true);
 
 #ifdef LOG_READ_QUERIES
 	active_query=new ScopedAddActiveQuery(query);

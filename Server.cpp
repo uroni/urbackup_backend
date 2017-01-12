@@ -891,17 +891,22 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	if( thread_iter==database_iter->second->tmap.end() )
 	{
 		IDatabaseInt *db=database_iter->second->factory->createDatabase();
+		std::pair<std::map<THREAD_ID, IDatabaseInt*>::iterator, bool> ins = 
+			database_iter->second->tmap.insert(std::pair< THREAD_ID, IDatabaseInt* >(tid, db));
 		SDatabase* params = database_iter->second;
-		if(db->Open(params->file, params->attach,
+		lock.relock(NULL);
+
+		if(!db->Open(params->file, params->attach,
 			params->allocation_chunk_size, params->single_user_mutex.get(),
 			params->lock_mutex.get(), params->lock_count.get(), params->unlock_cond.get(),
-			params->params)==false )
+			params->params) )
 		{
+			destroy(db);
 			Log("Database \""+database_iter->second->file+"\" couldn't be opened", LL_ERROR);
+			lock.relock(db_mutex);
+			database_iter->second->tmap.erase(ins.first);
 			return NULL;
 		}
-
-		database_iter->second->tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
 		return db;
 	}
