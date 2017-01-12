@@ -36,6 +36,13 @@ ILock* SharedMutex::readLock()
 
 ILock* SharedMutex::writeLock()
 {
+#ifdef SHARED_MUTEX_CHECK
+	{
+		std::unique_lock<std::mutex> n_lock(check_mutex);
+		assert(check_threads.find(std::this_thread::get_id())
+			== check_threads.end());
+	}
+#endif
 	return new WriteLock(new std::unique_lock<std::shared_timed_mutex>(mutex));
 }
 

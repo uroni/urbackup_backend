@@ -79,6 +79,13 @@ ILock* SharedMutex::readLock()
 
 ILock* SharedMutex::writeLock()
 {
+#ifdef SHARED_MUTEX_CHECK
+	{
+		IScopedLock lock(check_mutex.get());
+		assert(check_threads.find(pthread_self())
+			== check_threads.end());
+	}
+#endif
 	return new WriteLock(&lock);
 }
 
