@@ -361,6 +361,7 @@
 					<th>{tArchive for}</th>
 					<th>{tArchive window} <a class="btn btn-xs btn-default" href="help.htm#archive_window" target="_blank" title="h;dom;mon;dow">?</a></th>
 					<th>{tBackup type}</th>
+					<th>{tVolume letters}</th>
 					{no_compname_start|s}
 					<th>{tNext archival}</th>
 					{no_compname_end|s}
@@ -382,7 +383,7 @@
 						<select class="form-control" style="width: 40%" onchange="changeArchiveForUnit()" id="archive_for_unit"><option value="h">{thours}</option><option value="d" selected="selected">{tdays}</option><option value="w">{tweeks}</option><option value="m">{tmonth}</option><option value="y">{tyears}</option><option value="i">{tforever}</option></select>
 					</td>
 					<td><input class="form-control" type="text" id="archive_window" value="*;*;*;*"></td>
-					<td><select class="form-control" id="archive_backup_type">
+					<td><select class="form-control" id="archive_backup_type" onchange="changeArchiveBackupType()">
 							<option value="file">{tFile backup}</option>
 							<option value="incr_file">{tIncremental file backup}</option>
 							<option value="full_file">{tFull file backup}</option>
@@ -390,6 +391,7 @@
 							<option value="incr_image">{tIncremental image backup}</option>
 							<option value="full_image">{tFull image backup}</option>
 					</select></td>
+					<td><input class="form-control" type="text" id="archive_letters" value="ALL" disabled="disabled"></td>
 					{no_compname_start|s}
 					<td>&nbsp;</td>
 					{no_compname_end|s}

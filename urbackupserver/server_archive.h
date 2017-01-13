@@ -27,7 +27,7 @@ private:
 	void archiveTimeoutFileBackups();
 	void archiveTimeoutImageBackups();
 	void archiveBackups(void);
-	int getNonArchivedBackup(int backup_types, int clientid, bool image);
+	int getNonArchivedBackup(int backup_types, int clientid, const std::string& letter);
 	void archiveBackup(int backupid, int length, bool image);
 	void updateInterval(int archiveid, int interval);
 

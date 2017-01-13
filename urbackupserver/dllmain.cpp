@@ -1893,6 +1893,19 @@ bool upgrade51_52()
 	return b;
 }
 
+bool upgrade52_53()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE settings_db.automatic_archival ADD letters TEXT");
+	b &= db->Write("UPDATE settings_db.automatic_archival SET letters='' WHERE letters IS NULL");
+	b &= db->Write("UPDATE settings_db.automatic_archival SET letters='ALL' WHERE backup_types=4 OR backup_types=8 OR backup_types=12");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1914,7 +1927,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=52;
+	int max_v=53;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2210,6 +2223,13 @@ void upgrade(void)
 				break;
 			case 51:
 				if (!upgrade51_52())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 52:
+				if (!upgrade52_53())
 				{
 					has_error = true;
 				}

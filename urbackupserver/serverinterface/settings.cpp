@@ -491,7 +491,7 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 	IQuery *q=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
 	q->Write();
-	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 	while(POST.find("archive_every_"+convert(i))!=POST.end())
 	{
 		_i64 archive_next=watoi64(POST["archive_next_"+convert(i)]);
@@ -523,6 +523,7 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 		q->Bind(backup_types);
 		q->Bind(clientid);
 		q->Bind(POST["archive_window_"+convert(i)]);
+		q->Bind(POST["archive_letters_" + convert(i)]);
 		q->Write();
 		q->Reset();
 
@@ -544,9 +545,9 @@ void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
 		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
 		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
 
-		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window "
+		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window, letters "
 			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=?)"
-			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window");
+			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window, letters");
 		q_identical_config->Bind(clientid);
 		q_identical_config->Bind(group_id);
 		db_results res = q_identical_config->Read();
@@ -598,7 +599,7 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 			clientid = group_id;
 	}
 
-	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
+	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
 	res=q->Read();
 
@@ -615,6 +616,7 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		ca.set("archive_for_unit", res[i]["length_unit"]);
 		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
 		ca.set("archive_window", res[i]["archive_window"]);
+		ca.set("archive_letters", res[i]["letters"]);
 
 		if(archive_next>0 && clientid>0)
 		{
@@ -925,8 +927,8 @@ ACTION_IMPL(settings)
 				q->Write();
 				q->Reset();
 
-				q = db->Prepare("INSERT INTO settings_db.automatic_archival (clientid, interval, interval_unit, length, length_unit, backup_types, archive_window) "
-					"SELECT ? AS clientid, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=0");
+				q = db->Prepare("INSERT INTO settings_db.automatic_archival (clientid, interval, interval_unit, length, length_unit, backup_types, archive_window, letters) "
+					"SELECT ? AS clientid, interval, interval_unit, length, length_unit, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=0");
 				q->Bind(t_clientid);
 				q->Write();
 				q->Reset();

@@ -236,6 +236,8 @@ public:
 
 	void forceReauthenticate();
 
+	static std::string normalizeVolumeUpper(std::string volume);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -252,7 +254,6 @@ private:
 	bool updateClientSetting(const std::string &key, const std::string &value);
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
-	std::string normalizeVolumeUpper(std::string volume);
 	bool isImageGroupQueued(const std::string& letter, bool full);
 	bool isRunningFileBackup(int group);	
 	void checkClientVersion(void);

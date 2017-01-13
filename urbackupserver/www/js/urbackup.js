@@ -3153,7 +3153,7 @@ function show_settings2(data)
 		{
 			var obj=data.archive_settings[i];
 			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
-					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft, 
+					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_letters, obj.archive_timeleft, 
 					data.sa=="general" || is_group);
 		}
 	}
@@ -3532,6 +3532,7 @@ function getArchivePars()
 		pars+=getPar("archive_for_unit_"+i);
 		pars+=getPar("archive_backup_type_"+i);
 		pars+=getPar("archive_window_"+i);
+		pars+=getPar("archive_letters_"+i);
 	}
 	return pars;
 }
@@ -3655,6 +3656,14 @@ function updateUserOverwrite(clientid)
 	I('archive_every_unit').disabled=!checked;
 	I('archive_for_unit').disabled=!checked;
 	I('archive_backup_type').disabled=!checked;
+	if(checked)
+	{
+		I('archive_letters').disabled=I('archive_backup_type').value.indexOf("image")==-1;
+	}
+	else
+	{
+		I('archive_letters').disabled=!checked;
+	}
 	
 	//Disable checkboxes
 	if(!I('update_freq_incr_disable').disabled)
@@ -4727,7 +4736,7 @@ function addArchiveItem(global)
 		if(!validate_text_nonempty(["archive_for"])) return;
 	}
 	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, (global?"-":-1), global);
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, I('archive_letters').value, (global?"-":-1), global);
 }
 function getTimelengthSeconds(tl, unit)
 {
@@ -4802,7 +4811,7 @@ function getArchiveTable()
 	archive_table=I('archive_table').childNodes[1];
 	return archive_table;
 }
-function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_timeleft, global)
+function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_letters, archive_timeleft, global)
 {
 	archive_every_i=getTimelengthSeconds(archive_every, archive_every_unit);
 	archive_for_i=getTimelengthSeconds(archive_for, archive_for_unit);
@@ -4816,10 +4825,21 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	var new_item=document.createElement('tr');
 	new_item.id="archive_"+g.archive_item_id;
 	
+	var archive_letters_str = archive_letters;
+	if(archive_letters.length==0)
+	{
+		archive_letters_str = "-";
+	}
+	else if(archive_backup_type.indexOf("image")==-1)
+	{
+		archive_letters_str = "-";
+		archive_letters="";
+	}
+	
 	var row_vals={ id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
 			archive_for_i: archive_for_i, archive_for: archive_for, archive_for_unit: archive_for_unit,
-			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window,
-			show_archive_timeleft: !global};
+			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window, archive_letters: archive_letters,
+			archive_letters_str: archive_letters_str, show_archive_timeleft: !global};
 	
 	if(archive_timeleft!="-")
 	{
@@ -4856,7 +4876,7 @@ function replaceArchiveId(old_id, new_id)
 	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
-			archive_timeleft: archive_timeleft, show_archive_timeleft: show_archive_timeleft } );
+			archive_timeleft: archive_timeleft, show_archive_timeleft: show_archive_timeleft, archive_letters: I('archive_letters_'+old_id).value, archive_letters_str: I('archive_letters_str_'+old_id).value } );
 }
 function deleteArchiveItem(id)
 {
@@ -4895,6 +4915,10 @@ function changeArchiveForUnit()
 	{
 		I('archive_for').type="text";
 	}
+}
+function changeArchiveBackupType()
+{
+	I('archive_letters').disabled = I('archive_backup_type').value.indexOf("image")==-1;
 }
 function startBackups(start_type, clientid)
 {

@@ -23,6 +23,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "dao/ServerCleanupDao.h"
+#include "ClientMain.h"
 #include <algorithm>
 #include <stdlib.h>
 
@@ -143,7 +144,7 @@ void ServerAutomaticArchive::archiveBackups(void)
 			copyArchiveSettings(r_clientid, clientid);
 		}
 
-		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
+		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=?");
 		q_get_archived->Bind(clientid);
 		db_results res_archived=q_get_archived->Read();
 
@@ -159,17 +160,60 @@ void ServerAutomaticArchive::archiveBackups(void)
 			{
 				int backup_types = watoi(res_archived[j]["backup_types"]);
 				bool image = (backup_types & (backup_type_full_image | backup_type_incr_image)) > 0;
-				int backupid=getNonArchivedBackup(backup_types, clientid, image);
-				if(backupid!=0)
+				std::vector<std::string> letters;
+				if (image)
 				{
-					int length=watoi(res_archived[j]["length"]);
-					archiveBackup(backupid, length, image);
-					Server->Log("Archived backup with id="+convert(backupid)+" image="+convert(image)+" for "+convert(length)+" seconds", LL_INFO);
-					updateInterval(watoi(res_archived[j]["id"]), watoi(res_archived[j]["interval"]));
+					std::string letter_str = res_archived[j]["letters"];
+					if (strlower(trim(letter_str)) == "all")
+					{
+						IQuery *q_get_letters = db->Prepare("SELECT DISTINCT letter FROM backup_images WHERE complete=1 AND archived=0 AND clientid=?");
+						q_get_letters->Bind(clientid);
+						db_results res = q_get_letters->Read();
+						for (size_t k = 0; k < res.size(); ++k)
+						{
+							if (!res[k]["letter"].empty()
+								&& res[k]["letter"]!="SYSVOL"
+								&& res[k]["letter"]!="ESP" )
+							{
+								letters.push_back(res[k]["letter"]);
+							}
+						}
+					}
+					else
+					{
+						TokenizeMail(letter_str, letters, ",;");
+						for (size_t k = 0; k < res.size();)
+						{
+							if (letters[k].empty())
+							{
+								letters.erase(letters.begin() + k);
+								continue;
+							}
+
+							letters[k] = ClientMain::normalizeVolumeUpper(letters[k]);
+
+							++k;
+						}
+					}
 				}
 				else
 				{
-					Server->Log("Did not find backup suitable for archiving with backup_type="+convert(watoi(res_archived[j]["backup_types"]))+" image="+convert(image), LL_INFO);
+					letters.push_back(std::string());
+				}
+				for (size_t k = 0; k < letters.size(); ++k)
+				{
+					int backupid = getNonArchivedBackup(backup_types, clientid, letters[k]);
+					if (backupid != 0)
+					{
+						int length = watoi(res_archived[j]["length"]);
+						archiveBackup(backupid, length, image);
+						Server->Log("Archived backup with id=" + convert(backupid) + " image=" + convert(image)+" letter="+letters[k]+ " for " + convert(length) + " seconds", LL_INFO);
+						updateInterval(watoi(res_archived[j]["id"]), watoi(res_archived[j]["interval"]));
+					}
+					else
+					{
+						Server->Log("Did not find backup suitable for archiving with backup_type=" + convert(watoi(res_archived[j]["backup_types"])) + " image=" + convert(image)+" letter="+letters[k], LL_INFO);
+					}
 				}
 			}
 		}
@@ -188,12 +232,12 @@ void ServerAutomaticArchive::updateInterval(int archiveid, int interval)
 	q_update_interval->Write();
 }
 
-int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid, bool image)
+int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid, const std::string& letter)
 {
 	int type_incr = backup_type_incr_file;
 	int type_full = backup_type_full_file;
 
-	if (image)
+	if (!letter.empty())
 	{
 		type_incr = backup_type_incr_image;
 		type_full = backup_type_full_image;
@@ -208,13 +252,17 @@ int ServerAutomaticArchive::getNonArchivedBackup(int backup_types, int clientid,
 		incremental=" AND incremental=0";
 
 	std::string tbl = "backups";
-	if (image)
+	if (!letter.empty())
 	{
 		tbl = "backup_images";
-		incremental += " AND letter!='SYSVOL' AND letter!='ESP'";
+		incremental += " AND letter=?";
 	}
 	IQuery *q_get_backups=db->Prepare("SELECT id FROM "+tbl+" WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
 	q_get_backups->Bind(clientid);
+	if (!letter.empty())
+	{
+		q_get_backups->Bind(letter);
+	}
 	db_results res=q_get_backups->Read();
 	if(!res.empty())
 		return watoi(res[0]["id"]);
@@ -295,7 +343,7 @@ std::string ServerAutomaticArchive::getBackupType(int backup_types)
 
 void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 {
-	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid="+convert(source_id));
+	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid="+convert(source_id));
 
 
 	std::vector<std::string> next_archivals;
@@ -307,14 +355,16 @@ void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 		std::string &id=res_all[i]["id"];
 		std::string &archive_window=res_all[i]["archive_window"];
 		std::string next_archival=res_all[i]["next_archival"];
+		std::string letters = res_all[i]["letters"];
 
-		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=?");
-		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid="+convert(source_id)+" AND interval=? AND length=? AND backup_types=? AND archive_window=? AND id<?");
+		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=? AND letters=?");
+		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid="+convert(source_id)+" AND interval=? AND length=? AND backup_types=? AND archive_window=? AND letters=? AND id<?");
 
 		q_num->Bind(interval);
 		q_num->Bind(length);
 		q_num->Bind(backup_types);
 		q_num->Bind(archive_window);
+		q_num->Bind(letters);
 		q_num->Bind(id);
 		db_results res_num=q_num->Read();
 		int num=watoi(res_num[0]["num"]);
@@ -324,6 +374,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 		q_next->Bind(length);
 		q_next->Bind(backup_types);
 		q_next->Bind(archive_window);
+		q_next->Bind(letters);
 
 
 		db_results res_next=q_next->Read();
@@ -342,8 +393,8 @@ void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 
 
 	IQuery *q_del_all=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
-	IQuery *q_insert_all=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window)"
-									"VALUES (?,?,?,?,?,?,?,?)");
+	IQuery *q_insert_all=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters)"
+									"VALUES (?,?,?,?,?,?,?,?,?)");
 
 	q_del_all->Bind(clientid);
 	q_del_all->Write();
@@ -354,6 +405,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 		std::string &length=res_all[i]["length"];
 		std::string &backup_types=res_all[i]["backup_types"];		
 		std::string &archive_window=res_all[i]["archive_window"];
+		std::string &letters = res_all[i]["letters"];
 
 		q_insert_all->Bind(next_archivals[i]);
 		q_insert_all->Bind(interval);
@@ -362,7 +414,8 @@ void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
 		q_insert_all->Bind(res_all[i]["length_unit"]);
 		q_insert_all->Bind(backup_types);
 		q_insert_all->Bind(clientid);
-		q_insert_all->Bind(archive_window);		
+		q_insert_all->Bind(archive_window);	
+		q_insert_all->Bind(letters);
 		q_insert_all->Write();
 		q_insert_all->Reset();
 	}	
