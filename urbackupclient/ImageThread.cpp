@@ -430,9 +430,12 @@ bool ImageThread::sendFullImageThread(void)
 				clientSend->freeBuffer(bufs[i]);
 			}
 			clientSend->doExit();
-			std::vector<THREADPOOL_TICKET> wf;
-			wf.push_back(send_ticket);
-			Server->getThreadPool()->waitFor(wf);
+			Server->getThreadPool()->waitFor(send_ticket);
+			if (clientSend->hasError())
+			{
+				Server->Log("Pipe broken -4", LL_ERROR);
+				run = false;
+			}
 			delete clientSend;
 
 			if(!run)break;
@@ -1018,6 +1021,11 @@ bool ImageThread::sendIncrImageThread(void)
 
 			clientSend->doExit();
 			Server->getThreadPool()->waitFor(send_ticket);
+			if (clientSend->hasError())
+			{
+				Server->Log("Pipe broken -4", LL_ERROR);
+				run = false;
+			}
 			delete clientSend;
 
 			if(!run)break;
