@@ -1378,14 +1378,14 @@ void ServerBackupDao::deleteRestore(int64 restore_id)
 * @func SFileBackupInfo ServerBackupDao::getFileBackupInfo
 * @return int64 id, int clientid, int64 backuptime, int incremental, string path, int complete, int64 running, int64 size_bytes, int done, int archived, int64 archive_timeout, int64 size_calculated, int resumed, int64 indexing_time_ms, int tgroup
 * @sql
-*       SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running), size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup
+*       SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running) AS running, size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup
 *       FROM backups WHERE id=:backupid(int)
 */
 ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid)
 {
 	if(q_getFileBackupInfo==NULL)
 	{
-		q_getFileBackupInfo=db->Prepare("SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running), size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup FROM backups WHERE id=?", false);
+		q_getFileBackupInfo=db->Prepare("SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running) AS running, size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup FROM backups WHERE id=?", false);
 	}
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
@@ -1520,7 +1520,7 @@ ServerBackupDao::CondString ServerBackupDao::getClientnameByImageid(int backupid
 /**
 * @-SQLGenAccess
 * @func int ServerBackupDao::getClientidByImageid
-* @return int id
+* @return int clientid
 * @sql
 *       SELECT clientid FROM backup_images WHERE id=:backupid(int)
 */
@@ -1537,7 +1537,7 @@ ServerBackupDao::CondInt ServerBackupDao::getClientidByImageid(int backupid)
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0]["id"]);
+		ret.value=watoi(res[0]["clientid"]);
 	}
 	return ret;
 }

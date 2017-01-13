@@ -373,14 +373,14 @@ void JournalDAO::insertJournalData(const std::string& device_name, int64 journal
 * @func vector<SJournalData> JournalDAO::getJournalData
 * @return int64 usn, int64 reason, string filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes
 * @sql
-*    SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data
+*    SELECT usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes FROM journal_data
 *		WHERE device_name=:device_name(string) ORDER BY usn ASC
 */
 std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::string& device_name)
 {
 	if(q_getJournalData==NULL)
 	{
-		q_getJournalData=db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
+		q_getJournalData=db->Prepare("SELECT usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
 	}
 	q_getJournalData->Bind(device_name);
 	db_results res=q_getJournalData->Read();
@@ -552,7 +552,7 @@ IQuery * JournalDAO::getJournalDataQ()
 	if (q_getJournalData == NULL)
 	{
 		//Keep in sync with getJournalData()
-		q_getJournalData = db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
+		q_getJournalData = db->Prepare("SELECT usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
 	}
 	return q_getJournalData;
 }

@@ -559,12 +559,47 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 		if(q==NULL)
 		{
-			std::cout << "ERROR preparing statement: " << parsedSql << std::endl;
+			std::cout << "ERROR preparing statement: " << parsedSql << " Function: " << func << std::endl;
 			return AnnotatedCode(input.annotations, "");
 		}
 		else
 		{
 			q->Read();
+		}
+
+		if (stmt_type == StatementType_Select)
+		{
+			size_t select_pos = strlower(parsedSql).find("select");
+			size_t from_pos = strlower(parsedSql).find("from");
+			std::string select_vars = trim(parsedSql.substr(select_pos + 6, from_pos - select_pos - 6));
+			if (!select_vars.empty() && select_vars != "*")
+			{
+				std::vector<std::string> return_exp_vars;
+				TokenizeMail(select_vars, return_exp_vars, ",");
+				for (size_t i = 0; i < return_exp_vars.size(); ++i)
+				{
+					return_exp_vars[i] = trim(return_exp_vars[i]);
+					size_t as_pos = strlower(return_exp_vars[i]).find(" as ");
+					if (as_pos != std::string::npos)
+					{
+						return_exp_vars[i] = trim(return_exp_vars[i].substr(as_pos + 4));
+					}
+					else if (return_exp_vars[i].find(".") != std::string::npos)
+					{
+						return_exp_vars[i] = getafter(".", return_exp_vars[i]);
+					}
+				}
+
+				for (size_t i = 0; i < return_types.size(); ++i)
+				{
+					if (std::find(return_exp_vars.begin(), return_exp_vars.end(), return_types[i].name)
+						== return_exp_vars.end())
+					{
+						std::cout << "ERROR Cannot find variable '" << return_types[i].name << "' in SQL: " << parsedSql << " Function: " << func << std::endl;
+						return AnnotatedCode(input.annotations, "");
+					}
+				}
+			}
 		}
 	}	
 
