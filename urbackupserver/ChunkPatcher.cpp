@@ -501,13 +501,13 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 			if (!curr_only_zeros)
 			{
 				cb->next_chunk_patcher_bytes(sparse_buf.data(), sparse_blocksize, curr_changed);
-				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos+bsize);
+				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos + bsize_to_checkpoint);
 			}
 			else
 			{
 				bool is_sparse = true;
 				cb->next_chunk_patcher_bytes(NULL, sparse_blocksize, curr_changed, &is_sparse);
-				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos + bsize);
+				assert(cb->chunk_patcher_pos() < 0 || cb->chunk_patcher_pos() == pos + bsize_to_checkpoint);
 			}
 
 			curr_only_zeros = true;
