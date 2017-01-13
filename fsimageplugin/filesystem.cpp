@@ -332,6 +332,8 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
 	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 	{
 		SNextBlock* next_block = completionGetBlock(pBlock);
+		if (next_block == NULL)
+			return NULL;
 		used_next_blocks[next_block->buffer] = next_block;
 		return next_block->buffer;
 	}
