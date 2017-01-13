@@ -19,6 +19,7 @@
 #include "ChangeJournalWatcher.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../Interface/Server.h"
+#include "../Interface/DatabaseCursor.h"
 #include "../stringtools.h"
 #include "DirectoryWatcherThread.h"
 #include <memory>
@@ -179,6 +180,49 @@ void ChangeJournalWatcher::deleteJournalId(const std::string &vol)
 	journal_dao.delJournalDeviceId(vol);
 }
 
+void ChangeJournalWatcher::applySavedJournalData(const std::string & vol, SChangeJournal &cj, std::map<std::string, bool>& local_open_write_files, bool& started_transaction)
+{
+	if (!journal_dao.getJournalDataSingle(vol).exists)
+	{
+		return;
+	}
+
+	Server->Log("Applying saved journal data...", LL_DEBUG);
+	DBScopedWriteTransaction write_transaction(NULL);
+	if (!started_transaction)
+	{
+		write_transaction.reset(db);
+	}
+	started_transaction = false;
+	
+	{
+		IQuery* q = journal_dao.getJournalDataQ();
+		q->Bind(vol);
+		{
+			ScopedDatabaseCursor cur(q->Cursor());
+			db_single_result res;
+			while (cur.next(res))
+			{
+				UsnInt rec;
+				rec.Usn = watoi64(res["usn"]);
+				rec.Reason = static_cast<DWORD>(watoi64(res["reason"]));
+				rec.Filename = res["filename"];
+				rec.FileReferenceNumber = uint128(watoi64(res["frn"]), watoi64(res["frn_high"]));
+				rec.ParentFileReferenceNumber = uint128(watoi64(res["parent_frn"]), watoi64(res["parent_frn_high"]));
+				rec.NextUsn = watoi64(res["next_usn"]);
+				rec.attributes = watoi64(res["attributes"]);
+
+				updateWithUsn(vol, cj, &rec, true, local_open_write_files);
+				cj.last_record = rec.NextUsn;
+			}
+		}
+		q->Reset();
+	}
+
+	Server->Log("Deleting saved journal data...", LL_DEBUG);
+	deleteJournalData(vol);
+}
+
 void ChangeJournalWatcher::setIndexDone(const std::string &vol, int s)
 {
 	journal_dao.updateSetJournalIndexDone(s, vol);
@@ -186,36 +230,13 @@ void ChangeJournalWatcher::setIndexDone(const std::string &vol, int s)
 
 void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::string &vol, const UsnInt& rec, USN nextUsn)
 {	
-	if(rec.Filename=="backup_client.db" || rec.Filename=="backup_client.db-journal" )
+	if(rec.Filename=="backup_client.db" || rec.Filename=="backup_client.db-wal" || rec.Filename=="backup_client.db-shm" )
 		return;
 
 	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec.Usn),
 		static_cast<int64>(rec.Reason), rec.Filename, static_cast<int64>(rec.FileReferenceNumber.lowPart), static_cast<int64>(rec.FileReferenceNumber.highPart),
 		static_cast<int64>(rec.ParentFileReferenceNumber.lowPart), static_cast<int64>(rec.ParentFileReferenceNumber.highPart),
 		nextUsn, static_cast<int64>(rec.attributes));
-}
-
-std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::string &vol)
-{
-	std::vector<JournalDAO::SJournalData> res = journal_dao.getJournalData(vol);
-
-	std::vector<UsnInt> ret;
-	ret.resize(res.size());
-
-	for(size_t i=0;i<ret.size();++i)
-	{
-		UsnInt& rec=ret[i];
-		rec.Usn=res[i].usn;
-		rec.Reason=static_cast<DWORD>(res[i].reason);
-		rec.Filename=res[i].filename;
-		rec.FileReferenceNumber=uint128(res[i].frn, res[i].frn_high);
-		rec.ParentFileReferenceNumber=uint128(res[i].parent_frn, res[i].parent_frn_high);
-		rec.NextUsn=res[i].next_usn;
-		rec.attributes=static_cast<DWORD>(res[i].attributes);
-		rec.NextUsn=res[i].next_usn;
-		rec.attributes=static_cast<DWORD>(res[i].attributes);
-	}
-	return ret;
 }
 
 void ChangeJournalWatcher::renameEntry(const std::string &name, _i64 id, uint128 pid)
@@ -788,26 +809,7 @@ void ChangeJournalWatcher::update(std::string vol_str)
 
 		if(!indexing_in_progress)
 		{		
-			std::vector<UsnInt> jd=getJournalData(it->first);
-			if(!jd.empty())
-			{
-				Server->Log("Applying saved journal data...", LL_DEBUG);
-				if(!started_transaction)
-				{
-					started_transaction=true;
-					db->BeginWriteTransaction();
-				}
-				for(size_t i=0;i<jd.size();++i)
-				{
-					updateWithUsn(it->first, it->second, &jd[i], true, local_open_write_files);
-					it->second.last_record=jd[i].NextUsn;
-				}
-				Server->Log("Deleting saved journal data...", LL_DEBUG);
-				deleteJournalData(it->first);
-
-				db->EndTransaction();
-				started_transaction=false;
-			}
+			applySavedJournalData(it->first, it->second, local_open_write_files, started_transaction);
 		}
 
 		USN startUsn=it->second.last_record;
@@ -864,7 +866,8 @@ void ChangeJournalWatcher::update(std::string vol_str)
 						if(!indexing_in_progress)
 						{
 							if(usn_record.Filename!="backup_client.db" &&
-								usn_record.Filename!="backup_client.db-journal")
+								usn_record.Filename!="backup_client.db-wal" &&
+								usn_record.Filename != "backup_client.db-shm")
 							{
 								if(!started_transaction)
 								{
@@ -877,7 +880,8 @@ void ChangeJournalWatcher::update(std::string vol_str)
 						else
 						{
 							if(usn_record.Filename!="backup_client.db" &&
-								usn_record.Filename!="backup_client.db-journal")
+								usn_record.Filename!="backup_client.db-wal" &&
+								usn_record.Filename != "backup_client.db-shm" )
 							{
 							if(!started_transaction)
 								{

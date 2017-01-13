@@ -133,10 +133,10 @@ private:
 	void deleteEntry(_i64 id);
 	void deleteEntry(uint128 frn, _i64 rid);
 	void saveJournalData(DWORDLONG journal_id, const std::string &vol, const UsnInt& rec, USN nextUsn);
-	std::vector<UsnInt> getJournalData( const std::string &vol);
 	void setIndexDone(const std::string &vol, int s);
 	void deleteJournalData(const std::string &vol);
 	void deleteJournalId(const std::string &vol);
+	void applySavedJournalData(const std::string &vol, SChangeJournal &cj, std::map<std::string, bool>& local_open_write_files, bool& started_transaction);
 
 	void deleteWithChildren( uint128 frn, _i64 rid, bool has_children);
 	std::string getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);

@@ -13,6 +13,11 @@ public:
 	void destroyQueries();
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt
+	{
+		bool exists;
+		int value;
+	};
 	struct CondInt64
 	{
 		bool exists;
@@ -70,6 +75,7 @@ public:
 	void updateFrnNameAndPid(const std::string& name, int64 pid, int64 pid_high, int64 id);
 	void insertJournalData(const std::string& device_name, int64 journal_id, int64 usn, int64 reason, const std::string& filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes);
 	std::vector<SJournalData> getJournalData(const std::string& device_name);
+	CondInt getJournalDataSingle(const std::string& device_name);
 	void updateSetJournalIndexDone(int index_done, const std::string& device_name);
 	void delJournalData(const std::string& device_name);
 	void delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid);
@@ -77,6 +83,7 @@ public:
 	std::vector<SParentFrn> getHardLinkParents(const std::string& volume, int64 frn_high, int64 frn_low);
 	void deleteHardlink(const std::string& vol, int64 frn_high, int64 frn_low);
 	//@-SQLGenFunctionsEnd
+	IQuery* getJournalDataQ();
 
 private:
 	IDatabase *db;
@@ -96,6 +103,7 @@ private:
 	IQuery* q_updateFrnNameAndPid;
 	IQuery* q_insertJournalData;
 	IQuery* q_getJournalData;
+	IQuery* q_getJournalDataSingle;
 	IQuery* q_updateSetJournalIndexDone;
 	IQuery* q_delJournalData;
 	IQuery* q_delFrnEntryViaFrn;

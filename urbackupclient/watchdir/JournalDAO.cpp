@@ -33,6 +33,7 @@ void JournalDAO::prepareQueries()
 	q_updateFrnNameAndPid=NULL;
 	q_insertJournalData=NULL;
 	q_getJournalData=NULL;
+	q_getJournalDataSingle=NULL;
 	q_updateSetJournalIndexDone=NULL;
 	q_delJournalData=NULL;
 	q_delFrnEntryViaFrn=NULL;
@@ -58,6 +59,7 @@ void JournalDAO::destroyQueries()
 	db->destroyQuery(q_updateFrnNameAndPid);
 	db->destroyQuery(q_insertJournalData);
 	db->destroyQuery(q_getJournalData);
+	db->destroyQuery(q_getJournalDataSingle);
 	db->destroyQuery(q_updateSetJournalIndexDone);
 	db->destroyQuery(q_delJournalData);
 	db->destroyQuery(q_delFrnEntryViaFrn);
@@ -402,6 +404,32 @@ std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::stri
 
 /**
 * @-SQLGenAccess
+* @func int JournalDAO::getJournalDataSingle
+* @return int id
+* @sql
+*    SELECT id FROM journal_data
+*		WHERE device_name=:device_name(string) LIMIT 1
+*/
+JournalDAO::CondInt JournalDAO::getJournalDataSingle(const std::string& device_name)
+{
+	if(q_getJournalDataSingle==NULL)
+	{
+		q_getJournalDataSingle=db->Prepare("SELECT id FROM journal_data WHERE device_name=? LIMIT 1", false);
+	}
+	q_getJournalDataSingle->Bind(device_name);
+	db_results res=q_getJournalDataSingle->Read();
+	q_getJournalDataSingle->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func void JournalDAO::updateSetJournalIndexDone
 * @sql
 *    UPDATE journal_ids SET index_done=:index_done(int) WHERE device_name=:device_name(string)
@@ -517,5 +545,15 @@ void JournalDAO::deleteHardlink(const std::string& vol, int64 frn_high, int64 fr
 	q_deleteHardlink->Bind(frn_low);
 	q_deleteHardlink->Write();
 	q_deleteHardlink->Reset();
+}
+
+IQuery * JournalDAO::getJournalDataQ()
+{
+	if (q_getJournalData == NULL)
+	{
+		//Keep in sync with getJournalData()
+		q_getJournalData = db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn ASC", false);
+	}
+	return q_getJournalData;
 }
 
