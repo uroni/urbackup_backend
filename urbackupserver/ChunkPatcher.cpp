@@ -413,7 +413,7 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 
 	if (sparse)
 	{
-		assert(pos%sparse_blocksize == 0);
+		assert(unchanged_align==0 || pos%unchanged_align == 0);
 
 		if (last_sparse_start == -1)
 		{
