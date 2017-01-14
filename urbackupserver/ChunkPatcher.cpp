@@ -99,11 +99,9 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 	}
 
 	IFsFile::SSparseExtent curr_sparse_extent;
-	int64 sparse_blocksize = 0;
 	if (extent_iterator != NULL)
 	{
 		curr_sparse_extent = extent_iterator->nextExtent();
-		sparse_blocksize = extent_iterator->getBlocksize();
 	}
 
 	unsigned int max_read = UINT_MAX;
@@ -222,10 +220,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				&& curr_sparse_extent.offset <= file_pos
 				&& curr_sparse_extent.offset + curr_sparse_extent.size >= file_pos + tr)
 			{
-				if ( (sparse_blocksize == 0
-					  || file_pos%sparse_blocksize == 0)
-					&& (unchanged_align==0
-						|| file_pos%unchanged_align== 0) )
+				if (unchanged_align == 0
+					|| file_pos%unchanged_align == 0)
 				{
 					VLOG(Server->Log("Sparse extent at " + convert(file_pos) + " length=" + convert(tr), LL_DEBUG));
 					if (with_sparse)
