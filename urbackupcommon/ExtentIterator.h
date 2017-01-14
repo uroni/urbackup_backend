@@ -7,6 +7,7 @@ class IExtentIterator
 {
 public:
 	virtual IFsFile::SSparseExtent nextExtent() = 0;
+	virtual int64 getBlocksize() = 0;
 
 	virtual void reset() = 0;
 };
@@ -19,6 +20,7 @@ public:
 	~ExtentIterator();
 
 	virtual IFsFile::SSparseExtent nextExtent();
+	virtual int64 getBlocksize();
 
 	virtual void reset();
 
@@ -36,6 +38,7 @@ public:
 	FsExtentIterator(IFsFile* backing_file, int64 blocksize=1);
 
 	virtual IFsFile::SSparseExtent nextExtent();
+	virtual int64 getBlocksize();
 
 	virtual void reset();
 
