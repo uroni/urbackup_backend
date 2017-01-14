@@ -72,6 +72,11 @@ IFsFile::SSparseExtent ExtentIterator::nextExtent()
 	return IFsFile::SSparseExtent();
 }
 
+int64 ExtentIterator::getBlocksize()
+{
+	return blocksize;
+}
+
 void ExtentIterator::reset()
 {
 	num_sparse_extents = -1;
@@ -107,6 +112,11 @@ IFsFile::SSparseExtent FsExtentIterator::nextExtent()
 			return next;
 		}
 	}
+}
+
+int64 FsExtentIterator::getBlocksize()
+{
+	return blocksize;
 }
 
 void FsExtentIterator::reset()
