@@ -220,8 +220,10 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				&& curr_sparse_extent.offset <= file_pos
 				&& curr_sparse_extent.offset + curr_sparse_extent.size >= file_pos + tr)
 			{
-				if (unchanged_align == 0
-					|| file_pos%unchanged_align == 0)
+				if ( (sparse_blocksize == 0
+					    || file_pos%sparse_blocksize == 0)
+					&& (unchanged_align == 0
+						|| file_pos%unchanged_align == 0) )
 				{
 					VLOG(Server->Log("Sparse extent at " + convert(file_pos) + " length=" + convert(tr), LL_DEBUG));
 					if (with_sparse)
@@ -413,6 +415,7 @@ void ChunkPatcher::nextChunkPatcherBytes(int64 pos, const char * buf, size_t bsi
 
 	if (sparse)
 	{
+		assert(pos%sparse_blocksize == 0);
 		assert(unchanged_align==0 || pos%unchanged_align == 0);
 
 		if (last_sparse_start == -1)
