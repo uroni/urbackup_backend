@@ -171,6 +171,8 @@ private:
 	void setReconnectTries(int tries);
 
 	void setErrorCodes(_u32 ec1, _u32 ec2);
+	
+	IMutex* getMutex();
 
 	std::string remote_filename;
 

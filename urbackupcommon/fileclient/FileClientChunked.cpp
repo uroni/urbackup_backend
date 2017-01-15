@@ -1656,7 +1656,7 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			if(getPipe()!=NULL &&
 				( destroy_pipe || (parent && parent->destroy_pipe) ) )
 			{
-				IScopedLock lock(mutex);
+				IScopedLock lock(getMutex());
 				transferred_bytes+=getPipe()->getTransferedBytes();
 				real_transferred_bytes+=getPipe()->getRealTransferredBytes();
 				Server->destroy(getPipe());
@@ -1664,7 +1664,7 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			}
 			else
 			{
-				IScopedLock lock(mutex);
+				IScopedLock lock(getMutex());
 				setPipe(nc);
 			}
 			for(size_t i=0;i<throttlers.size();++i)
@@ -1861,7 +1861,7 @@ bool FileClientChunked::constructOutOfBandPipe()
 
 	if(ofbPipe())
 	{
-		IScopedLock lock(mutex);
+		IScopedLock lock(getMutex());
 		transferred_bytes+=ofbPipe()->getTransferedBytes();
 		real_transferred_bytes+=ofbPipe()->getRealTransferredBytes();
 		Server->destroy(ofbPipe());
@@ -2337,6 +2337,18 @@ void FileClientChunked::setErrorCodes(_u32 ec1, _u32 ec2)
 	{
 		errorcode1 = ec1;
 		errorcode2 = ec2;
+	}
+}
+
+IMutex * FileClientChunked::getMutex()
+{
+	if (parent != NULL)
+	{
+		return parent->getMutex();
+	}
+	else
+	{
+		return mutex;
 	}
 }
 
