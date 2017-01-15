@@ -242,7 +242,15 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch, ExtentIterator* extent_
 				}
 				else
 				{
-					tr = (std::min)(tr, static_cast<unsigned int>(unchanged_align - file_pos%unchanged_align));
+					if (unchanged_align!=0
+						&& file_pos%unchanged_align!=0)
+					{
+						tr = (std::min)(tr, static_cast<unsigned int>(unchanged_align - file_pos%unchanged_align));
+					}
+					else
+					{
+						tr = (std::min)(tr, static_cast<unsigned int>(sparse_blocksize - file_pos%sparse_blocksize));
+					}
 				}
 			}
 
