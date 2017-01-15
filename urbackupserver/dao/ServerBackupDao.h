@@ -106,7 +106,7 @@ public:
 	void addMiscValue(const std::string& tkey, const std::string& tvalue);
 	void delMiscValue(const std::string& tkey);
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
-	void newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
+	bool newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup);
 	void updateFileBackupRunning(int backupid);
 	void setFileBackupDone(int backupid);
 	void setFileBackupSynced(int backupid);
@@ -121,7 +121,7 @@ public:
 	CondString formatUnixtime(int64 unixtime);
 	SImageBackup getLastFullImage(int clientid, int image_version, const std::string& letter);
 	SImageBackup getLastImage(int clientid, int image_version, const std::string& letter);
-	void newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime);
+	bool newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime);
 	void setImageSize(int64 size_bytes, int backupid);
 	void addImageSizeToClient(int clientid, int64 add_size);
 	void setImageBackupSynctime(int backupid);

@@ -477,12 +477,12 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::newFileBackup
+* @func bool ServerBackupDao::newFileBackup
 * @sql
 *       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
 *		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int) )
 */
-void ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup)
+bool ServerBackupDao::newFileBackup(int incremental, int clientid, const std::string& path, int resumed, int64 indexing_time_ms, int tgroup)
 {
 	if(q_newFileBackup==NULL)
 	{
@@ -494,8 +494,9 @@ void ServerBackupDao::newFileBackup(int incremental, int clientid, const std::st
 	q_newFileBackup->Bind(resumed);
 	q_newFileBackup->Bind(indexing_time_ms);
 	q_newFileBackup->Bind(tgroup);
-	q_newFileBackup->Write();
+	bool ret = q_newFileBackup->Write();
 	q_newFileBackup->Reset();
+	return ret;
 }
 
 /**
@@ -836,13 +837,13 @@ ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int im
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::newImageBackup
+* @func bool ServerBackupDao::newImageBackup
 * @sql
 *       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter, backuptime, archived)
 *			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP,
 *					0, :image_version(int), :letter(string), datetime(:backuptime(int64), 'unixepoch'), 0 )
 */
-void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime)
+bool ServerBackupDao::newImageBackup(int clientid, const std::string& path, int incremental, int incremental_ref, int image_version, const std::string& letter, int64 backuptime)
 {
 	if(q_newImageBackup==NULL)
 	{
@@ -855,8 +856,9 @@ void ServerBackupDao::newImageBackup(int clientid, const std::string& path, int 
 	q_newImageBackup->Bind(image_version);
 	q_newImageBackup->Bind(letter);
 	q_newImageBackup->Bind(backuptime);
-	q_newImageBackup->Write();
+	bool ret = q_newImageBackup->Write();
 	q_newImageBackup->Reset();
+	return ret;
 }
 
 /**

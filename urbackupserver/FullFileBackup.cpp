@@ -151,7 +151,13 @@ bool FullFileBackup::doFileBackup()
 
 	getTokenFile(fc, hashed_transfer);
 
-	backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS()-indexing_start_time, group);
+	if (!backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS() - indexing_start_time, group))
+	{
+		ServerLogger::Log(logid, "Error creating new backup row in database", LL_ERROR);
+		has_early_error = true;
+		return false;
+	}
+
 	backupid = static_cast<int>(db->getLastInsertID());
 
 	tmp_filelist->Seek(0);

@@ -396,8 +396,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	ScopedLockImageFromCleanup cleanup_lock(0);
 
-	addBackupToDatabase(pLetter, pParentvhd, incremental,
-		incremental_ref, imagefn, cleanup_lock, NULL);
+	if (!addBackupToDatabase(pLetter, pParentvhd, incremental,
+		incremental_ref, imagefn, cleanup_lock, NULL))
+	{
+		ServerLogger::Log(logid, "Error creating image backup row in database", LL_ERROR);
+		return false;
+	}
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
@@ -883,8 +887,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							goto do_image_cleanup;
 						}
 
-						addBackupToDatabase(pLetter, pParentvhd, incremental,
-							incremental_ref, imagefn, cleanup_lock, running_updater);
+						if (!addBackupToDatabase(pLetter, pParentvhd, incremental,
+							incremental_ref, imagefn, cleanup_lock, running_updater))
+						{
+							ServerLogger::Log(logid, "Error creating image backup row in database -2", LL_ERROR);
+							goto do_image_cleanup;
+						}
 					}
 
 					IFSImageFactory::ImageFormat image_format;
@@ -2147,12 +2155,12 @@ bool ImageBackup::runPostBackupScript(bool incr, const std::string& path, const 
 		"\""+ path+"\" \"" + pLetter + "\" " + (success ? "1" : "0"), logid);
 }
 
-void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
+bool ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
 	const std::string& imagefn, ScopedLockImageFromCleanup& cleanup_lock, ServerRunningUpdater *running_updater)
 {
 	if (imagefn.empty())
 	{
-		return;
+		return true;
 	}
 
 	if (backup_starttime <= 0)
@@ -2162,11 +2170,17 @@ void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::str
 
 	if (pParentvhd.empty())
 	{
-		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter, backup_starttime);
+		if (!backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), pLetter, backup_starttime))
+		{
+			return false;
+		}
 	}
 	else
 	{
-		backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter, backup_starttime);
+		if (!backup_dao->newImageBackup(clientid, imagefn, synthetic_full ? 0 : incremental, incremental_ref, client_main->getCurrImageVersion(), pLetter, backup_starttime))
+		{
+			return false;
+		}
 	}
 
 	backupid = static_cast<int>(db->getLastInsertID());
@@ -2175,6 +2189,8 @@ void ImageBackup::addBackupToDatabase(const std::string &pLetter, const std::str
 	{
 		running_updater->setBackupid(backupid);
 	}
+
+	return true;
 }
 
 bool ImageBackup::readShadowData(const std::string & shadowdata)
