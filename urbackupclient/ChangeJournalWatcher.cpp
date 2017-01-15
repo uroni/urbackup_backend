@@ -193,7 +193,6 @@ void ChangeJournalWatcher::applySavedJournalData(const std::string & vol, SChang
 	{
 		write_transaction.reset(db);
 	}
-	started_transaction = false;
 	
 	{
 		IQuery* q = journal_dao.getJournalDataQ();
