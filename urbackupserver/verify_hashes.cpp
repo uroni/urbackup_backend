@@ -123,7 +123,7 @@ private:
 	_i64 curr_last;	
 };
 
-bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
+bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing, const std::string& backuppath)
 {
 	std::string fp=res["fullpath"];
 	std::auto_ptr<IFsFile> f(Server->openFile(os_file_prefix(fp), MODE_READ));
@@ -133,6 +133,29 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 		Server->Log("Error opening file \""+fp+"\"", LL_ERROR);
 		missing = true;
 		return false;
+	}
+
+	bool in_backup_scripts = false;
+	if (!backuppath.empty())
+	{
+		size_t backuppath_pos = fp.find(backuppath);
+		if (backuppath_pos != std::string::npos)
+		{
+			if (fp.size() > backuppath_pos + backuppath.size())
+			{
+				std::string next_fp = fp.substr(backuppath_pos + backuppath.size() + 1);
+				std::string next_fp_folder = getuntil(os_file_sep(), next_fp);
+
+				if (next_fp_folder == "urbackup_backup_scripts")
+				{
+					in_backup_scripts = true;
+				}
+				else if (next_fp == "windows_components_config" + os_file_sep() + "backupcom.xml")
+				{
+					return true;
+				}
+			}
+		}
 	}
 
 	if(watoi64(res["filesize"])!=f->Size())
@@ -148,7 +171,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	FsExtentIterator extent_iterator(f.get(), 512*1024);
 
 	std::string calc_dig;
-	if (BackupServer::useTreeHashing())
+	if (BackupServer::useTreeHashing() && !in_backup_scripts)
 	{
 		TreeHash treehash(NULL);
 		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, treehash, &progress_callback))
@@ -159,7 +182,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	else
 	{
 		HashSha512 shahash;
-		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, true, shahash, &progress_callback))
+		if (BackupServerPrepareHash::hash_sha(f.get(), &extent_iterator, !in_backup_scripts, shahash, &progress_callback))
 		{
 			calc_dig = shahash.finalize();
 		}
@@ -343,7 +366,8 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE "+filter, false);
+	IQuery *q_get_files = files_db->Prepare("SELECT id, fullpath, shahash, filesize, backupid FROM files WHERE "+filter, false);
+	IQuery* q_get_backuppath = db->Prepare("SELECT path FROM backups WHERE id=?", false);
 
 	bool is_okay=true;
 
@@ -351,12 +375,32 @@ bool verify_hashes(std::string arg)
 
 	std::vector<int64> todelete;
 	std::vector<int64> missing_files;
+	std::map<int, std::string> backuppaths;
 
 	db_single_result res_single;
 	while(cursor->next(res_single))
 	{
+		int backupid = watoi(res_single["backupid"]);
+		std::string backuppath;
+		std::map<int, std::string>::iterator it_backuppath = backuppaths.find(backupid);
+		if (it_backuppath == backuppaths.end())
+		{
+			q_get_backuppath->Bind(backupid);
+			db_results res_backuppath = q_get_backuppath->Read();
+			q_get_backuppath->Reset();
+			if (!res_backuppath.empty())
+			{
+				backuppath = res_backuppath[0]["path"];
+				backuppaths.insert(std::make_pair(backupid, backuppath));
+			}
+		}
+		else
+		{
+			backuppath = it_backuppath->second;
+		}
+
 		bool is_missing=false;
-		if(! verify_file( res_single, curr_verified, verify_size, is_missing) )
+		if(! verify_file( res_single, curr_verified, verify_size, is_missing, backuppath) )
 		{
 			if(!is_missing)
 			{
@@ -384,8 +428,9 @@ bool verify_hashes(std::string arg)
 	}
 
 	files_db->destroyQuery(q_get_files);
+	db->destroyQuery(q_get_backuppath);
 
-	IQuery* q_get_file = files_db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE id=?");
+	IQuery* q_get_file = files_db->Prepare("SELECT id, fullpath, shahash, filesize, backupid FROM files WHERE id=?");
 
 	if (missing_files.size() > 0)
 	{
@@ -401,7 +446,7 @@ bool verify_hashes(std::string arg)
 			{
 				bool is_missing = false;
 				db_single_result& res_single = res[0];
-				if (!verify_file(res_single, curr_verified, verify_size, is_missing))
+				if (!verify_file(res_single, curr_verified, verify_size, is_missing, backuppaths[watoi(res_single["backupid"])]))
 				{
 					v_failure << "Verification of file \"" << (res_single["fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
 					is_okay = false;
