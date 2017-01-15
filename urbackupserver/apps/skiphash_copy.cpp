@@ -56,7 +56,12 @@ bool skiphash_copy(const std::string& src_path,
 	if(!dst_exists || !hashinput.get())
 	{
 		Server->Log("Destination file does not exist or there is no hash input. Performing full copy (with hash output)...", LL_INFO);
-		return build_chunk_hashs(src.get(), hashoutput.get(), NULL, dst.get(), false, NULL, NULL, true);
+		bool ret = build_chunk_hashs(src.get(), hashoutput.get(), NULL, dst.get(), false, NULL, NULL, true);
+		if (!ret)
+		{
+			Server->Log("Copying failed.", LL_ERROR);
+		}
+		return ret;
 	}
 	else
 	{
@@ -76,10 +81,19 @@ bool skiphash_copy(const std::string& src_path,
 			}
 		}
 
+		if (!ret)
+		{
+			Server->Log("Copying failed.", LL_ERROR);
+		}
+
 		if (ret
 			&& dst->Size()!=src->Size())
 		{
 			ret = dst->Resize(src->Size());
+			if (!ret)
+			{
+				Server->Log("Could not resize destionation file to size " + convert(src->Size()) + ". " + os_last_error_str(), LL_ERROR);
+			}
 		}
 		
 		Server->Log("Wrote "+PrettyPrintBytes(inplace_written)
