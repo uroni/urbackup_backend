@@ -323,6 +323,10 @@ std::string IndexThread::GetErrorHResErrStr(HRESULT res)
 #define CASE_VSS_ERROR(x) case x: return #x
 	switch (res)
 	{
+	case S_OK:
+		return "S_OK";
+	case S_FALSE:
+		return "S_FALSE";
 	case E_INVALIDARG:
 		return "E_INVALIDARG";
 	case E_OUTOFMEMORY:
@@ -358,6 +362,8 @@ std::string IndexThread::GetErrorHResErrStr(HRESULT res)
 	CASE_VSS_ERROR(VSS_E_REBOOT_REQUIRED);
 	CASE_VSS_ERROR(VSS_E_TRANSACTION_FREEZE_TIMEOUT);
 	CASE_VSS_ERROR(VSS_E_TRANSACTION_THAW_TIMEOUT);
+	CASE_VSS_ERROR(VSS_E_UNEXPECTED);
+	CASE_VSS_ERROR(VSS_E_INVALID_XML_DOCUMENT);
 	};
 #undef CASE_VSS_ERROR
 	return "UNDEF("+convert((int64)res)+")";
@@ -2219,7 +2225,12 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 
 	bool dir_recurse = false;
 	hr = wmFile->GetRecursive(&dir_recurse);
-	if (hr != S_OK)
+	if (hr == S_FALSE)
+	{
+		//Some Database vendor VSS Writer returns this :(
+		dir_recurse = false;
+	}
+	else if (hr != S_OK)
 	{
 		VSSLog("Getting recursion flag for file spec failed. VSS error code " + GetErrorHResErrStr(hr), LL_ERROR);
 		return false;
