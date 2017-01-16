@@ -16,6 +16,8 @@ bool os_link_symbolic_junctions_raw(const std::string &target, const std::string
 std::map<int, size_t> ImageMount::mounted_images;
 IMutex* ImageMount::mounted_images_mutex;
 std::set<int> ImageMount::locked_images;
+IMutex* ImageMount::mount_processes_mutex;
+std::map<int, THREADPOOL_TICKET> ImageMount::mount_processes;
 
 namespace
 {
@@ -222,20 +224,27 @@ namespace
 	class ScopedLockImage
 	{
 		int backupid;
+		bool locked;
 
 	public:
-		ScopedLockImage(int backupid)
+		ScopedLockImage(int backupid, int64 timeoutms)
 			: backupid(backupid)
 		{
-			ImageMount::lockImage(backupid);
+			locked = ImageMount::lockImage(backupid, timeoutms);
 		}
 
 		~ScopedLockImage()
 		{
-			if (backupid != 0)
+			if (backupid != 0
+				&& locked)
 			{
 				ImageMount::unlockImage(backupid);
 			}
+		}
+
+		bool has_lock()
+		{
+			return locked;
 		}
 	};
 
@@ -278,6 +287,7 @@ namespace
 void ImageMount::operator()()
 {
 	mounted_images_mutex = Server->createMutex();
+	mount_processes_mutex = Server->createMutex();
 
 	Server->waitForStartupComplete();
 
@@ -296,61 +306,130 @@ void ImageMount::operator()()
 		waittimems = 60 * 1000;
 		oldtimes = 60 * 60;
 
-		IScopedLock lock(mounted_images_mutex);
-		for (size_t i = 0; i < old_mounted_images.size(); ++i)
 		{
-			if (mounted_images.find(old_mounted_images[i].id) == mounted_images.end()
-				&& locked_images.find(old_mounted_images[i].id) == locked_images.end())
+			IScopedLock lock(mounted_images_mutex);
+			for (size_t i = 0; i < old_mounted_images.size(); ++i)
 			{
-				locked_images.insert(old_mounted_images[i].id);
-				lock.relock(NULL);
+				if (mounted_images.find(old_mounted_images[i].id) == mounted_images.end()
+					&& locked_images.find(old_mounted_images[i].id) == locked_images.end())
+				{
+					locked_images.insert(old_mounted_images[i].id);
+					lock.relock(NULL);
 
-				int64 passed_time_s = Server->getTimeSeconds() - old_mounted_images[i].mounttime;
-				Server->Log("Unmounting mounted image backup id " + convert(old_mounted_images[i].id) +
-					" path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s*1000) + " ago", LL_INFO);
-				unmount_image(backup_dao, old_mounted_images[i].id);
-				backup_dao.setImageUnmounted(old_mounted_images[i].id);
+					int64 passed_time_s = Server->getTimeSeconds() - old_mounted_images[i].mounttime;
+					Server->Log("Unmounting mounted image backup id " + convert(old_mounted_images[i].id) +
+						" path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s * 1000) + " ago", LL_INFO);
+					unmount_image(backup_dao, old_mounted_images[i].id);
+					backup_dao.setImageUnmounted(old_mounted_images[i].id);
 
-				lock.relock(mounted_images_mutex);
-				locked_images.erase(locked_images.find(old_mounted_images[i].id));
+					lock.relock(mounted_images_mutex);
+					locked_images.erase(locked_images.find(old_mounted_images[i].id));
+				}
+			}
+		}
+
+		{
+			IScopedLock lock(mount_processes_mutex);
+			for (std::map<int, THREADPOOL_TICKET>::iterator it = mount_processes.begin();
+				it != mount_processes.end();)
+			{
+				std::map<int, THREADPOOL_TICKET>::iterator it_curr = it++;
+				if (Server->getThreadPool()->waitFor(it_curr->second))
+				{
+					mount_processes.erase(it_curr);
+				}
 			}
 		}
 	}
 }
 
-bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image)
+bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout)
 {
-	ScopedLockImage lock_image(backupid);
-	return mount_image_int(backupid, mounted_image);
-}
+	has_timeout = false;
 
-bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image)
-{
-	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	ServerBackupDao backup_dao(db);
-
-	ServerBackupDao::SMountedImage image_inf = backup_dao.getMountedImage(backupid);
-	if (!image_inf.exists)
+	ScopedLockImage lock_image(backupid, timeoutms);
+	if (!lock_image.has_lock())
 	{
+		has_timeout = true;
 		return false;
 	}
-
-	backup_dao.setImageMounted(backupid);
-	mounted_image.reset(backupid);
-
-	if (!os_mount_image(image_inf.path, backupid))
-	{
-		backup_dao.setImageUnmounted(backupid);
-		mounted_image.reset();
-		return false;
-	}
-
-	return true;
+	return mount_image_int(backupid, mounted_image, timeoutms, has_timeout);
 }
 
-std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image)
+namespace
 {
-	ScopedLockImage lock_image(backupid);
+	class MountImageThread : public IThread
+	{
+		int backupid;
+	public:
+		MountImageThread(int backupid)
+			: backupid(backupid)
+		{
+
+		}
+
+		void operator()()
+		{
+			ImageMount::mount_image_thread(backupid);
+			delete this;
+		}
+	};
+}
+
+bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout)
+{
+	IScopedLock lock(mount_processes_mutex);
+	std::map<int, THREADPOOL_TICKET>::iterator it = mount_processes.find(backupid);
+	THREADPOOL_TICKET ticket;
+	if (it != mount_processes.end())
+	{
+		ticket = it->second;
+		lock.relock(NULL);
+	}
+	else
+	{
+		ticket = Server->getThreadPool()->execute(new MountImageThread(backupid), "mnt image");
+		mount_processes.insert(std::make_pair(backupid, ticket));
+		lock.relock(NULL);
+	}
+
+	if (Server->getThreadPool()->waitFor(ticket, static_cast<int>(timeoutms)))
+	{
+		IScopedLock lock(mount_processes_mutex);
+		std::map<int, THREADPOOL_TICKET>::iterator it = mount_processes.find(backupid);
+		if (it != mount_processes.end()
+			&& it->second == ticket)
+		{
+			mount_processes.erase(it);
+		}
+		lock.relock(NULL);
+		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		ServerBackupDao backup_dao(db);
+		ServerBackupDao::SMountedImage image_inf = backup_dao.getMountedImage(backupid);
+		if (image_inf.mounttime != 0)
+		{
+			mounted_image.reset(backupid);
+		}
+		return image_inf.mounttime!=0;
+	}
+	else
+	{
+		has_timeout = true;
+		return false;
+	}
+}
+
+std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image, 
+	int64 timeoutms, bool& has_timeout)
+{
+	has_timeout = false;
+
+	ScopedLockImage lock_image(backupid, timeoutms);
+	if (!lock_image.has_lock())
+	{
+		has_timeout = true;
+		return std::string();
+	}
 
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -361,11 +440,19 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 		return std::string();
 	}
 
-	if (image_inf.mounttime == 0)
+	bool has_mount_process = false;
+	{
+		IScopedLock lock(mount_processes_mutex);
+		std::map<int, THREADPOOL_TICKET>::iterator it = mount_processes.find(backupid);
+		has_mount_process = it != mount_processes.end();
+	}
+
+	if (image_inf.mounttime == 0
+		|| has_mount_process)
 	{
 		if (do_mount)
 		{
-			if (!mount_image_int(backupid, mounted_image))
+			if (!mount_image_int(backupid, mounted_image, timeoutms, has_timeout))
 			{
 				return std::string();
 			}
@@ -438,21 +525,54 @@ void ImageMount::decrImageMounted(int backupid)
 	}
 }
 
-void ImageMount::lockImage(int backupid)
+bool ImageMount::lockImage(int backupid, int64 timeoutms)
 {
+	int64 starttime = Server->getTimeMS();
 	IScopedLock lock(mounted_images_mutex);
 	while (locked_images.find(backupid) != locked_images.end())
 	{
 		lock.relock(NULL);
+
+		if (timeoutms == 0)
+			return false;
+
 		Server->wait(100);
+
+		if (timeoutms > 0
+			&& Server->getTimeMS() - starttime > timeoutms)
+		{
+			return false;
+		}
+
 		lock.relock(mounted_images_mutex);
 	}
 
 	locked_images.insert(backupid);
+	return true;
 }
 
 void ImageMount::unlockImage(int backupid)
 {
 	IScopedLock lock(mounted_images_mutex);
 	locked_images.erase(locked_images.find(backupid));
+}
+
+void ImageMount::mount_image_thread(int backupid)
+{	
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	ServerBackupDao::SMountedImage image_inf = backup_dao.getMountedImage(backupid);
+	if (!image_inf.exists)
+	{
+		return;
+	}
+
+	backup_dao.setImageMounted(backupid);
+
+	if (!os_mount_image(image_inf.path, backupid))
+	{
+		backup_dao.setImageUnmounted(backupid);
+		return;
+	}
 }

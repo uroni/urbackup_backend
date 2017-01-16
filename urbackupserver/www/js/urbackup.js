@@ -1915,6 +1915,13 @@ function show_backups2(data)
 		{
 			data.backupid = -1*data.backupid;
 		}
+		
+		if(data.files
+			&& data.mount_in_progress)
+		{
+			tabMouseClickFiles(data.clientid,data.backupid, unescapeHTML(data.path), true);
+			return;
+		}
 	
 		var rows="";		
 		var path=unescapeHTML(data.path);
