@@ -16,7 +16,7 @@ public:
 
 	bool applyOsMetadata(IFile* metadata_f, const std::string& output_fn);
 
-	void shutdown();
+	void shutdown(bool log_error);
 
 	int64 getTransferredBytes();
 
@@ -29,6 +29,7 @@ private:
 
 	bool has_error;
 	std::string metadata_tmp_fn;
+	volatile bool error_logging;
 };
 
 } //namespace client

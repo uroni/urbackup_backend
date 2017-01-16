@@ -284,7 +284,8 @@ void RestoreFiles::operator()()
 		{
 			log("Opening files...", LL_INFO);
 
-			if (!openFiles(open_files))
+			bool overwrite_failure = false;
+			if (!openFiles(open_files, overwrite_failure))
 			{
 				for (std::map<std::string, IFsFile*>::iterator it = open_files.begin();
 					it != open_files.end(); ++it)
@@ -292,7 +293,18 @@ void RestoreFiles::operator()()
 					Server->destroy(it->second);
 				}
 
-				restore_failed(*metadata_thread.get(), metadata_dl);
+				if (overwrite_failure)
+				{
+					log("Restore finished successfully after overwrite failure. Nothing restored.", LL_INFO);
+					metadata_thread->shutdown(false);
+					Server->getThreadPool()->waitFor(metadata_dl);
+					restore_updater.set_success(true);
+					ClientConnector::restoreDone(log_id, status_id, restore_id, true, server_token);
+				}
+				else
+				{
+					restore_failed(*metadata_thread.get(), metadata_dl);
+				}
 				return;
 			}
 		}
@@ -345,7 +357,7 @@ void RestoreFiles::operator()()
 			{
 				log("No meta-data transfer in the last " + PrettyPrintTime(Server->getTimeMS() - last_transfer_time) + ". Shutting down meta-data tranfer.", LL_DEBUG);
 				is_offline = true;
-				metadata_thread->shutdown();
+				metadata_thread->shutdown(true);
 			}
 
 			transferred_bytes = new_transferred_bytes;
@@ -449,7 +461,7 @@ int64 RestoreFiles::calculateDownloadSize()
 	return total_size;
 }
 
-bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files)
+bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& overwrite_failure)
 {
 	std::vector<char> buffer;
 	buffer.resize(32768);
@@ -645,8 +657,17 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files)
 
 							if (orig_file.get() == NULL)
 							{
-								log("Error opening file \"" + local_fn + "\" for restore. " + os_last_error_str(), LL_ERROR);
-								return false;
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									log("Error opening file \"" + local_fn + "\" for restore. " + os_last_error_str(), LL_ERROR);
+									return false;
+								}
+								else
+								{
+									overwrite_failure = true;
+									log("Error opening file \"" + local_fn + "\" for restore. " + os_last_error_str()+". Restore is configured to ignore such errors.", LL_WARNING);
+									return false;
+								}
 							}
 							else
 							{
@@ -1141,8 +1162,13 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 						if(orig_file.get()==NULL)
 						{
-							log("Cannot open file \""+local_fn+"\" for writing. Not restoring file. " + os_last_error_str(), LL_ERROR);
-							has_error=true;
+							int ll = LL_ERROR;
+							if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+							{
+								has_error = true;
+								ll = LL_WARNING;
+							}
+							log("Cannot open file \"" + local_fn + "\" for writing. Not restoring file. " + os_last_error_str(), ll);
 						}
 						else if (data.size == 0)
 						{
@@ -1438,7 +1464,7 @@ void RestoreFiles::restore_failed(client::FileMetadataDownloadThread& metadata_t
 {
 	log("Restore failed.", LL_INFO);
 
-	metadata_thread.shutdown();
+	metadata_thread.shutdown(false);
 
 	Server->getThreadPool()->waitFor(metadata_dl);
 

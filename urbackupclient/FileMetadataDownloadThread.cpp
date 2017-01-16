@@ -54,7 +54,7 @@ const _u32 ID_METADATA_OS = ID_METADATA_OS_UNIX;
 #endif
 
 FileMetadataDownloadThread::FileMetadataDownloadThread(RestoreFiles& restore, FileClient& fc, const std::string& client_token)
-	: restore(restore), fc(fc), client_token(client_token), has_error(false)
+	: restore(restore), fc(fc), client_token(client_token), has_error(false), error_logging(true)
 {
 
 }
@@ -74,7 +74,10 @@ void FileMetadataDownloadThread::operator()()
 
 	if(rc!=ERR_SUCCESS)
 	{
-		restore.log("Error getting file metadata. Errorcode: "+FileClient::getErrorString(rc)+" ("+convert(rc)+")", LL_ERROR);
+		if (error_logging)
+		{
+			restore.log("Error getting file metadata. Errorcode: " + FileClient::getErrorString(rc) + " (" + convert(rc) + ")", LL_ERROR);
+		}
 		has_error=true;
 	}
 	else
@@ -924,8 +927,9 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 #endif //_WIN32
 
 
-void FileMetadataDownloadThread::shutdown()
+void FileMetadataDownloadThread::shutdown(bool log_error)
 {
+	error_logging = log_error;
 	fc.Shutdown();
 }
 

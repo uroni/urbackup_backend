@@ -77,7 +77,7 @@ private:
 
 	int64 calculateDownloadSize();
 
-	bool openFiles(std::map<std::string, IFsFile*>& open_files);
+	bool openFiles(std::map<std::string, IFsFile*>& open_files, bool& overwrite_failure);
 
 	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater, std::map<std::string, IFsFile*>& open_files);
 
