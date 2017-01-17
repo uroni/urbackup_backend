@@ -697,6 +697,8 @@ The most specific speed limit will be used, so adding an extra rule for 80 MBit/
 \begin{verbatim}
 60;10@Mon-Fri/8-18;80@1-7/12-13
 \end{verbatim}
+
+You can also specify speed limits as a percentage of the maximum speed. So e.g. $50\%$. This can again be combined with windows separated by ``@''. If a percentage value is specified, UrBackup will run at full speed at certain intervals until the speed stabilizes to its maximum value. When it is not testing for the maximum speed it will throttle down the the percentage of maximum speed you specified.
  
 \subsubsection{Global soft file system quota}
 \label{global_soft_fs_quota}
@@ -948,7 +950,19 @@ The file then does not have to be transferred if another client already transfer
 \hline
 Connect to Internet backup server if connected to local backup server & If checked the client will connect to the configured Internet server, even if it is connect to a backup server on the local network. & Not checked \\
 \hline
+Do not start file backups if current estimated data usage limit per month is smaller than & The UrBackup server will not schedule file backups if the estimated amount of data the client can transfer with its current Internet connection is smaller than the specified value. See \ref{estimate_dataplan} on how the data usage limit is estimated. & 5000 MB \\
+\hline
+Do not start image backups if current estimated data usage limit per month is smaller than & The UrBackup server will not schedule image backups if the estimated amount of data the client can transfer with its current Internet connection is smaller than the specified value. See \ref{estimate_dataplan} on how the data usage limit is estimated. & 20000 MB \\
+\hline
 \end{tabular}
+
+\subsubsection{Data usage limit estimation}
+\label{estimate_dataplan}
+
+Currently there are to machisms to estimate how much data the client can transfer per month with its current Internet connection. If the client is running on Windows 10, the client is connected via Wifi and the Wifi connection is set to be metered, the data usage limit is estimated at 1GB per month.
+Otherwise the dataplan database at \url{https://github.com/uroni/dataplan_db} is used to estimate the data usage limit via the clients hostname. You can see the hostname of your Internet connection e.g. on \url{http://ipinfo.io/}. If it is missing in the database, please contribute to the dataplan database.
+The dataplan database contains both hostnames where there is estimated to be a usage limit (e.g. mobile phone connection, plane, \ldots) and where they are estimated to be unlimited.
+If the the hostname is estimated to be unlimited, UrBackup will always start backups disregarding the setting. If there is no information about the hostname in the database, the data usage limit per month is estimated at 1TB. So if you set one of the settings above 1TB, backups will only start if the hostname is specified as unlimited in the dataplan database. If the hostname has a limit in the database, backups will only start if this limit is greater than the respective setting for the client. 
 
 \subsection{Advanced settings}
 
