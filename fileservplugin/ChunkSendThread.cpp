@@ -144,7 +144,7 @@ void ChunkSendThread::operator()(void)
 			std::vector<IFsFile::SSparseExtent> sparse_extents;
 			if (chunk.with_sparse)
 			{
-				IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+				IFsFile* fs_file = static_cast<IFsFile*>(file);
 				IFsFile::SSparseExtent new_extent;
 				do
 				{
@@ -405,7 +405,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			{
 				if (file_extents.empty())
 				{
-					IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+					IFsFile* fs_file = static_cast<IFsFile*>(file);
 					if (fs_file != NULL
 						&& cbt_hash_file_info.blocksize > 0)
 					{
@@ -454,7 +454,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					if (has_more_extents
 						&& !file_extents.empty())
 					{
-						IFsFile* fs_file = reinterpret_cast<IFsFile*>(file);
+						IFsFile* fs_file = static_cast<IFsFile*>(file);
 						file_extents = fs_file->getFileExtents(spos, cbt_hash_file_info.blocksize, has_more_extents);
 
 						if (!file_extents.empty())
