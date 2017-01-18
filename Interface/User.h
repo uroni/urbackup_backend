@@ -19,7 +19,7 @@ struct SUser
 	std::map<std::string, IObject* > mCustom;
 	int64 lastused;
 
-	void* getCustomPtr(std::string str)
+	IObject* getCustomPtr(std::string str)
 	{
 		std::map<std::string, IObject* >::iterator iter=mCustom.find(str);
 		if( iter!=mCustom.end() )
