@@ -1502,7 +1502,7 @@ and ``incremental forever'' style image backups.
 
 Other caveats: UrBackup uses ``file hole punching'' to remove unused areas from the image file
 after an incremental backup. FreeBSD currently does not support this, so it will not be able
-to remove those unused areas after incremental image backups on FreeBSD.
+to remove those unused areas after incremental image backups on FreeBSD. It sets them to zero instead, though, so if you enabled ZFS compression unused areas will not take up much space.
 
 \subsubsection{Btrfs}
 \label{subsec_btrfs_setup}
