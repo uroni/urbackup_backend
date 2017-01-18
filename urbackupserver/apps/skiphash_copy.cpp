@@ -61,6 +61,15 @@ bool skiphash_copy(const std::string& src_path,
 		{
 			Server->Log("Copying failed.", LL_ERROR);
 		}
+		if (ret
+			&& dst->Size() != src->Size())
+		{
+			ret = dst->Resize(src->Size());
+			if (!ret)
+			{
+				Server->Log("Could not resize destionation file to size " + convert(src->Size()) + ". " + os_last_error_str(), LL_ERROR);
+			}
+		}
 		return ret;
 	}
 	else
