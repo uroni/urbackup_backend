@@ -1257,7 +1257,7 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if (!loadWindowsBackupComponentConfigXml(fc))
 		{
-			c_has_error = true;
+			r_offline = true;
 		}
 	}
 
