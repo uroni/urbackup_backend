@@ -543,7 +543,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		i_is_user = ClientDAO::c_is_group;
 	}
 
-	dao.updateFileAccessToken(strlower(accountname), token, i_is_user);
+	dao.updateFileAccessToken(accountname_normalize(accountname), token, i_is_user);
 
 	DWORD written=0;
 	while(written<token.size())
@@ -670,7 +670,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(accountname_normalize(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -699,7 +699,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(strlower(groups[i]), ClientDAO::c_is_group);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(accountname_normalize(groups[i]), ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{
@@ -841,6 +841,11 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, T
 	token_info.addVarInt(0);
 
 	return std::string(token_info.getDataPtr(), token_info.getDataSize());
+}
+
+std::string accountname_normalize(const std::string& accountname)
+{
+	return strlower(accountname);
 }
 
 } //namespace tokens

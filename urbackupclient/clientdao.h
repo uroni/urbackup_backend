@@ -178,6 +178,7 @@ public:
 	std::vector<SToken> getFileAccessTokens(void);
 	CondInt64 getFileAccessTokenId2Alts(const std::string& accountname, int is_user_alt1, int is_user_alt2);
 	CondInt64 getFileAccessTokenId(const std::string& accountname, int is_user);
+	void removeGroupMembership(int64 uid);
 	void updateGroupMembership(int64 uid, const std::string& accountname);
 	std::vector<int> getGroupMembership(int uid);
 	void addBackupDir(const std::string& name, const std::string& path, int server_default, int flags, int tgroup, int symlinked);
@@ -226,6 +227,7 @@ private:
 	IQuery* q_getFileAccessTokens;
 	IQuery* q_getFileAccessTokenId2Alts;
 	IQuery* q_getFileAccessTokenId;
+	IQuery* q_removeGroupMembership;
 	IQuery* q_updateGroupMembership;
 	IQuery* q_getGroupMembership;
 	IQuery* q_addBackupDir;

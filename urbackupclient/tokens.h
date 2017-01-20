@@ -53,4 +53,5 @@ namespace tokens
 
 	std::string permissions_allow_all();
 
+	std::string accountname_normalize(const std::string& accountname);
 }

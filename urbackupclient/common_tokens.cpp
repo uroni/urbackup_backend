@@ -35,7 +35,7 @@ bool write_tokens()
 
 	std::string hostname = get_hostname();
 
-	db->BeginWriteTransaction();
+	DBScopedWriteTransaction write_transaction(db);
 
 	bool has_new_token=false;
 	std::vector<std::string> users = get_users();
@@ -50,7 +50,7 @@ bool write_tokens()
 
 	for(size_t i=0;i<users.size();++i)
 	{
-		std::string user_fn="user_"+bytesToHex((users[i]));
+		std::string user_fn="user_"+bytesToHex(accountname_normalize(users[i]));
 		std::string token_fn = tokens_path + os_file_sep()+user_fn;
 		bool file_found=false;
 		for(size_t j=0;j<files.size();++j)
@@ -74,7 +74,7 @@ bool write_tokens()
 
 	for(size_t i=0;i<groups.size();++i)
 	{
-		std::string group_fn="group_"+bytesToHex((groups[i]));
+		std::string group_fn="group_"+bytesToHex(accountname_normalize(groups[i]));
 		std::string token_fn = tokens_path + os_file_sep()+group_fn;
 		bool file_found=false;
 		for(size_t j=0;j<files.size();++j)
@@ -99,25 +99,21 @@ bool write_tokens()
 	{
 		//dao.updateMiscValue("has_new_token", L"true");
 
-		if(has_new_token)
+		for(size_t i=0;i<users.size();++i)
 		{
-			for(size_t i=0;i<users.size();++i)
-			{
-				std::vector<std::string> user_groups = get_user_groups(users[i]);
+			std::vector<std::string> user_groups = get_user_groups(users[i]);
 
-				ClientDAO::CondInt64 uid = dao.getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_system_user, ClientDAO::c_is_user);
-				if(uid.exists)
+			ClientDAO::CondInt64 uid = dao.getFileAccessTokenId2Alts(accountname_normalize(users[i]), ClientDAO::c_is_system_user, ClientDAO::c_is_user);
+			if(uid.exists)
+			{
+				dao.removeGroupMembership(uid.value);
+				for(size_t j=0;j<user_groups.size();++j)
 				{
-					for(size_t j=0;j<user_groups.size();++j)
-					{
-						dao.updateGroupMembership(uid.value, strlower(user_groups[j]));
-					}
+					dao.updateGroupMembership(uid.value, accountname_normalize(user_groups[j]));
 				}
 			}
 		}
 	}
-
-	db->EndTransaction();
 
 	return has_new_token;
 }

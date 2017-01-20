@@ -100,6 +100,7 @@ void ClientDAO::prepareQueriesGen(void)
 	q_getFileAccessTokens=NULL;
 	q_getFileAccessTokenId2Alts=NULL;
 	q_getFileAccessTokenId=NULL;
+	q_removeGroupMembership=NULL;
 	q_updateGroupMembership=NULL;
 	q_getGroupMembership=NULL;
 	q_addBackupDir=NULL;
@@ -119,6 +120,7 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_getFileAccessTokens);
 	db->destroyQuery(q_getFileAccessTokenId2Alts);
 	db->destroyQuery(q_getFileAccessTokenId);
+	db->destroyQuery(q_removeGroupMembership);
 	db->destroyQuery(q_updateGroupMembership);
 	db->destroyQuery(q_getGroupMembership);
 	db->destroyQuery(q_addBackupDir);
@@ -750,6 +752,23 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::string& accountn
 		ret.value=watoi64(res[0]["id"]);
 	}
 	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::removeGroupMembership
+* @sql
+*	 DELETE FROM token_group_memberships WHERE uid=:uid(int64)
+*/
+void ClientDAO::removeGroupMembership(int64 uid)
+{
+	if(q_removeGroupMembership==NULL)
+	{
+		q_removeGroupMembership=db->Prepare("DELETE FROM token_group_memberships WHERE uid=?", false);
+	}
+	q_removeGroupMembership->Bind(uid);
+	q_removeGroupMembership->Write();
+	q_removeGroupMembership->Reset();
 }
 
 /**

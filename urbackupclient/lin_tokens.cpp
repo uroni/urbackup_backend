@@ -297,7 +297,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 		token = ext_token;
 	}
 	
-	dao.updateFileAccessToken(strlower(accountname), token,
+	dao.updateFileAccessToken(accountname_normalize(accountname), token,
 			is_user ? (is_system_user ? ClientDAO::c_is_system_user : ClientDAO::c_is_user) : ClientDAO::c_is_group  );
 
 	size_t written = 0;
@@ -372,7 +372,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(strlower(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(accountname_normalize(users[i]), ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -395,7 +395,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(strlower(groups[i]), ClientDAO::c_is_group);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(accountname_normalize(groups[i]), ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{
@@ -500,6 +500,12 @@ std::string permissions_allow_all()
 
 std::string get_domain_account(const std::string& accountname)
 {
+	return accountname;
+}
+
+std::string accountname_normalize(const std::string& accountname)
+{
+	//TODO: Make this conditional on LDAP being used and LDAP being case-insensitive
 	return accountname;
 }
 
