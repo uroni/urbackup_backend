@@ -787,6 +787,15 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						folder_files.top().clear();
 					}
 				}
+				else if(depth>=1 && data.isdir && data.name==".."					
+					&& clean_other && !has_error)
+				{
+					bool has_include_exclude = false;
+					if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
+					{
+						has_error = true;
+					}
+				}
 
 				if(depth==0 && extra.find("single_item")!=extra.end())
 				{
