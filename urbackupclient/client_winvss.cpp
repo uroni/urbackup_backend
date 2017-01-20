@@ -269,8 +269,12 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 }
 
 
-bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool continue_on_failure, bool* retryable_error)
+bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::string& errmsg, int loglevel, bool continue_on_failure, 
+	const std::vector<VSS_ID>& critical_writers, bool* critical_failure, bool* retryable_error)
 {
+	if (critical_failure != NULL)
+		*critical_failure = false;
+
 	IVssAsync *pb_result;
 	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
 
@@ -304,8 +308,15 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::stri
 
 		if (ok)
 		{
-			if (!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, loglevel, continue_on_failure, retryable_error))
+			bool critical_writer = std::find(critical_writers.begin(), critical_writers.end(), pidWriter)!=critical_writers.end();
+
+			if (!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, critical_writer ? LL_ERROR : loglevel, continue_on_failure, retryable_error))
 			{
+				if (critical_writer
+					&& critical_failure!=NULL)
+				{
+					*critical_failure = true;
+				}
 				has_error = true;
 			}
 
@@ -454,6 +465,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 
 	std::vector<SCRef> additional_refs;
 	std::vector<std::string> selected_vols;
+	std::vector<VSS_ID> critical_writers;
 
 	const int max_tries = 3;
 	int tries = max_tries;
@@ -510,6 +522,16 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 				backupcom = NULL;
 				return true;
 			}
+
+			critical_writers.clear();
+			for (size_t i = 0; i < vss_all_components.size(); ++i)
+			{
+				if (std::find(critical_writers.begin(),
+					critical_writers.end(), vss_all_components[i].writerId) != critical_writers.end())
+				{
+					critical_writers.push_back(vss_all_components[i].writerId);
+				}
+			}
 		}
 
 		if (!wpath.empty()
@@ -543,7 +565,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		std::string errmsg;
 
 		retryable_error = false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, !with_components, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, true, critical_writers, NULL, &retryable_error);
 
 		bool b_ok = true;
 		int tries_snapshot_set = 5;
@@ -620,7 +642,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		}
 
 		retryable_error = false;
-		check_writer_status(backupcom, errmsg, LL_WARNING, !with_components, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, true, critical_writers, NULL, &retryable_error);
 
 		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 		if (!wait_for(pb_result, "Starting snapshot set failed"))
@@ -633,13 +655,14 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		retryable_error = false;
 
 		bool snapshot_ok = false;
+		bool critical_writer_failure = false;
 		if (tries>1)
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, !with_components, &retryable_error);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, true, critical_writers, &critical_writer_failure, &retryable_error);
 		}
 		else
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, with_components ? LL_ERROR : LL_WARNING, !with_components, NULL);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, true, critical_writers, &critical_writer_failure, NULL);
 		}
 		--tries;
 		const char* windows_component_exp = "This client is configured to backup Windows components. "
@@ -648,7 +671,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 			"failing Windows component. More error details are sometimes in the Windows event log.";
 		if (!snapshot_ok && !retryable_error)
 		{
-			if (!with_components)
+			if (!with_components || !critical_writer_failure)
 			{
 				VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
 			}
@@ -665,7 +688,7 @@ bool IndexThread::start_shadowcopy_win(SCDirs * dir, std::string &wpath, bool fo
 		{
 			if (tries == 0)
 			{
-				if (!with_components)
+				if (!with_components || !critical_writer_failure)
 				{
 					VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
 				}
@@ -947,8 +970,21 @@ bool IndexThread::deleteShadowcopyWin(SCDirs *dir)
 		}
 	}
 
+	std::vector<VSS_ID> critical_writers;
+	if (dir->ref->with_writers)
+	{
+		for (size_t i = 0; i < vss_all_components.size(); ++i)
+		{
+			if (std::find(critical_writers.begin(),
+				critical_writers.end(), vss_all_components[i].writerId) != critical_writers.end())
+			{
+				critical_writers.push_back(vss_all_components[i].writerId);
+			}
+		}
+	}
+
 	std::string errmsg;
-	if (!check_writer_status(backupcom, errmsg, LL_ERROR, !dir->ref->with_writers, NULL))
+	if (!check_writer_status(backupcom, errmsg, LL_WARNING, !dir->ref->with_writers, critical_writers, NULL, NULL))
 	{
 		if (dir->ref->with_writers)
 		{
