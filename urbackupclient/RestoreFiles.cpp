@@ -1031,7 +1031,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						share_path = greplace("/", os_file_sep(), ExtractFilePath(it_share_path->second, "/"));
 					}
 				
-					if(os_get_file_type(os_file_prefix(local_fn))!=0)
+					int orig_ftype = os_get_file_type(os_file_prefix(local_fn));
+					if(orig_ftype !=0)
 					{
 						if(restore_path!=curr_files_dir)
 						{
@@ -1115,7 +1116,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 #ifdef _WIN32
 						if (orig_file.get() == NULL
-							&& os_get_file_type(os_file_prefix(local_fn)) & EFileType_Symlink )
+							&& orig_ftype & EFileType_Symlink )
 						{
 							Server->deleteFile(os_file_prefix(local_fn));
 							orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_CREATE_RESTORE));
@@ -1181,7 +1182,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						}
 						else if (data.size == 0)
 						{
-							if (orig_file->Size() != 0)
+							if (orig_file->Size() != 0
+								&& !(orig_ftype & EFileType_Symlink) )
 							{							
 								if (!orig_file->Resize(0, false))
 								{
