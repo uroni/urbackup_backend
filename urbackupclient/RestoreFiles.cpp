@@ -771,7 +771,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					&& (!data.isdir || data.name != "..") 
 					&& !metadata.orig_path.empty()
 					&& !restore_path.empty()
-					&& !has_error)
+					&& !has_error
+					&& !(os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink) )
 				{
 					if (ExtractFilePath(metadata.orig_path, os_file_sep()) != restore_path)
 					{
@@ -788,7 +789,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 				}
 				else if(depth>=1 && data.isdir && data.name==".."					
-					&& clean_other && !has_error)
+					&& clean_other && !has_error
+					&& !(os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink))
 				{
 					bool has_include_exclude = false;
 					if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
