@@ -250,18 +250,6 @@ namespace
 
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::string& output_fn)
 {
-	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
-		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
-
-	if(hFile==INVALID_HANDLE_VALUE
-		&& output_fn.size()>3)
-	{
-		restore.log("Cannot open handle to restore file metadata of file \""+output_fn+"\". "+os_last_error_str(), LL_ERROR);
-		return false;
-	}
-
-	HandleScope handle_scope(hFile);
-
 	int64 win32_magic_and_size[2];
 	unsigned int data_checksum = urb_adler32(0, NULL, 0);
 
@@ -317,6 +305,41 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		restore.log("Unknown windows metadata version "+convert((int)version)+" in \"" + metadata_f->getFilename() + "\"", LL_ERROR);
 		return false;
 	}
+
+	FILE_BASIC_INFO basic_info;
+
+	if (!read_stat.getUInt(reinterpret_cast<unsigned int*>(&basic_info.FileAttributes)))
+	{
+		restore.log("Error getting FileAttributes of file \"" + output_fn + "\".", LL_ERROR);
+		has_error = true;
+	}
+
+	if ((basic_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+		&& (basic_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		&& !(os_get_file_type(os_file_prefix(output_fn)) & EFileType_Directory))
+	{
+		Server->deleteFile(os_file_prefix(output_fn));
+		os_create_dir(os_file_prefix(output_fn));
+	}
+	else if((basic_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+		&& !(basic_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		&& (os_get_file_type(os_file_prefix(output_fn)) & EFileType_Directory) )
+	{
+		os_remove_dir(os_file_prefix(output_fn));
+		std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(output_fn), MODE_WRITE));
+	}
+
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(output_fn)).c_str(), GENERIC_WRITE | ACCESS_SYSTEM_SECURITY | WRITE_OWNER | WRITE_DAC, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE
+		&& output_fn.size()>3)
+	{
+		restore.log("Cannot open handle to restore file metadata of file \"" + output_fn + "\". " + os_last_error_str(), LL_ERROR);
+		return false;
+	}
+
+	HandleScope handle_scope(hFile);
 
 	bool has_error=false;
 	void* context = NULL;
@@ -433,14 +456,6 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	{
 		restore.log("Error saving metadata. Data checksum wrong.", LL_ERROR);
 		return false;
-	}
-
-	FILE_BASIC_INFO basic_info;
-
-	if(!read_stat.getUInt(reinterpret_cast<unsigned int*>(&basic_info.FileAttributes)))
-	{
-		restore.log("Error getting FileAttributes of file \""+output_fn+"\".", LL_ERROR);
-		has_error=true;
 	}
 
 	if(!read_stat.getVarInt(&basic_info.CreationTime.QuadPart))
