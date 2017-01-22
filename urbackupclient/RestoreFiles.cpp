@@ -1529,7 +1529,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					continue;
 				}
 
-				if(files[j].isdir)
+				if(files[j].isdir
+					&& !files[j].issym)
 				{
 					bool del_has_include_exclude = false;
 					std::stack<std::vector<std::string> > dummy_folder_files;
@@ -1554,7 +1555,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					log("Deleting file \"" + cpath + "\".", LL_DEBUG);
 
-					if(!Server->deleteFile(os_file_prefix(cpath)))
+					if( (!files[j].isdir && !Server->deleteFile(os_file_prefix(cpath)) )
+						|| (files[j].isdir && !os_remove_symlink_dir(os_file_prefix(cpath))) )
 					{
 						log("Error deleting file \""+ cpath +"\". "+os_last_error_str(), LL_WARNING);
 
