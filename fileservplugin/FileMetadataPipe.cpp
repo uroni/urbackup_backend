@@ -154,7 +154,9 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			{
 				if(!metadata_file->Seek(metadata_file_off))
 				{
-					errpipe->Write("Error seeking to metadata in \"" + metadata_file->getFilename()+"\"");
+					std::string msg = "Error seeking to metadata in \"" + metadata_file->getFilename() + "\"";
+					Server->Log(msg, LL_ERROR);
+					errpipe->Write(msg);
 
 					read_bytes=0;
 					metadata_file.reset();
@@ -286,7 +288,9 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		_u32 read = metadata_file->Read(buf, static_cast<_u32>(read_bytes));
 		if(read!=read_bytes)
 		{
-			errpipe->Write("Error reading metadata stream from file \""+metadata_file->getFilename()+"\"\n");
+			std::string msg;
+			Server->Log(msg, LL_ERROR);
+			errpipe->Write(msg);
 			memset(buf + read, 0, read_bytes - read);
 		}
 
@@ -555,12 +559,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 
 						if (metadata_file.get() == NULL)
 						{
+							Server->Log("Error opening metadata file for \"" + public_fn + "\"", LL_ERROR);
 							errpipe->Write("Error opening metadata file for \"" + public_fn + "\"");
 
-							read_bytes = 0;
+							*buf = ID_METADATA_NOP;
+							read_bytes = 1;
 							metadata_state = MetadataState_Wait;
 							PipeSessions::fileMetadataDone(public_fn.substr(1), server_token);
-							return false;
+							return true;
 						}
 
 						if (version != 0)

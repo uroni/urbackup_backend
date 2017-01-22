@@ -112,6 +112,7 @@ namespace
 
 			if(metadata_file.get()==NULL)
 			{
+				Server->Log("Cannot open metadata file \"" + metadata_path + "\". " + os_last_error_str(), LL_ERROR);
 				return NULL;
 			}
 
@@ -156,11 +157,13 @@ namespace
 
 				if (!metadata_file->Seek(m_offset))
 				{
+					Server->Log("Cannot seek to " + convert(m_offset) + " in metadata file " + metadata_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 					return NULL;
 				}
 
 				if (metadata_file->Read(reinterpret_cast<char*>(&metadata_magic_and_size), sizeof(metadata_magic_and_size)) != sizeof(metadata_magic_and_size))
 				{
+					Server->Log("Cannot read from metadata file " + metadata_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 					return NULL;
 				}
 								
@@ -182,6 +185,7 @@ namespace
 
 				if (!metadata_file->Seek(m_offset))
 				{
+					Server->Log("Cannot seek to " + convert(m_offset) + " in metadata file " + metadata_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 					return NULL;
 				}
 			}
@@ -191,6 +195,7 @@ namespace
 
 				if (m_length <= sizeof(int64) )
 				{
+					Server->Log("Length too small ("+convert(m_length)+") in metadata file " + metadata_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 					return NULL;
 				}
 

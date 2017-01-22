@@ -416,6 +416,10 @@ IFileServ::IMetadataCallback* PipeSessions::transmitFileMetadata( const std::str
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}
+	else
+	{
+		Server->Log("No active metadata listener for \"urbackup/FILE_METADATA|" + server_token + "\"", LL_WARNING);
+	}
 
 	return ret;
 }
@@ -448,6 +452,10 @@ void PipeSessions::transmitFileMetadata(const std::string & public_fn, const std
 		++active_shares[sharename + "|" + server_token];
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
+	}
+	else
+	{
+		Server->Log("No active metadata listener for \"urbackup/FILE_METADATA|" + server_token + "\" (raw)", LL_WARNING);
 	}
 }
 
@@ -495,6 +503,10 @@ void PipeSessions::transmitFileMetadataAndFiledataWait(const std::string & publi
 		lock.relock(NULL);
 		std::string read_ret;
 		waitpipe->Read(&read_ret);
+	}
+	else
+	{
+		Server->Log("No active metadata listener for \"urbackup/FILE_METADATA|" + server_token + "\" (send wait)", LL_WARNING);
 	}
 }
 
