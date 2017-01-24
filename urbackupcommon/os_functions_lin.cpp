@@ -1151,7 +1151,7 @@ void os_reset_priority()
 bool os_sync(const std::string & path)
 {
 #if defined(__linux__) && defined(HAVE_SYNCFS)
-	int fd = open(path.c_str(), O_RDWR);
+	int fd = open(path.c_str(), O_RDONLY|O_CLOEXEC);
 	
 	if(fd!=-1)
 	{
