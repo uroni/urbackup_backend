@@ -23,6 +23,9 @@ extern char **environ;
 #include "../config.h"
 
 #define LO_FLAGS_DIRECT_IO_LOCAL 16
+#ifndef LOOP_CTL_GET_FREE
+#define LOOP_CTL_GET_FREE       0x4C82
+#endif
 
 CServer *Server;
 
@@ -187,30 +190,38 @@ bool mount_linux_loop(const std::string& imagepath)
 	
 	if(loopc==-1)
 	{
-		std::cerr << "Error opening loop control. Err: " << errno << std::endl;
-		return false;
+		std::cout << "Error opening loop control. Err: " << errno << std::endl;
 	}
 	
 	int bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC);
 	if(bd==-1)
 	{
 		std::cerr << "Error opening backing file " << imagepath << std::endl;
-		close(loopc);
+		if(loopc!=-1)
+			close(loopc);
 		return false;
 	}
 	
 	int last_loopd=-1;
-	int devnum;
+	int devnum = -1;
 	int last_devnum = -1;
 	int loopd = -1;
 	bool set_success=false;
 	do
 	{
-		devnum = ioctl(loopc, LOOP_CTL_GET_FREE);
-		if(devnum<0)
+		int next_devnum=-1;
+		if(loopc!=-1)
 		{
-			std::cerr << "Error getting free loop device. Err: " << errno << std::endl;
-			break;
+			next_devnum = ioctl(loopc, LOOP_CTL_GET_FREE);
+		}
+		if(next_devnum<0)
+		{
+			++devnum;
+			std::cout << "Error getting free loop device. Err: " << errno << std::endl;
+		}
+		else
+		{
+			devnum = next_devnum;
 		}
 		
 		if(devnum==last_devnum)
@@ -248,7 +259,8 @@ bool mount_linux_loop(const std::string& imagepath)
 		}			
 	} while(!set_success);
 	
-	close(loopc);
+	if(loopc!=-1)
+		close(loopc);
 	close(bd);
 	
 	if(!set_success)
