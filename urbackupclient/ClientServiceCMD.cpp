@@ -536,9 +536,9 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 			if (it2->first == async_file_list_id)
 			{
 				Server->Log("Previously finished async index " + async_id + " with \"" + it2->second + "\"", LL_DEBUG);
-				if (it2->second == "DONE")
+				if (it2->second == "done")
 				{
-					tcpstack.Send(pipe, "done");
+					tcpstack.Send(pipe, "DONE");
 				}
 				else
 				{
