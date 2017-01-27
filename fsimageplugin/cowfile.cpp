@@ -280,7 +280,7 @@ _u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 	
 	if(curr_offset+w>filesize)
 	{
-		filesize = curr_offset+w);
+		filesize = curr_offset+w;
 		resizeBitmap();
 	}
 
@@ -703,9 +703,9 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 			{
 				return true;
 			}
-			else if(unused_end>filesize)
+			else if(used_end>filesize)
 			{
-				unused_end = filesize;
+				used_end = filesize;
 			}
 			
 			setBitmapRange(used_start, used_end, true);
