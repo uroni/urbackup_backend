@@ -1009,7 +1009,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						if (vhd_size>0 && vhd_size >= 2040LL * 1024 * 1024 * 1024
 							&& image_file_format != image_file_format_cowraw)
 						{
-							ServerLogger::Log(logid, "Data on volume is to large for VHD files with " + PrettyPrintBytes(vhd_size) +
+							ServerLogger::Log(logid, "Data on volume is too large for VHD files with " + PrettyPrintBytes(vhd_size) +
 								". VHD files have a maximum size of 2040GB. Please use another image file format.", LL_ERROR);
 							goto do_image_cleanup;
 						}

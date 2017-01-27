@@ -30,6 +30,7 @@
 #include "fs/ntfs.h"
 #include <errno.h>
 #include <memory>
+#include <assert.h>
 #include "FileWrapper.h"
 #include "ClientBitmap.h"
 
@@ -276,6 +277,12 @@ _u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 		Server->Log("Write to CowFile failed. errno="+convert(errno), LL_DEBUG);
 		return 0;
 	}
+	
+	if(curr_offset+w>filesize)
+	{
+		filesize = curr_offset+w);
+		resizeBitmap();
+	}
 
 	setBitmapRange(curr_offset, curr_offset+w, true);
 	curr_offset+=w;
@@ -477,6 +484,15 @@ bool CowFile::hasBitmapRange(uint64 offset_start, uint64 offset_end)
 
 bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 {
+	if(unused_end>filesize && unused_start<filesize)
+	{
+		unused_end = filesize;
+	}
+	else if(unused_start>=filesize)
+	{
+		return false;
+	}
+
 #if !defined(__FreeBSD__) && defined(HAVE_FALLOCATE64)
 	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, unused_start, unused_end-unused_start);
 	if(rc==0)
@@ -595,6 +611,16 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		{
 			int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
 			int64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
+			
+			if(unused_start>=filesize)
+			{
+				return true;
+			}
+			else if(unused_end>filesize)
+			{
+				unused_end = filesize;
+			}
+			
 			if(hasBitmapRange(unused_start, unused_end))
 			{
 				setBitmapRange(unused_start, unused_end, false);
@@ -609,6 +635,25 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 				}
 			}
 			unused_start_block=-1;
+		}
+	}
+	
+	if(unused_start_block!=-1)
+	{
+		int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+		
+		if(hasBitmapRange(unused_start, filesize))
+		{
+			setBitmapRange(unused_start, filesize, false);
+			if(!setUnused(unused_start, filesize))
+			{
+				Server->Log("Trimming syscall failed. Stopping trimming (end).", LL_WARNING);
+				return false;
+			}
+			if(trim_callback!=NULL)
+			{
+				trim_callback->trimmed(unused_start - fs_offset, filesize - fs_offset);
+			}
 		}
 	}
 
@@ -644,14 +689,35 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 	{
 		if(bitmap_source->hasBlock(ntfs_block))
 		{
-			used_start_block=ntfs_block;
+			if(used_start_block==-1)
+			{
+				used_start_block=ntfs_block;
+			}
 		}
 		else if(used_start_block!=-1)
 		{
 			int64 used_start = fs_offset + used_start_block*bitmap_blocksize;
 			int64 used_end = fs_offset + ntfs_block*bitmap_blocksize;
+			
+			if(used_start>=filesize)
+			{
+				return true;
+			}
+			else if(unused_end>filesize)
+			{
+				unused_end = filesize;
+			}
+			
 			setBitmapRange(used_start, used_end, true);
+			
+			used_start_block=-1;
 		}
+	}
+	
+	if(used_start_block!=-1)
+	{
+		int64 used_start = fs_offset + used_start_block*bitmap_blocksize;
+		setBitmapRange(used_start, filesize, true);
 	}
 	
 	return true;
