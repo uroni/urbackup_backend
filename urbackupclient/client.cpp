@@ -5537,6 +5537,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	if (bitmap_data->BitmapSize < bitmapBytes)
 	{
 		VSSLog("Did not track enough (volume resize?). Not using tracking data for backup. (tracked " + convert((int)bitmap_data->BitmapSize) + " should track " + convert(bitmapBytes) + ")", LL_WARNING);
+		enableCbtVol(volume, false);
 		return false;
 	}
 
