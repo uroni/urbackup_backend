@@ -22,7 +22,9 @@ extern char **environ;
 #include "../Server.h"
 #include "../config.h"
 
-#define LO_FLAGS_DIRECT_IO_LOCAL 16
+#ifndef LOOP_SET_DIRECT_IO
+#define LOOP_SET_DIRECT_IO	0x4C08
+#endif
 #ifndef LOOP_CTL_GET_FREE
 #define LOOP_CTL_GET_FREE       0x4C82
 #endif
@@ -193,7 +195,7 @@ bool mount_linux_loop(const std::string& imagepath)
 		std::cout << "Error opening loop control. Err: " << errno << std::endl;
 	}
 	
-	int bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC);
+	int bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC|O_DIRECT);
 	if(bd==-1)
 	{
 		std::cerr << "Error opening backing file " << imagepath << std::endl;
@@ -274,13 +276,20 @@ bool mount_linux_loop(const std::string& imagepath)
 	
 	loop_info64 linfo = {};
 	linfo.lo_offset = 512*1024;
-	linfo.lo_flags = LO_FLAGS_READ_ONLY|LO_FLAGS_AUTOCLEAR|LO_FLAGS_DIRECT_IO_LOCAL;
+	linfo.lo_flags = LO_FLAGS_READ_ONLY|LO_FLAGS_AUTOCLEAR;
 	int rc = ioctl(loopd, LOOP_SET_STATUS64, &linfo);
 	if(rc)
 	{
 		std::cerr << "Error setting loop device status. Err: " << errno << std::endl;
 		close(loopd);
 		return false;
+	}
+	
+	unsigned long dio = 1;
+	rc = ioctl(loopd, LOOP_SET_DIRECT_IO, &dio);
+	if(rc)
+	{
+		std::cerr << "Error setting loop device to direct io. Err: " << errno << std::endl;
 	}
 	
 	std::string mountpoint = ExtractFilePath(imagepath)+"_mnt";
