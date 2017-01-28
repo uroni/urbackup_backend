@@ -5536,9 +5536,8 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	if (bitmap_data->BitmapSize < bitmapBytes)
 	{
-		VSSLog("Did not track enough (volume resize?). Not using tracking data for backup. (tracked " + convert((int)bitmap_data->BitmapSize) + " should track " + convert(bitmapBytes) + ")", LL_WARNING);
-		enableCbtVol(volume, false);
-		return false;
+		VSSLog("Did not track enough (volume resize?). Tracked " + convert((int)bitmap_data->BitmapSize) + " should track " + convert(bitmapBytes)+". "
+			"CBT will disable itself once this area is written to and then a system restart will be needed to enable it again.", LL_INFO);
 	}
 
 	buf.resize(2*sizeof(DWORD) + bitmap_data->BitmapSize);
