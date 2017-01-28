@@ -71,6 +71,7 @@ namespace
 	{
 		THREAD_ID tid = Server->getThreadID();
 		Server->setContentType(tid, "application/octet-stream");
+		Server->addHeader(tid, "Cache-Control: no-cache");
 		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+(ExtractFileName(filename))+"\"");
 		IFile *in=Server->openFile(os_file_prefix(filename), MODE_READ);
 		if(in!=NULL)
@@ -103,6 +104,7 @@ namespace
 
 		THREAD_ID tid = Server->getThreadID();
 		Server->setContentType(tid, "application/octet-stream");
+		Server->addHeader(tid, "Cache-Control: no-cache");
 		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+(zipname)+"\"");
 		helper.releaseAll();
 
