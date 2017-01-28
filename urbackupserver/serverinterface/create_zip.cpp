@@ -42,6 +42,7 @@ namespace
 struct MiniZFileInfo
 {
 	uint64 file_offset;
+	int64 last_writetime;
 	THREAD_ID tid;
 };
 
@@ -56,17 +57,28 @@ size_t my_mz_write_func(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, siz
   }
 
   fileInfo->file_offset=file_ofs+n;
-
+  
   bool b=Server->WriteRaw(fileInfo->tid, reinterpret_cast<const char*>(pBuf), n, false);
+
+  if(b)
+	fileInfo->last_writetime = Server->getTimeMS();
+
   return b?n:0;
+}
+
+mz_bool my_mz_needs_keepalive(void *pOpaque)
+{
+	MiniZFileInfo* fileInfo = reinterpret_cast<MiniZFileInfo*>(pOpaque);
+	return (Server->getTimeMS() - fileInfo->last_writetime > 1000) ? 1 : 0;
 }
 
 bool my_miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 {
 	pZip->m_pWrite = my_mz_write_func;
 	pZip->m_pIO_opaque = fileInfo;
+	pZip->m_pNeeds_keepalive = my_mz_needs_keepalive;
 
-	if (!mz_zip_writer_init(pZip, 0, MZ_ZIP_FLAG_CASE_SENSITIVE))
+	if (!mz_zip_writer_init_v2(pZip, 0, MZ_ZIP_FLAG_CASE_SENSITIVE))
 		return false;
   
 	return true;
@@ -367,6 +379,7 @@ bool create_zip_to_output(const std::string& folderbase, const std::string& fold
 	MiniZFileInfo file_info = {};
 
 	file_info.tid=Server->getThreadID();
+	file_info.last_writetime = Server->getTimeMS();
 
 	if(!my_miniz_init(&zip_archive, &file_info))
 	{

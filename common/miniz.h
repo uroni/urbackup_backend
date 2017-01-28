@@ -565,7 +565,7 @@ typedef struct mz_dummy_time_t_tag
 
 #ifdef MINIZ_NO_MALLOC
 #define MZ_MALLOC(x) NULL
-#define MZ_FREE(x) (void)x, ((void)0)
+#define MZ_FREE(x) (void) x, ((void)0)
 #define MZ_REALLOC(p, x) NULL
 #else
 #define MZ_MALLOC(x) malloc(x)
@@ -577,7 +577,7 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MZ_CLEAR_OBJ(obj) memset(&(obj), 0, sizeof(obj))
 
-#if MINIZ_USE_UNALIGNED_LOADS_AND_STORES && MINIZ_LITTLE_ENDIAN
+#if MINIZ_USE_UNALIGNED_LOADS_AND_STORES &&MINIZ_LITTLE_ENDIAN
 #define MZ_READ_LE16(p) *((const mz_uint16 *)(p))
 #define MZ_READ_LE32(p) *((const mz_uint32 *)(p))
 #else
@@ -727,7 +727,7 @@ typedef enum
     TDEFL_STATUS_BAD_PARAM = -2,
     TDEFL_STATUS_PUT_BUF_FAILED = -1,
     TDEFL_STATUS_OKAY = 0,
-    TDEFL_STATUS_DONE = 1,
+    TDEFL_STATUS_DONE = 1
 } tdefl_status;
 
 /* Must map to MZ_NO_FLUSH, MZ_SYNC_FLUSH, etc. enums */
@@ -888,7 +888,6 @@ typedef enum
     /* (either exact or worst case) and will stop calling the inflator and fail after receiving too much. In pure streaming scenarios where you have no idea how many bytes to expect this may not be possible */
     /* so I may need to add some code to address this. */
     TINFL_STATUS_HAS_MORE_OUTPUT = 2
-
 } tinfl_status;
 
 /* Initializes the decompressor to its initial state. */
@@ -1021,6 +1020,7 @@ typedef struct
 
 typedef size_t (*mz_file_read_func)(void *pOpaque, mz_uint64 file_ofs, void *pBuf, size_t n);
 typedef size_t (*mz_file_write_func)(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, size_t n);
+typedef mz_bool (*mz_file_needs_keepalive)(void *pOpaque);
 
 struct mz_zip_internal_state_tag;
 typedef struct mz_zip_internal_state_tag mz_zip_internal_state;
@@ -1115,6 +1115,7 @@ typedef struct
 
     mz_file_read_func m_pRead;
     mz_file_write_func m_pWrite;
+	mz_file_needs_keepalive m_pNeeds_keepalive;
     void *m_pIO_opaque;
 
     mz_zip_internal_state *m_pState;
@@ -1269,8 +1270,10 @@ mz_bool mz_zip_end(mz_zip_archive *pZip);
 #ifndef MINIZ_NO_ARCHIVE_WRITING_APIS
 
 /* Inits a ZIP archive writer. */
-mz_bool mz_zip_writer_init(mz_zip_archive *pZip, mz_uint64 existing_size, mz_uint flags);
-mz_bool mz_zip_writer_init_heap(mz_zip_archive *pZip, size_t size_to_reserve_at_beginning, size_t initial_allocation_size, mz_uint flags);
+mz_bool mz_zip_writer_init(mz_zip_archive *pZip, mz_uint64 existing_size);
+mz_bool mz_zip_writer_init_v2(mz_zip_archive *pZip, mz_uint64 existing_size, mz_uint flags);
+mz_bool mz_zip_writer_init_heap(mz_zip_archive *pZip, size_t size_to_reserve_at_beginning, size_t initial_allocation_size);
+mz_bool mz_zip_writer_init_heap_v2(mz_zip_archive *pZip, size_t size_to_reserve_at_beginning, size_t initial_allocation_size, mz_uint flags);
 
 #ifndef MINIZ_NO_STDIO
 mz_bool mz_zip_writer_init_file(mz_zip_archive *pZip, const char *pFilename, mz_uint64 size_to_reserve_at_beginning);
@@ -1284,7 +1287,8 @@ mz_bool mz_zip_writer_init_cfile(mz_zip_archive *pZip, MZ_FILE *pFile, mz_uint f
 /* Finally, for archives opened using mz_zip_reader_init, the mz_zip_archive's user provided m_pWrite function cannot be NULL. */
 /* Note: In-place archive modification is not recommended unless you know what you're doing, because if execution stops or something goes wrong before */
 /* the archive is finalized the file's central directory will be hosed. */
-mz_bool mz_zip_writer_init_from_reader(mz_zip_archive *pZip, const char *pFilename, mz_uint flags);
+mz_bool mz_zip_writer_init_from_reader(mz_zip_archive *pZip, const char *pFilename);
+mz_bool mz_zip_writer_init_from_reader_v2(mz_zip_archive *pZip, const char *pFilename, mz_uint flags);
 
 /* Adds the contents of a memory buffer to an archive. These functions record the current local time into the archive. */
 /* To add a directory entry, call this method with an archive name ending in a forwardslash with an empty buffer. */
@@ -1293,15 +1297,12 @@ mz_bool mz_zip_writer_add_mem(mz_zip_archive *pZip, const char *pArchive_name, c
 
 /* Like mz_zip_writer_add_mem(), except you can specify a file comment field, and optionally supply the function with already compressed data. */
 /* uncomp_size/uncomp_crc32 are only used if the MZ_ZIP_FLAG_COMPRESSED_DATA flag is specified. */
-mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, 
-	mz_uint64 uncomp_size, mz_uint32 uncomp_crc32);
-	
-mz_bool mz_zip_writer_add_mem_ex_v2(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, 
-	mz_uint64 uncomp_size, mz_uint32 uncomp_crc32, MZ_TIME_T *last_modified, const char* user_extra_data_local, mz_uint user_extra_data_local_len,
-	const char* user_extra_data_central, mz_uint user_extra_data_central_len);
-	
+mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags,
+                                 mz_uint64 uncomp_size, mz_uint32 uncomp_crc32);
 
-
+mz_bool mz_zip_writer_add_mem_ex_v2(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags,
+                                    mz_uint64 uncomp_size, mz_uint32 uncomp_crc32, MZ_TIME_T *last_modified, const char *user_extra_data_local, mz_uint user_extra_data_local_len,
+                                    const char *user_extra_data_central, mz_uint user_extra_data_central_len);
 
 #ifndef MINIZ_NO_STDIO
 /* Adds the contents of a disk file to an archive. This function also records the disk file's modified time into the archive. */
@@ -1310,8 +1311,8 @@ mz_bool mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_name, 
 
 /* Like mz_zip_writer_add_file(), except the file data is read from the specified FILE stream. */
 mz_bool mz_zip_writer_add_cfile(mz_zip_archive *pZip, const char *pArchive_name, MZ_FILE *pSrc_file, mz_uint64 size_to_add,
-	const MZ_TIME_T *pFile_time, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, const char* user_extra_data_local, mz_uint user_extra_data_local_len,
-	const char* user_extra_data_central, mz_uint user_extra_data_central_len);
+                                const MZ_TIME_T *pFile_time, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, const char *user_extra_data_local, mz_uint user_extra_data_local_len,
+                                const char *user_extra_data_central, mz_uint user_extra_data_central_len);
 #endif
 
 /* Adds a file to an archive by fully cloning the data from another archive. */
@@ -1343,7 +1344,8 @@ mz_bool mz_zip_add_mem_to_archive_file_in_place_v2(const char *pZip_filename, co
 /* Reads a single file from an archive into a heap block. */
 /* If pComment is not NULL, only the file with the specified comment will be extracted. */
 /* Returns NULL on failure. */
-void *mz_zip_extract_archive_file_to_heap(const char *pZip_filename, const char *pArchive_name, const char *pComment, size_t *pSize, mz_uint flags, mz_zip_error *pErr);
+void *mz_zip_extract_archive_file_to_heap(const char *pZip_filename, const char *pArchive_name, size_t *pSize, mz_uint flags);
+void *mz_zip_extract_archive_file_to_heap_v2(const char *pZip_filename, const char *pArchive_name, const char *pComment, size_t *pSize, mz_uint flags, mz_zip_error *pErr);
 
 #endif /* #ifndef MINIZ_NO_ARCHIVE_WRITING_APIS */
 
