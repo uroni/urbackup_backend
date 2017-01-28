@@ -296,16 +296,21 @@ bool mount_linux_loop(const std::string& imagepath)
 	chown_dir(mountpoint);
 	chown_dir("/dev/loop"+convert(devnum));
 	
-	std::string mount_options="kernel_cache,";
 	passwd* user_info = getpwnam("urbackup");
+	std::string uid = "uid=0";
+	std::string gid = "gid=0";
 	if(user_info)
 	{
-		mount_options+="uid="+convert(user_info->pw_uid)+",gid="+convert(user_info->pw_gid)+",allow_root";
+		uid="uid="+convert(user_info->pw_uid);
+		gid="gid="+convert(user_info->pw_gid);
 	}
 
 	std::cout << "Guestmount..." << std::endl;
 	if(exec_wait("guestmount", true, "-r", "-n", "--format=raw", "-a", ("/dev/loop"+convert(devnum)).c_str(),
-				"-o", mount_options.c_str(),
+				"-o", "kernel_cache",
+				"-o", uid.c_str(),
+				"-o", gid.c_str(),
+				"-o", "allow_root",
 				"-m", "/dev/sda",
 				mountpoint.c_str(), NULL) )
 	{
@@ -428,7 +433,7 @@ bool mount_image(const std::string& imagepath)
 
 		chown_dir(devpoint);
 		
-		std::string mount_options="kernel_cache,";
+		std::string mount_options="";
 		passwd* user_info = getpwnam("urbackup");
 		if(user_info)
 		{
