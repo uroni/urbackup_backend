@@ -5750,7 +5750,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			++index_hdat_sequence_ids[strlower(volume)];
 		}
 		
-		std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DEVICE));
+		std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup\\hdat_file_" + conv_filename(strlower(volume)) + ".dat", MODE_RW_CREATE_DELETE));
 
 		if (hdat_file.get() == NULL)
 		{
@@ -6626,7 +6626,7 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 		normalizeVolume(vol);
 		vol = strlower(vol);
 
-		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DEVICE));
+		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE));
 		index_hdat_fs_block_size = -1;
 
 #ifdef _WIN32
@@ -6648,7 +6648,7 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 			&& index_hdat_fs_block_size>0)
 		{
 			size_t* seq_id = &index_hdat_sequence_ids[strlower(vol)];
-			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DEVICE);
+			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DELETE);
 			if (f != NULL)
 			{
 				filesrv->setCbtHashFile(starttoken + "|" + sharename, std::string(),

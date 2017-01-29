@@ -77,13 +77,16 @@ bool File::Open(std::string pfn, int mode)
 		|| mode== MODE_RW_DEVICE
 		|| mode==MODE_RW_RESTORE
 		|| mode==MODE_RW_CREATE_RESTORE
-		|| mode== MODE_RW_CREATE_DEVICE)
+		|| mode== MODE_RW_CREATE_DEVICE
+		|| mode== MODE_RW_CREATE_DELETE
+		|| mode==MODE_RW_DELETE)
 	{
 		if(mode==MODE_RW
 			|| mode==MODE_RW_SEQUENTIAL
 			|| mode==MODE_RW_READNONE
 			|| mode== MODE_RW_DEVICE
-			|| mode==MODE_RW_RESTORE)
+			|| mode==MODE_RW_RESTORE
+			|| mode==MODE_RW_DELETE)
 		{
 			dwCreationDisposition=OPEN_EXISTING;
 		}
@@ -96,10 +99,18 @@ bool File::Open(std::string pfn, int mode)
 
 	if(mode==MODE_READ_DEVICE
 		|| mode== MODE_RW_DEVICE
+		|| mode== MODE_RW_DELETE
 		|| mode== MODE_RW_CREATE_DEVICE
+		|| mode== MODE_RW_CREATE_DELETE
 		|| mode== MODE_READ_DEVICE_OVERLAPPED)
 	{
 		dwShareMode|=FILE_SHARE_WRITE;
+	}
+
+	if (mode == MODE_RW_CREATE_DELETE
+		|| mode == MODE_RW_DELETE)
+	{
+		dwShareMode |= FILE_SHARE_DELETE;
 	}
 
 	DWORD flags=FILE_ATTRIBUTE_NORMAL;

@@ -90,7 +90,8 @@ bool File::Open(std::string pfn, int mode)
 	{
 		mode = MODE_RW_CREATE;
 	}
-	if (mode == MODE_RW_CREATE_DEVICE)
+	if (mode == MODE_RW_CREATE_DEVICE
+		|| mode == MODE_RW_CREATE_DELETE )
 	{
 		mode = MODE_RW_CREATE;
 	}
@@ -123,6 +124,7 @@ bool File::Open(std::string pfn, int mode)
 		|| mode==MODE_RW_CREATE
 		|| mode==MODE_RW_READNONE
 		|| mode==MODE_RW_DEVICE
+		|| mode==MODE_RW_DELETE
 		|| mode==MODE_RW_DIRECT
 		|| mode==MODE_RW_CREATE_DIRECT)
 	{
