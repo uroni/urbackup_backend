@@ -2674,7 +2674,9 @@ bool ServerCleanupThread::backup_ident()
 
 	filelist.push_back("server_ident.key");
 	filelist.push_back("server_ident.priv");
+	filelist.push_back("server_ident_ecdsa409k1.priv");
 	filelist.push_back("server_ident.pub");
+	filelist.push_back("server_ident_ecdsa409k1.pub");
 
 	bool has_error=false;
 	for(size_t i=0;i<filelist.size();++i)
