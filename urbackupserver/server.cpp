@@ -975,6 +975,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	}
 
 	std::vector<db_single_result> to_delete;
+	bool has_delete = false;
 
 	size_t num_extra_check = 30;
 
@@ -1030,6 +1031,8 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 	for (size_t i = 0; i < to_delete.size(); ++i)
 	{
+		has_delete = true;
+
 		db_single_result res = to_delete[i];
 		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 		ServerLogger::Log(logid, "Deleting file backup "+backupinfo+"...", LL_WARNING);
@@ -1093,6 +1096,8 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	IQuery* q_delete_image = db->Prepare("DELETE FROM backup_images WHERE id=?");
 	for (size_t i = 0; i < to_delete.size(); ++i)
 	{
+		has_delete = true;
+
 		db_single_result res = to_delete[i];
 		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 		ServerLogger::Log(logid, "Deleting image backup " + backupinfo + "...", LL_WARNING);
@@ -1132,6 +1137,11 @@ void BackupServer::runServerRecovery(IDatabase * db)
 				}
 			}
 		}
+	}
+
+	if (has_delete)
+	{
+		ServerLogger::Log(logid, "Start-up recovery finished.", LL_INFO);
 	}
 
 	db->destroyAllQueries();
