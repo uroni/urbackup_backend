@@ -127,13 +127,13 @@ def replace_with_content_hashes_line(line, fn_prefix):
 
 def replace_with_content_hashes(fn, fn_prefix):
     newlines = []
-    with open(fn,'r') as f:
+    with open(fn, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f.readlines():
             newlines.append(replace_with_content_hashes_line(line, fn_prefix))
             
-    with open(fn, 'w') as f:
+    with open(fn, 'wb') as f:
         for line in newlines:
-            f.write(line)
+            f.write(line.encode("utf-8"))
 
 
 replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/")
