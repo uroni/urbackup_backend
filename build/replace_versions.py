@@ -86,7 +86,12 @@ def replace_in_file(fn, to_replace, new_str):
 def get_content_hash(fn):
     return hashlib.md5(open(fn, 'rb').read()).hexdigest()   
             
+            
+content_hash_replacements = {}
+
 def replace_with_content_hashes_line(line, fn_prefix):
+    global content_hash_replacements
+    
     regex = ""
     if line.lower().find("<link rel=\"stylesheet\" type=\"text/css\"")!=-1:
         regex = r"href=\"(.*?)\""
@@ -98,11 +103,17 @@ def replace_with_content_hashes_line(line, fn_prefix):
         m = re.search(regex, line)
         if m:
             fn = m.group(1)
+            
+            if not os.path.exists(fn_prefix + fn) and fn in content_hash_replacements:
+                new_fn = content_hash_replacements[fn]
+                return line.replace(fn, new_fn)
+            
             h = get_content_hash(fn_prefix + fn)
             if line.find(h)==-1:
                 l = fn.split(".")
                 l.insert(1, "chash-" + h)
                 new_fn = ".".join(l)
+                content_hash_replacements[fn] = new_fn
                 os.rename(fn_prefix + fn, fn_prefix + new_fn)
                 return line.replace(fn, new_fn)
             
