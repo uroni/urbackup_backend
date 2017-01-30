@@ -136,6 +136,8 @@ def replace_with_content_hashes(fn, fn_prefix):
 
 
 replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/")
+replace_with_content_hashes("urbackupserver/www/help.htm", "urbackupserver/www/")
+replace_with_content_hashes("urbackupserver/www/license.htm", "urbackupserver/www/")
 
 version = get_version(get_branch())
 
