@@ -490,7 +490,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 	}
 	else if(unused_start>=filesize)
 	{
-		return false;
+		return true;
 	}
 
 #if !defined(__FreeBSD__) && defined(HAVE_FALLOCATE64)
