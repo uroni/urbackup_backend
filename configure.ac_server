@@ -6,7 +6,7 @@ AC_INIT([urbackup-server], [2.1.15.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([subdir-objects tar-ustar])
 AC_ARG_WITH([mail],
      AS_HELP_STRING([--without-mail], [Disables server mailing features. Use this to remove the dependency on libcurl.]))
 AC_ARG_WITH([crypto],
