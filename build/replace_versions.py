@@ -114,6 +114,10 @@ def replace_with_content_hashes_line(line, fn_prefix):
                 l.insert(1, "chash-" + h)
                 new_fn = ".".join(l)
                 content_hash_replacements[fn] = new_fn
+                try:
+                    os.unlink(fn_prefix + new_fn)
+                except:
+                    pass
                 os.rename(fn_prefix + fn, fn_prefix + new_fn)
                 return line.replace(fn, new_fn)
             
