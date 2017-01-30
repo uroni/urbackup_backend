@@ -84,7 +84,8 @@ def replace_in_file(fn, to_replace, new_str):
             f.write(line)
          
 def get_content_hash(fn):
-    return hashlib.md5(open(fn, 'rb').read()).hexdigest()   
+    with open(fn, "rb") as f:
+        return hashlib.md5(f.read()).hexdigest()   
             
             
 content_hash_replacements = {}
