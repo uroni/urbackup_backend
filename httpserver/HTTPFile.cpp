@@ -70,9 +70,15 @@ void CHTTPFile::operator ()(void)
 
 	std::string status="HTTP/1.1 200 ok\r\n";
 
-	std::string header="Server: CS\r\nContent-Type: "+ct+"\r\nCache-Control: no-cache\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=15, max=95\r\nContent-Length: "+convert(fp->Size())+"\r\n\r\n";
+	std::string cache_header = "Cache-Control: no-cache";
+	if (ExtractFileName(filename).find(".chash-")!=std::string::npos)
+	{
+		cache_header = "Cache-Control: max-age=365000000, immutable";
+	}
 
-	Server->Log("Sending file: "+filename, LL_INFO);
+	std::string header="Server: CS\r\nContent-Type: "+ct+"\r\n"+cache_header+"\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=15, max=95\r\nContent-Length: "+convert(fp->Size())+"\r\n\r\n";
+
+	Server->Log("Sending file: "+filename, LL_DEBUG);
 	output->Write(status+header);
 	
 	size_t bytes=0;
@@ -83,7 +89,7 @@ void CHTTPFile::operator ()(void)
 		output->Write(buf);
 	}
 
-	Server->Log("Sending file: "+filename+" done", LL_INFO);
+	Server->Log("Sending file: "+filename+" done", LL_DEBUG);
 
 	Server->destroy(fp);
 }

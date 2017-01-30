@@ -5,6 +5,7 @@ import json
 import uuid
 import re
 import os
+import hashlib
 
 git = pbs.Command("git")
 
@@ -81,7 +82,45 @@ def replace_in_file(fn, to_replace, new_str):
     with open(fn, 'w') as f:
         for line in newlines:
             f.write(line)
+         
+def get_content_hash(fn):
+    return hashlib.md5(open(fn, 'rb').read()).hexdigest()   
+            
+def replace_with_content_hashes_line(line, fn_prefix):
+    regex = ""
+    if line.lower().find("<link rel=\"stylesheet\" type=\"text/css\"")!=-1:
+        regex = r"href=\"(.*?)\""
+        
+    if line.lower().find("<script language=\"javascript\" src=\"")!=-1:
+        regex = r"src=\"(.*?)\""
+    
+    if len(regex)>0:
+        m = re.search(regex, line)
+        if m:
+            fn = m.group(1)
+            h = get_content_hash(fn_prefix + fn)
+            if line.find(h)==-1:
+                l = fn.split(".")
+                l.insert(1, "chash-" + h)
+                new_fn = ".".join(l)
+                os.rename(fn_prefix + fn, fn_prefix + new_fn)
+                return line.replace(fn, new_fn)
+            
+    return line
+            
 
+def replace_with_content_hashes(fn, fn_prefix):
+    newlines = []
+    with open(fn,'r') as f:
+        for line in f.readlines():
+            newlines.append(replace_with_content_hashes_line(line, fn_prefix))
+            
+    with open(fn, 'w') as f:
+        for line in newlines:
+            f.write(line)
+
+
+replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/")
 
 version = get_version(get_branch())
 
