@@ -746,7 +746,10 @@ void FileClientChunked::State_First(void)
 	case ID_BLOCK_HASH: need_bytes=sizeof(_i64)+big_hash_size; break;
 	case ID_BLOCK_ERROR: need_bytes=sizeof(_u32)*2; break;
 	default:
-		Server->Log("Unknown Packet ID "+convert(static_cast<int>(curr_id))+" in State_First", LL_ERROR);
+		Server->Log("Unknown Packet ID "+convert(static_cast<int>(curr_id))+" in State_First"
+			" while loading file "+remote_filename+" with size "+convert(remote_filesize)
+			+" at pos "+convert(next_chunk)+"/"+convert(num_total_chunks)+
+			" remaining_bufptr_bytes="+convert(remaining_bufptr_bytes), LL_ERROR);
 		need_bytes = 0;
 		getfile_done = true;
 		retval = ERR_ERROR;
