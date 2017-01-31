@@ -105,10 +105,10 @@ private:
 
 	_u32 GetFile(std::string remotefn, _i64& filesize_out, int64 file_id, IFile** sparse_extents_f);
 
-	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize, IFile** sparse_extents_f);
+	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize, bool allow_reconnect, IFile** sparse_extents_f);
 
 	void State_First(void);
-	void State_Acc(bool ignore_filesize, IFile** sparse_extents_f);
+	void State_Acc(bool ignore_filesize, bool allow_reconnect, IFile** sparse_extents_f);
 	void State_Block(void);
 	void State_Chunk(void);
 	void State_SparseExtents(IFile** sparse_extents_f);

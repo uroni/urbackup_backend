@@ -594,7 +594,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		{
 			starttime=Server->getTimeMS();
 
-			_u32 err = handle_data(buf, rc, false, sparse_extents_f);
+			_u32 err = handle_data(buf, rc, false, true, sparse_extents_f);
 
 			if(err!=ERR_CONTINUE)
 			{
@@ -647,7 +647,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 }
 
 
-_u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesize, IFile** sparse_extents_f)
+_u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesize, bool allow_reconnect, IFile** sparse_extents_f)
 {
 	reconnected=false;
 	bufptr=buf;
@@ -664,7 +664,7 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 			} //fallthrough
 		case CS_ID_ACC:
 			{
-				State_Acc(ignore_filesize, sparse_extents_f);
+				State_Acc(ignore_filesize, allow_reconnect, sparse_extents_f);
 			}break;
 		case CS_BLOCK:
 			{
@@ -756,7 +756,7 @@ void FileClientChunked::State_First(void)
 	total_need_bytes=need_bytes;
 }
 
-void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f)
+void FileClientChunked::State_Acc(bool ignore_filesize, bool allow_reconnect, IFile** sparse_extents_f)
 {
 	if(need_bytes<=remaining_bufptr_bytes)
 	{
@@ -768,6 +768,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 		else
 		{
 			VLOG(Server->Log("Finalizing info packet... packet_buf_off="+convert(packet_buf_off)+" remaining_bufptr_bytes="+convert(remaining_bufptr_bytes)+" need_bytes="+convert(need_bytes), LL_DEBUG));
+			assert(packet_buf_off + need_bytes <= sizeof(packet_buf));
 			memcpy(&packet_buf[packet_buf_off], bufptr, need_bytes);
 			msg.set(packet_buf, total_need_bytes);
 		}
@@ -803,7 +804,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 						if(remote_filesize!=-1 && new_remote_filesize>remote_filesize && getNextFileClient())
 						{
 							Server->Log("Filesize increase from predicted filesize and next file is queued. Reconnecting...", LL_WARNING);
-							if(!Reconnect(true))
+							if(!allow_reconnect || !Reconnect(true))
 							{
 								getfile_done=true;
 								retval=ERR_CONN_LOST;
@@ -825,7 +826,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 									Server->Log("Filesize decrease from predicted filesize and problematic chunks are already queued (old_num_total_chunks="+convert(old_num_total_chunks)+
 										" num_total_chunks="+convert(num_total_chunks)+" next_chunk="+convert(next_chunk)+"). Reconnecting...", LL_WARNING);
 
-									if(!Reconnect(true))
+									if(!allow_reconnect || !Reconnect(true))
 									{
 										getfile_done=true;
 										retval=ERR_CONN_LOST;
@@ -930,7 +931,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				if(remote_filesize!=-1)
 				{
 					Server->Log("Did expect file to exist (1). Reconnecting...", LL_WARNING);
-					if(!Reconnect(false))
+					if(!allow_reconnect || !Reconnect(false))
 					{
 						getfile_done=true;
 						retval=ERR_CONN_LOST;
@@ -945,7 +946,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				if(remote_filesize!=-1)
 				{
 					Server->Log("Did expect file to exist (2). Reconnecting...", LL_WARNING);
-					if(!Reconnect(false))
+					if(!allow_reconnect || !Reconnect(false))
 					{
 						getfile_done=true;
 						retval=ERR_CONN_LOST;
@@ -960,7 +961,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				if (remote_filesize != -1)
 				{
 					Server->Log("Did expect file to exist (3). Reconnecting...", LL_WARNING);
-					if (!Reconnect(false))
+					if (!allow_reconnect || !Reconnect(false))
 					{
 						getfile_done = true;
 						retval = ERR_CONN_LOST;
@@ -1100,7 +1101,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 				if (remote_filesize != -1)
 				{
 					Server->Log("Did expect file to exist (4). Reconnecting...", LL_WARNING);
-					if (!Reconnect(false))
+					if (!allow_reconnect || !Reconnect(false))
 					{
 						getfile_done = true;
 						retval = ERR_CONN_LOST;
@@ -1114,6 +1115,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize, IFile** sparse_extents_f
 	else
 	{
 		VLOG(Server->Log("Accumulating data for info packet... packet_buf_off="+convert(packet_buf_off)+" remaining_bufptr_bytes="+convert(remaining_bufptr_bytes), LL_DEBUG));
+		assert(packet_buf_off + remaining_bufptr_bytes <= sizeof(packet_buf));
 		if(remaining_bufptr_bytes>0)
 		{
 			memcpy(&packet_buf[packet_buf_off], bufptr, remaining_bufptr_bytes);
@@ -1248,12 +1250,20 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			packet_buf_off = 0;
 			char backup_packet_buf[24];
 			memcpy(backup_packet_buf, packet_buf, sizeof(backup_packet_buf));
-			loadChunkOutOfBand(curr_pos);
+			state = CS_ID_FIRST;
+			_u32 rc = loadChunkOutOfBand(curr_pos);
 			remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
 			bufptr = backup_bufptr;
 			packet_buf_off = backup_packet_buf_off;
 			bufptr_bytes_done = backup_bufptr_bytes_done;
 			memcpy(packet_buf, backup_packet_buf, sizeof(backup_packet_buf));
+
+			if (rc != ERR_SUCCESS)
+			{
+				retval = rc;
+				Server->Log("OFB-Block load failed with rc=" + convert(rc), LL_WARNING);
+				getfile_done = true;
+			}
 		}
 		else
 		{
@@ -1871,7 +1881,11 @@ bool FileClientChunked::constructOutOfBandPipe()
 	int64 reconnect_starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-reconnect_starttime<reconnection_timeout)
 	{
-		setOfbPipe(reconnection_callback->new_fileclient_connection());
+		{
+			IPipe* np = reconnection_callback->new_fileclient_connection();
+			IScopedLock lock(getMutex());
+			setOfbPipe(np);
+		}
 
 		if(ofbPipe())
 		{
@@ -1912,6 +1926,10 @@ void FileClientChunked::requestOfbChunk(_i64 chunk_pos)
 
 		stack->Send( ofbPipe(), data.getDataPtr(), data.getDataSize());
 	}
+
+	state = CS_ID_FIRST;
+	remaining_bufptr_bytes = 0;
+	packet_buf_off = 0;
 }
 
 _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
@@ -1928,14 +1946,15 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 
 	Flush(ofbPipe());
 
-	char stack_buf[BUFFERSIZE];
+	std::vector<char> ofb_buf;
+	ofb_buf.resize(BUFFERSIZE);
 
 	int64 total_starttime = Server->getTimeMS();
 
 	while(pending_chunks.find(chunk_pos)!=pending_chunks.end()
 		&& Server->getTimeMS()-total_starttime<20*60*1000)
 	{
-		size_t rc = ofbPipe()->Read(stack_buf, BUFFERSIZE, 100);
+		size_t rc = ofbPipe()->Read(ofb_buf.data(), BUFFERSIZE, 100);
 
 		if(rc==0)
 		{
@@ -1957,7 +1976,7 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 		{
 			starttime=Server->getTimeMS();
 
-			_u32 err = handle_data(stack_buf, rc, true, NULL);
+			_u32 err = handle_data(ofb_buf.data(), rc, true, false, NULL);
 
 			if(err!=ERR_CONTINUE)
 			{
