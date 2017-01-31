@@ -130,12 +130,19 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 	}
 	else
 	{
-		
-		Write("PRAGMA synchronous=NORMAL");
+		str_map::const_iterator it = params.find("synchronous");
+		if (it != params.end())
+		{
+			Write("PRAGMA synchronous="+it->second);
+		}
+		else
+		{
+			Write("PRAGMA synchronous=NORMAL");
+		}
 		Write("PRAGMA foreign_keys = ON");
 		Write("PRAGMA threads = 2");
 
-		str_map::const_iterator it = params.find("wal_autocheckpoint");
+		it = params.find("wal_autocheckpoint");
 		if (it != params.end())
 		{
 			Write("PRAGMA wal_autocheckpoint=" + it->second);
