@@ -195,13 +195,19 @@ bool mount_linux_loop(const std::string& imagepath)
 		std::cout << "Error opening loop control. Err: " << errno << std::endl;
 	}
 	
+	bool dio_available=true;
 	int bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC|O_DIRECT);
 	if(bd==-1)
 	{
-		std::cerr << "Error opening backing file " << imagepath << std::endl;
-		if(loopc!=-1)
-			close(loopc);
-		return false;
+		bd = open64(imagepath.c_str(), O_RDONLY|O_CLOEXEC);
+		if(bd==-1)
+		{
+			std::cerr << "Error opening backing file " << imagepath << std::endl;
+			if(loopc!=-1)
+				close(loopc);
+			return false;
+		}
+		dio_available=false;
 	}
 	
 	int last_loopd=-1;
@@ -285,11 +291,14 @@ bool mount_linux_loop(const std::string& imagepath)
 		return false;
 	}
 	
-	unsigned long dio = 1;
-	rc = ioctl(loopd, LOOP_SET_DIRECT_IO, &dio);
-	if(rc)
+	if(dio_available)
 	{
-		std::cerr << "Error setting loop device to direct io. Err: " << errno << std::endl;
+		unsigned long dio = 1;
+		rc = ioctl(loopd, LOOP_SET_DIRECT_IO, &dio);
+		if(rc)
+		{
+			std::cerr << "Error setting loop device to direct io. Err: " << errno << std::endl;
+		}
 	}
 	
 	std::string mountpoint = ExtractFilePath(imagepath)+"_mnt";
