@@ -48,6 +48,7 @@ using namespace nt;
 #	include <pwd.h>
 #	include <sys/wait.h>
 #	include <grp.h>
+#	include <errno.h>
 #endif
 
 CServer *Server=NULL;
@@ -390,7 +391,11 @@ int main_fkt(int argc, char *argv[])
 			exit(0);
 		}
 
-		chdir((Server->getServerWorkingDir()).c_str());
+		int rc = chdir((Server->getServerWorkingDir()).c_str());
+		if (rc != 0)
+		{
+			Server->Log("Cannot set working directory to directory " + workingdir+" (2)", LL_ERROR);
+		}
 		
 		if(pidfile.empty())
 		{
@@ -451,14 +456,47 @@ int main_fkt(int argc, char *argv[])
 		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
 	    if(pw!=NULL)
 	    {
-			setgroups(0, NULL);
-			setgid(pw->pw_gid);
-			setuid(pw->pw_uid);
+			if (setgroups(0, NULL) != 0)
+			{
+				Server->Log("Unable to drop groups. Errno: " + convert(errno), LL_ERROR);
+				return 44;
+			}
+			if (setgid(pw->pw_gid) != 0)
+			{
+				Server->Log("Unable to set group to gid "+convert(pw->pw_gid)+" of user \""+daemon_user+"\". Errno: " + convert(errno), LL_ERROR);
+				return 44;
+			}
+			if (setuid(pw->pw_uid) != 0)
+			{
+				Server->Log("Unable to set user to uid " + convert(pw->pw_gid) + " of user \"" + daemon_user + "\". Errno: " + convert(errno), LL_ERROR);
+				return 44;
+			}
 	    }
 	    else
 	    {
-	    	Server->Log("Unable to change user, probably because process uid is not root", LL_ERROR);
+	    	Server->Log("Unable to change user, probably because process uid is not root. Errno: "+convert(errno), LL_ERROR);
+			return 44;
 	    }
+	}
+	else if (!daemon_user.empty())
+	{
+		char buf[1000];
+		passwd pwbuf;
+		passwd *pw;
+		int rc = getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
+		if (pw != NULL)
+		{
+			if (pw->pw_uid != getuid())
+			{
+				Server->Log("Running as wrong user. Specified user \"" + daemon_user + "\" with uid "+convert(pw->pw_uid)+" but running as uid "+convert(getuid()), LL_ERROR);
+				return 44;
+			}
+		}
+		else
+		{
+			Server->Log("Cannot get uid of user \""+daemon_user+"\". Errno: " + convert(errno), LL_ERROR);
+			return 44;
+		}
 	}
 #endif
 	if( sqlite3_threadsafe()==0 )
