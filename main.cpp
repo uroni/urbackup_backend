@@ -450,6 +450,7 @@ int main_fkt(int argc, char *argv[])
 		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
 	    if(pw!=NULL)
 	    {
+			setgroups(0, NULL);
 			setgid(pw->pw_gid);
 			setuid(pw->pw_uid);
 	    }
