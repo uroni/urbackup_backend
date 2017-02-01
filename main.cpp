@@ -47,6 +47,7 @@ using namespace nt;
 #	include <sys/types.h>
 #	include <pwd.h>
 #	include <sys/wait.h>
+#	include <grp.h>
 #endif
 
 CServer *Server=NULL;
