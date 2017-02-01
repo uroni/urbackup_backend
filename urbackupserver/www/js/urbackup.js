@@ -4622,10 +4622,10 @@ function show_live_log()
 	var win = window.open('', '_blank', '');
 	var live_log_page = dustRender("live_log", {session: g.session, clientid: clientid, 
 												clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text,
-												jquery_js: I("jquery_js").value,
-												dust_js: I("dust_js").value,
-												templates_js: I("templates_js").value,
-												urbackup_functions_js: I("urbackup_functions_js").value});
+												jquery_js: I("jquery_js").src,
+												dust_js: I("dust_js").src,
+												templates_js: I("templates_js").src,
+												urbackup_functions_js: I("urbackup_functions_js").src});
 	I('live_log_clientid').selectedIndex=-1;
 	win.document.write(live_log_page);
 	win.document.close();
@@ -4637,10 +4637,10 @@ function showBackupLiveLog(clientid, clientname, logId)
 	var live_log_page = dustRender("live_log", {session: g.session, clientid: clientid,
 												clientname: clientname,
 												logid: logId,
-												jquery_js: I("jquery_js").value,
-												dust_js: I("dust_js").value,
-												templates_js: I("templates_js").value,
-												urbackup_functions_js: I("urbackup_functions_js").value });
+												jquery_js: I("jquery_js").src,
+												dust_js: I("dust_js").src,
+												templates_js: I("templates_js").src,
+												urbackup_functions_js: I("urbackup_functions_js").src });
 	win.document.write(live_log_page);
 	win.document.close();
 	win.focus();
