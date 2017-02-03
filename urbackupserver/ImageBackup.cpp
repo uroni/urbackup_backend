@@ -912,14 +912,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 					if(!has_parent)
 					{
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+(int64)mbr_size,
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+mbr_size,
 							(unsigned int)vhd_blocksize*blocksize, true,
 							image_format);
 					}
 					else
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false,
-							true, image_format);
+							true, image_format, drivesize + mbr_size);
 					}
 
 					if(r_vhdfile==NULL || !r_vhdfile->isOpen())

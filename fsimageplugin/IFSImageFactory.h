@@ -34,7 +34,7 @@ public:
 		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD)=0;
 
 	virtual IVHDFile *createVHDFile(const std::string &fn, const std::string &parent_fn,
-		bool pRead_only, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD)=0;
+		bool pRead_only, bool fast_mode=false, ImageFormat compress=ImageFormat_VHD, uint64 pDstsize=0)=0;
 
 	virtual void destroyVHDFile(IVHDFile *vhd)=0;
 

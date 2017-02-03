@@ -137,7 +137,7 @@ VHDFile::VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsign
 	}
 }
 
-VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress)
+VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode, bool compress, uint64 pDstsize)
 	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false), file(NULL)
 {
 	compressed_file=NULL;
@@ -183,6 +183,11 @@ VHDFile::VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 	dstsize=parent->getRealSize();
 	blocksize=parent->getBlocksize();
+
+	if (pDstsize>0 && pDstsize != dstsize)
+	{
+		dstsize = pDstsize;
+	}
 
 	if(file->Size()==0 && !read_only) // created file
 	{

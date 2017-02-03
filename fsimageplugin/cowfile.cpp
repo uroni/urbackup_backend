@@ -125,7 +125,7 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 	}
 }
 
-CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only)
+CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, uint64 pDstsize)
 	: bitmap_dirty(false), finished(false), curr_offset(0)
 {
 	filename = fn;
@@ -143,7 +143,11 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 	{
 		is_open=false;
 	}
-
+	
+	if(pDstsize>0 && pDstsize!=filesize)
+	{
+		filesize = pDstsize;
+	}
 
 	if(is_open)
 	{
@@ -202,7 +206,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 					if(rc!=0)
 					{
-						Server->Log("Truncating cow file to parent size "+convert(filesize)+" failed", LL_ERROR);
+						Server->Log("Truncating cow file to size "+convert(filesize)+" failed", LL_ERROR);
 						is_open=false;
 						close(fd);
 					}

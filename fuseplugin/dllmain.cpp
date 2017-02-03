@@ -165,7 +165,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(2);
 	}
 	
-	vhdfile = image_fak->createVHDFile((vhd_filename), true, 0);
+	vhdfile = image_fak->createVHDFile(vhd_filename, true, 0);
 	
 	if(vhdfile==NULL || !vhdfile->isOpen())
 	{

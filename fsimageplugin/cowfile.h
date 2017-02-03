@@ -7,7 +7,7 @@ class CowFile : public IVHDFile
 {
 public:
 	CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize);
-	CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only);
+	CowFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, uint64 pDstsize);
 	~CowFile();
 
 

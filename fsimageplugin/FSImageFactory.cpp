@@ -265,16 +265,16 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, 
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string &parent_fn,
-	bool pRead_only, bool fast_mode, ImageFormat format)
+	bool pRead_only, bool fast_mode, ImageFormat format, uint64 pDstsize)
 {
 	switch(format)
 	{
 	case ImageFormat_VHD:
 	case ImageFormat_CompressedVHD:
-		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD);
+		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD, pDstsize);
 	case ImageFormat_RawCowFile:
 #if !defined(_WIN32) && !defined(__APPLE__)
-		return new CowFile(fn, parent_fn, pRead_only);
+		return new CowFile(fn, parent_fn, pRead_only, pDstsize);
 #else
 		return NULL;
 #endif

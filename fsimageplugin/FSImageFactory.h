@@ -12,7 +12,7 @@ public:
 		unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, IFSImageFactory::ImageFormat format=IFSImageFactory::ImageFormat_VHD);
 
 	virtual IVHDFile *createVHDFile(const std::string &fn, const std::string &parent_fn,
-		bool pRead_only, bool fast_mode=false, IFSImageFactory::ImageFormat format=IFSImageFactory::ImageFormat_VHD);
+		bool pRead_only, bool fast_mode=false, IFSImageFactory::ImageFormat format=IFSImageFactory::ImageFormat_VHD, uint64 pDstsize=0);
 
 	virtual void destroyVHDFile(IVHDFile *vhd);
 

@@ -65,7 +65,7 @@ class VHDFile : public IVHDFile, public IFile
 {
 public:
 	VHDFile(const std::string &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
-	VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::string &fn, const std::string &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false, uint64 pDstsize=0);
 	~VHDFile();
 
 	virtual std::string Read(_u32 tr, bool *has_error=NULL);
