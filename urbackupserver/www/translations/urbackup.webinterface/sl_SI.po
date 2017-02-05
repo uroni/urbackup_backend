@@ -9,8 +9,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2016-12-05 22:23+0000\n"
+"Last-Translator: Rok Palhartinger <rok.palhartinger@gmail.com>\n"
 "Language-Team: Slovenian (Slovenia) (http://www.transifex.com/uroni/urbackup/language/sl_SI/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -19,61 +19,61 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3);\n"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "tLogi"
 
 msgid "nav_item_1"
 msgstr ""
 
 msgid "ok"
-msgstr ""
+msgstr "ok"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "tOpozorila"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "tNapake"
 
 msgid "tLogs"
-msgstr ""
+msgstr "tLogi"
 
 msgid "tErrors"
-msgstr ""
+msgstr "tNapake"
 
 msgid "tWarnings"
-msgstr ""
+msgstr "tOpozorila"
 
 msgid "tdays"
-msgstr ""
+msgstr "rdni"
 
 msgid "thours"
-msgstr ""
+msgstr "tur"
 
 msgid "tmin"
-msgstr ""
+msgstr "tmin"
 
 msgid "tAbort"
-msgstr ""
+msgstr "tPrkini"
 
 msgid "tInfos"
-msgstr ""
+msgstr "tInformacije"
 
 msgid "tFile backups"
-msgstr ""
+msgstr "tFile backupi"
 
 msgid "tImage backups"
-msgstr ""
+msgstr "tImage backupi"
 
 msgid "tClient"
-msgstr ""
+msgstr "tOdjemalec"
 
 msgid "tInternet"
-msgstr ""
+msgstr "tInternet"
 
 msgid "hours"
-msgstr ""
+msgstr "ur"
 
 msgid "days"
-msgstr ""
+msgstr "dni"
 
 msgid "action_1"
 msgstr ""
@@ -112,10 +112,10 @@ msgid "nav_item_2"
 msgstr ""
 
 msgid "unknown"
-msgstr ""
+msgstr "neznano"
 
 msgid "overview"
-msgstr ""
+msgstr "pregled"
 
 msgid "no_recent_backup"
 msgstr ""
@@ -124,37 +124,37 @@ msgid "backup_never"
 msgstr ""
 
 msgid "yes"
-msgstr ""
+msgstr "da"
 
 msgid "no"
-msgstr ""
+msgstr "ne"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "tStanje Backup-ov"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "TIme Računalnika"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "tNazadnje viden"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "tZadnji file backup"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "tZadnji image backup "
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "tStanje file backupa"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "tStanje image backupa"
 
 msgid "tShow details"
-msgstr ""
+msgstr "tPrikaži podrobnosti"
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "tDodatni odjemalci"
 
 msgid "tNo extra clients"
 msgstr ""
@@ -172,34 +172,34 @@ msgid "tServer identity"
 msgstr ""
 
 msgid "users"
-msgstr ""
+msgstr "uporabniki"
 
 msgid "general_settings"
-msgstr ""
+msgstr "splošne_nastavitve"
 
 msgid "admin"
-msgstr ""
+msgstr "skrbnik"
 
 msgid "user"
-msgstr ""
+msgstr "uporabnik"
 
 msgid "username_empty"
-msgstr ""
+msgstr "prazen_username"
 
 msgid "password_empty"
-msgstr ""
+msgstr "prazno_geslo"
 
 msgid "password_differ"
-msgstr ""
+msgstr "neujemajoče_geslo"
 
 msgid "user_n_exist"
 msgstr ""
 
 msgid "password_wrong"
-msgstr ""
+msgstr "napačno_gelo"
 
 msgid "user_exists"
-msgstr ""
+msgstr "uporabnik_obstaja"
 
 msgid "session_timeout"
 msgstr ""
@@ -226,7 +226,7 @@ msgid "right_none"
 msgstr ""
 
 msgid "filter"
-msgstr ""
+msgstr "filter"
 
 msgid "all"
 msgstr ""
@@ -271,13 +271,13 @@ msgid "too_many_clients_err"
 msgstr ""
 
 msgid "computername"
-msgstr ""
+msgstr "TIme Računalnika"
 
 msgid "storage_usage_pie_graph_title"
 msgstr ""
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "TIme Računalnika"
 
 msgid "storage_usage_pie_graph_colname2"
 msgstr ""
@@ -331,7 +331,7 @@ msgid "tAll"
 msgstr ""
 
 msgid "tFilter"
-msgstr ""
+msgstr "filter"
 
 msgid "tBack"
 msgstr ""

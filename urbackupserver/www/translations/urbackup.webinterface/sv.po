@@ -11,8 +11,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2016-09-25 08:10+0000\n"
+"Last-Translator: Jonas Aaslund <gnindit@gmail.com>\n"
 "Language-Team: Swedish (http://www.transifex.com/uroni/urbackup/language/sv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -210,7 +210,7 @@ msgid "really_del_user"
 msgstr "Vill du verkligen ta bort denna användare?"
 
 msgid "user_add_done"
-msgstr "Ny användare lades till korrekt."
+msgstr "Ny användare lades till."
 
 msgid "user_remove_done"
 msgstr "Användaren togs bort korrekt"
@@ -1176,19 +1176,19 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrerad från _MAX_totala inlägg"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimera"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maximera"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "En klient med detta namn finns redan"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Ange namn för en ny client eller client bakom NAT."
 
 msgid "validate_err_empty_hostname"
 msgstr ""
@@ -1197,43 +1197,43 @@ msgid "creating_filesindex_text"
 msgstr ""
 
 msgid "about"
-msgstr ""
+msgstr "Om"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Alla klienter"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Klientinställningar"
 
 msgid "action_8"
-msgstr ""
+msgstr "Filåterställning"
 
 msgid "action_9"
-msgstr ""
+msgstr "Återställ disk"
 
 msgid "action_10"
-msgstr ""
+msgstr "Klientuppdatering"
 
 msgid "action_11"
-msgstr ""
+msgstr "Kontrollerar databasintegritet"
 
 msgid "action_12"
-msgstr ""
+msgstr "Säkerhetskopierar databas"
 
 msgid "action_13"
-msgstr ""
+msgstr "Räknar om statistiken"
 
 msgid "action_14"
-msgstr ""
+msgstr "Nattlig rensning"
 
 msgid "action_15"
-msgstr ""
+msgstr "Akut rensning"
 
 msgid "tAbout UrBackup"
 msgstr "Om UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Lägg till klient"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
@@ -1242,71 +1242,71 @@ msgid ""
 msgstr ""
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Ladda ner klienten från:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Om du vill ansluta klienter till flera servrar så är denna servers adress:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Lägg till ny klient/ny klient bakom NAT"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Namn på ny klient/klient bakom NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Hitta ny klient via IP/hostnamn"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/hostnamn på klient som ska hittas."
 
 msgid "tCancel"
-msgstr ""
+msgstr "Avbryt"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Åtkomst nekad"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Vi beklagar, något gick fel eller så saknas rättigheter för åtkomst till fil eller mapp."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Logga in med användarnamn och lösenord"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Fel vid åtkomst av backuper."
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Tyvärr, något gick fel:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Skapad"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Senast ändrad"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Senaste åtkomst"
 
 msgid "tList"
-msgstr ""
+msgstr "Listar"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Återställ"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Återställ mapp till klient"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Version"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Klient lades till."
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "La till ny klient med namn:"
 
 msgid "tDefault authentication key:"
 msgstr ""
@@ -1315,34 +1315,34 @@ msgid "tDownload preconfigured client installer for Windows"
 msgstr ""
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Ladda ner förinställd klientinstallation för Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Installera direkt i terminalen via:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Ladda ner förinställd klientinstallation för Linux"
 
 msgid "tAlternatively after you installed the client from:"
 msgstr ""
 
 msgid "tGo to the settings screen on the client"
-msgstr ""
+msgstr "Gå till inställnings sidan på klienten"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Aktivera internetläge på klienten."
 
 msgid "tSet the internet server to:"
 msgstr ""
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Port för internetadress:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Datornamn:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Autentiseringsnyckel:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
@@ -1351,64 +1351,64 @@ msgid ""
 msgstr ""
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Med kommandoraden:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Procent färdig"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detaljer"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Lägg till emailalias"
 
 msgid "tFailed without failures caused by client timeout"
 msgstr ""
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Minsta lognivå"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Säkerthetskopieringar avbröts"
 
 msgid "tStop"
-msgstr ""
+msgstr "Stopp"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Visa log"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Hastighet"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Filbackuper"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Diskbackuper"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Arkiv"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "Server URL"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Högsta antal samtidiga backuper"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Max antal nyligen aktiva klienter"
 
 msgid "tDays"
-msgstr ""
+msgstr "Dagar"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
 msgstr ""
@@ -1417,10 +1417,10 @@ msgid "tLocal incremental image style"
 msgstr ""
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Baserat på senaste kompletta diskbackupen"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Baserat på senaste diskbackupen"
 
 msgid "tInternet incremental image style"
 msgstr ""
@@ -1457,7 +1457,7 @@ msgid ""
 msgstr ""
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Högsta antal samtidiga job per klient"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
@@ -1470,22 +1470,22 @@ msgid ""
 msgstr ""
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Tillåt login via LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "LDAP/AD server namn"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "LDAP/AD server port"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "LDAP/AD prefix för användarnamn"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "LDAP/AD ändelse för användarnamn"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD grupp och klass förfrågan"
 
 msgid "tLDAP/AD group key name in query"
 msgstr ""
@@ -1494,55 +1494,55 @@ msgid "tLDAP/AD class key name in query"
 msgstr ""
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP/AD grupp-rättighetersöversikt"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "LDAP/AD klass-rättighetersöversikt"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Prova login med denna användare"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Lösenord för användare test"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Test login fungerade. Rättigheter för användare:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Test login fungerade inte. Error:"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Ladda ner klient för Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Ladda ner klient för Max OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Ladda ner klient för Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Ta bort klient"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Lägg till ny klient"
 
 msgid "tClient discovery hints"
 msgstr ""
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Lägg till värdnamn/IP på klient"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Backup statistik"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Klar men det uppstod problem."
 
 msgid "not_supported"
-msgstr ""
+msgstr "Stöds inte"
 
 msgid "tPreparing restore. Please be patient..."
-msgstr ""
+msgstr "Förbereder återställning. Var god vänta..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""
