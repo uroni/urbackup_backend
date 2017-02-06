@@ -29,7 +29,7 @@ extern IUrlFactory *url_fak;
 
 namespace
 {
-	std::string urbackup_update_url = "http://update3.urbackup.org/";
+	std::string urbackup_update_url = "http://update4.urbackup.org/";
 
 	struct SUpdatePlatform
 	{
