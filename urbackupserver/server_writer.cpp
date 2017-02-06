@@ -492,7 +492,8 @@ void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
 	* Trimming only at hash block size for now.
 	*/
 	assert(trim_start%vhd_blocksize == 0);
-	assert(trim_stop%vhd_blocksize == 0);
+	assert(trim_stop%vhd_blocksize == 0
+			|| trim_stop == vhd->getSize() - mbr_offset);
 
 	_i64 block_start = trim_start/vhd_blocksize;
 	if(trim_start%vhd_blocksize!=0)
