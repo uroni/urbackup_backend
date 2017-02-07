@@ -5354,11 +5354,13 @@ bool IndexThread::prepareCbt(std::string volume)
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
 	{
+		VSSLog("Error normalizing volume. Input \"" + volume + "\" (1)", LL_ERROR);
 		return false;
 	}
 
 	if (!cbtIsEnabled(std::string(), volume))
 	{
+		VSSLog("CBT not enabled for volume \"" + volume + "\"", LL_INFO);
 		return false;
 	}
 
@@ -5368,6 +5370,7 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	if (hVolume == INVALID_HANDLE_VALUE)
 	{
+		VSSLog("Error opening volume " + volume + ". " + os_last_error_str(), LL_ERROR);
 		return false;
 	}
 
@@ -5382,8 +5385,8 @@ bool IndexThread::prepareCbt(std::string volume)
 
 		std::string errmsg;
 		int64 err = os_last_error(errmsg);
-		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_DEBUG);
-
+		int ll = lasterr != ERROR_INVALID_FUNCTION ? LL_ERROR : LL_DEBUG;
+		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", ll);
 		
 		if ( (lasterr == ERROR_INVALID_FUNCTION
 				&& os_get_file_type("urbctctl.exe")!=0 )
@@ -5444,6 +5447,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
 	{
+		VSSLog("Error normalizing volume. Input \""+volume+"\" (2)", LL_ERROR);
 		return false;
 	}
 
@@ -5453,6 +5457,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	if (hVolume == INVALID_HANDLE_VALUE)
 	{
+		VSSLog("Error opening volume "+volume+". "+os_last_error_str(), LL_ERROR);
 		return false;
 	}
 
@@ -5477,6 +5482,7 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		if (hSnapVolume == INVALID_HANDLE_VALUE)
 		{
+			VSSLog("Error opening volume snapshot of "+volume+" at " + snap_volume+ ". " + os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}
