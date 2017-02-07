@@ -6,11 +6,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # Ales Hermann, 2014-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
+"PO-Revision-Date: 2017-02-06 09:57+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Czech (Czech Republic) (http://www.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
 "MIME-Version: 1.0\n"
@@ -1222,12 +1223,6 @@ msgstr "Záloha sdatabáze"
 msgid "action_13"
 msgstr "Přepočet statistik"
 
-msgid "action_14"
-msgstr ""
-
-msgid "action_15"
-msgstr ""
-
 msgid "tAbout UrBackup"
 msgstr "O UrBackup"
 
@@ -1544,4 +1539,228 @@ msgid "tPreparing restore. Please be patient..."
 msgstr ""
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
+msgstr ""
+
+msgid "admin_create"
+msgstr ""
+
+msgid "image_backup"
+msgstr ""
+
+msgid "action_14"
+msgstr ""
+
+msgid "action_15"
+msgstr ""
+
+msgid "action_16"
+msgstr ""
+
+msgid "default_group"
+msgstr ""
+
+msgid "filter_group"
+msgstr ""
+
+msgid "add_new_group"
+msgstr ""
+
+msgid "enter_group_name"
+msgstr ""
+
+msgid "group_already_exists"
+msgstr ""
+
+msgid "confirm_delete_settings_group"
+msgstr ""
+
+msgid "group_delete_failed"
+msgstr ""
+
+msgid "validate_err_notregexp_internet_server"
+msgstr ""
+
+msgid "validate_err_notregexp_server_url"
+msgstr ""
+
+msgid "action_17"
+msgstr ""
+
+msgid "bit/s"
+msgstr ""
+
+msgid "Kbit/s"
+msgstr ""
+
+msgid "Mbit/s"
+msgstr ""
+
+msgid "Gbit/s"
+msgstr ""
+
+msgid "Tbit/s"
+msgstr ""
+
+msgid "delete_err"
+msgstr ""
+
+msgid "delete_now_err"
+msgstr ""
+
+msgid "image_locked"
+msgstr ""
+
+msgid "locked_ref"
+msgstr ""
+
+msgid "incomplete_ref"
+msgstr ""
+
+msgid "archived_ref"
+msgstr ""
+
+msgid "remove_image_failed"
+msgstr ""
+
+msgid "delete_file_backup_failed"
+msgstr ""
+
+msgid "tBackup is marked for deletion. Do not delete"
+msgstr ""
+
+msgid "tDelete now"
+msgstr ""
+
+msgid "tVolume"
+msgstr ""
+
+msgid "tNo backups"
+msgstr ""
+
+msgid "tNo backups of this client yet"
+msgstr ""
+
+msgid "tImage backup information"
+msgstr ""
+
+msgid "tId"
+msgstr ""
+
+msgid "tVolume size"
+msgstr ""
+
+msgid "tPartition style"
+msgstr ""
+
+msgid "tDisk number"
+msgstr ""
+
+msgid "tPartition number"
+msgstr ""
+
+msgid "tFile system type"
+msgstr ""
+
+msgid "tVolume name"
+msgstr ""
+
+msgid "tSerial number"
+msgstr ""
+
+msgid "tMount image"
+msgstr ""
+
+msgid ""
+"tUrBackup will use non-sandboxed server operating system functionality to "
+"mount the image. Only mount the image if you trust its source."
+msgstr ""
+
+msgid "tMounting image failed. Please see server log file for details."
+msgstr ""
+
+msgid "tOk. Reset this error"
+msgstr ""
+
+msgid "tOk. Stop showing this error"
+msgstr ""
+
+msgid ""
+"tThis server has discovered clients which are currently not configured to "
+"use this server."
+msgstr ""
+
+msgid "tSee here for details on how this can happen."
+msgstr ""
+
+msgid "tOk. Dismiss this hint."
+msgstr ""
+
+msgid "tOk. Stop showing this."
+msgstr ""
+
+msgid "tVolume:"
+msgstr ""
+
+msgid "tTo version:"
+msgstr ""
+
+msgid "tPath:"
+msgstr ""
+
+msgid "tGroup"
+msgstr ""
+
+msgid "tGroup membership"
+msgstr ""
+
+msgid "tSelect client from current group (double-click to change settings):"
+msgstr ""
+
+msgid "tDelete group"
+msgstr ""
+
+msgid "tAllow clients to start file restores"
+msgstr ""
+
+msgid "tAllow clients to configure components to backup"
+msgstr ""
+
+msgid "tAllow clients to start component restores"
+msgstr ""
+
+msgid "tVolume letters"
+msgstr ""
+
+msgid "tImage backup"
+msgstr ""
+
+msgid ""
+"tDo not start file backups if current estimated data usage limit per month "
+"is smaller than"
+msgstr ""
+
+msgid ""
+"tDo not start image backups if current estimated data usage limit per month "
+"is smaller than"
+msgstr ""
+
+msgid "tUpdate data limit estimation database"
+msgstr ""
+
+msgid "tFull image backup #1"
+msgstr ""
+
+msgid "tVolumes to snapshot in groups during image backups"
+msgstr ""
+
+msgid "tVolumes to snapshot in groups during file backups"
+msgstr ""
+
+msgid "tWindows components backup configuration"
+msgstr ""
+
+msgid "tGroup name"
+msgstr ""
+
+msgid "tWith Selected"
 msgstr ""
