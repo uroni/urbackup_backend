@@ -6,11 +6,12 @@
 # Translators:
 # Translators:
 # Translators:
-# Kaya Zeren <kayazeren@gmail.com>, 2016
+# Translators:
+# Kaya Zeren <kayazeren@gmail.com>, 2016-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-08-01 15:23+0000\n"
+"PO-Revision-Date: 2017-02-06 19:21+0000\n"
 "Last-Translator: Kaya Zeren <kayazeren@gmail.com>\n"
 "Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"
@@ -1222,12 +1223,6 @@ msgstr "Veritabanı yedekleniyor"
 msgid "action_13"
 msgstr "İstatistikler yeniden hesaplanıyor"
 
-msgid "action_14"
-msgstr "Gecelik temizlik"
-
-msgid "action_15"
-msgstr "Acil durum temizliği"
-
 msgid "tAbout UrBackup"
 msgstr "UrBackup Hakkında"
 
@@ -1545,3 +1540,227 @@ msgstr "Geri yüklemeye hazırlanılıyor, lütfen sabırla bekleyin..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr "Karma uyuşmazlıklları ya da okuma hataları durumunda yedekler başarısız sayılmasın"
+
+msgid "admin_create"
+msgstr "Yönetici"
+
+msgid "image_backup"
+msgstr "Kalıp yedeği"
+
+msgid "action_14"
+msgstr "Gecelik temizlik"
+
+msgid "action_15"
+msgstr "Acil durum temizliği"
+
+msgid "action_16"
+msgstr "Depolama birleştirme"
+
+msgid "default_group"
+msgstr "Varsayılan"
+
+msgid "filter_group"
+msgstr "Gruplar"
+
+msgid "add_new_group"
+msgstr "Grup Ekle"
+
+msgid "enter_group_name"
+msgstr "Yeni grup adını yazın"
+
+msgid "group_already_exists"
+msgstr "Grup zaten var"
+
+msgid "confirm_delete_settings_group"
+msgstr "Bu grup silinecek. Bu gruptaki tüm istemciler varsayılan gruba atanacak. İşleme devam etmek istiyor musunuz?"
+
+msgid "group_delete_failed"
+msgstr "Grup silinemedi"
+
+msgid "validate_err_notregexp_internet_server"
+msgstr "İnternet sunucusu adı bir sunucu adı ya da IP adresi olmalıdır"
+
+msgid "validate_err_notregexp_server_url"
+msgstr "Sunucu adresi bir http:// ya da https:// ile başlayan bir İnternet adresi olmalıdır"
+
+msgid "action_17"
+msgstr "Başlangıç kurtarma"
+
+msgid "bit/s"
+msgstr "bit/s"
+
+msgid "Kbit/s"
+msgstr "Kbit/s"
+
+msgid "Mbit/s"
+msgstr "Mbit/s"
+
+msgid "Gbit/s"
+msgstr "Gbit/s"
+
+msgid "Tbit/s"
+msgstr "Tbit/s"
+
+msgid "delete_err"
+msgstr "Yedek silinmek üzere işaretlenirken bir sorun çıktı:"
+
+msgid "delete_now_err"
+msgstr "Yedek silinirken bir sorun çıktı:"
+
+msgid "image_locked"
+msgstr "Kalıp yedeği şu anda kullanılıyor"
+
+msgid "locked_ref"
+msgstr "Bu yedeği temel alan artımlı kalıp yedeği şu anda kullanılıyor"
+
+msgid "incomplete_ref"
+msgstr "Bu yedeği temel alan artımlı kalıp yedeği şu anda alınıyor"
+
+msgid "archived_ref"
+msgstr "Bu yedepe bağlı kalıp yedeği arşivlendi"
+
+msgid "remove_image_failed"
+msgstr "Ayrıntılar için sunucu günlük dosyasına bakın"
+
+msgid "delete_file_backup_failed"
+msgstr "Ayrıntılar için sunucu günlük dosyasına bakın"
+
+msgid "tBackup is marked for deletion. Do not delete"
+msgstr "Yedek silinmek üzere işaretlendi. Silme"
+
+msgid "tDelete now"
+msgstr "Şimdi sil"
+
+msgid "tVolume"
+msgstr "Birim"
+
+msgid "tNo backups"
+msgstr "Yedek yok"
+
+msgid "tNo backups of this client yet"
+msgstr "Bu istemcinin henüz bir yedeği yok"
+
+msgid "tImage backup information"
+msgstr "Kalıp yedeği bilgileri"
+
+msgid "tId"
+msgstr "Kod"
+
+msgid "tVolume size"
+msgstr "Birim boyutu"
+
+msgid "tPartition style"
+msgstr "Bölüm stili"
+
+msgid "tDisk number"
+msgstr "Disk numarası"
+
+msgid "tPartition number"
+msgstr "Bölüm numarası"
+
+msgid "tFile system type"
+msgstr "Dosya sistemi türü"
+
+msgid "tVolume name"
+msgstr "Birim adı"
+
+msgid "tSerial number"
+msgstr "Seri numarası"
+
+msgid "tMount image"
+msgstr "Kalıbı tak"
+
+msgid ""
+"tUrBackup will use non-sandboxed server operating system functionality to "
+"mount the image. Only mount the image if you trust its source."
+msgstr "UrBackup kalıbı takmak için kum havuzu dışında bir sunucu işletim sistemi özelliği kullanacak. Yalnız bu kaynağa güveniyorsanız bu kalıbı takın."
+
+msgid "tMounting image failed. Please see server log file for details."
+msgstr "Kalıp takılamadı. Ayrıntılar için sunucu günlük dosyasına bakın."
+
+msgid "tOk. Reset this error"
+msgstr "Tamam. Bu hatayı kaldır"
+
+msgid "tOk. Stop showing this error"
+msgstr "Tamam. Bu hatayı görüntüleme"
+
+msgid ""
+"tThis server has discovered clients which are currently not configured to "
+"use this server."
+msgstr "Bu sunucu, sunucuyu kullanacak şekilde ayarlanmamış istemciler buldu."
+
+msgid "tSee here for details on how this can happen."
+msgstr "Bu durumun neden olduğunu anlamak için buraya bakın"
+
+msgid "tOk. Dismiss this hint."
+msgstr "Tamam. Bu ip ucunu artık gösterme."
+
+msgid "tOk. Stop showing this."
+msgstr "Tamam. Bunu artık gösterme."
+
+msgid "tVolume:"
+msgstr "Hacim:"
+
+msgid "tTo version:"
+msgstr "Şu sürüme:"
+
+msgid "tPath:"
+msgstr "Yol:"
+
+msgid "tGroup"
+msgstr "Grup"
+
+msgid "tGroup membership"
+msgstr "Grup üyeliği"
+
+msgid "tSelect client from current group (double-click to change settings):"
+msgstr "Geçerli gruptan istemci seçin (ayarları değiştirmek için çift tıklayın):"
+
+msgid "tDelete group"
+msgstr "Grubu sil"
+
+msgid "tAllow clients to start file restores"
+msgstr "İstemciler dosya geri yüklemesi yapabilsin"
+
+msgid "tAllow clients to configure components to backup"
+msgstr "İstemciler yedeklenecek bileşenleri ayarlayabilsin"
+
+msgid "tAllow clients to start component restores"
+msgstr "İstemciler bileşen geri yüklemesi yapabilsin"
+
+msgid "tVolume letters"
+msgstr "Birim harfleri"
+
+msgid "tImage backup"
+msgstr "Kalıp yedeği"
+
+msgid ""
+"tDo not start file backups if current estimated data usage limit per month "
+"is smaller than"
+msgstr "Aylık geçerli öngörülen veri kullanımı sınırı şundan küçükse dosya yedeklemesine başlanmasın"
+
+msgid ""
+"tDo not start image backups if current estimated data usage limit per month "
+"is smaller than"
+msgstr "Aylık geçerli öngörülen veri kullanımı sınırı şundan küçükse kalıp yedeklemesine başlanmasın"
+
+msgid "tUpdate data limit estimation database"
+msgstr "Öngörülen veri kullanımı sınırı veritabanını güncelle"
+
+msgid "tFull image backup #1"
+msgstr "Tam kalıp yedeği #1"
+
+msgid "tVolumes to snapshot in groups during image backups"
+msgstr "Kalıp yedeklemelerinde gruplarda anlık görüntüsü alınacak birimler"
+
+msgid "tVolumes to snapshot in groups during file backups"
+msgstr "Dosya yedeklemelerinde gruplarda anlık görüntüsü alınacak birimler"
+
+msgid "tWindows components backup configuration"
+msgstr "Windows bileşenleri yedekleme ayarları"
+
+msgid "tGroup name"
+msgstr "Grup adı"
+
+msgid "tWith Selected"
+msgstr "Seçilmişleri"

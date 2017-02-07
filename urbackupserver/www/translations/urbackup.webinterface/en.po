@@ -6,10 +6,11 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2016-07-08 12:28+0000\n"
+"PO-Revision-Date: 2017-02-06 09:57+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: English (http://www.transifex.com/uroni/urbackup/language/en/)\n"
 "MIME-Version: 1.0\n"
@@ -699,7 +700,9 @@ msgstr "Send mails only with SSL/TLS"
 msgid "tCheck SSL/TLS certificate"
 msgstr "Check SSL/TLS certificate"
 
-msgid "tSend test mail to this email address after saving the settings (leave empty to not send a test mail)"
+msgid ""
+"tSend test mail to this email address after saving the settings (leave empty"
+" to not send a test mail)"
 msgstr "Send test mail to this email address after saving the settings (leave empty to not send a test mail)"
 
 msgid "tTest Mail sent successfully"
@@ -936,7 +939,10 @@ msgstr "Successfull"
 msgid "tTarget version"
 msgstr "Target version"
 
-msgid "tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings."
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings."
 msgstr "Warning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings."
 
 msgid "tNext archival"
@@ -963,7 +969,8 @@ msgstr "Enable internet mode"
 msgid "tInternet auth key"
 msgstr "Internet auth key"
 
-msgid "tClients are removed during the cleanup time window, if they are offline."
+msgid ""
+"tClients are removed during the cleanup time window, if they are offline."
 msgstr "Clients are removed during the cleanup time window, if they are offline."
 
 msgid "tArchived"
@@ -1119,7 +1126,10 @@ msgstr "Internet image backup transfer mode"
 msgid "tUse symlinks during incremental file backups"
 msgstr "Use symlinks during incremental file backups"
 
-msgid "tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. "
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings. "
 msgstr "Warning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. "
 
 msgid "tClient download"
@@ -1218,13 +1228,18 @@ msgstr "About UrBackup"
 msgid "tAdd client"
 msgstr "Add client"
 
-msgid "tUrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered."
+msgid ""
+"tUrBackup automatically discovers clients in your local network. If the "
+"server is in the same sub-network as the client just install the client and "
+"wait for it to be discovered."
 msgstr "UrBackup automatically discovers clients in your local network. If the server is in the same sub-network as the client just install the client and wait for it to be discovered."
 
 msgid "tDownload the client from:"
 msgstr "Download the client from:"
 
-msgid "tIf you want a client to use multiple backup servers this server's identity is:"
+msgid ""
+"tIf you want a client to use multiple backup servers this server's identity "
+"is:"
 msgstr "If you want a client to use multiple backup servers this server's identity is:"
 
 msgid "tAdd new Internet client/client behind NAT"
@@ -1245,7 +1260,9 @@ msgstr "Cancel"
 msgid "tAccess denied"
 msgstr "Access denied"
 
-msgid "tSorry, something went wrong or you do not have the required rights to access this file or folder."
+msgid ""
+"tSorry, something went wrong or you do not have the required rights to "
+"access this file or folder."
 msgstr "Sorry, something went wrong or you do not have the required rights to access this file or folder."
 
 msgid "tLogin with username and password"
@@ -1320,7 +1337,10 @@ msgstr "Set the computer name to:"
 msgid "tSet the authentication key to:"
 msgstr "Set the authentication key to:"
 
-msgid "tWithout firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
+msgid ""
+"tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
+" client via internet. On Linux by changing INTERNET_ONLY to true in "
+"/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
 msgstr "Without firewall/NAT: Enable internet only mode if you only plan to use the client via internet. On Linux by changing INTERNET_ONLY to true in /etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
@@ -1416,22 +1436,30 @@ msgstr "Debugging: End-to-end verification of all file backups"
 msgid "tDebugging: Verify file backups using client side hashes"
 msgstr "Debugging: Verify file backups using client side hashes"
 
-msgid "tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)"
+msgid ""
+"tPeriodically readd file entries of internet clients to database (disable "
+"only if you do not run fulls)"
 msgstr "Periodically readd file entries of internet clients to database (disable only if you do not run fulls)"
 
 msgid "tRun backups with background priority on the clients"
 msgstr "Run backups with background priority on the clients"
 
-msgid "tCreate symbolically linked views for each user on the clients after file backups"
+msgid ""
+"tCreate symbolically linked views for each user on the clients after file "
+"backups"
 msgstr "Create symbolically linked views for each user on the clients after file backups"
 
 msgid "tMaximum number of simultaneous jobs per client"
 msgstr "Maximum number of simultaneous jobs per client"
 
-msgid "tList of volumes for which change block tracking should be used (if available)"
+msgid ""
+"tList of volumes for which change block tracking should be used (if "
+"available)"
 msgstr "List of volumes for which change block tracking should be used (if available)"
 
-msgid "tList of volumes for which the change block tracking should be crash persistent"
+msgid ""
+"tList of volumes for which the change block tracking should be crash "
+"persistent"
 msgstr "List of volumes for which the change block tracking should be crash persistent"
 
 msgid "tEnable logins via LDAP/AD"
@@ -1641,7 +1669,9 @@ msgstr "Serial number"
 msgid "tMount image"
 msgstr "Mount image"
 
-msgid "tUrBackup will use non-sandboxed server operating system functionality to mount the image. Only mount the image if you trust its source."
+msgid ""
+"tUrBackup will use non-sandboxed server operating system functionality to "
+"mount the image. Only mount the image if you trust its source."
 msgstr "UrBackup will use non-sandboxed server operating system functionality to mount the image. Only mount the image if you trust its source."
 
 msgid "tMounting image failed. Please see server log file for details."
@@ -1653,7 +1683,9 @@ msgstr "Ok. Reset this error"
 msgid "tOk. Stop showing this error"
 msgstr "Ok. Stop showing this error"
 
-msgid "tThis server has discovered clients which are currently not configured to use this server."
+msgid ""
+"tThis server has discovered clients which are currently not configured to "
+"use this server."
 msgstr "This server has discovered clients which are currently not configured to use this server."
 
 msgid "tSee here for details on how this can happen."
@@ -1701,10 +1733,14 @@ msgstr "Volume letters"
 msgid "tImage backup"
 msgstr "Image backup"
 
-msgid "tDo not start file backups if current estimated data usage limit per month is smaller than"
+msgid ""
+"tDo not start file backups if current estimated data usage limit per month "
+"is smaller than"
 msgstr "Do not start file backups if current estimated data usage limit per month is smaller than"
 
-msgid "tDo not start image backups if current estimated data usage limit per month is smaller than"
+msgid ""
+"tDo not start image backups if current estimated data usage limit per month "
+"is smaller than"
 msgstr "Do not start image backups if current estimated data usage limit per month is smaller than"
 
 msgid "tUpdate data limit estimation database"
@@ -1727,4 +1763,3 @@ msgstr "Group name"
 
 msgid "tWith Selected"
 msgstr "With Selected"
-
