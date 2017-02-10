@@ -1933,6 +1933,7 @@ void FileClientChunked::requestOfbChunk(_i64 chunk_pos)
 	state = CS_ID_FIRST;
 	remaining_bufptr_bytes = 0;
 	packet_buf_off = 0;
+	invalidateLastPatches();
 }
 
 _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
