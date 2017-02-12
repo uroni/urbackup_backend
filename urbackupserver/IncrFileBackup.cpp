@@ -1417,7 +1417,7 @@ bool IncrFileBackup::doFileBackup()
 
 		if(num_copied_file_entries>0)
 		{
-			ServerLogger::Log(logid, "Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
+			ServerLogger::Log(logid, "Number of copied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
 
 		if (copy_last_file_entries)
