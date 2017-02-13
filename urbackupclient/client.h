@@ -10,7 +10,8 @@
 #include "clientdao.h"
 #include <map>
 #include "tokens.h"
-#include "../urbackupcommon/TreeHash.h"
+#include "ClientHash.h"
+#include "ParallelHash.h"
 
 #ifdef _WIN32
 #ifndef VSS_XP
@@ -269,7 +270,7 @@ struct SVssInstance
 class ClientDAO;
 struct SVolumesCache;
 
-class IndexThread : public IThread, public IFileServ::IReadErrorCallback, IHashOutput
+class IndexThread : public IThread, public IFileServ::IReadErrorCallback
 {
 public:
 	static const char IndexThreadAction_StartFullFileBackup;
@@ -426,7 +427,7 @@ private:
 		const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs);
 
-	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data);
+	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
 
 	void commitModifyFilesBuffer();
@@ -436,8 +437,6 @@ private:
 	std::string getShaBinary(const std::string& fn);
 
 	std::string removeDirectorySeparatorAtEnd(const std::string& path);
-
-	void hash_output_all_adlers(int64 pos, const char * hash, size_t hsize);
 
 	bool getShaBinary(const std::string& fn, IHashFunc& hf, bool with_cbt);
 
@@ -525,6 +524,10 @@ private:
 
 	void postSnapshotProcessing(SCRef* ref, bool full_backup);
 
+	void initParallelHashing(const std::string& async_ticket);
+
+	bool addToPhashQueue(CWData& data);
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
@@ -575,14 +578,17 @@ private:
 
 	struct SBufferItem
 	{
-		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files)
-			: path(path), tgroup(tgroup), files(files)
+		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files, int64 target_generation)
+			: path(path), tgroup(tgroup), files(files), target_generation(target_generation)
 		{}
 
 		std::string path;
 		int tgroup;
 		std::vector<SFileAndHash> files;
+		int64 target_generation;
 	};
+
+	std::auto_ptr<ClientHash> client_hash;
 
 	std::vector< SBufferItem > modify_file_buffer;
 	size_t modify_file_buffer_size;
@@ -614,8 +620,6 @@ private:
 
 	std::string index_root_path;
 	bool index_error;
-
-	std::string sparse_extent_content;
 
 	std::vector<SVssLogItem> vsslog;
 
@@ -690,6 +694,8 @@ private:
 	int64 index_hdat_fs_block_size;
 	int64 index_chunkhash_pos;
 	_u16 index_chunkhash_pos_offset;
+	IFile* phash_queue;
+	int64 file_id;
 
 #ifdef _WIN32
 	struct SComponent

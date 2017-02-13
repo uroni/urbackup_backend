@@ -93,6 +93,12 @@
     <ClCompile Include="PipeFileTar.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PipeFileExt.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="IFileServ.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -177,6 +183,12 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="PipeFileTar.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFileExt.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IPipeFileExt.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

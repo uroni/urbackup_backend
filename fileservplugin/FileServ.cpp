@@ -25,6 +25,7 @@
 #include <algorithm>
 #include "CUDPThread.h"
 #include "PipeSessions.h"
+#include "PipeFileExt.h"
 
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
@@ -203,10 +204,10 @@ void FileServ::addScriptOutputFilenameMapping(const std::string& script_output_f
 {
 	IScopedLock lock(mutex);
 
-	script_mappings[script_output_fn] = SScriptMapping(script_fn, tar_file);
+	script_mappings[script_output_fn] = SScriptMapping(script_fn, tar_file, NULL);
 }
 
-std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file)
+std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file, IPipeFile*& pipe_file)
 {
 	IScopedLock lock(mutex);
 
@@ -214,11 +215,14 @@ std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, 
 	if(it!= script_mappings.end())
 	{
 		tar_file = it->second.tar_file;
+		pipe_file = it->second.pipe_file;
+		it->second.pipe_file = NULL;
 		return it->second.script_fn;
 	}
 	else
 	{
 		tar_file = false;
+		pipe_file = NULL;
 		return script_fn;
 	}
 }
@@ -391,4 +395,11 @@ IFileServ::CbtHashFileInfo FileServ::getCbtHashFile(const std::string & sharenam
 		return it->second;
 	}
 	return IFileServ::CbtHashFileInfo();
+}
+
+void FileServ::registerScriptPipeFile(const std::string & script_fn, IPipeFileExt * pipe_file)
+{
+	IScopedLock lock(mutex);
+
+	script_mappings[script_fn] = SScriptMapping(script_fn, false, new PipeFileExt(pipe_file, script_fn));
 }

@@ -192,11 +192,13 @@
     <ClCompile Include="FileMetadataPipe.cpp" />
     <ClCompile Include="FileServ.cpp" />
     <ClCompile Include="FileServFactory.cpp" />
+    <ClCompile Include="IFileServ.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map_buffer.cpp" />
     <ClCompile Include="PipeFile.cpp" />
     <ClCompile Include="PipeFileBase.cpp" />
+    <ClCompile Include="PipeFileExt.cpp" />
     <ClCompile Include="PipeFileTar.cpp" />
     <ClCompile Include="PipeFileWin.cpp" />
     <ClCompile Include="PipeSessions.cpp" />
@@ -221,11 +223,13 @@
     <ClInclude Include="IFileServ.h" />
     <ClInclude Include="IFileServFactory.h" />
     <ClInclude Include="IPermissionCallback.h" />
+    <ClInclude Include="IPipeFileExt.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="map_buffer.h" />
     <ClInclude Include="packet_ids.h" />
     <ClInclude Include="PipeFile.h" />
     <ClInclude Include="PipeFileBase.h" />
+    <ClInclude Include="PipeFileExt.h" />
     <ClInclude Include="PipeFileTar.h" />
     <ClInclude Include="PipeSessions.h" />
     <ClInclude Include="pluginmgr.h" />

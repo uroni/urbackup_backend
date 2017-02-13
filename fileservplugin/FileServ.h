@@ -5,6 +5,8 @@
 #include "../Interface/ThreadPool.h"
 #include <vector>
 
+class IPipeFile;
+
 class FileServ : public IFileServ
 {
 public:
@@ -35,7 +37,7 @@ public:
 
 	static bool checkIdentity(const std::string &pIdentity);
 
-	static std::string mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file);
+	static std::string mapScriptOutputNameToScript(const std::string& script_fn, bool& tar_file, IPipeFile*& pipe_file);
 
 	virtual void registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory );
 
@@ -65,6 +67,8 @@ public:
 
 	static CbtHashFileInfo getCbtHashFile(const std::string& sharename, const std::string& identity);
 
+	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -76,18 +80,19 @@ private:
 	struct SScriptMapping
 	{
 		SScriptMapping()
-			: tar_file(false)
+			: tar_file(false), pipe_file(NULL)
 		{
 
 		}
 
 		SScriptMapping(std::string script_fn,
-			bool tar_file)
-			: script_fn(script_fn), tar_file(tar_file)
+			bool tar_file, IPipeFile* pipe_file)
+			: script_fn(script_fn), tar_file(tar_file), pipe_file(pipe_file)
 		{}
 
 		std::string script_fn;
 		bool tar_file;
+		IPipeFile* pipe_file;
 	};
 
 	static std::map<std::string, SScriptMapping> script_mappings;

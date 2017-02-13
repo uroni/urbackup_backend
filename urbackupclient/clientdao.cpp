@@ -38,12 +38,12 @@ ClientDAO::~ClientDAO()
 
 void ClientDAO::prepareQueries()
 {
-	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=? AND tgroup=?", false);
+	q_get_files=db->Prepare("SELECT data, num, generation FROM files WHERE name=? AND tgroup=?", false);
 	q_add_files=db->Prepare("INSERT OR REPLACE INTO files (name, tgroup, num, data) VALUES (?,?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked, server_default, reset_keep FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
-	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=? AND tgroup=?", false);
+	q_modify_files=db->Prepare("UPDATE files SET data=?, num=?, generation=? WHERE name=? AND tgroup=? AND generation=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=? AND tgroup=?", false);
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken, clientsubname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)", false);
 	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken, clientsubname FROM shadowcopies", false);
@@ -164,7 +164,7 @@ std::string ClientDAO::escapeGlob(const std::string& glob)
 	return ret;
 }
 
-bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data)
+bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash> &data, int64& generation)
 {
 	q_get_files->Bind(path);
 	q_get_files->Bind(tgroup);
@@ -172,6 +172,8 @@ bool ClientDAO::getFiles(std::string path, int tgroup, std::vector<SFileAndHash>
 	q_get_files->Reset();
 	if(res.size()==0)
 		return false;
+
+	generation = watoi64(res[0]["generation"]);
 
 	std::string &qdata=res[0]["data"];
 
@@ -333,14 +335,16 @@ void ClientDAO::addFiles(std::string path, int tgroup, const std::vector<SFileAn
 	delete []buffer;
 }
 
-void ClientDAO::modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
+void ClientDAO::modifyFiles(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
 	q_modify_files->Bind(buffer, (_u32)ds);
 	q_modify_files->Bind(ds);
+	q_modify_files->Bind(target_generation+1);
 	q_modify_files->Bind(path);
 	q_modify_files->Bind(tgroup);
+	q_modify_files->Bind(target_generation);
 	q_modify_files->Write();
 	q_modify_files->Reset();
 	delete []buffer;

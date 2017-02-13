@@ -85,15 +85,18 @@ const char IndexThread::IndexThreadAction_SnapshotCbt = 12;
 
 extern PLUGIN_ID filesrv_pluginid;
 
-const int64 idletime=60000;
-const unsigned int nonidlesleeptime=500;
-const unsigned short tcpport=35621;
-const unsigned short udpport=35622;
-const unsigned int shadowcopy_timeout=7*24*60*60*1000;
-const unsigned int shadowcopy_startnew_timeout=55*60*1000;
-const size_t max_modify_file_buffer_size= 2 * 1024 * 1024;
-const size_t max_add_file_buffer_size=2*1024*1024;
-const int64 file_buffer_commit_interval=120*1000;
+namespace
+{
+	const int64 idletime = 60000;
+	const unsigned int nonidlesleeptime = 500;
+	const unsigned short tcpport = 35621;
+	const unsigned short udpport = 35622;
+	const unsigned int shadowcopy_timeout = 7 * 24 * 60 * 60 * 1000;
+	const unsigned int shadowcopy_startnew_timeout = 55 * 60 * 1000;
+	const size_t max_modify_file_buffer_size = 2 * 1024 * 1024;
+	const size_t max_add_file_buffer_size = 2 * 1024 * 1024;
+	const int64 file_buffer_commit_interval = 120 * 1000;
+}
 
 
 void IdleCheckerThread::operator()(void)
@@ -245,32 +248,6 @@ namespace
 #endif //HAVE_MNTENT_H
 	}
 #endif //!_WIN32
-
-	std::string build_sparse_extent_content()
-	{
-		char buf[c_small_hash_dist] = {};
-		_u32 small_hash = urb_adler32(urb_adler32(0, NULL, 0), buf, c_small_hash_dist);
-		small_hash = little_endian(small_hash);
-
-		MD5 big_hash;
-		for (int64 i = 0; i<c_checkpoint_dist; i += c_small_hash_dist)
-		{
-			big_hash.update(reinterpret_cast<unsigned char*>(buf), c_small_hash_dist);
-		}
-		big_hash.finalize();
-
-		std::string ret;
-		ret.resize(chunkhash_single_size);
-		char* ptr = &ret[0];
-		memcpy(ptr, big_hash.raw_digest_int(), big_hash_size);
-		ptr += big_hash_size;
-		for (int64 i = 0; i < c_checkpoint_dist; i += c_small_hash_dist)
-		{
-			memcpy(ptr, &small_hash, sizeof(small_hash));
-			ptr += sizeof(small_hash);
-		}
-		return ret;
-	}
 }
 
 IMutex *IndexThread::filelist_mutex=NULL;
@@ -295,7 +272,8 @@ std::string add_trailing_slash(const std::string &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_scripts(false), volumes_cache(NULL)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1),
+	with_scripts(false), volumes_cache(NULL), phash_queue(NULL)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -633,10 +611,17 @@ void IndexThread::operator()(void)
 			data.getInt(&running_jobs);
 			char async_index = 0;
 			data.getChar(&async_index);
+			std::string async_ticket;
+			data.getStr2(&async_ticket);
 
 			if (async_index == 1)
 			{
 				async_timeout = true;
+			}
+
+			if (!async_ticket.empty())
+			{
+				initParallelHashing(async_ticket);
 			}
 
 			setFlags(flags);
@@ -1175,6 +1160,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
 		index_exlude_dirs, index_include_dirs);
+	file_id = 0;
 
 	updateDirs();
 
@@ -1842,6 +1828,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	{
 		return false;
 	}
+
+	bool finish_phash_path = false;
 	
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -1894,6 +1882,29 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 					extra += "&sha512=" + base64_encode_dash(files[i].hash);
 				}
 			}
+			else if (calculate_filehashes_on_client
+				&& phash_queue != NULL)
+			{
+				if (!finish_phash_path)
+				{
+					finish_phash_path = true;
+
+					CWData wdata;
+					wdata.addChar(ID_SET_CURR_DIRS);
+					wdata.addString2(orig_dir);
+					wdata.addInt(index_group);
+					wdata.addString2(dir);
+					addToPhashQueue(wdata);
+				}
+
+				CWData wdata;
+				wdata.addChar(ID_HASH_FILE);
+				wdata.addVarInt(file_id);
+				wdata.addString2(files[i].name);
+				addToPhashQueue(wdata);
+			}
+
+			++file_id;
 				
 			if(end_to_end_file_backup_verification && !files[i].isspecialf)
 			{
@@ -1919,6 +1930,13 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			outfile << "\n";
 		}
+	}
+
+	if (finish_phash_path)
+	{
+		CWData wdata;
+		wdata.addChar(ID_FINISH_CURR_DIR);
+		addToPhashQueue(wdata);
 	}
 
 	for(size_t i=0;dir_recurse && i<files.size();++i)
@@ -2006,6 +2024,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				{
 					outfile << "u\n";
 				}
+
+				++file_id;
 				
 
 				if(!b)
@@ -2044,6 +2064,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		{
 			outfile << "u\n";
 		}
+
+		++file_id;
 	}
 
 	return has_include;
@@ -2358,6 +2380,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 		std::vector<SFileAndHash> db_files;
 		bool has_files = false;
+		int64 target_generation = 0;
 
 		if (use_db_hashes)
 		{
@@ -2365,7 +2388,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if (calculate_filehashes_on_client)
 			{
 #endif
-				has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files);
+				has_files = cd->getFiles(path_lower, get_db_tgroup(), db_files, target_generation);
 #ifndef _WIN32
 			}
 #endif
@@ -2406,7 +2429,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if(fs_files!=db_files)
 			{
 				++index_c_db_update;
-				modifyFilesInt(path_lower, get_db_tgroup(), fs_files);
+				modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
 			}
 		}
 		else
@@ -2426,7 +2449,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 #ifdef _WIN32
 	else
 	{	
-		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files) )
+		int64 target_generation = 0;
+		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files, target_generation) )
 		{
 			++index_c_db;
 
@@ -2438,7 +2462,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 					exclude_dirs, include_dirs))
 				{
 					++index_c_db_update;
-					modifyFilesInt(path_lower, get_db_tgroup(), fs_files);
+					modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
 				}
 			}
 
@@ -3610,7 +3634,7 @@ void IndexThread::doStop(void)
 
 size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data )
 {
-	size_t add_size=path.size()+sizeof(std::string)+sizeof(int);
+	size_t add_size=path.size()+sizeof(std::string)+sizeof(int)+sizeof(int64);
 	for(size_t i=0;i<data.size();++i)
 	{
 		add_size+=data[i].name.size();
@@ -3623,11 +3647,12 @@ size_t IndexThread::calcBufferSize( std::string &path, const std::vector<SFileAn
 }
 
 
-void IndexThread::modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data)
+void IndexThread::modifyFilesInt(std::string path, int tgroup,
+	const std::vector<SFileAndHash> &data, int64 target_generation)
 {
 	modify_file_buffer_size+=calcBufferSize(path, data);
 
-	modify_file_buffer.push_back(SBufferItem(path, tgroup, data));
+	modify_file_buffer.push_back(SBufferItem(path, tgroup, data, target_generation));
 
 	if(last_file_buffer_commit_time==0)
 	{
@@ -3646,7 +3671,8 @@ void IndexThread::commitModifyFilesBuffer(void)
 	db->BeginWriteTransaction();
 	for(size_t i=0;i<modify_file_buffer.size();++i)
 	{
-		cd->modifyFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup, modify_file_buffer[i].files);
+		cd->modifyFiles(modify_file_buffer[i].path, modify_file_buffer[i].tgroup,
+			modify_file_buffer[i].files, modify_file_buffer[i].target_generation);
 	}
 	db->EndTransaction();
 
@@ -3659,7 +3685,7 @@ void IndexThread::addFilesInt( std::string path, int tgroup, const std::vector<S
 {
 	add_file_buffer_size+=calcBufferSize(path, data);
 
-	add_file_buffer.push_back(SBufferItem(path, tgroup, data));
+	add_file_buffer.push_back(SBufferItem(path, tgroup, data, 0));
 
 	if(last_file_buffer_commit_time==0)
 	{
@@ -4311,11 +4337,11 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	return ret;
 }
 
-std::string IndexThread::getShaBinary( const std::string& fn )
+std::string IndexThread::getShaBinary(const std::string& fn)
 {
 	VSSLog("Hashing file \"" + fn + "\"", LL_DEBUG);
 
-	if(sha_version==256)
+	if (sha_version == 256)
 	{
 		HashSha256 hash_256;
 		if (!getShaBinary(fn, hash_256, false))
@@ -4327,8 +4353,8 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 	}
 	else if (sha_version == 528)
 	{
-		TreeHash treehash(index_hdat_file.get()==NULL ? NULL : this);
-		if (!getShaBinary(fn, treehash, index_hdat_file.get()!=NULL))
+		TreeHash treehash(index_hdat_file.get() == NULL ? NULL : client_hash.get());
+		if (!getShaBinary(fn, treehash, index_hdat_file.get() != NULL))
 		{
 			return std::string();
 		}
@@ -4347,244 +4373,9 @@ std::string IndexThread::getShaBinary( const std::string& fn )
 	}
 }
 
-namespace
-{
-	bool buf_is_zero(const char* buf, size_t bsize)
-	{
-		for (size_t i = 0; i < bsize; ++i)
-		{
-			if (buf[i] != 0)
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-}
-
-void IndexThread::hash_output_all_adlers(int64 pos, const char* hash, size_t hsize)
-{
-	if (index_chunkhash_pos != -1
-		&& index_hdat_file.get() != NULL)
-	{
-		assert(hsize == chunkhash_single_size);
-		char chunkhash[sizeof(_u16) + chunkhash_single_size];
-		memcpy(chunkhash, &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
-		memcpy(chunkhash + sizeof(_u16), hash, chunkhash_single_size);
-		index_hdat_file->Write(index_chunkhash_pos, chunkhash, sizeof(chunkhash));
-	}
-}
-
 bool IndexThread::getShaBinary( const std::string& fn, IHashFunc& hf, bool with_cbt)
 {
-	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
-
-	if(f.get()==NULL)
-	{
-		return false;
-	}
-
-	int64 skip_start = -1;
-	bool needs_seek = false;
-	const size_t bsize = 512*1024;
-	int64 fpos = 0;
-	_u32 rc = 1;
-	std::vector<char> buf;
-	buf.resize(bsize);
-
-	FsExtentIterator extent_iterator(f.get(), bsize);
-
-	IFsFile::SSparseExtent curr_sparse_extent = extent_iterator.nextExtent();
-
-	int64 fsize = f->Size();
-
-	bool has_more_extents=false;
-	std::vector<IFsFile::SFileExtent> extents;
-	size_t curr_extent_idx = 0;
-	if (with_cbt
-		&& fsize>c_checkpoint_dist)
-	{
-		extents = f->getFileExtents(0, index_hdat_fs_block_size, has_more_extents);
-	}
-	else
-	{
-		with_cbt = false;
-	}
-
-	while(fpos<=fsize && rc>0)
-	{
-		while (curr_sparse_extent.offset!=-1
-			&& curr_sparse_extent.offset+ curr_sparse_extent.size<fpos)
-		{
-			curr_sparse_extent = extent_iterator.nextExtent();
-		}
-
-		size_t curr_bsize = bsize;
-		if (fpos + static_cast<int64>(curr_bsize) > fsize)
-		{
-			curr_bsize = static_cast<size_t>(fsize - fpos);
-		}
-
-		if (curr_sparse_extent.offset != -1
-			&& curr_sparse_extent.offset <= fpos
-			&& curr_sparse_extent.offset + curr_sparse_extent.size >= fpos + static_cast<int64>(bsize))
-		{
-			if (skip_start == -1)
-			{
-				skip_start = fpos;
-			}
-			fpos += bsize;
-			rc = static_cast<_u32>(bsize);
-			continue;
-		}
-
-		index_chunkhash_pos = -1;
-
-		if (!extents.empty()
-			&& index_hdat_file.get()!=NULL
-			&& fpos%c_checkpoint_dist==0
-			&& curr_bsize==bsize)
-		{
-			assert(bsize == c_checkpoint_dist);
-			while (curr_extent_idx<extents.size()
-				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size < fpos)
-			{
-				++curr_extent_idx;
-
-				if (curr_extent_idx >= extents.size()
-					&& has_more_extents)
-				{
-					extents = f->getFileExtents(fpos, index_hdat_fs_block_size, has_more_extents);
-					curr_extent_idx = 0;
-				}
-			}
-
-			if(curr_extent_idx<extents.size()
-				&& extents[curr_extent_idx].offset <= fpos
-				&& extents[curr_extent_idx].offset + extents[curr_extent_idx].size >= fpos + static_cast<int64>(bsize))
-			{
-				int64 volume_pos = extents[curr_extent_idx].volume_offset + (fpos - extents[curr_extent_idx].offset);
-				index_chunkhash_pos = (volume_pos / c_checkpoint_dist)*(sizeof(_u16)+chunkhash_single_size);
-				index_chunkhash_pos_offset = static_cast<_u16>((volume_pos%c_checkpoint_dist) / 512);
-
-				char chunkhash[sizeof(_u16) + chunkhash_single_size];
-				if (index_hdat_file->Read(index_chunkhash_pos, chunkhash, sizeof(chunkhash)) == sizeof(chunkhash))
-				{
-					_u16 chunkhash_offset;
-					memcpy(&chunkhash_offset, chunkhash, sizeof(chunkhash_offset));
-					if (index_chunkhash_pos_offset == chunkhash_offset
-						&& !buf_is_zero(chunkhash, sizeof(chunkhash)) )
-					{
-						if (sparse_extent_content.empty())
-						{
-							sparse_extent_content = build_sparse_extent_content();
-							assert(sparse_extent_content.size() == chunkhash_single_size);
-						}
-
-						if (memcmp(chunkhash+sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size) == 0)
-						{
-							if (skip_start == -1)
-							{
-								skip_start = fpos;
-							}
-						}
-						else
-						{
-							if (skip_start != -1)
-							{
-								int64 skip[2];
-								skip[0] = skip_start;
-								skip[1] = fpos - skip_start;
-								hf.sparse_hash(reinterpret_cast<char*>(&skip), sizeof(int64) * 2);
-								skip_start = -1;
-							}
-
-							hf.addHashAllAdler(chunkhash+sizeof(_u16), chunkhash_single_size, bsize);
-						}
-
-						fpos += bsize;
-						rc = bsize;
-
-						needs_seek = true;
-						continue;
-					}
-				}		
-				else
-				{
-					index_chunkhash_pos = -1;
-				}
-			}
-		}
-
-		if (skip_start != -1
-			|| needs_seek)
-		{
-			f->Seek(fpos);
-			needs_seek = false;
-		}
-
-		if (curr_bsize > 0)
-		{
-			bool has_read_error = false;
-			rc = f->Read(buf.data(), static_cast<_u32>(curr_bsize), &has_read_error);
-
-			if (has_read_error)
-			{
-				std::string msg;
-				int64 code = os_last_error(msg);
-				VSSLog("Read error while hashing \"" + fn + "\". "+ msg+" (code: "+convert(code)+")", LL_ERROR);
-				return false;
-			}
-		}
-		else
-		{
-			rc = 0;
-		}
-
-		if (rc == bsize && buf_is_zero(buf.data(), bsize))
-		{
-			if (skip_start == -1)
-			{
-				skip_start = fpos;
-			}
-			fpos += bsize;
-			rc = bsize;
-
-			if (index_chunkhash_pos != -1)
-			{
-				if (sparse_extent_content.empty())
-				{
-					sparse_extent_content = build_sparse_extent_content();
-					assert(sparse_extent_content.size() == chunkhash_single_size);
-				}
-
-				char chunkhash[sizeof(_u16) + chunkhash_single_size];
-				memcpy(chunkhash, &index_chunkhash_pos_offset, sizeof(index_chunkhash_pos_offset));
-				memcpy(chunkhash + sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size);
-				index_hdat_file->Write(index_chunkhash_pos,	chunkhash, sizeof(chunkhash));
-			}
-
-			continue;
-		}
-
-		if (skip_start != -1)
-		{
-			int64 skip[2];
-			skip[0] = skip_start;
-			skip[1] = fpos - skip_start;
-			hf.sparse_hash(reinterpret_cast<char*>(&skip), sizeof(int64) * 2);
-			skip_start = -1;
-		}
-
-		if (rc > 0)
-		{
-			hf.hash(buf.data(), rc);
-			fpos += rc;
-		}
-	}
-
-	return true;
+	return client_hash->getShaBinary(fn, hf, with_cbt);
 }
 
 bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
@@ -4758,6 +4549,8 @@ void IndexThread::writeDir(std::fstream& out, const std::string& name, bool with
 	{
 		out << "\n";
 	}
+
+	++file_id;;
 }
 
 std::string IndexThread::execute_script(const std::string& cmd, const std::string& args)
@@ -4791,11 +4584,13 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 	if(!scripts.empty())
 	{
 		outfile << "d\"urbackup_backup_scripts\"\n";
+		++file_id;
 
 		for(size_t i=0;i<scripts.size();++i)
 		{
 			int64 rndnum=Server->getRandomNumber()<<30 | Server->getRandomNumber();
 			outfile << "f\"" << escapeListName(scripts[i].outputname) << "\" " << scripts[i].size << " " << rndnum;
+			++file_id;
 
 			if (!scripts[i].orig_path.empty())
 			{
@@ -4811,6 +4606,7 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 		}
 
 		outfile << "u\n";
+		++file_id;
 
 		return true;
 	}
@@ -5039,6 +4835,7 @@ void IndexThread::addFileFromLast(std::fstream & outfile)
 	}
 
 	outfile << "\n";
+	++file_id;
 }
 
 bool IndexThread::handleLastFilelistDepth(SFile& data)
@@ -6649,11 +6446,11 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 			index_hdat_fs_block_size = bytes_per_sector * sectors_per_cluster;
 		}
 #endif
+		size_t* seq_id = &index_hdat_sequence_ids[strlower(vol)];
 		if (index_hdat_file.get()
 			&& filesrv != NULL
 			&& index_hdat_fs_block_size>0)
 		{
-			size_t* seq_id = &index_hdat_sequence_ids[strlower(vol)];
 			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DELETE);
 			if (f != NULL)
 			{
@@ -6661,10 +6458,46 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 					IFileServ::CbtHashFileInfo(f, index_hdat_fs_block_size, seq_id, *seq_id));
 			}
 		}
+
+		client_hash.reset(new ClientHash(index_hdat_file.get(), false, index_hdat_fs_block_size,
+			seq_id, *seq_id));
+
+		if (phash_queue != NULL)
+		{
+			IFsFile* f = Server->openFile(index_hdat_file->getFilename(), MODE_RW_DELETE);
+			if (f != NULL)
+			{
+				CWData data;
+				data.addChar(ID_CBT_DATA);
+				data.addVoidPtr(f);
+				data.addVarInt(index_hdat_fs_block_size);
+				data.addVoidPtr(seq_id);
+				data.addVarInt(*seq_id);
+
+				if (!addToPhashQueue(data))
+				{
+					Server->destroy(f);
+				}
+			}
+			else
+			{
+				CWData data;
+				data.addChar(ID_INIT_HASH);
+				addToPhashQueue(data);
+			}
+		}
 	}
 	else
 	{
 		index_hdat_file.reset();
+		client_hash.reset(new ClientHash(NULL, false, 0, NULL, 0));
+
+		if (phash_queue != NULL)
+		{
+			CWData data;
+			data.addChar(ID_INIT_HASH);
+			addToPhashQueue(data);
+		}
 	}
 }
 
@@ -6929,4 +6762,26 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 
 	VSSLog("Scanning for changed hard links on volume of \"" + ref->target + "\"...", LL_INFO);
 	handleHardLinks(ref->target, ref->volpath, volpath);
+}
+
+void IndexThread::initParallelHashing(const std::string & async_ticket)
+{
+	phash_queue = Server->openTemporaryFile();
+	filesrv->registerScriptPipeFile(async_ticket, new ParallelHash(phash_queue, sha_version));
+}
+
+bool IndexThread::addToPhashQueue(CWData & data)
+{
+	_u32 msgsize = static_cast<_u32>(data.getDataSize());
+	if(phash_queue->Write(reinterpret_cast<char*>(&msgsize), sizeof(msgsize))!=sizeof(msgsize))
+	{
+		return false;
+	}
+
+	if (phash_queue->Write(data.getDataPtr(), data.getDataSize()) != data.getDataSize())
+	{
+		return false;
+	}
+
+	return true;
 }

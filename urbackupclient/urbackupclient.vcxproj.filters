@@ -183,6 +183,12 @@
     <ClCompile Include="..\common\miniz.c">
       <Filter>miniz</Filter>
     </ClCompile>
+    <ClCompile Include="ParallelHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientHash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -334,6 +340,12 @@
     </ClInclude>
     <ClInclude Include="..\common\miniz.h">
       <Filter>miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="ParallelHash.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientHash.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

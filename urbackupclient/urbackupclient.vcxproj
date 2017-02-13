@@ -46,6 +46,7 @@
     <ClCompile Include="ChangeJournalWatcher.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientdao.cpp" />
+    <ClCompile Include="ClientHash.cpp" />
     <ClCompile Include="ClientSend.cpp" />
     <ClCompile Include="ClientService.cpp" />
     <ClCompile Include="ClientServiceCMD.cpp" />
@@ -59,6 +60,7 @@
     <ClCompile Include="file_permissions.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
+    <ClCompile Include="ParallelHash.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
     <ClCompile Include="RestoreDownloadThread.cpp" />
     <ClCompile Include="RestoreFiles.cpp" />
@@ -103,6 +105,7 @@
     <ClInclude Include="ChangeJournalWatcher.h" />
     <ClInclude Include="client.h" />
     <ClInclude Include="clientdao.h" />
+    <ClInclude Include="ClientHash.h" />
     <ClInclude Include="ClientSend.h" />
     <ClInclude Include="ClientService.h" />
     <ClInclude Include="database.h" />
@@ -111,6 +114,7 @@
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
+    <ClInclude Include="ParallelHash.h" />
     <ClInclude Include="PersistentOpenFiles.h" />
     <ClInclude Include="RestoreDownloadThread.h" />
     <ClInclude Include="RestoreFiles.h" />

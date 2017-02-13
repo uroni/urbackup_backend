@@ -7,6 +7,7 @@
 #include "../Interface/File.h"
 
 class IPipe;
+class IPipeFileExt;
 
 class IFileServ : public IObject
 {
@@ -58,6 +59,7 @@ public:
 	virtual bool hasActiveTransfers(const std::string& sharename, const std::string& server_token) = 0;
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
+	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file) = 0;
 	virtual void clearReadErrors() = 0;
 
 	struct CbtHashFileInfo
