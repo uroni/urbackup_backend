@@ -3,6 +3,7 @@
 #include "ClientHash.h"
 #include <algorithm>
 #include "database.h"
+#include "../stringtools.h"
 
 namespace
 {
@@ -207,8 +208,6 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	std::string full_path = curr_snapshot_dir + os_file_sep() + fn;
 
 	SFileAndHash fandhash;
-	CWData wdata;
-	wdata.addChar(1);
 	if (sha_version == 256)
 	{
 		HashSha256 hash_256;
@@ -240,9 +239,13 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		fandhash.hash = hash_512.finalize();
 	}
 
+	CWData wdata;
+	wdata.addUShort(0);
+	wdata.addChar(1);
 	wdata.addVarInt(file_id);
 	wdata.addString2(fandhash.hash);
 	fandhash.name = fn;
+	*reinterpret_cast<_u16*>(wdata.getDataPtr()) = little_endian(static_cast<_u16>(wdata.getDataSize() - sizeof(_u16)));
 	curr_files.push_back(fandhash);
 
 	addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());

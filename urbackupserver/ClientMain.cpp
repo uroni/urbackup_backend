@@ -1589,7 +1589,12 @@ bool ClientMain::updateCapabilities(void)
 			&& it->second=="1")
 		{
 			connection_metered = true;
-		}		
+		}
+		it = params.find("PHASH");
+		if (it != params.end())
+		{
+			protocol_versions.phash_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{

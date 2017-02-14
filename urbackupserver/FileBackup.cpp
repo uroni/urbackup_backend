@@ -181,6 +181,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		start_backup_cmd += "&status_id=" + convert(status_id);
 	}
 
+	if (client_main->getProtocolVersions().phash_version > 0)
+	{
+		start_backup_cmd += "&phash=1";
+	}
+
 	bool async_index = false;
 	if (client_main->getProtocolVersions().async_index_version > 0)
 	{
