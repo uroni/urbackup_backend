@@ -357,6 +357,9 @@
     <ClCompile Include="apps\patch.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="PhashLoad.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -646,6 +649,9 @@
     </ClInclude>
     <ClInclude Include="apps\patch.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="PhashLoad.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

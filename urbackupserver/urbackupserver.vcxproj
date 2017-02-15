@@ -241,6 +241,7 @@
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
     <ClCompile Include="LMDBFileIndex.cpp" />
+    <ClCompile Include="PhashLoad.cpp" />
     <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\add_client.cpp" />
@@ -354,6 +355,7 @@
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
     <ClInclude Include="LMDBFileIndex.h" />
+    <ClInclude Include="PhashLoad.h" />
     <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />

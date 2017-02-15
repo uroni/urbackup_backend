@@ -39,6 +39,7 @@
 #include "server.h"
 #include "../urbackupcommon/TreeHash.h"
 #include "../common/data.h"
+#include "PhashLoad.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
@@ -181,9 +182,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		start_backup_cmd += "&status_id=" + convert(status_id);
 	}
 
+	bool phash = false;
 	if (client_main->getProtocolVersions().phash_version > 0)
 	{
 		start_backup_cmd += "&phash=1";
+		phash = true;
 	}
 
 	bool async_index = false;
@@ -307,15 +310,38 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			if(ret!="DONE")
 			{
 				if (async_id.empty()
-					&& next(ret, 0, "ASYNC-"))
+					&& (next(ret, 0, "ASYNC-")
+						|| next(ret, 0, "ASYNC-PHASH-") ) )
 				{
+					std::string params_str;
+					bool curr_phash;
+					if (next(ret, 0, "ASYNC-"))
+					{
+						params_str = ret.substr(6);
+						curr_phash = false;
+					}
+					else
+					{
+						params_str = ret.substr(12);
+						curr_phash = true;
+					}
 					str_map params;
-					ParseParamStrHttp(ret.substr(6), &params);
+					ParseParamStrHttp(params_str, &params);
 
 					async_id = params["async_id"];
 					Server->destroy(cc);
 					cc = NULL;
 					starttime = Server->getTimeMS();
+
+					if (phash
+						&& curr_phash)
+					{
+						if (!startPhashDownloadThread(async_id))
+						{
+							ServerLogger::Log(logid, "Error starting parallel hash load", LL_ERROR);
+							break;
+						}
+					}
 				}
 				else if(ret=="BUSY")
 				{
@@ -1899,7 +1925,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 		_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream.get(), server_settings.get(), 10000);
 		if(rc!=ERR_CONNECTED)
 		{
-			ServerLogger::Log(logid, "Full Backup of "+clientname+" failed - CONNECT error (for metadata stream)", LL_ERROR);
+			ServerLogger::Log(logid, "Backup of "+clientname+" failed - CONNECT error (for metadata stream)", LL_ERROR);
 			has_early_error=true;
 			log_backup=false;
 			return false;
@@ -2094,6 +2120,91 @@ bool FileBackup::loadWindowsBackupComponentConfigXml(FileClient &fc)
 			ServerLogger::Log(logid, "Windows backup component config XML is empty", LL_ERROR);
 			return false;
 		}
+	}
+
+	return true;
+}
+
+bool FileBackup::startPhashDownloadThread(const std::string& async_id)
+{
+	std::string identity = client_main->getIdentity();
+	std::auto_ptr<FileClient> fc_phash_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+		client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
+
+	_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream.get(), server_settings.get(), 10000);
+	if (rc != ERR_CONNECTED)
+	{
+		ServerLogger::Log(logid, "Full Backup of " + clientname + " failed - CONNECT error (for metadata stream)", LL_ERROR);
+		has_early_error = true;
+		log_backup = false;
+		return false;
+	}
+
+	fc_phash_stream->setProgressLogCallback(this);
+	phash_load.reset(new PhashLoad(fc_phash_stream.release(), logid, async_id));
+	phash_load_ticket = Server->getThreadPool()->execute(phash_load.get(), "phash load");
+
+	int64 starttime = Server->getTimeMS();
+
+	do
+	{
+		if (phash_load->isDownloading())
+		{
+			break;
+		}
+		Server->wait(100);
+	} while (Server->getTimeMS() - starttime<10000);
+
+	if (!phash_load->isDownloading())
+	{
+		stopPhashDownloadThread();
+		return false;
+	}
+
+	return true;
+}
+
+bool FileBackup::stopPhashDownloadThread()
+{
+	if (phash_load.get() == NULL)
+	{
+		return true;
+	}
+
+	if (!Server->getThreadPool()->waitFor(phash_load_ticket, 1000))
+	{
+		ServerLogger::Log(logid, "Waiting for parallel hash load stream to finish", LL_INFO);
+
+		do
+		{
+			std::string identity = client_main->getIdentity();
+			std::auto_ptr<FileClient> fc_phash_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+				client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
+
+			_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream_end.get(), server_settings.get(), 10000);
+			if (rc == ERR_CONNECTED)
+			{
+				fc_phash_stream_end->InformMetadataStreamEnd(server_token, 0);
+			}
+			else
+			{
+				ServerLogger::Log(logid, "Could not get filesrv connection when trying to end parallel hash data tranfer (" + clientname + ").", LL_DEBUG);
+			}
+
+			if (Server->getThreadPool()->waitFor(phash_load_ticket, 1000))
+			{
+				break;
+			}
+
+			phash_load->setProgressLogEnabled(true);
+			phash_load->shutdown();
+
+		} while (true);
+	}
+
+	if (phash_load->hasError() || phash_load->hasTimeoutError())
+	{
+		++num_issues;
 	}
 
 	return true;

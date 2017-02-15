@@ -16,6 +16,7 @@ class BackupServerHash;
 class BackupServerPrepareHash;
 class ServerPingThread;
 class FileIndex;
+class PhashLoad;
 namespace server {
 class FileMetadataDownloadThread;
 }
@@ -115,6 +116,8 @@ protected:
 	void addFilePathCorrections(const std::map<std::string, std::string>& c);
 	std::string permissionsAllowAll();
 	bool loadWindowsBackupComponentConfigXml(FileClient &fc);
+	bool startPhashDownloadThread(const std::string& async_id);
+	bool stopPhashDownloadThread();
 
 	int group;
 	bool use_tmpfiles;
@@ -157,4 +160,7 @@ protected:
 
 	int64 last_speed_received_bytes;
 	int64 speed_set_time;
+
+	std::auto_ptr<PhashLoad> phash_load;
+	THREADPOOL_TICKET phash_load_ticket;
 };

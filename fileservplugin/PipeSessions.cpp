@@ -108,7 +108,8 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
 
 			bool l_tar_file = false;
-			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, l_tar_file);
+			IPipeFile* pipe_file = NULL;
+			std::string script_filename = FileServ::mapScriptOutputNameToScript(output_filename, l_tar_file, pipe_file);
 
 			script_cmd = "\"" + script_cmd + script_filename +
 				"\" \"" + output_filename + "\" "+convert(backupnum);
@@ -119,7 +120,11 @@ IFile* PipeSessions::getFile(const std::string& cmd, ScopedPipeFileUser& pipe_fi
 			}
 
 			IPipeFile* nf;
-			if (!l_tar_file)
+			if (pipe_file != NULL)
+			{
+				nf = pipe_file;
+			}
+			else if (!l_tar_file)
 			{
 				nf = new PipeFile(script_cmd);
 			}

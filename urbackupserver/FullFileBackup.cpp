@@ -31,6 +31,7 @@
 #include "FileMetadataDownloadThread.h"
 #include "snapshot_helper.h"
 #include <stack>
+#include "PhashLoad.h"
 
 extern std::string server_identity;
 
@@ -527,10 +528,24 @@ bool FullFileBackup::doFileBackup()
 						hash_it = extra_params.find("thash");
 					}
 
-					if( !file_ok
-						&& hash_it!=extra_params.end())
+					if (!file_ok
+						&& hash_it != extra_params.end())
 					{
 						curr_sha2 = base64_decode_dash(hash_it->second);
+					}
+					else if (!file_ok
+						&& phash_load.get() != NULL)
+					{
+						if (!phash_load->getHash(line, curr_sha2))
+						{
+							ServerLogger::Log(logid, "Error getting parallel hash for file \"" + cf.name + "\" line " + convert(line), LL_ERROR);
+							r_offline = true;
+							break;
+						}
+					}
+
+					if(!curr_sha2.empty())
+					{						
 						if(cf.size>= link_file_min_size
 							&& link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size,
 							             true, metadata))
@@ -572,6 +587,8 @@ bool FullFileBackup::doFileBackup()
 		ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 		disk_error = true;
 	}
+
+	stopPhashDownloadThread();
 
 
 	server_download->queueStop();

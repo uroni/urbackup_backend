@@ -36,6 +36,7 @@
 #include "FileMetadataDownloadThread.h"
 #include "database.h"
 #include <algorithm>
+#include "PhashLoad.h"
 
 extern std::string server_identity;
 
@@ -958,6 +959,17 @@ bool IncrFileBackup::doFileBackup()
 						{
 							curr_sha2 = base64_decode_dash(hash_it->second);
 						}
+
+						if (curr_sha2.empty()
+							&& phash_load.get() != NULL)
+						{
+							if (!phash_load->getHash(line, curr_sha2))
+							{
+								ServerLogger::Log(logid, "Error getting parallel hash for file \"" + cf.name + "\" line " + convert(line), LL_ERROR);
+								r_offline = true;
+								server_download->queueSkip();
+							}
+						}
 					}
 
                     bool download_metadata=false;
@@ -1180,6 +1192,8 @@ bool IncrFileBackup::doFileBackup()
 		ServerLogger::Log(logid, "Error reading from file " + tmp_filelist->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 		disk_error = true;
 	}
+
+	stopPhashDownloadThread();
 
 	server_download->queueStop();
 

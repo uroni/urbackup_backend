@@ -304,6 +304,21 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addInt(running_jobs);
 	data.addChar(async_list ? 1 : 0);
 
+	std::string async_id;
+	if (async_list)
+	{
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+	}
+
+	bool phash = false;
+	if (async_list &&
+		params["phash"] == "1")
+	{
+		data.addString2(async_id);
+		phash = true;
+	}
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -348,10 +363,6 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	{
 		process_lock.relock(NULL);
 
-		std::string async_id;
-		async_id.resize(16);
-		Server->randomFill(&async_id[0], async_id.size());
-
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
 			mempipe
@@ -364,7 +375,9 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 		lock.relock(NULL);
 
-		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+		std::string prefix = "ASYNC";
+		if (phash) prefix = "ASYNC-PHASH";
+		tcpstack.Send(pipe, prefix + "-async_id=" + bytesToHex(async_id));
 	}
 }
 
@@ -467,6 +480,21 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addInt(running_jobs);
 	data.addChar(async_list ? 1 : 0);
 
+	std::string async_id;
+	if (async_list)
+	{
+		async_id.resize(16);
+		Server->randomFill(&async_id[0], async_id.size());
+	}
+
+	bool phash = false;
+	if (async_list &&
+		params["phash"] == "1")
+	{
+		data.addString2(async_id);
+		phash = true;
+	}
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -497,10 +525,6 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	{
 		process_lock.relock(NULL);
 
-		std::string async_id;
-		async_id.resize(16);
-		Server->randomFill(&async_id[0], async_id.size());
-
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
 			mempipe
@@ -514,7 +538,9 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 		lock.relock(NULL);
 
-		tcpstack.Send(pipe, "ASYNC-async_id="+ bytesToHex(async_id));
+		std::string prefix = "ASYNC";
+		if (phash) prefix = "ASYNC-PHASH";
+		tcpstack.Send(pipe, prefix+"-async_id="+ bytesToHex(async_id));
 	}
 }
 

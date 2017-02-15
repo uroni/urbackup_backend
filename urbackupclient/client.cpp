@@ -482,10 +482,17 @@ void IndexThread::operator()(void)
 			data.getInt(&running_jobs);
 			char async_index = 0;
 			data.getChar(&async_index);
+			std::string async_ticket;
+			data.getStr2(&async_ticket);
 
 			if (async_index == 1)
 			{
 				async_timeout = true;
+			}
+
+			if (!async_ticket.empty())
+			{
+				initParallelHashing(async_ticket);
 			}
 
 			setFlags(flags);
@@ -6767,7 +6774,7 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 void IndexThread::initParallelHashing(const std::string & async_ticket)
 {
 	phash_queue = Server->openTemporaryFile();
-	filesrv->registerScriptPipeFile(async_ticket, new ParallelHash(phash_queue, sha_version));
+	filesrv->registerScriptPipeFile("urbackup/phash_"+bytesToHex(async_ticket), new ParallelHash(phash_queue, sha_version));
 }
 
 bool IndexThread::addToPhashQueue(CWData & data)

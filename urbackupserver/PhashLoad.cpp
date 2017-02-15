@@ -1,4 +1,8 @@
 #include "PhashLoad.h"
+#include "PhashLoad.h"
+#include "PhashLoad.h"
+#include "PhashLoad.h"
+#include "PhashLoad.h"
 #include "../urbackupcommon/fileclient/FileClient.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
@@ -9,11 +13,12 @@
 
 extern std::string server_token;
 
-PhashLoad::PhashLoad(ClientMain* client_main, int clientid,
+PhashLoad::PhashLoad(FileClient* fc,
 	logid_t logid, std::string async_id)
-	: has_error(false), client_main(client_main),
-	clientid(clientid), logid(logid), async_id(async_id),
-	phash_file_pos(0), phash_file(NULL), eof(false)
+	: has_error(false), fc(fc),
+	logid(logid), async_id(async_id),
+	phash_file_pos(0), phash_file(NULL), eof(false),
+	has_timeout_error(false)
 {
 }
 
@@ -24,20 +29,10 @@ PhashLoad::~PhashLoad()
 
 void PhashLoad::operator()()
 {
-	FileClient fc(false, client_main->getIdentity(), 
-		client_main->getProtocolVersions().filesrv_protocol_version, client_main->isOnInternetConnection(), 
-		client_main, NULL);
-	ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
-	_u32 rc = client_main->getClientFilesrvConnection(&fc, &settings);
+	fc->setProgressLogCallback(NULL);
+	fc->setNoFreeSpaceCallback(NULL);
 
-	if (rc != ERR_CONNECTED)
-	{
-		ServerLogger::Log(logid, "Error connecting for parallel hash load: " + fc.getErrorString(rc), LL_ERROR);
-		has_error = true;
-		return;
-	}
-
-	std::string cfn = "SCRIPT|" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
+	std::string cfn = "SCRIPT|urbackup/phash_" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
 	IFsFile* phash_file = Server->openTemporaryFile();
 
 	if (phash_file == NULL)
@@ -47,14 +42,24 @@ void PhashLoad::operator()()
 		return;
 	}
 
-	fc.setReconnectTries(5000);
-	_u32 rc = fc.GetFile(cfn, phash_file, true, false, 0, true, 0);
+	fc->setReconnectTries(5000);
+	_u32 rc = fc->GetFile(cfn, phash_file, true, false, 0, true, 0);
 
 	if (rc != ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, "Error during parallel hash load: "+fc.getErrorString(rc), LL_ERROR);
+		ServerLogger::Log(logid, "Error during parallel hash load: "+fc->getErrorString(rc), LL_ERROR);
 		has_error = true;
+
+		if (rc == ERR_CONN_LOST || rc == ERR_TIMEOUT)
+		{
+			has_timeout_error = true;
+		}
+
 		return;
+	}
+	else
+	{
+		fc->FinishScript(cfn);
 	}
 }
 
@@ -63,10 +68,10 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 	while (true)
 	{
 		while (phash_file == NULL
-			|| phash_file_pos + sizeof(_u16) > phash_file->Size())
+			|| phash_file_pos + static_cast<int64>(sizeof(_u16)) > phash_file->Size())
 		{
 			if ((has_error || eof)
-				&& phash_file_pos + sizeof(_u16) > phash_file->Size())
+				&& phash_file_pos + static_cast<int64>(sizeof(_u16)) > phash_file->Size())
 			{
 				return false;
 			}
@@ -81,10 +86,10 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 
 		msgsize = little_endian(msgsize);
 
-		while (phash_file_pos + sizeof(_u16) + msgsize > phash_file->Size())
+		while (phash_file_pos + static_cast<int64>(sizeof(_u16)) + msgsize > phash_file->Size())
 		{
 			if ((has_error || eof)
-				&& phash_file_pos + sizeof(_u16) + msgsize > phash_file->Size())
+				&& phash_file_pos + static_cast<int64>(sizeof(_u16)) + msgsize > phash_file->Size())
 			{
 				return false;
 			}
@@ -120,10 +125,12 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 		if (curr_file_id > file_id)
 		{
 			phash_file_pos -= sizeof(_u16) + msgsize;
+			hash.clear();
 			return false;
 		}
 		else if (curr_file_id < file_id)
 		{
+			hash.clear();
 			continue;
 		}
 
@@ -134,4 +141,26 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 bool PhashLoad::hasError()
 {
 	return has_error;
+}
+
+void PhashLoad::shutdown()
+{
+	fc->Shutdown();
+}
+
+bool PhashLoad::isDownloading()
+{
+	return fc->isDownloading();
+}
+
+void PhashLoad::setProgressLogEnabled(bool b)
+{
+	if (b)
+	{
+		fc->setProgressLogCallback(orig_progress_log_callback);
+	}
+	else
+	{
+		fc->setProgressLogCallback(NULL);
+	}
 }
