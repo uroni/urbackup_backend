@@ -543,6 +543,10 @@ bool FullFileBackup::doFileBackup()
 							r_offline = true;
 							break;
 						}
+						else
+						{
+							metadata.shahash = curr_sha2;
+						}
 					}
 
 					if(!curr_sha2.empty())

@@ -972,6 +972,10 @@ bool IncrFileBackup::doFileBackup()
 								r_offline = true;
 								server_download->queueSkip();
 							}
+							else
+							{
+								metadata.shahash = curr_sha2;
+							}
 						}
 					}
 
