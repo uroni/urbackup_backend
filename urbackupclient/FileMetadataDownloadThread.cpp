@@ -751,6 +751,7 @@ namespace
             return false;
         }
 
+		bool ret = true;
         for(size_t i=0;i<keys.size();++i)
         {
 			if (keys[i].empty())
@@ -761,11 +762,11 @@ namespace
             if(lremovexattr(fn.c_str(), keys[i].c_str())!=0)
             {
                 Server->Log("Error removing xattr "+keys[i]+" from "+fn+" errno: "+convert(errno), LL_ERROR);
-                return false;
+				ret = false;
             }
         }
 
-        return true;
+        return ret;
     }
 }
 
