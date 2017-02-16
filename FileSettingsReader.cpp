@@ -23,6 +23,17 @@
 #include <memory>
 #include "Interface/File.h"
 
+namespace
+{
+	std::string removeTrailingCR(const std::string& str)
+	{
+		if (!str.empty() && str[str.size() - 1] == '\r')
+			return str.substr(0, str.size() - 1);
+		else
+			return str;
+	}
+}
+
 CFileSettingsReader::CFileSettingsReader(std::string pFile)
 {
 	read(pFile);
@@ -97,7 +108,7 @@ void CFileSettingsReader::read(const std::string& pFile )
 			case 2:
 				if (ch == '\n')
 				{
-					mSettingsMap[""] = key;
+					mSettingsMap[""] = removeTrailingCR(key);
 					key.clear();
 				}
 				else if (ch == '=')
@@ -112,7 +123,7 @@ void CFileSettingsReader::read(const std::string& pFile )
 			case 3:
 				if (ch == '\n')
 				{
-					mSettingsMap[key] = value;
+					mSettingsMap[key] = removeTrailingCR(value);
 					key.clear();
 					value.clear();
 					state = 0;
@@ -128,6 +139,6 @@ void CFileSettingsReader::read(const std::string& pFile )
 
 	if (state == 3)
 	{
-		mSettingsMap[key] = value;
+		mSettingsMap[key] = removeTrailingCR(value);
 	}
 }
