@@ -305,36 +305,31 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
 		std::string ret;
-		if(tcpstack.getPacket(ret))
+		while(tcpstack.getPacket(ret))
 		{
 			if(ret!="DONE")
 			{
 				if (async_id.empty()
-					&& (next(ret, 0, "ASYNC-")
-						|| next(ret, 0, "ASYNC-PHASH-") ) )
+					&& next(ret, 0, "ASYNC-") )
 				{
-					std::string params_str;
-					bool curr_phash;
-					if (next(ret, 0, "ASYNC-"))
-					{
-						params_str = ret.substr(6);
-						curr_phash = false;
-					}
-					else
-					{
-						params_str = ret.substr(12);
-						curr_phash = true;
-					}
 					str_map params;
-					ParseParamStrHttp(params_str, &params);
+					ParseParamStrHttp(ret.substr(6), &params);
 
 					async_id = params["async_id"];
 					Server->destroy(cc);
 					cc = NULL;
 					starttime = Server->getTimeMS();
 
-					if (phash
-						&& curr_phash)
+					
+				}
+				else if(ret=="BUSY")
+				{
+					starttime=Server->getTimeMS();
+				}
+				else if (ret == "PHASH")
+				{
+					starttime = Server->getTimeMS();
+					if (phash)
 					{
 						if (!startPhashDownloadThread(async_id))
 						{
@@ -342,10 +337,6 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 							break;
 						}
 					}
-				}
-				else if(ret=="BUSY")
-				{
-					starttime=Server->getTimeMS();
 				}
 				else if(ret!="no backup dirs")
 				{

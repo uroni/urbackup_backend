@@ -36,7 +36,7 @@ private:
 	FileClient* fc;
 	logid_t logid;
 	std::string async_id;
-	IFile* phash_file;
+	IFsFile* phash_file;
 	int64 phash_file_pos;
 	FileClient::ProgressLogCallback* orig_progress_log_callback;
 };

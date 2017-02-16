@@ -961,7 +961,10 @@ bool IncrFileBackup::doFileBackup()
 						}
 
 						if (curr_sha2.empty()
-							&& phash_load.get() != NULL)
+							&& phash_load.get() != NULL
+							&& !script_dir
+							&& extra_params.find("sym_target")==extra_params.end()
+							&& extra_params.find("special") == extra_params.end() )
 						{
 							if (!phash_load->getHash(line, curr_sha2))
 							{

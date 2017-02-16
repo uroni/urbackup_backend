@@ -3,6 +3,7 @@
 PipeFileExt::PipeFileExt(IPipeFileExt * file_ext, std::string fn)
 	: file_ext(file_ext), PipeFileBase(fn)
 {
+	init();
 }
 
 bool PipeFileExt::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & read_bytes)

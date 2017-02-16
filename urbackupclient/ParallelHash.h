@@ -14,11 +14,12 @@ namespace
 	const char ID_HASH_FILE = 2;
 	const char ID_CBT_DATA = 3;
 	const char ID_INIT_HASH = 4;
+	const char ID_PHASH_FINISH = 5;
 }
 
 class ClientHash;
 
-class ParallelHash : public IPipeFileExt
+class ParallelHash : public IPipeFileExt, public IThread
 {
 public:
 	ParallelHash(IFile* phash_queue, int sha_version);
@@ -42,6 +43,7 @@ private:
 	size_t stdout_buf_pos;
 	size_t stdout_buf_size;
 	volatile bool do_quit;
+	volatile bool eof;
 	int64 phash_queue_pos;
 	IFile* phash_queue;
 	std::auto_ptr<IMutex> mutex;
@@ -51,11 +53,12 @@ private:
 	std::vector<SFileAndHash> curr_files;
 	std::auto_ptr<ClientHash> client_hash;
 	int sha_version;
+	THREADPOOL_TICKET ticket;
 
 	struct SBufferItem
 	{
-		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files)
-			: path(path), tgroup(tgroup), files(files)
+		SBufferItem(std::string path, int tgroup, std::vector<SFileAndHash> files, int64 target_generation)
+			: path(path), tgroup(tgroup), files(files), target_generation(target_generation)
 		{}
 
 		std::string path;

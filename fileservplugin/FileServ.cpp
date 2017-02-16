@@ -216,8 +216,12 @@ std::string FileServ::mapScriptOutputNameToScript(const std::string& script_fn, 
 	{
 		tar_file = it->second.tar_file;
 		pipe_file = it->second.pipe_file;
-		it->second.pipe_file = NULL;
-		return it->second.script_fn;
+		std::string script_fn = it->second.script_fn;
+		if (pipe_file != NULL)
+		{
+			script_mappings.erase(it);
+		}
+		return script_fn;
 	}
 	else
 	{

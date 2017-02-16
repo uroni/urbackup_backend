@@ -534,7 +534,8 @@ bool FullFileBackup::doFileBackup()
 						curr_sha2 = base64_decode_dash(hash_it->second);
 					}
 					else if (!file_ok
-						&& phash_load.get() != NULL)
+						&& phash_load.get() != NULL
+						&& !script_dir)
 					{
 						if (!phash_load->getHash(line, curr_sha2))
 						{

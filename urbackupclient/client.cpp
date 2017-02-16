@@ -93,8 +93,7 @@ namespace
 	const unsigned short udpport = 35622;
 	const unsigned int shadowcopy_timeout = 7 * 24 * 60 * 60 * 1000;
 	const unsigned int shadowcopy_startnew_timeout = 55 * 60 * 1000;
-	const size_t max_modify_file_buffer_size = 2 * 1024 * 1024;
-	const size_t max_add_file_buffer_size = 2 * 1024 * 1024;
+	const size_t max_file_buffer_size = 4 * 1024 * 1024;
 	const int64 file_buffer_commit_interval = 120 * 1000;
 }
 
@@ -493,6 +492,7 @@ void IndexThread::operator()(void)
 			if (!async_ticket.empty())
 			{
 				initParallelHashing(async_ticket);
+				contractor->Write("phash");
 			}
 
 			setFlags(flags);
@@ -629,6 +629,7 @@ void IndexThread::operator()(void)
 			if (!async_ticket.empty())
 			{
 				initParallelHashing(async_ticket);
+				contractor->Write("phash");
 			}
 
 			setFlags(flags);
@@ -1525,6 +1526,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				commitModifyFilesBuffer();
 				commitAddFilesBuffer();
 				commitModifyHardLinks();
+				commitPhashQueue();
 			}
 
 			if(stop_index || index_error)
@@ -1586,6 +1588,15 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	commitModifyFilesBuffer();
 	commitAddFilesBuffer();
 	commitModifyHardLinks();
+
+	if (phash_queue != NULL)
+	{
+		CWData data;
+		data.addChar(ID_PHASH_FINISH);
+		addToPhashQueue(data);
+	}
+
+	commitPhashQueue();
 
 	index_hdat_file.reset();
 
@@ -1828,8 +1839,9 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		}
 	}
 
+	int64 target_generation;
 	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db,
-		exclude_dirs, include_dirs);
+		exclude_dirs, include_dirs, target_generation);
 
 	if(index_error)
 	{
@@ -1890,7 +1902,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				}
 			}
 			else if (calculate_filehashes_on_client
-				&& phash_queue != NULL)
+				&& phash_queue != NULL
+				&& !files[i].isspecialf)
 			{
 				if (!finish_phash_path)
 				{
@@ -1943,6 +1956,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	{
 		CWData wdata;
 		wdata.addChar(ID_FINISH_CURR_DIR);
+		wdata.addVarInt(target_generation);
 		addToPhashQueue(wdata);
 	}
 
@@ -2246,7 +2260,7 @@ bool IndexThread::readBackupScripts(bool full_backup)
 
 bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path,
 	const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs)
+	const std::vector<SIndexInclude>& include_dirs, bool calc_hashes)
 {
 	bool calculated_hash=false;
 
@@ -2284,14 +2298,16 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 				}
 			}
 
-			if(needs_hashing)
+			if(needs_hashing
+				&& calc_hashes)
 			{
 				fsfile.hash=getShaBinary(filepath+os_file_sep()+fsfile.name);
 				calculated_hash=true;
 			}
 		}
 	}
-	else if(dbfiles!=NULL)
+	else if(dbfiles!=NULL
+		&& calc_hashes)
 	{
 		for(size_t i=0;i<dbfiles->size();++i)
 		{
@@ -2317,8 +2333,9 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 
 std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path,
 	bool use_db, const std::string& fn_filter, bool use_db_hashes, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs)
+	const std::vector<SIndexInclude>& include_dirs, int64& target_generation)
 {
+	target_generation = 0;
 #ifndef _WIN32
 	if(path.empty())
 	{
@@ -2387,7 +2404,6 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 		std::vector<SFileAndHash> db_files;
 		bool has_files = false;
-		int64 target_generation = 0;
 
 		if (use_db_hashes)
 		{
@@ -2426,9 +2442,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 #endif
 
 
-		if(calculate_filehashes_on_client)
+		if(calculate_filehashes_on_client
+			&& (phash_queue==NULL || has_files) )
 		{
-			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path, path, named_path, exclude_dirs, include_dirs);
+			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path,
+				path, named_path, exclude_dirs, include_dirs, phash_queue==NULL);
 		}
 
 		if( has_files)
@@ -2456,7 +2474,6 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 #ifdef _WIN32
 	else
 	{	
-		int64 target_generation = 0;
 		if( cd->getFiles(path_lower, get_db_tgroup(), fs_files, target_generation) )
 		{
 			++index_c_db;
@@ -2466,7 +2483,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 			if(calculate_filehashes_on_client)
 			{
 				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path,
-					exclude_dirs, include_dirs))
+					exclude_dirs, include_dirs, phash_queue==NULL))
 				{
 					++index_c_db_update;
 					modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
@@ -2498,10 +2515,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 				}
 			}
 
-			if(calculate_filehashes_on_client)
+			if(calculate_filehashes_on_client
+				&& phash_queue==NULL)
 			{
 				addMissingHashes(NULL, &fs_files, orig_path, path, named_path,
-					exclude_dirs, include_dirs);
+					exclude_dirs, include_dirs, true);
 			}
 
 			addFilesInt(path_lower, get_db_tgroup(), fs_files);
@@ -3666,10 +3684,12 @@ void IndexThread::modifyFilesInt(std::string path, int tgroup,
 		last_file_buffer_commit_time = Server->getTimeMS();
 	}
 
-	if( modify_file_buffer_size>max_modify_file_buffer_size 
+	if( modify_file_buffer_size+add_file_buffer_size>max_file_buffer_size 
 		|| Server->getTimeMS()-last_file_buffer_commit_time>file_buffer_commit_interval)
 	{
 		commitModifyFilesBuffer();
+		commitAddFilesBuffer();
+		commitPhashQueue();
 	}
 }
 
@@ -3699,10 +3719,12 @@ void IndexThread::addFilesInt( std::string path, int tgroup, const std::vector<S
 		last_file_buffer_commit_time = Server->getTimeMS();
 	}
 
-	if(add_file_buffer_size>max_add_file_buffer_size
+	if(add_file_buffer_size+ add_file_buffer_size>max_file_buffer_size
 		|| Server->getTimeMS()-last_file_buffer_commit_time>file_buffer_commit_interval)
 	{
 		commitAddFilesBuffer();
+		commitModifyFilesBuffer();
+		commitPhashQueue();
 	}
 
 }
@@ -6774,21 +6796,28 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 void IndexThread::initParallelHashing(const std::string & async_ticket)
 {
 	phash_queue = Server->openTemporaryFile();
-	filesrv->registerScriptPipeFile("urbackup/phash_"+bytesToHex(async_ticket), new ParallelHash(phash_queue, sha_version));
+	phash_queue_write_pos = 0;
+	os_create_dir(Server->getServerWorkingDir() + "urbackup" + os_file_sep() + "phash");
+	filesrv->shareDir("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}", Server->getServerWorkingDir() + "/urbackup/phash", std::string(), true);
+	ParallelHash* phash = new ParallelHash(phash_queue, sha_version);
+	filesrv->registerScriptPipeFile("phash_"+bytesToHex(async_ticket), phash);
 }
 
 bool IndexThread::addToPhashQueue(CWData & data)
 {
 	_u32 msgsize = static_cast<_u32>(data.getDataSize());
-	if(phash_queue->Write(reinterpret_cast<char*>(&msgsize), sizeof(msgsize))!=sizeof(msgsize))
-	{
-		return false;
-	}
-
-	if (phash_queue->Write(data.getDataPtr(), data.getDataSize()) != data.getDataSize())
-	{
-		return false;
-	}
-
+	phash_queue_buffer.insert(phash_queue_buffer.end(), reinterpret_cast<char*>(&msgsize), reinterpret_cast<char*>(&msgsize) + sizeof(msgsize));
+	phash_queue_buffer.insert(phash_queue_buffer.end(), data.getDataPtr(), data.getDataPtr() + data.getDataSize());
 	return true;
+}
+
+bool IndexThread::commitPhashQueue()
+{
+	bool ret = phash_queue->Write(phash_queue_write_pos, phash_queue_buffer.data(), static_cast<_u32>(phash_queue_buffer.size())) == phash_queue_buffer.size();
+	if (ret)
+	{
+		phash_queue_write_pos += phash_queue_buffer.size();
+	}
+	phash_queue_buffer.clear();
+	return ret;
 }

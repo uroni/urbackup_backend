@@ -324,7 +324,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				std::map<std::string, SAsyncFileList>::iterator it = async_file_index.find(async_file_list_id);
 				if (it != async_file_index.end())
 				{
-					if (!msg.empty())
+					if (!msg.empty()
+						&& msg!="phash")
 					{
 						Server->Log("Async index " + bytesToHex(it->first) + " finished with \"" + msg + "\"", LL_DEBUG);
 						finished_async_file_index.push_back(std::make_pair(it->first, msg));
@@ -364,6 +365,10 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				lasttime=Server->getTimeMS();
 				idle_timeout = 5*60*1000;
 				state=CCSTATE_NORMAL;
+			}
+			else if (msg == "phash")
+			{
+				tcpstack.Send(pipe, "PHASH");
 			}
 			else if(!msg.empty())
 			{

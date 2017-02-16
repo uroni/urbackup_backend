@@ -1,5 +1,6 @@
 #include "ParallelHash.h"
 #include "../Interface/Server.h"
+#include "../Interface/ThreadPool.h"
 #include "ClientHash.h"
 #include <algorithm>
 #include "database.h"
@@ -14,13 +15,15 @@ namespace
 ParallelHash::ParallelHash(IFile * phash_queue, int sha_version)
 	: do_quit(false), phash_queue(phash_queue), phash_queue_pos(0),
 	stdout_buf_size(0), stdout_buf_pos(0), mutex(Server->createMutex()),
-	last_file_buffer_commit_time(0), sha_version(sha_version)
+	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false)
 {
 	stdout_buf.resize(4090);
+	ticket = Server->getThreadPool()->execute(this, "phash");
 }
 
 bool ParallelHash::getExitCode(int & exit_code)
 {
+	Server->getThreadPool()->waitFor(ticket);
 	exit_code = 0;
 	return true;
 }
@@ -28,6 +31,7 @@ bool ParallelHash::getExitCode(int & exit_code)
 void ParallelHash::forceExit()
 {
 	do_quit = true;
+	Server->getThreadPool()->waitFor(ticket);
 }
 
 bool ParallelHash::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & read_bytes)
@@ -45,12 +49,24 @@ bool ParallelHash::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & r
 			{
 				stdout_buf_pos = 0;
 				stdout_buf_size = 0;
+
+				if (eof)
+				{
+					return false;
+				}
 			}
 
 			return true;
 		}
 		else
 		{
+			if (stdout_buf_pos == stdout_buf_size
+				&& eof)
+			{
+				return false;
+			}
+
+			lock.relock(NULL);
 			Server->wait(1000);
 		}
 	}
@@ -64,12 +80,13 @@ void ParallelHash::finishStdout()
 
 bool ParallelHash::readStderrIntoBuffer(char * buf, size_t buf_avail, size_t & read_bytes)
 {
-	while (!do_quit)
+	while (!do_quit
+		&& !eof)
 	{
 		Server->wait(1000);
 	}
 	
-	return true;
+	return false;
 }
 
 void ParallelHash::operator()()
@@ -79,13 +96,13 @@ void ParallelHash::operator()()
 	while (!do_quit)
 	{
 		bool had_msg = false;
-		if (phash_queue->Size() >= phash_queue_pos + sizeof(_u32))
+		if (phash_queue->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)))
 		{
 			_u32 msg_size;
 			if (phash_queue->Read(phash_queue_pos, reinterpret_cast<char*>(&msg_size), sizeof(msg_size))
 				== sizeof(msg_size))
 			{
-				if (phash_queue->Size() >= phash_queue_pos + sizeof(_u32) + msg_size)
+				if (phash_queue->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)) + msg_size)
 				{
 					had_msg = true;
 
@@ -96,6 +113,12 @@ void ParallelHash::operator()()
 					if (!hashFile(data, clientdao))
 					{
 						Server->Log("Error hashing file. Data: " + msg, LL_ERROR);
+					}
+
+					if (eof)
+					{
+						commitModifyFileBuffer(clientdao);
+						return;
 					}
 				}
 			}
@@ -109,6 +132,8 @@ void ParallelHash::operator()()
 			addToStdoutBuf(data.getDataPtr(), data.getDataSize());
 		}
 	}
+
+	commitModifyFileBuffer(clientdao);
 }
 
 bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
@@ -134,12 +159,24 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		if (!data.getVarInt(&target_generation))
 			return false;
 
+#ifndef _WIN32
+		if (path.empty())
+		{
+			path = os_file_sep();
+		}
+		std::string path_lower = curr_dir + os_file_sep();
+#else
+		std::string path_lower = strlower(curr_dir + os_file_sep());
+#endif
+
 		std::vector<SFileAndHash> files;
 		int64 generation = -1;
-		if (clientdao.getFiles(curr_dir, curr_tgroup, files, generation))
+		if (clientdao.getFiles(path_lower, curr_tgroup, files, generation))
 		{
 			if (generation != target_generation)
 				return true;
+
+			std::sort(curr_files.begin(), curr_files.end());
 
 			bool added_hash = false;
 			for (size_t i = 0; i < files.size(); ++i)
@@ -147,8 +184,9 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 				if (files[i].hash.empty())
 				{
 					std::vector<SFileAndHash>::iterator it =
-						std::find(curr_files.begin(), curr_files.end(), files[i]);
-					if (it != curr_files.end())
+						std::lower_bound(curr_files.begin(), curr_files.end(), files[i]);
+					if (it != curr_files.end()
+						&& it->name == files[i].name)
 					{
 						files[i].hash = it->hash;
 						added_hash = true;
@@ -158,7 +196,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 			if (added_hash)
 			{
-				addModifyFileBuffer(clientdao, curr_dir, curr_tgroup, files, target_generation);
+				addModifyFileBuffer(clientdao, path_lower, curr_tgroup, files, target_generation);
 			}
 
 			return true;
@@ -169,6 +207,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	else if (id == ID_INIT_HASH)
 	{
 		client_hash.reset(new ClientHash(NULL, false, 0, NULL, 0));
+		return true;
 	}
 	else if (id == ID_CBT_DATA)
 	{
@@ -186,15 +225,15 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 		client_hash.reset(new ClientHash(index_hdat_file, true, index_hdat_fs_block_size,
 			snapshot_sequence_id, static_cast<size_t>(snapshot_sequence_id_reference)));
+		return true;
+	}
+	else if (id == ID_PHASH_FINISH)
+	{
+		eof = true;
+		return true;
 	}
 
 	if (id != ID_HASH_FILE)
-	{
-		return false;
-	}
-
-	std::string fn;
-	if (!data.getStr2(&fn))
 	{
 		return false;
 	}
@@ -205,13 +244,19 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		return false;
 	}
 
+	std::string fn;
+	if (!data.getStr2(&fn))
+	{
+		return false;
+	}
+
 	std::string full_path = curr_snapshot_dir + os_file_sep() + fn;
 
 	SFileAndHash fandhash;
 	if (sha_version == 256)
 	{
 		HashSha256 hash_256;
-		if (!client_hash->getShaBinary(fn, hash_256, false))
+		if (!client_hash->getShaBinary(full_path, hash_256, false))
 		{
 			return false;
 		}
@@ -221,7 +266,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	else if (sha_version == 528)
 	{
 		TreeHash treehash(client_hash->hasCbtFile() ? client_hash.get() : NULL);
-		if (!client_hash->getShaBinary(fn, treehash, client_hash->hasCbtFile()))
+		if (!client_hash->getShaBinary(full_path, treehash, client_hash->hasCbtFile()))
 		{
 			return false;
 		}
@@ -231,7 +276,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	else
 	{
 		HashSha512 hash_512;
-		if (!client_hash->getShaBinary(fn, hash_512, false))
+		if (!client_hash->getShaBinary(full_path, hash_512, false))
 		{
 			return false;
 		}
@@ -247,6 +292,8 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	fandhash.name = fn;
 	*reinterpret_cast<_u16*>(wdata.getDataPtr()) = little_endian(static_cast<_u16>(wdata.getDataSize() - sizeof(_u16)));
 	curr_files.push_back(fandhash);
+
+	Server->Log("Parallel hash \"" + full_path + "\" id=" + convert(file_id) + " hash=" + base64_encode_dash(fandhash.hash), LL_DEBUG);
 
 	addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());
 
@@ -292,7 +339,7 @@ void ParallelHash::addModifyFileBuffer(ClientDAO& clientdao, const std::string &
 {
 	modify_file_buffer_size += calcBufferSize(path, files);
 
-	modify_file_buffer.push_back(SBufferItem(path, tgroup, files));
+	modify_file_buffer.push_back(SBufferItem(path, tgroup, files, target_generation));
 
 	if (last_file_buffer_commit_time == 0)
 	{

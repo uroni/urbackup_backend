@@ -361,7 +361,7 @@ private:
 
 	std::vector<SFileAndHash> getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path, bool use_db, const std::string& fn_filter, bool use_db_hashes,
 		const std::vector<std::string>& exclude_dirs,
-		const std::vector<SIndexInclude>& include_dirs);
+		const std::vector<SIndexInclude>& include_dirs, int64& target_generation);
 
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, bool simultaneous_other=true, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(),
 		bool for_imagebackup=false, bool *stale_shadowcopy=NULL, bool* not_configured=NULL, bool* has_active_transaction=NULL);
@@ -425,7 +425,7 @@ private:
 
 	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path,
 		const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
-		const std::vector<SIndexInclude>& include_dirs);
+		const std::vector<SIndexInclude>& include_dirs, bool calc_hashes);
 
 	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
@@ -527,6 +527,8 @@ private:
 	void initParallelHashing(const std::string& async_ticket);
 
 	bool addToPhashQueue(CWData& data);
+
+	bool commitPhashQueue();
 
 	SVolumesCache* volumes_cache;
 
@@ -695,6 +697,8 @@ private:
 	int64 index_chunkhash_pos;
 	_u16 index_chunkhash_pos_offset;
 	IFile* phash_queue;
+	int64 phash_queue_write_pos;
+	std::vector<char> phash_queue_buffer;
 	int64 file_id;
 
 #ifdef _WIN32

@@ -32,8 +32,8 @@ void PhashLoad::operator()()
 	fc->setProgressLogCallback(NULL);
 	fc->setNoFreeSpaceCallback(NULL);
 
-	std::string cfn = "SCRIPT|urbackup/phash_" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
-	IFsFile* phash_file = Server->openTemporaryFile();
+	std::string cfn = "SCRIPT|phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
+	phash_file = Server->openTemporaryFile();
 
 	if (phash_file == NULL)
 	{
