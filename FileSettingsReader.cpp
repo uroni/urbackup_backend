@@ -125,4 +125,9 @@ void CFileSettingsReader::read(const std::string& pFile )
 			}
 		}
 	} while (read == sizeof(buf));
+
+	if (state == 3)
+	{
+		mSettingsMap[key] = value;
+	}
 }
