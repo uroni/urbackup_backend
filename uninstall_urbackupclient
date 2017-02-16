@@ -80,6 +80,18 @@ then
 	systemctl daemon-reload
 fi
 
-[ ! -e /etc/init.d/urbackupclientbackend ] || rm /etc/init.d/urbackupclientbackend
+if [ -e /etc/init.d/urbackupclientbackend ]
+then
+	if [ -e /etc/debian_version ]
+	then
+		update-rc.d urbackupclientbackend remove
+	else
+		chkconfig --del urbackupclientbackend
+	fi
+	
+	rm /etc/init.d/urbackupclientbackend
+fi
+
+rm "$PREFIX/sbin/uninstall_urbackupclient"
 
 echo "UrBackup client uninstall complete."
