@@ -402,6 +402,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		return;
 	}
 
+	if (Server->getServerParameter("run-test") == "true")
+	{
+		exit(0);
+	}
+
 	std::string download_file=Server->getServerParameter("download_file");
 	if(!download_file.empty())
 	{

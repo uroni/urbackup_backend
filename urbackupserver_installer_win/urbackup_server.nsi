@@ -189,6 +189,13 @@ Section "install"
 		File "data_x64\urlplugin.dll"
 		SetOutPath "$INSTDIR"
 	${EndIf}
+	
+	ExecWait '"$INSTDIR\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --run-test true' $0
+	${If} $0 != '0'
+		MessageBox MB_OK "Cannot run UrBackup server executable. This can be caused by issues with the Visual Studio 2015 runtime. Please wait for all Windows updates to finish (this installs the Universal CRT), then reinstall the Visual Studio 2015 runtime and then retry this installation."
+		Quit
+	${EndIf}
+	
 	SetOutPath "$INSTDIR\urbackup"
 	File "data_common\urbackup\backup_server_init.sql"
 	File "data_common\urbackup\status.htm"
