@@ -28,6 +28,9 @@ extern char **environ;
 #ifndef LOOP_CTL_GET_FREE
 #define LOOP_CTL_GET_FREE       0x4C82
 #endif
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
 CServer *Server;
 
