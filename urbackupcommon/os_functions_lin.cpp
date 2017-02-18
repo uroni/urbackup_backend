@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <utime.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,7 +37,6 @@
 #include <netdb.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
@@ -727,7 +727,11 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 	tss[1].tv_sec = mtime;
 	tss[1].tv_nsec = 0;
 	
+#if defined(HAVE_UTIMENSAT)
 	int rc = utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW);
+#else
+	int rc = utimes(fn.c_str(), tss);
+#endif
 	return rc==0;
 #else
 	struct timeval tv[2];
