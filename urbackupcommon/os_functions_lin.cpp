@@ -720,17 +720,23 @@ bool os_set_file_time(const std::string& fn, int64 created, int64 last_modified,
 	time_t atime = static_cast<time_t>(accessed);
 	time_t mtime = static_cast<time_t>(last_modified);
 
-#if !defined(__APPLE__) && !defined(__FreeBSD__)
+#if !defined(__APPLE__) && !defined(__FreeBSD__)	
+#if defined(HAVE_UTIMENSAT)
 	timespec tss[2];
 	tss[0].tv_sec = atime;
 	tss[0].tv_nsec = 0;
 	tss[1].tv_sec = mtime;
 	tss[1].tv_nsec = 0;
 	
-#if defined(HAVE_UTIMENSAT)
 	int rc = utimensat(0, fn.c_str(), tss, AT_SYMLINK_NOFOLLOW);
 #else
-	int rc = utimes(fn.c_str(), tss);
+	struct timeval tv[2];
+    tv[0].tv_sec = atime;
+    tv[0].tv_usec = 0;
+    tv[1].tv_sec = mtime;
+    tv[1].tv_usec = 0;
+
+	int rc = utimes(fn.c_str(), tv);
 #endif
 	return rc==0;
 #else
