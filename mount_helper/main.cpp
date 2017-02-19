@@ -31,6 +31,7 @@ extern char **environ;
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif
+#define LOCAL_LO_FLAGS_AUTOCLEAR 4
 
 CServer *Server;
 
@@ -285,7 +286,7 @@ bool mount_linux_loop(const std::string& imagepath)
 	
 	loop_info64 linfo = {};
 	linfo.lo_offset = 512*1024;
-	linfo.lo_flags = LO_FLAGS_READ_ONLY|LO_FLAGS_AUTOCLEAR;
+	linfo.lo_flags = LO_FLAGS_READ_ONLY|LOCAL_LO_FLAGS_AUTOCLEAR;
 	int rc = ioctl(loopd, LOOP_SET_STATUS64, &linfo);
 	if(rc)
 	{
