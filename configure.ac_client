@@ -30,7 +30,7 @@ AM_CONDITIONAL(CLIENT_UPDATE, test "x$enable_clientupdate" = xyes)
 AC_ARG_ENABLE([embedded-cryptopp],
      AS_HELP_STRING([--enable-embedded-cryptopp], [Compile and use Crypto++ 5.6.3 included with the source distribution.]))
 AM_CONDITIONAL(EMBEDDED_CRYPTOPP, test "x$enable_embedded_cryptopp" = xyes)
-AM_CONDITIONAL(TARGET_CPU_IS_X64, test "x$TARGET_CPU" = xx86)
+AM_CONDITIONAL(TARGET_CPU_IS_X86, test "x$TARGET_CPU" = xx86)
 
 # Checks for programs.
 AC_PROG_CXX

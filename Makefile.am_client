@@ -35,7 +35,7 @@ if !EMBEDDED_CRYPTOPP
 urbackupclientbackend_LDADD += $(CRYPTOPP_LIBS)
 else
 urbackupclientbackend_CXXFLAGS += -DCRYPTOPP_INCLUDE_PREFIX=cryptoplugin -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS -DCRYPTOPP_NO_BACKWARDS_COMPATIBILITY_562
-if TARGET_CPU_IS_X64
+if TARGET_CPU_IS_X86
 urbackupclientbackend_CXXFLAGS += -msse -msse2
 endif
 endif
