@@ -30,6 +30,7 @@ extern IUrlFactory *url_fak;
 namespace
 {
 	std::string urbackup_update_url = "http://update4.urbackup.org/";
+	std::string urbackup_update_url_alt;
 
 	struct SUpdatePlatform
 	{
@@ -66,17 +67,28 @@ void ServerUpdate::update_client()
 	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateMac", "version_osx.txt"));
 	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateLinux", "version_linux.txt"));
 
+	std::string curr_update_url = urbackup_update_url;
+
 	for (size_t i = 0; i < update_files.size(); ++i)
 	{
 		SUpdatePlatform& curr = update_files[i];
 
 		std::string errmsg;
 		Server->Log("Downloading version file...", LL_INFO);
-		std::string version = url_fak->downloadString(urbackup_update_url + curr.versionname, http_proxy, &errmsg);
+		std::string version = url_fak->downloadString(curr_update_url + curr.versionname, http_proxy, &errmsg);
 		if (version.empty())
 		{
-			Server->Log("Error while downloading version info from " + urbackup_update_url + curr.versionname + ": " + errmsg, LL_ERROR);
-			return;
+			if (curr_update_url == urbackup_update_url)
+			{
+				curr_update_url = urbackup_update_url_alt;
+				version = url_fak->downloadString(curr_update_url + curr.versionname, http_proxy, &errmsg);
+			}
+
+			if (version.empty())
+			{
+				Server->Log("Error while downloading version info from " + curr_update_url + curr.versionname + ": " + errmsg, LL_ERROR);
+				return;
+			}
 		}
 		std::string curr_version = getFile("urbackup/"+curr.versionname);
 		if (curr_version.empty()) curr_version = "0";
@@ -93,11 +105,11 @@ void ServerUpdate::update_client()
 			}
 			ObjectScope sig_file_scope(sig_file);
 
-			bool b = url_fak->downloadFile(urbackup_update_url + curr.basename + ".sig2", sig_file, http_proxy, &errmsg);
+			bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig2", sig_file, http_proxy, &errmsg);
 
 			if (!b)
 			{
-				Server->Log("Error while downloading update signature from " + urbackup_update_url + curr.basename + ".sig2: " + errmsg, LL_ERROR);
+				Server->Log("Error while downloading update signature from " + curr_update_url + curr.basename + ".sig2: " + errmsg, LL_ERROR);
 			}
 
 			if (curr.extension == "exe")
@@ -112,20 +124,20 @@ void ServerUpdate::update_client()
 				}
 				ObjectScope old_sig_file_scope(old_sig_file);
 
-				bool b = url_fak->downloadFile(urbackup_update_url + curr.basename + ".sig", old_sig_file, http_proxy, &errmsg);
+				bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig", old_sig_file, http_proxy, &errmsg);
 
 				if (!b)
 				{
-					Server->Log("Error while downloading old update signature from " + urbackup_update_url + curr.basename + ".sig: " + errmsg, LL_ERROR);
+					Server->Log("Error while downloading old update signature from " + curr_update_url + curr.basename + ".sig: " + errmsg, LL_ERROR);
 				}
 			}
 
 			Server->Log("Getting update file URL...", LL_INFO);
-			std::string update_url = url_fak->downloadString(urbackup_update_url + curr.basename + ".url", http_proxy, &errmsg);
+			std::string update_url = url_fak->downloadString(curr_update_url + curr.basename + ".url", http_proxy, &errmsg);
 
 			if (update_url.empty())
 			{
-				Server->Log("Error while downloading update url from " + urbackup_update_url + curr.basename + ".url: " + errmsg, LL_ERROR);
+				Server->Log("Error while downloading update url from " + curr_update_url + curr.basename + ".url: " + errmsg, LL_ERROR);
 				return;
 			}
 
@@ -243,6 +255,7 @@ void ServerUpdate::read_update_location()
 
 	if (!read_update_location.empty())
 	{
-		urbackup_update_url = read_update_location;
+		urbackup_update_url_alt = read_update_location;
+		urbackup_update_url = urbackup_update_url_alt + "/2.1.x";
 	}
 }
