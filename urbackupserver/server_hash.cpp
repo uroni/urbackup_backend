@@ -504,7 +504,8 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 	}
 	else if(pointed_to)
 	{
-		if(next_id!=0)
+		if(next_id!=0
+			&& next_id!=id)
 		{
 			std::string str_correction;
 			if (correction != NULL
@@ -524,7 +525,7 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
 				+ " from " + convert(id) + " to " + convert(next_id) + " (next)"+str_correction, LL_DEBUG));
 		}
-		else
+		else if(prev_id!=id)
 		{
 			std::string str_correction;
 
@@ -544,6 +545,12 @@ void BackupServerHash::deleteFileSQL(ServerFilesDao& filesdao, FileIndex& filein
 			FILEENTRY_DEBUG(Server->Log("Changed file index entry filesize="+convert(filesize)+" hash = " 
 				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
 				+ " from " + convert(id) + " to " + convert(prev_id) + " (prev)"+str_correction, LL_DEBUG));
+		}
+		else
+		{
+			FILEENTRY_DEBUG(Server->Log("Could not change file entry index with pointed_to=1 filesize=" + convert(filesize) + " hash = "
+				+ base64_encode(reinterpret_cast<const unsigned char*>(pHash), bytes_in_index)
+				+ " from " + convert(id) + " to " + convert(prev_id) + " (prev) or "+convert(next_id)+" (next)", LL_WARNING));
 		}
 	}
 
