@@ -3227,6 +3227,12 @@ bool ClientConnector::versionNeedsUpdate(const std::string & local_version, cons
 		return true;
 	}
 
+	if (iserver_version < ilocal_version)
+	{
+		Server->Log("Not down-grading from current client version " + convert(ilocal_version) + " to server version " + convert(iserver_version), LL_INFO);
+		return false;
+	}
+
 	for (size_t i = 0; i < server_features.size(); ++i)
 	{
 		if (std::find(local_features.begin(), local_features.end(), server_features[i]) == local_features.end())
