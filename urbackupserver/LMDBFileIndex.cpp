@@ -435,8 +435,6 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 	
 	if(rc==MDB_MAP_FULL && handle_enosp)
 	{
-		mdb_txn_abort(txn);
-
 		if(_has_error)
 		{
 			Server->Log("LMDB had error during increase (on commit). Aborting...", LL_ERROR);
@@ -473,8 +471,6 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 	}
 	else if(rc==MDB_BAD_TXN && handle_enosp)
 	{
-		mdb_txn_abort(txn);
-		
 		if(_has_error)
 		{
 			Server->Log("LMDB had error on BAD_TXN (on commit). Aborting...", LL_ERROR);
