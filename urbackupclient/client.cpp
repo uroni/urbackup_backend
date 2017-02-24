@@ -6813,6 +6813,9 @@ bool IndexThread::addToPhashQueue(CWData & data)
 
 bool IndexThread::commitPhashQueue()
 {
+	if (phash_queue == NULL)
+		return true;
+
 	bool ret = phash_queue->Write(phash_queue_write_pos, phash_queue_buffer.data(), static_cast<_u32>(phash_queue_buffer.size())) == phash_queue_buffer.size();
 	if (ret)
 	{
