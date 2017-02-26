@@ -5874,6 +5874,8 @@ bool IndexThread::disableCbt(std::string volume)
 		return true;
 	}
 
+	Server->Log("Disabling CBT on volume \"" + volume + "\"", LL_DEBUG);
+
 	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
 	Server->deleteFile(ImageThread::hdatFn(volume));
 
@@ -6665,6 +6667,16 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 	else
 	{
 		index_hdat_file.reset();
+		}
+
+		std::string vol = volume;
+		normalizeVolume(vol);
+		vol = strlower(vol);
+
+		std::map<std::string, size_t>::iterator it = index_hdat_sequence_ids.find(strlower(vol));
+		if (it != index_hdat_sequence_ids.end())
+		{
+			++it->second;
 	}
 }
 
