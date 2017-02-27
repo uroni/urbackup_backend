@@ -1174,7 +1174,7 @@ void IndexThread::operator()(void)
 void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
-		index_exlude_dirs, index_include_dirs);
+		index_exclude_dirs, index_include_dirs);
 
 	updateDirs();
 
@@ -1526,7 +1526,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 
 					initialCheck(strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0, true, true,
-						index_exlude_dirs, index_include_dirs);
+						index_exclude_dirs, index_include_dirs);
 				}
 
 				commitModifyFilesBuffer();
@@ -1709,10 +1709,10 @@ void IndexThread::resetFileEntries(void)
 }
 
 bool IndexThread::skipFile(const std::string& filepath, const std::string& namedpath,
-	const std::vector<std::string>& exlude_dirs,
+	const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs)
 {
-	if( isExcluded(exlude_dirs, filepath) || isExcluded(exlude_dirs, namedpath) )
+	if( isExcluded(exclude_dirs, filepath) || isExcluded(exclude_dirs, namedpath) )
 	{
 		return true;
 	}
@@ -3229,7 +3229,7 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<SIndexInclude>& include_dirs)
+void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs)
 {
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";
@@ -3247,17 +3247,17 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	}
 
 	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
-	exlude_dirs.clear();
+	exclude_dirs.clear();
 	if(curr_settings!=NULL)
 	{	
 		std::string val;
 		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+"_def", &val) )
 		{
-			exlude_dirs = parseExcludePatterns(val);
+			exclude_dirs = parseExcludePatterns(val);
 		}
 		else
 		{
-			exlude_dirs = parseExcludePatterns(std::string());
+			exclude_dirs = parseExcludePatterns(std::string());
 		}
 
 		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
@@ -3269,7 +3269,7 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	}
 	else
 	{
-		exlude_dirs = parseExcludePatterns(std::string());
+		exclude_dirs = parseExcludePatterns(std::string());
 	}
 }
 
@@ -3410,17 +3410,17 @@ std::vector<SIndexInclude> IndexThread::parseIncludePatterns(const std::string& 
 	return include_dirs;
 }
 
-bool IndexThread::isExcluded(const std::vector<std::string>& exlude_dirs, const std::string &path)
+bool IndexThread::isExcluded(const std::vector<std::string>& exclude_dirs, const std::string &path)
 {
 	std::string wpath=path;
 #ifdef _WIN32
 	strupper(&wpath);
 #endif
-	for(size_t i=0;i<exlude_dirs.size();++i)
+	for(size_t i=0;i<exclude_dirs.size();++i)
 	{
-		if(!exlude_dirs[i].empty())
+		if(!exclude_dirs[i].empty())
 		{
-			bool b=amatch(wpath.c_str(), exlude_dirs[i].c_str());
+			bool b=amatch(wpath.c_str(), exclude_dirs[i].c_str());
 			if(b)
 			{
 				return true;

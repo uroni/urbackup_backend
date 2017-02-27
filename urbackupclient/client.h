@@ -310,7 +310,7 @@ public:
 	static std::vector<std::string> parseExcludePatterns(const std::string& val);
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
-	static bool isExcluded(const std::vector<std::string>& exlude_dirs, const std::string &path);
+	static bool isExcluded(const std::vector<std::string>& exclude_dirs, const std::string &path);
 	static bool isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless);
 
 	static std::string mapScriptOutputName(const std::string& fn);
@@ -321,7 +321,7 @@ public:
 
 	static bool normalizeVolume(std::string& volume);
 
-	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exlude_dirs, std::vector<SIndexInclude>& include_dirs);
+	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 	
@@ -419,7 +419,7 @@ private:
 	void start_filesrv(void);
 
 	bool skipFile(const std::string& filepath, const std::string& namedpath,
-		const std::vector<std::string>& exlude_dirs,
+		const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs);
 
 	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::string &orig_path,
@@ -566,7 +566,7 @@ private:
 
 	static volatile bool stop_index;
 
-	std::vector<std::string> index_exlude_dirs;
+	std::vector<std::string> index_exclude_dirs;
 	std::vector<SIndexInclude> index_include_dirs;
 
 	int64 last_transaction_start;
