@@ -3329,13 +3329,13 @@ std::vector<SIndexInclude> IndexThread::parseIncludePatterns(const std::string& 
 	std::vector<std::string> toks;
 	Tokenize(val, toks, ";");
 	std::vector<SIndexInclude> include_dirs(toks.size());
-#ifdef _WIN32
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
 		include_dirs[i].spec = toks[i];
+#ifdef _WIN32
 		strupper(&include_dirs[i].spec);
-	}
 #endif
+	}
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
 		include_dirs[i].spec=sanitizePattern(include_dirs[i].spec);
