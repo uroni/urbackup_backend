@@ -3603,6 +3603,14 @@ void IndexThread::shareDir(const std::string& token, std::string name, const std
 	{
 		name = token + "|" +name;
 	}
+
+	if (name == "urbackup"
+		|| name == "urbackup_backup_scripts")
+	{
+		Server->Log("Share named \"" + name + "\". Skipping...", LL_DEBUG);
+		return;
+	}
+
 	IScopedLock lock(filesrv_mutex);
 	filesrv_share_dirs[name]=path;
 }
