@@ -633,7 +633,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else
 		{
-			Server->Log("Backup verification successfull.", LL_INFO);
+			Server->Log("Backup verification successful.", LL_INFO);
 			Server->deleteFile("verification_result.txt");
 			exit(0);
 		}
