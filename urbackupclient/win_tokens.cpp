@@ -35,6 +35,10 @@
 namespace tokens
 {
 
+	const DWORD max_dc_user_groups = 100;
+	const DWORD max_dc_users = 100;
+	const DWORD max_dc_groups = 100;
+
 struct Token
 {
 	int64 id;
@@ -141,7 +145,7 @@ std::vector<std::string> get_dc_users()
 	}
 
 	LPUSER_INFO_0 buf;
-	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+	DWORD prefmaxlen = max_dc_users;
 	DWORD entriesread = 0;
 	DWORD totalentries = 0;
 	DWORD resume_handle = 0;
@@ -165,6 +169,12 @@ std::vector<std::string> get_dc_users()
 		else
 		{
 			Server->Log("Error while enumerating DC users: " + convert((int)status), LL_ERROR);
+		}
+
+		if (status == ERROR_MORE_DATA
+			&& ret.size() >= max_dc_users)
+		{
+			status = NERR_Success;
 		}
 
 		if (buf != NULL)
@@ -233,7 +243,7 @@ std::vector<std::string> get_dc_user_groups(std::string username)
 	}
 
 	LPGROUP_USERS_INFO_0 buf;
-	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+	DWORD prefmaxlen = max_dc_user_groups;
 	DWORD entriesread = 0;
 	DWORD totalentries = 0;
 	DWORD resume_handle = 0;
@@ -318,7 +328,7 @@ std::vector<std::string> get_dc_groups()
 			dc_prefix = dc_prefix.substr(2);
 		}
 
-		DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+		DWORD prefmaxlen = max_dc_groups;
 		DWORD entriesread = 0;
 		DWORD totalentries = 0;
 		NET_API_STATUS status;
@@ -341,6 +351,12 @@ std::vector<std::string> get_dc_groups()
 			else
 			{
 				Server->Log("Error while enumerating groups: " + convert((int)status), LL_ERROR);
+			}
+
+			if (status == ERROR_MORE_DATA
+				&& ret.size() >= max_dc_groups)
+			{
+				status = NERR_Success;
 			}
 
 			if (buf2 != NULL)
