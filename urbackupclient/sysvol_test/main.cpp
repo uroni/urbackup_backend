@@ -52,6 +52,15 @@ int main(void)
 	else
 	{
 		std::cout << "Successfully opened SYSVOL." << std::endl;
+
+		char buf[512];
+		DWORD read;
+		if (ReadFile(hVolume, buf, 512, &read, NULL) == FALSE
+			|| read != 512)
+		{
+			std::cout << "Error reading from SYSVOL. Error: " << GetLastError() << std::endl;
+		}
+
 		CloseHandle(hVolume);
 	}
 
