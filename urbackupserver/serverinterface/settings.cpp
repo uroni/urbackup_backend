@@ -207,6 +207,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(show_server_updates);
 	SET_SETTING(server_url);
 	SET_SETTING_DB_BOOL(update_dataplan_db, true);
+	SET_SETTING_DB(restore_authkey, std::string());
 
 #undef SET_SETTING
 #undef SET_SETTING_DB

@@ -16,7 +16,7 @@ class ServerChannelThread : public IThread
 {
 public:
 	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, 
-		const std::string& identiy, std::string server_token, const std::string& virtual_client);
+		bool allow_restore, const std::string& identiy, std::string server_token, const std::string& virtual_client);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -64,6 +64,7 @@ private:
 
 	volatile bool do_exit;
 	bool internet_mode;
+	bool allow_restore;
 
 	std::string salt;
 	std::string session;

@@ -1911,6 +1911,17 @@ bool upgrade52_53()
 	return b;
 }
 
+bool upgrade53_54()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('restore_authkey','"+ServerSettings::generateRandomAuthKey()+"', 0)");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1932,7 +1943,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=53;
+	int max_v=54;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2240,6 +2251,12 @@ void upgrade(void)
 				}
 				++ver;
 				break;
+			case 53:
+				if (!upgrade53_54())
+				{
+					has_error = true;
+				}
+				++ver;
 			default:
 				break;
 		}

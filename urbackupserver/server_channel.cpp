@@ -152,9 +152,9 @@ bool ServerChannelThread::isOnline()
 }
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
-	bool internet_mode, const std::string& identity, std::string server_token, const std::string& virtual_client) :
+	bool internet_mode, bool allow_restore, const std::string& identity, std::string server_token, const std::string& virtual_client) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
-		internet_mode(internet_mode), keepalive_thread(NULL), server_token(server_token),
+		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
 	virtual_client(virtual_client)
 {
 	do_exit=false;
@@ -342,25 +342,25 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 		client_main->setConnectionMetered(params["metered"] == "1");
 	}
-	else if(next(msg, 0, "LOGIN ") && !internet_mode)
+	else if(next(msg, 0, "LOGIN ") && allow_restore)
 	{
 		std::string s_params=msg.substr(6);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 		LOGIN(params);
 	}
-	else if(next(msg, 0, "SALT ") && !internet_mode)
+	else if(next(msg, 0, "SALT ") && allow_restore)
 	{
 		std::string s_params=msg.substr(5);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 		SALT(params);
 	}
-	else if(msg=="GET BACKUPCLIENTS" && !internet_mode && hasDownloadImageRights() )
+	else if(msg=="GET BACKUPCLIENTS" && allow_restore && hasDownloadImageRights() )
 	{
 		GET_BACKUPCLIENTS();
 	}
-	else if(next(msg, 0, "GET BACKUPIMAGES ") && !internet_mode && hasDownloadImageRights())
+	else if(next(msg, 0, "GET BACKUPIMAGES ") && allow_restore && hasDownloadImageRights())
 	{
 		std::string name=(msg.substr(17));
 		GET_BACKUPIMAGES(name);
@@ -396,7 +396,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 	}
-	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
+	else if(next(msg, 0, "DOWNLOAD IMAGE ") && allow_restore && hasDownloadImageRights())
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;

@@ -41,6 +41,7 @@ const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
 const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
+const std::string restore_prefix = "##restore##/";
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
@@ -794,6 +795,26 @@ std::string InternetServiceConnector::getOnetimeToken(unsigned int id, std::stri
 std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &clientname, bool &db_timeout)
 {
 	IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
+
+	if (next(clientname, 0, restore_prefix))
+	{
+		IQuery *q = db->Prepare("SELECT value FROM settings_db.settings WHERE key='restore_authkey' AND clientid=0", false);
+		int timeoutms = 1000;
+		db_results res = q->Read(&timeoutms);
+		db->destroyQuery(q);
+		if (!res.empty())
+		{
+			db_timeout = false;
+			return res[0]["value"];
+		}
+		else if (timeoutms == 1)
+		{
+			db_timeout = true;
+		}
+
+		return std::string();
+	}
+
 	IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
 	q->Bind(clientname);
 	int timeoutms=1000;
