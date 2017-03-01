@@ -307,6 +307,17 @@ namespace
 		std::wstring volname;
 		std::wstring volpath;
 	};
+
+	bool checkVolInfo(const std::wstring& vol)
+	{
+		wchar_t voln[MAX_PATH + 1];
+		DWORD voln_size = MAX_PATH + 1;
+		DWORD voln_sern;
+		wchar_t fsn[MAX_PATH + 1];
+		DWORD fsn_size = MAX_PATH + 1;
+		BOOL b = GetVolumeInformationW(vol.c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
+		return b!=FALSE;
+	}
 }
 
 std::string getSysVolume(std::string &mpath)
@@ -381,10 +392,15 @@ std::string getSysVolume(std::string &mpath)
 
 		Log(L"Filesystem. Vol=\""+std::wstring(VolumeName)+L"\" Name=\""+ConvertToWchar(strlower(ConvertFromWchar(getVolumeLabel(VolumeName))))+
 			L"\" Type=\""+ConvertToWchar(strlower(ConvertFromWchar(getFilesystem(VolumeName))))+L"\" VPaths="+ConvertToWchar(convert(vpaths.size()))+L" Size="+ConvertToWchar(convert(getPartSize(VolumeName))), LL_DEBUG);
-
+		
 		if(is_c_drive)
 		{
 			Log("Filesystem is System partition. Skipping...", LL_DEBUG);
+		}
+		else if (!checkVolInfo(std::wstring(VolumeName)))
+		{
+			Error = GetLastError();
+			Log("GetVolumeInformation failed with error code " + convert((int)Error)+". Skipping...", LL_DEBUG);
 		}
 		else
 		{		
