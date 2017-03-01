@@ -393,6 +393,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->client_quota=settings_default->getValue("client_quota", "");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
+	settings->internet_parallel_file_hashing = (settings_default->getValue("internet_parallel_file_hashing", "false") == "true");	
 	settings->use_incremental_symlinks=(settings_global->getValue("use_incremental_symlinks", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_global->getValue("show_server_updates", "true")=="true");
@@ -551,7 +552,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	readStringClientSetting(settings_client, "internet_image_transfer_mode", &settings->internet_image_transfer_mode);
 
 	readBoolClientSetting(settings_client, "end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
-	readBoolClientSetting(settings_client, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
+	readBoolClientSetting(settings_client, "internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
+	readBoolClientSetting(settings_client, "internet_parallel_file_hashing", &settings->internet_parallel_file_hashing);	
 	readBoolClientSetting(settings_client, "silent_update", &settings->silent_update);
 
 	readBoolClientSetting(settings_client, "allow_config_paths", &settings->allow_config_paths);

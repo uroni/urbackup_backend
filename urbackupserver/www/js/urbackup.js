@@ -2691,6 +2691,7 @@ function show_settings2(data)
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
+			data.settings.internet_parallel_file_hashing=getCheckboxValue(data.settings.internet_parallel_file_hashing);			
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
@@ -2827,6 +2828,7 @@ function show_settings2(data)
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
+			data.settings.internet_parallel_file_hashing=getCheckboxValue(data.settings.internet_parallel_file_hashing);			
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
@@ -3433,6 +3435,7 @@ g.settings_list=[
 "local_image_transfer_mode",
 "internet_image_transfer_mode",
 "internet_calculate_filehashes_on_client",
+"internet_parallel_file_hashing",
 "image_file_format",
 "internet_connect_always",
 "verify_using_client_hashes",

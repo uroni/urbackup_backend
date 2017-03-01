@@ -505,6 +505,12 @@
 					<label><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></label>
 				</div>
 			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_parallel_file_hashing">Beta: Calculate file hashes on client in parallel:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_parallel_file_hashing" value="false" {internet_parallel_file_hashing}/></label>
+				</div>
+			</div>
 			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_connect_always">{tConnect to Internet backup server if connected to local backup server}:</label>

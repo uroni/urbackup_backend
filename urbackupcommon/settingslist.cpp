@@ -74,6 +74,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("internet_image_transfer_mode");
 	ret.push_back("end_to_end_file_backup_verification");
 	ret.push_back("internet_calculate_filehashes_on_client");
+	ret.push_back("internet_parallel_file_hashing");
 	ret.push_back("image_file_format");
 	ret.push_back("internet_connect_always");
 	ret.push_back("server_url");
@@ -113,6 +114,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("internet_image_transfer_mode");
 	ret.push_back("end_to_end_file_backup_verification");
 	ret.push_back("internet_calculate_filehashes_on_client");
+	ret.push_back("internet_parallel_file_hashing");
 	ret.push_back("image_file_format");
 	ret.push_back("verify_using_client_hashes");
 	ret.push_back("internet_readd_file_entries");

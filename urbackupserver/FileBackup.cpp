@@ -183,7 +183,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	}
 
 	bool phash = false;
-	if (client_main->getProtocolVersions().phash_version > 0)
+	if (client_main->getProtocolVersions().phash_version > 0
+		&& server_settings->getSettings()->internet_parallel_file_hashing)
 	{
 		start_backup_cmd += "&phash=1";
 		phash = true;

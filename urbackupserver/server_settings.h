@@ -103,6 +103,7 @@ struct SSettings
 	std::string client_quota;
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;
+	bool internet_parallel_file_hashing;
 	bool use_incremental_symlinks;
 	std::string image_file_format;
 	bool internet_connect_always;
