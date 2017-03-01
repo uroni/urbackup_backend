@@ -174,6 +174,7 @@ std::vector<std::string> get_dc_users()
 		if (status == ERROR_MORE_DATA
 			&& ret.size() >= max_dc_users)
 		{
+			Server->Log("Limiting number of DC users to " + convert(ret.size()), LL_WARNING);
 			status = NERR_Success;
 		}
 
@@ -356,6 +357,7 @@ std::vector<std::string> get_dc_groups()
 			if (status == ERROR_MORE_DATA
 				&& ret.size() >= max_dc_groups)
 			{
+				Server->Log("Limiting number of DC groups to "+convert(ret.size()), LL_WARNING);
 				status = NERR_Success;
 			}
 
