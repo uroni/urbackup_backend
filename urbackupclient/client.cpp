@@ -5710,7 +5710,12 @@ bool IndexThread::disableCbt(std::string volume)
 
 	Server->Log("Disabling CBT on volume \"" + volume + "\"", LL_DEBUG);
 
-	Server->deleteFile("urbackup\\hdat_file_" + conv_filename(volume) + ".dat");
+	GUID rnd = randomGuid();
+	std::string rndfn = "urbackup\\hdat_file_" + conv_filename(volume) + "_" + guidToString(rnd) + ".dat";
+	if (os_rename_file("urbackup\\hdat_file_" + conv_filename(volume) + ".dat", rndfn))
+	{
+		Server->deleteFile(rndfn);
+	}
 	Server->deleteFile(ImageThread::hdatFn(volume));
 
 	HANDLE hVolume = CreateFileA(("\\\\.\\" + volume).c_str(), GENERIC_READ | GENERIC_WRITE,
