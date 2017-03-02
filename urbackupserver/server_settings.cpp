@@ -624,7 +624,7 @@ void ServerSettings::readInt64ClientSetting(ISettingsReader* settings_client, co
 	std::string value;
 	if (settings_client->getValue(name, &value) && !value.empty())
 	{
-		*output = atoi(value.c_str());
+		*output = watoi64(value);
 	}
 }
 
