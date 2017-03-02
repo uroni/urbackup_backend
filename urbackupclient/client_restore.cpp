@@ -1307,6 +1307,166 @@ void ping_named_server(void)
 	}
 }
 
+bool has_internet_connection(int* ec, std::string& errstatus)
+{
+	*ec = 0;
+
+	IPipe* c = connectToService(ec);
+
+	if (c == NULL)
+	{
+		return false;
+	}
+
+	std::string pw = getFile(pw_file);
+	CTCPStack tcpstack;
+	tcpstack.Send(c, "STATUS DETAIL#pw=" + pw);
+	std::string r = getResponse(c);
+	if (r.empty())
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec = 1;
+		return false;
+	}
+	
+	std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
+	std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
+
+	if (internet_connected == "true")
+	{
+		return true;
+	}
+
+	errstatus = internet_status;
+	*ec = 2;
+	return false;
+}
+
+void configure_internet_server()
+{
+	std::string internet_server;
+	while (internet_server.empty())
+	{
+		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_name`\" 8 30 2> out");
+		internet_server = trim(getFile("out"));
+
+		if (rc != 0)
+		{
+			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+			return;
+		}
+	}
+
+	if (internet_server.empty())
+	{
+		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+		return;
+	}
+
+	std::string internet_authkey;
+	while (internet_authkey.empty())
+	{
+		int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_internet_server_authkey`\" 8 30 2> out");
+		internet_authkey = getFile("out");
+
+		if (rc != 0)
+		{
+			system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+			return;
+		}
+	}
+
+	if (internet_authkey.empty())
+	{
+		system("dialog --msgbox \"`cat urbackup/restore/no_internet_server_configured`\" 10 70");
+		return;
+	}
+
+	system("clear");
+	std::cout << "Configuring UrBackup restore client as Internet client..." << std::endl;
+	system("systemctl stop restore-client");
+
+	std::string internet_server_port = "55415";
+	if (internet_server.find(":") != std::string::npos)
+	{
+		internet_server_port = getafter(":", internet_server);
+		internet_server = getuntil(":", internet_server);
+	}
+
+	std::string rnd;
+	rnd.resize(16);
+	Server->secureRandomFill(&rnd[0], 16);
+
+	std::string clientname = "##restore##/" + bytesToHex(rnd);
+
+	writestring("internet_mode_enabled=true\n"
+		"internet_server=" + internet_server + "\n"
+		"internet_server_port=" + internet_server_port + "\n"
+		"internet_authkey=" + internet_authkey + "\n"
+		"computername=" + clientname + "\n", "urbackup/data/settings.cfg");
+
+	std::cout << "Starting UrBackup Internet restore client..." << std::endl;
+
+	if (system("systemctl start restore-client-internet") != 0)
+	{
+		std::cout << "Error starting Internet restore client." << std::endl;
+		char ch;
+		std::cin >> ch;
+		return;
+	}
+
+	std::cout << "Waiting for Internet restore client to connect..." << std::endl;
+
+	int64 starttime = Server->getTimeMS();
+	int ec;
+	std::string errstatus;
+	while (Server->getTimeMS() - starttime < 60000)
+	{
+		if (has_internet_connection(&ec, errstatus))
+		{
+			return;
+		}
+	}
+
+	std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
+	std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
+	system("systemctl stop restore-client-internet");
+	system("systemctl start restore-client");
+
+	std::string errmsg;
+	switch (ec)
+	{
+	case 10:
+	case 1:
+		errmsg = "`cat urbackup/restore/internal_error`";
+		break;
+	case 2:
+		errmsg = "`cat urbackup/restore/internet_authentification_failed`";
+		errmsg = greplace("_STATUS_", errstatus, errmsg);
+		break;
+	}
+
+	int r = system(("dialog --menu \"`cat urbackup/restore/error_happend` " + errmsg + ". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
+		"\"r\" \"`cat urbackup/restore/search_again`\" "
+		"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
+		"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
+		"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+
+	if (r != 0)
+	{
+		return;
+	}
+	std::string out = getFile("out");
+	if (out == "s")
+	{
+		system("bash");
+	}
+	else if(out=="i")
+	{
+		configure_internet_server();
+	}
+}
+
 bool do_login(void)
 {
 	system("clear");
@@ -1515,6 +1675,7 @@ void restore_wizard(void)
 						"\"n\" \"`cat urbackup/restore/configure_networkcard`\" "
 						"\"w\" \"`cat urbackup/restore/configure_wlan`\" "
 						"\"e\" \"`cat urbackup/restore/enter_server_ip`\" "
+						"\"i\" \"`cat urbackup/restore/connect_to_internet_server`\" "
 						"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
 						"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
@@ -1540,6 +1701,11 @@ void restore_wizard(void)
 					{
 						ping_named_server();
 						state=0;
+					}
+					else if (out == "i")
+					{
+						ping_named_server();
+						state = 0;
 					}
 					else if(out=="s")
 					{

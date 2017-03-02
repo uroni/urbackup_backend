@@ -1,0 +1,14 @@
+[Unit]
+Description=UrBackup Restore Client (internet only)
+After=network.target
+
+[Service]
+ExecStart=/root/urbackuprestoreclient --restore-client --logfile /root/restore_mode.txt --loglevel debug -t --internet-only
+WorkingDirectory=/root
+User=root
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
+
+

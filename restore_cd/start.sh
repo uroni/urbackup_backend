@@ -12,8 +12,14 @@ echo 'net.ipv4.tcp_wmem= 10240 87380 12582912' >> /etc/sysctl.conf
 sysctl -p
 
 cd `dirname $0`
-echo "Starting restoration..."
-./urbackuprestoreclient --daemon --restore-client --logfile restore_mode.txt --loglevel debug
+echo "Installing services..."
+cp restore-client.service /lib/systemd/system/
+cp restore-client-internet.service /lib/systemd/system/
+systemctl enable restore-client.service
+systemctl enable restore-client-internet.service
+echo "Starting restore service..."
+systemctl start restore-client
+echo "Starting restore wizard..."
 ./urbackuprestoreclient --restore-wizard --logfile restore_wizard.txt --loglevel debug
 echo "Wizard stoped with error code: $?"
 tail -n 100 restore_wizard.txt
