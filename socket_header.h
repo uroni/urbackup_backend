@@ -23,7 +23,9 @@
 #	define MSG_NOSIGNAL 0
 #endif
 #ifdef SOCK_CLOEXEC
+#ifndef VERSION
 #include "config.h"
+#endif
 #ifdef HAVE_ACCEPT4
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4(sockfd, addr, addrlen, SOCK_CLOEXEC)
 #else
