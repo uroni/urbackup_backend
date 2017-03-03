@@ -607,7 +607,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 					
 					if (err == ERR_SUCCESS)
 					{
-						Server->Log("Successfull. Returning filesize " + convert(remote_filesize), LL_DEBUG);
+						Server->Log("Successful. Returning filesize " + convert(remote_filesize), LL_DEBUG);
 						filesize_out = remote_filesize;
 					}
 				}
@@ -2297,7 +2297,7 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 	}
 	
 
-	Server->Log("Not successfull. Returning filesize "+convert(filesize_out), LL_DEBUG);
+	Server->Log("Not successful. Returning filesize "+convert(filesize_out), LL_DEBUG);
 }
 
 _u32 FileClientChunked::Flush(IPipe* fpipe)

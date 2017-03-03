@@ -72,7 +72,7 @@ std::string getRemoteAddr(str_map& PARAMS)
 	return remote_addr;
 }
 
-void logSuccessfullLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
+void logSuccessfulLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method)
 {
 	IQuery* q = helper.getDatabase()->Prepare("INSERT INTO settings_db.login_access_log (username, ip, method)"
 		" VALUES (?, ?, ?)");
@@ -158,7 +158,7 @@ ACTION_IMPL(login)
 				(plainpw && helper.ldapLogin(username, POST["password"])) )
 			{
 				ret.set("success", JSON::Value(true));
-				logSuccessfullLogin(helper, PARAMS, username, LoginMethod_Webinterface);
+				logSuccessfulLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 				session->mStr["login"]="ok";
 				session->mStr["username"]=username;
 				session->id=user_id;
@@ -212,7 +212,7 @@ ACTION_IMPL(login)
 			SUser *session=helper.getSession();
 			if(session!=NULL)
 			{
-				logSuccessfullLogin(helper, PARAMS, "anonymous", LoginMethod_Webinterface);
+				logSuccessfulLogin(helper, PARAMS, "anonymous", LoginMethod_Webinterface);
 				session->mStr["login"]="ok";
 				session->id=SESSION_ID_ADMIN;
 			}

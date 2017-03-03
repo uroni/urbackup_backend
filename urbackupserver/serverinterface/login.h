@@ -10,6 +10,6 @@ enum LoginMethod
 
 std::string loginMethodToString(LoginMethod lm);
 
-void logSuccessfullLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method);
+void logSuccessfulLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method);
 
 void logFailedLogin(Helper& helper, str_map& PARAMS, const std::string& username, LoginMethod method);

@@ -88,7 +88,7 @@ private:
 	void setupDatabaseAccess();
 
 	volatile bool update_patterns;
-	std::vector<std::string> exlude_dirs;
+	std::vector<std::string> exclude_dirs;
 	std::vector<SIndexInclude> include_dirs;
 	std::vector<int> include_depth;
 	std::vector<std::string> include_prefix;

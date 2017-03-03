@@ -1000,7 +1000,7 @@ void FileBackup::sendBackupOkay(bool b_okay)
 {
 	if(b_okay)
 	{
-		notifyClientBackupSuccessfull();
+		notifyClientBackupSuccessful();
 	}
 	else
 	{
@@ -1013,7 +1013,7 @@ void FileBackup::sendBackupOkay(bool b_okay)
 	}
 }
 
-void FileBackup::notifyClientBackupSuccessfull(void)
+void FileBackup::notifyClientBackupSuccessful(void)
 {
 	if (client_main->getProtocolVersions().cmd_version == 0)
 	{

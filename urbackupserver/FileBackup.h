@@ -94,7 +94,7 @@ protected:
 	bool link_file(const std::string &fn, const std::string &short_fn, const std::string &curr_path,
 		const std::string &os_path, const std::string& sha2, _i64 filesize, bool add_sql, FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
-	void notifyClientBackupSuccessfull(void);
+	void notifyClientBackupSuccessful(void);
 	void waitForFileThreads();
 	bool verify_file_backup(IFile *fileentries);
 	void save_debug_data(const std::string& rfn, const std::string& local_hash, const std::string& remote_hash);

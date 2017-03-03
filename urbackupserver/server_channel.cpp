@@ -555,7 +555,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 		{
 			helper.getSession()->id=user_id;
 			PARAMS["REMOTE_ADDR"]=client_addr;
-			logSuccessfullLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
+			logSuccessfulLogin(helper, PARAMS, params["username"], LoginMethod_RestoreCD);
 			tcpstack.Send(input, "ok");
 		}
 		else
@@ -567,7 +567,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 	}
 	else
 	{
-		logSuccessfullLogin(helper, PARAMS, "anonymous", LoginMethod_RestoreCD);
+		logSuccessfulLogin(helper, PARAMS, "anonymous", LoginMethod_RestoreCD);
 		tcpstack.Send(input, "ok");
 	}
 }

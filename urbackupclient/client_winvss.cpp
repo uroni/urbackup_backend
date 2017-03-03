@@ -2312,7 +2312,7 @@ bool IndexThread::getExcludedFiles(IVssExamineWriterMetadata* writerMetadata, UI
 		HRESULT hr = writerMetadata->GetExcludeFile(k, &wmFile);
 		if (hr != S_OK)
 		{
-			VSSLog("Error getting exluded file " + convert(k) + " from writer metadata", LL_ERROR);
+			VSSLog("Error getting excluded file " + convert(k) + " from writer metadata", LL_ERROR);
 			return false;
 		}
 

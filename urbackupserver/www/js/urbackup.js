@@ -1221,6 +1221,8 @@ function show_status2(data)
 			case 4: obj.status="full_image"; break;
 			case 5: obj.status="resume_incr_file"; break;
 			case 6: obj.status="resume_full_file"; break;
+			case 8: obj.status="restore_file"; break;
+			case 9: obj.status="restore_image"; break;
 			case 10: obj.status=trans("starting"); break;
 			case 11: obj.status=trans("ident_err")+" <a href=\"help.htm#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
