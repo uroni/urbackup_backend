@@ -23,20 +23,29 @@
 #	define MSG_NOSIGNAL 0
 #endif
 #ifdef SOCK_CLOEXEC
+#include "config.h"
+#ifdef HAVE_ACCEPT4
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4(sockfd, addr, addrlen, SOCK_CLOEXEC)
+#else
+#define EMULATE_ACCEPT_CLOEXEC
+#endif
 #else
 #ifdef _WIN32
 #define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept(sockfd, addr, addrlen)
 #else
+#define EMULATE_ACCEPT_CLOEXEC
+#endif //!_WIN32
+#endif //!SOCK_CLOEXEC
+
+#ifdef EMULATE_ACCEPT_CLOEXEC
 #ifndef ACCEPT_CLOEXEC_DEFINED
 #define ACCEPT_CLOEXEC_DEFINED
 namespace {
 	int ACCEPT_CLOEXEC(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 		int rc = accept(sockfd, addr, addrlen);
-		if(rc) fcntl(rc, F_SETFD, fcntl(rc, F_GETFD, 0) | FD_CLOEXEC);
+		if (rc) fcntl(rc, F_SETFD, fcntl(rc, F_GETFD, 0) | FD_CLOEXEC);
 		return rc;
 	}
 }
 #endif //ACCEPT_CLOEXEC_DEFINED
-#endif //!_WIN32
-#endif //!SOCK_CLOEXEC
+#endif //EMULATE_ACCEPT_CLOEXEC
