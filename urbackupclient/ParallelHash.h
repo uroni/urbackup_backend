@@ -6,6 +6,7 @@
 #include "../Interface/Mutex.h"
 #include "../common/data.h"
 #include "clientdao.h"
+#include <memory>
 
 namespace
 {
