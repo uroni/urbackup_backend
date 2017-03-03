@@ -3,6 +3,7 @@
 set -e
 set -x
 
+./download_cryptopp.sh
 ./switch_build.sh client
 
 autoreconf --install
