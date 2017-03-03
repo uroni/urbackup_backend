@@ -1551,7 +1551,7 @@ void ServerCleanupThread::removeClient(int clientid)
 			ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\"", LL_INFO);
 			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, true);
 			if(b)
-				ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\" successfull.", LL_INFO);
+				ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\" successful.", LL_INFO);
 			else
 				ServerLogger::Log(logid, "Removing file backup with id \""+convert(backupid)+"\" failed.", LL_ERROR);
 		}
