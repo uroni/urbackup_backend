@@ -3,6 +3,7 @@
 set -e
 set -x
 
+git reset --hard
 ./download_cryptopp.sh
 ./switch_build.sh client
 
