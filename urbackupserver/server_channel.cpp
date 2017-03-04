@@ -1048,8 +1048,11 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					}
 						
 					uint64 currpos_endian = little_endian(currpos);
-					input->Write((char*)&currpos_endian, sizeof(uint64));
-					bool b=input->Write(buffer, (_u32)read);
+					bool b = input->Write((char*)&currpos_endian, sizeof(uint64), 60000, false);
+					if (b)
+					{
+						b = input->Write(buffer, (_u32)read, 60000, false);
+					}
 					if(!b)
 					{
 						Server->Log("Writing to output pipe failed processMsg-1", LL_ERROR);
@@ -1068,9 +1071,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					if(Server->getTimeMS()-lasttime>30000)
 					{
 						uint64 currpos_endian = little_endian(currpos);
-						input->Write((char*)&currpos_endian, sizeof(uint64));
+						bool b = input->Write((char*)&currpos_endian, sizeof(uint64), 60000, false);
 						memset(buffer, 0, 4096);
-						input->Write(buffer, (_u32)4096);
+						if (b)
+						{
+							input->Write(buffer, (_u32)4096, 60000, true);
+						}
 						lasttime=Server->getTimeMS();
 					}
 					read=4096;
@@ -1099,6 +1105,10 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			{
 				r = little_endian(0x7fffffffffffffffLL);
 				input->Write((char*)&r, sizeof(int64));
+			}
+			else
+			{
+				input->Flush();
 			}
 
 			backup_dao.setRestoreDone(is_ok ? 1 : 0, restore_id);
