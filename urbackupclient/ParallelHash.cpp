@@ -160,10 +160,6 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 			return false;
 
 #ifndef _WIN32
-		if (path.empty())
-		{
-			path = os_file_sep();
-		}
 		std::string path_lower = curr_dir + os_file_sep();
 #else
 		std::string path_lower = strlower(curr_dir + os_file_sep());
