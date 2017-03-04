@@ -25,7 +25,7 @@ then
 		echo "SHASUM of $CRYPTOPP_NAME is wrong: got $SHASUM expected $EXPECTED_SHA256"
 		exit 1
 	fi
-	unzip $CRYPTOPP_NAME
+	unzip -o $CRYPTOPP_NAME
 fi
 
 cd ..
