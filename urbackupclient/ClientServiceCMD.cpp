@@ -1256,6 +1256,10 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 	}
 	if(!ok)
 	{
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
 		tcpstack.Send(pipe, "NOSERVER");
 	}
 	else
