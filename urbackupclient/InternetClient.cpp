@@ -45,7 +45,7 @@ extern ICryptoFactory *crypto_fak;
 const unsigned int pbkdf2_iterations=20000;
 
 IMutex *InternetClient::mutex=NULL;
-bool InternetClient::connected=NULL;
+bool InternetClient::connected=false;
 size_t InternetClient::n_connections=0;
 int64 InternetClient::last_lan_connection=0;
 bool InternetClient::update_settings=false;

@@ -2478,17 +2478,19 @@ void ClientConnector::downloadImage(str_map params)
 
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		IPipe *c=channel_pipes[i].pipe;
+
 		std::string offset;
 		if(params.find("offset")!=params.end())
 		{
 			offset="&offset="+params["offset"];
 		}
-		tcpstack.Send(c, "DOWNLOAD IMAGE with_used_bytes=1&img_id="+params["img_id"]+"&time="+params["time"]+"&mbr="+params["mbr"]+offset);
-
+		sendChannelPacket(channel_pipes[i], "DOWNLOAD IMAGE with_used_bytes=1&img_id=" 
+			+ params["img_id"] + "&time=" + params["time"] + "&mbr=" + params["mbr"] + offset);
+		
 		Server->Log("Downloading from channel "+convert((int)i), LL_DEBUG);
 
 		_i64 imgsize=-1;
+		IPipe *c = channel_pipes[i].pipe;
 		c->Read((char*)&imgsize, sizeof(_i64), 60000);
 		Server->Log("Imagesize "+convert(imgsize), LL_DEBUG);
 		if(imgsize==-1)

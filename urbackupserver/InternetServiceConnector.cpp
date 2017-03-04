@@ -41,7 +41,7 @@ const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
 const unsigned int establish_timeout=60000;
 const int64 max_ecdh_key_age = 6 * 60 * 60 * 1000; //6h
-const std::string restore_prefix = "##restore##/";
+const std::string restore_prefix = "##restore##";
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;

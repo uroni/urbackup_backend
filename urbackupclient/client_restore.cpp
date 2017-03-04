@@ -1332,7 +1332,8 @@ bool has_internet_connection(int* ec, std::string& errstatus)
 	std::string internet_connected = getbetween("\"internet_connected\": ", ",", r);
 	std::string internet_status = getbetween("\"internet_status\": \"", "\",", r);
 
-	if (internet_connected == "true")
+	if (internet_connected == "true"
+		&& r.find("\"servers\": []")==std::string::npos)
 	{
 		return true;
 	}
@@ -1340,6 +1341,11 @@ bool has_internet_connection(int* ec, std::string& errstatus)
 	errstatus = internet_status;
 	*ec = 2;
 	return false;
+}
+
+namespace
+{
+	bool internet_server_configured = false;
 }
 
 void configure_internet_server()
@@ -1397,7 +1403,9 @@ void configure_internet_server()
 	rnd.resize(16);
 	Server->secureRandomFill(&rnd[0], 16);
 
-	std::string clientname = "##restore##/" + bytesToHex(rnd);
+	std::string clientname = "##restore##" + bytesToHex(rnd);
+
+	os_create_dir_recursive("urbackup/data");
 
 	writestring("internet_mode_enabled=true\n"
 		"internet_server=" + internet_server + "\n"
@@ -1417,6 +1425,8 @@ void configure_internet_server()
 
 	std::cout << "Waiting for Internet restore client to connect..." << std::endl;
 
+	Server->wait(1000);
+
 	int64 starttime = Server->getTimeMS();
 	int ec;
 	std::string errstatus;
@@ -1424,13 +1434,18 @@ void configure_internet_server()
 	{
 		if (has_internet_connection(&ec, errstatus))
 		{
+			internet_server_configured = true;
 			return;
 		}
+		if (ec == 2 && next(errstatus, 0, "error:"))
+			break;
+		Server->wait(1000);
 	}
 
 	std::cout << "Connecting to Internet server failed: " << errstatus << std::endl;
 	std::cout << "Restarting local UrBackup client... " << errstatus << std::endl;
 	system("systemctl stop restore-client-internet");
+	Server->deleteFile("urbackup/data/settings.cfg");
 	system("systemctl start restore-client");
 
 	std::string errmsg;
@@ -1441,7 +1456,7 @@ void configure_internet_server()
 		errmsg = "`cat urbackup/restore/internal_error`";
 		break;
 	case 2:
-		errmsg = "`cat urbackup/restore/internet_authentification_failed`";
+		errmsg = getFile("urbackup/restore/internet_authentification_failed");
 		errmsg = greplace("_STATUS_", errstatus, errmsg);
 		break;
 	}
@@ -1634,7 +1649,10 @@ void restore_wizard(void)
 			}break;
 		case 0:
 			{
-				system("urbackup/restore/progress-start.sh | dialog --backtitle \"`cat urbackup/restore/search`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
+				if (!internet_server_configured)
+				{
+					system("urbackup/restore/progress-start.sh | dialog --backtitle \"`cat urbackup/restore/search`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
+				}
 				++state;
 			}break;
 		case 1:
@@ -1704,7 +1722,7 @@ void restore_wizard(void)
 					}
 					else if (out == "i")
 					{
-						ping_named_server();
+						configure_internet_server();
 						state = 0;
 					}
 					else if(out=="s")

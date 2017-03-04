@@ -2128,11 +2128,10 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map
 			with_id_offset += "&with_id_offset=true";
 		}
 
-		tcpstack.Send(c, "DOWNLOAD FILES backupid="+params["backupid"]+"&time="+params["time"]+ with_id_offset);
+		CTCPStack recv_stack(channel_pipes[i].internet_connection);
+		recv_stack.Send(c, "DOWNLOAD FILES backupid="+params["backupid"]+"&time="+params["time"]+ with_id_offset);
 
 		Server->Log("Start downloading files from channel "+convert((int)i), LL_DEBUG);
-
-		CTCPStack recv_stack;
 
 		int64 starttime = Server->getTimeMS();
 
