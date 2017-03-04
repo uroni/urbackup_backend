@@ -19,6 +19,10 @@ systemctl enable restore-client.service
 systemctl enable restore-client-internet.service
 echo "Starting restore service..."
 systemctl start restore-client
+echo "Setting up keyboard layout..."
+dpkg-reconfigure keyboard-configuration
+service keyboard-setup restart
+setupcon
 echo "Starting restore wizard..."
 ./urbackuprestoreclient --restore-wizard --logfile restore_wizard.txt --loglevel debug
 echo "Wizard stoped with error code: $?"
