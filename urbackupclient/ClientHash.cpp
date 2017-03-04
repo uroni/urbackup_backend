@@ -2,6 +2,7 @@
 #include "../Interface/File.h"
 #include "../urbackupcommon/os_functions.h"
 #include <memory>
+#include <cstring>
 #include <assert.h>
 #include "../urbackupcommon/ExtentIterator.h"
 #include "../fileservplugin/chunk_settings.h"
