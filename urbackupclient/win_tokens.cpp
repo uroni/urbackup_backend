@@ -440,18 +440,19 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 	bool lookup_user = is_user;
 	while (!b)
 	{
-		std::string local_username;
-		if (accountname.find("\\") != std::string::npos)
+		std::wstring local_username;
+		if (accountname.find("\\") != std::string::npos
+			|| !lookup_user)
 		{
-			local_username = accountname;
+			local_username = Server->ConvertToWchar(accountname);
 		}
-		else if (lookup_user)
+		else
 		{
-			local_username = hostname + "\\" + accountname;
+			local_username = Server->ConvertToWchar(hostname + "\\" + accountname);
 		}
 
 		b = LookupAccountNameW(NULL,
-			Server->ConvertToWchar(local_username).c_str(),
+			local_username.c_str(),
 			&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 			&referenced_domain_size, &sid_name_use);
 
@@ -460,7 +461,7 @@ bool write_token( std::string hostname, bool is_user, std::string accountname, c
 			referenced_domain.resize(referenced_domain_size);
 			sid_buffer.resize(account_sid_size);
 			b = LookupAccountNameW(NULL,
-				Server->ConvertToWchar(local_username).c_str(),
+				local_username.c_str(),
 				&sid_buffer[0], &account_sid_size, &referenced_domain[0],
 				&referenced_domain_size, &sid_name_use);
 		}
