@@ -20,6 +20,8 @@ systemctl enable restore-client-internet.service
 echo "Starting restore service..."
 systemctl start restore-client
 echo "Setting up keyboard layout..."
+echo "#!/bin/true" > /usr/share/console-setup/keyboard-configuration.config
+chmod +x /usr/share/console-setup/keyboard-configuration.config
 dpkg-reconfigure keyboard-configuration
 service keyboard-setup restart
 setupcon
