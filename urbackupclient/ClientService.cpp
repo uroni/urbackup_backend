@@ -3145,6 +3145,7 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 	Server->secureRandomFill(&session_key[0], session_key.size());
 
 	bool has_token=false;
+	size_t tokenidx = 0;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
 		if (!next(server_token_keys[i], 0, "key.")
@@ -3158,9 +3159,10 @@ std::string ClientConnector::getAccessTokensParams(const std::string& tokens, bo
 		if(access_keys->getValue(server_token_keys[i],
 			&server_key) && !server_key.empty())
 		{
-			ret += "&tokens"+convert(i)+"="+base64_encode_dash(
+			ret += "&tokens"+convert(tokenidx)+"="+base64_encode_dash(
 				crypto_fak->encryptAuthenticatedAES(session_key,
 				server_key, 1));
+			++tokenidx;
 			has_token=true;
 		}
 	}
