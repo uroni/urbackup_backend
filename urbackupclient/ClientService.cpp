@@ -2413,15 +2413,14 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 }
 
 const int64 receive_timeouttime=60000;
-
-std::string ClientConnector::receivePacket(const SChannel& channel)
+std::string ClientConnector::receivePacket(const SChannel& channel, int64 timeoutms)
 {
     CTCPStack localstack(channel.internet_connection);
 	int64 starttime=Server->getTimeMS();
-	while(Server->getTimeMS()-starttime<=receive_timeouttime)
+	while(Server->getTimeMS()-starttime<= timeoutms)
 	{
         std::string ret;
-        size_t rc=channel.pipe->Read(&ret, 10000);
+        size_t rc=channel.pipe->Read(&ret, timeoutms);
 		if(rc==0)
 		{
 			return "";

@@ -1777,7 +1777,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				}
 
 				sendChannelPacket(channel_pipes[i], cmd+accessparams);
-				std::string nc=receivePacket(channel_pipes[i]);
+				std::string nc=receivePacket(channel_pipes[i],
+					10*60*1000);
 				if(!nc.empty() && nc!="err")
 				{
 					channel_pipes[i].last_tokens = utf8_tokens;
