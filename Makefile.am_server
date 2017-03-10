@@ -80,7 +80,7 @@ endif
 endif
 
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup"
-	test "x$(DESTDIR)$(sbindir)" = "x$(DESTDIR)$(bindir) || ! test -e $(DESTDIR)$(sbindir)/urbackupsrv || rm $(DESTDIR)$(sbindir)/urbackupsrv
+	test "x$(DESTDIR)$(sbindir)" = "x$(DESTDIR)$(bindir)" || ! test -e $(DESTDIR)$(sbindir)/urbackupsrv || rm $(DESTDIR)$(sbindir)/urbackupsrv
 if !PACKAGING
 if FREEBSD
 	pw groupadd urbackup -q || true
