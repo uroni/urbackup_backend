@@ -200,65 +200,12 @@ void ClientMain::unloadSQL(void)
 
 void ClientMain::operator ()(void)
 {
+	if(!sendServerIdentity(true))
 	{
-		bool c=true;
-		while(c)
-		{
-			c=false;
-			bool retok_err=false;
-			std::string ret_str;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \""+clientname+"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
-			if(!b)
-			{
-				if(retok_err)
-				{
-					if(ret_str!="needs certificate")
-					{
-						ServerStatus::setStatusError(clientname, se_ident_error);
-					}
-					else
-					{
-						ServerStatus::setStatusError(clientname, se_none);
-						needs_authentification=true;
-						break;
-					}
-				}
-				
-				unsigned int retry_time=ident_err_retry_time;
-
-				if(retok_err)
-				{
-					retry_time=ident_err_retry_time_retok;
-				}
-
-				c=true;
-				std::string msg;
-				pipe->Read(&msg, retry_time);
-				if(msg=="exit" || msg=="exitnow")
-				{
-					pipe->Write("ok");
-					Server->Log("client_main Thread for client \""+clientname+"\" finished and the identity was not recognized", LL_INFO);
-
-					delete this;
-					return;
-				}
-				else if (next(msg, 0, "address"))
-				{
-					updateClientAddress(msg.substr(7));
-
-					tcpstack.setAddChecksum(internet_connection);
-				}
-				else
-				{
-					pipe->Write(msg);
-					Server->wait(retry_time);
-				}
-			}
-			else
-			{
-				ServerStatus::setStatusError(clientname, se_none);
-			}
-		}
+		pipe->Write("ok");
+		Server->Log("client_main Thread for client \"" + clientname + "\" finished and the identity was not recognized", LL_INFO);
+		delete this;
+		return;
 	}
 
 	if( clientname.find("##restore##")==0 )
@@ -696,7 +643,8 @@ void ClientMain::operator ()(void)
 			if (do_reauthenticate)
 			{
 				do_reauthenticate = false;
-				if (!authenticateIfNeeded(true, true))
+				if ( !sendServerIdentity(true)
+				 	  || !authenticateIfNeeded(true, true) )
 				{
 					skip_checking = true;
 				}
@@ -2647,6 +2595,72 @@ bool ClientMain::exponentialBackoffCdp()
 bool ClientMain::pauseRetryBackup()
 {
 	return Server->getTimeMS() - last_backup_try >= 5 * 60 * 1000;
+}
+
+bool ClientMain::sendServerIdentity(bool retry_exit)
+{
+	bool c = true;
+	while (c)
+	{
+		c = false;
+		bool retok_err = false;
+		std::string ret_str;
+		bool b = sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \"" + clientname + "\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
+		if (!b)
+		{
+			if (retok_err)
+			{
+				if (ret_str != "needs certificate")
+				{
+					ServerStatus::setStatusError(clientname, se_ident_error);
+				}
+				else
+				{
+					ServerStatus::setStatusError(clientname, se_none);
+					needs_authentification = true;
+					return true;
+				}
+			}
+
+			if (!retry_exit)
+			{
+				return false;
+			}
+
+			unsigned int retry_time = ident_err_retry_time;
+
+			if (retok_err)
+			{
+				retry_time = ident_err_retry_time_retok;
+			}
+
+			c = true;
+			std::string msg;
+			pipe->Read(&msg, retry_time);
+			if (msg == "exit" || msg == "exitnow")
+			{
+				pipe->Write(msg);
+				return false;
+			}
+			else if (next(msg, 0, "address"))
+			{
+				updateClientAddress(msg.substr(7));
+
+				tcpstack.setAddChecksum(internet_connection);
+			}
+			else
+			{
+				pipe->Write(msg);
+				Server->wait(retry_time);
+			}
+		}
+		else
+		{
+			ServerStatus::setStatusError(clientname, se_none);
+		}
+	}
+
+	return true;
 }
 
 bool ClientMain::authenticatePubKey()

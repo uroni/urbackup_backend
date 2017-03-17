@@ -276,6 +276,7 @@ private:
 	bool exponentialBackoffCdp();
 	bool pauseRetryBackup();
 
+	bool sendServerIdentity(bool retry_exit);
 	bool authenticatePubKey();
 
 	void timeoutRestores();
