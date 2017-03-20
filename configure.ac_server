@@ -18,7 +18,7 @@ AC_ARG_ENABLE([packaging],
      AS_HELP_STRING([--enable-packaging], [Will be installed for packaging.]))
 AC_ARG_WITH([mountvhd],
      AS_HELP_STRING([--with-mountvhd], [Enable mounting of VHD files via fuse.]))
-AC_ARG_WITH([assertions],
+AC_ARG_ENABLE([assertions],
      AS_HELP_STRING([--enable-assertions], [Enable assertions (bug finding).]))
 AM_CONDITIONAL(WITH_ASSERTIONS, test "x$enable_assertions" = xyes)
 
