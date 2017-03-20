@@ -377,6 +377,110 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	return false;
 }
 
+bool FileBackup::wait_for_async(const std::string& async_id, int64 timeout_time)
+{
+	int64 starttime = Server->getTimeMS();
+	std::auto_ptr<IPipe> cc;
+	CTCPStack tcpstack(client_main->isOnInternetConnection());
+
+	while (Server->getTimeMS() - starttime <= timeout_time)
+	{
+		if (cc.get() == NULL)
+		{
+			while (cc.get() == NULL
+				&& Server->getTimeMS() - starttime <= timeout_time)
+			{
+				ServerLogger::Log(logid, clientname + ": Connecting for async...", LL_DEBUG);
+				cc.reset(client_main->getClientCommandConnection(10000));
+
+				if (ServerStatus::getProcess(clientname, status_id).stop)
+				{
+					cc.reset();
+					ServerLogger::Log(logid, "Sever admin stopped backup)", LL_WARNING);
+					break;
+				}
+
+				if (cc.get() == NULL)
+				{
+					ServerLogger::Log(logid, clientname + ": Failed to connect to client. Retrying in 10s", LL_DEBUG);
+					Server->wait(10000);
+				}
+			}
+
+			if (cc.get() == NULL)
+			{
+				if (!ServerStatus::getProcess(clientname, status_id).stop)
+				{
+					ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed - CONNECT error during async (2)", LL_ERROR);
+					has_timeout_error = true;
+				}
+				return false;
+			}
+
+			starttime = Server->getTimeMS();
+			tcpstack.reset();
+			std::string cmd = client_main->getIdentity() + "WAIT FOR INDEX async_id=" + async_id + "#token=" + server_token;
+			tcpstack.Send(cc.get(), cmd);
+		}
+
+		std::string ret;
+		size_t rc = cc->Read(&ret, 60000);
+		if (rc == 0)
+		{
+			cc.reset();
+			continue;
+		}
+
+		tcpstack.AddData((char*)ret.c_str(), ret.size());
+
+		while (tcpstack.getPacket(ret))
+		{
+			if (ret == "DONE")
+			{
+				return true;
+			}
+			else if (ret == "BUSY")
+			{
+				starttime = Server->getTimeMS();
+			}
+			else
+			{
+				if (ret == "ERR")
+				{
+					client_main->forceReauthenticate();
+				}
+
+				ServerLogger::Log(logid, "Async cmd of \"" + clientname + "\" failed: " + ret, LL_ERROR);
+				return false;
+			}
+		}
+	}
+
+	ServerLogger::Log(logid, "Async cmd of \"" + clientname + "\" failed: Timeout", LL_ERROR);
+	has_timeout_error = true;
+	return false;
+}
+
+bool FileBackup::request_client_write_tokens()
+{
+	std::string ret = client_main->sendClientMessage("WRITE TOKENS ", "Error requesting client to write tokens", 10000, true, LL_WARNING);
+	if (ret == "OK")
+	{
+		return true;
+	}
+	else if (next(ret, 0, "ASYNC-"))
+	{
+		str_map params;
+		ParseParamStrHttp(ret.substr(6), &params);
+
+		return wait_for_async(params["async_id"]);
+	}
+	else
+	{
+		ServerLogger::Log(logid, "Error requesting client to write tokens: " + ret, LL_WARNING);
+	}
+}
+
 bool FileBackup::hasEarlyError()
 {
 	return has_early_error;
@@ -403,8 +507,16 @@ void FileBackup::logVssLogdata(int64 vss_duration_s)
 	}
 }
 
-bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
+bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer, bool request)
 {
+	if (request)
+	{
+		if (!request_client_write_tokens())
+		{
+			return false;
+		}
+	}
+
 	bool has_token_file=true;
 	
 	IFsFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+".urbackup_tokens.properties"), MODE_WRITE);

@@ -1007,6 +1007,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_CLIENT_ACCESS_KEY(cmd.substr(18)); continue;
 			}
+			else if (next(cmd, 0, "WRITE TOKENS "))
+			{
+				CMD_WRITE_TOKENS(cmd.substr(13)); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{

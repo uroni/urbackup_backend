@@ -38,7 +38,7 @@ bool write_tokens()
 	DBScopedWriteTransaction write_transaction(db);
 
 	bool has_new_token=false;
-	std::vector<std::string> users = get_users();
+	std::vector<std::string> users = get_local_users();
 
 	os_create_dir(tokens_path);
 
@@ -68,46 +68,38 @@ bool write_tokens()
 		}
 
 		has_new_token |= write_token(hostname, true, users[i], token_fn, dao);
-	}
 
-	std::vector<std::string> groups = get_groups();
+		std::vector<std::string> user_groups = get_user_groups(users[i]);
 
-	for(size_t i=0;i<groups.size();++i)
-	{
-		std::string group_fn="group_"+bytesToHex(accountname_normalize(groups[i]));
-		std::string token_fn = tokens_path + os_file_sep()+group_fn;
-		bool file_found=false;
-		for(size_t j=0;j<files.size();++j)
+		for (size_t j=0;j<user_groups.size();++j)
 		{
-			if(files[j].name==group_fn)
+			std::string group_fn = "group_" + bytesToHex(accountname_normalize(user_groups[j]));
+			std::string token_fn = tokens_path + os_file_sep() + group_fn;
+			bool file_found = false;
+			for (size_t j = 0; j<files.size(); ++j)
 			{
-				file_found=true;
-				break;
+				if (files[j].name == group_fn)
+				{
+					file_found = true;
+					break;
+				}
 			}
+
+			if (file_found)
+			{
+				continue;
+			}
+
+			has_new_token |= write_token(hostname, false, user_groups[j], token_fn, dao);
 		}
 
-		if(file_found)
+		if (has_new_token)
 		{
-			continue;
-		}
-
-		has_new_token |= write_token(hostname, false, groups[i], token_fn, dao);
-
-	}
-
-	if(has_new_token)
-	{
-		//dao.updateMiscValue("has_new_token", L"true");
-
-		for(size_t i=0;i<users.size();++i)
-		{
-			std::vector<std::string> user_groups = get_user_groups(users[i]);
-
 			ClientDAO::CondInt64 uid = dao.getFileAccessTokenId2Alts(accountname_normalize(users[i]), ClientDAO::c_is_system_user, ClientDAO::c_is_user);
-			if(uid.exists)
+			if (uid.exists)
 			{
 				dao.removeGroupMembership(uid.value);
-				for(size_t j=0;j<user_groups.size();++j)
+				for (size_t j = 0; j < user_groups.size(); ++j)
 				{
 					dao.updateGroupMembership(uid.value, accountname_normalize(user_groups[j]));
 				}

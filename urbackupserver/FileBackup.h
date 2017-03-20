@@ -81,8 +81,10 @@ protected:
 	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations);
 	bool request_filelist_construct(bool full, bool resume, int group,
 		bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::string& clientsubname);
+	bool wait_for_async(const std::string& async_id, int64 timeout_time=10*60*1000);
+	bool request_client_write_tokens();
 	void logVssLogdata(int64 vss_duration_s);
-	bool getTokenFile(FileClient &fc, bool hashed_transfer );
+	bool getTokenFile(FileClient &fc, bool hashed_transfer, bool request);
 	std::string clientlistName(int ref_backupid);
 	void createHashThreads(bool use_reflink, bool ignore_hash_mismatches);
 	void destroyHashThreads();

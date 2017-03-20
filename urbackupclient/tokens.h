@@ -43,6 +43,8 @@ namespace tokens
 
 	std::string get_hostname();
 
+	std::vector<std::string> get_local_users();
+
 	std::vector<std::string> get_users();
 
 	std::vector<std::string> get_groups();

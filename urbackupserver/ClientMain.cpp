@@ -1543,6 +1543,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.phash_version = watoi(it->second);
 		}
+		it = params.find("WTOKENS");
+		if (it != params.end())
+		{
+			protocol_versions.wtokens_version = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{

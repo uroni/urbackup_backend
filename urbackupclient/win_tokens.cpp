@@ -593,17 +593,91 @@ std::string permissions_allow_all()
 	return std::string(token_info.getDataPtr(), token_info.getDataSize());
 }
 
-std::string get_hostname()
+std::string get_hostname_noslash()
 {
 	char hostname_c[MAX_PATH];
-	hostname_c[0]=0;
+	hostname_c[0] = 0;
 	gethostname(hostname_c, MAX_PATH);
+	
+	return hostname_c;
+}
 
-	std::string hostname = hostname_c;
+std::string get_hostname()
+{
+	std::string hostname = get_hostname_noslash();
 	if(!hostname.empty())
 		hostname+="\\";
 
 	return hostname;
+}
+
+std::vector<std::string> get_local_users()
+{
+	std::string hostname = get_hostname_noslash();
+
+	HKEY hKey;
+	std::vector<std::string> ret;
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+		Server->ConvertToWchar("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList").c_str(),
+		0, KEY_READ, &hKey) == ERROR_SUCCESS)
+	{
+		DWORD subkeys;
+		if (RegQueryInfoKeyW(hKey, NULL, NULL, NULL, &subkeys, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+			== ERROR_SUCCESS)
+		{
+			for (DWORD i = 0; i < subkeys; ++i)
+			{
+				DWORD key_length = 512;
+				wchar_t key_name[512];
+				*key_name = 0;
+				if (RegEnumKeyExW(hKey, i, key_name, &key_length, NULL, NULL, NULL, NULL)
+					== ERROR_SUCCESS)
+				{
+					PSID sid;
+					if (ConvertStringSidToSidW(key_name, &sid))
+					{
+						DWORD name_length = 0;
+						DWORD domain_length = 0;
+						SID_NAME_USE name_use;
+						std::wstring name;
+						std::wstring domain;
+						BOOL b = LookupAccountSidW(NULL, sid, NULL, &name_length, NULL, &domain_length, &name_use);
+						if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+						{
+							name.resize(name_length);
+							domain.resize(domain_length);
+
+							b = LookupAccountSidW(NULL, sid, &name[0], &name_length, &domain[0], &domain_length, &name_use);
+						}
+
+						if (b)
+						{
+							if (name_use == SidTypeUser
+								|| name_use == SidTypeComputer)
+							{
+								std::string curr_domain = Server->ConvertFromWchar(domain.c_str());
+								if (!curr_domain.empty()
+									&& curr_domain != hostname )
+								{
+									ret.push_back(curr_domain + "\\" + Server->ConvertFromWchar(name.c_str()));
+								}
+								else
+								{
+									ret.push_back(Server->ConvertFromWchar(name.c_str()));
+								}
+							}
+						}
+
+						LocalFree(sid);
+					}
+				}
+			}
+		}
+
+		RegCloseKey(hKey);
+	}
+
+	return ret;
 }
 
 bool read_account_sid( std::vector<char>& sid, std::string hostname, std::string accountname, bool is_user )
@@ -733,14 +807,107 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
+void read_token_lazy_cache(TokenCache& token_cache, ClientDAO* dao, std::vector<char>& sid)
+{
+	PSID psid = reinterpret_cast<PSID>(sid.data());
+	DWORD name_length = 0;
+	DWORD domain_length = 0;
+	SID_NAME_USE name_use;
+	std::wstring name;
+	std::wstring domain;
+	BOOL b = LookupAccountSidW(NULL, psid, NULL, &name_length, NULL, &domain_length, &name_use);
+	if (!b && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	{
+		name.resize(name_length);
+		domain.resize(domain_length);
+
+		b = LookupAccountSidW(NULL, psid, &name[0], &name_length, &domain[0], &domain_length, &name_use);
+	}
+
+	if (!b)
+	{
+		Token empty = { 0, true };
+		token_cache.get()->tokens[sid] = empty;
+		return;
+	}
+
+	
+	std::string curr_domain = Server->ConvertFromWchar(domain.c_str());
+	bool local_user = curr_domain == get_hostname_noslash();
+	std::string name_full;
+	if (!curr_domain.empty()
+		&& !local_user)
+	{
+		name_full = curr_domain +"\\" + Server->ConvertFromWchar(name.c_str());
+	}
+	else
+	{
+		name_full = Server->ConvertFromWchar(name.c_str());
+	}
+
+	std::string name_norm = accountname_normalize(name_full);
+
+	ClientDAO::CondInt64 token_id;
+
+	bool is_user;
+	if (name_use == SidTypeUser
+		|| name_use == SidTypeComputer)
+	{
+		is_user = true;
+		token_id = dao->getFileAccessTokenId2Alts(name_norm,
+			ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+	}
+	else
+	{
+		is_user = false;
+		token_id = dao->getFileAccessTokenId(name_norm, ClientDAO::c_is_group);
+	}		
+
+	if (!token_id.exists)
+	{
+		std::string hostname;
+		if (curr_domain.empty())
+		{
+			hostname = get_hostname();
+		}
+		else if (local_user)
+		{
+			hostname = curr_domain;
+		}
+
+		std::string user_fn = (is_user ? "user_" : "group_") + bytesToHex(name_norm);
+		std::string token_fn = tokens_path + os_file_sep() + user_fn;
+		if (!write_token(hostname, is_user, name_full, token_fn, *dao))
+		{
+			Token empty = { 0, true };
+			token_cache.get()->tokens[sid] = empty;
+			return;
+		}
+
+		if(is_user)
+			token_id = dao->getFileAccessTokenId2Alts(name_norm,
+				ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		else
+			token_id = dao->getFileAccessTokenId(name_norm, ClientDAO::c_is_group);
+	}
+
+	if (!token_id.exists)
+	{
+		Token empty = { 0, true };
+		token_cache.get()->tokens[sid] = empty;
+		return;
+	}
+
+	Token new_token = { token_id.value, is_user };
+	token_cache.get()->tokens[sid] = new_token;
+}
+
 std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
 {
 	if(token_cache.get()==NULL)
 	{
-		read_all_tokens(dao, token_cache);
+		token_cache.reset(new TokenCacheInt);
 	}
-
-	TokenCacheInt* cache = token_cache.get();
 
 	PACL dacl=NULL;
 	PSECURITY_DESCRIPTOR sec_desc;
@@ -815,10 +982,14 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 				std::map<std::vector<char>, Token>::iterator token_it =
 					token_cache.get()->tokens.find(sid);
 
-				if(token_it!=token_cache.get()->tokens.end())
+				if (token_it == token_cache.get()->tokens.end())
 				{
-					assert(token_it->second.id!=0);
+					read_token_lazy_cache(token_cache, dao, sid);
+					token_it = token_cache.get()->tokens.find(sid);
+				}
 
+				if(token_it->second.id!=0)
+				{
 					if(allow)
 					{
 						token_info.addChar(ID_GRANT_ACCESS);
@@ -832,7 +1003,7 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 				}
 				else if(!allow)
 				{
-					Server->Log("Error getting SID of ACE entry of file \""+fn+"\"", LL_ERROR);
+					Server->Log("Error looking up SID of ACE entry of file \""+fn+"\"", LL_ERROR);
 					LocalFree(sec_desc);
 					return std::string();
 				}				

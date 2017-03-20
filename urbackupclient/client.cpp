@@ -82,6 +82,7 @@ const char IndexThread::IndexThreadAction_AddWatchdir = 5;
 const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
 const char IndexThread::IndexThreadAction_UpdateCbt = 7;
 const char IndexThread::IndexThreadAction_SnapshotCbt = 12;
+const char IndexThread::IndexThreadAction_WriteTokens = 13;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -1158,6 +1159,14 @@ void IndexThread::operator()(void)
 			{
 				contractor->Write("failed");
 			}
+		}
+		else if (action == IndexThreadAction_WriteTokens)
+		{
+			data.getStr(&starttoken);
+			async_timeout = true;
+			writeTokens();
+			contractor->Write("done");
+			async_timeout_starttime = Server->getTimeMS();
 		}
 	}
 

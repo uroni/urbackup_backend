@@ -150,7 +150,7 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	getTokenFile(fc, hashed_transfer);
+	getTokenFile(fc, hashed_transfer, false);
 
 	if (!backup_dao->newFileBackup(0, clientid, backuppath_single, 0, Server->getTimeMS() - indexing_start_time, group))
 	{
@@ -680,6 +680,12 @@ bool FullFileBackup::doFileBackup()
 	}
 
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
+
+	if (!r_offline && !c_has_error && !disk_error
+		&& client_main->getProtocolVersions().wtokens_version > 0 )
+	{
+		getTokenFile(fc, hashed_transfer, true);
+	}
 
 	server_download->deleteTempFolder();
 

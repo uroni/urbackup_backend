@@ -284,6 +284,7 @@ public:
 	static const char IndexThreadAction_UpdateCbt;
 	static const char IndexThreadAction_ReferenceShadowcopy;
 	static const char IndexThreadAction_SnapshotCbt;
+	static const char IndexThreadAction_WriteTokens;
 
 	IndexThread(void);
 	~IndexThread();

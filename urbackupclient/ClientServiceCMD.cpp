@@ -2456,7 +2456,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&OS_SIMPLE=windows"+ send_prev_cbitmap+
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"+ send_prev_cbitmap+
 		conn_metered);
 #else
 
@@ -2472,7 +2472,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&OS_SIMPLE="+os_simple);
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple);
 #endif
 }
 
@@ -2813,3 +2813,48 @@ void ClientConnector::CMD_CLIENT_ACCESS_KEY(const std::string& cmd)
 		tcpstack.Send(pipe, "err: key or token empty");
 	}
 }
+
+void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
+{
+	str_map params;
+	ParseParamStrHttp(cmd, &params);
+
+	std::string async_id;
+	async_id.resize(16);
+	Server->randomFill(&async_id[0], async_id.size());
+
+	SAsyncFileList new_async_file_list = {
+		Server->getTimeMS(),
+		mempipe
+	};
+
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_WriteTokens);
+	data.addVoidPtr(mempipe);
+	data.addString(server_token);
+
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+	std::string msg;
+	if (mempipe->Read(&msg, 3000) > 0)
+	{
+		if(msg=="done")
+			tcpstack.Send(pipe, "OK");
+		else
+			tcpstack.Send(pipe, msg);
+		mempipe->Write("exit");
+		mempipe = Server->createMemoryPipe();
+		return;
+	}
+
+	mempipe = Server->createMemoryPipe();
+
+	IScopedLock lock(backup_mutex);
+
+	async_file_index[async_id] = new_async_file_list;
+
+	lock.relock(NULL);
+
+	tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
+}
+	

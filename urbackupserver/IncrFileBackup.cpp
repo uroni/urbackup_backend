@@ -313,7 +313,7 @@ bool IncrFileBackup::doFileBackup()
 		}
 	}
 
-	getTokenFile(fc, hashed_transfer);
+	getTokenFile(fc, hashed_transfer, false);
 
 	if(use_snapshots)
 	{
@@ -1283,6 +1283,12 @@ bool IncrFileBackup::doFileBackup()
 	}
 
 	stopFileMetadataDownloadThread(false, server_download->getNumEmbeddedMetadataFiles());
+
+	if (!r_offline && !c_has_error && !disk_error
+		&& client_main->getProtocolVersions().wtokens_version > 0)
+	{
+		getTokenFile(fc, hashed_transfer, true);
+	}
 
 	server_download->deleteTempFolder();
 
