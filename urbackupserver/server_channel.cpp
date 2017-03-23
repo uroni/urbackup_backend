@@ -1164,8 +1164,10 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 			restore_flags = watoi64(restore_flags_it->second);
 		}
 
+		std::vector<std::string> tokens;
+
 		if(create_clientdl_thread(backupid, clientname, clientid, restore_id, status_id, log_id,
-			params["restore_token"], map_paths, clean_other, ignore_other_fs, follow_symlinks, restore_flags))
+			params["restore_token"], map_paths, clean_other, ignore_other_fs, follow_symlinks, restore_flags, tokens))
 		{
 			JSON::Object ret;
 			ret.set("ok", true);
@@ -1301,7 +1303,8 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 
 		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, filename, 
 			path_info.rel_path.empty(), path_info.rel_path, restore_id, status_id, log_id, params["restore_token"],
-			map_paths, clean_other, ignore_other_fs, greplace(os_file_sep(), "/", path_info.rel_path), follow_symlinks, restore_flags, ticket))
+			map_paths, clean_other, ignore_other_fs, greplace(os_file_sep(), "/", path_info.rel_path), follow_symlinks, restore_flags,
+			ticket, tokens, path_info.backup_tokens))
 		{
 			ret.set("err", 5);
 			break;

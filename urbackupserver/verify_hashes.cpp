@@ -348,6 +348,10 @@ bool verify_hashes(std::string arg)
 			}
 		}
 	}
+	else
+	{
+		filter = "1=1";
+	}
 
 	
 	std::cout << "Calculating filesize..." << std::endl;

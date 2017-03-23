@@ -35,6 +35,8 @@
 #include "file_permissions.h"
 #include <assert.h>
 #include "../common/data.h"
+#include "tokens.h"
+#include <algorithm>
 
 namespace
 {
@@ -179,6 +181,100 @@ namespace
 		RestoreUpdaterThread* restore_updater;
 		THREADPOOL_TICKET restore_updater_ticket;
 	};
+
+	const char ID_GRANT_ACCESS = 0;
+	const char ID_DENY_ACCESS = 1;
+
+	bool hasPermission(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::ETokenRight right, tokens::TokenCache& cache)
+	{
+		std::string permissions = tokens::get_file_tokens(fn, clientdao, right, cache);
+
+		CRData perm(permissions.data(),
+			permissions.size());
+
+		char action;
+		while (perm.getChar(&action))
+		{
+			int64 pid;
+			if (!perm.getVarInt(&pid))
+			{
+				return false;
+			}
+
+			switch (action)
+			{
+			case ID_GRANT_ACCESS:
+				if (pid == 0 || std::binary_search(tids.begin(), tids.end(), pid))
+				{
+					return true;
+				}
+				break;
+			case ID_DENY_ACCESS:
+				if (pid == 0 || std::binary_search(tids.begin(), tids.end(), pid))
+				{
+					return false;
+				}
+				break;
+			}
+		}
+
+		return false;
+	}
+
+	bool canModifyFile(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		return hasPermission(fn, tids, clientdao, tokens::ETokenRight_Write, cache);
+	}
+
+	bool canDelete(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		return hasPermission(fn, tids, clientdao, tokens::ETokenRight_Delete, cache);
+	}
+
+	bool canDeleteFromDir(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		std::string dir = ExtractFilePath(fn, os_file_sep());
+		if (dir.empty())
+		{
+			return false;
+		}
+
+		return hasPermission(dir, tids, clientdao, tokens::ETokenRight_Full, cache);
+	}
+
+	bool canAddFiles(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		return hasPermission(fn, tids, clientdao, tokens::ETokenRight_Write, cache);
+	}
+
+	bool canCreateFile(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		std::string dir = ExtractFilePath(fn, os_file_sep());
+		if (dir.empty())
+		{
+			return false;
+		}
+
+		return canAddFiles(dir, tids, clientdao, cache);
+	}
+
+	bool canCreateDirRecursive(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
+	{
+		std::string cd = fn;
+		while (!os_directory_exists(os_file_prefix(cd)))
+		{
+			cd = ExtractFilePath(cd, os_file_sep());
+		}
+
+		if (!cd.empty())
+		{
+			return canCreateFile(cd, tids, clientdao, cache);
+		}
+		else
+		{
+			return false;
+		}
+	}
 }
 
 
@@ -486,6 +582,11 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 	std::stack<std::vector<std::string> > folder_files;
 	folder_files.push(std::vector<std::string>());
 
+	std::vector<int64> tids;
+	ClientDAO client_dao(db);
+	tokens::TokenCache token_cache;
+	size_t skip_dir = std::string::npos;
+
 	do
 	{
 		read = filelist->Read(buffer.data(), static_cast<_u32>(buffer.size()));
@@ -494,6 +595,35 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 		{
 			if (filelist_parser.nextEntry(buffer[i], data, &extra))
 			{
+				if (skip_dir != std::string::npos
+					&& data.isdir)
+				{
+					if (data.name == "..")
+					{
+						--skip_dir;
+						if (skip_dir == 0)
+						{
+							skip_dir = std::string::npos;
+						}
+						else
+						{
+							++line;
+							continue;
+						}
+					}
+					else
+					{
+						++skip_dir;
+						++line;
+						continue;
+					}
+				}
+				else if (skip_dir != std::string::npos)
+				{
+					++line;
+					continue;
+				}
+
 				FileMetadata metadata;
 				metadata.read(extra);
 
@@ -507,6 +637,19 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 					{
 						folder_files.top().clear();
 					}
+				}
+
+				str_map::iterator it_tids = extra.find("tids");
+				if (it_tids != extra.begin())
+				{
+					std::vector<std::string> toks;
+					TokenizeMail(it_tids->second, toks, ",");
+					tids.clear();
+					for (size_t j = 0; j < toks.size(); ++j)
+					{
+						tids.push_back(watoi64(toks[j]));
+					}
+					std::sort(tids.begin(), tids.end());
 				}
 
 				if (data.isdir)
@@ -534,6 +677,12 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 
 						if (depth == 0)
 						{
+							if (extra.find("skip") != extra.end())
+							{
+								++line;
+								continue;
+							}
+
 							bool win_root = false;
 
 #ifdef _WIN32
@@ -544,6 +693,16 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 #endif
 
 							if (!win_root
+								&& !canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
+							{
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									log("Error creating directory \"" + restore_path + "\" recursively. No permission to create directory.", LL_ERROR);
+									has_error = true;
+								}
+								skip_dir = 1;
+							}
+							else if (!win_root
 								&& !os_directory_exists(os_file_prefix(restore_path)))
 							{
 								if (!os_create_dir_recursive(os_file_prefix(restore_path)))
@@ -551,6 +710,15 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 									log("Error recursively creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
 									has_error = true;
 								}
+							}
+							else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+							{
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									log("No permissions to create files in \"" + restore_path + "\".", LL_ERROR);
+									has_error = true;
+								}
+								skip_dir = 1;
 							}
 						}
 						else
@@ -561,7 +729,22 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 								alt_restore_path += os_file_sep() + data.name;
 							}
 
-							if (!os_directory_exists(os_file_prefix(restore_path)))
+							if (extra.find("skip") != extra.end())
+							{
+								++line;
+								continue;
+							}
+
+							if (!canCreateFile(restore_path, tids, &client_dao, token_cache))
+							{
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									log("Error creating directory \"" + restore_path + "\". No permission to create directory.", LL_ERROR);
+									has_error = true;
+								}
+								skip_dir = 1;
+							}
+							else if (!os_directory_exists(os_file_prefix(restore_path)))
 							{
 								if (!os_create_dir(os_file_prefix(restore_path))
 									&& !createDirectoryWin(restore_path))
@@ -569,6 +752,15 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 									log("Error creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
 									has_error = true;
 								}
+							}
+							else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+							{
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									log("No permissions to create files in \"" + restore_path + "\".", LL_ERROR);
+									has_error = true;
+								}
+								skip_dir = 1;
 							}
 						}
 
@@ -592,6 +784,12 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 				}
 				else
 				{
+					if (extra.find("skip") != extra.end())
+					{
+						++line;
+						continue;
+					}
+
 					std::string restore_name;
 					std::string local_fn;
 					std::string alt_local_fn;
@@ -650,6 +848,14 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 						{
 							log("File \"" + local_fn + "\" does already exist and the restore is configured to not overwrite existing files.", LL_ERROR);
 							return false;
+						}
+						else if (!canModifyFile(local_fn, tids, &client_dao, token_cache))
+						{
+							if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+							{
+								log("Error opening file \"" + local_fn + "\" for restore. No permission to write to file.", LL_ERROR);
+								return false;
+							}
 						}
 						else
 						{
@@ -733,8 +939,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
 
-	ClientDAO client_dao(db);
-
 	size_t line=0;
 
 	bool has_error=false;
@@ -755,6 +959,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::vector<std::pair<std::string, std::string> > rename_queue;
 
 	bool single_item=false;
+	std::vector<int64> tids;
+	ClientDAO client_dao(db);
+	tokens::TokenCache token_cache;
+	size_t skip_dir = std::string::npos;
+	bool skip_last_dir = false;
 
 	do 
 	{
@@ -764,8 +973,55 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 		{
 			if(filelist_parser.nextEntry(buffer[i], data, &extra))
 			{
+				if (skip_dir != std::string::npos
+					&& data.isdir)
+				{
+					if (data.name == "..")
+					{
+						--skip_dir;
+						if (skip_dir == 0)
+						{
+							skip_dir = std::string::npos;
+							skip_last_dir = true;
+						}
+						else
+						{
+							++line;
+							continue;
+						}
+					}
+					else
+					{
+						++skip_dir;
+						++line;
+						continue;
+					}
+				}
+				else if (skip_dir != std::string::npos)
+				{
+					++line;
+					continue;
+				}
+				else
+				{
+					skip_last_dir = false;
+				}
+
 				FileMetadata metadata;
 				metadata.read(extra);
+
+				str_map::iterator it_tids = extra.find("tids");
+				if (it_tids != extra.begin())
+				{
+					std::vector<std::string> toks;
+					TokenizeMail(it_tids->second, toks, ",");
+					tids.clear();
+					for (size_t j = 0; j < toks.size(); ++j)
+					{
+						tids.push_back(watoi64(toks[j]));
+					}
+					std::sort(tids.begin(), tids.end());
+				}
 
 				if ( depth==0
 					&& (!data.isdir || data.name != "..") 
@@ -779,7 +1035,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						if (!single_item && clean_other)
 						{
 							bool has_include_exclude = false;
-							if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
+							if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude,
+											tids, &client_dao, token_cache))
 							{
 								has_error = true;
 							}
@@ -790,10 +1047,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				}
 				else if(depth>=1 && data.isdir && data.name==".."					
 					&& clean_other && !has_error
-					&& !(os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink))
+					&& !(os_get_file_type(os_file_prefix(restore_path)) & EFileType_Symlink)
+					&& !skip_last_dir)
 				{
 					bool has_include_exclude = false;
-					if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
+					if (!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude,
+									tids, &client_dao, token_cache))
 					{
 						has_error = true;
 					}
@@ -866,6 +1125,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							alt_restore_path = it_alt_orig_path->second;
 						}
 
+						if (extra.find("skip") != extra.end())
+						{
+							skip_dir = 1;
+						}
+
 						if(depth==0)
 						{
 							bool win_root = false;
@@ -876,16 +1140,37 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								win_root = true;
 							}
 #endif
-
-							if(!win_root
-								&& !os_directory_exists(os_file_prefix(restore_path)))
+							if (extra.find("skip") == extra.end()
+								&& !win_root)
 							{
-								if(!os_create_dir_recursive(os_file_prefix(restore_path)))
+								if (!os_directory_exists(os_file_prefix(restore_path)))
 								{
-									log("Error recursively creating directory \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
-									has_error=true;
+									if (!canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
+									{
+										if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+										{
+											log("Error creating directory \"" + restore_path + "\" recursively. No permission to create directory.", LL_ERROR);
+											has_error = true;
+										}
+										skip_dir = 1;
+									}
+									else if (!os_create_dir_recursive(os_file_prefix(restore_path)))
+									{
+										log("Error recursively creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
+										has_error = true;
+									}
+								}
+								else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+								{
+									if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+									{
+										log("No permissions to create files in \"" + restore_path + "\".", LL_ERROR);
+										has_error = true;
+									}
+									skip_dir = 1;
 								}
 							}
+							
 
 							if (!clientsubname.empty())
 							{
@@ -931,15 +1216,27 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 								alt_restore_path += os_file_sep() + data.name;
 							}
 
-							if(!os_directory_exists(os_file_prefix(restore_path)))
+							if (extra.find("skip") == extra.end())
 							{
-								if(!os_create_dir(os_file_prefix(restore_path))
-									&& !createDirectoryWin(restore_path) )
+								if (!os_directory_exists(os_file_prefix(restore_path)))
 								{
-									log("Error creating directory \""+restore_path+"\". "+os_last_error_str(), LL_ERROR);
-									has_error=true;
+									if (!os_create_dir(os_file_prefix(restore_path))
+										&& !createDirectoryWin(restore_path))
+									{
+										log("Error creating directory \"" + restore_path + "\". " + os_last_error_str(), LL_ERROR);
+										has_error = true;
+									}
 								}
-							}							
+								else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+								{
+									if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+									{
+										log("No permissions to create files in \"" + restore_path + "\".", LL_ERROR);
+										has_error = true;
+									}
+									skip_dir = 1;
+								}
+							}
 						}
 
 						if (!set_share_path)
@@ -984,6 +1281,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				}
 				else
 				{
+
 					std::string restore_name;
 					std::string local_fn;
 					std::string alt_local_fn;
@@ -1016,9 +1314,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 #endif
 					std::string server_fn = server_path + "/" + data.name;
 
-					log("Restoring file \"" + local_fn + "\"...", LL_DEBUG);
 
 					folder_files.top().push_back(name_lower);
+
+					if (extra.find("skip") != extra.end())
+					{
+						++line;
+						continue;
+					}
+
+					log("Restoring file \"" + local_fn + "\"...", LL_DEBUG);
 
 					str_map::iterator it_orig_path = extra.find("orig_path");
 					if(it_orig_path!=extra.end())
@@ -1104,6 +1409,19 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						}
 						else
 						{
+							if (!canModifyFile(local_fn, tids, &client_dao, token_cache))
+							{
+								int ll = LL_ERROR;
+								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
+								{
+									has_error = true;
+									ll = LL_WARNING;
+								}
+								log("No permission to open \"" + local_fn + "\" for writing. Not restoring file.", ll);
+								++line;
+								continue;
+							}
+
 							if (!(restore_flags & restore_flag_reboot_overwrite_all))
 							{
 								orig_file.reset(Server->openFile(os_file_prefix(local_fn), MODE_RW_RESTORE));
@@ -1352,10 +1670,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	} while (read>0 && !has_error);
 
 	if(!single_item && clean_other
-		&& !has_error)
+		&& !has_error
+		&& !skip_last_dir)
 	{
 		bool has_include_exclude = false;
-		if(!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude))
+		if(!removeFiles(restore_path, share_path, restore_download.get(), folder_files, deletion_queue, has_include_exclude,
+						tids, &client_dao, token_cache))
 		{
 			has_error=true;
 		}
@@ -1486,7 +1806,8 @@ void RestoreFiles::restore_failed(client::FileMetadataDownloadThread& metadata_t
 }
 
 bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path, RestoreDownloadThread* restore_download,
-	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude )
+	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude,
+	const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
 {
 	bool ret=true;
 
@@ -1537,7 +1858,12 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					bool del_has_include_exclude = false;
 					std::stack<std::vector<std::string> > dummy_folder_files;
-					if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude)
+					if (!canDeleteFromDir(cpath, tids, clientdao, cache))
+					{
+						log("No permission to delete files in directory \"" + restore_path + "\".", LL_DEBUG);
+					}
+					else if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude,
+										 tids, clientdao, cache)
 						&& !del_has_include_exclude)
 					{
 						log("Deleting directory \"" + restore_path + "\".", LL_DEBUG);
@@ -1558,7 +1884,11 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					log("Deleting file \"" + cpath + "\".", LL_DEBUG);
 
-					if( (!files[j].isdir && !Server->deleteFile(os_file_prefix(cpath)) )
+					if (!canDelete(cpath, tids, clientdao, cache))
+					{
+						log("No permission to delete file/directory \"" + cpath + "\".", LL_WARNING);
+					}
+					else if( (!files[j].isdir && !Server->deleteFile(os_file_prefix(cpath)) )
 						|| (files[j].isdir && !os_remove_symlink_dir(os_file_prefix(cpath))) )
 					{
 						log("Error deleting file \""+ cpath +"\". "+os_last_error_str(), LL_WARNING);

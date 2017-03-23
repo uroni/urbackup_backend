@@ -34,7 +34,7 @@ namespace
 
 		virtual std::string getFileTokens( const std::string& fn )
 		{
-			return tokens::get_file_tokens(fn, &client_dao, token_cache);
+			return tokens::get_file_tokens(fn, &client_dao, tokens::ETokenRight_Read, token_cache);
 		}
 
 		virtual std::string translateTokens(int64 uid, int64 gid, int64 mode)

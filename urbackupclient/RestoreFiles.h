@@ -82,7 +82,8 @@ private:
 	bool downloadFiles(FileClient& fc, int64 total_size, ScopedRestoreUpdater& restore_updater, std::map<std::string, IFsFile*>& open_files);
 
 	bool removeFiles( std::string restore_path, std::string share_path, RestoreDownloadThread* restore_download, 
-		std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude );
+		std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue, bool& has_include_exclude,
+		const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache);
 
 	bool deleteFilesOnRestart(std::vector<std::string> &deletion_queue);
 

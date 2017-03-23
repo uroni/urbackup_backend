@@ -37,7 +37,15 @@ namespace tokens
 		std::auto_ptr<TokenCacheInt> token_cache;
 	};
 
-	std::string get_file_tokens(const std::string& fn, ClientDAO* dao, TokenCache& cache);
+	enum ETokenRight
+	{
+		ETokenRight_Read,
+		ETokenRight_Write,
+		ETokenRight_Delete,
+		ETokenRight_Full
+	};
+
+	std::string get_file_tokens(const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& cache);
 
 	std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache);
 

@@ -902,7 +902,7 @@ void read_token_lazy_cache(TokenCache& token_cache, ClientDAO* dao, std::vector<
 	token_cache.get()->tokens[sid] = new_token;
 }
 
-std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
+std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& token_cache)
 {
 	if(token_cache.get()==NULL)
 	{
@@ -974,39 +974,65 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 				break;
 			}
 
-			if(known && (
-				mask & GENERIC_READ || mask & GENERIC_ALL
-				|| mask & FILE_GENERIC_READ || mask & FILE_ALL_ACCESS
-				) )
-			{			
-				std::map<std::vector<char>, Token>::iterator token_it =
-					token_cache.get()->tokens.find(sid);
+			if(known)
+			{		
+				bool has_access = false;
 
-				if (token_it == token_cache.get()->tokens.end())
+				if (right == ETokenRight_Read)
 				{
-					read_token_lazy_cache(token_cache, dao, sid);
-					token_it = token_cache.get()->tokens.find(sid);
+					has_access = mask & GENERIC_READ || mask & GENERIC_ALL
+						|| mask & FILE_GENERIC_READ || mask & FILE_ALL_ACCESS;
 				}
+				else if (right == ETokenRight_Write)
+				{
+					has_access = mask & GENERIC_WRITE || mask & GENERIC_ALL
+						|| mask & FILE_GENERIC_WRITE || mask & FILE_ALL_ACCESS;
+				}
+				else if(right==ETokenRight_Delete)
+				{
+					has_access = mask & DELETE || mask & GENERIC_ALL
+						|| mask & FILE_ALL_ACCESS;
+				}
+				else if (right == ETokenRight_Full)
+				{
+					has_access = (mask & GENERIC_ALL)>0;
+				}
+				else
+				{
+					assert(false);
+				}
+				
+				if (has_access)
+				{
+					std::map<std::vector<char>, Token>::iterator token_it =
+						token_cache.get()->tokens.find(sid);
 
-				if(token_it->second.id!=0)
-				{
-					if(allow)
+					if (token_it == token_cache.get()->tokens.end())
 					{
-						token_info.addChar(ID_GRANT_ACCESS);
-						token_info.addVarInt(token_it->second.id);
+						read_token_lazy_cache(token_cache, dao, sid);
+						token_it = token_cache.get()->tokens.find(sid);
 					}
-					else
+
+					if (token_it->second.id != 0)
 					{
-						token_info.addChar(ID_DENY_ACCESS);
-						token_info.addVarInt(token_it->second.id);
+						if (allow)
+						{
+							token_info.addChar(ID_GRANT_ACCESS);
+							token_info.addVarInt(token_it->second.id);
+						}
+						else
+						{
+							token_info.addChar(ID_DENY_ACCESS);
+							token_info.addVarInt(token_it->second.id);
+						}
+					}
+					else if (!allow)
+					{
+						Server->Log("Error looking up SID of ACE entry of file \"" + fn + "\"", LL_ERROR);
+						LocalFree(sec_desc);
+						return std::string();
 					}
 				}
-				else if(!allow)
-				{
-					Server->Log("Error looking up SID of ACE entry of file \""+fn+"\"", LL_ERROR);
-					LocalFree(sec_desc);
-					return std::string();
-				}				
 			}
 
 			ptr+=header->AceSize;
