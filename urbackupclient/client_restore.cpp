@@ -477,17 +477,23 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 	{
 		Server->Log("Read Timeout: Retrying", LL_WARNING);
 
-		int tries=5;
+		int total_tries = 20;
+		int tries= total_tries;
 		EDownloadResult rc;
 		do
 		{
 			Server->wait(30000);
+			int64 starttime = Server->getTimeMS();
 			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1, o_imgsize, o_output_file_size);
 			if(rc== EDownloadResult_Ok)
 			{
 				return rc;
 			}
 			--tries;
+			if (Server->getTimeMS() - starttime > 180000)
+			{
+				tries = total_tries;
+			}
 		}
 		while(tries>0);
 	}
