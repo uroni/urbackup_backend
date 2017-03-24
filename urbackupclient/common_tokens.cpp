@@ -76,9 +76,9 @@ bool write_tokens()
 			std::string group_fn = "group_" + bytesToHex(accountname_normalize(user_groups[j]));
 			std::string token_fn = tokens_path + os_file_sep() + group_fn;
 			bool file_found = false;
-			for (size_t j = 0; j<files.size(); ++j)
+			for (size_t k = 0; k<files.size(); ++k)
 			{
-				if (files[j].name == group_fn)
+				if (files[k].name == group_fn)
 				{
 					file_found = true;
 					break;

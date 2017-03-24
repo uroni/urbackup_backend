@@ -157,6 +157,57 @@ std::vector<std::string> get_users()
 #endif
 }
 
+int read_val(std::string val_name)
+{
+	std::string data=getFile("/etc/login.defs");
+
+	size_t off = data.find(val_name);
+
+	if(off!=std::string::npos)
+	{
+		size_t noff = data.find("\n", off);
+
+		if(noff!=std::string::npos)
+		{
+			return atoi(trim(data.substr(off+val_name.size(), noff - off - val_name.size())).c_str());
+		}
+	}
+
+	return -1;
+}
+
+std::vector<std::string> get_local_users()
+{
+	std::vector<std::string> users = get_users();
+	std::vector<std::string> ret;
+
+	for(size_t i=0;i<users.size();++i)
+	{
+		struct passwd* pw = getpwnam(users[i].c_str());
+                if(pw!=NULL)
+                {
+        #ifndef __APPLE__
+                        static int uid_min = read_val("UID_MIN");
+                        static int uid_max = read_val("UID_MAX");
+        #else
+                        static int uid_min = 500;
+                        static int uid_max = INT_MAX;
+        #endif
+
+                        if( (uid_min==-1 || uid_max==-1 || (
+                                pw->pw_uid >= uid_min &&
+                                pw->pw_uid <= uid_max )) &&
+				strlen(pw->pw_dir)>0 &&
+				os_directory_exists(pw->pw_dir))
+                        {
+                                ret.push_back(users[i]);
+                        }
+                }
+	}
+
+	return ret;
+}
+
 std::vector<std::string> get_groups()
 {
 #ifndef __APPLE__
@@ -231,25 +282,6 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	#ifdef gid_t
 	#undef gid_t
 	#endif
-}
-
-int read_val(std::string val_name)
-{
-	std::string data=getFile("/etc/login.defs");
-
-	size_t off = data.find(val_name);
-
-	if(off!=std::string::npos)
-	{
-		size_t noff = data.find("\n", off);
-
-		if(noff!=std::string::npos)
-		{
-			return atoi(trim(data.substr(off+val_name.size(), noff - off - val_name.size())).c_str());
-		}
-	}
-
-	return -1;
 }
 
 
@@ -407,7 +439,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
-std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& token_cache )
+std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& token_cache )
 {
 	struct stat stat_data;
 
@@ -417,10 +449,122 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, TokenCache& 
 		return std::string();
 	}
 	
-	return translate_tokens(stat_data.st_uid, stat_data.st_gid, stat_data.st_mode, dao, token_cache);
+	return translate_tokens(stat_data.st_uid, stat_data.st_gid, stat_data.st_mode, dao, right, token_cache);
 }
 
-std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache)
+int64 read_token_lazy_cache(TokenCache& token_cache, ClientDAO* dao, bool is_user, int64 uid)
+{
+	if(is_user)
+	{
+		std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(uid);
+		if(it!=token_cache.get()->uid_map.end())
+			return it->second;
+	}
+	else
+	{
+		std::map<uid_t, int64>::iterator it = token_cache.get()->gid_map.find(uid);
+		if(it!=token_cache.get()->gid_map.end())
+			return it->second;
+	}
+
+	std::string name;
+	if(is_user)
+	{
+		struct passwd* pw = getpwuid(uid);
+		if(pw!=NULL)
+		{
+			name = pw->pw_name;
+		}
+	}
+	else
+	{
+		struct group* grp = getgrgid(uid);
+		if(grp!=NULL)
+		{
+			name = grp->gr_name;
+		}
+	}
+
+	if(name.empty())
+	{
+		if(is_user)
+			token_cache.get()->uid_map[uid]=0;
+		else
+			token_cache.get()->gid_map[uid]=0;
+		return 0;
+	}
+
+
+	ClientDAO::CondInt64 token_id;
+
+        if (is_user)
+        {
+                token_id = dao->getFileAccessTokenId2Alts(name,
+                        ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+        }
+        else
+        {
+                token_id = dao->getFileAccessTokenId(name, ClientDAO::c_is_group);
+        }
+
+	if(token_id.exists)
+	{
+		if(is_user)
+		{
+			token_cache.get()->uid_map[uid]=token_id.value;
+		}
+		else
+		{
+			token_cache.get()->gid_map[uid]=token_id.value;
+		}
+		return token_id.value;
+	}
+
+	std::string user_fn = (is_user ? "user_" : "group_") + bytesToHex(name);
+       	std::string token_fn = tokens_path + os_file_sep() + user_fn;
+        if (!write_token(get_hostname(), is_user, name, token_fn, *dao))
+        {
+		if(is_user)
+			token_cache.get()->uid_map[uid]=0;
+		else
+			token_cache.get()->gid_map[uid]=0;
+		return 0;
+        }
+
+        if (is_user)
+        {
+                token_id = dao->getFileAccessTokenId2Alts(name,
+                        ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+        }
+        else
+        {
+                token_id = dao->getFileAccessTokenId(name, ClientDAO::c_is_group);
+        }
+
+
+	if(token_id.exists)
+	{
+		if(is_user)
+		{
+			token_cache.get()->uid_map[uid]=token_id.value;
+		}
+		else
+		{
+			token_cache.get()->gid_map[uid]=token_id.value;
+		}
+		return token_id.value;
+	}
+	else
+	{
+		if(is_user)
+			token_cache.get()->uid_map[uid]=0;
+		else
+			token_cache.get()->gid_map[uid]=0;
+		return 0;
+	}
+}
+
+std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
 {
 	if(cache.get()==NULL)
 	{
@@ -428,8 +572,47 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, T
 	}
 	
 	CWData token_info;
+
+	mode_t iall;
+	mode_t iusr;
+	mode_t igrp;
+
+	switch(right)
+	{
+		case ETokenRight_Read:
+			if(S_ISDIR(mode))
+			{
+				iall = S_IROTH & S_IXOTH;
+				iusr = S_IRUSR & S_IXUSR;
+				igrp = S_IRGRP & S_IXGRP;
+			}
+			else
+			{
+				iall = S_IROTH;
+				iusr = S_IRUSR;
+				igrp = S_IRGRP;
+			}
+			break;
+		case ETokenRight_Write:
+			iall = S_IWOTH;
+			iusr = S_IWUSR;
+			igrp = S_IWGRP;
+			break;
+		case ETokenRight_DeleteFromDir:
+			iall = S_IROTH & S_IWOTH;
+			iusr = S_IRUSR & S_IWUSR;
+			igrp = S_IRGRP & S_IWGRP;
+			break;
+	};
 	
-	if(mode & S_IROTH)
+
+	if(right == ETokenRight_Delete)
+	{
+		//Allow all
+                token_info.addChar(ID_GRANT_ACCESS);
+                token_info.addVarInt(0);
+	}
+	else if(mode & iall)
 	{
 		//Allow all
 		token_info.addChar(ID_GRANT_ACCESS);
@@ -439,45 +622,40 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, T
 	{
 		//Allow root
 		{
-			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(0);
-			if(it!=cache.get()->uid_map.end())
+			int64 tid = read_token_lazy_cache(cache, dao, true, 0);
+			if(tid!=0)
 			{
-				assert(it->second!=0);
-			
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addVarInt(it->second);
+				token_info.addVarInt(tid);
 			}
 		}
 	
-		if(mode & S_IRUSR)
+		if(mode & iusr)
 		{
+			int64 tid = read_token_lazy_cache(cache, dao, true, uid);
 			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(uid);
-			if(it==cache.get()->uid_map.end())
+			if(tid==0)
 			{
 				Server->Log("Error getting internal id for user with id "+convert(uid), LL_ERROR);
 			}
 			else
 			{
-				assert(it->second!=0);
-				
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addVarInt(it->second);
+				token_info.addVarInt(tid);
 			}
 		}
 
-		if(mode & S_IRGRP)
+		if(mode & igrp)
 		{
-			std::map<gid_t, int64>::iterator it = cache.get()->gid_map.find(gid);
-			if(it==cache.get()->gid_map.end())
+			int64 tid = read_token_lazy_cache(cache, dao, false, uid);
+			if(tid==0)
 			{
 				Server->Log("Error getting internal id for group with id "+convert(gid), LL_ERROR);
 			}
 			else
 			{
-				assert(it->second!=0);
-				
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addVarInt(it->second);
+				token_info.addVarInt(tid);
 			}
 		}
 	}

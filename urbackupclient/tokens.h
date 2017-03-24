@@ -42,12 +42,12 @@ namespace tokens
 		ETokenRight_Read,
 		ETokenRight_Write,
 		ETokenRight_Delete,
-		ETokenRight_Full
+		ETokenRight_DeleteFromDir
 	};
 
 	std::string get_file_tokens(const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& cache);
 
-	std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache);
+	std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, ETokenRight right, TokenCache& cache);
 
 	std::string get_hostname();
 

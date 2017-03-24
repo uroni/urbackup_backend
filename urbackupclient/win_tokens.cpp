@@ -993,7 +993,7 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight 
 					has_access = mask & DELETE || mask & GENERIC_ALL
 						|| mask & FILE_ALL_ACCESS;
 				}
-				else if (right == ETokenRight_Full)
+				else if (right == ETokenRight_DeleteFromDir)
 				{
 					has_access = (mask & GENERIC_ALL)>0;
 				}
@@ -1049,7 +1049,7 @@ void free_tokencache( TokenCacheInt* cache )
 	delete cache;
 }
 
-std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, TokenCache& cache)
+std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
 {
 	CWData token_info;
 	//allow to all

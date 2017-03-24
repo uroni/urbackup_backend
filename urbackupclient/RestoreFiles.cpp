@@ -239,7 +239,7 @@ namespace
 			return false;
 		}
 
-		return hasPermission(dir, tids, clientdao, tokens::ETokenRight_Full, cache);
+		return hasPermission(dir, tids, clientdao, tokens::ETokenRight_DeleteFromDir, cache);
 	}
 
 	bool canAddFiles(const std::string& fn, const std::vector<int64>& tids, ClientDAO* clientdao, tokens::TokenCache& cache)
