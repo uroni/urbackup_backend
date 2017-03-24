@@ -2501,6 +2501,7 @@ void ClientConnector::downloadImage(str_map params)
 			Server->Log("Error reading size", LL_ERROR);
 			if(i+1<channel_pipes.size())
 			{
+				removeChannelpipe(c);
 				continue;
 			}
 			else
@@ -2514,6 +2515,7 @@ void ClientConnector::downloadImage(str_map params)
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
 			Server->Log("Could not write to pipe! downloadImage-1", LL_ERROR);
+			removeChannelpipe(c);
 			return;
 		}
 
@@ -2554,6 +2556,7 @@ void ClientConnector::downloadImage(str_map params)
 				Server->Log("Error getting used bytes", LL_ERROR);
 				if (i + 1<channel_pipes.size())
 				{
+					removeChannelpipe(c);
 					continue;
 				}
 				else

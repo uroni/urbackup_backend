@@ -206,19 +206,13 @@ void ServerChannelThread::operator()(void)
 			if(Server->getTimeMS()-lasttime>180000)
 			{
 				Server->Log("Resetting channel to "+clientname+" because of timeout.", LL_DEBUG);
-				IScopedLock lock(mutex);
-				Server->destroy(input);
-				input=NULL;
-				tcpstack.reset();
+				reset();
 			}
 
 			if (curr_ident != client_main->getIdentity())
 			{
 				Server->Log("Resetting channel to " + clientname + " because session identity changed.", LL_DEBUG);
-				IScopedLock lock(mutex);
-				Server->destroy(input);
-				input = NULL;
-				tcpstack.reset();
+				reset();
 			}
 
 			if(input!=NULL)
@@ -246,10 +240,7 @@ void ServerChannelThread::operator()(void)
 					if(input!=NULL && was_updated)
 					{
 						Server->Log("Settings changed. Capabilities may have changed. Reconnecting channel...", LL_DEBUG);
-						IScopedLock lock(mutex);
-						Server->destroy(input);
-						input=NULL;
-						tcpstack.reset();
+						reset();
 					}
 				}
 				else if(rc==0)
@@ -257,10 +248,7 @@ void ServerChannelThread::operator()(void)
 					if(input->hasError())
 					{
 						Server->Log("Lost channel connection to "+clientname+". has_error=true", LL_DEBUG);
-						IScopedLock lock(mutex);
-						Server->destroy(input);
-						input=NULL;
-						tcpstack.reset();
+						reset();
 						Server->wait(1000);
 					}
 					else
@@ -403,6 +391,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 
 		DOWNLOAD_IMAGE(params);
+		Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
 	{
@@ -875,9 +864,44 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	ServerStatus::updateActive();
 }
 
+namespace
+{
+	class ScopedDestroyVhdfile
+	{
+		IVHDFile* vhdfile;
+	public:
+		ScopedDestroyVhdfile(IVHDFile* vhdfile)
+			: vhdfile(vhdfile) {}
+		~ScopedDestroyVhdfile() {
+			image_fak->destroyVHDFile(vhdfile);
+		}
+	};
+
+	class ScopedSetRestoreDone
+	{
+		bool ok;
+		ServerBackupDao& backup_dao;
+		int64 restore_id;
+	public:
+		ScopedSetRestoreDone(ServerBackupDao& backup_dao, int64 restore_id)
+			: backup_dao(backup_dao), ok(false), restore_id(restore_id)
+		{}
+
+		~ScopedSetRestoreDone() {
+			backup_dao.setRestoreDone(ok ? 1 : 0, restore_id);
+		}
+
+		void set_ok() {
+			ok = true;
+		}
+	};
+}
+
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	const _u32 img_send_timeout = 30000;
 
 	ServerBackupDao backup_dao(db);
 
@@ -889,32 +913,49 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	db_results res=q->Read();
 	if(res.empty())
 	{
+		Server->Log("Image to download not found (img_id=" + convert(img_id) + " time=" + params["time"] + ")", LL_DEBUG);
 		_i64 r=-1;
-		input->Write((char*)&r, sizeof(_i64));
+		if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+		{
+			reset();
+			return;
+		}
 	}
 	else
 	{
 		if( !all_client_rights &&
 			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
 		{
+			Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
 			_i64 r=-1;
-			input->Write((char*)&r, sizeof(_i64));
+			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+			{
+				reset();
+			}
 			return;
 		}
 
 		int img_version=watoi(res[0]["version"]);
 		if(params["mbr"]=="true")
 		{
-			IFile *f=Server->openFile(os_file_prefix(res[0]["path"]+".mbr"), MODE_READ);
-			if(f==NULL)
+			std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(res[0]["path"]+".mbr"), MODE_READ));
+			if(f.get()==NULL)
 			{
 				_i64 r=little_endian(-1);
-				input->Write((char*)&r, sizeof(_i64));
+				if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+				{
+					reset();
+				}
+				return;
 			}
 			else
 			{
 				_i64 r=little_endian(f->Size());
-				input->Write((char*)&r, sizeof(_i64));
+				if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+				{
+					reset();
+					return;
+				}
 				char buf[4096];
 				_u32 rc;
 				do
@@ -922,22 +963,17 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					rc=f->Read(buf, 4096);
 					if(rc>0)
 					{
-						bool b=input->Write(buf, rc);
+						bool b=input->Write(buf, rc, img_send_timeout);
 						if(!b)
 						{
 							Server->Log("Writing to output pipe failed processMsg-2", LL_ERROR);
-							Server->destroy(f);
-							db->destroyAllQueries();
-							Server->destroy(input);
-							input=NULL;
+							reset();
 							return;
 						}
 						lasttime=Server->getTimeMS();
 					}
 				}
 				while(rc>0);
-				Server->destroy(f);
-				db->destroyAllQueries();
 				return;
 			}
 		}
@@ -963,18 +999,23 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			vhdfile = image_fak->createVHDFile(res[0]["path"], true, 0);
 		}
 
+		ScopedDestroyVhdfile destroy_vhdfile(vhdfile);
+
 		if(vhdfile==NULL 
 			|| !vhdfile->isOpen())
 		{
 			_i64 r=-1;
-			input->Write((char*)&r, sizeof(_i64));
+			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+			{
+				reset();
+			}
 		}
 		else
 		{
 			std::string clientname = backup_dao.getClientnameByImageid(img_id).value;
 			ScopedProcess restore_process(clientname, sa_restore_image, res[0]["letter"], logid_t(), false, watoi(res[0]["clientid"]));
 			backup_dao.addRestore(watoi(res[0]["clientid"]), std::string(), std::string(), 1, res[0]["letter"]);
-			int64 restore_id = db->getLastInsertID();
+			ScopedSetRestoreDone restore_done(backup_dao, db->getLastInsertID());
 
 			int skip=1024*512;
 
@@ -984,7 +1025,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
 			_i64 r=little_endian(imgsize);
-			input->Write((char*)&r, sizeof(_i64));
+			if (!input->Write((char*)&r, sizeof(_i64), img_send_timeout))
+			{
+				Server->Log("Sending image size failed", LL_DEBUG);
+				reset();
+				return;
+			}
 			unsigned int blocksize=vhdfile->getBlocksize();
 			char buffer[4096];
 			size_t read;
@@ -1025,7 +1071,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if (params["with_used_bytes"] == "1")
 			{
 				_i64 r = little_endian(used_bytes - skip);
-				input->Write((char*)&r, sizeof(_i64));
+				if (!input->Write((char*)&r, sizeof(_i64)))
+				{
+					Server->Log("Sending used bytes failed", LL_DEBUG);
+					reset();
+					return;
+				}
 			}
 
 			vhdfile->Seek(skip);
@@ -1048,19 +1099,15 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					}
 						
 					uint64 currpos_endian = little_endian(currpos);
-					bool b = input->Write((char*)&currpos_endian, sizeof(uint64), 60000, false);
+					bool b = input->Write((char*)&currpos_endian, sizeof(uint64), img_send_timeout, false);
 					if (b)
 					{
-						b = input->Write(buffer, (_u32)read, 60000, false);
+						b = input->Write(buffer, (_u32)read, img_send_timeout, false);
 					}
 					if(!b)
 					{
 						Server->Log("Writing to output pipe failed processMsg-1", LL_ERROR);
-						image_fak->destroyVHDFile(vhdfile);
-						db->destroyAllQueries();
-						Server->destroy(input);
-						input=NULL;
-						backup_dao.setRestoreDone(0, restore_id);
+						reset();
 						return;
 					}
 					used_transferred_bytes += read;
@@ -1071,11 +1118,17 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 					if(Server->getTimeMS()-lasttime>30000)
 					{
 						uint64 currpos_endian = little_endian(currpos);
-						bool b = input->Write((char*)&currpos_endian, sizeof(uint64), 60000, false);
+						bool b = input->Write((char*)&currpos_endian, sizeof(uint64), img_send_timeout, false);
 						memset(buffer, 0, 4096);
 						if (b)
 						{
-							input->Write(buffer, (_u32)4096, 60000, true);
+							 b = input->Write(buffer, (_u32)4096, img_send_timeout, true);
+						}
+						if (!b)
+						{
+							Server->Log("Sending keep-alive block failed", LL_DEBUG);
+							reset();
+							return;
 						}
 						lasttime=Server->getTimeMS();
 					}
@@ -1104,18 +1157,28 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if((_i64)currpos>=imgsize)
 			{
 				r = little_endian(0x7fffffffffffffffLL);
-				input->Write((char*)&r, sizeof(int64));
+				if (!input->Write((char*)&r, sizeof(int64), img_send_timeout))
+				{
+					Server->Log("Sending image end failed", LL_WARNING);
+					reset();
+					return;
+				}
 			}
 			else
 			{
-				input->Flush();
+				if (!input->Flush())
+				{
+					reset();
+					return;
+				}
 			}
 
-			backup_dao.setRestoreDone(is_ok ? 1 : 0, restore_id);
+			if (is_ok)
+			{
+				restore_done.set_ok();
+			}
 		}
-		image_fak->destroyVHDFile(vhdfile);
 	}
-	db->destroyAllQueries();
 }
 
 void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
@@ -1399,6 +1462,14 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 		ClientMain::cleanupRestoreShare(clientid, restore_ident.value);
 	}
 	
+}
+
+void ServerChannelThread::reset()
+{
+	IScopedLock lock(mutex);
+	Server->destroy(input);
+	input = NULL;
+	tcpstack.reset();
 }
 
 

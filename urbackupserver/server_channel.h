@@ -53,6 +53,8 @@ private:
 	void RESTORE_PERCENT( str_map params );
 	void RESTORE_DONE( str_map params );
 
+	void reset();
+
 	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
