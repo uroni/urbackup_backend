@@ -85,6 +85,10 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 		{
 			flags=O_RDWR|O_CREAT;
 		}
+		
+#if defined(O_CLOEXEC)
+		flags |= O_CLOEXEC;
+#endif
 
 		fd = open64(filename.c_str(), flags|O_LARGEFILE, imode);
 
@@ -185,6 +189,10 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 			{
 				flags=O_RDWR|O_CREAT;
 			}
+			
+#if defined(O_CLOEXEC)
+			flags |= O_CLOEXEC;
+#endif
 
 			fd = open64(filename.c_str(), flags|O_LARGEFILE, imode);
 
