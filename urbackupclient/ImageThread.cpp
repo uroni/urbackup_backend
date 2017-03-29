@@ -666,7 +666,7 @@ bool ImageThread::sendIncrImageThread(void)
 							if (fs->hasBlock(j / blocksize))
 							{
 								fs_has_block = true;
-								if (!previous_bitmap->hasBlock(j))
+								if (!previous_bitmap->hasBlock(j / blocksize))
 								{
 									bitmap_diff = true;
 									break;
