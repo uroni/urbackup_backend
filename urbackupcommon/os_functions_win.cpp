@@ -481,35 +481,55 @@ bool isDirectory(const std::string &path, void* transaction)
         }
 }
 
-int os_get_file_type(const std::string &path)
+bool os_is_symlink_int(const std::string& path)
 {
 	WIN32_FIND_DATAW wfd;
 	HANDLE hf = FindFirstFileW(ConvertToWchar(path).c_str(), &wfd);
 	if (hf == INVALID_HANDLE_VALUE)
 	{
-		return 0;
+		return false;
 	}
 
 	FindClose(hf);
 
-	int ret = 0;
-
 	if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 	{
 		if (wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT
-				|| wfd.dwReserved0 == IO_REPARSE_TAG_SYMLINK)
+			|| wfd.dwReserved0 == IO_REPARSE_TAG_SYMLINK)
 		{
-			ret |= EFileType_Symlink;
+			return true;
 		}
 	}
-	
-	if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+
+	return false;
+}
+
+int os_get_file_type(const std::string &path)
+{
+	DWORD attrib = GetFileAttributesW(ConvertToWchar(path).c_str());
+
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+	{
+		return 0;
+	}
+
+	int ret = 0;
+
+	if (attrib & FILE_ATTRIBUTE_DIRECTORY)
 	{
 		ret |= EFileType_Directory;
 	}
 	else
 	{
 		ret |= EFileType_File;
+	}
+
+	if (attrib & FILE_ATTRIBUTE_REPARSE_POINT)
+	{
+		if (os_is_symlink_int(path))
+		{
+			ret |= EFileType_Symlink;
+		}
 	}
 
 	return ret;
