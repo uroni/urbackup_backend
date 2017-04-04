@@ -436,6 +436,8 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)
 	std::vector<std::string> toks;
 	Tokenize(window_def, toks, ";");
 	bool matched_dom=false;
+	bool has_dom = false;
+	bool matched_dow = false;
 	for(size_t i=0;i<toks.size();++i)
 	{
 		if(trim(toks[i])=="*")
@@ -463,6 +465,7 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)
 		else if(i==1) // dom
 		{
 			ref_num=atoi(os_strftime("%d").c_str());
+			has_dom = true;
 		}
 		else if(i==2) // mon
 		{
@@ -478,7 +481,7 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)
 		{
 			if(i!=1)
 			{
-				if(i==3 && matched_dom==true)
+				if(i==3 && matched_dom)
 					continue;
 
 				return false;
@@ -487,7 +490,15 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)
 		else
 		{
 			if(i==1) matched_dom=true;
+			if (i == 3) matched_dow = true;
 		}
+	}
+
+	if (has_dom
+		&& !matched_dom
+		&& !matched_dow)
+	{
+		return false;
 	}
 
 	return true;
