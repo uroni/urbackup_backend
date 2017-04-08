@@ -170,7 +170,7 @@ private:
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
-	bool truncate_files_recurisve(std::string path);
+	bool truncate_files_recursive(std::string path);
 
 	void enforce_quotas(void);
 
