@@ -360,6 +360,12 @@
     <ClCompile Include="PhashLoad.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="Mailer.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Alerts.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -651,6 +657,12 @@
       <Filter>apps</Filter>
     </ClInclude>
     <ClInclude Include="PhashLoad.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Mailer.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Alerts.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

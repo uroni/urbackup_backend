@@ -215,6 +215,20 @@ float little_endian(float x)
 	}
 }
 
+double little_endian(double x)
+{
+	if (is_big_endian())
+	{
+		uint64* ptr = reinterpret_cast<uint64*>(&x);
+		uint64 ret = endian_swap(*ptr);
+		return *reinterpret_cast<double*>(&ret);
+	}
+	else
+	{
+		return x;
+	}
+}
+
 unsigned int big_endian(unsigned int x)
 {
 	if(!is_big_endian())

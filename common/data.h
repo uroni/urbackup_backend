@@ -18,6 +18,7 @@ public:
 	void addInt64(_i64 ta);
 	void addUInt64(uint64 ta);
 	void addFloat(float ta);
+	void addDouble(double ta);
 	void addUShort(unsigned short ta);
 	void addString(const std::string& ta);
 	void addString2(const std::string& ta);
@@ -47,6 +48,7 @@ public:
 	bool getInt64(_i64 *ret);
 	bool getUInt(unsigned int *ret);
 	bool getFloat(float *ret);
+	bool getDouble(double *ret);
 	bool getUShort( unsigned short *ret);
 	bool getStr(std::string *ret);
 	bool getStr2(std::string *ret);

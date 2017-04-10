@@ -479,6 +479,8 @@ bool FileBackup::request_client_write_tokens()
 	{
 		ServerLogger::Log(logid, "Error requesting client to write tokens: " + ret, LL_WARNING);
 	}
+
+	return false;
 }
 
 bool FileBackup::hasEarlyError()

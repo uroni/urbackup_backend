@@ -410,6 +410,25 @@
 	</div>
 </div>
 
+<div class="tab-pane" id="alerts">
+	<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="alert_script">{alert_scripts|s}</select>
+				</div>
+			</div>
+			
+			<input type="hidden" id="alert_params" value="{alert_params}"/>
+			
+			{mod_alert_params|s}
+		</form>
+	</div>
+	</div>
+</div>
+
 {internet_settings_start|s}
 <div class="tab-pane" id="internet">
 	<div class="panel panel-default">

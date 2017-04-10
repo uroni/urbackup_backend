@@ -2380,7 +2380,65 @@ function restore_prepare_wait_callback(data)
 		}
 	}
 }
-
+function build_alert_params(data)
+{
+	params = deparam(data.settings.alert_params);
+	
+	var script_options = "";
+	var params_html = "";
+	g.alert_params = [];
+	
+	for(var i=0;i<data.settings.alert_scripts.length;++i)
+	{
+		var script = data.settings.alert_scripts[i];
+		var selected="";
+		if(script.id==data.settings.alert_script)
+		{
+			selected=" selected=\"selected\"";
+			
+			for(var j=0;j<script.params.length;++j)
+			{
+				var param = script.params[j];
+				var val = param.default_value;
+				if(typeof params[param.name] !== "undefined")
+				{
+					val = params[param.name];
+				}
+				var label = param.label;
+				if(param.has_translation==1)
+				{
+					label = trans(label);
+					if(typeof label == "undefined")
+					{
+						label = param.label;
+					}
+				}
+				params_html+="<div class=\"form-group\">"+
+					"<label class=\"col-sm-4 control-label\" for=\""+escapeHTML(param.name)+"\">"+escapeHTML(label)+"</label>"+
+					"<div class=\"col-sm-6\">"+
+					"<input type=\"text\" class=\"form-control\" id=\""+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>"+
+					"</div></div>";
+					
+				g.alert_params.push(param.name);
+			}
+		}
+		script_options += "<option value=\""+script.id+"\""+selected+">"+escapeHTML(script.name)+"</option>";
+	}
+	
+	return {"options": script_options, "params": params_html};
+}
+function update_alert_params()
+{
+	var p = {};
+	for(var i=0;i<g.alert_params.length;++i)
+	{
+		if(I(g.alert_params[i]))
+		{
+			p[g.alert_params[i]] = I(g.alert_params[i]).value;
+		}
+	}
+	I("alert_params").value = $.param(p);
+}
 function show_settings1()
 {
 	if(!startLoading()) return;
@@ -2780,6 +2838,10 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 			
+			aparams = build_alert_params(data);
+			data.settings.alert_scripts = aparams.options;
+			data.settings.mod_alert_params = aparams.params;
+			
 			data.settings.client_settings=false;
 			
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
@@ -2938,6 +3000,10 @@ function show_settings2(data)
 				data.settings.client_settings=true;
 				data.settings.groups = data.navitems.groups;
 			}
+			
+			aparams = build_alert_params(data);
+			data.settings.alert_scripts = aparams.options;
+			data.settings.mod_alert_params = aparams.params;
 			
 			group_membership_selectpicker=true;
 						
@@ -3457,7 +3523,9 @@ g.settings_list=[
 "vss_select_components",
 "internet_file_dataplan_limit",
 "internet_image_dataplan_limit",
-"update_dataplan_db"
+"update_dataplan_db",
+"alert_script",
+"alert_params"
 ];
 g.general_settings_list=[
 "backupfolder",

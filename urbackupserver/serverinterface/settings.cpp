@@ -88,6 +88,40 @@ std::vector<std::string> getMailSettingsList(void)
 	return tmp;
 }
 
+JSON::Array getAlertScripts(IDatabase* db)
+{
+	db_results res_scripts = db->Read("SELECT id, name FROM alert_scripts");
+
+	IQuery* q_get_params = db->Prepare("SELECT name, label, default_value, has_translation FROM alert_script_params WHERE script_id=? ORDER BY idx ASC");
+	JSON::Array ret;
+	for (size_t i = 0; i < res_scripts.size(); ++i)
+	{
+		q_get_params->Bind(res_scripts[i]["id"]);
+		db_results res_params = q_get_params->Read();
+		q_get_params->Reset();
+
+		JSON::Object script;
+		script.set("id", res_scripts[i]["id"]);
+		script.set("name", res_scripts[i]["name"]);
+		
+		JSON::Array params;
+		for (size_t j = 0; j < res_params.size(); ++j)
+		{
+			JSON::Object obj;
+			obj.set("name", res_params[j]["name"]);
+			obj.set("label", res_params[j]["label"]);
+			obj.set("default_value", res_params[j]["default_value"]);
+			obj.set("has_translation", watoi(res_params[j]["has_translation"]));
+			params.add(obj);
+		}
+		script.set("params", params);
+
+		ret.add(script);
+	}
+
+	return ret;
+}
+
 JSON::Object getJSONClientSettings(ServerSettings &settings)
 {
 	JSON::Object ret;
@@ -166,6 +200,8 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(image_snapshot_groups);
 	SET_SETTING(internet_file_dataplan_limit);
 	SET_SETTING(internet_image_dataplan_limit);
+	SET_SETTING(alert_script);
+	SET_SETTING(alert_params);
 #undef SET_SETTING
 	return ret;
 }
@@ -1008,6 +1044,7 @@ ACTION_IMPL(settings)
 				JSON::Object obj=getJSONClientSettings(settings);
 				s=getClientSettings(db, t_clientid);				
 				obj.set("clientid", t_clientid);
+				obj.set("alert_scripts", getAlertScripts(db));
 				if (t_clientid <= 0)
 				{
 					obj.set("groupid", t_clientid*-1);
@@ -1207,6 +1244,7 @@ ACTION_IMPL(settings)
 
 				ServerSettings serv_settings(db);
 				JSON::Object obj=getJSONClientSettings(serv_settings);
+				obj.set("alert_scripts", getAlertScripts(db));
 				getGeneralSettings(obj, db, serv_settings);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");

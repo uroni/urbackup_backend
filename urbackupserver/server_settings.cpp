@@ -420,6 +420,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->file_snapshot_groups = settings_default->getValue("file_snapshot_groups", "");
 	settings->internet_file_dataplan_limit = settings_default->getValue("internet_file_dataplan_limit", 5LL*1000*1024*1024);
 	settings->internet_image_dataplan_limit = settings_default->getValue("internet_image_dataplan_limit", 20LL * 1000* 1024 * 1024);
+	settings->alert_script = settings_default->getValue("alert_script", 1);
+	settings->alert_params = settings_default->getValue("alert_params", "");
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
@@ -589,6 +591,9 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	readInt64ClientSetting(settings_client, "internet_file_dataplan_limit", &settings->internet_file_dataplan_limit);
 	readInt64ClientSetting(settings_client, "internet_image_dataplan_limit", &settings->internet_image_dataplan_limit);
+
+	readIntClientSetting(settings_client, "alert_script", &settings->alert_script);
+	readStringClientSetting(settings_client, "alert_params", &settings->alert_params);
 }
 
 void ServerSettings::readBoolClientSetting(ISettingsReader* settings_client, const std::string &name, bool *output)

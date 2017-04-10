@@ -132,6 +132,8 @@ struct SSettings
 	std::string file_snapshot_groups;
 	int64 internet_file_dataplan_limit;
 	int64 internet_image_dataplan_limit;
+	int alert_script;
+	std::string alert_params;
 };
 
 struct SLDAPSettings
