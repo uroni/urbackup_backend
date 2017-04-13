@@ -3874,6 +3874,11 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back("*/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_:");
 #endif
 
+#ifdef __FreeBSD__
+	exclude_dirs.push_back("/dev/*");
+	exclude_dirs.push_back("/proc/*");
+#endif
+
 #ifdef _WIN32
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\URBCT.DAT"));
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\*{3808876B-C176-4E48-B7AE-04046E6CC752}*"));
