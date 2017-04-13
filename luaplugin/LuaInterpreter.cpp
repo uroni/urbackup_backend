@@ -270,7 +270,7 @@ int64 LuaInterpreter::runScript(const std::string& script, const str_map& params
 
 	ScopedLuaState scoped_state(state);
 
-	luaL_openlibs(state);
+	luaL_openlibs_custom(state);
 
 	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "foo");
 	if (rc) {
