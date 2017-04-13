@@ -2382,7 +2382,7 @@ function restore_prepare_wait_callback(data)
 }
 function build_alert_params(data)
 {
-	params = deparam(data.settings.alert_params);
+	params = deparam(unescapeHTML(data.settings.alert_params));
 	
 	var script_options = "";
 	var params_html = "";

@@ -240,7 +240,7 @@ std::string LuaInterpreter::compileScript(const std::string & script)
 
 	ScopedLuaState scoped_state(state);
 
-	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "foo");
+	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "script");
 	if (rc) {
 		Server->Log(std::string("Error loading lua script: ") + lua_tostring(state, -1), LL_ERROR);
 		return std::string();

@@ -22,7 +22,6 @@ local ret = 0
 local next_check_ms = 30*60*1000
 
 function pretty_time_append(seconds, name, amount, result)
-then
 	if seconds>amount
 	then
 		local t = math.floor(seconds/amount)
@@ -39,7 +38,6 @@ end
 
 --Function to pretty print a duration in seconds
 function pretty_time(seconds)
-then
 	result = ""
 	seconds, result = pretty_time_append(seconds, " month", 30*60*60*24, result)
 	seconds, result = pretty_time_append(seconds, " days", 60*60*24, result)
@@ -50,7 +48,6 @@ end
 
 --Sends a alert mail if mail address was specified as parameter
 function fail_mail(image, passed_time, alert_time)
-then
 	if params.alert_emails == ""
 	then
 		return
@@ -64,7 +61,7 @@ then
 		then
 			return
 		end
-	else if params.no_file_backups=="1"
+	elseif params.no_file_backups=="1"
 	then
 		return
 	end
