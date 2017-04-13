@@ -117,6 +117,12 @@ install-data-local: urbackup/status.htm urbackupserver/www/js/*.js urbackupserve
 if !PACKAGING
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/css"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs/base"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs/base/worker"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs/basic-languages"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs/basic-languages/src"
+	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/js/vs/editor"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/fonts"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/images"
 	chmod +x "$(DESTDIR)$(datadir)/urbackup/www/swf"
