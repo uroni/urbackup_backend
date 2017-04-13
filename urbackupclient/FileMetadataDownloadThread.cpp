@@ -569,7 +569,7 @@ namespace
     {
 #ifndef __linux__
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__)
 		int64 chflags_mask = UF_NODUMP | UF_IMMUTABLE | UF_APPEND | UF_OPAQUE | UF_HIDDEN | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND;
 #else
 		int64 chflags_mask = SF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_NOUNLINK | UF_APPEND | UF_ARCHIVE | UF_HIDDEN | UF_IMMUTABLE | UF_NODUMP | UF_NOUNLINK | UF_OFFLINE | UF_OPAQUE | UF_READONLY | UF_REPARSE | UF_SPARSE | UF_SYSTEM;
