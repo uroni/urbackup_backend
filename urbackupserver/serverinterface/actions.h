@@ -21,4 +21,5 @@ namespace Actions
 	ACTION(start_backup);
 	ACTION(add_client);
 	ACTION(restore_prepare_wait);
+	ACTION(scripts);
 }

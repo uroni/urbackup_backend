@@ -1,0 +1,45 @@
+<div class="panel panel-default" style="margin-top:20px; height:100%">
+	<div class="panel-heading">{tEdit alert scripts}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="alert_script" onChange="showAlertScript()">{alert_scripts|s}</select>
+				</div>
+				<button type="button" class="btn btn-primary" onClick="addAlertScript()">
+					<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+					{tAdd}
+				</button>
+				&nbsp;
+				<button type="button" class="btn btn-danger" onClick="removeAlertScript()" id="remove_alert_script_btn">
+					<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+					{tRemove}
+				</button>
+			</div>
+		</form>
+		
+		<div>
+			<h3>{tAlert script parameters}</h3>
+			<div id="alert_script_params">
+				{mod_alert_params|s}
+			</div>
+				
+			<br />
+			<button type="button" class="btn btn-primary pull-left" onClick="alertAddParam()" id="add_param_btn">
+				<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+				{tAdd parameter}
+			</button>
+		</div>
+		
+		<div>
+			<br />
+			<br />
+			<h3>{tAlert script}</h3>
+			<div id="editor" style="clear:left; border:1px solid grey; height:600px">
+			</div>		
+		</div>
+		<br />
+		<input type="button" class="btn btn-primary" style="margin-left: 20px" value="{tSave}" onClick="saveAlertScript()" id="save_alert_script_btn"/>
+	</div>
+</div>

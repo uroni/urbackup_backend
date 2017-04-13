@@ -1,0 +1,20 @@
+<div class="row" id="alert_param_{idx}">
+	<div class="col-md-3">
+		{tName:}
+		<input type="text" class="form-control" id="alert_name_{idx}" value="{name}">
+	</div>
+	<div class="col-md-3">
+		{tLabel:}
+		<input type="text" class="form-control" id="alert_label_{idx}" value="{label}">
+	</div>
+	<div class="col-md-3">
+		{tDefault value:}
+		<input type="text" class="form-control" id="alert_default_{idx}" value="{default_value}">
+	</div>
+	<div class="col-md-3">
+		&nbsp;<br/>
+		<button type="button" class="btn btn-sm btn-danger" onClick="removeAlertParam({idx})" id="alert_remove_{idx}">
+			<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>{tRemove}
+		</button>
+	</div>
+</div>

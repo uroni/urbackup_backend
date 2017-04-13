@@ -419,6 +419,9 @@
 				<div class="col-sm-6">
 					<select class="form-control" id="alert_script">{alert_scripts|s}</select>
 				</div>
+				{?can_edit_scripts}
+					<a href="javascript: show_scripts1()">{tEdit scripts}</a>
+				{/can_edit_scripts}
 			</div>
 			
 			<input type="hidden" id="alert_params" value="{alert_params}"/>

@@ -2414,9 +2414,9 @@ function build_alert_params(data)
 					}
 				}
 				params_html+="<div class=\"form-group\">"+
-					"<label class=\"col-sm-4 control-label\" for=\""+escapeHTML(param.name)+"\">"+escapeHTML(label)+"</label>"+
+					"<label class=\"col-sm-4 control-label\" for=\"alert_name_"+escapeHTML(param.name)+"\">"+escapeHTML(label)+"</label>"+
 					"<div class=\"col-sm-6\">"+
-					"<input type=\"text\" class=\"form-control\" id=\""+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>"+
+					"<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>"+
 					"</div></div>";
 					
 				g.alert_params.push(param.name);
@@ -2432,9 +2432,9 @@ function update_alert_params()
 	var p = {};
 	for(var i=0;i<g.alert_params.length;++i)
 	{
-		if(I(g.alert_params[i]))
+		if(I("alert_name_"+g.alert_params[i]))
 		{
-			p[g.alert_params[i]] = I(g.alert_params[i]).value;
+			p[g.alert_params[i]] = I("alert_name_"+g.alert_params[i]).value;
 		}
 	}
 	I("alert_params").value = $.param(p);
@@ -5268,4 +5268,125 @@ function aboutUrBackup()
 		g.data_f=ndata;
 	}
 	I('nav_pos').innerHTML="";
+}
+function show_scripts1()
+{
+	if(!startLoading()) return;
+	new getJSON("scripts", "sa=get_alert", show_scripts2);
+	I('nav_pos').innerHTML="";
+}
+function show_scripts2(data)
+{
+	stopLoading();
+	
+	var script_options = "";
+	
+	for(var i=0;i<data.scripts.length;++i)
+	{
+		var script = data.scripts[i];
+		var selected="";
+		if(script.id==data.id)
+		{
+			selected=" selected=\"selected\"";
+		}
+		script_options += "<option value=\""+script.id+"\""+selected+">"+escapeHTML(script.name)+"</option>";
+	}
+	
+	g.alert_script_id = data.id;
+	g.alert_script_idx = [];
+	var params_html = "";
+	for(var j=0;j<data.params.length;++j)
+	{
+		var param = data.params[j];
+		param.idx = j;
+		params_html+=dustRender("alert_script_edit_params", param);
+		g.alert_script_idx.push(j);
+	}
+	
+	var tdata = dustRender("alert_script_edit", {alert_scripts: script_options, mod_alert_params: params_html} );
+	
+	if(g.data_f!=tdata)
+	{
+		I('data_f').innerHTML=tdata;
+		g.data_f=tdata;
+	}
+	
+	require.config({ paths: { 'vs': 'js/vs' }});
+
+	require(['vs/editor/editor.main'], function() {
+		g.editor = monaco.editor.create(document.getElementById('editor'), {
+			value: unescapeHTML(data.script),
+			language: 'lua'
+		});
+	});
+	
+	if(data.id==1)
+	{
+		I("remove_alert_script_btn").disabled=true;
+		I("add_param_btn").disabled=true;
+		I("save_alert_script_btn").disabled=true;
+		for(var i=0;i<g.alert_script_idx.length;++i)
+		{
+			var idx = g.alert_script_idx[i];
+			I("alert_name_"+idx).disabled=true;
+			I("alert_label_"+idx).disabled=true;
+			I("alert_default_"+idx).disabled=true;
+			I("alert_remove_"+idx).disabled=true;
+		}
+	}
+}
+function removeAlertParam(idx)
+{
+	g.alert_script_idx.splice( $.inArray(idx, g.alert_script_idx), 1 );
+	I("alert_param_"+idx).remove();
+}
+function alertAddParam()
+{
+	if(g.alert_script_idx.length==0)
+	{
+		idx = 0;
+	}
+	else
+	{
+		idx = Math.max.apply(null, g.alert_script_idx) + 1;
+	}
+	
+	I("alert_script_params").innerHTML += dustRender("alert_script_edit_params", {idx: idx});
+	g.alert_script_idx.push(idx);
+}
+function addAlertScript()
+{
+	var name = prompt(trans("new_alert_script_name"));
+	if(name!=null)
+	{
+		g.alert_script_id=-1;
+		I("alert_script").innerHTML+="<option value=\"-1\" selected=\"selected\">"+escapeHTML(name)+"</option>";
+	}
+}
+function removeAlertScript()
+{
+	if(confirm(trans("confirm_alert_script_remove")))
+	{
+		if(!startLoading()) return;
+		new getJSON("scripts", "sa=rm_alert&id="+g.alert_script_id, show_scripts2);
+	}
+}
+function saveAlertScript()
+{
+	if(!startLoading()) return;
+	var params = "&name="+encodeURIComponent($("#alert_script option:selected").text());
+	for(var i=0;i<g.alert_script_idx.length;++i)
+	{
+		var idx = g.alert_script_idx[i];
+		params+="&"+i+"_name="+encodeURIComponent(I("alert_name_"+idx).value);
+		params+="&"+i+"_label="+encodeURIComponent(I("alert_label_"+idx).value);
+		params+="&"+i+"_default="+encodeURIComponent(I("alert_default_"+idx).value);
+	}
+	params+="&script="+encodeURIComponent(g.editor.getValue());
+	new getJSON("scripts", "sa=set_alert&id="+g.alert_script_id+params, show_scripts2);
+}
+function showAlertScript()
+{
+	if(!startLoading()) return;
+	new getJSON("scripts", "sa=get_alert&id="+I("alert_script").value, show_scripts2);
 }

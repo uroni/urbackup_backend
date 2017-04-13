@@ -260,6 +260,7 @@
     <ClCompile Include="serverinterface\progress.cpp" />
     <ClCompile Include="serverinterface\restore_prepare_wait.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
+    <ClCompile Include="serverinterface\scripts.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
     <ClCompile Include="serverinterface\start_backup.cpp" />

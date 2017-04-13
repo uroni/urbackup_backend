@@ -258,7 +258,7 @@ std::string LuaInterpreter::compileScript(const std::string & script)
 }
 
 int64 LuaInterpreter::runScript(const std::string& script, const str_map& params, int64& ret2,
-	std::string& state_data, const ILuaInterpreter::SInterpreterFunctions& funcs)
+	std::string& state_data, std::string& global_data, const ILuaInterpreter::SInterpreterFunctions& funcs)
 {
 	ret2 = -1;
 
@@ -305,6 +305,18 @@ int64 LuaInterpreter::runScript(const std::string& script, const str_map& params
 	}
 
 	lua_setglobal(state, "state");
+
+	if (global_data.empty())
+	{
+		lua_newtable(state);
+	}
+	else if (!unserialize_table(state, global_data))
+	{
+		Server->Log("Error unserializing global data", LL_ERROR);
+		return -1;
+	}
+
+	lua_setglobal(state, "global");
 
 	rc = lua_pcall(state, 0, LUA_MULTRET, 0);
 	if (rc) {

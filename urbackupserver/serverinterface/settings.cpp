@@ -1045,6 +1045,10 @@ ACTION_IMPL(settings)
 				s=getClientSettings(db, t_clientid);				
 				obj.set("clientid", t_clientid);
 				obj.set("alert_scripts", getAlertScripts(db));
+				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
+				{
+					obj.set("can_edit_scripts", true);
+				}
 				if (t_clientid <= 0)
 				{
 					obj.set("groupid", t_clientid*-1);
@@ -1245,6 +1249,10 @@ ACTION_IMPL(settings)
 				ServerSettings serv_settings(db);
 				JSON::Object obj=getJSONClientSettings(serv_settings);
 				obj.set("alert_scripts", getAlertScripts(db));
+				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
+				{
+					obj.set("can_edit_scripts", true);
+				}
 				getGeneralSettings(obj, db, serv_settings);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");

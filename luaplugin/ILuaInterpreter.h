@@ -20,5 +20,5 @@ public:
 	};
 
 	virtual std::string compileScript(const std::string& script) = 0;
-	virtual int64 runScript(const std::string& script, const str_map& params, int64& ret2, std::string& state, const SInterpreterFunctions& funcs) = 0;
+	virtual int64 runScript(const std::string& script, const str_map& params, int64& ret2, std::string& state, std::string& global_data, const SInterpreterFunctions& funcs) = 0;
 };

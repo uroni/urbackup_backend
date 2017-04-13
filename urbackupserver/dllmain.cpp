@@ -785,6 +785,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(start_backup);
 	ADD_ACTION(add_client);
 	ADD_ACTION(restore_prepare_wait);
+	ADD_ACTION(scripts);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{

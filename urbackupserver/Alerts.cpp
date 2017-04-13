@@ -19,6 +19,7 @@ namespace
 	{
 		std::string code;
 		std::vector<SScriptParam> params;
+		std::string global;
 	};
 
 	SScript prepareScript(IDatabase* db, ILuaInterpreter* lua_interpreter, int script_id)
@@ -125,6 +126,8 @@ void Alerts::operator()()
 				params["full_file_interval"] = convert(server_settings.getUpdateFreqFileFull());
 				params["incr_image_interval"] = convert(server_settings.getUpdateFreqImageIncr());
 				params["full_image_interval"] = convert(server_settings.getUpdateFreqImageFull());
+				params["no_images"] = server_settings.getSettings()->no_images ? "1" : "0";
+				params["no_file_backups"] = server_settings.getSettings()->no_file_backups ? "1" : "0";
 
 				int64 times = Server->getTimeSeconds();
 
@@ -170,7 +173,7 @@ void Alerts::operator()()
 
 				std::string state = res[i]["alerts_state"];
 				int64 ret2;
-				int64 ret = lua_interpreter->runScript(it->second.code, params, ret2, state, funcs);
+				int64 ret = lua_interpreter->runScript(it->second.code, params, ret2, state, it->second.global, funcs);
 				bool needs_update = false;
 				
 				if (ret>=0)
@@ -200,7 +203,7 @@ void Alerts::operator()()
 					if (file_ok == "0"
 						&& image_ok == "0")
 					{
-						next_check = Server->getTimeMS() + 24*60*60*1000;
+						next_check = Server->getTimeMS() + 1*60*60*1000;
 						needs_update = true;
 					}
 					else
