@@ -117,6 +117,23 @@ namespace
 		mz_free(cdata);
 		return ret;
 	}
+
+#include "alert_lua.h"
+
+	std::string get_alert_lua()
+	{
+		size_t out_len;
+		void* cdata = tinfl_decompress_mem_to_heap(alert_lua_z, alert_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
+		if (cdata == NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+		mz_free(cdata);
+		return ret;
+	}
+
 }
 
 IPipe *server_exit_pipe=NULL;
@@ -1951,7 +1968,7 @@ bool upgrade54_55()
 	{
 		q->Bind(1);
 		q->Bind("Default");
-		q->Bind(getFile("alert.lua"));
+		q->Bind(get_alert_lua());
 		b &= q->Write();
 	}
 	else

@@ -37,5 +37,3 @@
 #include "lcorolib.c"
 #include "lutf8lib.c"
 #include "lctype.c"
-
-#include "lua.c"
