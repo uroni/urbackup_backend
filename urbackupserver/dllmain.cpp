@@ -1955,7 +1955,7 @@ bool upgrade54_55()
 	b &= db->Write("ALTER TABLE clients ADD alerts_state BLOB");
 	b &= db->Write("ALTER TABLE clients ADD alerts_next_check INTEGER");
 	b &= db->Write("ALTER TABLE clients ADD created INTEGER");
-	b &= db->Write("UPDATE clients SET created=strftime('%s', 'now')");
+	b &= db->Write("UPDATE clients SET created=0");
 
 	b &= db->Write("UPDATE clients SET file_ok=0, image_ok=0");
 
