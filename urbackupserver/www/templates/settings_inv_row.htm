@@ -417,7 +417,7 @@
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
 				<div class="col-sm-6">
-					<select class="form-control" id="alert_script">{alert_scripts|s}</select>
+					<select class="form-control" id="alert_script" onChange="updateAlertScriptParams()">{alert_scripts|s}</select>
 				</div>
 				{?can_edit_scripts}
 					<a href="javascript: show_scripts1()">{tEdit scripts}</a>
@@ -426,7 +426,9 @@
 			
 			<input type="hidden" id="alert_params" value="{alert_params}"/>
 			
-			{mod_alert_params|s}
+			<div id="alert_script_params_container">
+				{mod_alert_params|s}
+			</div>
 		</form>
 	</div>
 	</div>
