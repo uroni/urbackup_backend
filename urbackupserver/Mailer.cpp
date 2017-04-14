@@ -21,6 +21,7 @@ bool Mailer::sendMail(const std::string & send_to, const std::string & subject, 
 	lock.relock(NULL);
 
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	DBScopedSynchronous db_synchronous(db);
 	IQuery* q = db->Prepare("INSERT INTO mail_queue (send_to, subject, message) VALUES (?,?,?)", false);
 	q->Bind(send_to);
 	q->Bind(subject);
