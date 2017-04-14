@@ -53,6 +53,7 @@ extern IServer* Server;
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
+#include "../luaplugin/ILuaInterpreter.h"
 
 #include "database.h"
 #include "actions.h"
@@ -96,6 +97,7 @@ SStartupStatus startup_status;
 #include "../urbackupcommon/WalCheckpointThread.h"
 #include "FileMetadataDownloadThread.h"
 #include "../urbackupcommon/chunk_hasher.h"
+#include "LogReport.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -141,6 +143,7 @@ IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
 IFileServ* fileserv=NULL;
+ILuaInterpreter* lua_interpreter = NULL;
 
 std::string server_identity;
 std::string server_token;
@@ -636,6 +639,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	{
+		str_map params;
+		lua_interpreter = dynamic_cast<ILuaInterpreter*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("lua", params)));
+		if (lua_interpreter == NULL)
+		{
+			Server->Log("Lua plugin missing. Alerts won't work.", LL_WARNING);
+		}
+	}
+
 	
 	open_server_database(true);
 	
@@ -644,6 +656,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerSettings::init_mutex();
 	ClientMain::init_mutex();
 	DataplanDb::init();
+	init_log_report();
 
 	open_settings_database();
 	
@@ -1981,6 +1994,7 @@ bool upgrade54_55()
 	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 0, 'alert_file_mult', 'alert_file_mult', '3', 1)");
 	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 1, 'alert_image_mult', 'alert_image_mult', '3', 1)");
 	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 2, 'alert_emails', 'alert_emails', '', 1)");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 3, 'alert_important', 'alert_important', '0', 1)");
 
 	b &= db->Write("CREATE TABLE mail_queue (id INTEGER PRIMARY KEY, send_to TEXT, subject TEXT, message TEXT, next_try INTEGER, retry_count INTEGER DEFAULT 0)");
 

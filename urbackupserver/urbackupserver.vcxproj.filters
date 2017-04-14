@@ -369,6 +369,9 @@
     <ClCompile Include="serverinterface\scripts.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="LogReport.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -666,6 +669,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="Alerts.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="LogReport.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

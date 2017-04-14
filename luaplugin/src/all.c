@@ -37,3 +37,17 @@
 #include "lcorolib.c"
 #include "lutf8lib.c"
 #include "lctype.c"
+
+static const luaL_Reg syslib_custom[] = {
+	{ "clock",     os_clock },
+	{ "date",      os_date },
+	{ "difftime",  os_difftime },
+	{ "time",      os_time },
+	{ NULL, NULL }
+};
+
+
+LUAMOD_API int luaopen_os_custom(lua_State *L) {
+	luaL_newlib(L, syslib_custom);
+	return 1;
+}

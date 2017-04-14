@@ -2,6 +2,11 @@
 #include "src/lua.hpp"
 #include "../Interface/Server.h"
 #include "../common/data.h"
+#include <assert.h>
+
+extern "C" {
+	LUAMOD_API int luaopen_os_custom(lua_State *L);
+}
 
 namespace
 {
@@ -188,6 +193,7 @@ namespace
 		{ LUA_STRLIBNAME, luaopen_string },
 		{ LUA_MATHLIBNAME, luaopen_math },
 		{ LUA_UTF8LIBNAME, luaopen_utf8 },
+		{ LUA_OSLIBNAME, luaopen_os_custom},
 		{ NULL, NULL }
 	};
 
@@ -228,6 +234,41 @@ namespace
 		lua_pushboolean(L, b ? 1 : 0);
 		return 1;
 	}
+
+	void set_param(lua_State* state, const ILuaInterpreter::Param& param)
+	{
+		if (param.tag == ILuaInterpreter::Param::PARAM_VEC)
+		{
+			lua_newtable(state);
+			for (ILuaInterpreter::Param::params_map::const_iterator it = param.u.params->begin();
+				it!=param.u.params->end();++it)
+			{
+				set_param(state, it->first);
+				set_param(state, it->second);
+				lua_rawset(state, -3);
+			}
+		}
+		else if (param.tag == ILuaInterpreter::Param::PARAM_STR)
+		{
+			lua_pushstring(state, param.u.str->c_str());
+		}
+		else if (param.tag == ILuaInterpreter::Param::PARAM_NUM)
+		{
+			lua_pushnumber(state, param.u.num);
+		}
+		else if (param.tag == ILuaInterpreter::Param::PARAM_INT)
+		{
+			lua_pushnumber(state, param.u.i);
+		}
+		else if (param.tag == ILuaInterpreter::Param::PARAM_BOOL)
+		{
+			lua_pushboolean(state, param.u.b);
+		}
+		else
+		{
+			assert(false);
+		}
+	}
 }
 
 std::string LuaInterpreter::compileScript(const std::string & script)
@@ -257,7 +298,7 @@ std::string LuaInterpreter::compileScript(const std::string & script)
 	return ret;
 }
 
-int64 LuaInterpreter::runScript(const std::string& script, const str_map& params, int64& ret2,
+int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter::Param& params, int64& ret2,
 	std::string& state_data, std::string& global_data, const ILuaInterpreter::SInterpreterFunctions& funcs)
 {
 	ret2 = -1;
@@ -272,20 +313,13 @@ int64 LuaInterpreter::runScript(const std::string& script, const str_map& params
 
 	luaL_openlibs_custom(state);
 
-	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "foo");
+	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "script");
 	if (rc) {
 		Server->Log(std::string("Error loading lua script: ") + lua_tostring(state, -1), LL_ERROR);
 		return -1;
 	}
 
-	lua_newtable(state);
-	for (str_map::const_iterator it = params.begin(); it != params.end(); ++it)
-	{
-		lua_pushstring(state, it->first.c_str());
-		lua_pushstring(state, it->second.c_str());
-		lua_rawset(state, -3);
-	}
-
+	set_param(state, params);
 	lua_setglobal(state, "params");
 
 	lua_pushlightuserdata(state, const_cast<ILuaInterpreter::SInterpreterFunctions*>(&funcs));
@@ -338,6 +372,14 @@ int64 LuaInterpreter::runScript(const std::string& script, const str_map& params
 	if (state_data.empty())
 	{
 		Server->Log("Error serializing state data", LL_WARNING);
+	}
+
+	lua_getglobal(state, "global");
+
+	global_data = serialize_table(state);
+	if (global_data.empty())
+	{
+		Server->Log("Error serializing global data", LL_WARNING);
 	}
 	
 	return ret;

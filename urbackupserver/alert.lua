@@ -1,13 +1,13 @@
 --find largest (maximum of incr and full interval) interval for file and image backups
-local file_interval = tonumber(params.incr_file_interval)
-local full_file_interval = tonumber(params.full_file_interval)
+local file_interval = params.incr_file_interval
+local full_file_interval = params.full_file_interval
 if full_file_interval>0 and full_file_interval<file_interval
 then
 	file_interval = full_file_interval
 end
 
-local image_interval = tonumber(params.incr_image_interval)
-local full_image_interval = tonumber(params.full_image_interval)
+local image_interval = params.incr_image_interval
+local full_image_interval = params.full_image_interval
 if full_image_interval>0 and full_image_interval<image_interval
 then
 	image_interval = full_image_interval
@@ -56,21 +56,32 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	then
 		return
 	end
+	
+	if alert_time<0
+	then
+		return
+	end
 
 	local btype = "file"
 	if image
 	then
 		btype="image"
-		if params.no_images=="1"
+		if params.no_images
 		then
 			return
 		end
-	elseif params.no_file_backups=="1"
+	elseif params.no_file_backups
 	then
 		return
 	end
 	
-	local subj = "[UrBackup] " .. params.clientname .. ": No recent " .. btype .. " backup"
+	local important=" "
+	if params.alert_important~="1"
+	then
+		important = "[Important] "
+	end
+	
+	local subj = "[UrBackup]" .. important .. params.clientname .. ": No recent " .. btype .. " backup"
 	local lastbackup = "Last " .. btype .." backup was " .. pretty_time(passed_time) .. " ago"
 	if last_time==0
 	then
@@ -85,17 +96,22 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	mail(params.alert_emails, subj, msg)
 end
 
-local all_fail = 1
+if not state.mailed
+then
+	state.mailed = true
+	fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*tonumber(params.alert_file_mult) )
+end
+
 --Time in seconds till file backup status is not ok
-local file_backup_nok = file_interval*tonumber(params.alert_file_mult) - tonumber(params.passed_time_lastbackup_file)
-if file_backup_nok<0 and file_interval>0
+local file_backup_nok = file_interval*tonumber(params.alert_file_mult) - params.passed_time_lastbackup_file
+if file_backup_nok<0
 then
 	ret=ret + 1
 	
 	--Send warning mail only once on status becoming not ok
-	if params.file_ok=="1"
+	if params.file_ok
 	then
-		fail_mail(false, tonumber(params.passed_time_lastbackup_file), tonumber(params.lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
+		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*tonumber(params.alert_file_mult) )
 	end
 else
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
@@ -103,26 +119,27 @@ end
 
 if string.len(params.os_simple)==0 or params.os_simple=="windows"
 then
-	all_fail = all_fail + 2
 	--Time in seconds till image backup status is not ok
-	local image_backup_nok = image_interval*tonumber(params.alert_image_mult) - tonumber(params.passed_time_lastbackup_image)
-	if image_backup_nok<0 and image_interval>0
+	local image_backup_nok = image_interval*tonumber(params.alert_image_mult) - params.passed_time_lastbackup_image
+	if image_backup_nok<0
 	then
 		ret= ret + 2
 		
-		if params.image_ok=="1"
+		if params.image_ok
 		then
-			fail_mail(true, tonumber(params.passed_time_lastbackup_image), tonumber(params.lastbackup_image), file_interval*tonumber(params.alert_image_mult) )
+			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*tonumber(params.alert_image_mult) )
 		end
 	else
 		next_check_ms = math.min(next_check_ms, image_backup_nok*1000)
 	end
+else
+	ret = ret + 2
 end
 	
 --Second parameter returns the number of milliseconds to wait till the next status check
 --If the interval is complex (not a single number, but different numbers depending on window) we cannot return this time reliably
 --The alert script is automatically run after a backup so no need to return the wait time if both image and file backup status is not ok
-if params.complex_interval=="1" or ret==all_fail
+if params.complex_interval or ret==3
 then
 	return ret
 else

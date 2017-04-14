@@ -16,6 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 #include "action_header.h"
+#include "../LogReport.h"
 
 ACTION_IMPL(scripts)
 {
@@ -79,6 +80,8 @@ ACTION_IMPL(scripts)
 				q->Write();
 				q->Reset();
 			}
+
+			ret.set("saved_ok", true);
 		}
 		else if (sa == "rm_alert"
 			&& id != 1)
@@ -122,4 +125,26 @@ ACTION_IMPL(scripts)
 		ret.set("params", params);
 		helper.Write(ret.stringify(false));
 	}	
+	else if (sa == "get_report"
+		|| sa == "set_report")
+	{
+		if (helper.getRights(RIGHT_REPORT_SCRIPT) != RIGHT_ALL)
+		{
+			return;
+		}
+
+		JSON::Object ret;
+		if (sa == "set_report")
+		{
+			db->Write("DELETE FROM misc WHERE tkey='report_script'");
+			IQuery* q = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES ('report_script', ?)");
+			q->Bind(POST["script"]);
+			q->Write();
+			q->Reset();
+			ret.set("saved_ok", true);
+		}
+
+		ret.set("script", load_report_script());
+		helper.Write(ret.stringify(false));
+	}
 }

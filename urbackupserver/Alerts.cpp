@@ -7,6 +7,8 @@
 #include "../luaplugin/ILuaInterpreter.h"
 #include "Mailer.h"
 
+extern ILuaInterpreter* lua_interpreter;
+
 namespace
 {
 	struct SScriptParam
@@ -43,7 +45,7 @@ namespace
 
 		if (!ret.code.empty())
 		{
-			ret.code = lua_interpreter->compileScript(ret.code);
+			//ret.code = lua_interpreter->compileScript(ret.code);
 		}
 
 		if (ret.code.empty())
@@ -75,11 +77,8 @@ namespace
 
 void Alerts::operator()()
 {
-	str_map params;
-	ILuaInterpreter* lua_interpreter = dynamic_cast<ILuaInterpreter*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("lua", params)));
 	if (lua_interpreter == NULL)
 	{
-		Server->Log("Lua plugin missing. Alerts won't work.", LL_WARNING);
 		return;
 	}
 
@@ -89,7 +88,7 @@ void Alerts::operator()()
 
 	IQuery* q_get_alert_clients = db->Prepare("SELECT id, name, file_ok, image_ok, alerts_state, strftime('%s', lastbackup) AS lastbackup, "
 		"strftime('%s', lastseen) AS lastseen, strftime('%s', lastbackup_image) AS lastbackup_image, created, os_simple "
-		"FROM clients WHERE alerts_next_check IS NULL OR alerts_next_check>=?");
+		"FROM clients WHERE alerts_next_check IS NULL OR alerts_next_check<=?");
 	IQuery* q_update_client = db->Prepare("UPDATE clients SET  file_ok=?, image_ok=?, alerts_next_check=?, alerts_state=? WHERE id=?");
 
 	std::map<int, SScript> alert_scripts;
@@ -99,7 +98,7 @@ void Alerts::operator()()
 
 	while (true)
 	{
-		Server->wait(1000);
+		Server->wait(60*1000);
 
 		q_get_alert_clients->Bind(Server->getTimeMS());
 		db_results res = q_get_alert_clients->Read();
@@ -119,15 +118,16 @@ void Alerts::operator()()
 
 			if (!it->second.code.empty())
 			{
-				str_map params;
-				params["clientid"] = convert(clientid);
+				ILuaInterpreter::Param params_raw;
+				ILuaInterpreter::Param::params_map& params = *params_raw.u.params;
+				params["clientid"] = clientid;
 				params["clientname"] = res[i]["name"];
-				params["incr_file_interval"] = convert(server_settings.getUpdateFreqFileIncr());
-				params["full_file_interval"] = convert(server_settings.getUpdateFreqFileFull());
-				params["incr_image_interval"] = convert(server_settings.getUpdateFreqImageIncr());
-				params["full_image_interval"] = convert(server_settings.getUpdateFreqImageFull());
-				params["no_images"] = server_settings.getSettings()->no_images ? "1" : "0";
-				params["no_file_backups"] = server_settings.getSettings()->no_file_backups ? "1" : "0";
+				params["incr_file_interval"] = server_settings.getUpdateFreqFileIncr();
+				params["full_file_interval"] = server_settings.getUpdateFreqFileFull();
+				params["incr_image_interval"] = server_settings.getUpdateFreqImageIncr();
+				params["full_image_interval"] = server_settings.getUpdateFreqImageFull();
+				params["no_images"] = server_settings.getSettings()->no_images;
+				params["no_file_backups"] = server_settings.getSettings()->no_file_backups;
 				params["os_simple"] = res[i]["os_simple"];
 
 				int64 times = Server->getTimeSeconds();
@@ -135,11 +135,11 @@ void Alerts::operator()()
 				int64 lastbackup_file = watoi64(res[i]["lastbackup"]);
 				int64 lastbackup_image = watoi64(res[i]["lastbackup_image"]);
 
-				params["passed_time_lastseen"] = convert(times - watoi64(res[i]["lastseen"]));
-				params["passed_time_lastbackup_file"] = convert((std::min)(times - lastbackup_file, times - created) );
-				params["passed_time_lastbackup_image"] = convert((std::min)(times - lastbackup_image, times - created) );
-				params["lastbackup_file"] = convert(lastbackup_file);
-				params["lastbackup_image"] = convert(lastbackup_image);
+				params["passed_time_lastseen"] = times - watoi64(res[i]["lastseen"]);
+				params["passed_time_lastbackup_file"] = (std::min)(times - lastbackup_file, times - created);
+				params["passed_time_lastbackup_image"] = (std::min)(times - lastbackup_image, times - created);
+				params["lastbackup_file"] = lastbackup_file;
+				params["lastbackup_image"] = lastbackup_image;
 
 				SSettings* settings = server_settings.getSettings();
 
@@ -148,16 +148,16 @@ void Alerts::operator()()
 					|| settings->update_freq_image_full.find(";") != std::string::npos
 					|| settings->update_freq_image_incr.find(";") != std::string::npos)
 				{
-					params["complex_interval"] = "1";
+					params["complex_interval"] = true;
 				}
 				else
 				{
-					params["complex_interval"] = "0";
+					params["complex_interval"] = false;
 				}
 
-				std::string file_ok = res[i]["file_ok"];
+				bool file_ok = res[i]["file_ok"] == "1";
 				params["file_ok"] = file_ok;
-				std::string image_ok = res[i]["image_ok"];
+				bool image_ok = res[i]["image_ok"] == "1";
 				params["image_ok"] = image_ok;
 
 				str_map nondefault_params;
@@ -179,16 +179,16 @@ void Alerts::operator()()
 
 				std::string state = res[i]["alerts_state"];
 				int64 ret2;
-				int64 ret = lua_interpreter->runScript(it->second.code, params, ret2, state, it->second.global, funcs);
+				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, it->second.global, funcs);
 				bool needs_update = false;
 				
 				if (ret>=0)
 				{
-					file_ok = (ret & 1) ? "0" : "1";
-					image_ok = (ret & 2) ? "0" : "1";
+					file_ok = !(ret & 1);
+					image_ok = !(ret & 2);
 
-					if (file_ok != params["file_ok"]
-						|| image_ok != params["image_ok"])
+					if (file_ok != params["file_ok"].u.b
+						|| image_ok != params["image_ok"].u.b)
 					{
 						needs_update = true;
 					}
@@ -206,8 +206,8 @@ void Alerts::operator()()
 				}
 				else
 				{
-					if (file_ok == "0"
-						&& image_ok == "0")
+					if (!file_ok
+						&& !image_ok)
 					{
 						next_check = Server->getTimeMS() + 1*60*60*1000;
 						needs_update = true;

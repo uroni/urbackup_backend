@@ -242,6 +242,7 @@
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
     <ClCompile Include="LMDBFileIndex.cpp" />
+    <ClCompile Include="LogReport.cpp" />
     <ClCompile Include="Mailer.cpp" />
     <ClCompile Include="PhashLoad.cpp" />
     <ClCompile Include="restore_client.cpp" />
@@ -359,6 +360,7 @@
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
     <ClInclude Include="LMDBFileIndex.h" />
+    <ClInclude Include="LogReport.h" />
     <ClInclude Include="Mailer.h" />
     <ClInclude Include="PhashLoad.h" />
     <ClInclude Include="restore_client.h" />

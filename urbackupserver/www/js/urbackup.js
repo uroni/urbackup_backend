@@ -4468,6 +4468,7 @@ function show_logs2(data)
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";
 		td.live_log_clients=live_log_clients;
+		td.can_report_script_edit = data.can_report_script_edit;
 		if(data.has_user)
 		{
 			td.has_user=true;
@@ -5303,12 +5304,17 @@ function show_scripts2(data)
 		g.alert_script_idx.push(j);
 	}
 	
-	var tdata = dustRender("alert_script_edit", {alert_scripts: script_options, mod_alert_params: params_html} );
+	var tdata = dustRender("alert_script_edit", {alert_scripts: script_options, mod_alert_params: params_html, saved_ok: data.saved_ok} );
 	
 	if(g.data_f!=tdata)
 	{
 		I('data_f').innerHTML=tdata;
 		g.data_f=tdata;
+	}
+	
+	if(data.saved_ok)
+	{
+		setTimeout(remove_saved_ok, 5000);
 	}
 	
 	require.config({ paths: { 'vs': 'js/vs' }});
@@ -5389,4 +5395,49 @@ function showAlertScript()
 {
 	if(!startLoading()) return;
 	new getJSON("scripts", "sa=get_alert&id="+I("alert_script").value, show_scripts2);
+}
+function show_report_script1()
+{
+	if(!startLoading()) return;
+	new getJSON("scripts", "sa=get_report", show_report_script2);
+	I('nav_pos').innerHTML="";
+}
+function remove_saved_ok()
+{
+	if(I("saved_ok"))
+	{
+		I("saved_ok").remove();
+	}
+}
+function show_report_script2(data)
+{
+	stopLoading();
+	
+	var tdata = dustRender("report_script_edit", data);
+	
+	if(g.data_f!=tdata)
+	{
+		I('data_f').innerHTML=tdata;
+		g.data_f=tdata;
+	}
+	
+	if(data.saved_ok)
+	{
+		setTimeout(remove_saved_ok, 5000);
+	}
+	
+	require.config({ paths: { 'vs': 'js/vs' }});
+
+	require(['vs/editor/editor.main'], function() {
+		g.editor = monaco.editor.create(document.getElementById('editor'), {
+			value: unescapeHTML(data.script),
+			language: 'lua'
+		});
+	});
+}
+function saveReportScript()
+{
+	if(!startLoading()) return;
+	var params="&script="+encodeURIComponent(g.editor.getValue());
+	new getJSON("scripts", "sa=set_report"+params, show_report_script2);
 }

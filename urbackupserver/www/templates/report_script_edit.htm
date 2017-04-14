@@ -1,0 +1,17 @@
+<div class="panel panel-default" style="margin-top:20px; height:100%">
+	<div class="panel-heading">{tEdit report script}</div>
+	<div class="panel-body">
+		<div>
+			<h3>{tReport script}</h3>
+			<div id="editor" style="clear:left; border:1px solid grey; height:600px">
+			</div>		
+		</div>
+		<br />
+		<input type="button" class="btn btn-primary" style="margin-left: 20px" value="{tSave}" onClick="saveReportScript()"/>
+		{?saved_ok}
+		<div id="saved_ok">
+			Saved script successfully.
+		</div>
+		{/saved_ok}
+	</div>
+</div>
