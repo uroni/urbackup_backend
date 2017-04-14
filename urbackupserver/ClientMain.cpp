@@ -1034,7 +1034,7 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 
 		if(server_settings==NULL || c_clients<server_settings->getSettings()->max_active_clients)
 		{
-			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images) VALUES (?, CURRENT_TIMESTAMP, 0, 0)", false);
+			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images,created) VALUES (?, CURRENT_TIMESTAMP, 0, 0, strftime('%s', 'now') )", false);
 			q_insert_newclient->Bind(clientname);
 			q_insert_newclient->Write();
 			int rid=(int)db->getLastInsertID();

@@ -30,7 +30,7 @@ function pretty_time_append(seconds, name, amount, result)
 			result = result .. " "
 		end
 		result = result .. t .. name
-		seconds = seconds - t
+		seconds = seconds - t*amount
 	end
 	
 	return seconds, result
@@ -43,11 +43,15 @@ function pretty_time(seconds)
 	seconds, result = pretty_time_append(seconds, " days", 60*60*24, result)
 	seconds, result = pretty_time_append(seconds, "h", 60*60, result)
 	seconds, result = pretty_time_append(seconds, "min", 60, result)
+	if result==""
+	then
+		result=seconds.. "s"
+	end
 	return result
 end
 
 --Sends a alert mail if mail address was specified as parameter
-function fail_mail(image, passed_time, alert_time)
+function fail_mail(image, passed_time, last_time, alert_time)
 	if params.alert_emails == ""
 	then
 		return
@@ -67,10 +71,21 @@ function fail_mail(image, passed_time, alert_time)
 	end
 	
 	local subj = "[UrBackup] " .. params.clientname .. ": No recent " .. btype .. " backup"
-	local msg = "No recent " .. btype .. " backup for client \"" .. params.clientname .. "\". Last " .. btype .." backup was " .. pretty_time(passed_time) .. " ago. This alert is sent if there is no recent backup in the last " .. pretty_time(alert_time) .. "."
+	local lastbackup = "Last " .. btype .." backup was " .. pretty_time(passed_time) .. " ago"
+	if last_time==0
+	then
+		if image
+		then
+			lastbackup = "Client has never had an image backup"
+		else
+			lastbackup = "Client has never had a file backup"
+		end
+	end
+	local msg = "No recent " .. btype .. " backup for client \"" .. params.clientname .. "\". ".. lastbackup .. ". This alert is sent if there is no recent backup in the last " .. pretty_time(alert_time) .. "."
 	mail(params.alert_emails, subj, msg)
 end
 
+local all_fail = 1
 --Time in seconds till file backup status is not ok
 local file_backup_nok = file_interval*tonumber(params.alert_file_mult) - tonumber(params.passed_time_lastbackup_file)
 if file_backup_nok<0 and file_interval>0
@@ -80,30 +95,35 @@ then
 	--Send warning mail only once on status becoming not ok
 	if params.file_ok=="1"
 	then
-		fail_mail(false, tonumber(params.passed_time_lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
+		fail_mail(false, tonumber(params.passed_time_lastbackup_file), tonumber(params.lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
 	end
+	fail_mail(false, tonumber(params.passed_time_lastbackup_file), tonumber(params.lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
 else
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
 end
 
---Time in seconds till image backup status is not ok
-local image_backup_nok = image_interval*tonumber(params.alert_image_mult) - tonumber(params.passed_time_lastbackup_image)
-if image_backup_nok<0 and image_interval>0
+if string.len(params.os_simple)==0 or params.os_simple=="windows"
 then
-	ret= ret + 2
-	
-	if params.image_ok=="1"
+	all_fail = all_fail + 2
+	--Time in seconds till image backup status is not ok
+	local image_backup_nok = image_interval*tonumber(params.alert_image_mult) - tonumber(params.passed_time_lastbackup_image)
+	if image_backup_nok<0 and image_interval>0
 	then
-		fail_mail(true, tonumber(params.passed_time_lastbackup_image), file_interval*tonumber(params.alert_image_mult) )
+		ret= ret + 2
+		
+		if params.image_ok=="1"
+		then
+			fail_mail(true, tonumber(params.passed_time_lastbackup_image), tonumber(params.lastbackup_image), file_interval*tonumber(params.alert_image_mult) )
+		end
+	else
+		next_check_ms = math.min(next_check_ms, image_backup_nok*1000)
 	end
-else
-	next_check_ms = math.min(next_check_ms, image_backup_nok*1000)
 end
-
+	
 --Second parameter returns the number of milliseconds to wait till the next status check
 --If the interval is complex (not a single number, but different numbers depending on window) we cannot return this time reliably
 --The alert script is automatically run after a backup so no need to return the wait time if both image and file backup status is not ok
-if params.complex_interval=="1" or ret==3
+if params.complex_interval=="1" or ret==all_fail
 then
 	return ret
 else

@@ -88,7 +88,7 @@ void Alerts::operator()()
 	db->Write("UPDATE clients SET alerts_next_check=NULL");
 
 	IQuery* q_get_alert_clients = db->Prepare("SELECT id, name, file_ok, image_ok, alerts_state, strftime('%s', lastbackup) AS lastbackup, "
-		"strftime('%s', lastseen) AS lastseen, strftime('%s', lastbackup_image) AS lastbackup_image "
+		"strftime('%s', lastseen) AS lastseen, strftime('%s', lastbackup_image) AS lastbackup_image, created, os_simple "
 		"FROM clients WHERE alerts_next_check IS NULL OR alerts_next_check>=?");
 	IQuery* q_update_client = db->Prepare("UPDATE clients SET  file_ok=?, image_ok=?, alerts_next_check=?, alerts_state=? WHERE id=?");
 
@@ -128,12 +128,18 @@ void Alerts::operator()()
 				params["full_image_interval"] = convert(server_settings.getUpdateFreqImageFull());
 				params["no_images"] = server_settings.getSettings()->no_images ? "1" : "0";
 				params["no_file_backups"] = server_settings.getSettings()->no_file_backups ? "1" : "0";
+				params["os_simple"] = res[i]["os_simple"];
 
 				int64 times = Server->getTimeSeconds();
+				int64 created = watoi64(res[i]["created"]);
+				int64 lastbackup_file = watoi64(res[i]["lastbackup"]);
+				int64 lastbackup_image = watoi64(res[i]["lastbackup_image"]);
 
 				params["passed_time_lastseen"] = convert(times - watoi64(res[i]["lastseen"]));
-				params["passed_time_lastbackup_file"] = convert(times - watoi64(res[i]["lastbackup"]));
-				params["passed_time_lastbackup_image"] = convert(times - watoi64(res[i]["lastbackup_image"]));
+				params["passed_time_lastbackup_file"] = convert((std::min)(times - lastbackup_file, times - created) );
+				params["passed_time_lastbackup_image"] = convert((std::min)(times - lastbackup_image, times - created) );
+				params["lastbackup_file"] = convert(lastbackup_file);
+				params["lastbackup_image"] = convert(lastbackup_image);
 
 				SSettings* settings = server_settings.getSettings();
 
