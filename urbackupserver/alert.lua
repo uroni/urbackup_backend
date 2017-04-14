@@ -50,7 +50,7 @@ function pretty_time(seconds)
 	return result
 end
 
---Sends a alert mail if mail address was specified as parameter
+--Sends an alert mail if mail address was specified as parameter
 function fail_mail(image, passed_time, last_time, alert_time)
 	if params.alert_emails == ""
 	then
@@ -97,7 +97,6 @@ then
 	then
 		fail_mail(false, tonumber(params.passed_time_lastbackup_file), tonumber(params.lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
 	end
-	fail_mail(false, tonumber(params.passed_time_lastbackup_file), tonumber(params.lastbackup_file), file_interval*tonumber(params.alert_file_mult) )
 else
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
 end

@@ -65,6 +65,7 @@ void Mailer::operator()()
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery* q_get_mail = db->Prepare("SELECT id, send_to, subject, message, next_try, retry_count FROM mail_queue WHERE next_try IS NULL or next_try>=?");
 	IQuery* q_set_retry = db->Prepare("UPDATE mail_queue SET next_try=?, retry_count=? WHERE id=?");
+	IQuery* q_remove_mail = db->Prepare("DELETE FROM mail_queue WHERE id=?");
 
 	db->Write("UPDATE mail_queue SET next_try=NULL");
 
@@ -134,6 +135,12 @@ void Mailer::operator()()
 				q_set_retry->Bind(res[i]["id"]);
 				q_set_retry->Write();
 				q_set_retry->Reset();
+			}
+			else
+			{
+				q_remove_mail->Bind(res[i]["id"]);
+				q_remove_mail->Write();
+				q_remove_mail->Reset();
 			}
 		}
 	}
