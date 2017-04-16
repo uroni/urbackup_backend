@@ -311,6 +311,18 @@ bool IncrFileBackup::doFileBackup()
 
 			use_snapshots=false;
 		}
+		else
+		{
+			Server->deleteFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn));
+			os_sync(backuppath_hashes);
+
+			if (FileExists(backuppath_hashes + os_file_sep() + sync_fn))
+			{
+				ServerLogger::Log(logid, "Could not delete sync file. File still exists.", LL_ERROR);
+				has_early_error = true;
+				return false;
+			}
+		}
 	}
 
 	getTokenFile(fc, hashed_transfer, false);
