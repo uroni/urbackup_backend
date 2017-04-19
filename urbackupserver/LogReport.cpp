@@ -6,6 +6,8 @@
 #include "database.h"
 #include "../luaplugin/ILuaInterpreter.h"
 #include "Mailer.h"
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.h"
 
 extern ILuaInterpreter* lua_interpreter;
 
@@ -28,23 +30,32 @@ namespace
 
 	IMutex* global_mutex;
 	std::string global_data;
+
+#include "report_lua.h"
+
+        std::string get_report_lua()
+        {
+                size_t out_len;
+                void* cdata = tinfl_decompress_mem_to_heap(report_lua_z, report_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER $
+                if (cdata == NULL)
+                {
+                        return std::string();
+                }
+
+                std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+                mz_free(cdata);
+                return ret;
+        }
 }
 
 std::string load_report_script()
 {
-	IScopedLock lock(mutex);
-
-	if (!script.empty())
-	{
-		return script;
-	}
-
 	if (FileExists("urbackupserver/report.lua"))
 	{
-		script = getFile("urbackupserver/report.lua");
-		if (!script.empty())
+		std::string ret = getFile("urbackupserver/report.lua");
+		if (!ret.empty())
 		{
-			return script;
+			return ret;
 		}
 	}
 
@@ -57,17 +68,23 @@ std::string load_report_script()
 		return res[0]["tvalue"];
 	}
 
-	return std::string();
+	return get_report_lua();
 }
 
 std::string get_report_script()
 {
-	std::string script = load_report_script();
+	IScopedLock lock(mutex);
+	if (!script.empty())
+	{
+		return script;
+	}
+
+	script = load_report_script();
 	if (script.empty())
 		return script;
 
-	std::string ret = lua_interpreter->compileScript(script);
-	return ret;
+	script = lua_interpreter->compileScript(script);
+	return script;
 }
 
 void init_log_report()

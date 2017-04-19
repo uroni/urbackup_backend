@@ -6,11 +6,29 @@
 #include "../stringtools.h"
 #include "../luaplugin/ILuaInterpreter.h"
 #include "Mailer.h"
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.h"
 
 extern ILuaInterpreter* lua_interpreter;
 
 namespace
 {
+#include "alert_lua.h"
+
+        std::string get_alert_lua()
+        {
+                size_t out_len;
+                void* cdata = tinfl_decompress_mem_to_heap(alert_lua_z, alert_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER $
+                if (cdata == NULL)
+                {
+                        return std::string();
+                }
+
+                std::string ret(reinterpret_cast<char*>(cdata), reinterpret_cast<char*>(cdata) + out_len);
+                mz_free(cdata);
+                return ret;
+        }
+
 	struct SScriptParam
 	{
 		std::string name;
@@ -43,9 +61,15 @@ namespace
 			ret.code = getFile("urbackupserver/alert.lua");
 		}
 
+		if(script_id == 1 
+			&& ret.code.empty())
+		{
+			ret.code = get_alert_lua();
+		}
+
 		if (!ret.code.empty())
 		{
-			//ret.code = lua_interpreter->compileScript(ret.code);
+			ret.code = lua_interpreter->compileScript(ret.code);
 		}
 
 		if (ret.code.empty())
