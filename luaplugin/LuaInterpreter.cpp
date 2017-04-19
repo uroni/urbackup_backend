@@ -258,7 +258,7 @@ namespace
 		}
 		else if (param.tag == ILuaInterpreter::Param::PARAM_INT)
 		{
-			lua_pushnumber(state, param.u.i);
+			lua_pushinteger(state, param.u.i);
 		}
 		else if (param.tag == ILuaInterpreter::Param::PARAM_BOOL)
 		{

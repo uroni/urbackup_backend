@@ -104,7 +104,7 @@ bool run_report_script(int incremental, bool resumed, int image,
 	param["image"] = image;
 	param["infos"] = infos;
 	param["warnings"] = warnings;
-	param["warnings"] = errors;
+	param["errors"] = errors;
 	param["report_mail"] = report_mail;
 	param["clientname"] = clientname;
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;

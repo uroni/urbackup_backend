@@ -76,7 +76,7 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	end
 	
 	local important=" "
-	if params.alert_important~="1"
+	if params.alert_important~="0"
 	then
 		important = "[Important] "
 	end
