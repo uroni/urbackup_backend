@@ -18,7 +18,7 @@ namespace
         std::string get_alert_lua()
         {
                 size_t out_len;
-                void* cdata = tinfl_decompress_mem_to_heap(alert_lua_z, alert_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER $
+                void* cdata = tinfl_decompress_mem_to_heap(alert_lua_z, alert_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
                 if (cdata == NULL)
                 {
                         return std::string();

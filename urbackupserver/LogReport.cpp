@@ -36,7 +36,7 @@ namespace
         std::string get_report_lua()
         {
                 size_t out_len;
-                void* cdata = tinfl_decompress_mem_to_heap(report_lua_z, report_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER $
+                void* cdata = tinfl_decompress_mem_to_heap(report_lua_z, report_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
                 if (cdata == NULL)
                 {
                         return std::string();
