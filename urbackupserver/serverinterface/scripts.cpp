@@ -17,6 +17,7 @@
 **************************************************************************/
 #include "action_header.h"
 #include "../LogReport.h"
+#include "../Alerts.h"
 
 ACTION_IMPL(scripts)
 {
@@ -101,13 +102,7 @@ ACTION_IMPL(scripts)
 		}
 
 		ret.set("scripts", scripts);
-
-		db_results res_script = db->Read("SELECT script FROM alert_scripts WHERE id=" + convert(id));
-		if (!res_script.empty())
-		{
-			ret.set("script", res_script[0]["script"]);
-		}
-
+		ret.set("script", get_alert_script(db, id));
 		ret.set("id", id);
 
 		JSON::Array params;

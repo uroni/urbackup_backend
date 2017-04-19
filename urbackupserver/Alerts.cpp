@@ -29,6 +29,38 @@ namespace
                 return ret;
         }
 
+}
+
+std::string get_alert_script(IDatabase* db, int script_id)
+{
+	db_results res_script = db->Read("SELECT script FROM alert_scripts WHERE id="+convert(script_id));
+
+        if (res_script.empty())
+        {
+        	Server->Log("Cannot find alert script with id " + convert(script_id), LL_ERROR);
+                return std::string();
+        }
+
+        std::string ret = res_script[0]["script"];
+
+        if (script_id == 1
+              && FileExists("urbackupserver/alert.lua"))
+        {
+        	ret = getFile("urbackupserver/alert.lua");
+        }
+
+        if(script_id == 1
+              && ret.empty())
+        {
+        	ret = get_alert_lua();
+       	}
+
+	return ret;
+}
+
+
+namespace
+{
 	struct SScriptParam
 	{
 		std::string name;
@@ -44,28 +76,8 @@ namespace
 
 	SScript prepareScript(IDatabase* db, ILuaInterpreter* lua_interpreter, int script_id)
 	{
-		db_results res_script = db->Read("SELECT script FROM alert_scripts WHERE id="+convert(script_id));
-
-		if (res_script.empty())
-		{
-			Server->Log("Cannot find alert script with id " + convert(script_id), LL_ERROR);
-			return SScript();
-		}
-
 		SScript ret;
-		ret.code = res_script[0]["script"];
-
-		if (script_id == 1
-			&& FileExists("urbackupserver/alert.lua"))
-		{
-			ret.code = getFile("urbackupserver/alert.lua");
-		}
-
-		if(script_id == 1 
-			&& ret.code.empty())
-		{
-			ret.code = get_alert_lua();
-		}
+		ret.code = get_alert_script(db, script_id);
 
 		if (!ret.code.empty())
 		{
