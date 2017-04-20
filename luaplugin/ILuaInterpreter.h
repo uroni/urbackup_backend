@@ -11,12 +11,20 @@ public:
 		virtual bool mail(const std::string& send_to, const std::string& subject, const std::string& message) = 0;
 	};
 
+	class IUrlFunction
+	{
+	public:
+		virtual std::string downloadString(const std::string& url, const std::string& http_proxy = "",
+			std::string *errmsg = NULL) = 0;
+	};
+
 	struct SInterpreterFunctions
 	{
 		SInterpreterFunctions()
-			: mail_func(NULL) {}
+			: mail_func(NULL), url_func(NULL) {}
 
 		IEMailFunction* mail_func;
+		IUrlFunction* url_func;
 	};
 
 	struct Param

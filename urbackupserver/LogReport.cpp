@@ -5,11 +5,13 @@
 #include "../stringtools.h"
 #include "database.h"
 #include "../luaplugin/ILuaInterpreter.h"
+#include "../urlplugin/IUrlFactory.h"
 #include "Mailer.h"
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
 
 extern ILuaInterpreter* lua_interpreter;
+extern IUrlFactory *url_fak;
 
 namespace
 {
@@ -23,6 +25,16 @@ namespace
 		virtual bool mail(const std::string & send_to, const std::string & subject, const std::string & message)
 		{
 			return Mailer::sendMail(send_to, subject, message);
+		}
+	};
+
+	class UrlBridge : public ILuaInterpreter::IUrlFunction
+	{
+	public:
+		// Inherited via IUrlFunction
+		virtual std::string downloadString(const std::string & url, const std::string & http_proxy = "", std::string * errmsg = NULL)
+		{
+			return url_fak->downloadString(url, http_proxy, errmsg);
 		}
 	};
 
@@ -91,6 +103,7 @@ void init_log_report()
 {
 	mutex = Server->createMutex();
 	funcs.mail_func = new MailBridge;
+	funcs.url_func = new UrlBridge;
 	global_mutex = Server->createMutex();
 }
 
