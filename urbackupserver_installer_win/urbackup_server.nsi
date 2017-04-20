@@ -214,7 +214,7 @@ Section "install"
 	RMDir /r "$INSTDIR\urbackup\www\js"
 	CreateDirectory "$INSTDIR\urbackup\www\js"
 	SetOutPath "$INSTDIR\urbackup\www\js"
-	File /r "data_common\urbackup\www\js\*.js"
+	File /r "data_common\urbackup\www\js\*"
 	SetOutPath "$INSTDIR\urbackup\www\fonts"
 	File "data_common\urbackup\www\fonts\*"
 	
