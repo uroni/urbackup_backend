@@ -7,11 +7,20 @@
 		{tLabel:}
 		<input type="text" class="form-control" id="alert_label_{idx}" value="{label}">
 	</div>
-	<div class="col-md-3">
+	<div class="col-md-2">
 		{tDefault value:}
 		<input type="text" class="form-control" id="alert_default_{idx}" value="{default_value}">
 	</div>
-	<div class="col-md-3">
+	<div class="col-md-2">
+		{tType:}
+		<select class="form-control" id="alert_type_{idx}">
+			<option value="str">{tString}</option>
+			<option value="num" {dtype_num}>{tFloating point number}</option>
+			<option value="int" {dtype_int}>{tInteger}</option>
+			<option value="bool" {dtype_bool}>{tBoolean}</option>
+		</select>
+	</div>
+	<div class="col-md-2">
 		&nbsp;<br/>
 		<button type="button" class="btn btn-sm btn-danger" onClick="removeAlertParam({idx})" id="alert_remove_{idx}">
 			<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>{tRemove}

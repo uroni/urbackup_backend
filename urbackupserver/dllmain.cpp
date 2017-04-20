@@ -1959,7 +1959,7 @@ bool upgrade54_55()
 		"name TEXT, script TEXT)");
 	b &= db->Write("CREATE TABLE alert_script_params(id INTEGER PRIMARY KEY, "
 		"script_id INTEGER REFERENCES alert_scripts(id) ON DELETE CASCADE, "
-		"idx INTEGER, name TEXT, label TEXT, default_value TEXT, has_translation INTEGER DEFAULT 0)");
+		"idx INTEGER, name TEXT, label TEXT, default_value TEXT, has_translation INTEGER DEFAULT 0, type TEXT)");
 
 	IQuery *q = db->Prepare("INSERT INTO alert_scripts (id, name, script) VALUES (?, ?, '')");
 	if (q != NULL)
@@ -1973,10 +1973,10 @@ bool upgrade54_55()
 		b = false;
 	}
 
-	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 0, 'alert_file_mult', 'alert_file_mult', '3', 1)");
-	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 1, 'alert_image_mult', 'alert_image_mult', '3', 1)");
-	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 2, 'alert_emails', 'alert_emails', '', 1)");
-	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation) VALUES (1, 3, 'alert_important', 'alert_important', '0', 1)");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 0, 'alert_file_mult', 'alert_file_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 1, 'alert_image_mult', 'alert_image_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 2, 'alert_emails', 'alert_emails', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 3, 'alert_important', 'alert_important', '0', 1, 'bool')");
 
 	b &= db->Write("CREATE TABLE mail_queue (id INTEGER PRIMARY KEY, send_to TEXT, subject TEXT, message TEXT, next_try INTEGER, retry_count INTEGER DEFAULT 0)");
 

@@ -732,7 +732,7 @@ function isFloat(x)
 	return true;
 }
 
-function validate_text_int(a)
+function validate_text_int(a, name)
 {
 	for(var i=0;i<a.length;++i)
 	{
@@ -744,7 +744,17 @@ function validate_text_int(a)
 			}
 			else
 			{
-				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
+				var tname;
+				if(typeof name !== "undefined"
+					&& typeof name[i] !== "undefined")
+				{
+					tname = name[i];
+				}
+				else
+				{
+					tname = trans("validate_name_"+a[i]);
+				}
+				alert( dustCompileRender(trans("validate_text_notint"), {name: tname}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -753,7 +763,7 @@ function validate_text_int(a)
 	return true;
 }
 
-function validate_text_float(a)
+function validate_text_float(a, name)
 {
 	for(var i=0;i<a.length;++i)
 	{
@@ -765,7 +775,17 @@ function validate_text_float(a)
 			}
 			else
 			{
-				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
+				var tname;
+				if(typeof name !== "undefined"
+					&& typeof name[i] !== "undefined")
+				{
+					tname = name[i];
+				}
+				else
+				{
+					tname = trans("validate_name_"+a[i]);
+				}
+				alert( dustCompileRender(trans("validate_text_notint"), {name: tname}));
 			}
 			I(a[i]).focus();
 			return false;

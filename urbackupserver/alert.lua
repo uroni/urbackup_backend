@@ -76,7 +76,7 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	end
 	
 	local important=" "
-	if params.alert_important~="0"
+	if params.alert_important
 	then
 		important = "[Important] "
 	end
@@ -99,11 +99,11 @@ end
 if not state.mailed
 then
 	state.mailed = true
-	fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*tonumber(params.alert_file_mult) )
+	fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )
 end
 
 --Time in seconds till file backup status is not ok
-local file_backup_nok = file_interval*tonumber(params.alert_file_mult) - params.passed_time_lastbackup_file
+local file_backup_nok = file_interval*params.alert_file_mult - params.passed_time_lastbackup_file
 if file_backup_nok<0
 then
 	ret=ret + 1
@@ -111,7 +111,7 @@ then
 	--Send warning mail only once on status becoming not ok
 	if params.file_ok
 	then
-		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*tonumber(params.alert_file_mult) )
+		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )
 	end
 else
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
@@ -120,14 +120,14 @@ end
 if string.len(params.os_simple)==0 or params.os_simple=="windows"
 then
 	--Time in seconds till image backup status is not ok
-	local image_backup_nok = image_interval*tonumber(params.alert_image_mult) - params.passed_time_lastbackup_image
+	local image_backup_nok = image_interval*params.alert_image_mult - params.passed_time_lastbackup_image
 	if image_backup_nok<0
 	then
 		ret= ret + 2
 		
 		if params.image_ok
 		then
-			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*tonumber(params.alert_image_mult) )
+			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
 		end
 	else
 		next_check_ms = math.min(next_check_ms, image_backup_nok*1000)

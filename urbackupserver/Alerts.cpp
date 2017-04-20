@@ -65,6 +65,7 @@ namespace
 	{
 		std::string name;
 		std::string default_value;
+		std::string type;
 	};
 
 	struct SScript
@@ -89,11 +90,11 @@ namespace
 			return SScript();
 		}
 
-		db_results res_params = db->Read("SELECT name, default_value FROM alert_script_params WHERE script_id="+convert(script_id));
+		db_results res_params = db->Read("SELECT name, default_value, type FROM alert_script_params WHERE script_id="+convert(script_id));
 
 		for (size_t i = 0; i < res_params.size(); ++i)
 		{
-			SScriptParam param = { res_params[i]["name"], res_params[i]["default_value"] };
+			SScriptParam param = { res_params[i]["name"], res_params[i]["default_value"], res_params[i]["type"] };
 			ret.params.push_back(param);
 		}
 
@@ -203,13 +204,31 @@ void Alerts::operator()()
 				{
 					SScriptParam& param = it->second.params[j];
 					str_map::iterator it_param = nondefault_params.find(param.name);
+					std::string val;
 					if (it_param != nondefault_params.end())
 					{
-						params[param.name] = it_param->second;
+						val = it_param->second;
 					}
 					else
 					{
-						params[param.name] = param.default_value;
+						val = param.default_value;
+					}
+
+					if (param.type == "int")
+					{
+						params[param.name] = watoi(val);
+					}
+					else if (param.type == "num")
+					{
+						params[param.name] = atof(val.c_str());
+					}
+					else if (param.type == "bool")
+					{
+						params[param.name] = val != "0";
+					}
+					else
+					{
+						params[param.name] = val;
 					}
 				}
 

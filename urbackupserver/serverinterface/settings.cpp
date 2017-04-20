@@ -92,7 +92,7 @@ JSON::Array getAlertScripts(IDatabase* db)
 {
 	db_results res_scripts = db->Read("SELECT id, name FROM alert_scripts");
 
-	IQuery* q_get_params = db->Prepare("SELECT name, label, default_value, has_translation FROM alert_script_params WHERE script_id=? ORDER BY idx ASC");
+	IQuery* q_get_params = db->Prepare("SELECT name, label, default_value, has_translation, type FROM alert_script_params WHERE script_id=? ORDER BY idx ASC");
 	JSON::Array ret;
 	for (size_t i = 0; i < res_scripts.size(); ++i)
 	{
@@ -112,6 +112,7 @@ JSON::Array getAlertScripts(IDatabase* db)
 			obj.set("label", res_params[j]["label"]);
 			obj.set("default_value", res_params[j]["default_value"]);
 			obj.set("has_translation", watoi(res_params[j]["has_translation"]));
+			obj.set("type", res_params[j]["type"]);
 			params.add(obj);
 		}
 		script.set("params", params);

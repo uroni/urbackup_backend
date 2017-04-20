@@ -2412,14 +2412,29 @@ function build_alert_params(alert_script)
 					{
 						label = param.label;
 					}
+					param.label = label;
 				}
 				params_html+="<div class=\"form-group\">"+
 					"<label class=\"col-sm-4 control-label\" for=\"alert_name_"+escapeHTML(param.name)+"\">"+escapeHTML(label)+"</label>"+
-					"<div class=\"col-sm-6\">"+
-					"<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>"+
-					"</div></div>";
+					"<div class=\"col-sm-6\">";
 					
-				g.alert_params.push(param.name);
+				if(param.type=="str" || param.type=="num" || param.type=="int")
+				{
+					params_html+="<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>";
+				}
+				else
+				{
+					var checked="";
+					if(val!="0")
+					{
+						checked="checked=\"checked\"";
+					}
+					params_html+="<label><input type=\"checkbox\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" "+checked+" onchange=\"update_alert_params()\"/></label>";
+				}
+				
+				params_html+="</div></div>";
+					
+				g.alert_params.push(param);
 			}
 		}
 		script_options += "<option value=\""+script.id+"\""+selected+">"+escapeHTML(script.name)+"</option>";
@@ -2432,12 +2447,45 @@ function update_alert_params()
 	var p = {};
 	for(var i=0;i<g.alert_params.length;++i)
 	{
-		if(I("alert_name_"+g.alert_params[i]))
+		if(I("alert_name_"+g.alert_params[i].name))
 		{
-			p[g.alert_params[i]] = I("alert_name_"+g.alert_params[i]).value;
+			if(I("alert_name_"+g.alert_params[i].name).type=="checkbox")
+			{
+				p[g.alert_params[i].name] = I("alert_name_"+g.alert_params[i].name).checked ? "1" : "0";
+			}
+			else
+			{
+				p[g.alert_params[i].name] = I("alert_name_"+g.alert_params[i].name).value;
+			}
 		}
 	}
 	I("alert_params").value = $.param(p);
+}
+function validate_alert_params()
+{
+	var p = {};
+	for(var i=0;i<g.alert_params.length;++i)
+	{
+		if(I("alert_name_"+g.alert_params[i].name))
+		{
+			if(I("alert_name_"+g.alert_params[i].name).type!="checkbox")
+			{
+				var type = g.alert_params[i].type;
+				if(type=="int")
+				{
+					if(!validate_text_int(["alert_name_"+g.alert_params[i].name], [g.alert_params[i].label]))
+						return false;						
+				}
+				else if(type=="num")
+				{
+					if(!validate_text_float(["alert_name_"+g.alert_params[i].name], [g.alert_params[i].label]))
+						return false;
+				}
+			}
+		}
+	}
+	
+	return true;
 }
 function show_settings1()
 {
@@ -3602,6 +3650,7 @@ function validateCommonSettings()
 							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }] ) ) return false;
+	if(!validate_alert_params()) return;
 	return true;
 }
 function getArchivePars()
@@ -5280,6 +5329,21 @@ function show_scripts1()
 	new getJSON("scripts", "sa=get_alert", show_scripts2);
 	I('nav_pos').innerHTML="";
 }
+function disable_alert_edit(b)
+{
+	I("remove_alert_script_btn").disabled=b;
+	I("add_param_btn").disabled=b;
+	I("save_alert_script_btn").disabled=b;
+	for(var i=0;i<g.alert_script_idx.length;++i)
+	{
+		var idx = g.alert_script_idx[i];
+		I("alert_name_"+idx).disabled=b;
+		I("alert_label_"+idx).disabled=b;
+		I("alert_default_"+idx).disabled=b;
+		I("alert_remove_"+idx).disabled=b;
+		I("alert_type_"+idx).disabled=b;
+	}
+}
 function show_scripts2(data)
 {
 	stopLoading();
@@ -5304,6 +5368,13 @@ function show_scripts2(data)
 	{
 		var param = data.params[j];
 		param.idx = j;
+		var sel="selected=\"selected\""
+		if(param.type=="num")
+			param.dtype_num=sel;
+		else if(param.type=="int")
+			param.dtype_int=sel;
+		else if(param.type=="bool")
+			param.dtype_bool=sel;
 		params_html+=dustRender("alert_script_edit_params", param);
 		g.alert_script_idx.push(j);
 	}
@@ -5332,17 +5403,7 @@ function show_scripts2(data)
 	
 	if(data.id==1)
 	{
-		I("remove_alert_script_btn").disabled=true;
-		I("add_param_btn").disabled=true;
-		I("save_alert_script_btn").disabled=true;
-		for(var i=0;i<g.alert_script_idx.length;++i)
-		{
-			var idx = g.alert_script_idx[i];
-			I("alert_name_"+idx).disabled=true;
-			I("alert_label_"+idx).disabled=true;
-			I("alert_default_"+idx).disabled=true;
-			I("alert_remove_"+idx).disabled=true;
-		}
+		disable_alert_edit(true);
 	}
 }
 function removeAlertParam(idx)
@@ -5371,6 +5432,7 @@ function addAlertScript()
 	{
 		g.alert_script_id=-1;
 		I("alert_script").innerHTML+="<option value=\"-1\" selected=\"selected\">"+escapeHTML(name)+"</option>";
+		disable_alert_edit(false);v
 	}
 }
 function removeAlertScript()
@@ -5391,6 +5453,7 @@ function saveAlertScript()
 		params+="&"+i+"_name="+encodeURIComponent(I("alert_name_"+idx).value);
 		params+="&"+i+"_label="+encodeURIComponent(I("alert_label_"+idx).value);
 		params+="&"+i+"_default="+encodeURIComponent(I("alert_default_"+idx).value);
+		params+="&"+i+"_type="+encodeURIComponent(I("alert_type_"+idx).value);
 	}
 	params+="&script="+encodeURIComponent(g.editor.getValue());
 	new getJSON("scripts", "sa=set_alert&id="+g.alert_script_id+params, show_scripts2);

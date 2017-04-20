@@ -70,7 +70,7 @@ ACTION_IMPL(scripts)
 			}
 
 			db->Write("DELETE FROM alert_script_params WHERE script_id=" + convert(id));
-			q = db->Prepare("INSERT INTO alert_script_params (script_id, idx, name, label, default_value) VALUES (?,?,?,?,?)");
+			q = db->Prepare("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, type) VALUES (?,?,?,?,?,?)");
 			for (size_t idx=0;POST.find(convert(idx) + "_name") != POST.end();++idx)
 			{
 				q->Bind(id);
@@ -78,6 +78,7 @@ ACTION_IMPL(scripts)
 				q->Bind(POST[convert(idx) + "_name"]);
 				q->Bind(POST[convert(idx) + "_label"]);
 				q->Bind(POST[convert(idx) + "_default"]);
+				q->Bind(POST[convert(idx) + "_type"]);
 				q->Write();
 				q->Reset();
 			}
@@ -106,7 +107,7 @@ ACTION_IMPL(scripts)
 		ret.set("id", id);
 
 		JSON::Array params;
-		db_results res_params = db->Read("SELECT name, label, default_value, has_translation FROM alert_script_params WHERE script_id=" + convert(id) + " ORDER BY idx ASC");
+		db_results res_params = db->Read("SELECT name, label, default_value, has_translation, type FROM alert_script_params WHERE script_id=" + convert(id) + " ORDER BY idx ASC");
 		for (size_t i = 0; i < res_params.size(); ++i)
 		{
 			JSON::Object p;
@@ -114,6 +115,7 @@ ACTION_IMPL(scripts)
 			p.set("label", res_params[i]["label"]);
 			p.set("default_value", res_params[i]["default_value"]);
 			p.set("has_translation", watoi(res_params[i]["has_translation"]));
+			p.set("type", res_params[i]["type"]);
 			params.add(p);
 		}
 
