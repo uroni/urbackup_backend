@@ -15,7 +15,7 @@ namespace
 {
 #include "lua/dkjson_lua.h"
 
-	std::string get_lua(const char* data, size_t data_len)
+	std::string get_lua(const unsigned char* data, size_t data_len)
 	{
 		size_t out_len;
 		void* cdata = tinfl_decompress_mem_to_heap(data, data_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
