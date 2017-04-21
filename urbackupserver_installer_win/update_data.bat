@@ -28,7 +28,7 @@ mkdir data_common\urbackup\www\images
 mkdir data_common\urbackup\www\fonts
 copy /Y "..\urbackupserver\www\*" "data_common\urbackup\www\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
-copy /Y "..\urbackupserver\www\js\*.js" "data_common\urbackup\www\js\"
+xcopy "..\urbackupserver\www\js\*" "data_common\urbackup\www\js\" /S /E /Y
 if %errorlevel% neq 0 exit /b %errorlevel% 
 copy /Y "..\urbackupserver\www\css\*.css" "data_common\urbackup\www\css\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
