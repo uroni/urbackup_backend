@@ -96,12 +96,6 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	mail(params.alert_emails, subj, msg)
 end
 
-if not state.mailed
-then
-	state.mailed = true
-	fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )
-end
-
 --Time in seconds till file backup status is not ok
 local file_backup_nok = file_interval*params.alert_file_mult - params.passed_time_lastbackup_file
 if file_backup_nok<0
