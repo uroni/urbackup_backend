@@ -220,6 +220,86 @@ std::string extractFirstFunction(const std::string& data)
 	return std::string();
 }
 
+std::map<std::string, std::string> parseAnnotations(const std::string& data)
+{
+	int state = 0;
+	std::string name;
+	std::string content;
+	std::map<std::string, std::string> ret;
+	for (size_t i = 0; i < data.size(); ++i)
+	{
+		char ch = data[i];
+		switch (state)
+		{
+		case 0:
+		{
+			if (ch == '@')
+				state = 1;
+		}	break;
+		case 1:
+		{
+			if (ch=='\r' || ch == '\n' || ch==' ')
+			{
+				name = trim(name);
+				state = 2;
+				content += ch;
+			}
+			else
+			{
+				name += ch;
+			}
+		}break;
+		case 3:
+		case 2:
+		{
+			if (ch == '@')
+			{
+				state = 1;
+				ret[name] = trim(cleanup_annotation(content));
+				name.clear();
+				content.clear();
+			}
+			else if (ch == '*' && state==2)
+			{
+				content += ch;
+				state = 3;
+			}
+			else if (ch == '/' && state == 3)
+			{
+				state = 0;
+				ret[name] = trim(cleanup_annotation(content));
+				name.clear();
+				content.clear();
+			}
+			else
+			{
+				content += ch;
+				state = 2;
+			}
+		}break;
+		}
+	}
+
+	return ret;
+}
+
+std::map<std::string, std::string> parseAnnotationSingle(const std::string& data)
+{
+	//Doesn't work with MSVC2015 (out of stack memory): "@([^ \\r\\n]*)[ ]*(((?!@)(?!\\*/)(\\S|\\s))*)"
+	//std::regex find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)(?=(\\*/)|@)", std::regex::ECMAScript);
+	std::regex find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)", std::regex::ECMAScript);
+	std::map<std::string, std::string> ret;
+	for (auto it = std::regex_iterator<std::string::const_iterator>(data.begin(), data.end(), find_annotations);
+		it != std::regex_iterator<std::string::const_iterator>(); ++it)
+	{
+		auto m = *it;
+		std::string annotation_text = m[2].str();
+		ret[m[1].str()] = trim(cleanup_annotation(annotation_text));
+	}
+
+	return ret;
+}
+
 std::vector<AnnotatedCode> getAnnotatedCode(const std::vector<CPPToken>& tokens)
 {
 	std::vector<AnnotatedCode> ret;
@@ -227,22 +307,11 @@ std::vector<AnnotatedCode> getAnnotatedCode(const std::vector<CPPToken>& tokens)
 	{
 		if(tokens[i].type==CPPFileTokenType_Comment)
 		{
-			std::map<std::string, std::string> annotations;
-
-			//Doesn't work with MSVC2015 (out of stack memory): "@([^ \\r\\n]*)[ ]*(((?!@)(?!\\*/)(\\S|\\s))*)"
-			std::regex find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)(?=(\\*/)|@)", std::regex::ECMAScript);
+			std::map<std::string, std::string> annotations = parseAnnotations(tokens[i].data);
 
 			if (tokens[i].data.find("//") == 0)
 			{
-				find_annotations = std::regex("@([^ \\r\\n]*)[ ]*((\\S|\\s)*?)", std::regex::ECMAScript);
-			}
-
-			for(auto it=std::regex_iterator<std::string::const_iterator>(tokens[i].data.begin(), tokens[i].data.end(), find_annotations);
-				it!=std::regex_iterator<std::string::const_iterator>();++it)
-			{
-				auto m=*it;
-				std::string annotation_text=m[2].str();
-				annotations[m[1].str()]=trim(cleanup_annotation(annotation_text));
+				annotations = parseAnnotationSingle(tokens[i].data);
 			}
 
 			ret.push_back(AnnotatedCode(tokens[i].data));
