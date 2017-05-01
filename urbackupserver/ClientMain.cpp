@@ -2604,6 +2604,10 @@ bool ClientMain::pauseRetryBackup()
 
 bool ClientMain::sendServerIdentity(bool retry_exit)
 {
+	{
+		IScopedLock lock(clientaddr_mutex);
+		session_identity.clear();
+	}
 	bool c = true;
 	while (c)
 	{
@@ -3309,6 +3313,7 @@ bool ClientMain::authenticateIfNeeded(bool retry_exit, bool force)
 			{
 				pipe->Write(msg);
 				Server->wait(ident_err_retry_time);
+				sendServerIdentity(false);
 			}
 
 			c=true;
