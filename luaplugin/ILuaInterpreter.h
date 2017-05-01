@@ -1,6 +1,7 @@
 #pragma once
 #include "../Interface/Plugin.h"
 #include <string>
+#include <algorithm>
 
 class ILuaInterpreter : public IPlugin
 {
@@ -30,6 +31,23 @@ public:
 	struct Param
 	{
 		typedef std::map<Param, Param> params_map;
+
+		union ParamUnion
+		{
+			params_map* params;
+			std::string* str;
+			double num;
+			bool b;
+			int i;
+		} u;
+		enum ParamTypes
+		{
+			PARAM_VEC = 1,
+			PARAM_STR,
+			PARAM_NUM,
+			PARAM_BOOL,
+			PARAM_INT
+		} tag;
 
 		Param()
 			: tag(PARAM_VEC)
@@ -129,23 +147,6 @@ public:
 			}
 			return false;
 		}
-
-		union
-		{
-			params_map* params;
-			std::string* str;
-			double num;
-			bool b;
-			int i;
-		} u;
-		enum 
-		{
-			PARAM_VEC = 1, 
-			PARAM_STR,
-			PARAM_NUM,
-			PARAM_BOOL,
-			PARAM_INT
-		} tag;
 	};
 
 
