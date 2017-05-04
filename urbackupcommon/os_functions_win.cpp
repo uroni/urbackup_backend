@@ -483,27 +483,33 @@ bool isDirectory(const std::string &path, void* transaction)
 
 int os_get_file_type(const std::string &path)
 {
-	DWORD attrib = GetFileAttributesW(ConvertToWchar(path).c_str());
-
-	if(attrib==INVALID_FILE_ATTRIBUTES)
+	WIN32_FIND_DATAW wfd;
+	HANDLE hf = FindFirstFileW(ConvertToWchar(path).c_str(), &wfd);
+	if (hf == INVALID_HANDLE_VALUE)
 	{
 		return 0;
 	}
 
+	FindClose(hf);
+
 	int ret = 0;
 
-	if(attrib & FILE_ATTRIBUTE_DIRECTORY)
+	if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+	{
+		if (wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT
+				|| wfd.dwReserved0 == IO_REPARSE_TAG_SYMLINK)
+		{
+			ret |= EFileType_Symlink;
+		}
+	}
+	
+	if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 	{
 		ret |= EFileType_Directory;
 	}
 	else
 	{
 		ret |= EFileType_File;
-	}
-
-	if(attrib & FILE_ATTRIBUTE_REPARSE_POINT)
-	{
-		ret |= EFileType_Symlink;
 	}
 
 	return ret;
@@ -939,11 +945,7 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 
 bool os_is_symlink(const std::string &lname)
 {
-	DWORD attrs = GetFileAttributesW(ConvertToWchar(lname).c_str());
-	if(attrs == INVALID_FILE_ATTRIBUTES)
-		return false;
-
-	return (attrs & FILE_ATTRIBUTE_REPARSE_POINT)>0;
+	return (os_get_file_type(lname) & EFileType_Symlink)>0;
 }
 
 std::string os_file_prefix(std::string path)

@@ -5432,7 +5432,7 @@ function addAlertScript()
 	{
 		g.alert_script_id=-1;
 		I("alert_script").innerHTML+="<option value=\"-1\" selected=\"selected\">"+escapeHTML(name)+"</option>";
-		disable_alert_edit(false);v
+		disable_alert_edit(false);
 	}
 }
 function removeAlertScript()
