@@ -306,6 +306,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
 		std::string ret;
+		bool has_error = false;
 		while(tcpstack.getPacket(ret))
 		{
 			if(ret!="DONE")
@@ -335,6 +336,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 						if (!startPhashDownloadThread(async_id))
 						{
 							ServerLogger::Log(logid, "Error starting parallel hash load", LL_ERROR);
+							has_error = true;
 							break;
 						}
 					}
@@ -347,12 +349,14 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 					}
 					logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
 					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
+					has_error = true;
 					break;
 				}
 				else
 				{
 					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret+". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
 					no_backup_dirs=true;
+					has_error = true;
 					break;
 				}				
 			}
@@ -362,6 +366,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				Server->destroy(cc);
 				return true;
 			}
+		}
+
+		if (has_error)
+		{
+			break;
 		}
 	}
 
