@@ -282,7 +282,7 @@ namespace backupaccess
 {
 	std::string getBackupFolder(IDatabase* db)
 	{
-		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
+		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder' AND clientid=0");
 		db_results res_bf=q->Read();
 		q->Reset();
 		if(!res_bf.empty() )
