@@ -636,8 +636,10 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 			{
 				if(cf.isdir==true)
 				{
-					if (indir_currdepth == 0
-						&& cf.name == "windows_components_config")
+					if (depth == 0
+						&& cf.name == "windows_components_config"
+						&& (client_main->getProtocolVersions().os_simple.empty()
+							|| client_main->getProtocolVersions().os_simple=="windows") )
 					{
 						backup_with_components = true;
 					}
