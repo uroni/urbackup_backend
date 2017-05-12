@@ -74,6 +74,12 @@
 
 #endif
 
+#if defined(__FreeBSD__)
+//2017-05-12: Make illegal. Performance problems with ZFS on FreeBSD
+#undef SEEK_HOLE
+#define SEEK_HOLE 400
+#endif
+
 File::File()
 	: fd(-1), last_sparse_pos(0)
 {
