@@ -94,7 +94,7 @@ public:
 	virtual IMutex* createMutex(void)=0;
 	virtual ISharedMutex* createSharedMutex()=0;
 	virtual ICondition* createCondition(void)=0;
-	virtual void createThread(IThread *thread, const std::string& name=std::string())=0;
+	virtual bool createThread(IThread *thread, const std::string& name=std::string())=0;
 	virtual void setCurrentThreadName(const std::string& name) = 0;
 	virtual IPipe *createMemoryPipe(void)=0;
 	virtual IThreadPool *getThreadPool(void)=0;

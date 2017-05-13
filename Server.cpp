@@ -1335,17 +1335,26 @@ void* thread_helper_f(void * t)
 }
 #endif //_WIN32
 
-void CServer::createThread(IThread *thread, const std::string& name)
+bool CServer::createThread(IThread *thread, const std::string& name)
 {
 #ifdef _WIN32
-	std::thread tr(thread_helper_f, thread, name);
-	tr.detach();
+	try
+	{
+		std::thread tr(thread_helper_f, thread, name);
+		tr.detach();
+		return true;
+	}
+	catch (std::system_error& e)
+	{
+		Server->Log(std::string("Error creating thread. ") + e.what(), LL_ERROR);
+		return false;
+	}
 #else
 	pthread_attr_t attr;
 	if (pthread_attr_init(&attr) != 0)
 	{
 		Server->Log("Error initializing pthread attrs", LL_ERROR);
-		return;
+		return false;
 	}
 #if !defined(URB_THREAD_STACKSIZE64) || !defined(URB_THREAD_STACKSIZE32)
 
@@ -1368,7 +1377,7 @@ void CServer::createThread(IThread *thread, const std::string& name)
 	{
 		Server->Log("Error setting thread to detached", LL_ERROR);
 		pthread_attr_destroy(&attr);
-		return;
+		return false;
 	}
 
 	pthread_t t;
@@ -1376,7 +1385,7 @@ void CServer::createThread(IThread *thread, const std::string& name)
 	{
 		Server->Log("Error creating pthread. Errno: " + convert(errno), LL_ERROR);
 		pthread_attr_destroy(&attr);
-		return;
+		return false;
 	}
 
 #ifdef HAVE_PTHREAD_SETNAME_NP
@@ -1397,6 +1406,7 @@ void CServer::createThread(IThread *thread, const std::string& name)
 #endif //HAVE_PTHREAD_SETNAME_NP
 
 	pthread_attr_destroy(&attr);
+	return true;
 #endif
 }
 
