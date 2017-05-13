@@ -1342,7 +1342,11 @@ void CServer::createThread(IThread *thread, const std::string& name)
 	tr.detach();
 #else
 	pthread_attr_t attr;
-	pthread_attr_init(&attr);
+	if (pthread_attr_init(&attr) != 0)
+	{
+		Server->Log("Error initializing pthread attrs", LL_ERROR);
+		return;
+	}
 #if !defined(URB_THREAD_STACKSIZE64) || !defined(URB_THREAD_STACKSIZE32)
 
 #ifndef _LP64
@@ -1360,9 +1364,20 @@ void CServer::createThread(IThread *thread, const std::string& name)
 
 #endif
 
+	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
+	{
+		Server->Log("Error setting thread to detached", LL_ERROR);
+		pthread_attr_destroy(&attr);
+		return;
+	}
+
 	pthread_t t;
-	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
-	pthread_detach(t);
+	if (pthread_create(&t, &attr, &thread_helper_f, (void*)thread) != 0)
+	{
+		Server->Log("Error creating pthread. Errno: " + convert(errno), LL_ERROR);
+		pthread_attr_destroy(&attr);
+		return;
+	}
 
 #ifdef HAVE_PTHREAD_SETNAME_NP
 	if (!name.empty())
