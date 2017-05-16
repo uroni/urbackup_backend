@@ -397,7 +397,7 @@ bool IncrFileBackup::doFileBackup()
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		incremental_num, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components));
+		backup_with_components, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -492,6 +492,10 @@ bool IncrFileBackup::doFileBackup()
 								curr_path=ExtractFilePath(curr_path, "/");
 								folder_files.pop();
 								dir_ids.pop();
+							}
+							else
+							{
+								max_file_id.setMaxPreProcessed(line);
 							}
 						}
 						else
@@ -1097,7 +1101,7 @@ bool IncrFileBackup::doFileBackup()
 						else if(!b && too_many_hardlinks)
 						{
 							ServerLogger::Log(logid, "Creating hardlink from \""+srcpath+"\" to \""+backuppath+local_curr_os_path+"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
-							copyFile(srcpath, backuppath+local_curr_os_path,
+							copyFile(line, srcpath, backuppath+local_curr_os_path,
 								last_backuppath_hashes+local_curr_os_path,
 								backuppath_hashes+local_curr_os_path,
 								metadata);
@@ -1195,6 +1199,7 @@ bool IncrFileBackup::doFileBackup()
                             metadata, script_dir, true, 0, std::string(), false, 0, std::string(), write_file_metadata);
                     }
 				}
+				max_file_id.setMaxPreProcessed(line);
 				++line;
 			}
 		}
@@ -1244,8 +1249,6 @@ bool IncrFileBackup::doFileBackup()
 
 		calculateDownloadSpeed(ctime, fc, fc_chunked.get());
 	}
-
-	addFilePathCorrections(server_download->getFilePathCorrections());
 
 	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 
@@ -1934,12 +1937,15 @@ void IncrFileBackup::addSparseFileEntry( std::string curr_path, SFile &cf, int c
 	}
 }
 
-void IncrFileBackup::copyFile(const std::string& source, const std::string& dest,
+void IncrFileBackup::copyFile(size_t fileid, const std::string& source, const std::string& dest,
 	const std::string& hash_src, const std::string& hash_dest,
 	const FileMetadata& metadata)
 {
+	max_file_id.setMinDownloaded(fileid);
+
 	CWData data;
 	data.addInt(BackupServerHash::EAction_Copy);
+	data.addVarInt(fileid);
 	data.addString((source));
 	data.addString((dest));
 	data.addString((hash_src));

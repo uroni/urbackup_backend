@@ -20,6 +20,7 @@
 #include "dao/ServerFilesDao.h"
 #include "FileIndex.h"
 #include "create_files_index.h"
+#include "FileBackup.h"
 
 extern std::string server_identity;
 extern std::string server_token;
@@ -77,7 +78,7 @@ public:
 
 		logid = ServerLogger::getLogId(clientid);
 
-		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots));
+		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id));
 	}
 
 	~BackupServerContinuous()
@@ -718,7 +719,7 @@ private:
 			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
 			false, clientid, clientname, std::string(), use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version,
-			0, logid, true, shares_without_snapshot, true, NULL, false));
+			0, logid, true, shares_without_snapshot, true, NULL, false, filepath_corrections, max_file_id));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get(), "backup download");
 	}
@@ -951,6 +952,10 @@ private:
 	std::auto_ptr<ServerBackupDao> backupdao;
 	std::auto_ptr<ServerFilesDao> filesdao;
 	std::auto_ptr<FileIndex> fileindex;
+
+	FilePathCorrections filepath_corrections;
+
+	MaxFileId max_file_id;
 
 	logid_t logid;
 };

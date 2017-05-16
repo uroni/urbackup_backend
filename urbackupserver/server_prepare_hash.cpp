@@ -92,6 +92,9 @@ void BackupServerPrepareHash::operator()(void)
 			
 			CRData rd(&data);
 
+			int64 fileid;
+			rd.getVarInt(&fileid);
+
 			std::string temp_fn;
 			rd.getStr(&temp_fn);
 
@@ -262,6 +265,7 @@ void BackupServerPrepareHash::operator()(void)
 				
 				CWData data;
 				data.addInt(BackupServerHash::EAction_LinkOrCopy);
+				data.addVarInt(fileid);
 				data.addString(temp_fn);
 				data.addInt(backupid);
 				data.addInt(incremental);

@@ -19,6 +19,8 @@
 
 class FileClient;
 class FileClientChunked;
+class FilePathCorrections;
+class MaxFileId;
 
 namespace server {
 	class FileMetadataDownloadThread;
@@ -144,7 +146,8 @@ public:
 		const std::string& clientname, const std::string& clientsubname,
 		bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 		int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot,
-		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal);
+		bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal, FilePathCorrections& filepath_corrections,
+		MaxFileId& max_file_id);
 
 	~ServerDownloadThread();
 
@@ -183,7 +186,7 @@ public:
 
 	bool isOffline();
 
-	void hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
+	void hashFile(int64 fileid, std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
 		const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, char hashing_method, bool has_snapshot);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFsFile*& hashoutput, _i64& predicted_filesize, int64& file_id, bool& is_script);
@@ -203,8 +206,6 @@ public:
 	bool shouldBackoff();
 
 	bool sleepQueue();
-
-	std::map<std::string, std::string>& getFilePathCorrections();
 
 	size_t getNumEmbeddedMetadataFiles();
 
@@ -291,7 +292,7 @@ private:
 	bool with_sparse_hashing;
 	char default_hashing_method;
 
-	std::map<std::string, std::string> filepath_corrections;
+	FilePathCorrections& filepath_corrections;
 	std::map<std::string, std::set<std::string> > tar_filenames;
 
 	server::FileMetadataDownloadThread* file_metadata_download;
@@ -303,4 +304,6 @@ private:
 	bool sc_failure_fatal;
 
 	size_t tmpfile_num;
+
+	MaxFileId& max_file_id;
 };

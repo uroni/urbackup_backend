@@ -223,7 +223,7 @@ bool FullFileBackup::doFileBackup()
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components));
+		backup_with_components, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -579,6 +579,7 @@ bool FullFileBackup::doFileBackup()
 					}
 				}
 
+				max_file_id.setMaxPreProcessed(line);
 				++line;
 			}
 		}
@@ -625,8 +626,6 @@ bool FullFileBackup::doFileBackup()
 
 		calculateDownloadSpeed(ctime, fc, NULL);
 	}
-
-	addFilePathCorrections(server_download->getFilePathCorrections());
 
 	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 

@@ -580,7 +580,7 @@ void FileBackup::createHashThreads(bool use_reflink, bool ignore_hash_mismatches
 	hashpipe=Server->createMemoryPipe();
 	hashpipe_prepare=Server->createMemoryPipe();
 
-	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots);
+	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id);
 	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid, logid, ignore_hash_mismatches);
 	bsh_ticket = Server->getThreadPool()->execute(bsh, "fbackup write");
 	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare, "fbackup hash");
@@ -812,7 +812,7 @@ bool FileBackup::doBackup()
 	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0, server_token);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread, "client ping");
 
-	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots));
+	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id));
 	local_hash->setupDatabase();
 
 	createHashThreads(use_reflink, server_settings->getSettings()->ignore_disk_errors);
@@ -861,7 +861,7 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, std::map<std::string, std::string>& filepath_corrections)
+std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, FilePathCorrections& filepath_corrections)
 {
 	std::string orig_fn = fn;
 
@@ -1022,11 +1022,11 @@ std::string FileBackup::fixFilenameForOS(std::string fn, std::set<std::string>& 
 	{
 		if(curr_path.empty())
 		{
-			filepath_corrections[orig_fn] = fn;
+			filepath_corrections.add(orig_fn, fn);
 		}
 		else
 		{
-			filepath_corrections[curr_path+"/"+ orig_fn] = fn;
+			filepath_corrections.add(curr_path + "/" + orig_fn, fn);
 		}
 	}
 
@@ -2072,6 +2072,11 @@ bool FileBackup::startFileMetadataDownloadThread()
 			stopFileMetadataDownloadThread(true, 0);
 			return false;
 		}
+
+		metadata_apply_thread.reset(new server::FileMetadataDownloadThread::FileMetadataApplyThread(metadata_download_thread.get(),
+			backuppath_hashes, backuppath, client_main, local_hash.get(), filepath_corrections, max_file_id));
+
+		metadata_apply_thread_ticket = Server->getThreadPool()->execute(metadata_apply_thread.get(), "fb meta apply");
 	}	
 
 	return true;
@@ -2146,29 +2151,27 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 			++num_issues;
 		}
 
-		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
-		{
-			size_t num_embedded_metadata_files = 0;
-			bool b = metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, local_hash.get(),
-				filepath_corrections, !metadata_download_thread->getHasTimeoutError(), num_embedded_metadata_files);
+		Server->getThreadPool()->waitFor(metadata_apply_thread_ticket);
 
-			if (!b)
+		if(!stopped && !disk_error && !has_early_error && ( !metadata_download_thread->getHasError() || metadata_download_thread->getHasTimeoutError() ) )
+		{	
+			if (!metadata_apply_thread->hasSuccess())
 			{
 				++num_issues;
 			}
 
-			if (!b
+			if (!metadata_apply_thread->hasSuccess()
 				&& metadata_download_thread->getHasFatalError())
 			{
 				disk_error = true;
 			}
-			else if (num_embedded_metadata_files != expected_embedded_metadata_files)
+			else if (metadata_apply_thread->getNumEmbeddedFiles() != expected_embedded_metadata_files)
 			{
-				ServerLogger::Log(logid, "Wrong number of embedded meta-data files. Expected "+convert(expected_embedded_metadata_files)+" but got "+convert(num_embedded_metadata_files), LL_ERROR);
+				ServerLogger::Log(logid, "Wrong number of embedded meta-data files. Expected "+convert(expected_embedded_metadata_files)+" but got "+convert(metadata_apply_thread->getNumEmbeddedFiles()), LL_ERROR);
 				disk_error = true;
 			}
 
-			return b;
+			return metadata_apply_thread->hasSuccess();
 		}
 	}
 
@@ -2193,19 +2196,6 @@ void FileBackup::parseSnapshotFailed(const std::string & logline)
 	if (!share.empty())
 	{
 		shares_without_snapshot.push_back(share);
-	}
-}
-
-void FileBackup::addFilePathCorrections(const std::map<std::string, std::string>& c)
-{
-	for (std::map<std::string, std::string>::const_iterator it = c.begin();
-		it != c.end(); ++it)
-	{
-		std::map<std::string, std::string>::iterator curr_it = filepath_corrections.find(it->first);
-		if (curr_it == filepath_corrections.end())
-		{
-			filepath_corrections.insert(std::make_pair(it->first, it->second));
-		}
 	}
 }
 
