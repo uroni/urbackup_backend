@@ -217,6 +217,7 @@ function try_anonymous_login(data)
 		var ndata=dustRender("upgrade_error", data);
 		if(g.data_f!=ndata)
 		{
+			$("#data_f").empty();
 			I('data_f').innerHTML=ndata;
 			g.data_f=ndata;
 		}
@@ -229,6 +230,7 @@ function try_anonymous_login(data)
 		var ndata=dustRender("file_cache_error", data);
 		if(g.data_f!=ndata)
 		{
+			$("#data_f").empty();
 			I('data_f').innerHTML=ndata;
 			g.data_f=ndata;
 		}
@@ -282,6 +284,7 @@ function try_anonymous_login(data)
 			var ndata=dustRender("login");
 			if(g.data_f!=ndata)
 			{
+				$("#data_f").empty();
 				I('data_f').innerHTML=ndata;
 				g.data_f=ndata;
 			}
@@ -769,6 +772,7 @@ function show_progress2(data)
 	
 	if(g.data_f!=tdata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=tdata;
 		g.data_f=tdata;
 	}
@@ -959,6 +963,7 @@ function show_statistics3(data)
 				images_total: format_size(images_total), ses: g.session, maximized: g.maximized});
 	if(g.data_f!=ndata)
 	{	
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 640, height: 900, 
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
@@ -1018,6 +1023,7 @@ function stat_client(id, name)
 		var id=g.stat_data.users[idx].id;
 		g.settings_nav_pos=idx+1;
 		g.data_f=dustRender("stat_user", {clientid: id, clientname: name, ses: g.session});
+		$("#data_f").empty();
 		I('data_f').innerHTML=g.data_f;
 		createUsageGraph(0, "clientid="+id);
 		show_statistics2(g.stat_data);
@@ -1454,6 +1460,7 @@ function show_status2(data)
 	
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 		
@@ -2220,6 +2227,7 @@ function show_backups2(data)
 	
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -2353,6 +2361,7 @@ function restore_callback(data)
 		var ndata=dustRender("backup_restore_wait");
 		if(g.data_f!=ndata)
 		{
+			$("#data_f").empty();
 			I('data_f').innerHTML=ndata;
 			g.data_f=ndata;
 		}
@@ -3225,6 +3234,7 @@ function show_settings2(data)
 	var update_tabber=false;
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 		update_tabber=true;
@@ -3917,6 +3927,7 @@ function createUser()
 		ndata=dustRender("settings_user_create", { rights: rights });
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4126,6 +4137,7 @@ function changeUserPassword(uid, name)
 	var ndata=dustRender("settings_user_pw_change", {userid: uid, username: name});
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4143,6 +4155,7 @@ function changePW(el)
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4221,6 +4234,7 @@ function doChangePW3(data)
 	}
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4321,6 +4335,7 @@ function changeUserRights(uid, name)
 	var ndata=dustRender("settings_user_rights_change", {userid: uid, username: name, rows: rows});
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4558,6 +4573,7 @@ function show_logs2(data)
 	
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -4700,6 +4716,7 @@ function logFilterChange()
 	
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -5266,6 +5283,7 @@ function addNewClient1()
 	
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -5305,6 +5323,7 @@ function addNewClient3(data)
 	
 		if(g.data_f!=ndata)
 		{
+			$("#data_f").empty();
 			I('data_f').innerHTML=ndata;
 			g.data_f=ndata;
 		}
@@ -5318,6 +5337,7 @@ function aboutUrBackup()
 	var ndata=dustRender("about_urbackup", {version: I('server_version_full').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
@@ -5383,6 +5403,7 @@ function show_scripts2(data)
 	
 	if(g.data_f!=tdata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=tdata;
 		g.data_f=tdata;
 	}
@@ -5484,6 +5505,7 @@ function show_report_script2(data)
 	
 	if(g.data_f!=tdata)
 	{
+		$("#data_f").empty();
 		I('data_f').innerHTML=tdata;
 		g.data_f=tdata;
 	}
