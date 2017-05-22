@@ -630,7 +630,8 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		{
 			if (tf!=NULL
 				&& tf->Size() <= 8
-				&& os_get_file_type(os_file_prefix(tfn)) != 0)
+				&& os_get_file_type(os_file_prefix(tfn)) != 0
+				&& os_file_truncate(os_file_prefix(tfn), t_filesize) )
 			{
 				//zero patch
 				b = true;
