@@ -1513,16 +1513,17 @@ bool IncrFileBackup::doFileBackup()
 				}
 			}
 
-			DBScopedSynchronous synchronous(db);
-			backup_dao->setFileBackupDone(backupid);
-
 			if (sync_f.get() != NULL)
 			{
+				DBScopedSynchronous synchronous(db);
+				DBScopedWriteTransaction trans(db);
+
+				backup_dao->setFileBackupDone(backupid);
 				backup_dao->setFileBackupSynced(backupid);
 			}
 			else
 			{
-				ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn, LL_WARNING);
+				ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done.", LL_ERROR);
 			}
 
 			if (ServerCleanupThread::isClientlistDeletionAllowed())
@@ -1602,16 +1603,17 @@ bool IncrFileBackup::doFileBackup()
 			}
 		}
 
-		DBScopedSynchronous synchronous(db);
-		backup_dao->setFileBackupDone(backupid);
-
 		if (sync_f.get() != NULL)
 		{
+			DBScopedSynchronous synchronous(db);
+			DBScopedWriteTransaction trans(db);
+
+			backup_dao->setFileBackupDone(backupid);
 			backup_dao->setFileBackupSynced(backupid);
 		}
 		else
 		{
-			ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn, LL_WARNING);
+			ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done", LL_ERROR);
 		}
 
 		if (ServerCleanupThread::isClientlistDeletionAllowed())
