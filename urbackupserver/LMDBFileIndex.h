@@ -55,6 +55,7 @@ private:
 	void begin_txn(unsigned int flags);
 
 	static MDB_env *env;
+	static MDB_dbi dbi;
 	size_t map_size;
 
 	std::auto_ptr<IScopedReadLock> read_transaction_lock;
@@ -69,7 +70,6 @@ private:
 
 
 	MDB_txn *txn;
-	MDB_dbi dbi;
 	bool _has_error;
 	MDB_cursor* it_cursor;
 
