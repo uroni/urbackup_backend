@@ -1418,7 +1418,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									{
 										backup_dao->setImageBackupComplete(backupid);
 									}
-									if (sync_f.get() != NULL)
+									if (sync_f.get() == NULL)
 									{
 										backup_dao->setImageBackupSynctime(backupid);
 									}
