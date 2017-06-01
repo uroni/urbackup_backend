@@ -1485,9 +1485,20 @@ SPrioInfo::SPrioInfo()
 SPrioInfo::~SPrioInfo()
 {
 }
-bool os_enable_prioritize(SPrioInfo & prio_info)
+bool os_enable_prioritize(SPrioInfo & prio_info, EPrio prio)
 {
-	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) == TRUE;
+	switch (prio)
+	{
+	case Prio_Prioritize:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) == TRUE;
+	case Prio_SlightBackground:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL) == TRUE;
+	case Prio_SlightPrioritize:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) == TRUE;
+	default:
+		assert(false);
+		return false;
+	}		
 }
 
 bool os_disable_prioritize(SPrioInfo & prio_info)

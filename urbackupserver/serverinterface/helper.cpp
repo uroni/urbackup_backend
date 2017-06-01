@@ -33,7 +33,7 @@ extern ICryptoFactory *crypto_fak;
 
 Helper::Helper(THREAD_ID pTID, str_map *pPOST, str_map *pPARAMS)
 {
-	prioritized = os_enable_prioritize(prio_info);
+	prioritized = os_enable_prioritize(prio_info, Prio_SlightPrioritize);
 	session=NULL;
 	update(pTID,pPOST,pPARAMS);
 
