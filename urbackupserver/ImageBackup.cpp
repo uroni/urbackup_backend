@@ -1402,6 +1402,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									if (!os_sync(imagefn))
 									{
 										ServerLogger::Log(logid, "Syncing file system failed. Image backup is not completely on disk. " + os_last_error_str(), LL_ERROR);
+										vhdfile_err = true;
+									}
+									else
+									{
 										sync_f.reset(Server->openFile(os_file_prefix(imagefn + ".sync"), MODE_WRITE));
 									}
 								}
