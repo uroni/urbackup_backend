@@ -888,6 +888,7 @@ bool FullFileBackup::doFileBackup()
 		else
 		{
 			ServerLogger::Log(logid, "Error creating sync file at "+ backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done.", LL_ERROR);
+			c_has_error = true;
 		}
 
 		Server->destroy(clientlist);

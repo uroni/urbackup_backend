@@ -1426,6 +1426,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									if (sync_f.get() == NULL)
 									{
 										ServerLogger::Log(logid, "Error creating sync file at " + imagefn + ".sync", LL_ERROR);
+										vhdfile_err = true;
 									}
 									db->EndTransaction();
 
