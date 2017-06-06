@@ -8,7 +8,7 @@
 class LMDBFileIndex : public FileIndex
 {
 public:
-	static void initFileIndex();
+	static bool initFileIndex();
 	static void shutdownFileIndex();
 
 	LMDBFileIndex(bool no_sync=false);

@@ -41,12 +41,14 @@ const size_t c_initial_map_size=1*1024*1024;
 const size_t c_create_commit_n = 10000;
 
 
-void LMDBFileIndex::initFileIndex()
+bool LMDBFileIndex::initFileIndex()
 {
 	mutex = Server->createSharedMutex();
 
 	fileindex=new LMDBFileIndex;
 	fileindex_ticket = Server->getThreadPool()->execute(fileindex, "fileindex writer");
+
+	return !fileindex->has_error();
 }
 
 
