@@ -1300,10 +1300,22 @@ IPipe *CServer::createMemoryPipe(void)
 }
 
 #ifdef _WIN32
-void thread_helper_f(IThread *t, const std::string& name)
+struct SThreadInfo
 {
+	std::string name;
+	IThread* t;
+};
+
+DWORD thread_helper_f(void* param)
+{
+	IThread* t;
 #if defined(_WIN32) && defined(_DEBUG)
-	SetThreadName(-1, name.c_str());
+	SThreadInfo* thread_info = reinterpret_cast<SThreadInfo*>(param);
+	SetThreadName(-1, thread_info->name.c_str());
+	t = thread_info->t;
+	delete thread_info;
+#else
+	t = reinterpret_cast<IThread*>(param);
 #endif
 
 #ifndef _DEBUG
@@ -1319,6 +1331,7 @@ void thread_helper_f(IThread *t, const std::string& name)
 		throw;
 	}
 #endif
+	return 0;
 }
 #else //_WIN32
 void os_reset_priority();
@@ -1338,16 +1351,31 @@ void* thread_helper_f(void * t)
 bool CServer::createThread(IThread *thread, const std::string& name, CreateThreadFlags flags)
 {
 #ifdef _WIN32
-	try
+	SIZE_T stack_size = 0;
+	if (flags & IServer::CreateThreadFlags_LargeStackSize)
 	{
-		std::thread tr(thread_helper_f, thread, name);
-		tr.detach();
-		return true;
+		stack_size = 16 * 1024 * 1024;
 	}
-	catch (std::system_error& e)
+
+	void* param;
+#if defined(_WIN32) && defined(_DEBUG)
+	SThreadInfo* thread_info = new SThreadInfo;
+	thread_info->name = name;
+	thread_info->t = thread;
+	param = thread_info;
+#else
+	param = thread;
+#endif
+
+	HANDLE hThread = CreateThread(NULL, stack_size, &thread_helper_f, param, 0, NULL);
+	if (hThread == NULL)
 	{
-		Server->Log(std::string("Error creating thread. ") + e.what(), LL_ERROR);
 		return false;
+	}
+	else
+	{
+		CloseHandle(hThread);
+		return true;
 	}
 #else
 	pthread_attr_t attr;
