@@ -1306,7 +1306,7 @@ struct SThreadInfo
 	IThread* t;
 };
 
-DWORD thread_helper_f(void* param)
+DWORD WINAPI thread_helper_f(LPVOID param)
 {
 	IThread* t;
 #if defined(_WIN32) && defined(_DEBUG)
