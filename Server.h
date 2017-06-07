@@ -102,7 +102,7 @@ public:
 	virtual ISharedMutex* createSharedMutex();
 	virtual ICondition* createCondition(void);
 	virtual IPipe *createMemoryPipe(void);
-	virtual bool createThread(IThread *thread, const std::string& name = std::string());
+	virtual bool createThread(IThread *thread, const std::string& name = std::string(), CreateThreadFlags flags = CreateThreadFlags_None);
 	virtual void setCurrentThreadName(const std::string& name);
 	virtual IThreadPool *getThreadPool(void);
 	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);

@@ -1335,7 +1335,7 @@ void* thread_helper_f(void * t)
 }
 #endif //_WIN32
 
-bool CServer::createThread(IThread *thread, const std::string& name)
+bool CServer::createThread(IThread *thread, const std::string& name, CreateThreadFlags flags)
 {
 #ifdef _WIN32
 	try
@@ -1372,6 +1372,11 @@ bool CServer::createThread(IThread *thread, const std::string& name)
 #endif
 
 #endif
+
+	if (flags & IServer::CreateThreadFlags_LargeStackSize)
+	{
+		pthread_attr_setstacksize(&attr, 16*1024*1024);
+	}
 
 	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
 	{
