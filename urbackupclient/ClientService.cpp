@@ -1558,7 +1558,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::string settings_fn="urbackup/data/settings.cfg";
-	std::string settings_server_fn="urbackup/data/settings_"+server_token+".cfg";
+	std::string settings_server_fn="urbackup/data/settings_"+conv_filename(server_token)+".cfg";
 	std::string clientsubname;
 	std::string str_group_offset;
 	int group_offset=0;
@@ -1566,7 +1566,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
 	{
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
-		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+server_token+".cfg";
+		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+ conv_filename(server_token)+".cfg";
 		group_offset = atoi(str_group_offset.c_str());
 
 		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
@@ -1582,6 +1582,11 @@ void ClientConnector::updateSettings(const std::string &pData)
 		q->Write();
 		q->Reset();
 		db->destroyQuery(q);
+	}
+
+	if (new_settings->getValue("reset_client_settings", "") == "1")
+	{
+		Server->deleteFile(settings_fn);
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
