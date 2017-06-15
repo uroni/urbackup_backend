@@ -137,6 +137,7 @@ bool run_report_script(int incremental, bool resumed, int image,
 	param["errors"] = errors;
 	param["report_mail"] = report_mail;
 	param["clientname"] = clientname;
+	param["success"] = success;
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;
 	
 	std::vector<std::string> msgs;
