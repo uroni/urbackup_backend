@@ -6814,12 +6814,14 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 
 	VSSLog("Removing deleted directories from index for \"" + volpath + "\"...", LL_DEBUG);
 	std::vector<std::string> deldirs = cd->getDelDirs(volpath, false);
-	DBScopedWriteTransaction write_transaction(db);
-	for (size_t j = 0; j < deldirs.size(); ++j)
 	{
-		for (size_t i = 0; i < db_tgroup.size(); ++i)
+		DBScopedWriteTransaction write_transaction(db);
+		for (size_t j = 0; j < deldirs.size(); ++j)
 		{
-			cd->removeDeletedDir(deldirs[j], db_tgroup[i]);
+			for (size_t i = 0; i < db_tgroup.size(); ++i)
+			{
+				cd->removeDeletedDir(deldirs[j], db_tgroup[i]);
+			}
 		}
 	}
 
