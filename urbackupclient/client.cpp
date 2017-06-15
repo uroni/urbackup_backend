@@ -1801,6 +1801,21 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 					VSSLog("Hint: Directory to backup (\"" + orig_dir + "\") does not exist. It may have been deleted or renamed. "
 						"Set the \"optional\" directory flag if you do not want backups to fail if directories are missing.", LL_WARNING);
+
+#ifdef _WIN32
+					if (orig_dir.size() > 1
+						&& orig_dir[1] == ':')
+					{
+						std::string vol = add_trailing_slash(orig_dir).substr(0, 3);
+						if (!os_directory_exists(vol))
+						{
+							VSSLog("Hint: Volume (\"" + vol + "\") does not exist. It may currently be not present. "
+								"If you are trying to backup a network location via mapped network drives please be aware "
+								"that mapped network drives are per user and the UrBackup client runs as \"LOCAL SYSTEM\" user per default."
+								"See https://www.urbackup.org/faq.html#use_shares on how to backup network locations", LL_WARNING);
+						}
+					}
+#endif
 				}
 			}
 
