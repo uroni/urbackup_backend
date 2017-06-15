@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#include <limits.h>
 #include "../config.h"
 #ifdef __linux__
 #include <sys/resource.h>
@@ -350,8 +351,13 @@ int64 os_free_space(const std::string &path)
     int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
-		int64 blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
-		return blocksize*buf.f_bavail;
+		fsblkcnt_t blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
+		fsblkcnt_t free = blocksize*buf.f_bavail;
+		if(free>LLONG_MAX)
+		{
+			return LLONG_MAX;
+		}
+		return free;
 	}
 	else
 	{
@@ -374,7 +380,12 @@ int64 os_total_space(const std::string &path)
 	if(rc==0)
 	{
 		fsblkcnt_t used=buf.f_blocks-buf.f_bfree;
-		return buf.f_bsize*(used+buf.f_bavail);
+		fsblkcnt_t total = (used+buf.f_bavail)*buf.f_bsize;
+		if(total>LLONG_MAX)
+		{
+			return LLONG_MAX;
+		}
+		return total;
 	}
 	else
 		return -1;
