@@ -17,6 +17,7 @@
 #include "../urbackupcommon/ExtentIterator.h"
 
 class FileMetadata;
+class MaxFileId;
 
 const int64 link_file_min_size = 2048;
 
@@ -43,7 +44,8 @@ public:
 		EAction_Copy
 	};
 
-	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid, bool snapshot_file_inplace);
+	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink,
+		bool use_tmpfiles, logid_t logid, bool snapshot_file_inplace, MaxFileId& max_file_id);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -172,4 +174,6 @@ private:
 	bool enabled_sparse;
 
 	bool snapshot_file_inplace;
+
+	MaxFileId& max_file_id;
 };

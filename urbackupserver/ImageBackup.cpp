@@ -1401,10 +1401,13 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								{
 									if (!os_sync(imagefn))
 									{
-										ServerLogger::Log(logid, "Syncing file system failed. Image backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+										ServerLogger::Log(logid, "Syncing file system failed. Image backup is not completely on disk. " + os_last_error_str(), LL_ERROR);
+										vhdfile_err = true;
 									}
-
-									sync_f.reset(Server->openFile(os_file_prefix(imagefn + ".sync"), MODE_WRITE));
+									else
+									{
+										sync_f.reset(Server->openFile(os_file_prefix(imagefn + ".sync"), MODE_WRITE));
+									}
 								}
 
 								int64 image_size = t_file->RealSize();
@@ -1414,17 +1417,16 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								if(!vhdfile_err)
 								{
 									if ( dependencies.empty()
-										 && set_complete )
+										 && set_complete 
+										&& sync_f.get()!=NULL)
 									{
 										backup_dao->setImageBackupComplete(backupid);
-									}
-									if (sync_f.get() != NULL)
-									{
 										backup_dao->setImageBackupSynctime(backupid);
 									}
-									else
+									if (sync_f.get() == NULL)
 									{
-										ServerLogger::Log(logid, "Error creating sync file at " + imagefn + ".sync", LL_WARNING);
+										ServerLogger::Log(logid, "Error creating sync file at " + imagefn + ".sync", LL_ERROR);
+										vhdfile_err = true;
 									}
 									db->EndTransaction();
 

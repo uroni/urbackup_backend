@@ -988,13 +988,13 @@ void ServerBackupDao::saveImageAssociation(int img_id, int assoc_id)
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateClientLastImageBackup
 * @sql
-*       UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=:backupid(int)) WHERE id=:clientid(int)
+*       UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=:backupid(int)), alerts_next_check=NULL WHERE id=:clientid(int)
 */
 void ServerBackupDao::updateClientLastImageBackup(int backupid, int clientid)
 {
 	if(q_updateClientLastImageBackup==NULL)
 	{
-		q_updateClientLastImageBackup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=?) WHERE id=?", false);
+		q_updateClientLastImageBackup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=?), alerts_next_check=NULL WHERE id=?", false);
 	}
 	q_updateClientLastImageBackup->Bind(backupid);
 	q_updateClientLastImageBackup->Bind(clientid);
@@ -1006,13 +1006,13 @@ void ServerBackupDao::updateClientLastImageBackup(int backupid, int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateClientLastFileBackup
 * @sql
-*       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)), last_filebackup_issues=:last_filebackup_issues(int) WHERE id=:clientid(int)
+*       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)), last_filebackup_issues=:last_filebackup_issues(int), alerts_next_check=NULL WHERE id=:clientid(int)
 */
 void ServerBackupDao::updateClientLastFileBackup(int backupid, int last_filebackup_issues, int clientid)
 {
 	if(q_updateClientLastFileBackup==NULL)
 	{
-		q_updateClientLastFileBackup=db->Prepare("UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=?), last_filebackup_issues=? WHERE id=?", false);
+		q_updateClientLastFileBackup=db->Prepare("UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=?), last_filebackup_issues=?, alerts_next_check=NULL WHERE id=?", false);
 	}
 	q_updateClientLastFileBackup->Bind(backupid);
 	q_updateClientLastFileBackup->Bind(last_filebackup_issues);

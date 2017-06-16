@@ -113,12 +113,13 @@ CDatabase::~CDatabase()
 
 bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
 	size_t allocation_chunk_size, ISharedMutex* p_single_user_mutex, IMutex* p_lock_mutex,
-	int* p_lock_count, ICondition *p_unlock_cond, const str_map& params)
+	int* p_lock_count, ICondition *p_unlock_cond, const str_map& p_params)
 {
 	single_user_mutex = p_single_user_mutex;
 	lock_mutex = p_lock_mutex;
 	lock_count = p_lock_count;
 	unlock_cond = p_unlock_cond;
+	params = p_params;
 
 	attached_dbs=attach;
 	in_transaction=false;
@@ -590,6 +591,16 @@ void CDatabase::AttachDBs(void)
 	for(size_t i=0;i<attached_dbs.size();++i)
 	{
 		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);
+
+		str_map::const_iterator it = params.find("synchronous");
+		if (it != params.end())
+		{
+			Write("PRAGMA "+ attached_dbs[i].second+".synchronous=" + it->second);
+		}
+		else
+		{
+			Write("PRAGMA "+ attached_dbs[i].second+".synchronous=NORMAL");
+		}
 	}
 }
 

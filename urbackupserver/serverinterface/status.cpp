@@ -630,7 +630,7 @@ ACTION_IMPL(status)
 			}
 		}
 		db_results res=db->Read("SELECT c.id AS id, delete_pending, c.name AS name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname FROM "
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok FROM "
 			" clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id "+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
@@ -661,6 +661,8 @@ ACTION_IMPL(status)
 			stat.set("delete_pending", res[i]["delete_pending"] );
 			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
 			stat.set("groupname", res[i]["groupname"]);
+			stat.set("file_ok", res[i]["file_ok"] == "1");
+			stat.set("image_ok", res[i]["image_ok"] == "1");
 
 			std::string ip="-";
 			std::string client_version_string = res[i]["client_version_str"];
@@ -727,36 +729,6 @@ ACTION_IMPL(status)
 			stat.set("status", i_status);
 			stat.set("processes", processes);
 			stat.set("lastseen", lastseen);
-
-			ServerSettings settings(db, clientid);
-
-			int time_filebackup=settings.getUpdateFreqFileIncr();
-			int time_filebackup_full=settings.getUpdateFreqFileFull();
-			if( time_filebackup_full>=0 &&
-				(time_filebackup<0 || time_filebackup_full<time_filebackup) )
-			{
-				time_filebackup=time_filebackup_full;
-			}
-			
-			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+convert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
-			q->Bind(clientid);
-			db_results res_file_ok=q->Read();
-			q->Reset();
-			stat.set("file_ok", !res_file_ok.empty());
-
-			int time_imagebackup=settings.getUpdateFreqImageIncr();
-			int time_imagebackup_full=settings.getUpdateFreqImageFull();
-			if( time_imagebackup_full>=0 &&
-				(time_imagebackup<0 || time_imagebackup_full<time_imagebackup) )
-			{
-				time_imagebackup=time_imagebackup_full;
-			}
-
-			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+convert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
-			q->Bind(clientid);
-			res_file_ok=q->Read();
-			q->Reset();
-			stat.set("image_ok", !res_file_ok.empty());
 
 			status.add(stat);
 		}

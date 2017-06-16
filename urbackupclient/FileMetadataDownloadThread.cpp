@@ -30,7 +30,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+#ifndef __FreeBSD__
 #include <sys/xattr.h>
+#endif
 #endif
 #include <memory>
 
@@ -38,6 +40,52 @@
 #define llistxattr(path, list, size) listxattr(path, list, size, XATTR_NOFOLLOW)
 #define lremovexattr(path, name) removexattr(path, name, XATTR_NOFOLLOW)
 #define lsetxattr(path, name, value, size, flags) setxattr(path, name, value, size, 0, XATTR_NOFOLLOW|flags)
+#elif __FreeBSD__
+#define O_SYMLINK 0
+#define stat64 stat
+#ifndef UF_HIDDEN
+#define UF_HIDDEN 0
+#endif
+#ifndef UF_ARCHIVE
+#define UF_ARCHIVE 0
+#endif
+#ifndef UF_OFFLINE
+#define UF_OFFLINE 0
+#endif
+#ifndef UF_READONLY
+#define UF_READONLY 0
+#endif
+#ifndef UF_REPARSE
+#define UF_REPARSE 0
+#endif
+#ifndef UF_SPARSE
+#define UF_SPARSE 0
+#endif
+#ifndef UF_SYSTEM
+#define UF_SYSTEM 0
+#endif
+//TODO implement using extattr
+namespace
+{
+	ssize_t llistxattr(const char *path, char *list, size_t size)
+	{
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+
+	int lremovexattr(const char *path, const char *name)
+	{
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+
+	int lsetxattr(const char *path, const char *name,
+		const void *value, size_t size, int flags)
+	{
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+}
 #endif
 
 namespace client {
@@ -510,7 +558,7 @@ namespace
 		SET_STAT_MEM(st_uid);
 		SET_STAT_MEM(st_gid);
 		SET_STAT_MEM(st_rdev);
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 		SET_STAT_MEM(st_atimespec.tv_sec);
 		SET_STAT_MEM32(st_atimespec.tv_nsec);
 		SET_STAT_MEM(st_mtimespec.tv_sec);
@@ -542,7 +590,7 @@ namespace
     {
 #ifndef __linux__
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
 		int64 chflags_mask = UF_NODUMP | UF_IMMUTABLE | UF_APPEND | UF_OPAQUE | UF_HIDDEN | SF_ARCHIVED | SF_IMMUTABLE | SF_APPEND;
 #else
 		int64 chflags_mask = SF_APPEND | SF_ARCHIVED | SF_IMMUTABLE | SF_NOUNLINK | UF_APPEND | UF_ARCHIVE | UF_HIDDEN | UF_IMMUTABLE | UF_NODUMP | UF_NOUNLINK | UF_OFFLINE | UF_OPAQUE | UF_READONLY | UF_REPARSE | UF_SPARSE | UF_SYSTEM;
@@ -576,7 +624,7 @@ namespace
 				if(lutimes(fn.c_str(), tvs)!=0)
 				*/
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 				int fd = open(fn.c_str(), O_WRONLY | O_NOFOLLOW | O_SYMLINK | O_CLOEXEC);
 				if (fd == -1)
 				{
@@ -671,7 +719,7 @@ namespace
 		if(utimes(fn.c_str(), tvs)!=0)
 		*/
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 		struct timeval tv[2];
 		tv[0].tv_sec = statbuf.st_atimespec.tv_sec;
 		tv[0].tv_usec = statbuf.st_atimespec.tv_nsec / 1000;

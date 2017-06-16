@@ -98,6 +98,8 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("image_snapshot_groups");
 	ret.push_back("internet_file_dataplan_limit");
 	ret.push_back("internet_image_dataplan_limit");
+	ret.push_back("alert_script");
+	ret.push_back("alert_params");
 	return ret;
 }
 
@@ -133,6 +135,8 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("server_url");
 	ret.push_back("internet_file_dataplan_limit");
 	ret.push_back("internet_image_dataplan_limit");
+	ret.push_back("alert_script");
+	ret.push_back("alert_params");
 	return ret;
 }
 

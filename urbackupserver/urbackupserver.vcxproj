@@ -209,6 +209,7 @@
     <ClCompile Include="..\urbackupcommon\SparseFile.cpp" />
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp" />
+    <ClCompile Include="Alerts.cpp" />
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
@@ -241,6 +242,8 @@
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
     <ClCompile Include="LMDBFileIndex.cpp" />
+    <ClCompile Include="LogReport.cpp" />
+    <ClCompile Include="Mailer.cpp" />
     <ClCompile Include="PhashLoad.cpp" />
     <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
@@ -258,6 +261,7 @@
     <ClCompile Include="serverinterface\progress.cpp" />
     <ClCompile Include="serverinterface\restore_prepare_wait.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
+    <ClCompile Include="serverinterface\scripts.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
     <ClCompile Include="serverinterface\start_backup.cpp" />
@@ -324,6 +328,7 @@
     <ClInclude Include="..\urbackupcommon\WalCheckpointThread.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
+    <ClInclude Include="Alerts.h" />
     <ClInclude Include="apps\app.h" />
     <ClInclude Include="apps\check_files_index.h" />
     <ClInclude Include="apps\cleanup_cmd.h" />
@@ -355,6 +360,8 @@
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
     <ClInclude Include="LMDBFileIndex.h" />
+    <ClInclude Include="LogReport.h" />
+    <ClInclude Include="Mailer.h" />
     <ClInclude Include="PhashLoad.h" />
     <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />

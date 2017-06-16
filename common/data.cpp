@@ -365,6 +365,12 @@ void CWData::addFloat(float ta)
 	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(float));
 }
 
+void CWData::addDouble(double ta)
+{
+	ta = little_endian(ta);
+	data.insert(data.end(), reinterpret_cast<char*>(&ta), reinterpret_cast<char*>(&ta) + sizeof(double));
+}
+
 void CWData::addUShort(unsigned short ta)
 {
 	ta=little_endian(ta);
@@ -515,6 +521,19 @@ bool CRData::getFloat(float *ret)
 	memcpy(ret, &data[streampos], sizeof(float) );
 	streampos+=sizeof(float);
 	*ret=little_endian(*ret);
+	return true;
+}
+
+bool CRData::getDouble(double * ret)
+{
+	if (streampos + sizeof(double)>datalen)
+	{
+		return false;
+	}
+
+	memcpy(ret, &data[streampos], sizeof(double));
+	streampos += sizeof(double);
+	*ret = little_endian(*ret);
 	return true;
 }
 

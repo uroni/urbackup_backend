@@ -410,6 +410,30 @@
 	</div>
 </div>
 
+<div class="tab-pane" id="alerts">
+	<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="alert_script">{tAlert script}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="alert_script" onChange="updateAlertScriptParams()">{alert_scripts|s}</select>
+				</div>
+				{?can_edit_scripts}
+					<a href="javascript: show_scripts1()">{tEdit scripts}</a>
+				{/can_edit_scripts}
+			</div>
+			
+			<input type="hidden" id="alert_params" value="{alert_params}"/>
+			
+			<div id="alert_script_params_container">
+				{mod_alert_params|s}
+			</div>
+		</form>
+	</div>
+	</div>
+</div>
+
 {internet_settings_start|s}
 <div class="tab-pane" id="internet">
 	<div class="panel panel-default">

@@ -286,10 +286,7 @@ bool create_files_index(SStartupStatus& status)
 		}
 	}
 	
-	LMDBFileIndex::initFileIndex();
-
-	return true;
-
+	return LMDBFileIndex::initFileIndex();
 }
 
 FileIndex* create_lmdb_files_index(void)

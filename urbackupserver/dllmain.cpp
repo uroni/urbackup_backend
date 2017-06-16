@@ -53,6 +53,7 @@ extern IServer* Server;
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
+#include "../luaplugin/ILuaInterpreter.h"
 
 #include "database.h"
 #include "actions.h"
@@ -83,6 +84,8 @@ SStartupStatus startup_status;
 #include "server_dir_links.h"
 #include "server_channel.h"
 #include "DataplanDb.h"
+#include "Alerts.h"
+#include "Mailer.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -94,6 +97,7 @@ SStartupStatus startup_status;
 #include "../urbackupcommon/WalCheckpointThread.h"
 #include "FileMetadataDownloadThread.h"
 #include "../urbackupcommon/chunk_hasher.h"
+#include "LogReport.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
@@ -122,6 +126,7 @@ IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
 IFileServ* fileserv=NULL;
+ILuaInterpreter* lua_interpreter = NULL;
 
 std::string server_identity;
 std::string server_token;
@@ -617,6 +622,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	{
+		str_map params;
+		lua_interpreter = dynamic_cast<ILuaInterpreter*>(Server->getPlugin(Server->getThreadID(), Server->StartPlugin("lua", params)));
+		if (lua_interpreter == NULL)
+		{
+			Server->Log("Lua plugin missing. Alerts won't work.", LL_WARNING);
+		}
+	}
+
 	
 	open_server_database(true);
 	
@@ -625,6 +639,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerSettings::init_mutex();
 	ClientMain::init_mutex();
 	DataplanDb::init();
+	init_log_report();
 
 	open_settings_database();
 	
@@ -783,6 +798,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(start_backup);
 	ADD_ACTION(add_client);
 	ADD_ACTION(restore_prepare_wait);
+	ADD_ACTION(scripts);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{
@@ -840,6 +856,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
+	Mailer::init();
+	Server->createThread(new Alerts, "alerts");
 
 	is_leak_check=(Server->getServerParameter("leak_check")=="true");
 
@@ -1922,6 +1940,49 @@ bool upgrade53_54()
 	return b;
 }
 
+bool upgrade54_55()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD file_ok INTEGER");
+	b &= db->Write("ALTER TABLE clients ADD image_ok INTEGER");
+	b &= db->Write("ALTER TABLE clients ADD alerts_state BLOB");
+	b &= db->Write("ALTER TABLE clients ADD alerts_next_check INTEGER");
+	b &= db->Write("ALTER TABLE clients ADD created INTEGER");
+	b &= db->Write("UPDATE clients SET created=0");
+
+	b &= db->Write("UPDATE clients SET file_ok=0, image_ok=0");
+
+	b &= db->Write("CREATE TABLE alert_scripts (id INTEGER PRIMARY KEY, "
+		"name TEXT, script TEXT)");
+	b &= db->Write("CREATE TABLE alert_script_params(id INTEGER PRIMARY KEY, "
+		"script_id INTEGER REFERENCES alert_scripts(id) ON DELETE CASCADE, "
+		"idx INTEGER, name TEXT, label TEXT, default_value TEXT, has_translation INTEGER DEFAULT 0, type TEXT)");
+
+	IQuery *q = db->Prepare("INSERT INTO alert_scripts (id, name, script) VALUES (?, ?, '')");
+	if (q != NULL)
+	{
+		q->Bind(1);
+		q->Bind("Default");
+		b &= q->Write();
+	}
+	else
+	{
+		b = false;
+	}
+
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 0, 'alert_file_mult', 'alert_file_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 1, 'alert_image_mult', 'alert_image_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 2, 'alert_emails', 'alert_emails', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 3, 'alert_important', 'alert_important', '0', 1, 'bool')");
+
+	b &= db->Write("CREATE TABLE mail_queue (id INTEGER PRIMARY KEY, send_to TEXT, subject TEXT, message TEXT, next_try INTEGER, retry_count INTEGER DEFAULT 0)");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1943,7 +2004,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=54;
+	int max_v=55;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2257,6 +2318,14 @@ void upgrade(void)
 					has_error = true;
 				}
 				++ver;
+				break;
+			case 54:
+				if (!upgrade54_55())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
 			default:
 				break;
 		}

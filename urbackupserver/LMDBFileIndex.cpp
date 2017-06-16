@@ -32,6 +32,7 @@
 #include "create_files_index.h"
 
 MDB_env *LMDBFileIndex::env=NULL;
+MDB_dbi LMDBFileIndex::dbi;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
 LMDBFileIndex* LMDBFileIndex::fileindex=NULL;
 THREADPOOL_TICKET LMDBFileIndex::fileindex_ticket = ILLEGAL_THREADPOOL_TICKET;
@@ -41,12 +42,14 @@ const size_t c_initial_map_size=1*1024*1024;
 const size_t c_create_commit_n = 10000;
 
 
-void LMDBFileIndex::initFileIndex()
+bool LMDBFileIndex::initFileIndex()
 {
 	mutex = Server->createSharedMutex();
 
 	fileindex=new LMDBFileIndex;
 	fileindex_ticket = Server->getThreadPool()->execute(fileindex, "fileindex writer");
+
+	return !fileindex->has_error();
 }
 
 
@@ -94,15 +97,6 @@ void LMDBFileIndex::begin_txn(unsigned int flags)
 	if(rc)
 	{
 		Server->Log("LMDB: Failed to open transaction handle ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
-		_has_error=true;
-		return;
-	}
-
-	rc = mdb_open(txn, NULL, 0, &dbi);
-
-	if(rc)
-	{
-		Server->Log("LMDB: Failed to open database ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 		_has_error=true;
 		return;
 	}
@@ -545,6 +539,31 @@ bool LMDBFileIndex::create_env()
 		if(rc)
 		{
 			Server->Log("LMDB: Failed to open LMDB database file ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
+			return false;
+		}
+
+		MDB_txn* l_txn;
+		rc = mdb_txn_begin(env, NULL, flags, &l_txn);
+
+		if (rc)
+		{
+			Server->Log("LMDB: Failed to open transaction handle for dbi open (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			return false;
+		}
+
+		rc = mdb_dbi_open(l_txn, NULL, 0, &dbi);
+
+		if (rc)
+		{
+			Server->Log("LMDB: Failed to open database (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
+			return false;
+		}
+
+		rc = mdb_txn_commit(l_txn);
+
+		if (rc)
+		{
+			Server->Log("LMDB: Failed to commit txn for dbi handle (" + (std::string)mdb_strerror(rc) + ")", LL_ERROR);
 			return false;
 		}
 

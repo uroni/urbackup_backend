@@ -218,7 +218,14 @@ private:
 	ScopedBackgroundPrio* background_prio;
 };
 
-bool os_enable_prioritize(SPrioInfo& prio_info);
+enum EPrio
+{
+	Prio_Prioritize,
+	Prio_SlightPrioritize,
+	Prio_SlightBackground
+};
+
+bool os_enable_prioritize(SPrioInfo& prio_info, EPrio prio);
 
 bool os_disable_prioritize(SPrioInfo& prio_info);
 

@@ -481,18 +481,41 @@ bool isDirectory(const std::string &path, void* transaction)
         }
 }
 
+bool os_is_symlink_int(const std::string& path)
+{
+	WIN32_FIND_DATAW wfd;
+	HANDLE hf = FindFirstFileW(ConvertToWchar(path).c_str(), &wfd);
+	if (hf == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+
+	FindClose(hf);
+
+	if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+	{
+		if (wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT
+			|| wfd.dwReserved0 == IO_REPARSE_TAG_SYMLINK)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 int os_get_file_type(const std::string &path)
 {
 	DWORD attrib = GetFileAttributesW(ConvertToWchar(path).c_str());
 
-	if(attrib==INVALID_FILE_ATTRIBUTES)
+	if (attrib == INVALID_FILE_ATTRIBUTES)
 	{
 		return 0;
 	}
 
 	int ret = 0;
 
-	if(attrib & FILE_ATTRIBUTE_DIRECTORY)
+	if (attrib & FILE_ATTRIBUTE_DIRECTORY)
 	{
 		ret |= EFileType_Directory;
 	}
@@ -501,9 +524,12 @@ int os_get_file_type(const std::string &path)
 		ret |= EFileType_File;
 	}
 
-	if(attrib & FILE_ATTRIBUTE_REPARSE_POINT)
+	if (attrib & FILE_ATTRIBUTE_REPARSE_POINT)
 	{
-		ret |= EFileType_Symlink;
+		if (os_is_symlink_int(path))
+		{
+			ret |= EFileType_Symlink;
+		}
 	}
 
 	return ret;
@@ -939,11 +965,7 @@ bool os_get_symlink_target(const std::string &lname, std::string &target)
 
 bool os_is_symlink(const std::string &lname)
 {
-	DWORD attrs = GetFileAttributesW(ConvertToWchar(lname).c_str());
-	if(attrs == INVALID_FILE_ATTRIBUTES)
-		return false;
-
-	return (attrs & FILE_ATTRIBUTE_REPARSE_POINT)>0;
+	return (os_get_file_type(lname) & EFileType_Symlink)>0;
 }
 
 std::string os_file_prefix(std::string path)
@@ -1463,9 +1485,20 @@ SPrioInfo::SPrioInfo()
 SPrioInfo::~SPrioInfo()
 {
 }
-bool os_enable_prioritize(SPrioInfo & prio_info)
+bool os_enable_prioritize(SPrioInfo & prio_info, EPrio prio)
 {
-	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) == TRUE;
+	switch (prio)
+	{
+	case Prio_Prioritize:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) == TRUE;
+	case Prio_SlightBackground:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL) == TRUE;
+	case Prio_SlightPrioritize:
+		return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) == TRUE;
+	default:
+		assert(false);
+		return false;
+	}		
 }
 
 bool os_disable_prioritize(SPrioInfo & prio_info)

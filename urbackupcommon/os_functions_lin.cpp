@@ -1080,7 +1080,7 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	return true;
 }
 
-bool os_enable_prioritize(SPrioInfo& prio_info)
+bool os_enable_prioritize(SPrioInfo& prio_info, EPrio prio)
 {	
 	if(getpid() == syscall(SYS_gettid))
 	{
@@ -1093,12 +1093,23 @@ bool os_enable_prioritize(SPrioInfo& prio_info)
 	
 	int ioprio = 0;
 	int ioprio_class = IOPRIO_CLASS_BE;
+	int cpuprio = -10;
+	
+	if(prio==Prio_SlightPrioritize)
+	{
+		ioprio=2;
+		cpuprio=-3;
+	}
+	else if(prio==Prio_SlightBackground)
+	{
+		ioprio=7;
+		cpuprio=5;
+	}
 	
 	if(ioprio_set(IOPRIO_WHO_PROCESS, 0, ioprio | ioprio_class << IOPRIO_CLASS_SHIFT)==-1)
 	{
 		return false;
-	}
-	int cpuprio = -10;
+	}	
 	if(setpriority(PRIO_PROCESS, 0, cpuprio)==-1)
 	{
 		os_disable_prioritize(prio_info);

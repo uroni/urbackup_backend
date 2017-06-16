@@ -90,5 +90,6 @@ private:
 	std::auto_ptr<IScopedWriteLock> write_lock;
 
 	std::vector<std::pair<std::string,std::string> > attached_dbs;
+	str_map params;
 };
 

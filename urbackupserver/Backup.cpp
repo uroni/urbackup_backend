@@ -27,6 +27,7 @@
 #include "../urlplugin/IUrlFactory.h"
 #include "server_status.h"
 #include "server_cleanup.h"
+#include "LogReport.h"
 
 extern IUrlFactory *url_fak;
 
@@ -242,6 +243,12 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					( report_sendonly==2 && r_success) ||
 					( report_sendonly==3 && !r_success && !has_timeout_error) ) )
 				{
+					if (run_report_script(incremental, resumed, image, infos, warnings,
+						errors, r_success, report_mail, data, clientname))
+					{
+						return;
+					}
+
 					std::vector<std::string> to_addrs;
 					Tokenize(report_mail, to_addrs, ",;");
 

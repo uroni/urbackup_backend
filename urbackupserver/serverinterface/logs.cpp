@@ -206,6 +206,11 @@ ACTION_IMPL(logs)
 				ret.set("HAS_MAIL_START", "<!--");
 				ret.set("HAS_MAIL_STOP", "-->");
 			}
+
+			if (helper.getRights(RIGHT_REPORT_SCRIPT) == RIGHT_ALL)
+			{
+				ret.set("can_report_script_edit", true);
+			}
 		}
 		else
 		{

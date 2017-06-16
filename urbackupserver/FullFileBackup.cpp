@@ -223,7 +223,7 @@ bool FullFileBackup::doFileBackup()
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
 		0, logid, with_hashes, shares_without_snapshot, with_sparse_hashing, metadata_download_thread.get(),
-		backup_with_components));
+		backup_with_components, filepath_corrections, max_file_id));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -579,6 +579,7 @@ bool FullFileBackup::doFileBackup()
 					}
 				}
 
+				max_file_id.setMaxPreProcessed(line);
 				++line;
 			}
 		}
@@ -625,8 +626,6 @@ bool FullFileBackup::doFileBackup()
 
 		calculateDownloadSpeed(ctime, fc, NULL);
 	}
-
-	addFilePathCorrections(server_download->getFilePathCorrections());
 
 	ServerStatus::setProcessSpeed(clientname, status_id, 0);
 
@@ -878,16 +877,18 @@ bool FullFileBackup::doFileBackup()
 			}
 		}
 
-		DBScopedSynchronous synchronous(db);
-		backup_dao->setFileBackupDone(backupid);
-
 		if (sync_f.get() != NULL)
 		{
+			DBScopedSynchronous synchronous(db);
+			DBScopedWriteTransaction trans(db);
+
+			backup_dao->setFileBackupDone(backupid);
 			backup_dao->setFileBackupSynced(backupid);
 		}
 		else
 		{
-			ServerLogger::Log(logid, "Error creating sync file at "+ backuppath_hashes + os_file_sep() + sync_fn, LL_WARNING);
+			ServerLogger::Log(logid, "Error creating sync file at "+ backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done.", LL_ERROR);
+			c_has_error = true;
 		}
 
 		Server->destroy(clientlist);

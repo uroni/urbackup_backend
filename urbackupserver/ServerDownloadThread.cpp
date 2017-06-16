@@ -44,7 +44,8 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::string& backuppath, const std::string& backuppath_hashes, const std::string& last_backuppath, const std::string& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::string& clientname, const std::string& clientsubname, bool use_tmpfiles, const std::string& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal)
+	int filesrv_protocol_version, int incremental_num, logid_t logid, bool with_hashes, const std::vector<std::string>& shares_without_snapshot, bool with_sparse_hashing, server::FileMetadataDownloadThread* file_metadata_download, bool sc_failure_fatal,
+	FilePathCorrections& filepath_corrections, MaxFileId& max_file_id)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname), clientsubname(clientsubname),
@@ -52,7 +53,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
 	all_downloads_ok(true), incremental_num(incremental_num), logid(logid), has_timeout(false), with_hashes(with_hashes), with_metadata(client_main->getProtocolVersions().file_meta>0), shares_without_snapshot(shares_without_snapshot),
 	with_sparse_hashing(with_sparse_hashing), exp_backoff(false), num_embedded_metadata_files(0), file_metadata_download(file_metadata_download), num_issues(0), last_snap_num_issues(0), has_disk_error(false), sc_failure_fatal(sc_failure_fatal),
-	tmpfile_num(0)
+	tmpfile_num(0), filepath_corrections(filepath_corrections), max_file_id(max_file_id)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -272,6 +273,8 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	ni.sha_dig = sha_dig;
 	ni.write_metadata = write_metadata;
 
+	max_file_id.setMinDownloaded(id);
+
 	if(is_script)
 	{
 		if (p_script_random != 0)
@@ -323,6 +326,8 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, c
 	ni.is_script = is_script;
     ni.metadata_only = false;
 	ni.sha_dig=sha_dig;
+
+	max_file_id.setMinDownloaded(id);
 
 	if(is_script)
 	{
@@ -625,7 +630,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(),
+		hashFile(todl.id, dstpath, hashpath, fd, NULL, filepath_old, fd->Size(), todl.metadata, todl.is_script, todl.sha_dig, fc.releaseSparseExtendsFile(),
 			todl.is_script ? HASH_FUNC_SHA512_NO_SPARSE : default_hashing_method, fileHasSnapshot(todl));
 	}
 	else
@@ -693,7 +698,7 @@ bool ServerDownloadThread::link_or_copy_file(const SQueueItem& todl)
 		    && (dlfiles.hashoutput=Server->openFile(hashoutput_fn, MODE_RW))!=NULL )
 		{
 			pfd_destroy.release();
-			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
+			hashFile(todl.id, dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
 			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL,
 				todl.is_script ? HASH_FUNC_SHA512_NO_SPARSE : default_hashing_method, fileHasSnapshot(todl));
 			return true;
@@ -928,7 +933,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
 		sparse_extents_f_delete.release();
-		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
+		hashFile(todl.id, dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
 			dlfiles.filepath_old, download_filesize, todl.metadata, todl.is_script, todl.sha_dig, sparse_extents_f,
 			todl.is_script ? HASH_FUNC_SHA512_NO_SPARSE : default_hashing_method, fileHasSnapshot(todl));
 	}
@@ -946,13 +951,14 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		return true;
 }
 
-void ServerDownloadThread::hashFile(std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
+void ServerDownloadThread::hashFile(int64 fileid, std::string dstpath, std::string hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
 	int64 t_filesize, const FileMetadata& metadata, bool is_script, std::string sha_dig, IFile* sparse_extents_f, char hashing_method,
 	bool has_snapshot)
 {
 	int l_backup_id=backupid;
 
 	CWData data;
+	data.addVarInt(fileid);
 	data.addString(fd->getFilename());
 	data.addInt(l_backup_id);
 	data.addInt(r_incremental?1:0);
@@ -1484,11 +1490,6 @@ bool ServerDownloadThread::sleepQueue()
 	return false;
 }
 
-std::map<std::string, std::string>& ServerDownloadThread::getFilePathCorrections()
-{
-	return filepath_corrections;
-}
-
 size_t ServerDownloadThread::getNumEmbeddedMetadataFiles()
 {
 	return num_embedded_metadata_files;
@@ -1965,10 +1966,10 @@ std::string ServerDownloadThread::tarFnToOsPath(const std::string & tar_path)
 			}
 			std::string tmp_ret = ret + toks[i];
 
-			std::map<std::string, std::string>::iterator it = filepath_corrections.find(tmp_ret);
-			if (it != filepath_corrections.end())
+			std::string corr;
+			if (filepath_corrections.get(tmp_ret, corr))
 			{
-				ret += it->second;
+				ret += corr;
 			}
 			else
 			{

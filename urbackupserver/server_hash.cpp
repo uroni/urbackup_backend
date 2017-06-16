@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <memory.h>
 #include "../urbackupcommon/file_metadata.h"
+#include "FileBackup.h"
 #include <assert.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -53,9 +54,9 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid,
-	bool snapshot_file_inplace)
+	bool snapshot_file_inplace, MaxFileId& max_file_id)
 	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), filesdao(NULL), old_backupfolders_loaded(false),
-	  logid(logid), snapshot_file_inplace(snapshot_file_inplace)
+	  logid(logid), snapshot_file_inplace(snapshot_file_inplace), max_file_id(max_file_id)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -140,6 +141,9 @@ void BackupServerHash::operator()(void)
 
 			if(action==EAction_LinkOrCopy)
 			{
+				int64 fileid;
+				rd.getVarInt(&fileid);
+
 				std::string temp_fn;
 				rd.getStr(&temp_fn);
 
@@ -209,11 +213,17 @@ void BackupServerHash::operator()(void)
 				{
 					Server->deleteFile(hashoutput_fn);
 				}
+
+				max_file_id.setMaxDownloaded(fileid);
 			}
 			else if(action==EAction_Copy)
 			{
+				int64 fileid;
+				bool b = rd.getVarInt(&fileid);
+				assert(b);
+
 				std::string source;
-				bool b = rd.getStr(&source);
+				b = rd.getStr(&source);
 				assert(b);
 				
 				std::string dest;
@@ -262,6 +272,8 @@ void BackupServerHash::operator()(void)
 						}
 					}
 				}
+
+				max_file_id.setMaxDownloaded(fileid);
 			}
 		}
 	}
@@ -618,7 +630,8 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		{
 			if (tf!=NULL
 				&& tf->Size() <= 8
-				&& os_get_file_type(os_file_prefix(tfn)) != 0)
+				&& os_get_file_type(os_file_prefix(tfn)) != 0
+				&& os_file_truncate(os_file_prefix(tfn), t_filesize) )
 			{
 				//zero patch
 				b = true;

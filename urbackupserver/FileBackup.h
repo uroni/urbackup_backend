@@ -9,6 +9,7 @@
 #include <map>
 #include "../urbackupcommon/file_metadata.h"
 #include "server_log.h"
+#include "FileMetadataDownloadThread.h"
 #include <set>
 
 class ClientMain;
@@ -17,9 +18,6 @@ class BackupServerPrepareHash;
 class ServerPingThread;
 class FileIndex;
 class PhashLoad;
-namespace server {
-class FileMetadataDownloadThread;
-}
 
 namespace
 {
@@ -43,6 +41,85 @@ struct SContinuousSequence
 	}
 	int64 id;
 	int64 next;
+};
+
+class FilePathCorrections
+{
+public:
+	FilePathCorrections()
+		: mutex(Server->createMutex()) {
+
+	}
+	void add(const std::string& path, const std::string& corr) {
+		IScopedLock lock(mutex.get());
+		filepath_corrections.insert(std::make_pair(path, corr));
+	}
+	bool get(const std::string& path, std::string& corr) {
+		IScopedLock lock(mutex.get());
+		std::map<std::string, std::string>::iterator it = filepath_corrections.find(path);
+		if (it != filepath_corrections.end())
+		{
+			corr = it->second;
+			return true;
+		}
+		return false;
+	}
+private:
+	std::auto_ptr<IMutex> mutex;
+	std::map<std::string, std::string> filepath_corrections;
+};
+
+class MaxFileId
+{
+public:
+	MaxFileId()
+		: mutex(Server->createMutex()),
+		max_downloaded(std::string::npos), max_preprocessed(0),
+		min_downloaded(0)
+	{}
+
+	void setMinDownloaded(size_t id)
+	{
+		IScopedLock lock(mutex.get());
+		if (max_downloaded>id)
+		{
+			max_downloaded = id;
+		}
+		min_downloaded = id+1;
+	}
+
+	void setMaxDownloaded(size_t id)
+	{
+		IScopedLock lock(mutex.get());
+		max_downloaded = id + 1;
+		if (max_downloaded >= min_downloaded)
+		{
+			max_downloaded = std::string::npos;
+		}
+	}
+
+	void setMaxPreProcessed(size_t id)
+	{
+		IScopedLock lock(mutex.get());
+		max_preprocessed = id + 1;
+	}
+
+	bool isFinished(size_t id)
+	{
+		IScopedLock lock(mutex.get());
+		if (id + 1 <= max_downloaded
+			&& id + 1 <= max_preprocessed)
+		{
+			return true;
+		}
+		return false;
+	}
+
+private:
+	std::auto_ptr<IMutex> mutex;
+	size_t max_downloaded;
+	size_t max_preprocessed;
+	size_t min_downloaded;
 };
 
 class FileBackup : public Backup, public FileClient::ProgressLogCallback
@@ -69,7 +146,7 @@ public:
 
 	static std::string convertToOSPathFromFileClient(std::string path);
 
-	static std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, std::map<std::string, std::string>& filepath_corrections);
+	static std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, FilePathCorrections& filepath_corrections);
 
 	virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps);
 
@@ -115,7 +192,6 @@ protected:
 	bool startFileMetadataDownloadThread();
 	bool stopFileMetadataDownloadThread(bool stopped, size_t expected_embedded_metadata_files);
 	void parseSnapshotFailed(const std::string& logline);
-	void addFilePathCorrections(const std::map<std::string, std::string>& c);
 	std::string permissionsAllowAll();
 	bool loadWindowsBackupComponentConfigXml(FileClient &fc);
 	bool startPhashDownloadThread(const std::string& async_id);
@@ -155,8 +231,10 @@ protected:
 
     std::auto_ptr<server::FileMetadataDownloadThread> metadata_download_thread;
 	THREADPOOL_TICKET metadata_download_thread_ticket;
+	std::auto_ptr<server::FileMetadataDownloadThread::FileMetadataApplyThread> metadata_apply_thread;
+	THREADPOOL_TICKET metadata_apply_thread_ticket;
 
-	std::map<std::string, std::string> filepath_corrections;
+	FilePathCorrections filepath_corrections;
 
 	std::vector<std::string> shares_without_snapshot;
 
@@ -165,4 +243,6 @@ protected:
 
 	std::auto_ptr<PhashLoad> phash_load;
 	THREADPOOL_TICKET phash_load_ticket;
+
+	MaxFileId max_file_id;
 };

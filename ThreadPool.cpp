@@ -21,6 +21,7 @@
 #include "ThreadPool.h"
 #include "Server.h"
 #include "stringtools.h"
+#include <math.h>
 
 const unsigned int max_waiting_threads=2;
 
@@ -304,12 +305,28 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& name)
 {
 	IScopedLock lock(mutex);
-	if( nThreads-nRunning==0 )
+	size_t retries = 0;
+	while( nThreads-nRunning==0 )
 	{
 		CPoolThread *nt=new CPoolThread(this);
-		Server->createThread(nt);
-		++nThreads;
-		threads.push_back(nt);
+		if (!Server->createThread(nt))
+		{
+			delete nt;
+			lock.relock(NULL);
+			unsigned int waittime = (std::min)(static_cast<unsigned int>(1000.*pow(2., static_cast<double>(++retries))), (unsigned int)30 * 60 * 1000); //30min
+			if (retries>20)
+			{
+				waittime = (unsigned int)30 * 60 * 1000;
+			}
+			Server->Log("Retrying creating thread for thread pool in "+PrettyPrintTime(waittime)+"...", LL_WARNING);
+			Server->wait(waittime);
+			lock.relock(mutex);
+		}
+		else
+		{
+			++nThreads;
+			threads.push_back(nt);
+		}
 	}
 
 	toexecute.push_back(SNewTask(runnable, ++currticket, name));

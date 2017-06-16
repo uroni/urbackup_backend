@@ -75,6 +75,12 @@
 #define SEEK_HOLE 4
 #endif
 
+#if defined(__FreeBSD__)
+//2017-05-12: Make illegal. Performance problems with ZFS on FreeBSD
+#undef SEEK_HOLE
+#define SEEK_HOLE 400
+#endif
+
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
 #define SEND_TIMEOUT 300000

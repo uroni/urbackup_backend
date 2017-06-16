@@ -78,6 +78,11 @@
 				<div class="col-sm-offset-2">
 					<input type="button" class="btn btn-default" value="{tSave}" onClick="saveReportSettings()" />
 				</div>
+				{?can_report_script_edit}
+					<br />
+					<br />
+					<a href="javascript: show_report_script1()">{tEdit report script}</a>
+				{/can_report_script_edit}																									
 			</form>
 			{:else}
 				{tYou need to create a user to be able to send reports}
