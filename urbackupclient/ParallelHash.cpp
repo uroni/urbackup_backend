@@ -144,6 +144,8 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	if (id == ID_SET_CURR_DIRS)
 	{
+		curr_files.clear();
+
 		if (!data.getStr2(&curr_dir)
 			|| !data.getInt(&curr_tgroup)
 			|| !data.getStr2(&curr_snapshot_dir))
@@ -157,7 +159,10 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	{
 		int64 target_generation;
 		if (!data.getVarInt(&target_generation))
+		{
+			curr_files.clear();
 			return false;
+		}
 
 #ifndef _WIN32
 		std::string path_lower = curr_dir + os_file_sep();
@@ -170,7 +175,10 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		if (clientdao.getFiles(path_lower, curr_tgroup, files, generation))
 		{
 			if (generation != target_generation)
+			{
+				curr_files.clear();
 				return true;
+			}
 
 			std::sort(curr_files.begin(), curr_files.end());
 
@@ -195,9 +203,11 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 				addModifyFileBuffer(clientdao, path_lower, curr_tgroup, files, target_generation);
 			}
 
+			curr_files.clear();
 			return true;
 		}
 
+		curr_files.clear();
 		return false;
 	}
 	else if (id == ID_INIT_HASH)

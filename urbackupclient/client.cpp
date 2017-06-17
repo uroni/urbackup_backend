@@ -2022,6 +2022,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
+				int64 file_id_backup = file_id;
 
 				SLastFileList backup;
 				if (index_follow_last)
@@ -2083,6 +2084,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 						}
 
 						outfile.seekp(pos);
+						file_id = file_id_backup;
 					}
 				}
 				else
