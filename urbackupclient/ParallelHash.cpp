@@ -279,7 +279,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 		fandhash.hash = treehash.finalize();
 
-		TreeHash treehash2(NULL);
+		TreeHash treehash2(client_hash->hasCbtFile() ? client_hash.get() : NULL);
 		client_hash->getShaBinary(full_path, treehash2, false);
 		
 		std::string other_hash = treehash2.finalize();
