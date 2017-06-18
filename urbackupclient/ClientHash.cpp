@@ -183,9 +183,12 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 							assert(sparse_extent_content.size() == chunkhash_single_size);
 						}
 
+						std::string cbt_info = "fpos=" + convert(fpos) + " extent_offset=" + convert(extents[curr_extent_idx].offset) +
+							" extent_length=" + convert(extents[curr_extent_idx].size) +
+							" volume_pos=" + convert(volume_pos);
 						if (memcmp(chunkhash + sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size) == 0)
 						{
-							Server->Log("Sparse extent from CBT data at fpos " + convert(fpos), LL_DEBUG);
+							Server->Log("Sparse extent from CBT data at "+cbt_info, LL_DEBUG);
 							if (skip_start == -1)
 							{
 								skip_start = fpos;
@@ -202,7 +205,7 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 								skip_start = -1;
 							}
 
-							Server->Log("Hash data from CBT data at fpos " + convert(fpos)+": "+
+							Server->Log("Hash data from CBT data at "+ cbt_info + ": "+
 								base64_encode((unsigned char*)(chunkhash + sizeof(_u16)), chunkhash_single_size), LL_DEBUG);
 
 							hf.addHashAllAdler(chunkhash + sizeof(_u16), chunkhash_single_size, bsize);
