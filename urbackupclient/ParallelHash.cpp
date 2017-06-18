@@ -278,6 +278,16 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		}
 
 		fandhash.hash = treehash.finalize();
+
+		TreeHash treehash2(NULL);
+		client_hash->getShaBinary(full_path, treehash, false);
+		
+		std::string other_hash = treehash2.finalize();
+		if (other_hash != fandhash.hash)
+		{
+			Server->Log("Treehash compare without CBT failed at file \"" + full_path 
+				+ "\". Real hash: "+ base64_encode_dash(other_hash), LL_ERROR);
+		}
 	}
 	else
 	{

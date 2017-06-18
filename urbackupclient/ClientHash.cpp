@@ -202,7 +202,8 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 								skip_start = -1;
 							}
 
-							Server->Log("Hash data from CBT data at fpos " + convert(fpos), LL_DEBUG);
+							Server->Log("Hash data from CBT data at fpos " + convert(fpos)+": "+
+								base64_encode((unsigned char*)(chunkhash + sizeof(_u16)), chunkhash_single_size), LL_DEBUG);
 
 							hf.addHashAllAdler(chunkhash + sizeof(_u16), chunkhash_single_size, bsize);
 						}
@@ -299,6 +300,8 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 
 void ClientHash::hash_output_all_adlers(int64 pos, const char * hash, size_t hsize)
 {
+	Server->Log("Hash output at pos " + convert(pos) + ": " + base64_encode((const unsigned char*)hash, hsize),
+		LL_DEBUG);
 	if (index_chunkhash_pos != -1
 		&& index_hdat_file != NULL)
 	{
