@@ -9,6 +9,8 @@ cryptoplugin.dll
 --plugin
 fileservplugin.dll
 --plugin
+luaplugin.dll
+--plugin
 urbackupserver.dll
 --logfile
 urbackup.log

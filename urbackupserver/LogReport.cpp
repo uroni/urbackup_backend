@@ -117,6 +117,9 @@ bool run_report_script(int incremental, bool resumed, int image,
 	int infos, int warnings, int errors, bool success, const std::string& report_mail, 
 	const std::string & data, const std::string& clientname)
 {
+	if (lua_interpreter == NULL)
+		return false;
+
 	std::string script;
 	{
 		IScopedLock lock(mutex);
