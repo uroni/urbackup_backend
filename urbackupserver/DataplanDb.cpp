@@ -25,7 +25,7 @@
 DataplanDb* DataplanDb::instance = NULL;
 
 DataplanDb::DataplanDb()
-	: mutex(Server->createSharedMutex())
+	: mutex(Server->createMutex())
 {
 }
 
@@ -49,7 +49,7 @@ bool DataplanDb::read(const std::string & fn)
 		return false;
 	}
 
-	IScopedWriteLock lock(mutex.get());
+	IScopedLock lock(mutex.get());
 
 	items.clear();
 	cache.clear();
@@ -73,7 +73,7 @@ bool DataplanDb::read(const std::string & fn)
 
 bool DataplanDb::getLimit(const std::string & hostname, std::string& pattern, int64& limit)
 {
-	IScopedReadLock lock(mutex.get());
+	IScopedLock lock(mutex.get());
 
 	SDataplanItem* item = cache.get(hostname);
 	if (item != NULL)
@@ -95,9 +95,6 @@ bool DataplanDb::getLimit(const std::string & hostname, std::string& pattern, in
 			pattern = items[i].hostname_glob;
 
 			SDataplanItem ldi = items[i];
-
-			lock.relock(NULL);
-			IScopedWriteLock wrlock(mutex.get());
 					
 			cache.put(hostname, ldi);
 
@@ -109,9 +106,6 @@ bool DataplanDb::getLimit(const std::string & hostname, std::string& pattern, in
 			return true;
 		}
 	}
-
-	lock.relock(NULL);
-	IScopedWriteLock wrlock(mutex.get());
 
 	SDataplanItem di;
 	di.limit = -1;

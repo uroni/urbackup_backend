@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Interface/Types.h"
-#include "../Interface/SharedMutex.h"
+#include "../Interface/Mutex.h"
 #include <memory>
 #include <map>
 #include "../common/lrucache.h"
@@ -26,7 +26,7 @@ public:
 
 private:
 	static DataplanDb* instance;
-	std::auto_ptr<ISharedMutex> mutex;
+	std::auto_ptr<IMutex> mutex;
 	std::vector<SDataplanItem> items;
 	common::lrucache<std::string, SDataplanItem> cache;
 	
