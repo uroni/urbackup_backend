@@ -633,20 +633,6 @@ ACTION_IMPL(status)
 			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok FROM "
 			" clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id "+filter+" ORDER BY name");
 
-		double backup_ok_mod_file=3.;
-		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
-		if(res_t.size()>0)
-		{
-			backup_ok_mod_file=atof((res_t[0]["value"]).c_str());
-		}
-
-		double backup_ok_mod_image=3.;
-		res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_image' AND clientid=0");
-		if(res_t.size()>0)
-		{
-			backup_ok_mod_image=atof((res_t[0]["value"]).c_str());
-		}
-
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
 
 		for(size_t i=0;i<res.size();++i)
@@ -656,13 +642,15 @@ ACTION_IMPL(status)
 			std::string clientname=res[i]["name"];
 			stat.set("id", clientid);
 			stat.set("name", clientname);
-			stat.set("lastbackup", watoi64(res[i]["lastbackup"]));
-			stat.set("lastbackup_image", watoi64(res[i]["lastbackup_image"]));
+			int64 lastbackup = watoi64(res[i]["lastbackup"]);
+			int64 lastbackup_image = watoi64(res[i]["lastbackup_image"]);
+			stat.set("lastbackup", lastbackup);
+			stat.set("lastbackup_image", lastbackup_image);
 			stat.set("delete_pending", res[i]["delete_pending"] );
 			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
 			stat.set("groupname", res[i]["groupname"]);
-			stat.set("file_ok", res[i]["file_ok"] == "1");
-			stat.set("image_ok", res[i]["image_ok"] == "1");
+			stat.set("file_ok", res[i]["file_ok"] == "1" && lastbackup!=0);
+			stat.set("image_ok", res[i]["image_ok"] == "1" && lastbackup_image!=0);
 
 			std::string ip="-";
 			std::string client_version_string = res[i]["client_version_str"];

@@ -1801,6 +1801,21 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 					VSSLog("Hint: Directory to backup (\"" + orig_dir + "\") does not exist. It may have been deleted or renamed. "
 						"Set the \"optional\" directory flag if you do not want backups to fail if directories are missing.", LL_WARNING);
+
+#ifdef _WIN32
+					if (orig_dir.size() > 1
+						&& orig_dir[1] == ':')
+					{
+						std::string vol = add_trailing_slash(orig_dir).substr(0, 3);
+						if (!os_directory_exists(vol))
+						{
+							VSSLog("Hint: Volume (\"" + vol + "\") does not exist. It may currently be not present. "
+								"If you are trying to backup a network location via mapped network drives please be aware "
+								"that mapped network drives are per user and the UrBackup client runs as \"LOCAL SYSTEM\" user per default."
+								"See https://www.urbackup.org/faq.html#use_shares on how to backup network locations", LL_WARNING);
+						}
+					}
+#endif
 				}
 			}
 
@@ -2007,6 +2022,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
+				int64 file_id_backup = file_id;
 
 				SLastFileList backup;
 				if (index_follow_last)
@@ -2068,6 +2084,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 						}
 
 						outfile.seekp(pos);
+						file_id = file_id_backup;
 					}
 				}
 				else
@@ -6819,12 +6836,14 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 
 	VSSLog("Removing deleted directories from index for \"" + volpath + "\"...", LL_DEBUG);
 	std::vector<std::string> deldirs = cd->getDelDirs(volpath, false);
-	DBScopedWriteTransaction write_transaction(db);
-	for (size_t j = 0; j < deldirs.size(); ++j)
 	{
-		for (size_t i = 0; i < db_tgroup.size(); ++i)
+		DBScopedWriteTransaction write_transaction(db);
+		for (size_t j = 0; j < deldirs.size(); ++j)
 		{
-			cd->removeDeletedDir(deldirs[j], db_tgroup[i]);
+			for (size_t i = 0; i < db_tgroup.size(); ++i)
+			{
+				cd->removeDeletedDir(deldirs[j], db_tgroup[i]);
+			}
 		}
 	}
 

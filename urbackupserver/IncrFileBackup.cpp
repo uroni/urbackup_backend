@@ -277,6 +277,7 @@ bool IncrFileBackup::doFileBackup()
 		if(!client_main->isOnInternetConnection())
 		{
 			ServerLogger::Log(logid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
+			deleteBackup();
 			return doFullBackup();
 		}
 		else

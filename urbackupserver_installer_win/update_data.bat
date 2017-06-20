@@ -14,6 +14,9 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 copy /Y "..\release\fileservplugin.dll" "data\fileservplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
+copy /Y "..\release\luaplugin.dll" "data\luaplugin.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
 mkdir data_common
 
 copy /Y "..\server-license.txt" "data_common\license.txt"
@@ -76,4 +79,7 @@ copy /Y "..\x64\Release\cryptoplugin.dll" "data_x64\cryptoplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\fileservplugin.dll" "data_x64\fileservplugin.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+copy /Y "..\x64\release\luaplugin.dll" "data_x64\luaplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%

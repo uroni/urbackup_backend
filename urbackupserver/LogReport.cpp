@@ -117,6 +117,9 @@ bool run_report_script(int incremental, bool resumed, int image,
 	int infos, int warnings, int errors, bool success, const std::string& report_mail, 
 	const std::string & data, const std::string& clientname)
 {
+	if (lua_interpreter == NULL)
+		return false;
+
 	std::string script;
 	{
 		IScopedLock lock(mutex);
@@ -137,6 +140,7 @@ bool run_report_script(int incremental, bool resumed, int image,
 	param["errors"] = errors;
 	param["report_mail"] = report_mail;
 	param["clientname"] = clientname;
+	param["success"] = success;
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;
 	
 	std::vector<std::string> msgs;

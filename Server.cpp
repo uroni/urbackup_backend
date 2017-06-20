@@ -1354,7 +1354,7 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 	SIZE_T stack_size = 0;
 	if (flags & IServer::CreateThreadFlags_LargeStackSize)
 	{
-		stack_size = 16 * 1024 * 1024;
+		stack_size = 512 * 1024 * 1024;
 	}
 
 	void* param;
@@ -1403,7 +1403,7 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 
 	if (flags & IServer::CreateThreadFlags_LargeStackSize)
 	{
-		pthread_attr_setstacksize(&attr, 16*1024*1024);
+		pthread_attr_setstacksize(&attr, 512*1024*1024);
 	}
 
 	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
