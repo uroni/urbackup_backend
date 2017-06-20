@@ -1,5 +1,6 @@
 #include <string>
 #include <string>
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include "../stringtools.h"
@@ -407,49 +408,6 @@ bool is_subvolume(int mode, std::string subvolume_folder)
 #endif
 }
 
-bool promote_dependencies(const std::string& snapshot, std::vector<std::string>& dependencies)
-{
-	std::cout << "Searching for origin " << snapshot << std::endl;
-	
-	std::string snap_data;
-	int rc = exec_wait(find_zfs_cmd(), snap_data, "list", "-H", "-o", "name", NULL);
-	if(rc!=0)
-		return false;
-	
-	std::vector<std::string> snaps;
-	TokenizeMail(snap_data, snaps, "\n");
-		
-	std::string snap_folder = ExtractFilePath(snapshot);
-	for(size_t i=0;i<snaps.size();++i)
-	{	
-		if( !next(trim(snaps[i]), 0, snap_folder)
-			|| trim(snaps[i]).size()<=snap_folder.size() )
-			continue;
-		
-		std::string stdout;
-		std::string subvolume_folder = snaps[i];
-		int rc=exec_wait(find_zfs_cmd(), stdout, "get", "-H", "-o", "value", "origin", subvolume_folder.c_str(), NULL);
-		if(rc==0)
-		{
-			stdout=trim(stdout);
-			
-			if(stdout==snapshot)
-			{	
-				std::cout << "Origin is " << subvolume_folder << std::endl;
-				
-				if(exec_wait(find_zfs_cmd(), true, "promote", subvolume_folder.c_str(), NULL)!=0)
-				{
-					return false;
-				}
-				
-				dependencies.push_back(subvolume_folder);
-			}
-		}
-	}
-	
-	return true;
-}
-
 bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 {
 #ifdef _WIN32
@@ -480,45 +438,59 @@ bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 		}
 		return rc==0;
 	}
+
 	else if(mode==mode_zfs)
 	{
-		exec_wait(find_zfs_cmd(), false, "destroy", (subvolume_folder+"@ro").c_str(), NULL);
-		int rc = exec_wait(find_zfs_cmd(), false, "destroy", subvolume_folder.c_str(), NULL);
-		if(rc!=0)
+		int rc=exec_wait(find_zfs_cmd(), false, "destroy", "-r", subvolume_folder.c_str(), NULL);
+		if (rc!=0)
 		{
-			std::cout << "Destroying subvol " << subvolume_folder << " failed. Promoting dependencies..." << std::endl;
+			std::cout << "Checking " << subvolume_folder << " for dependencies..." << std::endl;
+			std::string clone_data;
+			rc=exec_wait(find_zfs_cmd(), clone_data, "get", "clones", "-H", "-o", "value", (subvolume_folder+"@ro").c_str(), NULL);
 			std::string rename_name = ExtractFileName(subvolume_folder);
-			if(exec_wait(find_zfs_cmd(), true, "rename", (subvolume_folder+"@ro").c_str(), (subvolume_folder+"@"+rename_name).c_str(), NULL)!=0
-				&& is_subvolume(mode, subvolume_folder+"@ro") )
-			{
-				return false;
-			}
-			
-			std::vector<std::string> dependencies;
-			if(!promote_dependencies(subvolume_folder+"@"+rename_name, dependencies))
-			{
-				return false;
-			}
-
-			rc = exec_wait(find_zfs_cmd(), true, "destroy", subvolume_folder.c_str(), NULL);
-			
 			if(rc==0)
 			{
-				for(size_t i=0;i<dependencies.size();++i)
+				std::vector<std::string> clones;
+				TokenizeMail(clone_data, clones, "\n");
+				std::cout << "Dependencies exist..." << std::endl;
+
+				if (exec_wait(find_zfs_cmd(), true, "rename", (subvolume_folder+"@ro").c_str(), (subvolume_folder+"@"+rename_name).c_str(), NULL)!=0 && is_subvolume(mode, subvolume_folder+"@ro"))
 				{
-					if(is_subvolume(mode, dependencies[i]+"@"+rename_name))
+					return false;
+				}
+
+				for(size_t i=0;i<clones.size();++i)
+				{
+					std::cout << "Promoting " << clones[i].c_str() << "..." << std::endl;
+					if(exec_wait(find_zfs_cmd(), true, "promote", clones[i].c_str(), NULL)!=0)
 					{
-						rc = exec_wait(find_zfs_cmd(), true, "destroy", (dependencies[i]+"@"+rename_name).c_str(), NULL);
-						if(rc!=0)
-						{
-							break;
-						}
+						break;
+					}
+				}
+			
+				std::cout << "Destroying subvol " << subvolume_folder << "..." << std::endl;
+				if(exec_wait(find_zfs_cmd(), true, "destroy", "-r", subvolume_folder.c_str(), NULL)!=0)
+				{
+					return false;
+				}
+
+				for(size_t i=0;i<clones.size();++i)
+				{
+					if(exec_wait(find_zfs_cmd(), true, "destroy", (clones[i]+"@"+rename_name).c_str(), NULL)!=0)
+					{
+						return false;
 					}
 				}
 			}
+			else
+			{
+				return false;
+			}
 		}
-		
+
+		std::cout << "Destroyed subvol " << subvolume_folder << " successfully." << std::endl;
 		return rc==0;
+
 	}
 	return false;
 #endif
