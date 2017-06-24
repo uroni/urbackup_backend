@@ -31,7 +31,8 @@ g.languages=[
 				{ l: "Português", s: "pt" },
 				{ l: "Svensk", s: "sv" },
 				{ l: "Română", s: "ro" },
-				{ l: "Suomi", s: "fi" }
+				{ l: "Suomi", s: "fi" },
+				{ l: "Polskie", s: "pl" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
