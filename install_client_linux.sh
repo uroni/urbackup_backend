@@ -20,7 +20,7 @@ then
 	exit 6
 fi
 
-if [ $SILENT = no ]
+if [ $SILENT = no ] && [ -t 1 ]
 then
 	echo "Installation of UrBackup Client $version_short$ to $PREFIX ... Proceed ? [Y/n]"
 	read yn
