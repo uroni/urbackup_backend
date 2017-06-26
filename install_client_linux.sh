@@ -12,6 +12,12 @@ then
 	SILENT=yes
 fi
 
+if ! [ -t 1 ]
+then
+	echo "Stdout is not a TTY. Running non-interactively"
+	SILENT=yes
+fi
+
 USER=`whoami`
 
 if [ "x$USER" != "xroot" ]
@@ -20,7 +26,7 @@ then
 	exit 6
 fi
 
-if [ $SILENT = no ] && [ -t 1 ]
+if [ $SILENT = no ]
 then
 	echo "Installation of UrBackup Client $version_short$ to $PREFIX ... Proceed ? [Y/n]"
 	read yn
