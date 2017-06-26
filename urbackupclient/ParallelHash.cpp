@@ -6,6 +6,8 @@
 #include "database.h"
 #include "../stringtools.h"
 
+//#define HASH_CBT_CHECK
+
 namespace
 {
 	const size_t max_modify_file_buffer_size = 2 * 1024 * 1024;
@@ -279,6 +281,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 		fandhash.hash = treehash.finalize();
 
+#ifdef HASH_CBT_CHECK
 		TreeHash treehash2(client_hash->hasCbtFile() ? client_hash.get() : NULL);
 		client_hash->getShaBinary(full_path, treehash2, false);
 		
@@ -288,6 +291,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 			Server->Log("Treehash compare without CBT failed at file \"" + full_path 
 				+ "\". Real hash: "+ base64_encode_dash(other_hash), LL_ERROR);
 		}
+#endif
 	}
 	else
 	{
