@@ -239,24 +239,46 @@ then
 	install -c urbackupclientbackend.service $SYSTEMD_DIR
 	systemctl enable urbackupclientbackend.service
 	
+	SYSTEMD_DBUS=yes
+	
 	if [ $RESTART_SERVICE = no ]
 	then
 		echo "Starting UrBackup Client service..."
-		systemctl start urbackupclientbackend.service
+		if ! systemctl start urbackupclientbackend.service
+		then
+			if ! systemctl > /dev/null
+			then
+				SYSTEMD_DBUS=no
+			fi
+		fi
 	else
 		echo "Restarting UrBackup Client service..."
 		#This will kill the installer during auto-update.
 		#So do not do anything (important) after that.
-		systemctl restart urbackupclientbackend.service
+		if ! systemctl restart urbackupclientbackend.service
+		then
+			if ! systemctl > /dev/null
+			then
+				SYSTEMD_DBUS=no
+				killall urbackupclientbackend || true
+			fi
+		fi
 	fi	
 	
-	if systemctl status urbackupclientbackend.service >/dev/null 2>&1
+	if [ $SYSTEMD_DBUS = yes ]
 	then
-		echo "Successfully started client service. Installation complete."
+		if systemctl status urbackupclientbackend.service >/dev/null 2>&1
+		then
+			echo "Successfully started client service. Installation complete."
+		else
+			echo "Starting client service failed. Please investigate."
+			exit 1
+		fi
 	else
-		echo "Starting client service failed. Please investigate."
-		exit 1
+		echo "Systemd failed (see previous messages). Starting urbackupclientbackend manually this time..."
+		urbackupclientbackend -d -c $CONFIG_FILE
 	fi
+	
 else
 	echo "Installing System V init script..."
 	
