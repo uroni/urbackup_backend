@@ -77,8 +77,8 @@ void Mailer::operator()()
 			if (!queued_mail)
 			{
 				cond->wait(&lock, 5 * 60 * 1000);
-				queued_mail = false;
 			}
+			queued_mail = false;
 		}
 
 		q_get_mail->Bind(Server->getTimeMS());
