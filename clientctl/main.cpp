@@ -266,7 +266,7 @@ public:
 			{
 				return;
 			}
-			wait(100);
+			::wait(100);
 		} while (getTimeMS() - starttime < maxtimems);
 	}
 
