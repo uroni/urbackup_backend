@@ -31,6 +31,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include "../config.h"
+#include <time.h>
+#include <sys/time.h>
 #define PWFILE VARDIR "/urbackup/pw.txt"
 #define PWFILE_CHANGE VARDIR "/urbackup/pw_change.txt"
 #else
@@ -41,12 +43,58 @@
 #define PWFILE_CHANGE "pw_change.txt"
 #endif
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 void wait(unsigned int ms)
 {
 #ifdef _WIN32
 	Sleep(ms);
 #else
 	usleep(ms * 1000);
+#endif
+}
+
+int64 getTimeMS()
+{
+#ifdef _WIN32
+	return GetTickCount64();
+#else
+	//return (unsigned int)(((double)clock()/(double)CLOCKS_PER_SEC)*1000.0);
+	/*
+	boost::xtime xt;
+	boost::xtime_get(&xt, boost::TIME_UTC);
+	static boost::int_fast64_t start_t=xt.sec;
+	xt.sec-=start_t;
+	unsigned int t=xt.sec*1000+(unsigned int)((double)xt.nsec/1000000.0);
+	return t;*/
+	/*timeval tp;
+	gettimeofday(&tp, NULL);
+	static long start_t=tp.tv_sec;
+	tp.tv_sec-=start_t;
+	return tp.tv_sec*1000+tp.tv_usec/1000;
+	*/
+#ifdef __APPLE__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	return static_cast<int64>(mts.tv_sec) * 1000 + mts.tv_nsec / 1000000;
+#else
+	timespec tp;
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0)
+	{
+		timeval tv;
+		gettimeofday(&tv, NULL);
+		static long start_t = tv.tv_sec;
+		tv.tv_sec -= start_t;
+		return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	}
+	return static_cast<int64>(tp.tv_sec) * 1000 + tp.tv_nsec / 1000000;
+#endif //__APPLE__
 #endif
 }
 
@@ -1371,6 +1419,42 @@ int action_remove_backupdir(std::vector<std::string> args)
 	}
 }
 
+int action_wait_for_backend(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Wait for backend to become available", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd, true);
+
+	TCLAP::ValueArg<int> time_arg("t", "time",
+		"Max time in seconds to wait",
+		false, 60, "seconds", cmd);
+
+	cmd.parse(args);
+
+	if (!pw_client_cmd.set())
+	{
+		return 3;
+	}
+
+	int64 starttime = getTimeMS();
+	do
+	{
+		int64 thistime = getTimeMS();
+		Connector::getStatus();
+		if (!Connector::hasError())
+		{
+			return 0;
+		}
+		if (getTimeMS() - thistime < 30)
+		{
+			wait(100);
+		}
+	} while (getTimeMS() - starttime < time_arg.getValue() * 1000);
+
+	std::cerr << "Could not connect to backend in specified time" << std::endl;
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc==0)
@@ -1399,6 +1483,8 @@ int main(int argc, char *argv[])
 	action_funs.push_back(action_list_backupdirs);
 	actions.push_back("remove-backupdir");
 	action_funs.push_back(action_remove_backupdir);
+	actions.push_back("wait-for-backend");
+	action_funs.push_back(action_wait_for_backend);
 
 	bool has_help=false;
 	bool has_version=false;
