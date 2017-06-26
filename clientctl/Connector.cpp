@@ -187,9 +187,8 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	}
 
 	std::string ret;
-	ret.resize(packetsize);
-	memcpy(&ret[0], resp, packetsize);
-	delete resp;
+	ret.assign(resp, packetsize);
+	delete[] resp;
 
 	closesocket(p);
 
