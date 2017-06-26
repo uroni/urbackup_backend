@@ -289,6 +289,11 @@ bool Connector::saveSharedPaths(const std::vector<SBackupDir> &res)
 		return true;
 }
 
+std::string Connector::getStatusRaw()
+{
+	return getResponse("STATUS", "", false);
+}
+
 SStatus Connector::getStatus(void)
 {
 	std::string d=getResponse("STATUS","",false);

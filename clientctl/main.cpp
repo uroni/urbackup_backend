@@ -1455,8 +1455,9 @@ int action_wait_for_backend(std::vector<std::string> args)
 	do
 	{
 		int64 thistime = getTimeMS();
-		Connector::getStatus();
-		if (!Connector::hasError())
+		std::string d = Connector::getStatusRaw();
+		if (!Connector::hasError()
+			&& !d.empty())
 		{
 			return 0;
 		}
