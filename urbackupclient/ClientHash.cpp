@@ -11,6 +11,8 @@
 #include "../md5.h"
 #include "../urbackupcommon/TreeHash.h"
 
+#define EX_DEBUG(x) 
+
 namespace
 {
 	bool buf_is_zero(const char* buf, size_t bsize)
@@ -132,7 +134,7 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 			{
 				skip_start = fpos;
 			}
-			Server->Log("Sparse extent at fpos " + convert(fpos), LL_DEBUG);
+			EX_DEBUG(Server->Log("Sparse extent at fpos " + convert(fpos), LL_DEBUG);)
 			fpos += bsize;
 			rc = static_cast<_u32>(bsize);
 			continue;
@@ -183,12 +185,12 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 							assert(sparse_extent_content.size() == chunkhash_single_size);
 						}
 
-						std::string cbt_info = "fpos=" + convert(fpos) + " extent_offset=" + convert(extents[curr_extent_idx].offset) +
+						EX_DEBUG(std::string cbt_info = "fpos=" + convert(fpos) + " extent_offset=" + convert(extents[curr_extent_idx].offset) +
 							" extent_length=" + convert(extents[curr_extent_idx].size) +
-							" volume_pos=" + convert(volume_pos);
+							" volume_pos=" + convert(volume_pos);)
 						if (memcmp(chunkhash + sizeof(_u16), sparse_extent_content.data(), chunkhash_single_size) == 0)
 						{
-							Server->Log("Sparse extent from CBT data at "+cbt_info, LL_DEBUG);
+							EX_DEBUG(Server->Log("Sparse extent from CBT data at "+cbt_info, LL_DEBUG);)
 							if (skip_start == -1)
 							{
 								skip_start = fpos;
@@ -205,8 +207,8 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 								skip_start = -1;
 							}
 
-							Server->Log("Hash data from CBT data at "+ cbt_info + ": "+
-								base64_encode((unsigned char*)(chunkhash + sizeof(_u16)), chunkhash_single_size), LL_DEBUG);
+							EX_DEBUG(Server->Log("Hash data from CBT data at "+ cbt_info + ": "+
+								base64_encode((unsigned char*)(chunkhash + sizeof(_u16)), chunkhash_single_size), LL_DEBUG);)
 
 							hf.addHashAllAdler(chunkhash + sizeof(_u16), chunkhash_single_size, bsize);
 						}
@@ -256,7 +258,7 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 			{
 				skip_start = fpos;
 			}
-			Server->Log("Sparse extent (zeroes) at fpos " + convert(fpos), LL_DEBUG);
+			EX_DEBUG(Server->Log("Sparse extent (zeroes) at fpos " + convert(fpos), LL_DEBUG);)
 
 			fpos += bsize;
 			rc = bsize;
@@ -303,8 +305,8 @@ bool ClientHash::getShaBinary(const std::string & fn, IHashFunc & hf, bool with_
 
 void ClientHash::hash_output_all_adlers(int64 pos, const char * hash, size_t hsize)
 {
-	Server->Log("Hash output at pos " + convert(pos) + ": " + base64_encode((const unsigned char*)hash, hsize),
-		LL_DEBUG);
+	EX_DEBUG(Server->Log("Hash output at pos " + convert(pos) + ": " + base64_encode((const unsigned char*)hash, hsize),
+		LL_DEBUG);)
 	if (index_chunkhash_pos != -1
 		&& index_hdat_file != NULL)
 	{
