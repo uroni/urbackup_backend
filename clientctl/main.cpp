@@ -1436,7 +1436,7 @@ int action_wait_for_backend(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Wait for backend to become available", ' ', cmdline_version);
 
-	PwClientCmd pw_client_cmd(cmd, true);
+	PwClientCmd pw_client_cmd(cmd, false);
 
 	TCLAP::ValueArg<int> time_arg("t", "time",
 		"Max time in seconds to wait",
@@ -1459,6 +1459,7 @@ int action_wait_for_backend(std::vector<std::string> args)
 		if (!Connector::hasError()
 			&& !d.empty())
 		{
+			std::cout << "Resp: \"" << d << "\"" << std::endl;
 			return 0;
 		}
 		if (getTimeMS() - thistime < 30)
