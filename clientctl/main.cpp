@@ -1459,7 +1459,6 @@ int action_wait_for_backend(std::vector<std::string> args)
 		if (!Connector::hasError()
 			&& !d.empty())
 		{
-			std::cout << "Resp: \"" << d << "\"" << std::endl;
 			return 0;
 		}
 		if (getTimeMS() - thistime < 30)

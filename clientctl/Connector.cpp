@@ -178,7 +178,7 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 		
 
 		resp=tcpstack.getPacket(&packetsize);
-		if(packetsize==0)
+		if(resp==NULL || packetsize==0)
 		{
 			closesocket(p);
 			busy=false;

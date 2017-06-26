@@ -19,7 +19,9 @@
 #include "tcpstack.h"
 #include <memory.h>
 #include "../socket_header.h"
+#include "../stringtools.h"
 
+const unsigned int max_packet_size = 1 * 1024 * 1024;
 
 void CTCPStack::AddData(char* buf, size_t datasize)
 {
@@ -55,33 +57,30 @@ size_t CTCPStack::Send(SOCKET p, const std::string &msg)
 
 char* CTCPStack::getPacket(size_t* packetsize)
 {
-	if(buffer.size()>1)
+	if (buffer.size() >= sizeof(MAX_PACKETSIZE))
 	{
 		MAX_PACKETSIZE len;
-		memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE) );
+		memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE));
+		len = little_endian(len);
 
-		if(len==0)
+		if (len<max_packet_size && buffer.size() >= (size_t)len + sizeof(MAX_PACKETSIZE))
 		{
-			*packetsize=0;
-			buffer.erase(buffer.begin(), buffer.begin()+len+sizeof(MAX_PACKETSIZE));
-			return NULL;
-		}
+			char* buf = new char[len + 1];
+			if (len>0)
+			{
+				memcpy(buf, &buffer[sizeof(MAX_PACKETSIZE)], len);
+			}
 
-		if(buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
-		{
-			char* buf=new char[len+1];
-			memcpy(buf, &buffer[sizeof(MAX_PACKETSIZE)], len);
+			(*packetsize) = len;
 
-			(*packetsize)=len;
+			buffer.erase(buffer.begin(), buffer.begin() + len + sizeof(MAX_PACKETSIZE));
 
-			buffer.erase(buffer.begin(), buffer.begin()+len+sizeof(MAX_PACKETSIZE));
-
-            buf[len]=0;
+			buf[len] = 0;
 
 			return buf;
 		}
 	}
-	*packetsize=-1;
+	*packetsize = 0;
 	return NULL;
 }
 
