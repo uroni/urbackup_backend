@@ -257,6 +257,19 @@ public:
 
 	}
 
+	void wait(int64 maxtimems)
+	{
+		int64 starttime = getTimeMS();
+		do
+		{
+			if (FileExists(pw_file_arg.getValue()))
+			{
+				return;
+			}
+			wait(100);
+		} while (getTimeMS() - starttime < maxtimems);
+	}
+
 	bool set()
 	{
 		if (change)
@@ -1430,6 +1443,8 @@ int action_wait_for_backend(std::vector<std::string> args)
 		false, 60, "seconds", cmd);
 
 	cmd.parse(args);
+
+	pw_client_cmd.wait(time_arg.getValue() * 1000);
 
 	if (!pw_client_cmd.set())
 	{
