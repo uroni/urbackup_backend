@@ -1160,7 +1160,7 @@ bool os_disable_background_priority(SPrioInfo& prio_info)
 	return false;
 }
 
-bool os_enable_prioritize(SPrioInfo& prio_info)
+bool os_enable_prioritize(SPrioInfo& prio_info, EPrio prio)
 {
 	return false;
 }
