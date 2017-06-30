@@ -34,6 +34,34 @@
 								</code>
 							</p>
 						</blockquote>
+						{tWith Docker (web interface accessible from client):}
+						<blockquote>
+							<p>
+								<code>
+									RUN TF=`mktemp` &&\<br>
+										wget "{linux_url}" -O $TF &&\<br>
+										sh $TF &&\<br>
+										rm $TF &&\<br>
+										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
+										( [ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient )
+								</code>
+							</p>
+						</blockquote>
+						{tWith Docker (web interface not accessible from client):}
+						<blockquote>
+							<p>
+								<code>
+									RUN TF=`mktemp` &&\<br>
+										wget "https://hndl.urbackup.org/Client/latest/update/UrBackupUpdateLinux.sh" -O $TF &&\<br>
+										sh $TF &&\<br>
+										rm $TF &&\<br>
+										urbackupclientctl wait-for-backend &&\<br>
+										urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey} &&\<br>
+										( [ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient ) &&\<br>
+										( [ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient )
+								</code>
+							</p>
+						</blockquote>
 					</p>
 				</li>
 				<li>
@@ -56,6 +84,7 @@
 						<blockquote>
 							<p>
 								<code>
+									urbackupclientctl wait-for-backend<br>
 									urbackupclientctl set-settings -k internet_mode_enabled -v true -k internet_server -v {internet_server} -k internet_server_port -v {internet_server_port} -k computername -v "{new_clientname}" -k internet_authkey -v {new_authkey}<br>
 									[ ! -e /etc/default/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/default/urbackupclient<br>
 									[ ! -e /etc/sysconfig/urbackupclient ] || sed -i 's/INTERNET_ONLY=false/INTERNET_ONLY=true/' /etc/sysconfig/urbackupclient
