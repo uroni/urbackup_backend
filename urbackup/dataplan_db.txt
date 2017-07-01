@@ -1,2 +1,3 @@
 *.web.vodafone.de 500
 *.dyn.telefonica.de -1
+*.kabel-badenwuerttemberg.de -1
