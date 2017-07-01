@@ -72,7 +72,7 @@ std::string getSystemServerName(bool use_fqdn)
 	//TODO: Fix FQDN for Apple
 	while (true)
 	{
-		char hostname_appl[MAX_PATH+15]
+		char hostname_appl[MAX_PATH + 15];
 		FILE* fd = popen("system_profiler SPSoftwareDataType | grep \"Computer Name: \"", "r");
 		if (fd != NULL)
 		{
