@@ -331,7 +331,10 @@ private:
 	bool readBackupDirs(void);
 	bool readBackupScripts(bool full_backup);
 
-	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, std::string& target, std::string& output_target);
+	bool getAbsSymlinkTarget(const std::string& symlink, const std::string& orig_path, 
+		std::string& target, std::string& output_target,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs);
 	void addSymlinkBackupDir(const std::string& target, std::string& output_target);
 	bool backupNameInUse(const std::string& name);
 	void removeUnconfirmedSymlinkDirs(size_t off);

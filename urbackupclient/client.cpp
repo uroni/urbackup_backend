@@ -1725,12 +1725,12 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 	const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs)
 {
-	if( isExcluded(exclude_dirs, filepath) || isExcluded(exclude_dirs, namedpath) )
+	if( isExcluded(exclude_dirs, filepath) || (!namedpath.empty() && isExcluded(exclude_dirs, namedpath) ) )
 	{
 		return true;
 	}
 	if( !isIncluded(include_dirs, filepath, NULL)
-		&& !isIncluded(include_dirs, namedpath, NULL) )
+		&& (namedpath.empty() || !isIncluded(include_dirs, namedpath, NULL) ) )
 	{
 		return true;
 	}
@@ -5940,7 +5940,9 @@ void IndexThread::setFlags( unsigned int flags )
 }
 
 bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::string& orig_path,
-	std::string& target, std::string& output_target)
+	std::string& target, std::string& output_target,
+	const std::vector<std::string>& exclude_dirs,
+	const std::vector<SIndexInclude>& include_dirs)
 {
 	if (target.empty())
 	{
@@ -5994,11 +5996,21 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 		if(removeDirectorySeparatorAtEnd(lower_target) == bpath_wo_slash
 			|| next(lower_target, 0, bpath))
 		{
+			std::string tmp_output_target;
 			if (target.size() > bpath.size())
 			{
-				output_target = target.substr(bpath.size());
+				tmp_output_target = target.substr(bpath.size());
 			}
-			output_target = backup_dirs[i].tname + (output_target.empty() ? "" : (os_file_sep() + removeDirectorySeparatorAtEnd(output_target)));
+			tmp_output_target = backup_dirs[i].tname + 
+				(tmp_output_target.empty() ? "" : (os_file_sep() + removeDirectorySeparatorAtEnd(tmp_output_target)));
+
+			if (skipFile(target, tmp_output_target,
+				exclude_dirs, include_dirs))
+			{
+				continue;
+			}
+
+			output_target = tmp_output_target;
 
 			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
@@ -6010,6 +6022,13 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 		}
 	}
 
+	if (skipFile(target, std::string(),
+		exclude_dirs, include_dirs))
+	{
+		Server->Log("Not following symlink \"" + symlink + "\" because symlink target at \""+target+"\" is excluded", LL_DEBUG);
+		return false;
+	}
+	
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
 		VSSLog("Following symbolic link at \""+symlink+"\" to new symlink backup target at \""+target+"\"", LL_INFO);
@@ -6018,7 +6037,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 	}
 	else
 	{
-		Server->Log("Not following symlink "+symlink+" because of configuration.", LL_DEBUG);
+		Server->Log("Not following symlink \""+symlink+"\" because of configuration.", LL_DEBUG);
 		return false;
 	}
 }
@@ -6228,7 +6247,9 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 			&& !skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
 				exclude_dirs, include_dirs) )
 		{
-			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target, ret[i].output_symlink_target))
+			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, 
+				ret[i].symlink_target, ret[i].output_symlink_target,
+				exclude_dirs, include_dirs))
 			{
 				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
 				{
@@ -6253,7 +6274,9 @@ void IndexThread::handleSymlinks(const std::string& orig_dir, std::string named_
 				continue;
 			}
 
-			if (!getAbsSymlinkTarget(orig_dir + os_file_sep() + files[i].name, orig_dir, files[i].symlink_target, files[i].output_symlink_target))
+			if (!getAbsSymlinkTarget(orig_dir + os_file_sep() + files[i].name, orig_dir, 
+				files[i].symlink_target, files[i].output_symlink_target,
+				exclude_dirs, include_dirs))
 			{
 				if (!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks))
 				{
