@@ -36,6 +36,35 @@
 #include <ws2tcpip.h>
 #endif
 
+#ifdef __APPLE__
+std::string mac_get_serial()
+{
+	char buf[4096];
+	FILE* fd = popen("system_profiler SPHardwareDataType | grep \"Serial Number\"", "r");
+	std::string serial;
+	if (fd != NULL)
+	{
+		if (fgets(buf, sizeof(buf), fd) != NULL)
+		{
+			serial = trim(getafter(":", buf));
+		}
+	}
+
+	if (!serial.empty())
+	{
+		return serial;
+	}
+
+	int64 tt = Server->getTimeSeconds() / 60;
+	tt = big_endian(tt);
+	char* p = reinterpret_cast<char*>(&tt);
+	Server->randomFill(p, sizeof(int64)-3);
+	serial = bytesToHex(reinterpret_cast<unsigned char*>(p), sizeof(int64));
+
+	return serial;
+}
+#endif
+
 std::string getSystemServerName(bool use_fqdn)
 {
 	char hostname[MAX_PATH];
@@ -43,18 +72,31 @@ std::string getSystemServerName(bool use_fqdn)
 	//TODO: Fix FQDN for Apple
 	while (true)
 	{
-		FILE* fd = popen("/bin/hostname", "r");
+		char hostname_appl[MAX_PATH+15]
+		FILE* fd = popen("system_profiler SPSoftwareDataType | grep \"Computer Name: \"", "r");
 		if (fd != NULL)
 		{
-			if (fgets(hostname, MAX_PATH, fd) != NULL)
+			if (fgets(hostname_appl, sizeof(hostname_appl), fd) != NULL)
 			{
-				if (trim(hostname) == "localhost")
+				std::string chostname = getafter("Computer Name: ", trim(hostname_appl));
+				if (chostname.empty())
 				{
 					Server->wait(100);
 					continue;
 				}
 
-				return trim(hostname);
+				const std::string mac_add_fn = "urbackup/mac_computername_add.txt";
+				std::string mac_add = getStreamFile(mac_add_fn);
+				if (!mac_add.empty())
+				{
+					return chostname + "-" + mac_add;
+				}
+
+				mac_add = mac_get_serial();
+
+				writestring(mac_add, mac_add_fn);
+
+				return chostname;
 			}
 			pclose(fd);
 		}
