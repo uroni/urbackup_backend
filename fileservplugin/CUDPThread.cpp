@@ -96,7 +96,7 @@ std::string getSystemServerName(bool use_fqdn)
 
 				writestring(mac_add, mac_add_fn);
 
-				return chostname;
+				return chostname + "-" + mac_add;
 			}
 			pclose(fd);
 		}
