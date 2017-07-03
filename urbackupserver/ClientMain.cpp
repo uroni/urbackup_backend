@@ -1186,22 +1186,37 @@ std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std
 }
 
 std::string ClientMain::sendClientMessage(const std::string &msg, const std::string &errmsg,
-	unsigned int timeout, bool logerr, int max_loglevel)
+	unsigned int timeout, bool logerr, int max_loglevel, SConnection* conn)
 {
 	CTCPStack tcpstack(internet_connection);
-	IPipe *cc=getClientCommandConnection(10000);
-	if(cc==NULL)
+
+	std::auto_ptr<IPipe> cc;
+	if (conn != NULL
+		&& conn->conn.get() != NULL
+		&& conn->internet_connection == internet_connection)
 	{
-		if(logerr)
-			ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
-		else
-			Server->Log("Connecting to ClientService of \""+clientname+"\" failed: "+errmsg, max_loglevel);
-		return "";
+		cc.reset(conn->conn.release());
+	}
+	else
+	{
+		cc.reset(getClientCommandConnection(10000));
+		if (cc.get() == NULL)
+		{
+			if (logerr)
+				ServerLogger::Log(logid, "Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+			else
+				Server->Log("Connecting to ClientService of \"" + clientname + "\" failed: " + errmsg, max_loglevel);
+			return "";
+		}
+	}
+	if (conn != NULL)
+	{
+		conn->conn.reset();
 	}
 
 	std::string identity = getIdentity();
 
-	tcpstack.Send(cc, identity+msg);
+	tcpstack.Send(cc.get(), identity+msg);
 
 	std::string ret;
 	int64 starttime=Server->getTimeMS();
@@ -1223,7 +1238,12 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 
 		if(tcpstack.getPacket(ret))
 		{
-			Server->destroy(cc);
+			if (conn != NULL)
+			{
+				conn->conn.reset(cc.release());
+				conn->internet_connection = internet_connection;
+			}
+
 			return ret;
 		}
 	}
@@ -1232,8 +1252,6 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 		ServerLogger::Log(logid, "Timeout: "+errmsg, max_loglevel);
 	else
 		Server->Log("Timeout: "+errmsg, max_loglevel);
-
-	Server->destroy(cc);
 
 	return "";
 }

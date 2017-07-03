@@ -2,6 +2,7 @@
 #include "../Interface/Mutex.h"
 
 class ClientMain;
+struct SProcess;
 
 class ServerPingThread : public IThread
 {
@@ -14,6 +15,7 @@ public:
 	bool isTimeout(void);
 
 private:
+	void setPaused(SProcess* proc, bool b);
 	ClientMain *client_main;
 	volatile bool stop;
 	volatile bool is_timeout;

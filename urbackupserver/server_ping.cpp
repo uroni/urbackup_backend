@@ -22,6 +22,7 @@
 #include "ClientMain.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
+#include "server_status.h"
 
 const int64 ping_intervall=10000;
 
@@ -73,16 +74,37 @@ void ServerPingThread::operator()(void)
 			{
 				etams=61*1000;
 			}
-			if(client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+(etams>0?"&eta_ms="+convert(etams):"")
+			std::string ret = client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+(etams>0?"&eta_ms="+convert(etams):"")
 							+"&status_id="+convert(status_id)
 							+"&speed_bpms="+convert(proc.speed_bpms)
 							+"&total_bytes="+convert(proc.total_bytes)
 							+"&done_bytes="+convert(proc.done_bytes)
-							+"#token="+server_token, "OK", "Error sending 'running' (2) ping to client",
-						30000, false, LL_DEBUG, NULL, NULL, &connection))
+							+"&paused_fb=1"
+							+"#token="+server_token, "Error sending 'running' (2) ping to client",
+									30000, false, LL_DEBUG, &connection);
+			if(ret=="OK"
+				|| ret=="PAUSED")
 			{
+				if (ret == "PAUSED")
+				{
+					setPaused(&proc, true);
+				}
+				else
+				{
+					setPaused(&proc, false);
+				}
 				last_ping_ok=Server->getTimeMS();
 				client_main->refreshSessionIdentity();
+			}
+			else
+			{
+				setPaused(&proc, false);
+
+				if (!ret.empty())
+				{
+					ret = ". Received: \"" + ret+"\"";
+				}
+				Server->Log("Error sending 'running' (3) ping to client" + ret, LL_DEBUG);
 			}
 		}
 		
@@ -103,6 +125,7 @@ void ServerPingThread::operator()(void)
 	{
 		Server->wait(1000);
 	}
+	setPaused(NULL, false);
 	delete this;
 }
 
@@ -114,6 +137,14 @@ void ServerPingThread::setStop(bool b)
 bool ServerPingThread::isTimeout(void)
 {
 	return is_timeout;
+}
+
+void ServerPingThread::setPaused(SProcess* proc, bool b)
+{
+	if (proc==NULL || b != proc->paused)
+	{
+		ServerStatus::setProcessPaused(clientname, status_id, b);
+	}
 }
 
 #endif //CLIENT_ONLY

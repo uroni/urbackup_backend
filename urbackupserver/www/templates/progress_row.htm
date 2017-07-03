@@ -35,7 +35,7 @@
 			</div>
 		{/f_total_bytes}
 	<td class="tabFLeft">{eta}</td>
-	<td class="tabFLeft"><span id="speed_sparkline_{id}" style="margin-right: 5px" ></span><span style="white-space: nowrap;">{speed}</span></td>
+	<td class="tabFLeft"><span id="speed_sparkline_{id}" style="margin-right: 5px" ></span><span style="white-space: nowrap;">{?paused}{tPaused}{:else}{speed}{/paused}</span></td>
 	<td class="tabFLeft">{queue}</td>
 	<td class="tabFRight">
 		{?can_stop_backup}

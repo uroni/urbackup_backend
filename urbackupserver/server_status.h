@@ -58,7 +58,7 @@ struct SProcess
 		 hashqueuesize(0), starttime(0), pcdone(-1), eta_ms(0),
 		 eta_set_time(0), stop(false), details(details),
 		speed_bpms(0), can_stop(false), total_bytes(-1),
-		done_bytes(0), detail_pc(-1)
+		done_bytes(0), detail_pc(-1), paused(false)
 	{
 
 	}
@@ -80,6 +80,7 @@ struct SProcess
 	bool can_stop;
 	int64 total_bytes;
 	int64 done_bytes;
+	bool paused;
 
 	bool operator==(const SProcess& other) const
 	{
@@ -187,6 +188,9 @@ public:
 
 	static void setProcessDetails(const std::string &clientname, size_t id,
 		std::string details, int detail_pc);
+
+	static void setProcessPaused(const std::string &clientname, size_t id,
+		bool b);
 
 	static void addRunningJob(const std::string &clientname);
 

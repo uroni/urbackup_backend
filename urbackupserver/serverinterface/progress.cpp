@@ -85,6 +85,7 @@ ACTION_IMPL(progress)
 					obj.set("total_bytes", clients[i].processes[j].total_bytes);
 					obj.set("done_bytes", clients[i].processes[j].done_bytes);
 					obj.set("detail_pc", clients[i].processes[j].detail_pc);
+					obj.set("paused", clients[i].processes[j].paused);
 
 					int64 add_time = Server->getTimeMS() - clients[i].processes[j].eta_set_time;
 					int64 etams = clients[i].processes[j].eta_ms - add_time;

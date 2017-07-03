@@ -1094,7 +1094,17 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	std::string params_str = cmd.substr(14);
 	str_map params;
 	ParseParamStrHttp(params_str, &params);
-	tcpstack.Send(pipe, "OK");
+	str_map::iterator it_paused_fb = params.find("paused_fb");
+	if (it_paused_fb != params.end()
+		&& it_paused_fb->second == "1"
+		&& IdleCheckerThread::getPause())
+	{
+		tcpstack.Send(pipe, "PAUSED");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "OK");
+	}
 
 	idle_timeout = 120000;
 

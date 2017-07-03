@@ -444,6 +444,17 @@ void ServerStatus::setProcessDetails(const std::string & clientname, size_t id,
 	}
 }
 
+void ServerStatus::setProcessPaused(const std::string & clientname, size_t id, bool b)
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if (proc != NULL)
+	{
+		proc->paused = b;
+	}
+}
+
 SProcess ServerStatus::getProcess( const std::string &clientname, size_t id )
 {
 	IScopedLock lock(mutex);
