@@ -113,6 +113,7 @@ public:
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
 	virtual IPipeThrottler* createPipeThrottler(size_t bps, bool percent_max) = 0;
 	virtual IPipeThrottler* createPipeThrottler(IPipeThrottlerUpdater* updater) = 0;
+	virtual IThreadPool* createThreadPool(size_t max_threads, size_t max_waiting_threads, const std::string& idle_name) = 0;
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, const str_map& params = str_map(), std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;

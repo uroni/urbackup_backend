@@ -22,8 +22,7 @@
 #include "Server.h"
 #include "stringtools.h"
 #include <math.h>
-
-const unsigned int max_waiting_threads=2;
+#include <assert.h>
 
 #if defined(_WIN32) && defined(_DEBUG)
 #include <Windows.h>
@@ -78,7 +77,7 @@ void CPoolThread::operator()(void)
 
 	if(!stop)
 	{
-		while(dexit==false)
+		while(!dexit)
 		{
 			stop=false;
 			std::string name;
@@ -104,7 +103,7 @@ void CPoolThread::operator()(void)
 		}
 	}
 	Server->destroyDatabases(tid);
-	mgr->Remove(this);
+	mgr->Remove(this, !stop);
 	delete this;
 }
 
@@ -131,16 +130,18 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& sto
 	}
 
 	IThread *ret=NULL;
-	while(ret==NULL && dexit==false)
+	while(ret==NULL && !dexit)
 	{
 		if( toexecute.size()==0)
 		{
-			if(nThreads-nRunning>max_waiting_threads)
+			if(nThreads>=nRunning
+				&& nThreads-nRunning>max_waiting_threads)
 			{
+				--nThreads;
 				stop=true;
 				return NULL;
 			}
-			Server->setCurrentThreadName("idle pool thread");
+			Server->setCurrentThreadName(idle_name);
 			cond->wait(&lock);
 		}
 		else
@@ -154,29 +155,32 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& sto
 	return ret;
 }
 
-void CThreadPool::Remove(CPoolThread *pt)
+void CThreadPool::Remove(CPoolThread *pt, bool decr)
 {
 	IScopedLock lock(mutex);
+	assert(!decr || nThreads > 0);
 	for(size_t i=0;i<threads.size();++i)
 	{
 		if( threads[i]==pt )
 		{
 			threads.erase( threads.begin()+i);
-			--nThreads;
+			if (decr)
+			{
+				--nThreads;
+			}
 			return;
 		}
 	}
+	assert(false);
 }
 
-CThreadPool::CThreadPool()
+CThreadPool::CThreadPool(size_t max_threads, 
+	size_t max_waiting_threads, std::string idle_name)
+	: max_threads(max_threads), max_waiting_threads(max_waiting_threads), idle_name(idle_name),
+	nRunning(0), nThreads(0), currticket(0), dexit(false), mutex(Server->createMutex()),
+	cond(Server->createCondition())
 {
-	nRunning=0;
-	nThreads=0;
-	currticket=0;
-	dexit=false;
-	
-	mutex=Server->createMutex();
-	cond=Server->createCondition();
+
 }
 
 CThreadPool::~CThreadPool()
@@ -262,7 +266,7 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			}
 		}
 
-		if( r==false )
+		if( !r )
 		{
 			ret = true;
 			break;
@@ -306,7 +310,9 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& nam
 {
 	IScopedLock lock(mutex);
 	size_t retries = 0;
-	while( nThreads-nRunning==0 )
+	while(nThreads>=nRunning
+		&& nThreads-nRunning==0
+		&& nThreads<max_threads )
 	{
 		CPoolThread *nt=new CPoolThread(this);
 		if (!Server->createThread(nt))
@@ -329,7 +335,14 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& nam
 		}
 	}
 
-	toexecute.push_back(SNewTask(runnable, ++currticket, name));
+	++currticket;
+	while (running.find(currticket) != running.end()
+		|| currticket==ILLEGAL_THREADPOOL_TICKET)
+	{
+		++currticket;
+	}
+
+	toexecute.push_back(SNewTask(runnable, currticket, name));
 	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, (ICondition*)NULL) );
 	++nRunning;
 	cond->notify_one();

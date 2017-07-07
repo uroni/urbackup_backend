@@ -195,7 +195,7 @@ CServer::CServer()
 void CServer::setup(void)
 {
 	sessmgr=new CSessionMgr();
-	threadpool=new CThreadPool();
+	threadpool=new CThreadPool(std::string::npos, 2, "idle pool thread");
 
 #ifndef NO_SQLITE
 	CDatabase::initMutex();
@@ -1834,6 +1834,11 @@ IPipeThrottler* CServer::createPipeThrottler(
 	bool percent_max = false;
 	size_t bps = updater->getThrottleLimit(percent_max);
 	return new PipeThrottler(bps, percent_max, updater);
+}
+
+IThreadPool * CServer::createThreadPool(size_t max_threads, size_t max_waiting_threads, const std::string & idle_name)
+{
+	return new CThreadPool(max_threads, max_waiting_threads, idle_name);
 }
 
 void CServer::shutdown(void)

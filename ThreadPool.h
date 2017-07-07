@@ -26,7 +26,9 @@ private:
 class CThreadPool : public IThreadPool
 {
 public:
-	CThreadPool();
+	CThreadPool(size_t max_threads, 
+		size_t max_waiting_threads,
+		std::string idle_name);
 	~CThreadPool();
 
 	THREADPOOL_TICKET execute(IThread *runnable, const std::string& name = std::string());
@@ -34,17 +36,17 @@ public:
 	bool isRunning(THREADPOOL_TICKET ticket);
 	bool waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems=-1);
 	bool waitFor(THREADPOOL_TICKET ticket, int timems=-1);
-	void Remove(CPoolThread *pt);
+	void Remove(CPoolThread *pt, bool decr);
 
-	void Shutdown(void);
+	void Shutdown();
 
 private:
 	IThread * getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop, std::string& name);
 
 	bool isRunningInt(THREADPOOL_TICKET ticket);
 
-	unsigned int nThreads;
-	unsigned int nRunning;
+	size_t nThreads;
+	size_t nRunning;
 
 	std::vector<CPoolThread*> threads;
 
@@ -68,4 +70,8 @@ private:
 	volatile bool dexit;
 
 	friend class CPoolThread;
+
+	size_t max_threads;
+	size_t max_waiting_threads;
+	std::string idle_name;
 };
