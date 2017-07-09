@@ -195,6 +195,8 @@ void ServerChannelThread::operator()(void)
 					input=np;
 				}
 				curr_ident = client_main->getIdentity();
+				tcpstack.reset();
+				tcpstack.setAddChecksum(client_main->isOnInternetConnection());
 				tcpstack.Send(input, curr_ident +"1CHANNEL capa="+convert(constructCapabilities())+"&token="+server_token+"&restore_version=1&virtual_client="+EscapeParamString(virtual_client));
 
 				lasttime=Server->getTimeMS();

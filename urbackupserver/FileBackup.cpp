@@ -261,6 +261,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			}
 
 			tcpstack.reset();
+			tcpstack.setAddChecksum(client_main->isOnInternetConnection());
 
 			std::string cmd = identity + "WAIT FOR INDEX async_id=" + async_id;
 
