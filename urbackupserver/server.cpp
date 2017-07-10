@@ -1100,7 +1100,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 	num_extra_check = 30;
 
-	std::vector<db_single_result> todelete_images;
+	std::vector<std::pair<db_single_result, bool> > todelete_images;
 
 	{
 		IQuery* q_synced = db->Prepare("SELECT backup_images.id AS backupid, name, path, clientid, backuptime FROM (backup_images INNER JOIN clients ON backup_images.clientid=clients.id) WHERE synctime IS NOT NULL ORDER BY synctime DESC");
@@ -1113,6 +1113,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 			std::auto_ptr<IFile> image_f(Server->openFile(os_file_prefix(res["path"]), MODE_READ));
 
 			bool delete_backup = false;
+			bool delete_db_entry = false;
 
 			if (image_f.get() == NULL)
 			{
@@ -1120,6 +1121,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 				{
 					ServerLogger::Log(logid, "Image backup " + backupinfo + " does not exist on backup storage. Deleting it from database.", LL_WARNING);
 					delete_backup = true;
+					delete_db_entry = true;
 				}
 			}
 			else
@@ -1128,14 +1130,14 @@ void BackupServer::runServerRecovery(IDatabase * db)
 
 				if (sync_f.get() == NULL)
 				{
-					ServerLogger::Log(logid, "Image backup " + backupinfo + " is not synced to backup storage. Deleting it.", LL_WARNING);
+					ServerLogger::Log(logid, "Image backup " + backupinfo + " is not synced to backup storage. Setting it to incomplete.", LL_WARNING);
 					delete_backup = true;
 				}
 			}
 
 			if (delete_backup)
 			{
-				to_delete.push_back(res);
+				todelete_images.push_back( std::make_pair(res, delete_db_entry) );
 			}
 			else
 			{
@@ -1149,22 +1151,36 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	}
 
 	IQuery* q_delete_image = db->Prepare("DELETE FROM backup_images WHERE id=?");
-	for (size_t i = 0; i < to_delete.size(); ++i)
+	IQuery* q_set_complete = db->Prepare("UPDATE backup_images SET complete=0 WHERE id=?");
+	for (size_t i = 0; i < todelete_images.size(); ++i)
 	{
 		has_delete = true;
 
-		db_single_result res = to_delete[i];
+		db_single_result res = todelete_images[i].first;
+		bool delete_db_entry = todelete_images[i].second;
 		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
-		ServerLogger::Log(logid, "Deleting image backup " + backupinfo + "...", LL_WARNING);
 
-		ServerCleanupThread::deleteImage(logid, res["name"], res["path"]);
+		if (delete_db_entry)
+		{
+			ServerLogger::Log(logid, "Deleting image backup " + backupinfo + "...", LL_WARNING);
 
-		q_delete_image->Bind(watoi(res["backupid"]));
-		q_delete_image->Write();
-		q_delete_image->Reset();
+			ServerCleanupThread::deleteImage(logid, res["name"], res["path"]);
+
+			q_delete_image->Bind(watoi(res["backupid"]));
+			q_delete_image->Write();
+			q_delete_image->Reset();
+		}
+		else
+		{
+			ServerLogger::Log(logid, "Setting image backup " + backupinfo + " to incomplete...", LL_WARNING);
+
+			q_set_complete->Bind(watoi(res["backupid"]));
+			q_set_complete->Write();
+			q_set_complete->Reset();
+		}
 	}
 
-	to_delete.clear();
+	todelete_images.clear();
 
 	std::string db_backupfolder = backupfolder + os_file_sep() + "urbackup";
 
