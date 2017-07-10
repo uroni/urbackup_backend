@@ -158,7 +158,8 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 	delete comp_pipe;
 	comp_pipe=NULL;
 
-	if(remove_connection)
+	if(remove_connection
+		&& client_data.find(clientname)!=client_data.end())
 	{
 		std::vector<InternetServiceConnector*>& spare_connections = client_data[clientname].spare_connections;
 		std::vector<InternetServiceConnector*>::iterator it=std::find(spare_connections.begin(), spare_connections.end(), this);
