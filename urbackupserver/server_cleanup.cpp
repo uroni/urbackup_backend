@@ -1451,6 +1451,14 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 	}
 
 	std::string path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath;
+
+	if (!os_directory_exists(os_file_prefix(path))
+		&& os_directory_exists(os_file_prefix(path + ".startup-del")))
+	{
+		backuppath += ".startup-del";
+		path += ".startup-del";
+	}
+
 	bool b=false;
 	if( BackupServer::isFileSnapshotsEnabled())
 	{

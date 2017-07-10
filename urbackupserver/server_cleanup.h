@@ -111,6 +111,8 @@ public:
 	static bool findLockedImageRef(ServerCleanupDao* cleanupdao, int backupid);
 
 	static bool findArchivedImageRef(ServerCleanupDao* cleanupdao, int backupid);
+
+	CleanupAction getCleanupAction() { return cleanup_action; }
 private:
 
 	void do_cleanup(void);

@@ -925,6 +925,30 @@ void BackupServer::enableSnapshots(int method)
 	}	
 }
 
+namespace
+{
+	class FileCleanups : public IThread
+	{
+	public:
+		void operator()()
+		{
+			logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
+			ScopedProcess recovery_process(std::string(), sa_startup_recovery, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
+
+			for (size_t i = 0; i < cleanups.size(); ++i)
+			{
+				std::string backupinfo = "[id=" + convert(cleanups[i]->getCleanupAction().backupid)+ ", clientid=" + convert(cleanups[i]->getCleanupAction().clientid) + "]";
+				ServerLogger::Log(logid, "Deleting file backup " + backupinfo + "...", LL_WARNING);
+
+				Server->getThreadPool()->executeWait(cleanups[i], "delete fbackup");
+			}
+			delete this;
+		}
+
+		std::vector<ServerCleanupThread*> cleanups;
+	};
+}
+
 void BackupServer::runServerRecovery(IDatabase * db)
 {
 	logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
@@ -988,6 +1012,12 @@ void BackupServer::runServerRecovery(IDatabase * db)
 			std::string backuppath = backupfolder + os_file_sep() + res["name"] + os_file_sep() + res["path"];
 			std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 
+			if(!os_directory_exists(os_file_prefix(backuppath))
+				&& os_directory_exists(os_file_prefix(backuppath + ".startup-del")) )
+			{
+				backuppath += ".startup-del";
+			}
+
 			bool delete_backup = false;
 
 			if (res["done"] == "0")
@@ -1029,16 +1059,41 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		}
 	}
 
+	IQuery* q_set_done = db->Prepare("UPDATE backups SET done=0 WHERE id=?");
+	std::auto_ptr<FileCleanups> file_cleanups(new FileCleanups);
 	for (size_t i = 0; i < to_delete.size(); ++i)
 	{
 		has_delete = true;
 
 		db_single_result res = to_delete[i];
+
+		q_set_done->Bind(res["backupid"]);
+		q_set_done->Write();
+		q_set_done->Reset();
+
 		std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 		ServerLogger::Log(logid, "Deleting file backup "+backupinfo+"...", LL_WARNING);
-		Server->getThreadPool()->executeWait(
-			new ServerCleanupThread(CleanupAction(backupfolder, watoi(res["clientid"]), watoi(res["backupid"]), true, NULL)),
-			"delete fbackup");
+		std::string backuppath = backupfolder + os_file_sep() + res["name"] + os_file_sep() + res["path"];
+
+		ServerCleanupThread* cleanup = new ServerCleanupThread(CleanupAction(backupfolder, watoi(res["clientid"]), watoi(res["backupid"]), true, NULL));
+		if (!os_directory_exists(os_file_prefix(backuppath))
+			&& os_directory_exists(os_file_prefix(backuppath + ".startup-del")))
+		{
+			file_cleanups->cleanups.push_back(cleanup);
+		}
+		else if (os_rename_file(os_file_prefix(backuppath), os_file_prefix(backuppath + ".startup-del")))
+		{
+			file_cleanups->cleanups.push_back(cleanup);
+		}
+		else
+		{
+			Server->getThreadPool()->executeWait(cleanup, "delete fbackup");
+		}
+	}
+
+	if (!file_cleanups->cleanups.empty())
+	{
+		Server->getThreadPool()->execute(file_cleanups.release());
 	}
 
 	to_delete.clear();
