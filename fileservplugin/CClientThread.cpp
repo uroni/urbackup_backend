@@ -1230,7 +1230,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 						if(with_hashes && foffset==next_checkpoint)
 						{
 							hash_func.finalize();
-							SendInt((char*)hash_func.raw_digest_int(), 16);
+							rc = SendInt((char*)hash_func.raw_digest_int(), 16);
+							if (rc == SOCKET_ERROR)
+							{
+								Log("Error: Sending hash failed");
+								CloseHandle(hFile);
+								return false;
+							}
 							next_checkpoint+=c_checkpoint_dist;
 							if(next_checkpoint>curr_filesize)
 								next_checkpoint=curr_filesize;
@@ -1501,24 +1507,10 @@ int CClientThread::SendData()
 					ts=ldata->bsize;
 
 				_i32 rc=SendInt(&ldata->buffer[sent], ts);
+				bool has_error = false;
 				if( rc==SOCKET_ERROR )
 				{
-					int err;
-	#ifdef _WIN32
-					err=WSAGetLastError();
-	#else
-					err=errno;
-	#endif
-					Log("SOCKET_ERROR in SendData(). BSize: "+convert(ldata->bsize)+" WSAGetLastError: "+convert(err), LL_DEBUG);
-				
-					if( ldata->delbuf )
-					{
-						bufmgr->releaseBuffer(ldata->delbufptr);
-						ldata->delbuf=false;
-					}
-					t_send.erase( t_send.begin() );
-					delete ldata;
-					return -1;
+					has_error = true;
 				}
 				else if(with_hashes)
 				{
@@ -1526,17 +1518,45 @@ int CClientThread::SendData()
 				}
 				sent+=ts;
 				sent_bytes+=ts;
-				if(with_hashes)
+				if(with_hashes
+					&& !has_error)
 				{
 					if(next_checkpoint-sent_bytes==0)
 					{
 						hash_func.finalize();
-						SendInt((char*)hash_func.raw_digest_int(), 16);
-						next_checkpoint+=c_checkpoint_dist;
-						if(next_checkpoint>curr_filesize)
-							next_checkpoint=curr_filesize;
-						hash_func.init();
+						rc = SendInt((char*)hash_func.raw_digest_int(), 16);
+						if (rc == SOCKET_ERROR)
+						{
+							has_error = true;
+						}
+						else
+						{
+							next_checkpoint += c_checkpoint_dist;
+							if (next_checkpoint > curr_filesize)
+								next_checkpoint = curr_filesize;
+							hash_func.init();
+						}
 					}
+				}
+
+				if (has_error)
+				{
+					int err;
+#ifdef _WIN32
+					err = WSAGetLastError();
+#else
+					err = errno;
+#endif
+					Log("SOCKET_ERROR in SendData(). BSize: " + convert(ldata->bsize) + " WSAGetLastError: " + convert(err), LL_DEBUG);
+
+					if (ldata->delbuf)
+					{
+						bufmgr->releaseBuffer(ldata->delbufptr);
+						ldata->delbuf = false;
+					}
+					t_send.erase(t_send.begin());
+					delete ldata;
+					return -1;
 				}
 			}
 		}
@@ -2302,7 +2322,12 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		if(with_hashes && foffset==next_checkpoint)
 		{
 			hash_func.finalize();
-			SendInt((char*)hash_func.raw_digest_int(), 16, curr_flush);
+			rc=SendInt((char*)hash_func.raw_digest_int(), 16, curr_flush);
+			if (rc == SOCKET_ERROR)
+			{
+				Log("Error: Sending hash failed");
+				return false;
+			}
 			next_checkpoint+=c_checkpoint_dist;
 			if(next_checkpoint>curr_filesize && curr_filesize>0)
 				next_checkpoint=curr_filesize;
