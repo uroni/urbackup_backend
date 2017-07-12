@@ -699,7 +699,7 @@ bool ServerDownloadThread::link_or_copy_file(const SQueueItem& todl)
 		{
 			pfd_destroy.release();
 			hashFile(todl.id, dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, todl.sha_dig, NULL,
+			    (dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script, std::string(), NULL,
 				todl.is_script ? HASH_FUNC_SHA512_NO_SPARSE : default_hashing_method, fileHasSnapshot(todl));
 			return true;
 		}
