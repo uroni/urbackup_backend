@@ -2351,18 +2351,24 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		int64 backup_gpt_location = gpt_header_s->backup_lba*logical_sector_size;
 		if(!dev->Seek(backup_gpt_location))
 		{
-			errmsg="Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber)+". "+ os_last_error_str();
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			errmsg="Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber)+" at "+convert(backup_gpt_location)+". "+ os_last_error_str();
+			Server->Log(errmsg, LL_WARNING);
+			backup_gpt_location = logical_sector_size;
 		}
-
-		gpt_header = dev->Read(logical_sector_size);
-
-		if(gpt_header.size()!=logical_sector_size)
+		else
 		{
-			errmsg="Error reading backup GPT header "+convert((int)dev_num.DeviceNumber);
-			Server->Log(errmsg, LL_ERROR);
-			return false;
+			std::string backup_gpt_header = dev->Read(logical_sector_size);
+
+			if (backup_gpt_header.size() != logical_sector_size)
+			{
+				errmsg = "Error reading backup GPT header " + convert((int)dev_num.DeviceNumber) + " at " + convert(backup_gpt_location);
+				Server->Log(errmsg, LL_WARNING);
+				backup_gpt_location = logical_sector_size;
+			}
+			else
+			{
+				gpt_header = backup_gpt_header;
+			}
 		}
 
 		if(gpt_header.size()<sizeof(EfiHeader))
