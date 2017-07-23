@@ -20,7 +20,7 @@ private:
 	volatile bool stop;
 	volatile bool is_timeout;
 	bool with_eta;
-	const std::string& clientname;
+	std::string clientname;
 	size_t status_id;
 	std::string server_token;
 };
