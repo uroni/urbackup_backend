@@ -44,15 +44,15 @@ int SnapshotHelper::isAvailable(void)
 	return -1;
 }
 
-bool SnapshotHelper::createEmptyFilesystem(std::string clientname, std::string name)
+bool SnapshotHelper::createEmptyFilesystem(std::string clientname, std::string name, std::string& errmsg)
 {
-	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " create \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " create \""+(clientname)+"\" \""+(name)+"\" 2>&1").c_str(), errmsg);
 	return rc==0;
 }
 
-bool SnapshotHelper::snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name)
+bool SnapshotHelper::snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name, std::string& errmsg)
 {
-	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\"").c_str());
+	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\" 2>&1").c_str(), errmsg);
 	return rc==0;
 }
 

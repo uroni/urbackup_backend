@@ -291,14 +291,19 @@ bool IncrFileBackup::doFileBackup()
 	if(use_snapshots)
 	{
 		ServerLogger::Log(logid, clientname+": Creating snapshot...", LL_INFO);
-		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single)
+		std::string errmsg;
+		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single, errmsg)
 			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
 		{
-			ServerLogger::Log(logid, "Creating new snapshot failed (Server error)", LL_WARNING);
+			errmsg = trim(errmsg);
+			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
+				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
 
-			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single) )
+			errmsg.clear();
+			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg) )
 			{
-				ServerLogger::Log(logid, "Creating empty filesystem failed (Server error)", LL_ERROR);
+				ServerLogger::Log(logid, "Creating empty filesystem failed (Server error) "
+					+ (errmsg.empty() ? os_last_error_str() : ("\"" + errmsg + "\"")), LL_ERROR);
 				has_early_error=true;
 				return false;
 			}

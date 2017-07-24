@@ -373,6 +373,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 		if (imagefn.empty())
 		{
+			ServerLogger::Log(logid, "Error creating image backup destination.", LL_ERROR);
 			return false;
 		}
 
@@ -1941,12 +1942,16 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 				touch_f->Sync();
 			}
 
-			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single))
+			std::string errmsg;
+			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg))
 			{
 				if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
 				{
 					Server->deleteFile(image_folder);
 				}
+				errmsg = trim(errmsg);
+				ServerLogger::Log(logid, "Error creating empty image subvolume. "
+					+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
 				return std::string();
 			}
 			else if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
@@ -2002,9 +2007,12 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		}
 
 		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
-		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single))
+		std::string errmsg;
+		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single, errmsg))
 		{
-			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single, LL_ERROR);
+			errmsg = trim(errmsg);
+			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single
+				+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
 			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
 			{
 				Server->deleteFile(image_folder);

@@ -795,9 +795,12 @@ bool FileBackup::doBackup()
 
 	if(!cdp_path)
 	{
-		if(!constructBackupPath(use_snapshots, !r_incremental))
+		std::string errmsg;
+		if(!constructBackupPath(use_snapshots, !r_incremental, errmsg))
 		{
-            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error). "+os_last_error_str(), LL_ERROR);
+			errmsg = trim(errmsg);
+            ServerLogger::Log(logid, "Cannot create directory "+backuppath+" for backup (server error). "
+				+ (errmsg.empty() ? os_last_error_str() : errmsg), LL_ERROR);
 			return false;
 		}
 	}
@@ -1434,7 +1437,7 @@ bool FileBackup::hasDiskError()
 	return disk_error;
 }
 
-bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs)
+bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs, std::string& errmsg)
 {
 	if(!createDirectoryForClient())
 	{
@@ -1462,7 +1465,7 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs)
 	{
 		if(create_fs)
 		{
-			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)
+			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg)
 				&& (os_create_dir(os_file_prefix(backuppath_hashes))
 					|| (os_directory_exists(os_file_prefix(backuppath_hashes))
 						&& getFiles(os_file_prefix(backuppath_hashes)).empty()));

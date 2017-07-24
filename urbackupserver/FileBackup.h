@@ -180,7 +180,7 @@ protected:
 	std::string getSHA256(const std::string& fn);
 	std::string getSHA512(const std::string& fn);
 	std::string getSHADef(const std::string& fn);
-	bool constructBackupPath(bool on_snapshot, bool create_fs);
+	bool constructBackupPath(bool on_snapshot, bool create_fs, std::string& errmsg);
 	bool constructBackupPathCdp();
 	std::string systemErrorInfo();
 	void saveUsersOnClient();
