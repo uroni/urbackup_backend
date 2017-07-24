@@ -7,12 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2014-2016
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2014-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2017-02-28 14:27+0000\n"
+"Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1542,10 +1543,10 @@ msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr "Ne pas arrêter les sauvegardes en cas de non-concordance de hachage ou d'erreurs de lecture"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Administrateur"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Sauvegardes d'image système"
 
 msgid "action_14"
 msgstr "Nettoyage nocturne"
@@ -1554,213 +1555,213 @@ msgid "action_15"
 msgstr "Nettoyage d'urgence"
 
 msgid "action_16"
-msgstr ""
+msgstr "Migration du stockage"
 
 msgid "default_group"
-msgstr ""
+msgstr "Défaut"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Groupes"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Ajouter un nouveau groupe"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Entrer un nouveau nom de groupe"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "le groupe existe déja"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Vous allez supprimer ce groupe. Tous les clients de ce groupe vont être réaffecté au groupe par défaut. Procéder ?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Échec de la suppression du groupe"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Le nom du serveur internet doit être un nom d'hôte complet ou une IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "L'adresse du serveur doit commencer par http:// ou https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Démarrer récupération"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Erreur de marquage pour suppression"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Erreur de suppression de la sauvegarde"
 
 msgid "image_locked"
-msgstr ""
+msgstr "L'image système est en cours d'utilisation"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "L'image système de référence pour cette sauvegarde incrémentielle est en cours d'utilisation."
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "L'image système de référence pour cette sauvegarde incrémentielle est en cours."
 
 msgid "archived_ref"
-msgstr ""
+msgstr "L'image système de référence pour cette sauvegarde est archivée."
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Voir le détails des journaux serveur"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Voir le détails des journaux serveur"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Sauvegarde marquée pour suppression. Ne pas effacer."
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Supprimer maintenant"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Volume"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Pas de sauvegardes"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Aucune sauvegarde sélectionnée pour ce client"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Information sur la sauvegarde système"
 
 msgid "tId"
-msgstr ""
+msgstr "ld"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Taille du volume"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Style de partition"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Numéro de disque"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Numéro de partition"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Type de système de fichier"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Nom du volume"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Numéro de série"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Monter l'image"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup va utiliser une fonctionnalité non isolée pour monter l'image système. Ne monter cette image que si vous êtes sur de la source."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Erreur de montage de l'image. Merci de consulter les journaux serveur pour plus de détails."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok acquitter cette erreur"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Arrêter de montrer cette erreur"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Le serveur à détecté un client qui n'est pas configuré sur ce serveur"
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Voir le détails sur ce qui se passe"
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "OK. passer cette astuce"
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Arrêter de montrer cette erreur"
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Volume"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Vers la version"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Chemin:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Groupe"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Membres du groupe"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Sélectionner les clients depuis le groupe courant (double clic pour changer le réglage)"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Supprimer le groupe"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Autoriser les clients à lancer une restauration de fichiers"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Autoriser les client à sélectionner les composants à sauvegarder"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Autoriser les clients à lancer la restauration des composants"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Lettre du volume"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Sauvegardes d'image système"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Ne pas démarrer de sauvegarde de fichiers si le quota mensuel est insuffisant"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Ne pas démarrer de sauvegarde système si le quota mensuel est insuffisant"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Estimation de la durée de mise à jour de la base"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Image système complète #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Cliché de volume dans le groupe pendant la sauvegarde système."
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Cliché de volume dans le groupe pendant la sauvegarde de fichiers."
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Configuration de la sauvegarde des composants windows"
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Nom du groupe"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "avec la sélection"
