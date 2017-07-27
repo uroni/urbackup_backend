@@ -350,6 +350,10 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 					}
 					logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
 					ServerLogger::Log(logid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
+					if (ret.find("Async indexing process not found") != std::string::npos)
+					{
+						ServerLogger::Log(logid, "Hint: The most likely explanation for this error is that the client was restarted/rebooted during indexing", LL_ERROR);
+					}
 					has_error = true;
 					break;
 				}
