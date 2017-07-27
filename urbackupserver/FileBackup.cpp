@@ -353,6 +353,8 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 					if (ret.find("Async indexing process not found") != std::string::npos)
 					{
 						ServerLogger::Log(logid, "Hint: The most likely explanation for this error is that the client was restarted/rebooted during indexing", LL_ERROR);
+						should_backoff = false;
+						has_timeout_error = true;
 					}
 					has_error = true;
 					break;
