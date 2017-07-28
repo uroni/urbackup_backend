@@ -300,6 +300,17 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(val);
 			}
 		}
+		if (settings->getValue("INTERNET_ONLY", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				if (val == "1") val = "true";
+				real_args.push_back("--internet_only_mode");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -372,6 +383,8 @@ int action_run(std::vector<std::string> args)
 	TCLAP::ValueArg<int> rotate_num_files_arg("j", "rotate-num-files",
 		"Max number of log files during rotation",
 		false, 0, "num", cmd);
+
+	TCLAP::SwitchArg internet_only_arg("i", "internet-only", "Do not discover clients in local network", cmd, false);
 
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
@@ -470,6 +483,12 @@ int action_run(std::vector<std::string> args)
 	{
 		real_args.push_back("--rotate-numfiles");
 		real_args.push_back(convert(rotate_num_files_arg.getValue()));
+	}
+	if (std::find(real_args.begin(), real_args.end(), "--internet_only_mode") == real_args.end()
+		&& internet_only_arg.getValue())
+	{
+		real_args.push_back("--internet_only_mode");
+		real_args.push_back("true");
 	}
 
 #ifndef _WIN32
