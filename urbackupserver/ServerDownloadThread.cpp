@@ -273,7 +273,11 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::string &fn, cons
 	ni.sha_dig = sha_dig;
 	ni.write_metadata = write_metadata;
 
-	max_file_id.setMinDownloaded(id);
+	if (id != 0
+		&& !at_front_postpone_quitstop)
+	{
+		max_file_id.setMinDownloaded(id);
+	}
 
 	if(is_script)
 	{
@@ -327,7 +331,10 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::string &fn, c
     ni.metadata_only = false;
 	ni.sha_dig=sha_dig;
 
-	max_file_id.setMinDownloaded(id);
+	if (id != 0)
+	{
+		max_file_id.setMinDownloaded(id);
+	}
 
 	if(is_script)
 	{
