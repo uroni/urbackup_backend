@@ -128,6 +128,11 @@ bool IncrFileBackup::doFileBackup()
 	{
 		has_early_error=true;
 
+		if (no_backup_dirs)
+		{
+			backup_dao->updateClientNumIssues(ServerBackupDao::num_issues_no_backuppaths, clientid);
+		}
+
 		if(no_backup_dirs || connect_fail)
 		{
 			log_backup=false;

@@ -1117,7 +1117,12 @@ function show_status2(data)
 	for(var i=0;i<data.status.length;++i)
 	{
 		var obj=data.status[i];
-		if(obj.file_ok
+		if(obj.no_backup_paths)
+		{
+			obj.file_style="warning";
+			obj.file_ok_t=trans("no_backup_paths");
+		}
+		else if(obj.file_ok
 			&& obj.last_filebackup_issues==0)
 		{
 			obj.file_style="success";

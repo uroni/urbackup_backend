@@ -25,6 +25,7 @@
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server.h"
 #include "../ClientMain.h"
+#include "../dao/ServerBackupDao.h"
 
 #include <algorithm>
 #include <memory>
@@ -647,7 +648,16 @@ ACTION_IMPL(status)
 			stat.set("lastbackup", lastbackup);
 			stat.set("lastbackup_image", lastbackup_image);
 			stat.set("delete_pending", res[i]["delete_pending"] );
-			stat.set("last_filebackup_issues", watoi(res[i]["last_filebackup_issues"]));
+			int issues = watoi(res[i]["last_filebackup_issues"]);
+			if (issues == ServerBackupDao::num_issues_no_backuppaths)
+			{
+				stat.set("last_filebackup_issues", 0);
+				stat.set("no_backup_paths", true);
+			}
+			else
+			{
+				stat.set("last_filebackup_issues", issues);
+			}
 			stat.set("groupname", res[i]["groupname"]);
 			stat.set("file_ok", res[i]["file_ok"] == "1" && lastbackup!=0);
 			stat.set("image_ok", res[i]["image_ok"] == "1" && lastbackup_image!=0);

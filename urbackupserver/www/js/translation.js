@@ -1743,7 +1743,8 @@ translations.en = {
 "tVolumes to snapshot in groups during file backups": "Volumes to snapshot in groups during file backups",
 "tWindows components backup configuration": "Windows components backup configuration",
 "tGroup name": "Group name",
-"tWith Selected": "With Selected"
+"tWith Selected": "With Selected",
+"no_backup_paths": "No paths to backup configured"
 }
 translations.en_US = {
 "tInfos": "About"

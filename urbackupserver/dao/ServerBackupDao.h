@@ -7,6 +7,7 @@ public:
 	ServerBackupDao(IDatabase *db);
 	~ServerBackupDao();
 
+	static int num_issues_no_backuppaths;
 
 	//@-SQLGenFunctionsBegin
 	struct CondInt
@@ -130,6 +131,7 @@ public:
 	void updateImageBackupRunning(int backupid);
 	void saveImageAssociation(int img_id, int assoc_id);
 	void updateClientLastImageBackup(int backupid, int clientid);
+	void updateClientNumIssues(int last_filebackup_issues, int clientid);
 	void updateClientLastFileBackup(int backupid, int last_filebackup_issues, int clientid);
 	void updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int clientid);
 	void deleteAllUsersOnClient(int clientid);
@@ -213,6 +215,7 @@ private:
 	IQuery* q_updateImageBackupRunning;
 	IQuery* q_saveImageAssociation;
 	IQuery* q_updateClientLastImageBackup;
+	IQuery* q_updateClientNumIssues;
 	IQuery* q_updateClientLastFileBackup;
 	IQuery* q_updateClientOsAndClientVersion;
 	IQuery* q_deleteAllUsersOnClient;

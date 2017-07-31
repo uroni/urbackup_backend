@@ -21,6 +21,8 @@
 #include <assert.h>
 #include <string.h>
 
+int ServerBackupDao::num_issues_no_backuppaths = -1;
+
 /**
 * @-SQLGenTempSetup
 * @sql
@@ -1004,6 +1006,24 @@ void ServerBackupDao::updateClientLastImageBackup(int backupid, int clientid)
 
 /**
 * @-SQLGenAccess
+* @func void ServerBackupDao::updateClientNumIssues
+* @sql
+*       UPDATE clients SET last_filebackup_issues=:last_filebackup_issues(int) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientNumIssues(int last_filebackup_issues, int clientid)
+{
+	if(q_updateClientNumIssues==NULL)
+	{
+		q_updateClientNumIssues=db->Prepare("UPDATE clients SET last_filebackup_issues=? WHERE id=?", false);
+	}
+	q_updateClientNumIssues->Bind(last_filebackup_issues);
+	q_updateClientNumIssues->Bind(clientid);
+	q_updateClientNumIssues->Write();
+	q_updateClientNumIssues->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerBackupDao::updateClientLastFileBackup
 * @sql
 *       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)), last_filebackup_issues=:last_filebackup_issues(int), alerts_next_check=NULL WHERE id=:clientid(int)
@@ -1704,6 +1724,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_updateImageBackupRunning=NULL;
 	q_saveImageAssociation=NULL;
 	q_updateClientLastImageBackup=NULL;
+	q_updateClientNumIssues=NULL;
 	q_updateClientLastFileBackup=NULL;
 	q_updateClientOsAndClientVersion=NULL;
 	q_deleteAllUsersOnClient=NULL;
@@ -1780,6 +1801,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_updateImageBackupRunning);
 	db->destroyQuery(q_saveImageAssociation);
 	db->destroyQuery(q_updateClientLastImageBackup);
+	db->destroyQuery(q_updateClientNumIssues);
 	db->destroyQuery(q_updateClientLastFileBackup);
 	db->destroyQuery(q_updateClientOsAndClientVersion);
 	db->destroyQuery(q_deleteAllUsersOnClient);
