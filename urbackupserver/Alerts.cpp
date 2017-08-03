@@ -172,10 +172,14 @@ void Alerts::operator()()
 				ILuaInterpreter::Param::params_map& params = *params_raw.u.params;
 				params["clientid"] = clientid;
 				params["clientname"] = res[i]["name"];
-				params["incr_file_interval"] = server_settings.getUpdateFreqFileIncr();
-				params["full_file_interval"] = server_settings.getUpdateFreqFileFull();
-				params["incr_image_interval"] = server_settings.getUpdateFreqImageIncr();
-				params["full_image_interval"] = server_settings.getUpdateFreqImageFull();
+				int update_freq_file_incr = server_settings.getUpdateFreqFileIncr();
+				int update_freq_file_full = server_settings.getUpdateFreqFileIncr();
+				params["incr_file_interval"] = update_freq_file_incr;
+				params["full_file_interval"] = update_freq_file_full;
+				int update_freq_image_incr = server_settings.getUpdateFreqImageIncr();
+				int update_freq_image_full = server_settings.getUpdateFreqImageFull();
+				params["incr_image_interval"] = update_freq_image_incr;
+				params["full_image_interval"] = update_freq_image_full;
 				params["no_images"] = server_settings.getSettings()->no_images;
 				params["no_file_backups"] = server_settings.getSettings()->no_file_backups;
 				params["os_simple"] = res[i]["os_simple"];
@@ -193,10 +197,14 @@ void Alerts::operator()()
 
 				SSettings* settings = server_settings.getSettings();
 
-				if (settings->update_freq_full.find(";") != std::string::npos
-					|| settings->update_freq_incr.find(";") != std::string::npos
-					|| settings->update_freq_image_full.find(";") != std::string::npos
-					|| settings->update_freq_image_incr.find(";") != std::string::npos)
+				bool complex_file_interval = settings->update_freq_full.find(";") != std::string::npos
+					|| settings->update_freq_incr.find(";") != std::string::npos;
+
+				bool complex_image_interval = settings->update_freq_image_full.find(";") != std::string::npos
+					|| settings->update_freq_image_incr.find(";") != std::string::npos;
+
+				if ( complex_file_interval
+					|| complex_image_interval )
 				{
 					params["complex_interval"] = true;
 				}
@@ -291,10 +299,43 @@ void Alerts::operator()()
 					needs_update = true;
 				}
 
+				int i_file_ok = file_ok ? 1 : 0;
+				int i_image_ok = file_ok ? 1 : 0;
+
+				if (settings->no_file_backups
+					&& res[i]["file_ok"] != "-1")
+				{
+					i_file_ok = -1;
+					needs_update = true;
+				}
+				else if (!complex_file_interval
+					&& update_freq_file_incr < 0
+					&& update_freq_file_full < 0
+					&& res[i]["file_ok"] != "-1")
+				{
+					i_file_ok = -1;
+					needs_update = true;
+				}
+
+				if (settings->no_images
+					&& res[i]["image_ok"] != "-1")
+				{
+					i_image_ok = -1;
+					needs_update = true;
+				}
+				else if (!complex_image_interval
+					&& update_freq_image_full < 0
+					&& update_freq_image_incr < 0
+					&& res[i]["image_ok"] != "-1")
+				{
+					i_image_ok = -1;
+					needs_update = true;
+				}
+
 				if (needs_update)
 				{
-					q_update_client->Bind(file_ok);
-					q_update_client->Bind(image_ok);
+					q_update_client->Bind(i_file_ok);
+					q_update_client->Bind(i_image_ok);
 					q_update_client->Bind(next_check);
 					q_update_client->Bind(state);
 					q_update_client->Bind(clientid);

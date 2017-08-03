@@ -662,6 +662,16 @@ ACTION_IMPL(status)
 			stat.set("file_ok", res[i]["file_ok"] == "1" && lastbackup!=0);
 			stat.set("image_ok", res[i]["image_ok"] == "1" && lastbackup_image!=0);
 
+			if (res[i]["file_ok"] == "-1")
+			{
+				stat.set("file_disabled", true);
+			}
+
+			if (res[i]["image_ok"] == "-1")
+			{
+				stat.set("image_disabled", true);
+			}
+
 			std::string ip="-";
 			std::string client_version_string = res[i]["client_version_str"];
 			std::string os_version_string = res[i]["os_version_str"];

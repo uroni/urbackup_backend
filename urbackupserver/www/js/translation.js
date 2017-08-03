@@ -1744,7 +1744,8 @@ translations.en = {
 "tWindows components backup configuration": "Windows components backup configuration",
 "tGroup name": "Group name",
 "tWith Selected": "With Selected",
-"no_backup_paths": "No paths to backup configured"
+"no_backup_paths": "No paths to backup configured",
+"disabled": "Disabled"
 }
 translations.en_US = {
 "tInfos": "About"

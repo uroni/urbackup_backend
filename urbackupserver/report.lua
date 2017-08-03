@@ -17,7 +17,7 @@ else
 		msg = msg .. "a resumed full "
 		subj = subj .. "Resumed full "
 	else
-		msg = msg .. "a full  "
+		msg = msg .. "a full "
 		subj = subj .. "Full "
 	end
 end

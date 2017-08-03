@@ -1133,6 +1133,11 @@ function show_status2(data)
 			obj.file_style="warning";
 			obj.file_ok_t=trans("completed_with_issues");
 		}
+		else if(obj.file_disabled)
+		{
+			obj.file_style="success";
+			obj.file_ok_t=trans("disabled");
+		}
 		else
 		{
 			obj.file_style="danger";
@@ -1152,6 +1157,11 @@ function show_status2(data)
 			{
 				obj.image_style="success";
 				obj.image_ok_t=trans("ok");
+			}
+			else if(obj.image_disabled)
+			{
+				obj.image_style="success";
+				obj.image_ok_t=trans("disabled");
 			}
 			else
 			{
