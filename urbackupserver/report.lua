@@ -28,7 +28,7 @@ then
 	subj = subj .. "image "
 else
 	msg = msg .. "file "
-	subj = subj .. "file  "
+	subj = subj .. "file "
 end
 
 subj = subj .. "backup of \"" .. params.clientname .. "\"\n"
