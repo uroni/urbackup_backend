@@ -61,7 +61,7 @@ std::string InternetClient::status_msg="initializing";
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
 const unsigned int ic_auth_timeout=60000;
-const unsigned int ic_ping_timeout=31*60*1000;
+const unsigned int ic_ping_timeout=6*60*1000;
 const unsigned int ic_backup_running_ping_timeout=60*1000;
 const int ic_sleep_after_auth_errs=2;
 
