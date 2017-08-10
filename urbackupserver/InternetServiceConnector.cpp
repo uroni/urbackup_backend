@@ -112,6 +112,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
 	tcpstack.setMaxPacketSize(32768);
+	client_ping_interval = ping_interval;
 	challenge=ServerSettings::generateRandomBinaryKey();
 	{
 		CWData data;
@@ -212,7 +213,7 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 		starttime=Server->getTimeMS();
 	}
 
-	if(state==ISS_AUTHED && Server->getTimeMS()-lastpingtime>ping_interval && !pinging)
+	if(state==ISS_AUTHED && Server->getTimeMS()-lastpingtime>client_ping_interval && !pinging)
 	{
 		lastpingtime=Server->getTimeMS();
 		pinging=true;
@@ -805,6 +806,7 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 		db->destroyQuery(q);
 		if (!res.empty())
 		{
+			client_ping_interval = 30*1000;
 			db_timeout = false;
 			return res[0]["value"];
 		}

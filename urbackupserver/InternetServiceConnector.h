@@ -142,4 +142,6 @@ private:
 	static std::vector<std::pair<IECDHKeyExchange*, int64> > ecdh_key_exchange_buffer;
 
 	static int64 last_token_remove;
+
+	unsigned int client_ping_interval;
 };

@@ -63,6 +63,7 @@ const unsigned int spare_connections=1;
 const unsigned int ic_auth_timeout=60000;
 const unsigned int ic_ping_timeout=6*60*1000;
 const unsigned int ic_backup_running_ping_timeout=60*1000;
+const unsigned int ic_restore_ping_timeout = 60 * 1000;
 const int ic_sleep_after_auth_errs=2;
 
 const char SERVICE_COMMANDS=0;
@@ -773,6 +774,10 @@ void InternetClientThread::operator()(void)
 		if(ClientConnector::isBackupRunning())
 		{
 			ping_timeout=ic_backup_running_ping_timeout;
+		}
+		else if (next(server_settings.clientname, 0, "##restore##"))
+		{
+			ping_timeout = ic_restore_ping_timeout;
 		}
 		else
 		{
