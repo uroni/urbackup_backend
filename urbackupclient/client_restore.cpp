@@ -191,7 +191,7 @@ struct SPasswordSalt
 	int pbkdf2_rounds;
 };
 
-std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
+std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -204,7 +204,7 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
 		return ret;
 	}
 
-	
+	bool has_ok = false;
 	tcpstack.Send(c, "GET SALT#pw="+pw+"&username="+username);
 	std::string r=getResponse(c);
 	if(r.empty() )
@@ -223,6 +223,7 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
 		{
 			if(toks[i].find("ok;")==0)
 			{
+				has_ok = true;
 				std::vector<std::string> salt_toks;
 				Tokenize(toks[i], salt_toks, ";");
 
@@ -252,10 +253,17 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
 		}
 	}
 	Server->destroy(c);
+
+	if (!has_ok && tries>0)
+	{
+		Server->wait(10000);
+		return getSalt(username, tries - 1, ec);
+	}
+
 	return ret;
 }
 
-bool tryLogin(const std::string& username, const std::string& password, std::vector<SPasswordSalt> salts, int *ec)
+bool tryLogin(const std::string& username, const std::string& password, std::vector<SPasswordSalt> salts, int tries, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -291,6 +299,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		}
 	}
 	
+	bool do_retry = false;
 	bool ret=false;
 	tcpstack.Send(c, "LOGIN FOR DOWNLOAD#pw="+pw+auth_str);
 	std::string r=getResponse(c);
@@ -310,6 +319,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		else if (r == "no channels available")
 		{
 			ret = true;
+			do_retry = true;
 		}
 		else
 		{
@@ -317,6 +327,12 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		}
 	}
 	Server->destroy(c);
+
+	if (!ret || do_retry)
+	{
+		Server->wait(10000);
+		return tryLogin(username, password, salts, tries - 1, ec);
+	}
 	return ret;
 }
 
@@ -509,6 +525,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 			if (rc== EDownloadResult_SizeReadError)
 			{
 				do_login(login_data);
+				Server->wait(10000);
 			}
 		}
 		while(tries>0);
@@ -1516,11 +1533,11 @@ bool do_login(LoginData& login_data)
 		if (login_data.username.empty())
 		{
 			int ec;
-			return tryLogin("", "", std::vector<SPasswordSalt>(), &ec);
+			return tryLogin("", "", std::vector<SPasswordSalt>(), 10, &ec);
 		}
 
 		int ec;
-		std::vector<SPasswordSalt> salts = getSalt(login_data.username, &ec);
+		std::vector<SPasswordSalt> salts = getSalt(login_data.username, 10, &ec);
 
 		bool found_salt = false;
 		for (size_t i = 0; i < salts.size(); ++i)
@@ -1538,14 +1555,14 @@ bool do_login(LoginData& login_data)
 			return false;
 		}
 
-		return tryLogin(login_data.username, login_data.password, salts, &ec);
+		return tryLogin(login_data.username, login_data.password, salts, 10, &ec);
 	}
 
 	system("clear");
 	system("cat urbackup/restore/trying_to_login");
 
 	int ec;
-	if (!tryLogin("", "", std::vector<SPasswordSalt>(), &ec))
+	if (!tryLogin("", "", std::vector<SPasswordSalt>(), 0, &ec))
 	{
 		if (ec == 1)
 		{
@@ -1567,7 +1584,7 @@ bool do_login(LoginData& login_data)
 				return false;
 			}
 
-			std::vector<SPasswordSalt> salts = getSalt(username, &ec);
+			std::vector<SPasswordSalt> salts = getSalt(username, 5, &ec);
 
 			bool found_salt = false;
 			for (size_t i = 0; i < salts.size(); ++i)
@@ -1598,7 +1615,7 @@ bool do_login(LoginData& login_data)
 					return false;
 				}
 
-				if (!tryLogin(username, password, salts, &ec))
+				if (!tryLogin(username, password, salts, 5, &ec))
 				{
 					rc = system("dialog --yesno \"`cat urbackup/restore/login_failed`\" 7 50");
 					if (rc != 0)
