@@ -871,7 +871,7 @@ namespace
 	
 	std::vector<SLsblk> lsblk(const std::string& dev)
 	{
-		int rc = system(("lsblk -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
+		int rc = system(("lsblk -x MAJ:MIN -o MAJ:MIN,MODEL,SIZE,TYPE -P "+dev+" 1> out").c_str());
 		
 		std::vector<SLsblk> ret;
 		
