@@ -58,6 +58,15 @@ extern ICryptoFactory *crypto_fak;
 namespace
 {
 
+struct LoginData
+{
+	LoginData() : has_login_data(false) {}
+
+	bool has_login_data;
+	std::string username;
+	std::string password;
+};
+
 std::string trim2(const std::string &str)
 {
     size_t startpos=str.find_first_not_of(" \t\n");
@@ -469,9 +478,11 @@ enum EDownloadResult
 	EDownloadResult_DeviceTooSmall = 11
 };
 
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
+EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
 
-EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
+bool do_login(LoginData& login_data);
+
+EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 {
 	if(recur_depth==0)
 	{
@@ -484,7 +495,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 		{
 			Server->wait(30000);
 			int64 starttime = Server->getTimeMS();
-			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1, o_imgsize, o_output_file_size);
+			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, offset, recur_depth+1, o_imgsize, o_output_file_size);
 			if(rc== EDownloadResult_Ok)
 			{
 				return rc;
@@ -494,6 +505,11 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 			{
 				tries = total_tries;
 			}
+
+			if (rc== EDownloadResult_SizeReadError)
+			{
+				do_login(login_data);
+			}
 		}
 		while(tries>0);
 	}
@@ -501,7 +517,8 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 	return errrc;
 }
 
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
+EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
+	_i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -551,7 +568,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
-		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, outfile, mbr, offset, recur_depth, o_imgsize, o_output_file_size);
+		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size);
 		return rc;
 	}
 
@@ -573,7 +590,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
 			if(c_read==0)
 			{
-				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, offset, recur_depth, o_imgsize, o_output_file_size);
+				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size);
 				return rc;
 			}
 			out_file->Write(buf, (_u32)c_read);
@@ -603,7 +620,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 				out_file.reset(NULL);
 				if(has_data)
 				{
-					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, pos, recur_depth, o_imgsize, o_output_file_size);
+					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, login_data, pos, recur_depth, o_imgsize, o_output_file_size);
 				}
 				else
 				{
@@ -1149,7 +1166,7 @@ void do_restore(void)
 		if(cmd=="download_mbr")
 			mbr=true;
 
-		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr);
+		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr, LoginData());
 		exit(ec);
 	}
 	else if(cmd=="download_files")
@@ -1193,15 +1210,15 @@ void do_restore(void)
 class RestoreThread : public IThread
 {
 public:
-	RestoreThread(int pImg_id, std::string pImg_time, std::string pOutfile) 
-		: img_id(pImg_id), img_time(pImg_time), outfile(pOutfile), imgsize(0), output_file_size(0)
+	RestoreThread(int pImg_id, std::string pImg_time, std::string pOutfile, LoginData login_data) 
+		: img_id(pImg_id), img_time(pImg_time), outfile(pOutfile), imgsize(0), output_file_size(0), login_data(login_data)
 	{
 		done=false;
 	}
 
 	void operator()(void)
 	{
-		rc=downloadImage(img_id, img_time, outfile, false, -1, 0, &imgsize, &output_file_size);
+		rc=downloadImage(img_id, img_time, outfile, false, login_data, -1, 0, &imgsize, &output_file_size);
 		done=true;
 	}
 
@@ -1231,6 +1248,7 @@ private:
 	int img_id;
 	std::string img_time;
 	std::string outfile;
+	LoginData login_data;
 
 	int64 imgsize;
 	int64 output_file_size;
@@ -1488,75 +1506,111 @@ void configure_internet_server()
 	}
 }
 
-bool do_login(void)
+namespace
 {
+
+bool do_login(LoginData& login_data)
+{
+	if (login_data.has_login_data)
+	{
+		if (login_data.username.empty())
+		{
+			int ec;
+			return tryLogin("", "", std::vector<SPasswordSalt>(), &ec);
+		}
+
+		int ec;
+		std::vector<SPasswordSalt> salts = getSalt(login_data.username, &ec);
+
+		bool found_salt = false;
+		for (size_t i = 0; i < salts.size(); ++i)
+		{
+			if (!salts[i].salt.empty() &&
+				!salts[i].rnd.empty())
+			{
+				found_salt = true;
+				break;
+			}
+		}
+
+		if (!found_salt)
+		{
+			return false;
+		}
+
+		return tryLogin(login_data.username, login_data.password, salts, &ec);
+	}
+
 	system("clear");
 	system("cat urbackup/restore/trying_to_login");
 
 	int ec;
-	if(!tryLogin("", "", std::vector<SPasswordSalt>(), &ec) )
+	if (!tryLogin("", "", std::vector<SPasswordSalt>(), &ec))
 	{
-		if(ec==1)
+		if (ec == 1)
 		{
 			//Server probably does not support logging in
-			std::vector<std::string> clients=getBackupclients(&ec);
-			if(ec==0 && !clients.empty())
+			std::vector<std::string> clients = getBackupclients(&ec);
+			if (ec == 0 && !clients.empty())
 			{
 				return true;
 			}
 		}
 
-		while(true)
+		while (true)
 		{
-			int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
-			std::string username=getFile("out");
+			int rc = system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
+			std::string username = getFile("out");
 
-			if(rc!=0)
+			if (rc != 0)
 			{
 				return false;
 			}
 
-			std::vector<SPasswordSalt> salts=getSalt(username, &ec);
+			std::vector<SPasswordSalt> salts = getSalt(username, &ec);
 
-			bool found_salt=false;
-			for(size_t i=0;i<salts.size();++i)
+			bool found_salt = false;
+			for (size_t i = 0; i < salts.size(); ++i)
 			{
-				if(!salts[i].salt.empty() &&
-					!salts[i].rnd.empty() )
+				if (!salts[i].salt.empty() &&
+					!salts[i].rnd.empty())
 				{
-					found_salt=true;
+					found_salt = true;
 					break;
 				}
 			}
 
-			if(!found_salt)
+			if (!found_salt)
 			{
-				rc=system("dialog --yesno \"`cat urbackup/restore/user_not_found`\" 7 50");
-				if(rc!=0)
+				rc = system("dialog --yesno \"`cat urbackup/restore/user_not_found`\" 7 50");
+				if (rc != 0)
 				{
 					return false;
 				}
 			}
 			else
 			{
-				rc=system("dialog --insecure --passwordbox \"`cat urbackup/restore/enter_password`\" 8 30 2> out");
-				std::string password=getFile("out");
+				rc = system("dialog --insecure --passwordbox \"`cat urbackup/restore/enter_password`\" 8 30 2> out");
+				std::string password = getFile("out");
 
-				if(rc!=0)
+				if (rc != 0)
 				{
 					return false;
 				}
 
-				if(!tryLogin(username, password, salts, &ec))
+				if (!tryLogin(username, password, salts, &ec))
 				{
-					rc=system("dialog --yesno \"`cat urbackup/restore/login_failed`\" 7 50");
-					if(rc!=0)
+					rc = system("dialog --yesno \"`cat urbackup/restore/login_failed`\" 7 50");
+					if (rc != 0)
 					{
 						return false;
 					}
 				}
 				else
 				{
+					login_data.has_login_data = true;
+					login_data.username = username;
+					login_data.password = password;
 					return true;
 				}
 			}
@@ -1564,8 +1618,11 @@ bool do_login(void)
 	}
 	else
 	{
+		login_data.has_login_data = true;
 		return true;
 	}
+}
+
 }
 
 const int start_state=-2;
@@ -1583,6 +1640,7 @@ void restore_wizard(void)
 	std::string selpart;
 	std::string err;
 	bool res_sysvol=false;
+	LoginData login_data;
 	while(true)
 	{
 
@@ -1665,7 +1723,8 @@ void restore_wizard(void)
 			{
 				std::string errmsg;
 				int ec;
-				if(do_login())
+				login_data = LoginData();
+				if(do_login(login_data))
 				{					
 					clients=getBackupclients(&ec);
 					
@@ -1893,7 +1952,7 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				EDownloadResult rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true);
+				EDownloadResult rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true, login_data);
 				if (rc != EDownloadResult_Ok )
 				{
 					Server->Log("Error downloading MBR", LL_ERROR);
@@ -2058,7 +2117,7 @@ void restore_wizard(void)
 				{
 					windows_partition=selpart;
 				}
-				RestoreThread rt(selimage.id, convert(selimage.time_s), selpart);
+				RestoreThread rt(selimage.id, convert(selimage.time_s), selpart, login_data);
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt, "image restore");
 				while(true)
 				{
