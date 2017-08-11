@@ -159,7 +159,8 @@ struct SChannel
 	{
 		EChannelState_Idle,
 		EChannelState_Pinging,
-		EChannelState_Exit
+		EChannelState_Exit,
+		EChannelState_Used
 	};
 
 	EChannelState state;

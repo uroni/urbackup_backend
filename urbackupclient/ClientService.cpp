@@ -433,6 +433,15 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 			SChannel* chan = getCurrChannel();
 
+			if (chan->state == SChannel::EChannelState_Used)
+			{
+				return true;
+			}
+			else
+			{
+				want_receive = true;
+			}
+
 			bool has_ping = chan != NULL && chan->state == SChannel::EChannelState_Pinging;
 
 			int64 timeout_interval = 180000;
@@ -723,6 +732,17 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 		l_mutex=backup_mutex;
 	}
 	IScopedLock g_lock(l_mutex);
+
+	if (is_channel)
+	{
+		SChannel* chan = getCurrChannel();
+		if (chan != NULL
+			&& chan->state == SChannel::EChannelState_Used)
+		{
+			want_receive = false;
+			return;
+		}
+	}
 
 	std::string cmd;
 	size_t rc=pipe->Read(&cmd, is_channel?0:-1);
@@ -2487,6 +2507,8 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
+		SChannel::EChannelState orig_state = channel_pipes[i].state;
+		channel_pipes[i].state = SChannel::EChannelState_Used;
 
 		_i64 received_bytes = 0;
 		std::string offset;
@@ -2560,6 +2582,7 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 				read+=c_read;
 			}
 			Server->Log("Downloading MBR done");
+			channel_pipes[i].state = orig_state;
 			return;
 		}
 
@@ -2572,6 +2595,8 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 				if (i + 1<channel_pipes.size())
 				{
 					removeChannelpipe(c);
+					backup_mutex_lock.relock(backup_mutex);
+					waitForPings(&backup_mutex_lock);
 					continue;
 				}
 				else
@@ -2668,6 +2693,7 @@ void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lo
 		}
 		remove_running_backup.setSuccess(true);
 		Server->Log("Downloading image done", LL_DEBUG);
+		channel_pipes[i].state = orig_state;
 		return;
 	}
 	imgsize=-2;
