@@ -470,10 +470,12 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else
 	{
-		IScopedLock lock(mutex);
-		Server->destroy(input);
-		input=NULL;
-		tcpstack.reset();
+		{
+			IScopedLock lock(mutex);
+			Server->destroy(input);
+			input = NULL;
+			tcpstack.reset();
+		}
 		Server->wait(60000);
 	}
 	return "";

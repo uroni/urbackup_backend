@@ -2109,7 +2109,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	IScopedLock lock(backup_mutex);
 	waitForPings(&lock);
 	Server->Log("In mutex...",LL_DEBUG);
-	downloadImage(params);
+	downloadImage(params, lock);
 	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
 }

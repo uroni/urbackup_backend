@@ -2457,7 +2457,7 @@ void ClientConnector::removeChannelpipe(IPipe *cp)
 	}
 }
 
-void ClientConnector::downloadImage(str_map params)
+void ClientConnector::downloadImage(str_map params, IScopedLock& backup_mutex_lock)
 {
 	_i64 imgsize=-1;
 	if(channel_pipes.size()==0)
@@ -2524,6 +2524,8 @@ void ClientConnector::downloadImage(str_map params)
 				return;
 			}
 		}
+
+		backup_mutex_lock.relock(NULL);
 		
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{

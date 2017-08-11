@@ -771,13 +771,13 @@ void InternetClientThread::operator()(void)
 		size_t bufsize;
 
 		unsigned int ping_timeout;
-		if(ClientConnector::isBackupRunning())
-		{
-			ping_timeout=ic_backup_running_ping_timeout;
-		}
-		else if (next(server_settings.clientname, 0, "##restore##"))
+		if (next(server_settings.clientname, 0, "##restore##"))
 		{
 			ping_timeout = ic_restore_ping_timeout;
+		}
+		else if(ClientConnector::isBackupRunning())
+		{
+			ping_timeout=ic_backup_running_ping_timeout;
 		}
 		else
 		{

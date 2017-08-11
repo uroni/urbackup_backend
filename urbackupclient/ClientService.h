@@ -240,7 +240,7 @@ private:
 	bool sendIncrImage(void);
 	bool sendMBR(std::string dl, std::string &errmsg);
     std::string receivePacket(const SChannel& channel, int64 timeoutms = 60000);
-	void downloadImage(str_map params);
+	void downloadImage(str_map params, IScopedLock& backup_mutex_lock);
 	void removeChannelpipe(IPipe *cp);
 	void waitForPings(IScopedLock *lock);
 	bool hasChannelPing();
