@@ -498,11 +498,14 @@ enum EDownloadResult
 	EDownloadResult_DeviceTooSmall = 11
 };
 
-EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
+EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, 
+	_i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size, int64 received_bytes);
 
 bool do_login(LoginData& login_data);
 
-EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
+EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, 
+	bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size,
+	int64 received_bytes)
 {
 	if(recur_depth==0)
 	{
@@ -515,7 +518,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 		{
 			Server->wait(30000);
 			int64 starttime = Server->getTimeMS();
-			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, offset, recur_depth+1, o_imgsize, o_output_file_size);
+			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, offset, recur_depth+1, o_imgsize, o_output_file_size, received_bytes);
 			if(rc== EDownloadResult_Ok)
 			{
 				return rc;
@@ -539,7 +542,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 }
 
 EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
-	_i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
+	_i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL, int64 received_bytes=0)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -555,7 +558,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	std::string s_offset;
 	if(offset!=-1)
 	{
-		s_offset="&offset="+convert(offset);
+		s_offset="&offset="+convert(offset)+"&received_bytes="+convert(received_bytes);
 	}
 
 	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+convert(img_id)+"&time="+img_time+"&mbr="+convert(mbr)+s_offset);
@@ -589,7 +592,9 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
-		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size);
+		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, 
+			outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size, 
+			received_bytes);
 		return rc;
 	}
 
@@ -611,7 +616,8 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
 			if(c_read==0)
 			{
-				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size);
+				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, 
+					mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size, received_bytes);
 				return rc;
 			}
 			out_file->Write(buf, (_u32)c_read);
@@ -641,7 +647,9 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 				out_file.reset(NULL);
 				if(has_data)
 				{
-					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, mbr, login_data, pos, recur_depth, o_imgsize, o_output_file_size);
+					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
+						outfile, mbr, login_data, pos, recur_depth, o_imgsize, o_output_file_size,
+						received_bytes);
 				}
 				else
 				{
@@ -747,6 +755,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 					read+=available;
 					blockleft-=available;
 					off+=available;
+					received_bytes += available;
 					if(off>=r)
 					{
 						off=0;

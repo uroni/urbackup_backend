@@ -2488,10 +2488,17 @@ void ClientConnector::downloadImage(str_map params)
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
 
+		_i64 received_bytes = 0;
 		std::string offset;
+		int64 start_offset = 0;
 		if(params.find("offset")!=params.end())
 		{
 			offset="&offset="+params["offset"];
+			start_offset = watoi64(params["offset"]);
+			if (params.find("received_bytes") != params.end())
+			{
+				received_bytes = watoi64(params["received_bytes"]);
+			}
 		}
 		sendChannelPacket(channel_pipes[i], "DOWNLOAD IMAGE with_used_bytes=1&img_id=" 
 			+ params["img_id"] + "&time=" + params["time"] + "&mbr=" + params["mbr"] + offset);
@@ -2573,11 +2580,19 @@ void ClientConnector::downloadImage(str_map params)
 			}
 			Server->Log("Used bytes " + convert(used_bytes), LL_DEBUG);
 		}
+		else
+		{
+			received_bytes = start_offset;
+		}
+
+		if (received_bytes >= used_bytes)
+		{
+			received_bytes = used_bytes;
+		}
 
 		unsigned int blockleft=0;
 		unsigned int off=0;
 		_i64 pos=0;
-		_i64 received_bytes = 0;
 		while(pos<imgsize)
 		{
 			size_t r=c->Read(&buf[off], c_buffer_size-off, 180000);
