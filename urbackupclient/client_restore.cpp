@@ -328,7 +328,7 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 	}
 	Server->destroy(c);
 
-	if (!ret || do_retry)
+	if ((!ret || do_retry) && tries>0)
 	{
 		Server->wait(10000);
 		return tryLogin(username, password, salts, tries - 1, ec);
