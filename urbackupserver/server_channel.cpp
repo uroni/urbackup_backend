@@ -155,7 +155,7 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::str
 	bool internet_mode, bool allow_restore, const std::string& identity, std::string server_token, const std::string& virtual_client) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
-	virtual_client(virtual_client)
+	virtual_client(virtual_client), allow_shutdown(true)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -178,7 +178,7 @@ void ServerChannelThread::operator()(void)
 
 	std::string curr_ident;
 
-	while(do_exit==false)
+	while(!do_exit)
 	{
 		if(input==NULL)
 		{
@@ -284,7 +284,8 @@ void ServerChannelThread::doExit(void)
 {
 	IScopedLock lock(mutex);
 	do_exit=true;
-	if(input!=NULL)
+	if(input!=NULL
+		&& allow_shutdown)
 	{
 		input->shutdown();
 	}
@@ -392,8 +393,18 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
+		{
+			IScopedLock lock(mutex);
+			allow_shutdown = false;
+		}
+
 		DOWNLOAD_IMAGE(params);
 		Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
+
+		{
+			IScopedLock lock(mutex);
+			allow_shutdown = true;
+		}
 	}
 	else if(next(msg, 0, "DOWNLOAD FILES TOKENS "))
 	{

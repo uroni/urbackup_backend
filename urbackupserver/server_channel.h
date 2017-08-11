@@ -67,6 +67,7 @@ private:
 	volatile bool do_exit;
 	bool internet_mode;
 	bool allow_restore;
+	bool allow_shutdown;
 
 	std::string salt;
 	std::string session;
