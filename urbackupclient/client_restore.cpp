@@ -323,6 +323,10 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 		}
 		else
 		{
+			if (r == "err")
+			{
+				tries = 0;
+			}
 			Server->Log("Error during login: "+r, LL_ERROR);
 		}
 	}
