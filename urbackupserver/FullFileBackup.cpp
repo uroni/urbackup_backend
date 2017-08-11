@@ -467,6 +467,11 @@ bool FullFileBackup::doFileBackup()
 				}
 				else
 				{
+					if (depth == 0)
+					{
+						server_download->addToQueueStartShadowcopy(cf.name);
+					}
+
 					if(!has_orig_path)
 					{
 						if (curr_orig_path != orig_sep)
@@ -581,6 +586,11 @@ bool FullFileBackup::doFileBackup()
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
 							metadata, script_dir, false, 0, curr_sha2);
+					}
+
+					if (depth == 0)
+					{
+						server_download->addToQueueStopShadowcopy(cf.name);
 					}
 				}
 

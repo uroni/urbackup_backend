@@ -958,6 +958,11 @@ bool IncrFileBackup::doFileBackup()
 					std::string local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+"/"+osspecific_name);
 					std::string srcpath=last_backuppath+local_curr_os_path;
 
+					if (depth == 0)
+					{
+						server_download->addToQueueStartShadowcopy(cf.name);
+					}
+
 					if(!has_orig_path)
 					{
 						if (curr_orig_path != orig_sep)
@@ -1209,7 +1214,13 @@ bool IncrFileBackup::doFileBackup()
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
                             metadata, script_dir, true, 0, std::string(), false, 0, std::string(), write_file_metadata);
                     }
+
+					if (depth == 0)
+					{
+						server_download->addToQueueStopShadowcopy(cf.name);
+					}
 				}
+
 				max_file_id.setMaxPreProcessed(line);
 				++line;
 			}
