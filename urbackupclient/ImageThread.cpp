@@ -823,7 +823,8 @@ bool ImageThread::sendIncrImageThread(void)
 			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+= blocks_per_vhdblock)
 			{
 				++update_cnt;
-				if(update_cnt>10)
+				if(update_cnt>10
+					&& blockcnt>=0)
 				{
 					ClientConnector::updateRunningPc(image_inf->running_process_id, (int)(((float)i / (float)blocks)*100.f + 0.5f));
 					update_cnt=0;
