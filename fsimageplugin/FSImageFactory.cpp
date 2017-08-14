@@ -82,9 +82,9 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadahea
 		Server->Log("Error opening device file ("+pDev+") Errorcode: "+convert(last_error), LL_ERROR);
 		return NULL;
 	}
-	char buffer[1024];
-	_u32 rc=dev->Read(buffer, 1024);
-	if(rc!=1024)
+	char buffer[4096];
+	_u32 rc=dev->Read(buffer, 4096);
+	if(rc!=4096)
 	{
 		int last_error;
 #ifdef _WIN32
