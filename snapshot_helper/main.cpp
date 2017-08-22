@@ -21,6 +21,7 @@ extern char **environ;
 
 const int mode_btrfs=0;
 const int mode_zfs=1;
+const int mode_zfs_file=2
 
 CServer *Server;
 
@@ -69,6 +70,10 @@ std::string getBackupfolderPath(int mode)
 	else if(mode==mode_zfs)
 	{
 		fn_name = "dataset";
+	}
+	else if(mode==mode_zfs_file)
+	{
+		fn_name = "dataset_file";
 	}
 	else
 	{
@@ -559,6 +564,19 @@ int zfs_test()
 		&& remove_subvolume(mode_zfs, clientdir) )
 	{
 		std::cout << "ZFS TEST OK" << std::endl;
+		
+		clientdir=getBackupfolderPath(mode_zfs_file)+os_file_sep()+"testA54hj5luZtlorr494";
+		
+		if(getBackupfolderPath(mode_zfs_file).empty())
+		{
+			return 10 + mode_zfs;
+		}
+		else if(create_subvolume(mode_zfs, clientdir)
+			&& remove_subvolume(mode_zfs, clientdir))
+		{
+			return 10 + mode_zfs_file;
+		}
+	
 		return 10 + mode_zfs;
 	}
 	else
@@ -591,7 +609,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		cmd=argv[1];
-	}	
+	}
 
 	std::string backupfolder=getBackupfolderPath(mode);
 	
@@ -603,13 +621,22 @@ int main(int argc, char *argv[])
 		}
 		else if(mode==mode_zfs)
 		{
-			std::cout << "Dataset not set" << std::endl;
+			std::cout << "ZFS image dataset not set" << std::endl;
+		}
+		else if(mode==mode_zfs_file)
+		{
+			std::cout << "ZFS file dataset not set" << std::endl;
 		}
 		else
 		{
 			std::cout << "Unknown mode: " << mode << std::endl;
 		}
 		return 1;
+	}
+	
+	if(cmd!="test" && mode==mode_zfs_file)
+	{
+		mode=mode_zfs;
 	}
 	
 #ifndef _WIN32

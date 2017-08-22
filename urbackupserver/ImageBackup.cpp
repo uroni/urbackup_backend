@@ -1433,7 +1433,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 									if (image_file_format == image_file_format_cowraw)
 									{
-										if(!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+										if(!SnapshotHelper::makeReadonly(true, clientname, backuppath_single))
 										{
 											ServerLogger::Log(logid, "Making image backup snapshot read only failed", LL_WARNING);
 										}
@@ -1931,7 +1931,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		create_folder = false;
 		if (full_backup)
 		{
-			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
 				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
 				if (touch_f.get()==NULL)
@@ -1943,9 +1943,9 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 			}
 
 			std::string errmsg;
-			if (!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg))
+			if (!SnapshotHelper::createEmptyFilesystem(true, clientname, backuppath_single, errmsg))
 			{
-				if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+				if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 				{
 					Server->deleteFile(image_folder);
 				}
@@ -1954,9 +1954,9 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 					+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
 				return std::string();
 			}
-			else if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			else if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
-				std::string mountpoint = SnapshotHelper::getMountpoint(clientname, backuppath_single);
+				std::string mountpoint = SnapshotHelper::getMountpoint(true, clientname, backuppath_single);
 				if (mountpoint.empty())
 				{
 					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
@@ -1995,7 +1995,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
 		std::string parent_fn = ExtractFileName(pParentvhd);
 
-		if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+		if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 		{
 			std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
 			if(touch_f.get()==NULL)
@@ -2008,12 +2008,12 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 
 		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
 		std::string errmsg;
-		if (!SnapshotHelper::snapshotFileSystem(clientname, parent_backuppath_single, backuppath_single, errmsg))
+		if (!SnapshotHelper::snapshotFileSystem(true, clientname, parent_backuppath_single, backuppath_single, errmsg))
 		{
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single
 				+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
-			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
 				Server->deleteFile(image_folder);
 			}
@@ -2021,9 +2021,9 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		}
 		else
 		{
-			if (BackupServer::getSnapshotMethod() == BackupServer::ESnapshotMethod_Zfs)
+			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
-				std::string mountpoint = SnapshotHelper::getMountpoint(clientname, backuppath_single);
+				std::string mountpoint = SnapshotHelper::getMountpoint(true, clientname, backuppath_single);
 				if (mountpoint.empty())
 				{
 					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname+ " path "+ backuppath_single, LL_ERROR);

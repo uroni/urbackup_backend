@@ -680,8 +680,8 @@ bool ServerDownloadThread::link_or_copy_file(const SQueueItem& todl)
 	
 	
 	if( ( os_get_file_type(os_file_prefix(dstpath))!=0
-			|| os_create_hardlink(os_file_prefix(dstpath), dlfiles.orig_file->getFilename(), use_reflink, NULL) )
-	    && os_create_hardlink(os_file_prefix(dsthashpath), dlfiles.chunkhashes->getFilename(), use_reflink, NULL) )
+			|| FileBackup::create_hardlink(os_file_prefix(dstpath), dlfiles.orig_file->getFilename(), use_reflink, NULL) )
+	    && FileBackup::create_hardlink(os_file_prefix(dsthashpath), dlfiles.chunkhashes->getFilename(), use_reflink, NULL) )
 	{
 		return true;
 	}

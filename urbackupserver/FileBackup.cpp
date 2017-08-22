@@ -1070,6 +1070,16 @@ void FileBackup::log_progress(const std::string & fn, int64 total, int64 downloa
 	}
 }
 
+bool FileBackup::create_hardlink(const std::string & linkname, const std::string & fname, bool use_ioref, bool * too_many_links)
+{
+	if (use_ioref && BackupServer::isReflinkCopy())
+	{
+		return copy_file(fname, linkname);
+	}
+
+	return os_create_hardlink(linkname, fname, use_ioref, too_many_links);
+}
+
 std::string FileBackup::convertToOSPathFromFileClient(std::string path)
 {
 	if(os_file_sep()!="/")
@@ -1471,10 +1481,66 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs, std::stri
 	{
 		if(create_fs)
 		{
-			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg)
-				&& (os_create_dir(os_file_prefix(backuppath_hashes))
-					|| (os_directory_exists(os_file_prefix(backuppath_hashes))
-						&& getFiles(os_file_prefix(backuppath_hashes)).empty()));
+			bool zfs_file = BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile;
+			if (zfs_file)
+			{
+				std::auto_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
+				if (touch_f.get() == NULL)
+				{
+					ServerLogger::Log(logid, "Could not touch file " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					return false;
+				}
+				touch_f->Sync();
+			}
+
+			bool b = SnapshotHelper::createEmptyFilesystem(false, clientname, backuppath_single, errmsg);
+
+			if (!b)
+			{
+				if (zfs_file)
+				{
+					Server->deleteFile(backuppath);
+				}
+
+				ServerLogger::Log(logid, "Error creating empty file subvolume. "
+					+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
+
+				return false;
+			}
+
+			if (zfs_file)
+			{
+				std::string mountpoint = SnapshotHelper::getMountpoint(false, clientname, backuppath_single);
+				if (mountpoint.empty())
+				{
+					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
+					return false;
+				}
+
+				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				{
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath+ " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
+					return false;
+				}
+
+				if (!os_rename_file(backuppath + "_new", backuppath))
+				{
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					return false;
+				}
+			}
+
+			b = os_create_dir(os_file_prefix(backuppath_hashes))
+				|| (os_directory_exists(os_file_prefix(backuppath_hashes))
+					&& getFiles(os_file_prefix(backuppath_hashes)).empty());
+
+			if (!b)
+			{
+				ServerLogger::Log(logid, "Error creating hash folder. " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+
+			return true;
 		}
 		else
 		{
@@ -1976,10 +2042,14 @@ void FileBackup::deleteBackup()
 	{
 		if(use_snapshots)
 		{
-			if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+			if(!SnapshotHelper::removeFilesystem(false, clientname, backuppath_single) )
 			{
 				ServerLinkDao link_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_LINKS));
 				remove_directory_link_dir(backuppath, link_dao, clientid);
+			}
+			else if (BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile)
+			{
+				Server->deleteFile(backuppath);
 			}
 		}
 		else

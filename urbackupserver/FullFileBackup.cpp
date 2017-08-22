@@ -886,7 +886,7 @@ bool FullFileBackup::doFileBackup()
 
 		if (use_snapshots)
 		{
-			if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+			if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 			{
 				ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
 			}

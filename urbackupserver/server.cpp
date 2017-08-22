@@ -45,6 +45,7 @@ IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::file_snapshots_enabled=false;
 bool BackupServer::image_snapshots_enabled = false;
+bool BackupServer::reflink_is_copy = false;
 BackupServer::ESnapshotMethod BackupServer::snapshot_method = BackupServer::ESnapshotMethod_None;
 bool BackupServer::filesystem_transactions_enabled = false;
 bool BackupServer::use_tree_hashing = false;
@@ -702,8 +703,18 @@ bool BackupServer::isImageSnapshotsEnabled()
 	return image_snapshots_enabled;
 }
 
-BackupServer::ESnapshotMethod BackupServer::getSnapshotMethod()
+bool BackupServer::isReflinkCopy()
 {
+	return reflink_is_copy;
+}
+
+BackupServer::ESnapshotMethod BackupServer::getSnapshotMethod(bool image)
+{
+	if (image 
+		&& snapshot_method == ESnapshotMethod_ZfsFile)
+	{
+		return ESnapshotMethod_Zfs;
+	}
 	return snapshot_method;
 }
 
@@ -776,6 +787,11 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 		else
 		{
 			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled for image backups.", LL_INFO);
+		}
+
+		if (reflink_is_copy)
+		{
+			Server->Log("Emulating reflinks via copying", LL_INFO);
 		}
 	}
 	else
@@ -922,7 +938,12 @@ void BackupServer::enableSnapshots(int method)
 	if (snapshot_method == ESnapshotMethod_Btrfs)
 	{
 		file_snapshots_enabled = true;
-	}	
+	}
+	else if (snapshot_method == ESnapshotMethod_ZfsFile)
+	{
+		file_snapshots_enabled = true;
+		reflink_is_copy = true;
+	}
 }
 
 namespace

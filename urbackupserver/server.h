@@ -37,15 +37,17 @@ public:
 	static void testSnapshotAvailability(IDatabase *db);
 	static bool isFileSnapshotsEnabled();
 	static bool isImageSnapshotsEnabled();
+	static bool isReflinkCopy();
 
 	enum ESnapshotMethod
 	{
 		ESnapshotMethod_None = -1,
 		ESnapshotMethod_Btrfs = 0,
-		ESnapshotMethod_Zfs = 1
+		ESnapshotMethod_Zfs = 1,
+		ESnapshotMethod_ZfsFile = 2
 	};
 
-	static ESnapshotMethod getSnapshotMethod();
+	static ESnapshotMethod getSnapshotMethod(bool image);
 
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static bool isFilesystemTransactionEnabled();
@@ -94,6 +96,7 @@ private:
 
 	static bool file_snapshots_enabled;
 	static bool image_snapshots_enabled;
+	static bool reflink_is_copy;
 	static ESnapshotMethod snapshot_method;
 	static bool filesystem_transactions_enabled;
 	static bool use_tree_hashing;

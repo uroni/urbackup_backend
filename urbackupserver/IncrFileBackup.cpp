@@ -295,17 +295,34 @@ bool IncrFileBackup::doFileBackup()
 
 	if(use_snapshots)
 	{
+		bool zfs_file = BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile;
+		if (zfs_file)
+		{
+			std::auto_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
+			if (touch_f.get() == NULL)
+			{
+				ServerLogger::Log(logid, "Could not touch file " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+				has_early_error = true;
+				return false;
+			}
+			touch_f->Sync();
+		}
+
 		ServerLogger::Log(logid, clientname+": Creating snapshot...", LL_INFO);
 		std::string errmsg;
-		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single, errmsg)
-			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
+		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single, errmsg)
+			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
 		{
+			if (zfs_file)
+			{
+				Server->deleteFile(backuppath);
+			}
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
 				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
 
 			errmsg.clear();
-			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single, errmsg) )
+			if(!SnapshotHelper::createEmptyFilesystem(false, clientname, backuppath_single, errmsg) )
 			{
 				ServerLogger::Log(logid, "Creating empty filesystem failed (Server error) "
 					+ (errmsg.empty() ? os_last_error_str() : ("\"" + errmsg + "\"")), LL_ERROR);
@@ -324,6 +341,31 @@ bool IncrFileBackup::doFileBackup()
 		}
 		else
 		{
+			if (zfs_file)
+			{
+				std::string mountpoint = SnapshotHelper::getMountpoint(false, clientname, backuppath_single);
+				if (mountpoint.empty())
+				{
+					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				{
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_rename_file(backuppath + "_new", backuppath))
+				{
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+			}
+
 			Server->deleteFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn));
 			os_sync(backuppath_hashes);
 
@@ -862,7 +904,7 @@ bool IncrFileBackup::doFileBackup()
 							
 							if( !dir_diff && !indirchange && curr_path!="/urbackup_backup_scripts")
 							{
-								if(!os_create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), use_snapshots, NULL))
+								if(!create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), use_snapshots, NULL))
 								{
 									if(!copy_file(metadata_srcpath, metadata_fn))
 									{
@@ -1097,11 +1139,11 @@ bool IncrFileBackup::doFileBackup()
 					else if(!use_snapshots) //is not changed
 					{						
 						bool too_many_hardlinks;
-						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
+						bool b=create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
 
 						if(b)
 						{
-							b = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
+							b = create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
 
 							if(!b)
 							{
@@ -1529,7 +1571,7 @@ bool IncrFileBackup::doFileBackup()
 
 			if (use_snapshots)
 			{
-				if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+				if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 				{
 					ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
 				}
@@ -1621,7 +1663,7 @@ bool IncrFileBackup::doFileBackup()
 
 		if (use_snapshots)
 		{
-			if (!SnapshotHelper::makeReadonly(clientname, backuppath_single))
+			if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 			{
 				ServerLogger::Log(logid, "Making backup snapshot read only failed", LL_WARNING);
 			}

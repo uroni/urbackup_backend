@@ -150,6 +150,8 @@ public:
 
 	virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps);
 
+	static bool create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links);
+
 protected:
 	virtual bool doBackup();
 

@@ -643,7 +643,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		}
 		if (!b)
 		{
-			b = os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
 		}
 		if(!b)
 		{
@@ -1463,7 +1463,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 		if( use_reflink )
 		{
 			if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File)==0)
-				&& !os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
+				&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
 			{
 				ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed", LL_WARNING);
 			}
@@ -1591,7 +1591,7 @@ const size_t RP_COPY_BLOCKSIZE=1024;
 bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
 	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
-		&& ! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+		&& ! FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -2", LL_ERROR);
 
@@ -1703,7 +1703,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 	const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
 	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
-		&& !os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+		&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -3", LL_ERROR);
 
@@ -1786,7 +1786,7 @@ bool BackupServerHash::renameFile(IFile *tf, const std::string &dest)
 	{
 		std::string err = os_last_error_str();
 		if (use_reflink &&
-			os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL))
+			FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL))
 		{
 			Server->deleteFile(os_file_prefix(tf_fn));
 		}
