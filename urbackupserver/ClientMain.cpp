@@ -1585,9 +1585,13 @@ bool ClientMain::updateCapabilities(void)
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
 			os_version_str, client_version_str, clientid);
-	}
 
-	return !cap.empty();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void ClientMain::sendSettings(void)
