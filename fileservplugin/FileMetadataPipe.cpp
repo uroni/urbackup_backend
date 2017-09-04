@@ -852,7 +852,8 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 			stream_name.clear();
 		}
 
-		if(curr_stream->dwStreamId==BACKUP_DATA)
+		if(curr_stream->dwStreamId==BACKUP_DATA
+			|| curr_stream->dwStreamId==BACKUP_SPARSE_BLOCK)
 		{
 			//skip
 			LARGE_INTEGER seeked;
