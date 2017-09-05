@@ -5,6 +5,11 @@
 #include "server_log.h"
 
 
+namespace
+{
+	const int64 restore_flag_ignore_permissions = 1 << 6;
+}
+
 bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool skip_hashes,
 	const std::string& folder_log_name, int64& restore_id, size_t& status_id, logid_t& log_id, const std::string& restore_token, const std::vector<std::pair<std::string, std::string> >& map_paths,

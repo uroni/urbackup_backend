@@ -46,6 +46,7 @@ namespace
 	const int64 restore_flag_mapping_is_alternative = 1 << 3;
 	const int64 restore_flag_open_all_files_first = 1 << 4;
 	const int64 restore_flag_reboot_overwrite_all = 1 << 5;
+	const int64 restore_flag_ignore_permissions = 1 << 6;
 
 	class RestoreUpdaterThread : public IThread
 	{
@@ -693,6 +694,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 #endif
 
 							if (!win_root
+								&& !(restore_flags & restore_flag_ignore_permissions)
 								&& !canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
 							{
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
@@ -711,7 +713,8 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 									has_error = true;
 								}
 							}
-							else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+							else if (!(restore_flags & restore_flag_ignore_permissions)
+								&& !canAddFiles(restore_path, tids, &client_dao, token_cache))
 							{
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 								{
@@ -735,7 +738,8 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 								continue;
 							}
 
-							if (!canCreateFile(restore_path, tids, &client_dao, token_cache))
+							if (!(restore_flags & restore_flag_ignore_permissions)
+								&& !canCreateFile(restore_path, tids, &client_dao, token_cache))
 							{
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 								{
@@ -753,7 +757,8 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 									has_error = true;
 								}
 							}
-							else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+							else if (!(restore_flags & restore_flag_ignore_permissions)
+								&& !canAddFiles(restore_path, tids, &client_dao, token_cache))
 							{
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 								{
@@ -849,7 +854,8 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 							log("File \"" + local_fn + "\" does already exist and the restore is configured to not overwrite existing files.", LL_ERROR);
 							return false;
 						}
-						else if (!canModifyFile(local_fn, tids, &client_dao, token_cache))
+						else if ( !(restore_flags & restore_flag_ignore_permissions) &&
+							!canModifyFile(local_fn, tids, &client_dao, token_cache))
 						{
 							if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 							{
@@ -1145,7 +1151,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							{
 								if (!os_directory_exists(os_file_prefix(restore_path)))
 								{
-									if (!canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
+									if (!(restore_flags & restore_flag_ignore_permissions)
+										&& !canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
 									{
 										if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 										{
@@ -1160,7 +1167,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 										has_error = true;
 									}
 								}
-								else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+								else if (!(restore_flags & restore_flag_ignore_permissions)
+									&& !canAddFiles(restore_path, tids, &client_dao, token_cache))
 								{
 									if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 									{
@@ -1227,7 +1235,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 										has_error = true;
 									}
 								}
-								else if (!canAddFiles(restore_path, tids, &client_dao, token_cache))
+								else if (!(restore_flags & restore_flag_ignore_permissions)
+									&& !canAddFiles(restore_path, tids, &client_dao, token_cache))
 								{
 									if (!(restore_flags & restore_flag_ignore_overwrite_failures))
 									{
@@ -1409,7 +1418,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 						}
 						else
 						{
-							if (!canModifyFile(local_fn, tids, &client_dao, token_cache))
+							if (!(restore_flags & restore_flag_ignore_permissions)
+								&& !canModifyFile(local_fn, tids, &client_dao, token_cache))
 							{
 								int ll = LL_ERROR;
 								if (!(restore_flags & restore_flag_ignore_overwrite_failures))
@@ -1858,7 +1868,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					bool del_has_include_exclude = false;
 					std::stack<std::vector<std::string> > dummy_folder_files;
-					if (!canDeleteFromDir(cpath, tids, clientdao, cache))
+					if (!(restore_flags & restore_flag_ignore_permissions) &&
+						!canDeleteFromDir(cpath, tids, clientdao, cache))
 					{
 						log("No permission to delete files in directory \"" + restore_path + "\".", LL_DEBUG);
 					}
@@ -1884,7 +1895,8 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 				{
 					log("Deleting file \"" + cpath + "\".", LL_DEBUG);
 
-					if (!canDelete(cpath, tids, clientdao, cache))
+					if (!(restore_flags & restore_flag_ignore_permissions)
+						&& !canDelete(cpath, tids, clientdao, cache))
 					{
 						log("No permission to delete file/directory \"" + cpath + "\".", LL_WARNING);
 					}
