@@ -142,6 +142,9 @@ ACTION_IMPL(download_client)
 	bool all_client_rights;
 	std::vector<int> clientids = helper.clientRights(RIGHT_SETTINGS, all_client_rights);
 
+	bool all_browse_backups;
+	std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
+
 	std::string authkey = GET["authkey"];
 
 	std::string errstr;
@@ -190,8 +193,6 @@ ACTION_IMPL(download_client)
 
 				if (  all_client_rights || std::find(clientids.begin(), clientids.end(), clientid) != clientids.end() )
 				{
-					bool all_browse_backups;
-					std::vector<int> browse_backups_rights = helper.clientRights(RIGHT_BROWSE_BACKUPS, all_browse_backups);
 					if (all_browse_backups
 						|| std::find(browse_backups_rights.begin(), browse_backups_rights.end(), clientid) != browse_backups_rights.end() )
 					{
