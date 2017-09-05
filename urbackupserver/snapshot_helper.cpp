@@ -44,27 +44,27 @@ int SnapshotHelper::isAvailable(void)
 	return -1;
 }
 
-bool SnapshotHelper::createEmptyFilesystem(std::string clientname, std::string name, std::string& errmsg)
+bool SnapshotHelper::createEmptyFilesystem(bool image, std::string clientname, std::string name, std::string& errmsg)
 {
-	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " create \""+(clientname)+"\" \""+(name)+"\" 2>&1").c_str(), errmsg);
+	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " create \""+(clientname)+"\" \""+(name)+"\" 2>&1").c_str(), errmsg);
 	return rc==0;
 }
 
-bool SnapshotHelper::snapshotFileSystem(std::string clientname, std::string old_name, std::string snapshot_name, std::string& errmsg)
+bool SnapshotHelper::snapshotFileSystem(bool image, std::string clientname, std::string old_name, std::string snapshot_name, std::string& errmsg)
 {
-	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\" 2>&1").c_str(), errmsg);
+	int rc=os_popen((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " snapshot \""+(clientname)+"\" \""+(old_name)+"\" \""+(snapshot_name)+"\" 2>&1").c_str(), errmsg);
 	return rc==0;
 }
 
-bool SnapshotHelper::removeFilesystem(std::string clientname, std::string name)
+bool SnapshotHelper::removeFilesystem(bool image, std::string clientname, std::string name)
 {
-	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=system((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " remove \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
-bool SnapshotHelper::isSubvolume(std::string clientname, std::string name)
+bool SnapshotHelper::isSubvolume(bool image, std::string clientname, std::string name)
 {
-	int rc=system((helper_name + " "+convert(BackupServer::getSnapshotMethod())+" issubvolume \""+(clientname)+"\" \""+(name)+"\"").c_str());
+	int rc=system((helper_name + " "+convert(BackupServer::getSnapshotMethod(image))+" issubvolume \""+(clientname)+"\" \""+(name)+"\"").c_str());
 	return rc==0;
 }
 
@@ -73,16 +73,16 @@ void SnapshotHelper::setSnapshotHelperCommand(std::string helper_command)
 	helper_name=helper_command;
 }
 
-bool SnapshotHelper::makeReadonly(std::string clientname, std::string name)
+bool SnapshotHelper::makeReadonly(bool image, std::string clientname, std::string name)
 {
-	int rc = system((helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " makereadonly \"" + clientname + "\" \"" + name + "\"").c_str());
+	int rc = system((helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " makereadonly \"" + clientname + "\" \"" + name + "\"").c_str());
 	return rc == 0;
 }
 
-std::string SnapshotHelper::getMountpoint(std::string clientname, std::string name)
+std::string SnapshotHelper::getMountpoint(bool image, std::string clientname, std::string name)
 {
 	std::string ret;
-	int rc = os_popen(helper_name + " " + convert(BackupServer::getSnapshotMethod()) + " mountpoint \"" + clientname + "\" \"" + name + "\"",
+	int rc = os_popen(helper_name + " " + convert(BackupServer::getSnapshotMethod(image)) + " mountpoint \"" + clientname + "\" \"" + name + "\"",
 		ret);
 
 	if (rc != 0)

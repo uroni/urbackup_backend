@@ -580,9 +580,8 @@ void ServerCleanupThread::do_remove_unknown(void)
 				continue;
 
 			if(cf.isdir
-				|| ( cf.issym 
-						&& cf.name.find(".")==std::string::npos
-					    && cf.name.find("Image")!=std::string::npos ) )
+				|| ( !cf.isdir 
+						&& cf.name.find(".")==std::string::npos ) )
 			{
 				if (cf.name.find("Image") == std::string::npos)
 				{
@@ -592,9 +591,15 @@ void ServerCleanupThread::do_remove_unknown(void)
 					{
 						Server->Log("File backup \"" + cf.name + "\" of client \"" + clientname + "\" not found in database. Deleting it.", LL_WARNING);
 						bool remove_folder = false;
-						if (BackupServer::isFileSnapshotsEnabled())
+						if (!cf.isdir)
 						{
-							if (!SnapshotHelper::removeFilesystem(clientname, cf.name))
+							SnapshotHelper::removeFilesystem(false, clientname, cf.name);
+							Server->deleteFile(os_file_prefix(backupfolder
+								+ os_file_sep() + clientname + os_file_sep() + cf.name));
+						}
+						else if (BackupServer::isFileSnapshotsEnabled())
+						{
+							if (!SnapshotHelper::removeFilesystem(false, clientname, cf.name))
 							{
 								remove_folder = true;
 							}
@@ -645,7 +650,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 							
 							if (extension == "raw")
 							{
-								SnapshotHelper::removeFilesystem(clientname, cf.name);
+								SnapshotHelper::removeFilesystem(true, clientname, cf.name);
 							}
 							else
 							{
@@ -656,9 +661,9 @@ void ServerCleanupThread::do_remove_unknown(void)
 
 					if (!found_image)
 					{
-						if (cf.issym)
+						if (!cf.isdir)
 						{
-							SnapshotHelper::removeFilesystem(clientname, cf.name);
+							SnapshotHelper::removeFilesystem(true, clientname, cf.name);
 							Server->deleteFile(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name));
 						}
 						else
@@ -668,7 +673,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 							if(os_directory_exists(os_file_prefix(backupfolder + os_file_sep() + clientname + os_file_sep() + cf.name))
 								&& BackupServer::isImageSnapshotsEnabled() )
 							{
-								SnapshotHelper::removeFilesystem(clientname, cf.name);
+								SnapshotHelper::removeFilesystem(true, clientname, cf.name);
 							}
 						}
 					}
@@ -828,7 +833,7 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 	}
 	else
 	{
-		return SnapshotHelper::removeFilesystem(clientname, ExtractFileName(ExtractFilePath(path)));
+		return SnapshotHelper::removeFilesystem(true, clientname, ExtractFileName(ExtractFilePath(path)));
 	}
 }
 
@@ -1462,7 +1467,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 	bool b=false;
 	if( BackupServer::isFileSnapshotsEnabled())
 	{
-		b=SnapshotHelper::removeFilesystem(clientname, backuppath);
+		b=SnapshotHelper::removeFilesystem(false, clientname, backuppath);
 
 		if(!b)
 		{
@@ -1470,7 +1475,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 
 			b=remove_directory_link_dir(path, link_dao, clientid);
 
-			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
+			if(!b && SnapshotHelper::isSubvolume(false, clientname, backuppath) )
 			{
 				ServerLogger::Log(logid, "Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
 				b=truncate_files_recurisve(os_file_prefix(path));
