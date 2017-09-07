@@ -5250,12 +5250,15 @@ bool IndexThread::prepareCbt(std::string volume)
 
 		std::string errmsg;
 		int64 err = os_last_error(errmsg);
-		int ll = lasterr != ERROR_INVALID_FUNCTION ? LL_ERROR : LL_DEBUG;
+		int ll = (lasterr != ERROR_INVALID_FUNCTION 
+			&& lasterr!= ERROR_NOT_SUPPORTED ) ? LL_ERROR : LL_DEBUG;
 		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", ll);
 		
-		if ( (lasterr == ERROR_INVALID_FUNCTION
+		if ( ((lasterr == ERROR_INVALID_FUNCTION
+			|| lasterr == ERROR_NOT_SUPPORTED )
 				&& os_get_file_type("urbctctl.exe")!=0 )
-			|| lasterr !=ERROR_INVALID_FUNCTION )
+			|| (lasterr !=ERROR_INVALID_FUNCTION 
+				&& lasterr!= ERROR_NOT_SUPPORTED) )
 		{
 			if (cbtIsEnabled(std::string(), volume))
 			{
