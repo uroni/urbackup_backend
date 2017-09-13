@@ -1055,7 +1055,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				metadata.read(extra);
 
 				str_map::iterator it_tids = extra.find("tids");
-				if (it_tids != extra.begin())
+				if (it_tids != extra.end())
 				{
 					std::vector<std::string> toks;
 					Tokenize(it_tids->second, toks, ",");
