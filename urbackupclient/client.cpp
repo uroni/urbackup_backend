@@ -1790,6 +1790,15 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 					VSSLog("Hint: The path to backup contains Windows environment variables. This is not supported. "
 						"UrBackup Clients runs as user independent system service. See https://www.urbackup.org/faq.html#include_files for what you probably want to do.", LL_WARNING);
 				}
+
+				if (next(orig_dir, 0, "\\\\")
+					&& errcode == ERROR_ACCESS_DENIED)
+				{
+					VSSLog("Hint: Access to network share denied. "
+						"If you are trying to backup a network location please be aware "
+						"that the UrBackup client runs as \"LOCAL SYSTEM\" user per default. "
+						"See https://www.urbackup.org/faq.html#use_shares on how to backup network locations", LL_WARNING);
+				}
 #endif
 				if (!os_directory_exists(orig_dir))
 				{
@@ -1811,7 +1820,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 						{
 							VSSLog("Hint: Volume (\"" + vol + "\") does not exist. It may currently be not present. "
 								"If you are trying to backup a network location via mapped network drives please be aware "
-								"that mapped network drives are per user and the UrBackup client runs as \"LOCAL SYSTEM\" user per default."
+								"that mapped network drives are per user and the UrBackup client runs as \"LOCAL SYSTEM\" user per default. "
 								"See https://www.urbackup.org/faq.html#use_shares on how to backup network locations", LL_WARNING);
 						}
 					}
