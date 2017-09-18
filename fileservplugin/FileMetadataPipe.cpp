@@ -519,7 +519,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						callback = NULL;
 					}
 
-					if (callback==NULL && !openFileHandle())
+					if (callback==NULL && !openFileHandle() )
 					{
 						Server->Log("Error opening file handle to " + local_fn+". "+os_last_error_str(), LL_ERROR);
 						*buf = ID_METADATA_NOP;
@@ -928,6 +928,13 @@ bool FileMetadataPipe::openFileHandle()
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 	backup_read_state = -1;
+
+	if (hFile == INVALID_HANDLE_VALUE
+		&& next(local_fn, 0, "\\\\?\\UNC\\"))
+	{
+		hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(local_fn)).c_str(), GENERIC_READ| READ_CONTROL, FILE_SHARE_READ, NULL,
+			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+	}
 
 	return hFile != INVALID_HANDLE_VALUE;
 }
