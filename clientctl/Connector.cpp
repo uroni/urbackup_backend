@@ -178,12 +178,6 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 		
 
 		resp=tcpstack.getPacket(&packetsize);
-		if(resp==NULL || packetsize==0)
-		{
-			closesocket(p);
-			busy=false;
-			return "";
-		}
 	}
 
 	std::string ret;
