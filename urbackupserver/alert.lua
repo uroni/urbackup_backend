@@ -96,6 +96,37 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	mail(params.alert_emails, subj, msg)
 end
 
+--Sends an ok mail if mail address was specified as parameter, and ok mail was enabled
+function ok_mail(image, alert_time)
+	if params.alert_emails == "" or not params.alert_mail_ok
+	then
+		return
+	end
+	
+	local btype = "File"
+	if image
+	then
+		btype="Image"
+		if params.no_images
+		then
+			return
+		end
+	elseif params.no_file_backups
+	then
+		return
+	end
+	
+	local important=" "
+	if params.alert_important
+	then
+		important = "[Important] "
+	end
+	
+	local subj = "[UrBackup]" .. important .. params.clientname .. ": " .. btype .. " backup status is OK"
+	local msg = btype .. " backup status for client \"" .. params.clientname .. "\" is back to ok. Alert was sent because there was no recent backup in the last " .. pretty_time(alert_time) .. "."
+	mail(params.alert_emails, subj, msg)
+end
+	
 --Time in seconds till file backup status is not ok
 local file_backup_nok = file_interval*params.alert_file_mult - params.passed_time_lastbackup_file
 if file_backup_nok<0
@@ -108,6 +139,11 @@ then
 		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )
 	end
 else
+	if not params.file_ok
+	then
+		ok_mail(false, file_interval*params.alert_file_mult)
+	end
+
 	next_check_ms = math.min(next_check_ms, file_backup_nok*1000)
 end
 
@@ -124,6 +160,11 @@ then
 			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
 		end
 	else
+		if not params.image_ok
+		then
+			ok_mail(true, image_interval*params.alert_image_mult)
+		end
+		
 		next_check_ms = math.min(next_check_ms, image_backup_nok*1000)
 	end
 else

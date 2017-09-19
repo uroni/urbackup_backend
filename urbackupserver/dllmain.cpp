@@ -1983,6 +1983,17 @@ bool upgrade54_55()
 	return b;
 }
 
+bool upgrade55_56()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (1, 4, 'alert_mail_ok', 'alert_mail_ok', '1', 1, 'bool')");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2004,7 +2015,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=55;
+	int max_v=56;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2321,6 +2332,13 @@ void upgrade(void)
 				break;
 			case 54:
 				if (!upgrade54_55())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 55:
+				if (!upgrade55_56())
 				{
 					has_error = true;
 				}

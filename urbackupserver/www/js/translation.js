@@ -1745,7 +1745,14 @@ translations.en = {
 "tGroup name": "Group name",
 "tWith Selected": "With Selected",
 "no_backup_paths": "No paths to backup configured",
-"disabled": "Disabled"
+"disabled": "Disabled",
+"new_alert_script_name": "Please enter the name of the new alert script",
+"confirm_alert_script_remove": "Are you sure you want to remove this alert script?",
+"alert_file_mult": "Number of times the file backup interval after which the file backup status is set to not ok",
+"alert_image_mult": "Number of times the image backup interval after which the image backup status is set to not ok",
+"alert_emails": "E-Mail addresses (separated by ';') to notify once the image/file backup status is not ok",
+"alert_important": "Add [Important] tag to alert mails",
+"alert_mail_ok": "Send ok mail after backup status goes from not ok to ok"
 }
 translations.en_US = {
 "tInfos": "About"
