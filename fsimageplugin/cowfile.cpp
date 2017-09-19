@@ -480,18 +480,39 @@ void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 	}
 }
 
-bool CowFile::hasBitmapRange(uint64 offset_start, uint64 offset_end)
+bool CowFile::hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end)
 {
-	uint64 block_start = offset_start/blocksize;
-	uint64 block_end = offset_end/blocksize;
-	for(;block_start<block_end;++block_start)
+	bool ret = false;
+
+	offset_start = (offset_start / blocksize)*blocksize;
+	if (offset_end%blocksize != 0)
 	{
-		if(isBitmapSet(block_start*blocksize))
+		offset_end = (offset_end / blocksize + 1)*blocksize;
+	}
+
+	while (offset_start < offset_end)
+	{
+		if (isBitmapSet(offset_start))
 		{
-			return true;
+			ret = true;
+			break;
+		}
+		offset_start += blocksize;
+	}
+
+	if (ret)
+	{
+		while (offset_start < offset_end)
+		{
+			if (isBitmapSet(offset_end))
+			{
+				break;
+			}
+			offset_end -= blocksize;
 		}
 	}
-	return false;
+
+	return ret;
 }
 
 bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
@@ -624,8 +645,8 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		}
 		else if(unused_start_block!=-1)
 		{
-			int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
-			int64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
+			uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+			uint64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
 			
 			if(unused_start>=filesize)
 			{
@@ -636,7 +657,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 				unused_end = filesize;
 			}
 			
-			if(hasBitmapRange(unused_start, unused_end))
+			if(hasBitmapRangeNarrow(unused_start, unused_end))
 			{
 				if(!setUnused(unused_start, unused_end))
 				{
@@ -654,18 +675,19 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 	
 	if(unused_start_block!=-1)
 	{
-		int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+		uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+		uint64 unused_end = filesize;
 		
-		if(hasBitmapRange(unused_start, filesize))
+		if(hasBitmapRangeNarrow(unused_start, unused_end))
 		{
-			if(!setUnused(unused_start, filesize))
+			if(!setUnused(unused_start, unused_end))
 			{
 				Server->Log("Trimming syscall failed. Stopping trimming (end).", LL_WARNING);
 				return false;
 			}
 			if(trim_callback!=NULL)
 			{
-				trim_callback->trimmed(unused_start - fs_offset, filesize - fs_offset);
+				trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
 			}
 		}
 	}
