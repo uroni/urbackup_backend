@@ -806,11 +806,12 @@ void ClientMain::operator ()(void)
 					bool started_job=false;
 					for(size_t i=0;i<backup_queue.size();++i)
 					{
-						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
-							&& (!backup_queue[i].backup->isScheduled() || inBackupWindow(backup_queue[i].backup) ) )
-						{
-							bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
+						bool filebackup = dynamic_cast<FileBackup*>(backup_queue[i].backup) != NULL;
 
+						if( backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET
+							&& (!backup_queue[i].backup->isScheduled() || inBackupWindow(backup_queue[i].backup) )
+							&& (!filebackup || !isRunningFileBackup(backup_queue[i].group, false) ) )
+						{
 							ServerStatus::addRunningJob(clientmainname);
 							if(ServerStatus::numRunningJobs(clientmainname)<=server_settings->getSettings()->max_running_jobs_per_client
 								&& isBackupsRunningOkay(filebackup, true))
@@ -3028,13 +3029,20 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 	return false;
 }
 
-bool ClientMain::isRunningFileBackup(int group)
+bool ClientMain::isRunningFileBackup(int group, bool queue_only)
 {
 	for(size_t i=0;i<backup_queue.size();++i)
 	{
 		if(backup_queue[i].backup->isFileBackup() && backup_queue[i].group==group)
 		{
-			return true;
+			if (queue_only)
+			{
+				return true;
+			}
+			else if (backup_queue[i].ticket != ILLEGAL_THREADPOOL_TICKET)
+			{
+				return true;
+			}
 		}
 	}
 

@@ -258,7 +258,7 @@ private:
 	void sendClientLogdata(void);
 	bool isRunningImageBackup(const std::string& letter);
 	bool isImageGroupQueued(const std::string& letter, bool full);
-	bool isRunningFileBackup(int group);	
+	bool isRunningFileBackup(int group, bool queue_only=true);	
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	bool isBackupsRunningOkay(bool file, bool incr=false);	
