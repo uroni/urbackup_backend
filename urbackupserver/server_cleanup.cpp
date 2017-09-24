@@ -299,7 +299,8 @@ void ServerCleanupThread::operator()(void)
 			ServerSettings settings(db);
 			std::vector<STimeSpan> tw=settings.getCleanupWindow();
 			if( ( (!tw.empty() && ServerSettings::isInTimeSpan(tw)) || ( tw.empty() && (chour==3 || chour==4) ) )
-				&& Server->getTimeSeconds()-last_cleanup>min_cleanup_interval)
+				&& Server->getTimeSeconds()-last_cleanup>min_cleanup_interval
+				&& os_directory_exists(settings.getSettings()->backupfolder) )
 			{
 				IScopedLock lock(a_mutex);
 
