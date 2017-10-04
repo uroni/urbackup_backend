@@ -393,6 +393,15 @@ function determine_date_format()
 	var yPosi = lds.search("2013");
 	var dPosi = lds.search("25");
 	var mPosi = lds.search("10");
+	
+	if(dPosi==-1)
+	{
+		dPosi = lds.search("24");
+		if(dPosi==-1)
+		{
+			dPosi = lds.search("26");
+		}
+	}
 
 	// try to determine date separator
 	var dateSeperator = "/";
