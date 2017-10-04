@@ -599,6 +599,7 @@ namespace
 #endif //__linux__
 
         bool ret=true;
+		bool set_owner = true;
         if(S_ISLNK(statbuf.st_mode))
         {
 			unlink(fn.c_str());
@@ -673,6 +674,14 @@ namespace
         }
         else if(S_ISREG(statbuf.st_mode) || S_ISDIR(statbuf.st_mode) )
         {
+			if (chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid) != 0)
+			{
+				restore.log("Error setting owner of file \"" + fn + "\" errno: " + convert(errno), LL_ERROR);
+				ret = false;
+			}
+
+			set_owner = false;
+
             if(chmod(fn.c_str(), statbuf.st_mode)!=0)
             {
                 restore.log("Error changing permissions of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
@@ -706,7 +715,9 @@ namespace
 			return ret;
 		}
 
-        if(chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
+        if(set_owner
+			&& ret
+			&& chown(fn.c_str(), statbuf.st_uid, statbuf.st_gid)!=0)
         {
             restore.log("Error setting owner of file \""+fn+"\" errno: "+convert(errno), LL_ERROR);
             ret = false;
