@@ -40,7 +40,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(FileClient* fc, const std
 	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false),
 	backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), is_complete(false), is_finished(false), mutex(Server->createMutex()),
-	cond(Server->createCondition()), force_start(false)
+	cond(Server->createCondition()), force_start(false), orig_progress_log_callback(fc->getProgressLogCallback())
 {
 
 }
@@ -60,8 +60,6 @@ void FileMetadataDownloadThread::operator()()
 	metadata_tmp_fn = tmp_f->getFilename();
 
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token+"|"+convert(backupid);
-
-	orig_progress_log_callback = fc->getProgressLogCallback();
 
 	fc->setProgressLogCallback(NULL);
 	fc->setNoFreeSpaceCallback(NULL);
