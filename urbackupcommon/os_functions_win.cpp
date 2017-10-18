@@ -530,6 +530,7 @@ int os_get_file_type(const std::string &path)
 		{
 			ret |= EFileType_Symlink;
 		}
+		ret |= EFileType_Special;
 	}
 
 	return ret;

@@ -123,7 +123,8 @@ enum EFileType
 {
 	EFileType_File = 1,
 	EFileType_Directory = 2,
-	EFileType_Symlink = 4
+	EFileType_Symlink = 4,
+	EFileType_Special = 8
 };
 
 int os_get_file_type(const std::string &path);

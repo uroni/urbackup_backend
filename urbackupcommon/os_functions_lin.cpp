@@ -261,6 +261,12 @@ int os_get_file_type(const std::string &path)
 			ret |= EFileType_Symlink;
 		}
 		
+		if(!S_ISDIR(f_info.st_mode)
+			&& !S_ISREG(f_info.st_mode) )
+		{
+			ret |= EFileType_Special;
+		}
+		
 		if(rc1!=0)
 		{
 			ret |= EFileType_File;
