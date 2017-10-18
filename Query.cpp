@@ -283,6 +283,11 @@ void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
 		sqlite3_busy_timeout(db->getDatabase(), c_sqlite_busy_timeout_default);
 	}
 
+	if (err == SQLITE_ROW)
+	{
+		sqlite3_reset(ps);
+	}
+
 	if(timeoutms!=NULL)
 	{
 		if(err!=SQLITE_DONE)
