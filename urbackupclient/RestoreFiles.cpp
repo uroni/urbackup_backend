@@ -694,6 +694,12 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 #endif
 
 							if (!win_root
+								&& (os_get_file_type(os_file_prefix(restore_path)) & EFileType_File))
+							{
+								Server->deleteFile(os_file_prefix(restore_path));
+							}
+
+							if (!win_root
 								&& !(restore_flags & restore_flag_ignore_permissions)
 								&& !canCreateDirRecursive(restore_path, tids, &client_dao, token_cache))
 							{
@@ -736,6 +742,11 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 							{
 								++line;
 								continue;
+							}
+
+							if (os_get_file_type(os_file_prefix(restore_path)) & EFileType_File)
+							{
+								Server->deleteFile(os_file_prefix(restore_path));
 							}
 
 							if (!(restore_flags & restore_flag_ignore_permissions)
@@ -847,7 +858,34 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 						}
 					}
 
-					if (os_get_file_type(os_file_prefix(local_fn)) != 0)
+					int ftype = os_get_file_type(os_file_prefix(local_fn));
+					if ((ftype & EFileType_Directory))
+					{
+						if (os_remove_dir(os_file_prefix(local_fn)))
+						{
+							ftype = 0;
+						}
+					}
+
+#ifndef _WIN32
+					if (ftype & EFileType_Special)
+					{
+						if (Server->deleteFile(os_file_prefix(local_fn)))
+						{
+							ftype = 0;
+						}
+					}
+#endif
+					if (ftype & EFileType_Symlink)
+					{
+						if (Server->deleteFile(os_file_prefix(local_fn)))
+						{
+							ftype = 0;
+						}
+					}
+
+
+					if (ftype!= 0)
 					{
 						if (restore_flags & restore_flag_no_overwrite)
 						{
@@ -1149,6 +1187,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 							if (extra.find("skip") == extra.end()
 								&& !win_root)
 							{
+								if (os_get_file_type(os_file_prefix(restore_path)) & EFileType_File)
+								{
+									Server->deleteFile(os_file_prefix(restore_path));
+								}
+
 								if (!os_directory_exists(os_file_prefix(restore_path)))
 								{
 									if (!(restore_flags & restore_flag_ignore_permissions)
@@ -1226,6 +1269,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 
 							if (extra.find("skip") == extra.end())
 							{
+								if (os_get_file_type(os_file_prefix(restore_path)) & EFileType_File)
+								{
+									Server->deleteFile(os_file_prefix(restore_path));
+								}
+
 								if (!os_directory_exists(os_file_prefix(restore_path)))
 								{
 									if (!os_create_dir(os_file_prefix(restore_path))
@@ -1348,6 +1396,32 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 					}
 				
 					int orig_ftype = os_get_file_type(os_file_prefix(local_fn));
+
+					if ((orig_ftype & EFileType_Directory))
+					{
+						if (os_remove_dir(os_file_prefix(local_fn)))
+						{
+							orig_ftype = 0;
+						}
+					}
+
+#ifndef _WIN32
+					if (orig_ftype & EFileType_Special)
+					{
+						if (Server->deleteFile(os_file_prefix(local_fn)))
+						{
+							orig_ftype = 0;
+						}
+					}
+#endif
+					if (orig_ftype & EFileType_Symlink)
+					{
+						if (Server->deleteFile(os_file_prefix(local_fn)))
+						{
+							orig_ftype = 0;
+						}
+					}
+
 					if(orig_ftype !=0)
 					{
 						if(restore_path!=curr_files_dir)
