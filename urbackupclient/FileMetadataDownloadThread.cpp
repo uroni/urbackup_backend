@@ -702,7 +702,7 @@ namespace
         {
             unlink(fn.c_str());
 
-            if(mknod(fn.c_str(), statbuf.st_mode, statbuf.st_dev)!=0)
+            if(mknod(fn.c_str(), statbuf.st_mode, statbuf.st_rdev)!=0)
             {
                 restore.log("Error creating file system node \""+fn+"\" errno: "+convert(errno), LL_ERROR);
                 ret = false;
