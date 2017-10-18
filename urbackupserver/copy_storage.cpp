@@ -132,7 +132,16 @@ namespace
 			return false;
 		}
 
-		rc = mdb_env_set_mapsize(env, 1ULL*1024*1024*1024*1024); //1TB
+		uint64 envsize = 1ULL * 1024 * 1024 * 1024 * 1024; //1TB
+
+		int64 freespace = os_free_space(dst_folder);
+		if (freespace > 0
+			&& static_cast<uint64>(freespace)<envsize)
+		{
+			envsize = static_cast<uint64>(0.9*freespace);
+		}
+
+		rc = mdb_env_set_mapsize(env, envsize);
 
 		if (rc)
 		{
