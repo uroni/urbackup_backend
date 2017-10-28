@@ -632,6 +632,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		return false;
 	}
 	
+	uint64 trim_blocksize_bytes=trim_blocksize;
 	trim_blocksize=trim_blocksize/bitmap_blocksize;
 	
 	int64 unused_start_block = -1;
@@ -670,7 +671,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 				unused_end = filesize;
 			}
 			
-			if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize))
+			if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize_bytes))
 			{
 				if(!setUnused(unused_start, unused_end))
 				{
@@ -691,7 +692,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
 		uint64 unused_end = filesize;
 		
-		if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize))
+		if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize_bytes))
 		{
 			if(!setUnused(unused_start, unused_end))
 			{
