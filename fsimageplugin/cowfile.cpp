@@ -691,7 +691,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
 		uint64 unused_end = filesize;
 		
-		if(hasBitmapRangeNarrow(unused_start, unused_end))
+		if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize))
 		{
 			if(!setUnused(unused_start, unused_end))
 			{
