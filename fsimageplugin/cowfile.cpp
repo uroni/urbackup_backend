@@ -480,10 +480,12 @@ void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 	}
 }
 
-bool CowFile::hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end)
+bool CowFile::hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end, uint64 trim_blocksize)
 {
 	bool ret = false;
 
+	uint64 orig_offset_start = offset_start;
+	uint64 orig_offset_end = offset_end;
 	offset_start = (offset_start / blocksize)*blocksize;
 	if (offset_end%blocksize != 0)
 	{
@@ -510,6 +512,17 @@ bool CowFile::hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end)
 			}
 			offset_end -= blocksize;
 		}
+	}
+	
+	offset_start=(offset_start/trim_blocksize)*trim_blocksize;
+	if(offset_start<orig_offset_start)
+		offset_start = orig_offset_start;
+		
+	if(offset_end%trim_blocksize!=0)
+	{
+		offset_end=(offset_end/trim_blocksize+1)*trim_blocksize;
+		if(offset_end>orig_offset_end)
+			offset_end = orig_offset_end;
 	}
 
 	return ret;
@@ -657,7 +670,7 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 				unused_end = filesize;
 			}
 			
-			if(hasBitmapRangeNarrow(unused_start, unused_end))
+			if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize))
 			{
 				if(!setUnused(unused_start, unused_end))
 				{
