@@ -66,6 +66,8 @@ public:
 
 	bool isFinished();
 
+	void forceStart();
+
 	bool hasMetadataId(int64 id);
 
 	int64 getTransferredBytes();
@@ -138,6 +140,7 @@ private:
 
 	bool is_complete;
 	bool is_finished;
+	bool force_start;
 	std::auto_ptr<IMutex> mutex;
 	std::auto_ptr<ICondition> cond;
 };

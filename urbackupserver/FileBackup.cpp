@@ -2168,6 +2168,8 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 
 	if(metadata_download_thread.get()!=NULL)
 	{
+		metadata_download_thread->forceStart();
+
 		if (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 1000))
 		{
 			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);

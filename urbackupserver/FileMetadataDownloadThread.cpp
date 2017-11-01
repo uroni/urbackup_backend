@@ -40,7 +40,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(FileClient* fc, const std
 	: fc(fc), server_token(server_token), logid(logid), has_error(false), dry_run(false),
 	backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), is_complete(false), is_finished(false), mutex(Server->createMutex()),
-	cond(Server->createCondition())
+	cond(Server->createCondition()), force_start(false)
 {
 
 }
@@ -49,7 +49,7 @@ FileMetadataDownloadThread::FileMetadataDownloadThread(const std::string& server
 	int backupid, int clientid, bool use_tmpfiles, std::string tmpfile_path)
 	: fc(NULL), server_token(server_token), has_error(false), metadata_tmp_fn(metadata_tmp_fn),
 	dry_run(true), backupid(backupid), max_metadata_id(0), clientid(clientid), has_fatal_error(false), has_timeout_error(false),
-	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), is_complete(false), is_finished(true)
+	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), is_complete(false), is_finished(true), force_start(false)
 {
 
 }
@@ -351,7 +351,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				&& !max_file_id->isFinished(metadata_id - 1))
 			{
 				IScopedLock lock(mutex.get());
-				if (is_finished)
+				if (force_start)
 				{
 					break;
 				}
@@ -1483,6 +1483,12 @@ bool FileMetadataDownloadThread::isFinished()
 {
 	IScopedLock lock(mutex.get());
 	return is_finished;
+}
+
+void FileMetadataDownloadThread::forceStart()
+{
+	IScopedLock lock(mutex.get());
+	force_start = true;
 }
 
 bool FileMetadataDownloadThread::getHasTimeoutError()
