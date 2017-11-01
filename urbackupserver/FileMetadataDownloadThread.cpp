@@ -231,7 +231,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			std::string os_path_metadata;
 			std::string os_path;
 			std::vector<std::string> fs_toks;
-			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
+			Tokenize(curr_fn.substr(1), fs_toks, "/");
 
 			std::string curr_path;
 			for(size_t i=0;i<fs_toks.size();++i)
@@ -581,7 +581,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 			std::string os_path;
 			std::string os_path_metadata;
 			std::vector<std::string> fs_toks;
-			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
+			Tokenize(curr_fn.substr(1), fs_toks, "/");
 
 			std::string curr_path;
 			for (size_t i = 0; i<fs_toks.size(); ++i)
@@ -1337,7 +1337,7 @@ void FileMetadataDownloadThread::shutdown()
 void FileMetadataDownloadThread::addFolderItem(std::string path, const std::string& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items)
 {
 	std::vector<std::string> toks;
-	TokenizeMail(path, toks, "/");
+	Tokenize(path, toks, "/");
 
 	std::string curr_path;
 	for(size_t i=0;i<toks.size()-1;++i)

@@ -219,7 +219,7 @@ bool FileMetadataDownloadThread::applyMetadata(const str_map& path_mapping)
             std::string os_path = os_file_sep();
 #endif
 			std::vector<std::string> fs_toks;
-			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
+			Tokenize(curr_fn.substr(1), fs_toks, "/");
 
 			for(size_t i=0;i<fs_toks.size();++i)
 			{
@@ -796,7 +796,7 @@ namespace
                 return false;
             }
 
-            TokenizeMail(buf, keys, std::string(1, '\0'));
+            Tokenize(buf, keys, std::string(1, '\0'));
 
             return true;
         }

@@ -1005,7 +1005,7 @@ namespace
 				return false;
 			}
 
-			TokenizeMail(buf, keys, std::string(1, '\0'));
+			Tokenize(buf, keys, std::string(1, '\0'));
 
             for(size_t i=0;i<keys.size();)
             {

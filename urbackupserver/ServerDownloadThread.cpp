@@ -1938,7 +1938,7 @@ bool ServerDownloadThread::fileHasSnapshot(const SQueueItem& todl)
 std::string ServerDownloadThread::tarFnToOsPath(const std::string & tar_path)
 {
 	std::vector<std::string> toks;
-	TokenizeMail(tar_path, toks, "/");
+	Tokenize(tar_path, toks, "/");
 
 	std::string ret;
 	for (size_t i = 0; i < toks.size(); ++i)

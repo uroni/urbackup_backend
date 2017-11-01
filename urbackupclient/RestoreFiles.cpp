@@ -644,7 +644,7 @@ bool RestoreFiles::openFiles(std::map<std::string, IFsFile*>& open_files, bool& 
 				if (it_tids != extra.begin())
 				{
 					std::vector<std::string> toks;
-					TokenizeMail(it_tids->second, toks, ",");
+					Tokenize(it_tids->second, toks, ",");
 					tids.clear();
 					for (size_t j = 0; j < toks.size(); ++j)
 					{
@@ -1058,7 +1058,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 				if (it_tids != extra.begin())
 				{
 					std::vector<std::string> toks;
-					TokenizeMail(it_tids->second, toks, ",");
+					Tokenize(it_tids->second, toks, ",");
 					tids.clear();
 					for (size_t j = 0; j < toks.size(); ++j)
 					{

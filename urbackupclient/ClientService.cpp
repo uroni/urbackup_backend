@@ -668,7 +668,7 @@ bool ClientConnector::checkHash(std::string shah)
 {
 	std::string prev_h=getFile(UPDATE_FILE_PREFIX "updates_h.dat");
 	std::vector<std::string> lines;
-	TokenizeMail(prev_h, lines, "\n");
+	Tokenize(prev_h, lines, "\n");
 	for(size_t i=0;i<lines.size();++i)
 	{
 		std::string l=strlower(trim(lines[i]));
@@ -1278,7 +1278,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				flags=0;
 
 				std::vector<std::string> str_flags;
-				TokenizeMail(getafter("/", name), str_flags, ",;");
+				Tokenize(getafter("/", name), str_flags, ",;");
 
 				for(size_t i=0;i<str_flags.size();++i)
 				{
@@ -1917,7 +1917,7 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	IQuery *q=db->Prepare("INSERT INTO logdata (logid, loglevel, message, idx, ltime) VALUES (?, ?, ?, ?, datetime(?, 'unixepoch'))");
 
 	std::vector<std::string> lines;
-	TokenizeMail(pData, lines, "\n");
+	Tokenize(pData, lines, "\n");
 	for(size_t i=0,lc=lines.size();i<lc;++i)
 	{
 		std::string l=lines[i];
@@ -3312,7 +3312,7 @@ int ClientConnector::parseVersion(const std::string & version, std::vector<std::
 	}
 	else
 	{
-		TokenizeMail(getafter("-", version), features, ",");
+		Tokenize(getafter("-", version), features, ",");
 
 		return atoi(getuntil("-", version).c_str());
 	}

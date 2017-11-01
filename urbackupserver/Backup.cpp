@@ -305,7 +305,7 @@ void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool re
 					else msg+=" error";
 					msg+=" )\n\n";
 					std::vector<std::string> msgs;
-					TokenizeMail(data, msgs, "\n");
+					Tokenize(data, msgs, "\n");
 
 					for(size_t j=0;j<msgs.size();++j)
 					{

@@ -2171,7 +2171,7 @@ bool IndexThread::readBackupScripts(bool full_backup)
 
 	std::vector<std::string> script_paths;
 #ifndef _WIN32
-	TokenizeMail(script_path, script_paths, ":");
+	Tokenize(script_path, script_paths, ":");
 #else
 	script_paths.push_back(script_path);
 #endif
@@ -3868,7 +3868,7 @@ void IndexThread::VSSLog(const std::string& msg, int loglevel)
 void IndexThread::VSSLogLines(const std::string& msg, int loglevel)
 {
 	std::vector<std::string> lines;
-	TokenizeMail(msg, lines, "\n");
+	Tokenize(msg, lines, "\n");
 
 	for(size_t i=0;i<lines.size();++i)
 	{
@@ -4956,7 +4956,7 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 	volume = strlower(volume);
 
 	std::vector<std::string> vols;
-	TokenizeMail(settings_val, vols, ",;");
+	Tokenize(settings_val, vols, ",;");
 
 	for (size_t i = 0; i < vols.size(); ++i)
 	{
@@ -6378,7 +6378,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	}
 
 	std::vector<std::string> lines;
-	TokenizeMail(loglines, lines, "\n");
+	Tokenize(loglines, lines, "\n");
 	std::string snapshot_target;
 	for(size_t i=0;i<lines.size();++i)
 	{
@@ -6708,12 +6708,12 @@ void IndexThread::readSnapshotGroup(ISettingsReader *curr_settings, const std::s
 		}
 
 		std::vector<std::string> groups_str;
-		TokenizeMail(val, groups_str, "|");
+		Tokenize(val, groups_str, "|");
 
 		for (size_t i = 0; i < groups_str.size(); ++i)
 		{
 			std::vector<std::string> groups_mem;
-			TokenizeMail(groups_str[i], groups_mem, ";,");
+			Tokenize(groups_str[i], groups_mem, ";,");
 
 			if (!groups_mem.empty())
 			{

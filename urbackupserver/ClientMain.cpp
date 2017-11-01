@@ -2989,7 +2989,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 {
 	std::string image_snapshot_groups = server_settings->getSettings()->image_snapshot_groups;
 	std::vector<std::string> groups;
-	TokenizeMail(image_snapshot_groups, groups, "|");
+	Tokenize(image_snapshot_groups, groups, "|");
 
 	image_snapshot_groups = strlower(image_snapshot_groups);
 
@@ -2998,7 +2998,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 	for (size_t i = 0; i < groups.size(); ++i)
 	{
 		std::vector<std::string> vols;
-		TokenizeMail(groups[i], vols, ";,");
+		Tokenize(groups[i], vols, ";,");
 
 		for (size_t j = 0; j < vols.size(); ++j)
 		{
@@ -3244,7 +3244,7 @@ std::vector<SLogEntry> ClientMain::parseLogData(int64 max_duration, const std::s
 {
 	std::vector<SLogEntry> ret;
 	std::vector<std::string> lines;
-	TokenizeMail(data, lines, "\n");
+	Tokenize(data, lines, "\n");
 	int64 initial_time = Server->getTimeSeconds();
 	for (size_t i = 0; i<lines.size(); ++i)
 	{

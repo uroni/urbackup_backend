@@ -1300,7 +1300,7 @@ void BackupServer::setupUseTreeHashing()
 void BackupServer::setVirtualClients( const std::string& clientname, const std::string& new_virtual_clients )
 {
 	std::vector<std::string> toks;
-	TokenizeMail(new_virtual_clients, toks, "|");
+	Tokenize(new_virtual_clients, toks, "|");
 
 	IScopedLock lock(virtual_clients_mutex);
 	virtual_clients[clientname] = toks;

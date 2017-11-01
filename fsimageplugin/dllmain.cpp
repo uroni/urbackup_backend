@@ -704,7 +704,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(!selected_via_gui)
 		{
-			TokenizeMail(assemble, input_files, ";");
+			Tokenize(assemble, input_files, ";");
 			output_file = Server->getServerParameter("output_file");
 		}
 

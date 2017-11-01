@@ -399,7 +399,7 @@ std::vector<SLogLine>  Connector::getLogdata(int logid, int loglevel)
 {
 	std::string d=getResponse("GET LOGDATA","logid="+convert(logid)+"&loglevel="+convert(loglevel), true);
 	std::vector<std::string> lines;
-	TokenizeMail(d, lines, "\n");
+	Tokenize(d, lines, "\n");
 	std::vector<SLogLine> ret;
 	for(size_t i=0;i<lines.size();++i)
 	{

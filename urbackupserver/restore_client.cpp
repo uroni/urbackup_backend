@@ -89,7 +89,7 @@ namespace
 			std::string metadata_path = basedir;
 
 			std::vector<std::string> path_segments;
-			TokenizeMail(path.substr(1), path_segments, "/");
+			Tokenize(path.substr(1), path_segments, "/");
 
 			bool isdir = path[0]=='d';
 
@@ -243,7 +243,7 @@ namespace
 			restore_folder.hashfoldername = hashfoldername;
 			restore_folder.share_path = share_path;
 
-			TokenizeMail(filter, restore_folder.filter_fns, "/");
+			Tokenize(filter, restore_folder.filter_fns, "/");
 
 			if (restore_folder.filter_fns.size() == 1)
 			{
@@ -517,7 +517,7 @@ namespace
 			bool& is_dir)
 		{
 			std::vector<std::string> symlink_path_toks;
-			TokenizeMail(symlink_target, symlink_path_toks, os_file_sep());
+			Tokenize(symlink_target, symlink_path_toks, os_file_sep());
 
 			SRestoreFolder restore_folder;
 			restore_folder.foldername = file_path;

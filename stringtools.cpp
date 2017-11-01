@@ -518,70 +518,7 @@ std::string replaceonce(std::string tor, std::string tin, std::string data)
         return data;
 }
 
-//--------------------------------------------------------------------
-/**
-	Tokenizes a string "str" and stores the tokens in "tokens". "seps"
-	is a string or character which defines the seperator (the breaks
-	between the tokens) - strings, which are declared by two \" are not
-	tokenized = treated as a single token
-*/
-void	Tokenize(const std::string& str, std::vector<std::string> &tokens, std::string seps)
-{
-	// one-space line for storing blank lines in the file
-	std::string blankLine = " ";
-
-	// pos0 and pos1 store the scope of the current turn, i stores
-	// the position of the symbol \".
-	s32 pos0 = 0, pos1 = 0, i = 0;
-	while(true)
-	{ 
-		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps, pos0);
-		// find the next \" 
-		i    = (s32)str.find_first_of("\"", pos0);
-	    
-		// if the end is reached..
-	    if(pos1 == std::string::npos)
-	    {
-			// ..push back the string to the end
-			tokens.push_back(str.substr(pos0, str.size()));
-			break;
-	    }  
-		// if a string \" was found before the next seperator...
-	    if(( i<pos1 )&&( i > 0 ))
-	    {      
-			// .. find the end of the string and push it back, strings
-			// are treated like a single token
-			pos1 = (s32)str.find_first_of("\"", i+1);
-			tokens.push_back(str.substr(pos0, pos1-pos0+1));
-	    }  
-		// if two seperators are found in a row, the file has a blank
-		// line, in this case the one-space string is pushed as a token
-		else if( pos1==pos0 )
-		{
-			tokens.push_back(blankLine);
-		}
-	    else
-            // if no match is found, we have a simple token with the range
-			// stored in pos0/1
-			tokens.push_back(str.substr(pos0, (pos1 - pos0)));
-
-		// equalize pos
-		pos0=pos1;
-		// increase 
-	    ++pos1;
-		// added for ini-file!
-		// increase by length of seps
-		++pos0;
-	}
-	  
-	// loop through all tokens and check for empty tokens which may result
-	// as garbage through the process
-	for(s32 i=0;i<(s32)tokens.size();i++)
-		if(tokens[i]=="") tokens.erase(tokens.begin()+(i--));
-}
-
-void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std::string seps)
+void Tokenize(const std::string& str, std::vector<std::string> &tokens, std::string seps)
 {
 	// one-space line for storing blank lines in the file
 	std::string blankLine = "";

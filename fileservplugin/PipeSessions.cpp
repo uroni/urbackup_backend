@@ -600,7 +600,7 @@ std::string PipeSessions::getKey( const std::string& cmd, int& backupnum, int64&
 	}
 
 	std::vector<std::string> cmd_toks;
-	TokenizeMail(cmd, cmd_toks, "|");
+	Tokenize(cmd, cmd_toks, "|");
 	std::string script_cmd = cmd_toks[0];
 
 	if(script_cmd=="urbackup/FILE_METADATA" && cmd_toks.size()>1)

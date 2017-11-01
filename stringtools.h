@@ -38,7 +38,6 @@ std::string convert(unsigned int i);
 std::string findextension(const std::string& pString);
 std::string replaceonce(std::string tor, std::string tin, std::string data);
 void Tokenize(const std::string& str, std::vector<std::string> &tokens, std::string seps);
-void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std::string seps);
 bool str_isnumber(char ch);
 bool isletter(char ch);
 void strupper(std::string *pStr);

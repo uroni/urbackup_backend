@@ -128,7 +128,7 @@ void access_dir_details(std::string folder, std::string& ret)
 std::string access_err_details(std::string folder)
 {
 	std::vector<std::string> toks;
-	TokenizeMail(folder, toks, os_file_sep());
+	Tokenize(folder, toks, os_file_sep());
 
 	std::string ret;
 
@@ -188,7 +188,7 @@ void add_remove_stop_show(IDatabase* db, std::string stop_show, bool add)
 	if (!res.empty())
 	{
 		std::vector<std::string> toks;
-		TokenizeMail(res[0]["tvalue"], toks, ",");
+		Tokenize(res[0]["tvalue"], toks, ",");
 		std::vector<std::string>::iterator it = std::find(toks.begin(), toks.end(), stop_show);
 		if (add)
 		{
@@ -232,7 +232,7 @@ bool is_stop_show(IDatabase* db, std::string stop_key)
 	if (!res.empty())
 	{
 		std::vector<std::string> toks;
-		TokenizeMail(res[0]["tvalue"], toks, ",");
+		Tokenize(res[0]["tvalue"], toks, ",");
 		return std::find(toks.begin(), toks.end(), stop_key) != toks.end();
 	}
 	return false;

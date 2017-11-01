@@ -293,7 +293,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			ClientDAO cd(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 			std::vector<std::string> toks;
-			TokenizeMail(access_keys, toks, ";");
+			Tokenize(access_keys, toks, ";");
 			for (size_t i = 0; i < toks.size(); ++i)
 			{
 				std::string username = getuntil(":", toks[i]);

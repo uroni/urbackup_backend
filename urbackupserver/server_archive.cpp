@@ -181,7 +181,7 @@ void ServerAutomaticArchive::archiveBackups(void)
 					}
 					else
 					{
-						TokenizeMail(letter_str, letters, ",;");
+						Tokenize(letter_str, letters, ",;");
 						for (size_t k = 0; k < res.size();)
 						{
 							if (letters[k].empty())

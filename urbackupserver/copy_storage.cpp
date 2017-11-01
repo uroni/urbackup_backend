@@ -223,7 +223,7 @@ namespace
 	std::string remove_incomplete_folder(const std::string& path)
 	{
 		std::vector<std::string> toks;
-		TokenizeMail(path, toks, os_file_sep());
+		Tokenize(path, toks, os_file_sep());
 
 		std::string ret;
 		std::string inc_str = "_incomplete";

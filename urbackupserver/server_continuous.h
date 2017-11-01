@@ -557,7 +557,7 @@ private:
 	std::string getOsFp(const std::string& fn)
 	{
 		std::vector<std::string> tokens;
-		TokenizeMail(fn, tokens, "/");
+		Tokenize(fn, tokens, "/");
 
 		std::string fp;
 		for(size_t i=0;i<tokens.size();++i)

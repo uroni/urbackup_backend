@@ -2069,7 +2069,7 @@ void FileBackup::deleteBackup()
 bool FileBackup::createSymlink(const std::string& name, size_t depth, const std::string& symlink_target, const std::string& dir_sep, bool isdir )
 {
 	std::vector<std::string> toks;
-	TokenizeMail(symlink_target, toks, dir_sep);
+	Tokenize(symlink_target, toks, dir_sep);
 
 	std::string target;
 

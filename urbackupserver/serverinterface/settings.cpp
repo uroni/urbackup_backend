@@ -756,7 +756,7 @@ ACTION_IMPL(settings)
 				&& helper.getRights("groupmod") == RIGHT_ALL)
 			{
 				std::vector<std::string> changes;
-				TokenizeMail(group_mem_changes, changes, ";");
+				Tokenize(group_mem_changes, changes, ";");
 				for (size_t i = 0; i < changes.size(); ++i)
 				{
 					int mod_clientid = watoi(getuntil("-", changes[i]));

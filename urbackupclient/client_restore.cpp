@@ -929,7 +929,7 @@ namespace
 		}
 		
 		std::vector<std::string> lines;
-		TokenizeMail(getFile("out"), lines, "\n");
+		Tokenize(getFile("out"), lines, "\n");
 		
 		for(size_t i=0;i<lines.size();++i)
 		{

@@ -144,7 +144,7 @@ bool run_report_script(int incremental, bool resumed, int image,
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;
 	
 	std::vector<std::string> msgs;
-	TokenizeMail(data, msgs, "\n");
+	Tokenize(data, msgs, "\n");
 
 	for (size_t j = 0; j<msgs.size(); ++j)
 	{

@@ -391,7 +391,7 @@ void IndexThread::printProviderInfo(HRESULT res)
 	if (os_popen("vssadmin list providers", data) == 0)
 	{
 		std::vector<std::string> lines;
-		TokenizeMail(data, lines, "\n");
+		Tokenize(data, lines, "\n");
 
 		if (lines.size() > 3)
 		{
