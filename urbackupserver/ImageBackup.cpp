@@ -2012,7 +2012,7 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		{
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single
-				+ (errmsg.empty() ? "" : ("\"" + errmsg + "\"")), LL_ERROR);
+				+ (errmsg.empty() ? "" : (" \"" + errmsg + "\"")), LL_ERROR);
 			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
 				Server->deleteFile(image_folder);
