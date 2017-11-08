@@ -313,10 +313,6 @@ bool IncrFileBackup::doFileBackup()
 		if(!SnapshotHelper::snapshotFileSystem(false, clientname, last.path, backuppath_single, errmsg)
 			|| !SnapshotHelper::isSubvolume(false, clientname, backuppath_single) )
 		{
-			if (zfs_file)
-			{
-				Server->deleteFile(backuppath);
-			}
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
 				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
@@ -324,10 +320,39 @@ bool IncrFileBackup::doFileBackup()
 			errmsg.clear();
 			if(!SnapshotHelper::createEmptyFilesystem(false, clientname, backuppath_single, errmsg) )
 			{
+				if (zfs_file)
+				{
+					Server->deleteFile(backuppath);
+				}
+
 				ServerLogger::Log(logid, "Creating empty filesystem failed (Server error) "
 					+ (errmsg.empty() ? os_last_error_str() : ("\"" + errmsg + "\"")), LL_ERROR);
 				has_early_error=true;
 				return false;
+			}
+			else if (zfs_file)
+			{
+				std::string mountpoint = SnapshotHelper::getMountpoint(false, clientname, backuppath_single);
+				if (mountpoint.empty())
+				{
+					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_link_symbolic(mountpoint, backuppath + "_new"))
+				{
+					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + backuppath + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
+
+				if (!os_rename_file(backuppath + "_new", backuppath))
+				{
+					ServerLogger::Log(logid, "Could rename symlink at " + backuppath + "_new to " + backuppath + ". " + os_last_error_str(), LL_ERROR);
+					has_early_error = true;
+					return false;
+				}
 			}
 
 			if(!os_create_dir(os_file_prefix(backuppath_hashes)))
