@@ -21,7 +21,7 @@ extern char **environ;
 
 const int mode_btrfs=0;
 const int mode_zfs=1;
-const int mode_zfs_file=2
+const int mode_zfs_file=2;
 
 CServer *Server;
 
