@@ -262,6 +262,6 @@ void ServerUpdate::read_update_location()
 			&& urbackup_update_url[urbackup_update_url.size() - 1] != '/')
 			urbackup_update_url += "/";
 
-		urbackup_update_url += "2.1.x/";
+		urbackup_update_url += "2.2.x/";
 	}
 }
