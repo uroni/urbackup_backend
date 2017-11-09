@@ -422,7 +422,7 @@ bool promote_dependencies(const std::string& snapshot, std::vector<std::string>&
 		return false;
 	
 	std::vector<std::string> snaps;
-	TokenizeMail(snap_data, snaps, "\n");
+	Tokenize(snap_data, snaps, "\n");
 		
 	std::string snap_folder = ExtractFilePath(snapshot);
 	for(size_t i=0;i<snaps.size();++i)
