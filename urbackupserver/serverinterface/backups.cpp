@@ -442,6 +442,16 @@ namespace backupaccess
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
+		int last_filebackup = 0;
+		IQuery* q_last = db->Prepare("SELECT id FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1");
+		q_last->Bind(t_clientid);
+		db_results res_last = q_last->Read();
+		q_last->Reset();		
+		if (!res_last.empty())
+		{
+			last_filebackup = watoi(res_last[0]["id"]);
+		}
+
 		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path, delete_pending FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res=q->Read();
@@ -464,7 +474,8 @@ namespace backupaccess
 			has_access = true;
 
 			JSON::Object obj;
-			obj.set("id", watoi(res[i]["id"])+backupid_offset);
+			int backupid = watoi(res[i]["id"]);
+			obj.set("id", backupid+backupid_offset);
 			obj.set("backuptime", watoi64(res[i]["t_backuptime"]));
 			obj.set("incremental", watoi(res[i]["incremental"]));
             obj.set("size_bytes", watoi64(res[i]["size_bytes"]));
@@ -487,6 +498,10 @@ namespace backupaccess
             {
                 obj.set("archive_timeout", archive_timeout);
             }
+			if (backupid == last_filebackup)
+			{
+				obj.set("disable_delete", true);
+			}
 			backups.add(obj);
 		}
 
