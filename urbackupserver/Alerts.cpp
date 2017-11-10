@@ -300,7 +300,7 @@ void Alerts::operator()()
 				}
 
 				int i_file_ok = file_ok ? 1 : 0;
-				int i_image_ok = file_ok ? 1 : 0;
+				int i_image_ok = image_ok ? 1 : 0;
 
 				if (settings->no_file_backups
 					&& res[i]["file_ok"] != "-1")
