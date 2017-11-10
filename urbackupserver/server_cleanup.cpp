@@ -833,7 +833,15 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 	}
 	else
 	{
-		return SnapshotHelper::removeFilesystem(true, clientname, ExtractFileName(ExtractFilePath(path)));
+		bool b = SnapshotHelper::removeFilesystem(true, clientname, ExtractFileName(ExtractFilePath(path)));
+
+		if (b
+			&& BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
+		{
+			Server->deleteFile(ExtractFilePath(path));
+		}
+
+		return b;
 	}
 }
 
@@ -1485,6 +1493,10 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 					b=remove_directory_link_dir(path, link_dao, clientid);
 				}
 			}
+		}
+		else if (BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile)
+		{
+			Server->deleteFile(path);
 		}
 	}
 	else
