@@ -1764,3 +1764,90 @@ msgstr "Group name"
 
 msgid "tWith Selected"
 msgstr "With Selected"
+
+msgid "no_backup_paths"
+msgstr "No paths to backup configured"
+
+msgid "disabled"
+msgstr "Disabled"
+
+msgid "new_alert_script_name"
+msgstr "Please enter the name of the new alert script"
+
+msgid "confirm_alert_script_remove"
+msgstr "Are you sure you want to remove this alert script?"
+
+msgid "alert_file_mult"
+msgstr "Number of times the file backup interval after which the file backup status is set to not ok"
+
+msgid "alert_image_mult"
+msgstr "Number of times the image backup interval after which the image backup status is set to not ok"
+
+msgid "alert_emails"
+msgstr "E-Mail addresses (separated by ';') to notify once the image/file backup status is not ok"
+
+msgid "alert_important"
+msgstr "Add [Important] tag to alert mails"
+
+msgid "alert_mail_ok"
+msgstr "Send ok mail after backup status goes from not ok to ok"
+
+msgid "tEdit alert scripts"
+msgstr "Edit alert scripts"
+
+msgid "tAlert script"
+msgstr "Alert script"
+
+msgid "tAlert script parameters"
+msgstr "Alert script parameters"
+
+msgid "tAdd parameter"
+msgstr "Add parameter"
+
+msgid "tName:"
+msgstr "Name:"
+
+msgid "tLabel:"
+msgstr "Label:"
+
+msgid "tDefault value:"
+msgstr "Default value:"
+
+msgid "tType:"
+msgstr "Type:"
+
+msgid "tString"
+msgstr "String"
+
+msgid "tFloating point number"
+msgstr "Floating point number"
+
+msgid "tInteger"
+msgstr "Integer"
+
+msgid "tBoolean"
+msgstr "Boolean"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "With Docker (web interface accessible from client):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "With Docker (web interface not accessible from client):"
+
+msgid "tEdit report script"
+msgstr "Edit report script"
+
+msgid "tPaused"
+msgstr "Paused"
+
+msgid "tReport script"
+msgstr "Report script"
+
+msgid "tAlerts"
+msgstr "Alerts"
+
+msgid "tEdit scripts"
+msgstr "Edit scripts"
+
+msgid "tInternet restore authentication key"
+msgstr "Internet restore authentication key"
