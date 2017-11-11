@@ -7,11 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Olivian Daniel Tofan <daniel@toffee.ro>, 2015-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-09-22 10:23+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Romanian (http://www.transifex.com/uroni/urbackup/language/ro/)\n"
 "MIME-Version: 1.0\n"

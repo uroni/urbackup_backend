@@ -8,11 +8,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # Charles Peltier <charles@cl-info.fr>, 2014-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-28 14:27+0000\n"
+"PO-Revision-Date: 2017-09-20 02:13+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"

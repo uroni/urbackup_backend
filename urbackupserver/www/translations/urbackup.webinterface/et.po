@@ -7,11 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Meelis Veemees <veemeesmeelis@gmail.com>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-09-22 08:30+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Estonian (http://www.transifex.com/uroni/urbackup/language/et/)\n"
 "MIME-Version: 1.0\n"

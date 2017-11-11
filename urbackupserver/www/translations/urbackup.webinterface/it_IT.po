@@ -8,6 +8,7 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # Daniele Renda <daniele.renda@gmail.com>, 2016
 # Francesco Pellegrino <fra.pel@gmail.com>, 2016
 # Marco Longo <longo.marco@consul-net.it>, 2014
@@ -17,7 +18,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-25 18:14+0000\n"
+"PO-Revision-Date: 2017-10-17 10:36+0000\n"
 "Last-Translator: Mirco Boschi <tipolosko@gmail.com>\n"
 "Language-Team: Italian (Italy) (http://www.transifex.com/uroni/urbackup/language/it_IT/)\n"
 "MIME-Version: 1.0\n"

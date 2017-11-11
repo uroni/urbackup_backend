@@ -7,11 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # sieks <sieks@inbox.lv>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-09-22 17:31+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Latvian (http://www.transifex.com/uroni/urbackup/language/lv/)\n"
 "MIME-Version: 1.0\n"

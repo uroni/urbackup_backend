@@ -8,6 +8,7 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # Czeslaw Mruk <czmruk@gmail.com>, 2017
 # Jarosław Gorzelnik <jarek12@interia.pl>, 2015
 # Krzysztof Pałka <k.palka.pl@gmail.com>, 2015
@@ -18,7 +19,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-06-24 12:56+0000\n"
+"PO-Revision-Date: 2017-09-20 02:13+0000\n"
 "Last-Translator: Czeslaw Mruk <czmruk@gmail.com>\n"
 "Language-Team: Polish (http://www.transifex.com/uroni/urbackup/language/pl/)\n"
 "MIME-Version: 1.0\n"

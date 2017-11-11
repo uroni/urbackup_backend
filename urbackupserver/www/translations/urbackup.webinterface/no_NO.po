@@ -8,12 +8,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # Geir Akslen <geir@kslen.net>, 2017
 # matsr <mostue@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-04-22 14:56+0000\n"
+"PO-Revision-Date: 2017-09-23 19:47+0000\n"
 "Last-Translator: matsr <mostue@gmail.com>\n"
 "Language-Team: Norwegian (Norway) (http://www.transifex.com/uroni/urbackup/language/no_NO/)\n"
 "MIME-Version: 1.0\n"

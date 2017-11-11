@@ -7,6 +7,8 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # J Almeida, 2015-2016
 # J Almeida, 2015
 # J Almeida, 2016
@@ -14,7 +16,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-09-22 12:53+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Portuguese (http://www.transifex.com/uroni/urbackup/language/pt/)\n"
 "MIME-Version: 1.0\n"

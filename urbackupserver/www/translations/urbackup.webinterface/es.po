@@ -7,12 +7,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Jose G. Jimenez S. <josegjimenez@gmail.com>, 2016
 # Luis M. Muñoz <lm@redlm.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-09-23 19:47+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Spanish (http://www.transifex.com/uroni/urbackup/language/es/)\n"
 "MIME-Version: 1.0\n"

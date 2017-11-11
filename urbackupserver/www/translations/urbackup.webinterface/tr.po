@@ -7,11 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Kaya Zeren <kayazeren@gmail.com>, 2016-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 19:21+0000\n"
+"PO-Revision-Date: 2017-09-23 21:22+0000\n"
 "Last-Translator: Kaya Zeren <kayazeren@gmail.com>\n"
 "Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"

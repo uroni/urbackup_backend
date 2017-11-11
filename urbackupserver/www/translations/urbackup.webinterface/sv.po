@@ -7,13 +7,16 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Adam Karlsson <adam.karlsson@gmail.com>, 2015
 # Jonas Aaslund <gnindit@gmail.com>, 2016
+# Mikael l, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2017-10-18 07:39+0000\n"
+"Last-Translator: Mikael l\n"
 "Language-Team: Swedish (http://www.transifex.com/uroni/urbackup/language/sv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -562,7 +565,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup håller på att uppdatera sin interna databas. Det kan ta en stund. Under tiden går det inte att komma åt servern och inte heller kommer den att göra några backupper."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup skapar filpostindexet. Beroende på antalet filer kan det ta ett tag. Var tålmodig."
 
 msgid "tAction"
 msgstr "Handling"
@@ -979,7 +982,7 @@ msgid "tArchived"
 msgstr "Arkiverad"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Det finns för närvarande inte tillräckligt med ledigt utrymme i säkerhetskopieringsmappen. UrBackup tar bort gamla bild- och filbackupar för att frigöra utrymme, inom gränserna som definieras av inställningarna. Under denna processen minskar säkerhetskopieringens prestandan  och säkerhetskopieringen stannar av."
 
 msgid "nospc_fatal_text"
 msgstr "Det finns för tillfället inte tillräckligtmed utrymme i backupmappen. UrBackup försökte radera gamla disk- och filbackuper men har inte tillåtelse att radera mera. Var god ändra inställningarna. Spara färre backuper eller tillåt att UrBackup använder mera utrymme."
@@ -1021,7 +1024,7 @@ msgid "really_recalculate"
 msgstr "Vill du verkligen beräkna statistiken igen? Det kan ta lång tid!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Ett fel uppstod när försök till åtkomst eller kontrollerade UrBackups interna databas. Det betyder att den här databasen är förmodligen skadad eller att det inte finns tillräckligt med ledigt utrymme. Om detta fel kvarstår, återställ databasen (filerna backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db och backup_server_settings.db) från en säkerhetskopia. Se loggfilen för detaljer."
 
 msgid "tDownload folder as ZIP"
 msgstr "Ladda ner mappen som zip-fil"
@@ -1105,7 +1108,7 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Lokal komplett filbackup överföringsläge"
 
 msgid "tRaw"
-msgstr "Rå"
+msgstr "Raw"
 
 msgid "tHashed"
 msgstr "Hashad"
@@ -1192,10 +1195,10 @@ msgid "validate_err_empty_internet_client_name"
 msgstr "Ange namn för en ny client eller client bakom NAT."
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Vänligen fyll i ett IP/hostnamn på klient som ska hittas."
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup skapar filpostindexet. Det kan ta ett tag."
 
 msgid "about"
 msgstr "Om"
@@ -1234,7 +1237,7 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup upptäcker automatiskt klienter i ditt lokala nätverk. Om servern är i samma subnätverk som klienten installerar bara klienten och väntar på att den ska upptäckas."
 
 msgid "tDownload the client from:"
 msgstr "Ladda ner klienten från:"
@@ -1304,10 +1307,10 @@ msgid "tAdded new client with name:"
 msgstr "La till ny klient med namn:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Förvald autentiseringsnyckel"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Ladda ner förinställd klientinstallation för Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
 msgstr "Ladda ner förinställd klientinstallation för Mac OS X"
@@ -1319,7 +1322,7 @@ msgid "tDownload preconfigured client installer for Linux"
 msgstr "Ladda ner förinställd klientinstallation för Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativt efter att du installerat klienten från:"
 
 msgid "tGo to the settings screen on the client"
 msgstr "Gå till inställnings sidan på klienten"
@@ -1328,7 +1331,7 @@ msgid "tEnable the internet mode on the client"
 msgstr "Aktivera internetläge på klienten."
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Ställ in Internet-servern till:"
 
 msgid "tSet the internet server port to:"
 msgstr "Port för internetadress:"
@@ -1343,7 +1346,7 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Utan brandvägg/NAT: Aktivera endast Internet-läge om du bara planerar att använda klienten via internet. På Linux genom att ändra INTERNET_ONLY till true i /etc/default/urbackupclient eller /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
 msgstr "Med kommandoraden:"
@@ -1358,7 +1361,7 @@ msgid "tAdd Email Address"
 msgstr "Lägg till emailalias"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Misslyckades utan fel som orsakats av klientens timeout"
 
 msgid "tMinimum log level"
 msgstr "Minsta lognivå"
@@ -1400,16 +1403,16 @@ msgid "tDays"
 msgstr "Dagar"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Rå copy-on-write fil"
 
 msgid "tMin"
 msgstr "Min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Virtuellt subklientnamn"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Lokal inkrementell diskavbild"
 
 msgid "tBased on last full image backup"
 msgstr "Baserat på senaste kompletta diskbackupen"
@@ -1418,38 +1421,38 @@ msgid "tBased on last image backup"
 msgstr "Baserat på senaste diskbackupen"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Internet inkrementell diskavbild"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Lokal komplett diskavbild"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Syntetisk komplett diskavbild"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Internet komplett diskavbild"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Databasens cachestorlek under batchbearbetning"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Felsökning: End-to-end-verifiering av alla filbackuper"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Felsökning: Verifiera filbackup med hjälp av klientsidans hash"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Periodiskt lägg till filposter från internetklienter till databasen (avaktivera endast om du inte kör full)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Kör säkerhetskopior med bakgrundsprioritet på klienterna"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Skapa symboliskt länkade vyer för varje användare på klienterna efter filbackup"
 
 msgid "tMaximum number of simultaneous jobs per client"
 msgstr "Högsta antal samtidiga job per klient"
@@ -1457,12 +1460,12 @@ msgstr "Högsta antal samtidiga job per klient"
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Förteckning över enheter för vilka ändring av \"block tracking\" ska användas (om tillgänglig)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Förteckning över enheter för vilka ändring av \"block tracking\" ska vara persistent vid krasch"
 
 msgid "tEnable logins via LDAP/AD"
 msgstr "Tillåt login via LDAP/AD"
@@ -1483,10 +1486,10 @@ msgid "tLDAP/AD group and class query"
 msgstr "LDAP/AD grupp och klass förfrågan"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP / AD-gruppnamn i förfrågan"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP / AD-klassnamn i förfrågan"
 
 msgid "tLDAP/AD group rights map"
 msgstr "LDAP/AD grupp-rättighetersöversikt"
@@ -1522,7 +1525,7 @@ msgid "tAdd new client"
 msgstr "Lägg till ny klient"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Klientupptäcktstips"
 
 msgid "tAdd hostname/IP as client discovery hint"
 msgstr "Lägg till värdnamn/IP på klient"
@@ -1540,13 +1543,13 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Förbereder återställning. Var god vänta..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Misslyckas inte med säkerhetskopieringar i händelse av felaktig hash eller läsfel"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Administratör"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Diskavbildsbackup"
 
 msgid "action_14"
 msgstr "Nattlig rensning"
@@ -1555,213 +1558,213 @@ msgid "action_15"
 msgstr "Akut rensning"
 
 msgid "action_16"
-msgstr ""
+msgstr "Lagringsmigrering"
 
 msgid "default_group"
-msgstr ""
+msgstr "Förval"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Grupper"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Lägg till ny grupp"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Ange nytt gruppnamn"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Gruppen finns redan"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Kommer att ta bort den här gruppen. Alla klienter i den här gruppen kommer att tilldelas standardgruppen igen. Fortsätt?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Ta bort gruppen misslyckades"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Internet-servernamnet ska vara ett värdnamn eller en IP-adress"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "Serverns URL bör vara en URL som börjar med http: // eller https: //"
 
 msgid "action_17"
-msgstr ""
+msgstr "Startåterställning"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Fel vid markering av säkerhetskopia för radering:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Fel vid borttag av backup:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Diskavbildsbackup används för närvarande"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Inkrementell diskavbildsbackup baserat på denna säkerhetskopia används för närvarande"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Inkrementell diskavbildsbackup baserat på denna säkerhetskopiering körs för närvarande"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Diskavbildsbackup som är beroende av denna säkerhetskopia är arkiverad"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Se serverns loggfil för detaljer."
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Se serverns loggfil för detaljer."
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Säkerhetskopian är markerad för radering. Ta inte bort"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Ta bort nu"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Enhet"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Inga säkerhetskopior"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Inga säkerhetskopior av den här klienten än"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Diskavbildsbackup information"
 
 msgid "tId"
-msgstr ""
+msgstr "Id"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Enhetens storlek"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Partition stil"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Disk nummer"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Partition nummer"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Filsystemtyp"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Enhetens namn"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Serienummer"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Montera diskavbildsbackup "
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup använder funktionaliteten i ett server operativsystem som inte körs sandboxad för att montera diskavbilden. Montera bara diskavbilden om du litar på källan."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Monteringen av diskavbilden misslyckades. Vänligen se serverns loggfil för detaljer."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Återställ detta fel"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Sluta visa detta fel"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Den här servern har upptäckt klienter som för närvarande inte är konfigurerade för att använda den här servern."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Se här för detaljer om hur detta kan hända."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Avvisa denna ledtråd."
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Sluta visa detta."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Enhet:"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Till version:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Sökväg:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Grupp"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Gruppmedlemskap"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Välj klient från aktuell grupp (dubbelklicka för att ändra inställningar):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Ta bort grupp"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Tillåt klienter att starta filåterställningar"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Tillåt klienter att konfigurera komponenter för säkerhetskopiering"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Tillåt klienter att starta komponentåterställningar"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Enhetens bokstäver"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Diskavbildsbackup"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Starta inte filbackup om den aktuella uppskattade användningsgränsen per månad är mindre än"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Starta inte diskavbildningen om nuvarande uppskattad dataförbrukningsgräns per månad är mindre än"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Uppdatera databas med databasgränsen"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Komplett diskavbild #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Enheter till snapshot i grupper under diskavbildningen"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Enheter till ögonblicksbild i grupper under filbackup"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Windows-komponentens konfiguration av säkerhetskopia "
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Gruppnamn"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "Med utvalda"
