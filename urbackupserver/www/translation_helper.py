@@ -28,7 +28,7 @@ def po_from_translations():
         
         for line in translation:
             
-            m = re.search("translations\.([A-Za-z_]*)={", line, 0)
+            m = re.search("translations\.([A-Za-z_]*)[ ]*=[ ]*{", line, 0)
             
             if m:
                 
@@ -65,7 +65,7 @@ def po_from_translations():
                                        
                     enkeys[key] = True
                     
-        templ_dir = r"www\templates"
+        templ_dir = r"templates"
         skip = ["target_db_version", "time" ]
         for file in os.listdir(templ_dir):
             if file.endswith(".htm"):
