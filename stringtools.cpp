@@ -678,6 +678,8 @@ std::string EscapeParamString(const std::string &pStr)
 		case ' ': ret+="%20"; break;
 		case '#': ret+="%23"; break;
 		case '+': ret+="%2B"; break;
+		case '\n': ret += "%0A"; break;
+		case '\r': ret += "%0D"; break;
 		default: ret+=pStr[i]; break;
 		}
 	}
