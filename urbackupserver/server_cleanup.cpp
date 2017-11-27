@@ -181,6 +181,16 @@ void ServerCleanupThread::operator()(void)
 			}
 		}
 	}
+	else
+	{
+		ServerSettings settings(db);
+		if (os_directory_exists(settings.getSettings()->backupfolder + os_file_sep() + "inode_db"));
+		{
+			Server->deleteFile(settings.getSettings()->backupfolder + os_file_sep() + "inode_db" + os_file_sep() + "inode_db.lmdb");
+			Server->deleteFile(settings.getSettings()->backupfolder + os_file_sep() + "inode_db" + os_file_sep() + "inode_db.lmdb-lock");
+			os_remove_dir(settings.getSettings()->backupfolder + os_file_sep() + "inode_db");
+		}
+	}
 
 	{
 		ScopedActiveThread sat;
