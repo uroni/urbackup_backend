@@ -75,6 +75,7 @@ std::string trim(const std::string &str);
 void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
 std::string UnescapeHTML(const std::string &html);
+std::string EscapeHTML(const std::string &html);
 std::string PrettyPrintBytes(_i64 bytes);
 std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(int64 ms);
