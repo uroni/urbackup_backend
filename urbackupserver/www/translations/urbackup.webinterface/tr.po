@@ -7,11 +7,13 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Kaya Zeren <kayazeren@gmail.com>, 2016-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 19:21+0000\n"
+"PO-Revision-Date: 2017-11-15 06:49+0000\n"
 "Last-Translator: Kaya Zeren <kayazeren@gmail.com>\n"
 "Language-Team: Turkish (http://www.transifex.com/uroni/urbackup/language/tr/)\n"
 "MIME-Version: 1.0\n"
@@ -1764,3 +1766,90 @@ msgstr "Grup adı"
 
 msgid "tWith Selected"
 msgstr "Seçilmişleri"
+
+msgid "no_backup_paths"
+msgstr "Yedekleme klasörü ayarlanmamış"
+
+msgid "disabled"
+msgstr "Devre Dışı"
+
+msgid "new_alert_script_name"
+msgstr "Yeni uyarı betiğinin adını yazın"
+
+msgid "confirm_alert_script_remove"
+msgstr "Bu uyarı betiğini kaldırmak istediğinize emin misiniz?"
+
+msgid "alert_file_mult"
+msgstr "Dosya yedekleme durumu tamam değil olarak işaretlendikten sonra dosya yedekleme aralığı sayısı"
+
+msgid "alert_image_mult"
+msgstr "Dosya yedekleme durumu tamam değil olarak işaretlendikten sonra kalıp yedekleme aralığı sayısı"
+
+msgid "alert_emails"
+msgstr "Kalıp/Dosya yedeği durumu tamam değil olduğunda bildirim gönderilecek e-posta adresleri (';' ile ayırarak yazın) "
+
+msgid "alert_important"
+msgstr "Uyarı e-postalarına [Important] kod imini ekleyin"
+
+msgid "alert_mail_ok"
+msgstr "Bir yedeğin tamam değil durumu tamam olarak değiştiğinde bildirim gönderilsin"
+
+msgid "tEdit alert scripts"
+msgstr "Uyarı betiklerini düzenle"
+
+msgid "tAlert script"
+msgstr "Uyarı betiği"
+
+msgid "tAlert script parameters"
+msgstr "Uyarı betiği parametreleri"
+
+msgid "tAdd parameter"
+msgstr "Parametre ekle"
+
+msgid "tName:"
+msgstr "Ad:"
+
+msgid "tLabel:"
+msgstr "Etiket:"
+
+msgid "tDefault value:"
+msgstr "Varsayılan değer:"
+
+msgid "tType:"
+msgstr "Tür:"
+
+msgid "tString"
+msgstr "Dizge"
+
+msgid "tFloating point number"
+msgstr "Ondalık sayı"
+
+msgid "tInteger"
+msgstr "Tamsayı"
+
+msgid "tBoolean"
+msgstr "İkili"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "Docker ile (istemci üzerinden erişilebilen web arayüzü):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "Docker ile (istemci üzerinden erişilemeyen web arayüzü ile):"
+
+msgid "tEdit report script"
+msgstr "Rapor betiğini düzenle"
+
+msgid "tPaused"
+msgstr "Duraklatılmış"
+
+msgid "tReport script"
+msgstr "Rapor betiği"
+
+msgid "tAlerts"
+msgstr "Uyarılar"
+
+msgid "tEdit scripts"
+msgstr "Betikleri düzenle"
+
+msgid "tInternet restore authentication key"
+msgstr "Internet geri yükleme kimlik doğrulama anahtarı"

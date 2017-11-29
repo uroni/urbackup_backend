@@ -7,14 +7,18 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Allgaeu Cycle <Allgaeu.Cycle@gmail.com>, 2017
 # Benny Bepunkt, 2016
 # Ettore Atalan <atalanttore@googlemail.com>, 2014,2016-2017
+# Luca_Brasi <lucesi@gmx.de>, 2017
 # uroni <urpc@gmx.de>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-11 12:43+0000\n"
-"Last-Translator: Ettore Atalan <atalanttore@googlemail.com>\n"
+"PO-Revision-Date: 2017-11-28 10:28+0000\n"
+"Last-Translator: Luca_Brasi <lucesi@gmx.de>\n"
 "Language-Team: German (http://www.transifex.com/uroni/urbackup/language/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -206,7 +210,7 @@ msgid "user_exists"
 msgstr "Ein Benutzer mit diesem Namen ist bereits vorhanden"
 
 msgid "session_timeout"
-msgstr "Durch Inaktivität ist ihre Sitzung leider nicht ungültig geworden. Bitte melden Sie sich erneut an, um fortzusetzen."
+msgstr "Durch Inaktivität ist ihre Sitzung ungültig geworden. Bitte melden Sie sich erneut an."
 
 msgid "really_del_user"
 msgstr "Diesen Benutzer wirklich löschen?"
@@ -563,7 +567,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung kann nicht auf den Server zugegriffen werden es werden keine Sicherungen ausgeführt."
 
 msgid "creating_filescache_text"
-msgstr "UrBackup erstellt den Dateiindex. Abhängig von der Anzahl an Dateien kann dies einen Moment dauern. Bitte warten."
+msgstr "UrBackup erstellt den Datei-Index. Abhängig von der Anzahl an Dateien kann dies einen Moment dauern. Bitte warten."
 
 msgid "tAction"
 msgstr "Aktion"
@@ -1574,7 +1578,7 @@ msgid "group_already_exists"
 msgstr "Gruppe bereits vorhanden"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Diese Gruppe wird gelöscht. Alle Benutzer in dieser Gruppe werden der Standard Gruppe zugewiesen. Gruppe löschen? "
 
 msgid "group_delete_failed"
 msgstr "Entfernen der Gruppe fehlgeschlagen"
@@ -1586,7 +1590,7 @@ msgid "validate_err_notregexp_server_url"
 msgstr "Die Server-URL sollte eine URL sein, die mit http:// oder https:// beginnt."
 
 msgid "action_17"
-msgstr ""
+msgstr "Start-up Wiederherstellung"
 
 msgid "bit/s"
 msgstr "bit/s"
@@ -1613,13 +1617,13 @@ msgid "image_locked"
 msgstr "Abbildsicherung wird momenten verwendet"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Das Inkrementelle Image Backup das auf diesem Backup basiert wird gerade benutzt."
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Das Inkrementelle Image Backup das auf diesem Backup basiert, läuft gerade."
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Das Image Backup das von diesem Backup abhängt, wurde archiviert."
 
 msgid "remove_image_failed"
 msgstr "Für Details siehe Serverprotokolldatei"
@@ -1675,10 +1679,10 @@ msgstr "Abbild einhängen"
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup wird eine keine Sandbox Servereinstellung benutzen, um das Image einzubinden. Binde das Image nur ein, wenn Du der Quelle vertraust."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Das Einbinden des Image ist fehlgeschlagen. Bitte lies die Server Log Datei für mehr Informationen."
 
 msgid "tOk. Reset this error"
 msgstr "Ok. Diesen Fehler zurücksetzen"
@@ -1689,10 +1693,10 @@ msgstr "Ok. Diesen Fehler nicht mehr anzeigen"
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Der Server hat Clients gefunden, die noch nicht für diesen Server konfiguriert wurden. "
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Lies hier um zu erfahren, wie das passieren kann."
 
 msgid "tOk. Dismiss this hint."
 msgstr "Ok. Diesen Hinweis ausblenden."
@@ -1716,7 +1720,7 @@ msgid "tGroup membership"
 msgstr "Gruppenmitgliedschaft"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Wähle einen Clienten aus der aktuellen Gruppe ( ein Doppel-Klick ändert die Einstellungen):"
 
 msgid "tDelete group"
 msgstr "Gruppe löschen"
@@ -1753,10 +1757,10 @@ msgid "tFull image backup #1"
 msgstr "Vollständige Abbildsicherung #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Zu sichernde Volumes in Gruppen während der Abbild-Sicherung"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Zu sichernde Volumes in Gruppen während der Datei-Sicherung"
 
 msgid "tWindows components backup configuration"
 msgstr "Windows-Komponentensicherungs-Konfiguration"
@@ -1766,3 +1770,90 @@ msgstr "Gruppenname"
 
 msgid "tWith Selected"
 msgstr "Mit Ausgewählten"
+
+msgid "no_backup_paths"
+msgstr "Keine Pfade zur Sicherung konfiguriert"
+
+msgid "disabled"
+msgstr "Deaktiviert"
+
+msgid "new_alert_script_name"
+msgstr "Bitte geben Sie den Namen des neuen Alarmskripts ein"
+
+msgid "confirm_alert_script_remove"
+msgstr "Sind Sie sicher, dass Sie dieses Alarmskript entfernen möchten?"
+
+msgid "alert_file_mult"
+msgstr "Anzahl an Dateisicherungsversuchen nachdem der Status der Dateisicherung auf Nicht-Ok gesetzt wurde"
+
+msgid "alert_image_mult"
+msgstr "Anzahl an Abbildsicherungsversuchen nachdem der Status der Abbildsicherung auf Nicht-Ok gesetzt wurde"
+
+msgid "alert_emails"
+msgstr "E-Mail-Adressen (getrennt durch ;) die benachrichtigt werden wenn die Sicherung als Nicht-Ok markiert wurde."
+
+msgid "alert_important"
+msgstr "Füge [Important] Markierung zu Warnmails hinzu"
+
+msgid "alert_mail_ok"
+msgstr "Sende eine Entwarnungsmail nachdem der Status von Nicht-Ok auf Ok wechselt."
+
+msgid "tEdit alert scripts"
+msgstr "Alarmskripte bearbeiten"
+
+msgid "tAlert script"
+msgstr "Alarmskript"
+
+msgid "tAlert script parameters"
+msgstr "Alarmskriptparameter"
+
+msgid "tAdd parameter"
+msgstr "Parameter hinzufügen"
+
+msgid "tName:"
+msgstr "Name:"
+
+msgid "tLabel:"
+msgstr "Bezeichnung:"
+
+msgid "tDefault value:"
+msgstr "Standardwert:"
+
+msgid "tType:"
+msgstr "Typ:"
+
+msgid "tString"
+msgstr "Zeichenkette"
+
+msgid "tFloating point number"
+msgstr "Gleitkommazahl"
+
+msgid "tInteger"
+msgstr "Ganzzahl"
+
+msgid "tBoolean"
+msgstr "Boolesch"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "Mit Docker (Weboberfläche vom Client erreichbar):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "Mit Docker (Weboberfläche nicht vom Client erreichbar):"
+
+msgid "tEdit report script"
+msgstr "Berichtsskript bearbeiten"
+
+msgid "tPaused"
+msgstr "Pausiert"
+
+msgid "tReport script"
+msgstr "Berichtsskript"
+
+msgid "tAlerts"
+msgstr "Alarme"
+
+msgid "tEdit scripts"
+msgstr "Skripte bearbeiten"
+
+msgid "tInternet restore authentication key"
+msgstr "Wiederherstellungsberechtigungschlüssel Internet"

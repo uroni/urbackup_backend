@@ -7,13 +7,15 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Ihor Maydanovich <tenorioua@gmail.com>, 2014
-# Ihor Maydanovich <tenorioua@gmail.com>, 2014,2016
+# Ihor Maydanovich <tenorioua@gmail.com>, 2014,2016-2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2017-11-24 08:28+0000\n"
+"Last-Translator: Ihor Maydanovich <tenorioua@gmail.com>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/uroni/urbackup/language/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -490,7 +492,7 @@ msgid "No matching records found"
 msgstr "Не знайдено жодного запису"
 
 msgid "Restore to default"
-msgstr "Відновити за замовчуванням"
+msgstr "Відновити до стандартних"
 
 msgid "Save"
 msgstr "Зберегти"
@@ -658,7 +660,7 @@ msgid "tIncluded files (with wildcards)"
 msgstr "Додати файли до резервної копії (за шаблонами)"
 
 msgid "tDefault directories to backup"
-msgstr "Теки за замовчуванням для резервного копіювання "
+msgstr "Типові теки для резервного копіювання "
 
 msgid "tVolumes to backup"
 msgstr "Томи для бекапу"
@@ -985,7 +987,7 @@ msgid "nospc_fatal_text"
 msgstr "Наразі закінчився вільний простір в теці для бекапів. UrBackup видаляє старі образи та файли але зараз це заборонено налаштуваннями. Змініть налаштування для зберігання меншої кількості бекапів або збільшіть дисковий простір щоб UrBackup міг продовжувати виконувати бекапи"
 
 msgid "tNondefault temporary file directory"
-msgstr "Змінити теку тимчасових файлів"
+msgstr "Не стандартна тека тимчасових файлів"
 
 msgid "loading"
 msgstr "Завантаження"
@@ -1304,7 +1306,7 @@ msgid "tAdded new client with name:"
 msgstr "Донано нового клієнта з іменем:"
 
 msgid "tDefault authentication key:"
-msgstr "Ключ аутентифікації за замовчуванням:"
+msgstr "Типовий ключ аутентифікації :"
 
 msgid "tDownload preconfigured client installer for Windows"
 msgstr "Завантажити налаштованого встановлювача клієнта для Windows"
@@ -1543,10 +1545,10 @@ msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr "Не припиняти бекап при помилках хешу або читання"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Адміністратор"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Образ"
 
 msgid "action_14"
 msgstr "Нічна очистка"
@@ -1555,213 +1557,300 @@ msgid "action_15"
 msgstr "Аварійна очистка"
 
 msgid "action_16"
-msgstr ""
+msgstr "Міграція сховища"
 
 msgid "default_group"
-msgstr ""
+msgstr "Типова"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Групи"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Додати нову групу"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Введіть назву нової групи"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Така група вже існує"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Ви видаляєте групу. Всі клієнти цієї групи будуть перенесені в типову групу. Продовжити?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Помилка видалення групи"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Як назву інтернет серверу слід вказати назву хоста або IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "URL серверу повинно починатися з http:// або https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Відновлення при старті"
 
 msgid "bit/s"
-msgstr ""
+msgstr "біт/с"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Кбіт/с"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Мбіт/с"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Гбіт/с"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Тбіт/с"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Помилка позначення бекапу для видалення:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Помилка видалення бекапу:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Образ наразі використовується"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Інкрементній обзаз створеній на базі цього образу наразі використовується"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Зараз створюється інкрементній обзаз на базі цього образу"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Образ залежний від цьго бекапу знаходиться в архіві"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Для більш детальної інформації перегляньте лог сервера"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Для більш детальної інформації перегляньте лог сервера"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Бекап помічено для видалення. Не видаляти"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Видалити зараз"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Том"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Немає резервних копій"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Немає резервних копій цього клієнта"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Інформація про образ"
 
 msgid "tId"
-msgstr ""
+msgstr "Id"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Розмір тому"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Розмір розділу"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Номер диску"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Номер розділу"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Тип файлової системи"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Назва тому"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Серійний номер"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Монтувати образ"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup буде використовувати неізольовану серверну операційну систему, щоб змонтувати образ. Монтуйте образ тільки якщо Ви довіряєте джерелу його походження."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Помилка монтування образу. Для більш детальної інформації перегляньте лог сервера."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Скинути цю помилку"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ок. Не показувати цю помилку"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Сервер розпізнав клієнтів що наразі не налаштовані для використання цього сервера."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Дивіться тут для отримання докладної інформації про те, як це може статися."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Відповитись від рекомендації."
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Не показувати рекомендації."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Том:"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "До версії:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Шлях:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Група"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Участь в групі"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Вибрати клієнтів з цієї групи (подвійний клік для зміни налаштувань)"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Видалити групу"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Дозволити клієнту ініціювати відновлення файлів "
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Дозволити клієнтам налаштовувати компоненти бекапу"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Дозволити клієнтам ініціювати відновлення компонентів "
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Літера тому"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Образ"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Не розпочинати файловий бекап якщо поточне обмеження використання даних в місяць менше ніж"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Не розпочинати бекап образів якщо поточне обмеження використання даних в місяць менше ніж"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Оновлення бази даних оцінки ліміту даних"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Повний образ #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Томи для знімків в групах під час створення образів"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Томи для знімків в групах під час файлового бекапу"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Налаштування бекапу компонентів Windows"
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Назва групи"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "З Обраними"
+
+msgid "no_backup_paths"
+msgstr "Не налаштовано жодного шляху для бекапу"
+
+msgid "disabled"
+msgstr "Відключено"
+
+msgid "new_alert_script_name"
+msgstr "Введіть назву нового скрипту сповіщення"
+
+msgid "confirm_alert_script_remove"
+msgstr "Ви точно бажаєте видалити цей скрипт сповіщення"
+
+msgid "alert_file_mult"
+msgstr "Кількість спроб файлового бекапу після якої статус файлового бекапу змінюється на поганий"
+
+msgid "alert_image_mult"
+msgstr "Кількість спроб бекапу образу після якої статус бекапу образу змінюється на поганий"
+
+msgid "alert_emails"
+msgstr "E-Mail адреси (розділені ';') для сповіщення про поганий статус образу/файлового бекапу"
+
+msgid "alert_important"
+msgstr "Додати помітку [Важливо] до сповіщень"
+
+msgid "alert_mail_ok"
+msgstr "Сповіщати коли статус бекапу змінюється з поганого на добрий"
+
+msgid "tEdit alert scripts"
+msgstr "Змінити скрипт сповіщення"
+
+msgid "tAlert script"
+msgstr "Скрипт сповіщення"
+
+msgid "tAlert script parameters"
+msgstr "Параметри скрипту сповіщення"
+
+msgid "tAdd parameter"
+msgstr "Додати параметер"
+
+msgid "tName:"
+msgstr "Ім'я:"
+
+msgid "tLabel:"
+msgstr "Назва:"
+
+msgid "tDefault value:"
+msgstr "Типове значення:"
+
+msgid "tType:"
+msgstr "Тип:"
+
+msgid "tString"
+msgstr "Потік"
+
+msgid "tFloating point number"
+msgstr "Число з рухомою комою"
+
+msgid "tInteger"
+msgstr "Ціле число"
+
+msgid "tBoolean"
+msgstr "Логічний"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "З Docker (веб інтерфейс доступний з клієнта):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "З Docker (веб інтерфейс не доступний з клієнта):"
+
+msgid "tEdit report script"
+msgstr "Змінити скрипт звіту"
+
+msgid "tPaused"
+msgstr "Призупинено"
+
+msgid "tReport script"
+msgstr "Скрипт звіту"
+
+msgid "tAlerts"
+msgstr "Сповіщення"
+
+msgid "tEdit scripts"
+msgstr "Змінити скрипти"
+
+msgid "tInternet restore authentication key"
+msgstr "Ключ аутентифікації відновлення через інтернет"

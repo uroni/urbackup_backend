@@ -7,11 +7,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Geir Akslen <geir@kslen.net>, 2017
 # matsr <mostue@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-11-11 22:21+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Norwegian (Norway) (http://www.transifex.com/uroni/urbackup/language/no_NO/)\n"
 "MIME-Version: 1.0\n"
@@ -60,10 +63,10 @@ msgid "tInfos"
 msgstr "Info"
 
 msgid "tFile backups"
-msgstr "Fil backuper"
+msgstr "Sikkerhetskopier av filer"
 
 msgid "tImage backups"
-msgstr "Image backuper"
+msgstr "Speilinger"
 
 msgid "tClient"
 msgstr "Klient"
@@ -81,25 +84,25 @@ msgid "action_1"
 msgstr "Inkrementell fil backup"
 
 msgid "action_2"
-msgstr "Full fil backup"
+msgstr "Full sikkerhetskopi av filer"
 
 msgid "action_3"
 msgstr "Inkrementell image backup"
 
 msgid "action_4"
-msgstr "Full image backup"
+msgstr "Full speiling"
 
 msgid "action_1_d"
-msgstr "Sletter inkrementell fil backup"
+msgstr "Sletter inkrementell sikkertskopi av filer"
 
 msgid "action_2_d"
-msgstr "Sletter full fil backup"
+msgstr "Sletter full sikkerhetskopi av filer"
 
 msgid "action_3_d"
-msgstr "Sletter inkrementell image backup"
+msgstr "Sletter inkrementell speiling"
 
 msgid "action_4_d"
-msgstr "Sletter full image backup"
+msgstr "Sletter full speiling"
 
 msgid "nav_item_6"
 msgstr "Status"
@@ -108,10 +111,10 @@ msgid "nav_item_5"
 msgstr "Aktiviteter"
 
 msgid "nav_item_4"
-msgstr "Backuper"
+msgstr "Sikkerhetskopier"
 
 msgid "nav_item_2"
-msgstr "Statestikker"
+msgstr "Statistikk"
 
 msgid "unknown"
 msgstr "Ukjent"
@@ -120,7 +123,7 @@ msgid "overview"
 msgstr "Oversikt"
 
 msgid "no_recent_backup"
-msgstr "Ingen nylig backup"
+msgstr "Ingen nylig sikkerhetskopi"
 
 msgid "backup_never"
 msgstr "Aldri"
@@ -132,25 +135,25 @@ msgid "no"
 msgstr "Nei"
 
 msgid "tBackup status"
-msgstr "Backup status"
+msgstr "Status for sikkerhetskopi"
 
 msgid "tComputer name"
-msgstr "Datamaskin navn"
+msgstr "Datamaskinnavn"
 
 msgid "tLast seen"
 msgstr "Sist sett"
 
 msgid "tLast file backup"
-msgstr "Siste fil backup"
+msgstr "Siste sikkerhetskopi av filer"
 
 msgid "tLast image backup"
-msgstr "Siste image backup"
+msgstr "Siste speiling"
 
 msgid "tFile backup status"
-msgstr "Fil backup status"
+msgstr "Status for sikkerhetskopi av filer"
 
 msgid "tImage backup status"
-msgstr "Image backup status"
+msgstr "Status for speiling"
 
 msgid "tShow details"
 msgstr "Vis detaljer"
@@ -222,7 +225,7 @@ msgid "user_pw_change_ok"
 msgstr "Brukerens passord ble endret."
 
 msgid "right_all"
-msgstr "All rettigheter"
+msgstr "Alle rettigheter"
 
 msgid "right_none"
 msgstr "Ingen rettigheter"
@@ -243,55 +246,55 @@ msgid "ident_err"
 msgstr "Server avvist"
 
 msgid "enter_hostname"
-msgstr "Skriv inn Maskinnavn eller IP adresse"
+msgstr "Skriv inn vertsnavn eller IP adresse"
 
 msgid "clients"
 msgstr "Klienter"
 
 msgid "validate_name_update_freq_incr"
-msgstr "Intervall for inkrementelle backuper"
+msgstr "Intervall for inkrementell sikkerhetskopi av filer"
 
 msgid "validate_name_update_freq_full"
-msgstr "Intervall for fulle fil backuper"
+msgstr "Intervall for full sikkerhetskopi av filer"
 
 msgid "validate_name_update_freq_image_full"
-msgstr "Intervall for inkrementelle image backuper"
+msgstr "Intervall for inkrementell speiling"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr "Intervall for fulle image backuper"
+msgstr "Intervall for full speiling"
 
 msgid "validate_name_max_file_incr"
-msgstr "maksimalt antall av inkrementelle fil backuper"
+msgstr "maksimalt antall inkrementelle sikkerhetskopier av filer"
 
 msgid "validate_name_startup_backup_delay"
-msgstr "forsinkelse etter system oppstart"
+msgstr "forsinkelse etter systemoppstart"
 
 msgid "validate_name_computername"
-msgstr "datamaskin navn"
+msgstr "navn på datamaskin"
 
 msgid "too_many_clients_err"
 msgstr "For mange klienter"
 
 msgid "computername"
-msgstr "Datamaskin navn"
+msgstr "Navn på datamaskin"
 
 msgid "storage_usage_pie_graph_title"
-msgstr "Bruk av lagringsplass"
+msgstr "Bruk av lagringskapasitet"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr "Datamaskin navn"
+msgstr "Navn på datamaskin"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr "Bruk av lagringsplass"
+msgstr "Bruk av lagringskapasitet"
 
 msgid "storage_usage_bar_graph_title"
-msgstr "Bruk av lagringsplass"
+msgstr "Bruk av lagringskapasitet"
 
 msgid "storage_usage_bar_graph_colname1"
 msgstr "Dato"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr "Bruk av lagringsplass"
+msgstr "Bruk av lagringskapasitet"
 
 msgid "tFiles"
 msgstr "Filer"
@@ -306,10 +309,10 @@ msgid "tProgress"
 msgstr "Fredrift"
 
 msgid "tStarting time"
-msgstr "Start tidspunkt"
+msgstr "Start-tidspunkt"
 
 msgid "tUsed Storage"
-msgstr "Brukt lagringsplass"
+msgstr "Brukt lagringskapasitet"
 
 msgid "tClients"
 msgstr "Klienter"
@@ -327,7 +330,7 @@ msgid "tBackup time"
 msgstr "Backup tid"
 
 msgid "tStorage usage"
-msgstr "Lagringsplass brukt"
+msgstr "Benyttet lagringskapasitet"
 
 msgid "tAll"
 msgstr "Alle"
@@ -363,7 +366,7 @@ msgid "tLogin"
 msgstr "Logg inn"
 
 msgid "tServer"
-msgstr "Server"
+msgstr "Tjener"
 
 msgid "tPermissions"
 msgstr "Tillatelser"
@@ -375,10 +378,10 @@ msgid "mins"
 msgstr "minutter"
 
 msgid "backup_in_progress"
-msgstr "Pågående backup..."
+msgstr "Sikkerhetskopiering pågår..."
 
 msgid "queued_backup"
-msgstr "Backupjobb i kø"
+msgstr "Sikkerhetskopiering satt i kø"
 
 msgid "tFile"
 msgstr "Fil"
@@ -408,16 +411,16 @@ msgid "tCurrent version"
 msgstr "Nåværende versjon"
 
 msgid "tIncremental file backup"
-msgstr "Inkrementell fil backup"
+msgstr "Inkrementell sikkerhetskopi av filer"
 
 msgid "tFull file backup"
-msgstr "Full fil backup"
+msgstr "Full sikkerhetskopiering av filer"
 
 msgid "tIncremental image backup"
-msgstr "Inkrementell image backup"
+msgstr "Inkrementell speiling"
 
 msgid "tFull image backup"
-msgstr "Full image backup"
+msgstr "Full speiling"
 
 msgid "about_urbackup"
 msgstr "Om UrBackup"
@@ -441,7 +444,7 @@ msgid "tNone"
 msgstr "Ingen"
 
 msgid "tServer admin mail address"
-msgstr "Server admin epost adresse"
+msgstr "Server admins e-post adresse"
 
 msgid "tDownload"
 msgstr "Last ned"
@@ -453,7 +456,7 @@ msgid "tIP"
 msgstr "IP"
 
 msgid "tClient version"
-msgstr "Klient versjon"
+msgstr "Klientversjon"
 
 msgid "tOperating System"
 msgstr "Operativsystem"
@@ -480,16 +483,16 @@ msgid "sInfoThousands"
 msgstr ","
 
 msgid "Processing..."
-msgstr "Prosesserer..."
+msgstr "Behandler..."
 
 msgid "Search:"
 msgstr "Søk:"
 
 msgid "No matching records found"
-msgstr "Ingen oppføringer funnet"
+msgstr "Ingen tilsvarende oppføringer funnet"
 
 msgid "Restore to default"
-msgstr "Gjennopprett standard"
+msgstr "Gjennopprett standardverdier"
 
 msgid "Save"
 msgstr "Lagre"
@@ -501,10 +504,10 @@ msgid "Show/hide columns"
 msgstr "Vis/skjul kolonner"
 
 msgid "dir_error_text"
-msgstr "Mappen som UrBackup vil lagre backuper til er utilgjengelig. Vennligst fiks dette ved å endre mappe i \"Innstillinger\" eller ved å gi UrBackup rettigheter til den valgte mappen."
+msgstr "Mappen som UrBackup vil lagre backuper til er utilgjengelig. Vennligst korriger dette ved å endre mappe i \"Innstillinger\" eller ved å gi UrBackup rettigheter til den valgte mappen."
 
 msgid "tmpdir_error_text"
-msgstr "Mappen UrBackup vil lagre midlertidige filer til en utilgjengelig. Vennligst fiks dette ved å endre mappe i \"Innstillinger\" eller ved å gi UrBackup rettigheter til den valgte mappen."
+msgstr "Mappen UrBackup vil lagre midlertidige filer til en utilgjengelig. Vennligst korriger dette ved å endre mappe i \"Innstillinger\" eller ved å gi UrBackup rettigheter til den valgte mappen."
 
 msgid "validate_text_empty"
 msgstr "Skriv inn en verdi for {name}"
@@ -561,7 +564,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup oppgraderer sin interne database. Dette kan ta en stund. Serveren er utilgjengelig og vil ikke utføre noen backuper mens denne oppgraderingen pågår."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup skaper indeks over filer. Dette kan ta en stund avhengig av antallet filer. Vennligst vær tålmodig."
 
 msgid "tAction"
 msgstr "Valg"
@@ -978,7 +981,7 @@ msgid "tArchived"
 msgstr "Akrivert"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Der er ikke nok ledig kapasitet i sikkerhetskopi-mappen. UrBackup sletter nå eldre speilinger og filer for å frigjøre plass i henhold til de definerte innstillingene. Under denne prosessen vil ytelse for aktive sikkerhetskopieringer være nedsatt og jobber som står i kø blir utsatt til denne prosessen er ferdig."
 
 msgid "nospc_fatal_text"
 msgstr "Det er ikke nok ledig plass til å lagre backuper. UrBackup forsøkte å slette gamle image og fil backuper, men har nå ikke lenger lov til slette mer. Vennligst gjør endringer i innstillinger for å lagre færre backuper eller øk lagringsplassen, for at UrBackup skal kunne fortsette å ta backuper"
@@ -1020,7 +1023,7 @@ msgid "really_recalculate"
 msgstr "Er du sikker på at du vil kalkulere all statestikk på nytt? Dette kan komme til å ta lang tid!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "En feil forekom under aksessering eller kontroll av UrBackup sin interne database. Dette betyr at databasen sannsynligvis er skadet eller at der ikke er nok ledig plass  på drevet hvor denne er lagret. Om denne feilen vedvarer, vennligst gjenopprett databasen (backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db og backup_server_settings.db) fra en sikkerhetskopi. Se loggfil for detaljer."
 
 msgid "tDownload folder as ZIP"
 msgstr "Last ned mappe som ZIP"
@@ -1059,7 +1062,7 @@ msgid "tGlobal soft filesystem quota"
 msgstr "Global soft filsystem kvote"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Filformat for speiling"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr "Tillat klient å starte fulle fil backuper"
@@ -1155,13 +1158,13 @@ msgid "tYou need to create a user to be able to send reports"
 msgstr "Du må opprette en bruker for å få lov til å sende rapporter"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Informer når en ny versjon av tjener er tilgjengelig"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (Virtuell HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "Komprimert VHD (Komprimert ikke-standard Virtuell HardDisk)"
 
 msgid "tBlock differences - hashed"
 msgstr "Block forskjeller - Hashet"
@@ -1176,591 +1179,678 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrert fra _MAX_ totale oppføringer)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimer"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maksimer"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "En klient med dette navnet eksisterer allerede"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Vennligst fyll ut navn på ny Internettklient/klient bak NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Vennligst fyll inn IP/vertsnavn for klient som skal oppdages"
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup indekserer filer. Dette kan ta en stund avhengig av antallet filer."
 
 msgid "about"
-msgstr ""
+msgstr "Om"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Alle klienter"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Klientinnstillinger"
 
 msgid "action_8"
-msgstr ""
+msgstr "Gjenopprett fil/filer"
 
 msgid "action_9"
-msgstr ""
+msgstr "Gjenopprett speiling"
 
 msgid "action_10"
-msgstr ""
+msgstr "Klientoppdatering"
 
 msgid "action_11"
-msgstr ""
+msgstr "Kontrollerer databaseintegritet"
 
 msgid "action_12"
-msgstr ""
+msgstr "Sikkerhetskopierer database"
 
 msgid "action_13"
-msgstr ""
+msgstr "Omkalkulerer statistikker"
 
 msgid "tAbout UrBackup"
 msgstr "Om UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Legg til klient"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup oppdager klienter i ditt lokale nettverk automatisk. Om serveren er i samme subnett som klienten trenger du bare å installere klienten og vente til at den blir oppdaget."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Last ned klienten fra:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Om du ønsker at en klient skal benytte flere tjenere, er denne tjenerens identitet:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Legg til ny Internettklient"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Navn på ny Internettklient/klient bak NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Hint for oppdagelse av nye klienter via IP/vertsnavn"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/vertsnavn som skal oppdages"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Avbryt"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Ingen tilgang"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Beklager, men noe gikk galt eller så har du ikke de påkrevde rettigheten for å aksessere denne filen eller mappen."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Logg inn med brukernavn og passord"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "En feil oppstod under aksessering av sikkerhetskopier"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Beklager, men noe gikk galt:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Opprettet"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Sist endret"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Sist aksessert"
 
 msgid "tList"
-msgstr ""
+msgstr "Vis"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Gjenopprett"
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Gjenopprett mappe til klient"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versjon"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Klient ble lagt til vellykket"
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "La til ny klient med navn:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Standard krypteringsnøkkel:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Last ned forhåndskonfigurert klientinstallasjonsfil for Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Last ned forhåndskonfigurert klientinstallasjonsfil for Mac OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Direkte installasjon via terminal:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Last ned forhåndskonfigurert klientinstallasjonsfil for Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativt etter at du installerte klienten fra:"
 
 msgid "tGo to the settings screen on the client"
-msgstr ""
+msgstr "Gå til innstillingsvisningen på klienten"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Aktiver internett-modus på klienten"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Sett internett-tjeneren til:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Sett porten på internett-tjeneren til:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Sett navnet på datamaskinen til:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Sett autentiseringsnøkkel til:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Uten brannmur/NAT: Aktiver \"kun internett-modus\" om du bare ønsker å benytte klienten via internett. På Linux oppnåes dette ved å endre INTERNET_ONLY til \"true\" i  /etc/default/urbackupclient eller /etc/sysconfig/urbackupclient avhengig av hvilken distribusjon tjeneren kjører"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Med kommandolinjen:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Prosent fullført"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detaljer"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Legg til e-post adresse"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Feilet uten feilmeldinger på grunn av at klientens forbindelse ble avbrutt"
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Laveste nivå for logging"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Sikkerhetskopieringer ble avbrutt"
 
 msgid "tStop"
-msgstr ""
+msgstr "Stopp"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Vis logg"
 
 msgid "tETA"
-msgstr ""
+msgstr "Forventet tidsforbruk"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Hastighet"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Sikkerhetskopier av filer"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Speilinger"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Arkiv"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "URL til tjener"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Øvre grense for samtidige sikkerhetskopieringer"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Øvre grense for nylig aktive klienter"
 
 msgid "tDays"
-msgstr ""
+msgstr "Dager"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Rå copy-on-write fil"
 
 msgid "tMin"
-msgstr ""
+msgstr "Min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Virtuelt underklitentnavn"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Lokal inkrementell speilingstype"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Basert på siste fullstendige speiling"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Basert på siste speiling"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Internett inkrementell speilingstype"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Lokal fullstendig speilingstype"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Syntetisk fullstendig speiling"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Internett fullstendig speilingstype"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Størrelse for databasens mellomlager under batchbehandling"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Debugging: End-to-end bekreftelse for alle sikkerhetskopieringer av filer"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Debugging: Bekreft sikkerhetskopiering av filer ved å benytte hasher på klientsiden"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Periodisk legg til filoppføringer fra klienter i databasen (slå kun av om du ikke benytter fullstendige sikkerhetskopieringer)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Kjør kun sikkerhetskopier med bakgrunnsprioritet på klientene"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Skap symbolsk lenkede visninger for hver bruker på klientene etter sikkerhetskopiering av filer"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Maksimalt antall samtidige jobber per klient"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Liste over volumer hvor \"change block tracking\" bør benyttes (om tilgjengelig)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Liste over volumer hvor \"change block tracking\" bør være \"crash persistent\""
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Aktiver innlogging via LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "LDAP/AD tjeners vertsnavn"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "LDAP/AD tjeners port"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "LDAP/AD brukernavn-prefiks"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "LDAP/AD brukernavn-suffiks"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD gruppe og klasse-spørring"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP/AD gruppenøkkelnavn i spørring"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP/AD klassenøkkelnavn i spørring"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP/AD grupperettighetskart"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "LDAP/AD klasserettighetskart"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Test innlogging med dette brukernavnet"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Passord for brukernavnet som skal testes"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Test av innlogging var vellykket. Brukerens rettigheter:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Test av innlogging feilet. Feilmelding:"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Last ned klient for Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Last ned klient for Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Last ned klient for Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Fjern klient"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Legg til klient"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Hint for oppdagelse av klient"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Legg til vertsnavn/IP som hint for oppdagelse av klient"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Statistikk over sikkerhetskopieringer"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Fullførte, men med problemer"
 
 msgid "not_supported"
-msgstr ""
+msgstr "Ikke støttet"
 
 msgid "tPreparing restore. Please be patient..."
-msgstr ""
+msgstr "Forbereder gjenoppretting. Vennligst vær tålmodig..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Ikke generer feil om hash ikke stemmer eller om det forekommer lesefeil"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Administrator"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Speiling"
 
 msgid "action_14"
-msgstr ""
+msgstr "Nattlig opprydding"
 
 msgid "action_15"
-msgstr ""
+msgstr "Nødopprydding"
 
 msgid "action_16"
-msgstr ""
+msgstr "Migrering av lager"
 
 msgid "default_group"
-msgstr ""
+msgstr "Standard"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Grupper"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Legg til ny gruppe"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Nytt gruppenavn"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Gruppen eksisterer allerede"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Fjerner gruppen. Alle klienter i denne gruppen vil bli flyttet til standardgruppen. Fortsett?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Fjerning av gruppe feilet"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Internett-tjenernavn må være et vertsnavn eller en IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "Tjeners URL må starte med http:// eller https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Oppstartsgjenoppretting"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Feil under markering av sikkerhetskopi for sletting:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Feil under sletting av backup:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Speiling pågår"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Inkrementell speiling basert på denne sikkerhetskopien er i bruk"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Inkrementell speiling basert på denne sikkerhetskopien kjører"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Speiling avhengig av denne sikkerhetskopien er arkivert"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Se loggfil på tjener for detaljer"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Se loggfil på tjener for detaljer"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Sikkerhetskopien er markert for sletting. Ikke slett"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Slett nå"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Volum"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Ingen sikkerhetskopi"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Ingen sikkerhetskopi av denne klienten har forekommet"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Informasjon om denne speilingen"
 
 msgid "tId"
-msgstr ""
+msgstr "ID"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Størrelse på volum"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Partisjonstype"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Disknummer"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Partisjonsnummer"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Filsystemtype"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Volumnavn"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Serienummer"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Monter speiling"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup benytter ikke-sandboxet operativsystem-funksjonalitet på tjener for å montere speilingen. Monter kun denne speilingen om du stoler på kilden."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Montering av speiling feilet. Vennligst se loggfil på tjener for detaljer."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Nullstill denne feilen"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Ikke vis denne feilen"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Tjeneren har oppdaget klienter som ikke er konfigurert for å benytte den."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Se her for mer informasjon om hvordan dette kan forekomme."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Forkast dette hintet."
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Slutt å vise dette."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Volum:"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Til versjon:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Sti:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Gruppe"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Gruppemedlemskap"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Velg klient fra denne gruppen (dobbeltklikk for å endre innstillinger):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Slett gruppe"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Tillat klienter å starte gjenoppretting av sikkerhetskopierte filer"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Tillat klienter å konfigurere hvilke komponenter som skal sikkerhetskopieres"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Tillat klienter å starte gjenoppretting av sikkerhetskopierte komponenter"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Volum-bokstaver"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Speiling"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Ikke start sikkerhetskopiering av filer om nåværende antatte begrensning for dataforbruk per måned er mindre enn"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Ikke start speilinger om nåværende antatte begrensning for databruk per måned er mindre enn"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Oppdater database for antatte databegrensninger"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Speiling #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Volumer som skal taes øyeblikksbilde av i grupper under speiling"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Volumer som skal taes øyeblikksbilde av i grupper under sikkerhetskopiering av filer"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Konfigurasjon for sikkerhetskopiering av Windows-komponenter"
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Gruppenavn"
 
 msgid "tWith Selected"
+msgstr "Med Valgte"
+
+msgid "no_backup_paths"
+msgstr ""
+
+msgid "disabled"
+msgstr ""
+
+msgid "new_alert_script_name"
+msgstr ""
+
+msgid "confirm_alert_script_remove"
+msgstr ""
+
+msgid "alert_file_mult"
+msgstr ""
+
+msgid "alert_image_mult"
+msgstr ""
+
+msgid "alert_emails"
+msgstr ""
+
+msgid "alert_important"
+msgstr ""
+
+msgid "alert_mail_ok"
+msgstr ""
+
+msgid "tEdit alert scripts"
+msgstr ""
+
+msgid "tAlert script"
+msgstr ""
+
+msgid "tAlert script parameters"
+msgstr ""
+
+msgid "tAdd parameter"
+msgstr ""
+
+msgid "tName:"
+msgstr ""
+
+msgid "tLabel:"
+msgstr ""
+
+msgid "tDefault value:"
+msgstr ""
+
+msgid "tType:"
+msgstr ""
+
+msgid "tString"
+msgstr ""
+
+msgid "tFloating point number"
+msgstr ""
+
+msgid "tInteger"
+msgstr ""
+
+msgid "tBoolean"
+msgstr ""
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr ""
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr ""
+
+msgid "tEdit report script"
+msgstr ""
+
+msgid "tPaused"
+msgstr ""
+
+msgid "tReport script"
+msgstr ""
+
+msgid "tAlerts"
+msgstr ""
+
+msgid "tEdit scripts"
+msgstr ""
+
+msgid "tInternet restore authentication key"
 msgstr ""

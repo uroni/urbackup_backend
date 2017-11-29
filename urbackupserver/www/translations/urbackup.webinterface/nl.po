@@ -7,12 +7,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # buzzertnl <frank@aced-it.nl>, 2014,2016
 # Pimmetje <pimmetje@gmail.com>, 2014,2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-11-11 22:21+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Dutch (http://www.transifex.com/uroni/urbackup/language/nl/)\n"
 "MIME-Version: 1.0\n"
@@ -1764,4 +1766,91 @@ msgid "tGroup name"
 msgstr ""
 
 msgid "tWith Selected"
+msgstr ""
+
+msgid "no_backup_paths"
+msgstr ""
+
+msgid "disabled"
+msgstr ""
+
+msgid "new_alert_script_name"
+msgstr ""
+
+msgid "confirm_alert_script_remove"
+msgstr ""
+
+msgid "alert_file_mult"
+msgstr ""
+
+msgid "alert_image_mult"
+msgstr ""
+
+msgid "alert_emails"
+msgstr ""
+
+msgid "alert_important"
+msgstr ""
+
+msgid "alert_mail_ok"
+msgstr ""
+
+msgid "tEdit alert scripts"
+msgstr ""
+
+msgid "tAlert script"
+msgstr ""
+
+msgid "tAlert script parameters"
+msgstr ""
+
+msgid "tAdd parameter"
+msgstr ""
+
+msgid "tName:"
+msgstr ""
+
+msgid "tLabel:"
+msgstr ""
+
+msgid "tDefault value:"
+msgstr ""
+
+msgid "tType:"
+msgstr ""
+
+msgid "tString"
+msgstr ""
+
+msgid "tFloating point number"
+msgstr ""
+
+msgid "tInteger"
+msgstr ""
+
+msgid "tBoolean"
+msgstr ""
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr ""
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr ""
+
+msgid "tEdit report script"
+msgstr ""
+
+msgid "tPaused"
+msgstr ""
+
+msgid "tReport script"
+msgstr ""
+
+msgid "tAlerts"
+msgstr ""
+
+msgid "tEdit scripts"
+msgstr ""
+
+msgid "tInternet restore authentication key"
 msgstr ""

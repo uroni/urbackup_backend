@@ -7,16 +7,18 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Daniele Renda <daniele.renda@gmail.com>, 2016
 # Francesco Pellegrino <fra.pel@gmail.com>, 2016
 # Marco Longo <longo.marco@consul-net.it>, 2014
-# Mirco Boschi <tipolosko@gmail.com>, 2015
+# Mirco Boschi <tipolosko@gmail.com>, 2015,2017
 # paolo <inforossi@alice.it>, 2014
 # Samuele <samuele.facco@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-02-06 09:57+0000\n"
+"PO-Revision-Date: 2017-11-11 22:21+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Italian (Italy) (http://www.transifex.com/uroni/urbackup/language/it_IT/)\n"
 "MIME-Version: 1.0\n"
@@ -1172,10 +1174,10 @@ msgid "tBlock differences - hashed"
 msgstr ""
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr "Mostrando da _START_ a _END_ di _TOT_ voci"
+msgstr "Visualizzazione da _START_ a _END_ di _TOTAL_ elementi"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr "Mostrando da 0 a 0 di 0 voci"
+msgstr "Visualizzazione da 0 a 0 di 0 elementi"
 
 msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrato da _MAX_ voci)"
@@ -1687,7 +1689,7 @@ msgid "tOk. Reset this error"
 msgstr ""
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Non mostrare più questo errore"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
@@ -1701,7 +1703,7 @@ msgid "tOk. Dismiss this hint."
 msgstr ""
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Non mostrare più."
 
 msgid "tVolume:"
 msgstr ""
@@ -1768,4 +1770,91 @@ msgid "tGroup name"
 msgstr ""
 
 msgid "tWith Selected"
+msgstr ""
+
+msgid "no_backup_paths"
+msgstr ""
+
+msgid "disabled"
+msgstr ""
+
+msgid "new_alert_script_name"
+msgstr ""
+
+msgid "confirm_alert_script_remove"
+msgstr ""
+
+msgid "alert_file_mult"
+msgstr ""
+
+msgid "alert_image_mult"
+msgstr ""
+
+msgid "alert_emails"
+msgstr ""
+
+msgid "alert_important"
+msgstr ""
+
+msgid "alert_mail_ok"
+msgstr ""
+
+msgid "tEdit alert scripts"
+msgstr ""
+
+msgid "tAlert script"
+msgstr ""
+
+msgid "tAlert script parameters"
+msgstr ""
+
+msgid "tAdd parameter"
+msgstr ""
+
+msgid "tName:"
+msgstr ""
+
+msgid "tLabel:"
+msgstr ""
+
+msgid "tDefault value:"
+msgstr ""
+
+msgid "tType:"
+msgstr ""
+
+msgid "tString"
+msgstr ""
+
+msgid "tFloating point number"
+msgstr ""
+
+msgid "tInteger"
+msgstr ""
+
+msgid "tBoolean"
+msgstr ""
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr ""
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr ""
+
+msgid "tEdit report script"
+msgstr ""
+
+msgid "tPaused"
+msgstr ""
+
+msgid "tReport script"
+msgstr ""
+
+msgid "tAlerts"
+msgstr ""
+
+msgid "tEdit scripts"
+msgstr ""
+
+msgid "tInternet restore authentication key"
 msgstr ""
