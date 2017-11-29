@@ -1259,6 +1259,24 @@ std::string UnescapeHTML(const std::string &html)
 	ret=greplace("&gt;", ">", ret);
 	ret=greplace("&quot;", "\"", ret);
 	ret=greplace("&#x27;", "'", ret);
+	ret = greplace("&#x2F", "/", ret);
+	return ret;
+}
+
+std::string EscapeHTML(const std::string & html)
+{
+	std::string ret;
+	ret.reserve(html.size());
+	for (size_t i = 0; i < html.size(); ++i)
+	{
+		if (html[i] == '<') ret += "&lt;";
+		else if (html[i] == '>') ret += "&gt;";
+		else if (html[i] == '&') ret += "&amp;";
+		else if (html[i] == '\"') ret += "&quot;";
+		else if (html[i] == '\'') ret += "&#x27;";
+		else if (html[i] == '/') ret += "&#x2F";
+		else ret += html[i];
+	}
 	return ret;
 }
 

@@ -244,7 +244,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 
 			if( tid==0 )
 			{
-				std::string error="Error: Unknown action ["+iter2->second+"]";
+				std::string error="Error: Unknown action ["+ EscapeHTML(iter2->second)+"]";
 				Server->Log(error, LL_WARNING);
 				try
 				{

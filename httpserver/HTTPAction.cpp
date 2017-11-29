@@ -99,7 +99,7 @@ void CHTTPAction::operator()(void)
 
 	if( tid==0 )
 	{
-		std::string error="Error: Unknown action ["+name+"]";
+		std::string error="Error: Unknown action ["+EscapeHTML(name)+"]";
 		Server->Log(error, LL_WARNING);
 		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
 	}
