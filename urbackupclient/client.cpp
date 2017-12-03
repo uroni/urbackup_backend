@@ -5482,51 +5482,92 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	PURBCT_BITMAP_DATA snap_bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf_snap.data());
 
 	DWORD RealBitmapSize = 0;
+	DWORD RealVssBitmapSize = 0;
 
 	int64 changed_bytes_sc = 0;
 
-	for (DWORD i = 0; i < bitmap_data->BitmapSize; i+=bitmap_data->SectorSize)
+	for (DWORD i = 0; i < bitmap_data->BitmapSize; i += bitmap_data->SectorSize)
 	{
 		if (memcmp(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
 		{
-			VSSLog("UrBackup cbt magic wrong at pos "+convert((size_t)i), LL_ERROR);
+			VSSLog("UrBackup cbt magic wrong at pos " + convert((size_t)i), LL_ERROR);
 			return false;
 		}
 
-		DWORD tr = (std::min)(bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE, bitmap_data->SectorSize - URBT_MAGIC_SIZE);
-
+		DWORD tr = (std::min)(bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE,
+			bitmap_data->SectorSize - URBT_MAGIC_SIZE);
 		RealBitmapSize += tr;
-
-		if(hSnapVolume!=INVALID_HANDLE_VALUE
-			&& i + URBT_MAGIC_SIZE < snap_bitmap_data->BitmapSize)
-		{
-			if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
-			{
-				VSSLog("UrBackup cbt snap magic wrong at shadow copy bitmap pos " + convert((size_t)i), LL_ERROR);
-				return false;
-			}
-
-			DWORD tr_snap = (std::min)(tr, snap_bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE);
-
-			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + URBT_MAGIC_SIZE + tr_snap; ++j)
-			{
-				BYTE b = snap_bitmap_data->Bitmap[j];
-				bitmap_data->Bitmap[j] |= b;
-
-				while (b > 0)
-				{
-					if (b & 1)
-					{
-						changed_bytes_sc += URBT_BLOCKSIZE;
-					}
-					b >>= 1;
-				}
-			}
-		}
 	}
 
 	if (hSnapVolume != INVALID_HANDLE_VALUE)
 	{
+		for (DWORD i = 0; i < snap_bitmap_data->BitmapSize; i += snap_bitmap_data->SectorSize)
+		{
+			if (memcmp(&snap_bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+			{
+				VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)i), LL_ERROR);
+				return false;
+			}
+
+			DWORD tr = (std::min)(snap_bitmap_data->BitmapSize - i - URBT_MAGIC_SIZE,
+				snap_bitmap_data->SectorSize - URBT_MAGIC_SIZE);
+			RealVssBitmapSize += tr;
+		}
+
+		if (RealVssBitmapSize != RealBitmapSize)
+		{
+			VSSLog("VSS geometry differs from original volume. "
+				"Orig sector size=" + convert(static_cast<int64>(bitmap_data->SectorSize)) +
+				" Orig bitmap size=" + convert(static_cast<int64>(bitmap_data->BitmapSize)) +
+				" VSS sector size=" + convert(static_cast<int64>(snap_bitmap_data->SectorSize)) +
+				" VSS bitmap size=" + convert(static_cast<int64>(snap_bitmap_data->BitmapSize)) +
+				" RealVssBitmapSize=" + convert(static_cast<int64>(RealVssBitmapSize)) +
+				" RealBitmapSize=" + convert(static_cast<int64>(RealBitmapSize)), LL_ERROR);
+			return false;
+		}
+
+		for (DWORD i = 0, s = 0; i < bitmap_data->BitmapSize
+			&& s < snap_bitmap_data->BitmapSize;)
+		{
+			if (i % bitmap_data->SectorSize == 0)
+			{
+				if (memcmp(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+				{
+					VSSLog("UrBackup cbt magic wrong at pos " + convert((size_t)i) + " (2)", LL_ERROR);
+					return false;
+				}
+
+				i += URBT_MAGIC_SIZE;
+				continue;
+			}
+
+			if (s % snap_bitmap_data->SectorSize == 0)
+			{
+				if (memcmp(&snap_bitmap_data->Bitmap[s], urbackupcbt_magic, URBT_MAGIC_SIZE) != 0)
+				{
+					VSSLog("UrBackup cbt snap magic wrong at pos " + convert((size_t)s) + " (2)", LL_ERROR);
+					return false;
+				}
+				s += URBT_MAGIC_SIZE;
+				continue;
+			}
+
+			BYTE b = snap_bitmap_data->Bitmap[s];
+			bitmap_data->Bitmap[i] |= b;
+
+			while (b > 0)
+			{
+				if (b & 1)
+				{
+					changed_bytes_sc += URBT_BLOCKSIZE;
+				}
+				b >>= 1;
+			}
+
+			++s;
+			++i;
+		}
+
 		VSSLog("Change block tracking reports " + PrettyPrintBytes(changed_bytes_sc) + " have changed on shadow copy " + snap_volume, LL_DEBUG);
 
 		b = DeviceIoControl(hVolume, IOCTL_URBCT_APPLY_BITMAP, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), NULL, 0, &bytesReturned, NULL);
