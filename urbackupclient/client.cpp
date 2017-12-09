@@ -6394,6 +6394,15 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		}
 	}
 
+	if (trim(snapshot_target) == "none")
+	{
+		if (not_configured != NULL)
+		{
+			*not_configured = true;
+		}
+		return false;
+	}
+
 	if(snapshot_target.empty())
 	{
 		VSSLog("Could not find snapshot target. Please include a snapshot target output in the script (e.g. echo SNAPSHOT=/mnt/snap/xxxx)", LL_ERROR);
