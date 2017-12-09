@@ -53,7 +53,7 @@ cp "$CDIR/mariadbpostbackup" SYSCONFDIR/postfilebackup
 
 echo "Configuring virtual client 'incr'..."
 
-urbackupclientctl set-settings -v virtual_clients -k incr
+urbackupclientctl set-settings -k virtual_clients -v incr
 
 echo "Adding path to backup..."
 
