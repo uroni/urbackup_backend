@@ -63,7 +63,7 @@ public:
 
 			if ((*it) != path)
 			{
-				if (next(path, 0, *it))
+				if (next(path, 0, *it + "/"))
 				{
 					paths.erase(it);
 				}
@@ -76,7 +76,7 @@ public:
 			IScopedLock lock(mutex.get());
 			std::set<std::string>::iterator it = paths.lower_bound(path);
 			return it!=paths.end() && (*it == path
-							|| next(*it, 0, path) );
+							|| next(*it, 0, path + "/") );
 		}
 
 		size_t refcount;
