@@ -116,7 +116,7 @@ then
 		echo "Glibc not installed or too old. Falling back to ellcc build..."
 		TARGET=x86_64-linux-eng
 	else
-		if ! "$PREFIX/bin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
+		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
 			echo "Glibc not installed or too old. Falling back to ellcc build..."
 			TARGET=x86_64-linux-eng
