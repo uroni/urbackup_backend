@@ -104,36 +104,43 @@ else
 	echo "Detected architecture $TARGET"
 fi
 
+test -e "$PREFIX/sbin" || install -c -m 755 -d "$PREFIX/sbin"
+test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
+install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
+install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
+
 if [ $TARGET = x86_64-linux-glibc ]
 then
-	if ! $TARGET/urbackupclientctl --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
+	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
 		echo "Glibc not installed or too old. Falling back to ellcc build..."
 		TARGET=x86_64-linux-eng
 	else
-		if ! $TARGET/urbackupclientbackend --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
+		if ! "$PREFIX/bin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
 			echo "Glibc not installed or too old. Falling back to ellcc build..."
 			TARGET=x86_64-linux-eng
 		fi
 	fi
+	
+	if [ $TARGET != x86_64-linux-glibc ]
+	then
+		install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
+		install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
+	fi
 fi
 
-if ! $TARGET/urbackupclientctl --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
+if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 then
 	echo "Error running executable on this system ($arch). Stopping installation."
 	exit 2
 fi
 
 test -e "$PREFIX/var/urbackup/data" || install -c -m 744 -d "$PREFIX/var/urbackup/data"
-test -e "$PREFIX/sbin" || install -c -m 755 -d "$PREFIX/sbin"
-test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
 test -e "$PREFIX/share/urbackup/scripts" || install -c -m 744 -d "$PREFIX/share/urbackup/scripts"
 test -e "$PREFIX/etc/urbackup" || install -c -m 744 -d "$PREFIX/etc/urbackup"
 
-install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
 install -c "uninstall_urbackupclient" "$PREFIX/sbin"
-install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 
 for script in backup_scripts/*
 do
