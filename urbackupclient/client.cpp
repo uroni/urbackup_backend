@@ -5108,18 +5108,24 @@ namespace
 
 	bool mergeBitmap(PURBCT_BITMAP_DATA src, PURBCT_BITMAP_DATA dst)
 	{
-		if (src->SectorSize != dst->SectorSize)
-		{
-			return false;
-		}
-
 		DWORD curr_byte = 0;
-		for (DWORD i = 0; i < src->BitmapSize && i<dst->BitmapSize; i += src->SectorSize)
+		for (DWORD i = 0, j=0; i < src->BitmapSize && j<dst->BitmapSize;)
 		{
-			for (DWORD j = i + URBT_MAGIC_SIZE; j < i + src->SectorSize; ++j)
+			if (i%src->SectorSize == 0)
 			{
-				dst->Bitmap[j] |= src->Bitmap[j];
+				i += URBT_MAGIC_SIZE;
+				continue;
 			}
+
+			if (j%dst->SectorSize == 0)
+			{
+				j += URBT_MAGIC_SIZE;
+				continue;
+			}
+
+			dst->Bitmap[j] |= src->Bitmap[i];
+			++i;
+			++j;
 		}
 
 		return true;
@@ -5379,16 +5385,35 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		return false;
 	}
 
-	DISK_GEOMETRY disk_geometry = {};
-	b = DeviceIoControl(hVolume, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &disk_geometry, sizeof(disk_geometry),
+	STORAGE_PROPERTY_QUERY alignmentQuery;
+	alignmentQuery.QueryType = PropertyStandardQuery;
+	alignmentQuery.PropertyId = StorageAccessAlignmentProperty;
+	STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR alignmentDescr = {};
+	b = DeviceIoControl(hVolume, IOCTL_STORAGE_QUERY_PROPERTY, &alignmentQuery, sizeof(alignmentQuery), &alignmentDescr, sizeof(alignmentDescr),
 		&retBytes, NULL);
 
+	DWORD BytesPerSector = 4096;
 	if (!b)
 	{
-		std::string errmsg;
-		int64 err = os_last_error(errmsg);
-		VSSLog("Getting disk geometry of volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
-		return false;
+		VSSLog("Error getting storage alignemnt property. " + os_last_error_str() + ". Fallback...", LL_DEBUG);
+
+		DISK_GEOMETRY disk_geometry = {};
+		b = DeviceIoControl(hVolume, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &disk_geometry, sizeof(disk_geometry),
+			&retBytes, NULL);
+
+		if (!b)
+		{
+			std::string errmsg;
+			int64 err = os_last_error(errmsg);
+			VSSLog("Getting disk geometry of volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+			return false;
+		}
+
+		BytesPerSector = disk_geometry.BytesPerSector;
+	}
+	else
+	{
+		BytesPerSector = alignmentDescr.BytesPerPhysicalSector;
 	}
 	
 
@@ -5396,9 +5421,9 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	size_t bitmapBytesWoMagic = bitmapBlocks / 8 + (bitmapBlocks % 8 == 0 ? 0 : 1);
 
-	DWORD bitmapSectorSize = disk_geometry.BytesPerSector - URBT_MAGIC_SIZE;
+	DWORD bitmapSectorSize = BytesPerSector - URBT_MAGIC_SIZE;
 
-	size_t bitmapBytes = (bitmapBytesWoMagic / bitmapSectorSize)*disk_geometry.BytesPerSector 
+	size_t bitmapBytes = (bitmapBytesWoMagic / bitmapSectorSize)*BytesPerSector 
 		+ ((bitmapBytesWoMagic%bitmapSectorSize != 0) ? (URBT_MAGIC_SIZE + bitmapBytesWoMagic%bitmapSectorSize) : 0);
 
 	std::vector<char> buf;
