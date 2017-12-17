@@ -79,10 +79,8 @@ int md5sum_check()
 
 		md5.finalize();
 
-		char* hd = md5.hex_digest();
-		std::string hex_dig(hd);
-		delete[] hd;
-
+		std::string hex_dig = md5.hex_digest();
+		
 		if (hex_dig != md5sum)
 		{
 			std::cout << "FAILED" << std::endl;

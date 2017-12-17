@@ -4,7 +4,7 @@ urbackupsrv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectT
 
 urbackupsrv_SOURCES += fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/fs/ntfs.cpp fsimageplugin/fs/unknown.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp fsimageplugin/ClientBitmap.cpp
 
-urbackupsrv_SOURCES += urbackupcommon/os_functions_lin.cpp urbackupcommon/sha2/sha2.c urbackupcommon/fileclient/FileClient.cpp urbackupcommon/fileclient/tcpstack.cpp urbackupcommon/escape.cpp urbackupcommon/bufmgr.cpp urbackupcommon/json.cpp urbackupcommon/CompressedPipe.cpp urbackupcommon/InternetServicePipe2.cpp urbackupcommon/settingslist.cpp urbackupcommon/fileclient/FileClientChunked.cpp urbackupcommon/InternetServicePipe.cpp urbackupcommon/filelist_utils.cpp urbackupcommon/file_metadata.cpp urbackupcommon/glob.cpp urbackupcommon/chunk_hasher.cpp urbackupcommon/CompressedPipe2.cpp urbackupcommon/SparseFile.cpp urbackupcommon/ExtentIterator.cpp urbackupcommon/TreeHash.cpp
+urbackupsrv_SOURCES += urbackupcommon/os_functions_lin.cpp urbackupcommon/sha2/sha2.cpp urbackupcommon/fileclient/FileClient.cpp urbackupcommon/fileclient/tcpstack.cpp urbackupcommon/escape.cpp urbackupcommon/bufmgr.cpp urbackupcommon/json.cpp urbackupcommon/CompressedPipe.cpp urbackupcommon/InternetServicePipe2.cpp urbackupcommon/settingslist.cpp urbackupcommon/fileclient/FileClientChunked.cpp urbackupcommon/InternetServicePipe.cpp urbackupcommon/filelist_utils.cpp urbackupcommon/file_metadata.cpp urbackupcommon/glob.cpp urbackupcommon/chunk_hasher.cpp urbackupcommon/CompressedPipe2.cpp urbackupcommon/SparseFile.cpp urbackupcommon/ExtentIterator.cpp urbackupcommon/TreeHash.cpp
 
 urbackupsrv_SOURCES += httpserver/dllmain.cpp httpserver/IndexFiles.cpp httpserver/HTTPAction.cpp httpserver/HTTPFile.cpp httpserver/HTTPService.cpp httpserver/HTTPClient.cpp httpserver/HTTPProxy.cpp httpserver/MIMEType.cpp
 
@@ -54,6 +54,11 @@ if TARGET_CPU_IS_X86
 urbackupsrv_CXXFLAGS += -msse -msse2
 endif
 endif
+
+if !WITH_CRYPTOPLUGIN
+urbackupsrv_CPPFLAGS+=-DDO_NOT_USE_CRYPTOPP_SHA -DDO_NOT_USE_CRYPTOPP_MD5
+endif
+
 
 
 urbackup_snapshot_helper_SOURCES = snapshot_helper/main.cpp urbackupcommon/os_functions_lin_min.cpp stringtools.cpp

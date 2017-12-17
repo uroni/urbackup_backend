@@ -42,11 +42,10 @@ documentation and/or software.
 #ifndef MD5_H
 #define MD5_H
 
-
 #include <fstream>
 #include <iostream>
 
-using namespace std;
+#ifdef DO_NOT_USE_CRYPTOPP_MD5
 
 class MD5 {
 
@@ -54,24 +53,23 @@ public:
 // methods for controlled operation:
   MD5              ();  // simple initializer
   void  update     (unsigned char *input, unsigned int input_length);
-  void  update     (istream& stream);
+  void  update     (std::istream& stream);
   void  update     (FILE *file);
-  void  update     (ifstream& stream);
+  void  update     (std::ifstream& stream);
   void  finalize   ();
 
 // constructors for special circumstances.  All these constructors finalize
 // the MD5 context.
   MD5              (unsigned char *str); // digest string, finalize
-  MD5              (istream& stream);       // digest stream, finalize
+  MD5              (std::istream& stream);       // digest stream, finalize
   MD5              (FILE *file);            // digest file, close, finalize
-  MD5              (ifstream& stream);      // digest stream, close, finalize
+  MD5              (std::ifstream& stream);      // digest stream, close, finalize
   MD5				(unsigned char *str, unsigned int len);
 
 // methods to acquire finalized result
-  unsigned char    *raw_digest ();  // digest as a 16-byte binary array
   unsigned char    *raw_digest_int ();  // digest as a 16-byte binary array
-  char *            hex_digest ();  // digest as a 33-byte ascii-hex string
-  friend ostream&   operator<< (ostream&, MD5 context);
+  std::string            hex_digest ();  // digest as a 33-byte ascii-hex string
+  friend ostream&   operator<< (std::ostream&, MD5 context);
 
   void init             ();               // called by all constructors
 
@@ -114,5 +112,43 @@ private:
 			    uint4 s, uint4 ac);
 
 };
+
+#else //!DO_NOT_USE_CRYPTOPP_MD5
+
+#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
+#ifdef _WIN32
+#include <md5.h>
+#else
+#include "config.h"
+#define CRYPTOPP_INCLUDE_MD5 <CRYPTOPP_INCLUDE_PREFIX/md5.h>
+#include CRYPTOPP_INCLUDE_MD5
+#endif
+
+class MD5 {
+
+public:
+	void  update(unsigned char *input, unsigned int input_length);
+	void  update(std::istream& stream);
+	void  update(FILE *file);
+	void  update(std::ifstream& stream);
+	void  finalize();
+	void init();
+
+	MD5();
+	MD5(unsigned char *str);
+	MD5(std::istream& stream);
+	MD5(FILE *file);
+	MD5(std::ifstream& stream);
+	MD5(unsigned char *str, unsigned int len);
+
+	unsigned char    *raw_digest_int();
+	std::string       hex_digest();
+
+private:
+	CryptoPP::Weak::MD5 md5;
+	byte digest[CryptoPP::Weak::MD5::DIGESTSIZE];
+};
+
+#endif //DO_NOT_USE_CRYPTOPP_MD5
 
 #endif //MD5_H

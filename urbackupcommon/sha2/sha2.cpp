@@ -39,6 +39,27 @@
 
 #include "sha2.h"
 
+void sha512(const unsigned char *message, unsigned int len,
+	unsigned char *digest)
+{
+	sha512_ctx ctx;
+
+	sha512_init(&ctx);
+	sha512_update(&ctx, message, len);
+	sha512_final(&ctx, digest);
+}
+
+void sha256(const unsigned char *message, unsigned int len, unsigned char *digest)
+{
+	sha256_ctx ctx;
+
+	sha256_init(&ctx);
+	sha256_update(&ctx, message, len);
+	sha256_final(&ctx, digest);
+}
+
+#ifdef DO_NOT_USE_CRYPTOPP_SHA
+
 #define SHFR(x, n)    (x >> n)
 #define ROTR(x, n)   ((x >> n) | (x << ((sizeof(x) << 3) - n)))
 #define ROTL(x, n)   ((x << n) | (x >> ((sizeof(x) << 3) - n)))
@@ -324,15 +345,6 @@ void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
     }
 }
 
-void sha256(const unsigned char *message, unsigned int len, unsigned char *digest)
-{
-    sha256_ctx ctx;
-
-    sha256_init(&ctx);
-    sha256_update(&ctx, message, len);
-    sha256_final(&ctx, digest);
-}
-
 void sha256_init(sha256_ctx *ctx)
 {
 #ifndef UNROLL_LOOPS
@@ -518,16 +530,6 @@ void sha512_transf(sha512_ctx *ctx, const unsigned char *message,
         ctx->h[6] += wv[6]; ctx->h[7] += wv[7];
 #endif /* !UNROLL_LOOPS */
     }
-}
-
-void sha512(const unsigned char *message, unsigned int len,
-            unsigned char *digest)
-{
-    sha512_ctx ctx;
-
-    sha512_init(&ctx);
-    sha512_update(&ctx, message, len);
-    sha512_final(&ctx, digest);
 }
 
 void sha512_init(sha512_ctx *ctx)
@@ -947,4 +949,39 @@ int main()
 }
 
 #endif /* TEST_VECTORS */
+
+#else //!DO_NOT_USE_CRYPTOPP_SHA
+
+void sha256_init(sha256_ctx * ctx)
+{
+
+}
+
+void sha256_update(sha256_ctx *ctx, const unsigned char *message,
+	unsigned int len)
+{
+	ctx->sha.Update(message, len);
+}
+
+void sha256_final(sha256_ctx *ctx, unsigned char *digest)
+{
+	ctx->sha.Final(digest);
+}
+
+void sha512_init(sha512_ctx *ctx)
+{
+}
+
+void sha512_update(sha512_ctx *ctx, const unsigned char *message,
+	unsigned int len)
+{
+	ctx->sha.Update(message, len);
+}
+
+void sha512_final(sha512_ctx *ctx, unsigned char *digest)
+{
+	ctx->sha.Final(digest);
+}
+
+#endif //DO_NOT_USE_CRYPTOPP_SHA
 

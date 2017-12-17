@@ -56,6 +56,9 @@ documentation and/or software.
 #include <string.h>
 #endif
 
+using namespace std;
+
+#ifdef DO_NOT_USE_CRYPTOPP_MD5
 
 // MD5 simple initialization method
 
@@ -260,23 +263,6 @@ MD5::MD5(ifstream& stream){
   finalize();
 }
 
-
-
-unsigned char *MD5::raw_digest(){
-
-  uint1 *s = new uint1[16];
-
-  if (!finalized){
-    cerr << "MD5::raw_digest:  Can't get digest if you haven't "<<
-      "finalized the digest!" <<endl;
-	delete []s;
-    return ( (unsigned char*) "");
-  }
-
-  memcpy(s, digest, 16);
-  return s;
-}
-
 unsigned char    *MD5::raw_digest_int ()
 {
 	if (!finalized){
@@ -290,10 +276,10 @@ unsigned char    *MD5::raw_digest_int ()
 
 #pragma warning ( disable : 4996 )
 
-char *MD5::hex_digest(){
+std::string MD5::hex_digest(){
 
   int i;
-  char *s= new char[33];
+  char s[33];
 
   if (!finalized){
     cerr << "MD5::hex_digest:  Can't get digest if you haven't "<<
@@ -568,3 +554,106 @@ inline void MD5::II(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x,
  a += I(b, c, d) + x + ac;
  a = rotate_left (a, s) +b;
 }
+
+#else //!DO_NOT_USE_CRYPTOPP_MD5
+
+#include "md5.h"
+#include "stringtools.h"
+
+void MD5::update(unsigned char * input, unsigned int input_length)
+{
+	md5.Update(input, input_length);
+}
+
+void MD5::update(istream & stream)
+{
+	unsigned char buffer[1024];
+	int len;
+
+	while (stream.good()) {
+		stream.read((char*)buffer, 1024);
+		len = (int)stream.gcount();
+		update(buffer, len);
+	}
+}
+
+void MD5::update(FILE * file)
+{
+	unsigned char buffer[1024];
+	int len;
+
+	while (len = (int)fread(buffer, 1, 1024, file))
+		update(buffer, len);
+
+	fclose(file);
+}
+
+void MD5::update(ifstream & stream)
+{
+	unsigned char buffer[1024];
+	int len;
+
+	while (stream.good()) {
+		stream.read((char*)buffer, 1024);
+		len = (int)stream.gcount();
+		update(buffer, len);
+	}
+}
+
+void MD5::finalize()
+{
+	md5.Final(digest);
+}
+
+MD5::MD5()
+{
+
+}
+
+MD5::MD5(unsigned char * str)
+{
+	update(str, (unsigned int)strlen((char*)str));
+	finalize();
+}
+
+MD5::MD5(istream & stream)
+{
+	update(stream);
+	finalize();
+}
+
+MD5::MD5(FILE * file)
+{
+	update(file);
+	finalize();
+}
+
+MD5::MD5(ifstream & stream)
+{
+	update(stream);
+	finalize();
+}
+
+MD5::MD5(unsigned char * str, unsigned int len)
+{
+	update(str, len);
+	finalize();
+}
+
+unsigned char * MD5::raw_digest_int()
+{
+	return digest;
+}
+
+std::string MD5::hex_digest()
+{
+	return bytesToHex(reinterpret_cast<unsigned char*>(digest), CryptoPP::Weak::MD5::DIGESTSIZE);
+}
+
+void MD5::init()
+{
+	md5.Restart();
+}
+
+
+#endif //DO_NOT_USE_CRYPTOPP_MD5

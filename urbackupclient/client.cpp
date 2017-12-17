@@ -5997,10 +5997,8 @@ void IndexThread::createMd5sumsFile(const std::string & path, const std::string&
 
 				md5.finalize();
 
-				char* hd = md5.hex_digest();
-				std::string hex_dig(hd);
-				delete[] hd;
-
+				std::string hex_dig = md5.hex_digest();
+				
 				output_f->Write(hex_dig + "  " + (md5sums_path.empty() ? files[i].name : (md5sums_path + "/" + files[i].name)) + "\n");
 			}
 		}

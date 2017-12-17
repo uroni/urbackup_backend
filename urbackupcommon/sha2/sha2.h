@@ -53,9 +53,7 @@ typedef unsigned int  uint32;
 typedef unsigned long long uint64;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifdef DO_NOT_USE_CRYPTOPP_SHA
 
 typedef struct {
     unsigned int tot_len;
@@ -70,6 +68,25 @@ typedef struct {
     unsigned char block[2 * SHA512_BLOCK_SIZE];
     uint64 h[8];
 } sha512_ctx;
+
+#else //!DO_NOT_USE_CRYPTOPP_SHA
+
+#ifdef _WIN32
+#include <sha.h>
+#else
+#include "../../config.h"
+#define CRYPTOPP_INCLUDE_SHA <CRYPTOPP_INCLUDE_PREFIX/sha.h>
+#include CRYPTOPP_INCLUDE_SHA
+#endif
+typedef struct {
+	CryptoPP::SHA256 sha;
+} sha256_ctx;
+
+typedef struct {
+	CryptoPP::SHA512 sha;
+} sha512_ctx;
+
+#endif //DO_NOT_USE_CRYPTOPP_SHA
 
 typedef sha512_ctx sha384_ctx;
 typedef sha256_ctx sha224_ctx;
@@ -131,9 +148,6 @@ static void sha_def(const unsigned char *message, unsigned int len,
 
 const static char* sha_def_identifier="sha512";
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* !SHA2_H */
 

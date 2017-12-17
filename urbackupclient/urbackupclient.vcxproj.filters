@@ -27,9 +27,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
-      <Filter>sha2</Filter>
-    </ClCompile>
     <ClCompile Include="ChangeJournalWatcher.cpp">
       <Filter>watchdir</Filter>
     </ClCompile>
@@ -188,6 +185,9 @@
     </ClCompile>
     <ClCompile Include="ClientHash.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.cpp">
+      <Filter>sha2</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

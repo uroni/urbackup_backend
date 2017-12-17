@@ -19,9 +19,6 @@
       <UniqueIdentifier>{3ff5bf0a-dd61-4c91-880e-180063d4f39c}</UniqueIdentifier>
     </Filter>
     <Filter Include="sha2">
-      <UniqueIdentifier>{94c028c2-e88e-4a63-ab20-e68be5608bbb}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="sha2">
       <UniqueIdentifier>{70354eae-bf63-425c-ae8a-b5ac6085389f}</UniqueIdentifier>
     </Filter>
     <Filter Include="apps">
@@ -42,6 +39,9 @@
     </Filter>
     <Filter Include="miniz">
       <UniqueIdentifier>{c5f185c0-de01-43f8-9a80-28684380f19c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sha2">
+      <UniqueIdentifier>{60144485-8ba8-41fa-9f3a-81c7c9453f3b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -141,9 +141,6 @@
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
-      <Filter>sha2</Filter>
-    </ClCompile>
     <ClCompile Include="serverinterface\salt.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
@@ -163,9 +160,6 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="ChunkPatcher.cpp">
@@ -372,6 +366,12 @@
     <ClCompile Include="LogReport.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.cpp">
+      <Filter>sha2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\md5.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -448,9 +448,6 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
       <Filter>fileclient</Filter>
-    </ClInclude>
-    <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
-      <Filter>sha2</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\settingslist.h">
       <Filter>Headerdateien</Filter>
@@ -673,6 +670,9 @@
     </ClInclude>
     <ClInclude Include="LogReport.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
+      <Filter>sha2</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -989,10 +989,7 @@ ISessionMgr *CServer::getSessionMgr(void)
 std::string CServer::GenerateHexMD5(const std::string &input)
 {
 	MD5 md((unsigned char*)input.c_str() );
-	char *p=md.hex_digest();
-	std::string ret=p;
-	delete []p;
-	return ret;
+	return md.hex_digest();
 }
 
 std::string CServer::GenerateBinaryMD5(const std::string &input)
