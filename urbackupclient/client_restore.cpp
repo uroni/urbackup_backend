@@ -890,7 +890,7 @@ namespace
 		std::vector<char> buffer;
 		buffer.resize(ping_clientname.size()+2);
 		buffer[0]=ID_PONG;
-		buffer[1]=VERSION;
+		buffer[1]=FILESERV_VERSION;
 		memcpy(&buffer[2], ping_clientname.c_str(), ping_clientname.size());
 		
 		while(true)

@@ -1574,7 +1574,7 @@ bool CServer::fileExists(std::string pFilename)
 #ifndef WIN32
 	return ::FileExists(pFilename);
 #else
-	fstream in(ConvertToWchar(pFilename).c_str(), ios::in);
+	std::fstream in(ConvertToWchar(pFilename).c_str(), std::ios::in);
 	if( in.is_open()==false )
 		return false;
 

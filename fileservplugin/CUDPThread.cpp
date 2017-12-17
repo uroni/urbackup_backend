@@ -356,7 +356,7 @@ bool CUDPThread::UdpStep(void)
 				Server->wait(rsleep);
 				char *buffer=new char[mServername.size()+2];
 				buffer[0]=ID_PONG;
-				buffer[1]=VERSION;
+				buffer[1]=FILESERV_VERSION;
 				memcpy(&buffer[2], mServername.c_str(), mServername.size());
 				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
 				if( rc==SOCKET_ERROR )

@@ -10,7 +10,7 @@ const _i32 BUFFERSIZE=1024;
 const _i32 NBUFFERS=32;
 const _i32 READSIZE=32768;
 const _i32 SENDSIZE=16384;
-const uchar VERSION=36;
+const uchar FILESERV_VERSION=36;
 const _i32 WINDOW_SIZE=512*1024; // 128 kbyte
 
 #define DISABLE_WINDOW_SIZE
