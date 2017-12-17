@@ -284,10 +284,7 @@ std::string MD5::hex_digest(){
   if (!finalized){
     cerr << "MD5::hex_digest:  Can't get digest if you haven't "<<
       "finalized the digest!" <<endl;
-	delete []s;
-    char *bla=new char[1];
-    bla[0]=0;
-    return bla;
+	return std::string();
   }
 
   for (i=0; i<16; i++)
