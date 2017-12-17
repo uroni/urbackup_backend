@@ -69,7 +69,7 @@ public:
 // methods to acquire finalized result
   unsigned char    *raw_digest_int ();  // digest as a 16-byte binary array
   std::string            hex_digest ();  // digest as a 33-byte ascii-hex string
-  friend ostream&   operator<< (std::ostream&, MD5 context);
+  friend std::ostream&   operator<< (std::ostream&, MD5 context);
 
   void init             ();               // called by all constructors
 

@@ -525,7 +525,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 						if(err>2&&buffer[0]==ID_PONG)
 						{
 							int version=(unsigned char)buffer[1];
-							if(version==VERSION)
+							if(version==FILECLIENT_VERSION)
 							{
 								std::string sn;
 
