@@ -504,7 +504,7 @@ private:
 
 	bool disableCbt(std::string volume);
 
-	void enableCbtVol(std::string volume, bool install);
+	void enableCbtVol(std::string volume, bool install, bool reengage);
 
 	void updateCbt();
 

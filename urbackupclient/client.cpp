@@ -5270,14 +5270,15 @@ bool IndexThread::prepareCbt(std::string volume)
 		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", ll);
 		
 		if ( ((lasterr == ERROR_INVALID_FUNCTION
-			|| lasterr == ERROR_NOT_SUPPORTED )
+			|| lasterr == ERROR_NOT_SUPPORTED
+			|| lasterr == ERROR_ALLOCATE_BUCKET )
 				&& os_get_file_type("urbctctl.exe")!=0 )
 			|| (lasterr !=ERROR_INVALID_FUNCTION 
 				&& lasterr!= ERROR_NOT_SUPPORTED) )
 		{
 			if (cbtIsEnabled(std::string(), volume))
 			{
-				enableCbtVol(volume, true);
+				enableCbtVol(volume, true, lasterr==ERROR_ALLOCATE_BUCKET);
 			}
 		}
 	}
@@ -5445,10 +5446,10 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	if (bitmap_data->BitmapSize < bitmapBytes)
 	{
 		VSSLog("Did not track enough (volume resize?). Tracked " + convert((int)bitmap_data->BitmapSize) + " should track " + convert(bitmapBytes)+". "
-			"CBT will disable itself once this area is written to and then a system restart will be needed to enable it again.", LL_INFO);
+			"CBT will disable itself once this area is written to and CBT will reengage itself.", LL_INFO);
 	}
 
-	buf.resize(2*sizeof(DWORD) + bitmap_data->BitmapSize);
+	buf.resize(2*sizeof(DWORD) + bitmapBytes);
 
 	b = DeviceIoControl(hVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf.data(), static_cast<DWORD>(buf.size()), &bytesReturned, NULL);
 
@@ -5478,6 +5479,20 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf.data());
 	char* urbackupcbt_magic = URBT_MAGIC;
+
+	for (DWORD i = bitmap_data->BitmapSize; i < bitmapBytes;)
+	{
+		if (i%bitmap_data->SectorSize == 0)
+		{
+			memcpy(&bitmap_data->Bitmap[i], urbackupcbt_magic, URBT_MAGIC_SIZE);
+			i += URBT_MAGIC_SIZE;
+			continue;
+		}
+
+		bitmap_data->Bitmap[i] = 0xFF;
+
+		++i;
+	}
 
 	PURBCT_BITMAP_DATA snap_bitmap_data = reinterpret_cast<PURBCT_BITMAP_DATA>(buf_snap.data());
 
@@ -5845,7 +5860,7 @@ bool IndexThread::disableCbt(std::string volume)
 #endif
 }
 
-void IndexThread::enableCbtVol(std::string volume, bool install)
+void IndexThread::enableCbtVol(std::string volume, bool install, bool reengage)
 {
 #ifdef _WIN32
 	if (!normalizeVolume(volume))
@@ -5873,7 +5888,14 @@ void IndexThread::enableCbtVol(std::string volume, bool install)
 	{
 		std::string crash_persistent = crashPersistentCbtIsEnabled(std::string(), volume) ? "crash-persistent" : "not-crash-persistent";
 
-		system(("urbctctl.exe install " + volume + " " + crash_persistent).c_str());
+		if (reengage)
+		{
+			system(("urbctctl.exe reengage " + volume + " " + crash_persistent).c_str());
+		}
+		else
+		{
+			system(("urbctctl.exe install " + volume + " " + crash_persistent).c_str());
+		}
 	}
 	else
 	{
@@ -5918,7 +5940,7 @@ void IndexThread::updateCbt()
 
 				if (vols.find(cvol) == vols.end())
 				{
-					enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol));
+					enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
 					vols.insert(cvol);
 				}
 			}
@@ -5934,7 +5956,7 @@ void IndexThread::updateCbt()
 		if (!cvol.empty()
 			&& vols.find(cvol) == vols.end() )
 		{
-			enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol));
+			enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
 			vols.insert(cvol);
 		}
 	}
