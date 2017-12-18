@@ -5533,17 +5533,13 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			RealVssBitmapSize += tr;
 		}
 
-		if (RealVssBitmapSize != RealBitmapSize)
-		{
-			VSSLog("VSS geometry differs from original volume. "
+		VSSLog("VSS geometry. "
 				"Orig sector size=" + convert(static_cast<int64>(bitmap_data->SectorSize)) +
 				" Orig bitmap size=" + convert(static_cast<int64>(bitmap_data->BitmapSize)) +
 				" VSS sector size=" + convert(static_cast<int64>(snap_bitmap_data->SectorSize)) +
 				" VSS bitmap size=" + convert(static_cast<int64>(snap_bitmap_data->BitmapSize)) +
 				" RealVssBitmapSize=" + convert(static_cast<int64>(RealVssBitmapSize)) +
-				" RealBitmapSize=" + convert(static_cast<int64>(RealBitmapSize)), LL_ERROR);
-			return false;
-		}
+				" RealBitmapSize=" + convert(static_cast<int64>(RealBitmapSize)), LL_DEBUG);
 
 		for (DWORD i = 0, s = 0; i < bitmap_data->BitmapSize
 			&& s < snap_bitmap_data->BitmapSize;)
@@ -5574,6 +5570,19 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 			BYTE b = snap_bitmap_data->Bitmap[s];
 			bitmap_data->Bitmap[i] |= b;
 
+			++s;
+			++i;
+		}
+
+		for (DWORD i = 0, s = 0; i < bitmap_data->BitmapSize;)
+		{
+			if (i % bitmap_data->SectorSize == 0)
+			{
+				i += URBT_MAGIC_SIZE;
+				continue;
+			}
+
+			BYTE b = snap_bitmap_data->Bitmap[s];
 			while (b > 0)
 			{
 				if (b & 1)
@@ -5583,7 +5592,6 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 				b >>= 1;
 			}
 
-			++s;
 			++i;
 		}
 
