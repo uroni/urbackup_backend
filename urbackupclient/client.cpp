@@ -5448,6 +5448,10 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		VSSLog("Did not track enough (volume resize?). Tracked " + convert((int)bitmap_data->BitmapSize) + " should track " + convert(bitmapBytes)+". "
 			"CBT will disable itself once this area is written to and CBT will reengage itself.", LL_INFO);
 	}
+	else
+	{
+		bitmapBytes = bitmap_data->BitmapSize;
+	}
 
 	buf.resize(2*sizeof(DWORD) + bitmapBytes);
 
