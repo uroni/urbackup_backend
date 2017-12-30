@@ -684,7 +684,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		db->Write("PRAGMA journal_mode=WAL");
 	}
 		
-	if( FileExists("urbackup/backupfolder") )
+	if( FileExists("urbackup/backupfolder")
+#ifndef _WIN32
+		|| FileExists("/etc/urbackup/backupfolder")
+#endif
+		)
 	{
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db_results res=db->Read("SELECT value FROM settings_db.settings WHERE key='backupfolder' AND clientid=0");
@@ -692,6 +696,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('backupfolder', ?, 0)", false);
 			std::string bf=getFile("urbackup/backupfolder");
+#ifndef _WIN32
+			if (bf.empty())
+			{
+				bf = getFile("/etc/urbackup/backupfolder");
+			}
+#endif
 			if(linecount(bf)>0)
 				bf=getline(0, bf);
 			q->Bind(trim(bf));
