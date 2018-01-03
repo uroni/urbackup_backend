@@ -21,6 +21,7 @@
 #include "../stringtools.h"
 #include <algorithm>
 #include "file_permissions.h"
+#include "../urbackupcommon/os_functions.h"
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
 
@@ -227,7 +228,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 			idents+="pubkey_ecdsa409k1="+base64_encode_dash(identities[i].publickeys.ecdsa409k1_key);
 		}
 	}
-	write_file_only_admin(idents, server_ident_file);
+	write_file_admin_atomic(idents, server_ident_file);
 
 	std::string new_idents;
 	for(size_t i=0;i<new_identities.size();++i)
@@ -235,7 +236,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 		if(!new_idents.empty()) new_idents+="\r\n";
 		new_idents+=new_identities[i];
 	}
-	write_file_only_admin(new_idents, server_new_ident_file);
+	write_file_admin_atomic(new_idents, server_new_ident_file);
 }
 
 bool ServerIdentityMgr::hasOnlineServer(void)
@@ -348,5 +349,22 @@ void ServerIdentityMgr::writeSessionIdentities()
 		}
 		
 	}
-	write_file_only_admin(idents, server_session_ident_file);
+	write_file_admin_atomic(idents, server_session_ident_file);
+}
+
+bool ServerIdentityMgr::write_file_admin_atomic(const std::string & data, const std::string & fn)
+{
+	if (!write_file_only_admin(data, fn + ".new"))
+	{
+		return false;
+	}
+
+	{
+		std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn + ".new"), MODE_RW));
+		if (f.get() != NULL)
+			f->Sync();
+	}
+
+	return os_rename_file(os_file_prefix(fn + ".new"),
+		os_file_prefix(fn));
 }

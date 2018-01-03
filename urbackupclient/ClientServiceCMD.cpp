@@ -107,6 +107,20 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	}
 }
 
+void ClientConnector::CMD_ADD_IDENTITY(const std::string & params)
+{
+	str_map m_params;
+	ParseParamStrHttp(params, &m_params);
+
+	ServerIdentityMgr::loadServerIdentities();
+	std::string identity = m_params["identity"];
+	if (!ServerIdentityMgr::checkServerIdentity(identity))
+	{
+		ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
+	}
+	tcpstack.Send(pipe, "OK");
+}
+
 void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd)
 {
 	if(identity.empty())

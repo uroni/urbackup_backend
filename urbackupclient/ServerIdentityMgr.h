@@ -96,6 +96,7 @@ public:
 private:
 	static void writeServerIdentities(void);
 	static void writeSessionIdentities();
+	static bool write_file_admin_atomic(const std::string& data, const std::string& fn);
 
 	static std::vector<SIdentity> identities;
 	static std::vector<std::string> new_identities;

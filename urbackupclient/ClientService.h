@@ -270,6 +270,7 @@ private:
 	SChannel* getCurrChannel();
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
+	void CMD_ADD_IDENTITY(const std::string &params);
 	void CMD_GET_CHALLENGE(const std::string &identity, const std::string& cmd);
 	void CMD_SIGNATURE(const std::string &identity, const std::string &cmd);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
