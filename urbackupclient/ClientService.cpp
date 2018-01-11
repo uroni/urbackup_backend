@@ -1584,9 +1584,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 		db->destroyQuery(q);
 	}
 
+	bool reset_settings = false;
 	if (new_settings->getValue("reset_client_settings", "") == "1")
 	{
-		Server->deleteFile(settings_fn);
+		reset_settings = true;
 	}
 
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
@@ -1623,7 +1624,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 		std::string def_v;
 		curr_settings->getValue(key+"_def", def_v);
 
-		if(!curr_settings->getValue(key, &v) )
+		if(reset_settings
+			|| !curr_settings->getValue(key, &v) )
 		{
 			std::string nv;
 			std::string new_key;
@@ -1635,7 +1637,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 			if(new_settings->getValue(key+"_def", &nv) )
 			{
 				new_settings_str+=key+"_def="+nv+"\n";
-				if(nv!=def_v)
+				if(reset_settings 
+					|| nv!=def_v)
 				{
 					mod=true;
 				}
@@ -1747,9 +1750,16 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod)
 	{
-		writestring((new_settings_str), settings_fn);
-
-		InternetClient::updateSettings();
+		std::auto_ptr<IFile> newf(Server->openFile(os_file_prefix(settings_fn + ".new"), MODE_WRITE));
+		if (newf.get() != NULL
+			&& newf->Write(new_settings_str) == new_settings_str.size()
+			&& newf->Sync())
+		{
+			newf.reset();
+			os_rename_file(os_file_prefix(settings_fn + ".new"),
+				os_file_prefix(settings_fn));
+			InternetClient::updateSettings();
+		}
 
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
@@ -1771,7 +1781,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 		std::string nv;
 		bool new_v=new_settings->getValue(key, &nv);
 
-		if(!curr_v && new_v)
+		if(reset_settings
+			|| (!curr_v && new_v) )
 		{
 			new_token_settings+=key+"="+nv;
 			mod_server_settings=true;
@@ -1796,7 +1807,15 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod_server_settings)
 	{
-		writestring((new_settings_str), settings_server_fn);
+		std::auto_ptr<IFile> newf(Server->openFile(os_file_prefix(settings_server_fn + ".new"), MODE_WRITE));
+		if (newf.get() != NULL
+			&& newf->Write(new_token_settings)==new_token_settings.size()
+			&& newf->Sync() )
+		{
+			newf.reset();
+			os_rename_file(os_file_prefix(settings_server_fn + ".new"),
+				os_file_prefix(settings_server_fn));
+		}
 	}
 }
 
