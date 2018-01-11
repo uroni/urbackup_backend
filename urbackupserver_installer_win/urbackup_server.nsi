@@ -178,6 +178,7 @@ Section "install"
 		File "data\cryptoplugin.dll"
 		File "data_service\urbackup_srv.exe"
 		File "data\urlplugin.dll"
+		File "data\luaplugin.dll"
 		SetOutPath "$INSTDIR"
 	${Else}
 		File "data_x64\fsimageplugin.dll"
@@ -187,6 +188,7 @@ Section "install"
 		File "data_service_x64\urbackup_srv.exe"
 		File "data_x64\cryptoplugin.dll"
 		File "data_x64\urlplugin.dll"
+		File "data_x64\luaplugin.dll"
 		SetOutPath "$INSTDIR"
 	${EndIf}
 	
