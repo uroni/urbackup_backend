@@ -167,6 +167,7 @@ install -c "lvm_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "lvm_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "dattobd_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "filesystem_snapshot_common" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
 test -e "$PREFIX/etc/urbackup/postgresqldump.conf" || install -c "backup_scripts/postgresqldump.conf" "$PREFIX/etc/urbackup"

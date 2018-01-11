@@ -10,8 +10,12 @@ SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
 
+CDIR=`dirname $0`
+. $CDIR/filesystem_snapshot_common
+exit_exclude_snapshot_mountpoints "$SNAP_MOUNTPOINT"
+
 DEVICE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f1)
-TYPE=$(df -T -P | egrep " ${SNAP_MOUNTPOINT}\$" | head -n 1 | tr -s " " | cut -d" " -f2)
+set_filesystem_type "${SNAP_MOUNTPOINT}"
 
 if [ "x$TYPE" = "x" ]
 then

@@ -1,0 +1,22 @@
+#!/bin/sh
+
+exit_exclude_snapshot_mountpoints {
+	CFG_FILE=/etc/urbackup/exclude_snapshot_mountpoints
+	if ! test -e "$CFG_FILE"
+	then
+		exit 0
+	fi
+	
+	while read line
+	do
+		if [ "x$line" = "x$1" ]
+		then
+			echo "SNAPSHOT=none"
+			exit 0
+		fi
+	done <$CFG_FILE
+}
+
+set_filesystem_type {
+	TYPE=`df -T -P | egrep " ${1}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
+}
