@@ -1138,7 +1138,7 @@ ServerFilesDao::SFindFileEntry BackupServerHash::findFileHash(const std::string 
 			entryid=state.prev.next_entry;
 		}
 	}
-	else if(state.state=4)
+	else if(state.state==4)
 	{
 		if(state.prev.prev_entry==0)
 		{
