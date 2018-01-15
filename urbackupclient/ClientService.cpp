@@ -1033,7 +1033,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			}
 			else if (next(cmd, 0, "ADD IDENTITY "))
 			{
-				CMD_ADD_IDENTITY(cmd.substr(13));
+				CMD_ADD_IDENTITY(cmd.substr(13)); continue;
 			}
 		}
 		if(pw_ok) //Commands from client frontend
