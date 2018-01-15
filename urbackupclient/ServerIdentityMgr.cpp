@@ -360,11 +360,10 @@ bool ServerIdentityMgr::write_file_admin_atomic(const std::string & data, const 
 	}
 
 	{
-		std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn + ".new"), MODE_RW));
+		std::auto_ptr<IFile> f(Server->openFile(fn + ".new", MODE_RW));
 		if (f.get() != NULL)
 			f->Sync();
 	}
 
-	return os_rename_file(os_file_prefix(fn + ".new"),
-		os_file_prefix(fn));
+	return os_rename_file(fn + ".new", fn);
 }

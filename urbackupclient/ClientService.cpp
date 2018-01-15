@@ -1754,14 +1754,13 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod)
 	{
-		std::auto_ptr<IFile> newf(Server->openFile(os_file_prefix(settings_fn + ".new"), MODE_WRITE));
+		std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
 			&& newf->Write(new_settings_str) == new_settings_str.size()
 			&& newf->Sync())
 		{
 			newf.reset();
-			os_rename_file(os_file_prefix(settings_fn + ".new"),
-				os_file_prefix(settings_fn));
+			os_rename_file(settings_fn + ".new", settings_fn);
 			InternetClient::updateSettings();
 		}
 
@@ -1811,14 +1810,14 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod_server_settings)
 	{
-		std::auto_ptr<IFile> newf(Server->openFile(os_file_prefix(settings_server_fn + ".new"), MODE_WRITE));
+		std::auto_ptr<IFile> newf(Server->openFile(settings_server_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
 			&& newf->Write(new_token_settings)==new_token_settings.size()
 			&& newf->Sync() )
 		{
 			newf.reset();
-			os_rename_file(os_file_prefix(settings_server_fn + ".new"),
-				os_file_prefix(settings_server_fn));
+			os_rename_file(settings_server_fn + ".new",
+				settings_server_fn);
 		}
 	}
 }
