@@ -258,17 +258,16 @@ size_t TreeDiff::getTreesize( TreeNode* t, size_t limit )
 
 bool TreeDiff::isSymlink(TreeNode * n, bool has_symbit, bool is_windows)
 {
-	const uint64* dataptr = reinterpret_cast<const uint64*>(n->getDataPtr());
 	uint64 change_indicator = 0;
 	if (n->getType() == 'd'
 		&& n->getDataSize() == sizeof(uint64))
 	{
-		change_indicator = *dataptr;
+		memcpy(&change_indicator, n->getDataPtr(), sizeof(uint64));
 	}
 	else if (n->getType() == 'f'
 		&& n->getDataSize() == 2 * sizeof(uint64))
 	{
-		change_indicator = *(dataptr + 1);
+		memcpy(&change_indicator, n->getDataPtr()+sizeof(uint64), sizeof(uint64));
 	}
 
 	if (has_symbit)
