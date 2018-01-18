@@ -224,7 +224,7 @@
     <ClCompile Include="copy_storage.cpp" />
     <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />
-    <ClCompile Include="dao\ServerCleanupDAO.cpp" />
+    <ClCompile Include="dao\ServerCleanupDao.cpp" />
     <ClCompile Include="dao\ServerFilesDao.cpp" />
     <ClCompile Include="dao\ServerLinkDao.cpp" />
     <ClCompile Include="dao\ServerLinkJournalDao.cpp" />
@@ -342,7 +342,7 @@
     <ClInclude Include="copy_storage.h" />
     <ClInclude Include="create_files_cache.h" />
     <ClInclude Include="dao\ServerBackupDao.h" />
-    <ClInclude Include="dao\ServerCleanupDAO.h" />
+    <ClInclude Include="dao\ServerCleanupDao.h" />
     <ClInclude Include="dao\ServerFilesDao.h" />
     <ClInclude Include="dao\ServerLinkDao.h" />
     <ClInclude Include="dao\ServerLinkJournalDao.h" />
