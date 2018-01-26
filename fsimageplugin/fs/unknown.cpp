@@ -56,8 +56,16 @@ FSUnknown::FSUnknown(const std::string &pDev, IFSImageFactory::EReadaheadMode re
 	drivesize=dev->Size();
 #endif
 
-	int64 bitmap_entries=(int64)(drivesize/DEF_BLOCKSIZE);
-	if(drivesize%DEF_BLOCKSIZE!=0)
+	blocksize = DEF_BLOCKSIZE;
+
+	if (drivesize%blocksize != 0)
+	{
+		Server->Log("Drive size not aligned to 4096 bytes. Using 512 bytes.", LL_INFO);
+		blocksize = 512;
+	}
+
+	int64 bitmap_entries=(int64)(drivesize/ blocksize);
+	if(drivesize%blocksize !=0)
 		++bitmap_entries;
 
 	size_t bitmap_bytes=(size_t)(bitmap_entries/8);
@@ -78,7 +86,7 @@ FSUnknown::~FSUnknown(void)
 
 int64 FSUnknown::getBlocksize(void)
 {
-	return DEF_BLOCKSIZE;
+	return blocksize;
 }
 
 int64 FSUnknown::getSize(void)
