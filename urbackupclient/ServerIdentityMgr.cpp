@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include <algorithm>
+#include <memory>
 #include "file_permissions.h"
 #include "../urbackupcommon/os_functions.h"
 
