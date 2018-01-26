@@ -1639,10 +1639,6 @@ void ServerCleanupThread::removeClient(int clientid)
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
-	q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
 	//delete dirs
 	os_remove_nonempty_dir(settings.getSettings()->backupfolder+os_file_sep()+clientname);
 	Server->deleteFile(settings.getSettings()->backupfolder+os_file_sep()+"clients"+os_file_sep()+clientname);
