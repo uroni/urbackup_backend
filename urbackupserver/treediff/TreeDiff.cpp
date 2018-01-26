@@ -19,6 +19,7 @@
 #include "TreeDiff.h"
 #include "TreeReader.h"
 #include <algorithm>
+#include <memory.h>
 
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
 	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
