@@ -14,7 +14,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-09-20 02:13+0000\n"
+"PO-Revision-Date: 2017-12-15 10:02+0000\n"
 "Last-Translator: Ihor Maydanovich <tenorioua@gmail.com>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/uroni/urbackup/language/uk/)\n"
 "MIME-Version: 1.0\n"
@@ -492,7 +492,7 @@ msgid "No matching records found"
 msgstr "Не знайдено жодного запису"
 
 msgid "Restore to default"
-msgstr "Відновити за замовчуванням"
+msgstr "Відновити до стандартних"
 
 msgid "Save"
 msgstr "Зберегти"
@@ -660,7 +660,7 @@ msgid "tIncluded files (with wildcards)"
 msgstr "Додати файли до резервної копії (за шаблонами)"
 
 msgid "tDefault directories to backup"
-msgstr "Теки за замовчуванням для резервного копіювання "
+msgstr "Типові теки для резервного копіювання "
 
 msgid "tVolumes to backup"
 msgstr "Томи для бекапу"
@@ -987,7 +987,7 @@ msgid "nospc_fatal_text"
 msgstr "Наразі закінчився вільний простір в теці для бекапів. UrBackup видаляє старі образи та файли але зараз це заборонено налаштуваннями. Змініть налаштування для зберігання меншої кількості бекапів або збільшіть дисковий простір щоб UrBackup міг продовжувати виконувати бекапи"
 
 msgid "tNondefault temporary file directory"
-msgstr "Змінити теку тимчасових файлів"
+msgstr "Не стандартна тека тимчасових файлів"
 
 msgid "loading"
 msgstr "Завантаження"
@@ -1259,7 +1259,7 @@ msgid "tIP/hostname of client to be discovered"
 msgstr "IP/назву кліента для пошуку"
 
 msgid "tCancel"
-msgstr "Выдміна"
+msgstr "Відміна"
 
 msgid "tAccess denied"
 msgstr "Доступ заборонено"
@@ -1306,7 +1306,7 @@ msgid "tAdded new client with name:"
 msgstr "Донано нового клієнта з іменем:"
 
 msgid "tDefault authentication key:"
-msgstr "Ключ аутентифікації за замовчуванням:"
+msgstr "Типовий ключ аутентифікації :"
 
 msgid "tDownload preconfigured client installer for Windows"
 msgstr "Завантажити налаштованого встановлювача клієнта для Windows"
@@ -1451,7 +1451,7 @@ msgstr "Запуск бекапи з фоном пріоритетом на кл
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr "Створення символычних посилань для кожного користувача на клієнтах після резервного копіювання файлів"
+msgstr "Створення символічних посилань для кожного користувача на клієнтах після резервного копіювання файлів"
 
 msgid "tMaximum number of simultaneous jobs per client"
 msgstr "Максимальна кількість одночасних завдань на клієнті"
@@ -1515,7 +1515,7 @@ msgid "tDownload client for Mac OS X"
 msgstr "Завантажити клієнта для Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr "Download client for Linux"
+msgstr "Завантажити клієнта для Linux"
 
 msgid "tRemove client"
 msgstr "Видалити клієнта"
@@ -1685,7 +1685,7 @@ msgid "tOk. Reset this error"
 msgstr "Ok. Скинути цю помилку"
 
 msgid "tOk. Stop showing this error"
-msgstr "Ok. Не показувати цю помилку"
+msgstr "Ок. Не показувати цю помилку"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
@@ -1766,4 +1766,91 @@ msgid "tGroup name"
 msgstr "Назва групи"
 
 msgid "tWith Selected"
-msgstr "З Обраними"
+msgstr "Дії з обраними"
+
+msgid "no_backup_paths"
+msgstr "Не налаштовано жодного шляху для бекапу"
+
+msgid "disabled"
+msgstr "Відключено"
+
+msgid "new_alert_script_name"
+msgstr "Введіть назву нового скрипту сповіщення"
+
+msgid "confirm_alert_script_remove"
+msgstr "Ви точно бажаєте видалити цей скрипт сповіщення"
+
+msgid "alert_file_mult"
+msgstr "Кількість спроб файлового бекапу після якої статус файлового бекапу змінюється на поганий"
+
+msgid "alert_image_mult"
+msgstr "Кількість спроб бекапу образу після якої статус бекапу образу змінюється на поганий"
+
+msgid "alert_emails"
+msgstr "E-Mail адреси (розділені ';') для сповіщення про поганий статус образу/файлового бекапу"
+
+msgid "alert_important"
+msgstr "Додати помітку [Важливо] до сповіщень"
+
+msgid "alert_mail_ok"
+msgstr "Сповіщати коли статус бекапу змінюється з поганого на добрий"
+
+msgid "tEdit alert scripts"
+msgstr "Змінити скрипт сповіщення"
+
+msgid "tAlert script"
+msgstr "Скрипт сповіщення"
+
+msgid "tAlert script parameters"
+msgstr "Параметри скрипту сповіщення"
+
+msgid "tAdd parameter"
+msgstr "Додати параметер"
+
+msgid "tName:"
+msgstr "Ім'я:"
+
+msgid "tLabel:"
+msgstr "Назва:"
+
+msgid "tDefault value:"
+msgstr "Типове значення:"
+
+msgid "tType:"
+msgstr "Тип:"
+
+msgid "tString"
+msgstr "Потік"
+
+msgid "tFloating point number"
+msgstr "Число з рухомою комою"
+
+msgid "tInteger"
+msgstr "Ціле число"
+
+msgid "tBoolean"
+msgstr "Логічний"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "З Docker (веб інтерфейс доступний з клієнта):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "З Docker (веб інтерфейс не доступний з клієнта):"
+
+msgid "tEdit report script"
+msgstr "Змінити скрипт звіту"
+
+msgid "tPaused"
+msgstr "Призупинено"
+
+msgid "tReport script"
+msgstr "Скрипт звіту"
+
+msgid "tAlerts"
+msgstr "Сповіщення"
+
+msgid "tEdit scripts"
+msgstr "Змінити скрипти"
+
+msgid "tInternet restore authentication key"
+msgstr "Ключ аутентифікації відновлення через інтернет"

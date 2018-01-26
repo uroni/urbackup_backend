@@ -9,18 +9,19 @@
 # Translators:
 # Translators:
 # Translators:
+# BestiaPL <bestiapl@gmail.com>, 2017
 # Czeslaw Mruk <czmruk@gmail.com>, 2017
 # Jarosław Gorzelnik <jarek12@interia.pl>, 2015
 # Krzysztof Pałka <k.palka.pl@gmail.com>, 2015
-# Łukasz Milata <drupter@gmail.com>, 2015
+# Łukasz Milata <drupter@gmail.com>, 2015,2017
 # Maciej Dyczko <edyczkowski@gmail.com>, 2015
 # Thomas Pancherz <pancherz_news@arcor.de>, 2015
 # Wojciech Staszewski, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-09-20 02:13+0000\n"
-"Last-Translator: Czeslaw Mruk <czmruk@gmail.com>\n"
+"PO-Revision-Date: 2017-12-05 21:26+0000\n"
+"Last-Translator: Łukasz Milata <drupter@gmail.com>\n"
 "Language-Team: Polish (http://www.transifex.com/uroni/urbackup/language/pl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1772,3 +1773,90 @@ msgstr "Nazwa grupy"
 
 msgid "tWith Selected"
 msgstr "Wybrane"
+
+msgid "no_backup_paths"
+msgstr "Brak ścieżki do kopii zapasowych"
+
+msgid "disabled"
+msgstr "Wyłączone"
+
+msgid "new_alert_script_name"
+msgstr "Proszę podać nazwę nowego skryptu alertu"
+
+msgid "confirm_alert_script_remove"
+msgstr "Na pewno usunąć ten skrypt alertu?"
+
+msgid "alert_file_mult"
+msgstr "Liczba prób zapisywanie kopii plików, aby system uznał status za niepoprawny"
+
+msgid "alert_image_mult"
+msgstr "Liczba prób zapisywanie obrazu, aby system uznał status za niepoprawny"
+
+msgid "alert_emails"
+msgstr "Adresy email (rozdzielone ';') do powiadomienia o niepoprawnym wykonaniu kopii zapasowej"
+
+msgid "alert_important"
+msgstr "Dodaj znacznik [Ważne] do maili z alertami"
+
+msgid "alert_mail_ok"
+msgstr "Wyślij mail, jeżeli po wykonaniu kopii status zmieni się na poprawny"
+
+msgid "tEdit alert scripts"
+msgstr "Edytuj skrypty alertów"
+
+msgid "tAlert script"
+msgstr "Skrypt alertu"
+
+msgid "tAlert script parameters"
+msgstr "Parametry skryptu alertu"
+
+msgid "tAdd parameter"
+msgstr "Dodaj parametr"
+
+msgid "tName:"
+msgstr "Nazwa:"
+
+msgid "tLabel:"
+msgstr "Etykieta:"
+
+msgid "tDefault value:"
+msgstr "Domyślna wartość:"
+
+msgid "tType:"
+msgstr "Typ:"
+
+msgid "tString"
+msgstr "Łańcuch tekstowy"
+
+msgid "tFloating point number"
+msgstr "Liczba zmiennoprzecinkowa"
+
+msgid "tInteger"
+msgstr "Liczba całkowita"
+
+msgid "tBoolean"
+msgstr "Prawda/fałsz"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "Za pomocą Dockera (dostęp do strony WWW przez klienta):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "Za pomocą Dockera (dostęp do strony WWW niedostępny przez klienta):"
+
+msgid "tEdit report script"
+msgstr "Edytuj skrypt raportu"
+
+msgid "tPaused"
+msgstr "Wstrzymany"
+
+msgid "tReport script"
+msgstr "Skrypt raportu"
+
+msgid "tAlerts"
+msgstr "Alerty"
+
+msgid "tEdit scripts"
+msgstr "Edytuj sktypty"
+
+msgid "tInternet restore authentication key"
+msgstr "Klucz uwierzytelniania przywracania przez Internet"

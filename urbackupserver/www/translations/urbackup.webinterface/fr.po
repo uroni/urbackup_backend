@@ -13,7 +13,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-09-20 02:13+0000\n"
+"PO-Revision-Date: 2017-11-12 17:20+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -1766,3 +1766,90 @@ msgstr "Nom du groupe"
 
 msgid "tWith Selected"
 msgstr "avec la sélection"
+
+msgid "no_backup_paths"
+msgstr "pas de dossier à sauvegarder configuré"
+
+msgid "disabled"
+msgstr "Désactivé"
+
+msgid "new_alert_script_name"
+msgstr "Merci d'entrer un nom pour cette nouvelle alerte"
+
+msgid "confirm_alert_script_remove"
+msgstr "Êtes-vous sûr de supprimer ce script d'alerte"
+
+msgid "alert_file_mult"
+msgstr "Nombre de fois après laquelle la sauvegarde fichiers passe à KO"
+
+msgid "alert_image_mult"
+msgstr "Nombre de fois après laquelle la sauvegarde système passe à KO"
+
+msgid "alert_emails"
+msgstr "Liste des adresses mail (séparées par des \";\") auxquels notifier un status de sauvegarde KO"
+
+msgid "alert_important"
+msgstr "Ajouter un indicateur [Important]  au mail d'alerte"
+
+msgid "alert_mail_ok"
+msgstr "Envoyer un mail \"OK\" après un passage du status \"KO\" à \"OK\""
+
+msgid "tEdit alert scripts"
+msgstr "éditer un script d'alerte"
+
+msgid "tAlert script"
+msgstr "Script d'alerte"
+
+msgid "tAlert script parameters"
+msgstr "Paramètres du script d'alerte"
+
+msgid "tAdd parameter"
+msgstr "Ajouter un paramètre"
+
+msgid "tName:"
+msgstr "Nom:"
+
+msgid "tLabel:"
+msgstr "Etiquette:"
+
+msgid "tDefault value:"
+msgstr "Valeur par défaut:"
+
+msgid "tType:"
+msgstr "Type:"
+
+msgid "tString"
+msgstr "Chaine"
+
+msgid "tFloating point number"
+msgstr "Nombre de décimales après virgule"
+
+msgid "tInteger"
+msgstr "Entier"
+
+msgid "tBoolean"
+msgstr "Boléen"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "Avec docker (interface web accessible depuis le client)"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "Avec docker (interface web non accessible depuis le client)"
+
+msgid "tEdit report script"
+msgstr "Editer le script de rapport"
+
+msgid "tPaused"
+msgstr "Pause"
+
+msgid "tReport script"
+msgstr "Script de rapport"
+
+msgid "tAlerts"
+msgstr "Alertes"
+
+msgid "tEdit scripts"
+msgstr "Editer les scripts"
+
+msgid "tInternet restore authentication key"
+msgstr "Restaurer la clé d'authentification internet"

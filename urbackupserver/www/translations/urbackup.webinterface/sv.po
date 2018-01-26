@@ -10,13 +10,13 @@
 # Translators:
 # Translators:
 # Adam Karlsson <adam.karlsson@gmail.com>, 2015
-# Jonas Aaslund <gnindit@gmail.com>, 2016
+# Jonas Aaslund <gnindit@gmail.com>, 2016,2018
 # Mikael l, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-10-18 07:39+0000\n"
-"Last-Translator: Mikael l\n"
+"PO-Revision-Date: 2018-01-14 17:24+0000\n"
+"Last-Translator: Jonas Aaslund <gnindit@gmail.com>\n"
 "Language-Team: Swedish (http://www.transifex.com/uroni/urbackup/language/sv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1102,7 +1102,7 @@ msgid "tTemporary files as file backup buffer"
 msgstr "Temporära filer som buffer vid filbackup"
 
 msgid "tTemporary files as image backup buffer"
-msgstr "Temporära filer som bugger vid diskbackup"
+msgstr "Temporära filer som buffer vid diskbackup"
 
 msgid "tLocal full file backup transfer mode"
 msgstr "Lokal komplett filbackup överföringsläge"
@@ -1501,7 +1501,7 @@ msgid "tTest login with this user"
 msgstr "Prova login med denna användare"
 
 msgid "tPassword for test user"
-msgstr "Lösenord för användare test"
+msgstr "Lösenord för testanvändare"
 
 msgid "tTest login succeeded. Rights of user:"
 msgstr "Test login fungerade. Rättigheter för användare:"
@@ -1768,3 +1768,90 @@ msgstr "Gruppnamn"
 
 msgid "tWith Selected"
 msgstr "Med utvalda"
+
+msgid "no_backup_paths"
+msgstr "Ingen sökväg till säkerhetskopian är konfigurerad"
+
+msgid "disabled"
+msgstr "Inaktiverad"
+
+msgid "new_alert_script_name"
+msgstr "Ange namn för det nya varningsskriptet"
+
+msgid "confirm_alert_script_remove"
+msgstr "Bekräfta borttagning av varningsscript."
+
+msgid "alert_file_mult"
+msgstr ""
+
+msgid "alert_image_mult"
+msgstr ""
+
+msgid "alert_emails"
+msgstr ""
+
+msgid "alert_important"
+msgstr "Lägg till [Important] tagg till varningsscript"
+
+msgid "alert_mail_ok"
+msgstr "Skicka email efter att backupstatus har ändrats från inte ok till ok"
+
+msgid "tEdit alert scripts"
+msgstr "Redigera varningsskript"
+
+msgid "tAlert script"
+msgstr "Varningsskript"
+
+msgid "tAlert script parameters"
+msgstr "Varningsscriptparametrar"
+
+msgid "tAdd parameter"
+msgstr "Lägg till parameter"
+
+msgid "tName:"
+msgstr "Namn:"
+
+msgid "tLabel:"
+msgstr "Etikett:"
+
+msgid "tDefault value:"
+msgstr "Förvalt värde:"
+
+msgid "tType:"
+msgstr "Typ:"
+
+msgid "tString"
+msgstr "Sträng"
+
+msgid "tFloating point number"
+msgstr "Flyttal"
+
+msgid "tInteger"
+msgstr "Integer"
+
+msgid "tBoolean"
+msgstr "Boolesk"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr ""
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr ""
+
+msgid "tEdit report script"
+msgstr "Redigera rapportskript"
+
+msgid "tPaused"
+msgstr "Pausad"
+
+msgid "tReport script"
+msgstr "Rapportskript"
+
+msgid "tAlerts"
+msgstr "Varningar"
+
+msgid "tEdit scripts"
+msgstr "Redigera skript"
+
+msgid "tInternet restore authentication key"
+msgstr ""

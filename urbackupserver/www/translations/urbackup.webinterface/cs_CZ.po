@@ -15,7 +15,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-09-23 20:16+0000\n"
+"PO-Revision-Date: 2017-11-13 12:35+0000\n"
 "Last-Translator: Pavel Borecki <pavel.borecki@gmail.com>\n"
 "Language-Team: Czech (Czech Republic) (http://www.transifex.com/uroni/urbackup/language/cs_CZ/)\n"
 "MIME-Version: 1.0\n"
@@ -1733,7 +1733,7 @@ msgid "tAllow clients to start component restores"
 msgstr "Umožnit klientům spuštět obnovení součástí"
 
 msgid "tVolume letters"
-msgstr "Písmena jednotek"
+msgstr "Písmena svazků"
 
 msgid "tImage backup"
 msgstr "Záloha celého svazku"
@@ -1768,3 +1768,90 @@ msgstr "Název skupiny"
 
 msgid "tWith Selected"
 msgstr "Pro vybrané"
+
+msgid "no_backup_paths"
+msgstr "Nejsou nastavená žádná umístění záloh"
+
+msgid "disabled"
+msgstr "Vypnuto"
+
+msgid "new_alert_script_name"
+msgstr "Zadejte název pro nový výstražný skript"
+
+msgid "confirm_alert_script_remove"
+msgstr "Opravdu chcete tento výstražný skript odebrat?"
+
+msgid "alert_file_mult"
+msgstr "Po kolika intervalech nepovedených souborových záloh nastavit stav souborové zálohy na v nepořádku"
+
+msgid "alert_image_mult"
+msgstr "Po kolika intervalech nepovedených záloh celých jednotek nastavit stav záloh celých svazků na v nepořádku"
+
+msgid "alert_emails"
+msgstr "E-mailové adresy (oddělované středníkem) na které upozornit, pokud zálohy nejsou v pořádku"
+
+msgid "alert_important"
+msgstr "Přidat výstražným e-mailům značku [Important] (důležité)"
+
+msgid "alert_mail_ok"
+msgstr "Poslat uklidňující e-mail poté, co se stav zálohy změní na v pořádku"
+
+msgid "tEdit alert scripts"
+msgstr "Upravit výstražné skripty"
+
+msgid "tAlert script"
+msgstr "Výstražné skripty"
+
+msgid "tAlert script parameters"
+msgstr "Parametry výstražného skriptu"
+
+msgid "tAdd parameter"
+msgstr "Přidat parametr"
+
+msgid "tName:"
+msgstr "Název:"
+
+msgid "tLabel:"
+msgstr "Popisek:"
+
+msgid "tDefault value:"
+msgstr "Výchozí hodnota:"
+
+msgid "tType:"
+msgstr "Typ:"
+
+msgid "tString"
+msgstr "Řetězec"
+
+msgid "tFloating point number"
+msgstr "Desetinné číslo"
+
+msgid "tInteger"
+msgstr "Celé číslo"
+
+msgid "tBoolean"
+msgstr "Ano/ne (boolean)"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr "S Docker (webové rozhraní je přístupné z klienta):"
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr "S Docker (webové rozhraní není přístupné z klienta):"
+
+msgid "tEdit report script"
+msgstr "Upravit hlásící skript"
+
+msgid "tPaused"
+msgstr "Pozastaveno"
+
+msgid "tReport script"
+msgstr "Hlásící skript"
+
+msgid "tAlerts"
+msgstr "Výstrahy"
+
+msgid "tEdit scripts"
+msgstr "Upravit skripty"
+
+msgid "tInternet restore authentication key"
+msgstr "Ověřovací klíč pro obnovení z Internetu"

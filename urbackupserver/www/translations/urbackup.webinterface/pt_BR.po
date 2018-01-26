@@ -9,14 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
-# Artur Corumba <artur@corumba.net>, 2014
+# Artur Corumba <artur@corumba.net>, 2014,2017-2018
 # Marcelo Volgarini <contato@techload.com.br>, 2015
 # Kiosanin <kiosaninsl@gmail.com>, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-09-23 19:47+0000\n"
-"Last-Translator: Kiosanin <kiosaninsl@gmail.com>\n"
+"PO-Revision-Date: 2018-01-02 13:31+0000\n"
+"Last-Translator: Artur Corumba <artur@corumba.net>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/uroni/urbackup/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1768,3 +1768,90 @@ msgstr "Nome do Grupo"
 
 msgid "tWith Selected"
 msgstr "Com Seleção"
+
+msgid "no_backup_paths"
+msgstr "Nenhum caminho de backup definido"
+
+msgid "disabled"
+msgstr "Desativado"
+
+msgid "new_alert_script_name"
+msgstr "Por favor insira o nome do novo script de alerta."
+
+msgid "confirm_alert_script_remove"
+msgstr "Tem certeza que deseja remover esse script de alerta?"
+
+msgid "alert_file_mult"
+msgstr ""
+
+msgid "alert_image_mult"
+msgstr ""
+
+msgid "alert_emails"
+msgstr "Endereços de e-mail (separados por \" ; \") para notificar sobre status de backups que não foram realizados corretamente."
+
+msgid "alert_important"
+msgstr ""
+
+msgid "alert_mail_ok"
+msgstr ""
+
+msgid "tEdit alert scripts"
+msgstr "Editar scripts de alerta"
+
+msgid "tAlert script"
+msgstr "Script de Alerta"
+
+msgid "tAlert script parameters"
+msgstr ""
+
+msgid "tAdd parameter"
+msgstr "Adicionar parâmetro"
+
+msgid "tName:"
+msgstr "Nome:"
+
+msgid "tLabel:"
+msgstr "Título:"
+
+msgid "tDefault value:"
+msgstr "Padrão:"
+
+msgid "tType:"
+msgstr "Tipo:"
+
+msgid "tString"
+msgstr "String"
+
+msgid "tFloating point number"
+msgstr ""
+
+msgid "tInteger"
+msgstr ""
+
+msgid "tBoolean"
+msgstr "Booleano"
+
+msgid "tWith Docker (web interface accessible from client):"
+msgstr ""
+
+msgid "tWith Docker (web interface not accessible from client):"
+msgstr ""
+
+msgid "tEdit report script"
+msgstr ""
+
+msgid "tPaused"
+msgstr "Pausado"
+
+msgid "tReport script"
+msgstr "Reportar script"
+
+msgid "tAlerts"
+msgstr ""
+
+msgid "tEdit scripts"
+msgstr "Editar scripts"
+
+msgid "tInternet restore authentication key"
+msgstr ""
