@@ -1,10 +1,10 @@
 #!/bin/sh
 
-exit_exclude_snapshot_mountpoints {
+function exit_exclude_snapshot_mountpoints {
 	CFG_FILE=/etc/urbackup/exclude_snapshot_mountpoints
 	if ! test -e "$CFG_FILE"
 	then
-		exit 0
+		return 0
 	fi
 	
 	while read line
@@ -17,6 +17,6 @@ exit_exclude_snapshot_mountpoints {
 	done <$CFG_FILE
 }
 
-set_filesystem_type {
+function set_filesystem_type {
 	TYPE=`df -T -P | egrep " ${1}\$" | head -n 1 | tr -s " " | cut -d" " -f2`
 }
