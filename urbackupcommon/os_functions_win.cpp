@@ -740,7 +740,7 @@ bool os_link_symbolic_symlink(const std::string &target, const std::string &lnam
 #endif
 }
 
-bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname)
+bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname, void* transaction)
 {
 	bool ret = false;
 	HANDLE hJunc = INVALID_HANDLE_VALUE;
@@ -748,12 +748,31 @@ bool os_link_symbolic_junctions_raw(const std::string &target, const std::string
 	std::wstring wtarget = ConvertToWchar(target);
 
 	std::wstring wlname = ConvertToWchar(lname);
-	if(!CreateDirectoryW(wlname.c_str(), NULL) )
+	if (transaction != NULL)
 	{
-		goto cleanup;
+		if (!CreateDirectoryTransactedW(NULL, wlname.c_str(), NULL, transaction))
+		{
+			goto cleanup;
+		}
+	}
+	else
+	{
+		if (!CreateDirectoryW(wlname.c_str(), NULL))
+		{
+			goto cleanup;
+		}
 	}
 
-	hJunc=CreateFileW(wlname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	if (transaction != NULL)
+	{
+		USHORT mversion = 0xFFFF;
+		hJunc = CreateFileTransactedW(wlname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL,
+			transaction, &mversion, NULL);
+	}
+	else
+	{
+		hJunc = CreateFileW(wlname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	}
 	if(hJunc==INVALID_HANDLE_VALUE)
 		goto cleanup;
 
@@ -787,13 +806,16 @@ cleanup:
 		CloseHandle(hJunc);
 	if(!ret)
 	{
-		RemoveDirectoryW(ConvertToWchar(lname).c_str());
+		if (transaction != NULL)
+			RemoveDirectoryTransactedW(ConvertToWchar(lname).c_str(), transaction);
+		else
+			RemoveDirectoryW(ConvertToWchar(lname).c_str());
 		SetLastError(lasterr);
 	}
 	return ret;
 }
 
-bool os_link_symbolic_junctions(const std::string &target, const std::string &lname)
+bool os_link_symbolic_junctions(const std::string &target, const std::string &lname, void* transaction)
 {
 	std::string wtarget = target;
 
@@ -813,7 +835,7 @@ bool os_link_symbolic_junctions(const std::string &target, const std::string &ln
 	if (!wtarget.empty() && wtarget[wtarget.size() - 1] == '\\')
 		wtarget.erase(wtarget.size() - 1, 1);
 
-	return os_link_symbolic_junctions_raw(wtarget, lname);
+	return os_link_symbolic_junctions_raw(wtarget, lname, transaction);
 }
 
 #ifndef OS_FUNC_NO_NET
@@ -868,24 +890,17 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 
 bool os_link_symbolic(const std::string &target, const std::string &lname, void* transaction, bool* isdir)
 {
-	if(transaction==NULL)
+	bool l_isdir;
+	if(isdir!=NULL)
 	{
-		bool l_isdir;
-		if(isdir!=NULL)
-		{
-			l_isdir=*isdir;
-		}
-		else
-		{
-			l_isdir=isDirectory(target, NULL);
-		}
-		if(!l_isdir || !os_path_absolute(target) ||!os_link_symbolic_junctions(target, lname) )
-			return os_link_symbolic_symlink(target, lname, NULL, isdir);
+		l_isdir=*isdir;
 	}
 	else
 	{
-		return os_link_symbolic_symlink(target, lname, transaction, isdir);
+		l_isdir=isDirectory(target, NULL);
 	}
+	if(!l_isdir || !os_path_absolute(target) ||!os_link_symbolic_junctions(target, lname, transaction) )
+		return os_link_symbolic_symlink(target, lname, transaction, isdir);
 
 	return true;
 }

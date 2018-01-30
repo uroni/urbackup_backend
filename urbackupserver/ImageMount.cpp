@@ -10,7 +10,7 @@
 #include <Windows.h>
 #include <Subauth.h>
 #include <imdisk.h>
-bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname);
+bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname, void* transaction);
 #endif
 
 std::map<int, size_t> ImageMount::mounted_images;
@@ -73,7 +73,7 @@ namespace
 
 		std::string mountpoint = ExtractFilePath(path) + os_file_sep() + "contents";
 
-		if (!os_link_symbolic_junctions_raw(device_path, mountpoint))
+		if (!os_link_symbolic_junctions_raw(device_path, mountpoint, NULL))
 		{
 			Server->Log("Error creating junction on ImDisk mountpoint at \"" + mountpoint + "\". " + os_last_error_str(), LL_WARNING);
 
