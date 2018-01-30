@@ -2297,16 +2297,23 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 			std::string curr_path = pool_root + os_file_sep() + first_files[i].name;
 			std::vector<SFile> pool_files = getFiles(curr_path, NULL);
 
-			for(size_t j=0;i<pool_files.size();++i)
+			if (pool_files.empty())
 			{
-				if(!pool_files[i].isdir)
+				os_remove_dir(curr_path);
+				continue;
+			}
+			
+			bool has_dir = false;
+			for(size_t j=0;j<pool_files.size();++j)
+			{
+				if(!pool_files[j].isdir)
 					continue;
-				if(pool_files[i].issym)
+				if(pool_files[j].issym)
 					continue;
 
-				std::string pool_path = curr_path + os_file_sep() + pool_files[i].name;
+				std::string pool_path = curr_path + os_file_sep() + pool_files[j].name;
 
-				if(link_dao.getDirectoryRefcount(clientid, pool_files[i].name)==0)
+				if(link_dao.getDirectoryRefcount(clientid, pool_files[j].name)==0)
 				{
 					Server->Log("Refcount of \""+pool_path+"\" is zero. Deleting pool folder.");
 					if(!remove_directory_link_dir(pool_path, link_dao, clientid))
@@ -2314,6 +2321,15 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 						Server->Log("Could not remove pool folder \""+pool_path+"\"", LL_ERROR);
 					}
 				}
+				else
+				{
+					has_dir = true;
+				}
+			}
+
+			if (!has_dir)
+			{
+				os_remove_dir(curr_path);
 			}
 		}
 	}	
