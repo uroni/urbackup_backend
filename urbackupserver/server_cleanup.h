@@ -124,7 +124,7 @@ private:
 
 	bool correct_poolname(const std::string& backupfolder, const std::string& clientname, const std::string& pool_name, std::string& pool_path);
 
-	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder);
+	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder, bool deep_check);
 
 	int max_removable_incr_images(ServerSettings& settings, int backupid);
 

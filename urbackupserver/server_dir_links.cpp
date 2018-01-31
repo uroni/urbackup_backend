@@ -497,6 +497,69 @@ bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao,
 	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 
+bool reference_contained_directory_links(ServerLinkDao& link_dao, int clientid, 
+	const std::string& pool_name, const std::string &path, const std::string& link_path)
+{
+	std::vector<SFile> files = getFiles(link_path + path);
+
+	std::vector<ServerLinkDao::DirectoryLinkEntry> targets = link_dao.getLinksByPoolName(clientid, pool_name);
+
+	bool ret = true;
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].issym)
+		{
+			std::string sympath = link_path + path + os_file_sep() + files[i].name;
+			std::string pool_path;
+			if (!os_get_symlink_target(sympath, pool_path))
+			{
+				Server->Log("Error getting symlink path in pool of \"" + link_path + path + "\" (contains)", LL_ERROR);
+				continue;
+			}
+
+			std::string curr_pool_name = ExtractFileName(pool_path, os_file_sep());
+
+			if (curr_pool_name.empty())
+			{
+				continue;
+			}
+
+			std::string directory_pool = ExtractFileName(ExtractFilePath(ExtractFilePath(pool_path, os_file_sep()), os_file_sep()), os_file_sep());
+
+			if (directory_pool != ".directory_pool")
+			{
+				continue;
+			}
+
+			for (size_t j = 0; j < targets.size(); ++j)
+			{
+				std::string ref_target = targets[j].target + path + os_file_sep() + files[i].name;
+				if (link_dao.getDirectoryRefcountWithTarget(clientid, curr_pool_name, ref_target) == 0)
+				{
+					Server->Log("Adding missing directory reference of pool " + curr_pool_name + " to \"" + ref_target + "\"", LL_WARNING);
+					link_dao.addDirectoryLink(clientid, curr_pool_name, ref_target);
+				}
+			}
+
+			if (!reference_contained_directory_links(link_dao, clientid,
+				curr_pool_name, std::string(), pool_path))
+			{
+				ret = false;
+			}
+		}
+		else if (files[i].isdir)
+		{
+			if (!reference_contained_directory_links(link_dao, clientid,
+				pool_name, path + os_file_sep() + files[i].name, link_path))
+			{
+				ret = false;
+			}
+		}
+	}
+
+	return ret;
+}
+
 bool is_directory_link(const std::string & path)
 {
 	int ftype = os_get_file_type(os_file_prefix(path));

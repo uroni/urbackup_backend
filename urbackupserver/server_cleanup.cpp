@@ -730,7 +730,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 				}
 			}
 		}
-		check_symlinks(res_clients[i], backupfolder);
+		check_symlinks(res_clients[i], backupfolder, false);
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
@@ -2204,7 +2204,8 @@ bool ServerCleanupThread::correct_poolname( const std::string& backupfolder, con
 	return false;
 }
 
-void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder )
+void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder,
+	bool deep_check)
 {
 	const int clientid=client_info.id;
 	const std::string& clientname=client_info.name;
@@ -2220,6 +2221,7 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 
 	IDatabaseCursor* cursor = q_directory_links->Cursor();
 
+	std::vector<ServerLinkDao::DirectoryLinkEntry> deep_check_links;
 	db_single_result res;
 	while(cursor->next(res))
 	{
@@ -2269,6 +2271,14 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 						Server->Log("Error deleting symlink \""+new_target+"\"", LL_ERROR);
 					}
 				}
+
+				if (deep_check)
+				{
+					ServerLinkDao::DirectoryLinkEntry e;
+					e.target = symlink_pool_path;
+					e.name = pool_name;
+					deep_check_links.push_back(e);
+				}
 			}
 		}
 	}
@@ -2282,6 +2292,12 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 	for(size_t i=0;i<target_adjustments.size();++i)
 	{
 		link_dao.updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
+	}
+
+	for (size_t i = 0; i < deep_check_links.size(); ++i)
+	{
+		reference_contained_directory_links(link_dao, clientid, deep_check_links[i].name,
+			std::string(), deep_check_links[i].target);
 	}
 
 	if(os_directory_exists(pool_root))
@@ -2315,7 +2331,14 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 
 				if(link_dao.getDirectoryRefcount(clientid, pool_files[j].name)==0)
 				{
-					Server->Log("Refcount of \""+pool_path+"\" is zero. Deleting pool folder.");
+					Server->Log("Refcount of \""+pool_path+"\" is zero. Deleting pool folder.", LL_WARNING);
+
+					if (!deep_check)
+					{
+						Server->Log("Restarting symlink check. Starting deep directory link check...", LL_WARNING);
+						check_symlinks(client_info, backupfolder, true);
+						return;
+					}
 					if(!remove_directory_link_dir(pool_path, link_dao, clientid))
 					{
 						Server->Log("Could not remove pool folder \""+pool_path+"\"", LL_ERROR);

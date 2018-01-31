@@ -160,6 +160,32 @@ int ServerLinkDao::getDirectoryRefcount(int clientid, const std::string& name)
 
 /**
 * @-SQLGenAccess
+* @func int ServerLinkDao::getDirectoryRefcountWithTarget
+* @return int_raw c
+* @sql
+*    SELECT COUNT(*) AS c FROM directory_links
+*        WHERE clientid=:clientid(int)
+*              AND name=:name(string)
+*			   AND target=:target(string)
+*        LIMIT 1
+*/
+int ServerLinkDao::getDirectoryRefcountWithTarget(int clientid, const std::string& name, const std::string& target)
+{
+	if(q_getDirectoryRefcountWithTarget==NULL)
+	{
+		q_getDirectoryRefcountWithTarget=db->Prepare("SELECT COUNT(*) AS c FROM directory_links WHERE clientid=? AND name=? AND target=? LIMIT 1", false);
+	}
+	q_getDirectoryRefcountWithTarget->Bind(clientid);
+	q_getDirectoryRefcountWithTarget->Bind(name);
+	q_getDirectoryRefcountWithTarget->Bind(target);
+	db_results res=q_getDirectoryRefcountWithTarget->Read();
+	q_getDirectoryRefcountWithTarget->Reset();
+	assert(!res.empty());
+	return watoi(res[0]["c"]);
+}
+
+/**
+* @-SQLGenAccess
 * @func vector<DirectoryLinkEntry> ServerLinkDao::getLinksInDirectory
 * @return string name, string target
 * @sql
@@ -261,6 +287,7 @@ void ServerLinkDao::prepareQueries()
 	q_removeDirectoryLinkWithName=NULL;
 	q_removeDirectoryLinkGlob=NULL;
 	q_getDirectoryRefcount=NULL;
+	q_getDirectoryRefcountWithTarget=NULL;
 	q_getLinksInDirectory=NULL;
 	q_getLinksByPoolName=NULL;
 	q_deleteLinkReferenceEntry=NULL;
@@ -275,6 +302,7 @@ void ServerLinkDao::destroyQueries()
 	db->destroyQuery(q_removeDirectoryLinkWithName);
 	db->destroyQuery(q_removeDirectoryLinkGlob);
 	db->destroyQuery(q_getDirectoryRefcount);
+	db->destroyQuery(q_getDirectoryRefcountWithTarget);
 	db->destroyQuery(q_getLinksInDirectory);
 	db->destroyQuery(q_getLinksByPoolName);
 	db->destroyQuery(q_deleteLinkReferenceEntry);

@@ -24,4 +24,7 @@ bool remove_directory_link(const std::string &path, ServerLinkDao& link_dao, int
 
 bool remove_directory_link_dir(const std::string &path, ServerLinkDao& link_dao, int clientid, bool delete_root=true, bool with_transaction=true);
 
+bool reference_contained_directory_links(ServerLinkDao& link_dao, int clientid,
+	const std::string& pool_name, const std::string &path, const std::string& link_path);
+
 bool is_directory_link(const std::string& path);
