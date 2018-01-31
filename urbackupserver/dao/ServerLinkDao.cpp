@@ -94,6 +94,28 @@ void ServerLinkDao::removeDirectoryLink(int clientid, const std::string& target)
 
 /**
 * @-SQLGenAccess
+* @func void ServerLinkDao::removeDirectoryLinkWithName
+* @sql
+*     DELETE FROM directory_links
+*          WHERE clientid=:clientid(int)
+*			   AND target=:target(string)
+*			   AND name=:name(string)
+*/
+void ServerLinkDao::removeDirectoryLinkWithName(int clientid, const std::string& target, const std::string& name)
+{
+	if(q_removeDirectoryLinkWithName==NULL)
+	{
+		q_removeDirectoryLinkWithName=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND target=? AND name=?", false);
+	}
+	q_removeDirectoryLinkWithName->Bind(clientid);
+	q_removeDirectoryLinkWithName->Bind(target);
+	q_removeDirectoryLinkWithName->Bind(name);
+	q_removeDirectoryLinkWithName->Write();
+	q_removeDirectoryLinkWithName->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerLinkDao::removeDirectoryLinkGlob
 * @sql
 *     DELETE FROM directory_links
@@ -167,6 +189,35 @@ std::vector<ServerLinkDao::DirectoryLinkEntry> ServerLinkDao::getLinksInDirector
 
 /**
 * @-SQLGenAccess
+* @func vector<DirectoryLinkEntry> ServerLinkDao::getLinksByPoolName
+* @return string name, string target
+* @sql
+*     SELECT name, target FROM directory_links
+*            WHERE clientid=:clientid(int) AND
+*                  name=:name(string)
+*/
+std::vector<ServerLinkDao::DirectoryLinkEntry> ServerLinkDao::getLinksByPoolName(int clientid, const std::string& name)
+{
+	if(q_getLinksByPoolName==NULL)
+	{
+		q_getLinksByPoolName=db->Prepare("SELECT name, target FROM directory_links WHERE clientid=? AND name=?", false);
+	}
+	q_getLinksByPoolName->Bind(clientid);
+	q_getLinksByPoolName->Bind(name);
+	db_results res=q_getLinksByPoolName->Read();
+	q_getLinksByPoolName->Reset();
+	std::vector<ServerLinkDao::DirectoryLinkEntry> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].name=res[i]["name"];
+		ret[i].target=res[i]["target"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerLinkDao::deleteLinkReferenceEntry
 * @sql
 *     DELETE FROM directory_links
@@ -207,9 +258,11 @@ void ServerLinkDao::prepareQueries()
 {
 	q_addDirectoryLink=NULL;
 	q_removeDirectoryLink=NULL;
+	q_removeDirectoryLinkWithName=NULL;
 	q_removeDirectoryLinkGlob=NULL;
 	q_getDirectoryRefcount=NULL;
 	q_getLinksInDirectory=NULL;
+	q_getLinksByPoolName=NULL;
 	q_deleteLinkReferenceEntry=NULL;
 	q_updateLinkReferenceTarget=NULL;
 }
@@ -219,9 +272,11 @@ void ServerLinkDao::destroyQueries()
 {
 	db->destroyQuery(q_addDirectoryLink);
 	db->destroyQuery(q_removeDirectoryLink);
+	db->destroyQuery(q_removeDirectoryLinkWithName);
 	db->destroyQuery(q_removeDirectoryLinkGlob);
 	db->destroyQuery(q_getDirectoryRefcount);
 	db->destroyQuery(q_getLinksInDirectory);
+	db->destroyQuery(q_getLinksByPoolName);
 	db->destroyQuery(q_deleteLinkReferenceEntry);
 	db->destroyQuery(q_updateLinkReferenceTarget);
 }

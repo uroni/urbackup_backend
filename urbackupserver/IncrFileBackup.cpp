@@ -726,10 +726,10 @@ bool IncrFileBackup::doFileBackup()
 							std::string srcpath=last_backuppath+local_curr_os_path;
 							std::string src_hashpath = last_backuppath_hashes+local_curr_os_path;
 							if(link_directory_pool(clientid, backuppath+local_curr_os_path, srcpath, dir_pool_path,
-								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao) )
+								 BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao, depth) )
 							{
 								if(link_directory_pool(clientid, backuppath_hashes + local_curr_os_path, src_hashpath, dir_pool_path,
-									BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao) )
+									BackupServer::isFilesystemTransactionEnabled(), link_dao, link_journal_dao, depth) )
 								{
 									skip_dir_completely = 1;
 									dir_linked = true;

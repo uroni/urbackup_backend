@@ -25,6 +25,7 @@
 #include "../Interface/Database.h"
 #include "../Interface/File.h"
 #include "database.h"
+#include <assert.h>
 
 namespace
 {
@@ -40,6 +41,61 @@ namespace
 			std::string new_link_path = new_target + subpath;
 			link_dao.addDirectoryLink(clientid, entries[i].name, new_link_path);
 		}
+	}
+
+	bool reference_parents(ServerLinkDao& link_dao, int clientid, const std::string& target,
+		const std::string& new_pool_name, int depth, bool remove)
+	{
+		bool ret = true;
+		std::string path = target;
+		std::string sub_path;
+		for (int i = 0; i < depth; ++i)
+		{
+			sub_path = os_file_sep() + ExtractFileName(path, os_file_sep()) + sub_path;
+			path = ExtractFilePath(path, os_file_sep());
+
+			if (os_is_symlink(os_file_prefix(path)))
+			{
+				std::string link_src_dir;
+				if (!os_get_symlink_target(os_file_prefix(path), link_src_dir))
+				{
+					Server->Log("Could not get symlink target of source directory \"" + path + "\". (1)", LL_ERROR);
+					ret = false;
+					continue;
+				}
+
+				std::string pool_name = ExtractFileName(link_src_dir);
+
+				if (pool_name.empty())
+				{
+					Server->Log("Error extracting pool name from link source \"" + link_src_dir + "\" (1)", LL_ERROR);
+					ret = false;
+					continue;
+				}
+
+				std::vector<ServerLinkDao::DirectoryLinkEntry> entries = link_dao.getLinksByPoolName(clientid, pool_name);
+
+				for (size_t j = 0; j < entries.size(); ++j)
+				{
+					std::string new_link_path = entries[j].target + sub_path;
+
+					if (new_link_path == target)
+						continue;
+
+					assert(os_directory_exists(new_link_path));
+					if (remove)
+					{
+						link_dao.removeDirectoryLinkWithName(clientid, new_link_path, new_pool_name);
+					}
+					else
+					{
+						link_dao.addDirectoryLink(clientid, new_pool_name, new_link_path);
+					}
+				}
+			}
+		}
+
+		return ret;
 	}
 
 	IMutex* dir_link_mutex;
@@ -93,7 +149,7 @@ std::string escape_glob_sql(const std::string& glob)
 
 
 bool link_directory_pool( int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction,
-	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao)
+	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao, int depth)
 {
 	if (link_dao == NULL)
 	{
@@ -118,7 +174,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 
 	std::string link_src_dir;
 	std::string pool_name;
-	bool refcount_bigger_one=false;
+	bool remove_glob=false;
 	if(os_is_symlink(os_file_prefix(src_dir)))
 	{
 		if(!os_get_symlink_target(os_file_prefix(src_dir), link_src_dir))
@@ -137,7 +193,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 
 		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
 		reference_all_sublinks(*link_dao, clientid, src_dir, target_dir);
-		refcount_bigger_one=true;
+		remove_glob=true;
 	}
 	else if(os_directory_exists(os_file_prefix(src_dir)))
 	{
@@ -155,8 +211,11 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			return false;
 		}
 
+		std::vector<int64> parent_ids;
+		reference_parents(*link_dao, clientid, src_dir, pool_name, depth, false);
 		link_dao->addDirectoryLink(clientid, pool_name, src_dir);
 		reference_all_sublinks(*link_dao, clientid, src_dir, target_dir);
+		remove_glob = true;
 		link_dao->addDirectoryLink(clientid, pool_name, target_dir);
 				
 
@@ -177,7 +236,9 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			if(!transaction)
 			{
 				Server->Log("Error starting filesystem transaction", LL_ERROR);
+				reference_parents(*link_dao, clientid, src_dir, pool_name, depth, true);
 				link_dao->removeDirectoryLink(clientid, src_dir);
+				link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir) + os_file_sep() + "*");
 				link_dao->removeDirectoryLink(clientid, target_dir);
 				return false;
 			}
@@ -187,7 +248,9 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 		{
 			Server->Log("Could not rename folder \""+src_dir+"\" to \""+link_src_dir+"\"", LL_ERROR);
 			os_finish_transaction(transaction);
+			reference_parents(*link_dao, clientid, src_dir, pool_name, depth, true);
 			link_dao->removeDirectoryLink(clientid, src_dir);
+			link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir) + os_file_sep() + "*");
 			link_dao->removeDirectoryLink(clientid, target_dir);
 			
 			if (!with_transaction)
@@ -198,12 +261,15 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			return false;
 		}
 
-		if(!os_link_symbolic(os_file_prefix(link_src_dir), os_file_prefix(src_dir), transaction))
+		bool l_isdir = true;
+		if(!os_link_symbolic(os_file_prefix(link_src_dir), os_file_prefix(src_dir), transaction, &l_isdir))
 		{
 			Server->Log("Could not create a symbolic link at \""+src_dir+"\" to \""+link_src_dir+"\"", LL_ERROR);
 			os_rename_file(link_src_dir, src_dir, transaction);
 			os_finish_transaction(transaction);
+			reference_parents(*link_dao, clientid, src_dir, pool_name, depth, true);
 			link_dao->removeDirectoryLink(clientid, src_dir);
+			link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir) + os_file_sep() + "*");
 			link_dao->removeDirectoryLink(clientid, target_dir);
 
 			if (!with_transaction)
@@ -219,7 +285,9 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 			if(!os_finish_transaction(transaction))
 			{
 				Server->Log("Error finishing filesystem transaction", LL_ERROR);
+				reference_parents(*link_dao, clientid, src_dir, pool_name, depth, true);
 				link_dao->removeDirectoryLink(clientid, src_dir);
+				link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir) + os_file_sep() + "*");
 				link_dao->removeDirectoryLink(clientid, target_dir);
 				return false;
 			}
@@ -242,7 +310,7 @@ bool link_directory_pool( int clientid, const std::string& target_dir, const std
 
 		link_dao->removeDirectoryLink(clientid, target_dir);
 
-		if(refcount_bigger_one)
+		if(remove_glob)
 		{
 			link_dao->removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir)+os_file_sep()+"*");
 		}

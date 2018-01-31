@@ -15,7 +15,7 @@ class IScopedLock;
 void dir_link_lock_client_mutex(int clientid, IScopedLock& lock);
 
 bool link_directory_pool(int clientid, const std::string& target_dir, const std::string& src_dir, const std::string& pooldir, bool with_transaction,
-	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao);
+	ServerLinkDao*& link_dao, ServerLinkJournalDao*& link_journal_dao, int depth);
 
 bool replay_directory_link_journal();
 

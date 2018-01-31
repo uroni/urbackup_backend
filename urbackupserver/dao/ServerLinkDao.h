@@ -23,9 +23,11 @@ public:
 
 	void addDirectoryLink(int clientid, const std::string& name, const std::string& target);
 	void removeDirectoryLink(int clientid, const std::string& target);
+	void removeDirectoryLinkWithName(int clientid, const std::string& target, const std::string& name);
 	void removeDirectoryLinkGlob(int clientid, const std::string& target);
 	int getDirectoryRefcount(int clientid, const std::string& name);
 	std::vector<DirectoryLinkEntry> getLinksInDirectory(int clientid, const std::string& dir);
+	std::vector<DirectoryLinkEntry> getLinksByPoolName(int clientid, const std::string& name);
 	void deleteLinkReferenceEntry(int64 id);
 	void updateLinkReferenceTarget(const std::string& new_target, int64 id);
 	//@-SQLGenFunctionsEnd
@@ -40,9 +42,11 @@ private:
 	//@-SQLGenVariablesBegin
 	IQuery* q_addDirectoryLink;
 	IQuery* q_removeDirectoryLink;
+	IQuery* q_removeDirectoryLinkWithName;
 	IQuery* q_removeDirectoryLinkGlob;
 	IQuery* q_getDirectoryRefcount;
 	IQuery* q_getLinksInDirectory;
+	IQuery* q_getLinksByPoolName;
 	IQuery* q_deleteLinkReferenceEntry;
 	IQuery* q_updateLinkReferenceTarget;
 	//@-SQLGenVariablesEnd
