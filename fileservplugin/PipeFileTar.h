@@ -133,6 +133,7 @@ private:
 	STarFile tar_file;
 
 	sha_def_ctx sha_ctx;
+	int64 hash_pos;
 
 	std::auto_ptr<IMutex> mutex;
 

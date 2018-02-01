@@ -11,6 +11,7 @@
 #include <memory.h>
 #include <cstring>
 #include <stdlib.h>
+#include <assert.h>
 
 #ifndef _S_IFIFO
 #define	_S_IFIFO 0x1000
@@ -136,14 +137,14 @@ namespace
 
 PipeFileTar::PipeFileTar(const std::string & pCmd, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
 	: pipe_file(new PipeFileStore(new PipeFile(pCmd))), file_offset(0), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random),
-	server_token(server_token), identity(identity)
+	server_token(server_token), identity(identity), hash_pos(0)
 {
 	sha_def_init(&sha_ctx);
 }
 
 PipeFileTar::PipeFileTar(PipeFileStore* pipe_file, const STarFile& tar_file, int64 file_offset, int backupnum, int64 fn_random, std::string output_fn, const std::string& server_token, const std::string& identity)
 	: pipe_file(pipe_file), tar_file(tar_file), file_offset(file_offset), mutex(Server->createMutex()), backupnum(backupnum), has_next(false), output_fn(output_fn), fn_random(fn_random),
-	server_token(server_token), identity(identity)
+	server_token(server_token), identity(identity), hash_pos(0)
 {
 	sha_def_init(&sha_ctx);
 }
@@ -170,7 +171,12 @@ std::string PipeFileTar::Read(_u32 tr, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
+	if (hash_pos == pos)
+	{
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
+		hash_pos += ret.size();
+	}
+	assert(pos + ret.size() <= hash_pos);
 
 	tar_file.pos += ret.size();
 	return ret;
@@ -178,6 +184,7 @@ std::string PipeFileTar::Read(_u32 tr, bool * has_error)
 
 std::string PipeFileTar::Read(int64 spos, _u32 tr, bool * has_error)
 {
+	assert(spos <= hash_pos);
 	IScopedLock lock(mutex.get());
 
 	if (!tar_file.available)
@@ -194,7 +201,12 @@ std::string PipeFileTar::Read(int64 spos, _u32 tr, bool * has_error)
 	std::string ret = pipe_file->pipe_file->Read(pf_offset, max_read, has_error);
 
 	lock.relock(mutex.get());
-	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
+	if (spos == hash_pos)
+	{
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
+		hash_pos += ret.size();
+	}
+	assert(spos + ret.size() <= hash_pos);
 
 	return ret;
 }
@@ -211,7 +223,12 @@ _u32 PipeFileTar::Read(char * buffer, _u32 bsize, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
+	if (tar_file.pos == hash_pos)
+	{
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
+		hash_pos += ret;
+	}
+	assert(pos + ret <= hash_pos);
 	
 	tar_file.pos += ret;
 	return ret;
@@ -219,6 +236,7 @@ _u32 PipeFileTar::Read(char * buffer, _u32 bsize, bool * has_error)
 
 _u32 PipeFileTar::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 {
+	assert(spos <= hash_pos);
 	IScopedLock lock(mutex.get());
 
 	if (!tar_file.available)
@@ -234,7 +252,12 @@ _u32 PipeFileTar::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 	_u32 ret = pipe_file->pipe_file->Read(pf_offset, buffer, bsize, has_error);
 
 	lock.relock(mutex.get());
-	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
+	if (spos == hash_pos)
+	{
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
+		hash_pos += ret;
+	}
+	assert(spos + ret <= hash_pos);
 
 	return ret;
 }
@@ -247,6 +270,7 @@ bool PipeFileTar::Seek(_i64 spos)
 		return false;
 	}
 
+	assert(spos <= hash_pos);
 	tar_file.pos = spos;
 
 	int64 pf_offset = file_offset + spos;
