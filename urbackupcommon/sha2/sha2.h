@@ -1,73 +1,208 @@
 /*
- * FIPS 180-2 SHA-224/256/384/512 implementation
- * Last update: 02/02/2007
- * Issue date:  04/30/2005
- *
- * Copyright (C) 2005, 2007 Olivier Gay <olivier.gay@a3.epfl.ch>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the project nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
+* FILE:	sha2.h
+* AUTHOR:	Aaron D. Gifford - http://www.aarongifford.com/
+*
+* Copyright (c) 2000-2001, Aaron D. Gifford
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+* 1. Redistributions of source code must retain the above copyright
+*    notice, this list of conditions and the following disclaimer.
+* 2. Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the distribution.
+* 3. Neither the name of the copyright holder nor the names of contributors
+*    may be used to endorse or promote products derived from this software
+*    without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTOR(S) ``AS IS'' AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTOR(S) BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+*
+* $Id: sha2.h,v 1.1 2001/11/08 00:02:01 adg Exp adg $
+*/
 
-#ifndef SHA2_H
-#define SHA2_H
-
-#include <wchar.h>
-
-#define SHA224_DIGEST_SIZE ( 224 / 8)
-#define SHA256_DIGEST_SIZE ( 256 / 8)
-#define SHA384_DIGEST_SIZE ( 384 / 8)
-#define SHA512_DIGEST_SIZE ( 512 / 8)
-
-#define SHA256_BLOCK_SIZE  ( 512 / 8)
-#define SHA512_BLOCK_SIZE  (1024 / 8)
-#define SHA384_BLOCK_SIZE  SHA512_BLOCK_SIZE
-#define SHA224_BLOCK_SIZE  SHA256_BLOCK_SIZE
-
-#ifndef SHA2_TYPES
-#define SHA2_TYPES
-typedef unsigned char uint8;
-typedef unsigned int  uint32;
-typedef unsigned long long uint64;
-#endif
+#ifndef __SHA2_H__
+#define __SHA2_H__
 
 #ifdef DO_NOT_USE_CRYPTOPP_SHA
 
-typedef struct {
-    unsigned int tot_len;
-    unsigned int len;
-    unsigned char block[2 * SHA256_BLOCK_SIZE];
-    uint32 h[8];
-} sha256_ctx;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct {
-    unsigned int tot_len;
-    unsigned int len;
-    unsigned char block[2 * SHA512_BLOCK_SIZE];
-    uint64 h[8];
-} sha512_ctx;
+
+	/*
+	* Import u_intXX_t size_t type definitions from system headers.  You
+	* may need to change this, or define these things yourself in this
+	* file.
+	*/
+#include <sys/types.h>
+#ifdef _WIN32
+#define LITTLE_ENDIAN 1234
+#define BIG_ENDIAN    4321
+#define BYTE_ORDER LITTLE_ENDIAN
+#define SHA2_USE_INTTYPES_H
+#endif
+
+#ifdef SHA2_USE_INTTYPES_H
+
+#include <inttypes.h>
+
+#endif /* SHA2_USE_INTTYPES_H */
+
+
+	/*** SHA-256/384/512 Various Length Definitions ***********************/
+#define SHA256_BLOCK_LENGTH		64
+#define SHA256_DIGEST_LENGTH		32
+#define SHA256_DIGEST_STRING_LENGTH	(SHA256_DIGEST_LENGTH * 2 + 1)
+#define SHA384_BLOCK_LENGTH		128
+#define SHA384_DIGEST_LENGTH		48
+#define SHA384_DIGEST_STRING_LENGTH	(SHA384_DIGEST_LENGTH * 2 + 1)
+#define SHA512_BLOCK_LENGTH		128
+#define SHA512_DIGEST_LENGTH		64
+#define SHA512_DIGEST_STRING_LENGTH	(SHA512_DIGEST_LENGTH * 2 + 1)
+
+
+	/*** SHA-256/384/512 Context Structures *******************************/
+	/* NOTE: If your architecture does not define either u_intXX_t types or
+	* uintXX_t (from inttypes.h), you may need to define things by hand
+	* for your system:
+	*/
+#if 0
+	typedef unsigned char u_int8_t;		/* 1-byte  (8-bits)  */
+	typedef unsigned int u_int32_t;		/* 4-bytes (32-bits) */
+	typedef unsigned long long u_int64_t;	/* 8-bytes (64-bits) */
+#endif
+											/*
+											* Most BSD systems already define u_intXX_t types, as does Linux.
+											* Some systems, however, like Compaq's Tru64 Unix instead can use
+											* uintXX_t types defined by very recent ANSI C standards and included
+											* in the file:
+											*
+											*   #include <inttypes.h>
+											*
+											* If you choose to use <inttypes.h> then please define:
+											*
+											*   #define SHA2_USE_INTTYPES_H
+											*
+											* Or on the command line during compile:
+											*
+											*   cc -DSHA2_USE_INTTYPES_H ...
+											*/
+#ifdef SHA2_USE_INTTYPES_H
+
+	typedef struct _SHA256_CTX {
+		uint32_t	state[8];
+		uint64_t	bitcount;
+		uint8_t	buffer[SHA256_BLOCK_LENGTH];
+	} SHA256_CTX;
+	typedef struct _SHA512_CTX {
+		uint64_t	state[8];
+		uint64_t	bitcount[2];
+		uint8_t	buffer[SHA512_BLOCK_LENGTH];
+	} SHA512_CTX;
+
+#else /* SHA2_USE_INTTYPES_H */
+
+	typedef struct _SHA256_CTX {
+		u_int32_t	state[8];
+		u_int64_t	bitcount;
+		u_int8_t	buffer[SHA256_BLOCK_LENGTH];
+	} SHA256_CTX;
+	typedef struct _SHA512_CTX {
+		u_int64_t	state[8];
+		u_int64_t	bitcount[2];
+		u_int8_t	buffer[SHA512_BLOCK_LENGTH];
+	} SHA512_CTX;
+
+#endif /* SHA2_USE_INTTYPES_H */
+
+	typedef SHA512_CTX SHA384_CTX;
+
+
+	/*** SHA-256/384/512 Function Prototypes ******************************/
+#ifndef NOPROTO
+#ifdef SHA2_USE_INTTYPES_H
+
+	void SHA256_Init(SHA256_CTX *);
+	void SHA256_Update(SHA256_CTX*, const uint8_t*, size_t);
+	void SHA256_Final(uint8_t[SHA256_DIGEST_LENGTH], SHA256_CTX*);
+	char* SHA256_End(SHA256_CTX*, char[SHA256_DIGEST_STRING_LENGTH]);
+	char* SHA256_Data(const uint8_t*, size_t, char[SHA256_DIGEST_STRING_LENGTH]);
+
+	void SHA384_Init(SHA384_CTX*);
+	void SHA384_Update(SHA384_CTX*, const uint8_t*, size_t);
+	void SHA384_Final(uint8_t[SHA384_DIGEST_LENGTH], SHA384_CTX*);
+	char* SHA384_End(SHA384_CTX*, char[SHA384_DIGEST_STRING_LENGTH]);
+	char* SHA384_Data(const uint8_t*, size_t, char[SHA384_DIGEST_STRING_LENGTH]);
+
+	void SHA512_Init(SHA512_CTX*);
+	void SHA512_Update(SHA512_CTX*, const uint8_t*, size_t);
+	void SHA512_Final(uint8_t[SHA512_DIGEST_LENGTH], SHA512_CTX*);
+	char* SHA512_End(SHA512_CTX*, char[SHA512_DIGEST_STRING_LENGTH]);
+	char* SHA512_Data(const uint8_t*, size_t, char[SHA512_DIGEST_STRING_LENGTH]);
+
+#else /* SHA2_USE_INTTYPES_H */
+
+	void SHA256_Init(SHA256_CTX *);
+	void SHA256_Update(SHA256_CTX*, const u_int8_t*, size_t);
+	void SHA256_Final(u_int8_t[SHA256_DIGEST_LENGTH], SHA256_CTX*);
+	char* SHA256_End(SHA256_CTX*, char[SHA256_DIGEST_STRING_LENGTH]);
+	char* SHA256_Data(const u_int8_t*, size_t, char[SHA256_DIGEST_STRING_LENGTH]);
+
+	void SHA384_Init(SHA384_CTX*);
+	void SHA384_Update(SHA384_CTX*, const u_int8_t*, size_t);
+	void SHA384_Final(u_int8_t[SHA384_DIGEST_LENGTH], SHA384_CTX*);
+	char* SHA384_End(SHA384_CTX*, char[SHA384_DIGEST_STRING_LENGTH]);
+	char* SHA384_Data(const u_int8_t*, size_t, char[SHA384_DIGEST_STRING_LENGTH]);
+
+	void SHA512_Init(SHA512_CTX*);
+	void SHA512_Update(SHA512_CTX*, const u_int8_t*, size_t);
+	void SHA512_Final(u_int8_t[SHA512_DIGEST_LENGTH], SHA512_CTX*);
+	char* SHA512_End(SHA512_CTX*, char[SHA512_DIGEST_STRING_LENGTH]);
+	char* SHA512_Data(const u_int8_t*, size_t, char[SHA512_DIGEST_STRING_LENGTH]);
+
+#endif /* SHA2_USE_INTTYPES_H */
+
+#else /* NOPROTO */
+
+	void SHA256_Init();
+	void SHA256_Update();
+	void SHA256_Final();
+	char* SHA256_End();
+	char* SHA256_Data();
+
+	void SHA384_Init();
+	void SHA384_Update();
+	void SHA384_Final();
+	char* SHA384_End();
+	char* SHA384_Data();
+
+	void SHA512_Init();
+	void SHA512_Update();
+	void SHA512_Final();
+	char* SHA512_End();
+	char* SHA512_Data();
+
+#endif /* NOPROTO */
+
+#ifdef	__cplusplus
+}
+#endif /* __cplusplus */
+
+typedef SHA256_CTX sha256_ctx;
+typedef SHA512_CTX sha512_ctx;
 
 #else //!DO_NOT_USE_CRYPTOPP_SHA
 
@@ -88,36 +223,23 @@ typedef struct {
 
 #endif //DO_NOT_USE_CRYPTOPP_SHA
 
-typedef sha512_ctx sha384_ctx;
-typedef sha256_ctx sha224_ctx;
-
-void sha224_init(sha224_ctx *ctx);
-void sha224_update(sha224_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
-void sha224_final(sha224_ctx *ctx, unsigned char *digest);
-void sha224(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
+#define SHA256_DIGEST_SIZE ( 256 / 8)
+#define SHA512_DIGEST_SIZE ( 512 / 8)
 
 void sha256_init(sha256_ctx * ctx);
 void sha256_update(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
+	unsigned int len);
 void sha256_final(sha256_ctx *ctx, unsigned char *digest);
 void sha256(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
+	unsigned char *digest);
 
-void sha384_init(sha384_ctx *ctx);
-void sha384_update(sha384_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
-void sha384_final(sha384_ctx *ctx, unsigned char *digest);
-void sha384(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
 
 void sha512_init(sha512_ctx *ctx);
 void sha512_update(sha512_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
+	unsigned int len);
 void sha512_final(sha512_ctx *ctx, unsigned char *digest);
 void sha512(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
+	unsigned char *digest);
 
 
 typedef sha512_ctx sha_def_ctx;
@@ -146,8 +268,7 @@ static void sha_def(const unsigned char *message, unsigned int len,
 
 #define SHA_DEF_DIGEST_SIZE ( 512 / 8)
 
-const static char* sha_def_identifier="sha512";
+const static char* sha_def_identifier = "sha512";
 
-
-#endif /* !SHA2_H */
+#endif /* __SHA2_H__ */
 
