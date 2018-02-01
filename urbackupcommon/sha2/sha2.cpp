@@ -954,7 +954,7 @@ int main()
 
 void sha256_init(sha256_ctx * ctx)
 {
-
+	ctx->sha.Restart();
 }
 
 void sha256_update(sha256_ctx *ctx, const unsigned char *message,
@@ -970,6 +970,7 @@ void sha256_final(sha256_ctx *ctx, unsigned char *digest)
 
 void sha512_init(sha512_ctx *ctx)
 {
+	ctx->sha.Restart();
 }
 
 void sha512_update(sha512_ctx *ctx, const unsigned char *message,
