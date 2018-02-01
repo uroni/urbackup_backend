@@ -1160,4 +1160,23 @@ void sha512_final(sha512_ctx *ctx, unsigned char *digest)
 	ctx->sha.Final(digest);
 }
 
+void sha512(const unsigned char *message, unsigned int len,
+	unsigned char *digest)
+{
+	sha512_ctx ctx;
+
+	sha512_init(&ctx);
+	sha512_update(&ctx, message, len);
+	sha512_final(&ctx, digest);
+}
+
+void sha256(const unsigned char *message, unsigned int len, unsigned char *digest)
+{
+	sha256_ctx ctx;
+
+	sha256_init(&ctx);
+	sha256_update(&ctx, message, len);
+	sha256_final(&ctx, digest);
+}
+
 #endif //DO_NOT_USE_CRYPTOPP_SHA
