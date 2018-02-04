@@ -1010,7 +1010,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	std::vector<ServerCleanupDao::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
 	for(size_t i=0;i<incomplete_images.size();++i)
 	{
-		if (!isImageLockedFromCleanup(incomplete_images[i].id))
+		if (!isImageLockedFromCleanup(incomplete_images[i].id)
+			&& cleanupdao->getIncompleteImage(incomplete_images[i].id).exists )
 		{
 			ServerLogger::Log(logid, "Deleting incomplete image file \"" + incomplete_images[i].path + "\"...", LL_INFO);
 			if (!deleteImage(logid, incomplete_images[i].clientname, incomplete_images[i].path))

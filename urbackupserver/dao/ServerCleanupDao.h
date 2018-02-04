@@ -87,6 +87,7 @@ public:
 
 
 	std::vector<SIncompleteImages> getIncompleteImages(void);
+	CondInt getIncompleteImage(int id);
 	std::vector<SIncompleteImages> getDeletePendingImages(void);
 	void removeImage(int id);
 	std::vector<int> getClientsSortFilebackups(void);
@@ -143,6 +144,7 @@ private:
 
 	//@-SQLGenVariablesBegin
 	IQuery* q_getIncompleteImages;
+	IQuery* q_getIncompleteImage;
 	IQuery* q_getDeletePendingImages;
 	IQuery* q_removeImage;
 	IQuery* q_getClientsSortFilebackups;

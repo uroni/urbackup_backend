@@ -62,6 +62,35 @@ std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncomplete
 
 /**
 * @-SQLGenAccess
+* @func int ServerCleanupDao::getIncompleteImage
+* @return int id
+* @sql
+*   SELECT id
+*   FROM backup_images
+*   WHERE
+*     complete=0 AND (archived & 1)=0 AND running<datetime('now','-300 seconds')
+*	  AND id=:id(int)
+*/
+ServerCleanupDao::CondInt ServerCleanupDao::getIncompleteImage(int id)
+{
+	if(q_getIncompleteImage==NULL)
+	{
+		q_getIncompleteImage=db->Prepare("SELECT id FROM backup_images WHERE complete=0 AND (archived & 1)=0 AND running<datetime('now','-300 seconds') AND id=?", false);
+	}
+	q_getIncompleteImage->Bind(id);
+	db_results res=q_getIncompleteImage->Read();
+	q_getIncompleteImage->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func std::vector<SIncompleteImages> ServerCleanupDao::getDeletePendingImages
 * @return int id, string path, string clientname
 * @sql
@@ -1234,6 +1263,7 @@ ServerCleanupDao::CondInt ServerCleanupDao::hasMoreRecentFileBackup(int backupid
 void ServerCleanupDao::createQueries(void)
 {
 	q_getIncompleteImages=NULL;
+	q_getIncompleteImage=NULL;
 	q_getDeletePendingImages=NULL;
 	q_removeImage=NULL;
 	q_getClientsSortFilebackups=NULL;
@@ -1286,6 +1316,7 @@ void ServerCleanupDao::createQueries(void)
 void ServerCleanupDao::destroyQueries(void)
 {
 	db->destroyQuery(q_getIncompleteImages);
+	db->destroyQuery(q_getIncompleteImage);
 	db->destroyQuery(q_getDeletePendingImages);
 	db->destroyQuery(q_removeImage);
 	db->destroyQuery(q_getClientsSortFilebackups);
