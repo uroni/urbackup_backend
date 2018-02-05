@@ -2454,7 +2454,7 @@ function build_alert_params(alert_script)
 					{
 						checked="checked=\"checked\"";
 					}
-					params_html+="<label><input type=\"checkbox\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" "+checked+" onchange=\"update_alert_params()\"/></label>";
+					params_html+="<label><input type=\"checkbox\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" "+checked+" onchange=\"update_alert_params()\" style=\"width: auto\"/></label>";
 				}
 				
 				params_html+="</div></div>";
