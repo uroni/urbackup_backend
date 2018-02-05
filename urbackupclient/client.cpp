@@ -6357,8 +6357,9 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::string& 
 			&& !skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
 				exclude_dirs, include_dirs) )
 		{
+			SFileAndHash& curr_ret = fn_filter.empty() ? ret[i] : ret[0];
 			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, 
-				ret[i].symlink_target, ret[i].output_symlink_target,
+				curr_ret.symlink_target, curr_ret.output_symlink_target,
 				exclude_dirs, include_dirs))
 			{
 				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
