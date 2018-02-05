@@ -277,7 +277,7 @@ bool CDatabase::BeginWriteTransaction()
 
 bool CDatabase::EndTransaction(void)
 {
-	Write("END;");
+	bool ret = Write("END;");
 	in_transaction=false;
 	transaction_read_lock.reset();
 	IScopedLock lock(lock_mutex);
@@ -291,12 +291,12 @@ bool CDatabase::EndTransaction(void)
 	{
 		Server->wait(50);
 	}
-	return true;
+	return ret;
 }
 
 bool CDatabase::RollbackTransaction()
 {
-	Write("ROLLBACK;");
+	bool ret = Write("ROLLBACK;");
 	in_transaction = false;
 	transaction_read_lock.reset();
 	IScopedLock lock(lock_mutex);
@@ -310,7 +310,7 @@ bool CDatabase::RollbackTransaction()
 	{
 		Server->wait(50);
 	}
-	return true;
+	return ret;
 }
 
 IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
