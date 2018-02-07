@@ -2638,7 +2638,7 @@ bool ClientMain::sendServerIdentity(bool retry_exit)
 		c = false;
 		bool retok_err = false;
 		std::string ret_str;
-		bool b = sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \"" + clientname + "\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
+		bool b = sendClientMessage("ADD IDENTITY", "OK", "Sending Identity to client \"" + clientname + "\" failed. Retrying soon...", 10000, false, LL_DEBUG, &retok_err, &ret_str);
 		if (!b)
 		{
 			if (retok_err)
@@ -2665,6 +2665,16 @@ bool ClientMain::sendServerIdentity(bool retry_exit)
 			if (retok_err)
 			{
 				retry_time = ident_err_retry_time_retok;
+			}
+
+			if (retok_err
+				&& !ret_str.empty())
+			{
+				Server->Log("Sending Identity to client \"" + clientname + "\" failed. Retrying in "+PrettyPrintTime(retry_time)+"... (returned \"" + ret_str + "\")", LL_INFO);
+			}
+			else
+			{
+				Server->Log("Sending Identity to client \"" + clientname + "\" failed. Retrying in " + PrettyPrintTime(retry_time) + "...", LL_INFO);
 			}
 
 			c = true;
