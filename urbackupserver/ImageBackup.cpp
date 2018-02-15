@@ -1422,9 +1422,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 										&& sync_f.get()!=NULL)
 									{
 										backup_dao->setImageBackupComplete(backupid);
+									}
+									if (sync_f.get() != NULL)
+									{
 										backup_dao->setImageBackupSynctime(backupid);
 									}
-									if (sync_f.get() == NULL)
+									else
 									{
 										ServerLogger::Log(logid, "Error creating sync file at " + imagefn + ".sync", LL_ERROR);
 										vhdfile_err = true;
