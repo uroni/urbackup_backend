@@ -171,6 +171,7 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 			{
 				*has_error=true;
 			}
+			errno=0;
 			continue;
 		}
 		tmp.push_back(f);
