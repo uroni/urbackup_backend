@@ -295,9 +295,11 @@ bool IncrFileBackup::doFileBackup()
 
 
 	bool make_subvolume_readonly = false;
+	bool crossvolume_links = false;
 	if(use_snapshots)
 	{
 		make_subvolume_readonly = true;
+		crossvolume_links = true;
 
 		bool zfs_file = BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile;
 		if (zfs_file)
@@ -954,7 +956,7 @@ bool IncrFileBackup::doFileBackup()
 							
 							if( !dir_diff && !indirchange && curr_path!="/urbackup_backup_scripts")
 							{
-								if(!create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), use_snapshots, NULL))
+								if(!create_hardlink(os_file_prefix(metadata_fn), os_file_prefix(metadata_srcpath), crossvolume_links, NULL))
 								{
 									if(!copy_file(metadata_srcpath, metadata_fn))
 									{
@@ -1189,11 +1191,11 @@ bool IncrFileBackup::doFileBackup()
 					else if(!use_snapshots) //is not changed
 					{						
 						bool too_many_hardlinks;
-						bool b=create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
+						bool b=create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), crossvolume_links, &too_many_hardlinks);
 
 						if(b)
 						{
-							b = create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, &too_many_hardlinks);
+							b = create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), crossvolume_links, &too_many_hardlinks);
 
 							if(!b)
 							{
