@@ -59,7 +59,8 @@ Backup::Backup(ClientMain* client_main, int clientid, std::string clientname, st
 	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0), has_timeout_error(false),
-	server_token(server_token), details(details), num_issues(0), stop_backup_running(true), scheduled(scheduled)
+	server_token(server_token), details(details), num_issues(0), stop_backup_running(true), scheduled(scheduled),
+	allow_remove_backup_folder(true)
 {
 	
 }

@@ -108,6 +108,7 @@ protected:
 
 	bool log_backup;
 	bool has_early_error;
+	bool allow_remove_backup_folder;
 	bool has_timeout_error;
 	bool is_file_backup;
 	bool r_resumed;

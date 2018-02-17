@@ -293,11 +293,23 @@ bool IncrFileBackup::doFileBackup()
 		}
 	}
 
+
+	bool make_subvolume_readonly = false;
 	if(use_snapshots)
 	{
+		make_subvolume_readonly = true;
+
 		bool zfs_file = BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile;
 		if (zfs_file)
 		{
+			if (os_get_file_type(backuppath) != 0)
+			{
+				ServerLogger::Log(logid, "File/Directory at " + backuppath + " already exists.", LL_ERROR);
+				has_early_error = true;
+				allow_remove_backup_folder = false;
+				return false;
+			}
+
 			std::auto_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
 			if (touch_f.get() == NULL)
 			{
@@ -316,6 +328,19 @@ bool IncrFileBackup::doFileBackup()
 			errmsg = trim(errmsg);
 			ServerLogger::Log(logid, "Creating new snapshot failed (Server error) "
 				+(errmsg.empty()?os_last_error_str(): ("\""+errmsg+"\"")), LL_WARNING);
+
+			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single))
+			{
+				if (zfs_file)
+				{
+					Server->deleteFile(backuppath);
+				}
+
+				ServerLogger::Log(logid, "Subvolume already exists.", LL_ERROR);
+				has_early_error = true;
+				allow_remove_backup_folder = false;
+				return false;
+			}
 
 			errmsg.clear();
 			if(!SnapshotHelper::createEmptyFilesystem(false, clientname, backuppath_single, errmsg) )
@@ -1594,7 +1619,7 @@ bool IncrFileBackup::doFileBackup()
 
 			std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
 
-			if (use_snapshots)
+			if (make_subvolume_readonly)
 			{
 				if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 				{
@@ -1686,7 +1711,7 @@ bool IncrFileBackup::doFileBackup()
 
 		std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
 
-		if (use_snapshots)
+		if (make_subvolume_readonly)
 		{
 			if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 			{

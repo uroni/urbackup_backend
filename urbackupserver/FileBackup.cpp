@@ -1484,6 +1484,13 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs, std::stri
 			bool zfs_file = BackupServer::getSnapshotMethod(false) == BackupServer::ESnapshotMethod_ZfsFile;
 			if (zfs_file)
 			{
+				if (os_get_file_type(backuppath) != 0)
+				{
+					ServerLogger::Log(logid, "File/Directory " + backuppath + " already exists.", LL_ERROR);
+					allow_remove_backup_folder = false;
+					return false;
+				}
+
 				std::auto_ptr<IFile> touch_f(Server->openFile(backuppath, MODE_WRITE));
 				if (touch_f.get() == NULL)
 				{
@@ -1491,6 +1498,18 @@ bool FileBackup::constructBackupPath(bool on_snapshot, bool create_fs, std::stri
 					return false;
 				}
 				touch_f->Sync();
+			}
+
+			if (SnapshotHelper::isSubvolume(false, clientname, backuppath_single))
+			{
+				if (zfs_file)
+				{
+					Server->deleteFile(backuppath);
+				}
+
+				ServerLogger::Log(logid, "Subvolume " + clientname + "/"+backuppath_single + " already exists.", LL_ERROR);
+				allow_remove_backup_folder = false;
+				return false;
 			}
 
 			bool b = SnapshotHelper::createEmptyFilesystem(false, clientname, backuppath_single, errmsg);
@@ -2040,6 +2059,11 @@ void FileBackup::deleteBackup()
 {
 	if(backupid==-1)
 	{
+		if (!allow_remove_backup_folder)
+		{
+			return;
+		}
+
 		if(use_snapshots)
 		{
 			if(!SnapshotHelper::removeFilesystem(false, clientname, backuppath_single) )
@@ -2060,6 +2084,13 @@ void FileBackup::deleteBackup()
 	}
 	else
 	{				
+		if (!allow_remove_backup_folder)
+		{
+			ServerCleanupDao cleanupdao(db);
+			cleanupdao.removeFileBackup(backupid);
+			return;
+		}
+
 		Server->getThreadPool()->executeWait(
 			new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true, NULL) ),
 			"delete fbackup");
