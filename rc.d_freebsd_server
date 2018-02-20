@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+#
+# PROVIDE: urbackupsrv
+# REQUIRE: DAEMON netif LOGIN
+#
+#  For start this in FreeBSD need copy to /usr/local/etc/rc.d/urbackupsrv
+#  And add urbackupsrv_enable="YES" in rc.conf
+
+. /etc/rc.subr
+
+name="urbackupsrv"
+desc="UrBackup - backup server"
+rcvar=`set_rcvar`
+pidfile="/var/run/${name}.pid"
+command="/usr/local/bin/${name}"
+
+start_cmd="ur_start"
+
+ur_start()
+ {
+        ${command} run --daemon
+ }
+
+load_rc_config $name
+run_rc_command "$1"
