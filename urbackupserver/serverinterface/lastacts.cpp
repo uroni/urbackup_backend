@@ -29,7 +29,18 @@ void cleanupLastActs()
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
 	db->Write("CREATE INDEX IF NOT EXISTS del_stats_del_idx ON del_stats (clientid, created)");
-	db->Write("DELETE FROM del_stats WHERE (SELECT COUNT(*) FROM del_stats b WHERE del_stats.clientid=b.clientid AND b.created<del_stats.created)>"+convert(max_display));
+
+	IQuery* q= db->Prepare("DELETE FROM del_stats WHERE clientid=? AND backupid NOT IN (SELECT backupid FROM del_stats WHERE clientid=? ORDER BY created DESC LIMIT " + convert(max_display) + ")", false);
+	db_results res = db->Read("SELECT id FROM clients");
+	for (size_t i = 0; i < res.size(); ++i)
+	{
+		q->Bind(res[i]["id"]);
+		q->Bind(res[i]["id"]);
+		q->Write();
+		q->Reset();
+	}
+
+	db->destroyQuery(q);
 	db->Write("DROP INDEX del_stats_del_idx");
 }
 
