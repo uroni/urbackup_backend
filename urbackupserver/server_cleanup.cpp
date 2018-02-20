@@ -1497,7 +1497,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::string &backupfolder, int 
 			if(!b && SnapshotHelper::isSubvolume(false, clientname, backuppath) )
 			{
 				ServerLogger::Log(logid, "Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
-				b=truncate_files_recurisve(os_file_prefix(path));
+				b=truncate_files_recursive(os_file_prefix(path));
 
 				if(b)
 				{
@@ -1973,7 +1973,7 @@ bool ServerCleanupThread::isClientlistDeletionAllowed()
 	return allow_clientlist_deletion;
 }
 
-bool ServerCleanupThread::truncate_files_recurisve(std::string path)
+bool ServerCleanupThread::truncate_files_recursive(std::string path)
 {
 	std::vector<SFile> files=getFiles(path, NULL);
 
@@ -1981,7 +1981,7 @@ bool ServerCleanupThread::truncate_files_recurisve(std::string path)
 	{
 		if(files[i].isdir)
 		{
-			bool b=truncate_files_recurisve(path+os_file_sep()+files[i].name);
+			bool b=truncate_files_recursive(path+os_file_sep()+files[i].name);
 			if(!b)
 			{
 				return false;

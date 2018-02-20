@@ -28,9 +28,13 @@ void cleanupLastActs()
 {
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	db->Write("CREATE INDEX IF NOT EXISTS del_stats_del_idx ON del_stats (clientid, created)");
-	db->Write("DELETE FROM del_stats WHERE (SELECT COUNT(*) FROM del_stats b WHERE del_stats.clientid=b.clientid AND b.created<del_stats.created)>"+convert(max_display));
-	db->Write("DROP INDEX del_stats_del_idx");
+	db_results res=db->Read("SELECT id FROM clients");
+
+	for(size_t i=0;i<res.size();++i)
+	{
+	  int64 clientid = watoi(res[i]["id"]);
+	  db->Write("DELETE FROM del_stats WHERE clientid="+convert(clientid)+" AND backupid NOT IN (SELECT backupid FROM del_stats WHERE clientid="+convert(clientid)+" ORDER BY created DESC, backupid DESC LIMIT "+convert(max_display)+")");
+	}
 }
 
 void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
