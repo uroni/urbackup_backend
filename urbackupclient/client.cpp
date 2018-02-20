@@ -3960,8 +3960,7 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back("/proc/*");
 	exclude_dirs.push_back("/dev/*");
 	exclude_dirs.push_back("/sys/*");
-	exclude_dirs.push_back("*/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_:");
-	exclude_dirs.push_back("*/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_:");
+        exclude_dirs.push_back("/run/*");
 #endif
 
 #ifdef __FreeBSD__
