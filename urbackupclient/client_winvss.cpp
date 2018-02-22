@@ -1319,6 +1319,13 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				{
 					if (!componentInfo->bSelectable)
 					{
+						std::string captionStr;
+						if (componentInfo->bstrCaption != NULL)
+						{
+							captionStr = Server->ConvertFromWchar(componentInfo->bstrCaption);
+						}
+						VSSLog("Component caption=" + captionStr + " name=" + logicalPathStr, LL_INFO);
+
 						hr = backupcom->AddComponent(instanceId, writerId, componentInfo->type, componentInfo->bstrLogicalPath, componentInfo->bstrComponentName);
 
 						if (hr != S_OK)
