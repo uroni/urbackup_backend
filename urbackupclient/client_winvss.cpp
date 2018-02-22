@@ -1358,6 +1358,16 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 					}
 				}
 
+				if (!already_added && already_selected)
+				{
+					std::string captionStr;
+					if (componentInfo->bstrCaption != NULL)
+					{
+						captionStr = Server->ConvertFromWchar(componentInfo->bstrCaption);
+					}
+					VSSLog("Component caption=" + captionStr + " name=" + logicalPathStr, LL_INFO);
+				}
+
 				if (added_curr_component
 					|| (!already_added && already_selected) )
 				{
