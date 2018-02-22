@@ -1319,13 +1319,6 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 				{
 					if (!componentInfo->bSelectable)
 					{
-						std::string captionStr;
-						if (componentInfo->bstrCaption != NULL)
-						{
-							captionStr = Server->ConvertFromWchar(componentInfo->bstrCaption);
-						}
-						VSSLog("Component caption=" + captionStr + " name=" + logicalPathStr, LL_INFO);
-
 						hr = backupcom->AddComponent(instanceId, writerId, componentInfo->type, componentInfo->bstrLogicalPath, componentInfo->bstrComponentName);
 
 						if (hr != S_OK)
@@ -1358,20 +1351,17 @@ bool IndexThread::selectVssComponents(IVssBackupComponents *backupcom
 					}
 				}
 
-				if (!already_added && already_selected)
+				if (added_curr_component
+					|| (!already_added && already_selected) )
 				{
+					added_at_least_one_component = true;
+
 					std::string captionStr;
 					if (componentInfo->bstrCaption != NULL)
 					{
 						captionStr = Server->ConvertFromWchar(componentInfo->bstrCaption);
 					}
 					VSSLog("Component caption=" + captionStr + " name=" + logicalPathStr, LL_INFO);
-				}
-
-				if (added_curr_component
-					|| (!already_added && already_selected) )
-				{
-					added_at_least_one_component = true;
 
 					vss_all_components.push_back(currComponent);
 
