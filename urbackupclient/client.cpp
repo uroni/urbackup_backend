@@ -5473,12 +5473,28 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 		b = DeviceIoControl(hSnapVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), &bytesReturned, NULL);
 
-		if (!b)
+		if (!b && GetLastError() != ERROR_MORE_DATA)
 		{
 			std::string errmsg;
 			int64 err = os_last_error(errmsg);
 			VSSLog("Getting changed block data from shadow copy " + snap_volume + " failed: " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
 			return false;
+		}
+
+		if (!b)
+		{
+			buf_snap.resize(2 * sizeof(DWORD) +
+				reinterpret_cast<PURBCT_BITMAP_DATA>(buf_snap.data())->BitmapSize);
+
+			b = DeviceIoControl(hSnapVolume, IOCTL_URBCT_RETRIEVE_BITMAP, NULL, 0, buf_snap.data(), static_cast<DWORD>(buf_snap.size()), &bytesReturned, NULL);
+
+			if (!b)
+			{
+				std::string errmsg;
+				int64 err = os_last_error(errmsg);
+				VSSLog("Getting changed block data from shadow copy " + snap_volume + " failed: " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
+				return false;
+			}
 		}
 	}
 
