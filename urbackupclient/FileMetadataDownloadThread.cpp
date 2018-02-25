@@ -626,7 +626,7 @@ namespace
 				*/
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
-				int fd = open(fn.c_str(), O_WRONLY | O_NOFOLLOW | O_SYMLINK | O_CLOEXEC);
+				int fd = open(fn.c_str(), O_WRONLY | O_SYMLINK | O_CLOEXEC);
 				if (fd == -1)
 				{
 					restore.log("Error setting access and modification time of symlink \"" + fn + "\" -1 errno: " + convert(errno), LL_ERROR);
