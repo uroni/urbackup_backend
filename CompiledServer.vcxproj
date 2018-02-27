@@ -184,7 +184,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>./libfastcgi_win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -210,7 +210,7 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>./libfastcgi_win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -233,7 +233,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Service|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>./libfastcgi_win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;AS_SERVICE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;AS_SERVICE;SQLITE_ENABLE_UNLOCK_NOTIFY;THREAD_BOOST;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -259,7 +259,7 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>./libfastcgi_win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG_ENABLED;_CONSOLE;AS_SERVICE;SQLITE_ENABLE_UNLOCK_NOTIFY;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;AS_SERVICE;SQLITE_ENABLE_UNLOCK_NOTIFY;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
