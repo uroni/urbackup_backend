@@ -20,6 +20,7 @@
 
 #include "action_header.h"
 #include "../server_settings.h"
+#include "login.h"
 
 ACTION_IMPL(salt)
 {
@@ -53,6 +54,7 @@ ACTION_IMPL(salt)
 	
 		if(res.empty())
 		{
+			logFailedLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 			ret.set("error", JSON::Value(0));
 		}
 		else
