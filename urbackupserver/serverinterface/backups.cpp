@@ -1014,9 +1014,10 @@ namespace backupaccess
 		{
 			ScopedMountedImage mounted_image;
 			bool has_mount_timeout;
+			std::string mount_errmsg;
 			std::string content_path = ImageMount::get_mount_path(backupid, 
 				!u_path.empty() && u_path!="/", mounted_image,
-				10000, has_mount_timeout);
+				10000, has_mount_timeout, mount_errmsg);
 
 			if (content_path.empty()
 				|| !os_directory_exists(content_path) )
@@ -1046,7 +1047,7 @@ namespace backupaccess
 				else
 				{
 					content_path = ImageMount::get_mount_path(backupid, true,
-						mounted_image, 10000, has_mount_timeout);
+						mounted_image, 10000, has_mount_timeout, mount_errmsg);
 					if (content_path.empty())
 					{
 						if (has_mount_timeout)
@@ -1056,6 +1057,10 @@ namespace backupaccess
 						else
 						{
 							ret.set("mount_failed", true);
+							if (!mount_errmsg.empty())
+							{
+								ret.set("mount_errmsg", mount_errmsg);
+							}
 						}
 					}
 				}
@@ -1653,7 +1658,8 @@ ACTION_IMPL(backups)
 						else
 						{
 							bool has_mount_timeout;
-							backuppath = ImageMount::get_mount_path(-1*backupid, true, mounted_image, -1, has_mount_timeout);
+							std::string mount_errmsg;
+							backuppath = ImageMount::get_mount_path(-1*backupid, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
 							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
 						}
 

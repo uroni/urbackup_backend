@@ -2065,7 +2065,7 @@ function show_backups2(data)
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: folder_path, folder_path: folder_path,
-			image_backup_info: image_backup_info };
+			image_backup_info: image_backup_info, mount_failed: data.mount_failed, mount_errmsg: data.mount_errmsg };
 			
 		if(!data.token_authentication)
 		{
