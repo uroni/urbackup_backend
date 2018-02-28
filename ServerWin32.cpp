@@ -32,7 +32,7 @@ bool CServer::LoadDLL(const std::string &name)
 
 	if(dll==NULL)
 	{
-		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+convert((int)GetLastError()));
+		Server->Log("Loading DLL \""+name+"\" failed. Error Code: "+convert((int)GetLastError()), LL_ERROR);
 		return false;
 	}
 
