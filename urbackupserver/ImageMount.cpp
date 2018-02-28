@@ -24,7 +24,7 @@ namespace
 #ifdef _WIN32
 	const std::string alt_mount_path = "C:\\UrBackupMounts";
 
-	bool os_mount_image(const std::string& path, int backupid)
+	bool os_mount_image(const std::string& path, int backupid, std::string& errmsg)
 	{
 		if (path.size() <= 1)
 		{
@@ -52,7 +52,8 @@ namespace
 
 		if (hDriver == INVALID_HANDLE_VALUE)
 		{
-			Server->Log("Error communicating with ImDisk driver. " + os_last_error_str(), LL_ERROR);
+			errmsg = "Error communicating with ImDisk driver. " + os_last_error_str();
+			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
@@ -62,7 +63,8 @@ namespace
 			create_data, buffer_size, create_data,
 			buffer_size, &bytes_returned, NULL))
 		{
-			Server->Log("Error creating ImDisk device. " + os_last_error_str(), LL_ERROR);
+			errmsg = "Error creating ImDisk device. " + os_last_error_str();
+			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
@@ -82,7 +84,8 @@ namespace
 			if (!((os_directory_exists(alt_mount_path) || os_create_dir_recursive(alt_mount_path))
 				&& os_link_symbolic(device_path, mountpoint)))
 			{
-				Server->Log("Error creating junction on ImDisk mountpoint. " + os_last_error_str(), LL_ERROR);
+				errmsg = "Error creating junction on ImDisk mountpoint. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
 				return false;
 			}
 		}
@@ -96,16 +99,25 @@ namespace
 			Server->wait(1000);
 		}
 
-		return true;
+		if (!getFiles(mountpoint, &has_error).empty()
+			|| !has_error)
+		{
+			return true;
+		}
+
+		errmsg = "Timeout while mounting volume image";
+
+		return false;
 	}
 
-	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid)
+	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid, std::string& errmsg)
 	{
 		std::string target;
 		if (!os_get_symlink_target(mountpoint, target)
 			|| target.empty())
 		{
-			Server->Log("Error getting mountpoint target. " + os_last_error_str(), LL_ERROR);
+			errmsg = "Error getting mountpoint target. " + os_last_error_str();
+			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
@@ -124,7 +136,8 @@ namespace
 
 		if (hDevice == INVALID_HANDLE_VALUE)
 		{
-			Server->Log("Cannot open ImDisk device " + target + ". " + os_last_error_str(), LL_WARNING);
+			errmsg = "Cannot open ImDisk device " + target + ". " + os_last_error_str();
+			Server->Log(errmsg, LL_WARNING);
 			os_remove_symlink_dir(mountpoint);
 			return false;
 		}
@@ -160,7 +173,8 @@ namespace
 			if (hDriver == INVALID_HANDLE_VALUE)
 			{
 				CloseHandle(hDevice);
-				Server->Log("Error communicating with ImDisk driver (2). " + os_last_error_str(), LL_ERROR);
+				errmsg = "Error communicating with ImDisk driver (2). " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
 				os_remove_symlink_dir(mountpoint);
 				return false;
 			}
@@ -170,7 +184,8 @@ namespace
 				&deviceNumber, sizeof(deviceNumber), NULL,
 				0, &bytes_returned, NULL))
 			{
-				Server->Log("Error removing ImDisk device. " + os_last_error_str(), LL_ERROR);
+				errmsg = "Error removing ImDisk device. " + os_last_error_str();
+				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hDevice);
 				CloseHandle(hDriver);
 				os_remove_symlink_dir(mountpoint);
@@ -186,7 +201,7 @@ namespace
 		return os_remove_symlink_dir(mountpoint);
 	}
 #else
-	bool image_helper_action(const std::string& path, int backupid, const std::string& action)
+	bool image_helper_action(const std::string& path, int backupid, const std::string& action, std::string& errmsg)
 	{
 		IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		ServerBackupDao backup_dao(db);
@@ -206,17 +221,18 @@ namespace
 			mount_helper = "urbackup_mount_helper";
 		}
 
-		return system((mount_helper + " " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\"").c_str()) == 0;
+		int rc = os_popen((mount_helper + " " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\" 2>1").c_str(), errmsg);
+		return rc == 0;
 	}
 
-	bool os_mount_image(const std::string& path, int backupid)
+	bool os_mount_image(const std::string& path, int backupid, std::string& errmsg)
 	{
-		return image_helper_action(path, backupid, "mount");
+		return image_helper_action(path, backupid, "mount", errmsg);
 	}
 
-	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid)
+	bool os_unmount_image(const std::string& mountpoint, const std::string& path, int backupid, std::string& errmsg)
 	{
-		return image_helper_action(path, backupid, "umount");
+		return image_helper_action(path, backupid, "umount", errmsg);
 	}
 #endif
 
@@ -248,7 +264,7 @@ namespace
 		}
 	};
 
-	bool unmount_image(ServerBackupDao& backup_dao, int backupid)
+	bool unmount_image(ServerBackupDao& backup_dao, int backupid, std::string& errmsg)
 	{
 		ServerBackupDao::SMountedImage image_inf = backup_dao.getMountedImage(backupid);
 		if (!image_inf.exists)
@@ -280,7 +296,7 @@ namespace
 		}
 #endif
 
-		return os_unmount_image(mountpoint, image_inf.path, backupid);
+		return os_unmount_image(mountpoint, image_inf.path, backupid, errmsg);
 	}
 }
 
@@ -319,7 +335,13 @@ void ImageMount::operator()()
 					int64 passed_time_s = Server->getTimeSeconds() - old_mounted_images[i].mounttime;
 					Server->Log("Unmounting mounted image backup id " + convert(old_mounted_images[i].id) +
 						" path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s * 1000) + " ago", LL_INFO);
-					unmount_image(backup_dao, old_mounted_images[i].id);
+					std::string errmsg;
+					if (!unmount_image(backup_dao, old_mounted_images[i].id, errmsg))
+					{
+						Server->Log("Unmounting image backup id " + convert(old_mounted_images[i].id) +
+							" path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s * 1000)
+							+ " ago failed: " + errmsg, LL_ERROR);
+					}
 					backup_dao.setImageUnmounted(old_mounted_images[i].id);
 
 					lock.relock(mounted_images_mutex);
@@ -343,7 +365,7 @@ void ImageMount::operator()()
 	}
 }
 
-bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout)
+bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg)
 {
 	has_timeout = false;
 
@@ -353,7 +375,7 @@ bool ImageMount::mount_image(int backupid, ScopedMountedImage& mounted_image, in
 		has_timeout = true;
 		return false;
 	}
-	return mount_image_int(backupid, mounted_image, timeoutms, has_timeout);
+	return mount_image_int(backupid, mounted_image, timeoutms, has_timeout, errmsg);
 }
 
 namespace
@@ -361,22 +383,24 @@ namespace
 	class MountImageThread : public IThread
 	{
 		int backupid;
+		std::string& errmsg;
 	public:
-		MountImageThread(int backupid)
-			: backupid(backupid)
+		MountImageThread(int backupid, std::string& errmsg)
+			: backupid(backupid), errmsg(errmsg)
 		{
 
 		}
 
 		void operator()()
 		{
-			ImageMount::mount_image_thread(backupid);
+			ImageMount::mount_image_thread(backupid, errmsg);
 			delete this;
 		}
 	};
 }
 
-bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout)
+bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image, 
+	int64 timeoutms, bool& has_timeout, std::string& errmsg)
 {
 	IScopedLock lock(mount_processes_mutex);
 	std::map<int, THREADPOOL_TICKET>::iterator it = mount_processes.find(backupid);
@@ -388,7 +412,7 @@ bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image
 	}
 	else
 	{
-		ticket = Server->getThreadPool()->execute(new MountImageThread(backupid), "mnt image");
+		ticket = Server->getThreadPool()->execute(new MountImageThread(backupid, errmsg), "mnt image");
 		mount_processes.insert(std::make_pair(backupid, ticket));
 		lock.relock(NULL);
 	}
@@ -420,7 +444,7 @@ bool ImageMount::mount_image_int(int backupid, ScopedMountedImage& mounted_image
 }
 
 std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image, 
-	int64 timeoutms, bool& has_timeout)
+	int64 timeoutms, bool& has_timeout, std::string& errmsg)
 {
 	has_timeout = false;
 
@@ -452,7 +476,7 @@ std::string ImageMount::get_mount_path(int backupid, bool do_mount, ScopedMounte
 	{
 		if (do_mount)
 		{
-			if (!mount_image_int(backupid, mounted_image, timeoutms, has_timeout))
+			if (!mount_image_int(backupid, mounted_image, timeoutms, has_timeout, errmsg))
 			{
 				return std::string();
 			}
@@ -557,7 +581,7 @@ void ImageMount::unlockImage(int backupid)
 	locked_images.erase(locked_images.find(backupid));
 }
 
-void ImageMount::mount_image_thread(int backupid)
+void ImageMount::mount_image_thread(int backupid, std::string& errmsg)
 {	
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerBackupDao backup_dao(db);
@@ -570,7 +594,7 @@ void ImageMount::mount_image_thread(int backupid)
 
 	backup_dao.setImageMounted(backupid);
 
-	if (!os_mount_image(image_inf.path, backupid))
+	if (!os_mount_image(image_inf.path, backupid, errmsg))
 	{
 		backup_dao.setImageUnmounted(backupid);
 		return;

@@ -14,8 +14,8 @@ class ImageMount : public IThread
 public:
 	void operator()();
 
-	static bool mount_image(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout);
-	static std::string get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout);
+	static bool mount_image(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
+	static std::string get_mount_path(int backupid, bool do_mount, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
 
 	static void incrImageMounted(int backupid);
 	static void decrImageMounted(int backupid);
@@ -23,10 +23,10 @@ public:
 	static bool lockImage(int backupid, int64 timeoutms);
 	static void unlockImage(int backupid);
 
-	static void mount_image_thread(int backupid);
+	static void mount_image_thread(int backupid, std::string& errmsg);
 
 private:
-	static bool mount_image_int(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout);
+	static bool mount_image_int(int backupid, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
 
 	static std::map<int, THREADPOOL_TICKET> mount_processes;
 	static IMutex* mount_processes_mutex;
