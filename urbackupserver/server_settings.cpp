@@ -56,9 +56,10 @@ void ServerSettings::clear_cache()
 	{
 		if(it->second->refcount==0)
 		{
-			std::map<int, SSettings*>::iterator delit=it++;
-			delete delit->second;
-			g_settings_cache.erase(delit);
+			std::map<int, SSettings*>::iterator it_curr = it;
+			++it;
+			delete it_curr->second;
+			g_settings_cache.erase(it_curr);
 		}
 		else
 		{
@@ -176,9 +177,10 @@ void ServerSettings::updateAll(void)
 	{
 		if(it->second->refcount==0)
 		{
-			std::map<int, SSettings*>::iterator delit=it++;
-			delete delit->second;
-			g_settings_cache.erase(delit);
+			std::map<int, SSettings*>::iterator it_curr = it;
+			++it;
+			delete it_curr->second;
+			g_settings_cache.erase(it_curr);
 		}
 		else
 		{
