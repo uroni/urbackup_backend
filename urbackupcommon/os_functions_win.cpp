@@ -1353,6 +1353,29 @@ bool os_path_absolute(const std::string& path)
 bool os_sync(const std::string & path)
 {
 	std::string prefixedbpath = os_file_prefix(path);
+
+	if (next(prefixedbpath, 0, "\\\\?\\UNC"))
+	{
+		HANDLE hVol = CreateFileW(ConvertToWchar(prefixedbpath).c_str(),
+			GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_WRITE | FILE_SHARE_READ,
+			NULL,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL,
+			NULL);
+
+		if (hVol == INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
+
+		BOOL b = FlushFileBuffers(hVol);
+
+		CloseHandle(hVol);
+
+		return b == TRUE;
+	}
+
 	std::wstring tvolume;
 	tvolume.resize(prefixedbpath.size() + 100);
 	DWORD cchBufferLength = static_cast<DWORD>(tvolume.size());
