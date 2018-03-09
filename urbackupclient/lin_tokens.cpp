@@ -269,7 +269,14 @@ std::vector<std::string> get_user_groups(const std::string& username)
 		for(size_t i=0;i<group_ids.size();++i)
 		{
 			struct group* gr =  getgrgid(group_ids[i]);
-			ret.push_back((gr->gr_name));
+			if(gr==NULL)
+			{
+				Server->Log("Error getting group name of group id "+convert(group_ids[i])+" while getting groups of user with name \""+username+"\"", LL_ERROR);
+			}
+			else
+			{
+				ret.push_back(gr->gr_name);
+			}
 		}
 
 		return ret;
