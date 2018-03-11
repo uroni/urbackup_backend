@@ -342,10 +342,18 @@ namespace
 bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
 	bool transfer_checksum, std::string image_file_format, bool transfer_bitmap, bool transfer_prev_cbitmap)
 {
-	std::string sletter = pLetter;
+	std::string sletter = conv_filename(pLetter);
 	if (pLetter != "SYSVOL" && pLetter != "ESP")
 	{
-		sletter = pLetter[0];
+		if ((pLetter.size() < 3
+			&& pLetter[1] == ':'
+			&& (pLetter[2] == '\\'
+				|| pLetter[2] == '/'))
+			|| (pLetter.size() < 2
+				&& pLetter[1] == ':'))
+		{
+			sletter = sletter.substr(0,1);
+		}
 	}
 
 	std::string imagefn;
@@ -2133,7 +2141,15 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
 {
 	fatal_error = true;
-	std::string ret=client_main->sendClientMessage("MBR driveletter="+dl, "Getting MBR for drive "+dl+" failed", 10000);
+
+	std::string params = "driveletter=" + EscapeParamString(dl);
+
+	if (!clientsubname.empty())
+	{
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
 	char b;
 	if(r.getChar(&b) && b==1 )
@@ -2141,9 +2157,15 @@ std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
 		char ver;
 		if(r.getChar(&ver) )
 		{
-			if(ver!=0 && ver!=1)
+			if(ver!=0 && ver!=1
+				&& ver!=100)
 			{
 				ServerLogger::Log(logid, "MBR version "+convert((int)ver)+" is not supported by this server", LL_ERROR);
+			}
+			else if (ver == 100)
+			{
+				ServerLogger::Log(logid, "Loaded ZIP metadata. Size "+PrettyPrintBytes(ret.size()), LL_INFO);
+				return ret;
 			}
 			else
 			{

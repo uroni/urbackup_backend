@@ -740,6 +740,10 @@ void ClientMain::operator ()(void)
 				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
+				if (protocol_versions.update_vols > 0)
+				{
+					updateCapabilities();
+				}
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
@@ -765,6 +769,11 @@ void ClientMain::operator ()(void)
 				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
 			{
+				if (protocol_versions.update_vols > 0)
+				{
+					updateCapabilities();
+				}
+
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
@@ -1580,6 +1589,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		if (it != params.end())
 		{
 			protocol_versions.wtokens_version = watoi(it->second);
+		}
+		it = params.find("UPDATE_VOLS");
+		if (it != params.end())
+		{
+			protocol_versions.update_vols = watoi(it->second);
 		}
 		it=params.find("RESTORE");
 		if(it!=params.end())

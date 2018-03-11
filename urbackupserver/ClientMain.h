@@ -47,7 +47,7 @@ struct SProtocolVersions
 				efi_version(0), file_meta(0), select_sha_version(0),
 				client_bitmap_version(0), cmd_version(0),
 				symbit_version(0), phash_version(0),
-				wtokens_version(0)
+				wtokens_version(0), update_vols(0)
 			{
 
 			}
@@ -69,6 +69,7 @@ struct SProtocolVersions
 	int symbit_version;
 	int phash_version;
 	int wtokens_version;
+	int update_vols;
 	std::string os_simple;
 };
 
