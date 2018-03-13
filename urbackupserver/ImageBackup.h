@@ -58,7 +58,7 @@ protected:
 		ServerVHDWriter* vhdfile, int64 trim_add);
 	SBackup getLastImage(const std::string &letter, bool incr);
 	std::string constructImagePath(const std::string &letter, std::string image_file_format, std::string pParentvhd);
-	std::string getMBR(const std::string &dl, bool& fatal_error);
+	std::string getMBR(const std::string &dl, bool& fatal_error, std::string& loadfn);
 	bool runPostBackupScript(bool incr, const std::string& path, const std::string &pLetter, bool success);
 	bool addBackupToDatabase(const std::string &pLetter, const std::string &pParentvhd,
 		int incremental, int incremental_ref, const std::string& imagefn, ScopedLockImageFromCleanup& cleanup_lock,

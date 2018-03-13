@@ -360,7 +360,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 	std::string imagefn;
 	bool fatal_mbr_error;
-	std::string mbrd = getMBR(usletter, fatal_mbr_error);
+	std::string loadfn;
+	std::string mbrd = getMBR(usletter, fatal_mbr_error, loadfn);
 	if (mbrd.empty())
 	{
 		if (pLetter != "SYSVOL" && pLetter != "ESP")
@@ -387,7 +388,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			return false;
 		}
 
-		std::auto_ptr<IFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+		std::auto_ptr<IFsFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+
 		if (mbr_file.get() != NULL)
 		{
 			_u32 w = mbr_file->Write(mbrd);
@@ -396,12 +398,83 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				ServerLogger::Log(logid, "Error writing mbr data. " + os_last_error_str(), LL_ERROR);
 				return false;
 			}
-			mbr_file.reset();
 		}
 		else
 		{
 			ServerLogger::Log(logid, "Error creating file for writing MBR data. " + os_last_error_str(), LL_ERROR);
 			return false;
+		}
+
+		if(!loadfn.empty())
+		{
+			FileClient fc(false, client_main->getIdentity(), client_main->getProtocolVersions().filesrv_protocol_version,
+				client_main->isOnInternetConnection(), client_main);
+			_u32 rc = client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+			if (rc != ERR_CONNECTED)
+			{
+				ServerLogger::Log(logid, "Error getting MBR zip data - CONNECT error", LL_ERROR);
+				return false;
+			}
+
+			ServerLogger::Log(logid, clientname + ": Loading MBR zip file...", LL_INFO);
+
+			int64 full_backup_starttime = Server->getTimeMS();
+
+			int64 starttime = Server->getTimeMS();
+
+			IFsFile* tmpf = Server->openTemporaryFile();
+			if (tmpf == NULL)
+			{
+				ServerLogger::Log(logid, "Error opening temporay file for MBR zip load", LL_ERROR);
+				return false;
+			}
+
+			ScopedDeleteFile tmpf_del(tmpf);
+
+			rc = ERR_CANNOT_OPEN_FILE;
+			while (Server->getTimeMS() - starttime < 5*60 * 1000
+				&& rc== ERR_CANNOT_OPEN_FILE)
+			{
+				rc = fc.GetFile(loadfn, tmpf, true, false, 0, false, 0);
+			}
+
+			if (rc != ERR_SUCCESS)
+			{
+				tmpf->Resize(0, false);
+				_u32 rc2 = fc.GetFile(loadfn+".err", tmpf, true, false, 0, false, 0);
+
+				if (rc2 == ERR_SUCCESS
+					&& tmpf->Size()<100*1024*1024)
+				{
+					ServerLogger::Log(logid, "Error loading ZIP file MBR: "+tmpf->Read(0LL, static_cast<_u32>(tmpf->Size()) ), LL_ERROR);
+					return false;
+				}
+				else
+				{
+					ServerLogger::Log(logid, "Error loading ZIP file MBR: "+fc.getErrorString(rc), LL_ERROR);
+					return false;
+				}
+			}
+
+			char buf[1024];
+			tmpf->Seek(0);
+			bool has_read_error=false;
+			while ((rc = tmpf->Read(buf, sizeof(buf), &has_read_error)) > 0)
+			{
+				if (mbr_file->Write(buf, rc) != rc)
+				{
+					ServerLogger::Log(logid, "Error writing to "+mbr_file->getFilename()+". "+os_last_error_str(), LL_ERROR);
+					return false;
+				}
+			}
+
+			if (has_read_error)
+			{
+				ServerLogger::Log(logid, "Error reading from " + tmpf->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+
+			ServerLogger::Log(logid, clientname + ": Loaded MBR zip file ("+PrettyPrintBytes(tmpf->Size())+")", LL_INFO);
 		}
 	}
 
@@ -2140,7 +2213,7 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	}
 }
 
-std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
+std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error, std::string& loadfn)
 {
 	fatal_error = true;
 
@@ -2159,15 +2232,18 @@ std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
 		char ver;
 		if(r.getChar(&ver) )
 		{
+			std::string zipfn;
 			if(ver!=0 && ver!=1
 				&& ver!=100)
 			{
 				ServerLogger::Log(logid, "MBR version "+convert((int)ver)+" is not supported by this server", LL_ERROR);
 			}
-			else if (ver == 100)
+			else if (ver == 100
+				&& r.getStr2(&zipfn))
 			{
-				ServerLogger::Log(logid, "Loaded ZIP metadata. Size "+PrettyPrintBytes(ret.size()), LL_INFO);
-				return ret;
+				ServerLogger::Log(logid, "Loading ZIP metadata from "+zipfn, LL_INFO);
+				loadfn = zipfn;
+				return ret.substr(0,2);
 			}
 			else
 			{
