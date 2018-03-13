@@ -343,6 +343,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	bool transfer_checksum, std::string image_file_format, bool transfer_bitmap, bool transfer_prev_cbitmap)
 {
 	std::string sletter = conv_filename(pLetter);
+	std::string usletter = pLetter;
 	if (pLetter != "SYSVOL" && pLetter != "ESP")
 	{
 		if ((pLetter.size() < 3
@@ -353,12 +354,13 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				&& pLetter[1] == ':'))
 		{
 			sletter = sletter.substr(0,1);
+			usletter = usletter.substr(0, 1);
 		}
 	}
 
 	std::string imagefn;
 	bool fatal_mbr_error;
-	std::string mbrd = getMBR(sletter, fatal_mbr_error);
+	std::string mbrd = getMBR(usletter, fatal_mbr_error);
 	if (mbrd.empty())
 	{
 		if (pLetter != "SYSVOL" && pLetter != "ESP")
