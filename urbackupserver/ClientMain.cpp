@@ -1439,7 +1439,13 @@ void ClientMain::sendClientBackupIncrIntervall(void)
 
 bool ClientMain::updateCapabilities(bool* needs_restart)
 {
-	std::string cap=sendClientMessageRetry("CAPA", "Querying client capabilities failed", 10000, 10, false);
+	std::string capa_cmd = "CAPA";
+	if (!clientsubname.empty())
+	{
+		capa_cmd += " clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	std::string cap=sendClientMessageRetry(capa_cmd, "Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
