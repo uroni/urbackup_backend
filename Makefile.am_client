@@ -39,6 +39,9 @@ if TARGET_CPU_IS_X86
 urbackupclientbackend_CXXFLAGS += -msse -msse2
 endif
 endif
+if !WITH_ASSERTIONS
+urbackupclientbackend_CPPFLAGS+=-DNDEBUG
+endif
 
 if CLIENT_UPDATE
 urbackupclientbackend_CXXFLAGS += -DURB_WITH_CLIENTUPDATE
@@ -47,6 +50,9 @@ endif
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp clientctl/jsoncpp.cpp
 urbackupclientctl_LDADD = 
 urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'
+if !WITH_ASSERTIONS
+urbackupclientctl_CPPFLAGS+=-DNDEBUG
+endif
 
 if MACOSX
 urbackupclientgui_osx_SOURCES = client/osxutils.mm
@@ -59,6 +65,9 @@ urbackupclientgui_CXXFLAGS = -DLINUX $(WX_CXXFLAGS_ONLY) -DDATADIR='"$(datadir)"
 urbackupclientgui_CFLAGS = $(WX_CFLAGS_ONLY)
 urbackupclientgui_CPPFLAGS = $(WX_CPPFLAGS)
 urbackupclientgui_LDADD = $(WX_LIBS)
+if !WITH_ASSERTIONS
+urbackupclientgui_CPPFLAGS+=-DNDEBUG
+endif
 
 if MACOSX
 urbackupclientgui_LDFLAGS = -framework ServiceManagement -framework CoreServices -framework Security

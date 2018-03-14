@@ -32,6 +32,10 @@ AC_ARG_ENABLE([embedded-cryptopp],
 AM_CONDITIONAL(EMBEDDED_CRYPTOPP, test "x$enable_embedded_cryptopp" = xyes)
 AM_CONDITIONAL(TARGET_CPU_IS_X86, test "x$TARGET_CPU" = xx86)
 
+AC_ARG_ENABLE([assertions],
+     AS_HELP_STRING([--enable-assertions], [Enable assertions (bug finding).]))
+AM_CONDITIONAL(WITH_ASSERTIONS, test "x$enable_assertions" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
