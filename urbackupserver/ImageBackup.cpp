@@ -436,6 +436,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				&& rc== ERR_CANNOT_OPEN_FILE)
 			{
 				rc = fc.GetFile(loadfn, tmpf, true, false, 0, false, 0);
+
+				if (rc != ERR_TIMEOUT
+					&& rc!=ERR_SUCCESS)
+				{
+					Server->wait(20000);
+				}
 			}
 
 			if (rc != ERR_SUCCESS)
