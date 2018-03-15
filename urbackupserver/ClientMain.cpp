@@ -1621,6 +1621,24 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			}
 		}
 
+		bool update_settings = false;
+		size_t idx = 0;
+		while ((it = params.find("def_key_" + convert(idx))) != params.end())
+		{
+			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
+			if (!setting.exists)
+			{
+				backup_dao->insertSetting(it->second, params["def_val_" + convert(idx)], clientid);
+				update_settings = true;
+			}
+			++idx;
+		}
+
+		if (update_settings)
+		{
+			ServerSettings::updateClient(clientid);
+		}
+
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
 			os_version_str, client_version_str, clientid);
 
