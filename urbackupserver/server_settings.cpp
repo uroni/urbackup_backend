@@ -522,6 +522,12 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
 
+	if (!settings->overwrite
+		&& settings->image_snapshot_groups.empty())
+	{
+		readStringClientSetting(settings_client, "image_snapshot_groups_def", &settings->image_snapshot_groups);
+	}
+
 	if(!settings->overwrite)
 		return;
 
