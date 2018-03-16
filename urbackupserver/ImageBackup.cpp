@@ -361,7 +361,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	std::string imagefn;
 	bool fatal_mbr_error;
 	std::string loadfn;
-	std::string mbrd = getMBR(usletter, fatal_mbr_error, loadfn);
+	std::string mbrd = getMBR(usletter, pLetter, pParentvhd.empty(), snapshot_id, fatal_mbr_error, loadfn);
 	if (mbrd.empty())
 	{
 		if (pLetter != "SYSVOL" && pLetter != "ESP")
@@ -432,6 +432,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			ScopedDeleteFile tmpf_del(tmpf);
 
 			rc = ERR_CANNOT_OPEN_FILE;
+			int retry = 0;
 			while (Server->getTimeMS() - starttime < 5*60 * 1000
 				&& rc== ERR_CANNOT_OPEN_FILE)
 			{
@@ -440,13 +441,22 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				if (rc != ERR_TIMEOUT
 					&& rc!=ERR_SUCCESS)
 				{
-					Server->wait(20000);
+					if (retry < 3)
+					{
+						Server->wait(1000);
+					}
+					else
+					{
+						Server->wait(20000);
+					}
+					++retry;
 				}
 			}
 
 			if (rc != ERR_SUCCESS)
 			{
 				tmpf->Resize(0, false);
+				tmpf->Seek(0);
 				_u32 rc2 = fc.GetFile(loadfn+".err", tmpf, true, false, 0, false, 0);
 
 				if (rc2 == ERR_SUCCESS
@@ -478,6 +488,18 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			{
 				ServerLogger::Log(logid, "Error reading from " + tmpf->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 				return false;
+			}
+
+			if (snapshot_id == 0)
+			{
+				tmpf->Resize(0, false);
+				tmpf->Seek(0);
+				_u32 rc2 = fc.GetFile(loadfn + ".save_id", tmpf, true, false, 0, false, 0);
+				if (rc2 == ERR_SUCCESS
+					&& tmpf->Size() < 100)
+				{
+					snapshot_id = watoi(tmpf->Read(0LL, static_cast<_u32>(tmpf->Size())));
+				}
 			}
 
 			ServerLogger::Log(logid, clientname + ": Loaded MBR zip file ("+PrettyPrintBytes(tmpf->Size())+")", LL_INFO);
@@ -2219,7 +2241,8 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	}
 }
 
-std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error, std::string& loadfn)
+std::string ImageBackup::getMBR(const std::string &dl, const std::string& disk_path,
+	bool image_full, int64 snapshot_id, bool& fatal_error, std::string& loadfn)
 {
 	fatal_error = true;
 
@@ -2229,6 +2252,16 @@ std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error, std::s
 	{
 		params += "&clientsubname=" + EscapeParamString(clientsubname);
 	}
+
+	params += "&disk_path=" + EscapeParamString(disk_path);
+
+	if (snapshot_id != 0)
+	{
+		params += "&shadowid=" + convert(snapshot_id);
+	}
+
+	params += std::string("&image_full=") + (image_full ? "1" : "0");
+	params += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
 
 	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
