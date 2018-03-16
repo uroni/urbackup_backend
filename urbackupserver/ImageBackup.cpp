@@ -2262,6 +2262,7 @@ std::string ImageBackup::getMBR(const std::string &dl, const std::string& disk_p
 
 	params += std::string("&image_full=") + (image_full ? "1" : "0");
 	params += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
+	params += "&token=" + EscapeParamString(server_token);
 
 	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
