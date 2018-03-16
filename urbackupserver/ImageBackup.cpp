@@ -490,6 +490,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				return false;
 			}
 
+			ServerLogger::Log(logid, clientname + ": Loaded MBR zip file (" + PrettyPrintBytes(tmpf->Size()) + ")", LL_INFO);
+
 			if (snapshot_id == 0)
 			{
 				tmpf->Resize(0, false);
@@ -501,8 +503,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					snapshot_id = watoi(tmpf->Read(0LL, static_cast<_u32>(tmpf->Size())));
 				}
 			}
-
-			ServerLogger::Log(logid, clientname + ": Loaded MBR zip file ("+PrettyPrintBytes(tmpf->Size())+")", LL_INFO);
 		}
 	}
 
