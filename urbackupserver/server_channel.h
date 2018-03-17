@@ -16,7 +16,8 @@ class ServerChannelThread : public IThread
 {
 public:
 	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, 
-		bool allow_restore, const std::string& identiy, std::string server_token, const std::string& virtual_client);
+		bool allow_restore, std::vector<std::string> allow_restore_clientids,
+		const std::string& identiy, std::string server_token, const std::string& virtual_client);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -55,6 +56,10 @@ private:
 
 	void reset();
 
+	bool has_restore_permission(const std::string& clientname, int clientid);
+
+	std::string get_clientname(IDatabase* db, int clientid);
+
 	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
@@ -67,6 +72,7 @@ private:
 	volatile bool do_exit;
 	bool internet_mode;
 	bool allow_restore;
+	std::vector<std::string> allow_restore_clients;
 	bool allow_shutdown;
 
 	std::string salt;

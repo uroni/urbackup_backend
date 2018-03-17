@@ -215,7 +215,7 @@ void ClientMain::operator ()(void)
 			clientid = restore_client_id--;
 		}
 
-		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, server_identity, curr_server_token, clientsubname);
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, std::vector<std::string>(), server_identity, curr_server_token, clientsubname);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
@@ -367,7 +367,19 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, false, identity, curr_server_token, clientsubname);
+	std::vector<std::string> allow_restore_clients;
+	allow_restore_clients.push_back(clientname);
+	if (!server_settings->getSettings()->virtual_clients.empty())
+	{
+		std::vector<std::string> toks;
+		Tokenize(server_settings->getSettings()->virtual_clients, toks, "|");
+		for (size_t i = 0; i < toks.size(); ++i)
+		{
+			allow_restore_clients.push_back(clientname + "[" + toks[i] + "]");
+		}
+	}
+
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, allow_restore_clients, identity, curr_server_token, clientsubname);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;
