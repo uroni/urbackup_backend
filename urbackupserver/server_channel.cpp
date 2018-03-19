@@ -153,10 +153,12 @@ bool ServerChannelThread::isOnline()
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
 	bool internet_mode, bool allow_restore, std::vector<std::string> allow_restore_clients,
-	const std::string& identity, std::string server_token, const std::string& virtual_client) :
+	 std::string server_token, const std::string& virtual_client,
+	ServerChannelThread* parent) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
-	virtual_client(virtual_client), allow_shutdown(true), allow_restore_clients(allow_restore_clients)
+	virtual_client(virtual_client), allow_shutdown(true), allow_restore_clients(allow_restore_clients),
+	parent(parent)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -169,7 +171,17 @@ ServerChannelThread::~ServerChannelThread(void)
 	Server->destroy(mutex);
 }
 
-void ServerChannelThread::operator()(void)
+void ServerChannelThread::operator()()
+{
+	run();
+
+	if (parent != NULL)
+	{
+		delete this;
+	}
+}
+
+void ServerChannelThread::run()
 {
 	int64 lastpingtime=0;
 	lasttime=0;
@@ -400,7 +412,9 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			allow_shutdown = false;
 		}
 
+		add_extra_channel();
 		DOWNLOAD_IMAGE(params);
+		remove_extra_channel();
 		Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
 
 		{
@@ -1520,6 +1534,40 @@ std::string ServerChannelThread::get_clientname(IDatabase* db, int clientid)
 		return res_name[0]["name"];
 
 	return std::string();
+}
+
+void ServerChannelThread::add_extra_channel()
+{
+	if (parent != NULL)
+	{
+		parent->add_extra_channel();
+	}
+
+	IScopedLock lock(mutex);
+
+	ServerChannelThread* extra = new ServerChannelThread(client_main,
+		clientname, clientid, internet_mode, allow_restore,
+		allow_restore_clients, server_token, virtual_client, this);
+
+	extra_channel_threads.push_back(extra);
+
+	Server->getThreadPool()->execute(extra, "channel extra");
+}
+
+void ServerChannelThread::remove_extra_channel()
+{
+	if (parent != NULL)
+	{
+		parent->remove_extra_channel();
+	}
+
+	IScopedLock lock(mutex);
+
+	if (!extra_channel_threads.empty())
+	{
+		extra_channel_threads[extra_channel_threads.size() - 1]->doExit();
+		extra_channel_threads.erase(extra_channel_threads.begin() + extra_channel_threads.size() - 1);
+	}
 }
 
 

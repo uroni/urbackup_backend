@@ -215,7 +215,8 @@ void ClientMain::operator ()(void)
 			clientid = restore_client_id--;
 		}
 
-		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, std::vector<std::string>(), server_identity, curr_server_token, clientsubname);
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
+			true, std::vector<std::string>(), curr_server_token, clientsubname, NULL);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
@@ -379,7 +380,8 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, allow_restore_clients, identity, curr_server_token, clientsubname);
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
+		true, allow_restore_clients, curr_server_token, clientsubname, NULL);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;

@@ -17,9 +17,11 @@ class ServerChannelThread : public IThread
 public:
 	ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid, bool internet_mode, 
 		bool allow_restore, std::vector<std::string> allow_restore_clientids,
-		const std::string& identiy, std::string server_token, const std::string& virtual_client);
+		std::string server_token, const std::string& virtual_client,
+		ServerChannelThread* parent);
 	~ServerChannelThread(void);
 
+	void run();
 	void operator()(void);
 
 	std::string processMsg(const std::string &msg);
@@ -60,6 +62,10 @@ private:
 
 	std::string get_clientname(IDatabase* db, int clientid);
 
+	void add_extra_channel();
+
+	void remove_extra_channel();
+
 	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
@@ -95,4 +101,7 @@ private:
 	std::string server_token;
 
 	std::vector<THREADPOOL_TICKET> fileclient_threads;
+
+	ServerChannelThread* parent;
+	std::vector<ServerChannelThread*> extra_channel_threads;
 };
