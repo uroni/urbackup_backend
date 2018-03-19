@@ -562,6 +562,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 			if (rc == ERR_BASE_DIR_LOST)
 			{
+				base_dir_lost_hint();
 				exp_backoff = true;
 			}
 		}
@@ -843,6 +844,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 			if (rc == ERR_BASE_DIR_LOST)
 			{
+				base_dir_lost_hint();
 				exp_backoff = true;
 			}
 		}
@@ -2007,4 +2009,11 @@ void ServerDownloadThread::logVssLogdata()
 			ServerLogger::Log(logid, entries[i].data, entries[i].loglevel);
 		}
 	}
+}
+
+void ServerDownloadThread::base_dir_lost_hint()
+{
+	ServerLogger::Log(logid, "Hint: Current root backup path does not exist anymore. Usually this is because the current file "
+		"system snapshot it was backing up was deleted because it ran out of snapshot storage space. "
+		"See https://www.urbackup.org/faq.html#base_dir_lost for details and for how to fix this issue", LL_INFO);
 }
