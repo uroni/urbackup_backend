@@ -249,8 +249,10 @@ std::vector<SPasswordSalt> getSalt(const std::string& username, int tries, int *
 			else
 			{
 				Server->Log("SALT error: "+toks[i], LL_ERROR);
+				Server->Log("Username not found on server", LL_ERROR);
 				SPasswordSalt new_salts = {};
 				ret.push_back(new_salts);
+				tries = 0;
 			}
 		}
 	}
