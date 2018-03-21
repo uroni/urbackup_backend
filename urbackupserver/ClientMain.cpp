@@ -460,8 +460,19 @@ void ClientMain::operator ()(void)
 						ImageBackup* ibackup = dynamic_cast<ImageBackup*>(backup_queue[i].backup);
 						if (ibackup != NULL)
 						{
+							bool in_image_group = false;
+							for (size_t j = 0; j < running_image_groups.size();++j)
+							{
+								if (running_image_groups[j].find(ibackup) != running_image_groups[j].end())
+								{
+									in_image_group = true;
+									break;
+								}
+							}
+
 							std::vector<ImageBackup::SImageDependency> dependencies = ibackup->getDependencies(true);
-							if (!dependencies.empty())
+							if (!in_image_group
+								&& !dependencies.empty())
 							{
 								std::map<ImageBackup*, bool> new_running_image_group;
 								new_running_image_group[ibackup] = false;
