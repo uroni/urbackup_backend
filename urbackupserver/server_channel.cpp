@@ -365,10 +365,17 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		GET_BACKUPCLIENTS();
 	}
-	else if(next(msg, 0, "GET BACKUPIMAGES ") && allow_restore && hasDownloadImageRights())
+	else if(next(msg, 0, "GET BACKUPIMAGES ") && allow_restore)
 	{
-		std::string name=(msg.substr(17));
-		GET_BACKUPIMAGES(name);
+		if (!hasDownloadImageRights())
+		{
+			tcpstack.Send(input, "0|0|0|NO RIGHTS");
+		}
+		else
+		{
+			std::string name = (msg.substr(17));
+			GET_BACKUPIMAGES(name);
+		}
 	}
     else if(next(msg, 0, "GET FILE BACKUPS TOKENS"))
     {
