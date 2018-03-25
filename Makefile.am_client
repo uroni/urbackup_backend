@@ -27,10 +27,10 @@ FORTIFY_ldflags = -Wl,-z,relro
 endif
 
 urbackupclientbackend_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
-urbackupclientbackend_CPPFLAGS = $(FORTIFY_FLAGS) $(SUID_CFLAGS)
+urbackupclientbackend_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(FORTIFY_FLAGS) $(SUID_CFLAGS)
 urbackupclientbackend_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN -DVARDIR='"$(localstatedir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DDATADIR='"$(datadir)"'
 urbackupclientbackend_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY 
-urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS) $(FORTIFY_ldflags)
+urbackupclientbackend_LDFLAGS = $(CRYPTOPP_LDFLAGS) $(PTHREAD_LIBS) $(SUID_LDFLAGS) $(FORTIFY_ldflags)
 if !EMBEDDED_CRYPTOPP
 urbackupclientbackend_LDADD += $(CRYPTOPP_LIBS)
 else
