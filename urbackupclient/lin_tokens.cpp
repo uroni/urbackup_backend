@@ -415,7 +415,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(!token_id.exists)
 		{
-			Server->Log("Token id for user not found", LL_ERROR);
+			Server->Log("Token id for user \""+users[i]+"\" not found", LL_ERROR);
 			continue;
 		}
 
@@ -438,7 +438,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 
 		if(!token_id.exists)
 		{
-			Server->Log("Token id for group not found", LL_ERROR);
+			Server->Log("Token id for group \""+groups[i]+"\" not found", LL_ERROR);
 			continue;
 		}
 
