@@ -474,7 +474,7 @@ int main_fkt(int argc, char *argv[])
 	    }
 	    else
 	    {
-	    	Server->Log("Unable to change user, probably because process uid is not root. Errno: "+convert(errno), LL_ERROR);
+			Server->Log("Cannot get uid and gid of user \"" + daemon_user + "\" -1. Errno: " + convert(errno), LL_ERROR);
 			return 44;
 	    }
 	}
