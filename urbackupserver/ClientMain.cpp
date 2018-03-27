@@ -1201,7 +1201,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(10000));
+		cc.reset(getClientCommandConnection(NULL, 10000));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1304,7 +1304,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(10000));
+		cc.reset(getClientCommandConnection(NULL, 10000));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1971,7 +1971,7 @@ void ClientMain::checkClientVersion(void)
 			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			std::auto_ptr<IPipe> cc(getClientCommandConnection(10000));
+			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings, 10000));
 			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
@@ -2281,7 +2281,7 @@ bool ClientMain::inBackupWindow(Backup * backup)
 	}
 }
 
-IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* clientaddr)
+IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
