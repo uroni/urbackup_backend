@@ -405,7 +405,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
-	IPipe *cc=client_main->getClientCommandConnection(10000);
+	IPipe *cc=client_main->getClientCommandConnection(server_settings.get(), 10000);
 	if(cc==NULL)
 	{
 		ServerLogger::Log(logid, "Connecting to \""+clientname+"\" for image backup failed", LL_ERROR);
@@ -646,7 +646,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					else
 					{
 						Server->Log(clientname +": Trying to reconnect in doImage", LL_DEBUG);
-						cc = client_main->getClientCommandConnection(10000);
+						cc = client_main->getClientCommandConnection(server_settings.get(), 10000);
 						if (cc == NULL)
 						{
 							Server->wait(60000);

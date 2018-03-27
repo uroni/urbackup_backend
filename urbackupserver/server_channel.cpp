@@ -182,7 +182,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=client_main->getClientCommandConnection(10000, &client_addr);
+			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr);
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to "+clientname+" failed - CONNECT error -55", LL_DEBUG);

@@ -119,7 +119,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
 	ServerLogger::Log(logid, clientname+": Connecting for filelist...", LL_DEBUG);
-	IPipe *cc=client_main->getClientCommandConnection(10000);
+	IPipe *cc=client_main->getClientCommandConnection(server_settings.get(), 10000);
 	if(cc==NULL)
 	{
 		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error during filelist construction", LL_ERROR);
@@ -232,7 +232,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				&& Server->getTimeMS() - starttime <= timeout_time)
 			{
 				ServerLogger::Log(logid, clientname + ": Connecting for filelist (async)...", LL_DEBUG);
-				cc = client_main->getClientCommandConnection(10000);
+				cc = client_main->getClientCommandConnection(server_settings.get(), 10000);
 
 				if (ServerStatus::getProcess(clientname, status_id).stop)
 				{
@@ -407,7 +407,7 @@ bool FileBackup::wait_for_async(const std::string& async_id, int64 timeout_time)
 				&& Server->getTimeMS() - starttime <= timeout_time)
 			{
 				ServerLogger::Log(logid, clientname + ": Connecting for async...", LL_DEBUG);
-				cc.reset(client_main->getClientCommandConnection(10000));
+				cc.reset(client_main->getClientCommandConnection(server_settings.get(), 10000));
 
 				if (ServerStatus::getProcess(clientname, status_id).stop)
 				{

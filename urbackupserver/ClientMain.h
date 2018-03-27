@@ -161,7 +161,7 @@ public:
 	static int getNumberOfRunningFileBackups(void);
 	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey=NULL);
 
-	IPipe *getClientCommandConnection(int timeoutms=10000, std::string* clientaddr=NULL);
+	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL);
 
 	virtual IPipe * new_fileclient_connection(void);
 
