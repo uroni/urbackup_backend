@@ -359,6 +359,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	std::string imagefn;
 	bool fatal_mbr_error;
 	std::string loadfn;
+	bool disk_backup = false;
 	std::string mbrd = getMBR(sletter, pLetter, pParentvhd.empty(), snapshot_id, fatal_mbr_error, loadfn);
 	if (mbrd.empty())
 	{
@@ -405,6 +406,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 		if(!loadfn.empty())
 		{
+			disk_backup = true;
+
 			FileClient fc(false, client_main->getIdentity(), client_main->getProtocolVersions().filesrv_protocol_version,
 				client_main->isOnInternetConnection(), client_main);
 			_u32 rc = client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
@@ -1081,15 +1084,18 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						ServerStatus::setProcessTotalBytes(clientname, status_id, blockcnt*blocksize);
 					}
 
-					mbr_offset=writeMBR(vhdfile, drivesize);
-					if( mbr_offset==0 )
+					if (!disk_backup)
 					{
-						ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
-						goto do_image_cleanup;
-					}
-					else
-					{
-						vhdfile->setMbrOffset(mbr_offset);
+						mbr_offset = writeMBR(vhdfile, drivesize);
+						if (mbr_offset == 0)
+						{
+							ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
+							goto do_image_cleanup;
+						}
+						else
+						{
+							vhdfile->setMbrOffset(mbr_offset);
+						}
 					}
 				}
 				else

@@ -2088,7 +2088,8 @@ function show_backups2(data)
 			obj.show_client_breadcrumb=true;
 		}
 			
-		if( data.files.length>0 )
+		if( data.files.length>0
+			&& !data.no_zip)
 		{
 			obj.download_zip=true;
 		}

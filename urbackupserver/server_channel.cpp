@@ -40,6 +40,7 @@
 #include "restore_client.h"
 #include "serverinterface/backups.h"
 #include "dao/ServerBackupDao.h"
+#include "../urbackupcommon/mbrdata.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -1060,6 +1061,9 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if(img_version==0
 				&& file_extension!="raw")
 				skip=512*512;
+
+			if (is_disk_mbr(res[0]["path"] + ".mbr"))
+				skip = 0;
 
 			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
 			_i64 r=little_endian(imgsize);

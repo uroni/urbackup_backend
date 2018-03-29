@@ -920,7 +920,8 @@ namespace backupaccess
 		return backups;
 	}
 
-	JSON::Object get_image_info(IDatabase* db, int backupid, int t_clientid, int backupid_offset, std::string& path)
+	JSON::Object get_image_info(IDatabase* db, int backupid, int t_clientid, int backupid_offset, std::string& path,
+		std::vector<IFSImageFactory::SPartition>& partitions)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -958,64 +959,130 @@ namespace backupaccess
 			std::string filename = ExtractFileName(path);
 			std::string extension = findextension(filename);
 
-			if (extension == "vhd" || extension == "vhdz")
+			bool disk_image = false;
+			std::auto_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
+			if (mbrfile.get() && mbrfile->Size()<10*1024*1024)
 			{
-				std::auto_ptr<IVHDFile> vhdfile(image_fak->createVHDFile(path, true, 0));
-				if (vhdfile.get() != NULL)
+				std::string mbrdata_header = mbrfile->Read(0LL, 2);
+				CRData mbrdata_header_view(mbrdata_header.data(), mbrdata_header.size());
+				char version = 0;
+				if (mbrdata_header_view.getChar(&version)
+					&& mbrdata_header_view.getChar(&version)
+					&& version != 100)
 				{
-					ret.set("volume_size", vhdfile->getSize());
+					std::string mbrdata = mbrfile->Read(0LL, static_cast<_u32>(mbrfile->Size()));
+					if (mbrdata.size() == mbrfile->Size())
+					{
+						CRData mbrdata_view(mbrdata.data(), mbrdata.size());
+						SMBRData mbr(mbrdata_view);
+						if (!mbr.hasError())
+						{
+							disk_image = false;
+							ret.set("part_table", mbr.gpt_style ? "GPT" : "MBR");
+							ret.set("disk_number", mbr.device_number);
+							ret.set("partition_number", mbr.partition_number);
+							ret.set("volume_name", mbr.volume_name);
+							ret.set("fs_type", mbr.fsn);
+							ret.set("serial_number", mbr.serial_number);
+						}
+					}
+				}
+				else if (version == 100)
+				{
+					disk_image = true;
 				}
 			}
-			else if (extension == "raw")
+
+			std::auto_ptr<IVHDFile> vhdfile;
+			if (extension == "vhd"
+				|| extension == "vhdz")
 			{
-				std::auto_ptr<IFile> rawfile(Server->openFile(os_file_prefix(path), MODE_READ));
-				if (rawfile.get() != NULL)
-				{
-					ret.set("volume_size", rawfile->Size());
-				}
+				vhdfile.reset(image_fak->createVHDFile(path, true, 0));
+			}
+			else if(extension=="raw")
+			{
+				vhdfile.reset(image_fak->createVHDFile(path, true, 0, 2*1024*1024, false, IFSImageFactory::ImageFormat_RawCowFile));
 			}
 			else
 			{
 				assert(false);
 			}
 
-			std::auto_ptr<IFile> mbrfile(Server->openFile(os_file_prefix(path + ".mbr"), MODE_READ));
-			if (mbrfile.get() && mbrfile->Size()<10*1024*1024)
+			if (vhdfile.get() != NULL)
 			{
-				std::string mbrdata = mbrfile->Read(static_cast<_u32>(mbrfile->Size()));
-				if (mbrdata.size() == mbrfile->Size())
+				ret.set("volume_size", vhdfile->getSize());
+
+				if (disk_image)
 				{
-					CRData mbrdata_view(mbrdata.data(), mbrdata.size());
-					SMBRData mbr(mbrdata_view);
-					if (!mbr.hasError())
-					{
-						ret.set("part_table", mbr.gpt_style ? "GPT" : "MBR");
-						ret.set("disk_number", mbr.device_number);
-						ret.set("partition_number", mbr.partition_number);
-						ret.set("volume_name", mbr.volume_name);
-						ret.set("fs_type", mbr.fsn);
-						ret.set("serial_number", mbr.serial_number);
-					}
+					bool gpt_style;
+					partitions = image_fak->readPartitions(vhdfile.get(), 0, gpt_style);
+					ret.set("part_table", gpt_style ? "GPT" : "MBR");
 				}
 			}
+			
 		}
 		return ret;
 	}
 
 	bool get_image_files(IDatabase* db, int backupid, int t_clientid, std::string clientname,
-			const std::string& u_path, int backupid_offset, bool do_mount, JSON::Object& ret)
+			std::string u_path, int backupid_offset, bool do_mount, JSON::Object& ret)
 	{
 		std::string path;
-		JSON::Object image_backup_info = get_image_info(db, backupid, t_clientid, backupid_offset, path);
+		std::vector<IFSImageFactory::SPartition> partitions;
+		JSON::Object image_backup_info = get_image_info(db, backupid, t_clientid, 
+			backupid_offset, path, partitions);
 		ret.set("image_backup_info", image_backup_info);
 		ret.set("single_item", false);
+
+		int partition = -1;
+		if (partitions.size()>1)
+		{
+			std::string m_u_path = u_path;
+			while (!m_u_path.empty()
+				&& m_u_path[0] == '/')
+			{
+				m_u_path.erase(0, 1);
+			}
+
+			if (next(m_u_path, 0, "partition "))
+			{
+				std::string part = getbetween("partition ", "/", m_u_path);
+				if (part.empty())
+				{
+					part = getafter("partition ", m_u_path);
+				}
+				partition = watoi(part)-1;
+				u_path = m_u_path.substr(10+part.size());
+			}
+			else
+			{
+				JSON::Array files;
+				for (size_t i = 0; i < partitions.size(); ++i)
+				{
+					JSON::Object obj;
+					obj.set("name", "partition "+convert(i+1));
+					obj.set("dir", true);
+					files.add(obj);
+				}
+				ret.set("files", files);
+				ret.set("no_zip", true);
+
+				ret.set("backuptime", image_backup_info.get("backuptime"));
+				ret.set("backupid", backupid + backupid_offset);
+				return true;
+			}
+		}
+		else
+		{
+			partition = 0;
+		}
 		
 		if (!path.empty())
 		{
 			ScopedMountedImage mounted_image;
 			bool has_mount_timeout;
 			std::string mount_errmsg;
-			std::string content_path = ImageMount::get_mount_path(backupid, 
+			std::string content_path = ImageMount::get_mount_path(backupid, partition,
 				!u_path.empty() && u_path!="/", mounted_image,
 				10000, has_mount_timeout, mount_errmsg);
 
@@ -1046,7 +1113,7 @@ namespace backupaccess
 				}
 				else
 				{
-					content_path = ImageMount::get_mount_path(backupid, true,
+					content_path = ImageMount::get_mount_path(backupid, partition, true,
 						mounted_image, 10000, has_mount_timeout, mount_errmsg);
 					if (content_path.empty())
 					{
@@ -1659,7 +1726,7 @@ ACTION_IMPL(backups)
 						{
 							bool has_mount_timeout;
 							std::string mount_errmsg;
-							backuppath = ImageMount::get_mount_path(-1*backupid, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
+							backuppath = ImageMount::get_mount_path(-1*backupid, 0, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
 							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
 						}
 

@@ -206,7 +206,7 @@ bool ubuntu_guestmount_fix()
 }
 
 #ifdef __linux__
-bool mount_linux_loop(const std::string& imagepath)
+bool mount_linux_loop(const std::string& imagepath, int partition, int64 offset, int64 length)
 {
 	int loopc = open64("/dev/loop-control", O_RDWR|O_CLOEXEC);
 	if(loopc==-1)
@@ -306,7 +306,15 @@ bool mount_linux_loop(const std::string& imagepath)
 	}
 	
 	loop_info64 linfo = {};
-	linfo.lo_offset = 512*1024;
+	if(offset==-1)
+	{
+		linfo.lo_offset = 512*1024;
+	}
+	else
+	{
+		linfo.lo_offset = offset;
+		linfo.lo_sizelimit = length;
+	}
 	linfo.lo_flags = LO_FLAGS_READ_ONLY|LOCAL_LO_FLAGS_AUTOCLEAR;
 	int rc = ioctl(loopd, LOOP_SET_STATUS64, &linfo);
 	if(rc)
@@ -327,6 +335,11 @@ bool mount_linux_loop(const std::string& imagepath)
 	}
 	
 	std::string mountpoint = ExtractFilePath(imagepath)+"_mnt";
+	
+	if(partition>=0)
+	{
+		mountpoint+=convert(partition);
+	}
 	
 	if(!os_directory_exists(mountpoint)
 		&& !os_create_dir(mountpoint))
@@ -368,10 +381,18 @@ bool mount_linux_loop(const std::string& imagepath)
 	return true;
 }
 #else
-bool mount_mdconfig(const std::string& imagepath)
+bool mount_mdconfig(const std::string& imagepath, int partition)
 {
 	std::string mountpoint = ExtractFilePath(imagepath)+"_mnt";
 	std::string unitpath = ExtractFilePath(imagepath)+"_unit";
+	
+	if(partition>=0)
+	{
+		mountpoint+=convert(partition);
+		unitpath+=convert(partition);
+	}
+
+	if(partition==-1) partition=0;	
 
 	if(os_directory_exists(mountpoint)) 
 	{
@@ -407,8 +428,8 @@ bool mount_mdconfig(const std::string& imagepath)
 			std::cout << "Loading kernel module..." << std::endl;
 			exec_wait("/sbin/kldload", true, "fuse.ko", NULL);
 			
-			std::cout << "Mounting /dev/md"+convert(i)+"s1 at " << mountpoint << " ..." << std::endl;
-			if(system(("ntfs-3g -o ro /dev/md"+convert(i)+"s1 \""+ mountpoint+"\"").c_str())==0)
+			std::cout << "Mounting /dev/md"+convert(i)+"s"+convert(partition+1)<<" at " << mountpoint << " ..." << std::endl;
+			if(system(("ntfs-3g -o ro /dev/md"+convert(i)+"s"+convert(partition+1)+" \""+ mountpoint+"\"").c_str())==0)
 			{
 				return true;
 			}
@@ -428,21 +449,26 @@ bool mount_mdconfig(const std::string& imagepath)
 }
 #endif
 
-bool mount_image(const std::string& imagepath)
+bool mount_image(const std::string& imagepath, int partition, int64 offset, int64 length)
 {
 	std::string ext = findextension(imagepath);
 
 	if(ext=="raw")
 	{
 #ifdef __linux__
-		return mount_linux_loop(imagepath);
+		return mount_linux_loop(imagepath, partition, offset, length);
 #else
-		return mount_mdconfig(imagepath);
+		return mount_mdconfig(imagepath, partition);
 #endif
 	}
 	else
 	{
 		std::string mountpoint = ExtractFilePath(imagepath)+"/contents";
+		
+		if(partition>=0)
+		{
+			mountpoint+=convert(partition);
+		}
 
 		if(os_directory_exists(mountpoint) || errno==EACCES ) 
 		{
@@ -459,6 +485,11 @@ bool mount_image(const std::string& imagepath)
 		chown_dir(mountpoint);
 		
 		std::string devpoint = ExtractFilePath(imagepath)+"/device";
+		
+		if(partition>=0)
+		{
+			devpoint+=convert(partition);
+		}
 
 		if(os_directory_exists(devpoint) || errno==EACCES )
 		{
@@ -499,7 +530,7 @@ bool mount_image(const std::string& imagepath)
 	}
 }
 
-bool unmount_image(const std::string& imagepath)
+bool unmount_image(const std::string& imagepath, int partition)
 {
 	std::string ext = findextension(imagepath);
 	std::string mountpoint;
@@ -510,6 +541,11 @@ bool unmount_image(const std::string& imagepath)
 	else
 	{
 		mountpoint = ExtractFilePath(imagepath)+"/contents";
+	}
+	
+	if(partition>=0)
+	{
+		mountpoint+=convert(partition);
 	}
 
 	std::cout << "Mountpoint: " << mountpoint << std::endl;
@@ -539,6 +575,10 @@ bool unmount_image(const std::string& imagepath)
 	
 #ifndef __linux__
 	std::string unitpath = ExtractFilePath(imagepath)+"_unit";
+	if(partition>=0)
+	{
+		unitpath+=convert(partition);
+	}	
 	std::string unit = getFile(unitpath);
 	if(!unit.empty())
 	{
@@ -549,6 +589,10 @@ bool unmount_image(const std::string& imagepath)
 #endif
 	
 	std::string devpoint = ExtractFilePath(imagepath)+"/device";
+	if(partition>=0)
+	{
+		devpoint+=convert(partition);
+	}
 	
 	if(ext!="raw" && (os_directory_exists(devpoint) || errno==EACCES || errno==ENOTCONN) )
 	{
@@ -602,8 +646,18 @@ int main(int argc, char *argv[])
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 		std::string imagename=handleFilename(argv[4]);
+		
+		int partition=-1;
+		int64 offset=-1;
+		int64 length=0;
+		if(argc>7)
+		{
+			partition = watoi(argv[5]);
+			offset=watoi64(argv[6]);
+			length=watoi64(argv[7]);
+		}
 
-		return mount_image(backupfolder + os_file_sep() + clientname + os_file_sep() + name + os_file_sep() + imagename)?0:1;
+		return mount_image(backupfolder + os_file_sep() + clientname + os_file_sep() + name + os_file_sep() + imagename, partition, offset, length)?0:1;
 	}
 	else if(cmd=="umount")
 	{
@@ -616,8 +670,15 @@ int main(int argc, char *argv[])
 		std::string clientname=handleFilename(argv[2]);
 		std::string name=handleFilename(argv[3]);
 		std::string imagename=handleFilename(argv[4]);
+		
+		int partition=-1;
+		
+		if(argc>5)
+		{
+			partition=watoi(argv[5]);
+		}
 
-		return unmount_image(backupfolder + os_file_sep() + clientname + os_file_sep() + name + os_file_sep() + imagename)?0:1;
+		return unmount_image(backupfolder + os_file_sep() + clientname + os_file_sep() + name + os_file_sep() + imagename, partition)?0:1;
 	}
 	else if(cmd=="test")
 	{

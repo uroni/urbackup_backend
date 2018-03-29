@@ -76,8 +76,10 @@ public:
 	{
 		bool exists;
 		int id;
+		int backupid;
 		std::string path;
 		int64 mounttime;
+		int partition;
 	};
 	struct SReportSettings
 	{
@@ -163,9 +165,11 @@ public:
 	CondString getClientnameByImageid(int backupid);
 	CondInt getClientidByImageid(int backupid);
 	CondInt getImageMounttime(int backupid);
-	void setImageMounted(int backupid);
-	void setImageUnmounted(int backupid);
-	SMountedImage getMountedImage(int backupid);
+	void updateImageMounted(int64 id);
+	void addImageMounted(int backupid, int partition);
+	void delImageMounted(int64 id);
+	SMountedImage getMountedImage(int backupid, int partition);
+	SMountedImage getImageInfo(int backupid);
 	std::vector<SMountedImage> getOldMountedImages(int64 times);
 	//@-SQLGenFunctionsEnd
 
@@ -254,9 +258,11 @@ private:
 	IQuery* q_getClientnameByImageid;
 	IQuery* q_getClientidByImageid;
 	IQuery* q_getImageMounttime;
-	IQuery* q_setImageMounted;
-	IQuery* q_setImageUnmounted;
+	IQuery* q_updateImageMounted;
+	IQuery* q_addImageMounted;
+	IQuery* q_delImageMounted;
 	IQuery* q_getMountedImage;
+	IQuery* q_getImageInfo;
 	IQuery* q_getOldMountedImages;
 	//@-SQLGenVariablesEnd
 
