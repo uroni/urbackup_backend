@@ -1995,7 +1995,15 @@ function show_backups2(data)
 			var obj=data.files[i];
 			if(obj.dir)
 			{
-				obj.size="";
+				if(typeof obj.size !== "undefined"
+					&& obj.size>0)
+				{
+					obj.size=format_size(obj.size);
+				}
+				else
+				{
+					obj.size="";
+				}
 				obj.proc="Files";
 			}
 			else

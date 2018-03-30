@@ -1063,6 +1063,9 @@ namespace backupaccess
 					obj.set("name", "partition "+convert(i+1));
 					obj.set("dir", true);
 					obj.set("size", partitions[i].length);
+					obj.set("mod", 0);
+					obj.set("creat", 0);
+					obj.set("access", 0);
 					files.add(obj);
 				}
 				ret.set("files", files);
