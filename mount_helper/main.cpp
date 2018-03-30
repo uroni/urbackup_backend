@@ -491,7 +491,7 @@ bool unmount_image(const std::string& imagepath)
 
 	bool ret=true;
 
-	if(os_directory_exists(mountpoint) || errno==EACCES )
+	if(os_directory_exists(mountpoint) || errno==EACCES || errno==ENOTCONN)
 	{
 #ifdef __linux__
 		std::cout << "Guestunmount..." << std::endl;
@@ -525,7 +525,7 @@ bool unmount_image(const std::string& imagepath)
 	
 	std::string devpoint = ExtractFilePath(imagepath)+"/device";
 	
-	if(ext!="raw" && (os_directory_exists(devpoint) || errno==EACCES ) )
+	if(ext!="raw" && (os_directory_exists(devpoint) || errno==EACCES || errno==ENOTCONN) )
 	{
 		if(exec_wait("fusermount", true, "-u", devpoint.c_str(), NULL))
 		{
