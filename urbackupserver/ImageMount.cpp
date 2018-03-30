@@ -11,6 +11,8 @@
 #include <Subauth.h>
 #include <imdisk.h>
 bool os_link_symbolic_junctions_raw(const std::string &target, const std::string &lname, void* transaction);
+#else
+#include <errno.h>
 #endif
 
 std::map<int, size_t> ImageMount::mounted_images;
@@ -289,12 +291,12 @@ namespace
 			return false;
 		}
 #else
-		if (!os_directory_exists(mountpoint))
+		if (!os_directory_exists(mountpoint) || errno == EACCES || errno == ENOTCONN)
 		{
 			mountpoint = ExtractFilePath(image_inf.path) + "_mnt";
 		}
 
-		if (!os_directory_exists(mountpoint))
+		if (!os_directory_exists(mountpoint) && errno != EACCES && errno != ENOTCONN)
 		{
 			return false;
 		}
