@@ -1062,6 +1062,7 @@ namespace backupaccess
 					JSON::Object obj;
 					obj.set("name", "partition "+convert(i+1));
 					obj.set("dir", true);
+					obj.set("size", partitions[i].length);
 					files.add(obj);
 				}
 				ret.set("files", files);
