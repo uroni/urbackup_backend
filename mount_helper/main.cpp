@@ -125,6 +125,80 @@ int exec_wait(const std::string& path, bool keep_stdout, ...)
 	}
 }
 
+int exec_wait(const std::string& path, std::string& stdout, ...)
+{
+	va_list vl;
+	va_start(vl, stdout);
+	
+	std::vector<char*> args;
+	args.push_back(const_cast<char*>(path.c_str()));
+	
+	while(true)
+	{
+		const char* p = va_arg(vl, const char*);
+		if(p==NULL) break;
+		args.push_back(const_cast<char*>(p));
+	}
+	va_end(vl);
+	
+	args.push_back(NULL);
+	
+	int pipefd[2];
+	if (pipe(pipefd) == -1)
+	{
+		return -1;
+	}
+	
+	pid_t child_pid = fork();
+	
+	if(child_pid==0)
+	{
+		environ = new char*[1];
+		*environ=NULL;
+		
+		close(pipefd[0]);
+		
+		if(dup2(pipefd[1], 1)==-1)
+		{
+			return -1;
+		}
+		
+		if(dup2(pipefd[1], 2)==-1)
+		{
+			return -1;
+		}
+		
+		close(pipefd[1]);
+		
+		int rc = execvp(path.c_str(), args.data());
+		exit(rc);
+	}
+	else
+	{
+		close(pipefd[1]);
+		
+		char buf[512];
+		int r;
+		while( (r=read(pipefd[0], buf, 512))>0)
+		{
+			stdout.insert(stdout.end(), buf, buf+r);
+		}
+		
+		close(pipefd[0]);
+	
+		int status;
+		waitpid(child_pid, &status, 0);
+		if(WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+}
+
 std::string find_urbackupsrv_cmd()
 {
 	static std::string urbackupsrv_cmd;
@@ -364,7 +438,9 @@ bool mount_linux_loop(const std::string& imagepath, int partition, int64 offset,
 	ubuntu_guestmount_fix();
 	
 	std::cout << "Guestmount..." << std::endl;
-	if(exec_wait("guestmount", true, "-r", "-n", "--format=raw", "-a", ("/dev/loop"+convert(devnum)).c_str(),
+	std::string stdout;
+	bool mount_ok=true;
+	if(exec_wait("guestmount", stdout, "-r", "-n", "--format=raw", "-a", ("/dev/loop"+convert(devnum)).c_str(),
 				"-o", "kernel_cache",
 				"-o", uid.c_str(),
 				"-o", gid.c_str(),
@@ -372,10 +448,42 @@ bool mount_linux_loop(const std::string& imagepath, int partition, int64 offset,
 				"-m", "/dev/sda",
 				mountpoint.c_str(), NULL) )
 	{
-		close(loopd);
-		os_remove_dir(mountpoint);
-		return false;
-	}	
+		mount_ok=false;
+		std::cout << stdout;
+		size_t qpos = stdout.find("Did you mean to mount one of these filesystems");
+		if(qpos!=std::string::npos)
+		{
+			stdout=stdout.substr(qpos);
+			stdout=getafter("guestmount:", stdout);
+			while(getbetween("(", ")", stdout)=="swap")
+			{
+				stdout=getafter("guestmount:", stdout);
+			}
+			stdout=trim(getuntil("(", stdout));
+			std::cout << "Guestmount with dev " << stdout << std::endl;
+			
+			mount_ok=true;
+			if(exec_wait("guestmount", true, "-r", "-n", "--format=raw", "-a", ("/dev/loop"+convert(devnum)).c_str(),
+				"-o", "kernel_cache",
+				"-o", uid.c_str(),
+				"-o", gid.c_str(),
+				"-o", "allow_root",
+				"-m", stdout.c_str(),
+				mountpoint.c_str(), NULL) )
+			{
+				mount_ok=false;
+			}
+		}
+	
+		if(!mount_ok)
+		{
+			close(loopd);
+			os_remove_dir(mountpoint);
+			return false;
+		}
+	}
+	
+	std::cout << stdout;
 
 	close(loopd);
 	return true;
@@ -470,7 +578,7 @@ bool mount_image(const std::string& imagepath, int partition, int64 offset, int6
 			mountpoint+=convert(partition);
 		}
 
-		if(os_directory_exists(mountpoint) || errno==EACCES ) 
+		if(os_directory_exists(mountpoint) || errno==EACCES || errno==ENOTCONN ) 
 		{
 			exec_wait("guestunmount", true, mountpoint.c_str(), NULL);
 		}
@@ -491,7 +599,7 @@ bool mount_image(const std::string& imagepath, int partition, int64 offset, int6
 			devpoint+=convert(partition);
 		}
 
-		if(os_directory_exists(devpoint) || errno==EACCES )
+		if(os_directory_exists(devpoint) || errno==EACCES || errno==ENOTCONN )
 		{
 			if(exec_wait("fusermount", true, "-u", devpoint.c_str(), NULL))
 	                {
