@@ -119,11 +119,16 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& sto
 	if( del==true )
 	{
 		--nRunning;
-		std::map<THREADPOOL_TICKET, ICondition *>::iterator it=running.find(*todel);
+		std::map<THREADPOOL_TICKET, SRunningConds>::iterator it=running.find(*todel);
 		if( it!=running.end() )
 		{
-			if( it->second!=NULL )
-				it->second->notify_all();
+			if( it->second.cond!=NULL )
+				it->second.cond->notify_all();
+
+			for (size_t i = 0; i < it->second.conds.size(); ++i)
+			{
+				it->second.conds[i]->notify_all();
+			}
 
 			running.erase(it);
 		}
@@ -219,7 +224,7 @@ void CThreadPool::Shutdown(void)
 
 bool CThreadPool::isRunningInt(THREADPOOL_TICKET ticket)
 {
-	std::map<THREADPOOL_TICKET, ICondition*>::iterator it=running.find(ticket);
+	std::map<THREADPOOL_TICKET, SRunningConds>::iterator it=running.find(ticket);
 	if( it!=running.end() )
 		return true;
 	else
@@ -245,10 +250,13 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 
 	for( size_t i=0;i<tickets.size();++i)
 	{
-		std::map<THREADPOOL_TICKET, ICondition*>::iterator it=running.find(tickets[i]);
+		std::map<THREADPOOL_TICKET, SRunningConds>::iterator it=running.find(tickets[i]);
 		if( it!=running.end() )
 		{
-			it->second=cond;
+			if (it->second.cond == NULL)
+				it->second.cond = cond;
+			else
+				it->second.conds.push_back(cond);
 		}
 	}
 
@@ -291,12 +299,21 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 
 	for( size_t i=0;i<tickets.size();++i)
 	{
-		std::map<THREADPOOL_TICKET, ICondition*>::iterator it=running.find(tickets[i]);
+		std::map<THREADPOOL_TICKET, SRunningConds>::iterator it=running.find(tickets[i]);
 		if( it!=running.end() )
 		{
-			if(it->second==cond)
+			if(it->second.cond==cond)
 			{
-				it->second=NULL;
+				it->second.cond=NULL;
+			}
+			else
+			{
+				std::vector<ICondition*>::iterator it_vec =
+					std::find(it->second.conds.begin(), it->second.conds.end(), cond);
+				if (it_vec != it->second.conds.end())
+				{
+					it->second.conds.erase(it_vec);
+				}
 			}
 		}
 	}
@@ -343,7 +360,7 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable, const std::string& nam
 	}
 
 	toexecute.push_back(SNewTask(runnable, currticket, name));
-	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, (ICondition*)NULL) );
+	running.insert(std::pair<THREADPOOL_TICKET, SRunningConds>(currticket, SRunningConds()) );
 	++nRunning;
 	cond->notify_one();
 	return currticket;

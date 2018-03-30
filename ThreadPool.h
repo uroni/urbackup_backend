@@ -64,7 +64,17 @@ private:
 	std::deque<SNewTask> toexecute;
 	IMutex* mutex;
 	ICondition* cond;
-	std::map<THREADPOOL_TICKET, ICondition*> running;
+
+	struct SRunningConds
+	{
+		SRunningConds()
+			: cond(NULL) {}
+
+		ICondition* cond;
+		std::vector<ICondition*> conds;
+	};
+
+	std::map<THREADPOOL_TICKET, SRunningConds> running;
 
 	THREADPOOL_TICKET currticket;
 	volatile bool dexit;
