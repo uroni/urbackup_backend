@@ -327,6 +327,11 @@ namespace
 		if (!os_directory_exists(mountpoint) || errno == EACCES || errno == ENOTCONN)
 		{
 			mountpoint = ExtractFilePath(image_inf.path) + "_mnt";
+
+			if (partition >= 0)
+			{
+				mountpoint += convert(partition);
+			}
 		}
 
 		if (!os_directory_exists(mountpoint) && errno != EACCES && errno != ENOTCONN)
@@ -563,6 +568,11 @@ std::string ImageMount::get_mount_path(int backupid, int partition, bool do_moun
 	}
 #else
 	ret = ExtractFilePath(image_inf.path) + "_mnt";
+
+	if (partition >= 0)
+	{
+		ret += convert(partition);
+	}
 
 	if (os_directory_exists(ret))
 	{
