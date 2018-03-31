@@ -153,12 +153,12 @@ bool ServerChannelThread::isOnline()
 }
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
-	bool internet_mode, bool allow_restore, std::vector<std::string> allow_restore_clients,
+	bool internet_mode, bool allow_restore,
 	 std::string server_token, const std::string& virtual_client,
 	ServerChannelThread* parent) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
-	virtual_client(virtual_client), allow_shutdown(true), allow_restore_clients(allow_restore_clients),
+	virtual_client(virtual_client), allow_shutdown(true),
 	parent(parent)
 {
 	do_exit=false;
@@ -361,8 +361,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 		SALT(params);
 	}
-	else if(msg=="GET BACKUPCLIENTS" && allow_restore && hasDownloadImageRights()
-		&& allow_restore_clients.empty())
+	else if(msg=="GET BACKUPCLIENTS" && allow_restore && hasDownloadImageRights())
 	{
 		GET_BACKUPCLIENTS();
 	}
@@ -1524,6 +1523,7 @@ bool ServerChannelThread::has_restore_permission(const std::string& clientname, 
 		return false;
 	}
 
+	std::vector<std::string> allow_restore_clients = client_main->getAllowRestoreClients();
 	if (!allow_restore_clients.empty()
 		&& std::find(allow_restore_clients.begin(), allow_restore_clients.end(), clientname)
 		== allow_restore_clients.end())
@@ -1558,7 +1558,7 @@ void ServerChannelThread::add_extra_channel()
 
 	ServerChannelThread* extra = new ServerChannelThread(client_main,
 		clientname, clientid, internet_mode, allow_restore,
-		allow_restore_clients, server_token, virtual_client, this);
+		server_token, virtual_client, this);
 
 	extra_channel_threads.push_back(extra);
 

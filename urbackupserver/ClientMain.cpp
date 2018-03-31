@@ -216,7 +216,7 @@ void ClientMain::operator ()(void)
 		}
 
 		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
-			true, std::vector<std::string>(), curr_server_token, clientsubname, NULL);
+			true, curr_server_token, clientsubname, NULL);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
@@ -345,6 +345,12 @@ void ClientMain::operator ()(void)
 		return;
 	}
 
+	int64 next_capa_update = 0;
+	if (protocol_versions.update_capa_interval > 0)
+	{
+		next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
+	}
+
 	ServerStatus::setClientId(clientname, clientid);
 
 	bool use_reflink=false;
@@ -368,20 +374,8 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	std::vector<std::string> allow_restore_clients;
-	allow_restore_clients.push_back(clientname);
-	if (!server_settings->getSettings()->virtual_clients.empty())
-	{
-		std::vector<std::string> toks;
-		Tokenize(server_settings->getSettings()->virtual_clients, toks, "|");
-		for (size_t i = 0; i < toks.size(); ++i)
-		{
-			allow_restore_clients.push_back(clientname + "[" + toks[i] + "]");
-		}
-	}
-
 	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
-		true, allow_restore_clients, curr_server_token, clientsubname, NULL);
+		true, curr_server_token, clientsubname, NULL);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;
@@ -410,10 +404,7 @@ void ClientMain::operator ()(void)
 		sendSettings();
 	}
 
-	if(!server_settings->getSettings()->virtual_clients.empty())
-	{
-		BackupServer::setVirtualClients(clientname, server_settings->getSettings()->virtual_clients);
-	}
+	updateVirtualClients();
 
 	ServerLogger::Log(logid, "Sending backup incr interval...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
@@ -641,10 +632,7 @@ void ClientMain::operator ()(void)
 						curr_image_version = curr_image_version & ~c_image_cowraw_bit;
 					}
 
-					if(!server_settings->getSettings()->virtual_clients.empty())
-					{
-						BackupServer::setVirtualClients(clientname, server_settings->getSettings()->virtual_clients);
-					}
+					updateVirtualClients();
 				}
 
 				if(settings_updated && (received_client_settings || settings_dont_exist) )
@@ -659,7 +647,7 @@ void ClientMain::operator ()(void)
 			}
 
 			if( (client_updated_time!=0 && Server->getTimeMS()-client_updated_time>6*60*1000)
-				|| update_capa)
+				|| update_capa )
 			{
 				update_capa = false;
 
@@ -669,6 +657,16 @@ void ClientMain::operator ()(void)
 				if (!authenticateIfNeeded(true, false))
 				{
 					skip_checking = true;
+				}
+			}
+
+			if ((next_capa_update != 0 && next_capa_update > Server->getTimeMS()))
+			{
+				updateCapabilities();
+
+				if (protocol_versions.update_capa_interval > 0)
+				{
+					next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
 				}
 			}
 
@@ -1645,15 +1643,27 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 				*needs_restart = true;
 			}
 		}
+		it = params.find("UPDATE_CAPA_INTERVAL");
+		if(it != params.end())
+		{
+			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
+		}
 
 		bool update_settings = false;
 		size_t idx = 0;
 		while ((it = params.find("def_key_" + convert(idx))) != params.end())
 		{
+			std::string val = params["def_val_" + convert(idx)];
 			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
 			if (!setting.exists)
 			{
-				backup_dao->insertSetting(it->second, params["def_val_" + convert(idx)], clientid);
+				backup_dao->insertSetting(it->second, val, clientid);
+				update_settings = true;
+			}
+			else if ( (it->first=="virtual_clients_add" || it->first=="image_snapshot_groups_def")
+				&& setting.value != val)
+			{
+				backup_dao->updateSetting(val, it->second, clientid);
 				update_settings = true;
 			}
 			++idx;
@@ -3293,6 +3303,28 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 			++i;
 		}
 	}
+}
+
+void ClientMain::updateVirtualClients()
+{
+	std::string virtual_clients = server_settings->getSettings()->virtual_clients;
+	{
+		IScopedLock lock(clientaddr_mutex);
+
+		allow_restore_clients.clear();
+		allow_restore_clients.push_back(clientname);
+		if (!virtual_clients.empty())
+		{
+			std::vector<std::string> toks;
+			Tokenize(virtual_clients, toks, "|");
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				allow_restore_clients.push_back(clientname + "[" + toks[i] + "]");
+			}
+		}
+	}
+
+	BackupServer::setVirtualClients(clientname, virtual_clients);
 }
 
 bool ClientMain::renameClient(const std::string & clientuid)

@@ -47,7 +47,8 @@ struct SProtocolVersions
 				efi_version(0), file_meta(0), select_sha_version(0),
 				client_bitmap_version(0), cmd_version(0),
 				symbit_version(0), phash_version(0),
-				wtokens_version(0), update_vols(0)
+				wtokens_version(0), update_vols(0),
+				update_capa_interval(0)
 			{
 
 			}
@@ -70,6 +71,7 @@ struct SProtocolVersions
 	int phash_version;
 	int wtokens_version;
 	int update_vols;
+	int update_capa_interval;
 	std::string os_simple;
 };
 
@@ -242,6 +244,12 @@ public:
 
 	static std::string normalizeVolumeUpper(std::string volume);
 
+	std::vector<std::string> getAllowRestoreClients()
+	{
+		IScopedLock lock(clientaddr_mutex);
+		return allow_restore_clients;
+	}
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -291,6 +299,8 @@ private:
 
 
 	bool renameClient(const std::string& clientuid);
+	void updateVirtualClients();
+
 
 	struct SPathComponents
 	{
@@ -405,4 +415,6 @@ private:
 	volatile bool update_capa;
 
 	volatile bool do_reauthenticate;
+
+	std::vector<std::string> allow_restore_clients;
 };

@@ -528,6 +528,12 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 		readStringClientSetting(settings_client, "image_snapshot_groups_def", &settings->image_snapshot_groups);
 	}
 
+	if (settings_client->getValue("virtual_clients_add", &stmp))
+	{
+		if (!settings->virtual_clients.empty()) settings->virtual_clients += "|";
+		settings->virtual_clients += stmp;
+	}
+
 	if(!settings->overwrite)
 		return;
 
