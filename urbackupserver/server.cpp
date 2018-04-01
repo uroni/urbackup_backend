@@ -171,6 +171,7 @@ void BackupServer::operator()(void)
 #endif
 		}
 	}
+	testFilesystemReflinkAvailability(db);
 	runServerRecovery(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
@@ -871,6 +872,7 @@ void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
 
 	if (!b)
 	{
+		Server->Log("Could not create reflink at backup destination. Reflinks disabled. "+os_last_error_str(), LL_DEBUG);
 		return;
 	}
 
@@ -879,7 +881,12 @@ void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
 	if (getFile(backupfolder + os_file_sep() + testfilename_reflinked)
 		== "test")
 	{
+		Server->Log("Could create reflink at backup destination. Reflinks enabled.", LL_DEBUG);
 		can_reflink = true;
+	}
+	else
+	{
+		Server->Log("Reflink test file content wrong. Reflinks disabled.", LL_DEBUG);
 	}
 }
 

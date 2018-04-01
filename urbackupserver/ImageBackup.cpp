@@ -2006,19 +2006,19 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_None
 			&& BackupServer::canReflink() )
 		{
-			if (!os_create_hardlink(imgpath, image_folder + os_file_sep() + parent_fn,
+			if (!os_create_hardlink(imgpath, pParentvhd,
 				true, NULL))
 			{
-				ServerLogger::Log(logid, "Could not reflink \"" + imgpath + "\" to \""
-					+ image_folder + os_file_sep() + parent_fn + "\". "+os_last_error_str(), LL_ERROR);
+				ServerLogger::Log(logid, "Could not reflink \"" + pParentvhd + "\" to \""
+					+ imgpath + "\". "+os_last_error_str(), LL_ERROR);
 				return std::string();
 			}
 
-			if (!os_create_hardlink(imgpath+".bitmap", image_folder + os_file_sep() + parent_fn+".bitmap",
+			if (!os_create_hardlink(imgpath+".bitmap", pParentvhd+".bitmap",
 				true, NULL))
 			{
-				ServerLogger::Log(logid, "Could not reflink \"" + imgpath + ".bitmap\" to \""
-					+ image_folder + os_file_sep() + parent_fn + ".bitmap\". " + os_last_error_str(), LL_ERROR);
+				ServerLogger::Log(logid, "Could not reflink \"" + pParentvhd + ".bitmap\" to \""
+					+ imgpath + ".bitmap\". " + os_last_error_str(), LL_ERROR);
 				return std::string();
 			}
 		}

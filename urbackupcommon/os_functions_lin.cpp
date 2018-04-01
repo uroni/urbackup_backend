@@ -47,6 +47,7 @@
 #ifdef __linux__
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <linux/fs.h>
 #endif
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
