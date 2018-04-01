@@ -347,6 +347,9 @@ void ClientMain::operator ()(void)
 	if( use_file_snapshots )
 		use_reflink=true;
 #endif
+	if (BackupServer::canReflink())
+		use_reflink = true;
+
 	use_tmpfiles=server_settings->getSettings()->use_tmpfiles;
 	use_tmpfiles_images=server_settings->getSettings()->use_tmpfiles_images;
 	if(!use_tmpfiles)

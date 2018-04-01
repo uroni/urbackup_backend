@@ -429,6 +429,10 @@ bool IncrFileBackup::doFileBackup()
 			}
 		}
 	}
+	else if (BackupServer::canReflink())
+	{
+		crossvolume_links = true;
+	}
 
 	getTokenFile(fc, hashed_transfer, false);
 

@@ -818,7 +818,8 @@ std::string ServerSettings::getImageFileFormatInt( const std::string& image_file
 {
 	if(image_file_format == image_file_format_default)
 	{
-		if(BackupServer::isImageSnapshotsEnabled())
+		if(BackupServer::isImageSnapshotsEnabled()
+			|| BackupServer::canReflink())
 		{
 			return image_file_format_cowraw;
 		}

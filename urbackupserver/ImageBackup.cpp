@@ -1932,7 +1932,12 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 	{
 		imgpath+=".raw";
 		create_folder = false;
-		if (full_backup)
+		if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_None
+			&& BackupServer::canReflink())
+		{
+			create_folder = true;
+		}
+		else if (full_backup)
 		{
 			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
@@ -1998,63 +2003,85 @@ std::string ImageBackup::constructImagePath(const std::string &letter, std::stri
 		std::string parent_backuppath_single = ExtractFileName(ExtractFilePath(pParentvhd));
 		std::string parent_fn = ExtractFileName(pParentvhd);
 
-		if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
+		if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_None
+			&& BackupServer::canReflink() )
 		{
-			std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
-			if(touch_f.get()==NULL)
+			if (!os_create_hardlink(imgpath, image_folder + os_file_sep() + parent_fn,
+				true, NULL))
 			{
-				ServerLogger::Log(logid, "Could not touch file " + image_folder + ". "+os_last_error_str(), LL_ERROR);
+				ServerLogger::Log(logid, "Could not reflink \"" + imgpath + "\" to \""
+					+ image_folder + os_file_sep() + parent_fn + "\". "+os_last_error_str(), LL_ERROR);
 				return std::string();
 			}
-			touch_f->Sync();
-		}
 
-		ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
-		std::string errmsg;
-		if (!SnapshotHelper::snapshotFileSystem(true, clientname, parent_backuppath_single, backuppath_single, errmsg))
-		{
-			errmsg = trim(errmsg);
-			ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single
-				+ (errmsg.empty() ? "" : (" \"" + errmsg + "\"")), LL_ERROR);
-			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
+			if (!os_create_hardlink(imgpath+".bitmap", image_folder + os_file_sep() + parent_fn+".bitmap",
+				true, NULL))
 			{
-				Server->deleteFile(image_folder);
+				ServerLogger::Log(logid, "Could not reflink \"" + imgpath + ".bitmap\" to \""
+					+ image_folder + os_file_sep() + parent_fn + ".bitmap\". " + os_last_error_str(), LL_ERROR);
+				return std::string();
 			}
-			return std::string();
 		}
 		else
 		{
 			if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 			{
-				std::string mountpoint = SnapshotHelper::getMountpoint(true, clientname, backuppath_single);
-				if (mountpoint.empty())
+				std::auto_ptr<IFile> touch_f(Server->openFile(image_folder, MODE_WRITE));
+				if (touch_f.get() == NULL)
 				{
-					ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname+ " path "+ backuppath_single, LL_ERROR);
+					ServerLogger::Log(logid, "Could not touch file " + image_folder + ". " + os_last_error_str(), LL_ERROR);
 					return std::string();
 				}
-
-				if (!os_link_symbolic(mountpoint, image_folder+"_new"))
-				{
-					ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint+". "+os_last_error_str(), LL_ERROR);
-					return std::string();
-				}
-
-				if (!os_rename_file(image_folder + "_new", image_folder))
-				{
-					ServerLogger::Log(logid, "Could rename symlink at " + image_folder + "_new to " + image_folder + ". " + os_last_error_str(), LL_ERROR);
-					return std::string();
-				}
+				touch_f->Sync();
 			}
 
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".hash");
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".cbitmap");
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".mbr");
-			Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".sync");
-			os_rename_file(image_folder + os_file_sep() + parent_fn + ".bitmap", imgpath+".bitmap");
-			if (!os_rename_file(image_folder + os_file_sep() + parent_fn, imgpath))
+			ServerLogger::Log(logid, "Creating writable snapshot of previous image backup...", LL_INFO);
+			std::string errmsg;
+			if (!SnapshotHelper::snapshotFileSystem(true, clientname, parent_backuppath_single, backuppath_single, errmsg))
 			{
-				ServerLogger::Log(logid, "Error renaming in snapshot (\"" + image_folder + os_file_sep() + parent_fn + "\" to \""+imgpath+"\")", LL_ERROR);
+				errmsg = trim(errmsg);
+				ServerLogger::Log(logid, "Could not create snapshot of previous image backup at " + parent_backuppath_single
+					+ (errmsg.empty() ? "" : (" \"" + errmsg + "\"")), LL_ERROR);
+				if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
+				{
+					Server->deleteFile(image_folder);
+				}
 				return std::string();
+			}
+			else
+			{
+				if (BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
+				{
+					std::string mountpoint = SnapshotHelper::getMountpoint(true, clientname, backuppath_single);
+					if (mountpoint.empty())
+					{
+						ServerLogger::Log(logid, "Could not find mountpoint of snapshot of client " + clientname + " path " + backuppath_single, LL_ERROR);
+						return std::string();
+					}
+
+					if (!os_link_symbolic(mountpoint, image_folder + "_new"))
+					{
+						ServerLogger::Log(logid, "Could create symlink to mountpoint at " + image_folder + " to " + mountpoint + ". " + os_last_error_str(), LL_ERROR);
+						return std::string();
+					}
+
+					if (!os_rename_file(image_folder + "_new", image_folder))
+					{
+						ServerLogger::Log(logid, "Could rename symlink at " + image_folder + "_new to " + image_folder + ". " + os_last_error_str(), LL_ERROR);
+						return std::string();
+					}
+				}
+
+				Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".hash");
+				Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".cbitmap");
+				Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".mbr");
+				Server->deleteFile(image_folder + os_file_sep() + parent_fn + ".sync");
+				os_rename_file(image_folder + os_file_sep() + parent_fn + ".bitmap", imgpath + ".bitmap");
+				if (!os_rename_file(image_folder + os_file_sep() + parent_fn, imgpath))
+				{
+					ServerLogger::Log(logid, "Error renaming in snapshot (\"" + image_folder + os_file_sep() + parent_fn + "\" to \"" + imgpath + "\")", LL_ERROR);
+					return std::string();
+				}
 			}
 		}
 	}

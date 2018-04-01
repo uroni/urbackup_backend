@@ -1065,7 +1065,8 @@ ACTION_IMPL(settings)
 					obj.set("overwrite", s.overwrite);
 				}
 
-				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled());
+				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled()
+					|| BackupServer::canReflink() );
 				ret.set("settings",  obj);
 
 				getArchiveSettings(ret, db, t_clientid);
@@ -1263,7 +1264,8 @@ ACTION_IMPL(settings)
 				obj.set("ONLY_WIN32_END","-->");
 				#endif //_WIN32
 
-				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled());
+				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled()
+					|| BackupServer::canReflink() );
 				ret.set("settings", obj);
 
 				getArchiveSettings(ret, db, t_clientid);

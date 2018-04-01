@@ -55,6 +55,7 @@ std::vector<std::string> BackupServer::force_offline_clients;
 std::map<std::string, std::vector<std::string> >  BackupServer::virtual_clients;
 IMutex* BackupServer::virtual_clients_mutex=NULL;
 bool BackupServer::can_mount_images = false;
+bool BackupServer::can_reflink = false;
 
 extern IFSImageFactory *image_fak;
 
@@ -850,6 +851,38 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 	}
 }
 
+void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
+{
+	Server->Log("Testing for reflinks in backup destination...", LL_DEBUG);
+
+	ServerSettings settings(db);
+
+	const std::string testfilename = "FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
+	const std::string testfilename_reflinked = testfilename + "_2";
+
+	std::string backupfolder = settings.getSettings()->backupfolder;
+
+	writestring("test", backupfolder + os_file_sep() + testfilename);
+
+	ScopedDeleteFn delete_fn(backupfolder + os_file_sep() + testfilename);
+
+	bool b = os_create_hardlink(backupfolder + os_file_sep() + testfilename_reflinked,
+		backupfolder + os_file_sep() + testfilename, true, NULL);
+
+	if (!b)
+	{
+		return;
+	}
+
+	ScopedDeleteFn delete_fn_2(backupfolder + os_file_sep() + testfilename_reflinked);
+
+	if (getFile(backupfolder + os_file_sep() + testfilename_reflinked)
+		== "test")
+	{
+		can_reflink = true;
+	}
+}
+
 bool BackupServer::isFilesystemTransactionEnabled()
 {
 	return filesystem_transactions_enabled;
@@ -858,6 +891,11 @@ bool BackupServer::isFilesystemTransactionEnabled()
 bool BackupServer::canMountImages()
 {
 	return can_mount_images;
+}
+
+bool BackupServer::canReflink()
+{
+	return can_reflink;
 }
 
 void BackupServer::updateDeletePending()
@@ -938,6 +976,7 @@ void BackupServer::enableSnapshots(int method)
 	if (snapshot_method == ESnapshotMethod_Btrfs)
 	{
 		file_snapshots_enabled = true;
+		can_reflink = true;
 	}
 	else if (snapshot_method == ESnapshotMethod_ZfsFile)
 	{
