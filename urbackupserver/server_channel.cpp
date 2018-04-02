@@ -959,10 +959,10 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	}
 	else
 	{
-		std::string clientname = get_clientname(db, clientid);
+		std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
 
 		if(clientname.empty()
-			|| !has_restore_permission(clientname, clientid))
+			|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
 		{
 			Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
 			_i64 r=-1;
