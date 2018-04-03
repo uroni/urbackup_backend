@@ -124,7 +124,7 @@ bool FullFileBackup::doFileBackup()
 	}
 	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
+		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this);
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
 	{

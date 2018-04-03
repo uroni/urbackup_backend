@@ -169,11 +169,11 @@ bool IncrFileBackup::doFileBackup()
 
 	Server->Log(clientname+": Connecting to client...", LL_DEBUG);
 	std::string identity = client_main->getIdentity();
-	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version, client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
+	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version, client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this);
 	std::auto_ptr<FileClientChunked> fc_chunked;
 	if(intra_file_diffs)
 	{
-		if(client_main->getClientChunkedFilesrvConnection(fc_chunked, server_settings.get(), 10000))
+		if(client_main->getClientChunkedFilesrvConnection(fc_chunked, server_settings.get(), this, 10000))
 		{
 			fc_chunked->setProgressLogCallback(this);
 			fc_chunked->setDestroyPipe(true);

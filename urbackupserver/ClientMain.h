@@ -170,6 +170,8 @@ public:
 
 	virtual bool handle_not_enough_space(const std::string &path);
 
+	virtual bool handle_not_enough_space(const std::string &path, logid_t logid);
+
 	static IFsFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
 
 	static void destroyTemporaryFile(IFile *tmp);
@@ -180,7 +182,8 @@ public:
 
 	_u32 getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms=10000);
 
-	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms=10000);
+	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked,
+		ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms=10000);
 
 	bool isOnInternetConnection()
 	{

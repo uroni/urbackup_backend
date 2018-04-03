@@ -746,7 +746,8 @@ private:
 
 		if(!fileclient_chunked.get())
 		{
-			if(!client_main->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
+			if(!client_main->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get(),
+				NULL))
 			{
 				ServerLogger::Log(logid, "Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
 				return false;

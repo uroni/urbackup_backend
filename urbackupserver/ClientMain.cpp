@@ -2486,8 +2486,12 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 	}
 }
 
-bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms)
+bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, 
+	ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms)
 {
+	if (no_free_space_callback == NULL)
+		no_free_space_callback = this;
+
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
@@ -2500,7 +2504,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe *cp=InternetServiceConnector::getConnection(curr_clientname, SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
 		{
-			fc_chunked.reset(new FileClientChunked(cp, false, &tcpstack, this, use_tmpfiles?NULL:this, identity, NULL));
+			fc_chunked.reset(new FileClientChunked(cp, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
 			fc_chunked->setReconnectionTimeout(c_internet_fileclient_timeout);
 		}
 		else
@@ -2514,7 +2518,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
 		{
-			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL:this, identity, NULL));
+			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
 		}
 		else
 		{
@@ -2637,7 +2641,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	return rp;
 }
 
-bool ClientMain::handle_not_enough_space(const std::string &path)
+bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
 {
 	int64 free_space=-1;
 	if(!path.empty())
@@ -2665,6 +2669,11 @@ bool ClientMain::handle_not_enough_space(const std::string &path)
 	}
 
 	return true;
+}
+
+bool ClientMain::handle_not_enough_space(const std::string & path)
+{
+	handle_not_enough_space(path, logid);
 }
 
 unsigned int ClientMain::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
