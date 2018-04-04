@@ -97,6 +97,13 @@ void logFailedLogin(Helper& helper, str_map& PARAMS, const std::string& username
 #endif
 }
 
+void logFailedAuth(const std::string& username, const std::string& remote_ip)
+{
+#ifndef _WIN32
+	syslog(LOG_AUTH | LOG_INFO, "Client authentication failure for %s from %s", username.c_str(), remote_ip.c_str());
+#endif
+}
+
 ACTION_IMPL(login)
 {
 	JSON::Object ret;
