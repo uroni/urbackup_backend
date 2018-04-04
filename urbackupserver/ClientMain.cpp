@@ -2673,7 +2673,7 @@ bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
 
 bool ClientMain::handle_not_enough_space(const std::string & path)
 {
-	handle_not_enough_space(path, logid);
+	return handle_not_enough_space(path, logid);
 }
 
 unsigned int ClientMain::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
