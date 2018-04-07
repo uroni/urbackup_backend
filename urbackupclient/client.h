@@ -431,6 +431,8 @@ private:
 		const std::string& filepath, const std::string& namedpath, const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs, bool calc_hashes);
 
+	bool hasHash(const std::vector<SFileAndHash>& fsfiles);
+
 	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
 

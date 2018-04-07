@@ -2371,6 +2371,16 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 	return calculated_hash;
 }
 
+bool IndexThread::hasHash(const std::vector<SFileAndHash>& fsfiles)
+{
+	for (size_t i = 0; i < fsfiles.size(); ++i)
+	{
+		if (!fsfiles[i].hash.empty())
+			return true;
+	}
+	return false;
+}
+
 std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path,
 	bool use_db, const std::string& fn_filter, bool use_db_hashes, const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs, int64& target_generation)
@@ -2493,6 +2503,17 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		{
 			if(fs_files!=db_files)
 			{
+#ifndef _WIN32
+				for (size_t i = 0; i < db_files.size(); ++i)
+				{
+					if (db_files[i].isdir
+						&& !std::binary_search(fs_files.begin(), fs_files.end(), db_files[i]))
+					{
+						cd->removeDeletedDir(path_lower + db_files[i].name + os_file_sep(), get_db_tgroup());
+					}
+				}
+#endif
+
 				++index_c_db_update;
 				modifyFilesInt(path_lower, get_db_tgroup(), fs_files, target_generation);
 			}
@@ -2500,7 +2521,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		else
 		{
 #ifndef _WIN32
-			if(calculate_filehashes_on_client)
+			if(calculate_filehashes_on_client
+				&& hasHash(fs_files) )
 			{
 #endif
 				addFilesInt(path_lower, get_db_tgroup(), fs_files);
