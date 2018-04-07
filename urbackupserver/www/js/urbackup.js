@@ -1105,6 +1105,76 @@ function build_client_download_select(client_downloads)
 	return ret;
 }
 
+function show_status_check1()
+{
+	new getJSON("status_check", "", show_status_check2);
+}
+
+function show_status_check2(data)
+{
+	if(!I("delayed_status_errors")) return;
+
+	var check_res="";
+	if(data.dir_error
+		&& (typeof data.dir_error_show === "undefined" || data.dir_error_show===true)  )
+	{
+		var ext_text="";
+		var generic_text=true;
+		if(data.dir_error_ext) ext_text=" ("+data.dir_error_ext+")";
+		if(data.system_err) ext_text+=". "+data.system_err;
+		
+		if(data.dir_error_hint)
+		{
+			if(data.dir_error_hint=="volume_not_accessible")
+			{
+				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\\\servername\\share).";
+			}
+			else if(data.dir_error_hint=="folder_unc_access_denied")
+			{
+				ext_text+="<br>UrBackup is denied access to the network share, probably because it does not have the correct credentials to access the server. To setup UrBackup server to backup to a network share please see the FAQ: <a href=\"https://www.urbackup.org/faq.html#use_shares\">https://www.urbackup.org/faq.html#use_shares</a>";
+			}
+			else if(data.dir_error_hint=="dos_names_created")
+			{
+				ext_text+="<br>MS-DOS 8.3 compatibility names are created on the backup storage. This can lead to problems. You can disable 8.3 name generation by runnning <br>"
+					+ "<code><pre>fsutil 8dot3name set "+data.dir_error_volume+" 1</pre></code><br>as administrator. UrBackup will stop showing this error after you run this command.";
+			}
+			else
+			{
+				ext_text+="<br>"+data.dir_error_hint;
+			}
+		}
+		
+		if( data.dir_error_ext
+			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
+				|| data.dir_error_ext=="dos_names_created") )
+		{
+			generic_text=false;
+		}
+		
+		if(data.detail_err_str)
+		{
+			ext_text+="<br><br>Detailed error info:<br><pre>"+data.detail_err_str+"</pre>";
+		}
+		
+		check_res+=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text"), generic_text: generic_text,
+											stop_show_key: data.dir_error_stop_show_key });
+	}
+	
+	var tmpdir_error="";
+	if(data.tmpdir_error
+		&& (typeof data.tmpdir_error_show === "undefined" || data.tmpdir_error_show===true )  )
+	{
+		check_res+=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
+	}
+	
+	var virus_error="";
+	if(data.virus_error
+		&& (typeof data.virus_error_show === "undefined" || data.virus_error_show===true )  )
+	{
+		check_res+=dustRender("virus_error", {stop_show_key: data.virus_error_stop_show_key, virus_error_path: data.virus_error_path});
+	}	
+	I("delayed_status_errors").innerHTML = check_res;
+}
 
 function show_status2(data)
 {
@@ -1285,64 +1355,10 @@ function show_status2(data)
 			}
 		}
 	}
-	var dir_error="";
-	if(data.dir_error
-		&& (typeof data.dir_error_show === "undefined" || data.dir_error_show===true)  )
-	{
-		var ext_text="";
-		var generic_text=true;
-		if(data.dir_error_ext) ext_text=" ("+data.dir_error_ext+")";
-		if(data.system_err) ext_text+=". "+data.system_err;
-		
-		if(data.dir_error_hint)
-		{
-			if(data.dir_error_hint=="volume_not_accessible")
-			{
-				ext_text+="<br>The entire drive is not accessible. If this is a network drive be aware that network drives are per user and UrBackup server runs as \"Local System\" user per default so it wont see your network drive. In this case you should use the UNC notation instead (\\\\servername\\share).";
-			}
-			else if(data.dir_error_hint=="folder_unc_access_denied")
-			{
-				ext_text+="<br>UrBackup is denied access to the network share, probably because it does not have the correct credentials to access the server. To setup UrBackup server to backup to a network share please see the FAQ: <a href=\"https://www.urbackup.org/faq.html#use_shares\">https://www.urbackup.org/faq.html#use_shares</a>";
-			}
-			else if(data.dir_error_hint=="dos_names_created")
-			{
-				ext_text+="<br>MS-DOS 8.3 compatibility names are created on the backup storage. This can lead to problems. You can disable 8.3 name generation by runnning <br>"
-					+ "<code><pre>fsutil 8dot3name set "+data.dir_error_volume+" 1</pre></code><br>as administrator. UrBackup will stop showing this error after you run this command.";
-			}
-			else
-			{
-				ext_text+="<br>"+data.dir_error_hint;
-			}
-		}
-		
-		if( data.dir_error_ext
-			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
-				|| data.dir_error_ext=="dos_names_created") )
-		{
-			generic_text=false;
-		}
-		
-		if(data.detail_err_str)
-		{
-			ext_text+="<br><br>Detailed error info:<br><pre>"+data.detail_err_str+"</pre>";
-		}
-		
-		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text"), generic_text: generic_text,
-											stop_show_key: data.dir_error_stop_show_key });
-	}
 	
-	var tmpdir_error="";
-	if(data.tmpdir_error
-		&& (typeof data.tmpdir_error_show === "undefined" || data.tmpdir_error_show===true )  )
+	if(data.has_status_check)
 	{
-		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text"), stop_show_key: data.tmpdir_error_stop_show_key});
-	}
-	
-	var virus_error="";
-	if(data.virus_error
-		&& (typeof data.virus_error_show === "undefined" || data.virus_error_show===true )  )
-	{
-		virus_error=dustRender("virus_error", {stop_show_key: data.virus_error_stop_show_key, virus_error_path: data.virus_error_path});
+		show_status_check1();
 	}
 	
 	var endian_info="";
@@ -1464,8 +1480,8 @@ function show_status2(data)
 	
 	g.server_identity = data.server_identity;
 	
-	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
-		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info, virus_error: virus_error,
+	ndata=dustRender("status_detail", {rows: rows, ses: g.session,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,

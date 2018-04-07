@@ -266,6 +266,7 @@
     <ClCompile Include="serverinterface\shutdown.cpp" />
     <ClCompile Include="serverinterface\start_backup.cpp" />
     <ClCompile Include="serverinterface\status.cpp" />
+    <ClCompile Include="serverinterface\status_check.cpp" />
     <ClCompile Include="serverinterface\usage.cpp" />
     <ClCompile Include="serverinterface\usagegraph.cpp" />
     <ClCompile Include="serverinterface\users.cpp" />

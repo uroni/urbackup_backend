@@ -22,4 +22,5 @@ namespace Actions
 	ACTION(add_client);
 	ACTION(restore_prepare_wait);
 	ACTION(scripts);
+	ACTION(status_check);
 }
