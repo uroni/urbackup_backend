@@ -106,6 +106,7 @@ public:
 	CondString getClientName(int clientid);
 	CondString getFileBackupPath(int backupid);
 	void removeFileBackup(int backupid);
+	void changeImagePath(const std::string& path, int backupid);
 	SFileBackupInfo getFileBackupInfo(int backupid);
 	SImageBackupInfo getImageBackupInfo(int backupid);
 	void removeImageSize(int backupid);
@@ -163,6 +164,7 @@ private:
 	IQuery* q_getClientName;
 	IQuery* q_getFileBackupPath;
 	IQuery* q_removeFileBackup;
+	IQuery* q_changeImagePath;
 	IQuery* q_getFileBackupInfo;
 	IQuery* q_getImageBackupInfo;
 	IQuery* q_removeImageSize;

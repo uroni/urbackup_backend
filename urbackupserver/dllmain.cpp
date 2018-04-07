@@ -2005,6 +2005,23 @@ bool upgrade55_56()
 	return b;
 }
 
+bool upgrade56_57()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE moved_clients (id INTEGER PRIMARY KEY, "
+		"from_name TEXT, "
+		"to_name TEXT)");
+
+	b &= db->Write("CREATE INDEX moved_clients_from_idx ON moved_clients(from_name)");
+
+	b &= db->Write("ALTER TABLE clients ADD uid TEXT");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2026,7 +2043,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=56;
+	int max_v=57;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2350,6 +2367,13 @@ void upgrade(void)
 				break;
 			case 55:
 				if (!upgrade55_56())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 56:
+				if (!upgrade56_57())
 				{
 					has_error = true;
 				}

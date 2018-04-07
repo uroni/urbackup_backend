@@ -337,6 +337,111 @@ std::vector<int> ServerBackupDao::getClientIds(void)
 
 /**
 * @-SQLGenAccess
+* @func vector<int> ServerBackupDao::getClientsByUid
+* @return int id
+* @sql
+*      SELECT id FROM clients WHERE uid=:uid(string)
+*/
+std::vector<int> ServerBackupDao::getClientsByUid(const std::string& uid)
+{
+	if(q_getClientsByUid==NULL)
+	{
+		q_getClientsByUid=db->Prepare("SELECT id FROM clients WHERE uid=?", false);
+	}
+	q_getClientsByUid->Bind(uid);
+	db_results res=q_getClientsByUid->Read();
+	q_getClientsByUid->Reset();
+	std::vector<int> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=watoi(res[i]["id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteClient
+* @sql
+*      DELETE FROM clients WHERE id=:clientid(int)
+*/
+void ServerBackupDao::deleteClient(int clientid)
+{
+	if(q_deleteClient==NULL)
+	{
+		q_deleteClient=db->Prepare("DELETE FROM clients WHERE id=?", false);
+	}
+	q_deleteClient->Bind(clientid);
+	q_deleteClient->Write();
+	q_deleteClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::changeClientName
+* @sql
+*      UPDATE clients SET name=:name(string), virtualmain=:virtualmain(string) WHERE id=:id(int)
+*/
+void ServerBackupDao::changeClientName(const std::string& name, const std::string& virtualmain, int id)
+{
+	if(q_changeClientName==NULL)
+	{
+		q_changeClientName=db->Prepare("UPDATE clients SET name=?, virtualmain=? WHERE id=?", false);
+	}
+	q_changeClientName->Bind(name);
+	q_changeClientName->Bind(virtualmain);
+	q_changeClientName->Bind(id);
+	q_changeClientName->Write();
+	q_changeClientName->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addClientMoved
+* @sql
+*      INSERT INTO moved_clients (from_name, to_name) VALUES (:from_name(string), :to_name(string))
+*/
+void ServerBackupDao::addClientMoved(const std::string& from_name, const std::string& to_name)
+{
+	if(q_addClientMoved==NULL)
+	{
+		q_addClientMoved=db->Prepare("INSERT INTO moved_clients (from_name, to_name) VALUES (?, ?)", false);
+	}
+	q_addClientMoved->Bind(from_name);
+	q_addClientMoved->Bind(to_name);
+	q_addClientMoved->Write();
+	q_addClientMoved->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<string> ServerBackupDao::getClientMoved
+* @return string from_name
+* @sql
+*	   SELECT from_name FROM moved_clients WHERE to_name=:to_name(string)
+*/
+std::vector<std::string> ServerBackupDao::getClientMoved(const std::string& to_name)
+{
+	if(q_getClientMoved==NULL)
+	{
+		q_getClientMoved=db->Prepare("SELECT from_name FROM moved_clients WHERE to_name=?", false);
+	}
+	q_getClientMoved->Bind(to_name);
+	db_results res=q_getClientMoved->Read();
+	q_getClientMoved->Reset();
+	std::vector<std::string> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=res[i]["from_name"];
+	}
+	return ret;
+}
+
+
+/**
+* @-SQLGenAccess
 * @func string ServerBackupDao::getSetting
 * @return string value
 * @sql
@@ -1693,6 +1798,11 @@ void ServerBackupDao::prepareQueries( void )
 	q_getLastFullDurations=NULL;
 	q_getClientSetting=NULL;
 	q_getClientIds=NULL;
+	q_getClientsByUid=NULL;
+	q_deleteClient=NULL;
+	q_changeClientName=NULL;
+	q_addClientMoved=NULL;
+	q_getClientMoved=NULL;
 	q_getSetting=NULL;
 	q_insertSetting=NULL;
 	q_updateSetting=NULL;
@@ -1770,6 +1880,11 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getLastFullDurations);
 	db->destroyQuery(q_getClientSetting);
 	db->destroyQuery(q_getClientIds);
+	db->destroyQuery(q_getClientsByUid);
+	db->destroyQuery(q_deleteClient);
+	db->destroyQuery(q_changeClientName);
+	db->destroyQuery(q_addClientMoved);
+	db->destroyQuery(q_getClientMoved);
 	db->destroyQuery(q_getSetting);
 	db->destroyQuery(q_insertSetting);
 	db->destroyQuery(q_updateSetting);

@@ -326,12 +326,16 @@ void ClientMain::operator ()(void)
 
 	int64 lastseen = Server->getTimeSeconds();
 	updateLastseen(lastseen);	
-		
-	if(!updateCapabilities())
+	
+	bool needs_restart = false;
+	if(!updateCapabilities(&needs_restart) || needs_restart)
 	{
-		Server->Log("Could not get client capabilities", LL_ERROR);
+		if (!needs_restart)
+		{
+			Server->Log("Could not get client capabilities", LL_ERROR);
 
-		Server->wait(5*60*1000); //5min
+			Server->wait(5 * 60 * 1000); //5min
+		}
 
 		pipe->Write("ok");
 		BackupServer::forceOfflineClient(clientname);
@@ -634,7 +638,7 @@ void ClientMain::operator ()(void)
 			{
 				update_capa = false;
 
-				updateCapabilities();
+				updateCapabilities(NULL);
 				client_updated_time=0;
 				session_identity_refreshtime = 0;
 				if (!authenticateIfNeeded(true, false))
@@ -1433,7 +1437,7 @@ void ClientMain::sendClientBackupIncrIntervall(void)
 	}	
 }
 
-bool ClientMain::updateCapabilities(void)
+bool ClientMain::updateCapabilities(bool* needs_restart)
 {
 	std::string cap=sendClientMessageRetry("CAPA", "Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
@@ -1586,6 +1590,15 @@ bool ClientMain::updateCapabilities(void)
 			{
 				ServerStatus::setRestore(clientname, ERestore_disabled);
 			}			
+		}
+		it = params.find("clientuid");
+		if (it != params.end())
+		{
+			if (needs_restart!=NULL
+				&& renameClient(it->second))
+			{
+				*needs_restart = true;
+			}
 		}
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
@@ -2063,7 +2076,7 @@ void ClientMain::checkClientVersion(void)
 				ServerLogger::Log(logid, "Updated client \""+clientname+"\" successfully", LL_INFO);
 			}
 
-			updateCapabilities();
+			updateCapabilities(NULL);
 		}
 	}
 }
@@ -3219,6 +3232,118 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 	}
 }
 
+}
+
+bool ClientMain::renameClient(const std::string & clientuid)
+{
+	std::vector<int> uids = backup_dao->getClientsByUid(clientuid);
+
+	if (uids.empty())
+		return false;
+
+	int rename_from = -1;
+	for (size_t i = 0; i < uids.size(); ++i)
+	{
+		if (uids[i] != clientid)
+		{
+			rename_from = static_cast<int>(uids[i]);
+		}
+	}
+
+	if (rename_from <= 0)
+		return false;
+
+	ServerBackupDao::SClientName old_name = backup_dao->getVirtualMainClientname(rename_from);
+
+	if (!old_name.exists)
+		return false;
+
+	std::string backupfolder = server_settings->getSettings()->backupfolder;
+	std::vector<std::string> old_backupfolders = backup_dao->getOldBackupfolders();
+
+	DBScopedSynchronous synchronous(db);
+	DBScopedWriteTransaction trans(db);
+
+	ServerCleanupDao cleanup_dao(db);
+
+	std::vector<ServerCleanupDao::SImageBackupInfo> images = cleanup_dao.getClientImages(clientid);
+
+	for (size_t i = 0; i < images.size(); ++i)
+	{
+		ClientMain::SPathComponents components = extractBackupComponents(images[i].path, backupfolder, old_backupfolders);
+
+		std::string new_path = backupfolder + os_file_sep() + clientname + os_file_sep() + components.path;
+
+		cleanup_dao.changeImagePath(new_path, images[i].id);
+	}
+
+	backup_dao->addClientMoved(old_name.name, clientname);
+
+	std::vector<std::string> moved_to = backup_dao->getClientMoved(old_name.name);
+	for (size_t i = 0; i < moved_to.size(); ++i)
+	{
+		backup_dao->addClientMoved(moved_to[i], clientname);
+	}
+
+	os_remove_dir(backupfolder + os_file_sep() + clientname);
+
+	os_rename_file(backupfolder + os_file_sep() + old_name.name,
+		backupfolder + os_file_sep() + clientname);
+
+	os_sync(backupfolder);
+
+	backup_dao->deleteClient(clientid);
+	backup_dao->changeClientName(clientname, clientmainname, rename_from);
+
+	clientid = rename_from;
+
+	return true;
+}
+
+ClientMain::SPathComponents ClientMain::extractBackupComponents(const std::string & path, const std::string& backupfolder, const std::vector<std::string>& old_backupfolders)
+{
+	ClientMain::SPathComponents ret;
+
+	size_t off = std::string::npos;
+	if (next(path, 0, backupfolder + os_file_sep()))
+	{
+		ret.backupfolder = backupfolder;
+		off = backupfolder.size() + 1;
+	}
+	else
+	{
+		for (size_t i = 0; i < old_backupfolders.size(); ++i)
+		{
+			if (next(path, 0, old_backupfolders[i] + os_file_sep()))
+			{
+				ret.backupfolder = old_backupfolders[i];
+				off = old_backupfolders[i].size() + 1;
+			}
+		}
+	}
+
+	if (off == std::string::npos)
+	{
+		size_t cpos = path.find(clientname);
+		if (cpos == std::string::npos)
+			return ret;
+
+		if (cpos == 0)
+			return ret;
+
+		ret.backupfolder = path.substr(0, cpos-1);
+		off = cpos;
+	}
+
+	size_t noff = path.find(os_file_sep(), off);
+
+	if (noff == std::string::npos)
+		return ret;
+
+	ret.clientname = path.substr(off, noff - off);
+	ret.path = path.substr(noff + 1);
+
+	return ret;
 bool ClientMain::startBackupBarrier( int64 timeout_seconds )
 {
 	IScopedLock lock(running_backup_mutex);

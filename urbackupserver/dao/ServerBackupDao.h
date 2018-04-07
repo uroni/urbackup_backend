@@ -100,6 +100,11 @@ public:
 	std::vector<SDuration> getLastFullDurations(int clientid);
 	CondString getClientSetting(const std::string& key, int clientid);
 	std::vector<int> getClientIds(void);
+	std::vector<int> getClientsByUid(const std::string& uid);
+	void deleteClient(int clientid);
+	void changeClientName(const std::string& name, const std::string& virtualmain, int id);
+	void addClientMoved(const std::string& from_name, const std::string& to_name);
+	std::vector<std::string> getClientMoved(const std::string& to_name);
 	CondString getSetting(int clientid, const std::string& key);
 	void insertSetting(const std::string& key, const std::string& value, int clientid);
 	void updateSetting(const std::string& value, const std::string& key, int clientid);
@@ -184,6 +189,11 @@ private:
 	IQuery* q_getLastFullDurations;
 	IQuery* q_getClientSetting;
 	IQuery* q_getClientIds;
+	IQuery* q_getClientsByUid;
+	IQuery* q_deleteClient;
+	IQuery* q_changeClientName;
+	IQuery* q_addClientMoved;
+	IQuery* q_getClientMoved;
 	IQuery* q_getSetting;
 	IQuery* q_insertSetting;
 	IQuery* q_updateSetting;

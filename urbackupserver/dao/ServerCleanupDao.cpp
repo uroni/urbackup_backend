@@ -544,6 +544,24 @@ void ServerCleanupDao::removeFileBackup(int backupid)
 
 /**
 * @-SQLGenAccess
+* @func void ServerCleanupDao::changeImagePath
+* @sql
+*	UPDATE backup_images SET path=:path(string) WHERE id=:backupid(int)
+*/
+void ServerCleanupDao::changeImagePath(const std::string& path, int backupid)
+{
+	if(q_changeImagePath==NULL)
+	{
+		q_changeImagePath=db->Prepare("UPDATE backup_images SET path=? WHERE id=?", false);
+	}
+	q_changeImagePath->Bind(path);
+	q_changeImagePath->Bind(backupid);
+	q_changeImagePath->Write();
+	q_changeImagePath->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func SFileBackupInfo ServerCleanupDao::getFileBackupInfo
 * @return int id, string backuptime, string path, int done
 * @sql
@@ -1282,6 +1300,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getClientName=NULL;
 	q_getFileBackupPath=NULL;
 	q_removeFileBackup=NULL;
+	q_changeImagePath=NULL;
 	q_getFileBackupInfo=NULL;
 	q_getImageBackupInfo=NULL;
 	q_removeImageSize=NULL;
@@ -1335,6 +1354,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getClientName);
 	db->destroyQuery(q_getFileBackupPath);
 	db->destroyQuery(q_removeFileBackup);
+	db->destroyQuery(q_changeImagePath);
 	db->destroyQuery(q_getFileBackupInfo);
 	db->destroyQuery(q_getImageBackupInfo);
 	db->destroyQuery(q_removeImageSize);

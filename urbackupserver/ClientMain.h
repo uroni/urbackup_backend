@@ -262,7 +262,7 @@ private:
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	bool isBackupsRunningOkay(bool file, bool incr=false);	
-	bool updateCapabilities(void);
+	bool updateCapabilities(bool* needs_restart);
 	IPipeThrottler *getThrottler(int speed_bps);
 	bool inBackupWindow(Backup* backup);
 	void updateClientAccessKey();
@@ -288,6 +288,17 @@ private:
 
 	void finishFailedRestore(std::string restore_identity, logid_t log_id, int64 status_id, int64 restore_id);
 
+
+	bool renameClient(const std::string& clientuid);
+
+	struct SPathComponents
+	{
+		std::string backupfolder;
+		std::string clientname;
+		std::string path;
+	};
+
+	SPathComponents extractBackupComponents(const std::string& path, const std::string& backupfolder, const std::vector<std::string>& old_backupfolders);
 	std::string curr_image_format;
 
 	IPipe *pipe;
