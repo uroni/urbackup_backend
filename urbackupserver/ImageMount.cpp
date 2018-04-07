@@ -221,7 +221,7 @@ namespace
 			mount_helper = "urbackup_mount_helper";
 		}
 
-		int rc = os_popen((mount_helper + " " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\" 2>1").c_str(), errmsg);
+		int rc = os_popen((mount_helper + " " + action + " \"" + clientname.value + "\" \"" + foldername + "\" \"" + imagename + "\" 2>&1").c_str(), errmsg);
 		if (rc != 0)
 		{
 			Server->Log("Image mounting failed: "+errmsg, LL_ERROR);
