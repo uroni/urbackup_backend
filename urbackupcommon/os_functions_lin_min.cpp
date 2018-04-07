@@ -51,6 +51,121 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
+std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignore_other_fs)
+{
+	if(has_error!=NULL)
+	{
+		*has_error=false;
+	}
+    std::string upath=(path);
+	std::vector<SFile> tmp;
+	DIR *dp;
+    struct dirent64 *dirp;
+    if((dp  = opendir(upath.c_str())) == NULL)
+	{
+		if(has_error!=NULL)
+		{
+			*has_error=true;
+		}
+        return tmp;
+    }
+	
+	dev_t parent_dev_id;
+	bool has_parent_dev_id=false;
+	if(ignore_other_fs)
+	{
+		struct stat64 f_info;
+		int rc=lstat64(upath.c_str(), &f_info);
+		if(rc==0)
+		{
+			has_parent_dev_id = true;
+			parent_dev_id = f_info.st_dev; 
+		}
+	}
+	
+	upath+=os_file_sep();
+
+    errno=0;
+    while ((dirp = readdir64(dp)) != NULL)
+	{
+		SFile f;
+        f.name=(dirp->d_name);
+		if(f.name=="." || f.name==".." )
+			continue;		
+
+		f.isdir=(dirp->d_type==DT_DIR);
+		
+		struct stat64 f_info;
+		int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+		if(rc==0)
+		{	
+			f.isdir = S_ISDIR(f_info.st_mode);
+			
+			if(ignore_other_fs && S_ISDIR(f_info.st_mode)
+				&& has_parent_dev_id && parent_dev_id!=f_info.st_dev)
+			{
+				continue;
+			}
+			
+			if(S_ISLNK(f_info.st_mode))
+			{
+				f.issym=true;
+				f.isspecialf=true;
+				struct stat64 l_info;
+				int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
+				
+				if(rc2==0)
+				{
+					f.isdir=S_ISDIR(l_info.st_mode);
+				}
+				else
+				{
+					f.isdir=false;
+				}
+			}
+			
+			f.usn = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
+			
+			if(!f.isdir)
+			{
+				if(!S_ISREG(f_info.st_mode) )
+				{
+					f.isspecialf=true;
+				}			
+				
+				f.size=f_info.st_size;
+			}
+			
+			f.last_modified=f_info.st_mtime;
+			f.created = f_info.st_ctime;
+			f.accessed = f_info.st_atime;
+		}
+		else
+		{
+			if(has_error!=NULL)
+			{
+				*has_error=true;
+			}
+			errno=0;
+			continue;
+		}
+		tmp.push_back(f);
+		errno=0;
+    }
+    
+    if(errno!=0)
+    {
+		if(has_error!=NULL)
+			*has_error=true;
+    }
+    
+    closedir(dp);
+	
+	std::sort(tmp.begin(), tmp.end());
+	
+    return tmp;
+}
+
 bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
 #ifndef sun

@@ -184,6 +184,27 @@ bool chown_dir(const std::string& dir)
 	return false;
 }
 
+bool ubuntu_guestmount_fix()
+{
+#ifdef __linux__
+	//workaround for https://bugs.launchpad.net/ubuntu/+source/linux/+bug/759725
+	if(getFile("/etc/os-release").find("NAME=\"Ubuntu\"")!=std::string::npos)
+	{
+		std::vector<SFile> files = getFiles("/boot");
+		for(size_t i=0;i<files.size();++i)
+		{
+			if(!files[i].isdir 
+				&& files[i].name.find("vmlinuz")==0)
+			{
+				if(chmod(("/boot/"+files[i].name).c_str(), S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IROTH)!=0)
+					return false;
+			}
+		}
+	}
+#endif //__linux__
+	return true;
+}
+
 #ifdef __linux__
 bool mount_linux_loop(const std::string& imagepath)
 {
@@ -326,7 +347,9 @@ bool mount_linux_loop(const std::string& imagepath)
 		uid="uid="+convert(user_info->pw_uid);
 		gid="gid="+convert(user_info->pw_gid);
 	}
-
+	
+	ubuntu_guestmount_fix();
+	
 	std::cout << "Guestmount..." << std::endl;
 	if(exec_wait("guestmount", true, "-r", "-n", "--format=raw", "-a", ("/dev/loop"+convert(devnum)).c_str(),
 				"-o", "kernel_cache",
@@ -461,6 +484,8 @@ bool mount_image(const std::string& imagepath)
 		{
 			mount_options+="uid="+convert(user_info->pw_uid)+",gid="+convert(user_info->pw_gid)+",allow_root";
 		}
+		
+		ubuntu_guestmount_fix();
 		
 		if(exec_wait(find_urbackupsrv_cmd(), true, "mount-vhd", "-f", imagepath.c_str(), "-m", mountpoint.c_str(), "-t", devpoint.c_str(), "-o", mount_options.c_str(), "--guestmount", NULL))
 		{
