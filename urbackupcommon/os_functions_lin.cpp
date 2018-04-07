@@ -359,8 +359,8 @@ int64 os_free_space(const std::string &path)
     int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
-		fsblkcnt_t blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
-		fsblkcnt_t free = blocksize*buf.f_bavail;
+		fsblkcnt64_t blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
+		fsblkcnt64_t free = blocksize*buf.f_bavail;
 		if(free>LLONG_MAX)
 		{
 			return LLONG_MAX;
