@@ -96,6 +96,7 @@ namespace
 	const unsigned int shadowcopy_startnew_timeout = 55 * 60 * 1000;
 	const size_t max_file_buffer_size = 4 * 1024 * 1024;
 	const int64 file_buffer_commit_interval = 120 * 1000;
+	const int64 link_file_min_size = 2048;
 }
 
 
@@ -2334,7 +2335,8 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			}
 
 			if(needs_hashing
-				&& calc_hashes)
+				&& calc_hashes
+				&& fsfile.size>= link_file_min_size)
 			{
 				fsfile.hash=getShaBinary(filepath+os_file_sep()+fsfile.name);
 				calculated_hash=true;
@@ -2357,6 +2359,9 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			{
 				continue;
 			}
+
+			if (dbfile.size < link_file_min_size)
+				continue;
 
 			dbfile.hash=getShaBinary(filepath+os_file_sep()+dbfile.name);
 			calculated_hash=true;
