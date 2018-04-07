@@ -2449,6 +2449,27 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		restore="client-confirms";
 	}
 
+	std::string clientuid;
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	IQuery* q_get_uid = db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
+	q_get_uid->Bind("clientuid_" + clientsubname);
+	db_results res = q_get_uid->Read();
+	if (res.empty())
+	{
+		IQuery* q_ins_uid = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?,?)", false);
+		q_ins_uid->Bind("clientuid_" + clientsubname);
+		q_ins_uid->Bind(Server->secureRandomString(16));
+		q_ins_uid->Write();
+		db->destroyQuery(q_ins_uid);
+		res = q_get_uid->Read();
+	}
+	db->destroyQuery(q_get_uid);
+	
+	if (!res.empty())
+	{
+		clientuid = res[0]["tvalue"];
+	}
+
 #ifdef _WIN32
 	std::string buf;
 	buf.resize(1024);
@@ -2480,8 +2501,8 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"+ send_prev_cbitmap+
-		conn_metered);
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered);
 #else
 
 #ifdef __APPLE__
@@ -2496,7 +2517,8 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple);
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&clientuid=" + EscapeParamString(clientuid));
 #endif
 }
 
