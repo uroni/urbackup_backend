@@ -3270,7 +3270,7 @@ bool ClientMain::renameClient(const std::string & clientuid)
 
 	ServerCleanupDao cleanup_dao(db);
 
-	std::vector<ServerCleanupDao::SImageBackupInfo> images = cleanup_dao.getClientImages(clientid);
+	std::vector<ServerCleanupDao::SImageBackupInfo> images = cleanup_dao.getClientImages(rename_from);
 
 	for (size_t i = 0; i < images.size(); ++i)
 	{
