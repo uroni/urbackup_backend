@@ -101,6 +101,7 @@ public:
 	CondString getClientSetting(const std::string& key, int clientid);
 	std::vector<int> getClientIds(void);
 	std::vector<int> getClientsByUid(const std::string& uid);
+	void updateClientUid(const std::string& uid, int clientid);
 	void deleteClient(int clientid);
 	void changeClientName(const std::string& name, const std::string& virtualmain, int id);
 	void addClientMoved(const std::string& from_name, const std::string& to_name);
@@ -191,6 +192,7 @@ private:
 	IQuery* q_getClientSetting;
 	IQuery* q_getClientIds;
 	IQuery* q_getClientsByUid;
+	IQuery* q_updateClientUid;
 	IQuery* q_deleteClient;
 	IQuery* q_changeClientName;
 	IQuery* q_addClientMoved;

@@ -1603,43 +1603,7 @@ void ServerCleanupThread::removeClient(int clientid)
 
 	ServerLogger::Log(logid, "Deleting database table entries of client..", LL_INFO);
 
-	//Remove logentries
-	IQuery *q=db->Prepare("DELETE FROM logs WHERE clientid=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
-	//history data
-	/*q=db->Prepare("SELECT hist_id FROM clients_hist WHERE id=?", false);
-	q->Bind(clientid);
-	res=q->Read(); q->Reset();
-	db->destroyQuery(q);
-	q=db->Prepare("DELETE FROM clients_hist_id WHERE id=?", false);
-	for(size_t i=0;i<res.size();++i)
-	{
-		q->Bind(res[i][L"hist_id"]);
-		q->Write();
-		q->Reset();
-	}
-	db->destroyQuery(q);*/
-	q=db->Prepare("DELETE FROM clients_hist WHERE id=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
-	//settings
-	q=db->Prepare("DELETE FROM settings_db.settings WHERE clientid=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
-	//stats
-	q=db->Prepare("DELETE FROM del_stats WHERE clientid=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
-	//client
-	q=db->Prepare("DELETE FROM clients WHERE id=?", false);
-	q->Bind(clientid); q->Write(); q->Reset();
-	db->destroyQuery(q);
-
+	deleteClientSQL(db, clientid);
 	//delete dirs
 	os_remove_nonempty_dir(settings.getSettings()->backupfolder+os_file_sep()+clientname);
 	Server->deleteFile(settings.getSettings()->backupfolder+os_file_sep()+"clients"+os_file_sep()+clientname);
@@ -2786,6 +2750,38 @@ bool ServerCleanupThread::cleanup_clientlists()
 	}
 
 	return !has_error;
+}
+
+void ServerCleanupThread::deleteClientSQL(IDatabase * db, int clientid)
+{
+	//Remove logentries
+	IQuery *q = db->Prepare("DELETE FROM logs WHERE clientid=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
+	//history data
+	q = db->Prepare("DELETE FROM clients_hist WHERE id=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
+	//settings
+	q = db->Prepare("DELETE FROM settings_db.settings WHERE clientid=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
+	//stats
+	q = db->Prepare("DELETE FROM del_stats WHERE clientid=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
+	q = db->Prepare("DELETE FROM client_replication WHERE clientid=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
+
+	//client
+	q = db->Prepare("DELETE FROM clients WHERE id=?", false);
+	q->Bind(clientid); q->Write(); q->Reset();
+	db->destroyQuery(q);
 }
 
 

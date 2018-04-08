@@ -362,6 +362,24 @@ std::vector<int> ServerBackupDao::getClientsByUid(const std::string& uid)
 
 /**
 * @-SQLGenAccess
+* @func void ServerBackupDao::updateClientUid
+* @sql
+*      UPDATE clients SET uid=:uid(string) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientUid(const std::string& uid, int clientid)
+{
+	if(q_updateClientUid==NULL)
+	{
+		q_updateClientUid=db->Prepare("UPDATE clients SET uid=? WHERE id=?", false);
+	}
+	q_updateClientUid->Bind(uid);
+	q_updateClientUid->Bind(clientid);
+	q_updateClientUid->Write();
+	q_updateClientUid->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerBackupDao::deleteClient
 * @sql
 *      DELETE FROM clients WHERE id=:clientid(int)
@@ -1824,6 +1842,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_getClientSetting=NULL;
 	q_getClientIds=NULL;
 	q_getClientsByUid=NULL;
+	q_updateClientUid=NULL;
 	q_deleteClient=NULL;
 	q_changeClientName=NULL;
 	q_addClientMoved=NULL;
@@ -1907,6 +1926,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getClientSetting);
 	db->destroyQuery(q_getClientIds);
 	db->destroyQuery(q_getClientsByUid);
+	db->destroyQuery(q_updateClientUid);
 	db->destroyQuery(q_deleteClient);
 	db->destroyQuery(q_changeClientName);
 	db->destroyQuery(q_addClientMoved);

@@ -113,6 +113,8 @@ public:
 	static bool findArchivedImageRef(ServerCleanupDao* cleanupdao, int backupid);
 
 	CleanupAction getCleanupAction() { return cleanup_action; }
+
+	static void deleteClientSQL(IDatabase* db, int clientid);
 private:
 
 	void do_cleanup(void);

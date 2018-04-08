@@ -3236,6 +3236,12 @@ bool ClientMain::renameClient(const std::string & clientuid)
 {
 	std::vector<int> uids = backup_dao->getClientsByUid(clientuid);
 
+	if (std::find(uids.begin(), uids.end(), clientid)
+		== uids.end())
+	{
+		backup_dao->updateClientUid(clientuid, clientid);
+	}
+
 	if (uids.empty())
 		return false;
 
@@ -3290,7 +3296,19 @@ bool ClientMain::renameClient(const std::string & clientuid)
 
 	os_sync(backupfolder);
 
-	backup_dao->deleteClient(clientid);
+	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");
+	if (internet_authkey.exists)
+	{
+		backup_dao->updateSetting(internet_authkey.value, "internet_authkey", rename_from);
+	}
+
+	ServerBackupDao::CondString computername = backup_dao->getSetting(clientid, "computername");
+	if (computername.exists)
+	{
+		backup_dao->updateSetting(computername.value, "computername", rename_from);
+	}
+
+	ServerCleanupThread::deleteClientSQL(db, clientid);
 	backup_dao->changeClientName(clientname, clientmainname, rename_from);
 
 	clientid = rename_from;
