@@ -3232,8 +3232,6 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 	}
 }
 
-}
-
 bool ClientMain::renameClient(const std::string & clientuid)
 {
 	std::vector<int> uids = backup_dao->getClientsByUid(clientuid);
@@ -3331,7 +3329,7 @@ ClientMain::SPathComponents ClientMain::extractBackupComponents(const std::strin
 		if (cpos == 0)
 			return ret;
 
-		ret.backupfolder = path.substr(0, cpos-1);
+		ret.backupfolder = path.substr(0, cpos - 1);
 		off = cpos;
 	}
 
@@ -3344,6 +3342,8 @@ ClientMain::SPathComponents ClientMain::extractBackupComponents(const std::strin
 	ret.path = path.substr(noff + 1);
 
 	return ret;
+}
+
 bool ClientMain::startBackupBarrier( int64 timeout_seconds )
 {
 	IScopedLock lock(running_backup_mutex);
