@@ -1065,6 +1065,9 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		}
 	}
 
+	ServerBackupDao backupdao(db);
+	std::vector<std::string> old_backupfolders = backupdao.getOldBackupfolders();
+
 	std::vector<db_single_result> to_delete;
 	bool has_delete = false;
 
@@ -1083,6 +1086,19 @@ void BackupServer::runServerRecovery(IDatabase * db)
 				&& os_directory_exists(os_file_prefix(backuppath + ".startup-del")) )
 			{
 				backuppath += ".startup-del";
+			}
+
+			if (!os_directory_exists(os_file_prefix(backuppath)))
+			{
+				for (size_t i = 0; i < old_backupfolders.size(); ++i)
+				{
+					std::string old_backuppath = old_backupfolders[i] + os_file_sep() + res["name"] + os_file_sep() + res["path"];
+					if (os_directory_exists(os_file_prefix(old_backuppath)))
+					{
+						backuppath = old_backuppath;
+						break;
+					}
+				}
 			}
 
 			bool delete_backup = false;
@@ -1175,9 +1191,30 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		db_single_result res;
 		while (cur.next(res))
 		{
-			std::string backupinfo = "[id=" + res["backupid"] + ", path=" + res["path"] + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
+			std::string path = res["path"];
+			std::string backupinfo = "[id=" + res["backupid"] + ", path=" + path + ", backuptime=" + res["backuptime"] + ", clientid=" + res["clientid"] + ", client=" + res["name"] + "]";
 
-			std::auto_ptr<IFile> image_f(Server->openFile(os_file_prefix(res["path"]), MODE_READ));
+			std::auto_ptr<IFile> image_f(Server->openFile(os_file_prefix(path), MODE_READ));
+
+			if (image_f.get() == NULL)
+			{
+				for (size_t i = 0; i < old_backupfolders.size(); ++i)
+				{
+					std::string old_path = path;
+					if (next(old_path, 0, backupfolder + os_file_sep()))
+					{
+						old_path.erase(0, backupfolder.size() + os_file_sep().size());
+						old_path = old_backupfolders[i] + os_file_sep() + old_path;
+					}
+
+					image_f.reset(Server->openFile(os_file_prefix(old_path), MODE_READ));
+					if (image_f.get() != NULL)
+					{
+						path = old_path;
+						break;
+					}
+				}
+			}
 
 			bool delete_backup = false;
 			bool delete_db_entry = false;
