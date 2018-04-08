@@ -51,7 +51,7 @@ urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.c
 urbackupclientctl_LDADD = 
 urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'
 if !WITH_ASSERTIONS
-urbackupclientctl_CPPFLAGS+=-DNDEBUG
+urbackupclientctl_CPPFLAGS=-DNDEBUG
 endif
 
 if MACOSX
