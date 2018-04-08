@@ -3265,6 +3265,19 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	std::string backupfolder = server_settings->getSettings()->backupfolder;
 	std::vector<std::string> old_backupfolders = backup_dao->getOldBackupfolders();
 
+	if (os_directory_exists(backupfolder + os_file_sep() + old_name.name + os_file_sep() + ".directory_pool"))
+	{
+		return false;
+	}
+
+	for (size_t i = 0; i < old_backupfolders.size(); ++i)
+	{
+		if (os_directory_exists(old_backupfolders[i] + os_file_sep() + old_name.name + os_file_sep() + ".directory_pool"))
+		{
+			return false;
+		}
+	}
+
 	DBScopedSynchronous synchronous(db);
 	DBScopedWriteTransaction trans(db);
 
