@@ -1815,28 +1815,89 @@ bool BackupServerHash::correctPath( std::string& ff, std::string& f_hashpath )
 		backupfolder = settings.getSettings()->backupfolder;
 	}
 
+	if (correctClientName(backupfolder, ff, f_hashpath))
+	{
+		return true;
+	}
+
 	for(size_t i=0;i<old_backupfolders.size();++i)
 	{
 		size_t erase_size = old_backupfolders[i].size() + os_file_sep().size();
 		if(ff.size()>erase_size &&
-			next(ff, 0, old_backupfolders[i]))
+			next(ff, 0, old_backupfolders[i] + os_file_sep()))
 		{
 			std::string tmp_ff = backupfolder + os_file_sep() + ff.substr(erase_size);
+
+			std::string tmp_hashff;
+			if (f_hashpath.size() > erase_size)
+			{
+				tmp_hashff = backupfolder + os_file_sep() + f_hashpath.substr(erase_size);
+			}
 						
-			IFile* f = Server->openFile(tmp_ff, MODE_READ);
+			IFile* f = Server->openFile(os_file_prefix(tmp_ff), MODE_READ);
 			if(f!=NULL)
 			{
 				Server->destroy(f);
 
-				if(f_hashpath.size()>erase_size)
-				{
-					f_hashpath = backupfolder + os_file_sep() + f_hashpath.substr(erase_size);
-				}
-
+				f_hashpath = tmp_hashff;
 				ff = tmp_ff;
 
 				return true;
 			}
+			else if (correctClientName(backupfolder, tmp_ff, tmp_hashff))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool BackupServerHash::correctClientName(const std::string& backupfolder, std::string & ff, std::string & f_hashpath)
+{
+	if (ff.size() <= backupfolder.size()
+		|| f_hashpath.size() <= backupfolder.size())
+		return false;
+
+	
+	size_t clientname_off = ff.find(os_file_sep(), backupfolder.size() + os_file_sep().size());
+	
+	if (clientname_off == std::string::npos)
+		return false;
+
+	std::string clientname = ff.substr(backupfolder.size() + 1, clientname_off - backupfolder.size() - 1);
+
+	ServerBackupDao backupdao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+
+	std::map<std::string, std::vector<std::string> >::iterator it = client_moved_to.find(clientname);
+
+	if (it == client_moved_to.end())
+	{
+		client_moved_to[clientname] = backupdao.getClientMovedFrom(clientname);
+		it = client_moved_to.find(clientname);
+	}
+
+	if (it->second.empty())
+		return false;
+
+	for (size_t i = 0; i < it->second.size(); ++i)
+	{
+		std::string tmp_ff = backupfolder + os_file_sep() + it->second[i] + ff.substr(clientname_off);
+
+		IFile* f = Server->openFile(os_file_prefix(tmp_ff), MODE_READ);
+		if (f != NULL)
+		{
+			Server->destroy(f);
+
+			if (f_hashpath.size()>clientname_off)
+			{
+				f_hashpath = backupfolder + os_file_sep() + it->second[i] + f_hashpath.substr(clientname_off);
+			}
+
+			ff = tmp_ff;
+
+			return true;
 		}
 	}
 

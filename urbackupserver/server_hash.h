@@ -131,6 +131,7 @@ private:
 	bool renameFile(IFile *tf, const std::string &dest);
 
 	bool correctPath(std::string& ff, std::string& f_hashpath);
+	bool correctClientName(const std::string& backupfolder, std::string& ff, std::string& f_hashpath);
 
 	bool punchHoleOrZero(IFile *tf, int64 offset, int64 size);
 
@@ -168,6 +169,7 @@ private:
 	std::string backupfolder;
 	bool old_backupfolders_loaded;
 	std::vector<std::string> old_backupfolders;
+	std::map<std::string, std::vector<std::string> > client_moved_to;
 
 	logid_t logid;
 
