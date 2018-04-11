@@ -1397,6 +1397,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							IFile *t_file=Server->openFile(os_file_prefix(imagefn), MODE_READ);
 							if(t_file!=NULL)
 							{
+								int64 image_size = t_file->RealSize();
+								Server->destroy(t_file);
+
 								std::auto_ptr<IFile> sync_f;
 								if (!vhdfile_err)
 								{
@@ -1411,7 +1414,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									}
 								}
 
-								int64 image_size = t_file->RealSize();
 								db->BeginWriteTransaction();
 								backup_dao->setImageSize(image_size, backupid);
 								backup_dao->addImageSizeToClient(clientid, image_size);
@@ -1446,8 +1448,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								{
 									db->EndTransaction();
 								}
-								
-								Server->destroy(t_file);
 							}
 
 							running_updater->stop();
