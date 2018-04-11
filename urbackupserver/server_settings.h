@@ -60,6 +60,7 @@ struct SSettings
 	std::string backup_window_full_image;
 	std::string computername;
 	std::string virtual_clients;
+	std::string virtual_clients_add;
 	std::string exclude_files;
 	std::string include_files;
 	std::string default_dirs;
@@ -224,6 +225,8 @@ public:
 	int getGlobalLocalSpeed();
 	int getInternetSpeed();
 	int getGlobalInternetSpeed();
+
+	std::string getVirtualClients();
 
 	static bool isInTimeSpan(std::vector<STimeSpan> bw);
 

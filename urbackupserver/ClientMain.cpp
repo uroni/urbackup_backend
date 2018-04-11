@@ -3316,7 +3316,7 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 
 void ClientMain::updateVirtualClients()
 {
-	std::string virtual_clients = server_settings->getSettings()->virtual_clients;
+	std::string virtual_clients = server_settings->getVirtualClients();
 	{
 		IScopedLock lock(clientaddr_mutex);
 

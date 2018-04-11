@@ -530,8 +530,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	if (settings_client->getValue("virtual_clients_add", &stmp))
 	{
-		if (!settings->virtual_clients.empty()) settings->virtual_clients += "|";
-		settings->virtual_clients += stmp;
+		settings->virtual_clients_add = stmp;
 	}
 
 	if(!settings->overwrite)
@@ -975,6 +974,18 @@ int ServerSettings::getInternetSpeed()
 int ServerSettings::getGlobalInternetSpeed()
 {
 	return static_cast<int>(round(currentTimeSpanValue(getSettings()->global_internet_speed)));
+}
+
+std::string ServerSettings::getVirtualClients()
+{
+	std::string ret = getSettings()->virtual_clients;
+	std::string add = getSettings()->virtual_clients_add;
+	if (!add.empty())
+	{
+		if (!ret.empty())ret += "|";
+		ret += add;
+	}
+	return ret;
 }
 
 double ServerSettings::currentTimeSpanValue(std::string time_span_value)
