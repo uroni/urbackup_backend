@@ -51,6 +51,7 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
+#ifdef __linux__
 std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
@@ -165,6 +166,7 @@ std::vector<SFile> getFiles(const std::string &path, bool *has_error, bool ignor
 	
     return tmp;
 }
+#endif
 
 bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
