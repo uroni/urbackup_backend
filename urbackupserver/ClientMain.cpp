@@ -1660,7 +1660,7 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 				backup_dao->insertSetting(it->second, val, clientid);
 				update_settings = true;
 			}
-			else if ( (it->first=="virtual_clients_add" || it->first=="image_snapshot_groups_def")
+			else if ( (it->second=="virtual_clients_add" || it->second =="image_snapshot_groups_def")
 				&& setting.value != val)
 			{
 				backup_dao->updateSetting(val, it->second, clientid);
