@@ -2440,6 +2440,17 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
+	str_map params;
+	if (cmd.size() > 5)
+	{
+		ParseParamStrHttp(cmd.substr(5), &params);
+	}
+
+	std::string clientsubname;
+	str_map::iterator it_clientsubname = params.find("clientsubname");
+	if (it_clientsubname != params.end())
+		clientsubname = it_clientsubname->second;
+
 	std::string client_version_str=std::string(c_client_version);
 
 	std::string restore=Server->getServerParameter("allow_restore");
