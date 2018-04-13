@@ -3262,6 +3262,9 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	if (!old_name.exists)
 		return false;
 
+	if (old_name.virtualmain == clientname)
+		return false;
+
 	std::string backupfolder = server_settings->getSettings()->backupfolder;
 	std::vector<std::string> old_backupfolders = backup_dao->getOldBackupfolders();
 
