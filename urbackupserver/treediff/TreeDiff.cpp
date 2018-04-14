@@ -179,6 +179,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, size_t depth, std::vector
 		else if(cmp<0)
 		{
 			c1=c1->getNextSibling();
+			subtreeChangedParent(t2);
 		}
 		else
 		{
@@ -209,17 +210,21 @@ void TreeDiff::subtreeChanged(TreeNode* t2)
 	TreeNode* p = t2->getParent();
 	if(p==NULL) return;
 
+	subtreeChangedParent(p);
+}
+
+void TreeDiff::subtreeChangedParent(TreeNode * p)
+{
 	do
 	{
-		if(p->getSubtreeChanged())
+		if (p->getSubtreeChanged())
 		{
 			return;
 		}
 
 		p->setSubtreeChanged(true);
 		p = p->getParent();
-	}
-	while(p!=NULL);
+	} while (p != NULL);
 }
 
 void TreeDiff::gatherLargeUnchangedSubtrees( TreeNode *t2, std::vector<size_t> &large_unchanged_subtrees )
