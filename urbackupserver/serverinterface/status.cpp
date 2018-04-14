@@ -111,46 +111,6 @@ void set_server_version_info(IDatabase* db, JSON::Object& ret)
 	}
 }
 
-void access_dir_details(std::string folder, std::string& ret)
-{
-	bool has_error = false;
-	getFiles(folder, &has_error);
-	if (has_error)
-	{
-		ret += "Cannot access " + folder + ". " + os_last_error_str() + "\n";
-	}
-	else
-	{
-		ret += "Can access " + folder + "\n";
-	}
-}
-
-std::string access_err_details(std::string folder)
-{
-	std::vector<std::string> toks;
-	Tokenize(folder, toks, os_file_sep());
-
-	std::string ret;
-
-	std::string cdir = os_file_sep();
-	access_dir_details(cdir, ret);
-
-	for (size_t i = 0; i < toks.size(); ++i)
-	{
-		if (toks[i].empty()) continue;
-
-		if (cdir!=os_file_sep())
-		{
-			cdir += os_file_sep();
-		}
-		cdir += toks[i];
-
-		access_dir_details(cdir, ret);
-	}
-
-	return ret;
-}
-
 void add_remove_stop_show(IDatabase* db, std::string stop_show, bool add)
 {
 	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='stop_show'");

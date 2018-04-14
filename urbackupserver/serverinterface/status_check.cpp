@@ -4,6 +4,46 @@
 
 namespace
 {
+	void access_dir_details(std::string folder, std::string& ret)
+	{
+		bool has_error = false;
+		getFiles(folder, &has_error);
+		if (has_error)
+		{
+			ret += "Cannot access " + folder + ". " + os_last_error_str() + "\n";
+		}
+		else
+		{
+			ret += "Can access " + folder + "\n";
+		}
+	}
+
+	std::string access_err_details(std::string folder)
+	{
+		std::vector<std::string> toks;
+		Tokenize(folder, toks, os_file_sep());
+
+		std::string ret;
+
+		std::string cdir = os_file_sep();
+		access_dir_details(cdir, ret);
+
+		for (size_t i = 0; i < toks.size(); ++i)
+		{
+			if (toks[i].empty()) continue;
+
+			if (cdir != os_file_sep())
+			{
+				cdir += os_file_sep();
+			}
+			cdir += toks[i];
+
+			access_dir_details(cdir, ret);
+		}
+
+		return ret;
+	}
+
 	std::string access_dir_hint(std::string folder)
 	{
 		if (folder.size() > 1 && folder[1] == ':')
