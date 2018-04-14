@@ -18,6 +18,7 @@ private:
 	static void gatherDeletes(TreeNode *t1, std::vector<size_t> &deleted_ids);
 	static void gatherLargeUnchangedSubtrees(TreeNode *t2, std::vector<size_t> &changed_subtrees);
 	static void subtreeChanged(TreeNode* t2);
+	static void subtreeChangedParent(TreeNode* p);
 	static size_t getTreesize(TreeNode* t, size_t limit);
 	static bool isSymlink(TreeNode* n, bool has_symbit, bool is_window);
 };
