@@ -450,7 +450,23 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight 
 {
 	struct stat stat_data;
 
-	if(stat(fn.c_str(), &stat_data)!=0)
+	int rc = stat(fn.c_str(), &stat_data);
+	
+	if(rc!=0 && errno==ENOENT)
+	{
+		//TODO: Return permissions of symlink and rework permission handling to separate symlink from normal file permissions
+		rc = lstat(fn.c_str(), &stat_data);
+		
+		if(rc!=0)
+		{
+			//For now permit only root
+			return translate_tokens(0, 0, 
+				stat_data.st_mode & ~(S_IROTH|S_IXOTH|S_IWOTH|S_IRGRP|S_IXGRP|S_IWGRP),
+				dao, right, token_cache);
+		}
+	}
+	
+	if(rc!=0)
 	{
 		Server->Log("Error stating file \"" + fn + "\" to get file tokens. Errno: "+convert(errno), LL_ERROR);
 		return std::string();
