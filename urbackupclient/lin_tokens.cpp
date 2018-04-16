@@ -454,7 +454,7 @@ std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight 
 		{
 			//For now permit only root
 			return translate_tokens(0, 0, 
-				stat_data.st_mode & ^(S_IROTH|S_IXOTH|S_IWOTH|S_IRGRP|S_IXGRP|S_IWGRP),
+				stat_data.st_mode & ~(S_IROTH|S_IXOTH|S_IWOTH|S_IRGRP|S_IXGRP|S_IWGRP),
 				dao, right, token_cache);
 		}
 	}
