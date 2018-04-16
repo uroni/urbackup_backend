@@ -775,6 +775,13 @@ namespace
 				{
 					return true;
 				}
+#ifdef __APPLE__
+				if (errno == EPERM)
+				{
+					//fs object does not support extended attributes
+					return true;
+				}
+#endif
                 Server->Log("Error getting extended attribute list of file "+fn+" errno: "+convert(errno), LL_ERROR);
                 return false;
             }
