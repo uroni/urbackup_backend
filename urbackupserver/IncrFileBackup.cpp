@@ -429,7 +429,8 @@ bool IncrFileBackup::doFileBackup()
 			}
 		}
 	}
-	else if (BackupServer::canReflink())
+	else if (BackupServer::canReflink()
+		&& !BackupServer::canHardlink())
 	{
 		crossvolume_links = true;
 	}

@@ -50,10 +50,11 @@ public:
 	static ESnapshotMethod getSnapshotMethod(bool image);
 
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
-	static void testFilesystemReflinkAvailability(IDatabase *db);
+	static void testFilesystemLinkAvailability(IDatabase *db, bool reflink);
 	static bool isFilesystemTransactionEnabled();
 	static bool canMountImages();
 	static bool canReflink();
+	static bool canHardlink();
 
 	static void updateDeletePending();
 
@@ -103,6 +104,7 @@ private:
 	static bool filesystem_transactions_enabled;
 	static bool use_tree_hashing;
 	static bool can_reflink;
+	static bool can_hardlink;
 
 	static volatile bool update_delete_pending_clients;
 	std::vector<std::string> delete_pending_clients;

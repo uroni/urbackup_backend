@@ -56,6 +56,7 @@ std::map<std::string, std::vector<std::string> >  BackupServer::virtual_clients;
 IMutex* BackupServer::virtual_clients_mutex=NULL;
 bool BackupServer::can_mount_images = false;
 bool BackupServer::can_reflink = false;
+bool BackupServer::can_hardlink = false;
 
 extern IFSImageFactory *image_fak;
 
@@ -171,7 +172,8 @@ void BackupServer::operator()(void)
 #endif
 		}
 	}
-	testFilesystemReflinkAvailability(db);
+	testFilesystemLinkAvailability(db, false);
+	testFilesystemLinkAvailability(db, true);
 	runServerRecovery(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
@@ -852,9 +854,11 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 	}
 }
 
-void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
+void BackupServer::testFilesystemLinkAvailability(IDatabase *db, bool reflink)
 {
-	Server->Log("Testing for reflinks in backup destination...", LL_DEBUG);
+	std::string test_type = reflink ? "reflink" : "hardlink";
+	std::string test_type_c = reflink ? "Reflink" : "Hardlink";
+	Server->Log("Testing for "+ test_type+"s in backup destination...", LL_DEBUG);
 
 	ServerSettings settings(db);
 
@@ -868,11 +872,11 @@ void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
 	ScopedDeleteFn delete_fn(backupfolder + os_file_sep() + testfilename);
 
 	bool b = os_create_hardlink(backupfolder + os_file_sep() + testfilename_reflinked,
-		backupfolder + os_file_sep() + testfilename, true, NULL);
+		backupfolder + os_file_sep() + testfilename, reflink, NULL);
 
 	if (!b)
 	{
-		Server->Log("Could not create reflink at backup destination. Reflinks disabled. "+os_last_error_str(), LL_DEBUG);
+		Server->Log("Could not create "+test_type+" at backup destination. "+ test_type_c+"s disabled. "+os_last_error_str(), LL_DEBUG);
 		return;
 	}
 
@@ -881,12 +885,15 @@ void BackupServer::testFilesystemReflinkAvailability(IDatabase *db)
 	if (getFile(backupfolder + os_file_sep() + testfilename_reflinked)
 		== "test")
 	{
-		Server->Log("Could create reflink at backup destination. Reflinks enabled.", LL_DEBUG);
-		can_reflink = true;
+		Server->Log("Could create "+test_type+" at backup destination. "+ test_type_c +"s enabled.", LL_DEBUG);
+		if (reflink)
+			can_reflink = true;
+		else
+			can_hardlink = true;
 	}
 	else
 	{
-		Server->Log("Reflink test file content wrong. Reflinks disabled.", LL_DEBUG);
+		Server->Log(test_type_c+" test file content wrong. "+ test_type_c +"s disabled.", LL_DEBUG);
 	}
 }
 
@@ -903,6 +910,11 @@ bool BackupServer::canMountImages()
 bool BackupServer::canReflink()
 {
 	return can_reflink;
+}
+
+bool BackupServer::canHardlink()
+{
+	return can_hardlink;
 }
 
 void BackupServer::updateDeletePending()
@@ -984,11 +996,13 @@ void BackupServer::enableSnapshots(int method)
 	{
 		file_snapshots_enabled = true;
 		can_reflink = true;
+		can_hardlink = false;
 	}
 	else if (snapshot_method == ESnapshotMethod_ZfsFile)
 	{
 		file_snapshots_enabled = true;
 		reflink_is_copy = true;
+		can_hardlink = false;
 	}
 }
 
@@ -1018,6 +1032,8 @@ namespace
 
 void BackupServer::runServerRecovery(IDatabase * db)
 {
+	return;
+
 	logid_t logid = ServerLogger::getLogId(LOG_CATEGORY_CLEANUP);
 	ScopedProcess recovery_process(std::string(), sa_startup_recovery, std::string(), logid, false, LOG_CATEGORY_CLEANUP);
 
