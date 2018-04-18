@@ -643,7 +643,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 		}
 		if (!b)
 		{
-			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
+			b = FileBackup::create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks, &copy);
 		}
 		if(!b)
 		{
@@ -1460,16 +1460,17 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 	_i64 dstfsize;
 	{
 		has_reflink=false;
+		bool copy = false;
 		if( use_reflink )
 		{
 			if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File)==0)
-				&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
+				&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL, &copy) )
 			{
 				ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed", LL_WARNING);
 			}
 			else
 			{
-				has_reflink=true;
+				has_reflink=!copy;
 			}
 		}
 
@@ -1590,8 +1591,9 @@ const size_t RP_COPY_BLOCKSIZE=1024;
 
 bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
+	bool copy = false;
 	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
-		&& ! FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+		&& ! FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL, &copy) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -2", LL_ERROR);
 
@@ -1678,6 +1680,10 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 				return false;
 			}
 		}
+		else if (copy)
+		{
+			cow_filesize += read1;
+		}
 
 		dst_pos+=read1;
 	}
@@ -1702,8 +1708,9 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &dest,
 	const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator)
 {
+	bool copy = false;
 	if( (!snapshot_file_inplace || (os_get_file_type(os_file_prefix(dest)) & EFileType_File) == 0)
-		&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
+		&& !FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL, &copy) )
 	{
 		ServerLogger::Log(logid, "Reflinking file \""+dest+"\" failed -3", LL_ERROR);
 
@@ -1738,6 +1745,11 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 		}
 
 		_i64 dst_size=dst->Size();
+
+		if (copy)
+		{
+			cow_filesize = dst_size;
+		}
 
 		dst_s.clear();
 
@@ -1786,7 +1798,7 @@ bool BackupServerHash::renameFile(IFile *tf, const std::string &dest)
 	{
 		std::string err = os_last_error_str();
 		if (use_reflink &&
-			FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL))
+			FileBackup::create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL, NULL))
 		{
 			Server->deleteFile(os_file_prefix(tf_fn));
 		}

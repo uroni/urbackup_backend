@@ -1070,10 +1070,11 @@ void FileBackup::log_progress(const std::string & fn, int64 total, int64 downloa
 	}
 }
 
-bool FileBackup::create_hardlink(const std::string & linkname, const std::string & fname, bool use_ioref, bool * too_many_links)
+bool FileBackup::create_hardlink(const std::string & linkname, const std::string & fname, bool use_ioref, bool * too_many_links, bool* copy)
 {
 	if (use_ioref && BackupServer::isReflinkCopy())
 	{
+		if (copy != NULL) *copy = true;
 		return copy_file(fname, linkname);
 	}
 
