@@ -173,7 +173,7 @@ void Alerts::operator()()
 				params["clientid"] = clientid;
 				params["clientname"] = res[i]["name"];
 				int update_freq_file_incr = server_settings.getUpdateFreqFileIncr();
-				int update_freq_file_full = server_settings.getUpdateFreqFileIncr();
+				int update_freq_file_full = server_settings.getUpdateFreqFileFull();
 				params["incr_file_interval"] = update_freq_file_incr;
 				params["full_file_interval"] = update_freq_file_full;
 				int update_freq_image_incr = server_settings.getUpdateFreqImageIncr();
