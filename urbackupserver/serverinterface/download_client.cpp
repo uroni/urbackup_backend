@@ -255,6 +255,6 @@ ACTION_IMPL(download_client)
 	if(!errstr.empty())
 	{
 		Server->Log(errstr, LL_ERROR);
-		helper.Write("ERROR: "+errstr);
+		helper.Write("ERROR: "+errstr, false);
 	}
 }

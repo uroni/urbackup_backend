@@ -182,8 +182,12 @@ Helper::~Helper(void)
 	}
 }
 
-void Helper::Write(std::string str)
+void Helper::Write(std::string str, bool content_type_json)
 {
+	if (content_type_json)
+	{
+		Server->setContentType(tid, "application/json");
+	}
 	Server->Write( tid, str );
 }
 

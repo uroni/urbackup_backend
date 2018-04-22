@@ -28,7 +28,7 @@ public:
 
 	std::string getLanguage(void);
 
-	void Write(std::string str);
+	void Write(std::string str, bool content_type_json=true);
 	void WriteTemplate(ITemplate *tmpl);
 
 	void releaseAll(void);
