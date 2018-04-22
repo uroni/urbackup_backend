@@ -1127,7 +1127,7 @@ bool ClientMain::isUpdateFullImage(void)
 	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 	for(size_t i=0;i<vols.size();++i)
 	{
-		if( isUpdateFullImage(vols[i]+":") )
+		if( isUpdateFullImage(vols[i]) )
 		{
 			return true;
 		}
@@ -1140,7 +1140,7 @@ bool ClientMain::isUpdateIncrImage(void)
 	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 	for(size_t i=0;i<vols.size();++i)
 	{
-		if( isUpdateIncrImage(vols[i]+":") )
+		if( isUpdateIncrImage(vols[i]) )
 		{
 			return true;
 		}
