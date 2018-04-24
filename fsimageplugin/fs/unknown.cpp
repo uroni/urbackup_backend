@@ -27,7 +27,7 @@
 #define DEF_BLOCKSIZE 4096
 
 FSUnknown::FSUnknown(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
-	: Filesystem(pDev, read_ahead, next_block_callback)
+	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
 {
 	if(has_error)
 		return;
