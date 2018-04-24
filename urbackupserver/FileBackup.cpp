@@ -838,7 +838,8 @@ bool FileBackup::doBackup()
 	}	
 
 	local_hash->deinitDatabase();
-	
+
+	stopPhashDownloadThread();	
 
 	if(disk_error)
 	{
@@ -2427,6 +2428,8 @@ bool FileBackup::stopPhashDownloadThread()
 	{
 		++num_issues;
 	}
+
+	phash_load.reset();
 
 	return true;
 }
