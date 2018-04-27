@@ -19,11 +19,7 @@
 
 class VHDFile;
 
-namespace
-{
-	class ReadaheadThread;
-}
-
+class Filesystem_ReadaheadThread;
 class Filesystem;
 
 enum ENextBlockState
@@ -98,7 +94,7 @@ protected:
 
 	std::vector<char*> buffers;
 	std::auto_ptr<IMutex> buffer_mutex;
-	std::auto_ptr<ReadaheadThread> readahead_thread;
+	std::auto_ptr<Filesystem_ReadaheadThread> readahead_thread;
 	THREADPOOL_TICKET readahead_thread_ticket;
 
 	size_t num_uncompleted_blocks;
