@@ -41,174 +41,6 @@ namespace
 	const size_t slow_read_warning_seconds = 5 * 60;
 	const size_t max_read_wait_seconds = 60 * 60;
 
-
-	class ReadaheadThread : public IThread
-	{
-	public:
-		ReadaheadThread(Filesystem& fs, bool background_priority)
-			: fs(fs), 
-			  mutex(Server->createMutex()),
-			  start_readahead_cond(Server->createCondition()),
-			  read_block_cond(Server->createCondition()),
-			  current_block(-1),
-			  do_stop(false),
-			  readahead_miss(false),
-			  background_priority(background_priority)
-		{
-
-		}
-		~ReadaheadThread()
-		{
-			for(std::map<int64, char*>::iterator it=read_blocks.begin();
-				it!=read_blocks.end();++it)
-			{
-				fs.releaseBuffer(it->second);
-			}
-		}
-
-
-		void operator()()
-		{
-			ScopedBackgroundPrio background_prio(false);
-			if(background_priority)
-			{
-#ifndef _DEBUG
-				background_prio.enable();
-#endif
-			}
-
-			IScopedLock lock(mutex.get());
-			while(!do_stop)
-			{
-				if(read_blocks.size()>=readahead_num_blocks)
-				{
-					while(read_blocks.size()>readahead_low_level_blocks
-						&& !readahead_miss)
-					{
-						start_readahead_cond->wait(&lock);
-
-						if(do_stop) break;
-					}
-				}
-
-				if(do_stop) break;
-
-				while(current_block==-1)
-				{
-					start_readahead_cond->wait(&lock);
-
-					if(do_stop) break;
-				}
-
-				if(do_stop) break;
-
-				std::map<int64, char*>::iterator it;
-				do 
-				{
-					it = read_blocks.find(current_block);
-					if(it!=read_blocks.end())
-					{
-						current_block = fs.nextBlockInt(current_block);
-					}
-				} while (it!=read_blocks.end());
-
-				if(current_block!=-1)
-				{
-					int64 l_current_block = current_block;
-					lock.relock(NULL);
-					char* buf = fs.readBlockInt(l_current_block, false);
-					lock.relock(mutex.get());
-
-					read_blocks[l_current_block] = buf;
-
-					current_block = fs.nextBlockInt(l_current_block);
-
-					if(readahead_miss)
-					{
-						read_block_cond->notify_all();
-						readahead_miss=false;
-					}
-				}
-			}
-		}
-
-		char* getBlock(int64 block)
-		{
-			IScopedLock lock(mutex.get());
-
-			clearUnusedReadahead(block);
-
-			char* ret=NULL;
-			while(ret==NULL)
-			{
-				std::map<int64, char*>::iterator it=read_blocks.find(block);
-
-				if(it!=read_blocks.end())
-				{
-					ret = it->second;
-					read_blocks.erase(it);
-				}
-				else
-				{
-					readaheadFromInt(block);
-					readahead_miss=true;
-					read_block_cond->wait(&lock);
-				}
-			}
-
-			return ret;
-		}
-
-		void stop()
-		{
-			IScopedLock lock(mutex.get());
-			do_stop=true;
-			start_readahead_cond->notify_all();
-		}
-
-	private:
-
-		void readaheadFromInt(int64 pBlock)
-		{
-			current_block=pBlock;
-			start_readahead_cond->notify_all();
-		}
-
-		void clearUnusedReadahead(int64 pBlock)
-		{
-			for(std::map<int64, char*>::iterator it=read_blocks.begin();
-				it!=read_blocks.end();)
-			{
-				if(it->first<pBlock)
-				{
-					std::map<int64, char*>::iterator todel = it;
-					++it;
-					fs.releaseBuffer(todel->second);
-					read_blocks.erase(todel);
-				}
-				else
-				{
-					break;
-				}
-			}
-		}
-
-		std::auto_ptr<IMutex> mutex;
-		std::auto_ptr<ICondition> start_readahead_cond;
-		std::auto_ptr<ICondition> read_block_cond;
-		Filesystem& fs;
-
-		std::map<int64, char*> read_blocks;
-
-		bool readahead_miss;
-
-		int64 current_block;
-
-		bool do_stop;
-
-		bool background_priority;
-	};
-
 	int64 getLastSystemError()
 	{
 		int64 last_error;
@@ -235,6 +67,173 @@ namespace
 	}
 #endif
 }
+
+class Filesystem_ReadaheadThread : public IThread
+{
+public:
+	Filesystem_ReadaheadThread(Filesystem& fs, bool background_priority)
+		: fs(fs),
+		mutex(Server->createMutex()),
+		start_readahead_cond(Server->createCondition()),
+		read_block_cond(Server->createCondition()),
+		current_block(-1),
+		do_stop(false),
+		readahead_miss(false),
+		background_priority(background_priority)
+	{
+
+	}
+	~Filesystem_ReadaheadThread()
+	{
+		for (std::map<int64, char*>::iterator it = read_blocks.begin();
+			it != read_blocks.end(); ++it)
+		{
+			fs.releaseBuffer(it->second);
+		}
+	}
+
+
+	void operator()()
+	{
+		ScopedBackgroundPrio background_prio(false);
+		if (background_priority)
+		{
+#ifndef _DEBUG
+			background_prio.enable();
+#endif
+		}
+
+		IScopedLock lock(mutex.get());
+		while (!do_stop)
+		{
+			if (read_blocks.size() >= readahead_num_blocks)
+			{
+				while (read_blocks.size()>readahead_low_level_blocks
+					&& !readahead_miss)
+				{
+					start_readahead_cond->wait(&lock);
+
+					if (do_stop) break;
+				}
+			}
+
+			if (do_stop) break;
+
+			while (current_block == -1)
+			{
+				start_readahead_cond->wait(&lock);
+
+				if (do_stop) break;
+			}
+
+			if (do_stop) break;
+
+			std::map<int64, char*>::iterator it;
+			do
+			{
+				it = read_blocks.find(current_block);
+				if (it != read_blocks.end())
+				{
+					current_block = fs.nextBlockInt(current_block);
+				}
+			} while (it != read_blocks.end());
+
+			if (current_block != -1)
+			{
+				int64 l_current_block = current_block;
+				lock.relock(NULL);
+				char* buf = fs.readBlockInt(l_current_block, false);
+				lock.relock(mutex.get());
+
+				read_blocks[l_current_block] = buf;
+
+				current_block = fs.nextBlockInt(l_current_block);
+
+				if (readahead_miss)
+				{
+					read_block_cond->notify_all();
+					readahead_miss = false;
+				}
+			}
+		}
+	}
+
+	char* getBlock(int64 block)
+	{
+		IScopedLock lock(mutex.get());
+
+		clearUnusedReadahead(block);
+
+		char* ret = NULL;
+		while (ret == NULL)
+		{
+			std::map<int64, char*>::iterator it = read_blocks.find(block);
+
+			if (it != read_blocks.end())
+			{
+				ret = it->second;
+				read_blocks.erase(it);
+			}
+			else
+			{
+				readaheadFromInt(block);
+				readahead_miss = true;
+				read_block_cond->wait(&lock);
+			}
+		}
+
+		return ret;
+	}
+
+	void stop()
+	{
+		IScopedLock lock(mutex.get());
+		do_stop = true;
+		start_readahead_cond->notify_all();
+	}
+
+private:
+
+	void readaheadFromInt(int64 pBlock)
+	{
+		current_block = pBlock;
+		start_readahead_cond->notify_all();
+	}
+
+	void clearUnusedReadahead(int64 pBlock)
+	{
+		for (std::map<int64, char*>::iterator it = read_blocks.begin();
+			it != read_blocks.end();)
+		{
+			if (it->first<pBlock)
+			{
+				std::map<int64, char*>::iterator todel = it;
+				++it;
+				fs.releaseBuffer(todel->second);
+				read_blocks.erase(todel);
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	std::auto_ptr<IMutex> mutex;
+	std::auto_ptr<ICondition> start_readahead_cond;
+	std::auto_ptr<ICondition> read_block_cond;
+	Filesystem& fs;
+
+	std::map<int64, char*> read_blocks;
+
+	bool readahead_miss;
+
+	int64 current_block;
+
+	bool do_stop;
+
+	bool background_priority;
+};
 
 Filesystem::Filesystem(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, IFsNextBlockCallback* next_block_callback)
 	: buffer_mutex(Server->createMutex()), next_block_callback(next_block_callback), overlapped_next_block(-1),
@@ -532,7 +531,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 	}
 	else if (read_ahead == IFSImageFactory::EReadaheadMode_Thread)
 	{
-		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
+		readahead_thread.reset(new Filesystem_ReadaheadThread(*this, background_priority));
 		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get(), "device readahead");
 	}
 
