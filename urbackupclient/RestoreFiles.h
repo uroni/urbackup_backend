@@ -12,11 +12,7 @@
 #include <stack>
 
 class RestoreDownloadThread;
-
-namespace
-{
-	class ScopedRestoreUpdater;
-}
+class ScopedRestoreUpdater;
 
 namespace client
 {
