@@ -143,46 +143,6 @@ namespace
 		int64 last_fn_time;
 	};
 
-	class ScopedRestoreUpdater
-	{
-	public:
-		ScopedRestoreUpdater(int64 local_process_id, int64 restore_id, int64 status_id, std::string server_token)
-			: restore_updater(new RestoreUpdaterThread(local_process_id, restore_id, status_id, server_token))
-		{
-			restore_updater_ticket = Server->getThreadPool()->execute(restore_updater, "restore progress");
-		}
-
-		void update_pc(int new_pc, int64 total_bytes, int64 done_bytes)
-		{
-			restore_updater->update_pc(new_pc, total_bytes, done_bytes);
-		}
-
-		void update_fn(const std::string& fn, int fn_pc)
-		{
-			restore_updater->update_fn(fn, fn_pc);
-		}
-
-		void update_speed(double speed_bpms)
-		{
-			restore_updater->update_speed(speed_bpms);
-		}
-
-		void set_success(bool b)
-		{
-			restore_updater->set_success(b);
-		}
-
-		~ScopedRestoreUpdater()
-		{
-			restore_updater->stop();
-			Server->getThreadPool()->waitFor(restore_updater_ticket);
-		}
-
-	private:
-		RestoreUpdaterThread* restore_updater;
-		THREADPOOL_TICKET restore_updater_ticket;
-	};
-
 	const char ID_GRANT_ACCESS = 0;
 	const char ID_DENY_ACCESS = 1;
 
@@ -277,6 +237,46 @@ namespace
 		}
 	}
 }
+
+class ScopedRestoreUpdater
+{
+public:
+	ScopedRestoreUpdater(int64 local_process_id, int64 restore_id, int64 status_id, std::string server_token)
+		: restore_updater(new RestoreUpdaterThread(local_process_id, restore_id, status_id, server_token))
+	{
+		restore_updater_ticket = Server->getThreadPool()->execute(restore_updater, "restore progress");
+	}
+
+	void update_pc(int new_pc, int64 total_bytes, int64 done_bytes)
+	{
+		restore_updater->update_pc(new_pc, total_bytes, done_bytes);
+	}
+
+	void update_fn(const std::string& fn, int fn_pc)
+	{
+		restore_updater->update_fn(fn, fn_pc);
+	}
+
+	void update_speed(double speed_bpms)
+	{
+		restore_updater->update_speed(speed_bpms);
+	}
+
+	void set_success(bool b)
+	{
+		restore_updater->set_success(b);
+	}
+
+	~ScopedRestoreUpdater()
+	{
+		restore_updater->stop();
+		Server->getThreadPool()->waitFor(restore_updater_ticket);
+	}
+
+private:
+	RestoreUpdaterThread* restore_updater;
+	THREADPOOL_TICKET restore_updater_ticket;
+};
 
 
 RestoreFiles::~RestoreFiles()
