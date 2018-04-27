@@ -104,7 +104,7 @@ namespace
 		return strtoll(extract_digits(val).c_str(), NULL, 8);
 	}
 
-	bool check_header_checksum(const std::string& header)
+	bool check_header_checksum(const std::string& header, std::string& errmsg)
 	{
 		int64 checksum = extract_number(header, 148, 8);
 
@@ -126,6 +126,7 @@ namespace
 
 		if (checksum1 != checksum && checksum2 != checksum)
 		{
+			errmsg = "TAR checksum wrong. Checksum=" + convert(checksum) + " checksum1=" + convert(checksum1) + " checksum2=" + convert(checksum2);
 			return false;
 		}
 		else
@@ -280,11 +281,11 @@ bool PipeFileTar::Seek(_i64 spos)
 	return pipe_file->pipe_file->Seek(pf_offset);
 }
 
-bool PipeFileTar::switchNext(std::string& fn, bool& is_dir, bool& is_symlink, bool& is_special, std::string& symlink_target, int64& size, bool *has_error)
+bool PipeFileTar::switchNext(std::string& fn, bool& is_dir, bool& is_symlink, bool& is_special, std::string& symlink_target, int64& size, std::string & stderr_ret, bool *has_error)
 {
 	IScopedLock lock(mutex.get());
 
-	bool b= readHeader(has_error);
+	bool b= readHeader(has_error, stderr_ret);
 	if (b)
 	{
 		fn = tar_file.fn;
@@ -393,7 +394,7 @@ std::string PipeFileTar::buildCurrMetadata()
 	return std::string(data.getDataPtr(), data.getDataSize());
 }
 
-bool PipeFileTar::readHeader(bool* has_error)
+bool PipeFileTar::readHeader(bool* has_error, std::string & stderr_ret)
 {
 	int64 header_pos = file_offset + roundUp(tar_file.size, 512);
 	int64 cpos = pipe_file->pipe_file->getPos();
@@ -405,6 +406,7 @@ bool PipeFileTar::readHeader(bool* has_error)
 
 	if (header.size() != 512)
 	{
+		addErrMsg("Error reading tar header (1). Unexpected length " + convert(header.size()), stderr_ret);
 		if(has_error!=NULL) *has_error = true;
 		return false;
 	}
@@ -415,18 +417,23 @@ bool PipeFileTar::readHeader(bool* has_error)
 
 		if (header.size() != 512)
 		{
+			addErrMsg("Error reading tar header (2). Unexpected length " + convert(header.size()), stderr_ret);
 			if (has_error != NULL) *has_error = true;
 			return false;
 		}
 
 		if (is_zeroes(header))
 		{
+			Server->Log("Tar file EOF", LL_DEBUG);
 			return false;
 		}
 	}
 
-	if (!check_header_checksum(header))
+	std::string errmsg;
+	if (!check_header_checksum(header, errmsg))
 	{
+		addErrMsg(errmsg, stderr_ret);
+		addErrMsg("Current tar fn: "+extract_string(header, 0, 100), stderr_ret);
 		if (has_error != NULL) *has_error = true;
 		return false;
 	}
@@ -509,6 +516,24 @@ bool PipeFileTar::readHeader(bool* has_error)
 	}
 
 	return true;
+}
+
+void PipeFileTar::addErrMsg(const std::string& msg, std::string & stderr_ret)
+{
+	int64 timems = little_endian(Server->getTimeMS());
+	unsigned int le_size = little_endian(static_cast<unsigned int>(msg.size()+1));
+
+	stderr_ret.append(1, 0);
+
+	stderr_ret.append(reinterpret_cast<const char*>(&timems),
+		reinterpret_cast<const char*>(&timems) + sizeof(timems));
+
+	stderr_ret.append(reinterpret_cast<const char*>(&le_size),
+		reinterpret_cast<const char*>(&le_size) + sizeof(le_size));
+
+	stderr_ret.append(msg+"\n");
+
+	Server->Log(msg, LL_ERROR);
 }
 
 _u32 PipeFileTar::Write(const std::string & tw, bool * has_error)
@@ -596,7 +621,7 @@ std::string PipeFileTar::getStdErr()
 
 	while (true)
 	{
-		if(switchNext(fn, is_dir, is_symlink, is_special, symlink_target, size))
+		if(switchNext(fn, is_dir, is_symlink, is_special, symlink_target, size, stderr_ret))
 		{
 			if (!fn.empty() && fn[fn.size() - 1] == '/')
 			{
