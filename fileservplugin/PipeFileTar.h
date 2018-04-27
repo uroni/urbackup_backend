@@ -99,7 +99,7 @@ public:
 
 	virtual bool Seek(_i64 spos);
 
-	bool switchNext(std::string& fn, bool& is_dir, bool& is_symlink, bool& is_special, std::string& symlink_target, int64& size, bool *has_error = NULL);
+	bool switchNext(std::string& fn, bool& is_dir, bool& is_symlink, bool& is_special, std::string& symlink_target, int64& size, std::string & stderr_ret, bool *has_error = NULL);
 
 	virtual _i64 Size();
 
@@ -126,7 +126,9 @@ private:
 
 	std::string buildCurrMetadata();
 
-	bool readHeader(bool* has_error);
+	bool readHeader(bool* has_error, std::string & stderr_ret);
+
+	void addErrMsg(const std::string& msg, std::string& stderr_ret);
 
 	int64 file_offset;	
 
