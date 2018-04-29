@@ -201,24 +201,28 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				meta_data.addString("");
 			}
 
-			if(meta_data.getDataSize()+2*sizeof(unsigned int)<metadata_buffer.size())
-			{
-				unsigned int data_size = little_endian(static_cast<unsigned int>(meta_data.getDataSize()));
-				memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
-				memcpy(metadata_buffer.data()+sizeof(unsigned int), meta_data.getDataPtr(), meta_data.getDataSize());
-				metadata_buffer_size = meta_data.getDataSize()+sizeof(unsigned int);
 
-				curr_checksum = urb_adler32(curr_checksum, metadata_buffer.data(), static_cast<_u32>(metadata_buffer_size));
-				unsigned int endian_curr_checksum = little_endian(curr_checksum);
-				memcpy(metadata_buffer.data()+metadata_buffer_size, &endian_curr_checksum, sizeof(endian_curr_checksum));
-				metadata_buffer_size+=sizeof(endian_curr_checksum);
-			}
-			else
+			size_t meta_size = meta_data.getDataSize() + 2 * sizeof(unsigned int);
+
+			if(meta_size>20*1024*1024)
 			{
-				Server->Log("File metadata of "+local_fn+" too large ("+convert((size_t)meta_data.getDataSize())+")", LL_ERROR);
+				Server->Log("File metadata of " + local_fn + " too large (" + convert((size_t)meta_data.getDataSize()) + ")", LL_ERROR);
 				return false;
 			}
-			
+			else if (meta_size > metadata_buffer.size())
+			{
+				metadata_buffer.resize(meta_size);
+			}
+
+			unsigned int data_size = little_endian(static_cast<unsigned int>(meta_data.getDataSize()));
+			memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
+			memcpy(metadata_buffer.data()+sizeof(unsigned int), meta_data.getDataPtr(), meta_data.getDataSize());
+			metadata_buffer_size = meta_data.getDataSize()+sizeof(unsigned int);
+
+			curr_checksum = urb_adler32(curr_checksum, metadata_buffer.data(), static_cast<_u32>(metadata_buffer_size));
+			unsigned int endian_curr_checksum = little_endian(curr_checksum);
+			memcpy(metadata_buffer.data()+metadata_buffer_size, &endian_curr_checksum, sizeof(endian_curr_checksum));
+			metadata_buffer_size+=sizeof(endian_curr_checksum);
 		}
 
 		if (metadata_buffer_size - metadata_buffer_off>0)
