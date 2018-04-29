@@ -50,11 +50,14 @@ namespace
 
 	std::string extract_string(const std::string& header, size_t off, size_t size)
 	{
-		for (size_t i = off; i < off+size; ++i)
+		if (header[off] > 0)
 		{
-			if (header[i] == 0)
+			for (size_t i = off; i < off + size; ++i)
 			{
-				return header.substr(off, i - off);
+				if (header[i] == 0)
+				{
+					return header.substr(off, i - off);
+				}
 			}
 		}
 		return header.substr(off, size);
@@ -85,12 +88,7 @@ namespace
 
 			for (size_t i = 1; i < val.size(); ++i)
 			{
-				f = val[i];
-				if (f == 0)
-				{
-					break;
-				}
-				res = (res << 8) | f;
+				res = (res << 8) | val[i];
 			}
 
 			if (neg)
