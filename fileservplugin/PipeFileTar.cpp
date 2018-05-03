@@ -50,6 +50,18 @@ namespace
 
 	std::string extract_string(const std::string& header, size_t off, size_t size)
 	{
+		for (size_t i = off; i < off + size; ++i)
+		{
+			if (header[i] == 0)
+			{
+				return header.substr(off, i - off);
+			}
+		}
+		return header.substr(off, size);
+	}
+
+	std::string extract_string_for_number(const std::string& header, size_t off, size_t size)
+	{
 		if (header[off] > 0)
 		{
 			for (size_t i = off; i < off + size; ++i)
@@ -78,7 +90,7 @@ namespace
 
 	int64 extract_number(const std::string& header, size_t off, size_t size)
 	{
-		std::string val = extract_string(header, off, size);
+		std::string val = extract_string_for_number(header, off, size);
 
 		if (!val.empty() && val[0] < 0)
 		{
