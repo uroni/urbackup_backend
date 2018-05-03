@@ -33,6 +33,8 @@ public:
 
 private:
 	int64 lasttime;
+	int64 next_reauth_time;
+	int64 reauth_tries;
 	int clientid;
 
 	int constructCapabilities(void);

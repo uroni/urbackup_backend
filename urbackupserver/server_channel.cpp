@@ -35,6 +35,7 @@
 #include <memory.h>
 #include <algorithm>
 #include <limits.h>
+#include <math.h>
 #include "../fileservplugin/IFileServ.h"
 #include "server_log.h"
 #include "restore_client.h"
@@ -159,7 +160,7 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::str
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
 	virtual_client(virtual_client), allow_shutdown(true),
-	parent(parent)
+	parent(parent), next_reauth_time(0), reauth_tries(0)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -307,8 +308,26 @@ void ServerChannelThread::doExit(void)
 
 std::string ServerChannelThread::processMsg(const std::string &msg)
 {
+	if (msg != "ERR")
+	{
+		reauth_tries = 0;
+		next_reauth_time = 0;
+	}
+
 	if(msg=="ERR")
 	{
+		if (next_reauth_time == 0
+			|| Server->getTimeMS() > next_reauth_time)
+		{
+			client_main->forceReauthenticate();
+			client_main->sendToPipe("WAKEUP");
+
+			++reauth_tries;
+
+			unsigned int waittime = (std::min)(static_cast<unsigned int>(1000.*pow(2., static_cast<double>(reauth_tries))), (unsigned int)30 * 60 * 1000);
+			waittime = (std::max)((unsigned int)60000, waittime);
+			next_reauth_time = Server->getTimeMS()+waittime;
+		}
 		return std::string();
 	}
 	else if(msg=="START BACKUP INCR")
