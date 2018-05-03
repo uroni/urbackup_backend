@@ -788,7 +788,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 					{
 						if(!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
 						{
-							ServerLogger::Log(logid, "Error truncating hashdata file -1", LL_ERROR);
+							ServerLogger::Log(logid, "Error truncating hashdata file -1. "+os_last_error_str(), LL_ERROR);
 						}
 					}
 				}
@@ -1557,7 +1557,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 	{
 		if (!os_file_truncate(dest, chunk_patcher.getFilesize()))
 		{
-			ServerLogger::Log(logid, "Error truncating \""+dest+"\" to "+convert(chunk_patcher.getFilesize()), LL_ERROR);
+			ServerLogger::Log(logid, "Error truncating \""+dest+"\" to "+convert(chunk_patcher.getFilesize())+". "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}
@@ -1697,7 +1697,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::string &dest, const std
 	{
 		if( !os_file_truncate(os_file_prefix(dest), tf->Size()) )
 		{
-			ServerLogger::Log(logid, "Error truncating file \""+dest+"\" -2", LL_ERROR);
+			ServerLogger::Log(logid, "Error truncating file \""+dest+"\" -2. "+os_last_error_str(), LL_ERROR);
 			return false;
 		}
 	}
@@ -1757,7 +1757,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 		{
 			if( !os_file_truncate(os_file_prefix(dest), tf->Size()) )
 			{
-				ServerLogger::Log(logid, "Error truncating file \""+dest+"\" -2", LL_ERROR);
+				ServerLogger::Log(logid, "Error truncating file \""+dest+"\" -2. "+os_last_error_str(), LL_ERROR);
 				return false;
 			}
 		}
