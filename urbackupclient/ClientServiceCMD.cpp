@@ -378,7 +378,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
-			mempipe
+			mempipe,
+			0
 		};
 
 		mempipe = Server->createMemoryPipe();
@@ -537,7 +538,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
-			mempipe
+			mempipe,
+			0
 		};
 
 		mempipe = Server->createMemoryPipe();
@@ -606,6 +608,7 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 		{
 			Server->destroy(mempipe);
 		}
+		++it->second.refcount;
 		mempipe = it->second.mempipe;
 		mempipe_owner = false;
 	}
@@ -2882,7 +2885,8 @@ void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
 
 	SAsyncFileList new_async_file_list = {
 		Server->getTimeMS(),
-		mempipe
+		mempipe,
+		0
 	};
 
 	CWData data;

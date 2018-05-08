@@ -171,6 +171,7 @@ struct SAsyncFileList
 {
 	int64 last_update;
 	IPipe* mempipe;
+	size_t refcount;
 };
 
 struct SVolumesCache;

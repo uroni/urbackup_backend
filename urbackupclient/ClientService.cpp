@@ -318,6 +318,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			std::string msg;
 			mempipe->Read(&msg, 0);
 
+			size_t mempipe_refcount=0;
 			if (state == CCSTATE_START_FILEBACKUP_ASYNC)
 			{
 				IScopedLock lock(backup_mutex);
@@ -328,6 +329,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 						&& msg!="phash")
 					{
 						Server->Log("Async index " + bytesToHex(it->first) + " finished with \"" + msg + "\"", LL_DEBUG);
+						if (it->second.refcount > 0) --it->second.refcount;
+						mempipe_refcount = it->second.refcount;
 						finished_async_file_index.push_back(std::make_pair(it->first, msg));
 						while (finished_async_file_index.size() > 10)
 						{
@@ -342,9 +345,15 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 			}
 
+			if (msg != "phash"
+				&& mempipe_refcount != 0)
+				int abc = 5;
+
 			if(msg=="exit")
 			{
-				mempipe->Write("exit");
+				if(mempipe_refcount==0)
+					mempipe->Write("exit");
+
 				mempipe=Server->createMemoryPipe();
 				mempipe_owner=true;
 				if(waitForThread())
@@ -358,7 +367,9 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			}
 			else if(msg=="done")
 			{
-				mempipe->Write("exit");
+				if (mempipe_refcount == 0)
+					mempipe->Write("exit");
+
 				mempipe=Server->createMemoryPipe();
 				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
@@ -372,7 +383,9 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			}
 			else if(!msg.empty())
 			{
-				mempipe->Write("exit");
+				if (mempipe_refcount == 0)
+					mempipe->Write("exit");
+
 				mempipe=Server->createMemoryPipe();
 				mempipe_owner=true;
 				tcpstack.Send(pipe, msg);
@@ -3423,6 +3436,10 @@ void ClientConnector::timeoutAsyncFileIndex()
 		{
 			Server->Log("Async index timeout: " + bytesToHex(it->first), LL_DEBUG);
 			std::map<std::string, SAsyncFileList>::iterator it_curr = it;
+			if (it->second.refcount == 0)
+			{
+				it->second.mempipe->Write("exit");
+			}
 			++it;
 			async_file_index.erase(it_curr);
 		}
