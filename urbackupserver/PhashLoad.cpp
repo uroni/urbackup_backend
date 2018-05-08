@@ -33,17 +33,31 @@ void PhashLoad::operator()()
 	fc->setNoFreeSpaceCallback(NULL);
 
 	std::string cfn = "SCRIPT|phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
-	phash_file = Server->openTemporaryFile();
+	std::auto_ptr<IFsFile> phash_file_dl(Server->openTemporaryFile());
 
-	if (phash_file == NULL)
+	if (phash_file_dl.get() == NULL)
 	{
-		ServerLogger::Log(logid, "Error opening random file for parallel hash load", LL_ERROR);
+		ServerLogger::Log(logid, "Error opening random file for parallel hash load. "+os_last_error_str(), LL_ERROR);
+		has_error = true;
+		return;
+	}
+
+	int mode = MODE_READ_SEQUENTIAL;
+#ifdef _WIN32
+	mode = MODE_READ_DEVICE;
+#endif
+	phash_file = Server->openFile(phash_file_dl->getFilename(), mode);
+
+	if(phash_file == NULL)
+	{
+		ScopedDeleteFn del_file(phash_file_dl->getFilename());
+		ServerLogger::Log(logid, "Error re-opening random file for parallel hash load. " + os_last_error_str(), LL_ERROR);
 		has_error = true;
 		return;
 	}
 
 	fc->setReconnectTries(5000);
-	_u32 rc = fc->GetFile(cfn, phash_file, true, false, 0, true, 0);
+	_u32 rc = fc->GetFile(cfn, phash_file_dl.get(), true, false, 0, true, 0);
 
 	if (rc != ERR_SUCCESS)
 	{

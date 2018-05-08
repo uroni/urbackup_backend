@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "client.h"
+#include "ParallelHash.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../Interface/SettingsReader.h"
@@ -604,6 +605,13 @@ void IndexThread::operator()(void)
 			{
 				async_timeout_starttime = Server->getTimeMS();
 			}
+
+			if (phash_queue != NULL
+				&& phash_queue->deref())
+			{
+				delete phash_queue;
+			}
+			phash_queue = NULL;
 		}
 		else if(action==IndexThreadAction_StartFullFileBackup)
 		{
@@ -690,6 +698,13 @@ void IndexThread::operator()(void)
 			{
 				async_timeout_starttime = Server->getTimeMS();
 			}
+
+			if (phash_queue != NULL
+				&& phash_queue->deref())
+			{
+				delete phash_queue;
+			}
+			phash_queue = NULL;
 		}
 		else if(action==IndexThreadAction_CreateShadowcopy
 			 || action==IndexThreadAction_ReferenceShadowcopy )
@@ -3398,6 +3413,11 @@ void IndexThread::onReadError(const std::string& sharename, const std::string& f
 	{
 		read_errors.push_back(read_error);
 	}
+}
+
+void IndexThread::deregisterFileSrvScriptFn(const std::string & fn)
+{
+	filesrv->deregisterScriptPipeFile(fn);
 }
 
 std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
@@ -7040,12 +7060,19 @@ void IndexThread::postSnapshotProcessing(SCRef * ref, bool full_backup)
 
 void IndexThread::initParallelHashing(const std::string & async_ticket)
 {
-	phash_queue = Server->openTemporaryFile();
+	if (phash_queue != NULL
+		&& phash_queue->deref())
+	{
+		delete phash_queue;
+	}
+	std::string fn = "phash_" + bytesToHex(async_ticket);
+	phash_queue = new SQueueRef(Server->openTemporaryFile(), this, fn);
+	phash_queue->ref();
 	phash_queue_write_pos = 0;
 	os_create_dir(Server->getServerWorkingDir() + "urbackup" + os_file_sep() + "phash");
 	filesrv->shareDir("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}", Server->getServerWorkingDir() + "/urbackup/phash", std::string(), true);
-	ParallelHash* phash = new ParallelHash(phash_queue, sha_version);
-	filesrv->registerScriptPipeFile("phash_"+bytesToHex(async_ticket), phash);
+	ParallelHash* phash = new ParallelHash(phash_queue->ref(), sha_version);
+	filesrv->registerScriptPipeFile(fn, phash);
 }
 
 bool IndexThread::addToPhashQueue(CWData & data)
@@ -7058,10 +7085,11 @@ bool IndexThread::addToPhashQueue(CWData & data)
 
 bool IndexThread::commitPhashQueue()
 {
-	if (phash_queue == NULL)
+	if (phash_queue == NULL
+		|| phash_queue->phash_queue==NULL)
 		return true;
 
-	bool ret = phash_queue->Write(phash_queue_write_pos, phash_queue_buffer.data(), static_cast<_u32>(phash_queue_buffer.size())) == phash_queue_buffer.size();
+	bool ret = phash_queue->phash_queue->Write(phash_queue_write_pos, phash_queue_buffer.data(), static_cast<_u32>(phash_queue_buffer.size())) == phash_queue_buffer.size();
 	if (ret)
 	{
 		phash_queue_write_pos += phash_queue_buffer.size();

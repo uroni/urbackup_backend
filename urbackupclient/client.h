@@ -11,7 +11,6 @@
 #include <map>
 #include "tokens.h"
 #include "ClientHash.h"
-#include "ParallelHash.h"
 
 #ifdef _WIN32
 #ifndef VSS_XP
@@ -270,7 +269,48 @@ struct SVssInstance
 class ClientDAO;
 struct SVolumesCache;
 
-class IndexThread : public IThread, public IFileServ::IReadErrorCallback
+class IDeregisterFileSrvScriptFn
+{
+public:
+	virtual void deregisterFileSrvScriptFn(const std::string& fn) = 0;
+};
+
+struct SQueueRef
+{
+	std::auto_ptr<IMutex> mutex;
+	IFile* phash_queue;
+	size_t refcount;
+	IDeregisterFileSrvScriptFn* dereg_fn;
+	std::string fn;
+
+	SQueueRef(IFile* phash_queue, IDeregisterFileSrvScriptFn* dereg_fn,
+		std::string fn)
+		: refcount(0),
+		mutex(Server->createMutex()),
+		phash_queue(phash_queue), dereg_fn(dereg_fn),
+		fn(fn) {}
+
+	~SQueueRef()
+	{
+		ScopedDeleteFile delf(phash_queue);
+		if (dereg_fn != NULL)
+			dereg_fn->deregisterFileSrvScriptFn(fn);
+	}
+
+	SQueueRef* ref() {
+		IScopedLock lock(mutex.get());
+		++refcount;
+		return this;
+	}
+
+	bool deref() {
+		IScopedLock lock(mutex.get());
+		--refcount;
+		return refcount == 0;
+	}
+};
+
+class IndexThread : public IThread, public IFileServ::IReadErrorCallback, public IDeregisterFileSrvScriptFn
 {
 public:
 	static const char IndexThreadAction_StartFullFileBackup;
@@ -326,6 +366,8 @@ public:
 	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
+
+	void deregisterFileSrvScriptFn(const std::string& fn);
 	
 private:
 	bool readBackupDirs(void);
@@ -702,7 +744,7 @@ private:
 	int64 index_hdat_fs_block_size;
 	int64 index_chunkhash_pos;
 	_u16 index_chunkhash_pos_offset;
-	IFile* phash_queue;
+	SQueueRef* phash_queue;
 	int64 phash_queue_write_pos;
 	std::vector<char> phash_queue_buffer;
 	int64 file_id;

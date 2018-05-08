@@ -6,6 +6,7 @@
 #include "../Interface/Mutex.h"
 #include "../common/data.h"
 #include "clientdao.h"
+#include "client.h"
 #include <memory>
 
 namespace
@@ -23,7 +24,7 @@ class ClientHash;
 class ParallelHash : public IPipeFileExt, public IThread
 {
 public:
-	ParallelHash(IFile* phash_queue, int sha_version);
+	ParallelHash(SQueueRef* phash_queue, int sha_version);
 
 	virtual bool getExitCode(int & exit_code);
 	virtual void forceExit();
@@ -46,7 +47,7 @@ private:
 	volatile bool do_quit;
 	volatile bool eof;
 	int64 phash_queue_pos;
-	IFile* phash_queue;
+	SQueueRef* phash_queue;
 	std::auto_ptr<IMutex> mutex;
 	std::string curr_dir;
 	int curr_tgroup;

@@ -14,7 +14,7 @@ namespace
 	const int64 file_buffer_commit_interval = 120 * 1000;
 }
 
-ParallelHash::ParallelHash(IFile * phash_queue, int sha_version)
+ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version)
 	: do_quit(false), phash_queue(phash_queue), phash_queue_pos(0),
 	stdout_buf_size(0), stdout_buf_pos(0), mutex(Server->createMutex()),
 	last_file_buffer_commit_time(0), sha_version(sha_version), eof(false)
@@ -95,32 +95,35 @@ void ParallelHash::operator()()
 {
 	ClientDAO clientdao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
-	while (!do_quit)
+	int mode = MODE_READ_SEQUENTIAL;
+#ifdef _WIN32
+	mode = MODE_READ_DEVICE;
+#endif
+	std::auto_ptr<IFile> phashf(Server->openFile(phash_queue->phash_queue->getFilename(), mode));
+
+	while (!do_quit
+		&& phashf.get()!=NULL)
 	{
 		bool had_msg = false;
-		if (phash_queue->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)))
+		if (phashf->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)))
 		{
 			_u32 msg_size;
-			if (phash_queue->Read(phash_queue_pos, reinterpret_cast<char*>(&msg_size), sizeof(msg_size))
+			if (phashf->Read(phash_queue_pos, reinterpret_cast<char*>(&msg_size), sizeof(msg_size))
 				== sizeof(msg_size))
 			{
-				if (phash_queue->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)) + msg_size)
+				if (phashf->Size() >= phash_queue_pos + static_cast<int64>(sizeof(_u32)) + msg_size)
 				{
 					had_msg = true;
 
-					std::string msg = phash_queue->Read(phash_queue_pos + sizeof(_u32), msg_size);
+					std::string msg = phashf->Read(phash_queue_pos + sizeof(_u32), msg_size);
 					CRData data(msg.data(), msg.size());
 					phash_queue_pos += sizeof(_u32) + msg_size;
 
-					if (!hashFile(data, clientdao))
-					{
-						Server->Log("Error hashing file. Data: " + msg, LL_ERROR);
-					}
+					hashFile(data, clientdao);
 
 					if (eof)
 					{
-						commitModifyFileBuffer(clientdao);
-						return;
+						break;
 					}
 				}
 			}
@@ -136,6 +139,12 @@ void ParallelHash::operator()()
 	}
 
 	commitModifyFileBuffer(clientdao);
+
+	if (phash_queue->deref())
+	{
+		delete phash_queue;
+		phash_queue = NULL;
+	}
 }
 
 bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
@@ -266,20 +275,24 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		HashSha256 hash_256;
 		if (!client_hash->getShaBinary(full_path, hash_256, false))
 		{
-			return false;
+			Server->Log("Error hashing file (0) " + full_path + ". " + os_last_error_str(), LL_DEBUG);
 		}
-
-		fandhash.hash = hash_256.finalize();
+		else
+		{
+			fandhash.hash = hash_256.finalize();
+		}
 	}
 	else if (sha_version == 528)
 	{
 		TreeHash treehash(client_hash->hasCbtFile() ? client_hash.get() : NULL);
 		if (!client_hash->getShaBinary(full_path, treehash, client_hash->hasCbtFile()))
 		{
-			return false;
+			Server->Log("Error hashing file (1) " + full_path+". "+os_last_error_str(), LL_DEBUG);
 		}
-
-		fandhash.hash = treehash.finalize();
+		else
+		{
+			fandhash.hash = treehash.finalize();
+		}
 
 #ifdef HASH_CBT_CHECK
 		TreeHash treehash2(client_hash->hasCbtFile() ? client_hash.get() : NULL);
@@ -298,10 +311,12 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 		HashSha512 hash_512;
 		if (!client_hash->getShaBinary(full_path, hash_512, false))
 		{
-			return false;
+			Server->Log("Error hashing file (2) " + full_path + ". " + os_last_error_str(), LL_DEBUG);
 		}
-
-		fandhash.hash = hash_512.finalize();
+		else
+		{
+			fandhash.hash = hash_512.finalize();
+		}
 	}
 
 	CWData wdata;
