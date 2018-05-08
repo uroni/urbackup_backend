@@ -407,3 +407,14 @@ void FileServ::registerScriptPipeFile(const std::string & script_fn, IPipeFileEx
 
 	script_mappings[script_fn] = SScriptMapping(script_fn, false, new PipeFileExt(pipe_file, script_fn));
 }
+
+void FileServ::deregisterScriptPipeFile(const std::string & script_fn)
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::string, SScriptMapping>::iterator it = script_mappings.find(script_fn);
+	if (it != script_mappings.end())
+	{
+		script_mappings.erase(it);
+	}
+}

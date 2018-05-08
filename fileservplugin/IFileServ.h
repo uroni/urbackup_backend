@@ -60,6 +60,7 @@ public:
 	virtual bool registerFnRedirect(const std::string& source_fn, const std::string& target_fn) = 0;
 	virtual void registerReadErrorCallback(IReadErrorCallback* cb) = 0;
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file) = 0;
+	virtual void deregisterScriptPipeFile(const std::string& script_fn) = 0;
 	virtual void clearReadErrors() = 0;
 
 	struct CbtHashFileInfo

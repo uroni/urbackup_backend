@@ -69,6 +69,8 @@ public:
 
 	virtual void registerScriptPipeFile(const std::string& script_fn, IPipeFileExt* pipe_file);
 
+	virtual void deregisterScriptPipeFile(const std::string& script_fn);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;

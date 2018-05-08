@@ -1,7 +1,8 @@
 #pragma once
 #include <stddef.h>
+#include "../Interface/Object.h"
 
-class IPipeFileExt
+class IPipeFileExt : public IObject
 {
 public:
 	virtual bool getExitCode(int & exit_code) = 0;
