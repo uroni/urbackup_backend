@@ -15,8 +15,7 @@ public:
 	class IUrlFunction
 	{
 	public:
-		virtual std::string downloadString(const std::string& url, const std::string& http_proxy = "",
-			std::string *errmsg = NULL) = 0;
+		virtual bool requestUrl(const std::string& url, str_map& params, std::string& ret, long& http_code, std::string *errmsg = NULL) = 0;
 	};
 
 	struct SInterpreterFunctions
@@ -151,5 +150,8 @@ public:
 
 
 	virtual std::string compileScript(const std::string& script) = 0;
-	virtual int64 runScript(const std::string& script, const Param& params, int64& ret2, std::string& state, std::string& global_data, const SInterpreterFunctions& funcs) = 0;
+	virtual int64 runScript(const std::string& script, const Param& params, int64& ret2,
+		std::string& state, std::string& state_mem,
+		std::string& global_data, 
+		std::string& global_data_mem, SInterpreterFunctions& funcs) = 0;
 };

@@ -2445,6 +2445,10 @@ function build_alert_params(alert_script)
 				{
 					val = params[param.name];
 				}
+				else
+				{
+					val = unescapeHTML(val);
+				}
 				var label = param.label;
 				if(param.has_translation==1)
 				{
@@ -2461,7 +2465,25 @@ function build_alert_params(alert_script)
 					
 				if(param.type=="str" || param.type=="num" || param.type=="int")
 				{
-					params_html+="<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTML(val)+"\" onchange=\"update_alert_params()\"/>";
+					console.log(val);
+					params_html+="<input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+escapeHTMLDoubleQuote(val)+"\" onchange=\"update_alert_params()\"/>";
+				}
+				else if(param.type=="choice")
+				{
+					params_html+="<select class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" onchange=\"update_alert_params()\">";
+					var toks = param.default_value.split("|");
+					for(var k=0;k<toks.length;++k)
+					{
+						if(toks[k]==params[param.name])
+						{
+							params_html+="<option selected>"+escapeHTML(toks[k])+"</option>";
+						}
+						else
+						{
+							params_html+="<option>"+escapeHTML(toks[k])+"</option>";
+						}
+					}
+					params_html+="</select>";
 				}
 				else
 				{
@@ -5421,6 +5443,7 @@ function show_scripts2(data)
 	{
 		var param = data.params[j];
 		param.idx = j;
+		param.default_value = unescapeHTML(param.default_value);
 		var sel="selected=\"selected\""
 		if(param.type=="num")
 			param.dtype_num=sel;
@@ -5428,6 +5451,8 @@ function show_scripts2(data)
 			param.dtype_int=sel;
 		else if(param.type=="bool")
 			param.dtype_bool=sel;
+		else if(param.type=="choice")
+			param.dtype_choice=sel;
 		params_html+=dustRender("alert_script_edit_params", param);
 		g.alert_script_idx.push(j);
 	}
@@ -5455,7 +5480,7 @@ function show_scripts2(data)
 		});
 	});
 	
-	if(data.id==1)
+	if(data.id==1 || data.id%100000==0)
 	{
 		disable_alert_edit(true);
 	}

@@ -11,4 +11,6 @@ public:
 	virtual std::vector<std::multimap<std::string, std::string> > queryLDAP(const std::string& url, const std::string& username, const std::string& password, std::string *errmsg=NULL);
 
 	virtual bool downloadFile(const std::string& url, IFile* output, const std::string& http_proxy = "", std::string *errmsg=NULL);
+
+	virtual bool requestUrl(const std::string & url, str_map & params, std::string& ret, long& http_code, std::string * errmsg = NULL);
 };

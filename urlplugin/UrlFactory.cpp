@@ -97,6 +97,23 @@ namespace
 
 		return bytes;
 	}
+
+	size_t read_string_callback(char *buffer, size_t size, size_t nitems, void *instream)
+	{
+		std::string* data = reinterpret_cast<std::string*>(instream);
+
+		size_t bytes = size*nitems;
+
+		size_t toread = (std::min)(bytes, data->size());
+
+		if (toread > 0)
+		{
+			memcpy(buffer, &(*data)[0], toread);
+			data->erase(0, toread);
+		}
+
+		return toread;
+	}
 }
 
 bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::string> &to, 
@@ -252,6 +269,200 @@ bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::
 
 	curl_easy_cleanup(curl);
 	return res==CURLE_OK;
+}
+
+bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::string& ret, long& http_code, std::string * errmsg)
+{
+	if (errmsg != NULL)
+	{
+		errmsg->clear();
+	}
+	ret.clear();
+	http_code = 0;
+
+	CURL *curl = curl_easy_init();
+
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+	if (!params["http_proxy"].empty())
+	{
+		curl_easy_setopt(curl, CURLOPT_PROXY, params["http_proxy"].c_str());
+	}
+
+	if (params.find("method") != params.end())
+	{
+		std::string method = strlower(params["method"]);
+
+		if (method == "post")
+		{
+			curl_easy_setopt(curl, CURLOPT_POST, 1);
+		}
+		else if (method == "put")
+		{
+			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+		}
+		else if (method == "delete")
+		{
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+		}
+	}
+
+	if (params.find("transfer_encoding") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_TRANSFER_ENCODING, params["transfer_encoding"].c_str());
+	}
+
+	struct curl_slist *headers = NULL;
+	if (params.find("content_type") != params.end())
+	{
+		headers = curl_slist_append(headers, ("content-type: "+params["content_type"]).c_str());
+	}
+
+	if (params.find("postdata") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(params["postdata"].size()));
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params["postdata"].c_str());
+	}
+
+	if (params.find("putdata") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_string_callback);
+		curl_easy_setopt(curl, CURLOPT_READDATA, params["postdata"].size());
+		curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(params["putdata"].size()));
+	}
+
+	if (params.find("addheader") != params.end())
+	{
+		headers = curl_slist_append(headers, params["addheader"].c_str());
+	}
+
+	size_t idx = 0;
+	while (params.find("addheader"+convert(idx)) != params.end())
+	{
+		headers = curl_slist_append(headers, params["addheader" + convert(idx)].c_str());
+		++idx;
+	}
+
+	if (params.find("cookie") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_COOKIE, params["cookie"].size());
+	}
+
+	if (params.find("expect_100_timeout_ms") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_EXPECT_100_TIMEOUT_MS, static_cast<long>(watoi(params["expect_100_timeout_ms"])));
+	}
+
+	if (params.find("timeout") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, static_cast<long>(watoi(params["timeout"])));
+	}
+
+	if (params.find("timeout_ms") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(watoi(params["timeout_ms"])));
+	}
+
+	if (params.find("low_speed_limit") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, static_cast<long>(watoi(params["low_speed_limit"])));
+	}
+	
+	if (params.find("low_speed_time") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, static_cast<long>(watoi(params["low_speed_time"])));
+	}
+
+	if (params.find("connecttimeout") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout"])));
+	}
+
+	if (params.find("connecttimeout_ms") != params.end())
+	{
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, static_cast<long>(watoi(params["connecttimeout_ms"])));
+	}
+
+	if (params.find("use_ssl") != params.end())
+	{
+		long level;
+		std::string use_ssl = strlower(params["use_ssl"]);
+		if (use_ssl == "try")
+		{
+			level = CURLUSESSL_TRY;
+		}
+		else if (use_ssl == "control")
+		{
+			level = CURLUSESSL_CONTROL;
+		}
+		else if (use_ssl == "all"
+			|| use_ssl=="1"
+			|| use_ssl=="true")
+		{
+			level = CURLUSESSL_ALL;
+		}
+		else
+		{
+			level = CURLUSESSL_NONE;
+		}
+		curl_easy_setopt(curl, CURLOPT_USE_SSL, level);
+	}
+
+	if (params.find("ssl_verifypeer") != params.end())
+	{
+		if (params["ssl_verifypeer"]=="0"
+			|| strlower(params["ssl_verify_peer"])=="false")
+		{
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+		}
+	}
+
+	std::string basic_authorization;
+	if (params.find("basic_authorization") != params.end())
+	{
+		basic_authorization = base64_encode(reinterpret_cast<const unsigned char*>(params["basic_authorization"].c_str()),
+			static_cast<unsigned int>(params["basic_authorization"].size()));
+		basic_authorization = "Authorization: Basic " + basic_authorization;
+		headers = curl_slist_append(headers, basic_authorization.c_str());
+	}
+
+	if (headers != NULL)
+	{
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	}
+
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret);
+
+	std::string errbuf;
+	errbuf.resize(CURL_ERROR_SIZE * 2);
+	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CURLcode res = curl_easy_perform(curl);
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+	bool has_error = false;
+	if (res != CURLE_OK)
+	{
+		errbuf.resize(strlen(errbuf.c_str()));
+		if (errmsg == NULL)
+		{
+			Server->Log(std::string("Error during cURL operation occurred: ") + curl_easy_strerror(res) + " (ec=" + convert(res) + "), " + errbuf, LL_DEBUG);
+		}
+		else
+		{
+			*errmsg = std::string(curl_easy_strerror(res)) + "(ec=" + convert(res) + "), " + errbuf;
+		}
+		has_error = true;
+	}
+
+	if (headers != NULL)
+	{
+		curl_slist_free_all(headers);
+	}
+	curl_easy_cleanup(curl);
+	return !has_error;
 }
 
 namespace

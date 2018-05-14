@@ -35,6 +35,8 @@ public:
 
 	virtual std::vector<std::multimap<std::string, std::string> > queryLDAP(const std::string& url, const std::string& username,
 		const std::string& password, std::string *errmsg=NULL) = 0;
+
+	virtual bool requestUrl(const std::string& url, str_map& params, std::string& ret, long& http_code, std::string *errmsg = NULL) = 0;
 };
 
 #endif //IURLFACTORY_H

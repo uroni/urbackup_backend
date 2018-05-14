@@ -32,6 +32,28 @@ namespace
 
 namespace
 {
+	int time_monotonic_ms(lua_State *L) {
+		lua_pushnumber(L, static_cast<lua_Number>(Server->getTimeMS()));
+		return 1;
+	}
+
+	int time_unix_seconds(lua_State *L) {
+		lua_pushnumber(L, static_cast<lua_Number>(Server->getTimeSeconds()));
+		return 1;
+	}
+
+	static const luaL_Reg lib_time[] = {
+		{ "monotonic_ms",     time_monotonic_ms },
+		{ "unix_seconds",      time_unix_seconds },
+		{ NULL, NULL }
+	};
+
+
+	LUAMOD_API int luaopen_time(lua_State *L) {
+		luaL_newlib(L, lib_time);
+		return 1;
+	}
+
 	class ScopedLuaState
 	{
 		lua_State* state;
@@ -142,16 +164,16 @@ namespace
 		{
 			data.addChar(LUA_TNIL);
 		}
-		else if (lua_isstring(state, idx))
-		{
-			data.addChar(LUA_TSTRING);
-			data.addString2(lua_tostring(state, idx));
-		}
 		else if (lua_isnumber(state, idx))
 		{
 			data.addChar(LUA_TNUMBER);
 			data.addDouble(lua_tonumber(state, idx));
 		}
+		else if (lua_isstring(state, idx))
+		{
+			data.addChar(LUA_TSTRING);
+			data.addString2(lua_tostring(state, idx));
+		}		
 		else
 		{
 			return false;
@@ -216,6 +238,7 @@ namespace
 		{ LUA_MATHLIBNAME, luaopen_math },
 		{ LUA_UTF8LIBNAME, luaopen_utf8 },
 		{ LUA_OSLIBNAME, luaopen_os_custom},
+		{ "time", luaopen_time },
 		{ NULL, NULL }
 	};
 
@@ -257,30 +280,63 @@ namespace
 		return 1;
 	}
 
-	int l_download(lua_State *L)
+	int l_request_url(lua_State *L)
 	{
 		std::string url = luaL_checkstring(L, 1);
-		std::string http_proxy;
-		if (lua_gettop(L) > 1)
+		
+		str_map params;
+		if (lua_istable(L, 2))
 		{
-			http_proxy = luaL_checkstring(L, 2);
+			lua_gettable(L, 2);
+			for (lua_pushnil(L); lua_next(L, -2) != 0; lua_pop(L, 1))
+			{
+				std::string key = luaL_checkstring(L, -2);
+				std::string val;
+				if (lua_isboolean(L, -1))
+				{
+					if (lua_toboolean(L, -1))
+						val = "1";
+					else
+						val = "0";
+				}
+				else if (lua_isnil(L, -1))
+				{
+					val = "null";
+				}
+				else if (lua_isstring(L, -1))
+				{
+					val = lua_tostring(L, -1);
+				}
+				else if (lua_isnumber(L, -1))
+				{
+					val = convert(lua_tonumber(L, -1));
+				}
+				else
+				{
+					const char* msg = lua_pushfstring(L, "%s expected, got %s", "boolean/number/string", luaL_typename(L, -1));
+					luaL_argerror(L, -1, msg);
+				}
+
+				params[key] = val;
+			}
 		}
+
 		ILuaInterpreter::SInterpreterFunctions* funcs = get_funcs(L);
 
 		std::string errmsg;
-		std::string ret = funcs->url_func->downloadString(url, http_proxy, &errmsg);
+		std::string ret;
+		long http_code;
+		bool b = funcs->url_func->requestUrl(url, params, ret, http_code, &errmsg);
 
-		if (ret.empty())
+		lua_pushboolean(L, b ? 1 : 0);
+		lua_pushlstring(L, ret.c_str(), ret.size());
+		lua_pushinteger(L, http_code);
+		if (!errmsg.empty())
 		{
-			lua_pushnil(L);
 			lua_pushlstring(L, errmsg.c_str(), errmsg.size());
+			return 4;
 		}
-		else
-		{
-			lua_pushlstring(L, ret.c_str(), ret.size());
-			lua_pushnil(L);
-		}
-		return 2;
+		return 3;
 	}
 
 	void set_param(lua_State* state, const ILuaInterpreter::Param& param)
@@ -338,6 +394,20 @@ namespace
 		lua_call(state, 0, LUA_MULTRET);
 		return 1;
 	}
+
+	int l_log(lua_State* state)
+	{
+		std::string msg = luaL_checkstring(state, 1);
+		int loglevel = LL_INFO;
+		if (lua_isinteger(state, 2))
+		{
+			loglevel = static_cast<int>(lua_tointeger(state, 2));
+			if (loglevel<LL_DEBUG || loglevel>LL_ERROR)
+				loglevel = LL_INFO;
+		}
+		Server->Log(msg, loglevel);
+		return 0;
+	}
 }
 
 std::string LuaInterpreter::compileScript(const std::string & script)
@@ -367,8 +437,10 @@ std::string LuaInterpreter::compileScript(const std::string & script)
 	return ret;
 }
 
-int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter::Param& params, int64& ret2,
-	std::string& state_data, std::string& global_data, const ILuaInterpreter::SInterpreterFunctions& funcs)
+int64 LuaInterpreter::runScript(const std::string& script, const Param& params, int64& ret2,
+	std::string& state_data, std::string& state_data_mem,
+	std::string& global_data,
+	std::string& global_data_mem, SInterpreterFunctions& funcs)
 {
 	ret2 = -1;
 
@@ -398,8 +470,19 @@ int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter
 	lua_setglobal(state, "mail");
 	lua_pushcfunction(state, l_require);
 	lua_setglobal(state, "require");
-	lua_pushcfunction(state, l_download);
-	lua_setglobal(state, "download");
+	lua_pushcfunction(state, l_request_url);
+	lua_setglobal(state, "request_url");
+
+	lua_pushcfunction(state, l_log);
+	lua_setglobal(state, "log");
+	lua_pushinteger(state, LL_DEBUG);
+	lua_setglobal(state,"LL_DEBUG");
+	lua_pushinteger(state, LL_INFO);
+	lua_setglobal(state, "LL_INFO");
+	lua_pushinteger(state, LL_WARNING);
+	lua_setglobal(state, "LL_WARNING");
+	lua_pushinteger(state, LL_ERROR);
+	lua_setglobal(state, "LL_ERROR");
 
 	if (state_data.empty())
 	{
@@ -413,6 +496,18 @@ int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter
 
 	lua_setglobal(state, "state");
 
+	if (state_data_mem.empty())
+	{
+		lua_newtable(state);
+	}
+	else if (!unserialize_table(state, state_data_mem))
+	{
+		Server->Log("Error unserializing state data mem", LL_ERROR);
+		return -1;
+	}
+
+	lua_setglobal(state, "state_mem");
+
 	if (global_data.empty())
 	{
 		lua_newtable(state);
@@ -424,6 +519,18 @@ int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter
 	}
 
 	lua_setglobal(state, "global");
+
+	if (global_data_mem.empty())
+	{
+		lua_newtable(state);
+	}
+	else if (!unserialize_table(state, global_data_mem))
+	{
+		Server->Log("Error unserializing global data mem", LL_ERROR);
+		return -1;
+	}
+
+	lua_setglobal(state, "global_mem");
 
 	rc = lua_pcall(state, 0, LUA_MULTRET, 0);
 	if (rc) {
@@ -447,12 +554,28 @@ int64 LuaInterpreter::runScript(const std::string& script, const ILuaInterpreter
 		Server->Log("Error serializing state data", LL_WARNING);
 	}
 
+	lua_getglobal(state, "state_mem");
+
+	state_data_mem = serialize_table(state);
+	if (state_data_mem.empty())
+	{
+		Server->Log("Error serializing state mem data", LL_WARNING);
+	}
+
 	lua_getglobal(state, "global");
 
 	global_data = serialize_table(state);
 	if (global_data.empty())
 	{
 		Server->Log("Error serializing global data", LL_WARNING);
+	}
+
+	lua_getglobal(state, "global_mem");
+
+	global_data_mem = serialize_table(state);
+	if (global_data_mem.empty())
+	{
+		Server->Log("Error serializing global mem data", LL_WARNING);
 	}
 	
 	return ret;

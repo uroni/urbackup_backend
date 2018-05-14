@@ -32,15 +32,18 @@ namespace
 	{
 	public:
 		// Inherited via IUrlFunction
-		virtual std::string downloadString(const std::string & url, const std::string & http_proxy = "", std::string * errmsg = NULL)
+		virtual bool requestUrl(const std::string & url, str_map & params, std::string & ret, long & http_code, std::string * errmsg = NULL)
 		{
-			return url_fak->downloadString(url, http_proxy, errmsg);
+			return  url_fak->requestUrl(url, params, ret, http_code, errmsg);
 		}
 	};
 
 	ILuaInterpreter::SInterpreterFunctions funcs;
 
 	IMutex* global_mutex;
+	std::string global_data_mem;
+	bool has_global_data = false;
+	bool has_global_data_misc = false;
 	std::string global_data;
 
 #include "report_lua.h"
@@ -77,10 +80,51 @@ std::string load_report_script()
 
 	if (!res.empty())
 	{
+		has_global_data_misc = true;
 		return res[0]["tvalue"];
 	}
 
 	return get_report_lua();
+}
+
+void load_global_data()
+{
+	if (has_global_data)
+		return;
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='report_script_global_state'");
+
+	has_global_data = true;
+
+	if (!res.empty())
+	{
+		global_data = res[0]["tvalue"];
+	}
+}
+
+void update_global_data(const std::string& new_global_data)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if (has_global_data_misc)
+	{
+		IQuery* q_update = db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='report_script_global_state'", false);
+		q_update->Bind(new_global_data.c_str(), new_global_data.size());
+		q_update->Write();
+		q_update->Reset();
+		db->destroyQuery(q_update);
+	}
+	else
+	{
+		IQuery* q_insert = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES ('report_script_global_state', ?)", false);
+		q_insert->Bind(new_global_data.c_str(), new_global_data.size());
+		q_insert->Write();
+		q_insert->Reset();
+		db->destroyQuery(q_insert);
+	}
+
+	global_data = new_global_data;
 }
 
 std::string get_report_script()
@@ -95,7 +139,11 @@ std::string get_report_script()
 	if (script.empty())
 		return script;
 
-	script = lua_interpreter->compileScript(script);
+	std::string compiled_script = lua_interpreter->compileScript(script);
+
+	if (!compiled_script.empty())
+		return compiled_script;
+
 	return script;
 }
 
@@ -162,10 +210,17 @@ bool run_report_script(int incremental, bool resumed, int image,
 
 	int64 ret2;
 	std::string state;
+	std::string state_mem;
 	int64 ret;
 	{
 		IScopedLock lock(global_mutex);
-		ret = lua_interpreter->runScript(script, param_raw, ret2, state, global_data, funcs);
+		load_global_data();
+		std::string local_global_data = global_data;
+		ret = lua_interpreter->runScript(script, param_raw, ret2, state, state_mem, local_global_data, global_data_mem, funcs);
+		if (local_global_data != global_data)
+		{
+			update_global_data(local_global_data);
+		}
 	}
 
 	if (ret<0)

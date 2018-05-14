@@ -16,11 +16,12 @@ extern IUrlFactory *url_fak;
 namespace
 {
 #include "alert_lua.h"
+#include "alert_pulseway_lua.h"
 
-        std::string get_alert_lua()
+        std::string get_alert_lua(unsigned char* data, unsigned int data_len)
         {
                 size_t out_len;
-                void* cdata = tinfl_decompress_mem_to_heap(alert_lua_z, alert_lua_z_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
+                void* cdata = tinfl_decompress_mem_to_heap(data, data_len, &out_len, TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_COMPUTE_ADLER32);
                 if (cdata == NULL)
                 {
                         return std::string();
@@ -51,11 +52,20 @@ std::string get_alert_script(IDatabase* db, int script_id)
         	ret = getFile("urbackupserver/alert.lua");
         }
 
-        if(script_id == 1
-              && ret.empty())
-        {
-        	ret = get_alert_lua();
-       	}
+		if (script_id == 100000
+			&& FileExists("urbackupserver/alert_pulseway.lua"))
+		{
+			ret = getFile("urbackupserver/alert_pulseway.lua");
+		}
+
+		if (ret.empty())
+		{
+			switch (script_id)
+			{
+			case 1: ret = get_alert_lua(alert_lua_z, alert_lua_z_len); break;
+			case 100000: ret = get_alert_lua(alert_pulseway_lua_z, alert_pulseway_lua_z_len); break;
+			}
+		}
 
 	return ret;
 }
@@ -75,6 +85,8 @@ namespace
 		std::string code;
 		std::vector<SScriptParam> params;
 		std::string global;
+		std::string global_mem;
+		std::map<int, std::string> state_mem;
 	};
 
 	SScript prepareScript(IDatabase* db, ILuaInterpreter* lua_interpreter, int script_id)
@@ -84,7 +96,11 @@ namespace
 
 		if (!ret.code.empty())
 		{
-			ret.code = lua_interpreter->compileScript(ret.code);
+			std::string compiled_code = lua_interpreter->compileScript(ret.code);
+			if (!compiled_code.empty())
+			{
+				ret.code = compiled_code;
+			}
 		}
 
 		if (ret.code.empty())
@@ -117,9 +133,9 @@ namespace
 	{
 	public:
 		// Inherited via IUrlFunction
-		virtual std::string downloadString(const std::string & url, const std::string & http_proxy = "", std::string * errmsg = NULL)
+		virtual bool requestUrl(const std::string & url, str_map & params, std::string & ret, long & http_code, std::string * errmsg = NULL)
 		{
-			return url_fak->downloadString(url, http_proxy, errmsg);
+			return url_fak->requestUrl(url, params, ret, http_code, errmsg);
 		}
 	};
 }
@@ -146,9 +162,18 @@ void Alerts::operator()()
 	funcs.mail_func = new MailBridge;
 	funcs.url_func = new UrlBridge;
 
+
+	bool first_run = true;
 	while (true)
 	{
+#ifdef _DEBUG
+		if(!first_run)
+#endif
 		Server->wait(60*1000);
+
+#ifdef _DEBUG
+		first_run = false;
+#endif
 
 		q_get_alert_clients->Bind(Server->getTimeMS());
 		db_results res = q_get_alert_clients->Read();
@@ -255,7 +280,8 @@ void Alerts::operator()()
 
 				std::string state = res[i]["alerts_state"];
 				int64 ret2;
-				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, it->second.global, funcs);
+				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, 
+					it->second.state_mem[clientid], it->second.global, it->second.global_mem, funcs);
 				bool needs_update = false;
 				
 				if (ret>=0)

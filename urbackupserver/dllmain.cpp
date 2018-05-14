@@ -2022,6 +2022,37 @@ bool upgrade56_57()
 	return b;
 }
 
+bool upgrade57_58()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE alert_scripts ADD global_state BLOB");
+
+	int64 scriptid = 100000;
+	b &= db->Write("INSERT INTO alert_scripts (id, name, script) VALUES (" + convert(scriptid) + ", 'Pulseway API', '')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 0, 'username', 'pulseway_username', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 1, 'password', 'pulseway_password', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 2, 'instance_id', 'pulseway_instance_id', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 3, 'instance_name', 'pulseway_instance_name', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 4, 'instance_group', 'pulseway_instance_group', 'Default', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 5, 'instance_description', 'pulseway_instance_description', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 6, 'refresh_interval_minutes', 'pulseway_refresh_interval_minutes', '15', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 7, 'instance_notify_when_offline', 'pulseway_instance_notify_when_offline', '1', 1, 'bool')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 8, 'api_url', 'pulseway_api_url', 'https://api.pulseway.com/v2', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 9, 'alert_file_mult', 'alert_file_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 10, 'alert_image_mult', 'alert_image_mult', '3', 1, 'num')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 11, 'alert_emails', 'alert_emails', '', 1, 'str')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 12, 'alert_important', 'alert_important', '0', 1, 'bool')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 13, 'priority', 'pulseway_priority', 'normal|low|elevated|critical', 1, 'choice')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 14, 'alert_ok', 'pulseway_alert_ok', '1', 1, 'bool')");
+
+	return b;
+}
+
+
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2043,7 +2074,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=57;
+	int max_v=58;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2374,6 +2405,13 @@ void upgrade(void)
 				break;
 			case 56:
 				if (!upgrade56_57())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 57:
+				if (!upgrade57_58())
 				{
 					has_error = true;
 				}
