@@ -5992,10 +5992,9 @@ void IndexThread::updateCbt()
 
 	std::string settings_fn = "urbackup/data/settings.cfg";
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+	std::string volumes;
 	if (curr_settings.get() != NULL)
 	{
-		std::string volumes;
-
 		if (curr_settings->getValue("image_letters", &volumes)
 			|| curr_settings->getValue("image_letters_def", &volumes))
 		{
@@ -6034,6 +6033,25 @@ void IndexThread::updateCbt()
 		{
 			enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
 			vols.insert(cvol);
+		}
+	}
+
+	if ((curr_settings.get() == NULL || volumes.empty())
+		&& backup_dirs.empty())
+	{
+		volumes = get_all_volumes_list(true, volumes_cache);
+
+		std::vector<std::string> ret;
+		Tokenize(volumes, ret, ";,");
+		for (size_t i = 0; i<ret.size(); ++i)
+		{
+			std::string cvol = strlower(trim(ret[i]));
+
+			if (vols.find(cvol) == vols.end())
+			{
+				enableCbtVol(cvol, cbtIsEnabled(std::string(), cvol), false);
+				vols.insert(cvol);
+			}
 		}
 	}
 #endif
