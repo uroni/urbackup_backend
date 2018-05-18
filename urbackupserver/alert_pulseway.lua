@@ -20,6 +20,7 @@ end
 local ret = 0
 --Time in milliseconds to wait till this script is run next
 local next_check_ms = 30*60*1000
+local next_check_pulseway
 
 if params.username~="" and (global_mem.next_instance_refresh==nil or global_mem.next_instance_refresh<time.monotonic_ms())
 then
@@ -43,9 +44,11 @@ then
 	then
 		next_check_ms = params.refresh_interval_minutes*60*1000 - 30*1000
 		global_mem.next_instance_refresh = time.monotonic_ms() + next_check_ms
+		next_check_pulseway = next_check_ms
 	else
 		log("HTTP POST to "..params.api_url .. "/systems".." failed with http code ".. http_code .. ". "..http_err ..". Returning "..http_ret, LL_ERROR)
 		next_check_ms = 30*1000
+		next_check_pulseway = next_check_ms
 		global_mem.next_instance_refresh = time.monotonic_ms() + next_check_ms
 	end
 	log("Next refresh: "..global_mem.next_instance_refresh)
@@ -100,6 +103,7 @@ function pulseway_notify(subj, msg)
 		log("HTTP POST to "..params.api_url .. "/systems".." failed with http code ".. http_code .. ". "..http_err ..". Returning "..http_ret, LL_ERROR)
 		
 		next_check_ms = 30*1000
+		next_check_pulseway = next_check_ms
 		
 		if state.notifications == nil
 		then
@@ -263,7 +267,12 @@ end
 --The alert script is automatically run after a backup so no need to return the wait time if both image and file backup status is not ok
 if params.complex_interval or ret==3
 then
-	return ret
+	if next_check_pulseway~=nil
+	then
+		return ret, next_check_pulseway
+	else
+		return ret
+	end
 else
 	return ret, next_check_ms
 end
