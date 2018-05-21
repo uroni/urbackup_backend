@@ -327,6 +327,12 @@ msgstr "Send"
 msgid "tBackup time"
 msgstr "Backup time"
 
+msgid "tBackup ID"
+msgstr "Backup ID"
+
+msgid "tErrors"
+msgstr "Errors"
+
 msgid "tStorage usage"
 msgstr "Storage usage"
 
