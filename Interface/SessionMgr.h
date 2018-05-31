@@ -12,6 +12,7 @@ public:
 
 	virtual SUser *getUser(const std::string &pSID, const std::string &pIdentData, bool update=true)=0;
 	virtual void releaseUser(SUser *user)=0;
+	virtual void unlockUser(SUser *user) = 0;
 	virtual void lockUser(SUser *user)=0;
 
 	virtual bool RemoveSession(const std::string &pSID)=0;

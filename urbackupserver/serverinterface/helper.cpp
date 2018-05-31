@@ -420,7 +420,7 @@ void Helper::sleep(unsigned int ms)
 {
 	if(session!=NULL)
 	{
-		Server->getSessionMgr()->releaseUser(session);
+		Server->getSessionMgr()->unlockUser(session);
 	}
 
 	Server->wait(ms);

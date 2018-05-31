@@ -18,6 +18,8 @@ struct SUser
 	float_map mFloat;
 	std::map<std::string, IObject* > mCustom;
 	int64 lastused;
+	int waitlock;
+	int refcount;
 
 	IObject* getCustomPtr(std::string str)
 	{
@@ -29,10 +31,6 @@ struct SUser
 		else
 			return NULL;
 	}
-
-	//private
-	void *mutex;
-	void *lock;
 };
 
 #endif //IUSER_H

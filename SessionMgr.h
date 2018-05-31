@@ -15,6 +15,7 @@ public:
 
 	virtual SUser *getUser(const std::string &pSID, const std::string &pIdentData, bool update=true);
 	virtual void releaseUser(SUser *user);
+	virtual void unlockUser(SUser *user);
 	virtual void lockUser(SUser *user);
 
 	virtual bool RemoveSession(const std::string &pSID);
@@ -32,6 +33,7 @@ private:
 	std::map<std::string, SUser*> mSessions;
 
 	IMutex* sess_mutex;
+	ICondition* sess_cond;
 	
 	ICondition *wait_cond;
 	IMutex *wait_mutex;

@@ -21,10 +21,12 @@
 #include "SessionMgr.h"
 #include "Server.h"
 #include "stringtools.h"
+#include <assert.h>
 
 CSessionMgr::CSessionMgr(void)
 {
 	sess_mutex=Server->createMutex();
+	sess_cond = Server->createCondition();
 	
 	wait_cond=Server->createCondition();
 	wait_mutex=Server->createMutex();
@@ -77,6 +79,7 @@ CSessionMgr::~CSessionMgr()
     Server->Log("done.");
   }
   Server->destroy(sess_mutex);
+  Server->destroy(sess_cond);
   Server->destroy(wait_mutex);
   Server->destroy(stop_mutex);
   
@@ -124,11 +127,11 @@ std::string CSessionMgr::GenerateSessionIDWithUser(const std::string &pUsername,
 	SUser *user=new SUser;
 	user->username=pUsername;
 	user->session=ret;
-	user->mutex=Server->createMutex();
-	user->lock=NULL;
 	user->ident_data=pIdentData;
 	user->id=-1;
 	user->lastused=Server->getTimeMS();
+	user->waitlock = 0;
+	user->refcount = 0;
 	mSessions.insert(std::pair<std::string, SUser*>(ret, user) );
 
 	return ret;
@@ -143,13 +146,19 @@ SUser *CSessionMgr::getUser(const std::string &pSID, const std::string &pIdentDa
 		if( i->second->ident_data!=pIdentData )
 			return NULL;
 
-		lock.relock(NULL);
+		SUser* user = i->second;
+		++user->refcount;
 
-		ILock *lock=((IMutex*)i->second->mutex)->Lock2();
-		i->second->lock=lock;
-		if( update==true )
-			i->second->lastused=Server->getTimeMS();
-		return i->second;
+		while (user->waitlock > 0)
+		{
+			sess_cond->wait(&lock);
+		}
+
+		++user->waitlock;
+
+		if( update )
+			user->lastused=Server->getTimeMS();
+		return user;
 	}
 	else
 		return NULL;
@@ -159,7 +168,29 @@ void CSessionMgr::releaseUser(SUser *user)
 {
 	if( user!=NULL )
 	{
-		((ILock*)user->lock)->Remove();
+		IScopedLock lock(sess_mutex);
+		assert(user->refcount > 0);
+		--user->refcount;
+		assert(user->waitlock > 0);
+		--user->waitlock;
+		if (user->refcount > 0)
+		{
+			sess_cond->notify_all();
+		}
+	}
+}
+
+void CSessionMgr::unlockUser(SUser * user)
+{
+	if (user != NULL)
+	{
+		IScopedLock lock(sess_mutex);
+		assert(user->waitlock > 0);
+		--user->waitlock;
+		if (user->refcount > 1)
+		{
+			sess_cond->notify_all();
+		}
 	}
 }
 
@@ -167,8 +198,13 @@ void CSessionMgr::lockUser(SUser *user)
 {
 	if( user!=NULL )
 	{
-		ILock *lock=((IMutex*)user->mutex)->Lock2();
-		user->lock=lock;
+		IScopedLock lock(sess_mutex);
+		while (user->waitlock > 0)
+		{
+			sess_cond->wait(&lock);
+		}
+
+		++user->waitlock;
 	}
 }
 
@@ -179,14 +215,17 @@ bool CSessionMgr::RemoveSession(const std::string &pSID)
 	if( i!=mSessions.end() )
 	{
 		SUser* user=i->second;
+
+		if (user->refcount>0)
+		{
+			return false;
+		}
+
+		assert(user->waitlock == 0);
+
 		mSessions.erase(i);
 
 		lock.relock(NULL);
-
-		IScopedLock *lock=new IScopedLock(((IMutex*)user->mutex));
-		delete lock;
-
-		Server->destroy((IMutex*)user->mutex);
 
 		for(std::map<std::string, IObject* >::iterator iter=user->mCustom.begin();
 			iter!=user->mCustom.end();++iter)
