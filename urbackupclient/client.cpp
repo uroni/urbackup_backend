@@ -3236,6 +3236,12 @@ int IndexThread::execute_prebackup_hook(bool incr, std::string server_token, int
 	std::string script_name;
 #ifdef _WIN32
 	script_name = Server->getServerWorkingDir() + "\\prefilebackup.bat";
+
+	if (getFile(script_name)
+		==":: Commands in this file will be executed before each incremental or full file backup")
+	{
+		return 0;
+	}
 #else
 	script_name = SYSCONFDIR "/urbackup/prefilebackup";
 #endif
