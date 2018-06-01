@@ -445,7 +445,7 @@ namespace
 	};
 }
 
-bool ImageMount::mount_image_int(int backupid, int partition,
+bool ImageMount::mount_image_int(int backupid, int partition, ScopedMountedImage& mounted_image,
 	int64 timeoutms, bool& has_timeout, std::string& errmsg)
 {
 	IScopedLock lock(mount_processes_mutex);

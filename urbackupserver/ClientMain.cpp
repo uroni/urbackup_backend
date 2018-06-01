@@ -662,7 +662,7 @@ void ClientMain::operator ()(void)
 
 			if ((next_capa_update != 0 && next_capa_update > Server->getTimeMS()))
 			{
-				updateCapabilities();
+				updateCapabilities(NULL);
 
 				if (protocol_versions.update_capa_interval > 0)
 				{
@@ -765,7 +765,7 @@ void ClientMain::operator ()(void)
 			{
 				if (protocol_versions.update_vols > 0)
 				{
-					updateCapabilities();
+					updateCapabilities(NULL);
 				}
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
@@ -794,7 +794,7 @@ void ClientMain::operator ()(void)
 			{
 				if (protocol_versions.update_vols > 0)
 				{
-					updateCapabilities();
+					updateCapabilities(NULL);
 				}
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
