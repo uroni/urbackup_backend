@@ -598,6 +598,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 					{
 						write_file_metadata(hashpath + os_file_sep() + metadata_dir_fn, client_main, todl.metadata, false);
 					}
+					ClientMain::destroyTemporaryFile(fd);
 				}
 			}
 		}

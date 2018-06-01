@@ -9,12 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Constantin Jianu <jianuconstantinioan@yahoo.com>, 2018
 # Olivian Daniel Tofan <daniel@toffee.ro>, 2015-2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2018-03-28 08:46+0000\n"
+"Last-Translator: Constantin Jianu <jianuconstantinioan@yahoo.com>\n"
 "Language-Team: Romanian (http://www.transifex.com/uroni/urbackup/language/ro/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -563,7 +565,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup actualizează baza de date internă. Această operație poate dura. Serverul este inacccesibil si nu va face nicio copie de rezervă în timpul acestei actualizări. "
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup creează fișierul index. În funcție de numărul de fișiere, acest lucru poate dura ceva timp. Te rog fii răbdător."
 
 msgid "tAction"
 msgstr "Acțiune"
@@ -980,7 +982,7 @@ msgid "tArchived"
 msgstr "Arhivat"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "În prezent, în dosarul de backup nu există suficient spațiu liber. UrBackup șterge vechile imagini și fișiere de rezervă pentru spațiul liber, în limitele definite de setări. În timpul acestui proces, performanța backup-ului este scăzută, iar backup-urile sunt blocate."
 
 msgid "nospc_fatal_text"
 msgstr "Acum nu este suficient spațiu în dosarul cu copiile de rezervă. UrBackup a încercat sa șteargă copiile de rezervă imagine și fișier vechi dar acum nu-i este permis să șteargă mai mult. Schimbați preferințele pentru a reține mai puține copii de rezervă sau măriți zona de stocare pentru a permite UrBackup să continue efectuarea de copii de rezervă."
@@ -1022,7 +1024,7 @@ msgid "really_recalculate"
 msgstr "Doriți să recalculez toate statisticile? Această operație poate dura!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "A apărut o eroare la accesarea sau verificarea bazei de date interne UrBackup. Aceasta înseamnă că această bază de date este probabil deteriorată sau nu există suficient spațiu liber. Dacă această eroare persistă, restaurații baza de date (fișierele backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db și backup_server_settings.db) dintr-o copie de rezervă. Consultați fișierul jurnal pentru detalii."
 
 msgid "tDownload folder as ZIP"
 msgstr "Descarcă dosarul ca ZIP"
@@ -1178,678 +1180,678 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr "(filtrate din _MAX_ înregistrări totale)"
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimizeaza"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maximizeaza"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Un client cu acest nume există deja"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr ""
+msgstr "Introduceți numele unui nou client Internet sau  / client  în spatele NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr ""
+msgstr "Introduceți un nume IP sau hostname al clientului pentru a fi descoperit."
 
 msgid "creating_filesindex_text"
-msgstr ""
+msgstr "UrBackup creează fișierul index. Ar putea dura ceva timp."
 
 msgid "about"
-msgstr ""
+msgstr "Despre"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Toti clienții "
 
 msgid "client_settings"
-msgstr ""
+msgstr "Setările clientului"
 
 msgid "action_8"
-msgstr ""
+msgstr "Restaurează fișierul"
 
 msgid "action_9"
-msgstr ""
+msgstr "Restaurează imaginea "
 
 msgid "action_10"
-msgstr ""
+msgstr "Update client"
 
 msgid "action_11"
-msgstr ""
+msgstr "Verificarea integrității bazei de date"
 
 msgid "action_12"
-msgstr ""
+msgstr "Copierea de rezervă a bazei de date"
 
 msgid "action_13"
-msgstr ""
+msgstr "Recalcularea statisticilor"
 
 msgid "tAbout UrBackup"
 msgstr "Despre UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Adaugă client"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr ""
+msgstr "UrBackup descoperă automat clienții din rețeaua locală. Dacă serverul se află în aceeași rețea sub-rețea ca și clientul, instalați clientul și așteptați ca acesta să fie descoperit."
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Descărcați clientul de la:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr ""
+msgstr "Dacă doriți ca un client să utilizeze mai multe servere de backup, identitatea acestui server este:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Adaugă un nou Internet client sau client NAT"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Numele noului Internet client sau client NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Descoperiți un client nou prin sugestia IP / hostname"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP / hostname al clientului care urmează să fie descoperit"
 
 msgid "tCancel"
-msgstr ""
+msgstr "Anulare"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Acces interzis"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Ne pare rău, ceva a mers prost sau nu aveți drepturile necesare pentru a accesa acest fișier sau dosar."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Autentifică-te cu numele de utilizator și parola"
 
 msgid "tError while accessing backups"
-msgstr ""
+msgstr "Eroare la accesarea copiilor de rezervă"
 
 msgid "tSorry, something went wrong:"
-msgstr ""
+msgstr "Scuze, ceva a mers greșit:"
 
 msgid "tCreated"
-msgstr ""
+msgstr "Creat"
 
 msgid "tLast modified"
-msgstr ""
+msgstr "Ultima modificare"
 
 msgid "tLast accessed"
-msgstr ""
+msgstr "Ultima accesare"
 
 msgid "tList"
-msgstr ""
+msgstr "Lista"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Restaurează "
 
 msgid "tRestore folder to client"
-msgstr ""
+msgstr "Restaurați dosarul clientului"
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versiune"
 
 msgid "tClient added successfully"
-msgstr ""
+msgstr "Client adăugat cu succes "
 
 msgid "tAdded new client with name:"
-msgstr ""
+msgstr "27/5000\nAdăugat client nou cu nume:"
 
 msgid "tDefault authentication key:"
-msgstr ""
+msgstr "Cheie implicită de autentificare:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Descarca kitul de instalare preconfigurat pentru Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Descarca kitul de instalare preconfigurat pentru  MAC OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Instalați-l direct în terminal prin:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Descarca kitul de instalare preconfigurat pentru Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Alternativ, după ce ați instalat clientul de la:"
 
 msgid "tGo to the settings screen on the client"
-msgstr ""
+msgstr "Accesați ecranul de setări de pe client"
 
 msgid "tEnable the internet mode on the client"
-msgstr ""
+msgstr "Activați modul internet pe client"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Setați serverul de internet la:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Setați portul server-ului de internet la:"
 
 msgid "tSet the computer name to:"
-msgstr ""
+msgstr "Setați numele calculatorului la:"
 
 msgid "tSet the authentication key to:"
-msgstr ""
+msgstr "Setați cheia de autentificare la:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Fără firewall / NAT: Activați modul Internet numai dacă intenționați să utilizați clientul numai prin internet. Pe Linux, prin schimbarea INTERNET_ONLY la true în /etc/default/urbackupclient sau /etc/ sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Cu linia de comandă:"
 
 msgid "tPercent finished"
-msgstr ""
+msgstr "Procente efectuate"
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detalii"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Adaugă adresa de email"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Eșuat fără eșecuri cauzate de timeout-ul clientului"
 
 msgid "tMinimum log level"
-msgstr ""
+msgstr "Nivelul minim de jurnalizare"
 
 msgid "tBackups interrupted"
-msgstr ""
+msgstr "Procesul de backup a fost întrerupt."
 
 msgid "tStop"
-msgstr ""
+msgstr "Stop"
 
 msgid "tShow log"
-msgstr ""
+msgstr "Arata jurnal"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Viteza"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Backup-uri de fișiere "
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Backup-uri de imagini"
 
 msgid "tArchive"
-msgstr ""
+msgstr "Arhive"
 
 msgid "tServer URL"
-msgstr ""
+msgstr "Adresa URL a serverului"
 
 msgid "tMax simultaneous backups"
-msgstr ""
+msgstr "Numărul maxim de backup-uri simultane"
 
 msgid "tMax recently active clients"
-msgstr ""
+msgstr "Numărul maxim de clienți activi"
 
 msgid "tDays"
-msgstr ""
+msgstr "Zile"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Fișier RAW copy-on-write"
 
 msgid "tMin"
-msgstr ""
+msgstr "Minim"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Nume virtual al sub-client-ului"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Stilul imaginii incrementale locale"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Bazat pe ultimul backup de imagine complet"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Bazat pe ultimul backup de imagine"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Stilul imaginii incrementale pe Internet"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Stil local de imagine completă"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Imagine de sinteză completă a imaginii"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Tip imagine completa pe Internet"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Dimensiunea memoriei cache-ului bazei de date în timpul procesării"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Depanare: Verificarea completă a tuturor fișierelor de backup"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Depanare: Verificați copii de siguranță ale fișierelor utilizând hashes-ul clientului"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Periodic citiți intrările de fișiere ale clienților de internet în baza de date (dezactivați numai dacă nu executați total)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Executați copii de rezervă cu prioritate pentru clienți"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Creați link-uri simbolice de vizualizare pentru fiecare utilizator după backup-ul de fișiere."
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Numărul maxim de job-uri simultane pe client"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Lista volumelor pentru care ar trebui să se utilizeze urmărirea blocării modificărilor (dacă este disponibilă)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Lista de volume pentru care urmărirea blocului de schimbare ar trebui să fie persistentă"
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Activați autentificările prin LDAP/AD"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "Nume server LDAP/AD"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Port server LDAP/AD"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "Prefix user LDAP/AD"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "Sufix user LDAP/AD"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD grup și interogare de clasă"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "Numele cheii grupului LDAP / AD în interogare"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "Numele cheii de clasă LDAP / AD în interogare"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP / AD grup de drepturi harta"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "Harta hărților pentru drepturile de clasă LDAP / AD"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Logarea de test  cu acest utilizator"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Parola pentru utilizatorul de test"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Logarea test a reușit. Drepturile utilizatorului:"
 
 msgid "tTest login failed. Error:"
-msgstr ""
+msgstr "Logarea test a eșuată. Eroare:"
 
 msgid "tDownload client for Windows"
-msgstr ""
+msgstr "Descarca clientul pentru Windows"
 
 msgid "tDownload client for Mac OS X"
-msgstr ""
+msgstr "Descarca clientul pentru  Mac OS X"
 
 msgid "tDownload client for Linux"
-msgstr ""
+msgstr "Descarca clientul pentru Linux"
 
 msgid "tRemove client"
-msgstr ""
+msgstr "Eliminați clientul"
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Adaugă un client nou"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Instrucțiuni pentru descoperirea clientului"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Adăugați hostname / IP ca sugestie pentru descoperirea clientului"
 
 msgid "tBackup Statistics"
-msgstr ""
+msgstr "Statistici backup"
 
 msgid "completed_with_issues"
-msgstr ""
+msgstr "Finalizat cu probleme"
 
 msgid "not_supported"
-msgstr ""
+msgstr "Ne acceptat"
 
 msgid "tPreparing restore. Please be patient..."
-msgstr ""
+msgstr "Pregătirea restaurarii. Te rog fii răbdător..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Nu pierdeți copii de rezervă în caz de nepotriviri sau erori de citire"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Administrator"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Backup de imagine"
 
 msgid "action_14"
-msgstr ""
+msgstr "Curățire de noapte"
 
 msgid "action_15"
-msgstr ""
+msgstr "Curățire de urgenta. "
 
 msgid "action_16"
-msgstr ""
+msgstr "Migrarea spațiului de stocare"
 
 msgid "default_group"
-msgstr ""
+msgstr "Implicit"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Grupuri"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Adaugă un nou grup"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Introdu numele noului grup"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Grupul deja exista "
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Se elimină acest grup. Toți clienții din acest grup vor fi redați la grupul implicit. Continui?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Eliminarea grupului a eșuat"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Numele serverului de internet ar trebui să fie hostname sau o adresă IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "Adresa URL a serverului ar trebui să fie o adresă URL care începe cu http:// sau https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Începeți recuperarea"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Eroare la marcarea copiei de rezervă pentru ștergere:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Eroare la ștergerea copiei de siguranță:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Imaginea backup este în folosința:"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Se utilizează în prezent copii de rezervă incrementale bazate pe această copie de rezervă"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Crearea unei imagini de backup incrementale bazată pe această copie de siguranță se execută în prezent"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Imaginea de Backup dependenta de această copie de rezervă este arhivata"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Consultați jurnalul serverului pentru detalii"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Consultați jurnalul serverului pentru detalii"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Backup este marcat pentru ștergere. Nu ștergeți"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Șterge acum"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Volum"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Nu exista backup-uri"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Nu există copii de rezervă ale acestui client încă"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Informații backup imagine"
 
 msgid "tId"
-msgstr ""
+msgstr "Id"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Mărimea volumului "
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Tipul partiției "
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Numărul harddisk-ului"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Numărul partiției "
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Tipul sistemului de fișiere "
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Numele volumului"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Serial number"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Imagine montata "
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup va utiliza funcționalitatea sistemului de operare pentru server pentru a monta imaginea. Montați imaginea numai dacă aveți încredere în sursa acesteia"
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Montare imaginii a eșuat. Vă rugăm să consultați fișierul istoric al serverului pentru detalii."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Resetează acesta eroare"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Nu mai afișa acesta eroare "
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Acest server a descoperit clienți care în prezent nu sunt configurați să utilizeze acest server."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Vedeți aici detalii despre cum s-a întâmplat acest lucru."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Înlătura acest indiciu"
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Nu mai arătați asta."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Volum:"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Către versiunea:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Calea:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Grup"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Membru al grupului"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Selectați clientul din grupul curent (faceți dublu clic pentru a schimba setările):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Șterge grup"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Permite clienților să înceapă restaurarea fișierelor"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Permiteți clienților să configureze componentele de backup"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Permiteți clienților să înceapă restaurarea componentelor"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Litera volumului"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Backup de imagine"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Nu porniți backup-ul fișierelor în cazul în care limita de utilizare curentă estimată a datelor pe lună este mai mică decât"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Nu porniți backup-ul de imagine dacă limita de utilizare curentă estimată a datelor pe lună este mai mică decât"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Actualizați baza de date pentru estimarea limitelor de date"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Backup de imagine completă # 1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Volumele pentru instantanee în grupuri în timpul copierii imaginilor"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Volumele pentru instantanee în grupuri în timpul copierii de fișiere"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Configurația componentelor de backup ale Windows "
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Numele grupului"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "Cu selectate"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "Calea către backup neconfigurata "
 
 msgid "disabled"
-msgstr ""
+msgstr "Dezactivat"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "Introduceți numele noului alert script"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "Sigur doriți să eliminați acest alert script?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "De câte ori intervalul de copiere a fișierului după care starea de salvare a fișierului este setată să nu fie ok"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "De câte ori intervalul de copiere a imaginii după care starea de salvare a imaginii este setată ca nefiind în regulă"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "Adresele de e-mail (separate de \";\") pentru a notifica o dată starea de backup imagine / fișier nu este în regulă"
 
 msgid "alert_important"
-msgstr ""
+msgstr "Adăugați o etichetă [Important] pentru email-urile de alerta"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Trimite mail-ul de OK după ce statusul backup-ului trece din Nu e OK în OK"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "Editează scriptul de alerta  "
 
 msgid "tAlert script"
-msgstr ""
+msgstr "Scriptul de alerta"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Parametri scriptului de alerta"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "Adaugă partener"
 
 msgid "tName:"
-msgstr ""
+msgstr "Nume:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Eticheta: "
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Valoare implicita:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Tip:"
 
 msgid "tString"
-msgstr ""
+msgstr "Sir"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "număr flotant"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Întreg "
 
 msgid "tBoolean"
-msgstr ""
+msgstr "Binar"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Cu Docker (interfață web accesibilă de la client):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Cu Docker (interfața web nu este accesibilă de la client):"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Editați scriptul de rapoarte"
 
 msgid "tPaused"
-msgstr ""
+msgstr "Pe pauza"
 
 msgid "tReport script"
-msgstr ""
+msgstr "Scriptul de rapoarte"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Alerte"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "Editare scripturi"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Restabilește cheia de autentificare prin Internet"

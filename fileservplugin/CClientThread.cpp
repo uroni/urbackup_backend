@@ -68,11 +68,13 @@
 
 #include "FileMetadataPipe.h"
 
+#ifdef __linux__
 #ifndef SEEK_DATA
 #define SEEK_DATA 3
 #endif
 #ifndef SEEK_HOLE
 #define SEEK_HOLE 4
+#endif
 #endif
 
 #if defined(__FreeBSD__)
@@ -2656,7 +2658,7 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents, std::v
 			return -1;
 		}
 	}
-#else
+#elif SEEK_HOLE
 	off64_t last_sparse_pos = 0;
 	has_file_extents = false;
 	real_fsize = fsize;
@@ -2720,6 +2722,9 @@ int64 CClientThread::getFileExtents(int64 fsize, int64& n_sparse_extents, std::v
 
 	n_sparse_extents = file_extents.size();
 
+#else
+	has_file_extents = false;
+	real_fsize = fsize;
 #endif
 	return real_fsize;
 }
