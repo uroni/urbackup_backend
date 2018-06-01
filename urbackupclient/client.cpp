@@ -4023,6 +4023,10 @@ void IndexThread::addHardExcludes(std::vector<std::string>& exclude_dirs)
 	exclude_dirs.push_back("/proc/*");
 #endif
 
+#ifdef __APPLE__
+	exclude_dirs.push_back("/dev/*");
+#endif
+
 #ifdef _WIN32
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\URBCT.DAT"));
 	exclude_dirs.push_back(sanitizePattern(":\\SYSTEM VOLUME INFORMATION\\*{3808876B-C176-4E48-B7AE-04046E6CC752}*"));
