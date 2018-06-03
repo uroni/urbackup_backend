@@ -63,6 +63,7 @@
 #include "ThrottleUpdater.h"
 #include "../fileservplugin/IFileServ.h"
 #include "DataplanDb.h"
+#include "ImageMount.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -3385,12 +3386,41 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		}
 	}
 
+	if (ServerStatus::getStatus(old_name.name).r_online)
+	{
+		//retry later once the old client is offline
+		return true;
+	}
+
 	DBScopedSynchronous synchronous(db);
 	DBScopedWriteTransaction trans(db);
 
 	ServerCleanupDao cleanup_dao(db);
 
 	std::vector<ServerCleanupDao::SImageBackupInfo> images = cleanup_dao.getClientImages(rename_from);
+
+	for (size_t i = 0; i < images.size(); ++i)
+	{
+		if (!ImageMount::unmount_images(images[i].id))
+		{
+			//retry later
+			return true;
+		}
+	}
+
+	if (!os_remove_dir(backupfolder + os_file_sep() + clientname))
+	{
+		return true;
+	}
+
+	if (!os_rename_file(backupfolder + os_file_sep() + old_name.name,
+		backupfolder + os_file_sep() + clientname))
+	{
+		os_create_dir(backupfolder + os_file_sep() + clientname);
+		return true;
+	}
+
+	os_sync(backupfolder);
 
 	for (size_t i = 0; i < images.size(); ++i)
 	{
@@ -3409,13 +3439,6 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		backup_dao->addClientMoved(moved_to[i], clientname);
 	}
 
-	os_remove_dir(backupfolder + os_file_sep() + clientname);
-
-	os_rename_file(backupfolder + os_file_sep() + old_name.name,
-		backupfolder + os_file_sep() + clientname);
-
-	os_sync(backupfolder);
-
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");
 	if (internet_authkey.exists)
 	{
@@ -3429,7 +3452,14 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	}
 
 	ServerCleanupThread::deleteClientSQL(db, clientid);
-	backup_dao->changeClientName(clientname, clientmainname, rename_from);
+	if (clientsubname.empty())
+	{
+		backup_dao->changeClientName(clientname, rename_from);
+	}
+	else
+	{
+		backup_dao->changeClientNameWithVirtualmain(clientname, clientmainname, rename_from);
+	}
 
 	clientid = rename_from;
 

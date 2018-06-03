@@ -588,6 +588,60 @@ std::string ImageMount::get_mount_path(int backupid, int partition, bool do_moun
 	return std::string();
 }
 
+bool ImageMount::unmount_images(int backupid)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	std::vector<ServerBackupDao::SMountedImage> old_mounted_images =
+		backup_dao.getOldMountedImages(0);
+
+	IScopedLock lock(mounted_images_mutex);
+	for (size_t i = 0; i < old_mounted_images.size(); ++i)
+	{
+		if (old_mounted_images[i].backupid != backupid)
+		{
+			continue;
+		}
+
+		if (mounted_images.find(SMountId(old_mounted_images[i].backupid, old_mounted_images[i].partition)) != mounted_images.end())
+		{
+			Server->Log("Image id " + convert(old_mounted_images[i].backupid) +
+				" partition " + convert(old_mounted_images[i].partition)
+				+ " currently mounted", LL_INFO);
+			return false;
+		}
+
+		if (locked_images.find(old_mounted_images[i].backupid) != locked_images.end())
+		{
+			Server->Log("Image id " + convert(old_mounted_images[i].backupid) +
+				" partition " + convert(old_mounted_images[i].partition)
+				+ " currently locked", LL_INFO);
+			return false;
+		}
+
+		locked_images.insert(old_mounted_images[i].backupid);
+		lock.relock(NULL);
+
+		int64 passed_time_s = Server->getTimeSeconds() - old_mounted_images[i].mounttime;
+		Server->Log("Unmounting mounted image backup id " + convert(old_mounted_images[i].backupid) +
+			" partition " + convert(old_mounted_images[i].partition) + " path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s * 1000) + " ago (unmount_images)", LL_INFO);
+		std::string errmsg;
+		if (!unmount_image(backup_dao, old_mounted_images[i].backupid, old_mounted_images[i].partition, errmsg))
+		{
+			Server->Log("Unmounting image backup id " + convert(old_mounted_images[i].backupid) +
+				" path \"" + old_mounted_images[i].path + "\" mounted " + PrettyPrintTime(passed_time_s * 1000)
+				+ " ago failed: " + errmsg + " (unmount_images)", LL_ERROR);
+		}
+		backup_dao.delImageMounted(old_mounted_images[i].id);
+
+		lock.relock(mounted_images_mutex);
+		locked_images.erase(locked_images.find(old_mounted_images[i].backupid));
+	}
+
+	return true;
+}
+
 void ImageMount::incrImageMounted(int backupid, int partition)
 {
 	IScopedLock lock(mounted_images_mutex);

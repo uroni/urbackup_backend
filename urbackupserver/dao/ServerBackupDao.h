@@ -105,7 +105,8 @@ public:
 	std::vector<int> getClientsByUid(const std::string& uid);
 	void updateClientUid(const std::string& uid, int clientid);
 	void deleteClient(int clientid);
-	void changeClientName(const std::string& name, const std::string& virtualmain, int id);
+	void changeClientName(const std::string& name, int id);
+	void changeClientNameWithVirtualmain(const std::string& name, const std::string& virtualmain, int id);
 	void addClientMoved(const std::string& from_name, const std::string& to_name);
 	std::vector<std::string> getClientMoved(const std::string& to_name);
 	std::vector<std::string> getClientMovedFrom(const std::string& from_name);
@@ -199,6 +200,7 @@ private:
 	IQuery* q_updateClientUid;
 	IQuery* q_deleteClient;
 	IQuery* q_changeClientName;
+	IQuery* q_changeClientNameWithVirtualmain;
 	IQuery* q_addClientMoved;
 	IQuery* q_getClientMoved;
 	IQuery* q_getClientMovedFrom;

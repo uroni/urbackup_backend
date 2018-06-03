@@ -399,19 +399,37 @@ void ServerBackupDao::deleteClient(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::changeClientName
 * @sql
-*      UPDATE clients SET name=:name(string), virtualmain=:virtualmain(string) WHERE id=:id(int)
+*      UPDATE clients SET name=:name(string) WHERE id=:id(int)
 */
-void ServerBackupDao::changeClientName(const std::string& name, const std::string& virtualmain, int id)
+void ServerBackupDao::changeClientName(const std::string& name, int id)
 {
 	if(q_changeClientName==NULL)
 	{
-		q_changeClientName=db->Prepare("UPDATE clients SET name=?, virtualmain=? WHERE id=?", false);
+		q_changeClientName=db->Prepare("UPDATE clients SET name=? WHERE id=?", false);
 	}
 	q_changeClientName->Bind(name);
-	q_changeClientName->Bind(virtualmain);
 	q_changeClientName->Bind(id);
 	q_changeClientName->Write();
 	q_changeClientName->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::changeClientNameWithVirtualmain
+* @sql
+*      UPDATE clients SET name=:name(string), virtualmain=:virtualmain(string) WHERE id=:id(int)
+*/
+void ServerBackupDao::changeClientNameWithVirtualmain(const std::string& name, const std::string& virtualmain, int id)
+{
+	if(q_changeClientNameWithVirtualmain==NULL)
+	{
+		q_changeClientNameWithVirtualmain=db->Prepare("UPDATE clients SET name=?, virtualmain=? WHERE id=?", false);
+	}
+	q_changeClientNameWithVirtualmain->Bind(name);
+	q_changeClientNameWithVirtualmain->Bind(virtualmain);
+	q_changeClientNameWithVirtualmain->Bind(id);
+	q_changeClientNameWithVirtualmain->Write();
+	q_changeClientNameWithVirtualmain->Reset();
 }
 
 /**
@@ -1901,6 +1919,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_updateClientUid=NULL;
 	q_deleteClient=NULL;
 	q_changeClientName=NULL;
+	q_changeClientNameWithVirtualmain=NULL;
 	q_addClientMoved=NULL;
 	q_getClientMoved=NULL;
 	q_getClientMovedFrom=NULL;
@@ -1987,6 +2006,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_updateClientUid);
 	db->destroyQuery(q_deleteClient);
 	db->destroyQuery(q_changeClientName);
+	db->destroyQuery(q_changeClientNameWithVirtualmain);
 	db->destroyQuery(q_addClientMoved);
 	db->destroyQuery(q_getClientMoved);
 	db->destroyQuery(q_getClientMovedFrom);
