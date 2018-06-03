@@ -328,34 +328,42 @@ void Alerts::operator()()
 				int i_file_ok = file_ok ? 1 : 0;
 				int i_image_ok = image_ok ? 1 : 0;
 
-				if (settings->no_file_backups
-					&& res[i]["file_ok"] != "-1")
+				if (settings->no_file_backups)
 				{
 					i_file_ok = -1;
-					needs_update = true;
+					if (res[i]["file_ok"] != "-1")
+					{
+						needs_update = true;
+					}
 				}
 				else if (!complex_file_interval
 					&& update_freq_file_incr < 0
-					&& update_freq_file_full < 0
-					&& res[i]["file_ok"] != "-1")
+					&& update_freq_file_full < 0)
 				{
 					i_file_ok = -1;
-					needs_update = true;
+					if (res[i]["file_ok"] != "-1")
+					{
+						needs_update = true;
+					}
 				}
 
-				if (settings->no_images
-					&& res[i]["image_ok"] != "-1")
+				if (settings->no_images)
 				{
 					i_image_ok = -1;
-					needs_update = true;
+					if (res[i]["image_ok"] != "-1")
+					{
+						needs_update = true;
+					}
 				}
 				else if (!complex_image_interval
 					&& update_freq_image_full < 0
-					&& update_freq_image_incr < 0
-					&& res[i]["image_ok"] != "-1")
+					&& update_freq_image_incr < 0)
 				{
 					i_image_ok = -1;
-					needs_update = true;
+					if (res[i]["image_ok"] != "-1")
+					{
+						needs_update = true;
+					}
 				}
 
 				if (needs_update)
