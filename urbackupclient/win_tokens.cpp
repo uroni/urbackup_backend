@@ -300,7 +300,7 @@ std::vector<std::string> get_user_groups(const std::string& username)
 	}
 	else
 	{
-		Server->Log("Error while enumerating user groups: "+ convert((int)status), LL_ERROR);
+		Server->Log("Error while enumerating user \""+username+"\" groups: "+ convert((int)status), LL_ERROR);
 	}
 
 	if(buf!=NULL)
