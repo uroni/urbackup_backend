@@ -117,6 +117,13 @@ namespace
 			ret.params.push_back(param);
 		}
 
+		db_results res_script = db->Read("SELECT global_state FROM alert_scripts WHERE id=" + convert(script_id));
+
+		if (!res_script.empty())
+		{
+			ret.global = res_script[0]["global_state"];
+		}
+
 		return ret;
 	}
 
@@ -158,6 +165,7 @@ void Alerts::operator()()
 		" (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id) "
 		" WHERE alerts_next_check IS NULL OR alerts_next_check<=?");
 	IQuery* q_update_client = db->Prepare("UPDATE clients SET  file_ok=?, image_ok=?, alerts_next_check=?, alerts_state=? WHERE id=?");
+	IQuery* q_update_global_state = db->Prepare("UPDATE alert_scripts SET global_state=? WHERE id=?");
 
 	std::map<int, SScript> alert_scripts;
 
@@ -288,6 +296,7 @@ void Alerts::operator()()
 				}
 
 				std::string state = res[i]["alerts_state"];
+				std::string global_state = it->second.global;
 				int64 ret2;
 				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, 
 					it->second.state_mem[clientid], global_state, it->second.global_mem, funcs);
@@ -384,6 +393,16 @@ void Alerts::operator()()
 					q_update_client->Bind(clientid);
 					q_update_client->Write();
 					q_update_client->Reset();
+				}
+
+				if (global_state != it->second.global)
+				{
+					it->second.global = global_state;
+
+					q_update_global_state->Bind(global_state);
+					q_update_global_state->Bind(script_id);
+					q_update_global_state->Write();
+					q_update_global_state->Reset();
 				}
 			}
 		}
