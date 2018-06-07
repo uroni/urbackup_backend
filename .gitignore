@@ -260,3 +260,4 @@ urbackup/hdat_file_*_.dat
 urbackup/windows_components_config/*
 SQLGen/x64/*
 luaplugin/x64/*
+blockalign/x64/*
