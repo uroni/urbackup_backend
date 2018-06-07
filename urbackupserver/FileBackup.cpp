@@ -119,7 +119,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 
 	ServerLogger::Log(logid, clientname+": Connecting for filelist...", LL_DEBUG);
-	IPipe *cc=client_main->getClientCommandConnection(10000);
+	IPipe *cc=client_main->getClientCommandConnection(server_settings.get(), 10000);
 	if(cc==NULL)
 	{
 		ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error during filelist construction", LL_ERROR);
@@ -232,7 +232,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 				&& Server->getTimeMS() - starttime <= timeout_time)
 			{
 				ServerLogger::Log(logid, clientname + ": Connecting for filelist (async)...", LL_DEBUG);
-				cc = client_main->getClientCommandConnection(10000);
+				cc = client_main->getClientCommandConnection(server_settings.get(), 10000);
 
 				if (ServerStatus::getProcess(clientname, status_id).stop)
 				{
@@ -407,7 +407,7 @@ bool FileBackup::wait_for_async(const std::string& async_id, int64 timeout_time)
 				&& Server->getTimeMS() - starttime <= timeout_time)
 			{
 				ServerLogger::Log(logid, clientname + ": Connecting for async...", LL_DEBUG);
-				cc.reset(client_main->getClientCommandConnection(10000));
+				cc.reset(client_main->getClientCommandConnection(server_settings.get(), 10000));
 
 				if (ServerStatus::getProcess(clientname, status_id).stop)
 				{
@@ -1080,6 +1080,11 @@ bool FileBackup::create_hardlink(const std::string & linkname, const std::string
 	}
 
 	return os_create_hardlink(linkname, fname, use_ioref, too_many_links);
+}
+
+bool FileBackup::handle_not_enough_space(const std::string & path)
+{
+	return client_main->handle_not_enough_space(path, logid);
 }
 
 std::string FileBackup::convertToOSPathFromFileClient(std::string path)
@@ -2150,7 +2155,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 	{
 		std::string identity = client_main->getIdentity();
 		std::auto_ptr<FileClient> fc_metadata_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-			client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
+			client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this));
 
 		_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream.get(), server_settings.get(), 10000);
 		if(rc!=ERR_CONNECTED)
@@ -2215,7 +2220,7 @@ bool FileBackup::stopFileMetadataDownloadThread(bool stopped, size_t expected_em
 			{
 				std::string identity = client_main->getIdentity();
 				std::auto_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-					client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
+					client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 				_u32 rc = client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
 				if (rc == ERR_CONNECTED)
@@ -2351,7 +2356,7 @@ bool FileBackup::startPhashDownloadThread(const std::string& async_id)
 {
 	std::string identity = client_main->getIdentity();
 	std::auto_ptr<FileClient> fc_phash_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-		client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
+		client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 	_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream.get(), server_settings.get(), 10000);
 	if (rc != ERR_CONNECTED)
@@ -2401,7 +2406,7 @@ bool FileBackup::stopPhashDownloadThread()
 		{
 			std::string identity = client_main->getIdentity();
 			std::auto_ptr<FileClient> fc_phash_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-				client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : client_main));
+				client_main->isOnInternetConnection(), client_main, use_tmpfiles ? NULL : this));
 
 			_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream_end.get(), server_settings.get(), 10000);
 			if (rc == ERR_CONNECTED)
@@ -2441,7 +2446,7 @@ void FileBackup::save_debug_data(const std::string& rfn, const std::string& loca
 
 	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
+		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this);
 
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)

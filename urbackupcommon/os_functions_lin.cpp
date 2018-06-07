@@ -57,6 +57,7 @@
 #define open64 open
 #define readdir64 readdir
 #define dirent64 dirent
+#define fsblkcnt64_t fsblkcnt_t
 #endif
 
 
@@ -387,8 +388,8 @@ int64 os_total_space(const std::string &path)
     int rc=statvfs64((path).c_str(), &buf);
 	if(rc==0)
 	{
-		fsblkcnt_t used=buf.f_blocks-buf.f_bfree;
-		fsblkcnt_t total = (used+buf.f_bavail)*buf.f_bsize;
+		fsblkcnt64_t used=buf.f_blocks-buf.f_bfree;
+		fsblkcnt64_t total = (used+buf.f_bavail)*buf.f_bsize;
 		if(total>LLONG_MAX)
 		{
 			return LLONG_MAX;

@@ -63,6 +63,7 @@
 #include "ThrottleUpdater.h"
 #include "../fileservplugin/IFileServ.h"
 #include "DataplanDb.h"
+#include "ImageMount.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -215,7 +216,8 @@ void ClientMain::operator ()(void)
 			clientid = restore_client_id--;
 		}
 
-		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, true, server_identity, curr_server_token, clientsubname);
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
+			true, curr_server_token, clientsubname, NULL);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 		while(true)
@@ -344,6 +346,12 @@ void ClientMain::operator ()(void)
 		return;
 	}
 
+	int64 next_capa_update = 0;
+	if (protocol_versions.update_capa_interval > 0)
+	{
+		next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
+	}
+
 	ServerStatus::setClientId(clientname, clientid);
 
 	bool use_reflink=false;
@@ -367,7 +375,8 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, false, identity, curr_server_token, clientsubname);
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, 
+		true, curr_server_token, clientsubname, NULL);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread, "client channel");
 
 	bool received_client_settings=true;
@@ -396,10 +405,7 @@ void ClientMain::operator ()(void)
 		sendSettings();
 	}
 
-	if(!server_settings->getSettings()->virtual_clients.empty())
-	{
-		BackupServer::setVirtualClients(clientname, server_settings->getSettings()->virtual_clients);
-	}
+	updateVirtualClients();
 
 	ServerLogger::Log(logid, "Sending backup incr interval...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
@@ -446,8 +452,19 @@ void ClientMain::operator ()(void)
 						ImageBackup* ibackup = dynamic_cast<ImageBackup*>(backup_queue[i].backup);
 						if (ibackup != NULL)
 						{
+							bool in_image_group = false;
+							for (size_t j = 0; j < running_image_groups.size();++j)
+							{
+								if (running_image_groups[j].find(ibackup) != running_image_groups[j].end())
+								{
+									in_image_group = true;
+									break;
+								}
+							}
+
 							std::vector<ImageBackup::SImageDependency> dependencies = ibackup->getDependencies(true);
-							if (!dependencies.empty())
+							if (!in_image_group
+								&& !dependencies.empty())
 							{
 								std::map<ImageBackup*, bool> new_running_image_group;
 								new_running_image_group[ibackup] = false;
@@ -616,10 +633,7 @@ void ClientMain::operator ()(void)
 						curr_image_version = curr_image_version & ~c_image_cowraw_bit;
 					}
 
-					if(!server_settings->getSettings()->virtual_clients.empty())
-					{
-						BackupServer::setVirtualClients(clientname, server_settings->getSettings()->virtual_clients);
-					}
+					updateVirtualClients();
 				}
 
 				if(settings_updated && (received_client_settings || settings_dont_exist) )
@@ -634,7 +648,7 @@ void ClientMain::operator ()(void)
 			}
 
 			if( (client_updated_time!=0 && Server->getTimeMS()-client_updated_time>6*60*1000)
-				|| update_capa)
+				|| update_capa )
 			{
 				update_capa = false;
 
@@ -644,6 +658,16 @@ void ClientMain::operator ()(void)
 				if (!authenticateIfNeeded(true, false))
 				{
 					skip_checking = true;
+				}
+			}
+
+			if ((next_capa_update != 0 && next_capa_update > Server->getTimeMS()))
+			{
+				updateCapabilities(NULL);
+
+				if (protocol_versions.update_capa_interval > 0)
+				{
+					next_capa_update = Server->getTimeMS() + protocol_versions.update_capa_interval;
 				}
 			}
 
@@ -740,6 +764,10 @@ void ClientMain::operator ()(void)
 				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_full_image_now)
 				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
+				if (protocol_versions.update_vols > 0)
+				{
+					updateCapabilities(NULL);
+				}
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
@@ -765,6 +793,11 @@ void ClientMain::operator ()(void)
 				&& exponentialBackoffImage() && pauseRetryBackup() && isDataplanOkay(false) && isOnline(channel_thread) ) || do_incr_image_now)
 				&& isBackupsRunningOkay(false) )
 			{
+				if (protocol_versions.update_vols > 0)
+				{
+					updateCapabilities(NULL);
+				}
+
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
@@ -1208,7 +1241,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::str
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(10000));
+		cc.reset(getClientCommandConnection(NULL, 10000));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1311,7 +1344,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	}
 	else
 	{
-		cc.reset(getClientCommandConnection(10000));
+		cc.reset(getClientCommandConnection(NULL, 10000));
 		if (cc.get() == NULL)
 		{
 			if (logerr)
@@ -1581,6 +1614,11 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		{
 			protocol_versions.wtokens_version = watoi(it->second);
 		}
+		it = params.find("UPDATE_VOLS");
+		if (it != params.end())
+		{
+			protocol_versions.update_vols = watoi(it->second);
+		}
 		it=params.find("RESTORE");
 		if(it!=params.end())
 		{
@@ -1605,6 +1643,36 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 			{
 				*needs_restart = true;
 			}
+		}
+		it = params.find("UPDATE_CAPA_INTERVAL");
+		if(it != params.end())
+		{
+			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
+		}
+
+		bool update_settings = false;
+		size_t idx = 0;
+		while ((it = params.find("def_key_" + convert(idx))) != params.end())
+		{
+			std::string val = params["def_val_" + convert(idx)];
+			ServerBackupDao::CondString setting = backup_dao->getSetting(clientid, it->second);
+			if (!setting.exists)
+			{
+				backup_dao->insertSetting(it->second, val, clientid);
+				update_settings = true;
+			}
+			else if ( (it->second=="virtual_clients_add" || it->second =="image_snapshot_groups_def")
+				&& setting.value != val)
+			{
+				backup_dao->updateSetting(val, it->second, clientid);
+				update_settings = true;
+			}
+			++idx;
+		}
+
+		if (update_settings)
+		{
+			ServerSettings::updateClient(clientid);
 		}
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
@@ -1993,7 +2061,7 @@ void ClientMain::checkClientVersion(void)
 			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			std::auto_ptr<IPipe> cc(getClientCommandConnection(10000));
+			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings, 10000));
 			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
@@ -2303,7 +2371,7 @@ bool ClientMain::inBackupWindow(Backup * backup)
 	}
 }
 
-IPipe *ClientMain::getClientCommandConnection(int timeoutms, std::string* clientaddr)
+IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, int timeoutms, std::string* clientaddr)
 {
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
@@ -2419,8 +2487,12 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 	}
 }
 
-bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms)
+bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, 
+	ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms)
 {
+	if (no_free_space_callback == NULL)
+		no_free_space_callback = this;
+
 	std::string curr_clientname = (clientname);
 	if(!clientsubname.empty())
 	{
@@ -2433,7 +2505,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe *cp=InternetServiceConnector::getConnection(curr_clientname, SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
 		{
-			fc_chunked.reset(new FileClientChunked(cp, false, &tcpstack, this, use_tmpfiles?NULL:this, identity, NULL));
+			fc_chunked.reset(new FileClientChunked(cp, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
 			fc_chunked->setReconnectionTimeout(c_internet_fileclient_timeout);
 		}
 		else
@@ -2447,7 +2519,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
 		{
-			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL:this, identity, NULL));
+			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
 		}
 		else
 		{
@@ -2570,7 +2642,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	return rp;
 }
 
-bool ClientMain::handle_not_enough_space(const std::string &path)
+bool ClientMain::handle_not_enough_space(const std::string &path, logid_t logid)
 {
 	int64 free_space=-1;
 	if(!path.empty())
@@ -2598,6 +2670,11 @@ bool ClientMain::handle_not_enough_space(const std::string &path)
 	}
 
 	return true;
+}
+
+bool ClientMain::handle_not_enough_space(const std::string & path)
+{
+	return handle_not_enough_space(path, logid);
 }
 
 unsigned int ClientMain::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
@@ -3238,6 +3315,28 @@ void ClientMain::finishFailedRestore(std::string restore_identity, logid_t log_i
 	}
 }
 
+void ClientMain::updateVirtualClients()
+{
+	std::string virtual_clients = server_settings->getVirtualClients();
+	{
+		IScopedLock lock(clientaddr_mutex);
+
+		allow_restore_clients.clear();
+		allow_restore_clients.push_back(clientname);
+		if (!virtual_clients.empty())
+		{
+			std::vector<std::string> toks;
+			Tokenize(virtual_clients, toks, "|");
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				allow_restore_clients.push_back(clientname + "[" + toks[i] + "]");
+			}
+		}
+	}
+
+	BackupServer::setVirtualClients(clientname, virtual_clients);
+}
+
 bool ClientMain::renameClient(const std::string & clientuid)
 {
 	std::vector<int> uids = backup_dao->getClientsByUid(clientuid);
@@ -3287,12 +3386,41 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		}
 	}
 
+	if (ServerStatus::getStatus(old_name.name).r_online)
+	{
+		//retry later once the old client is offline
+		return true;
+	}
+
 	DBScopedSynchronous synchronous(db);
 	DBScopedWriteTransaction trans(db);
 
 	ServerCleanupDao cleanup_dao(db);
 
 	std::vector<ServerCleanupDao::SImageBackupInfo> images = cleanup_dao.getClientImages(rename_from);
+
+	for (size_t i = 0; i < images.size(); ++i)
+	{
+		if (!ImageMount::unmount_images(images[i].id))
+		{
+			//retry later
+			return true;
+		}
+	}
+
+	if (!os_remove_dir(backupfolder + os_file_sep() + clientname))
+	{
+		return true;
+	}
+
+	if (!os_rename_file(backupfolder + os_file_sep() + old_name.name,
+		backupfolder + os_file_sep() + clientname))
+	{
+		os_create_dir(backupfolder + os_file_sep() + clientname);
+		return true;
+	}
+
+	os_sync(backupfolder);
 
 	for (size_t i = 0; i < images.size(); ++i)
 	{
@@ -3311,13 +3439,6 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		backup_dao->addClientMoved(moved_to[i], clientname);
 	}
 
-	os_remove_dir(backupfolder + os_file_sep() + clientname);
-
-	os_rename_file(backupfolder + os_file_sep() + old_name.name,
-		backupfolder + os_file_sep() + clientname);
-
-	os_sync(backupfolder);
-
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");
 	if (internet_authkey.exists)
 	{
@@ -3331,7 +3452,14 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	}
 
 	ServerCleanupThread::deleteClientSQL(db, clientid);
-	backup_dao->changeClientName(clientname, clientmainname, rename_from);
+	if (clientsubname.empty())
+	{
+		backup_dao->changeClientName(clientname, rename_from);
+	}
+	else
+	{
+		backup_dao->changeClientNameWithVirtualmain(clientname, clientmainname, rename_from);
+	}
 
 	clientid = rename_from;
 

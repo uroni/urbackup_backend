@@ -119,7 +119,12 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	extent_iterator.reset();
 	curr_sparse_extent.offset = -1;
 
-	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
+	_u32 rc = GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
+
+	if (has_error)
+		return ERR_ERROR;
+
+	return rc;
 }
 
 _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFsFile *hashoutput, _i64& predicted_filesize, int64 file_id, bool is_script, IFile** sparse_extents_f)
@@ -137,7 +142,12 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	extent_iterator.reset();
 	curr_sparse_extent.offset = -1;
 	
-	return GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
+	_u32 rc = GetFile(remotefn, predicted_filesize, file_id, sparse_extents_f);
+
+	if (has_error)
+		return ERR_ERROR;
+
+	return rc;
 }
 
 _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 file_id, IFile** sparse_extents_f)
@@ -1430,6 +1440,8 @@ void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 	if(rc==0)
 	{
 		Server->Log("Fatal error writing to file in writeFileRepeat. Write error in Chunked File transfer. "+os_last_error_str(), LL_ERROR);
+		has_error = true;
+		getPipe()->shutdown();
 	}
 }
 
@@ -1645,6 +1657,9 @@ _i64 FileClientChunked::getTransferredBytes(void)
 
 bool FileClientChunked::Reconnect(bool rerequest)
 {
+	if (has_error)
+		return false;
+
 	if(queue_callback!=NULL)
 	{
 		queue_callback->resetQueueChunked();

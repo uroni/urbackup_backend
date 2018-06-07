@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=2001000017;
+g.current_version=2002000011;
 g.status_show_all=false;
 g.ldap_login=false;
 g.datatable_default_config={};
@@ -1995,7 +1995,15 @@ function show_backups2(data)
 			var obj=data.files[i];
 			if(obj.dir)
 			{
-				obj.size="";
+				if(typeof obj.size !== "undefined"
+					&& obj.size>0)
+				{
+					obj.size=format_size(obj.size);
+				}
+				else
+				{
+					obj.size="";
+				}
 				obj.proc="Files";
 			}
 			else
@@ -2088,7 +2096,8 @@ function show_backups2(data)
 			obj.show_client_breadcrumb=true;
 		}
 			
-		if( data.files.length>0 )
+		if( data.files.length>0
+			&& !data.no_zip)
 		{
 			obj.download_zip=true;
 		}

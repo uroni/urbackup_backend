@@ -122,7 +122,8 @@ private:
 	size_t min_downloaded;
 };
 
-class FileBackup : public Backup, public FileClient::ProgressLogCallback
+class FileBackup : public Backup, public FileClient::ProgressLogCallback, public FileClient::NoFreeSpaceCallback,
+	public FileClientChunked::NoFreeSpaceCallback
 {
 public:
 	FileBackup(ClientMain* client_main, int clientid, std::string clientname, std::string subclientname, LogAction log_action,
@@ -149,6 +150,8 @@ public:
 	static std::string fixFilenameForOS(std::string fn, std::set<std::string>& samedir_filenames, const std::string& curr_path, bool log_warnings, logid_t logid, FilePathCorrections& filepath_corrections);
 
 	virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps);
+
+	virtual bool handle_not_enough_space(const std::string & path);
 
 	static bool create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links, bool* copy);
 

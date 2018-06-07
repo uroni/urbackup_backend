@@ -201,6 +201,22 @@ namespace
 				return;
 			}
 
+			size_t l_col = connect_string.find_last_of(':');
+
+			int64 offset = 0;
+			int64 length = -1;
+			if (l_col > 3)
+			{
+				std::string slice = Server->ConvertFromWchar(connect_string.substr(l_col + 1));
+				offset = watoi64(getuntil("-", slice));
+				length = watoi64(getafter("-", slice));
+				connect_string.erase(l_col, connect_string.size() - l_col);
+			}
+			else
+			{
+				offset = 512 * 1024;
+			}
+
 			VHDFile vhdfile(Server->ConvertFromWchar(connect_string), true, 0);
 			if(!vhdfile.isOpen())
 			{
@@ -208,7 +224,16 @@ namespace
 				return;
 			}
 
-			vhdfile.addVolumeOffset(512 * 1024);
+			vhdfile.addVolumeOffset(offset);
+
+			if (length == -1)
+			{
+				length = vhdfile.Size();
+			}
+			else
+			{
+				length = (std::min)(length, vhdfile.Size());
+			}
 
 			std::string uid;
 			uid.resize(16);
@@ -310,7 +335,7 @@ namespace
 				if (request_code == IMDPROXY_REQ_INFO)
 				{
 					IMDPROXY_INFO_RESP info_resp;
-					info_resp.file_size = vhdfile.getSize();
+					info_resp.file_size = length;
 					info_resp.flags = IMDPROXY_FLAG_RO;
 					info_resp.req_alignment = 512;
 
@@ -346,25 +371,32 @@ namespace
 					buf.resize(read_req.length + sizeof(IMDPROXY_READ_RESP));
 				}
 
+				//Server->Log("Read req offset=" + convert(read_req.offset) + " length=" + convert(read_req.length), LL_INFO);
+
 				IMDPROXY_READ_RESP* read_resp = reinterpret_cast<IMDPROXY_READ_RESP*>(buf.data());
+				read_resp->length = 0;
+				read_resp->errorno = 0;
 
-				bool has_read_error = false;
-				_u32 rc = vhdfile.Read(read_req.offset, buf.data() + sizeof(IMDPROXY_READ_RESP), 
-					static_cast<_u32>(read_req.length), &has_read_error);
-				if(has_read_error)
+				if (read_req.length > 0)
 				{
-					read_resp->errorno = EIO;
-					read_resp->length = 0;
-					rc = 0;
-				}
-				else
-				{
-					read_resp->errorno = 0;
-					read_resp->length = rc;
+					bool has_read_error = false;
+					_u32 rc = vhdfile.Read(read_req.offset, buf.data() + sizeof(IMDPROXY_READ_RESP)+ read_resp->length,
+						static_cast<_u32>(read_req.length), &has_read_error);
+					if (has_read_error)
+					{
+						read_resp->errorno = EIO;
+						read_resp->length = 0;
+						rc = 0;
+					}
+					else
+					{
+						read_resp->length += rc;
+					}
 				}
 
-				b = WriteFile(hConnectPipe2, read_resp, sizeof(IMDPROXY_READ_RESP) + rc, &written, NULL);
-				if (!b || written != sizeof(IMDPROXY_READ_RESP) + rc)
+				//Server->Log("Read resp length=" + convert(read_resp->length), LL_INFO);
+				b = WriteFile(hConnectPipe2, read_resp, static_cast<DWORD>(sizeof(IMDPROXY_READ_RESP) + read_resp->length), &written, NULL);
+				if (!b || written != sizeof(IMDPROXY_READ_RESP) + read_resp->length)
 				{
 					Server->Log("Sending read response failed. Err: " + convert((int64)GetLastError()), LL_ERROR);
 					break;

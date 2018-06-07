@@ -76,8 +76,10 @@ public:
 	{
 		bool exists;
 		int id;
+		int backupid;
 		std::string path;
 		int64 mounttime;
+		int partition;
 	};
 	struct SReportSettings
 	{
@@ -103,7 +105,8 @@ public:
 	std::vector<int> getClientsByUid(const std::string& uid);
 	void updateClientUid(const std::string& uid, int clientid);
 	void deleteClient(int clientid);
-	void changeClientName(const std::string& name, const std::string& virtualmain, int id);
+	void changeClientName(const std::string& name, int id);
+	void changeClientNameWithVirtualmain(const std::string& name, const std::string& virtualmain, int id);
 	void addClientMoved(const std::string& from_name, const std::string& to_name);
 	std::vector<std::string> getClientMoved(const std::string& to_name);
 	std::vector<std::string> getClientMovedFrom(const std::string& from_name);
@@ -163,9 +166,11 @@ public:
 	CondString getClientnameByImageid(int backupid);
 	CondInt getClientidByImageid(int backupid);
 	CondInt getImageMounttime(int backupid);
-	void setImageMounted(int backupid);
-	void setImageUnmounted(int backupid);
-	SMountedImage getMountedImage(int backupid);
+	void updateImageMounted(int64 id);
+	void addImageMounted(int backupid, int partition);
+	void delImageMounted(int64 id);
+	SMountedImage getMountedImage(int backupid, int partition);
+	SMountedImage getImageInfo(int backupid);
 	std::vector<SMountedImage> getOldMountedImages(int64 times);
 	//@-SQLGenFunctionsEnd
 
@@ -195,6 +200,7 @@ private:
 	IQuery* q_updateClientUid;
 	IQuery* q_deleteClient;
 	IQuery* q_changeClientName;
+	IQuery* q_changeClientNameWithVirtualmain;
 	IQuery* q_addClientMoved;
 	IQuery* q_getClientMoved;
 	IQuery* q_getClientMovedFrom;
@@ -254,9 +260,11 @@ private:
 	IQuery* q_getClientnameByImageid;
 	IQuery* q_getClientidByImageid;
 	IQuery* q_getImageMounttime;
-	IQuery* q_setImageMounted;
-	IQuery* q_setImageUnmounted;
+	IQuery* q_updateImageMounted;
+	IQuery* q_addImageMounted;
+	IQuery* q_delImageMounted;
 	IQuery* q_getMountedImage;
+	IQuery* q_getImageInfo;
 	IQuery* q_getOldMountedImages;
 	//@-SQLGenVariablesEnd
 

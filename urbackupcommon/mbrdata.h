@@ -1,5 +1,10 @@
+#pragma once
+
 #include "../common/data.h"
 #include "../Interface/Server.h"
+#include "../Interface/File.h"
+#include "os_functions.h"
+#include <memory>
 
 class SMBRData
 {
@@ -166,3 +171,28 @@ public:
 private:
 	bool has_error;
 };
+
+namespace
+{
+	bool is_disk_mbr(const std::string& mbrfn)
+	{
+		std::auto_ptr<IFile> mbrf(Server->openFile(os_file_prefix(mbrfn), MODE_READ));
+		if (mbrf.get() != NULL)
+		{
+			std::string mbr_header = mbrf->Read(2);
+			if (!mbr_header.empty())
+			{
+				CRData mbr_data(&mbr_header[0], mbr_header.size());
+				char version = 0;
+				if (mbr_data.getChar(&version)
+					&& mbr_data.getChar(&version)
+					&& version == 100)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+}

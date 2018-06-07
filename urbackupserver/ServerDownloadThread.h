@@ -241,6 +241,8 @@ private:
 
 	void logVssLogdata();
 
+	void base_dir_lost_hint();
+
 
 	FileClient& fc;
 	FileClientChunked* fc_chunked;

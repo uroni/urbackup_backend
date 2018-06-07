@@ -522,6 +522,17 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
 
+	if (!settings->overwrite
+		&& settings->image_snapshot_groups.empty())
+	{
+		readStringClientSetting(settings_client, "image_snapshot_groups_def", &settings->image_snapshot_groups);
+	}
+
+	if (settings_client->getValue("virtual_clients_add", &stmp))
+	{
+		settings->virtual_clients_add = stmp;
+	}
+
 	if(!settings->overwrite)
 		return;
 
@@ -963,6 +974,18 @@ int ServerSettings::getInternetSpeed()
 int ServerSettings::getGlobalInternetSpeed()
 {
 	return static_cast<int>(round(currentTimeSpanValue(getSettings()->global_internet_speed)));
+}
+
+std::string ServerSettings::getVirtualClients()
+{
+	std::string ret = getSettings()->virtual_clients;
+	std::string add = getSettings()->virtual_clients_add;
+	if (!add.empty())
+	{
+		if (!ret.empty())ret += "|";
+		ret += add;
+	}
+	return ret;
 }
 
 double ServerSettings::currentTimeSpanValue(std::string time_span_value)

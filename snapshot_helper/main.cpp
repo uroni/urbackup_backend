@@ -208,6 +208,8 @@ int exec_wait(const std::string& path, std::string& stdout, ...)
 			return -1;
 		}
 		
+		close(pipefd[1]);
+		
 		int rc = execvp(path.c_str(), args.data());
 		exit(rc);
 	}

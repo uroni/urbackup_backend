@@ -30,6 +30,7 @@
 #include "database.h"
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "serverinterface/login.h"
 
 #include <memory.h>
 #include <algorithm>
@@ -422,6 +423,7 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 						CWData data;
 						if(!errmsg.empty())
 						{
+							logFailedAuth(clientname, endpoint_name);
 							Server->Log("Authentication failed in InternetServiceConnector::ReceivePackets: "+errmsg, LL_INFO);
 							data.addChar(ID_ISC_AUTH_FAILED);
 							data.addString(errmsg);

@@ -399,19 +399,37 @@ void ServerBackupDao::deleteClient(int clientid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::changeClientName
 * @sql
-*      UPDATE clients SET name=:name(string), virtualmain=:virtualmain(string) WHERE id=:id(int)
+*      UPDATE clients SET name=:name(string) WHERE id=:id(int)
 */
-void ServerBackupDao::changeClientName(const std::string& name, const std::string& virtualmain, int id)
+void ServerBackupDao::changeClientName(const std::string& name, int id)
 {
 	if(q_changeClientName==NULL)
 	{
-		q_changeClientName=db->Prepare("UPDATE clients SET name=?, virtualmain=? WHERE id=?", false);
+		q_changeClientName=db->Prepare("UPDATE clients SET name=? WHERE id=?", false);
 	}
 	q_changeClientName->Bind(name);
-	q_changeClientName->Bind(virtualmain);
 	q_changeClientName->Bind(id);
 	q_changeClientName->Write();
 	q_changeClientName->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::changeClientNameWithVirtualmain
+* @sql
+*      UPDATE clients SET name=:name(string), virtualmain=:virtualmain(string) WHERE id=:id(int)
+*/
+void ServerBackupDao::changeClientNameWithVirtualmain(const std::string& name, const std::string& virtualmain, int id)
+{
+	if(q_changeClientNameWithVirtualmain==NULL)
+	{
+		q_changeClientNameWithVirtualmain=db->Prepare("UPDATE clients SET name=?, virtualmain=? WHERE id=?", false);
+	}
+	q_changeClientNameWithVirtualmain->Bind(name);
+	q_changeClientNameWithVirtualmain->Bind(virtualmain);
+	q_changeClientNameWithVirtualmain->Bind(id);
+	q_changeClientNameWithVirtualmain->Write();
+	q_changeClientNameWithVirtualmain->Reset();
 }
 
 /**
@@ -1739,61 +1757,114 @@ ServerBackupDao::CondInt ServerBackupDao::getImageMounttime(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::setImageMounted
+* @func void ServerBackupDao::updateImageMounted
 * @sql
-*       UPDATE backup_images SET mounttime=strftime('%s','now') WHERE id=:backupid(int)
+*		UPDATE mounted_backup_images SET mounttime=strftime('%s','now') WHERE id=:id(int64)
 */
-void ServerBackupDao::setImageMounted(int backupid)
+void ServerBackupDao::updateImageMounted(int64 id)
 {
-	if(q_setImageMounted==NULL)
+	if(q_updateImageMounted==NULL)
 	{
-		q_setImageMounted=db->Prepare("UPDATE backup_images SET mounttime=strftime('%s','now') WHERE id=?", false);
+		q_updateImageMounted=db->Prepare("UPDATE mounted_backup_images SET mounttime=strftime('%s','now') WHERE id=?", false);
 	}
-	q_setImageMounted->Bind(backupid);
-	q_setImageMounted->Write();
-	q_setImageMounted->Reset();
+	q_updateImageMounted->Bind(id);
+	q_updateImageMounted->Write();
+	q_updateImageMounted->Reset();
 }
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::setImageUnmounted
+* @func void ServerBackupDao::addImageMounted
 * @sql
-*       UPDATE backup_images SET mounttime=0 WHERE id=:backupid(int)
+*       INSERT INTO mounted_backup_images (backupid, partition, mounttime)
+*		VALUES (:backupid(int), :partition(int), strftime('%s','now'))
 */
-void ServerBackupDao::setImageUnmounted(int backupid)
+void ServerBackupDao::addImageMounted(int backupid, int partition)
 {
-	if(q_setImageUnmounted==NULL)
+	if(q_addImageMounted==NULL)
 	{
-		q_setImageUnmounted=db->Prepare("UPDATE backup_images SET mounttime=0 WHERE id=?", false);
+		q_addImageMounted=db->Prepare("INSERT INTO mounted_backup_images (backupid, partition, mounttime) VALUES (?, ?, strftime('%s','now'))", false);
 	}
-	q_setImageUnmounted->Bind(backupid);
-	q_setImageUnmounted->Write();
-	q_setImageUnmounted->Reset();
+	q_addImageMounted->Bind(backupid);
+	q_addImageMounted->Bind(partition);
+	q_addImageMounted->Write();
+	q_addImageMounted->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::delImageMounted
+* @sql
+*		DELETE FROM mounted_backup_images WHERE id=:id(int64)
+*/
+void ServerBackupDao::delImageMounted(int64 id)
+{
+	if(q_delImageMounted==NULL)
+	{
+		q_delImageMounted=db->Prepare("DELETE FROM mounted_backup_images WHERE id=?", false);
+	}
+	q_delImageMounted->Bind(id);
+	q_delImageMounted->Write();
+	q_delImageMounted->Reset();
 }
 
 /**
 * @-SQLGenAccess
 * @func SMountedImage ServerBackupDao::getMountedImage
-* @return int id, string path, int64 mounttime
+* @return int id, int backupid, string path, int64 mounttime, int partition
 * @sql
-*       SELECT id, path, mounttime FROM backup_images WHERE id=:backupid(int)
+*       SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition
+*		 FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id) 
+*			WHERE b.id=:backupid(int) AND m.partition=:partition(int)
 */
-ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid)
+ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid, int partition)
 {
 	if(q_getMountedImage==NULL)
 	{
-		q_getMountedImage=db->Prepare("SELECT id, path, mounttime FROM backup_images WHERE id=?", false);
+		q_getMountedImage=db->Prepare("SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id)  WHERE b.id=? AND m.partition=?", false);
 	}
 	q_getMountedImage->Bind(backupid);
+	q_getMountedImage->Bind(partition);
 	db_results res=q_getMountedImage->Read();
 	q_getMountedImage->Reset();
-	SMountedImage ret = { false, 0, "", 0 };
+	SMountedImage ret = { false, 0, 0, "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.id=watoi(res[0]["id"]);
+		ret.backupid=watoi(res[0]["backupid"]);
 		ret.path=res[0]["path"];
 		ret.mounttime=watoi64(res[0]["mounttime"]);
+		ret.partition=watoi(res[0]["partition"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SMountedImage ServerBackupDao::getImageInfo
+* @return int id, int backupid, string path
+* @sql
+*       SELECT 0 AS id, id AS backupid, path
+*		 FROM backup_images
+*			WHERE id=:backupid(int)
+*/
+ServerBackupDao::SMountedImage ServerBackupDao::getImageInfo(int backupid)
+{
+	if(q_getImageInfo==NULL)
+	{
+		q_getImageInfo=db->Prepare("SELECT 0 AS id, id AS backupid, path FROM backup_images WHERE id=?", false);
+	}
+	q_getImageInfo->Bind(backupid);
+	db_results res=q_getImageInfo->Read();
+	q_getImageInfo->Reset();
+	SMountedImage ret = { false, 0, 0, "" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi(res[0]["id"]);
+		ret.backupid=watoi(res[0]["backupid"]);
+		ret.path=res[0]["path"];
 	}
 	return ret;
 }
@@ -1801,15 +1872,16 @@ ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid)
 /**
 * @-SQLGenAccess
 * @func vector<SMountedImage> ServerBackupDao::getOldMountedImages
-* @return int id, string path, int64 mounttime
+* @return int id, int backupid, string path, int64 mounttime, int partition
 * @sql
-*       SELECT id, path, mounttime FROM backup_images WHERE mounttime!=0 AND mounttime<(strftime('%s','now')-:times(int64))
+*       SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id) 
+*			WHERE m.mounttime!=0 AND m.mounttime<(strftime('%s','now')-:times(int64))
 */
 std::vector<ServerBackupDao::SMountedImage> ServerBackupDao::getOldMountedImages(int64 times)
 {
 	if(q_getOldMountedImages==NULL)
 	{
-		q_getOldMountedImages=db->Prepare("SELECT id, path, mounttime FROM backup_images WHERE mounttime!=0 AND mounttime<(strftime('%s','now')-?)", false);
+		q_getOldMountedImages=db->Prepare("SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id)  WHERE m.mounttime!=0 AND m.mounttime<(strftime('%s','now')-?)", false);
 	}
 	q_getOldMountedImages->Bind(times);
 	db_results res=q_getOldMountedImages->Read();
@@ -1820,8 +1892,10 @@ std::vector<ServerBackupDao::SMountedImage> ServerBackupDao::getOldMountedImages
 	{
 		ret[i].exists=true;
 		ret[i].id=watoi(res[i]["id"]);
+		ret[i].backupid=watoi(res[i]["backupid"]);
 		ret[i].path=res[i]["path"];
 		ret[i].mounttime=watoi64(res[i]["mounttime"]);
+		ret[i].partition=watoi(res[i]["partition"]);
 	}
 	return ret;
 }
@@ -1845,6 +1919,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_updateClientUid=NULL;
 	q_deleteClient=NULL;
 	q_changeClientName=NULL;
+	q_changeClientNameWithVirtualmain=NULL;
 	q_addClientMoved=NULL;
 	q_getClientMoved=NULL;
 	q_getClientMovedFrom=NULL;
@@ -1904,9 +1979,11 @@ void ServerBackupDao::prepareQueries( void )
 	q_getClientnameByImageid=NULL;
 	q_getClientidByImageid=NULL;
 	q_getImageMounttime=NULL;
-	q_setImageMounted=NULL;
-	q_setImageUnmounted=NULL;
+	q_updateImageMounted=NULL;
+	q_addImageMounted=NULL;
+	q_delImageMounted=NULL;
 	q_getMountedImage=NULL;
+	q_getImageInfo=NULL;
 	q_getOldMountedImages=NULL;
 }
 
@@ -1929,6 +2006,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_updateClientUid);
 	db->destroyQuery(q_deleteClient);
 	db->destroyQuery(q_changeClientName);
+	db->destroyQuery(q_changeClientNameWithVirtualmain);
 	db->destroyQuery(q_addClientMoved);
 	db->destroyQuery(q_getClientMoved);
 	db->destroyQuery(q_getClientMovedFrom);
@@ -1988,9 +2066,11 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getClientnameByImageid);
 	db->destroyQuery(q_getClientidByImageid);
 	db->destroyQuery(q_getImageMounttime);
-	db->destroyQuery(q_setImageMounted);
-	db->destroyQuery(q_setImageUnmounted);
+	db->destroyQuery(q_updateImageMounted);
+	db->destroyQuery(q_addImageMounted);
+	db->destroyQuery(q_delImageMounted);
 	db->destroyQuery(q_getMountedImage);
+	db->destroyQuery(q_getImageInfo);
 	db->destroyQuery(q_getOldMountedImages);
 }
 

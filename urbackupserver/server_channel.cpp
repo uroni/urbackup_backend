@@ -40,6 +40,7 @@
 #include "restore_client.h"
 #include "serverinterface/backups.h"
 #include "dao/ServerBackupDao.h"
+#include "../urbackupcommon/mbrdata.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -152,10 +153,13 @@ bool ServerChannelThread::isOnline()
 }
 
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::string& clientname, int clientid,
-	bool internet_mode, bool allow_restore, const std::string& identity, std::string server_token, const std::string& virtual_client) :
+	bool internet_mode, bool allow_restore,
+	 std::string server_token, const std::string& virtual_client,
+	ServerChannelThread* parent) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL),
 		internet_mode(internet_mode), allow_restore(allow_restore), keepalive_thread(NULL), server_token(server_token),
-	virtual_client(virtual_client), allow_shutdown(true)
+	virtual_client(virtual_client), allow_shutdown(true),
+	parent(parent)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -168,7 +172,17 @@ ServerChannelThread::~ServerChannelThread(void)
 	Server->destroy(mutex);
 }
 
-void ServerChannelThread::operator()(void)
+void ServerChannelThread::operator()()
+{
+	run();
+
+	if (parent != NULL)
+	{
+		delete this;
+	}
+}
+
+void ServerChannelThread::run()
 {
 	int64 lastpingtime=0;
 	lasttime=0;
@@ -182,7 +196,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=client_main->getClientCommandConnection(10000, &client_addr);
+			IPipe *np=client_main->getClientCommandConnection(settings, 10000, &client_addr);
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to "+clientname+" failed - CONNECT error -55", LL_DEBUG);
@@ -347,14 +361,21 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		ParseParamStrHttp(s_params, &params);
 		SALT(params);
 	}
-	else if(msg=="GET BACKUPCLIENTS" && allow_restore && hasDownloadImageRights() )
+	else if(msg=="GET BACKUPCLIENTS" && allow_restore && hasDownloadImageRights())
 	{
 		GET_BACKUPCLIENTS();
 	}
-	else if(next(msg, 0, "GET BACKUPIMAGES ") && allow_restore && hasDownloadImageRights())
+	else if(next(msg, 0, "GET BACKUPIMAGES ") && allow_restore)
 	{
-		std::string name=(msg.substr(17));
-		GET_BACKUPIMAGES(name);
+		if (!hasDownloadImageRights())
+		{
+			tcpstack.Send(input, "0|0|0|NO RIGHTS");
+		}
+		else
+		{
+			std::string name = (msg.substr(17));
+			GET_BACKUPIMAGES(name);
+		}
 	}
     else if(next(msg, 0, "GET FILE BACKUPS TOKENS"))
     {
@@ -398,7 +419,9 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			allow_shutdown = false;
 		}
 
+		add_extra_channel();
 		DOWNLOAD_IMAGE(params);
+		remove_extra_channel();
 		Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)->destroyAllQueries();
 
 		{
@@ -708,14 +731,13 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::string& clientname)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	//TODO language
-	IQuery *q=db->Prepare("SELECT backupid AS id, strftime('%s', backuptime) AS timestamp, strftime('%Y-%m-%d %H:%M',backuptime,'localtime') AS backuptime, letter, clientid FROM ((SELECT id AS backupid, clientid, backuptime, letter, complete FROM backup_images) c INNER JOIN (SELECT id FROM clients WHERE name=?) b ON c.clientid=b.id) a WHERE a.complete=1 AND length(a.letter)<=2 ORDER BY backuptime DESC");
+	IQuery *q=db->Prepare("SELECT backupid AS id, strftime('%s', backuptime) AS timestamp, strftime('%Y-%m-%d %H:%M',backuptime,'localtime') AS backuptime, letter, clientid FROM ((SELECT id AS backupid, clientid, backuptime, letter, complete FROM backup_images) c INNER JOIN (SELECT id FROM clients WHERE name=?) b ON c.clientid=b.id) a WHERE a.complete=1 AND a.letter!='SYSVOL' AND a.letter!='ESP' ORDER BY backuptime DESC");
 	q->Bind(clientname);
 	db_results res=q->Read();
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		if(!all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i]["clientid"]))==client_right_ids.end())
+		if(!has_restore_permission(clientname, watoi(res[i]["clientid"])))
 		{
 			tcpstack.Send(input, "0|0|0|NO RIGHTS");
 			db->destroyAllQueries();
@@ -755,8 +777,7 @@ void ServerChannelThread::GET_FILE_BACKUPS( const std::string& clientname )
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		if(!all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i]["clientid"]))==client_right_ids.end())
+		if(!has_restore_permission(clientname, watoi(res[i]["clientid"])))
 		{
 			tcpstack.Send(input, "0|0|0|NO RIGHTS");
 			db->destroyAllQueries();
@@ -938,8 +959,10 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	}
 	else
 	{
-		if( !all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
+		std::string clientname = get_clientname(db, watoi(res[0]["clientid"]));
+
+		if(clientname.empty()
+			|| !has_restore_permission(clientname, watoi(res[0]["clientid"])))
 		{
 			Server->Log("No permission to download image of client with id " + res[0]["clientid"], LL_DEBUG);
 			_i64 r=-1;
@@ -1037,6 +1060,9 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if(img_version==0
 				&& file_extension!="raw")
 				skip=512*512;
+
+			if (is_disk_mbr(res[0]["path"] + ".mbr"))
+				skip = 0;
 
 			_i64 imgsize = (_i64)vhdfile->getSize() - skip;
 			_i64 r=little_endian(imgsize);
@@ -1213,8 +1239,10 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 	}
 	else
 	{
-		if( !all_client_rights &&
-			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0]["clientid"]))==client_right_ids.end())
+		int clientid = watoi(res[0]["clientid"]);
+		std::string clientname = get_clientname(db, clientid);
+		if(clientname.empty()
+			|| !has_restore_permission(clientname, clientid) )
 		{
 			JSON::Object ret;
 			ret.set("err", 4);
@@ -1485,6 +1513,72 @@ void ServerChannelThread::reset()
 	Server->destroy(input);
 	input = NULL;
 	tcpstack.reset();
+}
+
+bool ServerChannelThread::has_restore_permission(const std::string& clientname, int clientid)
+{
+	if (!all_client_rights
+		&& std::find(client_right_ids.begin(), client_right_ids.end(), clientid) == client_right_ids.end())
+	{
+		return false;
+	}
+
+	std::vector<std::string> allow_restore_clients = client_main->getAllowRestoreClients();
+	if (!allow_restore_clients.empty()
+		&& std::find(allow_restore_clients.begin(), allow_restore_clients.end(), clientname)
+		== allow_restore_clients.end())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+std::string ServerChannelThread::get_clientname(IDatabase* db, int clientid)
+{
+	IQuery* q_name = db->Prepare("SELECT name FROM clients WHERE id=?");
+	q_name->Bind(clientid);
+	db_results res_name = q_name->Read();
+	q_name->Reset();
+
+	if (!res_name.empty())
+		return res_name[0]["name"];
+
+	return std::string();
+}
+
+void ServerChannelThread::add_extra_channel()
+{
+	if (parent != NULL)
+	{
+		parent->add_extra_channel();
+	}
+
+	IScopedLock lock(mutex);
+
+	ServerChannelThread* extra = new ServerChannelThread(client_main,
+		clientname, clientid, internet_mode, allow_restore,
+		server_token, virtual_client, this);
+
+	extra_channel_threads.push_back(extra);
+
+	Server->getThreadPool()->execute(extra, "channel extra");
+}
+
+void ServerChannelThread::remove_extra_channel()
+{
+	if (parent != NULL)
+	{
+		parent->remove_extra_channel();
+	}
+
+	IScopedLock lock(mutex);
+
+	if (!extra_channel_threads.empty())
+	{
+		extra_channel_threads[extra_channel_threads.size() - 1]->doExit();
+		extra_channel_threads.erase(extra_channel_threads.begin() + extra_channel_threads.size() - 1);
+	}
 }
 
 

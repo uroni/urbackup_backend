@@ -47,7 +47,8 @@ struct SProtocolVersions
 				efi_version(0), file_meta(0), select_sha_version(0),
 				client_bitmap_version(0), cmd_version(0),
 				symbit_version(0), phash_version(0),
-				wtokens_version(0)
+				wtokens_version(0), update_vols(0),
+				update_capa_interval(0)
 			{
 
 			}
@@ -69,6 +70,8 @@ struct SProtocolVersions
 	int symbit_version;
 	int phash_version;
 	int wtokens_version;
+	int update_vols;
+	int update_capa_interval;
 	std::string os_simple;
 };
 
@@ -161,11 +164,13 @@ public:
 	static int getNumberOfRunningFileBackups(void);
 	static int getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey=NULL);
 
-	IPipe *getClientCommandConnection(int timeoutms=10000, std::string* clientaddr=NULL);
+	IPipe *getClientCommandConnection(ServerSettings* server_settings, int timeoutms=10000, std::string* clientaddr=NULL);
 
 	virtual IPipe * new_fileclient_connection(void);
 
 	virtual bool handle_not_enough_space(const std::string &path);
+
+	virtual bool handle_not_enough_space(const std::string &path, logid_t logid);
 
 	static IFsFile *getTemporaryFileRetry(bool use_tmpfiles, const std::string& tmpfile_path, logid_t logid);
 
@@ -177,7 +182,8 @@ public:
 
 	_u32 getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms=10000);
 
-	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms=10000);
+	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked,
+		ServerSettings* server_settings, FileClientChunked::NoFreeSpaceCallback* no_free_space_callback, int timeoutms=10000);
 
 	bool isOnInternetConnection()
 	{
@@ -241,6 +247,12 @@ public:
 
 	static std::string normalizeVolumeUpper(std::string volume);
 
+	std::vector<std::string> getAllowRestoreClients()
+	{
+		IScopedLock lock(clientaddr_mutex);
+		return allow_restore_clients;
+	}
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -290,6 +302,8 @@ private:
 
 
 	bool renameClient(const std::string& clientuid);
+	void updateVirtualClients();
+
 
 	struct SPathComponents
 	{
@@ -404,4 +418,6 @@ private:
 	volatile bool update_capa;
 
 	volatile bool do_reauthenticate;
+
+	std::vector<std::string> allow_restore_clients;
 };

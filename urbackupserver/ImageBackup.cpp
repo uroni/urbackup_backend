@@ -342,15 +342,25 @@ namespace
 bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParentvhd, int incremental, int incremental_ref,
 	bool transfer_checksum, std::string image_file_format, bool transfer_bitmap, bool transfer_prev_cbitmap)
 {
-	std::string sletter = pLetter;
+	std::string sletter = conv_filename(pLetter);
 	if (pLetter != "SYSVOL" && pLetter != "ESP")
 	{
-		sletter = pLetter[0];
+		if ((pLetter.size() <= 3
+			&& pLetter[1] == ':'
+			&& (pLetter[2] == '\\'
+				|| pLetter[2] == '/'))
+			|| (pLetter.size() <= 2
+				&& pLetter[1] == ':'))
+		{
+			sletter = sletter.substr(0,1);
+		}
 	}
 
 	std::string imagefn;
 	bool fatal_mbr_error;
-	std::string mbrd = getMBR(sletter, fatal_mbr_error);
+	std::string loadfn;
+	bool disk_backup = false;
+	std::string mbrd = getMBR(sletter, pLetter, pParentvhd.empty(), snapshot_id, fatal_mbr_error, loadfn);
 	if (mbrd.empty())
 	{
 		if (pLetter != "SYSVOL" && pLetter != "ESP")
@@ -377,7 +387,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 			return false;
 		}
 
-		std::auto_ptr<IFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+		std::auto_ptr<IFsFile> mbr_file(Server->openFile(os_file_prefix(imagefn + ".mbr"), MODE_WRITE));
+
 		if (mbr_file.get() != NULL)
 		{
 			_u32 w = mbr_file->Write(mbrd);
@@ -386,12 +397,113 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				ServerLogger::Log(logid, "Error writing mbr data. " + os_last_error_str(), LL_ERROR);
 				return false;
 			}
-			mbr_file.reset();
 		}
 		else
 		{
 			ServerLogger::Log(logid, "Error creating file for writing MBR data. " + os_last_error_str(), LL_ERROR);
 			return false;
+		}
+
+		if(!loadfn.empty())
+		{
+			disk_backup = true;
+
+			FileClient fc(false, client_main->getIdentity(), client_main->getProtocolVersions().filesrv_protocol_version,
+				client_main->isOnInternetConnection(), client_main);
+			_u32 rc = client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+			if (rc != ERR_CONNECTED)
+			{
+				ServerLogger::Log(logid, "Error getting MBR zip data - CONNECT error", LL_ERROR);
+				return false;
+			}
+
+			ServerLogger::Log(logid, clientname + ": Loading MBR zip file...", LL_INFO);
+
+			int64 full_backup_starttime = Server->getTimeMS();
+
+			int64 starttime = Server->getTimeMS();
+
+			IFsFile* tmpf = Server->openTemporaryFile();
+			if (tmpf == NULL)
+			{
+				ServerLogger::Log(logid, "Error opening temporay file for MBR zip load", LL_ERROR);
+				return false;
+			}
+
+			ScopedDeleteFile tmpf_del(tmpf);
+
+			rc = ERR_CANNOT_OPEN_FILE;
+			int retry = 0;
+			while (Server->getTimeMS() - starttime < 5*60 * 1000
+				&& rc== ERR_CANNOT_OPEN_FILE)
+			{
+				rc = fc.GetFile(loadfn, tmpf, true, false, 0, false, 0);
+
+				if (rc != ERR_TIMEOUT
+					&& rc!=ERR_SUCCESS)
+				{
+					if (retry < 3)
+					{
+						Server->wait(1000);
+					}
+					else
+					{
+						Server->wait(20000);
+					}
+					++retry;
+				}
+			}
+
+			if (rc != ERR_SUCCESS)
+			{
+				tmpf->Resize(0, false);
+				tmpf->Seek(0);
+				_u32 rc2 = fc.GetFile(loadfn+".err", tmpf, true, false, 0, false, 0);
+
+				if (rc2 == ERR_SUCCESS
+					&& tmpf->Size()<100*1024*1024)
+				{
+					ServerLogger::Log(logid, "Error loading ZIP file MBR: "+tmpf->Read(0LL, static_cast<_u32>(tmpf->Size()) ), LL_ERROR);
+					return false;
+				}
+				else
+				{
+					ServerLogger::Log(logid, "Error loading ZIP file MBR: "+fc.getErrorString(rc), LL_ERROR);
+					return false;
+				}
+			}
+
+			char buf[1024];
+			tmpf->Seek(0);
+			bool has_read_error=false;
+			while ((rc = tmpf->Read(buf, sizeof(buf), &has_read_error)) > 0)
+			{
+				if (mbr_file->Write(buf, rc) != rc)
+				{
+					ServerLogger::Log(logid, "Error writing to "+mbr_file->getFilename()+". "+os_last_error_str(), LL_ERROR);
+					return false;
+				}
+			}
+
+			if (has_read_error)
+			{
+				ServerLogger::Log(logid, "Error reading from " + tmpf->getFilename() + ". " + os_last_error_str(), LL_ERROR);
+				return false;
+			}
+
+			ServerLogger::Log(logid, clientname + ": Loaded MBR zip file (" + PrettyPrintBytes(tmpf->Size()) + ")", LL_INFO);
+
+			if (snapshot_id == 0)
+			{
+				tmpf->Resize(0, false);
+				tmpf->Seek(0);
+				_u32 rc2 = fc.GetFile(loadfn + ".save_id", tmpf, true, false, 0, false, 0);
+				if (rc2 == ERR_SUCCESS
+					&& tmpf->Size() < 100)
+				{
+					snapshot_id = watoi(tmpf->Read(0LL, static_cast<_u32>(tmpf->Size())));
+				}
+			}
 		}
 	}
 
@@ -405,7 +517,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 	}
 
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
-	IPipe *cc=client_main->getClientCommandConnection(10000);
+	IPipe *cc=client_main->getClientCommandConnection(server_settings.get(), 10000);
 	if(cc==NULL)
 	{
 		ServerLogger::Log(logid, "Connecting to \""+clientname+"\" for image backup failed", LL_ERROR);
@@ -646,7 +758,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					else
 					{
 						Server->Log(clientname +": Trying to reconnect in doImage", LL_DEBUG);
-						cc = client_main->getClientCommandConnection(10000);
+						cc = client_main->getClientCommandConnection(server_settings.get(), 10000);
 						if (cc == NULL)
 						{
 							Server->wait(60000);
@@ -972,15 +1084,18 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 						ServerStatus::setProcessTotalBytes(clientname, status_id, blockcnt*blocksize);
 					}
 
-					mbr_offset=writeMBR(vhdfile, drivesize);
-					if( mbr_offset==0 )
+					if (!disk_backup)
 					{
-						ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
-						goto do_image_cleanup;
-					}
-					else
-					{
-						vhdfile->setMbrOffset(mbr_offset);
+						mbr_offset = writeMBR(vhdfile, drivesize);
+						if (mbr_offset == 0)
+						{
+							ServerLogger::Log(logid, "Error writing image MBR", LL_ERROR);
+							goto do_image_cleanup;
+						}
+						else
+						{
+							vhdfile->setMbrOffset(mbr_offset);
+						}
 					}
 				}
 				else
@@ -2130,10 +2245,30 @@ SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
 	}
 }
 
-std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
+std::string ImageBackup::getMBR(const std::string &dl, const std::string& disk_path,
+	bool image_full, int64 snapshot_id, bool& fatal_error, std::string& loadfn)
 {
 	fatal_error = true;
-	std::string ret=client_main->sendClientMessage("MBR driveletter="+dl, "Getting MBR for drive "+dl+" failed", 10000);
+
+	std::string params = "driveletter=" + EscapeParamString(dl);
+
+	if (!clientsubname.empty())
+	{
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	params += "&disk_path=" + EscapeParamString(disk_path);
+
+	if (snapshot_id != 0)
+	{
+		params += "&shadowid=" + convert(snapshot_id);
+	}
+
+	params += std::string("&image_full=") + (image_full ? "1" : "0");
+	params += "&running_jobs=" + convert(ServerStatus::numRunningJobs(clientname));
+	params += "&token=" + EscapeParamString(server_token);
+
+	std::string ret=client_main->sendClientMessage("MBR "+ params, "Getting MBR for drive "+dl+" failed", 10000);
 	CRData r(&ret);
 	char b;
 	if(r.getChar(&b) && b==1 )
@@ -2141,9 +2276,18 @@ std::string ImageBackup::getMBR(const std::string &dl, bool& fatal_error)
 		char ver;
 		if(r.getChar(&ver) )
 		{
-			if(ver!=0 && ver!=1)
+			std::string zipfn;
+			if(ver!=0 && ver!=1
+				&& ver!=100)
 			{
 				ServerLogger::Log(logid, "MBR version "+convert((int)ver)+" is not supported by this server", LL_ERROR);
+			}
+			else if (ver == 100
+				&& r.getStr2(&zipfn))
+			{
+				ServerLogger::Log(logid, "Loading ZIP metadata from "+zipfn, LL_INFO);
+				loadfn = zipfn;
+				return ret.substr(0,2);
 			}
 			else
 			{

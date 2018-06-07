@@ -9,10 +9,11 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
+"PO-Revision-Date: 2018-02-11 09:49+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Danish (Denmark) (http://www.transifex.com/uroni/urbackup/language/da_DK/)\n"
 "MIME-Version: 1.0\n"
@@ -103,7 +104,7 @@ msgid "action_4_d"
 msgstr ""
 
 msgid "nav_item_6"
-msgstr ""
+msgstr "Status"
 
 msgid "nav_item_5"
 msgstr ""
@@ -127,10 +128,10 @@ msgid "backup_never"
 msgstr ""
 
 msgid "yes"
-msgstr ""
+msgstr "Ja"
 
 msgid "no"
-msgstr ""
+msgstr "Nej"
 
 msgid "tBackup status"
 msgstr ""
@@ -448,7 +449,7 @@ msgid "tDownload"
 msgstr ""
 
 msgid "tStatus"
-msgstr ""
+msgstr "Status"
 
 msgid "tIP"
 msgstr ""

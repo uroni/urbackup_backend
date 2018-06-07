@@ -20,6 +20,14 @@ public:
 		EReadaheadMode_Overlapped = 2
 	};
 
+	struct SPartition
+	{
+		SPartition()
+			: offset(-1), length(0) {}
+		int64 offset;
+		int64 length;
+	};
+
 	virtual IFilesystem *createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
 		bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)=0;
 
@@ -43,4 +51,6 @@ public:
 	virtual IReadOnlyBitmap* createClientBitmap(IFile* bitmap_file)=0;
 
 	virtual bool initializeImageMounting() = 0;
+
+	virtual std::vector<SPartition> readPartitions(IVHDFile *vhd, int64 offset, bool& gpt_style) = 0;
 };

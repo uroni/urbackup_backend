@@ -778,6 +778,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				{
 					skip=atoi(skip_s.c_str());
 				}
+				else if (is_disk_mbr(vhdcopy_in + ".mbr"))
+				{
+					skip = 0;
+				}
 
 				Server->Log("Skipping "+convert(skip)+" bytes...", LL_INFO);
 				in.Seek(skip);

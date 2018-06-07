@@ -22,6 +22,8 @@ public:
 
 	virtual bool initializeImageMounting();
 
+	virtual std::vector<SPartition> readPartitions(IVHDFile *vhd, int64 offset, bool& gpt_style);
+
 private:
 	bool isNTFS(char *buffer);
 };

@@ -2018,6 +2018,11 @@ bool upgrade56_57()
 	b &= db->Write("CREATE INDEX moved_clients_from_idx ON moved_clients(from_name)");
 
 	b &= db->Write("ALTER TABLE clients ADD uid TEXT");
+	
+	b &= db->Write("CREATE TABLE mounted_backup_images (id INTEGER PRIMARY KEY, "
+		"backupid INTEGER REFERENCES backup_images(id) ON DELETE CASCADE, "
+		"partition INTEGER,"
+		"mounttime INTEGER)");
 
 	return b;
 }

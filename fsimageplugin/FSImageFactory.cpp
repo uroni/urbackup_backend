@@ -19,6 +19,7 @@
 #include "FSImageFactory.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
+#include <memory.h>
 
 #include "fs/ntfs.h"
 #ifdef _WIN32
@@ -37,6 +38,7 @@
 #endif
 #include "ClientBitmap.h"
 #include <stdlib.h>
+#include "FileWrapper.h"
 
 #ifdef _WIN32
 namespace
@@ -59,6 +61,113 @@ namespace
 	}
 }
 #endif
+
+namespace
+{
+#pragma pack(push)
+#pragma pack(1)
+	struct MBRPartition
+	{
+		unsigned char boot_flag;
+		unsigned char chs_begin[3];
+		unsigned char sys_type;
+		unsigned char chs_end[3];
+		unsigned int start_sector;
+		unsigned int nr_sector;
+	};
+#pragma pack(pop)
+
+	std::vector<IFSImageFactory::SPartition> readPartitionsMBR(const std::string& mbr)
+	{
+		const MBRPartition* partitions = reinterpret_cast<const MBRPartition*>(&mbr[446]);
+		const int64 c_sector_size = 512;
+
+		std::vector<IFSImageFactory::SPartition> ret;
+		for (size_t i = 0; i < 4; ++i)
+		{
+			const MBRPartition* cpart = &partitions[i];
+			if (cpart->sys_type == 0)
+			{
+				continue;
+			}
+
+			IFSImageFactory::SPartition part;
+			part.offset = cpart->start_sector*c_sector_size;
+			part.length = cpart->nr_sector*c_sector_size;
+			ret.push_back(part);
+		}
+
+		return ret;
+	}
+
+#pragma pack(push)
+#pragma pack(1)
+	struct EfiHeader
+	{
+		uint64 signature;
+		_u32 revision;
+		_u32 header_size;
+		_u32 header_crc;
+		_u32 reserved;
+		int64 current_lba;
+		int64 backup_lba;
+		int64 first_lba;
+		int64 last_lba;
+		char disk_guid[16];
+		int64 partition_table_lba;
+		_u32 num_parition_entries;
+		_u32 partition_entry_size;
+		_u32 partition_table_crc;
+	};
+
+	struct GPTPartition
+	{
+		char partition_type_guid[16];
+		char unique_partition_guid[16];
+		int64 first_lba;
+		int64 last_lba;
+		uint64 flags;
+		char name[72];
+	};
+#pragma pack(pop)
+
+	std::vector<IFSImageFactory::SPartition> readPartitionsGPT(IFile* dev, const std::string& gpt_header)
+	{
+		const EfiHeader* efi_header = reinterpret_cast<const EfiHeader*>(&gpt_header[0]);
+		const int64 c_sector_size = 512;
+
+		int64 table_pos = efi_header->partition_table_lba*c_sector_size;
+
+		char partition_type_guid_empty[16] = {};
+
+		std::vector<IFSImageFactory::SPartition> ret;
+		for (_u32 i = 0; i < efi_header->num_parition_entries; ++i)
+		{
+			std::string table_entry = dev->Read(table_pos, efi_header->partition_entry_size);
+			if (table_entry.size() < sizeof(GPTPartition))
+			{
+				continue;
+			}
+			table_pos += efi_header->partition_entry_size;
+
+			const GPTPartition* cpart = reinterpret_cast<const GPTPartition*>(table_entry.data());
+
+			if (cpart->first_lba == 0
+				&& cpart->last_lba == 0
+				&& cpart->flags == 0
+				&& memcmp(cpart->partition_type_guid, partition_type_guid_empty, sizeof(partition_type_guid_empty)) == 0)
+			{
+				continue;
+			}
+
+			IFSImageFactory::SPartition new_part;
+			new_part.offset = cpart->first_lba*c_sector_size;
+			new_part.length = (cpart->last_lba - cpart->first_lba + 1)*c_sector_size;
+			ret.push_back(new_part);
+		}
+		return ret;
+	}
+}
 
 
 void PrintInfo(IFilesystem *fs)
@@ -319,4 +428,27 @@ bool FSImageFactory::initializeImageMounting()
 	int rc = system((mount_helper + " test").c_str());
 	return rc == 0;
 #endif
+}
+
+std::vector<IFSImageFactory::SPartition> FSImageFactory::readPartitions(IVHDFile * vhd, int64 offset, bool& gpt_style)
+{
+	gpt_style = false;
+
+	FileWrapper dev(vhd, offset);
+	std::string mbr = dev.Read(0LL, 512, NULL);
+	std::string gpt_header = dev.Read(512LL, 512, NULL);
+
+	if (next(gpt_header, 0, "EFI PART"))
+	{
+		return readPartitionsGPT(&dev, gpt_header);
+		gpt_style = true;
+	}
+	else if (mbr.size() >= 512
+		&& static_cast<unsigned char>(mbr[510]) == 0x55
+		&& static_cast<unsigned char>(mbr[511]) == 0xAA)
+	{
+		return readPartitionsMBR(mbr);
+	}
+
+	return std::vector<IFSImageFactory::SPartition>();
 }
