@@ -885,7 +885,7 @@ ACTION_IMPL(settings)
 				{
 					JSON::Object u;
 
-					int lclientid = watoi(it->second["id"]);
+					int lclientid = watoi(it->second["clientid"]);
 					ServerSettings client_settings(db, lclientid);
 					u.set("id", lclientid);
 					u.set("name", it->second["name"]);
