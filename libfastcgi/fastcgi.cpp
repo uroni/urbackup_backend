@@ -12,7 +12,6 @@
 
 #include "fastcgi.hpp"
 #include <iostream>
-#include <assert.h>
 #include <stdio.h>
 #ifndef _WIN32
 #include <memory.h>
@@ -194,30 +193,42 @@ void FCGIProtocolDriver::process_params(uint16_t id, uint8_t const * buf, uint16
   uint32_t               data_len;
   while(buf != bufend)
   {
-    if (*buf >> 7 == 0)
-      name_len = *(buf++);
-    else
-    {
-      name_len = ((buf[0] & 0x7F) << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
-      buf += 4;
-    }
-    if (*buf >> 7 == 0)
-      data_len = *(buf++);
-    else
-    {
-      data_len = ((buf[0] & 0x7F) << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
-      buf += 4;
-    }
-    assert(buf + name_len + data_len <= bufend);
-    std::string const name(reinterpret_cast<char const *>(buf), name_len);
-    buf += name_len;
-    std::string const data(reinterpret_cast<char const *>(buf), data_len);
-    buf += data_len;
+	  if (*buf >> 7 == 0)
+		  name_len = *(buf++);
+	  else if (4 <= bufend - buf)
+	  {
+		  name_len = ((buf[0] & 0x7F) << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
+		  buf += 4;
+	  }
+	  else
+		  break;
+
+	  if (*buf >> 7 == 0)
+		  data_len = *(buf++);
+	  else if (4 <= bufend - buf)
+	  {
+		  data_len = ((buf[0] & 0x7F) << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
+		  buf += 4;
+	  }
+	  else
+		  break;
+
+	  if (name_len + data_len <= bufend - buf)
+	  {
+		  std::string const name(reinterpret_cast<char const *>(buf), name_len);
+		  buf += name_len;
+		  std::string const data(reinterpret_cast<char const *>(buf), data_len);
+		  buf += data_len;
 #ifdef DEBUG_FASTCGI
-    std::cerr << "request #" << id << ": FCGIProtocolDriver received PARAM '" << name << "' = '" << data << "'"
-              << std::endl;
+		  std::cerr << "request #" << id << ": FCGIProtocolDriver received PARAM '" << name << "' = '" << data << "'"
+			  << std::endl;
 #endif
-    req->second->params[name] = data;
+		  req->second->params[name] = data;
+	  }
+	  else
+	  {
+		  break;
+	  }
   }
 }
 
