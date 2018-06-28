@@ -1283,7 +1283,7 @@ struct MDB_env {
 	MDB_pgstate	me_pgstate;		/**< state of old pages from freeDB */
 #	define		me_pglast	me_pgstate.mf_pglast
 #	define		me_pghead	me_pgstate.mf_pghead
-	MDB_page	*me_dpages;		/**< list of malloc'd blocks for re-use */
+//	MDB_page	*me_dpages;		/**< list of malloc'd blocks for re-use */
 	/** IDL of pages that became unused in a write txn */
 	MDB_IDL		me_free_pgs;
 	/** ID2L of pages written during a write txn. Length MDB_IDL_UM_SIZE. */
@@ -1761,7 +1761,7 @@ static MDB_page *
 mdb_page_malloc(MDB_txn *txn, unsigned num)
 {
 	MDB_env *env = txn->mt_env;
-	MDB_page *ret = env->me_dpages;
+	MDB_page *ret = NULL; // env->me_dpages;
 	size_t psize = env->me_psize, sz = psize, off;
 	/* For ! #MDB_NOMEMINIT, psize counts how much to init.
 	 * For a single page alloc, we init everything after the page header.
@@ -1769,12 +1769,12 @@ mdb_page_malloc(MDB_txn *txn, unsigned num)
 	 * many pages they will be filling in at least up to the last page.
 	 */
 	if (num == 1) {
-		if (ret) {
+		/*if (ret) {
 			VGMEMP_ALLOC(env, ret, sz);
 			VGMEMP_DEFINED(ret, sizeof(ret->mp_next));
 			env->me_dpages = ret->mp_next;
 			return ret;
-		}
+		}*/
 		psize -= off = PAGEHDRSZ;
 	} else {
 		sz *= num;
@@ -1798,9 +1798,11 @@ mdb_page_malloc(MDB_txn *txn, unsigned num)
 static void
 mdb_page_free(MDB_env *env, MDB_page *mp)
 {
-	mp->mp_next = env->me_dpages;
 	VGMEMP_FREE(env, mp);
-	env->me_dpages = mp;
+	free(mp);
+	/*mp->mp_next = env->me_dpages;
+	VGMEMP_FREE(env, mp);
+	env->me_dpages = mp;*/
 }
 
 /** Free a dirty page */
@@ -5118,11 +5120,11 @@ mdb_env_close(MDB_env *env)
 		return;
 
 	VGMEMP_DESTROY(env);
-	while ((dp = env->me_dpages) != NULL) {
+	/*while ((dp = env->me_dpages) != NULL) {
 		VGMEMP_DEFINED(&dp->mp_next, sizeof(dp->mp_next));
 		env->me_dpages = dp->mp_next;
 		free(dp);
-	}
+	}*/
 
 	mdb_env_close0(env, 0);
 	free(env);
