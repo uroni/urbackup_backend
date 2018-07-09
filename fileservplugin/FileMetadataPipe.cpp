@@ -977,6 +977,7 @@ namespace
 {
     bool get_xattr_keys(const std::string& fn, std::vector<std::string>& keys)
 	{
+		ssize_t mult = 1;
 		while(true)
 		{
 			ssize_t bufsize;
@@ -1000,12 +1001,18 @@ namespace
 			}
 
 			std::string buf;
-			buf.resize(bufsize);
+			buf.resize(bufsize*mult);
 
             bufsize = llistxattr(fn.c_str(), &buf[0], buf.size());
 
 			if(bufsize==-1 && errno==ERANGE)
 			{
+				++mult;
+				if (mult >= 10)
+				{
+					Server->Log("Error getting extended attribute list of file " + fn + " errno: " + convert(errno) + " (3)", LL_ERROR);
+					return false;
+				}
 				Server->Log("Extended attribute list size increased. Retrying...", LL_DEBUG);
 				continue;
 			}
