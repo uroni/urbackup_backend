@@ -20,6 +20,7 @@
 #include <Windows.h>
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
+#include "../../urbackupcommon/os_functions.h"
 
 FSNTFSWIN::FSNTFSWIN(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, bool background_priority, IFsNextBlockCallback* next_block_callback)
 	: Filesystem(pDev, read_ahead, next_block_callback), bitmap(NULL)
@@ -180,6 +181,141 @@ bool FSNTFSWIN::excludeBlock( int64 block )
 	bitmap[bitmap_byte]=b;
 
 	return true;
+}
+
+void FSNTFSWIN::logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap)
+{
+	if (!volpath.empty()
+		&& volpath[volpath.size() - 1] == '\\')
+	{
+		volpath.erase(volpath.size() - 1, 1);
+	}
+
+	int64 total_files = 0;
+	int64 total_changed_sectors = 0;
+	logFileChangesInt(volpath, min_size, fc_bitmap, total_files, total_changed_sectors);
+
+	Server->Log("Total: " + convert(total_changed_sectors) + " changed sectors (" + PrettyPrintBytes(total_changed_sectors*getBlocksize()) + ") in " + convert(total_files) + " files");
+}
+
+void FSNTFSWIN::logFileChangesInt(const std::string& volpath, int64 min_size, char* fc_bitmap, int64& total_files, int64& total_changed_sectors)
+{
+	std::vector<SFile> files = getFiles(volpath);
+
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].isdir)
+		{
+			if (!files[i].issym)
+			{
+				logFileChangesInt(volpath + os_file_sep() + files[i].name, min_size, fc_bitmap, total_files, total_changed_sectors);
+			}
+		}
+		else if(!files[i].issym)
+		{
+			HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(volpath + os_file_sep() + files[i].name)).c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+				OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if (hFile != INVALID_HANDLE_VALUE)
+			{
+				int64 sector_count = 0;
+				int64 total_sectors = 0;
+
+				STARTING_VCN_INPUT_BUFFER start_vcn = {};
+				std::vector<char> ret_buf;
+				ret_buf.resize(32768);
+
+				while (true)
+				{
+					RETRIEVAL_POINTERS_BUFFER* ret_ptrs = reinterpret_cast<RETRIEVAL_POINTERS_BUFFER*>(ret_buf.data());
+
+					DWORD bytesRet = 0;
+
+					BOOL b = DeviceIoControl(hFile, FSCTL_GET_RETRIEVAL_POINTERS,
+						&start_vcn, sizeof(start_vcn), ret_ptrs, static_cast<DWORD>(ret_buf.size()), &bytesRet, NULL);
+
+					DWORD err = GetLastError();
+
+					if (b || err == ERROR_MORE_DATA)
+					{
+						LARGE_INTEGER last_vcn = ret_ptrs->StartingVcn;
+						for (DWORD i = 0; i<ret_ptrs->ExtentCount; ++i)
+						{
+							if (ret_ptrs->Extents[i].Lcn.QuadPart != -1)
+							{
+								int64 count = ret_ptrs->Extents[i].NextVcn.QuadPart - last_vcn.QuadPart;
+
+								sector_count += countSectors(ret_ptrs->Extents[i].Lcn.QuadPart, count, fc_bitmap);
+								total_sectors += count;
+							}
+
+							last_vcn = ret_ptrs->Extents[i].NextVcn;
+						}
+					}
+
+					if (!b)
+					{
+						if (err == ERROR_MORE_DATA)
+						{
+							start_vcn.StartingVcn = ret_ptrs->Extents[ret_ptrs->ExtentCount - 1].NextVcn;
+						}
+						else if (err == ERROR_HANDLE_EOF)
+						{
+							CloseHandle(hFile);
+							break;
+						}
+						else
+						{
+							Server->Log("Error " + convert((int)GetLastError()) + " while accessing retrieval points", LL_WARNING);
+							CloseHandle(hFile);
+							break;
+						}
+					}
+					else
+					{
+						CloseHandle(hFile);
+						break;
+					}
+				}
+
+				if (sector_count > 0)
+				{
+					++total_files;
+					total_changed_sectors += sector_count;
+				}
+				
+				if (sector_count > 0
+					&& sector_count*getBlocksize()>min_size)
+				{
+					Server->Log("Changed in " + volpath + os_file_sep() + files[i].name + ": " + convert(sector_count) + "/"+convert(total_sectors)+" sectors " + PrettyPrintBytes(sector_count*getBlocksize())
+						+"/"+ PrettyPrintBytes(total_sectors*getBlocksize()), LL_INFO);
+				}
+			}
+			else
+			{
+				Server->Log("Error opening file: " + volpath + os_file_sep() + files[i].name, LL_INFO);
+			}
+		}
+	}
+}
+
+int64 FSNTFSWIN::countSectors(int64 start, int64 count, char* fc_bitmap)
+{
+	int64 ret = 0;
+	for (int64 block = start; block<start + count; ++block)
+	{
+		size_t bitmap_byte = (size_t)(block / 8);
+		size_t bitmap_bit = block % 8;
+
+		unsigned char b = fc_bitmap[bitmap_byte];
+
+		if ((b & (1 << bitmap_bit))>0)
+		{
+			++ret;
+		}
+	}
+
+	return ret;
 }
 
 bool FSNTFSWIN::excludeFile( const std::string& path )

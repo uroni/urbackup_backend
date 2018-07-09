@@ -45,6 +45,8 @@ private:
 	bool sendBitmap(IFilesystem* fs, int64 drivesize, unsigned int blocksize);
 	std::string getFsErrMsg();
 
+	void logImageChanges(const std::string& path);
+
 	IPipe *pipe;
 	IPipe *mempipe;
 	ClientConnector *client;

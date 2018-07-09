@@ -359,6 +359,10 @@ const unsigned char * FSNTFS::getBitmap(void)
 	return bitmap;
 }
 
+void FSNTFS::logFileChanges(std::string volpath, int64 min_size, char * fc_bitmap)
+{
+}
+
 bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTFSFileRecord &mft, bool fix)
 {
 	unsigned int mirr_vcn=(1*mftrecordsize)/clustersize;

@@ -16,7 +16,13 @@ public:
 	bool excludeSectors(int64 start, int64 count);
 	bool excludeBlock(int64 block);
 
+	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
+
 private:
+	void logFileChangesInt(const std::string& volpath, int64 min_size, char* fc_bitmap, int64& total_files, int64& total_changed_sectors);
+
+	int64 countSectors(int64 start, int64 count, char* fc_bitmap);
+
 	unsigned char *bitmap;
 
 	unsigned int sectorsize;

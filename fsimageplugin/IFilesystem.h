@@ -76,6 +76,8 @@ public:
 	virtual void shutdownReadahead()=0;
 
 	virtual int64 getOsErrorCode() = 0;
+
+	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap) = 0;
 };
 
 class FsShutdownHelper

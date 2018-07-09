@@ -11,6 +11,8 @@ public:
 	virtual int64 getSize(void);
 	const unsigned char * getBitmap(void);
 
+	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
+
 private:
 	unsigned char *bitmap;
 	int64 drivesize;

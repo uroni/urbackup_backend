@@ -98,3 +98,7 @@ const unsigned char *FSUnknown::getBitmap(void)
 {
 	return bitmap;
 }
+
+void FSUnknown::logFileChanges(std::string volpath, int64 min_size, char * fc_bitmap)
+{
+}
