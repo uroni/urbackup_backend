@@ -500,6 +500,45 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 {
 	read_ahead_mode = read_ahead;
 
+#ifdef _WIN32
+	IFsFile* fs_dev = dynamic_cast<IFsFile*>(dev);
+	if (fs_dev != NULL)
+	{
+		hVol = fs_dev->getOsHandle();
+
+		DWORD lpBytesReturned = 0;
+		OVERLAPPED ovl = {};
+		ovl.hEvent = CreateEvent(NULL, false, false, NULL);
+		if (ovl.hEvent != NULL)
+		{
+			BOOL b = DeviceIoControl(hVol, FSCTL_ALLOW_EXTENDED_DASD_IO,
+				NULL, 0, NULL, 0, &lpBytesReturned, &ovl);
+			if (!b
+				&& GetLastError() == ERROR_IO_PENDING)
+			{
+				if (!GetOverlappedResult(hVol, &ovl, &lpBytesReturned, TRUE))
+				{
+					Server->Log("Setting FSCTL_ALLOW_EXTENDED_DASD_IO failed -1. Err: " + convert(getLastSystemError()), LL_ERROR);
+				}
+			}
+			else if(!b)
+			{
+				Server->Log("Setting FSCTL_ALLOW_EXTENDED_DASD_IO failed -2. Err: " + convert(getLastSystemError()), LL_ERROR);
+			}
+
+			CloseHandle(ovl.hEvent);
+		}
+		else
+		{
+			Server->Log("Error creating event. Err: " + convert(getLastSystemError()), LL_ERROR);
+		}
+	}
+	else
+	{
+		hVol = INVALID_HANDLE_VALUE;
+	}
+#endif
+
 	if (read_ahead== IFSImageFactory::EReadaheadMode_Overlapped)
 	{
 		next_blocks.resize(readahead_num_blocks);
@@ -520,14 +559,6 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 
 			free_next_blocks.push(&next_blocks[i]);
 		}
-
-#ifdef _WIN32
-		IFsFile* fs_dev = dynamic_cast<IFsFile*>(dev);
-		if (fs_dev != NULL)
-		{
-			hVol = fs_dev->getOsHandle();
-		}
-#endif
 	}
 	else if (read_ahead == IFSImageFactory::EReadaheadMode_Thread)
 	{
