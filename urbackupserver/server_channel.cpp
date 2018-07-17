@@ -1120,7 +1120,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				}
 			}
 
-			vhdfile->Seek(skip);
+			vhdfile->Seek(skip + currpos);
 
 			bool is_ok=true;
 			do
@@ -1174,7 +1174,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 						lasttime=Server->getTimeMS();
 					}
 					read=4096;
-					vhdfile->Seek(skip+currpos+4096);
+					vhdfile->Seek(skip+currpos+read);
 				}					
 				currpos+=read;
 
