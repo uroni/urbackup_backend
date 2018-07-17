@@ -163,7 +163,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		assert(next->remote_filename==remotefn);
 		assert(next->curr_file_id == file_id);
 
-		return next->GetFile(remotefn, filesize_out, file_id, sparse_extents_f);
+		_u32 rc = next->GetFile(remotefn, filesize_out, file_id, sparse_extents_f);
+
+		if (next->hasError())
+			return ERR_ERROR;
+
+		return rc;
 	}
 	else if(parent!=NULL && !queue_only)
 	{
