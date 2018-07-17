@@ -498,18 +498,27 @@ enum EDownloadResult
 	EDownloadResult_DeviceTooSmall = 11
 };
 
+struct DownloadStatus
+{
+	DownloadStatus()
+		: offset(-1),
+		received(0) {}
+
+	int64 offset;
+	int64 received;
+};
+
 EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data, 
-	_i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size, int64 received_bytes);
+	DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size);
 
 bool do_login(LoginData& login_data);
 
 EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img_time, std::string outfile, 
-	bool mbr, LoginData login_data, _i64 offset, int recur_depth, int64* o_imgsize, int64* o_output_file_size,
-	int64 received_bytes)
+	bool mbr, LoginData login_data, DownloadStatus& dl_status, int recur_depth, int64* o_imgsize, int64* o_output_file_size)
 {
 	if(recur_depth==0)
 	{
-		Server->Log("Read Timeout: Retrying", LL_WARNING);
+		Server->Log("Read Timeout: Retrying -1", LL_WARNING);
 
 		int total_tries = 20;
 		int tries= total_tries;
@@ -518,7 +527,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 		{
 			Server->wait(30000);
 			int64 starttime = Server->getTimeMS();
-			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, offset, recur_depth+1, o_imgsize, o_output_file_size, received_bytes);
+			rc=downloadImage(img_id, img_time, outfile, mbr, login_data, dl_status, recur_depth+1, o_imgsize, o_output_file_size);
 			if(rc== EDownloadResult_Ok)
 			{
 				return rc;
@@ -542,7 +551,7 @@ EDownloadResult retryDownload(EDownloadResult errrc, int img_id, std::string img
 }
 
 EDownloadResult downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, LoginData login_data,
-	_i64 offset=-1, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL, int64 received_bytes=0)
+	DownloadStatus& dl_status, int recur_depth=0, int64* o_imgsize=NULL, int64* o_output_file_size=NULL)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -556,9 +565,9 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	}
 
 	std::string s_offset;
-	if(offset!=-1)
+	if(dl_status.offset!=-1)
 	{
-		s_offset="&offset="+convert(offset)+"&received_bytes="+convert(received_bytes);
+		s_offset="&offset="+convert(dl_status.offset)+"&received_bytes="+convert(dl_status.received);
 	}
 
 	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+convert(img_id)+"&time="+img_time+"&mbr="+convert(mbr)+s_offset);
@@ -593,8 +602,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 	{
 		Server->Log("Connection timeout", LL_ERROR);
 		EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError1, img_id, img_time, 
-			outfile, mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size, 
-			received_bytes);
+			outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
 		return rc;
 	}
 
@@ -617,7 +625,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 			if(c_read==0)
 			{
 				EDownloadResult rc=retryDownload(EDownloadResult_TimeoutError2, img_id, img_time, outfile, 
-					mbr, login_data, offset, recur_depth, o_imgsize, o_output_file_size, received_bytes);
+					mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
 				return rc;
 			}
 			out_file->Write(buf, (_u32)c_read);
@@ -648,8 +656,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 				if(has_data)
 				{
 					return retryDownload(EDownloadResult_TimeoutError2, img_id, img_time,
-						outfile, mbr, login_data, pos, recur_depth, o_imgsize, o_output_file_size,
-						received_bytes);
+						outfile, mbr, login_data, dl_status, recur_depth, o_imgsize, o_output_file_size);
 				}
 				else
 				{
@@ -688,6 +695,11 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 							woff+=w;
 						}
 						while(tw-woff>0);
+
+						if (pos > dl_status.offset)
+						{
+							dl_status.offset = pos;
+						}
 
 						has_data=true;
 					}
@@ -755,7 +767,7 @@ EDownloadResult downloadImage(int img_id, std::string img_time, std::string outf
 					read+=available;
 					blockleft-=available;
 					off+=available;
-					received_bytes += available;
+					dl_status.received+= available;
 					if(off>=r)
 					{
 						off=0;
@@ -1196,7 +1208,8 @@ void do_restore(void)
 		if(cmd=="download_mbr")
 			mbr=true;
 
-		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr, LoginData());
+		DownloadStatus dl_status;
+		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr, LoginData(), dl_status);
 		exit(ec);
 	}
 	else if(cmd=="download_files")
@@ -1248,7 +1261,8 @@ public:
 
 	void operator()(void)
 	{
-		rc=downloadImage(img_id, img_time, outfile, false, login_data, -1, 0, &imgsize, &output_file_size);
+		DownloadStatus dl_status;
+		rc=downloadImage(img_id, img_time, outfile, false, login_data, dl_status, 0, &imgsize, &output_file_size);
 		done=true;
 	}
 
@@ -1982,7 +1996,8 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				EDownloadResult rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true, login_data);
+				DownloadStatus dl_status;
+				EDownloadResult rc = downloadImage(selimage.id, convert(selimage.time_s), "mbr.dat", true, login_data, dl_status);
 				if (rc != EDownloadResult_Ok )
 				{
 					Server->Log("Error downloading MBR", LL_ERROR);
