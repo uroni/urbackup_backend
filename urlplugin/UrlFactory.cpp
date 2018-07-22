@@ -350,10 +350,12 @@ bool UrlFactory::requestUrl(const std::string & url, str_map & params, std::stri
 		curl_easy_setopt(curl, CURLOPT_COOKIE, params["cookie"].size());
 	}
 
+#if (LIBCURL_VERSION_NUM >= ((7<<16) + (36<<8) + 0))
 	if (params.find("expect_100_timeout_ms") != params.end())
 	{
 		curl_easy_setopt(curl, CURLOPT_EXPECT_100_TIMEOUT_MS, static_cast<long>(watoi(params["expect_100_timeout_ms"])));
 	}
+#endif
 
 	if (params.find("timeout") != params.end())
 	{
