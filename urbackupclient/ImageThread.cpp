@@ -1235,8 +1235,6 @@ std::string ImageThread::getFsErrMsg()
 	}
 }
 
-}
-
 void ImageThread::logImageChanges(const std::string& path)
 {
 	if (!FileExists("log_image_changed_files"))
@@ -1249,14 +1247,14 @@ void ImageThread::logImageChanges(const std::string& path)
 		min_size = watoi(str_min_size);
 	}
 
-	int64 fs_size = cbt_bitmap.rawSize()*8*c_vhdblocksize;
+	int64 fs_size = cbt_bitmap.rawSize() * 8 * c_vhdblocksize;
 	int64 fsb_bits = fs_size / curr_fs->getBlocksize();
 	if (curr_fs->getSize() % curr_fs->getBlocksize() != 0)
 	{
 		++fsb_bits;
 	}
 
-	int64 fsb_bytes = fsb_bits/8;
+	int64 fsb_bytes = fsb_bits / 8;
 	if (fsb_bits % 8 != 0)
 	{
 		++fsb_bytes;
@@ -1272,7 +1270,7 @@ void ImageThread::logImageChanges(const std::string& path)
 		if (!cbt_bitmap.get(i / c_vhdblocksize))
 			continue;
 
-		for (int64 j = i; j < i + c_vhdblocksize; j+= blocksize)
+		for (int64 j = i; j < i + c_vhdblocksize; j += blocksize)
 		{
 			int64 pBlock = j / blocksize;
 			size_t bitmap_byte = (size_t)(pBlock / 8);
@@ -1294,6 +1292,8 @@ void ImageThread::logImageChanges(const std::string& path)
 	Server->Log("Used FSB: " + PrettyPrintBytes(fsb_used*curr_fs->getBlocksize()));
 
 	curr_fs->logFileChanges(path, min_size, fsb.data());
+}
+
 std::string ImageThread::hdatFn(std::string volume)
 {
 	if (!IndexThread::normalizeVolume(volume))
