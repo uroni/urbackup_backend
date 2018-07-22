@@ -220,6 +220,120 @@ namespace
 			return journal->Size();
 		}
 	}
+
+	HANDLE cbtMutex = NULL;
+	int cbtMutexLocked = 0;
+
+	void init_cbt_mutex()
+	{
+		cbtMutex = CreateMutexW(NULL, FALSE, L"6aaec69c-8d78-4c44-abcf-659207dc20ed");
+	}
+
+	bool lock_cbt_mutex()
+	{
+		assert(cbtMutex != NULL);
+		if (cbtMutex == NULL)
+		{
+			return false;
+		}
+		if (cbtMutexLocked>0)
+		{
+			++cbtMutexLocked;
+			return true;
+		}
+		if (WaitForSingleObject(cbtMutex, INFINITE) == WAIT_OBJECT_0)
+		{
+			++cbtMutexLocked;
+			return true;
+		}
+		assert(false);
+		return false;
+	}
+
+	void unlock_cbt_mutex()
+	{
+		assert(cbtMutex != NULL);
+		if (cbtMutex == NULL)
+		{
+			return;
+		}
+		--cbtMutexLocked;
+		if (cbtMutexLocked == 0)
+		{
+			ReleaseMutex(cbtMutex);
+		}
+		assert(cbtMutexLocked>0);
+	}
+
+	struct ScopedUnlockCbtMutex
+	{
+		~ScopedUnlockCbtMutex() {
+			unlock_cbt_mutex();
+		}
+	};
+
+	std::vector<std::string> get_cbt_paths()
+	{
+		HKEY urbackup_cbt_key;
+		if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt",
+			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
+		{
+			WCHAR szBuffer[8192];
+			DWORD dwBufferSize = sizeof(szBuffer);
+			ULONG nError;
+			DWORD dwType = REG_MULTI_SZ;
+			nError = RegQueryValueExW(urbackup_cbt_key, L"cbt_paths", 0, &dwType,
+				(LPBYTE)szBuffer, &dwBufferSize);
+			RegCloseKey(urbackup_cbt_key);
+			if (ERROR_SUCCESS == nError
+				&& dwType==REG_MULTI_SZ)
+			{
+				std::wstring rval(szBuffer, szBuffer + dwBufferSize);
+				std::string strValue = Server->ConvertFromWchar(rval);
+				std::vector<std::string> toks;
+				std::string sep;
+				sep.resize(1);
+				sep[0] = 0;
+				Tokenize(strValue, toks, sep);
+				std::vector<std::string> ret;
+				for (size_t i = 0; i < toks.size(); ++i)
+				{
+					std::string b = trim(toks[i]);
+					if (!b.empty())
+					{
+						ret.push_back(b);
+					}
+				}
+				return ret;
+			}
+		}
+		return std::vector<std::string>();
+	}
+
+	bool add_cbt_path(const std::string& path)
+	{
+		lock_cbt_mutex();
+		ScopedUnlockCbtMutex unlock_cbt_mutex;
+		std::vector<std::string> curr_paths = get_cbt_paths();
+
+		if (std::find(curr_paths.begin(), curr_paths.end(),
+			path) == curr_paths.end())
+		{
+			curr_paths.push_back(path);
+		}
+
+		std::wstring data;
+
+		for (size_t i = 0; i < curr_paths.size(); ++i)
+		{
+			data.append(Server->ConvertToWchar(curr_paths[i]));
+			data.append(1, (wchar_t)0);
+		}
+
+		return RegSetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt\\cbt_paths",
+			REG_MULTI_SZ, data.c_str(), static_cast<DWORD>(data.size()))
+			== ERROR_SUCCESS;
+	}
 #endif
 
 #ifndef _WIN32
@@ -402,6 +516,8 @@ void IndexThread::operator()(void)
 
 #ifdef _WIN32
 	initVss();
+	init_cbt_mutex();
+	add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
 #endif
 
 	if(backgroundBackupsEnabled(std::string()))
@@ -5312,6 +5428,8 @@ bool IndexThread::prepareCbt(std::string volume)
 		return false;
 	}
 
+	lock_cbt_mutex();
+
 	ScopedCloseWindowsHandle hclose(hVolume);
 
 	DWORD bytesReturned;
@@ -5319,6 +5437,8 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	if (!b)
 	{
+		unlock_cbt_mutex();
+
 		DWORD lasterr = GetLastError();
 
 		std::string errmsg;
@@ -5387,6 +5507,8 @@ bool IndexThread::normalizeVolume(std::string & volume)
 bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
 {
 #ifdef _WIN32
+	ScopedUnlockCbtMutex unlock_cbt_mutex;
+
 	if (!normalizeVolume(volume))
 	{
 		VSSLog("Error normalizing volume. Input \""+volume+"\" (2)", LL_ERROR);
@@ -5683,6 +5805,28 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	}
 
 	VSSLog("Change block tracking active on volume " + volume, LL_INFO);
+
+	std::vector<std::string> cbt_paths = get_cbt_paths();
+
+	if (!readMergeBitmap("urbackup\\hdat_other_" + conv_filename(strlower(volume)) + ".cbt", bitmap_data))
+	{
+		VSSLog("Error reading last bitmap data for CBT from other", LL_ERROR);
+		return false;
+	}
+
+	for (size_t i = 0; i < cbt_paths.size(); ++i)
+	{
+		std::string cbt_path = cbt_paths[i];
+		if (cbt_path != Server->getServerWorkingDir() + os_file_sep() + "urbackup")
+		{
+			if (!saveMergeBitmap(cbt_path + "\\hdat_other_" + conv_filename(strlower(volume)) + ".cbt",
+				bitmap_data))
+			{
+				VSSLog("Error reading last bitmap data for CBT for other", LL_ERROR);
+				return false;
+			}
+		}
+	}
 
 	if (for_image_backup)
 	{
