@@ -1046,11 +1046,12 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("internet_status", InternetClient::getStatusMsg());
 
-	ret.set("capability_bits", getCapabilities());
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	ret.set("capability_bits", getCapabilities(db));
 
     tcpstack.Send(pipe, ret.stringify(false));
 
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->destroyAllQueries();
 
 	lasttime=Server->getTimeMS();
