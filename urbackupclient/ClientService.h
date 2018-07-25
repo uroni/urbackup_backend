@@ -330,7 +330,7 @@ private:
 	void CMD_CLIENT_ACCESS_KEY(const std::string& cmd);
 	void CMD_WRITE_TOKENS(const std::string& cmd);
 
-	int getCapabilities();
+	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
@@ -357,6 +357,8 @@ private:
 	volatile bool do_quit;
 	bool is_channel;
 	int64 local_backup_running_id;
+	bool retrieved_has_components;
+	bool status_has_components;
 
 	static std::vector<SRunningProcess> running_processes;
 	static std::vector<SFinishedProcess> finished_processes;

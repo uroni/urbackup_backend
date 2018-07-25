@@ -243,6 +243,8 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	run_other = NULL;
 	idle_timeout = 10000;
 	bitmapfile = NULL;
+	retrieved_has_components=false;
+	status_has_components=false;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -2942,7 +2944,7 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 }
 
 
-int ClientConnector::getCapabilities()
+int ClientConnector::getCapabilities(IDatabase* db)
 {
 	int capa=0;
 	if(channel_pipes.size()==0)
@@ -2975,6 +2977,28 @@ int ClientConnector::getCapabilities()
 			}
 		}
 	}
+
+	if (!retrieved_has_components)
+	{
+		retrieved_has_components = true;
+
+		db_results res_components = db->Read("SELECT tvalue FROM misc WHERE tkey='has_components'");
+		if (!res_components.empty()
+			&& res_components[0]["tvalue"] == "1")
+		{
+			status_has_components = true;
+		}
+		else
+		{
+			status_has_components = false;
+		}
+	}
+
+	if (!status_has_components)
+	{
+		capa |= STATUS_NO_COMPONENTS;
+	}
+
 	return capa;
 }
 
@@ -3086,7 +3110,7 @@ void ClientConnector::sendStatus()
 		ret+="#NP";
 	}
 
-	ret+="#capa="+convert(getCapabilities());
+	ret+="#capa="+convert(getCapabilities(db));
 
 	{
 		IScopedLock lock(ident_mutex);

@@ -1480,6 +1480,11 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 						with_sequence = false;
 						indexVssComponents(ssetid, !full_backup, past_refs, outfile);
 						with_sequence = orig_with_sequence;
+
+						if (cd->getMiscValue("has_components") != "1")
+						{
+							cd->updateMiscValue("has_components", "1");
+						}
 					}
 				}
 			}
