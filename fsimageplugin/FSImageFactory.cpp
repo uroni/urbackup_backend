@@ -167,6 +167,34 @@ namespace
 		}
 		return ret;
 	}
+
+	std::vector<IFSImageFactory::SPartition> readPartitionsGPT(const std::string& gpt_table, const std::string& gpt_header)
+	{
+		const EfiHeader* efi_header = reinterpret_cast<const EfiHeader*>(&gpt_header[0]);
+		const int64 c_sector_size = 512;
+
+		char partition_type_guid_empty[16] = {};
+
+		std::vector<IFSImageFactory::SPartition> ret;
+		for (_u32 i = 0; i < efi_header->num_parition_entries; ++i)
+		{
+			const GPTPartition* cpart = reinterpret_cast<const GPTPartition*>(gpt_table.data()+ efi_header->partition_entry_size*i);
+
+			if (cpart->first_lba == 0
+				&& cpart->last_lba == 0
+				&& cpart->flags == 0
+				&& memcmp(cpart->partition_type_guid, partition_type_guid_empty, sizeof(partition_type_guid_empty)) == 0)
+			{
+				continue;
+			}
+
+			IFSImageFactory::SPartition new_part;
+			new_part.offset = cpart->first_lba*c_sector_size;
+			new_part.length = (cpart->last_lba - cpart->first_lba + 1)*c_sector_size;
+			ret.push_back(new_part);
+		}
+		return ret;
+	}
 }
 
 
@@ -441,6 +469,26 @@ std::vector<IFSImageFactory::SPartition> FSImageFactory::readPartitions(IVHDFile
 	if (next(gpt_header, 0, "EFI PART"))
 	{
 		return readPartitionsGPT(&dev, gpt_header);
+		gpt_style = true;
+	}
+	else if (mbr.size() >= 512
+		&& static_cast<unsigned char>(mbr[510]) == 0x55
+		&& static_cast<unsigned char>(mbr[511]) == 0xAA)
+	{
+		return readPartitionsMBR(mbr);
+	}
+
+	return std::vector<IFSImageFactory::SPartition>();
+}
+
+std::vector<IFSImageFactory::SPartition> FSImageFactory::readPartitions(const std::string& mbr,
+	const std::string& gpt_header, const std::string& gpt_table, bool& gpt_style)
+{
+	gpt_style = false;
+
+	if (next(gpt_header, 0, "EFI PART"))
+	{
+		return readPartitionsGPT(gpt_table, gpt_header);
 		gpt_style = true;
 	}
 	else if (mbr.size() >= 512
