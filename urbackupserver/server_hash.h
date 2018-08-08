@@ -128,7 +128,7 @@ private:
 	bool replaceFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, const std::string &orig_fn, ExtentIterator* extent_iterator);
 
 	bool renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator);
-	bool renameFile(IFile *tf, const std::string &dest);
+	bool renameFile(IFile *tf, const std::string &dest, bool log_info=true);
 
 	bool correctPath(std::string& ff, std::string& f_hashpath);
 	bool correctClientName(const std::string& backupfolder, std::string& ff, std::string& f_hashpath);
