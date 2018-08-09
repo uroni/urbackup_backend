@@ -2621,6 +2621,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
 						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
+
+						if (fs_files[i].issym)
+						{
+							fs_files[i].change_indicator |= (change_indicator_symlink_bit | change_indicator_special_bit);
+						}
+						else if (fs_files[i].isspecialf)
+						{
+							fs_files[i].change_indicator |= change_indicator_special_bit;
+						}
+						else
+						{
+							fs_files[i].change_indicator &= ~change_indicator_all_bits;
+						}
 					}
 				}
 			}
