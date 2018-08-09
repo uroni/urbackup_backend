@@ -27,8 +27,6 @@ protected:
 		const FileMetadata& metadata);
 	bool doFullBackup();
 
-	bool intra_file_diffs;
-
 	IMutex* hash_existing_mutex;
 
 	ServerFilesDao* filesdao;
