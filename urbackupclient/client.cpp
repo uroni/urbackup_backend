@@ -262,7 +262,7 @@ namespace
 		{
 			ReleaseMutex(cbtMutex);
 		}
-		assert(cbtMutexLocked>0);
+		assert(cbtMutexLocked>=0);
 	}
 
 	struct ScopedUnlockCbtMutex
@@ -279,7 +279,7 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			WCHAR szBuffer[8192];
-			DWORD dwBufferSize = sizeof(szBuffer);
+			DWORD dwBufferSize = sizeof(szBuffer)*sizeof(WCHAR);
 			ULONG nError;
 			DWORD dwType = REG_MULTI_SZ;
 			nError = RegQueryValueExW(urbackup_cbt_key, L"cbt_paths", 0, &dwType,
@@ -288,7 +288,7 @@ namespace
 			if (ERROR_SUCCESS == nError
 				&& dwType==REG_MULTI_SZ)
 			{
-				std::wstring rval(szBuffer, szBuffer + dwBufferSize);
+				std::wstring rval(szBuffer, szBuffer + dwBufferSize/sizeof(wchar_t));
 				std::string strValue = Server->ConvertFromWchar(rval);
 				std::vector<std::string> toks;
 				std::string sep;
@@ -321,6 +321,10 @@ namespace
 		{
 			curr_paths.push_back(path);
 		}
+		else
+		{
+			return true;
+		}
 
 		std::wstring data;
 
@@ -330,9 +334,17 @@ namespace
 			data.append(1, (wchar_t)0);
 		}
 
-		return RegSetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt\\cbt_paths",
-			REG_MULTI_SZ, data.c_str(), static_cast<DWORD>(data.size()))
-			== ERROR_SUCCESS;
+		HKEY urbackup_cbt_key;
+		if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt",
+			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
+		{
+			LSTATUS status = RegSetValueExW(urbackup_cbt_key, L"cbt_paths", 0,
+				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1)*sizeof(wchar_t)));
+			RegCloseKey(urbackup_cbt_key);
+			return status
+				== ERROR_SUCCESS;
+		}
+		return false;
 	}
 #endif
 
@@ -517,7 +529,10 @@ void IndexThread::operator()(void)
 #ifdef _WIN32
 	initVss();
 	init_cbt_mutex();
-	add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
+	if (os_get_file_type("urbctctl.exe") != 0)
+	{
+		add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
+	}
 #endif
 
 	if(backgroundBackupsEnabled(std::string()))
