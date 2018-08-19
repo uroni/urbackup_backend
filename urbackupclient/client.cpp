@@ -5172,7 +5172,7 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 			continue;
 		cvol = strlower(cvol);
 
-		if (vols[i] == volume)
+		if (cvol == volume)
 		{
 			return true;
 		}
