@@ -5148,17 +5148,17 @@ bool IndexThread::handleLastFilelistDepth(SFile& data)
 
 bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 {
-	settings_val = strlower(trim(settings_val));
+	settings_val = trim(settings_val);
 
-	if (settings_val == "all")
+	if (strlower(settings_val) == "all")
 	{
 		return true;
 	}
 
-	if (volume.size() == 2 && volume[1] == ':')
-	{
-		volume.resize(1);
-	}
+	volume = trim(volume);
+
+	if (!normalizeVolume(volume))
+		return true;
 
 	volume = strlower(volume);
 
@@ -5167,10 +5167,10 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 
 	for (size_t i = 0; i < vols.size(); ++i)
 	{
-		if (vols[i].size() == 2 && vols[i][1] == ':')
-		{
-			vols[i].resize(1);
-		}
+		std::string cvol = trim(vols[i]);
+		if (!normalizeVolume(cvol))
+			continue;
+		cvol = strlower(cvol);
 
 		if (vols[i] == volume)
 		{
@@ -6198,7 +6198,10 @@ void IndexThread::updateCbt()
 			Tokenize(volumes, ret, ";,");
 			for (size_t i = 0; i<ret.size(); ++i)
 			{
-				std::string cvol = strlower(trim(ret[i]));
+				std::string cvol = trim(ret[i]);
+				if (!normalizeVolume(cvol))
+					continue;
+				cvol = strlower(cvol);
 
 				if (vols.find(cvol) == vols.end())
 				{
@@ -6213,7 +6216,11 @@ void IndexThread::updateCbt()
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
-		std::string cvol = strlower(trim(getVolPath(backup_dirs[i].path)));
+		std::string cvol = trim(backup_dirs[i].path);
+		if (!normalizeVolume(cvol))
+			continue;
+
+		cvol = strlower(cvol);
 
 		if (!cvol.empty()
 			&& vols.find(cvol) == vols.end() )
@@ -6232,7 +6239,10 @@ void IndexThread::updateCbt()
 		Tokenize(volumes, ret, ";,");
 		for (size_t i = 0; i<ret.size(); ++i)
 		{
-			std::string cvol = strlower(trim(ret[i]));
+			std::string cvol = trim(ret[i]);
+			if (!normalizeVolume(cvol))
+				continue;
+			cvol = strlower(cvol);
 
 			if (vols.find(cvol) == vols.end())
 			{
