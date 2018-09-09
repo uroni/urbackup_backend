@@ -31,6 +31,8 @@
 #include "cryptopp_inc.h"
 #include "ECDHKeyExchange.h"
 
+using namespace CryptoPPCompat;
+
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
 {
 	return new AESEncryption(password, true);

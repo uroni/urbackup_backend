@@ -18,6 +18,8 @@
 
 #include "AESDecryption.h"
 
+using namespace CryptoPPCompat;
+
 AESDecryption::AESDecryption(const std::string &password, bool hash_password)
 {
 	if(hash_password)

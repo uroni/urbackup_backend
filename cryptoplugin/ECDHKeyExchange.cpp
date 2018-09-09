@@ -19,6 +19,8 @@
 #include "ECDHKeyExchange.h"
 #include "../Interface/Server.h"
 
+using namespace CryptoPPCompat;
+
 ECDHKeyExchange::ECDHKeyExchange()
 {
 	CryptoPP::ECDH< CryptoPP::EC2N >::Domain ecdh(CryptoPP::ASN1::sect233k1());
