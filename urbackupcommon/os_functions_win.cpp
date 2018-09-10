@@ -245,6 +245,11 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 			f.issym=true;
 			f.isspecialf=true;
 		}
+		else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+			&& (wfd.dwReserved0 == 0x8000001b /*IO_REPARSE_TAG_APPEXECLINK*/ ))
+		{
+			f.isspecialf = true;
+		}
 
 		f.isencrypted = (wfd.dwFileAttributes & FILE_ATTRIBUTE_ENCRYPTED)>0;
 
