@@ -964,6 +964,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		
 		const int64 vhd_blocksize=(1024*1024)/2;
 		int skip=1024*512;
+		std::string s_verify_skip = Server->getServerParameter("verify_skip");
+		if (!s_verify_skip.empty())
+		{
+			skip = watoi(s_verify_skip);
+		}
+
 		in->Seek(skip);
 		uint64 currpos=skip;
 		uint64 size=in->getSize();
