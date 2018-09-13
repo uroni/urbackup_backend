@@ -10,6 +10,7 @@ class SMBRData
 {
 public:
 	SMBRData(CRData &data)
+		: extra_data_pos(-1)
 	{
 		char ch;
 		if(!data.getChar(&ch))
@@ -113,6 +114,12 @@ public:
 
 		has_error=false;
 		data.getStr(&errmsg);
+
+		if (!data.getVarInt(&extra_data_pos)
+			 || !data.getStr2(&extra_data))
+		{
+			extra_data_pos = -1;
+		}
 	}
 
 	bool hasError(void)
@@ -131,14 +138,19 @@ public:
 		ADD_INFO_STR(serial_number);
 		ADD_INFO_STR(volume_name);
 		ADD_INFO_STR(fsn);
-		ret+=std::string("mbr_data (")+convert(mbr_data.size())+" bytes)\n";
+		ret+=std::string("mbr_data (")+PrettyPrintBytes(mbr_data.size())+")\n";
 		if (gpt_style)
 		{
-			ret += std::string("gpt_data (") + convert(gpt_header.size()+ gpt_table.size()) + " bytes)\n";
+			ret += std::string("gpt_data (") + PrettyPrintBytes(gpt_header.size()+ gpt_table.size()) + " bytes)\n";
 		}
 		if (!errmsg.empty())
 		{
 			ADD_INFO_STR(errmsg);
+		}
+		if (extra_data_pos != -1)
+		{
+			ret += std::string("extra_data at pos "+convert(extra_data_pos)+
+				" (") + PrettyPrintBytes(extra_data.size()) + " bytes)\n";
 		}
 	#undef ADD_INFO
 	#undef ADD_INFO_STR
@@ -153,6 +165,9 @@ public:
 	std::string fsn;
 	std::string mbr_data;
 	std::string errmsg;
+
+	int64 extra_data_pos;
+	std::string extra_data;
 
 	bool gpt_style;
 

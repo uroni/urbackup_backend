@@ -2475,7 +2475,15 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		mbr.addString(gpt_table);
 	}
 	
-	mbr.addString((errmsg));
+	mbr.addString(errmsg);
+
+	if (!gpt_style
+		&& mbr_bytes.find("VeraCrypt Boot Loader") != std::string::npos)
+	{
+		std::string veracrypt_data = dev->Read(512LL, 63 * 512);
+		mbr.addVarInt(512);
+		mbr.addString2(veracrypt_data);
+	}
 
 	tcpstack.Send(pipe, mbr);
 
