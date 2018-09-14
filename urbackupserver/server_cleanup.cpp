@@ -984,7 +984,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		}
 		else
 		{
-			if(!removeImage(backupid, &settings, true, false, true, true, false, 1))
+			if(!removeImage(backupid, &settings, true, false, true, true, 1))
 			{
 				notit.push_back(backupid);
 			}
