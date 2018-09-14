@@ -128,7 +128,7 @@ private:
 
 	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::string& backupfolder, bool deep_check);
 
-	int max_removable_incr_images(ServerSettings& settings, int backupid);
+	int max_removable_incr_images(ServerSettings& settings, int backupid, int del_in_stack);
 
 	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids, bool cleanup_only_one);
 
@@ -156,7 +156,9 @@ private:
 	size_t getFilesFullNum(int clientid, int &backupid_top);
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
-	bool removeImage(int backupid, ServerSettings* settings, bool update_stat, bool force_remove, bool remove_associated, bool remove_references);
+	bool removeImage(int backupid, ServerSettings* settings, bool update_stat, 
+		bool force_remove, bool remove_associated, bool remove_references,
+		int del_incr_in_stack=0);
 
 	void removeClient(int clientid);
 
