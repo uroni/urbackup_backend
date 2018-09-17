@@ -26,6 +26,8 @@
 const size_t iv_size = 12;
 const size_t end_marker_zeros = 4;
 
+using namespace CryptoPPCompat;
+
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0),
 	overhead_size(0), message_size(0)

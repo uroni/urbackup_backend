@@ -50,7 +50,7 @@ namespace
 IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::string clientname, std::string clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::string tmpfile_path, bool use_reflink, bool use_snapshots, std::string server_token, std::string details, bool scheduled)
 	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots, server_token, details, scheduled), 
-	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL), filesdao(NULL), link_dao(NULL), link_journal_dao(NULL)
+	hash_existing_mutex(NULL), filesdao(NULL), link_dao(NULL), link_journal_dao(NULL)
 {
 
 }

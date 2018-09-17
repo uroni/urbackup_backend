@@ -245,19 +245,27 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 			f.issym=true;
 			f.isspecialf=true;
 		}
+		else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+			&& (wfd.dwReserved0 == 0x8000001b /*IO_REPARSE_TAG_APPEXECLINK*/ ))
+		{
+			f.isspecialf = true;
+		}
 
 		f.isencrypted = (wfd.dwFileAttributes & FILE_ATTRIBUTE_ENCRYPTED)>0;
 
-		if( (exact_filesize || with_usn ) && !f.issym && !f.isdir)
+		if( (exact_filesize 
+			&& !f.isdir
+			&& !f.issym ) || with_usn )
 		{
 			if(with_usn)
 			{
 				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+ConvertToWchar(f.name)).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
-					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 				if(hFile!=INVALID_HANDLE_VALUE)
 				{
-					if (exact_filesize)
+					if (exact_filesize
+						&& !f.isdir && !f.issym)
 					{
 						BY_HANDLE_FILE_INFORMATION fileInformation;
 						if (GetFileInformationByHandle(hFile, &fileInformation)!=0)

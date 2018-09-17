@@ -856,9 +856,13 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 	}
 }
 
-int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int backupid)
+int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int backupid,
+	int del_in_stack)
 {
 	int incr_image_num=cleanupdao->getIncrNumImagesForBackup(backupid);
+	incr_image_num -= del_in_stack;
+	if (incr_image_num < 0)
+		incr_image_num = 0;
 	int min_incr_image_num = static_cast<int>(settings.getSettings()->min_image_incr);
 
 	int max_allowed_del_refs = 0;
@@ -980,7 +984,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		}
 		else
 		{
-			if(!removeImage(backupid, &settings, true, false, true, true))
+			if(!removeImage(backupid, &settings, true, false, true, true, 1))
 			{
 				notit.push_back(backupid);
 			}
@@ -1072,7 +1076,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 }
 
 bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings, 
-	bool update_stat, bool force_remove, bool remove_associated, bool remove_references)
+	bool update_stat, bool force_remove, bool remove_associated, bool remove_references,
+	int del_incr_in_stack)
 {
 	int64 deleted_size_bytes = 0;
 
@@ -1096,13 +1101,15 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 
 		for(size_t i=0;i<refs.size();++i)
 		{
-			if(max_removable_incr_images(*settings, refs[i].id)<=0)
+			if(max_removable_incr_images(*settings, refs[i].id, del_incr_in_stack)<=0)
 			{
 				ServerLogger::Log(logid, "Cannot delete image because incremental image backups referencing this image are not allowed to be deleted", LL_INFO);
 				return false;
 			}
 
-			bool b=removeImage(refs[i].id, settings, true, force_remove, remove_associated, remove_references);
+			bool b=removeImage(refs[i].id, settings, true, force_remove, 
+				remove_associated, remove_references,
+				del_incr_in_stack+1);
 			if(!b)
 			{
 				ret=false;
@@ -1127,7 +1134,8 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 		{
 			int64 is=getImageSize(assoc[i]);
 			if(is>0) deleted_size_bytes+=is;
-			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
+			removeImage(assoc[i], settings, false, force_remove, remove_associated,
+				remove_references, del_incr_in_stack);
 		}
 	}
 

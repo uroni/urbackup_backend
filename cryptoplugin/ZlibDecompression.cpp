@@ -19,6 +19,7 @@
 #include "ZlibDecompression.h"
 #include "../Interface/Server.h"
 
+using namespace CryptoPPCompat;
 
 size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::vector<char> *output, bool flush, size_t output_off, bool *error)
 {

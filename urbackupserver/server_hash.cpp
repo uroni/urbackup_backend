@@ -1241,6 +1241,8 @@ IFsFile* BackupServerHash::openFileRetry(const std::string &dest, int mode, std:
 
 bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterator* extent_iterator)
 {
+	ServerLogger::Log(logid, "HT: Copying file to \""+dest+"\"", LL_DEBUG);
+
 	std::string errstr;
 	std::auto_ptr<IFsFile> dst(openFileRetry(dest, MODE_WRITE, errstr));
 	if (dst.get() == NULL)
@@ -1339,6 +1341,8 @@ bool BackupServerHash::copyFile(IFile *tf, const std::string &dest, ExtentIterat
 
 bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
+	ServerLogger::Log(logid, "HT: Copying file with hash output to \""+dest+"\"", LL_DEBUG);
+
 	std::string errstr;
 	IFsFile *dst=openFileRetry(dest, MODE_WRITE, errstr);
 	if(dst==NULL) return false;
@@ -1473,6 +1477,10 @@ bool BackupServerHash::patchFile(IFile *patch, const std::string &source, const 
 				has_reflink=!copy;
 			}
 		}
+
+		ServerLogger::Log(logid, "HT: Patching file \""+dest+"\" with source \""+source+"\" patch size "+PrettyPrintBytes(patch->Size())+" reflink="+convert(has_reflink), LL_DEBUG);
+
+
 
 		std::string errstr;
 		chunk_output_fn=openFileRetry(dest, has_reflink?MODE_RW:MODE_WRITE, errstr);
@@ -1768,6 +1776,8 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::string &d
 
 bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &dest, const std::string hash_dest, ExtentIterator* extent_iterator)
 {
+	ServerLogger::Log(logid, "HT: Renaming file to \""+dest+"\" with hash output", LL_DEBUG);
+
 	if(tf->Size()>0)
 	{
 		std::string errstr;
@@ -1786,11 +1796,16 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::string &de
 	}
 
 
-	return renameFile(tf, dest);
+	return renameFile(tf, dest, false);
 }
 
-bool BackupServerHash::renameFile(IFile *tf, const std::string &dest)
+bool BackupServerHash::renameFile(IFile *tf, const std::string &dest, bool log_info)
 {
+	if(log_info)
+	{
+		ServerLogger::Log(logid, "HT: Renaming file to \""+dest+"\"", LL_DEBUG);
+	}
+
 	std::string tf_fn=tf->getFilename();
 	Server->destroy(tf);
 

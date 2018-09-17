@@ -1068,6 +1068,15 @@ void do_restore(void)
 			}
 		}
 
+		if (mbrdata.extra_data_pos != -1)
+		{
+			Server->Log("Writing extra data...");
+			if (dev->Write(mbrdata.extra_data_pos, mbrdata.extra_data) != mbrdata.extra_data.size())
+			{
+				Server->Log("Writing extra data failed. " + os_last_error_str(), LL_ERROR);
+			}
+		}
+
 		Server->destroy(dev);
 
 		delete []buf;
@@ -2102,11 +2111,20 @@ void restore_wizard(void)
 
 					if(!dev->Seek(mbrdata.backup_gpt_table_pos) || dev->Write(mbrdata.backup_gpt_table)!=mbrdata.backup_gpt_table.size())
 					{
-						err="error_writing_gpt";
-						state=101;
-						break;
+						std::cout << "Error writing backup GPT table. Fixing with GNU parted..." << std::endl;
+						system(("parted -s " + seldrive).c_str());
 					}
-				}				
+				}
+
+				if (mbrdata.extra_data_pos != -1)
+				{
+					std::cout << "Writing extra data..." << std::endl;
+					if (dev->Write(mbrdata.extra_data_pos,
+						mbrdata.extra_data) != mbrdata.extra_data.size())
+					{
+						std::cout << "Error writing extra data. Ignoring...";
+					}
+				}
 
 				Server->destroy(dev);
 

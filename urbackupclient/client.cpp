@@ -262,7 +262,7 @@ namespace
 		{
 			ReleaseMutex(cbtMutex);
 		}
-		assert(cbtMutexLocked>0);
+		assert(cbtMutexLocked>=0);
 	}
 
 	struct ScopedUnlockCbtMutex
@@ -279,7 +279,7 @@ namespace
 			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
 		{
 			WCHAR szBuffer[8192];
-			DWORD dwBufferSize = sizeof(szBuffer);
+			DWORD dwBufferSize = sizeof(szBuffer)*sizeof(WCHAR);
 			ULONG nError;
 			DWORD dwType = REG_MULTI_SZ;
 			nError = RegQueryValueExW(urbackup_cbt_key, L"cbt_paths", 0, &dwType,
@@ -288,7 +288,7 @@ namespace
 			if (ERROR_SUCCESS == nError
 				&& dwType==REG_MULTI_SZ)
 			{
-				std::wstring rval(szBuffer, szBuffer + dwBufferSize);
+				std::wstring rval(szBuffer, szBuffer + dwBufferSize/sizeof(wchar_t));
 				std::string strValue = Server->ConvertFromWchar(rval);
 				std::vector<std::string> toks;
 				std::string sep;
@@ -321,6 +321,10 @@ namespace
 		{
 			curr_paths.push_back(path);
 		}
+		else
+		{
+			return true;
+		}
 
 		std::wstring data;
 
@@ -330,9 +334,17 @@ namespace
 			data.append(1, (wchar_t)0);
 		}
 
-		return RegSetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt\\cbt_paths",
-			REG_MULTI_SZ, data.c_str(), static_cast<DWORD>(data.size()))
-			== ERROR_SUCCESS;
+		HKEY urbackup_cbt_key;
+		if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\UrBackupCbt",
+			0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_cbt_key, NULL) == ERROR_SUCCESS)
+		{
+			LSTATUS status = RegSetValueExW(urbackup_cbt_key, L"cbt_paths", 0,
+				REG_MULTI_SZ, reinterpret_cast<const BYTE*>(data.c_str()), static_cast<DWORD>((data.size() + 1)*sizeof(wchar_t)));
+			RegCloseKey(urbackup_cbt_key);
+			return status
+				== ERROR_SUCCESS;
+		}
+		return false;
 	}
 #endif
 
@@ -517,7 +529,10 @@ void IndexThread::operator()(void)
 #ifdef _WIN32
 	initVss();
 	init_cbt_mutex();
-	add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
+	if (os_get_file_type("urbctctl.exe") != 0)
+	{
+		add_cbt_path(Server->getServerWorkingDir() + os_file_sep() + "urbackup");
+	}
 #endif
 
 	if(backgroundBackupsEnabled(std::string()))
@@ -2625,6 +2640,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
 						fs_files[i].change_indicator *= (std::max)((unsigned int)2, Server->getRandomNumber());
+
+						if (fs_files[i].issym)
+						{
+							fs_files[i].change_indicator |= (change_indicator_symlink_bit | change_indicator_special_bit);
+						}
+						else if (fs_files[i].isspecialf)
+						{
+							fs_files[i].change_indicator |= change_indicator_special_bit;
+						}
+						else
+						{
+							fs_files[i].change_indicator &= ~change_indicator_all_bits;
+						}
 					}
 				}
 			}
@@ -5124,17 +5152,17 @@ bool IndexThread::handleLastFilelistDepth(SFile& data)
 
 bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 {
-	settings_val = strlower(trim(settings_val));
+	settings_val = trim(settings_val);
 
-	if (settings_val == "all")
+	if (strlower(settings_val) == "all")
 	{
 		return true;
 	}
 
-	if (volume.size() == 2 && volume[1] == ':')
-	{
-		volume.resize(1);
-	}
+	volume = trim(volume);
+
+	if (!normalizeVolume(volume))
+		return true;
 
 	volume = strlower(volume);
 
@@ -5143,12 +5171,12 @@ bool IndexThread::volIsEnabled(std::string settings_val, std::string volume)
 
 	for (size_t i = 0; i < vols.size(); ++i)
 	{
-		if (vols[i].size() == 2 && vols[i][1] == ':')
-		{
-			vols[i].resize(1);
-		}
+		std::string cvol = trim(vols[i]);
+		if (!normalizeVolume(cvol))
+			continue;
+		cvol = strlower(cvol);
 
-		if (vols[i] == volume)
+		if (cvol == volume)
 		{
 			return true;
 		}
@@ -6174,7 +6202,10 @@ void IndexThread::updateCbt()
 			Tokenize(volumes, ret, ";,");
 			for (size_t i = 0; i<ret.size(); ++i)
 			{
-				std::string cvol = strlower(trim(ret[i]));
+				std::string cvol = trim(ret[i]);
+				if (!normalizeVolume(cvol))
+					continue;
+				cvol = strlower(cvol);
 
 				if (vols.find(cvol) == vols.end())
 				{
@@ -6189,7 +6220,11 @@ void IndexThread::updateCbt()
 
 	for (size_t i = 0; i < backup_dirs.size(); ++i)
 	{
-		std::string cvol = strlower(trim(getVolPath(backup_dirs[i].path)));
+		std::string cvol = trim(backup_dirs[i].path);
+		if (!normalizeVolume(cvol))
+			continue;
+
+		cvol = strlower(cvol);
 
 		if (!cvol.empty()
 			&& vols.find(cvol) == vols.end() )
@@ -6208,7 +6243,10 @@ void IndexThread::updateCbt()
 		Tokenize(volumes, ret, ";,");
 		for (size_t i = 0; i<ret.size(); ++i)
 		{
-			std::string cvol = strlower(trim(ret[i]));
+			std::string cvol = trim(ret[i]);
+			if (!normalizeVolume(cvol))
+				continue;
+			cvol = strlower(cvol);
 
 			if (vols.find(cvol) == vols.end())
 			{

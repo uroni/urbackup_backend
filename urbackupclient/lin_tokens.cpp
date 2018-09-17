@@ -605,9 +605,9 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 		case ETokenRight_Read:
 			if(S_ISDIR(mode))
 			{
-				iall = S_IROTH & S_IXOTH;
-				iusr = S_IRUSR & S_IXUSR;
-				igrp = S_IRGRP & S_IXGRP;
+				iall = S_IROTH | S_IXOTH;
+				iusr = S_IRUSR | S_IXUSR;
+				igrp = S_IRGRP | S_IXGRP;
 			}
 			else
 			{
@@ -622,9 +622,9 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 			igrp = S_IWGRP;
 			break;
 		case ETokenRight_DeleteFromDir:
-			iall = S_IROTH & S_IWOTH;
-			iusr = S_IRUSR & S_IWUSR;
-			igrp = S_IRGRP & S_IWGRP;
+			iall = S_IROTH | S_IWOTH;
+			iusr = S_IRUSR | S_IWUSR;
+			igrp = S_IRGRP | S_IWGRP;
 			break;
 	};
 	
@@ -635,7 +635,7 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
                 token_info.addChar(ID_GRANT_ACCESS);
                 token_info.addVarInt(0);
 	}
-	else if(mode & iall)
+	else if(mode & iall == iall)
 	{
 		//Allow all
 		token_info.addChar(ID_GRANT_ACCESS);
@@ -653,7 +653,7 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 			}
 		}
 	
-		if(mode & iusr)
+		if(mode & iusr == iusr)
 		{
 			int64 tid = read_token_lazy_cache(cache, dao, true, uid);
 			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(uid);
@@ -668,7 +668,7 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 			}
 		}
 
-		if(mode & igrp)
+		if(mode & igrp == igrp)
 		{
 			int64 tid = read_token_lazy_cache(cache, dao, false, uid);
 			if(tid==0)

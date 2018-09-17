@@ -19,6 +19,8 @@
 #include "AESEncryption.h"
 #include "../Interface/Server.h"
 
+using namespace CryptoPPCompat;
+
 AESEncryption::AESEncryption(const std::string &password, bool hash_password)
 {
 	if(hash_password)

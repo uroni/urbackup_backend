@@ -45,3 +45,10 @@
 #include CRYPTOPP_INCLUDE_OIDS
 #include CRYPTOPP_INCLUDE_DSA
 #endif
+
+namespace CryptoPPCompat
+{
+#if (CRYPTOPP_VERSION >= 600)
+	typedef unsigned char byte;
+#endif
+}

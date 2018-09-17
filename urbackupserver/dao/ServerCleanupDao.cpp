@@ -98,12 +98,13 @@ ServerCleanupDao::CondInt ServerCleanupDao::getIncompleteImage(int id)
 *   FROM backup_images b, clients c
 *   WHERE
 *     b.delete_pending=1 AND b.clientid=c.id
+*   ORDER BY backuptime DESC
 */
 std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getDeletePendingImages(void)
 {
 	if(q_getDeletePendingImages==NULL)
 	{
-		q_getDeletePendingImages=db->Prepare("SELECT b.id AS id, b.path AS path, c.name AS clientname FROM backup_images b, clients c WHERE b.delete_pending=1 AND b.clientid=c.id", false);
+		q_getDeletePendingImages=db->Prepare("SELECT b.id AS id, b.path AS path, c.name AS clientname FROM backup_images b, clients c WHERE b.delete_pending=1 AND b.clientid=c.id ORDER BY backuptime DESC", false);
 	}
 	db_results res=q_getDeletePendingImages->Read();
 	std::vector<ServerCleanupDao::SIncompleteImages> ret;

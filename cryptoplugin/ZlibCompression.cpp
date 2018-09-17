@@ -18,6 +18,7 @@
 
 #include "ZlibCompression.h"
 
+using namespace CryptoPPCompat;
 
 ZlibCompression::ZlibCompression(int compression_level)
 {
