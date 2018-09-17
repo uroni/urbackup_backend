@@ -1686,9 +1686,13 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				outfile.close();
 				removeFile((filelist_fn));
 
-				if(stop_index)
+				if(index_error)
 				{
 					VSSLog("Indexing files failed, because of error", LL_ERROR);
+				}
+				else
+				{
+					VSSLog("Indexing interrupted by configuration change", LL_ERROR);
 				}
 
 				return;
