@@ -2016,6 +2016,13 @@ void restore_wizard(void)
 				}
 				system("cat urbackup/restore/reading_mbr");
 				system("echo");
+				if (is_disk_mbr("mbr.dat"))
+				{
+					std::cout << "Restoring whole disk..." << std::endl;
+					++state;
+					selpart = seldrive;
+					break;
+				}
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);
 				if(f==NULL)
 				{
@@ -2027,6 +2034,7 @@ void restore_wizard(void)
 				char *buf=new char[fsize];
 				f->Read(buf, (_u32)fsize);
 				Server->destroy(f);
+				
 				CRData mbr(buf, fsize);
 				SMBRData mbrdata(mbr);
 				if(mbrdata.hasError())
