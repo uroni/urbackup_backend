@@ -446,7 +446,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
-std::string translate_tokens(uid_t uid, gid_t gid, st_mode mode, ClientDAO* dao, ETokenRight right, TokenCache& cache);
+std::string translate_tokens(uid_t uid, gid_t gid, mode_t mode, ClientDAO* dao, ETokenRight right, TokenCache& cache);
 
 std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& token_cache )
 {
@@ -589,7 +589,7 @@ int64 read_token_lazy_cache(TokenCache& token_cache, ClientDAO* dao, bool is_use
 	}
 }
 
-std::string translate_tokens(uid_t uid, gid_t gid, st_mode mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
+std::string translate_tokens(uid_t uid, gid_t gid, mode_t mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
 {
 	if(cache.get()==NULL)
 	{
