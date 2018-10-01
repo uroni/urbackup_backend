@@ -47,8 +47,6 @@ namespace tokens
 
 	std::string get_file_tokens(const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& cache);
 
-	std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, ETokenRight right, TokenCache& cache);
-
 	std::string get_hostname();
 
 	std::vector<std::string> get_local_users();

@@ -446,6 +446,8 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 	}
 }
 
+std::string translate_tokens(uid_t uid, gid_t gid, st_mode mode, ClientDAO* dao, ETokenRight right, TokenCache& cache);
+
 std::string get_file_tokens( const std::string& fn, ClientDAO* dao, ETokenRight right, TokenCache& token_cache )
 {
 	struct stat stat_data;
@@ -587,7 +589,7 @@ int64 read_token_lazy_cache(TokenCache& token_cache, ClientDAO* dao, bool is_use
 	}
 }
 
-std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
+std::string translate_tokens(uid_t uid, gid_t gid, st_mode mode, ClientDAO* dao, ETokenRight right, TokenCache& cache)
 {
 	if(cache.get()==NULL)
 	{
@@ -635,7 +637,7 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
                 token_info.addChar(ID_GRANT_ACCESS);
                 token_info.addVarInt(0);
 	}
-	else if(mode & iall == iall)
+	else if( (mode & iall) == iall)
 	{
 		//Allow all
 		token_info.addChar(ID_GRANT_ACCESS);
@@ -653,10 +655,9 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 			}
 		}
 	
-		if(mode & iusr == iusr)
+		if( (mode & iusr) == iusr)
 		{
 			int64 tid = read_token_lazy_cache(cache, dao, true, uid);
-			std::map<uid_t, int64>::iterator it = cache.get()->uid_map.find(uid);
 			if(tid==0)
 			{
 				Server->Log("Error getting internal id for user with id "+convert(uid), LL_ERROR);
@@ -668,7 +669,7 @@ std::string translate_tokens(int64 uid, int64 gid, int64 mode, ClientDAO* dao, E
 			}
 		}
 
-		if(mode & igrp == igrp)
+		if( (mode & igrp) == igrp)
 		{
 			int64 tid = read_token_lazy_cache(cache, dao, false, uid);
 			if(tid==0)
