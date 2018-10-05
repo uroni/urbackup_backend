@@ -94,7 +94,8 @@ namespace
 		SScript ret;
 		ret.code = get_alert_script(db, script_id);
 
-		if (!ret.code.empty())
+		if (!ret.code.empty()
+			&& ret.code.find("--disable_lua_compile")==std::string::npos)
 		{
 			std::string compiled_code = lua_interpreter->compileScript(ret.code);
 			if (!compiled_code.empty())

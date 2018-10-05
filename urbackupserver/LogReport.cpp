@@ -139,6 +139,9 @@ std::string get_report_script()
 	if (script.empty())
 		return script;
 
+	if (script.find("--disable_lua_compile") != std::string::npos)
+		return script;
+
 	std::string compiled_script = lua_interpreter->compileScript(script);
 
 	if (!compiled_script.empty())
