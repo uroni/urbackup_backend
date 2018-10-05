@@ -427,7 +427,7 @@ std::string LuaInterpreter::compileScript(const std::string & script)
 	}
 
 	std::string ret;
-	rc = lua_dump(state, lua_write, &ret, 1);
+	rc = lua_dump(state, lua_write, &ret, 0);
 	if (rc)
 	{
 		Server->Log(std::string("Error dumping lua state"), LL_ERROR);
