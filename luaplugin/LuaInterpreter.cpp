@@ -252,6 +252,12 @@ namespace
 		}
 	}
 
+	LUALIB_API void luaL_openlibs_all(lua_State *L) {
+		luaL_openlibs(L);
+		luaL_requiref(L, "time", luaopen_time, 1);
+		lua_pop(L, 1);
+	}
+
 	ILuaInterpreter::SInterpreterFunctions* get_funcs(lua_State* L)
 	{
 		lua_getglobal(L, "_g_funcs");
@@ -452,7 +458,14 @@ int64 LuaInterpreter::runScript(const std::string& script, const Param& params, 
 
 	ScopedLuaState scoped_state(state);
 
-	luaL_openlibs_custom(state);
+	if (Server->getServerParameter("lua_sandbox") == "true")
+	{
+		luaL_openlibs_custom(state);
+	}
+	else
+	{
+		luaL_openlibs_all(state);
+	}
 
 	int rc = luaL_loadbuffer(state, script.c_str(), script.size(), "script");
 	if (rc) {
