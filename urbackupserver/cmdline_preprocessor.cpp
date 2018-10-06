@@ -311,6 +311,17 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("LUA_SANDBOX", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				if (val == "1") val = "true";
+				real_args.push_back("--lua_sandbox");
+				real_args.push_back(strlower(val));
+			}
+		}
 	}	
 
 	if(destroy_server)
