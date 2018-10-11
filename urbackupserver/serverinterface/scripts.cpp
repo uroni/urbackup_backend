@@ -59,8 +59,8 @@ ACTION_IMPL(scripts)
 			{
 				q->Bind(id);
 			}
-			q->Bind(POST["script"]);
-			q->Bind(POST["name"]);
+			q->Bind(UnescapeSQLString(POST["script"]));
+			q->Bind(UnescapeSQLString(POST["name"]));
 			q->Write();
 			q->Reset();
 
@@ -75,9 +75,9 @@ ACTION_IMPL(scripts)
 			{
 				q->Bind(id);
 				q->Bind(idx);
-				q->Bind(POST[convert(idx) + "_name"]);
-				q->Bind(POST[convert(idx) + "_label"]);
-				q->Bind(POST[convert(idx) + "_default"]);
+				q->Bind(UnescapeSQLString(POST[convert(idx) + "_name"]));
+				q->Bind(UnescapeSQLString(POST[convert(idx) + "_label"]));
+				q->Bind(UnescapeSQLString(POST[convert(idx) + "_default"]));
 				q->Bind(POST[convert(idx) + "_type"]);
 				q->Write();
 				q->Reset();
