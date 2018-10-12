@@ -126,6 +126,10 @@ ACTION_IMPL(progress)
 		}
 		ret.set("progress", pg);
 	}
+	else if (session != NULL)
+	{
+		ret.set("progress", JSON::Array());
+	}
 	else
 	{
 		ret.set("error", JSON::Value(1));
