@@ -566,6 +566,19 @@ ACTION_IMPL(status)
 			ret.set("big_endian", true);
 		}
 	}
+	else if (session != NULL)
+	{
+		ret.set("status", JSON::Array());
+		ret.set("extra_clients", JSON::Array());
+		ret.set("server_identity", helper.getStrippedServerIdentity());
+		ServerSettings settings(db);
+		ret.set("no_images", settings.getSettings()->no_images);
+		ret.set("no_file_backups", settings.getSettings()->no_file_backups);
+		if (is_big_endian())
+		{
+			ret.set("big_endian", true);
+		}
+	}
 	else
 	{
 		ret.set("error", 1);
