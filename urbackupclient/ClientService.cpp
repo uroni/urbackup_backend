@@ -567,12 +567,13 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 					if(crypto_fak!=NULL)
 					{
-						IFile *updatefile=Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
-						if(updatefile!=NULL)
+						std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
+						if(updatefile.get()!=NULL)
 						{
-							if(checkHash(getSha512Hash(updatefile)))
+							if(checkHash(getSha512Hash(updatefile.get()))
+								&& checkVersion(updatefile.get()) )
 							{
-								Server->destroy(updatefile);
+								updatefile.reset();
 								if(crypto_fak->verifyFile(UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub",
 									UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 								{
@@ -605,7 +606,7 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 							}
 							else
 							{
-								Server->destroy(updatefile);
+								updatefile.reset();
 								Server->Log("Verifying update file failed. Update was installed previously", LL_ERROR);
 								Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
 								tcpstack.Send(pipe, "verify_sig_already_used_err");
@@ -693,6 +694,41 @@ bool ClientConnector::checkHash(std::string shah)
 		}
 	}
 	return true;
+}
+
+bool ClientConnector::checkVersion(IFile* updatef)
+{
+	const std::string version_start_guid = "#ab6b754c02624b348795c92da78b1e73\n";
+	std::string new_version = trim(getFile(UPDATE_FILE_PREFIX "version_new.txt"));
+	
+	std::string data = updatef->Read(0LL, 128 * 1024);
+	for (size_t i = 0; i < data.size(); ++i)
+	{
+		if (next(data, i, version_start_guid)
+			&& i+version_start_guid.size()+ new_version.size()<=data.size())
+		{
+			std::string curr_version = data.substr(i + version_start_guid.size(), new_version.size());
+
+			if (curr_version == new_version)
+			{
+				std::string version_2 = trim(getFile(UPDATE_FILE_PREFIX "curr_version.txt"));
+				if (versionNeedsUpdate(version_2, curr_version))
+				{
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	return false;
 }
 
 bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)

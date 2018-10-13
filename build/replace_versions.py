@@ -134,6 +134,15 @@ def replace_with_content_hashes(fn, fn_prefix):
     with open(fn, 'wb') as f:
         for line in newlines:
             f.write(line.encode("utf-8"))
+			
+def replace_version_info():
+	with open("client/version.txt", "rt") as f:
+		version = f.read().strip()
+	
+	replace_in_file("client/data/version_info.txt", "$version$", version)
+	replace_in_file("install_client_linux.sh", "$version$", version)
+	replace_in_file("osx_installer/update_install.sh", "$version$", version)
+	
 
 
 replace_with_content_hashes("urbackupserver/www/index.htm", "urbackupserver/www/")
@@ -185,5 +194,7 @@ if os.path.exists("client"):
 	replace_in_file("client/urbackup.wxs", "$version_full_numeric$", version["client"]["full_numeric"])
 	replace_in_file("client/urbackup.wxi", "$product_id$", str(uuid.uuid1()))
 	replace_in_file("clientctl/main.cpp", "$version_full_numeric$", version["client"]["full_numeric"])
+	
+	replace_version_info()
 
 exit(0)

@@ -249,6 +249,7 @@ private:
 	bool writeUpdateFile(IFile *datafile, std::string outfn);
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
+	bool checkVersion(IFile* updatef);
 	void tochannelSendStartbackup(RunningAction backup_type, const std::string& virtual_client);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
