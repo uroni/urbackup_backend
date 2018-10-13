@@ -2107,11 +2107,12 @@ void restore_wizard(void)
 					system("cat urbackup/restore/writing_backup_gpt_header");
 					system("echo");
 
+					bool fix_gpt = false;
+
 					if(!dev->Seek(mbrdata.backup_gpt_header_pos) || dev->Write(mbrdata.backup_gpt_header)!=mbrdata.backup_gpt_header.size())
 					{
-						err="error_writing_gpt";
-						state=101;
-						break;
+						std::cout << "Error writing backup GPT header. " << os_last_error_str() << ". Fixing with GNU parted..." << std::endl;
+						fix_gpt = true;
 					}
 
 					system("cat urbackup/restore/writing_backup_gpt_table");
@@ -2119,7 +2120,12 @@ void restore_wizard(void)
 
 					if(!dev->Seek(mbrdata.backup_gpt_table_pos) || dev->Write(mbrdata.backup_gpt_table)!=mbrdata.backup_gpt_table.size())
 					{
-						std::cout << "Error writing backup GPT table. Fixing with GNU parted..." << std::endl;
+						std::cout << "Error writing backup GPT table. " << os_last_error_str() << ". Fixing with GNU parted..." << std::endl;
+						fix_gpt = true;
+					}
+
+					if (fix_gpt)
+					{
 						system(("parted -s " + seldrive).c_str());
 					}
 				}
