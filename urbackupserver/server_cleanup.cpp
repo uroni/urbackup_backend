@@ -796,7 +796,12 @@ bool ServerCleanupThread::deleteAndTruncateFile(logid_t logid, std::string path)
 	if(!Server->deleteFile(os_file_prefix(path)))
 	{
 		std::string errmsg = os_last_error_str();
-		if (os_get_file_type(os_file_prefix(path)) & EFileType_File)
+		int type = os_get_file_type(os_file_prefix(path));
+		if (type == 0)
+		{
+			return true;
+		}
+		else if (type & EFileType_File)
 		{
 			ServerLogger::Log(logid, "Deleting " + path + " failed. " + errmsg + " . Truncating it instead.", LL_WARNING);
 			os_file_truncate(os_file_prefix(path), 0);	
@@ -827,10 +832,7 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 		}
 		if (!deleteAndTruncateFile(logid, path + ".mbr"))
 		{
-			if (os_get_file_type(os_file_prefix(path + ".mbr")) & EFileType_File)
-			{
-				b = false;
-			}
+			b = false;
 		}
 		deleteAndTruncateFile(logid, path + ".cbitmap");
 		deleteAndTruncateFile(logid, path + ".sync");
@@ -850,6 +852,12 @@ bool ServerCleanupThread::deleteImage(logid_t logid, std::string clientname, std
 			&& BackupServer::getSnapshotMethod(true) == BackupServer::ESnapshotMethod_Zfs)
 		{
 			Server->deleteFile(ExtractFilePath(path));
+		}
+
+		if(!b &&
+			os_get_file_type(os_file_prefix(ExtractFilePath(path))) == 0)
+		{
+			return true;
 		}
 
 		return b;
@@ -1112,7 +1120,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 				del_incr_in_stack+1);
 			if(!b)
 			{
-				ret=false;
+				return false;
 			}
 		}
 	}
