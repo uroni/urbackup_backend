@@ -1112,7 +1112,8 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 				del_incr_in_stack+1);
 			if(!b)
 			{
-				ret=false;
+				ServerLogger::Log(logid, "Cannot delete image because incremental image backup referencing this image cannot be deleted", LL_ERROR);
+				return false;
 			}
 		}
 	}
