@@ -184,6 +184,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Error loading Cryptoplugin", LL_ERROR);
 	}
 
+	{
+		str_map params;
+		image_fak = (IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
+		if (image_fak == NULL)
+		{
+			Server->Log("Error loading fsimageplugin", LL_ERROR);
+		}
+	}
+
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
 		Server->setServerParameter("max_worker_clients", "1");
@@ -199,16 +208,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		restore_wizard();
 		exit(10);
 		return;
-	}
-
-
-	{
-		str_map params;
-		image_fak=(IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
-		if( image_fak==NULL )
-		{
-			Server->Log("Error loading fsimageplugin", LL_ERROR);
-		}
 	}
 
 #ifdef _WIN32

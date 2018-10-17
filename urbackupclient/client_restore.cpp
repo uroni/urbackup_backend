@@ -41,6 +41,7 @@
 #include "../fileservplugin/packet_ids.h"
 #include <memory>
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "../fsimageplugin/IFSImageFactory.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -54,6 +55,7 @@ const std::string configure_networkcard=configure_wlan;
 #define UDP_SOURCE_PORT 35623
 
 extern ICryptoFactory *crypto_fak;
+extern IFSImageFactory* image_fak;
 
 namespace
 {
@@ -2062,6 +2064,9 @@ void restore_wizard(void)
 					break;
 				}
 
+				bool fix_gpt = false;
+				std::vector<IFSImageFactory::SPartition> partitions;
+
 				if(mbrdata.gpt_style)
 				{
 					std::string onlypart = ExtractFileName(seldrive);
@@ -2107,8 +2112,6 @@ void restore_wizard(void)
 					system("cat urbackup/restore/writing_backup_gpt_header");
 					system("echo");
 
-					bool fix_gpt = false;
-
 					if(!dev->Seek(mbrdata.backup_gpt_header_pos) || dev->Write(mbrdata.backup_gpt_header)!=mbrdata.backup_gpt_header.size())
 					{
 						std::cout << "Error writing backup GPT header. " << os_last_error_str() << ". Fixing with GNU parted..." << std::endl;
@@ -2126,7 +2129,14 @@ void restore_wizard(void)
 
 					if (fix_gpt)
 					{
-						system(("parted -s " + seldrive).c_str());
+						system(("echo -e \"w\\nY\" | gdisk " + seldrive).c_str());
+
+						bool t_gpt_style;
+						partitions = image_fak->readPartitions(mbrdata.mbr_data, mbrdata.gpt_header, mbrdata.gpt_table, t_gpt_style);
+					}
+					else
+					{
+						system(("echo -e \"w\\nY\" | gdisk " + seldrive + " > /dev/null 2>&1").c_str());
 					}
 				}
 
@@ -2156,6 +2166,7 @@ void restore_wizard(void)
 					dev=Server->openFile(partpath, MODE_RW);
 				}
 				int try_c=0;
+				int delete_parts = 0;
 				while(dev==NULL && try_c<10)
 				{
 					system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
@@ -2170,9 +2181,43 @@ void restore_wizard(void)
 
 					if(dev==NULL)
 					{
-						Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
-						//Fix LBA partition signature
-						system(("echo w | fdisk "+seldrive+" > /dev/null 2>&1").c_str());
+						if (!mbrdata.gpt_style)
+						{
+							Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
+							//Fix LBA partition signature
+							system(("echo w | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
+							system(("echo -e \"w\\nY\" | fdisk " + seldrive + " > /dev/null 2>&1").c_str());
+						}
+						else
+						{
+							Server->Log("Trying to fix GPT partitioning scheme via gdisk...");
+							system(("echo -e \"w\\nY\" | gdisk " + seldrive).c_str());
+						}
+
+						if (fix_gpt && try_c>5
+							&& !partitions.empty())
+						{
+							//TODO: the last partition might not be the one with the highest offset
+							Server->Log("Deleting last GPT partition...");
+							++delete_parts;
+							std::string cmd;
+							for (int i = 0; i < delete_parts; ++i)
+							{
+								if (partitions.size() - i == mbrdata.partition_number)
+								{
+									Server->Log("Cannot delete last GPT partition. This is the partition to be restored. DISK IS PROBABLY TOO SMALL TO RESTORE TO.", LL_ERROR);
+									system("read -n1 -r -p \"Press any key to continue...\" key");
+									fix_gpt = false;
+									try_c = 100;
+								}
+
+								cmd += "d\\n" + convert(partitions.size() - i);
+							}
+							cmd += "\\nw\\nY";
+
+							if(fix_gpt)
+								system(("echo -e \""+cmd+"\" | gdisk " + seldrive).c_str());
+						}
 					}
 
 					++try_c;
