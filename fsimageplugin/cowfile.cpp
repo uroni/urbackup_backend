@@ -273,7 +273,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 			{
 				if(filesize!=statbuf.st_size)
 				{
-					rc = ftruncate64(fd, filesize);
+					int rc = ftruncate64(fd, filesize);
 
 					if(rc!=0)
 					{
