@@ -3,6 +3,7 @@
 #include "../stringtools.h"
 #include "ImdiskSrv.h"
 #include "vhdfile.h"
+#include "FileWrapper.h"
 #include <Windows.h>
 #include <Subauth.h>
 #include <imdproxy.h>
@@ -217,22 +218,39 @@ namespace
 				offset = 512 * 1024;
 			}
 
-			VHDFile vhdfile(Server->ConvertFromWchar(connect_string), true, 0);
-			if(!vhdfile.isOpen())
+			std::string img_fn = Server->ConvertFromWchar(connect_string);
+
+			std::string ext = findextension(img_fn);
+
+			std::auto_ptr<IFile> imgf;
+
+			std::auto_ptr<VHDFile> vhdfile;
+			if (ext == "raw")
+			{
+				imgf.reset(Server->openFile(img_fn, MODE_READ));
+			}
+			else
+			{
+				vhdfile.reset(new VHDFile(img_fn, true, 0));
+				if (vhdfile->isOpen())
+				{
+					imgf.reset(new FileWrapper(vhdfile.get(), 0));
+				}
+			}
+
+			if(imgf.get()==NULL)
 			{
 				send_error(ERROR_FILE_NOT_FOUND);
 				return;
 			}
 
-			vhdfile.addVolumeOffset(offset);
-
 			if (length == -1)
 			{
-				length = vhdfile.Size();
+				length = imgf->Size() - offset;
 			}
 			else
 			{
-				length = (std::min)(length, vhdfile.Size());
+				length = (std::min)(length, imgf->Size() - offset);
 			}
 
 			std::string uid;
@@ -380,7 +398,7 @@ namespace
 				if (read_req.length > 0)
 				{
 					bool has_read_error = false;
-					_u32 rc = vhdfile.Read(read_req.offset, buf.data() + sizeof(IMDPROXY_READ_RESP)+ read_resp->length,
+					_u32 rc = imgf->Read(read_req.offset+offset, buf.data() + sizeof(IMDPROXY_READ_RESP)+ read_resp->length,
 						static_cast<_u32>(read_req.length), &has_read_error);
 					if (has_read_error)
 					{
