@@ -1551,7 +1551,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									}
 									db->EndTransaction();
 
-									if (image_file_format == image_file_format_cowraw)
+									if (image_file_format == image_file_format_cowraw
+										&& BackupServer::getSnapshotMethod(true)!= BackupServer::ESnapshotMethod_None)
 									{
 										if(!SnapshotHelper::makeReadonly(true, clientname, backuppath_single))
 										{
