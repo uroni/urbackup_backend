@@ -554,11 +554,136 @@ bool os_create_dir(const std::string &dir)
 	return CreateDirectoryW(ConvertToWchar(dir).c_str(), NULL)!=0;
 }
 
+namespace
+{
+	namespace reflink
+	{
+		typedef struct _DUPLICATE_EXTENTS_DATA {
+			HANDLE        FileHandle;
+			LARGE_INTEGER SourceFileOffset;
+			LARGE_INTEGER TargetFileOffset;
+			LARGE_INTEGER ByteCount;
+		} DUPLICATE_EXTENTS_DATA, *PDUPLICATE_EXTENTS_DATA;
+
+		DWORD FSCTL_DUPLICATE_EXTENTS_TO_FILE = 0x98344;
+	}
+}
+
+bool os_create_reflink(const std::string &linkname, const std::string &fname)
+{
+	HANDLE source_handle = CreateFileW(ConvertToWchar(fname).c_str(),
+		GENERIC_READ, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, 0, NULL);
+
+	if (source_handle == INVALID_HANDLE_VALUE)
+		return false;
+
+	BY_HANDLE_FILE_INFORMATION source_info;
+	if (!GetFileInformationByHandle(source_handle, &source_info))
+	{
+		CloseHandle(source_handle);
+		return false;
+	}
+
+	LARGE_INTEGER source_size;
+	source_size.LowPart = source_info.nFileSizeLow;
+	source_size.HighPart = source_info.nFileSizeHigh;
+
+	ULONG ret_bytes;
+	FSCTL_GET_INTEGRITY_INFORMATION_BUFFER get_integrity_info;
+	if (!DeviceIoControl(source_handle, FSCTL_GET_INTEGRITY_INFORMATION, NULL, 0, 
+		&get_integrity_info, sizeof(get_integrity_info), &ret_bytes, NULL))
+	{
+		CloseHandle(source_handle);
+		return false;
+	}
+
+	HANDLE dest_handle = CreateFileW(ConvertToWchar(linkname).c_str(),
+		GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL,
+		CREATE_ALWAYS, 0, source_handle);
+
+	if (dest_handle == INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(source_handle);
+		return false;
+	}
+
+	bool has_error = false;
+	if ((source_info.dwFileAttributes & FILE_ATTRIBUTE_SPARSE_FILE)>0
+		&& !DeviceIoControl(dest_handle, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &ret_bytes, NULL))
+	{
+		has_error = true;
+	}
+
+	FSCTL_SET_INTEGRITY_INFORMATION_BUFFER set_integrity_info = {
+		get_integrity_info.ChecksumAlgorithm,
+		get_integrity_info.Reserved,
+		get_integrity_info.Flags };
+	
+	if (!has_error
+		&& !DeviceIoControl(dest_handle, FSCTL_SET_INTEGRITY_INFORMATION,
+			&set_integrity_info, sizeof(set_integrity_info), NULL, 0, NULL, NULL))
+	{
+		has_error = true;
+	}
+
+	FILE_END_OF_FILE_INFO eof_info = { source_size };
+	if(!has_error
+		&& !SetFileInformationByHandle(dest_handle, FileEndOfFileInfo, &eof_info, sizeof(eof_info) ) )
+	{
+		has_error = true;
+	}
+
+	int64 cluster_size = get_integrity_info.ClusterSizeInBytes;
+
+	int64 total_reflink = source_size.QuadPart;
+
+	if(total_reflink%cluster_size!=0)
+		total_reflink = ((total_reflink) / cluster_size + 1 )*cluster_size;
+
+	int64 max_reflink = cluster_size == 0 ? total_reflink : (4LL * 1024 * 1024 * 1024 - cluster_size);
+
+	reflink::DUPLICATE_EXTENTS_DATA reflink_data;
+	reflink_data.FileHandle = source_handle;
+
+	int64 reflinked = 0;
+	while (!has_error
+		&& reflinked < total_reflink)
+	{
+		int64 curr_reflink = (std::min)(total_reflink - reflinked, max_reflink);
+
+		reflink_data.ByteCount.QuadPart = curr_reflink;
+		reflink_data.SourceFileOffset.QuadPart = reflinked;
+		reflink_data.TargetFileOffset.QuadPart = reflinked;
+
+		if (!DeviceIoControl(dest_handle, reflink::FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+			&reflink_data, sizeof(reflink_data), NULL, 0, NULL, NULL))
+		{
+			has_error = true;
+		}
+
+		reflinked += curr_reflink;
+	}
+
+	DWORD err = GetLastError();
+	CloseHandle(source_handle);
+	CloseHandle(dest_handle);
+	
+	if (has_error)
+	{		
+		DeleteFileW(ConvertToWchar(linkname).c_str());
+		SetLastError(err);
+		return false;
+	}
+
+	return true;
+}
+
 bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_links)
 {
 	if (use_ioref)
 	{
-		return false;
+		return os_create_reflink(linkname, fname);
 	}
 
 	BOOL r=CreateHardLinkW(ConvertToWchar(linkname).c_str(), ConvertToWchar(fname).c_str(), NULL);
