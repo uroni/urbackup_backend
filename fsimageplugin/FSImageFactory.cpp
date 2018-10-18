@@ -34,8 +34,8 @@
 #include "ImdiskSrv.h"
 #else
 #include <errno.h>
-#include "cowfile.h"
 #endif
+#include "cowfile.h"
 #include "ClientBitmap.h"
 #include <stdlib.h>
 #include "FileWrapper.h"
@@ -392,7 +392,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, bool pRead_only, 
 	case ImageFormat_CompressedVHD:
 		return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, format!=ImageFormat_VHD);
 	case ImageFormat_RawCowFile:
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(__APPLE__)
 		return new CowFile(fn, pRead_only, pDstsize);
 #else
 		return NULL;
@@ -410,7 +410,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::string &fn, const std::string
 	case ImageFormat_CompressedVHD:
 		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD, pDstsize);
 	case ImageFormat_RawCowFile:
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(__APPLE__)
 		return new CowFile(fn, parent_fn, pRead_only, pDstsize);
 #else
 		return NULL;

@@ -1,6 +1,10 @@
 #pragma once
 #ifndef __APPLE__
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 #include "IVHDFile.h"
 
 class CowFile : public IVHDFile
@@ -33,18 +37,22 @@ private:
 	bool isBitmapSet(uint64 offset);
 	void setBitmapBit(uint64 offset, bool v);
 	void setBitmapRange(uint64 offset_start, uint64 offset_end, bool v);
-	bool hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end, uint64 trim_blocksize);
+	bool hasBitmapRangeNarrow(int64& offset_start, int64& offset_end, uint64 trim_blocksize);
 	bool saveBitmap();
 	bool loadBitmap(const std::string& bitmap_fn);
 	void resizeBitmap();
 
+#ifndef _WIN32
 	int fd;
+#else
+	HANDLE fd;
+#endif
 	std::string filename;
 	bool read_only;
 	bool is_open;
 	bool bitmap_dirty;
 
-	uint64 filesize;
+	int64 filesize;
 	_i64 curr_offset;
 
 	std::vector<unsigned char> bitmap;

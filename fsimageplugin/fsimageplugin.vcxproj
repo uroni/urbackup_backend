@@ -186,6 +186,7 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.cpp" />
     <ClCompile Include="ClientBitmap.cpp" />
     <ClCompile Include="CompressedFile.cpp" />
+    <ClCompile Include="cowfile.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="filesystem.cpp" />
     <ClCompile Include="FileWrapper.cpp" />
@@ -205,6 +206,7 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="ClientBitmap.h" />
     <ClInclude Include="CompressedFile.h" />
+    <ClInclude Include="cowfile.h" />
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="FileWrapper.h" />
     <ClInclude Include="FSImageFactory.h" />

@@ -24,7 +24,9 @@
 #include "../Interface/Server.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include "../stringtools.h"
 #include <fcntl.h>
 #include "fs/ntfs.h"
@@ -44,7 +46,9 @@
 #define off64_t off_t
 #endif
 
+#ifndef _WIN32
 #include "../config.h"
+#endif
 
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE    0x1
@@ -72,42 +76,43 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 		setupBitmap();
 	}
 
-	if(is_open)
+	if (is_open)
 	{
-		mode_t imode=S_IRWXU|S_IRWXG;
-		int flags=0;
+#ifndef _WIN32
+		mode_t imode = S_IRWXU | S_IRWXG;
+		int flags = 0;
 
-		if(read_only)
+		if (read_only)
 		{
-			flags=O_RDONLY;
+			flags = O_RDONLY;
 		}
 		else
 		{
-			flags=O_RDWR|O_CREAT;
+			flags = O_RDWR | O_CREAT;
 		}
-		
+
 #if defined(O_CLOEXEC)
 		flags |= O_CLOEXEC;
 #endif
 
-		fd = open64(filename.c_str(), flags|O_LARGEFILE, imode);
+		fd = open64(filename.c_str(), flags | O_LARGEFILE, imode);
 
-		if(fd==-1)
+		if (fd == -1)
 		{
-			is_open=false;
+			is_open = false;
 		}
 		else
 		{
-			is_open=true;
+			is_open = true;
 
-			if(!read_only)
+			if (!read_only)
 			{
 				int rc = ftruncate64(fd, filesize);
 
-				if(rc!=0)
+				if (rc != 0)
 				{
-					Server->Log("Truncating cow file to size "+convert(filesize)+" failed", LL_ERROR);
-					is_open=false;
+					Server->Log("Truncating cow file to size " + convert(filesize) + " failed", LL_ERROR);
+					is_open = false;
 					close(fd);
 				}
 			}
@@ -115,17 +120,80 @@ CowFile::CowFile(const std::string &fn, bool pRead_only, uint64 pDstsize)
 			{
 				struct stat64 statbuf;
 				int rc = stat64(filename.c_str(), &statbuf);
-				if(rc==0)
+				if (rc == 0)
 				{
 					filesize = statbuf.st_size;
-					is_open=true;
+					is_open = true;
 				}
 				else
 				{
-					is_open=false;
+					is_open = false;
 				}
 			}
 		}
+#else
+		DWORD access;
+		DWORD creat;
+		if (read_only)
+		{
+			creat = OPEN_EXISTING;
+			access = GENERIC_READ;
+		}
+		else
+		{
+			creat = OPEN_ALWAYS;
+			access = GENERIC_READ | GENERIC_WRITE;
+		}
+
+		fd = CreateFileW(Server->ConvertToWchar(filename).c_str(),
+			access, FILE_SHARE_READ, NULL, creat, 0, NULL);
+
+		if (fd == INVALID_HANDLE_VALUE)
+		{
+			is_open = false;
+		}
+		else
+		{
+			is_open = true;
+
+			if (!read_only)
+			{
+				DWORD ret_bytes;
+				if (!DeviceIoControl(fd, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &ret_bytes, NULL))
+				{
+					Server->Log("Setting cow file " + filename + " to sparse failed", LL_ERROR);
+					is_open = false;
+				}
+
+				FILE_END_OF_FILE_INFO eof_info;
+				eof_info.EndOfFile.QuadPart = filesize;
+				if (is_open
+					&& !SetFileInformationByHandle(fd, FileEndOfFileInfo, &eof_info, sizeof(eof_info)))
+				{
+					Server->Log("Truncating cow file " + filename + " to to size " + convert(filesize) + " failed", LL_ERROR);
+					is_open = false;
+				}
+			}
+			else
+			{
+				LARGE_INTEGER fsize;
+				if (!GetFileSizeEx(fd, &fsize))
+				{
+					is_open = false;
+				}
+				else
+				{
+					filesize = fsize.QuadPart;
+				}
+			}
+
+			if (!is_open)
+			{
+				CloseHandle(fd);
+				fd = INVALID_HANDLE_VALUE;
+			}
+		}
+#endif
 	}
 }
 
@@ -135,17 +203,17 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 	filename = fn;
 	read_only = pRead_only;
 
-
-	struct stat64 statbuf;
-	int rc = stat64(parent_fn.c_str(), &statbuf);
-	if(rc==0)
 	{
-		filesize = statbuf.st_size;
-		is_open=true;
-	}
-	else
-	{
-		is_open=false;
+		std::auto_ptr<IFile> parentf(Server->openFile(parent_fn, MODE_READ));
+		if (parentf.get() != NULL)
+		{
+			filesize = parentf->Size();
+			is_open = true;
+		}
+		else
+		{
+			is_open = false;
+		}
 	}
 	
 	if(pDstsize>0 && pDstsize!=filesize)
@@ -178,6 +246,7 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 		if(is_open)
 		{
+#ifndef _WIN32
 			mode_t imode=S_IRWXU|S_IRWXG;
 			int flags=0;
 
@@ -196,17 +265,11 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 
 			fd = open64(filename.c_str(), flags|O_LARGEFILE, imode);
 
-			if(fd==-1)
-			{
-				is_open=false;
-			}
-			else
-			{
-				is_open=true;
-			}
+			is_open = fd != -1;
 
 			struct stat64 statbuf;
-			if(fstat64(fd, &statbuf)==0)
+			if(is_open
+				&& fstat64(fd, &statbuf)==0)
 			{
 				if(filesize!=statbuf.st_size)
 				{
@@ -225,16 +288,77 @@ CowFile::CowFile(const std::string &fn, const std::string &parent_fn, bool pRead
 				is_open=false;
 				close(fd);
 			}
+#else
+			DWORD access;
+			DWORD creat;
+			if (read_only)
+			{
+				creat = OPEN_EXISTING;
+				access = GENERIC_READ;
+			}
+			else
+			{
+				creat = OPEN_ALWAYS;
+				access = GENERIC_READ | GENERIC_WRITE;
+			}
+
+			fd = CreateFileW(Server->ConvertToWchar(filename).c_str(),
+				access, FILE_SHARE_READ, NULL, creat, 0, NULL);
+
+			is_open = fd != INVALID_HANDLE_VALUE;
+
+			DWORD ret_bytes;
+			if (is_open
+				&& !read_only
+				&& !DeviceIoControl(fd, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &ret_bytes, NULL))
+			{
+				Server->Log("Setting cow file " + filename + " to sparse failed", LL_ERROR);
+				is_open = false;
+			}
+
+			LARGE_INTEGER fsize;
+			if (is_open
+				&& GetFileSizeEx(fd, &fsize))
+			{
+				if (filesize != fsize.QuadPart)
+				{
+					FILE_END_OF_FILE_INFO eof_info;
+					eof_info.EndOfFile.QuadPart = filesize;
+					if (!SetFileInformationByHandle(fd, FileEndOfFileInfo, &eof_info, sizeof(eof_info)))
+					{
+						Server->Log("Truncating cow file " + filename + " to to size " + convert(filesize) + " failed", LL_ERROR);
+						is_open = false;
+					}
+				}
+			}			
+
+			if (!is_open
+				&& fd!=INVALID_HANDLE_VALUE)
+			{
+				CloseHandle(fd);
+				fd = INVALID_HANDLE_VALUE;
+			}
+#endif
 		}
 	}
 }
 
 CowFile::~CowFile()
 {
-	if(is_open)
+	if(is_open
+#ifdef _WIN32
+		&& fd!= INVALID_HANDLE_VALUE)
+#else
+		&& fd!=-1)
+#endif
 	{
+#ifndef _WIN32
 		fsync(fd);
 		close(fd);
+#else
+		FlushFileBuffers(fd);
+		CloseHandle(fd);
+#endif
 	}
 
 	if(!finished)
@@ -249,6 +373,7 @@ bool CowFile::Seek(_i64 offset)
 
 	curr_offset = offset;
 
+#ifndef _WIN32
 	off64_t off = lseek64(fd, curr_offset, SEEK_SET);
 
 	if(off!=curr_offset)
@@ -256,6 +381,15 @@ bool CowFile::Seek(_i64 offset)
 		Server->Log("Seeking in file failed. errno="+convert(errno), LL_ERROR);
 		return false;
 	}
+#else
+	LARGE_INTEGER tmp;
+	tmp.QuadPart = curr_offset;
+	if (SetFilePointerEx(fd, tmp, NULL, FILE_BEGIN) == FALSE)
+	{
+		Server->Log("Seeking in file failed. errno=" + convert(static_cast<int>(GetLastError())), LL_ERROR);
+		return false;
+	}
+#endif
 
 	return true;
 }
@@ -264,7 +398,15 @@ bool CowFile::Read(char* buffer, size_t bsize, size_t& read_bytes)
 {
 	if(!is_open) return false;
 
+#ifndef _WIN32
 	ssize_t r=read(fd, buffer, bsize);
+#else
+	DWORD r;
+	if (!ReadFile(fd, buffer, static_cast<DWORD>(bsize), &r, NULL))
+	{
+		return false;
+	}
+#endif
 	if( r<0 )
 	{
 		read_bytes=0;
@@ -282,7 +424,17 @@ _u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	if(!is_open) return 0;
 
+#ifndef _WIN32
 	ssize_t w=write(fd, buffer, bsize);
+#else
+	DWORD w;
+	if (!WriteFile(fd, buffer, bsize, &w, NULL))
+	{
+		if (has_error) *has_error = true;
+		Server->Log("Write to CowFile failed. errno=" + convert(static_cast<int>(GetLastError())), LL_DEBUG);
+		return false;
+	}
+#endif
 	if( w<0 )
 	{
 		if(has_error) *has_error=true;
@@ -309,16 +461,6 @@ bool CowFile::isOpen(void)
 
 uint64 CowFile::getSize(void)
 {
-	/*stat buf;
-	int rc = fstat64(fd, &buf);
-	if(rc!=0)
-	{
-		return 0;
-	}
-	else
-	{
-		return buf.st_size;
-	}*/
 	return filesize;
 }
 
@@ -326,7 +468,7 @@ uint64 CowFile::usedSize(void)
 {
 	uint64 ret = 0;
 
-	for(uint64 i=0;i<filesize;i+=blocksize)
+	for(int64 i=0;i<filesize;i+=blocksize)
 	{
 		if(isBitmapSet(i))
 		{
@@ -439,7 +581,7 @@ bool CowFile::saveBitmap()
 		return false;
 	}
 
-	if(bitmap_file->Write(reinterpret_cast<const char*>(bitmap.data()), bitmap.size())!=bitmap.size())
+	if(bitmap_file->Write(reinterpret_cast<const char*>(bitmap.data()), static_cast<_u32>(bitmap.size()))!=bitmap.size())
 	{
 		return false;
 	}
@@ -460,7 +602,7 @@ bool CowFile::loadBitmap(const std::string& bitmap_fn)
 
 	bitmap.resize(bitmap_file->Size());
 
-	if(bitmap_file->Read(reinterpret_cast<char*>(&bitmap[0]), bitmap.size())!=bitmap.size())
+	if(bitmap_file->Read(reinterpret_cast<char*>(&bitmap[0]), static_cast<_u32>(bitmap.size()))!=bitmap.size())
 	{
 		return false;
 	}
@@ -480,12 +622,12 @@ void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 	}
 }
 
-bool CowFile::hasBitmapRangeNarrow(uint64& offset_start, uint64& offset_end, uint64 trim_blocksize)
+bool CowFile::hasBitmapRangeNarrow(int64& offset_start, int64& offset_end, uint64 trim_blocksize)
 {
 	bool ret = false;
 
-	uint64 orig_offset_start = offset_start;
-	uint64 orig_offset_end = offset_end;
+	int64 orig_offset_start = offset_start;
+	int64 orig_offset_end = offset_end;
 	offset_start = (offset_start / blocksize)*blocksize;
 	if (offset_end%blocksize != 0)
 	{
@@ -553,6 +695,20 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 		errno=err;
 		return false;
 	}
+#elif defined(_WIN32)
+	FILE_ZERO_DATA_INFORMATION zdi;
+
+	zdi.FileOffset.QuadPart = unused_start;
+	zdi.BeyondFinalZero.QuadPart = unused_end;
+
+	DWORD ret_bytes;
+	if (!DeviceIoControl(fd, FSCTL_SET_ZERO_DATA, &zdi,
+		static_cast<DWORD>(sizeof(zdi)), NULL, 0, &ret_bytes, 0))
+	{
+		Server->Log("FSCTL_SET_ZERO_DATA failed (setting unused image range) with errno " + convert(static_cast<int>(GetLastError())), LL_WARNING);
+		return false;
+	}
+	return true;
 #else
 	if(!trim_warned)
 	{
@@ -659,8 +815,8 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 		}
 		else if(unused_start_block!=-1)
 		{
-			uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
-			uint64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
+			int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+			int64 unused_end = fs_offset + ntfs_block*bitmap_blocksize;
 			
 			if(unused_start>=filesize)
 			{
@@ -689,8 +845,8 @@ bool CowFile::trimUnused(_i64 fs_offset, _i64 trim_blocksize, ITrimCallback* tri
 	
 	if(unused_start_block!=-1)
 	{
-		uint64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
-		uint64 unused_end = filesize;
+		int64 unused_start = fs_offset + unused_start_block*bitmap_blocksize;
+		int64 unused_end = filesize;
 		
 		if(hasBitmapRangeNarrow(unused_start, unused_end, trim_blocksize_bytes))
 		{
