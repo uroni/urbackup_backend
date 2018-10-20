@@ -558,12 +558,14 @@ namespace
 {
 	namespace reflink
 	{
+#pragma pack(push, 1)
 		typedef struct _DUPLICATE_EXTENTS_DATA {
 			HANDLE        FileHandle;
 			LARGE_INTEGER SourceFileOffset;
 			LARGE_INTEGER TargetFileOffset;
 			LARGE_INTEGER ByteCount;
 		} DUPLICATE_EXTENTS_DATA, *PDUPLICATE_EXTENTS_DATA;
+#pragma pack(pop)
 
 		DWORD FSCTL_DUPLICATE_EXTENTS_TO_FILE = 0x98344;
 	}
@@ -657,7 +659,7 @@ bool os_create_reflink(const std::string &linkname, const std::string &fname)
 		reflink_data.TargetFileOffset.QuadPart = reflinked;
 
 		if (!DeviceIoControl(dest_handle, reflink::FSCTL_DUPLICATE_EXTENTS_TO_FILE,
-			&reflink_data, sizeof(reflink_data), NULL, 0, NULL, NULL))
+			&reflink_data, sizeof(reflink_data), NULL, 0, &ret_bytes, NULL))
 		{
 			has_error = true;
 		}
