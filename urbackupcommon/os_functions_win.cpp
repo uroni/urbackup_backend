@@ -558,7 +558,7 @@ namespace
 {
 	namespace reflink
 	{
-#pragma pack(push, 1)
+#pragma pack(push, 8)
 		typedef struct _DUPLICATE_EXTENTS_DATA {
 			HANDLE        FileHandle;
 			LARGE_INTEGER SourceFileOffset;
