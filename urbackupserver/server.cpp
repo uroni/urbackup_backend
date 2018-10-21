@@ -57,6 +57,7 @@ IMutex* BackupServer::virtual_clients_mutex=NULL;
 bool BackupServer::can_mount_images = false;
 bool BackupServer::can_reflink = false;
 bool BackupServer::can_hardlink = false;
+IMutex* BackupServer::fs_test_mutex = NULL;
 
 extern IFSImageFactory *image_fak;
 
