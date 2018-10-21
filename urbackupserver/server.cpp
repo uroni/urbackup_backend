@@ -67,6 +67,7 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 	exitpipe=pExitpipe;
 	force_offline_mutex=Server->createMutex();
 	virtual_clients_mutex=Server->createMutex();
+	fs_test_mutex = Server->createMutex();
 
 	if(Server->getServerParameter("internet_only_mode")=="true")
 		internet_only_mode=true;
@@ -79,6 +80,7 @@ BackupServer::~BackupServer()
 	Server->destroy(throttle_mutex);
 	Server->destroy(force_offline_mutex);
 	Server->destroy(virtual_clients_mutex);
+	Server->destroy(fs_test_mutex);
 }
 
 void BackupServer::operator()(void)
@@ -149,8 +151,6 @@ void BackupServer::operator()(void)
 #endif
 	}
 
-	testSnapshotAvailability(db);
-	testFilesystemTransactionAvailabiliy(db);
 	if (image_fak != NULL)
 	{
 		can_mount_images = image_fak->initializeImageMounting();
@@ -172,8 +172,7 @@ void BackupServer::operator()(void)
 #endif
 		}
 	}
-	testFilesystemLinkAvailability(db, false);
-	testFilesystemLinkAvailability(db, true);
+	testFilesystem(db);
 	runServerRecovery(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
@@ -895,6 +894,38 @@ void BackupServer::testFilesystemLinkAvailability(IDatabase *db, bool reflink)
 	{
 		Server->Log(test_type_c+" test file content wrong. "+ test_type_c +"s disabled.", LL_DEBUG);
 	}
+}
+
+void BackupServer::testFilesystemLinkAvailability(IDatabase * db)
+{
+	testFilesystemLinkAvailability(db, false);
+	testFilesystemLinkAvailability(db, true);
+}
+
+void BackupServer::testFilesystem(IDatabase * db)
+{
+	IScopedLock lock(fs_test_mutex);
+
+	testSnapshotAvailability(db);
+	testFilesystemTransactionAvailabiliy(db);
+	testFilesystemLinkAvailability(db);
+}
+
+namespace
+{
+	class TestFilesystemThread : public IThread
+	{
+	public:
+		void operator()() {
+			BackupServer::testFilesystem(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+			delete this;
+		}
+	};
+}
+
+void BackupServer::testFilesystemThread()
+{
+	Server->createThread(new TestFilesystemThread, "test fs");
 }
 
 bool BackupServer::isFilesystemTransactionEnabled()

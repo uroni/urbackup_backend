@@ -355,11 +355,12 @@ namespace
 		}
 	}
 
-	std::string fixupBackupfolder(const std::string val, ServerBackupDao& backupdao, ServerSettings &server_settings)
+	std::string fixupBackupfolder(const std::string val, ServerBackupDao& backupdao, ServerSettings &server_settings, bool& changed_backupfolder)
 	{
 		if(val!=server_settings.getSettings()->backupfolder)
 		{
 			backupdao.addToOldBackupfolders(server_settings.getSettings()->backupfolder);
+			changed_backupfolder = true;
 		}
 
 		if(val.find(os_file_sep())==val.size()-os_file_sep().size())
@@ -373,7 +374,7 @@ namespace
 	}
 }
 
-void saveGeneralSettings(str_map &POST, IDatabase *db, ServerBackupDao& backupdao, ServerSettings &server_settings)
+void saveGeneralSettings(str_map &POST, IDatabase *db, ServerBackupDao& backupdao, ServerSettings &server_settings, bool& changed_backupfolder)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
@@ -388,7 +389,7 @@ void saveGeneralSettings(str_map &POST, IDatabase *db, ServerBackupDao& backupda
 			std::string val = UnescapeSQLString(it->second);
 			if(settings[i]=="backupfolder")
 			{
-				val = fixupBackupfolder(val, backupdao, server_settings);
+				val = fixupBackupfolder(val, backupdao, server_settings, changed_backupfolder);
 
 #ifndef _WIN32
 				os_create_dir("/etc/urbackup");
@@ -1233,12 +1234,18 @@ ACTION_IMPL(settings)
 				propagateGlobalClientSettings(backupdao, db, POST);
 				updateClientSettings(0, POST, db);
 				updateArchiveSettings(0, POST, db);
-				saveGeneralSettings(POST, db, backupdao, serv_settings);
+				bool changed_backupfolder = false;
+				saveGeneralSettings(POST, db, backupdao, serv_settings, changed_backupfolder);
 				db->EndTransaction();
 
 				ServerSettings::updateAll();
 
 				updateAllOnlineClientSettings(db);
+
+				if (changed_backupfolder)
+				{
+					BackupServer::testFilesystemThread();
+				}
 
 				ret.set("saved_ok", true);
 				sa="general";

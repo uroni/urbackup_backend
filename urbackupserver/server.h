@@ -51,6 +51,9 @@ public:
 
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static void testFilesystemLinkAvailability(IDatabase *db, bool reflink);
+	static void testFilesystemLinkAvailability(IDatabase *db);
+	static void testFilesystem(IDatabase * db);
+	static void testFilesystemThread();
 	static bool isFilesystemTransactionEnabled();
 	static bool canMountImages();
 	static bool canReflink();
@@ -116,6 +119,8 @@ private:
 	static std::map<std::string, std::vector<std::string> > virtual_clients;
 
 	static bool can_mount_images;
+
+	static IMutex* fs_test_mutex;
 };
 
 #endif //URB_SERVER_H
