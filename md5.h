@@ -146,7 +146,11 @@ public:
 
 private:
 	CryptoPP::Weak::MD5 md5;
+#if (CRYPTOPP_VERSION >= 600)
+	unsigned char digest[CryptoPP::Weak::MD5::DIGESTSIZE];
+#else
 	byte digest[CryptoPP::Weak::MD5::DIGESTSIZE];
+#endif
 };
 
 #endif //DO_NOT_USE_CRYPTOPP_MD5
