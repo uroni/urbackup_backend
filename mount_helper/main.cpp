@@ -33,7 +33,7 @@ extern char **environ;
 #endif
 #define LOCAL_LO_FLAGS_AUTOCLEAR 4
 
-CServer *Server;
+IServer *Server;
 
 const char* mdconfig_path = "/sbin/mdconfig";
 const char* umount_path = "/sbin/umount";
