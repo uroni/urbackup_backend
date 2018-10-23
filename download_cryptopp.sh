@@ -26,6 +26,7 @@ then
 		exit 1
 	fi
 	unzip -o $CRYPTOPP_NAME
+	rm GNUmakefile
 fi
 
 cd ..
