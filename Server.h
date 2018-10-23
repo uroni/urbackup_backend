@@ -303,5 +303,5 @@ private:
 };
 
 #ifndef DEF_SERVER
-extern CServer *Server;
+extern IServer *Server;
 #endif

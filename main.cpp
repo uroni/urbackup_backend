@@ -51,7 +51,7 @@ using namespace nt;
 #	include <errno.h>
 #endif
 
-CServer *Server=NULL;
+IServer *Server=NULL;
 
 using namespace std;
 
@@ -148,7 +148,8 @@ return 101;
 
 int main_fkt(int argc, char *argv[])
 {
-	Server=new CServer;
+	CServer* Server=new CServer;
+	::Server = Server;
 	Server->setup();
 
 #ifdef _WIN32
