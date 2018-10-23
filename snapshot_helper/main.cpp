@@ -23,7 +23,7 @@ const int mode_btrfs=0;
 const int mode_zfs=1;
 const int mode_zfs_file=2;
 
-CServer *Server;
+IServer *Server;
 
 #ifdef _WIN32
 #include <Windows.h>
