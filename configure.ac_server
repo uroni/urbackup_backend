@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [2.3.4.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-server], [2.3.4.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -114,6 +114,8 @@ fi
 if test "x$with_crypto" != "xno" && test "x$enable_embedded_cryptopp" != "xyes"
 then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
+else
+	AC_CONFIG_SUBDIRS([cryptoplugin/src])
 fi
 
 WITH_FUSEPLUGIN_CXXFLAGS=""

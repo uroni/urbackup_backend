@@ -6,7 +6,7 @@ CRYPTOPP_NAME="cryptopp700.zip"
 EXPECTED_SHA256="a4bc939910edd3d29fb819a6fc0dfdc293f686fa62326f61c56d72d0a366ceb0"
 
 DOWNLOAD_CRYPTOPP=1
-cd cryptoplugin
+cd cryptoplugin/src
 if [ -e $CRYPTOPP_NAME ]
 then
 	SHASUM=`sha256sum $CRYPTOPP_NAME | cut -d" " -f1`
