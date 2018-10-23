@@ -51,7 +51,7 @@ using namespace nt;
 #	include <errno.h>
 #endif
 
-CServer *Server=NULL;
+IServer *Server=NULL;
 
 using namespace std;
 
@@ -148,7 +148,8 @@ return 101;
 
 int main_fkt(int argc, char *argv[])
 {
-	Server=new CServer;
+	CServer* Server=new CServer;
+	::Server = Server;
 	Server->setup();
 
 #ifdef _WIN32
@@ -643,7 +644,7 @@ void my_shutdown_fcn(void)
 	}*/
 	if (Server != NULL)
 	{
-		Server->ShutdownPlugins();
+		static_cast<CServer*>(Server)->ShutdownPlugins();
 	}
 	nt_service&  service = nt_service::instance(L"UrBackupBackend");
 	service.stop(0);
@@ -665,7 +666,7 @@ void my_stop_fcn(void)
 	}*/
 	if(Server!=NULL)
 	{
-		Server->ShutdownPlugins();
+		static_cast<CServer*>(Server)->ShutdownPlugins();
 	}
 	nt_service&  service = nt_service::instance(L"UrBackupBackend");
 	service.stop(0);
