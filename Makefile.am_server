@@ -18,11 +18,6 @@ endif
 
 if WITH_CRYPTOPLUGIN
 urbackupsrv_SOURCES += cryptoplugin/dllmain.cpp cryptoplugin/AESDecryption.cpp cryptoplugin/CryptoFactory.cpp cryptoplugin/pluginmgr.cpp cryptoplugin/AESEncryption.cpp cryptoplugin/ZlibCompression.cpp cryptoplugin/ZlibDecompression.cpp cryptoplugin/AESGCMDecryption.cpp cryptoplugin/AESGCMEncryption.cpp cryptoplugin/ECDHKeyExchange.cpp
-
-if EMBEDDED_CRYPTOPP
-urbackupsrv_SOURCES += cryptoplugin/cryptlib.cpp cryptoplugin/algebra.cpp cryptoplugin/algparam.cpp cryptoplugin/asn.cpp cryptoplugin/basecode.cpp cryptoplugin/cbcmac.cpp cryptoplugin/channels.cpp cryptoplugin/dh.cpp cryptoplugin/dll.cpp cryptoplugin/dsa.cpp cryptoplugin/ec2n.cpp cryptoplugin/eccrypto.cpp cryptoplugin/ecp.cpp cryptoplugin/eprecomp.cpp cryptoplugin/files.cpp cryptoplugin/filters.cpp cryptoplugin/gf2n.cpp cryptoplugin/gfpcrypt.cpp cryptoplugin/hex.cpp cryptoplugin/hmac.cpp cryptoplugin/integer.cpp cryptoplugin/iterhash.cpp cryptoplugin/misc.cpp cryptoplugin/modes.cpp cryptoplugin/queue.cpp cryptoplugin/nbtheory.cpp cryptoplugin/oaep.cpp cryptoplugin/osrng.cpp cryptoplugin/pch.cpp cryptoplugin/pkcspad.cpp cryptoplugin/pubkey.cpp cryptoplugin/randpool.cpp cryptoplugin/rdtables.cpp cryptoplugin/rijndael.cpp cryptoplugin/rng.cpp cryptoplugin/rsa.cpp cryptoplugin/sha.cpp cryptoplugin/simple.cpp cryptoplugin/skipjack.cpp cryptoplugin/strciphr.cpp cryptoplugin/trdlocal.cpp cryptoplugin/cpu.cpp cryptoplugin/gzip.cpp cryptoplugin/gcm.cpp cryptoplugin/des.cpp cryptoplugin/authenc.cpp cryptoplugin/fips140.cpp cryptoplugin/zdeflate.cpp cryptoplugin/cmac.cpp cryptoplugin/eax.cpp cryptoplugin/adler32.cpp cryptoplugin/zinflate.cpp cryptoplugin/mqueue.cpp cryptoplugin/hrtimer.cpp cryptoplugin/pssr.cpp cryptoplugin/crc.cpp cryptoplugin/dessp.cpp cryptoplugin/zlib.cpp cryptoplugin/md5.cpp
-endif
-
 endif
 
 urbackupsrv_SOURCES += luaplugin/dllmain.cpp luaplugin/LuaInterpreter.cpp luaplugin/src/all.c luaplugin/pluginmgr.cpp
@@ -49,10 +44,9 @@ urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_ldflags)
 if !EMBEDDED_CRYPTOPP
 urbackupsrv_LDADD += $(CRYPTOPP_LIBS)
 else
-urbackupsrv_CXXFLAGS += -DCRYPTOPP_INCLUDE_PREFIX=cryptoplugin -DCRYPTOPP_NO_UNALIGNED_DATA_ACCESS -DCRYPTOPP_NO_BACKWARDS_COMPATIBILITY_562
-if TARGET_CPU_IS_X86
-urbackupsrv_CXXFLAGS += -msse -msse2
-endif
+urbackupsrv_CXXFLAGS += -DCRYPTOPP_INCLUDE_PREFIX='cryptoplugin/src'
+urbackupsrv_LDADD += cryptoplugin/src/.libs/libcryptopp.a
+SUBDIRS=cryptoplugin/src
 endif
 
 if !WITH_CRYPTOPLUGIN
@@ -75,7 +69,6 @@ urbackup_mount_helper_CFLAGS=$(SUID_CFLAGS)
 urbackup_mount_helper_CPPFLAGS=$(FORTIFY_FLAGS)
 urbackup_mount_helper_LDFLAGS=$(SUID_LDFLAGS) $(FORTIFY_ldflags)
 
-SUBDIRS=. $(P_SUBDIRS)
 install-exec-local: defaults_server init.d_server logrotate_urbackupsrv
 if INSTALL_INITD
 if PACKAGING
@@ -188,12 +181,6 @@ tclap_headers = \
 			 tclap/ValuesConstraint.h \
 			 tclap/ArgTraits.h \
 			 tclap/StandardTraits.h
-
-if EMBEDDED_CRYPTOPP
-cryptopp_headers = cryptoplugin/*.h
-else
-cryptopp_headers =
-endif
 
 luaplugin_headers = luaplugin/ILuaInterpreter.h luaplugin/LuaInterpreter.h luaplugin/pluginmgr.h luaplugin/src/* luaplugin/lua/dkjson_lua.h
 	
