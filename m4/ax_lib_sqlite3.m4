@@ -151,6 +151,7 @@ AC_DEFUN([AX_LIB_SQLITE3],
             AC_SUBST(SQLITE3_LDFLAGS)
             AC_SUBST(SQLITE3_VERSION)
             AC_DEFINE([HAVE_SQLITE3], [], [Have the SQLITE3 library])
+	    HAVE_SQLITE3=1
         fi
     fi
 ])

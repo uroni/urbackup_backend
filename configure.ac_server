@@ -105,7 +105,7 @@ AM_CONDITIONAL(WITH_CRYPTOPLUGIN, test "x$with_crypto" != "xno")
 AM_CONDITIONAL(WITH_FUSEPLUGIN, test "x$with_mountvhd" = "xyes")
 AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
-AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xyes")
+AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xno")
 
 if test "x$with_mail" != "xno"
 then
