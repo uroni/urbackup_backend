@@ -31,7 +31,11 @@
 #include <db.h>
 #endif
 #endif
+#ifdef USE_SYSTEM_SQLITE
+#include <sqlite3.h>
+#else
 #include "sqlite/sqlite3.h"
+#endif
 #include "Database.h"
 #include "DatabaseCursor.h"
 #include <memory.h>

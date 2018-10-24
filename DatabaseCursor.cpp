@@ -18,7 +18,11 @@
 
 #include "DatabaseCursor.h"
 #include "Query.h"
+#ifdef USE_SYSTEM_SQLITE
+#include <sqlite3.h>
+#else
 #include "sqlite/sqlite3.h"
+#endif
 #include "Server.h"
 
 DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)

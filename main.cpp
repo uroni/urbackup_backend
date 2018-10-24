@@ -26,7 +26,11 @@
 #include "SessionMgr.h"
 #include "LoadbalancerClient.h"
 #include "libs.h"
+#ifdef USE_SYSTEM_SQLITE
+#include <sqlite3.h>
+#else
 #include "sqlite/sqlite3.h"
+#endif
 #include "stringtools.h"
 #include <iostream>
 #include <vector>

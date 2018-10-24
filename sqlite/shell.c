@@ -32,7 +32,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#ifdef USE_SYSTEM_SQLITE
+#include <sqlite3.h>
+#else
 #include "sqlite3.h"
+#endif
 #include <ctype.h>
 #include <stdarg.h>
 

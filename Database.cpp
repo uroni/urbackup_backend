@@ -34,7 +34,11 @@
 #include "Interface/Server.h"
 #endif
 #include "Query.h"
+#ifdef USE_SYSTEM_SQLITE
+#include <sqlite3.h>
+#else
 #include "sqlite/sqlite3.h"
+#endif
 #include "Interface/File.h"
 #include <stdlib.h>
 extern "C"
