@@ -36,6 +36,10 @@ AC_ARG_ENABLE([assertions],
      AS_HELP_STRING([--enable-assertions], [Enable assertions (bug finding).]))
 AM_CONDITIONAL(WITH_ASSERTIONS, test "x$enable_assertions" = xyes)
 
+AC_ARG_WITH([embedded-sqlite3],
+     AS_HELP_STRING([--without-embedded-sqlite3], [Disables the embedded sqlite3 and uses the system one. Not recommended.]))
+AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xno")
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -135,6 +139,20 @@ AS_IF([test "x$enable_headless" != "xyes"],
 			])
 	fi
 ])
+
+if test "x$with_embedded_sqlite3" == "xno"
+then
+	AX_LIB_SQLITE3([3.8.7.0])
+	
+	AS_IF([test "x$HAVE_SQLITE3" = "x"],
+	[
+		AC_MSG_ERROR([
+				Specified to not use embedded sqlite3, but no system sqlite3 found.
+				
+				Need sqlite3 to compile.
+				])
+	])
+fi
 
 AS_IF([test "x$opsys" != "xosx"],
 [
