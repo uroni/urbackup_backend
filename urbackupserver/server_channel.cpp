@@ -1369,7 +1369,10 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		logid_t log_id;
 
 		std::string filename;
-		if(path_info.is_file)
+		std::string p_filter = params["filter"];
+		if(path_info.is_file
+			|| (p_filter.empty() && !u_path.empty()
+				&& !path_info.rel_path.empty()) )
 		{
 			filename = ExtractFileName(path_info.full_path, os_file_sep());
 			if(!filename.empty())
@@ -1387,7 +1390,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 
 		if(filename.empty())
 		{
-			filename = params["filter"];
+			filename = p_filter;
 		}
 
 		std::vector<std::pair<std::string, std::string> > map_paths;
