@@ -1094,7 +1094,7 @@ int action_add_backupdir(std::vector<std::string> args)
 		cmd);
 
 	TCLAP::SwitchArg keep_arg("k", "keep",
-		"Keep deleted files and directories during incremental backups",
+		"Keep deleted files and directories during incremental backups. DO NOT USE",
 		cmd);
 
 	cmd.parse(args);
