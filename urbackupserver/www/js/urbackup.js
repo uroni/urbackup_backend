@@ -2430,6 +2430,27 @@ function restore_prepare_wait_callback(data)
 		}
 	}
 }
+function convert_interval_to_ms(val, unit)
+{
+	if(unit=="ms") return val;
+	else if(unit=="s") return val*1000;
+	else if(unit=="m") return val*1000*60;
+	else if(unit=="h") return val*1000*60*60;
+	else if(unit=="d") return val*1000*60*60*24;
+	else if(unit=="M") return val*1000*60*60*24*30;
+	else if(unit=="y") return val*1000*60*60*24*365;
+}
+function convert_interval_from_ms(val, unit)
+{
+	if(unit=="ms") return val;
+	else if(unit=="s") return val/1000;
+	else if(unit=="m") return val/(1000*60);
+	else if(unit=="h") return val/(1000*60*60);
+	else if(unit=="d") return val/(1000*60*60*24);
+	else if(unit=="M") return val/(1000*60*60*24*30);
+	else if(unit=="y") return val/(1000*60*60*24*365);
+}
+
 function build_alert_params(alert_script)
 {
 	params = deparam(unescapeHTML(g.last_alert_params));
@@ -2494,6 +2515,41 @@ function build_alert_params(alert_script)
 					}
 					params_html+="</select>";
 				}
+				else if(param.type=="interval")
+				{
+					var unit="h";
+					var toks = val.split("|");
+					var val_ms = val;
+					if(toks.length>1)
+					{
+						unit = toks[1];
+						val_ms = toks[0];
+					}						
+					val = convert_interval_from_ms(val_ms, unit);
+					params_html+="<div class=\"input-group\"><input type=\"text\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"\" value=\""+val+"\" onchange=\"update_alert_params()\"/>";
+					params_html+="<input type=\"hidden\" class=\"form-control\" id=\"alert_name_"+escapeHTML(param.name)+"_val_ms\" value=\""+escapeHTMLDoubleQuote(val_ms)+"\"/>";
+					params_html+="<div class=\"input-group-addon\">";
+					var units=["ms", "s", "m", "h", "d", "M", "y"];
+					var units_trans=["milliseconds", "seconds", "minutes", "hours", "days", "months", "years"];
+					params_html+="<select id=\"alert_name_"+escapeHTML(param.name)+"_interval_unit\" onchange=\"update_alert_unit('"+escapeHTML(param.name)+"')\">";
+					for(var k=0;k<units.length;++k)
+					{
+						var unit_name = trans("interval_"+units_trans[k]);
+						if(typeof unit_name === "undefined")
+						{
+							unit_name = units_trans[k];
+						}
+						if(units[k]==unit)
+						{
+							params_html+="<option value=\""+units[k]+"\" selected>"+escapeHTML(unit_name)+"</option>";
+						}
+						else
+						{
+							params_html+="<option value=\""+units[k]+"\">"+escapeHTML(unit_name)+"</option>";
+						}
+					}
+					params_html+="</select></div></div>";
+				}
 				else
 				{
 					var checked="";
@@ -2525,13 +2581,28 @@ function update_alert_params()
 			{
 				p[g.alert_params[i].name] = I("alert_name_"+g.alert_params[i].name).checked ? "1" : "0";
 			}
+			else if(I("alert_name_"+g.alert_params[i].name+"_interval_unit"))
+			{
+				var val = I("alert_name_"+g.alert_params[i].name).value;
+				var unit = $("#alert_name_"+g.alert_params[i].name+"_interval_unit").val();
+				var val_ms = convert_interval_to_ms(val, unit);
+				p[g.alert_params[i].name] = val_ms + "|" + unit;
+				I("alert_name_"+g.alert_params[i].name+"_val_ms").value = val_ms;
+			}
 			else
 			{
-				p[g.alert_params[i].name] = I("alert_name_"+g.alert_params[i].name).value;
+				p[g.alert_params[i].name] = $("#alert_name_"+g.alert_params[i].name).val();
 			}
 		}
 	}
 	I("alert_params").value = $.param(p);
+}
+function update_alert_unit(name)
+{
+	var val_ms = I("alert_name_"+name+"_val_ms").value;
+	var unit = $("#alert_name_"+name+"_interval_unit").val();
+	I("alert_name_"+name).value=convert_interval_from_ms(val_ms, unit);
+	update_alert_params();
 }
 function validate_alert_params()
 {
@@ -2543,7 +2614,7 @@ function validate_alert_params()
 			if(I("alert_name_"+g.alert_params[i].name).type!="checkbox")
 			{
 				var type = g.alert_params[i].type;
-				if(type=="int")
+				if(type=="int" || type=="interval")
 				{
 					if(!validate_text_int(["alert_name_"+g.alert_params[i].name], [g.alert_params[i].label]))
 						return false;						
@@ -5462,6 +5533,8 @@ function show_scripts2(data)
 			param.dtype_bool=sel;
 		else if(param.type=="choice")
 			param.dtype_choice=sel;
+		else if(param.type=="interval")
+			param.dtype_interval=sel;
 		params_html+=dustRender("alert_script_edit_params", param);
 		g.alert_script_idx.push(j);
 	}

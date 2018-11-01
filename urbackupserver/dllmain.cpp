@@ -2027,6 +2027,9 @@ bool upgrade56_57()
 	return b;
 }
 
+const int64 script_id_default = 1;
+const int64 script_id_pulseway = 100000;
+
 bool upgrade57_58()
 {
 	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -2035,7 +2038,7 @@ bool upgrade57_58()
 
 	b &= db->Write("ALTER TABLE alert_scripts ADD global_state BLOB");
 
-	int64 scriptid = 100000;
+	int64 scriptid = script_id_pulseway;
 	b &= db->Write("INSERT INTO alert_scripts (id, name, script) VALUES (" + convert(scriptid) + ", 'Pulseway API', '')");
 	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 0, 'username', 'pulseway_username', '', 1, 'str')");
 	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(scriptid) + ", 1, 'password', 'pulseway_password', '', 1, 'str')");
@@ -2056,7 +2059,17 @@ bool upgrade57_58()
 	return b;
 }
 
+bool upgrade58_59()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	bool b = true;
+
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(script_id_pulseway) + ", 15, 'alert_nag_interval', 'pulseway_alert_nag_interval', '0|h', 1, 'interval')");
+	b &= db->Write("INSERT INTO alert_script_params (script_id, idx, name, label, default_value, has_translation, type) VALUES (" + convert(script_id_default) + ", 5, 'alert_nag_interval', 'alert_nag_interval', '0|h', 1, 'interval')");
+
+	return b;
+}
 
 void upgrade(void)
 {
@@ -2079,7 +2092,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=58;
+	int max_v=59;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2417,6 +2430,13 @@ void upgrade(void)
 				break;
 			case 57:
 				if (!upgrade57_58())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 58:
+				if (!upgrade58_59())
 				{
 					has_error = true;
 				}

@@ -273,6 +273,10 @@ void Alerts::operator()()
 					{
 						params[param.name] = val != "0";
 					}
+					else if (param.type == "interval")
+					{
+						params[param.name] = watoi64(val);
+					}
 					else
 					{
 						params[param.name] = val;

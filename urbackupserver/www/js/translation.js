@@ -1836,7 +1836,14 @@ translations.en = {
 "tReport script": "Report script",
 "tAlerts": "Alerts",
 "tEdit scripts": "Edit scripts",
-"tInternet restore authentication key": "Internet restore authentication key"
+"tInternet restore authentication key": "Internet restore authentication key",
+"interval_milliseconds": "milliseconds",
+"interval_seconds": "seconds",
+"interval_minutes": "minutes",
+"interval_hours": "hours",
+"interval_days": "days",
+"interval_months": "months",
+"interval_years": "years"
 }
 translations.en_US = {
 "tInfos": "About"

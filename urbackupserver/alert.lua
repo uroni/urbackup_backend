@@ -52,6 +52,16 @@ end
 
 --Sends an alert mail if mail address was specified as parameter
 function fail_mail(image, passed_time, last_time, alert_time)
+	if params.alert_nag_interval>0
+	then
+		if image
+		then
+			global.last_image_fail_notify = time.unix_seconds()
+		else
+			global.last_file_fail_notify = time.unix_seconds()
+		end
+	end
+
 	if params.alert_emails == ""
 	then
 		return
@@ -92,7 +102,13 @@ function fail_mail(image, passed_time, last_time, alert_time)
 			lastbackup = "Client has never had a file backup"
 		end
 	end
-	local msg = "No recent " .. btype .. " backup for client \"" .. params.clientname .. "\". ".. lastbackup .. ". This alert is sent if there is no recent backup in the last " .. pretty_time(alert_time) .. "."
+	local alert_repeat="."
+	if params.alert_nag_interval>0
+	then
+		alert_repeat = " and then repeated every "+pretty_time(params.alert_nag_interval/1000)+" while there is no successfull backup."
+	end
+	
+	local msg = "No recent " .. btype .. " backup for client \"" .. params.clientname .. "\". ".. lastbackup .. ". This alert is sent if there is no recent backup in the last " .. pretty_time(alert_time) .. alert_repeat
 	mail(params.alert_emails, subj, msg)
 end
 
@@ -136,7 +152,11 @@ then
 	--Send warning mail only once on status becoming not ok
 	if params.file_ok
 	then
-		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )
+		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )		
+	elseif params.alert_nag_interval>0 and (global.last_file_fail_notify==nil or (time.unix_seconds()-global.last_file_fail_notify)*1000>params.alert_nag_interval)
+	then
+		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )		
+		next_check_ms = math.min(next_check_ms, (time.unix_seconds()-global.last_file_fail_notify+1)*1000)
 	end
 else
 	if not params.file_ok
@@ -158,6 +178,10 @@ then
 		if params.image_ok
 		then
 			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
+		elseif params.alert_nag_interval>0 and (global.last_image_fail_notify==nil or (time.unix_seconds()-global.last_image_fail_notify)*1000>params.alert_nag_interval)
+		then
+			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
+			next_check_ms = math.min(next_check_ms, (time.unix_seconds()-global.last_image_fail_notify+1)*1000)
 		end
 	else
 		if not params.image_ok
