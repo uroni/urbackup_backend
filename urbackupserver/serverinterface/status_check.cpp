@@ -334,6 +334,7 @@ ACTION_IMPL(status_check)
 	if (session != NULL && rights == "all")
 	{
 		IDatabase *db = helper.getDatabase();
+		helper.releaseAll();
 		ServerSettings settings(db);
 		access_dir_checks(db, settings, settings.getSettings()->backupfolder,
 			settings.getSettings()->backupfolder_uncompr, ret);
