@@ -206,4 +206,6 @@ private:
 	bool has_socket;
 
 	std::vector<char>* extra_buffer;
+
+	bool backup_semantics;
 };

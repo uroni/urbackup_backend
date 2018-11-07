@@ -89,7 +89,8 @@
 
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
-	: extra_buffer(NULL), waiting_for_chunk(false)
+	: extra_buffer(NULL), waiting_for_chunk(false),
+	backup_semantics(true)
 {
 	int_socket=pSocket;
 
@@ -173,6 +174,8 @@ void CClientThread::operator()(void)
 #endif
 	}
 #endif
+
+	backup_semantics = FileServFactory::backupSemanticsEnabled();
 
 	while( RecvMessage() && !stopped )
 	{
@@ -614,8 +617,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 #ifndef BACKUP_SEM
 				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
+				if (backup_semantics)
+					extra_flags |= FILE_FLAG_BACKUP_SEMANTICS;
 				hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-					FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|extra_flags, NULL);
+					FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN|extra_flags, NULL);
 #endif
 
 				if(hFile == INVALID_HANDLE_VALUE)
@@ -962,7 +967,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 				flags |= O_CLOEXEC;
 #endif
 #if defined(O_NOATIME)
-				flags |= O_NOATIME;
+				if(backup_semantics)
+					flags |= O_NOATIME;
 #endif
 				hFile=open64(filename.c_str(), flags);
 				
@@ -1854,7 +1860,10 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 #ifndef BACKUP_SEM
 		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN;
+		if (backup_semantics)
+			flags |= FILE_FLAG_BACKUP_SEMANTICS;
+		hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, flags, NULL);
 #endif
 #else //_WIN32
 		int flags = O_RDONLY | O_LARGEFILE;
@@ -1862,7 +1871,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data, bool with_metadata)
 		flags |= O_CLOEXEC;
 #endif
 #if defined(O_NOATIME)
-		flags |= O_NOATIME;
+		if(backup_semantics)
+			flags |= O_NOATIME;
 #endif
 		hFile=open64(filename.c_str(), flags);
 #endif //_WIN32
@@ -2111,7 +2121,10 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 #ifndef BACKUP_SEM
 	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	DWORD flags = FILE_FLAG_SEQUENTIAL_SCAN;
+	if (backup_semantics)
+		flags |= FILE_FLAG_BACKUP_SEMANTICS;
+	hFile=CreateFileW(Server->ConvertToWchar(filename).c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, flags, NULL);
 #endif
 #else //_WIN32
 	int flags = O_RDONLY | O_LARGEFILE;
@@ -2119,7 +2132,8 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	flags |= O_CLOEXEC;
 #endif
 #if defined(O_NOATIME)
-	flags |= O_NOATIME;
+	if(backup_semantics)
+		flags |= O_NOATIME;
 #endif
 	hFile=open64(filename.c_str(), flags);
 #endif //_WIN32

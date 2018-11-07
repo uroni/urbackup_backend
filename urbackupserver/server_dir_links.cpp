@@ -436,7 +436,12 @@ bool remove_directory_link(const std::string & path, ServerLinkDao & link_dao, i
 	}
 
 	{
-		std::auto_ptr<IFile> dir_f(Server->openFile(os_file_prefix(ExtractFilePath(path, os_file_sep())), MODE_READ_SEQUENTIAL_BACKUP));
+#ifdef _WIN32
+		int mode = MODE_READ_SEQUENTIAL_BACKUP;
+#else
+		int mode = MODE_READ;
+#endif
+		std::auto_ptr<IFile> dir_f(Server->openFile(os_file_prefix(ExtractFilePath(path, os_file_sep())), mode));
 		if (dir_f.get() != NULL)
 		{
 			dir_f->Sync();

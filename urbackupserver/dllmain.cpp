@@ -618,7 +618,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else
 		{
-			fileserv = fileserv_fak->createFileServNoBind();
+			fileserv = fileserv_fak->createFileServNoBind(std::string(), false, false, false);
 		}
 	}
 

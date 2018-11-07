@@ -26,6 +26,7 @@
 int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn);
 
 bool FileServFactory::backupground_backups_enabled = true;
+bool FileServFactory::backup_semantics_enabled = true;
 
 
 class ExecThread : public IThread
@@ -60,11 +61,12 @@ private:
 
 IPermissionCallback* FileServFactory::permission_callback = NULL;
 
-IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name, bool use_fqdn_default, bool enable_background_priority)
+IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name, bool use_fqdn_default, bool enable_background_priority, bool enable_backup_semantics)
 {
 	bool *dostop=new bool;
 	*dostop=false;
 	backupground_backups_enabled = enable_background_priority;
+	backup_semantics_enabled = enable_backup_semantics;
 	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop, use_fqdn_default);
 	THREADPOOL_TICKET t=Server->getThreadPool()->execute(et, "filesrv: accept");
 	FileServ *fs=new FileServ(dostop, name, t, use_fqdn_default);
@@ -86,15 +88,22 @@ bool FileServFactory::backgroundBackupsEnabled()
 	return backupground_backups_enabled;
 }
 
+bool FileServFactory::backupSemanticsEnabled()
+{
+	return backup_semantics_enabled;
+}
+
 IPermissionCallback* FileServFactory::getPermissionCallback()
 {
 	return permission_callback;
 }
 
-IFileServ* FileServFactory::createFileServNoBind(const std::string &name, bool use_fqdn_default)
+IFileServ* FileServFactory::createFileServNoBind(const std::string &name, bool use_fqdn_default, bool enable_background_priority, bool enable_backup_semantics)
 {
 	bool *dostop=new bool;
 	*dostop=false;
+	backupground_backups_enabled = enable_background_priority;
+	backup_semantics_enabled = enable_backup_semantics;
 	FileServ *fs=new FileServ(dostop, name, ILLEGAL_THREADPOOL_TICKET, use_fqdn_default);
 	return fs;
 }
