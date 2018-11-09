@@ -166,7 +166,7 @@ std::vector<int> ServerCleanupDao::getClientsSortFilebackups(void)
 * @return int id
 * @sql
 *   SELECT DISTINCT c.id AS id FROM clients c 
-*		INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b
+*		INNER JOIN (SELECT * FROM backup_images WHERE letter!='SYSVOL' AND letter!='ESP') b
 *				ON c.id=b.clientid
 *	ORDER BY b.backuptime ASC
 */
@@ -174,7 +174,7 @@ std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 {
 	if(q_getClientsSortImagebackups==NULL)
 	{
-		q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
+		q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE letter!='SYSVOL' AND letter!='ESP') b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
 	}
 	db_results res=q_getClientsSortImagebackups->Read();
 	std::vector<int> ret;
@@ -192,14 +192,14 @@ std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 * @return int id, string letter
 * @sql
 *   SELECT id, letter FROM backup_images 
-*	WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND length(letter)<=2 AND archived=0
+*	WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND letter!='SYSVOL' AND letter!='ESP' AND archived=0
 *	ORDER BY backuptime ASC
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getFullNumImages(int clientid)
 {
 	if(q_getFullNumImages==NULL)
 	{
-		q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 AND archived=0 ORDER BY backuptime ASC", false);
+		q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND letter!='SYSVOL' AND letter!='ESP' AND archived=0 ORDER BY backuptime ASC", false);
 	}
 	q_getFullNumImages->Bind(clientid);
 	db_results res=q_getFullNumImages->Read();
@@ -377,14 +377,14 @@ ServerCleanupDao::CondString ServerCleanupDao::getImagePath(int id)
 * @return int id, string letter
 * @sql
 *	SELECT id,letter FROM backup_images
-*	WHERE clientid=:clientid(int) AND incremental<>0 AND complete=1 AND length(letter)<=2 AND archived=0
+*	WHERE clientid=:clientid(int) AND incremental<>0 AND complete=1 AND letter!='SYSVOL' AND letter!='ESP' AND archived=0
 *	ORDER BY backuptime ASC
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(int clientid)
 {
 	if(q_getIncrNumImages==NULL)
 	{
-		q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 AND archived=0 ORDER BY backuptime ASC", false);
+		q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND letter!='SYSVOL' AND letter!='ESP' AND archived=0 ORDER BY backuptime ASC", false);
 	}
 	q_getIncrNumImages->Bind(clientid);
 	db_results res=q_getIncrNumImages->Read();
