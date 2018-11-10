@@ -331,6 +331,16 @@ std::string find_zfs_cmd()
 		return zfs_cmd;
 	}
 }
+
+void zfs_elevate()
+{
+#ifdef __linux__
+	if(setuid(0)!=0)
+	{
+		std::cout << "Cannot become root user (2)" << std::endl;
+	}
+#endif
+}
 #endif
 
 bool create_subvolume(int mode, std::string subvolume_folder)
@@ -346,6 +356,7 @@ bool create_subvolume(int mode, std::string subvolume_folder)
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "create", "-p", subvolume_folder.c_str(), NULL);
 		chown_dir(subvolume_folder);
 		return rc==0;
@@ -367,6 +378,7 @@ bool get_mountpoint(int mode, std::string subvolume_folder)
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "get", "-H", "-o", "value", "mountpoint", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
@@ -387,6 +399,7 @@ bool create_snapshot(int mode, std::string snapshot_src, std::string snapshot_ds
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "clone", (snapshot_src+"@ro").c_str(), snapshot_dst.c_str(), NULL);
 		chown_dir(snapshot_dst);
 		return rc==0;
@@ -407,6 +420,7 @@ bool is_subvolume(int mode, std::string subvolume_folder)
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), false, "list", subvolume_folder.c_str(), NULL);
 		return rc==0;
 	}
@@ -416,6 +430,8 @@ bool is_subvolume(int mode, std::string subvolume_folder)
 
 bool promote_dependencies(const std::string& snapshot, std::vector<std::string>& dependencies)
 {
+	zfs_elevate();
+	
 	std::cout << "Searching for origin " << snapshot << std::endl;
 	
 	std::string snap_data;
@@ -489,6 +505,8 @@ bool remove_subvolume(int mode, std::string subvolume_folder, bool quiet=false)
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
+		
 		exec_wait(find_zfs_cmd(), false, "destroy", (subvolume_folder+"@ro").c_str(), NULL);
 		int rc = exec_wait(find_zfs_cmd(), false, "destroy", subvolume_folder.c_str(), NULL);
 		if(rc!=0)
@@ -543,6 +561,7 @@ bool make_readonly(int mode, std::string subvolume_folder)
 	}
 	else if(mode==mode_zfs)
 	{
+		zfs_elevate();
 		int rc=exec_wait(find_zfs_cmd(), true, "snapshot", (subvolume_folder+"@ro").c_str(), NULL);
 		return rc==0;
 	}
