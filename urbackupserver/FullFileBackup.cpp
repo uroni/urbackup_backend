@@ -176,7 +176,7 @@ bool FullFileBackup::doFileBackup()
 
 	if(clientlist==NULL )
 	{
-		ServerLogger::Log(logid, "Error creating clientlist for client "+clientname, LL_ERROR);
+		ServerLogger::Log(logid, "Error creating clientlist for client "+clientname+" at "+Server->getServerWorkingDir()+ "/"+clientlistName(backupid)+". "+os_last_error_str(), LL_ERROR);
 		has_early_error=true;
 		return false;
 	}

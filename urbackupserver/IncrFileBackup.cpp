@@ -1436,7 +1436,7 @@ bool IncrFileBackup::doFileBackup()
 
 	if(clientlist==NULL)
 	{
-		ServerLogger::Log(logid, "Error creating client file list at "+clientlistName(backupid), LL_ERROR);
+		ServerLogger::Log(logid, "Error creating client file list for client "+clientname+" at "+Server->getServerWorkingDir() + "/" + clientlistName(backupid) + ". "+os_last_error_str(), LL_ERROR);
 		disk_error=true;
 	}
 	else
