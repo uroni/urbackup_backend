@@ -1,5 +1,9 @@
 #include "LuaInterpreter.h"
+#ifdef NO_EMBEDDED_LUA
+#include <lua.hpp>
+#else
 #include "src/lua.hpp"
+#endif
 #include "../Interface/Server.h"
 #include "../common/data.h"
 #include <assert.h>

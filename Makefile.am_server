@@ -24,7 +24,11 @@ if WITH_CRYPTOPLUGIN
 urbackupsrv_SOURCES += cryptoplugin/dllmain.cpp cryptoplugin/AESDecryption.cpp cryptoplugin/CryptoFactory.cpp cryptoplugin/pluginmgr.cpp cryptoplugin/AESEncryption.cpp cryptoplugin/ZlibCompression.cpp cryptoplugin/ZlibDecompression.cpp cryptoplugin/AESGCMDecryption.cpp cryptoplugin/AESGCMEncryption.cpp cryptoplugin/ECDHKeyExchange.cpp
 endif
 
-urbackupsrv_SOURCES += luaplugin/dllmain.cpp luaplugin/LuaInterpreter.cpp luaplugin/src/all.c luaplugin/pluginmgr.cpp
+urbackupsrv_SOURCES += luaplugin/dllmain.cpp luaplugin/LuaInterpreter.cpp luaplugin/pluginmgr.cpp
+
+if WITH_EMBEDDED_LUA
+urbackupsrv_SOURCES += luaplugin/src/all.c 
+endif
 
 
 if WITH_FUSEPLUGIN
@@ -49,12 +53,21 @@ urbackupsrv_CFLAGS = $(SUID_CFLAGS)
 endif
 urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_ldflags)
 
+if !WITH_EMBEDDED_LUA
+urbackupsrv_CFLAGS += $(LUA_INCLUDE)
+endif
+
 if !EMBEDDED_CRYPTOPP
 urbackupsrv_LDADD += $(CRYPTOPP_LIBS)
 else
 urbackupsrv_CXXFLAGS += -DCRYPTOPP_INCLUDE_PREFIX='cryptoplugin/src'
 urbackupsrv_LDADD += cryptoplugin/src/.libs/libcryptopp.a
 SUBDIRS=cryptoplugin/src
+endif
+
+if !WITH_EMBEDDED_LUA
+urbackupsrv_LDADD += $(LUA_LIB)
+urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LUA
 endif
 
 if !WITH_CRYPTOPLUGIN
