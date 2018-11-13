@@ -141,7 +141,7 @@ then
 	AX_LUA_LIBS([], [echo "Lua libs not found"; exit 45;])
 fi
 
-if test "x$with_embedded_lmdb" != "xno"
+if test "x$with_embedded_lmdb" == "xno"
 then
 	AC_SEARCH_LIBS([mdb_env_set_mapsize], [lmdb],
 		[test "$ac_cv_search_mdb_env_set_mapsize" = "none required" || LIBS="$LIBS $ac_cv_search_mdb_env_set_mapsize"],
