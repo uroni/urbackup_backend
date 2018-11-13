@@ -20,7 +20,11 @@
 #include "dao/ServerCleanupDao.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#ifdef NO_EMBEDDED_LMDB
+#include <lmdb.h>
+#else
 #include "lmdb/lmdb.h"
+#endif
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 #include "database.h"

@@ -25,6 +25,8 @@ AC_ARG_WITH([embedded-sqlite3],
      AS_HELP_STRING([--without-embedded-sqlite3], [Disables the embedded sqlite3 and uses the system one. Not recommended.]))
 AC_ARG_WITH([embedded-lua],
      AS_HELP_STRING([--without-embedded-lua], [Disables the embedded lua and uses the system one. Not recommended.]))
+AC_ARG_WITH([embedded-lmdb],
+     AS_HELP_STRING([--without-embedded-lmdb], [Disables the embedded lmdb and uses the system one. Not recommended.]))
 
 AC_ARG_ENABLE([fortify],
      AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
@@ -109,6 +111,7 @@ AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
 AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xno")
 AM_CONDITIONAL(WITH_EMBEDDED_LUA, test "x$with_embedded_lua" != "xno")
+AM_CONDITIONAL(WITH_EMBEDDED_LMDB, test "x$with_embedded_lmdb" != "xno")
 
 if test "x$with_mail" != "xno"
 then
@@ -136,6 +139,14 @@ then
 	AX_PROG_LUA([5.3], [], [], [echo "Specified to not use embedded lua, but no system lua found. Need lua to compile."; exit 45;])
 	AX_LUA_HEADERS([], [echo "Lua headers not found"; exit 45;])
 	AX_LUA_LIBS([], [echo "Lua libs not found"; exit 45;])
+fi
+
+if test "x$with_embedded_lmdb" != "xno"
+then
+	AC_SEARCH_LIBS([mdb_env_set_mapsize], [lmdb],
+		[test "$ac_cv_search_mdb_env_set_mapsize" = "none required" || LIBS="$LIBS $ac_cv_search_mdb_env_set_mapsize"],
+		[AC_MSG_FAILURE([No library for mdb_env_set_mapsize (LMDB) found. Please install liblmdb-dev(el).])] )
+	AC_CHECK_HEADERS([lmdb.h], [], [echo "lmdb.h not found. Please install liblmdb-dev(el)." exit 46;])
 fi
 
 if test "x$with_crypto" != "xno" && test "x$enable_embedded_cryptopp" != "xyes"

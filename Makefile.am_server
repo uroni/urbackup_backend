@@ -66,6 +66,11 @@ urbackupsrv_LDADD += $(LUA_LIB)
 urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LUA $(LUA_INCLUDE)
 endif
 
+if !WITH_EMBEDDED_LMDB
+urbackupsrv_LDADD += -llmdb
+urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LMDB
+endif
+
 if !WITH_CRYPTOPLUGIN
 urbackupsrv_CPPFLAGS+=-DDO_NOT_USE_CRYPTOPP_SHA -DDO_NOT_USE_CRYPTOPP_MD5
 endif

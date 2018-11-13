@@ -1,6 +1,10 @@
 #include "../Interface/Database.h"
 #include "../Interface/Types.h"
+#ifdef NO_EMBEDDED_LMDB
+#include <lmdb.h>
+#else
 #include "lmdb/lmdb.h"
+#endif
 #include "FileIndex.h"
 #include "../Interface/SharedMutex.h"
 #include <memory>
