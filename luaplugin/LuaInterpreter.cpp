@@ -11,9 +11,11 @@
 #include "../common/miniz.h"
 #include "../stringtools.h"
 
+#ifndef NO_EMBEDDED_LUA
 extern "C" {
 	LUAMOD_API int luaopen_os_custom(lua_State *L);
 }
+#endif
 
 namespace
 {
@@ -241,7 +243,9 @@ namespace
 		{ LUA_STRLIBNAME, luaopen_string },
 		{ LUA_MATHLIBNAME, luaopen_math },
 		{ LUA_UTF8LIBNAME, luaopen_utf8 },
+#ifndef NO_EMBEDDED_LUA
 		{ LUA_OSLIBNAME, luaopen_os_custom},
+#endif
 		{ "time", luaopen_time },
 		{ NULL, NULL }
 	};

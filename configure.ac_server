@@ -133,7 +133,7 @@ fi
 
 if test "x$with_embedded_lua" == "xno"
 then
-	AX_PROG_LUA([5.3], [], [echo "Specified to not use embedded lua, but no system lua found. Need sqlite3 to compile."; exit 45;])
+	AX_PROG_LUA([5.3], [], [], [echo "Specified to not use embedded lua, but no system lua found. Need lua to compile."; exit 45;])
 	AX_LUA_HEADERS([], [echo "Lua headers not found"; exit 45;])
 	AX_LUA_LIBS([], [echo "Lua libs not found"; exit 45;])
 fi

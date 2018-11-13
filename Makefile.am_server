@@ -53,10 +53,6 @@ urbackupsrv_CFLAGS = $(SUID_CFLAGS)
 endif
 urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS) $(FORTIFY_ldflags)
 
-if !WITH_EMBEDDED_LUA
-urbackupsrv_CFLAGS += $(LUA_INCLUDE)
-endif
-
 if !EMBEDDED_CRYPTOPP
 urbackupsrv_LDADD += $(CRYPTOPP_LIBS)
 else
@@ -67,7 +63,7 @@ endif
 
 if !WITH_EMBEDDED_LUA
 urbackupsrv_LDADD += $(LUA_LIB)
-urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LUA
+urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LUA $(LUA_INCLUDE)
 endif
 
 if !WITH_CRYPTOPLUGIN
