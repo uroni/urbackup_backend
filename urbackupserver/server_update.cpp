@@ -78,7 +78,8 @@ void ServerUpdate::update_client()
 		std::string version = url_fak->downloadString(curr_update_url + curr.versionname, http_proxy, &errmsg);
 		if (version.empty())
 		{
-			if (curr_update_url == urbackup_update_url)
+			if (curr_update_url == urbackup_update_url
+				&& !urbackup_update_url_alt.empty())
 			{
 				curr_update_url = urbackup_update_url_alt;
 				version = url_fak->downloadString(curr_update_url + curr.versionname, http_proxy, &errmsg);
@@ -87,9 +88,10 @@ void ServerUpdate::update_client()
 			if (version.empty())
 			{
 				Server->Log("Error while downloading version info from " + curr_update_url + curr.versionname + ": " + errmsg, LL_ERROR);
-				return;
+				continue;
 			}
 		}
+
 		std::string curr_version = getFile("urbackup/"+curr.versionname);
 		if (curr_version.empty()) curr_version = "0";
 
@@ -97,72 +99,108 @@ void ServerUpdate::update_client()
 		{
 			Server->Log("Downloading signature...", LL_INFO);
 
-			IFile* sig_file = Server->openFile("urbackup/" + curr.basename + ".sig2", MODE_WRITE);
-			if (sig_file == NULL)
+			bool dl_ok = true;
+
+			std::auto_ptr<IFile> sig_file(Server->openFile("urbackup/" + curr.basename + ".sig2.new", MODE_WRITE));
+			if (sig_file.get() == NULL)
 			{
-				Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig2", LL_ERROR);
+				Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig2.new", LL_ERROR);
 				return;
 			}
-			ObjectScope sig_file_scope(sig_file);
 
-			bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig2", sig_file, http_proxy, &errmsg);
+			bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig2", sig_file.get(), http_proxy, &errmsg);
 
 			if (!b)
 			{
 				Server->Log("Error while downloading update signature from " + curr_update_url + curr.basename + ".sig2: " + errmsg, LL_ERROR);
+				dl_ok = false;
 			}
 
 			if (curr.extension == "exe")
 			{
 				Server->Log("Downloading old signature...", LL_INFO);
 
-				IFile* old_sig_file = Server->openFile("urbackup/" + curr.basename + ".sig", MODE_WRITE);
-				if (old_sig_file == NULL)
+				std::auto_ptr<IFile> old_sig_file(Server->openFile("urbackup/" + curr.basename + ".sig.new", MODE_WRITE));
+				if (old_sig_file.get() == NULL)
 				{
-					Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig", LL_ERROR);
+					Server->Log("Error opening signature output file urbackup/" + curr.basename + ".sig.new", LL_ERROR);
 					return;
 				}
-				ObjectScope old_sig_file_scope(old_sig_file);
 
-				bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig", old_sig_file, http_proxy, &errmsg);
+				bool b = url_fak->downloadFile(curr_update_url + curr.basename + ".sig", old_sig_file.get(), http_proxy, &errmsg);
 
 				if (!b)
 				{
 					Server->Log("Error while downloading old update signature from " + curr_update_url + curr.basename + ".sig: " + errmsg, LL_ERROR);
+					dl_ok = false;
+				}
+				else
+				{
+					old_sig_file->Sync();
 				}
 			}
 
 			Server->Log("Getting update file URL...", LL_INFO);
 			std::string update_url = url_fak->downloadString(curr_update_url + curr.basename + ".url", http_proxy, &errmsg);
+			std::auto_ptr<IFile> update_file;
 
 			if (update_url.empty())
 			{
 				Server->Log("Error while downloading update url from " + curr_update_url + curr.basename + ".url: " + errmsg, LL_ERROR);
-				return;
+				dl_ok = false;
 			}
-
-			IFile* update_file = Server->openFile("urbackup/" + curr.basename + "." + curr.extension, MODE_WRITE);
-			if (update_file == NULL)
+			else
 			{
-				Server->Log("Error opening update output file urbackup/" + curr.basename + "." + curr.extension, LL_ERROR);
-				return;
+				update_file.reset(Server->openFile("urbackup/" + curr.basename + "." + curr.extension + ".new", MODE_WRITE));
+				if (update_file.get() == NULL)
+				{
+					Server->Log("Error opening update output file urbackup/" + curr.basename + "." + curr.extension, LL_ERROR);
+					return;
+				}
+
+				Server->Log("Downloading update file...", LL_INFO);
+				b = url_fak->downloadFile(update_url, update_file.get(), http_proxy, &errmsg);
+
+				if (!b)
+				{
+					Server->Log("Error while downloading update file from " + update_url + ": " + errmsg, LL_ERROR);
+					dl_ok = false;
+				}
 			}
-			ObjectScope update_file_scope(update_file);
 
-			Server->Log("Downloading update file...", LL_INFO);
-			b = url_fak->downloadFile(update_url, update_file, http_proxy, &errmsg);
-
-			if (!b)
+			if (dl_ok)
 			{
-				Server->Log("Error while downloading update file from " + update_url + ": " + errmsg, LL_ERROR);
-				return;
+				sig_file->Sync();
+				update_file->Sync();
+
+				sig_file.reset();
+				update_file.reset();
+
+				void* trans = os_start_transaction();
+
+				if (os_rename_file("urbackup/" + curr.basename + ".sig2.new", "urbackup/" + curr.basename + ".sig2", trans)
+					&& os_rename_file("urbackup/" + curr.basename + "." + curr.extension + ".new", "urbackup/" + curr.basename + "." + curr.extension, trans)
+					&& (curr.extension != "exe" || os_rename_file("urbackup/" + curr.basename + ".sig.new", "urbackup/" + curr.basename + ".sig", trans))
+					&& (trans==NULL || os_finish_transaction(trans)) )
+				{
+					Server->Log("Successfully downloaded update file.", LL_INFO);
+					writestring(version, "urbackup/" + curr.versionname);
+				}
+				else
+				{
+					Server->Log("Renaming update files to final location failed. " + os_last_error_str(), LL_ERROR);
+				}
 			}
+			else
+			{
+				std::string del_fn = sig_file->getFilename();
+				sig_file.reset();
+				Server->deleteFile(del_fn);
 
-			sig_file->Sync();
-			update_file->Sync();
-
-			Server->Log("Successfully downloaded update file.", LL_INFO);
-			writestring(version, "urbackup/"+curr.versionname);
+				del_fn = update_file->getFilename();
+				update_file.reset();
+				Server->deleteFile(del_fn);
+			}
 		}
 	}
 }
