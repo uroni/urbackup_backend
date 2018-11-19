@@ -82,7 +82,7 @@ namespace
 					if (new_link_path == target)
 						continue;
 
-					assert(os_directory_exists(new_link_path));
+					assert(os_directory_exists(os_file_prefix(new_link_path)));
 					if (remove)
 					{
 						link_dao.removeDirectoryLinkWithName(clientid, new_link_path, new_pool_name);
