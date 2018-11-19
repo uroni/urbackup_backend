@@ -938,7 +938,12 @@ int os_popen(const std::string& cmd, std::string& ret)
 #define _pclose pclose
 #endif
 
+#ifdef __linux__
+	in = _popen(cmd.c_str(), "re");
+	if(!in) in = _popen(cmd.c_str(), "r");
+#else
 	in = _popen(cmd.c_str(), "r");
+#endif
 
 	if(in==NULL)
 	{

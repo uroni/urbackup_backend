@@ -2955,7 +2955,12 @@ bool ClientMain::run_script( std::string name, const std::string& params, logid_
 #ifdef _WIN32
 	FILE* fp = _wpopen(Server->ConvertToWchar(quoted_script_name).c_str(), L"rb");
 #else
+#ifdef __linux__
+	FILE* fp = popen(quoted_script_name.c_str(), "re");
+	if(!fp) fp = popen(quoted_script_name.c_str(), "r");
+#else
 	FILE* fp = popen(quoted_script_name.c_str(), "r");
+#endif
 #endif
 
 	if(!fp)
