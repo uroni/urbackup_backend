@@ -393,6 +393,10 @@ void ClientMain::operator ()(void)
 				ServerLogger::Log(logid, "Getting client settings failed -1", LL_ERROR);
 				received_client_settings=false;
 			}
+			else
+			{
+				do_update_settings = true;
+			}
 		}
 		else
 		{
@@ -622,6 +626,7 @@ void ClientMain::operator ()(void)
 					{
 						ServerLogger::Log(logid, "Getting client settings failed -2", LL_ERROR);
 						received_client_settings=false;
+						do_update_settings = true;
 					}
 
 					if(server_settings->getImageFileFormat()==image_file_format_cowraw)
@@ -1780,6 +1785,10 @@ void ClientMain::sendSettings(void)
 	if(sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{
 		backup_dao->insertIntoOrigClientSettings(clientid, s_settings);
+	}
+	else
+	{
+		do_update_settings = true;
 	}
 }	
 
