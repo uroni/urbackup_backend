@@ -1387,9 +1387,6 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 #endif
 			}
 
-			if (name == "urbackup")
-				name = "urbackup0";
-
 			q2->Bind(name);
 			if(q2->Read().empty()==false
 				|| name=="urbackup")
