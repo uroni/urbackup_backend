@@ -567,16 +567,16 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 					if(crypto_fak!=NULL)
 					{
-						std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
-						if(updatefile.get()!=NULL)
+						if (crypto_fak->verifyFile(UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub",
+							UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
 						{
-							if(checkHash(getSha512Hash(updatefile.get()))
-								&& checkVersion(updatefile.get()) )
+							std::auto_ptr<IFile> updatefile(Server->openFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat"));
+							if(updatefile.get()!=NULL)
 							{
-								updatefile.reset();
-								if(crypto_fak->verifyFile(UPDATE_SIGNATURE_PREFIX "urbackup_ecdsa409k1.pub",
-									UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.sig2"))
+								if(checkHash(getSha512Hash(updatefile.get()))
+									&& checkVersion(updatefile.get()) )
 								{
+									updatefile.reset();								
 #ifdef _WIN32
 									Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate.exe");
 									moveFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat", UPDATE_FILE_PREFIX "UrBackupUpdate.exe");
@@ -598,19 +598,19 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 									}
 								}
 								else
-								{									
-									Server->Log("Verifying update file failed. Signature did not match", LL_ERROR);
+								{
+									updatefile.reset();
+									Server->Log("Verifying update file failed. Update was installed previously", LL_ERROR);
 									Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
-									tcpstack.Send(pipe, "verify_sig_err");
+									tcpstack.Send(pipe, "verify_sig_already_used_err");
 								}
-							}
-							else
-							{
-								updatefile.reset();
-								Server->Log("Verifying update file failed. Update was installed previously", LL_ERROR);
-								Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
-								tcpstack.Send(pipe, "verify_sig_already_used_err");
-							}
+							}							
+						}
+						else
+						{
+							Server->Log("Verifying update file failed. Signature did not match", LL_ERROR);
+							Server->deleteFile(UPDATE_FILE_PREFIX "UrBackupUpdate_untested.dat");
+							tcpstack.Send(pipe, "verify_sig_err");
 						}
 					}
 					else
@@ -698,34 +698,58 @@ bool ClientConnector::checkHash(std::string shah)
 
 bool ClientConnector::checkVersion(IFile* updatef)
 {
-	const std::string version_start_guid = "#ab6b754c02624b348795c92da78b1e73\n";
+	//TODO: Enable when tested
+	return true;
+	
+	const std::string version_start_guid = "#ab6b754c02624b348795c92da78b1e73";
 	std::string new_version = trim(getFile(UPDATE_FILE_PREFIX "version_new.txt"));
 	
-	std::string data = updatef->Read(0LL, 128 * 1024);
-	for (size_t i = 0; i < data.size(); ++i)
+	updatef->Seek(0);
+	std::string data;
+	size_t state = 0;
+	size_t pos = 0;
+	while (!(data = updatef->Read(4096)).empty())
 	{
-		if (next(data, i, version_start_guid)
-			&& i+version_start_guid.size()+ new_version.size()<=data.size())
+		for (size_t i = 0; i < data.size(); ++i)
 		{
-			std::string curr_version = data.substr(i + version_start_guid.size(), new_version.size());
-
-			if (curr_version == new_version)
+			if (data[i] == version_start_guid[state])
 			{
-				std::string version_2 = trim(getFile(UPDATE_FILE_PREFIX "curr_version.txt"));
-				if (versionNeedsUpdate(version_2, curr_version))
+				if (state == version_start_guid.size() - 1)
 				{
-					return true;
+					std::string curr_version;
+					if (i + 1 + new_version.size() < data.size())
+						curr_version = data.substr(i+1, new_version.size());
+					else
+						curr_version = updatef->Read(pos + i+ 1, static_cast<_u32>(new_version.size()));
+
+					if (curr_version == new_version)
+					{
+						std::string version_2 = trim(getFile(UPDATE_FILE_PREFIX "curr_version.txt"));
+						if (versionNeedsUpdate(version_2, curr_version))
+						{
+							return true;
+						}
+						else
+						{
+							return false;
+						}
+					}
+					else
+					{
+						return false;
+					}
 				}
 				else
 				{
-					return false;
+					++state;
 				}
 			}
 			else
 			{
-				return false;
+				state = 0;
 			}
 		}
+		pos += data.size();
 	}
 
 	return false;

@@ -3,8 +3,7 @@
 set -e
 
 cat << EOF > /dev/null
-#ab6b754c02624b348795c92da78b1e73
-$version$
+#ab6b754c02624b348795c92da78b1e73$version$
 EOF
 
 SILENT=no
