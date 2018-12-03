@@ -1427,7 +1427,7 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 		{
 			pthread_attr_destroy(&attr);
 			Server->Log("Error creating pthread (ENOMEM). Trying to create thread without LargeStackSize", LL_WARNING);
-			return CreateThread(thread, name, flags & ~(IServer::CreateThreadFlags_LargeStackSize));
+			return createThread(thread, name, flags & ~(IServer::CreateThreadFlags_LargeStackSize));
 		}
 		Server->Log("Error creating pthread. Errno: " + convert(errno), LL_ERROR);
 		pthread_attr_destroy(&attr);
