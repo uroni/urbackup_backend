@@ -1347,11 +1347,13 @@ void* thread_helper_f(void * t)
 
 bool CServer::createThread(IThread *thread, const std::string& name, CreateThreadFlags flags)
 {
+	const size_t thread_large_stack_size = 64 * 1024 * 1024;
+
 #ifdef _WIN32
 	SIZE_T stack_size = 0;
 	if (flags & IServer::CreateThreadFlags_LargeStackSize)
 	{
-		stack_size = 512 * 1024 * 1024;
+		stack_size = thread_large_stack_size;
 	}
 
 	void* param;
@@ -1365,8 +1367,15 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 #endif
 
 	HANDLE hThread = CreateThread(NULL, stack_size, &thread_helper_f, param, 0, NULL);
+	if (hThread == NULL
+		&& flags & IServer::CreateThreadFlags_LargeStackSize)
+	{
+		Server->Log("Error creating thread with large stack size. Trying to create thread without LargeStackSize", LL_WARNING);
+		hThread = CreateThread(NULL, 0, &thread_helper_f, param, 0, NULL);
+	}
 	if (hThread == NULL)
 	{
+		Server->Log("Error creating thread. Errno: " + convert((int)GetLastError()), LL_ERROR);
 		return false;
 	}
 	else
@@ -1400,7 +1409,7 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 
 	if (flags & IServer::CreateThreadFlags_LargeStackSize)
 	{
-		pthread_attr_setstacksize(&attr, 512*1024*1024);
+		pthread_attr_setstacksize(&attr, thread_large_stack_size);
 	}
 
 	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
@@ -1413,6 +1422,13 @@ bool CServer::createThread(IThread *thread, const std::string& name, CreateThrea
 	pthread_t t;
 	if (pthread_create(&t, &attr, &thread_helper_f, (void*)thread) != 0)
 	{
+		if (errno == ENOMEM
+			&& flags & IServer::CreateThreadFlags_LargeStackSize)
+		{
+			pthread_attr_destroy(&attr);
+			Server->Log("Error creating pthread (ENOMEM). Trying to create thread without LargeStackSize", LL_WARNING);
+			return CreateThread(thread, name, flags & ~(IServer::CreateThreadFlags_LargeStackSize));
+		}
 		Server->Log("Error creating pthread. Errno: " + convert(errno), LL_ERROR);
 		pthread_attr_destroy(&attr);
 		return false;
