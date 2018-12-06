@@ -87,6 +87,7 @@
 #	include <sys/types.h>
 #	include <pwd.h>
 #	include "config.h"
+#	include <sys/un.h>
 #endif
 #include "StaticPluginRegistration.h"
 
@@ -1040,7 +1041,12 @@ bool CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 	const bool has_error = acc->hasError();
 	if (!has_error)
 	{
-		Server->createThread(acc, pServiceName+": accept");
+		std::string shortname = pServiceName;
+		if (bindTarget == BindTarget_UnixSocket)
+		{
+			shortname = ExtractFileName(pServiceName);
+		}
+		Server->createThread(acc, shortname+": accept");
 	}
 
 	IScopedLock lock(stream_services_mutex);
@@ -1293,6 +1299,139 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 
 	return ssl_pipe;
 #else
+	return NULL;
+#endif
+}
+
+IPipe * CServer::ConnectUnixStream(const std::string & pPath, unsigned int pTimeoutms)
+{
+#ifndef _WIN32
+	struct sockaddr_un server;
+	memset(&server, 0, sizeof(server));
+	server.sun_family = AF_UNIX;
+	size_t max_size = (std::min)(sizeof(server.sun_path) - 1, pPath.size());
+	memcpy(server.sun_path, pPath.c_str(), max_size);
+
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+
+	SOCKET s = socket(AF_UNIX, type, 0);
+	if (s == SOCKET_ERROR)
+	{
+		return NULL;
+	}
+
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+
+#ifdef _WIN32
+	u_long nonBlocking = 1;
+	if (ioctlsocket(s, FIONBIO, &nonBlocking) == SOCKET_ERROR)
+	{
+		Server->Log("Error setting socket to non-blocking. Err: " + convert(WSAGetLastError()), LL_ERROR);
+		closesocket(s);
+		return NULL;
+	}
+#else
+	int flags = fcntl(s, F_GETFL, 0);
+	if (flags == -1)
+	{
+		Server->Log("Error getting socket flags. Errno: " + convert(errno), LL_ERROR);
+		closesocket(s);
+		return NULL;
+	}
+
+	if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		Server->Log("Error setting socket to non-blocking. Err: " + convert(errno), LL_ERROR);
+		closesocket(s);
+		return NULL;
+	}
+#endif
+
+#ifdef __APPLE__
+	int val = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val));
+#endif
+
+	int rc = connect(s, (sockaddr*)&server, sizeof(sockaddr_in));
+#ifndef _WIN32
+	if (rc == SOCKET_ERROR)
+	{
+		if (errno != EINPROGRESS)
+		{
+			closesocket(s);
+			Server->Log("errno !=EINPROGRESS. Connect failed...", LL_DEBUG);
+			return NULL;
+		}
+	}
+	else
+	{
+		return new CStreamPipe(s);
+	}
+#else
+	if (rc != SOCKET_ERROR)
+	{
+		return new CStreamPipe(s);
+	}
+#endif
+
+#ifdef _WIN32
+	fd_set conn;
+	FD_ZERO(&conn);
+	FD_SET(s, &conn);
+
+	timeval lon;
+	lon.tv_sec = (long)(pTimeoutms / 1000);
+	lon.tv_usec = (long)(pTimeoutms % 1000) * 1000;
+
+	rc = select((int)s + 1, NULL, &conn, NULL, &lon);
+
+	if (rc>0 && FD_ISSET(s, &conn))
+	{
+#else
+	pollfd conn[1];
+	conn[0].fd = s;
+	conn[0].events = POLLOUT;
+	conn[0].revents = 0;
+	rc = poll(conn, 1, pTimeoutms);
+	if (rc>0)
+	{
+#endif	
+		int err;
+		socklen_t len = sizeof(int);
+		rc = getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
+		if (rc<0)
+		{
+			closesocket(s);
+			Server->Log("Error getting socket status.", LL_ERROR);
+			return NULL;
+		}
+		if (err)
+		{
+			closesocket(s);
+			Server->Log("Socket has error: " + convert(err), LL_INFO);
+			return NULL;
+		}
+		else
+		{
+#ifdef _WIN32
+			int window_size = 512 * 1024;
+			setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
+			setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
+#endif
+			return new CStreamPipe(s);
+		}
+	}
+	else
+	{
+		closesocket(s);
+		return NULL;
+	}
+#else //_WIN32
 	return NULL;
 #endif
 }

@@ -143,6 +143,7 @@ public:
 	virtual bool StopCustomStreamService(IService *pService);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe* ConnectSslStream(const std::string& pServer, unsigned short pPort, unsigned int pTimeoutms);
+	virtual IPipe* ConnectUnixStream(const std::string& pPath, unsigned int pTimeoutms);
 	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
 	virtual std::string LookupHostname(const std::string& pIp);
