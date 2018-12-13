@@ -769,7 +769,7 @@ private:
 		int64 created;
 		int64 modified;
 		int64 accessed=0; //TODO
-		_u32 rc = fileclient_metadata->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
+		_u32 rc = ERR_ERROR; // fileclient_metadata->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
 
 		if(rc!=ERR_SUCCESS)
 		{
