@@ -1283,13 +1283,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					Handle_ID_BLOCK_REQUEST(data);
 				}
 			}break;
-		case ID_GET_FILE_HASH_AND_METADATA:
+		/*case ID_GET_FILE_HASH_AND_METADATA:
 			{
 				if(!GetFileHashAndMetadata(data))
 				{
 					return false;
 				}
-			}break;
+			}break;*/
 
 		case ID_INFORM_METADATA_STREAM_END:
 			{
