@@ -441,7 +441,11 @@ bool CClientThread::ProcessPacket(CRData *data)
                 {
                     Log("Sending meta data of "+o_filename +" metadata_id=" + convert(metadata_id) , LL_DEBUG);
 
-					assert(metadata_id!=0);
+					if (metadata_id == 0)
+					{
+						Log("Trying to send metadata bug metadata_id is zero", LL_ERROR);
+						return false;
+					}
                 }
 				
 
