@@ -1357,7 +1357,7 @@ IPipe * CServer::ConnectUnixStream(const std::string & pPath, unsigned int pTime
 	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val));
 #endif
 
-	int rc = connect(s, (sockaddr*)&server, sizeof(sockaddr_in));
+	int rc = connect(s, (sockaddr*)&server, sizeof(sockaddr_un));
 #ifndef _WIN32
 	if (rc == SOCKET_ERROR)
 	{
