@@ -19,6 +19,8 @@
 #include "vld.h"
 #ifdef _WIN32
 #include <winsock2.h>
+#else
+#include <sys/stat.h>
 #endif
 #include "ServiceAcceptor.h"
 #include "stringtools.h"
