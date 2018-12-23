@@ -1239,7 +1239,7 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr "Wenn sich Server und die Clients um selben Subnetz befinden, entdeckt UrBackup automatisch die Clients im LAN. Dieser Vorgang dauert ein wenig."
+msgstr "Wenn sich Server und die Clients im selben Subnetz befinden, entdeckt UrBackup automatisch die Clients im LAN. Dieser Vorgang dauert ein wenig."
 
 msgid "tDownload the client from:"
 msgstr "Client herunterladen von:"
