@@ -339,9 +339,12 @@ bool CUDPThread::UdpStep(void)
 		if(err==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
+#ifdef _WIN32
+			int err = WSAGetLastError();
+#endif
 			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
 #ifdef _WIN32
-			Server->Log("Last error: "+ convert((int)GetLastError()), LL_ERROR);
+			Server->Log("Last error: "+ convert(err), LL_ERROR);
 #endif
 #endif
 			has_error=true;
