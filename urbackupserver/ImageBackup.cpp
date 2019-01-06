@@ -554,6 +554,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 		chksum_str += "&shadowid=" + convert(snapshot_id);
 	}
 
+	chksum_str += "&zero_skipped=1";
+
 	if(pParentvhd.empty())
 	{
 		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
@@ -808,6 +810,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						cmd += "&clientsubname=" + EscapeParamString(clientsubname);
 					}
+					cmd += "&zero_skipped=1";
 					size_t sent = tcpstack.Send(cc, cmd);
 					if(sent==0)
 					{
@@ -835,6 +838,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					{
 						ts += "&clientsubname=" + EscapeParamString(clientsubname);
 					}
+					ts += "&zero_skipped=1";
 					std::auto_ptr<IFile> prevbitmap;
 					if (transfer_prev_cbitmap)
 					{
@@ -1711,6 +1715,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								accum=true;
 							}
 							currblock=-1;
+						}
+						else if (currblock == -128) //Number of skipped blocks
+						{
+							if (r - off >= 2 * sizeof(int64))
+							{
+								int64 zero_skipped;
+								memcpy(&zero_skipped, &buffer[off + sizeof(int64)], sizeof(int64));
+								zero_skipped = little_endian(zero_skipped);
+								numblocks += zero_skipped;
+							}
+							else
+							{
+								accum = true;
+							}
+							currblock = -1;
 						}
 						else if(currblock<0
 							|| currblock>totalblocks)
