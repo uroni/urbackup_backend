@@ -1709,6 +1709,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								nextblock = updateNextblock(nextblock, vhdblock+vhd_blocksize, &shactx, zeroblockdata.data(), has_parent,
 									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error,
 									vhdblock, vhdfile, 0);
+								off += sizeof(int64);
 							}
 							else
 							{
@@ -1724,6 +1725,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 								memcpy(&zero_skipped, &buffer[off + sizeof(int64)], sizeof(int64));
 								zero_skipped = little_endian(zero_skipped);
 								numblocks += zero_skipped;
+								off += 2*sizeof(int64);
 							}
 							else
 							{
