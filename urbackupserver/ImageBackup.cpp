@@ -1733,21 +1733,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 							}
 							currblock = -1;
 						}
-						else if (currblock == -128) //Number of skipped blocks
-						{
-							if (r - off >= 2 * sizeof(int64))
-							{
-								int64 zero_skipped;
-								memcpy(&zero_skipped, &buffer[off + sizeof(int64)], sizeof(int64));
-								zero_skipped = little_endian(zero_skipped);
-								numblocks += zero_skipped;
-							}
-							else
-							{
-								accum = true;
-							}
-							currblock = -1;
-						}
 						else if(currblock<0
 							|| currblock>totalblocks)
 						{
