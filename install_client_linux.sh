@@ -356,6 +356,11 @@ then
             CENTOS=7
         fi
 		
+		if grep "release 8" /etc/redhat-release > /dev/null 2>&1
+        then
+            CENTOS=8
+        fi
+		
 		if grep "Fedora" /etc/fedora-release > /dev/null 2>&1
 		then
 			FEDORA=yes
@@ -367,6 +372,15 @@ then
 			then
 				echo "+Detected Ubuntu LTS. Dattobd supported"
 				UBUNTU=yes
+				DATTO=yes
+			fi
+		elif grep 'NAME="Debian' /etc/os-release > /dev/null 2>&1
+		then
+			if grep 'PRETTY_NAME="' /etc/os-release | grep "/sid" > /dev/null 2>&1
+			then
+				echo "+Detected Debian unstable/sid. Dattobd not supported"
+			else
+				echo "+Detected Debian stable. Dattobd supported"
 				DATTO=yes
 			fi
 		fi
