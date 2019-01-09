@@ -1113,6 +1113,11 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		}
 	}
 
+	if (!delete_missing)
+	{
+		ServerLogger::Log(logid, "Didn't find any backup on backup storage. Not removing any backups from database during startup cleanup...", LL_ERROR);
+	}
+
 	ServerBackupDao backupdao(db);
 	std::vector<std::string> old_backupfolders = backupdao.getOldBackupfolders();
 
