@@ -344,6 +344,24 @@ std::vector<SFile> getFilesWin(const std::string &path, bool *has_error,
 		tmp.push_back(f);		
 	}
 	while (FindNextFileW(fHandle,&wfd) );
+
+	if (GetLastError() != ERROR_NO_MORE_FILES)
+	{
+		DWORD err = GetLastError();
+		if (has_error != NULL)
+		{
+			*has_error = true;
+		}
+
+		FindClose(fHandle);
+
+		std::sort(tmp.begin(), tmp.end());
+
+		SetLastError(err);
+
+		return tmp;
+	}
+
 	FindClose(fHandle);
 
 	std::sort(tmp.begin(), tmp.end());

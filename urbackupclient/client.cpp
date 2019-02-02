@@ -2579,7 +2579,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		if (has_error)
 		{
 #ifdef _WIN32
-			int err = GetLastError();
+			DWORD err = GetLastError();
 #else
 			int err = errno;
 #endif
@@ -2589,19 +2589,22 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 
 			if (root_exists)
 			{
+
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \"" + path + "\". SYSTEM may not have permissions to access this folder. Windows errorcode: " + convert(err), LL_ERROR);
+				SetLastError(err);
+				VSSLog("Error while listing files in folder \"" + path + "\". "+os_last_error_str(), LL_ERROR);
 #else
-				VSSLog("Error while getting files in folder \"" + path + "\". User may not have permissions to access this folder. Errno is " + convert(err), LL_ERROR);
+				VSSLog("Error while listing files in folder \"" + path + "\". User may not have permissions to access this folder. Errno is " + convert(err), LL_ERROR);
 				index_error = true;
 #endif
 			}
 			else
 			{
 #ifdef _WIN32
-				VSSLog("Error while getting files in folder \"" + path + "\". Windows errorcode: " + convert(err) + ". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				SetLastError(err);
+				VSSLog("Error while listing files in folder \"" + path + "\". Windows error: " + os_last_error_str() + ". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 #else
-				VSSLog("Error while getting files in folder \"" + path + "\". Errorno is " + convert(err) + ". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
+				VSSLog("Error while listing files in folder \"" + path + "\". Errorno is " + convert(err) + ". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
 #endif
 				index_error = true;
 			}
