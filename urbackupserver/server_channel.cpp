@@ -560,7 +560,7 @@ int ServerChannelThread::constructCapabilities(void)
 		capa |= DONT_ALLOW_FILE_RESTORE;
 	if (!cs->allow_component_restore)
 		capa |= DONT_ALLOW_COMPONENT_RESTORE;
-	if (!cs->allow_component_restore)
+	if (!cs->allow_component_config)
 		capa |= DONT_ALLOW_COMPONENT_CONFIG;
 
 	return capa;
