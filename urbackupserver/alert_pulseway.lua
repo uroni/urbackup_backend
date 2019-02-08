@@ -29,7 +29,7 @@ then
 	  name = params.instance_name,
 	  group = params.instance_group,
 	  description = params.instance_description,
-	  next_refresh_interval_minutes = params.refresh_interval_minutes,
+	  next_refresh_interval_minutes = tostring(math.floor(params.refresh_interval_minutes)),
 	  notify_when_offline = params.instance_notify_when_offline and "true" or "false"
 	}
 	local json = require("dkjson")
