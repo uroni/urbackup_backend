@@ -58,6 +58,9 @@ extern IServer* Server;
 #include "cowfile.h"
 #endif
 #include "fs/ntfs.h"
+#ifdef _WIN32
+#include "fs/ntfs_win.h"
+#endif
 
 #include "pluginmgr.h"
 
@@ -1336,6 +1339,138 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(0);
 	}
 #endif
+
+#ifdef _WIN32
+	std::string disk_scrub = Server->getServerParameter("disk_scrub");
+	if (!disk_scrub.empty())
+	{
+		if (disk_scrub == "SelectViaGUI")
+		{
+			std::string disk_path = select_dir_via_dialog("Please select the disk to scrub");
+			if (disk_path.empty())
+			{
+				Server->Log("No disk selected", LL_ERROR);
+				exit(1);
+			}
+			disk_scrub = disk_path;
+		}
+
+		if (disk_scrub.size() > 2
+			&& isletter(disk_scrub[0])
+			&& disk_scrub[1] == ':'
+			&& disk_scrub[2] == '\\')
+		{
+			disk_scrub = disk_scrub.substr(0, 1);
+		}
+		else if (disk_scrub.size() == 2
+			&& isletter(disk_scrub[0])
+			&& disk_scrub[1] == ':')
+		{
+			disk_scrub = disk_scrub.substr(0, 1);
+		}
+		else if (!(disk_scrub.size() == 1
+			&& isletter(disk_scrub[0])))
+		{
+			Server->Log("Disk not specified correctly: " + disk_scrub, LL_ERROR);
+			exit(2);
+		}
+
+		FSNTFSWIN fs("\\\\?\\" + disk_scrub + ":", IFSImageFactory::EReadaheadMode_Overlapped,
+			false, NULL);
+
+		if (fs.hasError())
+		{
+			Server->Log("Error opening volume " + disk_scrub, LL_ERROR);
+			exit(5);
+		}
+
+		Server->Log("Scrubbing volume " + disk_scrub + " size " + PrettyPrintBytes(fs.getSize())
+			+" used "+PrettyPrintBytes(fs.calculateUsedSpace()));
+
+		int64 drivesize = fs.getSize();
+		int64 blocksize = fs.getBlocksize();
+		int pc = -1;
+		std::vector<int64> error_blocks;
+		int64 n_blocks = drivesize / blocksize;
+		for (int64 i = 0, blocks = n_blocks; i < blocks; ++i)
+		{
+			bool has_error = false;
+			char* buf = fs.readBlock(i, &has_error);
+
+			if (has_error)
+			{
+				Server->Log("Block " + convert(i) + " has read error", LL_ERROR);
+				error_blocks.push_back(i);
+			}
+
+			if (buf != NULL)
+				fs.releaseBuffer(buf);
+
+			int curr_pc = static_cast<int>((i * 100) / n_blocks);
+			if (curr_pc != pc)
+			{
+				Server->Log("Reading volume. " + convert(curr_pc) + "% finished");
+				pc = curr_pc;
+			}
+		}
+
+		if (!error_blocks.empty())
+		{
+			Server->Log("Volume has "+convert(error_blocks.size())+" read errors", LL_INFO);
+
+			std::cout << "Search through all file extents to find out which files are damaged? Y/n" << std::endl;
+			char ch;
+			std::cin >> ch;
+
+			if (ch != 'n'
+				&& ch != 'N')
+			{
+				fs.logFileBlocks("\\\\?\\" + disk_scrub + ":\\", error_blocks);
+			}
+
+			std::cout << "Overwrite damaged blocks with zeros? y/N" << std::endl;
+			ch = 0;
+			std::cin >> ch;
+
+			if (ch == 'Y'
+				|| ch == 'y')
+			{
+				HANDLE hDev = CreateFileW(Server->ConvertToWchar("\\\\?\\" + disk_scrub+":").c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
+				if (hDev == INVALID_HANDLE_VALUE)
+				{
+					Server->Log("Error opening device. Last error: "+convert((int64)GetLastError()), LL_ERROR);
+					exit(3);
+				}
+
+				std::vector<char> buf;
+				buf.resize(fs.getBlocksize());
+
+				IFsFile* vol = Server->openFileFromHandle(hDev, disk_scrub);
+
+				for (size_t i = 0; i < error_blocks.size(); ++i)
+				{
+					Server->Log("Zeroing sector of volume " + disk_scrub + " at position " + convert(error_blocks[i] * fs.getBlocksize())+"...");
+					_u32 rc = vol->Write(error_blocks[i] * fs.getBlocksize(),
+						buf.data(), static_cast<_u32>(buf.size()));
+
+					if (rc != buf.size())
+					{
+						Server->Log("Error writing to volume " + disk_scrub + " at position " + convert(error_blocks[i] * fs.getBlocksize()) +
+							". Last error: " + convert((int64)GetLastError()), LL_ERROR);
+					}
+				}
+
+				Server->Log("Zeroing complete.");
+			}
+		}
+		else
+		{
+			Server->Log("Volume scrub completed. No errors detected.");
+		}
+
+		exit(0);
+	}
+#endif //_WIN32
 
 	imagepluginmgr=new CImagePluginMgr;
 
