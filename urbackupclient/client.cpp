@@ -3533,6 +3533,8 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
 	bool& backup_dirs_optional)
 {
+	backup_dirs_optional = false;
+
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";
 
