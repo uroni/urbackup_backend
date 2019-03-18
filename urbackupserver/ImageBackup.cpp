@@ -434,7 +434,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 			rc = ERR_CANNOT_OPEN_FILE;
 			int retry = 0;
-			while (Server->getTimeMS() - starttime < 5*60 * 1000
+			while (Server->getTimeMS() - starttime < 60 * 60 * 1000
 				&& rc== ERR_CANNOT_OPEN_FILE)
 			{
 				rc = fc.GetFile(loadfn, tmpf, true, false, 0, false, 0);
