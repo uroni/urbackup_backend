@@ -43,7 +43,6 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("computername");
 	ret.push_back("virtual_clients");
 	ret.push_back("default_dirs");
-	ret.push_back("backup_dirs_optional");
 	ret.push_back("allow_config_paths");
 	ret.push_back("allow_starting_full_file_backups");
 	ret.push_back("allow_starting_incr_file_backups");
