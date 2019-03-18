@@ -50,7 +50,7 @@ public:
 	virtual const unsigned char *getBitmap(void)=0;
 
 	virtual bool hasBlock(int64 pBlock);
-	virtual char* readBlock(int64 pBlock, bool* p_has_error=NULL);
+	virtual char* readBlock(int64 pBlock);
 	std::vector<int64> readBlocks(int64 pStartBlock, unsigned int n,
 		const std::vector<char*>& buffers, unsigned int buffer_offset);
 	bool hasError(void);
@@ -59,7 +59,7 @@ public:
 
 	virtual void shutdownReadahead();
 
-	virtual char* readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error);
+	virtual char* readBlockInt(int64 pBlock, bool use_readahead);
 
 	int64 nextBlockInt(int64 curr_block);
 
@@ -83,7 +83,7 @@ protected:
 	size_t usedNextBlocks();
 	IFile *dev;
 
-	SNextBlock* completionGetBlock(int64 pBlock, bool* p_has_error);
+	SNextBlock* completionGetBlock(int64 pBlock);
 
 	bool has_error;
 	int64 errcode;

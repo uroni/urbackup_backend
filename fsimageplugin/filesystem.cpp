@@ -142,7 +142,7 @@ public:
 			{
 				int64 l_current_block = current_block;
 				lock.relock(NULL);
-				char* buf = fs.readBlockInt(l_current_block, false, NULL);
+				char* buf = fs.readBlockInt(l_current_block, false);
 				lock.relock(mutex.get());
 
 				read_blocks[l_current_block] = buf;
@@ -308,12 +308,12 @@ bool Filesystem::hasBlock(int64 pBlock)
 	return has_bit;
 }
 
-char* Filesystem::readBlock(int64 pBlock, bool* p_has_error)
+char* Filesystem::readBlock(int64 pBlock)
 {
-	return readBlockInt(pBlock, readahead_thread.get()!=NULL, p_has_error);
+	return readBlockInt(pBlock, readahead_thread.get()!=NULL);
 }
 
-char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error)
+char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
 {
 	const unsigned char *bitmap=getBitmap();
 	int64 blocksize=getBlocksize();
@@ -330,7 +330,7 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_err
 	
 	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 	{
-		SNextBlock* next_block = completionGetBlock(pBlock, p_has_error);
+		SNextBlock* next_block = completionGetBlock(pBlock);
 		if (next_block == NULL)
 			return NULL;
 		used_next_blocks[next_block->buffer] = next_block;
@@ -436,7 +436,7 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 		{
 			if (hasBlock(i))
 			{
-				SNextBlock* next_block = completionGetBlock(i, NULL);
+				SNextBlock* next_block = completionGetBlock(i);
 				if (next_block != NULL)
 				{
 					memcpy(buffers[currbuf] + buffer_offset, next_block->buffer, blocksize);
@@ -633,7 +633,7 @@ size_t Filesystem::usedNextBlocks()
 	return next_blocks.size() - free_next_blocks.size();
 }
 
-SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
+SNextBlock* Filesystem::completionGetBlock(int64 pBlock)
 {
 	std::map<int64, SNextBlock*>::iterator it = queued_next_blocks.find(pBlock);
 	if (it == queued_next_blocks.end())
@@ -677,7 +677,6 @@ SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 		}
 		if (nwait >= max_read_wait_seconds)
 		{
-			if (p_has_error != NULL) *p_has_error = true;
 			errcode = fs_error_read_timeout;
 			has_error = true;
 			return NULL;
@@ -686,7 +685,6 @@ SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 
 	if (next_block->state != ENextBlockState_Ready)
 	{
-		if (p_has_error != NULL) *p_has_error = true;
 		free_next_blocks.push(next_block);
 		return NULL;
 	}

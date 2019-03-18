@@ -17,7 +17,6 @@ public:
 	bool excludeBlock(int64 block);
 
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
-	virtual void logFileBlocks(std::string volpath, const std::vector<int64>& blocks);
 
 private:
 	void logFileChangesInt(const std::string& volpath, int64 min_size, char* fc_bitmap, int64& total_files, int64& total_changed_sectors);
