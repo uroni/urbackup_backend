@@ -7,6 +7,7 @@
 #include "../luaplugin/ILuaInterpreter.h"
 #include "../urlplugin/IUrlFactory.h"
 #include "Mailer.h"
+#include "server_status.h"
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
 
@@ -192,6 +193,11 @@ bool run_report_script(int incremental, bool resumed, int image,
 	param["report_mail"] = report_mail;
 	param["clientname"] = clientname;
 	param["success"] = success;
+	SStatus status = ServerStatus::getStatus(clientname);
+	unsigned char *ips = reinterpret_cast<unsigned char*>(&status.ip_addr);
+	param["clientip"] = convert(ips[0]) + "." + convert(ips[1]) + "." + convert(ips[2]) + "." + convert(ips[3]);
+	param["clientos"] = status.os_version_string;
+	param["clientversion"] = status.client_version_string;
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;
 	
 	std::vector<std::string> msgs;
