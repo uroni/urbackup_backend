@@ -64,6 +64,7 @@ struct SSettings
 	std::string exclude_files;
 	std::string include_files;
 	std::string default_dirs;
+	bool backup_dirs_optional;
 	std::string cleanup_window;
 	bool allow_pause;
 	bool allow_starting_full_file_backups;

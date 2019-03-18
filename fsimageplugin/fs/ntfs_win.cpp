@@ -18,6 +18,7 @@
 
 #include "ntfs_win.h"
 #include <Windows.h>
+#include <algorithm>
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
 #include "../../urbackupcommon/os_functions.h"
@@ -196,6 +197,124 @@ void FSNTFSWIN::logFileChanges(std::string volpath, int64 min_size, char* fc_bit
 	logFileChangesInt(volpath, min_size, fc_bitmap, total_files, total_changed_sectors);
 
 	Server->Log("Total: " + convert(total_changed_sectors) + " changed sectors (" + PrettyPrintBytes(total_changed_sectors*getBlocksize()) + ") in " + convert(total_files) + " files");
+}
+
+void FSNTFSWIN::logFileBlocks(std::string volpath, const std::vector<int64>& blocks)
+{
+	std::vector<SFile> files = getFiles(volpath);
+
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		if (files[i].isdir)
+		{
+			if (!files[i].issym)
+			{
+				logFileBlocks(volpath + os_file_sep() + files[i].name, blocks);
+			}
+		}
+		else if (!files[i].issym)
+		{
+			HANDLE hFile = CreateFileW(Server->ConvertToWchar(os_file_prefix(volpath + os_file_sep() + files[i].name)).c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+				OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if (hFile != INVALID_HANDLE_VALUE)
+			{
+				STARTING_VCN_INPUT_BUFFER start_vcn = {};
+				std::vector<char> ret_buf;
+				ret_buf.resize(32768);
+
+				int64 block_start = -1;
+				int64 block_end = -1;
+
+				while (true)
+				{
+					RETRIEVAL_POINTERS_BUFFER* ret_ptrs = reinterpret_cast<RETRIEVAL_POINTERS_BUFFER*>(ret_buf.data());
+
+					DWORD bytesRet = 0;
+
+					BOOL b = DeviceIoControl(hFile, FSCTL_GET_RETRIEVAL_POINTERS,
+						&start_vcn, sizeof(start_vcn), ret_ptrs, static_cast<DWORD>(ret_buf.size()), &bytesRet, NULL);
+
+					DWORD err = GetLastError();
+
+					if (b || err == ERROR_MORE_DATA)
+					{
+						LARGE_INTEGER last_vcn = ret_ptrs->StartingVcn;
+						for (DWORD i = 0; i<ret_ptrs->ExtentCount; ++i)
+						{
+							if (ret_ptrs->Extents[i].Lcn.QuadPart != -1)
+							{
+								int64 count = ret_ptrs->Extents[i].NextVcn.QuadPart - last_vcn.QuadPart;
+								int64 dest = ret_ptrs->Extents[i].Lcn.QuadPart + count;
+								for (int64 pos = ret_ptrs->Extents[i].Lcn.QuadPart;
+										pos < dest; ++pos)
+								{
+									bool found = std::binary_search(blocks.begin(), blocks.end(), pos);
+
+									if (!found)
+									{
+										if (block_start != -1)
+										{
+											Server->Log("Damaged block found in file \"" + volpath + os_file_sep() + files[i].name + "\" at position " + convert(block_start)+" length "+PrettyPrintBytes((block_end-block_start)*getBlocksize()), LL_INFO);
+											block_start = -1;
+										}
+									}
+									else
+									{
+										if (block_start == -1)
+										{
+											block_start = last_vcn.QuadPart + (pos - ret_ptrs->Extents[i].Lcn.QuadPart);
+											block_end = block_start + 1;
+										}
+										else
+										{
+											block_end = last_vcn.QuadPart + (pos - ret_ptrs->Extents[i].Lcn.QuadPart) + 1;
+										}
+									}
+								}
+							}
+
+							last_vcn = ret_ptrs->Extents[i].NextVcn;
+						}
+					}
+
+					if (!b)
+					{
+						if (err == ERROR_MORE_DATA)
+						{
+							start_vcn.StartingVcn = ret_ptrs->Extents[ret_ptrs->ExtentCount - 1].NextVcn;
+						}
+						else if (err == ERROR_HANDLE_EOF)
+						{
+							CloseHandle(hFile);
+							break;
+						}
+						else
+						{
+							Server->Log("Error " + convert((int)GetLastError()) + " while accessing retrieval points", LL_WARNING);
+							CloseHandle(hFile);
+							break;
+						}
+					}
+					else
+					{
+						CloseHandle(hFile);
+						break;
+					}
+				}
+
+				if (block_start != -1)
+				{
+					Server->Log("Damaged block found in file \"" + volpath + os_file_sep() + files[i].name + "\" at position " + convert(block_start) + " length " + PrettyPrintBytes((block_end - block_start)*getBlocksize()), LL_INFO);
+					block_start = -1;
+				}
+			}
+			else
+			{
+				//Server->Log("Error opening file: " + volpath + os_file_sep() + files[i].name, LL_INFO);
+			}
+		}
+	}
 }
 
 void FSNTFSWIN::logFileChangesInt(const std::string& volpath, int64 min_size, char* fc_bitmap, int64& total_files, int64& total_changed_sectors)
