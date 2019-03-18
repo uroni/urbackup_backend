@@ -959,7 +959,7 @@ Do not start image backups if current estimated data usage limit per month is sm
 \subsubsection{Data usage limit estimation}
 \label{estimate_dataplan}
 
-Currently there are to machisms to estimate how much data the client can transfer per month with its current Internet connection. If the client is running on Windows 10, the client is connected via Wifi and the Wifi connection is set to be metered, the data usage limit is estimated at 1GB per month.
+Currently there are two mechanisms to estimate how much data the client can transfer per month with its current Internet connection. If the client is running on Windows 10, the client is connected via wifi and the wifi connection is set to be metered, the data usage limit is estimated at 1GB per month.
 Otherwise the dataplan database at \url{https://github.com/uroni/dataplan_db} is used to estimate the data usage limit via the clients hostname. You can see the hostname of your Internet connection e.g. on \url{http://ipinfo.io/}. If it is missing in the database, please contribute to the dataplan database.
 The dataplan database contains both hostnames where there is estimated to be a usage limit (e.g. mobile phone connection, plane, \ldots) and where they are estimated to be unlimited.
 If the the hostname is estimated to be unlimited, UrBackup will always start backups disregarding the setting. If there is no information about the hostname in the database, the data usage limit per month is estimated at 1TB. So if you set one of the settings above 1TB, backups will only start if the hostname is specified as unlimited in the dataplan database. If the hostname has a limit in the database, backups will only start if this limit is greater than the respective setting for the client. 
