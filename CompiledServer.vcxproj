@@ -304,6 +304,7 @@
     <ClCompile Include="OutputStream.cpp" />
     <ClCompile Include="PipeThrottler.cpp" />
     <ClCompile Include="Query.cpp" />
+    <ClCompile Include="SChannelPipe.cpp" />
     <ClCompile Include="SelectThread.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="ServerWin32.cpp" />
@@ -352,6 +353,7 @@
     <ClInclude Include="OutputStream.h" />
     <ClInclude Include="PipeThrottler.h" />
     <ClInclude Include="Query.h" />
+    <ClInclude Include="SChannelPipe.h" />
     <ClInclude Include="SelectThread.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="ServiceAcceptor.h" />

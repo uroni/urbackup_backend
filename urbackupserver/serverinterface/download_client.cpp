@@ -55,6 +55,7 @@ namespace
 		ret+="internet_mode_enabled="+convert(settingsptr->internet_mode_enabled)+"\r\n";
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
 		ret+="internet_server_port="+convert(settingsptr->internet_server_port)+"\r\n";
+		ret += "internet_server_proxy=" + settingsptr->internet_server_proxy + "\r\n";
 		ret+="internet_authkey="+(authkey.empty() ? settingsptr->internet_authkey : authkey ) +"\r\n";
 		if(!clientname.empty())
 		{

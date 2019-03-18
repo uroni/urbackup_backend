@@ -369,6 +369,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->image_letters=settings_default->getValue("image_letters", "C");
 	settings->backup_database=(settings_global->getValue("backup_database", "true")=="true");
 	settings->internet_server_port=(unsigned short)(atoi(settings_global->getValue("internet_server_port", "55415").c_str()));
+	settings->internet_server_proxy = settings_global->getValue("internet_server_proxy", "");
 	settings->client_set_settings=false;
 	settings->internet_server= settings_global->getValue("internet_server", "");
 	settings->internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");

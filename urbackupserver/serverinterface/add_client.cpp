@@ -29,6 +29,7 @@ ACTION_IMPL(add_client)
 			ret.set("new_authkey", new_authkey);
 			ret.set("internet_server", s->internet_server);
 			ret.set("internet_server_port", s->internet_server_port);
+			ret.set("internet_server_proxy", s->internet_server_proxy);
 			ret.set("added_new_client", true);
 		}
 		else

@@ -79,6 +79,7 @@ struct SSettings
 	std::string internet_server;
 	bool client_set_settings;
 	unsigned short internet_server_port;
+	std::string internet_server_proxy;
 	std::string internet_authkey;
 	bool internet_full_file_backups;
 	bool internet_image_backups;

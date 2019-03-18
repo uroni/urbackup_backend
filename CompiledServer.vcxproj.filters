@@ -159,6 +159,9 @@
     <ClCompile Include="Mutex_std.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SChannelPipe.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -372,6 +375,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Condition_std.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SChannelPipe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

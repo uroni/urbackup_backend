@@ -143,6 +143,7 @@ public:
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, BindTarget bindTarget=BindTarget_All)=0;
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms=0)=0;
+	virtual IPipe* ConnectSslStream(const std::string& pServer, unsigned short pPort, unsigned int pTimeoutms) = 0;
 	virtual IPipe *PipeFromSocket(SOCKET pSocket)=0;
 	virtual void DisconnectStream(IPipe *pipe)=0;
 	virtual std::string LookupHostname(const std::string& pIp)=0;

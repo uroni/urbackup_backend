@@ -56,6 +56,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("image_letters");
 	ret.push_back("internet_server");
 	ret.push_back("internet_server_port");
+	ret.push_back("internet_server_proxy");
 	ret.push_back("internet_authkey");
 	ret.push_back("internet_speed");
 	ret.push_back("local_speed");
@@ -146,6 +147,7 @@ std::vector<std::string> getGlobalizedSettingsList(void)
 	std::vector<std::string> ret;
 	ret.push_back("internet_server");
 	ret.push_back("internet_server_port");
+	ret.push_back("internet_server_proxy");
 	ret.push_back("server_url");
 	return ret;
 }
@@ -172,6 +174,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("backup_database");
 	ret.push_back("internet_server");
 	ret.push_back("internet_server_port");
+	ret.push_back("internet_server_proxy");
 	ret.push_back("global_local_speed");
 	ret.push_back("global_internet_speed");
 	ret.push_back("use_tmpfiles");

@@ -38,6 +38,7 @@
 
 #include <stdlib.h>
 #include <memory.h>
+#include <assert.h>
 
 #include "../cryptoplugin/ICryptoFactory.h"
 
@@ -221,7 +222,7 @@ void InternetClient::operator()(void)
 			{
 				if(n_connections<spare_connections)
 				{
-					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings), "internet client");
+					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings, NULL), "internet client");
 					newConnection();
 				}
 				else
@@ -278,6 +279,7 @@ void InternetClient::doUpdateSettings(void)
 	std::string server_name;
 	std::string computername;
 	std::string server_port="55415";
+	std::string server_proxy;
 	std::string authkey;
 	if(!settings->getValue("internet_authkey", &authkey) && !settings->getValue("internet_authkey_def", &authkey))
 	{
@@ -299,6 +301,8 @@ void InternetClient::doUpdateSettings(void)
 	{
 		computername=(IndexThread::getFileSrv()->getServerName());		
 	}
+	if (!settings->getValue("internet_server_proxy", &server_proxy))
+		settings->getValue("internet_server_proxy_def", &server_proxy);
 	if( (settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name))
 		&& !server_name.empty() )
 	{
@@ -311,18 +315,27 @@ void InternetClient::doUpdateSettings(void)
 		std::vector<std::string> server_ports;
 		Tokenize(server_port, server_ports, ";");
 
+		std::vector<std::string> server_proxies;
+		Tokenize(server_proxy, server_proxies, ";");
+
 		for(size_t i=0;i<server_names.size();++i)
 		{
+			SServerConnectionSettings connection_settings;
+			connection_settings.hostname = server_names[i];
 			if(i<server_ports.size())
 			{
-				server_settings.servers.push_back(std::make_pair(server_names[i],
-					static_cast<unsigned short>(atoi(server_ports[i].c_str()))));
+				connection_settings.port = static_cast<unsigned short>(atoi(server_ports[i].c_str()));
 			}
-			else
+			else if(!server_ports.empty())
 			{
-				server_settings.servers.push_back(std::make_pair(server_names[i],
-					static_cast<unsigned short>(atoi(server_ports[server_ports.size()-1].c_str()))));
+				connection_settings.port = static_cast<unsigned short>(atoi(server_ports[server_ports.size() - 1].c_str()));
 			}
+			if (i < server_proxies.size())
+				connection_settings.proxy = server_proxies[i];
+			else if(!server_proxies.empty())
+				connection_settings.proxy = server_proxies[server_proxies.size()-1];
+
+			server_settings.servers.push_back(connection_settings);
 		}
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
@@ -340,6 +353,7 @@ void InternetClient::doUpdateSettings(void)
 			connected = false;
 		}
 	}
+
 	std::string tmp;
 	server_settings.internet_compress=true;
 	if(settings->getValue("internet_compress", &tmp) || settings->getValue("internet_compress_def", &tmp) )
@@ -378,20 +392,20 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 
 	for(size_t i=0;i<server_settings.servers.size();++i)
 	{
-		std::string name=server_settings.servers[i].first;
-
-		unsigned short port=server_settings.servers[i].second;
+		SServerConnectionSettings selected_server_settings = server_settings.servers[i];
 
 		lock->relock(NULL);
-		Server->Log("Trying to connect to internet server \""+name+"\" at port "+convert(port), LL_DEBUG);
-		IPipe *cs=Server->ConnectStream(name, port, 10000);
+		Server->Log("Trying to connect to internet server \""+ selected_server_settings .hostname+"\" at port "+convert(selected_server_settings.port)
+			+ (selected_server_settings.proxy.empty() ? "" : (" via HTTP proxy "+ selected_server_settings.proxy)), LL_DEBUG);
+		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack);
+		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
 		if(cs!=NULL)
 		{
 			server_settings.selected_server=i;
 			Server->Log("Successfully connected.", LL_DEBUG);
 			setStatusMsg("connected");
-			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings), "internet client");
+			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings, tcpstack.release()), "internet client");
 			newConnection();
 			return true;
 		}
@@ -486,9 +500,16 @@ void InternetClient::setStatusMsg(const std::string& msg)
 	status_msg=msg;
 }
 
-InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)
-	: cs(cs), server_settings(server_settings)
+InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings, CTCPStack* tcpstack)
+	: cs(cs), server_settings(server_settings), tcpstack(tcpstack)
 {
+	if (this->tcpstack == NULL)
+		this->tcpstack = new CTCPStack(true);
+}
+
+InternetClientThread::~InternetClientThread()
+{
+	delete tcpstack;
 }
 
 char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms)
@@ -513,7 +534,6 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 
 void InternetClientThread::operator()(void)
 {
-	CTCPStack tcpstack(true);
 	bool finish_ok=false;
 	bool rm_connection=true;
 
@@ -522,20 +542,20 @@ void InternetClientThread::operator()(void)
 		int tries=10;
 		while(tries>0 && cs==NULL)
 		{
-			cs=Server->ConnectStream(server_settings.servers[server_settings.selected_server].first,
-				server_settings.servers[server_settings.selected_server].second, 10000);
+			cs = InternetClient::connect(server_settings.servers[server_settings.selected_server], *tcpstack);
 			--tries;
 			InternetClient::setStatusMsg("connecting_failed");
 			if(cs==NULL && tries>0)
 			{
-				Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
-					+ " failed. Retrying in 30s...", LL_INFO);
+				Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].hostname
+					+(server_settings.servers[server_settings.selected_server].proxy.empty() ? "" : (" via HTTP proxy " + server_settings.servers[server_settings.selected_server].proxy)) + " failed. Retrying in 30s...", LL_INFO);
 				Server->wait(30000);
 			}
 		}
 		if(cs==NULL)
 		{
-			Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
+			Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].hostname
+				+(server_settings.servers[server_settings.selected_server].proxy.empty() ? "" : (" via HTTP proxy " + server_settings.servers[server_settings.selected_server].proxy))
 				+ " failed", LL_INFO);
 			InternetClient::rmConnection();
 			InternetClient::setHasConnection(false);
@@ -572,7 +592,7 @@ void InternetClientThread::operator()(void)
 	{
 		char *buf;
 		size_t bufsize;
-		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
+		buf=getReply(tcpstack, cs, bufsize, ic_auth_timeout);	
 		if(buf==NULL)
 		{
 			Server->Log("Error receiving challenge packet");
@@ -663,7 +683,7 @@ void InternetClientThread::operator()(void)
 		
 		data.addString(client_challenge);
 		data.addUInt(pbkdf2_iterations);
-		tcpstack.Send(cs, data);
+		tcpstack->Send(cs, data);
 
 		challenge_response=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
 	}
@@ -671,7 +691,7 @@ void InternetClientThread::operator()(void)
 	{
 		char *buf;
 		size_t bufsize;
-		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
+		buf=getReply(tcpstack, cs, bufsize, ic_auth_timeout);	
 		if(buf==NULL)
 		{
 			Server->Log("Error receiving authentication response");
@@ -746,7 +766,7 @@ void InternetClientThread::operator()(void)
 
 		data.addUInt(capa);
 
-		tcpstack.Send(ics_pipe, data);
+		tcpstack->Send(ics_pipe, data);
 	}
 
 	comm_pipe=cs;
@@ -784,7 +804,7 @@ void InternetClientThread::operator()(void)
 			ping_timeout=ic_ping_timeout;
 		}
 
-		buf=getReply(&tcpstack, comm_pipe, bufsize, ping_timeout);
+		buf=getReply(tcpstack, comm_pipe, bufsize, ping_timeout);
 		if(buf==NULL)
 		{
 			goto cleanup;
@@ -801,7 +821,7 @@ void InternetClientThread::operator()(void)
 		{
 			CWData data;
 			data.addChar(ID_ISC_PONG);
-			tcpstack.Send(comm_pipe, data);
+			tcpstack->Send(comm_pipe, data);
 		}
 		else if(id==ID_ISC_CONNECT)
 		{
@@ -812,7 +832,7 @@ void InternetClientThread::operator()(void)
 			{
 				CWData data;
 				data.addChar(ID_ISC_CONNECT_OK);
-				tcpstack.Send(comm_pipe, data);
+				tcpstack->Send(comm_pipe, data);
 
 				InternetClient::rmConnection();
 				rm_connection=false;
@@ -868,7 +888,7 @@ cleanup:
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
-	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].first);
+	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].hostname);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
 	if(cc!=NULL)
 	{
@@ -933,4 +953,168 @@ void InternetClientThread::printInfo( IPipe * pipe )
 			Server->Log("Average sent paket size: "+PrettyPrintBytes(comp_pipe->getUncompressedSentBytes()/comp_pipe->getSentFlushes()));
 		}
 	}
+}
+
+IPipe * InternetClient::connect(const SServerConnectionSettings & selected_server_settings, CTCPStack& tcpstack)
+{
+	std::string proxy = selected_server_settings.proxy;
+	if (!proxy.empty())
+	{
+		bool ssl = false;
+		if (next(proxy, 0, "http://"))
+		{
+			ssl = false;
+			proxy = proxy.substr(7);
+		}
+		else if (next(proxy, 0, "https://"))
+		{
+			ssl = true;
+			proxy = proxy.substr(7);
+		}
+		
+		std::string authorization;
+		if (proxy.find("@") != std::string::npos)
+		{
+			std::string udata = getuntil("@", proxy);
+			proxy = getafter("@", proxy);
+
+			std::string username = getuntil(":", proxy);
+			std::string password = getafter(":", proxy);
+			std::string adata = username + ":" + password;
+
+			authorization = "Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
+		}
+
+		unsigned short port = ssl ? 443 : 80;
+		if (proxy.find(":") != std::string::npos)
+		{
+			port = static_cast<unsigned short>(watoi(getafter(":", proxy)));
+			proxy = getuntil(":", proxy);
+		}
+
+		IPipe* cs;
+		if (ssl)
+			cs = Server->ConnectSslStream(proxy, port, 10000);
+		else
+			cs = Server->ConnectStream(proxy, port, 10000);
+
+		if (cs == NULL)
+			return cs;
+
+		std::string connect_data = "CONNECT " + selected_server_settings.hostname + ":" + convert(selected_server_settings.port) + " HTTP/1.1\r\n"
+			+"Host: "+ selected_server_settings.hostname+"\r\n"
+			+ authorization+"\r\n";
+
+		if (!cs->Write(connect_data))
+		{
+			Server->destroy(cs);
+			return NULL;
+		}
+
+		char buf[512];
+		int64 starttime = Server->getTimeMS();
+		int state = 0;
+		std::string state_data;
+		int http_code = 0;
+		do
+		{
+			size_t rc = cs->Read(buf, sizeof(buf), 10000);
+
+			if (rc == 0)
+			{
+				break;
+			}
+
+			for (size_t i = 0; i < rc; ++i)
+			{
+				char ch = buf[i];
+				switch (state)
+				{
+				case 0:
+				{
+					if (ch == ' ')
+					{
+						if (strlower(state_data) != "http/1.1"
+							&& strlower(state_data) != "http/1.0")
+						{
+							Server->Log("Unknown HTTP protocol: " + state_data, LL_ERROR);
+							Server->destroy(cs);
+							return NULL;
+						}
+						state_data.clear();
+						++state;
+					}
+					else
+						state_data += ch;
+				}break;
+				case 1:
+				{
+					if (ch == ' ')
+					{
+						http_code = watoi(state_data);
+						state_data.clear();
+						++state;
+					}
+					else
+						state_data += ch;
+				}break;
+				case 2:
+				{
+					if (ch == '\n')
+					{
+						if (http_code != 200)
+						{
+							Server->Log("HTTP proxy returned error code " + convert(http_code) + " message \"" + state_data + "\"", LL_ERROR);
+							Server->destroy(cs);
+							return NULL;
+						}
+						state_data.clear();
+						++state;
+					}
+					else if (ch != '\r')
+					{
+						state_data += ch;
+					}
+				} break;
+				case 3:
+				{
+					if (ch == '\n')
+					{
+						if (i + 1 < rc)
+						{
+							tcpstack.AddData(&buf[i + 1], rc - i - 1);
+						}
+						return cs;
+					}
+					else if (ch != '\r')
+					{
+						++state;
+					}
+				} break;
+				case 4:
+				{
+					if (ch == '\n')
+					{
+						state = 3;
+					}
+				}break;
+				default:
+				{
+					assert(false);
+					Server->destroy(cs);
+					return NULL;
+				}break;
+				}
+			}
+
+		} while (Server->getTimeMS() - starttime < 10000);
+
+		Server->Log("Timeout connecting via http proxy");
+
+		Server->destroy(cs);
+		return NULL;
+	}
+	
+	return Server->ConnectStream(selected_server_settings.hostname,
+		selected_server_settings.port, 10000);
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Interface/Pipe.h"
 #include "socket_header.h"
 #include <vector>

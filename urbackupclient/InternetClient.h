@@ -13,9 +13,16 @@ class ICustomClient;
 class IScopedLock;
 class ICondition;
 
+struct SServerConnectionSettings
+{
+	std::string hostname;
+	std::string proxy;
+	unsigned short port;
+};
+
 struct SServerSettings
 {
-	std::vector<std::pair<std::string, unsigned short> > servers;
+	std::vector<SServerConnectionSettings> servers;
 	size_t selected_server;
 	std::string clientname;
 	std::string authkey;
@@ -58,6 +65,8 @@ public:
 
 	static void setStatusMsg(const std::string& msg);
 
+	static IPipe* connect(const SServerConnectionSettings& selected_settings, CTCPStack& tcpstack);
+
 private:
 
 	static IMutex *mutex;
@@ -77,7 +86,8 @@ private:
 class InternetClientThread : public IThread
 {
 public:
-	InternetClientThread(IPipe *cs, const SServerSettings &server_settings);
+	InternetClientThread(IPipe *cs, const SServerSettings &server_settings, CTCPStack* tcpstack);
+	~InternetClientThread();
 	void operator()(void);
 
 	char *getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms);
@@ -88,5 +98,6 @@ private:
 	std::string generateRandomBinaryAuthKey(void);
 	void printInfo( IPipe * pipe );
 	IPipe *cs;
+	CTCPStack* tcpstack;
 	SServerSettings server_settings;
 };

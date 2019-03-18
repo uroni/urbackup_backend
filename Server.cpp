@@ -57,8 +57,7 @@
 #include "PipeThrottler.h"
 #include "mt19937ar.h"
 #include "Query.h"
-
-
+#include "SChannelPipe.h"
 
 #ifdef _WIN32
 #include <condition_variable>
@@ -90,6 +89,7 @@
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
+
 
 const size_t SEND_BLOCKSIZE=8192;
 const size_t MAX_THREAD_ID=std::string::npos;
@@ -207,6 +207,8 @@ void CServer::setup(void)
 #ifdef MODE_WIN
 	File::init_mutex();
 #endif
+
+	SChannelPipe::init();
 }
 
 void CServer::destroyAllDatabases(void)
@@ -1135,6 +1137,28 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		closesocket(s);
 		return NULL;
 	}
+}
+
+IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pPort, unsigned int pTimeoutms)
+{
+	int64 starttime = Server->getTimeMS();
+	CStreamPipe* bpipe = static_cast<CStreamPipe*>(ConnectStream(pServer, pPort, pTimeoutms));
+
+	if (bpipe == NULL)
+		return NULL;
+
+	int64 remaining_time = pTimeoutms - (Server->getTimeMS() - starttime);
+	if (remaining_time < 0) remaining_time = 0;
+
+	SChannelPipe* ssl_pipe = new SChannelPipe(bpipe);
+
+	if (!ssl_pipe->ssl_connect(pServer, static_cast<int>(remaining_time)))
+	{
+		delete ssl_pipe;
+		return NULL;
+	}
+
+	return ssl_pipe;
 }
 
 IPipe *CServer::PipeFromSocket(SOCKET pSocket)
