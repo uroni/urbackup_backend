@@ -644,7 +644,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			if (!select_vars.empty() && select_vars != "*")
 			{
 				std::vector<std::string> return_exp_vars;
-				TokenizeMail(select_vars, return_exp_vars, ",");
+				Tokenize(select_vars, return_exp_vars, ",");
 				for (size_t i = 0; i < return_exp_vars.size(); ++i)
 				{
 					return_exp_vars[i] = trim(return_exp_vars[i]);

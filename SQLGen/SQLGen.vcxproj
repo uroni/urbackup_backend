@@ -84,7 +84,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\boost</AdditionalIncludeDirectories>
       <AdditionalOptions>/F 10048576 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -102,7 +102,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;DO_NOT_USE_CRYPTOPP_MD5;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\boost</AdditionalIncludeDirectories>
       <AdditionalOptions>/F 10048576 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
