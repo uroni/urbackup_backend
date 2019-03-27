@@ -1195,7 +1195,7 @@ void BackupServer::runServerRecovery(IDatabase * db)
 		}
 	}
 
-	IQuery* q_set_done = db->Prepare("UPDATE backups SET done=0 WHERE id=?");
+	IQuery* q_set_done = db->Prepare("UPDATE backups SET done=0, complete=0 WHERE id=?");
 	std::auto_ptr<FileCleanups> file_cleanups(new FileCleanups);
 	for (size_t i = 0; i < to_delete.size(); ++i)
 	{
