@@ -2320,7 +2320,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 
 		bool curr_flush = rc<count;
 
-		if (last_flush_foffset - foffset>1 * 1024 * 1024)
+		if (foffset - last_flush_foffset>1 * 1024 * 1024)
 		{
 			curr_flush = true;
 			last_flush_foffset = foffset;
