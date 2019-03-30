@@ -708,7 +708,11 @@ bool FileClient::Reconnect(void)
 
 	resetSparseExtentsFile();
 
-	setReconnectTries(50);
+	{
+		IScopedLock lock(mutex);
+		if (reconnect_tries < 50)
+			reconnect_tries = 50;
+	}
 
 	if(!hashed && protocol_version>1)
 	{
