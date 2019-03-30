@@ -774,6 +774,7 @@ bool FileClient::Reconnect(void)
 	last_progress_log=0;
 
     starttime=Server->getTimeMS();
+	int64 last_timeouttime = 0;
 
 
 	enum EReceiveState
@@ -830,11 +831,26 @@ bool FileClient::Reconnect(void)
         if( rc==0 )
         {
 			Server->Log("Server timeout (2) in FileClient", LL_DEBUG);
+
+			if (last_timeouttime == 0
+				|| Server->getTimeMS() - last_timeouttime>30*60*1000)
+			{
+				IScopedLock lock(mutex);
+				if (reconnect_tries < 50)
+					reconnect_tries = 50;
+			}
+
+			last_timeouttime = Server->getTimeMS();
+
 			bool b = false;
 			int tries = getReconnectTriesDecr();
 			if (tries > 0)
 			{
 				b = Reconnect();
+			}
+			else
+			{
+				Server->Log("FileClient: Reconnect tries exhausted (1)", LL_INFO);
 			}
 			if(!b )
 			{
@@ -885,11 +901,25 @@ bool FileClient::Reconnect(void)
 				{
 					Server->Log("Timeout during file request (4). Reconnecting...", LL_DEBUG);
 
+					if (last_timeouttime == 0
+						|| Server->getTimeMS() - last_timeouttime>30 * 60 * 1000)
+					{
+						IScopedLock lock(mutex);
+						if (reconnect_tries < 50)
+							reconnect_tries = 50;
+					}
+
+					last_timeouttime = Server->getTimeMS();
+
 					bool b = false;
 					int tries = getReconnectTriesDecr();
 					if (tries > 0)
 					{
 						b = Reconnect();
+					}
+					else
+					{
+						Server->Log("FileClient: Reconnect tries exhausted (2)", LL_INFO);
 					}
 					if (!b)
 					{
@@ -1269,11 +1299,18 @@ bool FileClient::Reconnect(void)
 	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
 			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
+
+			last_timeouttime = Server->getTimeMS();
+
 			bool b = false;
 			int tries = getReconnectTriesDecr();
 			if (tries > 0)
 			{
 				b = Reconnect();
+			}
+			else
+			{
+				Server->Log("FileClient: Reconnect tries exhausted (3)", LL_INFO);
 			}
 			if(!b)
 			{
