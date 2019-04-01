@@ -666,7 +666,7 @@ void ClientMain::operator ()(void)
 				}
 			}
 
-			if ((next_capa_update != 0 && next_capa_update > Server->getTimeMS()))
+			if ((next_capa_update != 0 && next_capa_update <= Server->getTimeMS()))
 			{
 				updateCapabilities(NULL);
 
