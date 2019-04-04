@@ -1431,7 +1431,6 @@ ACTION_IMPL(backups)
 	}
 
 	std::string sa=CURRP["sa"];
-	std::string rights=helper.getRights("browse_backups");
 	std::string archive_rights=helper.getRights("manual_archive");
 	std::string delete_rights = helper.getRights("delete_backups");
 	std::vector<int> clientid;
