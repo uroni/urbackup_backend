@@ -1376,6 +1376,7 @@ ACTION_IMPL(backups)
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 
+	std::string rights = helper.getRights("browse_backups");
 	bool has_tokens = CURRP.find("tokens0")!=CURRP.end();
 
 	bool token_authentication=false;
@@ -1406,7 +1407,8 @@ ACTION_IMPL(backups)
 			}
 		}
 	}
-	else if(session!=NULL && session->id==SESSION_ID_TOKEN_AUTH)
+	else if(session!=NULL && session->id==SESSION_ID_TOKEN_AUTH
+		&& rights!=RIGHT_ALL)
 	{
 		fileaccesstokens = session->mStr["fileaccesstokens"];
 		if(!fileaccesstokens.empty())
