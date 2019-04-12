@@ -410,6 +410,7 @@ size_t ServerDownloadThread::insertFullQueueEarliest(const SQueueItem& ni, bool 
 	size_t idx=0;
 	size_t earlies_other_idx;
 	bool no_queued=true;
+	bool needs_postpone = false;
 	std::deque<SQueueItem>::iterator earliest_other=dl_queue.end();
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();it!=dl_queue.end();++it)
 	{
@@ -420,6 +421,9 @@ size_t ServerDownloadThread::insertFullQueueEarliest(const SQueueItem& ni, bool 
 			{
 				if (!after_switched || !it->switched)
 				{
+					if (needs_postpone)
+						max_file_id.postponeDownloaded(ni.id);
+
 					if (earliest_other != dl_queue.end())
 					{
 						dl_queue.insert(earliest_other, ni);
@@ -439,12 +443,25 @@ size_t ServerDownloadThread::insertFullQueueEarliest(const SQueueItem& ni, bool 
 			}
 			else
 			{
+				if (it->id != std::string::npos
+					&& it->id>ni.id)
+				{
+					needs_postpone = true;
+				}
+
 				no_queued=false;
 				earliest_other=dl_queue.end();
 			}
 		}
 		else
 		{
+			if (it->id != std::string::npos
+				&& it->queued
+				&& it->id>ni.id)
+			{
+				needs_postpone = true;
+			}
+
 			if(earliest_other==dl_queue.end())
 			{
 				earliest_other = it;
@@ -453,6 +470,10 @@ size_t ServerDownloadThread::insertFullQueueEarliest(const SQueueItem& ni, bool 
 		}
 		++idx;
 	}
+
+	if (needs_postpone)
+		max_file_id.postponeDownloaded(ni.id);
+
 	if(no_queued)
 	{
 		dl_queue.push_front(ni);

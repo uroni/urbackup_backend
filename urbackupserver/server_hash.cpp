@@ -206,7 +206,7 @@ void BackupServerHash::operator()(void)
 					}
 
 					addFile(backupid, incremental, tf, tfn, hashpath, sha2,
-						old_file_fn, hashoutput_fn, t_filesize, metadata, with_hashes!=0, extent_iterator.get());
+						old_file_fn, hashoutput_fn, t_filesize, metadata, with_hashes!=0, extent_iterator.get(), fileid);
 				}
 
 				if(!hashoutput_fn.empty())
@@ -272,8 +272,6 @@ void BackupServerHash::operator()(void)
 						}
 					}
 				}
-
-				max_file_id.setMaxDownloaded(fileid);
 			}
 		}
 	}
@@ -850,7 +848,7 @@ bool BackupServerHash::findFileAndLink(const std::string &tfn, IFile *tf, std::s
 
 void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
 	std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-	FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator)
+	FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator, int64 fileid)
 {
 	bool copy=true;
 	bool tries_once = false;
@@ -867,7 +865,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, false, extent_iterator))
 	{
-		ServerLogger::Log(logid, "HT: Linked file: \""+tfn+"\"", LL_DEBUG);
+		ServerLogger::Log(logid, "HT: Linked file: \""+tfn+"\" (id="+convert(fileid)+")", LL_DEBUG);
 		copy=false;
 		std::string temp_fn=tf->getFilename();
 		Server->destroy(tf);
@@ -895,7 +893,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	
 	if(copy)
 	{
-		ServerLogger::Log(logid, "HT: Copying file: \""+tfn+"\"", LL_DEBUG);
+		ServerLogger::Log(logid, "HT: Copying file: \""+tfn+"\" (id=" + convert(fileid) + ")", LL_DEBUG);
 		int64 fs=tf->Size();
 		if(!use_reflink)
 		{

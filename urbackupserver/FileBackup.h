@@ -91,6 +91,24 @@ public:
 	void setMaxDownloaded(size_t id)
 	{
 		IScopedLock lock(mutex.get());
+
+		for (size_t i = 0; i < postponed.size();)
+		{
+			if (postponed[i] == id)
+			{
+				postponed.erase(postponed.begin() + i);
+			}
+			else if (id > postponed[i])
+			{
+				id = postponed[i] - 1;
+				++i;
+			}
+			else
+			{
+				++i;
+			}
+		}
+
 		max_downloaded = id + 1;
 		if (max_downloaded >= min_downloaded)
 		{
@@ -115,11 +133,41 @@ public:
 		return false;
 	}
 
+	std::string info()
+	{
+		IScopedLock lock(mutex.get());
+		std::string ret= "max_downloaded="+convert(max_downloaded)
+			+" max_preprocessed="+convert(max_preprocessed)
+			+" min_downloaded="+convert(min_downloaded)+" postponed.size="+convert(postponed.size());
+
+		if (!postponed.empty())
+		{
+			ret += " postponed:";
+			for (size_t i = 0; i < postponed.size(); ++i)
+				ret += " " + convert(postponed[i]);
+		}
+
+		return ret;
+	}
+
+	size_t get_max_preprocessed()
+	{
+		IScopedLock lock(mutex.get());
+		return max_preprocessed;
+	}
+
+	void postponeDownloaded(size_t id)
+	{
+		IScopedLock lock(mutex.get());
+		postponed.push_back(id);
+	}
+
 private:
 	std::auto_ptr<IMutex> mutex;
 	size_t max_downloaded;
 	size_t max_preprocessed;
 	size_t min_downloaded;
+	std::vector<size_t> postponed;
 };
 
 class FileBackup : public Backup, public FileClient::ProgressLogCallback, public FileClient::NoFreeSpaceCallback,

@@ -370,7 +370,9 @@ bool FileMetadataDownloadThread::applyMetadata( const std::string& backup_metada
 				if (output_f.get() == NULL
 					&& ftype == 0)
 				{
-					ServerLogger::Log(logid, "Metadata file and \"" + backup_dir + os_file_sep() + os_path + "\" do not exist. Skipping applying metdata for this file.", isComplete() ? LL_WARNING : LL_DEBUG);
+					ServerLogger::Log(logid, "Metadata file and \"" + backup_dir + os_file_sep() + os_path + "\" (id="+convert(metadata_id)+") do not exist. Skipping applying metdata for this file."
+						+(force_start ? " (force start)" : ""), isComplete() ? LL_WARNING : LL_DEBUG);
+					ServerLogger::Log(logid, max_file_id->info(), LL_DEBUG);
 				}
 				else if (output_f.get() == NULL)
 				{
