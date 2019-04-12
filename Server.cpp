@@ -1014,7 +1014,10 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 {
 	sockaddr_in server;
 	memset(&server, 0, sizeof(server));
-	LookupBlocking(pServer, &server.sin_addr);
+	if (!LookupBlocking(pServer, &server.sin_addr))
+	{
+		return NULL;
+	}
 	server.sin_port = htons(pPort);
 	server.sin_family = AF_INET;
 
