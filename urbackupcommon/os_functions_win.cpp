@@ -117,6 +117,8 @@ void getMousePos(int &x, int &y)
 const int64 WINDOWS_TICK=10000000;
 const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
 
+bool os_is_symlink_int(const std::string& path);
+
 int64 os_windows_to_unix_time(int64 windows_filetime)
 {	
 	return windows_filetime / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
