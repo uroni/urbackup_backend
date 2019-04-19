@@ -48,7 +48,8 @@ struct SProtocolVersions
 				client_bitmap_version(0), cmd_version(0),
 				symbit_version(0), phash_version(0),
 				wtokens_version(0), update_vols(0),
-				update_capa_interval(0)
+				update_capa_interval(0), require_previous_cbitmap(0),
+				async_index_version(0)
 			{
 
 			}

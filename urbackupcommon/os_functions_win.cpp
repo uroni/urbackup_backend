@@ -401,6 +401,15 @@ SFile getFileMetadataWin( const std::string &path, bool with_usn )
 
 		ret.accessed = os_windows_to_unix_time(lwt.QuadPart);
 
+		if (fad.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+		{
+			if (os_is_symlink_int(path))
+			{
+				ret.issym = true;
+			}
+			ret.isspecialf = true;
+		}
+
 		if(with_usn && !ret.isdir && !(fad.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
 		{
 			HANDLE hFile = CreateFileW(ConvertToWchar(path).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,

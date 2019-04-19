@@ -365,7 +365,7 @@ void ServerUpdateStats::updateSizes(std::map<int, _i64> & size_data)
 	for(std::map<int, _i64>::iterator it=size_data.begin();it!=size_data.end();++it)
 	{
 		q_size_update->Bind(it->second);
-		q_size_update->Bind(it->first);
+		q_size_update->Bind(it->first>=0 ? it->first : 0);
 		q_size_update->Write();
 		q_size_update->Reset();
 	}
@@ -408,7 +408,7 @@ void ServerUpdateStats::updateBackups(std::map<int, _i64> &data)
 	for(std::map<int, _i64>::iterator it=data.begin();it!=data.end();++it)
 	{
 		q_update_backups->Bind(it->second);
-		q_update_backups->Bind(it->first);
+		q_update_backups->Bind(it->first>=0 ? it->first : 0);
 		q_update_backups->Write();
 		q_update_backups->Reset();
 	}

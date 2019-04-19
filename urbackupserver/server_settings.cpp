@@ -356,7 +356,6 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->exclude_files=settings_default->getValue("exclude_files", "");
 	settings->include_files=settings_default->getValue("include_files", "");
 	settings->default_dirs=settings_default->getValue("default_dirs", "");
-	settings->backup_dirs_optional = settings_default->getValue("backup_dirs_optional", "false") == "true";
 	settings->cleanup_window= settings_global->getValue("cleanup_window", "1-7/3-4");
 	settings->allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
 	settings->allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
@@ -514,7 +513,6 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	if(!stmp.empty())
 		settings->local_speed=stmp;
 
-	readBoolClientSetting(settings_client, "backup_dirs_optional", &settings->backup_dirs_optional);
 	readBoolClientSetting(settings_client, "client_set_settings", &settings->client_set_settings);
 	readBoolClientSetting(settings_client, "internet_mode_enabled", &settings->internet_mode_enabled);
 	readBoolClientSetting(settings_client, "internet_full_file_backups", &settings->internet_full_file_backups);

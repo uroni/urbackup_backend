@@ -66,7 +66,7 @@ public:
 	virtual const unsigned char *getBitmap(void)=0;
 
 	virtual bool hasBlock(int64 pBlock)=0;
-	virtual char* readBlock(int64 pBlock, bool* p_has_error = NULL)=0;
+	virtual char* readBlock(int64 pBlock)=0;
 	virtual std::vector<int64> readBlocks(int64 pStartBlock, unsigned int n,
 		const std::vector<char*>& buffers, unsigned int buffer_offset=0)=0;
 	virtual bool hasError(void)=0;

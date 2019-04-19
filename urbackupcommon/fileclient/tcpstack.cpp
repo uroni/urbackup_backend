@@ -31,22 +31,29 @@ CTCPStack::CTCPStack(bool add_checksum, size_t max_packet_size)
 {
 }
 
-void CTCPStack::AddData(char* buf, size_t datasize)
+bool CTCPStack::AddData(const char* buf, size_t datasize)
 {
 	if(datasize>0)
 	{
 		size_t osize=buffer.size();
+
+		if (osize + datasize > max_packet_size)
+			return false;
+
 		buffer.resize(osize+datasize);
 		memcpy(&buffer[osize], buf, datasize);
 	}
+
+	return true;
 }
 
-void CTCPStack::AddData( std::string data )
+bool CTCPStack::AddData(const std::string& data )
 {
 	if(!data.empty())
 	{
-		AddData(&data[0], data.size());
+		return AddData(&data[0], data.size());
 	}
+	return true;
 }
 
 size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms, bool flush)

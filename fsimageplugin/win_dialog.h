@@ -1,5 +1,4 @@
 #include <Windows.h>
-#include <Shlobj.h>
 #include <string>
 #include "../Interface/Server.h"
 
@@ -95,27 +94,5 @@ namespace
 		{
 			return std::vector<std::string>();
 		}
-	}
-
-	std::string select_dir_via_dialog(const std::string& title)
-	{
-		//Function leaks memory
-		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-
-		BROWSEINFOW bi = { };
-		std::wstring wtitle = Server->ConvertToWchar(title);
-		bi.lpszTitle = wtitle.c_str();
-
-		LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
-		if (pidl != 0)
-		{
-			wchar_t path[MAX_PATH];
-			if (SHGetPathFromIDList(pidl, path))
-			{
-				return Server->ConvertFromWchar(path);
-			}
-		}
-
-		return std::string();
 	}
 }

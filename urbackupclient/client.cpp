@@ -401,8 +401,7 @@ std::string add_trailing_slash(const std::string &strDirName)
 
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0), index_group(-1),
-	with_scripts(false), volumes_cache(NULL), phash_queue(NULL),
-	index_backup_dirs_optional(false)
+	with_scripts(false), volumes_cache(NULL), phash_queue(NULL)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -1324,8 +1323,7 @@ void IndexThread::operator()(void)
 void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
-		index_exclude_dirs, index_include_dirs,
-		index_backup_dirs_optional);
+		index_exclude_dirs, index_include_dirs);
 	file_id = 0;
 
 	updateDirs();
@@ -1547,12 +1545,6 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 
 			bool shadowcopy_optional = (backup_dirs[i].flags & EBackupDirFlag_Optional)
 				|| (backup_dirs[i].symlinked && (backup_dirs[i].flags & EBackupDirFlag_SymlinksOptional) );
-
-			if (!shadowcopy_optional && !(backup_dirs[i].flags & EBackupDirFlag_Required)
-				&& !backup_dirs[i].symlinked && index_backup_dirs_optional)
-			{
-				shadowcopy_optional = true;
-			}
 
 			bool onlyref=false;
 			bool stale_shadowcopy=false;
@@ -1940,11 +1932,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 		if(!(filetype & EFileType_File) && !(filetype & EFileType_Directory))
 		{
-			if(!(flags & EBackupDirFlag_Optional) 
-				&& (!symlinked || !(flags & EBackupDirFlag_SymlinksOptional) )
-				&& ( (flags & EBackupDirFlag_Required)
-					 || symlinked
-					 || !index_backup_dirs_optional ) )
+			if(!(flags & EBackupDirFlag_Optional) && (!symlinked || !(flags & EBackupDirFlag_SymlinksOptional) ) )
 			{
 				std::string err_msg;
 				int64 errcode = os_last_error(err_msg);
@@ -3529,12 +3517,8 @@ std::string IndexThread::sanitizePattern(const std::string &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
-	std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
-	bool& backup_dirs_optional)
+void IndexThread::readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs)
 {
-	backup_dirs_optional = false;
-
 	std::string exclude_pattern_key = "exclude_files";
 	std::string include_pattern_key = "include_files";
 
@@ -3567,11 +3551,6 @@ void IndexThread::readPatterns(int index_group, std::string index_clientsubname,
 		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+"_def", &val) )
 		{
 			include_dirs = parseIncludePatterns(val);
-		}
-
-		if (curr_settings->getValue("backup_dirs_optional", &val) || curr_settings->getValue("backup_dirs_optional_def", &val))
-		{
-			backup_dirs_optional = val == "true";
 		}
 
 		Server->destroy(curr_settings);

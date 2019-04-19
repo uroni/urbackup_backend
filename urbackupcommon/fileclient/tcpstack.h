@@ -15,8 +15,8 @@ class CTCPStack
 {
 public:
 	CTCPStack(bool add_checksum=false, size_t max_packet_size=100*1024*1024);
-	void AddData(char* buf, size_t datasize);
-	void AddData(std::string data);
+	bool AddData(const char* buf, size_t datasize);
+	bool AddData(const std::string& data);
 
 	char* getPacket(size_t* packsize);
 	bool getPacket(std::string& msg);

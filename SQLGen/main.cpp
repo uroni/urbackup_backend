@@ -5,7 +5,7 @@
 #include "sqlgen.h"
 #include "../stringtools.h"
 
-CServer *Server;
+IServer *Server;
 DATABASE_ID maindb=0;
 bool run=false;
 
@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 	}
 
 	Server=new CServer;
-	Server->setup();
+	reinterpret_cast<CServer*>(Server)->setup();
 
 	std::string sqlite_db_str=argv[1];
 	std::string cppfile=argv[2];
