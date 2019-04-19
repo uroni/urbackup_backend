@@ -99,7 +99,7 @@ public:
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::string &tfn,
 			std::string hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-			FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator);
+			FileMetadata& metadata, bool with_hashes, ExtentIterator* extent_iterator, int64 fileid);
 			
 	struct SFindState
 	{
