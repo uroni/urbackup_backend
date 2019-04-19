@@ -363,7 +363,9 @@ public:
 
 	static bool normalizeVolume(std::string& volume);
 
-	static void readPatterns(int index_group, std::string index_clientsubname, std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs);
+	static void readPatterns(int index_group, std::string index_clientsubname,
+		std::vector<std::string>& exclude_dirs, std::vector<SIndexInclude>& include_dirs,
+		bool& backup_dirs_optional);
 
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 
@@ -621,6 +623,7 @@ private:
 
 	std::vector<std::string> index_exclude_dirs;
 	std::vector<SIndexInclude> index_include_dirs;
+	bool index_backup_dirs_optional;
 
 	int64 last_transaction_start;
 

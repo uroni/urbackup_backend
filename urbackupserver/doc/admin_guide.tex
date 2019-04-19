@@ -797,6 +797,8 @@ Excluded files & Allows you to define which files should be excluded from backup
 \hline
 Default directories to backup & Default directories which are backed up. See section \ref{subsub_default_dirs} for details & ""\\
 \hline
+Directories to backup are optional by default & If checked the client will not fail backups if directories which are configured to be backed up during file backups are missing. & Unchecked\\
+\hline
 Volumes to backup & Specifies of which volumes an image backup is done. Separate different drive letters by a semicolon or comma. E.g. 'C;D'. Use the special setting ``ALL'' to backup all volumes and ``ALL\_NONUSB'' to backup all volumes except those attached via USB. & C \\
 \hline
 Image backup file format & Either standard VHD (VirtualHard Disk), compressed VHD (VHDZ) or if backup storage is on the btrfs file system ``Raw copy-on-write file''. & VHD btrfs: Raw cow file\\
@@ -903,6 +905,8 @@ require\_snapshot & Fail backup if no snapshot/shadow copy can be created of the
 share\_hashes & Share file hashes between different virtual clients & Default\\
 \hline
 keep & Keep deleted files and directories during incremental backups & Not default\\
+\hline
+required & If the setting "Directories to backup are optional by default" only directories the this flag will fail the backup if they are unavailable & Not default\\
 \hline
 \end{tabular}
 \par\null\par
@@ -1439,7 +1443,7 @@ Note: It is assumed that UrBackup runs on a UNIX like system such as Linux or BS
 First setup the server such that the temporary directory (/tmp) is on a sufficiently large performant file system. If you have a raid setup you could set /tmp to be on a striped device. We will now create a backup storage file system in /media/BACKUP.\\
 Create a ZFS-pool 'backup' from the two hard drives. The two are mirrored. Put a hard drive of the same size into the hot swappable hard drive slot. We will mirror it as well:
 \begin{verbatim}
-zpool create backup /dev/sdb /dev/sdc /dev/sdd cache /dev/sde -m /media/BACKUP
+zpool create backup mirror /dev/sdb /dev/sdc /dev/sdd cache /dev/sde -m /media/BACKUP
 \end{verbatim}
 Enable de-duplication and compression. You do not need to set a quota as de-duplication fragments everything anyway (that's why we need the caching device).
 \begin{verbatim}

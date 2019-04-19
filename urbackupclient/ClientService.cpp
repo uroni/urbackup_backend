@@ -1390,6 +1390,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					{
 						flags |= EBackupDirFlag_KeepFiles;
 					}
+					else if (flag == "required" || flag == "require")
+					{
+						flags |= EBackupDirFlag_Required;
+					}
 				}
 				name.resize(flags_off);
 			}

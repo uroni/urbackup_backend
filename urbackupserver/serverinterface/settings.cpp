@@ -150,6 +150,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(exclude_files);
 	SET_SETTING(include_files);
 	SET_SETTING(default_dirs);
+	SET_SETTING(backup_dirs_optional);
 	SET_SETTING(allow_config_paths);
 	SET_SETTING(allow_starting_full_file_backups);
 	SET_SETTING(allow_starting_incr_file_backups);
