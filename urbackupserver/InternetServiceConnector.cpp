@@ -250,7 +250,8 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 	size_t rc;
 	rc=comm_pipe->Read(&ret);
 
-	if(rc==0)
+	if(rc==0 
+		|| !tcpstack.AddData((char*)ret.c_str(), ret.size()))
 	{
 		if( state!=ISS_CONNECTING && state!=ISS_USED )
 		{
@@ -263,8 +264,6 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 		}
 		return;
 	}
-
-	tcpstack.AddData((char*)ret.c_str(), ret.size());
 
 	char *buf;
 	size_t packetsize;
