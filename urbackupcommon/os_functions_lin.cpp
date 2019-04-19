@@ -890,6 +890,17 @@ SFile getFileMetadata( const std::string &path )
 			ret.isdir = true;
 		}
 
+		if (S_ISLNK(f_info.st_mode))
+		{
+			ret.issym = true;
+			ret.isspecialf = true;
+		}
+
+		if (!ret.isdir && !S_ISREG(f_info.st_mode))
+		{
+			ret.isspecialf = true;
+		}
+
 		ret.size = f_info.st_size;
 		ret.last_modified = f_info.st_mtime;
 		ret.created = f_info.st_ctime;
