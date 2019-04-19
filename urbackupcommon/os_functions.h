@@ -230,4 +230,6 @@ bool os_enable_prioritize(SPrioInfo& prio_info, EPrio prio);
 
 bool os_disable_prioritize(SPrioInfo& prio_info);
 
+size_t os_get_num_cpus();
+
 #endif //OS_FUNCTIONS_H

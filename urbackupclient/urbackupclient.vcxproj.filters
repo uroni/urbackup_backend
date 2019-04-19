@@ -189,6 +189,9 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.cpp">
       <Filter>sha2</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipeZstd.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -346,6 +349,9 @@
     </ClInclude>
     <ClInclude Include="ClientHash.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipeZStd.h">
+      <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

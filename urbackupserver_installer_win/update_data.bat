@@ -17,6 +17,9 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 copy /Y "..\release\luaplugin.dll" "data\luaplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
+copy /Y "..\deps\redist\libzstd_x86.dll" "data\libzstd.dll"
+if %errorlevel% neq 0 exit /b %errorlevel% 
+
 mkdir data_common
 
 copy /Y "..\server-license.txt" "data_common\license.txt"
@@ -83,3 +86,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\luaplugin.dll" "data_x64\luaplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
+
+copy /Y "..\deps\redist\libzstd_x86_64.dll" "data_x64\libzstd.dll"
+if %errorlevel% neq 0 exit /b %errorlevel%
+

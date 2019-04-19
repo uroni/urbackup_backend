@@ -33,6 +33,7 @@
 #include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe2.h"
+#include "../urbackupcommon/CompressedPipeZstd.h"
 
 #include "../stringtools.h"
 
@@ -761,8 +762,15 @@ void InternetClientThread::operator()(void)
 		if(server_settings.internet_encrypt )
 			capa|=IPC_ENCRYPTED;
 
-		if(server_settings.internet_compress && server_capa & IPC_COMPRESSED )
-			capa|=IPC_COMPRESSED;
+		if (server_settings.internet_compress)
+		{
+			if (server_capa & IPC_COMPRESSED)
+				capa |= IPC_COMPRESSED;
+#ifndef NO_ZSTD_COMPRESSION
+			if (server_capa & IPC_COMPRESSED_ZSTD)
+				capa |= IPC_COMPRESSED_ZSTD;
+#endif
+		}
 
 		data.addUInt(capa);
 
@@ -776,7 +784,14 @@ void InternetClientThread::operator()(void)
 		ics_pipe->setBackendPipe(comm_pipe);
 		comm_pipe=ics_pipe;
 	}
-	if( capa & IPC_COMPRESSED )
+#ifndef NO_ZSTD_COMPRESSION
+	if (capa & IPC_COMPRESSED_ZSTD)
+	{
+		comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
+		comm_pipe = comp_pipe;
+	}
+#endif
+	else if( capa & IPC_COMPRESSED )
 	{
 		comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
 		comm_pipe=comp_pipe;

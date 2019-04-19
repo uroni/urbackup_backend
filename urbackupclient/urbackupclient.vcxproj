@@ -27,6 +27,7 @@
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp" />
+    <ClCompile Include="..\urbackupcommon\CompressedPipeZstd.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\ExtentIterator.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
@@ -85,6 +86,7 @@
     <ClInclude Include="..\urbackupcommon\change_ids.h" />
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe2.h" />
+    <ClInclude Include="..\urbackupcommon\CompressedPipeZStd.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\ExtentIterator.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
@@ -235,14 +237,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
-      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -285,13 +287,13 @@
       <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>cryptlib_x86_64.lib;zlib_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cryptlib_x86_64.lib;zlib_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX64</TargetMachine>
-      <AdditionalLibraryDirectories>$(CryptoppLibDir);$(ZlibLibDir);$(SolutionDir)/deps/libs;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CryptoppLibDir);$(ZlibLibDir);$(SolutionDir)/deps/libs;$(ZstdLibDir)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

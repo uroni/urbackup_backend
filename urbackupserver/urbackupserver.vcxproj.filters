@@ -375,6 +375,9 @@
     <ClCompile Include="serverinterface\status_check.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipeZstd.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

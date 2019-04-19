@@ -25,6 +25,7 @@
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
 #include "../urbackupcommon/CompressedPipe2.h"
+#include "../urbackupcommon/CompressedPipeZStd.h"
 #include "../urbackupcommon/CompressedPipe.h"
 #include "server_settings.h"
 #include "database.h"
@@ -124,6 +125,9 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 		SSettings *settings=server_settings.getSettings();
 		capa|=IPC_ENCRYPTED;
 		capa|=IPC_COMPRESSED;
+#ifndef NO_ZSTD_COMPRESSION
+		capa |= IPC_COMPRESSED_ZSTD;
+#endif
 
 		compression_level=settings->internet_compression_level;
 		data.addUInt(capa);
@@ -456,7 +460,28 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 								comm_pipe=is_pipe;
 								capa_debug_str += std::string("encrypted-") + (conn_version==2 ? "v2" : "v1");
 							}	
-							if(capa & IPC_COMPRESSED )
+							if (capa & IPC_COMPRESSED_ZSTD)
+							{
+#ifndef NO_ZSTD_COMPRESSION
+								if (conn_version == 2)
+								{
+									comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
+								}
+								else
+								{
+									Server->Log("Unknown connection version " + convert((int)conn_version) + " in state ISS_CAPA -1", LL_ERROR);
+									assert(false);
+								}
+
+								comm_pipe = comp_pipe;
+
+								if (!capa_debug_str.empty()) capa_debug_str += ", ";
+								capa_debug_str += "compressed-zstd";
+#else
+								Server->Log("Server does not support zstd compression in ISS_CAPA", LL_ERROR);
+#endif
+							}
+							else if(capa & IPC_COMPRESSED )
 							{
 								if(conn_version==1)
 								{

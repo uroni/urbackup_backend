@@ -1235,3 +1235,7 @@ bool os_sync(const std::string & path)
 #endif
 }
 
+size_t os_get_num_cpus()
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}

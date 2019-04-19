@@ -1708,3 +1708,10 @@ bool os_disable_prioritize(SPrioInfo & prio_info)
 {
 	return SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL) == TRUE;
 }
+
+size_t os_get_num_cpus()
+{
+	SYSTEM_INFO system_info;
+	GetSystemInfo(&system_info);
+	return system_info.dwNumberOfProcessors;
+}
