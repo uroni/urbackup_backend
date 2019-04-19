@@ -132,17 +132,23 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 
 #ifndef DISABLE_WINDOW_SIZE
 		//Set window size
-		int window_size=WINDOW_SIZE;
-		int err=setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
+		int window_size=Server->getSendWindowSize();
+		if (window_size > 0)
+		{
+			int err = setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
 
-		if( err==SOCKET_ERROR )
-			Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
+			if (err == SOCKET_ERROR)
+				Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
+		}
 
+		window_size = Server->getRecvWindowSize();
+		if (window_size > 0)
+		{
+			int err = setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
 
-		err=setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
-
-		if( err==SOCKET_ERROR )
-			Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
+			if (err == SOCKET_ERROR)
+				Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
+		}
 #endif
 		int optval=1;
 		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));

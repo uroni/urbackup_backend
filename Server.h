@@ -206,6 +206,14 @@ public:
 
 	void setLogConsoleTime(bool b);
 
+#ifdef _WIN32
+	void setSocketWindowSizes(int p_send_window_size, int p_recv_window_size);
+
+	virtual int getSendWindowSize();
+
+	virtual int getRecvWindowSize();
+#endif
+
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
@@ -301,6 +309,11 @@ private:
 	bool log_console_time;
 
 	size_t log_rotation_files;
+
+#ifdef _WIN32
+	int send_window_size;
+	int recv_window_size;
+#endif
 };
 
 #ifndef DEF_SERVER

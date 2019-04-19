@@ -221,6 +221,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		Server->setServerParameter("allow_restore", "default");
 	}
+
+	Server->setSocketWindowSizes(3 * 1024 * 1024, 128 * 1024);
 #endif
 
 	init_chunk_hasher();

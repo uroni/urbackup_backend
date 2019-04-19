@@ -189,6 +189,9 @@ CServer::CServer()
 #ifdef _WIN32
 	initialize_GetTickCount64();
 	log_rotation_size = 20*1024*1024; //20MB
+
+	send_window_size = -1;
+	recv_window_size = -1;
 #endif
 }
 
@@ -1128,9 +1131,10 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		else
 		{
 #ifdef _WIN32
-			int window_size=512*1024;
-			setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
-			setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
+			if(send_window_size>0)
+				setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *) &send_window_size, sizeof(send_window_size));
+			if(recv_window_size>0)
+				setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *) &recv_window_size, sizeof(recv_window_size));
 #endif
 		    return new CStreamPipe(s);
 		}
@@ -2133,3 +2137,19 @@ void CServer::setLogConsoleTime(bool b)
 {
 	log_console_time = b;
 }
+
+#ifdef _WIN32
+void CServer::setSocketWindowSizes(int p_send_window_size, int p_recv_window_size)
+{
+	send_window_size = p_send_window_size;
+	recv_window_size = p_recv_window_size;
+}
+int CServer::getSendWindowSize()
+{
+	return send_window_size;
+}
+int CServer::getRecvWindowSize()
+{
+	return recv_window_size;
+}
+#endif

@@ -191,9 +191,13 @@ void CServiceAcceptor::operator()(void)
 					//Server->Log(name+": New Connection incomming "+convert(Server->getTimeMS())+" s: "+convert((int)ns), LL_DEBUG);
 
 	#ifdef _WIN32
-					int window_size=512*1024;
-					setsockopt(ns, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
-					setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
+					int window_size=Server->getSendWindowSize();
+					if(window_size>0)
+						setsockopt(ns, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
+
+					window_size = Server->getRecvWindowSize();
+					if(window_size>0)
+						setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	#endif
 					std::string endpoint = inet_ntoa(naddr.sin_addr);
 

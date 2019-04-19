@@ -109,10 +109,23 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	hFile=INVALID_HANDLE_VALUE;
 
 #ifdef _WIN32
-	int window_size;
-	int window_size_len=sizeof(window_size);
-	getsockopt(pSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-	Log("Info: Window size="+convert(window_size));
+	int window_size = Server->getSendWindowSize();
+	if (window_size > 0)
+	{
+		int err = setsockopt(pSocket, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
+
+		if (err == SOCKET_ERROR)
+			Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
+	}
+
+	window_size = Server->getRecvWindowSize();
+	if (window_size > 0)
+	{
+		int err = setsockopt(pSocket, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
+
+		if (err == SOCKET_ERROR)
+			Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
+	}
 #endif
 
 	close_the_socket=true;

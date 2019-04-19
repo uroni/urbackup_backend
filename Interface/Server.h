@@ -200,6 +200,14 @@ public:
 	virtual void setFailBit(size_t failbit)=0;
 	virtual void clearFailBit(size_t failbit)=0;
 	virtual size_t getFailBits(void)=0;
+
+#ifdef _WIN32
+	virtual void setSocketWindowSizes(int p_send_window_size, int p_recv_window_size) = 0;
+
+	virtual int getSendWindowSize() = 0;
+
+	virtual int getRecvWindowSize() = 0;
+#endif
 };
 
 #ifndef NO_INTERFACE
