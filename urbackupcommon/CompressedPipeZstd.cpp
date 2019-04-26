@@ -66,7 +66,7 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 		throw std::runtime_error(std::string("Error setting zstd compression level. ") + ZSTD_getErrorName(err));
 	}
 
-	if (threads == -1)
+	/*if (threads == -1)
 	{
 		threads = static_cast<int>(os_get_num_cpus());
 	}
@@ -79,7 +79,7 @@ CompressedPipeZstd::CompressedPipeZstd(IPipe *cs, int compression_level, int thr
 		{
 			throw std::runtime_error(std::string("Error setting zstd workers. ") + ZSTD_getErrorName(err));
 		}
-	}	
+	}*/	
 }
 
 CompressedPipeZstd::~CompressedPipeZstd(void)
