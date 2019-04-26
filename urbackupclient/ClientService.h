@@ -24,7 +24,6 @@ enum ClientConnectorState
 	CCSTATE_IMAGE_HASHDATA=5,
 	CCSTATE_UPDATE_DATA=6,
 	CCSTATE_UPDATE_FINISH=7,
-	CCSTATE_WAIT_FOR_CONTRACTORS=8,
 	CCSTATE_STATUS=9,
 	CCSTATE_FILESERV=10,
 	CCSTATE_IMAGE_BITMAP=11,
@@ -170,7 +169,7 @@ struct SChannel
 struct SAsyncFileList
 {
 	int64 last_update;
-	IPipe* mempipe;
+	unsigned int result_id;
 	size_t refcount;
 };
 
@@ -346,9 +345,8 @@ private:
 	static std::string actionToStr(RunningAction action);
 	static void removeTimedOutProcesses(std::string server_token, bool file);
 
+	unsigned int curr_result_id;
 	IPipe *pipe;
-	IPipe *mempipe;
-	bool mempipe_owner;
 	THREAD_ID tid;
 	ClientConnectorState state;
 	int64 lasttime;
@@ -418,8 +416,6 @@ private:
 	std::string server_token;
 
 	bool want_receive;
-
-	std::vector<IPipe*> contractors;
 
 	bool internet_conn;
 

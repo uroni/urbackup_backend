@@ -15,7 +15,7 @@ class ClientSend;
 class ImageThread : public IThread, public IFsNextBlockCallback
 {
 public:
-	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf,
+	ImageThread(ClientConnector *client, IPipe *pipe, unsigned int curr_result_id, ImageInformation *image_inf,
 		std::string server_token, IFile *hashdatafile, IFile* bitmapfile);
 
 	void operator()(void);
@@ -48,7 +48,7 @@ private:
 	void logImageChanges(const std::string& path);
 
 	IPipe *pipe;
-	IPipe *mempipe;
+	unsigned int curr_result_id;
 	ClientConnector *client;
 	std::string server_token;
 	IFile *hashdatafile;

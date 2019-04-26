@@ -71,6 +71,9 @@ volatile bool IndexThread::stop_index=false;
 std::map<std::string, std::string> IndexThread::filesrv_share_dirs;
 IMutex* IndexThread::cbt_shadow_id_mutex;
 std::map<std::string, int> IndexThread::cbt_shadow_ids;
+std::map<unsigned int, IndexThread::SResult> IndexThread::index_results;
+unsigned int IndexThread::next_result_id = 1;
+IMutex* IndexThread::result_mutex = NULL;
 
 const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
 const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
@@ -416,7 +419,10 @@ IndexThread::IndexThread(void)
 	if (cbt_shadow_id_mutex == NULL)
 		cbt_shadow_id_mutex = Server->createMutex();
 
-	contractor=NULL;
+	if (result_mutex == NULL)
+		result_mutex = Server->createMutex();
+
+	curr_result_id = 0;
 
 	dwt=NULL;
 
@@ -457,6 +463,7 @@ IndexThread::~IndexThread()
 	Server->destroy(filesrv_mutex);
 	Server->destroy(cbt_shadow_id_mutex);
 	Server->destroy(read_error_mutex);
+	Server->destroy(result_mutex);
 	cd->destroyQueries();
 	delete cd;
 }
@@ -564,30 +571,19 @@ void IndexThread::operator()(void)
 
 	while(true)
 	{
-		std::string msg;
-		if(contractor!=NULL)
+		if (curr_result_id != 0)
 		{
-			while(msg!="exit"
-				&& (!async_timeout
-					|| Server->getTimeMS() - async_timeout_starttime < async_index_timeout_with_grace) )
-			{
-				contractor->Read(&msg);
-				if(msg!="exit")
-				{
-					contractor->Write(msg);
-					Server->wait(100);
-				}
-			}
-			Server->destroy(contractor);
-			contractor=NULL;
+			setResultFinished(curr_result_id);
 		}
+
+		std::string msg;
 		msgpipe->Read(&msg);
 
 		async_timeout = false;
 		CRData data(&msg);
 		char action;
 		data.getChar(&action);
-		data.getVoidPtr((void**)&contractor);
+		data.getUInt(&curr_result_id);
 		if(action==IndexThreadAction_StartIncrFileBackup
 			|| ( (last_index=="full" || last_index=="vfull") && action == IndexThreadAction_StartFullFileBackup ) )
 		{
@@ -627,7 +623,7 @@ void IndexThread::operator()(void)
 			if (!async_ticket.empty())
 			{
 				initParallelHashing(async_ticket);
-				contractor->Write("phash");
+				addResult(curr_result_id, "phash");
 			}
 
 			setFlags(flags);
@@ -637,7 +633,7 @@ void IndexThread::operator()(void)
 			bool has_scripts = readBackupScripts(action == IndexThreadAction_StartFullFileBackup);
 			if( !has_dirs && !has_scripts )
 			{
-				contractor->Write("no backup dirs");
+				addResult(curr_result_id, "no backup dirs");
 
 				if (async_timeout)
 				{
@@ -696,7 +692,7 @@ void IndexThread::operator()(void)
 			int e_rc;
 			if ( (e_rc=execute_prebackup_hook(true, starttoken, index_group))!=0 )
 			{
-				contractor->Write("error - prefilebackup script failed with error code "+convert(e_rc));
+				addResult(curr_result_id, "error - prefilebackup script failed with error code "+convert(e_rc));
 			}
 			else if(!stop_index)
 			{
@@ -713,24 +709,24 @@ void IndexThread::operator()(void)
 
 				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
 				{
-					contractor->Write("error - postfileindex script failed with error code " + convert(e_rc));
+					addResult(curr_result_id, "error - postfileindex script failed with error code " + convert(e_rc));
 				}
 				else if(stop_index)
 				{
-					contractor->Write("error - stopped indexing 2");
+					addResult(curr_result_id, "error - stopped indexing 2");
 				}
 				else if(index_error)
 				{
-					contractor->Write("error - index error");
+					addResult(curr_result_id, "error - index error");
 				}
 				else
 				{
-					contractor->Write("done");
+					addResult(curr_result_id, "done");
 				}
 			}
 			else
 			{
-				contractor->Write("error - stop_index 1");
+				addResult(curr_result_id, "error - stop_index 1");
 			}
 
 			if (async_timeout)
@@ -771,7 +767,7 @@ void IndexThread::operator()(void)
 			if (!async_ticket.empty())
 			{
 				initParallelHashing(async_ticket);
-				contractor->Write("phash");
+				addResult(curr_result_id, "phash");
 			}
 
 			setFlags(flags);
@@ -780,7 +776,7 @@ void IndexThread::operator()(void)
 			bool has_scripts = readBackupScripts(true);
 			if(!has_dirs && !has_scripts)
 			{
-				contractor->Write("no backup dirs");
+				addResult(curr_result_id, "no backup dirs");
 
 				if (async_timeout)
 				{
@@ -800,7 +796,7 @@ void IndexThread::operator()(void)
 			int e_rc;
 			if ( (e_rc=execute_prebackup_hook(false, starttoken, index_group))!=0 )
 			{
-				contractor->Write("error - prefilebackup script failed with error code "+convert(e_rc));
+				addResult(curr_result_id, "error - prefilebackup script failed with error code "+convert(e_rc));
 			}
 			else
 			{
@@ -810,19 +806,19 @@ void IndexThread::operator()(void)
 
 				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
 				{
-					contractor->Write("error - postfileindex script failed with error code "+convert(e_rc));
+					addResult(curr_result_id, "error - postfileindex script failed with error code "+convert(e_rc));
 				}
 				else if (stop_index)
 				{
-					contractor->Write("error - stopped indexing");
+					addResult(curr_result_id, "error - stopped indexing");
 				}
 				else if (index_error)
 				{
-					contractor->Write("error - index error");
+					addResult(curr_result_id, "error - index error");
 				}
 				else
 				{
-					contractor->Write("done");
+					addResult(curr_result_id, "done");
 				}
 			}
 
@@ -868,7 +864,7 @@ void IndexThread::operator()(void)
 				&& image_backup==0
 				&& (scdir == "windows_components" || scdir == "windows_components_config") )
 			{
-				contractor->Write("done--");
+				addResult(curr_result_id, "done--");
 				continue;
 			}
 #endif
@@ -880,7 +876,7 @@ void IndexThread::operator()(void)
 				if (rc != 0)
 				{
 					VSSLog("Pre image backup hook failed with error code " + convert(rc), LL_ERROR);
-					contractor->Write("failed");
+					addResult(curr_result_id, "failed");
 					continue;
 				}
 			}
@@ -920,11 +916,11 @@ void IndexThread::operator()(void)
 						&& !disableCbt(scd->orig_target) )
 					{
 						VSSLog("Error disabling change block tracking for " + scd->orig_target, LL_ERROR);
-						contractor->Write("failed");
+						addResult(curr_result_id, "failed");
 					}
 					else
 					{
-						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
+						addResult(curr_result_id, "done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
 					}
 				}
 				else
@@ -934,7 +930,7 @@ void IndexThread::operator()(void)
 						VSSLog("Error disabling change block tracking for " + scd->orig_target+" (2)", LL_ERROR);
 					}
 					VSSLog("Getting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
-					contractor->Write("failed");
+					addResult(curr_result_id, "failed");
 				}
 			}
 			else
@@ -980,7 +976,7 @@ void IndexThread::operator()(void)
 						VSSLog("Error disabling change block tracking for " + scd->orig_target + " (3)", LL_ERROR);
 					}
 
-					contractor->Write("failed");
+					addResult(curr_result_id, "failed");
 					Server->Log("Creating shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
 				}
 				else
@@ -1013,11 +1009,11 @@ void IndexThread::operator()(void)
 							shareDir(starttoken, scd->dir, scd->target);
 						}
 
-						contractor->Write("failed");
+						addResult(curr_result_id, "failed");
 					}
 					else
 					{
-						contractor->Write("done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
+						addResult(curr_result_id, "done-" + convert(scd->ref->save_id) + "-" + scd->target + otherVolumeInfo(scd, onlyref));
 						scd->running = true;
 					}
 
@@ -1050,7 +1046,7 @@ void IndexThread::operator()(void)
 			if (image_backup == 0
 				&& (scdir == "windows_components" || scdir == "windows_components_config"))
 			{
-				contractor->Write("done");
+				addResult(curr_result_id, "done");
 				continue;
 			}
 #endif		
@@ -1067,7 +1063,7 @@ void IndexThread::operator()(void)
 			if (filesrv != NULL
 				&& filesrv->hasActiveTransfers(scdir, starttoken) )
 			{
-				contractor->Write("in use");
+				addResult(curr_result_id, "in use");
 			}
 			else
 			{
@@ -1144,11 +1140,11 @@ void IndexThread::operator()(void)
 					if (!release_shadowcopy(scd, image_backup != 0 ? true : false, save_id))
 					{
 						Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
-						contractor->Write("failed");
+						addResult(curr_result_id, "failed");
 					}
 					else
 					{
-						contractor->Write(del_error ? "failed" : "done");
+						addResult(curr_result_id, del_error ? "failed" : "done");
 					}
 				}
 				else
@@ -1157,12 +1153,12 @@ void IndexThread::operator()(void)
 					bool b = release_shadowcopy(scd, image_backup != 0 ? true : false, save_id);
 					if (!b)
 					{
-						contractor->Write("failed");
+						addResult(curr_result_id, "failed");
 						Server->Log("Deleting shadowcopy of \"" + release_dir + "\" failed.", LL_ERROR);
 					}
 					else
 					{
-						contractor->Write(del_error ? "failed" : "done");
+						addResult(curr_result_id, del_error ? "failed" : "done");
 					}
 				}
 			}
@@ -1175,7 +1171,7 @@ void IndexThread::operator()(void)
 				std::string path=lookup_shadowcopy(save_id);
 				if(path.empty())
 				{
-					contractor->Write("failed");
+					addResult(curr_result_id, "failed");
 				}
 				else
 				{
@@ -1189,7 +1185,7 @@ void IndexThread::operator()(void)
 
 					cd->updateShadowCopyStarttime(save_id);
 
-					contractor->Write("done-"+convert(save_id)+"-"+path);
+					addResult(curr_result_id, "done-"+convert(save_id)+"-"+path);
 				}
 			}
 		}
@@ -1208,7 +1204,7 @@ void IndexThread::operator()(void)
 				std::string msg="C"+os_get_final_path(dir)+"|"+(name);
 				dwt->getPipe()->Write(msg);
 			}
-			contractor->Write("done");
+			addResult(curr_result_id, "done");
 			stop_index=false;
 		}
 		else if(action==IndexThreadAction_RemoveWatchdir)
@@ -1225,7 +1221,7 @@ void IndexThread::operator()(void)
 				std::string msg="X"+os_get_final_path(dir)+"|"+(name);
 				dwt->getPipe()->Write(msg);
 			}
-			contractor->Write("done");
+			addResult(curr_result_id, "done");
 			stop_index=false;
 		}
 #endif
@@ -1262,7 +1258,7 @@ void IndexThread::operator()(void)
 				ret+=convert(vsslog[i].loglevel)+"-"+convert(vsslog[i].times)+"-"+vsslog[i].msg+"\n";
 			}
 			Server->Log("VSS logdata - "+convert(ret.size())+" bytes", LL_DEBUG);
-			contractor->Write(ret);
+			addResult(curr_result_id, ret);
 		}
 		else if(action==IndexThreadAction_PingShadowCopy)
 		{
@@ -1301,11 +1297,11 @@ void IndexThread::operator()(void)
 			if (prepareCbt(volume)
 				&& finishCbt(volume, -1, std::string(), false))
 			{
-				contractor->Write("done");
+				addResult(curr_result_id, "done");
 			}
 			else
 			{
-				contractor->Write("failed");
+				addResult(curr_result_id, "failed");
 			}
 		}
 		else if (action == IndexThreadAction_WriteTokens)
@@ -1313,7 +1309,7 @@ void IndexThread::operator()(void)
 			data.getStr(&starttoken);
 			async_timeout = true;
 			writeTokens();
-			contractor->Write("done");
+			addResult(curr_result_id, "done");
 			async_timeout_starttime = Server->getTimeMS();
 		}
 	}
@@ -2293,6 +2289,45 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	return has_include;
+}
+
+void IndexThread::addResult(unsigned int id, const std::string & res)
+{
+	if (id == 0)
+		return;
+
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it == index_results.end())
+		return;
+
+	it->second.results.push_back(res);
+	it->second.cond->notify_all();
+}
+
+void IndexThread::setResultFinished(unsigned int id)
+{
+	if (id == 0)
+		return;
+
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it == index_results.end())
+		return;
+
+	if (it->second.refs == 0)
+	{
+		Server->destroy(it->second.cond);
+		index_results.erase(it);
+	}
+	else
+	{
+		it->second.finished = true;
+	}
 }
 
 bool IndexThread::readBackupDirs(void)
@@ -3603,6 +3638,106 @@ void IndexThread::deregisterFileSrvScriptFn(const std::string & fn)
 	filesrv->deregisterScriptPipeFile(fn);
 }
 
+unsigned int IndexThread::getResultId()
+{
+	IScopedLock lock(result_mutex);
+	unsigned int ret= next_result_id++;
+	if (ret == 0)
+		ret = next_result_id++;
+
+	SResult res;
+	res.finished = false;
+	res.refs = 1;
+	res.cond = Server->createCondition();
+	index_results.insert(std::make_pair(ret, res));
+	return ret;
+}
+
+bool IndexThread::getResult(unsigned int id, int timeoutms, std::string & result)
+{
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it == index_results.end())
+		return false;
+
+	if ( (timeoutms > 0 || timeoutms == -1)
+		&& it->second.results.empty())
+	{
+		it->second.cond->wait(&lock, timeoutms);
+	}
+
+	if (!it->second.results.empty())
+	{
+		result = it->second.results[0];
+		it->second.results.erase(it->second.results.begin());
+	}
+	else
+	{
+		result.clear();
+	}
+
+	return true;
+}
+
+bool IndexThread::refResult(unsigned int id)
+{
+	if (id == 0)
+		return false;
+
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it == index_results.end())
+		return false;
+
+	++it->second.refs;
+
+	return true;
+}
+
+bool IndexThread::unrefResult(unsigned int id)
+{
+	if (id == 0)
+		return false;
+
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it == index_results.end())
+		return false;
+
+	if (it->second.refs > 0)
+	{
+		--it->second.refs;
+	}
+
+	if (it->second.refs == 0
+		&& it->second.finished)
+	{
+		Server->destroy(it->second.cond);
+		index_results.erase(it);
+	}
+
+	return true;
+}
+
+void IndexThread::removeResult(unsigned int id)
+{
+	IScopedLock lock(result_mutex);
+
+	std::map<unsigned int, SResult>::iterator it = index_results.find(id);
+
+	if (it != index_results.end())
+	{
+		Server->destroy(it->second.cond);
+		index_results.erase(it);
+	}
+}
+
 std::vector<std::string> IndexThread::parseExcludePatterns(const std::string& val)
 {
 	std::vector<std::string> exclude_dirs;
@@ -3925,7 +4060,7 @@ void IndexThread::doStop(void)
 {
 	CWData wd;
 	wd.addUChar(8);
-	wd.addVoidPtr(NULL);
+	wd.addUInt(0);
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
 

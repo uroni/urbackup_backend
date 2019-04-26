@@ -207,7 +207,6 @@ void ClientConnector::destroy_mutex(void)
 
 ClientConnector::ClientConnector(void)
 {
-	mempipe=NULL;
 }
 
 bool ClientConnector::wantReceive(void)
@@ -223,11 +222,6 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
 	image_inf.clientsubname.clear();
-	if(mempipe==NULL)
-	{
-		mempipe=Server->createMemoryPipe();
-		mempipe_owner=true;
-	}
 	lasttime=Server->getTimeMS();
 	do_quit=false;
 	is_channel=false;
@@ -245,20 +239,14 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	bitmapfile = NULL;
 	retrieved_has_components=false;
 	status_has_components=false;
+	curr_result_id = 0;
 }
 
 ClientConnector::~ClientConnector(void)
 {
-	if(mempipe_owner)
+	if (curr_result_id != 0)
 	{
-		if(mempipe!=NULL)
-		{
-			Server->destroy(mempipe);
-		}
-	}
-	else
-	{
-		mempipe->Write("exit");
+		IndexThread::removeResult(curr_result_id);
 	}
 }
 
@@ -268,36 +256,28 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 
 	if(do_quit)
 	{
-		if(state!=CCSTATE_START_FILEBACKUP 
-			&& state!=CCSTATE_START_FILEBACKUP_ASYNC
-			&& state!=CCSTATE_SHADOWCOPY 
-			&& state!=CCSTATE_WAIT_FOR_CONTRACTORS)
+		if(is_channel)
 		{
-			if(is_channel)
+			IScopedLock lock(backup_mutex);
+			for(size_t i=0;i<channel_pipes.size();++i)
 			{
-				IScopedLock lock(backup_mutex);
-				for(size_t i=0;i<channel_pipes.size();++i)
+				if(channel_pipes[i].pipe==pipe)
 				{
-					if(channel_pipes[i].pipe==pipe)
-					{
-						channel_pipes.erase(channel_pipes.begin()+i);
-						break;
-					}
+					channel_pipes.erase(channel_pipes.begin()+i);
+					break;
 				}
 			}
-			if(waitForThread())
-			{
-				want_receive = false;
-				return true;
-			}
-			delete image_inf.image_thread;
-			image_inf.image_thread=NULL;
-			return false;
 		}
-		else
+		if(waitForThread())
 		{
-			want_receive=false;
+			want_receive = false;
+			return true;
 		}
+		IndexThread::unrefResult(curr_result_id);
+		curr_result_id = 0;
+		delete image_inf.image_thread;
+		image_inf.image_thread=NULL;
+		return false;
 	}
 
 	switch(state)
@@ -311,6 +291,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				do_quit=true;
 				return true;
 			}
+			IndexThread::unrefResult(curr_result_id);
+			curr_result_id = 0;
 			return false;
 		}
 		return true;
@@ -318,9 +300,8 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 	case CCSTATE_START_FILEBACKUP:
 		{
 			std::string msg;
-			mempipe->Read(&msg, 0);
+			bool has_result = IndexThread::getResult(curr_result_id, 0, msg);
 
-			size_t mempipe_refcount=0;
 			if (state == CCSTATE_START_FILEBACKUP_ASYNC)
 			{
 				IScopedLock lock(backup_mutex);
@@ -332,12 +313,12 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 					{
 						Server->Log("Async index " + bytesToHex(it->first) + " finished with \"" + msg + "\"", LL_DEBUG);
 						if (it->second.refcount > 0) --it->second.refcount;
-						mempipe_refcount = it->second.refcount;
 						finished_async_file_index.push_back(std::make_pair(it->first, msg));
 						while (finished_async_file_index.size() > 10)
 						{
 							finished_async_file_index.pop_front();
 						}
+						IndexThread::removeResult(it->second.result_id);
 						async_file_index.erase(it);
 					}
 					else
@@ -347,33 +328,22 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 			}
 
-			if (msg != "phash"
-				&& mempipe_refcount != 0)
-				int abc = 5;
-
-			if(msg=="exit")
+			if(msg=="exit" || !has_result)
 			{
-				if(mempipe_refcount==0)
-					mempipe->Write("exit");
-
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
+				assert(false);
 				if(waitForThread())
 				{
 					do_quit=true;
 					return true;
 				}
+				IndexThread::unrefResult(curr_result_id);
+				curr_result_id = 0;
 				IScopedLock lock(backup_mutex);
 				removeRunningProcess(local_backup_running_id, false);
 				return false;
 			}
 			else if(msg=="done")
 			{
-				if (mempipe_refcount == 0)
-					mempipe->Write("exit");
-
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
 				idle_timeout = 5*60*1000;
@@ -385,11 +355,6 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 			}
 			else if(!msg.empty())
 			{
-				if (mempipe_refcount == 0)
-					mempipe->Write("exit");
-
-				mempipe=Server->createMemoryPipe();
-				mempipe_owner=true;
 				tcpstack.Send(pipe, msg);
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -406,19 +371,19 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 	case CCSTATE_SHADOWCOPY:
 		{
 			std::string msg;
-			mempipe->Read(&msg, 0);
-			if (!msg.empty())
+			bool has_result = IndexThread::getResult(curr_result_id, 0, msg);
+			if (!msg.empty() || !has_result)
 			{
-				mempipe->Write("exit");
-				mempipe = Server->createMemoryPipe();
-				mempipe_owner = true;
-				if (msg == "exit")
+				if (msg == "exit" || !has_result)
 				{
+					assert(false);
 					if (waitForThread())
 					{
 						do_quit = true;
 						return true;
 					}
+					IndexThread::unrefResult(curr_result_id);
+					curr_result_id = 0;
 					return false;
 				}
 				else if (msg.find("done") == 0)
@@ -531,10 +496,12 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 	case CCSTATE_IMAGE_HASHDATA:
 	case CCSTATE_IMAGE_BITMAP:
 		{
-			if(Server->getThreadPool()->isRunning(image_inf.thread_ticket)==false )
+			if(!Server->getThreadPool()->isRunning(image_inf.thread_ticket))
 			{
 				delete image_inf.image_thread;
 				image_inf.image_thread=NULL;
+				IndexThread::unrefResult(curr_result_id);
+				curr_result_id = 0;
 				return false;
 			}
 		}break;
@@ -627,25 +594,6 @@ bool ClientConnector::Run(IRunOtherCallback* p_run_other)
 				}
 			}
 			return true;
-		}break;
-	case CCSTATE_WAIT_FOR_CONTRACTORS: // wait for contractors
-		{
-			for(size_t i=0;i<contractors.size();++i)
-			{
-				std::string resp;
-				contractors[i]->Read(&resp, 0);
-				if(!resp.empty())
-				{
-					contractors[i]->Write("exit");
-					contractors.erase(contractors.begin()+i);
-					break;
-				}
-			}
-
-			if(contractors.empty())
-			{
-				return false;
-			}
 		}break;
 	case CCSTATE_STATUS:
 		{
@@ -796,7 +744,7 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 {
 	run_other = p_run_other;
 
-	if(state==CCSTATE_WAIT_FOR_CONTRACTORS || state==CCSTATE_UPDATE_FINISH)
+	if(state==CCSTATE_UPDATE_FINISH)
 	{
 		return;
 	}
@@ -1469,20 +1417,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 	for(size_t i=0;i<new_watchdirs.size();++i)
 	{
 		//Add watch
-		IPipe *contractor=Server->createMemoryPipe();
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_AddWatchdir);
-		data.addVoidPtr(contractor);
-		data.addString((new_watchdirs[i].path));
+		data.addUInt(0);
+		data.addString(new_watchdirs[i].path);
 		if(new_watchdirs[i].group==c_group_continuous)
 		{
-			data.addString((new_watchdirs[i].tname));
+			data.addString(new_watchdirs[i].tname);
 		}
 		IndexThread::stopIndex();
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-		contractors.push_back(contractor);
-		state=CCSTATE_WAIT_FOR_CONTRACTORS;
-		want_receive=false;
 	}
 
 	for(size_t i=0;i<backupdirs.size();++i)
@@ -1490,20 +1434,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
 			//Delete the watch
-			IPipe *contractor=Server->createMemoryPipe();
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
-			data.addVoidPtr(contractor);
-			data.addString((backupdirs[i]["path"]));
+			data.addUInt(0);
+			data.addString(backupdirs[i]["path"]);
 			if(watoi(backupdirs[i]["group"])%c_group_size==c_group_continuous)
 			{
-				data.addString((backupdirs[i]["name"]));
+				data.addString(backupdirs[i]["name"]);
 			}
 			IndexThread::stopIndex();
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-			contractors.push_back(contractor);
-			state=CCSTATE_WAIT_FOR_CONTRACTORS;
-			want_receive=false;
 		}
 	}
 
@@ -1913,7 +1853,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 		CWData data;
 		data.addChar(7);
-		data.addVoidPtr(NULL);
+		data.addUInt(0);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
@@ -2098,9 +2038,7 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 bool ClientConnector::sendFullImage(void)
 {
 	image_inf.thread_action=TA_FULL_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile, NULL);
-	mempipe=Server->createMemoryPipe();
-	mempipe_owner=true;
+	image_inf.image_thread=new ImageThread(this, pipe, curr_result_id, &image_inf, server_token, hashdatafile, NULL);
 
 	IScopedLock lock(backup_mutex);
 
@@ -2135,9 +2073,7 @@ bool ClientConnector::sendFullImage(void)
 bool ClientConnector::sendIncrImage(void)
 {
 	image_inf.thread_action=TA_INCR_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile, bitmapfile);
-	mempipe=Server->createMemoryPipe();
-	mempipe_owner=true;
+	image_inf.image_thread=new ImageThread(this, pipe, curr_result_id, &image_inf, server_token, hashdatafile, bitmapfile);
 
 	IScopedLock lock(backup_mutex);
 
@@ -2565,7 +2501,7 @@ std::string ClientConnector::receivePacket(const SChannel& channel, int64 timeou
 	while(Server->getTimeMS()-starttime<= timeoutms)
 	{
         std::string ret;
-        size_t rc=channel.pipe->Read(&ret, timeoutms);
+        size_t rc=channel.pipe->Read(&ret, static_cast<int>(timeoutms));
 		if(rc==0)
 		{
 			return "";
@@ -3532,11 +3468,8 @@ void ClientConnector::timeoutAsyncFileIndex()
 		if (ctime - it->second.last_update > async_index_timeout * 2)
 		{
 			Server->Log("Async index timeout: " + bytesToHex(it->first), LL_DEBUG);
+			IndexThread::removeResult(it->second.result_id);
 			std::map<std::string, SAsyncFileList>::iterator it_curr = it;
-			if (it->second.refcount == 0)
-			{
-				it->second.mempipe->Write("exit");
-			}
 			++it;
 			async_file_index.erase(it_curr);
 		}

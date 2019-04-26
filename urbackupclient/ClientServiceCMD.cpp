@@ -309,7 +309,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	CWData data;
 	data.addChar(IndexThread::IndexThreadAction_StartIncrFileBackup);
-	data.addVoidPtr(mempipe);
+	curr_result_id = IndexThread::getResultId();
+	data.addUInt(curr_result_id);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
@@ -333,7 +334,6 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	}
 
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-	mempipe_owner=false;
 
 	lasttime=Server->getTimeMS();
 
@@ -378,16 +378,15 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
-			mempipe,
+			curr_result_id,
 			0
 		};
-
-		mempipe = Server->createMemoryPipe();
-		mempipe_owner = true;
 
 		async_file_index[async_id] = new_async_file_list;
 
 		lock.relock(NULL);
+
+		IndexThread::refResult(curr_result_id);
 
 		tcpstack.Send(pipe, "ASYNC-async_id=" + bytesToHex(async_id));
 	}
@@ -483,7 +482,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	CWData data;
 	data.addChar(IndexThread::IndexThreadAction_StartFullFileBackup);
-	data.addVoidPtr(mempipe);
+	curr_result_id = IndexThread::getResultId();
+	data.addUInt(curr_result_id);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
@@ -507,7 +507,6 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	}
 
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-	mempipe_owner=false;
 
 	lasttime=Server->getTimeMS();
 
@@ -538,17 +537,16 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 		SAsyncFileList new_async_file_list = {
 			Server->getTimeMS(),
-			mempipe,
+			curr_result_id,
 			0
 		};
-
-		mempipe = Server->createMemoryPipe();
-		mempipe_owner = true;
 
 		async_file_index[async_id] = new_async_file_list;
 		Server->Log("Async index " + bytesToHex(async_id), LL_DEBUG);
 
 		lock.relock(NULL);
+
+		IndexThread::refResult(curr_result_id);
 
 		tcpstack.Send(pipe, "ASYNC-async_id="+ bytesToHex(async_id));
 	}
@@ -593,8 +591,11 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	}
 	else if (Server->getTimeMS() - it->second.last_update > async_index_timeout)
 	{
+		unsigned int result_id = it->second.result_id;
 		async_file_index.erase(it);
 		lock.relock(NULL);
+
+		IndexThread::removeResult(result_id);
 
 		Server->Log("Async index " + async_id + " timeout", LL_DEBUG);
 
@@ -604,13 +605,9 @@ void ClientConnector::CMD_WAIT_FOR_INDEX(const std::string &cmd)
 	{
 		Server->Log("Wait for async index " + async_id, LL_DEBUG);
 		state = CCSTATE_START_FILEBACKUP_ASYNC;
-		if (mempipe_owner)
-		{
-			Server->destroy(mempipe);
-		}
 		++it->second.refcount;
-		mempipe = it->second.mempipe;
-		mempipe_owner = false;
+		curr_result_id = it->second.result_id;
+		IndexThread::refResult(curr_result_id);
 	}
 }
 
@@ -635,14 +632,14 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_ReferenceShadowcopy);
-		data.addVoidPtr(mempipe);
+		curr_result_id = IndexThread::getResultId();
+		data.addUInt(curr_result_id);
 		data.addString(dir);
 		data.addString(server_token);
 		data.addUChar(0);
 		data.addUChar(1);
 		data.addString(clientsubname);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
 	}
 	else
@@ -679,7 +676,8 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
-		data.addVoidPtr(mempipe);
+		curr_result_id = IndexThread::getResultId();
+		data.addUInt(curr_result_id);
 		data.addString(dir);
 		data.addString(server_token);
 		data.addUChar(0);
@@ -687,7 +685,6 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		data.addString(clientsubname);
 		data.addInt(issues);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
 	}
 	else
@@ -1434,16 +1431,17 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			image_inf.shadowdrive.clear();
 			CWData data;
 			data.addChar(4);
-			data.addVoidPtr(mempipe);
+			curr_result_id = IndexThread::getResultId();
+			data.addUInt(curr_result_id);
 			data.addInt(image_inf.shadow_id);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-			mempipe_owner = false;
 		}
 		else if(!image_inf.no_shadowcopy)
 		{
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
-			data.addVoidPtr(mempipe);
+			curr_result_id = IndexThread::getResultId();
+			data.addUInt(curr_result_id);
 			data.addString(image_inf.image_letter);
 			data.addString(server_token);
 			data.addUChar(1); //full image backup
@@ -1451,7 +1449,6 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addString(image_inf.clientsubname);
 			data.addInt(running_jobs);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-			mempipe_owner=false;
 		}
 
 		if(image_inf.no_shadowcopy)
@@ -1552,16 +1549,17 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				image_inf.shadowdrive.clear();
 				CWData data;
 				data.addChar(4);
-				data.addVoidPtr(mempipe);
+				curr_result_id = IndexThread::getResultId();
+				data.addUInt(curr_result_id);
 				data.addInt(image_inf.shadow_id);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				mempipe_owner = false;
 			}
 			else if(!image_inf.no_shadowcopy)
 			{
 				CWData data;
 				data.addChar(IndexThread::IndexThreadAction_CreateShadowcopy);
-				data.addVoidPtr(mempipe);
+				curr_result_id = IndexThread::getResultId();
+				data.addUInt(curr_result_id);
 				data.addString(image_inf.image_letter);
 				data.addString(server_token);
 				data.addUChar(2); //incr image backup
@@ -1569,7 +1567,6 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addString(image_inf.clientsubname);
 				data.addInt(running_jobs);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				mempipe_owner=false;
 			}
 
 			hashdatafile=Server->openTemporaryFile();
@@ -2609,15 +2606,15 @@ void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::
 void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
 {
 	CWData data;
-	IPipe* localpipe=Server->createMemoryPipe();
 	data.addChar(IndexThread::IndexThreadAction_GetLog);
-	data.addVoidPtr(localpipe);
+	unsigned int result_id = IndexThread::getResultId();
+	data.addUInt(result_id);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	std::string ret;
-	localpipe->Read(&ret, 8000);
+	IndexThread::getResult(result_id, 8000, ret);
 	tcpstack.Send(pipe, ret);
-	localpipe->Write("exit");
+	IndexThread::removeResult(result_id);
 }
 
 void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
@@ -2885,32 +2882,34 @@ void ClientConnector::CMD_WRITE_TOKENS(const std::string& cmd)
 	async_id.resize(16);
 	Server->randomFill(&async_id[0], async_id.size());
 
+	curr_result_id = IndexThread::getResultId();
+
 	SAsyncFileList new_async_file_list = {
 		Server->getTimeMS(),
-		mempipe,
+		curr_result_id,
 		0
 	};
 
 	CWData data;
 	data.addChar(IndexThread::IndexThreadAction_WriteTokens);
-	data.addVoidPtr(mempipe);
+	data.addUInt(curr_result_id);
 	data.addString(server_token);
 
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	std::string msg;
-	if (mempipe->Read(&msg, 3000) > 0)
+	if (IndexThread::getResult(curr_result_id, 3000, msg)
+		&& !msg.empty())
 	{
 		if(msg=="done")
 			tcpstack.Send(pipe, "OK");
 		else
 			tcpstack.Send(pipe, msg);
-		mempipe->Write("exit");
-		mempipe = Server->createMemoryPipe();
+		IndexThread::removeResult(curr_result_id);
 		return;
 	}
 
-	mempipe = Server->createMemoryPipe();
+	IndexThread::refResult(curr_result_id);
 
 	IScopedLock lock(backup_mutex);
 

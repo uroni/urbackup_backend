@@ -61,11 +61,12 @@ namespace
 }
 
 
-ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf,
+ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, unsigned int curr_result_id, ImageInformation *image_inf,
 	std::string server_token, IFile *hashdatafile, IFile* bitmapfile)
-	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token),
+	: client(client), pipe(pipe), curr_result_id(curr_result_id), image_inf(image_inf), server_token(server_token),
 	hashdatafile(hashdatafile), bitmapfile(bitmapfile)
 {
+	IndexThread::refResult(curr_result_id);
 }
 
 void ImageThread::ImageErr(const std::string &msg, int loglevel)
@@ -143,7 +144,7 @@ bool ImageThread::sendFullImageThread(void)
 		if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
 		{
 			std::string msg;
-			mempipe->Read(&msg);
+			IndexThread::getResult(curr_result_id, -1, msg);
 			if(msg.find("done")==0)
 			{
 				image_inf->shadowdrive=getafter("-", msg);
@@ -178,8 +179,7 @@ bool ImageThread::sendFullImageThread(void)
 				/*image_inf->shadowdrive="\\\\.\\" + image_inf->image_letter;
 				image_inf->no_shadowcopy=true;*/
 			}
-			mempipe->Write("exit");
-			mempipe=NULL;
+			IndexThread::removeResult(curr_result_id);
 
 			if (run)
 			{
@@ -487,11 +487,10 @@ void ImageThread::removeShadowCopyThread(int save_id)
 {
 	if(!image_inf->no_shadowcopy)
 	{
-		IPipe* local_pipe=Server->createMemoryPipe();
-
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_ReleaseShadowcopy);
-		data.addVoidPtr(local_pipe);
+		unsigned int result_id = IndexThread::getResultId();
+		data.addUInt(result_id);
 		data.addString(image_inf->image_letter);
 		data.addString(server_token);
 		data.addUChar(1);
@@ -500,12 +499,12 @@ void ImageThread::removeShadowCopyThread(int save_id)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 		std::string msg;
-		local_pipe->Read(&msg);
+		IndexThread::getResult(result_id, -1, msg);
 		if(msg.find("done")!=0)
 		{
 			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
 		}
-		local_pipe->Write("exit");
+		IndexThread::removeResult(result_id);
 	}
 }
 
@@ -534,7 +533,7 @@ bool ImageThread::sendIncrImageThread(void)
 		if(image_inf->shadowdrive.empty())
 		{
 			std::string msg;
-			mempipe->Read(&msg);
+			IndexThread::getResult(curr_result_id, -1, msg);
 			if(msg.find("done")==0)
 			{
 				image_inf->shadowdrive=getafter("-", msg);
@@ -565,8 +564,7 @@ bool ImageThread::sendIncrImageThread(void)
 				}
 				run=false;
 			}
-			mempipe->Write("exit");
-			mempipe=NULL;
+			IndexThread::removeResult(curr_result_id);
 
 			if (run)
 			{
@@ -1130,8 +1128,7 @@ void ImageThread::operator()(void)
 			Server->Log("Error receiving hashdata. timouts="+convert(timeouts)+" isquitting="+convert(client->isQuitting()), LL_ERROR);
 			if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
 			{
-				mempipe->Write("exit");
-				mempipe=NULL;
+				IndexThread::removeResult(curr_result_id);
 			}
 		}
 	}
@@ -1144,7 +1141,7 @@ void ImageThread::updateShadowCopyStarttime( int save_id )
 	{
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_PingShadowCopy);
-		data.addVoidPtr(NULL);
+		data.addUInt(0);
 		data.addString(image_inf->image_letter);
 		data.addInt(save_id);
 		data.addString(image_inf->clientsubname);

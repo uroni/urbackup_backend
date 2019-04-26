@@ -2164,15 +2164,15 @@ std::pair<IFile*, int64> RestoreFiles::getCbtHashFile(const std::string & fn)
 	}
 
 	CWData data;
-	IPipe* localpipe = Server->createMemoryPipe();
 	data.addChar(IndexThread::IndexThreadAction_SnapshotCbt);
-	data.addVoidPtr(localpipe);
+	unsigned int result_id = IndexThread::getResultId();
+	data.addUInt(result_id);
 	data.addString(fn);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	std::string ret;
-	localpipe->Read(&ret);
-	localpipe->Write("exit");
+	IndexThread::getResult(result_id, -1, ret);
+	IndexThread::removeResult(result_id);
 
 	if (ret == "done")
 	{

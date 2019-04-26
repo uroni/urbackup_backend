@@ -370,8 +370,21 @@ public:
 	void onReadError(const std::string& sharename, const std::string& filepath, int64 pos, const std::string& msg);
 
 	void deregisterFileSrvScriptFn(const std::string& fn);
+
+	static unsigned int getResultId();
+
+	static bool getResult(unsigned int id, int timeoutms, std::string& result);
+
+	static bool refResult(unsigned int id);
+
+	static bool unrefResult(unsigned int id);
+
+	static void removeResult(unsigned int id);
 	
 private:
+	static void addResult(unsigned int id, const std::string& res);
+	static void setResultFinished(unsigned int id);
+
 	bool readBackupDirs(void);
 	bool readBackupScripts(bool full_backup);
 
@@ -601,7 +614,7 @@ private:
 	static IMutex* cbt_shadow_id_mutex;
 	static std::map<std::string, int> cbt_shadow_ids;
 
-	IPipe *contractor;
+	unsigned int curr_result_id;
 
 	ClientDAO *cd;
 
@@ -751,6 +764,18 @@ private:
 	int64 phash_queue_write_pos;
 	std::vector<char> phash_queue_buffer;
 	int64 file_id;
+
+	struct SResult
+	{
+		ICondition* cond;
+		size_t refs;
+		bool finished;
+		std::vector<std::string> results;
+	};
+
+	static std::map<unsigned int, SResult> index_results;
+	static unsigned int next_result_id;
+	static IMutex* result_mutex;
 
 #ifdef _WIN32
 	struct SComponent
