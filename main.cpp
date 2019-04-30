@@ -55,6 +55,8 @@ using namespace nt;
 #	include <errno.h>
 #endif
 
+#include "Interface\Pipe.h"
+
 IServer *Server=NULL;
 
 using namespace std;
@@ -127,23 +129,13 @@ int main_fkt(int argc, char *argv[]);
 #define MAINNAME real_main
 #endif
 
-int MAINNAME(int argc, char *argv[])
-{
-#else //AS_SERVICE
-int my_init_fcn_t(int argc, char *argv[])
-{
-#endif
-	#ifdef _WIN32
+#ifdef _WIN32
 #ifndef _DEBUG
-	__try{
-#endif
-#endif
-#ifndef _DEBUG
+int my_init_fcn_catch(int argc, char *argv[])
+{
 	try
 	{
-#endif
 		return main_fkt(argc, argv);
-#ifndef _DEBUG
 	}
 	catch (std::exception& e)
 	{
@@ -155,6 +147,25 @@ int my_init_fcn_t(int argc, char *argv[])
 		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
 		throw;
 	}
+}
+#endif
+#endif
+
+int MAINNAME(int argc, char *argv[])
+{
+#else //AS_SERVICE
+int my_init_fcn_t(int argc, char *argv[])
+{
+#endif
+	#ifdef _WIN32
+#ifndef _DEBUG
+	__try{
+#endif
+#endif
+#if !defined(_DEBUG) && defined(_WIN32)
+		return my_init_fcn_catch(argc, argv);
+#else
+		return main_fkt(argc, argv);
 #endif
 #ifdef _WIN32
 #ifndef _DEBUG
@@ -537,6 +548,15 @@ int main_fkt(int argc, char *argv[])
 			sqlite3_temp_directory=sqlite3_mprintf("%s", iter->second.c_str());
 		}
 	}
+
+	IPipe* pipe = Server->ConnectSslStream("google.de", 443, 100000);
+
+	pipe->Write("GET /\r\n\r\n");
+
+	std::string resp;
+	pipe->Read(&resp);
+
+	Server->Log("Resp: " + resp);
 
 
 	for( size_t i=0;i<plugins.size();++i)
