@@ -1392,9 +1392,12 @@ void* thread_helper_f(void * t)
 	os_reset_priority();
 #endif
 	IThread *tmp=(IThread*)t;
+#ifndef _DEBUG
 	try
 	{
+#endif
 		(*tmp)();
+#ifndef _DEBUG
 	}
 	catch (std::exception& e)
 	{
@@ -1406,6 +1409,7 @@ void* thread_helper_f(void * t)
 		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
 		throw;
 	}
+#endif
 	Server->destroyDatabases(Server->getThreadID());
 	return NULL;
 }

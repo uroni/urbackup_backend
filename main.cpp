@@ -119,8 +119,7 @@ CAcceptThread *c_at=NULL;
 
 int main_fkt(int argc, char *argv[]);
 
-#if defined(_WIN32) && !defined(_DEBUG) && defined(AS_SERVICE)
-int my_init_fcn_catch(int argc, char *argv[])
+int main_fkt_catch(int argc, char *argv[])
 {
 	try
 	{
@@ -128,16 +127,15 @@ int my_init_fcn_catch(int argc, char *argv[])
 	}
 	catch (std::exception& e)
 	{
-		Server->Log(std::string("Thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
+		Server->Log(std::string("Main thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
 		throw;
 	}
 	catch (...)
 	{
-		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
+		Server->Log(std::string("Main thread exit with unhandled C++ exception "), LL_ERROR);
 		throw;
 	}
 }
-#endif
 
 #ifndef AS_SERVICE
 
@@ -153,24 +151,19 @@ int MAINNAME(int argc, char *argv[])
 int my_init_fcn_t(int argc, char *argv[])
 {
 #endif
-	#ifdef _WIN32
-#ifndef _DEBUG
+#if !defined(_DEBUG) && defined(_WIN32)
 	__try{
 #endif
+#if defined(_DEBUG)
+		return main_fkt(argc, argv);
+#else
+		return main_fkt_catch(argc, argv);
 #endif
 #if !defined(_DEBUG) && defined(_WIN32)
-		return my_init_fcn_catch(argc, argv);
-#else
-		return main_fkt(argc, argv);
-#endif
-#ifdef _WIN32
-#ifndef _DEBUG
 	}__except(CServer::WriteDump(GetExceptionInformation()) )
 	{
 	}
 	return 101;
-#endif
-return 101;
 #endif
 }
 
