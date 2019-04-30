@@ -1049,30 +1049,36 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		}
 	}
 
+	ServerSettings settings(db);
+	cleanup_all_system_images(settings);
+
+	int r=hasEnoughFreeSpace(minspace, &settings);
+	if( r==-1 || r==1)
+		return;
+
+	bool deleted_something = true;
+	while (deleted_something)
 	{
-		ServerSettings settings(db);
+		deleted_something = false;
 
-		cleanup_all_system_images(settings);
-
-		int r=hasEnoughFreeSpace(minspace, &settings);
-		if( r==-1 || r==1)
-			return;
-	}
-
-	std::vector<int> res=cleanupdao->getClientsSortImagebackups();
-	for(size_t i=0;i<res.size();++i)
-	{
-		int clientid=res[i];
-		
-		std::vector<int> imageids;
-		if(cleanup_images_client(clientid, minspace, imageids, false))
+		std::vector<int> res = cleanupdao->getClientsSortImagebackups();
+		for (size_t i = 0; i<res.size(); ++i)
 		{
-			if(minspace!=-1)
+			int clientid = res[i];
+
+			std::vector<int> imageids;
+			if (cleanup_images_client(clientid, minspace, imageids, true))
 			{
-				return;
+				int r = hasEnoughFreeSpace(minspace, &settings);
+				if (r == -1 || r == 1)
+					return;
 			}
 		}
-	}
+
+		int r = hasEnoughFreeSpace(minspace, &settings);
+		if (r == -1 || r == 1)
+			return;
+	}	
 }
 
 bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings, 
