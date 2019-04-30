@@ -213,7 +213,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(SolutionDir)/deps/include/zstd;$(ZstdIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>zlibd_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86.lib</AdditionalDependencies>
@@ -237,7 +237,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(ZstdIncludeDir);$(SolutionDir)/deps/include/zstd</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>zlibd_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
@@ -258,7 +258,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZstdIncludeDir);(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;$(SolutionDir)/deps/include/zstd</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>libzstd_x86.lib;cryptlib_x86.lib;zlib_x86.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -284,7 +284,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZstdIncludeDir);$(ZlibIncludeDir);$(SolutionDir)/deps/include/zlib;$(CryptoppIncludeDir);$(SolutionDir)/deps/include/cryptopp;$(SolutionDir)/deps/include/zstd</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>cryptlib_x86_64.lib;zlib_x86_64.lib;ws2_32.lib;VssApi.Lib;%(AdditionalDependencies);libzstd_x86_64.lib</AdditionalDependencies>
