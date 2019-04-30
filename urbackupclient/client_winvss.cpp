@@ -2149,7 +2149,7 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 		return false;
 	}
 
-	if (!next(path, 0, vol))
+	if (!next(path, 0, removeDirectorySeparatorAtEnd(vol)))
 	{
 		VSSLog("Path \""+path+"\" does not start with volume \"" + vol + "\"", LL_ERROR);
 		return false;
@@ -2162,7 +2162,9 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 		if (sc_refs[i]->ssetid == ssetid
 			&& sc_refs[i]->target == vol)
 		{
-			volpath = add_trailing_slash(sc_refs[i]->volpath) + path.substr(vol.size());
+			volpath = add_trailing_slash(sc_refs[i]->volpath);
+			if(path.size()>vol.size())
+				volpath += path.substr(vol.size());
 			vssvolume = sc_refs[i]->volpath;
 			break;
 		}
