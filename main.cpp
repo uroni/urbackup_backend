@@ -55,8 +55,6 @@ using namespace nt;
 #	include <errno.h>
 #endif
 
-#include "Interface\Pipe.h"
-
 IServer *Server=NULL;
 
 using namespace std;
@@ -548,15 +546,6 @@ int main_fkt(int argc, char *argv[])
 			sqlite3_temp_directory=sqlite3_mprintf("%s", iter->second.c_str());
 		}
 	}
-
-	IPipe* pipe = Server->ConnectSslStream("google.de", 443, 100000);
-
-	pipe->Write("GET /\r\n\r\n");
-
-	std::string resp;
-	pipe->Read(&resp);
-
-	Server->Log("Resp: " + resp);
 
 
 	for( size_t i=0;i<plugins.size();++i)
