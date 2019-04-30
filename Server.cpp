@@ -1349,10 +1349,23 @@ DWORD WINAPI thread_helper_f(LPVOID param)
 #ifndef _DEBUG
 	__try
 	{
+		try
+		{
 #endif
-		(*t)();
-		Server->destroyDatabases(Server->getThreadID());
+			(*t)();
+			Server->destroyDatabases(Server->getThreadID());
 #ifndef _DEBUG
+		}
+		catch (std::exception& e)
+		{
+			Server->Log(std::string("Thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
+			throw;
+		}
+		catch (...)
+		{
+			Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
+			throw;
+		}
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
 	{
@@ -1370,7 +1383,20 @@ void* thread_helper_f(void * t)
 	os_reset_priority();
 #endif
 	IThread *tmp=(IThread*)t;
-	(*tmp)();
+	try
+	{
+		(*tmp)();
+	}
+	catch (std::exception& e)
+	{
+		Server->Log(std::string("Thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
+		throw;
+	}
+	catch (...)
+	{
+		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
+		throw;
+	}
 	Server->destroyDatabases(Server->getThreadID());
 	return NULL;
 }
