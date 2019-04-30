@@ -119,16 +119,7 @@ CAcceptThread *c_at=NULL;
 
 int main_fkt(int argc, char *argv[]);
 
-#ifndef AS_SERVICE
-
-#ifdef _WIN32
-#define MAINNAME main
-#else
-#define MAINNAME real_main
-#endif
-
-#ifdef _WIN32
-#ifndef _DEBUG
+#if defined(_WIN32) && !defined(_DEBUG) && defined(AS_SERVICE)
 int my_init_fcn_catch(int argc, char *argv[])
 {
 	try
@@ -147,6 +138,13 @@ int my_init_fcn_catch(int argc, char *argv[])
 	}
 }
 #endif
+
+#ifndef AS_SERVICE
+
+#ifdef _WIN32
+#define MAINNAME main
+#else
+#define MAINNAME real_main
 #endif
 
 int MAINNAME(int argc, char *argv[])
