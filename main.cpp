@@ -138,7 +138,24 @@ int my_init_fcn_t(int argc, char *argv[])
 	__try{
 #endif
 #endif
-	return main_fkt(argc, argv);
+#ifndef _DEBUG
+	try
+	{
+#endif
+		return main_fkt(argc, argv);
+#ifndef _DEBUG
+	}
+	catch (std::exception& e)
+	{
+		Server->Log(std::string("Thread exit with unhandled std::exception ") + e.what(), LL_ERROR);
+		throw;
+	}
+	catch (...)
+	{
+		Server->Log(std::string("Thread exit with unhandled C++ exception "), LL_ERROR);
+		throw;
+	}
+#endif
 #ifdef _WIN32
 #ifndef _DEBUG
 	}__except(CServer::WriteDump(GetExceptionInformation()) )
