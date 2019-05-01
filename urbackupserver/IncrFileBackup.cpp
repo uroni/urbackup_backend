@@ -1099,7 +1099,7 @@ bool IncrFileBackup::doFileBackup()
 						{
 							if (!phash_load->getHash(line, curr_sha2))
 							{
-								ServerLogger::Log(logid, "Error getting parallel hash for file \"" + cf.name + "\" line " + convert(line), LL_ERROR);
+								ServerLogger::Log(logid, "Error getting parallel hash for file \"" + cf.name + "\" line " + convert(line)+" (2)", LL_ERROR);
 								r_offline = true;
 								server_download->queueSkip();
 							}

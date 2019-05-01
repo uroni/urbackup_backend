@@ -95,6 +95,8 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 		_u16 msgsize;
 		if (phash_file->Read(phash_file_pos, reinterpret_cast<char*>(&msgsize), sizeof(msgsize)) != sizeof(msgsize))
 		{
+			ServerLogger::Log(logid, "Error reading record size (" + convert(sizeof(msgsize)) + 
+				" bytes) from parallel hash file " + phash_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 			return false;
 		}
 
@@ -113,6 +115,8 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 		std::string msgdata = phash_file->Read(phash_file_pos + sizeof(_u16), msgsize);
 		if (msgdata.size() != msgsize)
 		{
+			ServerLogger::Log(logid, "Error reading parallel hash file record (size "+convert(msgsize)+" read only "+convert(msgdata.size())+") "
+				"from parallel hash file " + phash_file->getFilename() + ". " + os_last_error_str(), LL_ERROR);
 			return false;
 		}
 
@@ -127,19 +131,29 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 			continue;
 
 		if (id != 1)
+		{
+			ServerLogger::Log(logid, "Unknown parallel hash file record id", LL_ERROR);
 			return false;
+		}
 
 		int64 curr_file_id;
 		if (!data.getVarInt(&curr_file_id))
+		{
+			ServerLogger::Log(logid, "Error reading parallel hash file id", LL_ERROR);
 			return false;
+		}
 
 		if (!data.getStr2(&hash))
+		{
+			ServerLogger::Log(logid, "Error reading parallel hash file hash", LL_ERROR);
 			return false;
+		}
 
 		if (curr_file_id > file_id)
 		{
 			phash_file_pos -= sizeof(_u16) + msgsize;
 			hash.clear();
+			ServerLogger::Log(logid, "Current parallel hash position greated than requested. "+convert(curr_file_id)+" > "+convert(file_id), LL_ERROR);
 			return false;
 		}
 		else if (curr_file_id < file_id)
