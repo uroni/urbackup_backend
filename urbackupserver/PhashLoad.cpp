@@ -73,8 +73,11 @@ void PhashLoad::operator()()
 	}
 	else
 	{
+		ServerLogger::Log(logid, "Parallel hash loading finished successfully", LL_INFO);
 		fc->FinishScript(cfn);
 	}
+
+	eof = true;
 }
 
 bool PhashLoad::getHash(int64 file_id, std::string & hash)
@@ -87,6 +90,8 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 			if ((has_error || eof)
 				&& phash_file_pos + static_cast<int64>(sizeof(_u16)) > phash_file->Size())
 			{
+				ServerLogger::Log(logid, "Getting parallel file hash record size of id " + convert(file_id) + " from " + phash_file->getFilename() + " failed. "
+					+ (eof ? "EOF." : "Had error."), LL_ERROR);
 				return false;
 			}
 			Server->wait(1000);
@@ -107,6 +112,8 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 			if ((has_error || eof)
 				&& phash_file_pos + static_cast<int64>(sizeof(_u16)) + msgsize > phash_file->Size())
 			{
+				ServerLogger::Log(logid, "Getting parallel file hash record data of id " + convert(file_id) + " from " + phash_file->getFilename() + " failed. "
+					+ (eof ? "EOF." : "Had error."), LL_ERROR);
 				return false;
 			}
 			Server->wait(1000);
