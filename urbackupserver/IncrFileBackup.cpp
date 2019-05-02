@@ -565,6 +565,7 @@ bool IncrFileBackup::doFileBackup()
 	std::stack<bool> dir_diff_stack;
 	std::stack<int64> dir_ids;
 	std::map<int64, int64> dir_end_ids;
+	bool phash_load_offline = false;
 
 	bool has_read_error = false;
 	while( (read=tmp_filelist->Read(buffer, 4096, &has_read_error))>0 )
@@ -1095,13 +1096,15 @@ bool IncrFileBackup::doFileBackup()
 							&& phash_load.get() != NULL
 							&& !script_dir
 							&& extra_params.find("sym_target")==extra_params.end()
-							&& extra_params.find("special") == extra_params.end() )
+							&& extra_params.find("special") == extra_params.end()
+							&& !phash_load_offline)
 						{
 							if (!phash_load->getHash(line, curr_sha2))
 							{
 								ServerLogger::Log(logid, "Error getting parallel hash for file \"" + cf.name + "\" line " + convert(line)+" (2)", LL_ERROR);
 								r_offline = true;
 								server_download->queueSkip();
+								phash_load_offline = true;
 							}
 							else
 							{
