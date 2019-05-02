@@ -1097,7 +1097,8 @@ bool IncrFileBackup::doFileBackup()
 							&& !script_dir
 							&& extra_params.find("sym_target")==extra_params.end()
 							&& extra_params.find("special") == extra_params.end()
-							&& !phash_load_offline)
+							&& !phash_load_offline
+							&& extra_params.find("no_hash")==extra_params.end())
 						{
 							if (!phash_load->getHash(line, curr_sha2))
 							{
