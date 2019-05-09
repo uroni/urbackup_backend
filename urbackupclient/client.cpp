@@ -2138,6 +2138,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				extra+="&special=1";
 			}
 
+			extra += "&line=" + convert(file_id);
+
 			if(!extra.empty())
 			{
 				extra[0]='#';
@@ -2212,6 +2214,8 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 				{
 					extra+="&special=1";
 				}
+
+				extra += "&line=" + convert(file_id+1);
 
 				std::string listname = files[i].name;
 

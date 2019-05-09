@@ -1670,7 +1670,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	JSON::Array selected_components_json;
 
 	std::string pretty_symlink_struct = "d\"windows_components\" 0 "+convert(getChangeIndicator(components_dir))+"\n";
-	int64 pretty_print_id_add = 1;
+	int64 pretty_symlink_struct_id_add = 1;
 
 	for (UINT i = 0; i < nwriters; ++i)
 	{
@@ -1719,7 +1719,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 		std::string named_path_base = ".symlink_"+ curr_dir;
 
 		std::string pretty_symlink_struct_writer = "d\"" + sortHex(i) + "_" + conv_filename(writerNameStrShort) + "\" 0 ";
-		++pretty_print_id_add;
+		int64 pretty_symlink_struct_writer_id_add = 1;
 		std::string pretty_struct_base = components_dir + os_file_sep() + sortHex(i) + "_" + conv_filename(writerNameStrShort);
 		if (!os_directory_exists(pretty_struct_base))
 		{
@@ -1815,7 +1815,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				}
 
 				pretty_symlink_struct_writer += "d\"" + curr_dir + "\" 0 "+convert(getChangeIndicator(pretty_struct_component_path))+"\n";
-				++pretty_print_id_add;
+				++pretty_symlink_struct_writer_id_add;
 
 				has_component = true;
 
@@ -1840,7 +1840,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					}
 
 					pretty_symlink_struct_writer += "d\"files" + sortHex(k) + "\" 0 "+ convert(getChangeIndicator(symlink_fn))+"#special=1&sym_target="+ EscapeParamString(named_path + "_files" + sortHex(k))+"\nu\n";
-					++pretty_print_id_add;
+					pretty_symlink_struct_writer_id_add +=2;
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_files"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing files " + convert(k) + " of component \"" +
@@ -1873,7 +1873,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					}
 
 					pretty_symlink_struct_writer += "d\"database" + sortHex(k) + "\" 0 " + convert(getChangeIndicator(symlink_fn)) + "#special=1&sym_target=" + EscapeParamString(named_path + "_database" + sortHex(k)) + "\nu\n";
-					++pretty_print_id_add;
+					pretty_symlink_struct_writer_id_add +=2;
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database file " + sortHex(k) + " of component \"" +
@@ -1906,7 +1906,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 					}
 
 					pretty_symlink_struct_writer += "d\"database_log" + sortHex(k) + "\" 0 " + convert(getChangeIndicator(symlink_fn))+ "#special=1&sym_target=" + EscapeParamString(named_path + "_database_log" + sortHex(k)) + "\nu\n";
-					++pretty_print_id_add;
+					pretty_symlink_struct_writer_id_add +=2;
 					if (!addFiles(wmFile, ssetid, past_refs, named_path+"_database_log"+ sortHex(k), use_db, exclude_files, outfile))
 					{
 						VSSLog("Error indexing database log file " + sortHex(k) + " of component \"" +
@@ -1984,7 +1984,7 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 				component_vss_instances.push_back(vssInstance);
 
 				pretty_symlink_struct_writer += "u\n";
-				++pretty_print_id_add;
+				++pretty_symlink_struct_writer_id_add;
 			}
 		}
 
@@ -2020,16 +2020,16 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 			component_config_file_size.push_back(utf8Xml.size());
 
 			pretty_symlink_struct += pretty_symlink_struct_writer+"u\n";
-			++pretty_print_id_add;
+			pretty_symlink_struct_id_add += pretty_symlink_struct_writer_id_add + 1;
 		}
 	}
 
 	pretty_symlink_struct += "u\n";
-	++pretty_print_id_add;
+	++pretty_symlink_struct_id_add;
 
 	addFromLastUpto("windows_components", true, 0, false, outfile);
 	outfile << pretty_symlink_struct;
-	file_id += pretty_print_id_add;
+	file_id += pretty_symlink_struct_id_add;
 
 	addFromLastUpto("windows_components_config", true, 0, false, outfile);
 	outfile << "d\"windows_components_config\" 0 "
@@ -2038,15 +2038,15 @@ bool IndexThread::indexVssComponents(VSS_ID ssetid, bool use_db, const std::vect
 	++file_id;
 	for (size_t i = 0; i < component_config_files.size(); ++i)
 	{
-		outfile << "f\"" << component_config_files[i] << "\" " << component_config_file_size[i] << " " << randomChangeIndicator() << "\n";
+		outfile << "f\"" << component_config_files[i] << "\" " << component_config_file_size[i] << " " << randomChangeIndicator() << "#no_hash=1\n";
 		++file_id;
 	}
 
 	info_json.set("selected_components", selected_components_json);
 	std::string selected_components_data = info_json.stringify(false);
 
-	outfile << "f\"backupcom.xml\" 0 " << randomChangeIndicator() << "\n";
-	outfile << "f\"info.json\" " << selected_components_data.size() << " " << randomChangeIndicator() << "\n";
+	outfile << "f\"backupcom.xml\" 0 " << randomChangeIndicator() << "#no_hash=1\n";
+	outfile << "f\"info.json\" " << selected_components_data.size() << " " << randomChangeIndicator() << "#no_hash=1\n";
 	file_id+=2;
 
 	if (!write_file_only_admin(selected_components_data, component_config_dir + os_file_sep() + "info.json"))
