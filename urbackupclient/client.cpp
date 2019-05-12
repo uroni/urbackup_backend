@@ -6526,6 +6526,18 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 	lower_target = target;
 #endif
 
+#ifndef _WIN32
+	if(target=="/"
+		symlink.find("/.wine/dosdevices/z:")==symlink.size()-20
+		&& !FileExists(SYSCONFDIR "/urbackup/follow_wine_link") )
+	{
+		VSSLog("Not following \"" + symlink + "\" to new symlink backup target at \"" 
+			+ target + "\" (Special wine exception. Override via running \"touch " 
+			SYSCONFDIR "/urbackup/follow_wine_link\" on the client)", LL_INFO);
+		return false;
+	}
+#endif
+
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		if(backup_dirs[i].group!=index_group)
