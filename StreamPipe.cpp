@@ -205,8 +205,7 @@ size_t CStreamPipe::Read(std::string *ret, int timeoutms)
 	size_t l=Read(buffer, 8192, timeoutms);
 	if( l>0 )
 	{
-		ret->resize(l);
-		memcpy((char*)ret->c_str(), buffer, l);
+		ret->assign(buffer, l);
 	}
 	else
 	{

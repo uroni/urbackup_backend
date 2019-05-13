@@ -93,7 +93,16 @@ void ServerStatus::setIP(const std::string &clientname, unsigned int ip)
 
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
-	s->ip_addr=ip;
+	s->ip_addr_binary.assign(reinterpret_cast<char*>(&ip), sizeof(ip));
+}
+
+void ServerStatus::setIPv6(const std::string &clientname, const char* ip)
+{
+	assert(!clientname.empty());
+
+	IScopedLock lock(mutex);
+	SStatus *s = &status[clientname];
+	s->ip_addr_binary.assign(ip, 16);
 }
 
 void ServerStatus::setStatusError(const std::string &clientname, SStatusError se)

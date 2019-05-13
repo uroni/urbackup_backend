@@ -126,7 +126,7 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 	public FileClient::ProgressLogCallback
 {
 public:
-	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset,
+	ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName, const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset,
 		bool internet_connection, bool use_file_snapshots, bool use_image_snapshots, bool use_reflink);
 	~ClientMain(void);
 
@@ -153,7 +153,7 @@ public:
 
 	bool createDirectoryForClient();
 
-	sockaddr_in getClientaddr(void);
+	FileClient::SAddrHint getClientaddr(void);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -242,6 +242,8 @@ public:
 
 	bool isDataplanOkay(ServerSettings* local_settings, bool file);
 
+	static std::string getClientIpStr(const std::string& clientname);
+
 	void setConnectionMetered(bool b);
 
 	void forceReauthenticate();
@@ -319,7 +321,7 @@ private:
 	IPipe *pipe;
 	IDatabase *db;
 
-	sockaddr_in clientaddr;
+	FileClient::SAddrHint clientaddr;
 	IMutex *clientaddr_mutex;
 	std::string clientname;
 	std::string clientsubname;

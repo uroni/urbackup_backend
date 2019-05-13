@@ -98,7 +98,7 @@ bool ClientMain::running_backups_allowed=true;
 
 
 
-ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName,
+ClientMain::ClientMain(IPipe *pPipe, FileClient::SAddrHint pAddr, const std::string &pName,
 	const std::string& pSubName, const std::string& pMainName, int filebackup_group_offset, bool internet_connection,
 	bool use_file_snapshots, bool use_image_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
@@ -2176,7 +2176,7 @@ bool ClientMain::sendFile(IPipe *cc, IFile *f, int timeout)
 	return true;
 }
 
-sockaddr_in ClientMain::getClientaddr(void)
+FileClient::SAddrHint ClientMain::getClientaddr(void)
 {
 	IScopedLock lock(clientaddr_mutex);
 	return clientaddr;
@@ -2292,11 +2292,7 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 	std::string hostname;
 	if (!connection_metered)
 	{
-		unsigned int addr = ServerStatus::getStatus(clientname).ip_addr;
-		unsigned char *ips = reinterpret_cast<unsigned char*>(&addr);
-		std::string	ip = convert(ips[0]) + "." + convert(ips[1]) + "." + convert(ips[2]) + "." + convert(ips[3]);
-
-		hostname = Server->LookupHostname(ip);
+		hostname = Server->LookupHostname(getClientIpStr(clientname));
 		if (hostname.empty())
 		{
 			return true;
@@ -2342,6 +2338,28 @@ bool ClientMain::isDataplanOkay(ServerSettings* local_settings, bool file)
 		+ PrettyPrintBytes(appl_limit) + " per month", LL_DEBUG);
 
 	return false;
+}
+
+std::string ClientMain::getClientIpStr(const std::string & clientname)
+{
+	FileClient::SAddrHint addr_hint;
+	std::string ip_addr_binary = ServerStatus::getStatus(clientname).ip_addr_binary;
+	if (ip_addr_binary.size() == sizeof(addr_hint.addr_ipv6))
+	{
+		addr_hint.is_ipv6 = true;
+		memcpy(addr_hint.addr_ipv6, ip_addr_binary.data(), ip_addr_binary.size());
+	}
+	else if (ip_addr_binary.size() == sizeof(addr_hint.addr_ipv4))
+	{
+		addr_hint.is_ipv6 = false;
+		memcpy(&addr_hint.addr_ipv4, ip_addr_binary.data(), ip_addr_binary.size());
+	}
+	else
+	{
+		assert(false);
+	}
+
+	return addr_hint.toString();
 }
 
 void ClientMain::setConnectionMetered(bool b)
@@ -2390,9 +2408,7 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 
 	if(clientaddr!=NULL)
 	{
-		unsigned int ip = ServerStatus::getStatus((curr_clientname)).ip_addr;
-		unsigned char *ips=reinterpret_cast<unsigned char*>(&ip);
-		*clientaddr=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
+		*clientaddr = getClientIpStr(curr_clientname);
 	}
 	if(internet_connection)
 	{
@@ -2416,7 +2432,7 @@ IPipe *ClientMain::getClientCommandConnection(ServerSettings* server_settings, i
 	}
 	else
 	{
-		IPipe *ret=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, timeoutms);
+		IPipe *ret=Server->ConnectStream(getClientaddr().toString(), serviceport, timeoutms);
 		if(server_settings!=NULL && ret!=NULL)
 		{
 			int local_speed=server_settings->getLocalSpeed();
@@ -2473,8 +2489,7 @@ _u32 ClientMain::getClientFilesrvConnection(FileClient *fc, ServerSettings* serv
 	}
 	else
 	{
-		sockaddr_in addr=getClientaddr();
-		_u32 ret=fc->Connect(&addr);
+		_u32 ret=fc->Connect(getClientaddr());
 
 		if(server_settings!=NULL)
 		{
@@ -2524,8 +2539,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 	}
 	else
 	{
-		sockaddr_in addr=getClientaddr();
-		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
+		IPipe *pipe=Server->ConnectStream(getClientaddr().toString(), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
 		{
 			fc_chunked.reset(new FileClientChunked(pipe, false, &tcpstack, this, use_tmpfiles?NULL: no_free_space_callback, identity, NULL));
@@ -2645,8 +2659,7 @@ IPipe * ClientMain::new_fileclient_connection(void)
 	}
 	else
 	{
-		sockaddr_in addr=getClientaddr();
-		rp=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, c_filesrv_connect_timeout);
+		rp=Server->ConnectStream(getClientaddr().toString(), TCP_PORT, c_filesrv_connect_timeout);
 	}
 	return rp;
 }

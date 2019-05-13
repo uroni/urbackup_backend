@@ -186,6 +186,26 @@ bool is_stop_show(IDatabase* db, std::string stop_key)
 	return false;
 }
 
+std::string ipAddrToStr(const std::string& ip_addr_binary)
+{
+	FileClient::SAddrHint addr_hint;
+	if (ip_addr_binary.size() == sizeof(addr_hint.addr_ipv6))
+	{
+		addr_hint.is_ipv6 = true;
+		memcpy(addr_hint.addr_ipv6, ip_addr_binary.data(), ip_addr_binary.size());
+	}
+	else if (ip_addr_binary.size() == sizeof(addr_hint.addr_ipv4))
+	{
+		addr_hint.is_ipv6 = false;
+		memcpy(&addr_hint.addr_ipv4, ip_addr_binary.data(), ip_addr_binary.size());
+	}
+	else
+	{
+		assert(false);
+	}
+	return addr_hint.toString();
+}
+
 }
 
 ACTION_IMPL(status)
@@ -384,8 +404,7 @@ ACTION_IMPL(status)
 						online=true;
 					}
 
-					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
-					ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
+					ip = ipAddrToStr(client_status[j].ip_addr_binary);
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
@@ -458,10 +477,7 @@ ACTION_IMPL(status)
 				stat.set("lastbackup_image", (std::string)"-");
 				stat.set("online", client_status[i].r_online);
 				stat.set("delete_pending", 0);
-				std::string ip;
-				unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
-				ip=convert(ips[0])+"."+convert(ips[1])+"."+convert(ips[2])+"."+convert(ips[3]);
-				stat.set("ip", ip);
+				stat.set("ip", ipAddrToStr(client_status[i].ip_addr_binary));
 
 				switch(client_status[i].status_error)
 				{
@@ -505,13 +521,13 @@ ACTION_IMPL(status)
 
 				extra_client.set("hostname", res[i]["hostname"]);
 
-				_i64 i_ip=os_atoi64(res[i]["lastip"]);
+				std::string i_ip=res[i]["lastip"];
 
 				bool online=false;
 
 				for(size_t j=0;j<client_status.size();++j)
 				{
-					if(i_ip==(_i64)client_status[j].ip_addr)
+					if(i_ip==client_status[j].ip_addr_binary)
 					{
 						online=true;
 					}

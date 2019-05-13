@@ -33,6 +33,7 @@ private:
 	void DelClientThreads(void);
 
 	SOCKET mSocket;
+	SOCKET mSocketv6;
 
 	std::vector<CClientThread*> clientthreads;
 	CUDPThread *udpthread;

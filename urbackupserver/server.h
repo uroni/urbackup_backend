@@ -16,7 +16,7 @@ struct SClient
 	IPipe *pipe;
 	int offlinecount;
 	int changecount;
-	sockaddr_in addr;
+	FileClient::SAddrHint addr;
 	bool internet_connection;
 };
 

@@ -23,6 +23,7 @@ private:
 	void init(_u16 udpport,std::string servername, bool use_fqdn);
 
 	SOCKET udpsock;
+	SOCKET udpsockv6;
 	std::string mServername;
 
 	bool UdpStep(void);

@@ -23,6 +23,7 @@ private:
 	std::vector<CSelectThread*> SelectThreads;
 
 	SOCKET s;
+	SOCKET s_v6;
 	unsigned int WorkerThreadsPerMaster;
 	bool error;
 };

@@ -30,6 +30,29 @@
 
 extern bool run;
 
+namespace
+{
+	bool prepareSocket(SOCKET s)
+	{
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+		fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+
+		int optval = 1;
+		int rc = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if (rc == SOCKET_ERROR)
+		{
+			Server->Log("Failed setting SO_REUSEADDR", LL_ERROR);
+			return false;
+		}
+#ifdef __APPLE__
+		optval = 1;
+		setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+		return true;
+	}
+}
+
 OutputCallback::OutputCallback(SOCKET fd_)
 {
 	  fd=fd_;
@@ -65,7 +88,8 @@ void OutputCallback::operator() (const void* buf, size_t count)
 	while(sent<count);
 }
 
-CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort ) : error(false)
+CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort ) 
+	: error(false), s_v6(SOCKET_ERROR)
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
@@ -80,22 +104,12 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 		error=true;
 		return;
 	}
-#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
-#endif
 
-	int optval=1;
-	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-	if(rc==SOCKET_ERROR)
+	if (!prepareSocket(s))
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+convert(uPort),LL_ERROR);
-		error=true;
+		error = true;
 		return;
 	}
-#ifdef __APPLE__
-	optval = 1;
-	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
-#endif
 
 	sockaddr_in addr;
 
@@ -104,7 +118,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	addr.sin_port=htons(uPort);
 	addr.sin_addr.s_addr= htonl(INADDR_ANY);
 
-	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
+	int rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
 		Server->Log("Failed binding SOCKET to Port "+convert(uPort),LL_ERROR);
@@ -114,12 +128,47 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 
 	listen(s, 10000);
 
+	if (Server->getServerParameter("disable_ipv6").empty())
+	{
+		s_v6 = socket(AF_INET6, type, 0);
+
+		if (s_v6<1)
+		{
+			Server->Log("Creating ipv6 SOCKET failed. Port " + convert((int)uPort) + " may already be in use", LL_ERROR);
+			error = true;
+			return;
+		}
+
+		if (!prepareSocket(s_v6))
+		{
+			error = true;
+			return;
+		}
+
+		sockaddr_in6 addr = {};
+		addr.sin6_family = AF_INET6;
+		addr.sin6_port = htons(uPort);
+		addr.sin6_addr = in6addr_any;
+
+		int rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
+		if (rc == SOCKET_ERROR)
+		{
+			Server->Log("Failed binding ipv6 SOCKET to Port " + convert(uPort), LL_ERROR);
+			error = true;
+			return;
+		}
+
+		listen(s_v6, 10000);
+	}
+
 	Server->Log("Server started up successfully!",LL_INFO);
 }
 
 CAcceptThread::~CAcceptThread()
 {
 	closesocket(s);
+	if (s_v6 != SOCKET_ERROR)
+		closesocket(s_v6);
 	Server->Log("Deleting SelectThreads..");
 	for(size_t i=0;i<SelectThreads.size();++i)
 	{
@@ -158,60 +207,82 @@ void CAcceptThread::operator()(bool single)
 #ifdef _WIN32
 		fd_set fdset;
 		FD_ZERO(&fdset);
-		FD_SET(s, &fdset);
+		if(s!=SOCKET_ERROR)
+			FD_SET(s, &fdset);
+		if(s_v6!=SOCKET_ERROR)
+			FD_SET(s_v6, &fdset);
 
 		timeval lon;	
 		lon.tv_sec=1;
 		lon.tv_usec=0;
 
 		_i32 rc=select((int)s+1, &fdset, 0, 0, &lon);
-
-		if( rc<0 )
-			return;
-
-		if( FD_ISSET(s,&fdset) )
-		{
 #else
-		pollfd conn[1];
-		conn[0].fd=s;
-		conn[0].events=POLLIN;
-		conn[0].revents=0;
-		int rc = poll(conn, 1, 1000);
-		if(rc<0)
+		pollfd conn[2];
+		conn[0].fd = s;
+		conn[0].events = POLLIN;
+		conn[0].revents = 0;
+		conn[1].revents = 0;
+		nfds_t num_fds = 1;
+
+		if (s_v6 != SOCKET_ERROR)
+		{
+			conn[1].fd = s_v6;
+			conn[1].events = POLLIN;
+			num_fds = 2;
+		}
+
+		int rc = poll(conn, num_fds, 1000);
+#endif
+		if (rc<0)
 			return;
 
-		if(rc>0)
+		if (rc > 0)
 		{
-#endif		
-			sockaddr_in naddr;
-			SOCKET ns= ACCEPT_CLOEXEC(s, (sockaddr*)&naddr, &addrsize);
-			if(ns!=SOCKET_ERROR)
+			for (size_t n = 0; n < 2; ++n)
 			{
+#ifdef _WIN32
+				SOCKET accept_socket = n == 0 ? s : s_v6;
+				if (accept_socket == SOCKET_ERROR)
+					continue;
+				if (!FD_ISSET(accept_socket, &fdset))
+					continue;
+#else
+				if (conn[n].revents == 0)
+					continue;
+				SOCKET accept_socket = conn[n].fd;
+#endif
+
+				sockaddr_in naddr;
+				SOCKET ns = ACCEPT_CLOEXEC(accept_socket, (sockaddr*)&naddr, &addrsize);
+				if (ns != SOCKET_ERROR)
+				{
 
 #ifdef __APPLE__
-				int optval = 1;
-				setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+					int optval = 1;
+					setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
 #endif
-				//Server->Log("New Connection incomming", LL_INFO);
+					//Server->Log("New Connection incomming", LL_INFO);
 
-				OutputCallback *output=new OutputCallback(ns);
-				FCGIProtocolDriver *driver=new FCGIProtocolDriver(*output );
+					OutputCallback *output = new OutputCallback(ns);
+					FCGIProtocolDriver *driver = new FCGIProtocolDriver(*output);
 
-				CClient *client=new CClient();
-				client->set(ns, output, driver);
+					CClient *client = new CClient();
+					client->set(ns, output, driver);
 
-				AddToSelectThread(client);
-			}
-			else
-			{
-				Server->Log("Accepting client failed", LL_ERROR);
+					AddToSelectThread(client);
+				}
+				else
+				{
+					Server->Log("Accepting client failed", LL_ERROR);
 #ifndef _WIN32
-				printLinError();
+					printLinError();
 #endif
-				Server->wait(1000);
+					Server->wait(1000);
+				}
 			}
 		}
-	}while(single==false);
+	}while(!single);
 }
 
 void CAcceptThread::AddToSelectThread(CClient *client)

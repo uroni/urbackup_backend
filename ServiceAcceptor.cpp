@@ -29,8 +29,32 @@
 #include "Interface/Condition.h"
 #include "Interface/Service.h"
 
+namespace
+{
+	bool prepareSocket(SOCKET s)
+	{
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+		fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+
+		int optval = 1;
+		int rc = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if (rc == SOCKET_ERROR)
+		{
+			Server->Log("Failed setting SO_REUSEADDR", LL_ERROR);
+			return false;
+		}
+
+#ifdef __APPLE__
+		optval = 1;
+		setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+		return true;
+	}
+}
+
 CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
-	: maxClientsPerThread(pMaxClientsPerThread)
+	: maxClientsPerThread(pMaxClientsPerThread), s_v6(SOCKET_ERROR)
 {
 	name=pName;
 	service=pService;
@@ -59,23 +83,12 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 		has_error=true;
 		return;
 	}
-#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-	fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
-#endif
 
-	int optval=1;
-	rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-	if(rc==SOCKET_ERROR)
+	if (!prepareSocket(s))
 	{
-		Server->Log("Failed setting SO_REUSEADDR for port "+convert(port),LL_ERROR);
-		has_error=true;
+		has_error = true;
 		return;
 	}
-
-#ifdef __APPLE__
-	optval = 1;
-	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
-#endif
 
 	sockaddr_in addr;
 
@@ -102,6 +115,48 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 	listen(s, 10000);
 
+	if (Server->getServerParameter("disable_ipv6").empty())
+	{
+		s_v6 = socket(AF_INET6, type, 0);
+		if (s_v6 < 1)
+		{
+			Server->Log(name + ": Creating v6 SOCKET failed", LL_ERROR);
+			has_error = true;
+			return;
+		}
+
+		if (!prepareSocket(s_v6))
+		{
+			has_error = true;
+			return;
+		}
+
+		sockaddr_in6 addr;
+
+		memset(&addr, 0, sizeof(addr));
+		addr.sin6_family = AF_INET6;
+		addr.sin6_port = htons(port);
+		switch (bindTarget)
+		{
+		case IServer::BindTarget_All:
+			addr.sin6_addr = in6addr_any;
+			break;
+		case IServer::BindTarget_Localhost:
+			addr.sin6_addr= in6addr_loopback;
+			break;
+		}
+
+		rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
+		if (rc == SOCKET_ERROR)
+		{
+			Server->Log(name + ": Failed binding ipv6 socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
+			has_error = true;
+			return;
+		}
+
+		listen(s_v6, 10000);
+	}
+
 	Server->Log(name+": Server started up successfully!",LL_INFO);
 }
 
@@ -116,6 +171,8 @@ CServiceAcceptor::~CServiceAcceptor()
 	write(xpipe[1], &ch, 1);
 #endif
 	closesocket(s);
+	if (s_v6 != SOCKET_ERROR)
+		closesocket(s_v6);
 	for(size_t i=0;i<workers.size();++i)
 	{
 		workers[i]->stop();
@@ -148,14 +205,14 @@ void CServiceAcceptor::operator()(void)
 
 	while(do_exit==false)
 	{
-		socklen_t addrsize=sizeof(sockaddr_in);
-
 #ifdef _WIN32
 		fd_set fdset;
 		FD_ZERO(&fdset);		
-		SOCKET maxs=s;
-		FD_SET(s, &fdset);
-		++maxs;
+		if(s!=SOCKET_ERROR)
+			FD_SET(s, &fdset);
+		if (s_v6 != SOCKET_ERROR)
+			FD_SET(s_v6, &fdset);
+		SOCKET maxs = (std::max)(s, s_v6) + 1;
 
 		timeval lon;
 		lon.tv_sec=100;
@@ -163,25 +220,58 @@ void CServiceAcceptor::operator()(void)
 
 		_i32 rc=select((int)maxs, &fdset, 0, 0, &lon);
 #else
-		pollfd conn[2];
-		conn[0].fd=s;
+		pollfd conn[3];
+		conn[0].fd= s !=SOCKET_ERROR ? s: s_v6;
 		conn[0].events=POLLIN;
 		conn[0].revents=0;
 		conn[1].fd=xpipe[0];
 		conn[1].events=POLLIN;
 		conn[1].revents=0;
+		conn[2].revents = 0;
+
+		nfds_t num_fds = 2;
+
+		if (s_v6 != SOCKET_ERROR
+			&& s != SOCKET_ERROR)
+		{
+			num_fds = 3;
+			conn[2].fd = s_v6;
+			conn[2].events = POLLIN;
+		}
+
 		int rc = poll(conn, 2, 100*1000);
 #endif
 		if(rc>=0)
 		{
-#ifdef _WIN32
-			if( FD_ISSET(s,&fdset) && do_exit==false)
-#else
-			if( conn[0].revents!=0 && do_exit==false)
-#endif
+			for (size_t n = 0; n < 2; ++n)
 			{
-				sockaddr_in naddr;
-				SOCKET ns= ACCEPT_CLOEXEC(s, (sockaddr*)&naddr, &addrsize);
+#ifdef _WIN32
+				SOCKET accept_socket = n == 0 ? s : s_v6;
+				if (accept_socket == SOCKET_ERROR)
+					continue;
+				if (!FD_ISSET(accept_socket, &fdset))
+					continue;
+#else
+				if (conn[n].revents == 0)
+					continue;
+				SOCKET accept_socket = conn[n].fd;
+#endif
+				if (do_exit)
+					break;
+
+				union
+				{
+					sockaddr_in naddr_v4;
+					sockaddr_in6 naddr_v6;
+				} naddr;
+				socklen_t addrsize;
+				if (accept_socket == s_v6)
+					addrsize = sizeof(naddr.naddr_v6);
+				else
+					addrsize = sizeof(naddr.naddr_v4);
+
+				sockaddr* paddr = (sockaddr*)&naddr;
+				SOCKET ns= ACCEPT_CLOEXEC(accept_socket, paddr, &addrsize);
 				if(ns!=SOCKET_ERROR)
 				{
 #ifdef __APPLE__
@@ -199,9 +289,12 @@ void CServiceAcceptor::operator()(void)
 					if(window_size>0)
 						setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	#endif
-					std::string endpoint = inet_ntoa(naddr.sin_addr);
+					char buf[100];
+					const char* endpoint = inet_ntop(paddr->sa_family,
+						accept_socket == s_v6 ? (void*)&naddr.naddr_v6.sin6_addr : (void*)&naddr.naddr_v4.sin_addr,
+						buf, sizeof(buf));
 
-					AddToWorker(ns, endpoint);				
+					AddToWorker(ns, endpoint!=NULL ? endpoint : "");
 				}
 			}
 		}

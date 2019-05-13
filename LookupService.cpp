@@ -22,44 +22,84 @@
 #include <memory.h>
 #include "LookupService.h"
 #endif
+#include "LookupService.h"
 
-bool LookupBlocking(std::string pServer, in_addr *dest)
+bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
 {
-	const char* host=pServer.c_str();
-    unsigned int addr = inet_addr(host);
-    if (addr != INADDR_NONE)
+	const char* host = pServer.c_str();
+	unsigned int addr = inet_addr(host);
+	if (addr != INADDR_NONE)
 	{
-        dest->s_addr = addr;
-    }
-	else
+		dest.is_ipv6 = false;
+		dest.addr_v4 = addr;
+		return true;
+	}
+	int rc = inet_pton(AF_INET6, host, dest.addr_v6);
+	if (rc == 1)
 	{
-		addrinfo hints;
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_family = AF_INET;
-		hints.ai_protocol = IPPROTO_TCP;
-		hints.ai_socktype = SOCK_STREAM;
+		dest.is_ipv6 = true;
+		return true;
+	}
 
-		addrinfo* hp;
-		if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	addrinfo* h;
+	if (getaddrinfo(pServer.c_str(), NULL, &hints, &h) == 0)
+	{
+		addrinfo* orig_h = h;
+		while (h != NULL)
 		{
-			if(hp->ai_addrlen>=sizeof(sockaddr_in))
+			if (h->ai_family != AF_INET6
+				&& h->ai_family != AF_INET)
 			{
-				memcpy(dest, &reinterpret_cast<sockaddr_in*>(hp->ai_addr)->sin_addr, sizeof(in_addr));
-				freeaddrinfo(hp);
-				return true;
+				h = h->ai_next;
+				continue;
+			}
+
+			if (h->ai_family == AF_INET6)
+			{
+				if (h->ai_addrlen >= sizeof(sockaddr_in6))
+				{
+					dest.is_ipv6 = true;
+					memcpy(dest.addr_v6, &reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_addr, 16);
+					freeaddrinfo(orig_h);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(orig_h);
+					return false;
+				}
 			}
 			else
 			{
-				freeaddrinfo(hp);
-				return false;
+				if (h->ai_addrlen >= sizeof(sockaddr_in))
+				{
+					dest.is_ipv6 = false;
+					dest.addr_v4 = reinterpret_cast<sockaddr_in*>(h->ai_addr)->sin_addr.s_addr;
+					freeaddrinfo(orig_h);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(orig_h);
+					return false;
+				}
 			}
+
+			h = h->ai_next;
 		}
-		else
-		{
-			return false;
-		}
+		freeaddrinfo(orig_h);
+		return false;
 	}
-	return true;
+	else
+	{
+		return false;
+	}
 }
 
 bool LookupHostname(const std::string & pIp, std::string& hostname)

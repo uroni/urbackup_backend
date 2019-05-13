@@ -33,7 +33,7 @@
 #define REFRESH_SECONDS 10
 
 CTCPFileServ::CTCPFileServ(void)
-	: mSocket(-1)
+	: mSocket(SOCKET_ERROR), mSocketv6(SOCKET_ERROR)
 {
 	udpthread=NULL;
 	udpticket=ILLEGAL_THREADPOOL_TICKET;
@@ -54,10 +54,16 @@ CTCPFileServ::~CTCPFileServ(void)
 
 void CTCPFileServ::KickClients()
 {
-	if (mSocket != -1)
+	if (mSocket != SOCKET_ERROR)
 	{
 		closesocket(mSocket);
-		mSocket = -1;
+		mSocket = SOCKET_ERROR;
+	}
+
+	if (mSocketv6 != SOCKET_ERROR)
+	{
+		closesocket(mSocketv6);
+		mSocketv6 = SOCKET_ERROR;
 	}
 
 	cs.Enter();
@@ -105,6 +111,50 @@ std::string CTCPFileServ::getServername()
 	return udpthread->getServername();
 }
 
+namespace
+{
+	bool setSocketSettings(SOCKET mSocket)
+	{
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+		fcntl(mSocket, F_SETFD, fcntl(mSocket, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+
+#ifndef DISABLE_WINDOW_SIZE
+		//Set window size
+		int window_size = Server->getSendWindowSize();
+		if (window_size > 0)
+		{
+			int err = setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
+
+			if (err == SOCKET_ERROR)
+				Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
+		}
+
+		window_size = Server->getRecvWindowSize();
+		if (window_size > 0)
+		{
+			int err = setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
+
+			if (err == SOCKET_ERROR)
+				Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
+		}
+#endif
+		int optval = 1;
+		int rc = setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if (rc == SOCKET_ERROR)
+		{
+			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start", LL_ERROR);
+			return false;
+		}
+#ifdef __APPLE__
+		optval = 1;
+		setsockopt(mSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+
+		return true;
+	}
+}
+
 bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, bool use_fqdn)
 {
 	m_tcpport=tcpport;
@@ -126,41 +176,8 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		mSocket=socket(AF_INET, type, 0);
 		if(mSocket<1) return false;
 
-#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-		fcntl(mSocket, F_SETFD, fcntl(mSocket, F_GETFD, 0) | FD_CLOEXEC);
-#endif
-
-#ifndef DISABLE_WINDOW_SIZE
-		//Set window size
-		int window_size=Server->getSendWindowSize();
-		if (window_size > 0)
-		{
-			int err = setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, (char *)&window_size, sizeof(window_size));
-
-			if (err == SOCKET_ERROR)
-				Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
-		}
-
-		window_size = Server->getRecvWindowSize();
-		if (window_size > 0)
-		{
-			int err = setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *)&window_size, sizeof(window_size));
-
-			if (err == SOCKET_ERROR)
-				Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
-		}
-#endif
-		int optval=1;
-		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-		if(rc==SOCKET_ERROR)
-		{
-			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start", LL_ERROR);
+		if (!setSocketSettings(mSocket))
 			return false;
-		}
-#ifdef __APPLE__
-		optval = 1;
-		setsockopt(mSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
-#endif
 
 		sockaddr_in addr;
 
@@ -181,6 +198,35 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		}
 
 		listen(mSocket,60);
+
+		if (Server->getServerParameter("disable_ipv6").empty())
+		{
+			mSocketv6 = socket(AF_INET6, type, 0);
+			if (mSocketv6<1) return false;
+
+			if (!setSocketSettings(mSocketv6))
+				return false;
+
+			sockaddr_in6 addr;
+
+			memset(&addr, 0, sizeof(sockaddr_in6));
+			addr.sin6_family = AF_INET6;
+			addr.sin6_port = htons(tcpport);
+			addr.sin6_addr = in6addr_any;
+
+			rc = bind(mSocketv6, (sockaddr*)&addr, sizeof(addr));
+			if (rc == SOCKET_ERROR)
+			{
+#ifdef LOG_SERVER
+				Server->Log("Binding tcp ipv6 socket to port " + convert(tcpport) + " failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
+#else
+				Log("Failed. Binding ipv6 tcp socket.", LL_ERROR);
+#endif
+				return false;
+			}
+
+			listen(mSocketv6, 60);
+		}
 	}
 	//start udpsock
 	if(udpthread!=NULL && udpthread->hasError() )
@@ -218,46 +264,90 @@ bool CTCPFileServ::Run(void)
 
 bool CTCPFileServ::TcpStep(void)
 {
-	if(m_tcpport==0)
+	if (m_tcpport == 0)
 	{
-		Server->wait(REFRESH_SECONDS*1000);
+		Server->wait(REFRESH_SECONDS * 1000);
 		return true;
 	}
-
-	socklen_t addrsize=sizeof(sockaddr_in);
 
 #ifdef _WIN32
 	fd_set fdset;
 	FD_ZERO(&fdset);
-	FD_SET(mSocket, &fdset);
-	timeval lon;	
-	lon.tv_sec=REFRESH_SECONDS;
-	lon.tv_usec=0;
-	_i32 rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+	if (mSocket != SOCKET_ERROR)
+		FD_SET(mSocket, &fdset);
+	if (mSocketv6 != SOCKET_ERROR)
+		FD_SET(mSocketv6, &fdset);
+	timeval lon;
+	lon.tv_sec = REFRESH_SECONDS;
+	lon.tv_usec = 0;
+	_i32 rc = select((std::max)((int)mSocket, (int)mSocketv6) + 1, &fdset, 0, 0, &lon);
 #else
-	pollfd conn[1];
-	conn[0].fd=mSocket;
-	conn[0].events=POLLIN;
-	conn[0].revents=0;
-	int rc = poll(conn, 1, REFRESH_SECONDS*1000);
+	int rc;
+	pollfd conn[2];
+	if (mSocket == -1 || mSocketv6 == -1)
+	{
+		if(mSocket==-1)
+			conn[0].fd = mSocketv6;
+		else
+			conn[0].fd = mSocket;
+		conn[0].events = POLLIN;
+		conn[0].revents = 0;
+		conn[1].revents = 0;
+		rc = poll(conn, 1, REFRESH_SECONDS * 1000);
+	}
+	else
+	{
+		conn[0].fd = mSocket;
+		conn[0].events = POLLIN;
+		conn[0].revents = 0;
+		conn[1].fd = mSocketv6;
+		conn[1].events = POLLIN;
+		conn[1].revents = 0;
+		rc = poll(conn, 2, REFRESH_SECONDS * 1000);
+	}
 #endif
 
 	if(rc>0)
 	{
-		sockaddr_in naddr;
-		SOCKET ns= ACCEPT_CLOEXEC(mSocket, (sockaddr*)&naddr, &addrsize);
-		if(ns!=SOCKET_ERROR)
+		for (size_t s = 0; s < 2; ++s)
 		{
-#ifdef __APPLE__
-			int optval = 1;
-			setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#ifdef _WIN32
+			SOCKET accept_socket = s == 0 ? mSocket : mSocketv6;
+			if (accept_socket == SOCKET_ERROR)
+				continue;
+			if (!FD_ISSET(accept_socket, &fdset))
+				continue;
+#else
+			if (conn[s].revents == 0)
+				continue;
+			SOCKET accept_socket = conn[s].fd;
 #endif
-			cs.Enter();
-			//Log("New Connection incomming", LL_DEBUG);
-			CClientThread *clientthread=new CClientThread(ns, this);
-			Server->createThread(clientthread, "file server");
-			clientthreads.push_back(clientthread);
-			cs.Leave();
+			SOCKET ns;
+			if (accept_socket == mSocketv6)
+			{
+				sockaddr_in naddr;
+				socklen_t addrsize = sizeof(naddr);
+				ns = ACCEPT_CLOEXEC(accept_socket, (sockaddr*)&naddr, &addrsize);
+			}
+			else
+			{
+				sockaddr_in6 naddr;
+				socklen_t addrsize = sizeof(naddr);
+				ns = ACCEPT_CLOEXEC(accept_socket, (sockaddr*)&naddr, &addrsize);
+			}
+			if (ns != SOCKET_ERROR)
+			{
+#ifdef __APPLE__
+				int optval = 1;
+				setsockopt(ns, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+#endif
+				cs.Enter();
+				//Log("New Connection incomming", LL_DEBUG);
+				CClientThread *clientthread = new CClientThread(ns, this);
+				Server->createThread(clientthread, "file server");
+				clientthreads.push_back(clientthread);
+				cs.Leave();
+			}
 		}
 	}
 	else if(rc==SOCKET_ERROR)

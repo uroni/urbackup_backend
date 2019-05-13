@@ -8,6 +8,7 @@
 #include "../../Interface/Pipe.h"
 #include "../../Interface/File.h"
 #include "../../Interface/Mutex.h"
+#include "../os_functions.h"
 
 #define TCP_PORT 35621
 #define UDP_PORT 35622
@@ -76,9 +77,48 @@ public:
 			FileClient::NoFreeSpaceCallback *nofreespace_callback=NULL);
         ~FileClient(void);
 
-		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
-        std::vector<sockaddr_in> getServers(void);
-        std::vector<sockaddr_in> getWrongVersionServers(void);
+		struct SAddrHint
+		{
+			SAddrHint()
+			{}
+
+			SAddrHint(const SLookupResult& lookup_res)
+				: is_ipv6(lookup_res.is_ipv6)
+			{
+				if (lookup_res.is_ipv6)
+				{
+					memcpy(addr_ipv6, lookup_res.addr_v6, sizeof(addr_ipv6));
+				}
+				else
+				{
+					addr_ipv4 = lookup_res.addr_v4;
+				}
+			}
+
+			union
+			{
+				unsigned int addr_ipv4;
+				char addr_ipv6[16];
+			};
+			bool is_ipv6;
+
+			bool same(const SAddrHint& other) const
+			{
+				if (is_ipv6 != other.is_ipv6)
+					return false;
+
+				if (is_ipv6)
+					return memcmp(addr_ipv6, other.addr_ipv6, sizeof(addr_ipv6)) == 0;
+				else
+					return addr_ipv4 == other.addr_ipv4;
+			}
+
+			std::string toString() const;
+		};
+
+		_u32 GetServers(bool start, const std::vector<SAddrHint> &addr_hints);
+        std::vector<SAddrHint> getServers(void);
+        std::vector<SAddrHint> getWrongVersionServers(void);
         std::vector<std::string> getServerNames(void);
         _u32 getLocalIP(void);
         void setServerName(std::string pName);
@@ -87,7 +127,7 @@ public:
         bool isConnected(void);
         bool ListDownloaded(void);
 
-        _u32 Connect(sockaddr_in *addr=NULL);
+        _u32 Connect(const SAddrHint& addr);
 		_u32 Connect(IPipe *cp);
 		
 		void Shutdown();
@@ -150,11 +190,24 @@ private:
 
 		void logProgress(const std::string& remotefn, _u64 filesize, _u64 received);
 
-		
+		bool alreadyHasAddrv4(sockaddr_in addr);
 
-        std::vector<SOCKET> udpsocks;
-		std::vector<sockaddr_in> broadcast_addrs;
-		std::vector<_u32> broadcast_iface_addrs;
+		bool alreadyHasAddrv6(sockaddr_in6 addr);
+
+		struct SSocket
+		{
+			SOCKET udpsock;
+			bool is_ipv6;
+			union
+			{
+				sockaddr_in addr_ipv4;
+				sockaddr_in6 addr_ipv6;
+			};
+		};
+
+		std::string ipToString(SSocket& s);
+
+        std::vector<SSocket> udpsocks;
         IPipe *tcpsock;
 
         int64 starttime;
@@ -165,10 +218,9 @@ private:
 
         char buffer[BUFFERSIZE_UDP];
 
-        sockaddr_in serveraddr;
 
-        std::vector<sockaddr_in> servers;
-        std::vector<sockaddr_in> wvservers;
+        std::vector<SAddrHint> servers;
+        std::vector<SAddrHint> wvservers;
         std::vector<std::string> servernames;
         std::vector<std::string> games;
 
@@ -180,7 +232,7 @@ private:
 
         int max_version;
 
-	sockaddr_in server_addr;
+		SAddrHint server_addr;
 
 	int connection_id;
 

@@ -1015,21 +1015,37 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
-	sockaddr_in server;
-	memset(&server, 0, sizeof(server));
-	if (!LookupBlocking(pServer, &server.sin_addr))
+	union
+	{
+		sockaddr_in addr_v4;
+		sockaddr_in6 addr_v6;
+	} addr = {};
+	
+	SLookupBlockingResult lookup_result;
+	if (!LookupBlocking(pServer, lookup_result))
 	{
 		return NULL;
 	}
-	server.sin_port = htons(pPort);
-	server.sin_family = AF_INET;
+
+	if (lookup_result.is_ipv6)
+	{
+		memcpy(&addr.addr_v6.sin6_addr, lookup_result.addr_v6, sizeof(addr.addr_v6.sin6_addr));
+		addr.addr_v6.sin6_port = htons(pPort);
+		addr.addr_v6.sin6_family = AF_INET6;
+	}
+	else
+	{
+		addr.addr_v4.sin_addr.s_addr = lookup_result.addr_v4;
+		addr.addr_v4.sin_port = htons(pPort);
+		addr.addr_v4.sin_family = AF_INET;
+	}
 
 	int type = SOCK_STREAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 	type |= SOCK_CLOEXEC;
 #endif
 
-	SOCKET s = socket(AF_INET, type, 0);
+	SOCKET s = socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
 	if (s == SOCKET_ERROR)
 	{
 		return NULL;
@@ -1069,7 +1085,10 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&val, sizeof(val));
 #endif
 
-	int rc=connect(s, (sockaddr*)&server, sizeof(sockaddr_in) );
+	sockaddr* addrptr = lookup_result.is_ipv6 ? 
+		reinterpret_cast<sockaddr*>(&addr.addr_v6) : reinterpret_cast<sockaddr*>(&addr.addr_v4);
+
+	int rc=connect(s, addrptr, lookup_result.is_ipv6 ? sizeof(addr.addr_v6) : sizeof(addr.addr_v4) );
 #ifndef _WIN32
 	if(rc==SOCKET_ERROR)
 	{

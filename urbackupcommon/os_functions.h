@@ -86,6 +86,16 @@ bool os_directory_exists(const std::string &path);
 
 #ifndef OS_FUNC_NO_NET
 bool os_lookuphostname(std::string pServer, unsigned int *dest);
+struct SLookupResult
+{
+	bool is_ipv6;
+	union
+	{
+		unsigned int addr_v4;
+		char addr_v6[16];
+	};
+};
+bool os_lookuphostname(std::string pServer, SLookupResult& dest);
 #endif
 
 std::string os_file_prefix(std::string path);

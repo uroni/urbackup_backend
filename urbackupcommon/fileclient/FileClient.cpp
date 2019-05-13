@@ -51,13 +51,7 @@ namespace
 
 	const size_t maxQueuedFiles = 3000;
 	const size_t queuedFilesLow = 100;
-
-	std::string ipToString(sockaddr_in sa)
-	{
-		char str[INET_ADDRSTRLEN];
-		inet_ntop(AF_INET, &(sa.sin_addr), str, INET_ADDRSTRLEN);
-		return str;
-	}
+	const char* multicast_group = "ff12::f894:d:dd00:ef91";
 }
 
 void Log(std::string str)
@@ -92,7 +86,7 @@ bool setSockP(SOCKET sock)
 FileClient::FileClient(bool enable_find_servers, std::string identity, int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
 	: tcpsock(NULL), starttime(0), connect_starttime(0), socket_open(false), connected(false),
-	serveraddr(), local_ip(),
+	local_ip(),
 	max_version(), server_addr(), connection_id(), 
 	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
@@ -272,7 +266,6 @@ void FileClient::bindToNewInterfaces()
 	}
 #else
 	char hostname[MAX_PATH];
-    struct    hostent* h;
 
     _i32 rc=gethostname(hostname, MAX_PATH);
     if(rc==SOCKET_ERROR)
@@ -283,24 +276,35 @@ void FileClient::bindToNewInterfaces()
 	}
 	std::vector<_u32> addresses;
 
-    if(NULL != (h = gethostbyname(hostname)))
+	ADDRINFOA hints = {};
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_family = AF_INET;
+
+	PADDRINFOA h = NULL;
+	rc = getaddrinfo(hostname, NULL, &hints, &h);
+	PADDRINFOA orig_h = h;
+
+    if(rc==0 && h!=NULL)
     {
-		if(h->h_addrtype!=AF_INET)
+		if(h->ai_family!=AF_INET)
 		{
 			Server->Log("Hostname hostent is not AF_INET (ipv4)", LL_ERROR);
 		}
 		else
 		{
-			for(_u32 x = 0; (h->h_addr_list[x]); x++)
+			while(h!=NULL)
 			{
 				sockaddr_in source_addr;
 				memset(&source_addr, 0, sizeof(source_addr));
 				source_addr.sin_family = AF_INET;
-				source_addr.sin_addr.s_addr = *((_u32*)h->h_addr_list[x]);
+				source_addr.sin_addr = reinterpret_cast<sockaddr_in*>(h->ai_addr)->sin_addr;
 				source_addr.sin_port = htons(broadcast_source_port);
 
-				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
+				if (alreadyHasAddrv4(source_addr))
+				{
+					h = h->ai_next;
 					continue;
+				}
 
 				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
 
@@ -326,13 +330,90 @@ void FileClient::bindToNewInterfaces()
 					Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
 				}
 
-				udpsocks.push_back(udpsock);
-				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+				SSocket new_udpsock;
 
-				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
+				new_udpsock.is_ipv6 = false;
+				new_udpsock.addr_ipv4 = source_addr;
+				new_udpsock.udpsock = udpsock;
+
+				udpsocks.push_back(new_udpsock);
+
+				Server->Log("Broadcasting on interface IPv4 "+ ipToString(new_udpsock));
+
+				h = h->ai_next;
 			}
 		}				
     }
+
+	if (orig_h != NULL)
+		freeaddrinfo(orig_h);
+
+
+	if (Server->getServerParameter("disable_ipv6").empty())
+	{
+		hints.ai_family = AF_INET6;
+		PADDRINFOA h = NULL;
+		rc = getaddrinfo(hostname, NULL, &hints, &h);
+		PADDRINFOA orig_h = h;
+
+		if (rc == 0 && h != NULL)
+		{
+			if (h->ai_family != AF_INET6)
+			{
+				Server->Log("Hostname hostent is not AF_INET6 (ipv6)", LL_ERROR);
+			}
+			else
+			{
+				while (h != NULL)
+				{
+					sockaddr_in6 source_addr;
+					memset(&source_addr, 0, sizeof(source_addr));
+					source_addr.sin6_family = AF_INET6;
+					source_addr.sin6_addr = reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_addr;
+					source_addr.sin6_port = htons(broadcast_source_port);
+
+					if (alreadyHasAddrv6(source_addr))
+					{
+						h = h->ai_next;
+						continue;
+					}
+
+					SOCKET udpsock = socket(AF_INET6, SOCK_DGRAM, 0);
+
+					int optval = 1;
+					int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+					if (rc == SOCKET_ERROR)
+					{
+						Server->Log("Failed setting SO_REUSEADDR in FileClient (2)", LL_ERROR);
+					}
+
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if (rc<0)
+					{
+						Server->Log("Binding UDP socket failed (2)", LL_ERROR);
+					}
+
+					setSockP(udpsock);
+
+					SSocket new_udpsock;
+
+					new_udpsock.is_ipv6 = true;
+					new_udpsock.addr_ipv6 = source_addr;
+					new_udpsock.udpsock = udpsock;
+
+					udpsocks.push_back(new_udpsock);
+
+					Server->Log("Broadcasting on interface IPv6 " + ipToString(new_udpsock));
+
+					h = h->ai_next;
+				}
+			}
+		}
+
+		if (orig_h != NULL)
+			freeaddrinfo(orig_h);
+	}
+
 #endif
 }
 
@@ -344,7 +425,7 @@ FileClient::~FileClient(void)
 	}
 	for(size_t i=0;i<udpsocks.size();++i)
 	{
-		closesocket(udpsocks[i]);
+		closesocket(udpsocks[i].udpsock);
 	}
 
 	Server->destroy(mutex);
@@ -357,7 +438,7 @@ FileClient::~FileClient(void)
 	}
 }
 
-std::vector<sockaddr_in> FileClient::getServers(void)
+std::vector<FileClient::SAddrHint> FileClient::getServers(void)
 {
         return servers;
 }
@@ -367,7 +448,7 @@ std::vector<std::string> FileClient::getServerNames(void)
         return servernames;
 }
 
-std::vector<sockaddr_in> FileClient::getWrongVersionServers(void)
+std::vector<FileClient::SAddrHint> FileClient::getWrongVersionServers(void)
 {
         return wvservers;
 }
@@ -377,7 +458,7 @@ _u32 FileClient::getLocalIP(void)
         return local_ip;
 }
 
-_u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
+_u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints)
 {
         if(start==true)
         {
@@ -389,21 +470,41 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			max_version=0;
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
-				sockaddr_in addr_udp;
-				addr_udp.sin_family=AF_INET;
-				addr_udp.sin_port=htons(UDP_PORT);
-#ifdef __FreeBSD__
-				addr_udp.sin_addr.s_addr=broadcast_addrs[i].sin_addr.s_addr;
-#else
-				addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
-#endif
-				memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
-
-				char ch=ID_PING;
-				int rc=sendto(udpsocks[i], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
-				if(rc==-1)
+				if (!udpsocks[i].is_ipv6)
 				{
-					Server->Log("Sending broadcast failed!", LL_ERROR);
+					sockaddr_in addr_udp;
+					addr_udp.sin_family = AF_INET;
+					addr_udp.sin_port = htons(UDP_PORT);
+#ifdef __FreeBSD__
+					addr_udp.sin_addr.s_addr = broadcast_addrs[i].sin_addr.s_addr;
+#else
+					addr_udp.sin_addr.s_addr = INADDR_BROADCAST;
+#endif
+					memset(addr_udp.sin_zero, 0, sizeof(addr_udp.sin_zero));
+
+					char ch = ID_PING;
+					int rc = sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(addr_udp));
+					if (rc == -1)
+					{
+						Server->Log("Sending broadcast failed!", LL_ERROR);
+					}
+				}
+				else
+				{
+					sockaddr_in6 addr_udp = {};
+					addr_udp.sin6_family = AF_INET6;
+					addr_udp.sin6_port = htons(UDP_PORT);
+					if (inet_pton(AF_INET6, multicast_group, &addr_udp.sin6_addr) != 1)
+					{
+						Server->Log("inet_pton failed", LL_ERROR);
+					}
+
+					char ch = ID_PING;
+					int rc = sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(addr_udp));
+					if (rc == -1)
+					{
+						Server->Log("Sending broadcast failed! (ipv6)", LL_ERROR);
+					}
 				}
 			}
 
@@ -418,46 +519,65 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 #define SETSOCK_CAST
 #endif
 
-					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
+					if(!udpsocks[i].is_ipv6)
 					{
-						Server->Log("Error setting socket to not broadcast", LL_ERROR);
-					}
+						if(setsockopt(udpsocks[i].udpsock, SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
+						{
+							Server->Log("Error setting socket to not broadcast", LL_ERROR);
+						}
 
-					#if defined(__FreeBSD__)
-					int optval=0;
-					if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-					{
-						Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
+						#if defined(__FreeBSD__)
+						int optval=0;
+						if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+						{
+							Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
+						}
+						#endif
+
 					}
-					#endif
 
 					for(size_t j=0;j<addr_hints.size();++j)
 					{
 						char ch=ID_PING;
-						sockaddr_in addr_udp;
-						addr_udp.sin_family=AF_INET;
-						addr_udp.sin_port=htons(UDP_PORT);
-						addr_udp.sin_addr.s_addr=addr_hints[j].s_addr;
-						memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
 
-						sendto(udpsocks[i], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+						if (!addr_hints[j].is_ipv6)
+						{
+							sockaddr_in addr_udp = {};
+							addr_udp.sin_family = AF_INET;
+							addr_udp.sin_port = htons(UDP_PORT);
+							addr_udp.sin_addr.s_addr = addr_hints[j].addr_ipv4;
+
+							sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+						}
+						else
+						{
+							sockaddr_in6 addr_udp = {};
+							addr_udp.sin6_family = AF_INET6;
+							addr_udp.sin6_port = htons(UDP_PORT);
+							memcpy(&addr_udp.sin6_addr, addr_hints[j].addr_ipv6, sizeof(addr_hints[j].addr_ipv6));
+
+							sendto(udpsocks[i].udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+						}
 					}
 
-					broadcast=1;
-					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
+					if (!udpsocks[i].is_ipv6)
 					{
-						Server->Log("Error setting socket to broadcast", LL_ERROR);
-					}
+						broadcast = 1;
+						if (setsockopt(udpsocks[i].udpsock, SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int)) == -1)
+						{
+							Server->Log("Error setting socket to broadcast", LL_ERROR);
+						}
 
 #undef SETSOCK_CAST
 
-					#if defined(__FreeBSD__)
-					optval=1;
-					if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-					{
-						Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
+#if defined(__FreeBSD__)
+						optval = 1;
+						if (setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int)) == -1)
+						{
+							Server->Log(std::string("Error setting IP_ONESBCAST"), LL_ERROR);
+						}
+#endif
 					}
-					#endif
 				}
 			}
 
@@ -480,13 +600,13 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 
 			if(!udpsocks.empty())
 			{
-				max_socket=udpsocks[0];
+				max_socket=udpsocks[0].udpsock;
 			}
 
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
-				FD_SET(udpsocks[i], &fdset);
-				max_socket=(std::max)(max_socket, udpsocks[i]);
+				FD_SET(udpsocks[i].udpsock, &fdset);
+				max_socket=(std::max)(max_socket, udpsocks[i].udpsock);
 			}
 
 			timeval lon;
@@ -510,14 +630,26 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 				for(size_t i=0;i<udpsocks.size();++i)
 				{
 #ifdef _WIN32
-					if(FD_ISSET(udpsocks[i], &fdset))
+					if(FD_ISSET(udpsocks[i].udpsock, &fdset))
 #else
 					if(conn[i].revents!=0)
 #endif
 					{
-						socklen_t addrsize=sizeof(sockaddr_in);
-						sockaddr_in sender;
-						_i32 err = recvfrom(udpsocks[i], buffer, BUFFERSIZE_UDP, 0, (sockaddr*)&sender, &addrsize);
+						socklen_t addrsize;
+						sockaddr* sender;
+						sockaddr_in6 sender_v6;
+						sockaddr_in sender_v4;
+						if (udpsocks[i].is_ipv6)
+						{
+							sender = (sockaddr*)&sender_v6;
+							addrsize = sizeof(sender_v6);
+						}
+						else
+						{
+							sender = (sockaddr*)&sender_v4;
+							addrsize = sizeof(sender_v4);
+						}
+						_i32 err = recvfrom(udpsocks[i].udpsock, buffer, BUFFERSIZE_UDP, 0, sender, &addrsize);
 						if(err==SOCKET_ERROR)
 						{
 							continue;
@@ -534,13 +666,39 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 
 								if (!sn.empty())
 								{
-									servers.push_back(sender);
+									if (udpsocks[i].is_ipv6)
+									{
+										SAddrHint res;
+										res.is_ipv6 = true;
+										memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+										servers.push_back(res);
+									}
+									else
+									{
+										SAddrHint res;
+										res.is_ipv6 = false;
+										res.addr_ipv4 = sender_v4.sin_addr.s_addr;
+										servers.push_back(res);
+									}									
 									servernames.push_back(sn);
 								}
 							}
 							else
 							{
-								wvservers.push_back(sender);
+								if (udpsocks[i].is_ipv6)
+								{
+									SAddrHint res;
+									res.is_ipv6 = true;
+									memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+									wvservers.push_back(res);
+								}
+								else
+								{
+									SAddrHint res;
+									res.is_ipv6 = false;
+									res.addr_ipv4 = sender_v4.sin_addr.s_addr;
+									wvservers.push_back(res);
+								}
 							}
                                 
 							if( version>max_version )
@@ -570,14 +728,14 @@ int FileClient::getMaxVersion(void)
         return max_version;        
 }
 
-_u32 FileClient::Connect(sockaddr_in *addr)
+_u32 FileClient::Connect(const SAddrHint& addr)
 {
 	if( socket_open==true )
     {
             Server->destroy(tcpsock);
     }
 
-	tcpsock=Server->ConnectStream(inet_ntoa(addr->sin_addr), TCP_PORT, 10000);
+	tcpsock=Server->ConnectStream(addr.toString(), TCP_PORT, 10000);
 
 	if(tcpsock!=NULL)
 	{
@@ -589,7 +747,7 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		}
 	}
 
-	server_addr=*addr;
+	server_addr=addr;
 
     if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -671,7 +829,7 @@ bool FileClient::Reconnect(void)
 		IPipe* new_tcpsock;
 		if(reconnection_callback==NULL)
 		{
-			new_tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
+			new_tcpsock=Server->ConnectStream(server_addr.toString(), TCP_PORT, 10000);
 		}
 		else
 		{
@@ -1623,6 +1781,44 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 	}	
 }
 
+bool FileClient::alreadyHasAddrv4(sockaddr_in addr)
+{
+	for (size_t i = 0; i < udpsocks.size(); ++i)
+	{
+		if (!udpsocks[i].is_ipv6
+			&& addr.sin_addr.s_addr == udpsocks[i].addr_ipv4.sin_addr.s_addr)
+			return true;
+	}
+	return false;
+}
+
+bool FileClient::alreadyHasAddrv6(sockaddr_in6 addr)
+{
+	for (size_t i = 0; i < udpsocks.size(); ++i)
+	{
+		if (udpsocks[i].is_ipv6
+			&& memcmp(addr.sin6_addr.u.Byte, udpsocks[i].addr_ipv6.sin6_addr.u.Byte, sizeof(addr.sin6_addr.u.Byte))==0)
+			return true;
+	}
+	return false;
+}
+
+std::string FileClient::ipToString(SSocket& s)
+{
+	if (!s.is_ipv6)
+	{
+		char str[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(s.addr_ipv4.sin_addr), str, INET_ADDRSTRLEN);
+		return str;
+	}
+	else
+	{
+		char str[INET6_ADDRSTRLEN];
+		inet_ntop(AF_INET6, &(s.addr_ipv6.sin6_addr), str, INET6_ADDRSTRLEN);
+		return str;
+	}
+}
+
 IFile * FileClient::temporaryFileRetry()
 {
 	while (true)
@@ -2184,3 +2380,18 @@ void FileClient::resetSparseExtentsFile()
 	}
 }
 
+std::string FileClient::SAddrHint::toString() const
+{
+	if (!is_ipv6)
+	{
+		char str[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, (void*)&addr_ipv4, str, INET_ADDRSTRLEN);
+		return str;
+	}
+	else
+	{
+		char str[INET6_ADDRSTRLEN];
+		inet_ntop(AF_INET6, (void*)addr_ipv6, str, INET6_ADDRSTRLEN);
+		return str;
+	}
+}

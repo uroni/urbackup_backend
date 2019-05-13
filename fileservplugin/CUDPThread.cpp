@@ -36,6 +36,11 @@
 #include <ws2tcpip.h>
 #endif
 
+namespace
+{
+	const char* multicast_group = "ff12::f894:d:dd00:ef91";
+}
+
 #ifdef __APPLE__
 std::string mac_get_serial()
 {
@@ -153,8 +158,49 @@ bool CUDPThread::hasError(void)
 }
 
 CUDPThread::CUDPThread(_u16 udpport,std::string servername, bool use_fqdn)
+	:udpsock(SOCKET_ERROR), udpsockv6(SOCKET_ERROR)
 {
 	init(udpport, servername, use_fqdn);
+}
+
+namespace
+{
+	void setSocketSettings(SOCKET udpsock)
+	{
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+		fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+		int optval = 1;
+		int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if (rc == SOCKET_ERROR)
+		{
+			Log("Failed setting SO_REUSEADDR in CUDPThread::CUDPThread", LL_ERROR);
+			return;
+		}
+	}
+
+	void disableNewWindowsBehaviour(SOCKET udpsock)
+	{
+#ifdef _WIN32
+		DWORD dwBytesReturned = 0;
+		BOOL bNewBehavior = FALSE;
+		DWORD status;
+
+		Log("Disabling new behavior...", LL_DEBUG);
+		// disable  new behavior using
+		// IOCTL: SIO_UDP_CONNRESET
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR,12)
+		status = WSAIoctl(udpsock, SIO_UDP_CONNRESET,
+			&bNewBehavior, sizeof(bNewBehavior),
+			NULL, 0, &dwBytesReturned,
+			NULL, NULL);
+		if (SOCKET_ERROR == status)
+		{
+			Log("Setting SIO_UDP_CONNRESET via WSAIoctl FAILED!", LL_WARNING);
+			//return;
+		}
+#endif
+	}
 }
 
 void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
@@ -171,17 +217,7 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 #endif
 		udpsock=socket(AF_INET, type, 0);
 
-#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
-		fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
-#endif
-
-		int optval=1;
-		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-		if(rc==SOCKET_ERROR)
-		{
-			Log("Failed setting SO_REUSEADDR in CUDPThread::CUDPThread", LL_ERROR);
-			return;
-		}
+		setSocketSettings(udpsock);
 
 		sockaddr_in addr_udp;
 		memset(&addr_udp, 0, sizeof(addr_udp));
@@ -191,7 +227,7 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		addr_udp.sin_addr.s_addr= htonl(INADDR_ANY);
 
 		Log("Binding UDP socket at port "+convert(udpport)+"...", LL_DEBUG);
-		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+		int rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
@@ -204,25 +240,57 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		}
 		Log("done.", LL_DEBUG);
 
-#ifdef _WIN32
-		DWORD dwBytesReturned = 0;
-		BOOL bNewBehavior = FALSE;
-		DWORD status;
+		disableNewWindowsBehaviour(udpsock);
+	}
 
-		Log("Disabling new behavior...", LL_DEBUG);
-		// disable  new behavior using
-		// IOCTL: SIO_UDP_CONNRESET
-		#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR,12)
-		status = WSAIoctl(udpsock, SIO_UDP_CONNRESET,
-						&bNewBehavior, sizeof(bNewBehavior),
-					NULL, 0, &dwBytesReturned,
-					NULL, NULL);
-		if (SOCKET_ERROR == status)
-		{
-			Log("Setting SIO_UDP_CONNRESET via WSAIoctl FAILED!", LL_WARNING);
-			//return;
-		}
+	if (Server->getServerParameter("disable_ipv6").empty())
+	{
+		int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		type |= SOCK_CLOEXEC;
 #endif
+		udpsockv6 = socket(AF_INET6, type, 0);
+
+		setSocketSettings(udpsockv6);
+
+		sockaddr_in6 addr_udp;
+		memset(&addr_udp, 0, sizeof(addr_udp));
+
+		addr_udp.sin6_family = AF_INET6;
+		addr_udp.sin6_port = htons(udpport);
+		addr_udp.sin6_addr = in6addr_any;
+
+		Log("Binding ipv6 UDP socket at port " + convert(udpport) + "...", LL_DEBUG);
+
+		int rc = bind(udpsockv6, (sockaddr*)&addr_udp, sizeof(addr_udp));
+		if (rc == SOCKET_ERROR)
+		{
+#ifdef LOG_SERVER
+			Server->Log("Binding ipv6 UDP socket to port " + convert(udpport) + " failed", LL_ERROR);
+#else
+			Log("Failed binding ipv6 UDP socket.", LL_ERROR);
+#endif
+			has_error = true;
+			return;
+		}
+		Log("done.", LL_DEBUG);
+
+		struct ipv6_mreq group;
+		group.ipv6mr_interface = 0;
+		inet_pton(AF_INET6, multicast_group, &group.ipv6mr_multiaddr);
+		rc = setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, reinterpret_cast<char*>(&group), sizeof(group));
+		if (rc == SOCKET_ERROR)
+		{
+#ifdef LOG_SERVER
+			Server->Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
+#else
+			Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
+#endif
+			has_error = true;
+			return;
+		}
+
+		disableNewWindowsBehaviour(udpsockv6);
 	}
 
 	if( servername!="" )
@@ -243,6 +311,10 @@ CUDPThread::~CUDPThread()
 	if(udpsock!=SOCKET_ERROR)
 	{
 		closesocket(udpsock);
+	}
+	if (udpsockv6 != SOCKET_ERROR)
+	{
+		closesocket(udpsockv6);
 	}
 }
 
@@ -299,28 +371,60 @@ void CUDPThread::operator()(void)
 #endif
 }
 
+namespace
+{
+	struct DualSockAddr
+	{
+		union
+		{
+			sockaddr_in ipv4;
+			sockaddr_in6 ipv6;
+		};
+	};
+}
+
 bool CUDPThread::UdpStep(void)
 {
 	if(has_error)
 		return false;
 
 	int rc;
+#ifndef _WIN32
+	pollfd conn[2];
+#else
+	fd_set fdset;
+#endif
 	if(!do_stop)
 	{
 #ifdef _WIN32
-		fd_set fdset;
 		FD_ZERO(&fdset);
-		FD_SET(udpsock, &fdset);
+		if(udpsock!=SOCKET_ERROR)
+			FD_SET(udpsock, &fdset);
+		if(udpsockv6!=SOCKET_ERROR)
+			FD_SET(udpsockv6, &fdset);
 
 		timeval lon;
 		memset(&lon,0,sizeof(timeval) );
 		lon.tv_sec=60;
-		rc=select((int)udpsock+1, &fdset, 0, 0, &lon);		
+		rc=select((std::max)((int)udpsock, (int)udpsockv6) +1, &fdset, 0, 0, &lon);
 #else
-		pollfd conn[1];
-		conn[0].fd=udpsock;
-		conn[0].events=POLLIN;
-		conn[0].revents=0;
+		if (udpsock == SOCKET_ERROR
+			|| udpsockv6 == SOCKET_ERROR)
+		{
+			conn[0].fd = udpsock!=SOCKET_ERROR ? udpsock : udpsockv6;
+			conn[0].events = POLLIN;
+			conn[0].revents = 0;
+			conn[1].revents = 0;
+		}
+		else
+		{
+			conn[0].fd = udpsock;
+			conn[0].events = POLLIN;
+			conn[0].revents = 0;
+			conn[1].fd = udpsockv6;
+			conn[1].events = POLLIN;
+			conn[1].revents = 0;
+		}
 		rc = poll(conn, 1, 60*1000);
 #endif
 	}
@@ -331,48 +435,66 @@ bool CUDPThread::UdpStep(void)
 
 	if(rc>0)
 	{
-		//Log("Receiving UDP packet...");
-		char buffer[BUFFERSIZE];
-		socklen_t addrsize=sizeof(sockaddr_in);
-		sockaddr_in sender = {};
-		_i32 err = recvfrom(udpsock, buffer, BUFFERSIZE, 0, (sockaddr*)&sender, &addrsize);
-		if(err==SOCKET_ERROR)
+		for (size_t s = 0; s < 2; ++s)
 		{
-#ifdef LOG_SERVER
 #ifdef _WIN32
-			int err = WSAGetLastError();
+			SOCKET curr_udpsock = s == 0 ? udpsock : udpsockv6;
+			if (curr_udpsock == SOCKET_ERROR)
+				continue;
+			if (!FD_ISSET(curr_udpsock, &fdset))
+				continue;
+#else
+			if (conn[s].revents == 0)
+				continue;
+			SOCKET curr_udpsock = conn[s].fd;
 #endif
-			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
-#ifdef _WIN32
-			Server->Log("Last error: "+ convert(err), LL_ERROR);
-#endif
-#endif
-			has_error=true;
-			return false;
-		}
-		else if(err>0)
-		{
-			if(buffer[0]==ID_PING)
-			{
-				unsigned int rsleep=Server->getRandomNumber()%500;
-				//Log("UDP: PING received... sending PONG. Delay="+convert(rsleep)+"ms", LL_DEBUG);
-				Server->wait(rsleep);
-				char *buffer=new char[mServername.size()+2];
-				buffer[0]=ID_PONG;
-				buffer[1]=FILESERV_VERSION;
-				memcpy(&buffer[2], mServername.c_str(), mServername.size());
-				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
-				if( rc==SOCKET_ERROR )
-				{
-					Log("Sending reply failed "+convert(rc), LL_DEBUG);
-				}
-				delete[] buffer;
-			}
+			//Log("Receiving UDP packet...");
+			char buffer[BUFFERSIZE];
+			socklen_t addrsize;
+			DualSockAddr sender = {};
+			if (curr_udpsock == udpsock)
+				addrsize = sizeof(sockaddr_in);
 			else
+				addrsize = sizeof(sockaddr_in6);
+			_i32 err = recvfrom(curr_udpsock, buffer, BUFFERSIZE, 0, (sockaddr*)&sender, &addrsize);
+			if (err == SOCKET_ERROR)
 			{
 #ifdef LOG_SERVER
-				Server->Log("Unknown UDP packet id", LL_WARNING);
+#ifdef _WIN32
+				int err = WSAGetLastError();
 #endif
+				Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
+#ifdef _WIN32
+				Server->Log("Last error: " + convert(err), LL_ERROR);
+#endif
+#endif
+				has_error = true;
+				return false;
+			}
+			else if (err > 0)
+			{
+				if (buffer[0] == ID_PING)
+				{
+					unsigned int rsleep = Server->getRandomNumber() % 500;
+					//Log("UDP: PING received... sending PONG. Delay="+convert(rsleep)+"ms", LL_DEBUG);
+					Server->wait(rsleep);
+					char *buffer = new char[mServername.size() + 2];
+					buffer[0] = ID_PONG;
+					buffer[1] = FILESERV_VERSION;
+					memcpy(&buffer[2], mServername.c_str(), mServername.size());
+					int rc = sendto(curr_udpsock, buffer, (int)mServername.size() + 2, 0, (sockaddr*)&sender, addrsize);
+					if (rc == SOCKET_ERROR)
+					{
+						Log("Sending reply failed " + convert(rc), LL_DEBUG);
+					}
+					delete[] buffer;
+				}
+				else
+				{
+#ifdef LOG_SERVER
+					Server->Log("Unknown UDP packet id", LL_WARNING);
+#endif
+				}
 			}
 		}
 	}

@@ -57,11 +57,19 @@ void CLoadbalancerClient::operator ()(void)
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(lbport);
-	if(!LookupBlocking(lb, &addr.sin_addr))
+	SLookupBlockingResult lookup_res;
+	if(!LookupBlocking(lb, lookup_res))
 	{
 		Server->Log("Cannot resolve \""+lb+"\"",LL_ERROR);
 		return;
 	}
+
+	if (lookup_res.is_ipv6)
+	{
+		Server->Log("Ipv6 not supported", LL_ERROR);
+		return;
+	}
+	addr.sin_addr.s_addr = lookup_res.addr_v4;
 
 	int err=connect(s, (sockaddr*)&addr, sizeof( sockaddr_in ) );
 	

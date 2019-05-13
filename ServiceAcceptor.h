@@ -21,6 +21,7 @@ private:
 
 	std::vector<CServiceWorker*> workers;
 	SOCKET s;
+	SOCKET s_v6;
 
 	std::string name;
 

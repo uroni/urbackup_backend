@@ -219,7 +219,7 @@ void BackupServer::operator()(void)
 
 void BackupServer::findClients(FileClient &fc)
 {
-	std::vector<in_addr> addr_hints;
+	std::vector<FileClient::SAddrHint> addr_hints;
 	if(q_get_extra_hostnames!=NULL)
 	{
 		db_results res=q_get_extra_hostnames->Read();
@@ -227,18 +227,20 @@ void BackupServer::findClients(FileClient &fc)
 
 		for(size_t i=0;i<res.size();++i)
 		{
-			unsigned int dest;
-			bool b=os_lookuphostname((res[i]["hostname"]), &dest);
-			if(b)
+			std::string hostname = res[i]["hostname"];
+			SLookupResult lookup_res;
+			if (os_lookuphostname(hostname, lookup_res))
 			{
-				q_update_extra_ip->Bind((_i64)dest);
+				if(lookup_res.is_ipv6)
+					q_update_extra_ip->Bind(lookup_res.addr_v6, sizeof(lookup_res.addr_v6));
+				else
+					q_update_extra_ip->Bind((_i64)lookup_res.addr_v4);
 				q_update_extra_ip->Bind(res[i]["id"]);
 				q_update_extra_ip->Write();
 				q_update_extra_ip->Reset();
 
-				in_addr tmp;
-				tmp.s_addr=dest;
-				addr_hints.push_back(tmp);
+				FileClient::SAddrHint addr_hint(lookup_res);
+				addr_hints.push_back(addr_hint);
 			}
 		}
 	}
@@ -286,7 +288,7 @@ namespace
 		std::string name;
 		std::string subname;
 		std::string mainname;
-		sockaddr_in addr;
+		FileClient::SAddrHint addr;
 		std::string endpoint_name;
 		bool internetclient;
 		bool delete_pending;
@@ -301,7 +303,7 @@ void BackupServer::startClients(FileClient &fc)
 	if(!internet_only_mode)
 	{
 		std::vector<std::string> names=fc.getServerNames();
-		std::vector<sockaddr_in> servers=fc.getServers();
+		std::vector<FileClient::SAddrHint> servers=fc.getServers();
 
 		client_info.resize(servers.size());
 
@@ -330,6 +332,7 @@ void BackupServer::startClients(FileClient &fc)
 
 		SClientInfo new_client;
 		new_client.name = new_name;
+		new_client.addr.is_ipv6 = false;
 		memset(&(new_client.addr), 0, sizeof(sockaddr_in));
 		new_client.endpoint_name = anames[i].second;
 		new_client.internetclient = true;
@@ -423,11 +426,24 @@ void BackupServer::startClients(FileClient &fc)
 
 			if(c.internet_connection)
 			{
-				ServerStatus::setIP(curr_info.name, inet_addr(curr_info.endpoint_name.c_str()));
+				const char* host = curr_info.endpoint_name.c_str();
+				char dest[16];
+				int rc = inet_pton(AF_INET6, host, dest);
+				if (rc != 1)
+				{
+					ServerStatus::setIP(curr_info.name, inet_addr(curr_info.endpoint_name.c_str()));
+				}
+				else
+				{
+					ServerStatus::setIPv6(curr_info.name, dest);
+				}
 			}
 			else
 			{
-				ServerStatus::setIP(curr_info.name, c.addr.sin_addr.s_addr);
+				if(c.addr.is_ipv6)
+					ServerStatus::setIPv6(curr_info.name, c.addr.addr_ipv6);
+				else
+					ServerStatus::setIP(curr_info.name, c.addr.addr_ipv4);
 			}
 
 			clients.insert(std::pair<std::string, SClient>(curr_info.name, c) );
@@ -442,7 +458,7 @@ void BackupServer::startClients(FileClient &fc)
 				found_lan=true;
 			}
 
-			if(it->second.addr.sin_addr.s_addr==curr_info.addr.sin_addr.s_addr && !found_lan)
+			if(it->second.addr.same(curr_info.addr) && !found_lan)
 			{
 				it->second.offlinecount = 0;
 				it->second.changecount = 0;
@@ -453,7 +469,7 @@ void BackupServer::startClients(FileClient &fc)
 				for(size_t j=0;j<client_info.size();++j)
 				{
 					if(i!=j && client_info[j].name==curr_info.name 
-						&& it->second.addr.sin_addr.s_addr==client_info[j].addr.sin_addr.s_addr)
+						&& it->second.addr.same(client_info[j].addr))
 					{
 						none_fits=false;
 						break;
@@ -472,11 +488,12 @@ void BackupServer::startClients(FileClient &fc)
 					msg[7+sizeof(sockaddr_in)]=(curr_info.internetclient?1:0);
 					it->second.pipe->Write(msg);
 
-					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
+					Server->Log("New client address: "+it->second.addr.toString(), LL_INFO);
 
-					Server->Log("New client address: "+convert((unsigned char)ip[0])+"."+convert((unsigned char)ip[1])+"."+convert((unsigned char)ip[2])+"."+convert((unsigned char)ip[3]), LL_INFO);
-
-					ServerStatus::setIP(curr_info.name, it->second.addr.sin_addr.s_addr);
+					if(it->second.addr.is_ipv6)
+						ServerStatus::setIPv6(curr_info.name, it->second.addr.addr_ipv6);
+					else
+						ServerStatus::setIP(curr_info.name, it->second.addr.addr_ipv4);
 
 					it->second.offlinecount=0;
 				}

@@ -92,7 +92,7 @@ struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
 		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled;
-		lastseen = 0; ip_addr = 0;
+		lastseen = 0;
 	}
 
 	std::string client;
@@ -100,7 +100,7 @@ struct SStatus
 	bool has_status;
 	bool online;
 	bool r_online;
-	unsigned int ip_addr;
+	std::string ip_addr_binary;
 	SStatusError status_error;
 	IPipe *comm_pipe;
 	std::string client_version_string;
@@ -119,6 +119,7 @@ public:
 	static bool removeStatus(const std::string &clientname);
 
 	static void setIP(const std::string &clientname, unsigned int ip);
+	static void setIPv6(const std::string &clientname, const char* ip);
 	static void setStatusError(const std::string &clientname, SStatusError se);
 	static void setCommPipe(const std::string &clientname, IPipe *p);
 	static void stopProcess(const std::string &clientname, size_t id, bool b);
