@@ -13,6 +13,10 @@ endif
 
 urbackupclientbackend_SOURCES += urbackupcommon/os_functions_lin.cpp urbackupcommon/sha2/sha2.cpp urbackupcommon/fileclient/FileClient.cpp urbackupcommon/fileclient/tcpstack.cpp urbackupcommon/escape.cpp urbackupcommon/bufmgr.cpp urbackupcommon/json.cpp urbackupcommon/CompressedPipe.cpp urbackupcommon/InternetServicePipe2.cpp urbackupcommon/settingslist.cpp urbackupcommon/fileclient/FileClientChunked.cpp urbackupcommon/InternetServicePipe.cpp urbackupcommon/filelist_utils.cpp urbackupcommon/file_metadata.cpp urbackupcommon/glob.cpp urbackupcommon/chunk_hasher.cpp urbackupcommon/CompressedPipe2.cpp urbackupcommon/SparseFile.cpp urbackupcommon/ExtentIterator.cpp urbackupcommon/TreeHash.cpp urbackupcommon/WalCheckpointThread.cpp
 
+if WITH_ZSTD
+urbackupclientbackend_SOURCES += urbackupcommon/CompressedPipeZstd.cpp
+endif
+
 urbackupclientbackend_SOURCES += cryptoplugin/dllmain.cpp cryptoplugin/AESDecryption.cpp cryptoplugin/CryptoFactory.cpp cryptoplugin/pluginmgr.cpp cryptoplugin/AESEncryption.cpp cryptoplugin/ZlibCompression.cpp cryptoplugin/ZlibDecompression.cpp cryptoplugin/AESGCMDecryption.cpp cryptoplugin/AESGCMEncryption.cpp cryptoplugin/ECDHKeyExchange.cpp
 
 urbackupclientbackend_SOURCES += fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/fs/ntfs.cpp fsimageplugin/fs/unknown.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp fsimageplugin/ClientBitmap.cpp
@@ -44,6 +48,13 @@ SUBDIRS=cryptoplugin/src
 endif
 if !WITH_ASSERTIONS
 urbackupclientbackend_CPPFLAGS+=-DNDEBUG
+endif
+
+if WITH_ZSTD
+urbackupclientbackend_LDADD += -lzstd
+urbackupclientbackend_CXXFLAGS += -DZSTD_STATIC_LINKING_ONLY
+else
+urbackupclientbackend_CXXFLAGS += -DNO_ZSTD_COMPRESSION
 endif
 
 if CLIENT_UPDATE

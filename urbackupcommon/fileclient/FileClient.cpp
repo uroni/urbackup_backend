@@ -154,7 +154,8 @@ void FileClient::bindToNewInterfaces()
 				source_addr.sin_family = AF_INET;
 				source_addr.sin_port = htons(broadcast_source_port);
 
-				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
+
+				if (alreadyHasAddrv4(source_addr))
 					continue;
 
 				int type = SOCK_DGRAM;
@@ -202,11 +203,17 @@ void FileClient::bindToNewInterfaces()
 				}
 				#endif
 
-				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
-				broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
-				udpsocks.push_back(udpsock);
 
-				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
+				SSocket new_udpsock;
+
+				new_udpsock.is_ipv6 = false;
+				new_udpsock.addr_ipv4 = source_addr;
+				new_udpsock.udpsock = udpsock;
+				new_udpsock.broadcast_addr = *((struct sockaddr_in *)ifap->ifa_broadaddr);
+
+				udpsocks.push_back(new_udpsock);
+
+				Server->Log("Broadcasting on interface IPv4 "+ ipToString(new_udpsock));
 			}
 		}
 		freeifaddrs(start_ifap);
@@ -255,12 +262,18 @@ void FileClient::bindToNewInterfaces()
 			}
 			else
 			{
-				udpsocks.push_back(udpsock);
-				source_addr.sin_addr.s_addr = INADDR_BROADCAST;
-				broadcast_addrs.push_back(source_addr);
-				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+	  			SSocket new_udpsock;
 
-				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
+				source_addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+                                new_udpsock.is_ipv6 = false;
+                                new_udpsock.addr_ipv4 = source_addr;
+                                new_udpsock.udpsock = udpsock;
+				new_udpsock.broadcast_addr = source_addr;
+
+				udpsocks.push_back(new_udpsock);
+
+				Server->Log("Broadcasting on interface IPv4 "+ ipToString(new_udpsock));
 			}
 		}
 	}
@@ -476,7 +489,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 					addr_udp.sin_family = AF_INET;
 					addr_udp.sin_port = htons(UDP_PORT);
 #ifdef __FreeBSD__
-					addr_udp.sin_addr.s_addr = broadcast_addrs[i].sin_addr.s_addr;
+					addr_udp.sin_add = udpsocks[i].broadcast_addr;
 #else
 					addr_udp.sin_addr.s_addr = INADDR_BROADCAST;
 #endif
@@ -618,7 +631,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 			conn.resize(udpsocks.size());
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
-				conn[i].fd=udpsocks[i];
+				conn[i].fd=udpsocks[i].udpsock;
 				conn[i].events=POLLIN;
 				conn[i].revents=0;
 			}
@@ -1797,7 +1810,7 @@ bool FileClient::alreadyHasAddrv6(sockaddr_in6 addr)
 	for (size_t i = 0; i < udpsocks.size(); ++i)
 	{
 		if (udpsocks[i].is_ipv6
-			&& memcmp(addr.sin6_addr.u.Byte, udpsocks[i].addr_ipv6.sin6_addr.u.Byte, sizeof(addr.sin6_addr.u.Byte))==0)
+			&& memcmp(&addr.sin6_addr, &udpsocks[i].addr_ipv6.sin6_addr, sizeof(addr.sin6_addr))==0)
 			return true;
 	}
 	return false;

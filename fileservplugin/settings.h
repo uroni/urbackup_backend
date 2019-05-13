@@ -12,7 +12,9 @@ const _i32 READSIZE=32768;
 const _i32 SENDSIZE=16384;
 const uchar FILESERV_VERSION=36;
 
-//#define DISABLE_WINDOW_SIZE
+#ifndef _WIN32
+#define DISABLE_WINDOW_SIZE
+#endif
 //#define LOG_FILE
 //#define LOG_CONSOLE
 //#define LOG_OFF

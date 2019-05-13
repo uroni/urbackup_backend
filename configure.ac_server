@@ -101,6 +101,14 @@ AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr syncfs fallocate64 utimensat accept4])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
+AC_CHECK_LIB(zstd, ZSTD_CCtx_setParameter, [HAS_ZSTD_LIB=1])
+AC_CHECK_HEADER(zstd.h, [HAS_ZSTD_HEADER=1])
+
+if test "x$HAS_ZSTD_LIB" != "x1" || test "x$HAS_ZSTD_HEADER" != "x1"
+then
+	AC_MSG_WARN([ZSTD compression library not present or not recent enough. Compiling without ZSTD support])		
+fi
+AM_CONDITIONAL(WITH_ZSTD, test "x$HAS_ZSTD_LIB" == "x1" && test "x$HAS_ZSTD_HEADER" == "x1")
 
 P_SUBDIRS="snapshot_helper fsimageplugin httpserver urbackupserver"
 

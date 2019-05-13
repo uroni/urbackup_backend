@@ -550,6 +550,7 @@ bool os_link_symbolic(const std::string &target, const std::string &lname, void*
     return symlink(target.c_str(), lname.c_str())==0;
 }
 
+#ifndef OS_FUNC_NO_NET
 bool os_lookuphostname(std::string pServer, unsigned int *dest)
 {
 	const char* host=pServer.c_str();
@@ -596,6 +597,85 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	}
 	return true;
 }
+
+bool os_lookuphostname(std::string pServer, SLookupResult & dest)
+{
+	const char* host = pServer.c_str();
+	unsigned int addr = inet_addr(host);
+	if (addr != INADDR_NONE)
+	{
+		dest.is_ipv6 = false;
+		dest.addr_v4 = addr;
+		return true;
+	}
+	int rc = inet_pton(AF_INET6, host, dest.addr_v6);
+	if (rc == 1)
+	{
+		dest.is_ipv6 = true;
+		return true;
+	}
+
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	addrinfo* h;
+	if (getaddrinfo(pServer.c_str(), NULL, &hints, &h) == 0)
+	{
+		addrinfo* orig_h = h;
+		while (h != NULL)
+		{
+			if (h->ai_family != AF_INET6
+				&& h->ai_family != AF_INET)
+			{
+				h = h->ai_next;
+				continue;
+			}
+
+			if (h->ai_family == AF_INET6)
+			{
+				if (h->ai_addrlen >= sizeof(sockaddr_in6))
+				{
+					dest.is_ipv6 = true;
+					memcpy(dest.addr_v6, &reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_addr, 16);
+					freeaddrinfo(orig_h);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(orig_h);
+					return false;
+				}
+			}
+			else
+			{
+				if (h->ai_addrlen >= sizeof(sockaddr_in))
+				{
+					dest.is_ipv6 = false;
+					dest.addr_v4 = reinterpret_cast<sockaddr_in*>(h->ai_addr)->sin_addr.s_addr;
+					freeaddrinfo(orig_h);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(orig_h);
+					return false;
+				}
+			}
+
+			h = h->ai_next;
+		}
+		freeaddrinfo(orig_h);
+		return false;
+	}
+	else
+	{
+		return false;
+	}
+}
+#endif //OS_FUNC_NO_NET
 
 std::string os_file_prefix(std::string path)
 {

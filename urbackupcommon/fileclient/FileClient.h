@@ -2,6 +2,7 @@
 #define CFILECLIENT_H
 
 #include <deque>
+#include <string.h>
 #include "packet_ids.h"
 #include "../../urbackupcommon/fileclient/tcpstack.h"
 #include "socket_header.h"
@@ -203,6 +204,7 @@ private:
 				sockaddr_in addr_ipv4;
 				sockaddr_in6 addr_ipv6;
 			};
+			sockaddr_in broadcast_addr;
 		};
 
 		std::string ipToString(SSocket& s);

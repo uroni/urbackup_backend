@@ -57,7 +57,9 @@
 #include "PipeThrottler.h"
 #include "mt19937ar.h"
 #include "Query.h"
+#ifdef _WIN32
 #include "SChannelPipe.h"
+#endif
 
 #ifdef _WIN32
 #include <condition_variable>
@@ -211,7 +213,9 @@ void CServer::setup(void)
 	File::init_mutex();
 #endif
 
+#ifdef _WIN32
 	SChannelPipe::init();
+#endif
 }
 
 void CServer::destroyAllDatabases(void)
@@ -1167,6 +1171,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 
 IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
+#ifdef _WIN32
 	int64 starttime = Server->getTimeMS();
 	CStreamPipe* bpipe = static_cast<CStreamPipe*>(ConnectStream(pServer, pPort, pTimeoutms));
 
@@ -1185,6 +1190,9 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 	}
 
 	return ssl_pipe;
+#else
+	return NULL;
+#endif
 }
 
 IPipe *CServer::PipeFromSocket(SOCKET pSocket)

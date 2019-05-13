@@ -25,7 +25,7 @@
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
 #include "../urbackupcommon/CompressedPipe2.h"
-#include "../urbackupcommon/CompressedPipeZStd.h"
+#include "../urbackupcommon/CompressedPipeZstd.h"
 #include "../urbackupcommon/CompressedPipe.h"
 #include "server_settings.h"
 #include "database.h"

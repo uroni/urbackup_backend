@@ -1,3 +1,4 @@
+#pragma once
 #include "socket_header.h"
 #include <string>
 
