@@ -25,8 +25,10 @@
 #include "../common/data.h"
 #include "PipeFile.h"
 #include "PipeFileTar.h"
+#include "PipeFileExt.h"
 #include <string>
 #include <stdlib.h>
+#include "map_buffer.h"
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;
@@ -560,6 +562,26 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 		data.addChar(METADATA_PIPE_EXIT);
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
+	}
+}
+
+void PipeSessions::phashEnd(const std::string & server_token, const std::string & phash_fn)
+{
+	IScopedLock lock(mutex);
+
+	bool allow_exec;
+	std::string fn = map_file("phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + phash_fn, std::string(), allow_exec, NULL);
+
+	if (fn.empty())
+		return;
+
+	std::map<std::string, SPipeSession>::iterator it = pipe_files.find(fn+"|0|0|" + server_token);
+
+	if (it != pipe_files.end())
+	{
+		PipeFileExt* pext = dynamic_cast<PipeFileExt*>(it->second.file);
+		if(pext!=NULL)
+			pext->forceExit();
 	}
 }
 

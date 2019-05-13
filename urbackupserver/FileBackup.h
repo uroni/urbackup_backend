@@ -248,7 +248,7 @@ protected:
 	std::string permissionsAllowAll();
 	bool loadWindowsBackupComponentConfigXml(FileClient &fc);
 	bool startPhashDownloadThread(const std::string& async_id);
-	bool stopPhashDownloadThread();
+	bool stopPhashDownloadThread(const std::string& async_id);
 
 	int group;
 	bool use_tmpfiles;
@@ -270,6 +270,8 @@ protected:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	std::auto_ptr<BackupServerHash> local_hash;
+
+	std::string filelist_async_id;
 
 	ServerPingThread* pingthread;
 	THREADPOOL_TICKET pingthread_ticket;

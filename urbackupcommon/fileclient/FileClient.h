@@ -99,6 +99,8 @@ public:
 
 		_u32 InformMetadataStreamEnd(const std::string& server_token, int tries);
 
+		_u32 StopPhashLoad(const std::string& server_token, const std::string& phash_fn, int tries);
+
 		_u32 FinishScript(std::string remotefn);
 
 		void addThrottler(IPipeThrottler *throttler);

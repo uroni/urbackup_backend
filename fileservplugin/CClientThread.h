@@ -135,6 +135,7 @@ private:
 
 	void queueChunk(const SChunk& chunk);
 	bool InformMetadataStreamEnd( CRData * data );
+	bool StopPhash(CRData * data);
 	bool FinishScript( CRData * data );
 
 	struct SExtent

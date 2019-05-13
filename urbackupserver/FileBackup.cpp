@@ -839,7 +839,7 @@ bool FileBackup::doBackup()
 
 	local_hash->deinitDatabase();
 
-	stopPhashDownloadThread();	
+	stopPhashDownloadThread(filelist_async_id);
 
 	if(disk_error)
 	{
@@ -2367,6 +2367,7 @@ bool FileBackup::startPhashDownloadThread(const std::string& async_id)
 		return false;
 	}
 
+	filelist_async_id = async_id;
 	fc_phash_stream->setProgressLogCallback(this);
 	phash_load.reset(new PhashLoad(fc_phash_stream.release(), logid, async_id));
 	phash_load_ticket = Server->getThreadPool()->execute(phash_load.get(), "phash load");
@@ -2384,14 +2385,14 @@ bool FileBackup::startPhashDownloadThread(const std::string& async_id)
 
 	if (!phash_load->isDownloading())
 	{
-		stopPhashDownloadThread();
+		stopPhashDownloadThread(async_id);
 		return false;
 	}
 
 	return true;
 }
 
-bool FileBackup::stopPhashDownloadThread()
+bool FileBackup::stopPhashDownloadThread(const std::string& async_id)
 {
 	if (phash_load.get() == NULL)
 	{
@@ -2411,7 +2412,7 @@ bool FileBackup::stopPhashDownloadThread()
 			_u32 rc = client_main->getClientFilesrvConnection(fc_phash_stream_end.get(), server_settings.get(), 10000);
 			if (rc == ERR_CONNECTED)
 			{
-				fc_phash_stream_end->InformMetadataStreamEnd(server_token, 0);
+				fc_phash_stream_end->StopPhashLoad(server_token, async_id, 0);
 			}
 			else
 			{

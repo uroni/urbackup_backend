@@ -1322,6 +1322,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 			} break;
+		case ID_STOP_PHASH:
+			{
+				if (!StopPhash(data))
+				{
+					return false;
+				}
+			} break;
 		case ID_FREE_SERVER_FILE:
 			{
 				if (chunk_send_thread_ticket != ILLEGAL_THREADPOOL_TICKET)
@@ -2414,6 +2421,42 @@ bool CClientThread::InformMetadataStreamEnd( CRData * data )
 	}
 
 	if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
+	{
+		Server->Log("Error flushing output socket (2)", LL_INFO);
+	}
+
+	return true;
+}
+
+bool CClientThread::StopPhash(CRData * data)
+{
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if (!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -hash", LL_DEBUG);
+		return false;
+	}
+#endif
+
+	std::string token;
+	data->getStr(&token);
+
+	std::string fn;
+	data->getStr(&fn);
+
+	PipeSessions::phashEnd(token, fn);
+
+	char ch = ID_PONG;
+	int rc = SendInt(&ch, 1);
+	if (rc == SOCKET_ERROR)
+	{
+		Log("Error: Sending data failed (InformMetadataStreamEnd)");
+		return false;
+	}
+
+	if (!clientpipe->Flush(CLIENT_TIMEOUT * 1000))
 	{
 		Server->Log("Error flushing output socket (2)", LL_INFO);
 	}

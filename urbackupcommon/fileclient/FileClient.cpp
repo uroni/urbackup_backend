@@ -1982,6 +1982,72 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token, int t
 	}
 }
 
+_u32 FileClient::StopPhashLoad(const std::string & server_token, const std::string & phash_fn, int tries)
+{
+	if (tcpsock == NULL)
+		return ERR_ERROR;
+
+	setReconnectTries(tries);
+
+	CWData data;
+	data.addUChar(ID_STOP_PHASH);
+	data.addString(identity);
+	data.addString(server_token);
+	data.addString(phash_fn);
+
+	if (stack.Send(tcpsock, data.getDataPtr(), data.getDataSize()) != data.getDataSize())
+	{
+		Server->Log("Timeout during sending phash stream end (1)", LL_ERROR);
+		return ERR_TIMEOUT;
+	}
+
+	while (true)
+	{
+		size_t rc = tcpsock->Read(dl_buf, 1, 120000);
+
+		if (rc == 0)
+		{
+			Server->Log("Server timeout (2) in FileClient sending phash stream end", LL_DEBUG);
+			int tries = getReconnectTriesDecr();
+			bool b = false;
+			if (tries > 0)
+			{
+				b = Reconnect();
+			}
+			if (!b)
+			{
+				Server->Log("FileClient: ERR_TIMEOUT (phash stream)", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar(ID_INFORM_METADATA_STREAM_END);
+				data.addString(identity);
+				data.addString(server_token);
+
+				rc = stack.Send(tcpsock, data.getDataPtr(), data.getDataSize());
+				if (rc == 0)
+				{
+					Server->Log("FileClient: Error sending phash stream end", LL_INFO);
+				}
+				starttime = Server->getTimeMS();
+			}
+		}
+		else
+		{
+			if (*dl_buf == ID_PONG)
+			{
+				return ERR_SUCCESS;
+			}
+			else
+			{
+				return ERR_ERROR;
+			}
+		}
+	}
+}
+
 _u32 FileClient::FinishScript(std::string remotefn)
 {
 	if (tcpsock == NULL)

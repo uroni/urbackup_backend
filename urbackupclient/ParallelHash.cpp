@@ -33,7 +33,7 @@ bool ParallelHash::getExitCode(int & exit_code)
 void ParallelHash::forceExit()
 {
 	do_quit = true;
-	Server->getThreadPool()->waitFor(ticket);
+	//Server->getThreadPool()->waitFor(ticket);
 }
 
 bool ParallelHash::readStdoutIntoBuffer(char * buf, size_t buf_avail, size_t & read_bytes)

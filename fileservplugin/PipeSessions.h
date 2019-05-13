@@ -79,6 +79,8 @@ public:
 
 	static void metadataStreamEnd(const std::string& server_token);
 
+	static void phashEnd(const std::string& server_token, const std::string& phash_fn);
+
 	static void registerMetadataCallback(const std::string &name, const std::string& identity, IFileServ::IMetadataCallback* callback);
 	static void removeMetadataCallback(const std::string &name, const std::string& identity);
 

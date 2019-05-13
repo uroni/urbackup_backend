@@ -31,3 +31,8 @@ void PipeFileExt::forceExitWait()
 	file_ext->forceExit();
 	waitForExit();
 }
+
+void PipeFileExt::forceExit()
+{
+	file_ext->forceExit();
+}

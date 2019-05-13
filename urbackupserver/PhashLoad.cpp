@@ -18,7 +18,7 @@ PhashLoad::PhashLoad(FileClient* fc,
 	: has_error(false), fc(fc),
 	logid(logid), async_id(async_id),
 	phash_file_pos(0), phash_file(NULL), eof(false),
-	has_timeout_error(false)
+	has_timeout_error(false), orig_progress_log_callback(fc->getProgressLogCallback())
 {
 }
 
@@ -32,7 +32,7 @@ void PhashLoad::operator()()
 	fc->setProgressLogCallback(NULL);
 	fc->setNoFreeSpaceCallback(NULL);
 
-	std::string cfn = "SCRIPT|phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + async_id + "|0|" + convert(Server->getRandomNumber()) + "|" + server_token;
+	std::string cfn = "SCRIPT|phash_{9c28ff72-5a74-487b-b5e1-8f1c96cd0cf4}/phash_" + async_id + "|0|0|" + server_token;
 	std::auto_ptr<IFsFile> phash_file_dl(Server->openTemporaryFile());
 
 	if (phash_file_dl.get() == NULL)

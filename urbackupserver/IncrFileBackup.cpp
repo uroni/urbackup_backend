@@ -1338,7 +1338,7 @@ bool IncrFileBackup::doFileBackup()
 		disk_error = true;
 	}
 
-	stopPhashDownloadThread();
+	stopPhashDownloadThread(filelist_async_id);
 
 	server_download->queueStop();
 
