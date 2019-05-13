@@ -15,9 +15,33 @@ ACTION_IMPL(add_client)
 			return;
 		}
 
+		int p_group_id = -1;
+		str_map::iterator group_id = POST.find("group_id");
+		if (group_id != POST.end())
+		{
+			p_group_id = watoi(group_id->second);
+		}
+		else
+		{
+			str_map::iterator group_name = POST.find("group_name");
+			if (group_name != POST.end())
+			{
+				IQuery* q = helper.getDatabase()->Prepare("SELECT id FROM settings_db.si_client_groups WHERE name=?");
+				q->Bind(group_name->second);
+				db_results res = q->Read();
+				q->Reset();
+
+				if (!res.empty())
+				{
+					p_group_id = watoi(res[0]["id"]);
+				}
+			}
+		}
+
 		bool new_client = false;
 		std::string new_authkey;
-		int id = ClientMain::getClientID(helper.getDatabase(), POST["clientname"], NULL, &new_client, &new_authkey);
+		int id = ClientMain::getClientID(helper.getDatabase(), POST["clientname"], NULL,
+			&new_client, &new_authkey, p_group_id>0 ? &p_group_id : NULL);
 		if (new_client)
 		{
 			ServerSettings settings(helper.getDatabase());
