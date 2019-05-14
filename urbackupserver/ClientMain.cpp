@@ -1054,7 +1054,7 @@ void ClientMain::prepareSQL(void)
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
-int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey, int* client_group=NULL)
+int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey, int* client_group)
 {
 	if(new_client!=NULL)
 		*new_client=false;

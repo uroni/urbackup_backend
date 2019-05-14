@@ -221,9 +221,9 @@ void FileClient::bindToNewInterfaces()
 				{
 					sockaddr_in6 source_addr;
 					memset(&source_addr, 0, sizeof(source_addr));
-					source_addr.sin_addr = ((struct sockaddr_in6 *)ifap->ifa_addr)->sin_addr;
-					source_addr.sin_family = AF_INET6;
-					source_addr.sin_port = htons(broadcast_source_port);
+					source_addr.sin6_addr = ((struct sockaddr_in6 *)ifap->ifa_addr)->sin6_addr;
+					source_addr.sin6_family = AF_INET6;
+					source_addr.sin6_port = htons(broadcast_source_port);
 
 
 					if (alreadyHasAddrv6(source_addr))
@@ -352,9 +352,9 @@ void FileClient::bindToNewInterfaces()
 
 				sockaddr_in6 source_addr;
 				memset(&source_addr, 0, sizeof(source_addr));
-				source_addr.sin_addr = in6addr_any;
-				source_addr.sin_family = AF_INET6;
-				source_addr.sin_port = htons(broadcast_source_port);
+				source_addr.sin6_addr = in6addr_any;
+				source_addr.sin6_family = AF_INET6;
+				source_addr.sin6_port = htons(broadcast_source_port);
 
 				Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
 
