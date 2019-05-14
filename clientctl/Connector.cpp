@@ -39,34 +39,11 @@ const size_t conn_retries=4;
 bool Connector::busy=false;
 std::string Connector::pwfile="pw.txt";
 std::string Connector::pwfile_change="pw_change.txt";
-std::string Connector::client="127.0.0.1";
+std::string Connector::client="localhost";
 std::string Connector::tokens;
 
 namespace
 {
-	bool LookupBlocking(std::string pServer, in_addr *dest)
-	{
-		const char* host=pServer.c_str();
-		unsigned int addr = inet_addr(host);
-		if (addr != INADDR_NONE)
-		{
-			dest->s_addr = addr;
-		}
-		else
-		{
-			hostent* hp = gethostbyname(host);
-			if (hp != 0)
-			{
-				memcpy(dest, hp->h_addr, hp->h_length);
-			}
-			else
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
 	void read_tokens(std::string token_path, std::string& tokens)
 	{
             if(os_directory_exists(os_file_prefix(token_path)))
@@ -120,12 +97,18 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	{
 		pw=trim(getFile(pwfile_change));
 	}
+	SLookupResult lookup_result;
+	if (!os_lookuphostname(client, lookup_result))
+	{
+		std::cout << "Error while getting hostname for '" << client << "'" << std::endl;
+		return "";
+	}
 
 	int type = SOCK_STREAM;
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 	type |= SOCK_CLOEXEC;
 #endif
-	SOCKET p=socket(AF_INET, type, 0);
+	SOCKET p=socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
 
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
 	fcntl(p, F_SETFD, fcntl(p, F_GETFD, 0) | FD_CLOEXEC);
@@ -135,17 +118,29 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	setsockopt(p, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
 #endif
 
-	sockaddr_in addr;
-	memset(&addr,0,sizeof(sockaddr_in));
-	if(!LookupBlocking(client, &addr.sin_addr))
+	int rc;
+	if (!lookup_result.is_ipv6)
 	{
-		std::cout << "Error while getting hostname for '" << client << "'" << std::endl;
-		return "";
-	}
-	addr.sin_family=AF_INET;
-	addr.sin_port=htons(35623);
+		sockaddr_in addr;
+		memset(&addr, 0, sizeof(sockaddr_in));
 
-        int rc=connect(p, (sockaddr*)&addr, sizeof(sockaddr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(35623);
+		addr.sin_addr.s_addr = lookup_result.addr_v4;
+
+		rc = connect(p, (sockaddr*)&addr, sizeof(sockaddr));
+	}
+	else
+	{
+		sockaddr_in6 addr;
+		memset(&addr, 0, sizeof(addr));
+
+		addr.sin6_family = AF_INET6;
+		addr.sin6_port = htons(35623);
+		memcpy(&addr.sin6_addr, lookup_result.addr_v6, sizeof(addr.sin6_addr));
+
+		rc = connect(p, (sockaddr*)&addr, sizeof(sockaddr));
+	}
 
 	if(rc==SOCKET_ERROR)
 		return "";
@@ -165,9 +160,9 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	size_t packetsize;
 	while(resp==NULL)
 	{
-                int rc=recv(p, buffer, 1024, MSG_NOSIGNAL);
+        int rc=recv(p, buffer, 1024, MSG_NOSIGNAL);
 		
-                if(rc<=0)
+        if(rc<=0)
 		{
 			closesocket(p);
 			error=true;
