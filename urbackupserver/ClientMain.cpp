@@ -1054,7 +1054,7 @@ void ClientMain::prepareSQL(void)
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
-int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey)
+int ClientMain::getClientID(IDatabase *db, const std::string &clientname, ServerSettings *server_settings, bool *new_client, std::string* authkey, int* client_group=NULL)
 {
 	if(new_client!=NULL)
 		*new_client=false;
@@ -1088,13 +1088,31 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 			q_insert_newclient->Reset();
 			db->destroyQuery(q_insert_newclient);
 
-			IQuery *q_insert_authkey=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES ('internet_authkey',?,?)", false);
+			IQuery *q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES (?,?,?)", false);
 			std::string new_authkey = ServerSettings::generateRandomAuthKey();
-			q_insert_authkey->Bind(new_authkey);
-			q_insert_authkey->Bind(rid);
-			q_insert_authkey->Write();
-			q_insert_authkey->Reset();
-			db->destroyQuery(q_insert_authkey);
+			q_insert_setting->Bind("internet_authkey");
+			q_insert_setting->Bind(new_authkey);
+			q_insert_setting->Bind(rid);
+			q_insert_setting->Write();
+			q_insert_setting->Reset();
+
+			if (client_group != NULL)
+			{
+				q_insert_setting->Bind("group_id");
+				q_insert_setting->Bind(*client_group);
+				q_insert_setting->Bind(rid);
+				q_insert_setting->Write();
+				q_insert_setting->Reset();
+
+				IQuery* q_set_group = db->Prepare("UPDATE clients SET groupid=? WHERE id=?", false);
+				q_set_group->Bind(*client_group);
+				q_set_group->Bind(rid);
+				q_set_group->Write();
+				q_set_group->Reset();
+				db->destroyQuery(q_set_group);
+			}
+
+			db->destroyQuery(q_insert_setting);
 
 			if (authkey != NULL)
 			{
@@ -1103,6 +1121,8 @@ int ClientMain::getClientID(IDatabase *db, const std::string &clientname, Server
 
 			if(new_client!=NULL)
 				*new_client=true;
+
+
 
 			return rid;
 		}
