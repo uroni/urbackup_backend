@@ -119,118 +119,172 @@ void FileClient::bindToNewInterfaces()
 {
 	std::string s_broadcast_source_port = Server->getServerParameter("broadcast_source_port");
 	unsigned short broadcast_source_port = UDP_SOURCE_PORT;
-	if(!s_broadcast_source_port.empty())
+	if (!s_broadcast_source_port.empty())
 	{
 		broadcast_source_port = static_cast<unsigned short>(atoi(s_broadcast_source_port.c_str()));
 	}
 
-	#ifndef _WIN32
-	std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
+#ifndef _WIN32
+	std::string bcast_interfaces = Server->getServerParameter("broadcast_interfaces", "");
 
 	std::vector<std::string> bcast_filter;
-	if(!bcast_interfaces.empty())
+	if (!bcast_interfaces.empty())
 	{
 		Tokenize(bcast_interfaces, bcast_filter, ";,");
 	}
 
 	ifaddrs *start_ifap;
-	int rc=getifaddrs(&start_ifap);
-	if(rc==0)
+	int rc = getifaddrs(&start_ifap);
+	if (rc == 0)
 	{
-		ifaddrs* ifap=start_ifap;
-		for(;ifap!=NULL;ifap=ifap->ifa_next)
+		ifaddrs* ifap = start_ifap;
+		for (; ifap != NULL; ifap = ifap->ifa_next)
 		{
-			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
+			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name) != bcast_filter.end();
 
-			if(found_name &&
-				!(ifap->ifa_flags & IFF_LOOPBACK) 
-				&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
-				&&  (ifap->ifa_flags & IFF_BROADCAST)
-				&&  ifap->ifa_addr->sa_family == AF_INET )
-			{			
-				sockaddr_in source_addr;
-				memset(&source_addr, 0, sizeof(source_addr));
-				source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
-				source_addr.sin_family = AF_INET;
-				source_addr.sin_port = htons(broadcast_source_port);
+			if (found_name &&
+				!(ifap->ifa_flags & IFF_LOOPBACK)
+				&& !(ifap->ifa_flags & IFF_POINTOPOINT))
+			{
+				if (ifap->ifa_addr->sa_family == AF_INET
+					&& (ifap->ifa_flags & IFF_BROADCAST))
+				{
+					sockaddr_in source_addr;
+					memset(&source_addr, 0, sizeof(source_addr));
+					source_addr.sin_addr = ((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
+					source_addr.sin_family = AF_INET;
+					source_addr.sin_port = htons(broadcast_source_port);
 
 
-				if (alreadyHasAddrv4(source_addr))
-					continue;
+					if (alreadyHasAddrv4(source_addr))
+						continue;
 
-				int type = SOCK_DGRAM;
+					int type = SOCK_DGRAM;
 #if defined(SOCK_CLOEXEC)
-				type |= SOCK_CLOEXEC;
+					type |= SOCK_CLOEXEC;
 #endif
-				SOCKET udpsock=socket(AF_INET, type,0);
-				if(udpsock==-1)
-				{
-					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					continue;
-				}
+					SOCKET udpsock = socket(AF_INET, type, 0);
+					if (udpsock == -1)
+					{
+						Server->Log(std::string("Error creating socket for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+						continue;
+					}
 #if !defined(SOCK_CLOEXEC)
-				fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
+					fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
 
-				BOOL val=TRUE;
-				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
-				if(rc<0)
-				{
-					Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					BOOL val = TRUE;
+					int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+					}
+
+					Server->Log(std::string("Binding to interface ") + std::string(ifap->ifa_name) + " for broadcasting...", LL_DEBUG);
+
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Binding UDP socket failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+					}
+
+					rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+						closesocket(udpsock);
+						continue;
+					}
+
+#if defined(__FreeBSD__)
+					int optval = 1;
+					if (setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int)) == -1)
+					{
+						Server->Log(std::string("Error setting IP_ONESBCAST for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+					}
+#endif
+
+
+					SSocket new_udpsock;
+
+					new_udpsock.is_ipv6 = false;
+					new_udpsock.addr_ipv4 = source_addr;
+					new_udpsock.udpsock = udpsock;
+					new_udpsock.broadcast_addr = *((struct sockaddr_in *)ifap->ifa_broadaddr);
+
+					udpsocks.push_back(new_udpsock);
+
+					Server->Log("Broadcasting on interface IPv4 " + ipToString(new_udpsock));
 				}
-
-				Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
-
-				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-				if(rc<0)
+				else if (ifap->ifa_addr->sa_family == AF_INET6
+					&& Server->getServerParameter("disable_ipv6").empty())
 				{
-					Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					sockaddr_in6 source_addr;
+					memset(&source_addr, 0, sizeof(source_addr));
+					source_addr.sin_addr = ((struct sockaddr_in6 *)ifap->ifa_addr)->sin_addr;
+					source_addr.sin_family = AF_INET6;
+					source_addr.sin_port = htons(broadcast_source_port);
+
+
+					if (alreadyHasAddrv6(source_addr))
+						continue;
+
+					int type = SOCK_DGRAM;
+#if defined(SOCK_CLOEXEC)
+					type |= SOCK_CLOEXEC;
+#endif
+					SOCKET udpsock = socket(AF_INET6, type, 0);
+					if (udpsock == -1)
+					{
+						Server->Log(std::string("Error creating ipv6 socket for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+						continue;
+					}
+#if !defined(SOCK_CLOEXEC)
+					fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+
+					BOOL val = TRUE;
+					int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+					}
+
+					Server->Log(std::string("Binding to interface ipv6 ") + std::string(ifap->ifa_name) + " for broadcasting...", LL_DEBUG);
+
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Binding UDP socket failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
+					}
+
+					SSocket new_udpsock;
+
+					new_udpsock.is_ipv6 = true;
+					new_udpsock.addr_ipv6 = source_addr;
+					new_udpsock.udpsock = udpsock;
+
+					udpsocks.push_back(new_udpsock);
+
+					Server->Log("Broadcasting on interface IPv6 " + ipToString(new_udpsock));
 				}
-				
-				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
-				if(rc<0)
-				{
-					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					closesocket(udpsock);
-					continue;
-				}
-
-				#if defined(__FreeBSD__)
-				int optval=1;
-				if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-				{
-					Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
-				}
-				#endif
-
-
-				SSocket new_udpsock;
-
-				new_udpsock.is_ipv6 = false;
-				new_udpsock.addr_ipv4 = source_addr;
-				new_udpsock.udpsock = udpsock;
-				new_udpsock.broadcast_addr = *((struct sockaddr_in *)ifap->ifa_broadaddr);
-
-				udpsocks.push_back(new_udpsock);
-
-				Server->Log("Broadcasting on interface IPv4 "+ ipToString(new_udpsock));
 			}
 		}
 		freeifaddrs(start_ifap);
 	}
 	else
 	{
-		retryBindToNewInterfaces=false;
+		retryBindToNewInterfaces = false;
 
-		Server->Log("Getting interface ips failed. errno="+convert(errno)+
+		Server->Log("Getting interface ips failed. errno=" + convert(errno) +
 			". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
 
 		int type = SOCK_DGRAM;
 #if defined(SOCK_CLOEXEC)
 		type |= SOCK_CLOEXEC;
 #endif
-		SOCKET udpsock=socket(AF_INET, type,0);
-		if(udpsock==-1)
+		SOCKET udpsock = socket(AF_INET, type, 0);
+		if (udpsock == -1)
 		{
 			Server->Log("Error creating socket", LL_ERROR);
 		}
@@ -239,9 +293,9 @@ void FileClient::bindToNewInterfaces()
 #if !defined(SOCK_CLOEXEC)
 			fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
 #endif
-			BOOL val=TRUE;
+			BOOL val = TRUE;
 			int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
-			if(rc<0)
+			if (rc < 0)
 			{
 				Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
 			}
@@ -254,26 +308,64 @@ void FileClient::bindToNewInterfaces()
 
 			Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
 
-			rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
-			if(rc<0)
+			rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL));
+			if (rc < 0)
 			{
 				Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
 				closesocket(udpsock);
 			}
 			else
 			{
-	  			SSocket new_udpsock;
+				SSocket new_udpsock;
 
 				source_addr.sin_addr.s_addr = INADDR_BROADCAST;
 
-                                new_udpsock.is_ipv6 = false;
-                                new_udpsock.addr_ipv4 = source_addr;
-                                new_udpsock.udpsock = udpsock;
+				new_udpsock.is_ipv6 = false;
+				new_udpsock.addr_ipv4 = source_addr;
+				new_udpsock.udpsock = udpsock;
 				new_udpsock.broadcast_addr = source_addr;
 
 				udpsocks.push_back(new_udpsock);
 
-				Server->Log("Broadcasting on interface IPv4 "+ ipToString(new_udpsock));
+				Server->Log("Broadcasting on interface IPv4 " + ipToString(new_udpsock));
+			}
+		}
+
+		if (Server->getServerParameter("disable_ipv6").empty())
+		{
+			SOCKET udpsock = socket(AF_INET6, type, 0);
+			if (udpsock == -1)
+			{
+				Server->Log("Error creating ipv6 socket", LL_ERROR);
+			}
+			else
+			{
+#if !defined(SOCK_CLOEXEC)
+				fcntl(udpsock, F_SETFD, fcntl(udpsock, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+				BOOL val = TRUE;
+				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+				if (rc < 0)
+				{
+					Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
+				}
+
+				sockaddr_in6 source_addr;
+				memset(&source_addr, 0, sizeof(source_addr));
+				source_addr.sin_addr = in6addr_any;
+				source_addr.sin_family = AF_INET6;
+				source_addr.sin_port = htons(broadcast_source_port);
+
+				Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
+
+				SSocket new_udpsock;
+				new_udpsock.is_ipv6 = true;
+				new_udpsock.addr_ipv6 = source_addr;
+				new_udpsock.udpsock = udpsock;
+
+				udpsocks.push_back(new_udpsock);
+
+				Server->Log("Broadcasting on interface IPv6 " + ipToString(new_udpsock));
 			}
 		}
 	}
@@ -473,7 +565,7 @@ _u32 FileClient::getLocalIP(void)
 
 _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints)
 {
-        if(start==true)
+        if(start)
         {
 			if(retryBindToNewInterfaces)
 			{
