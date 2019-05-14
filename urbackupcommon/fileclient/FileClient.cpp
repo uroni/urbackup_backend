@@ -180,7 +180,7 @@ void FileClient::bindToNewInterfaces()
 						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
 					}
 
-					Server->Log(std::string("Binding to interface ") + std::string(ifap->ifa_name) + " for broadcasting...", LL_DEBUG);
+					Server->Log(std::string("Binding to interface ") + std::string(ifap->ifa_name) + " (ipv4) for broadcasting...", LL_DEBUG);
 
 					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
 					if (rc < 0)
@@ -214,7 +214,7 @@ void FileClient::bindToNewInterfaces()
 
 					udpsocks.push_back(new_udpsock);
 
-					Server->Log("Broadcasting on interface IPv4 " + ipToString(new_udpsock));
+					Server->Log("Broadcasting on ipv4 interface "+std::string(ifap->ifa_name) + " addr " + ipToString(new_udpsock));
 				}
 				else if (ifap->ifa_addr->sa_family == AF_INET6
 					&& Server->getServerParameter("disable_ipv6").empty())
@@ -224,6 +224,7 @@ void FileClient::bindToNewInterfaces()
 					source_addr.sin6_addr = ((struct sockaddr_in6 *)ifap->ifa_addr)->sin6_addr;
 					source_addr.sin6_family = AF_INET6;
 					source_addr.sin6_port = htons(broadcast_source_port);
+					source_addr.sin6_scope_id = ((struct sockaddr_in6 *)ifap->ifa_addr)->sin6_scope_id;
 
 
 					if (alreadyHasAddrv6(source_addr))
@@ -253,13 +254,7 @@ void FileClient::bindToNewInterfaces()
 					int optval = 1;
 					setsockopt(udpsock, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
 
-					Server->Log(std::string("Binding to interface ipv6 ") + std::string(ifap->ifa_name) + " for broadcasting...", LL_DEBUG);
-
-					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-					if (rc < 0)
-					{
-						Server->Log(std::string("Binding UDP socket failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
-					}
+					Server->Log(std::string("Binding to interface ") + std::string(ifap->ifa_name) + " (ipv6) for broadcasting...", LL_DEBUG);
 
 					SSocket new_udpsock;
 
@@ -267,9 +262,16 @@ void FileClient::bindToNewInterfaces()
 					new_udpsock.addr_ipv6 = source_addr;
 					new_udpsock.udpsock = udpsock;
 
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if (rc < 0)
+					{
+						Server->Log(std::string("Binding UDP socket failed for interface ") + std::string(ifap->ifa_name)+" errno="+convert(errno)+" interface ipv6 "+ipToString(new_udpsock), LL_ERROR);
+					}
+
+
 					udpsocks.push_back(new_udpsock);
 
-					Server->Log("Broadcasting on interface IPv6 " + ipToString(new_udpsock));
+					Server->Log("Broadcasting on ipv6 interface "+ std::string(ifap->ifa_name) +" addr " + ipToString(new_udpsock));
 				}
 			}
 		}
