@@ -68,7 +68,7 @@ endif
 
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp clientctl/jsoncpp.cpp
 urbackupclientctl_LDADD = 
-urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'
+urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'
 if !WITH_ASSERTIONS
 urbackupclientctl_CPPFLAGS=-DNDEBUG
 endif
