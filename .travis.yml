@@ -9,4 +9,5 @@ addons:
       - libfuse-dev
       - libcurl4-nss-dev
       - libcrypto++-dev
+      - libzstd-dev
 script: ./switch_build.sh server && autoreconf --install && ./configure --with-mountvhd && make && ./switch_build.sh client && autoreconf --install && ./configure --enable-headless && make
