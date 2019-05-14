@@ -21,6 +21,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../Interface/SettingsReader.h"
+#include "../Interface/Condition.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
 #else
