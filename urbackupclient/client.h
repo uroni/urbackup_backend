@@ -490,6 +490,8 @@ private:
 
 	bool hasHash(const std::vector<SFileAndHash>& fsfiles);
 
+	bool hasDirectory(const std::vector<SFileAndHash>& fsfiles);
+
 	void modifyFilesInt(std::string path, int tgroup, const std::vector<SFileAndHash> &data, int64 target_generation);
 	size_t calcBufferSize( std::string &path, const std::vector<SFileAndHash> &data );
 

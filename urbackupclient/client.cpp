@@ -2587,6 +2587,16 @@ bool IndexThread::hasHash(const std::vector<SFileAndHash>& fsfiles)
 	return false;
 }
 
+bool IndexThread::hasDirectory(const std::vector<SFileAndHash>& fsfiles)
+{
+	for (size_t i = 0; i < fsfiles.size(); ++i)
+	{
+		if (fsfiles[i].isdir)
+			return true;
+	}
+	return false;
+}
+
 std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_path, std::string path, const std::string& named_path,
 	bool use_db, const std::string& fn_filter, bool use_db_hashes, const std::vector<std::string>& exclude_dirs,
 	const std::vector<SIndexInclude>& include_dirs, int64& target_generation)
@@ -2744,7 +2754,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::string &orig_pat
 		{
 #ifndef _WIN32
 			if(calculate_filehashes_on_client
-				&& hasHash(fs_files) )
+				&& (hasHash(fs_files) || hasDirectory(fs_files) ) )
 			{
 #endif
 				addFilesInt(path_lower, get_db_tgroup(), fs_files);
