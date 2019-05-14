@@ -253,6 +253,9 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 
 		setSocketSettings(udpsockv6);
 
+		int optval = 1;
+		setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
 		sockaddr_in6 addr_udp;
 		memset(&addr_udp, 0, sizeof(addr_udp));
 

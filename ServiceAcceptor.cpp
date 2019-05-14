@@ -131,6 +131,9 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 			return;
 		}
 
+		int optval = 1;
+		setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
 		sockaddr_in6 addr;
 
 		memset(&addr, 0, sizeof(addr));

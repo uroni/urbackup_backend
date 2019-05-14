@@ -145,6 +145,9 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 			return;
 		}
 
+		int optval = 1;
+		setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
 		sockaddr_in6 addr = {};
 		addr.sin6_family = AF_INET6;
 		addr.sin6_port = htons(uPort);

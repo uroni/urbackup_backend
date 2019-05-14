@@ -207,6 +207,9 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 			if (!setSocketSettings(mSocketv6))
 				return false;
 
+			int optval = 1;
+			setsockopt(mSocketv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
 			sockaddr_in6 addr;
 
 			memset(&addr, 0, sizeof(sockaddr_in6));

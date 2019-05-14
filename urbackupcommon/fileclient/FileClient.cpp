@@ -250,6 +250,9 @@ void FileClient::bindToNewInterfaces()
 						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ") + std::string(ifap->ifa_name), LL_ERROR);
 					}
 
+					int optval = 1;
+					setsockopt(udpsock, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
 					Server->Log(std::string("Binding to interface ipv6 ") + std::string(ifap->ifa_name) + " for broadcasting...", LL_DEBUG);
 
 					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
@@ -349,6 +352,9 @@ void FileClient::bindToNewInterfaces()
 				{
 					Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
 				}
+
+				int optval = 1;
+				setsockopt(udpsock, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
 
 				sockaddr_in6 source_addr;
 				memset(&source_addr, 0, sizeof(source_addr));
@@ -491,6 +497,9 @@ void FileClient::bindToNewInterfaces()
 					{
 						Server->Log("Failed setting SO_REUSEADDR in FileClient (2)", LL_ERROR);
 					}
+
+					optval = 1;
+					setsockopt(udpsock, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
 
 					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
 					if (rc<0)
