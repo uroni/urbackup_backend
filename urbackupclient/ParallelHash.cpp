@@ -12,6 +12,7 @@ namespace
 {
 	const size_t max_modify_file_buffer_size = 2 * 1024 * 1024;
 	const int64 file_buffer_commit_interval = 120 * 1000;
+	const int64 link_file_min_size = 2048;
 }
 
 ParallelHash::ParallelHash(SQueueRef* phash_queue, int sha_version)
@@ -269,9 +270,17 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	std::string full_path = curr_snapshot_dir + os_file_sep() + fn;
 
+	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+
 	SFileAndHash fandhash;
-	if (sha_version == 256)
+	if (f.get() != NULL && f->Size() < link_file_min_size)
 	{
+		f.reset();
+	}
+	else if (sha_version == 256)
+	{
+		f.reset();
+
 		HashSha256 hash_256;
 		if (!client_hash->getShaBinary(full_path, hash_256, false))
 		{
@@ -284,6 +293,8 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	}
 	else if (sha_version == 528)
 	{
+		f.reset();
+
 		TreeHash treehash(client_hash->hasCbtFile() ? client_hash.get() : NULL);
 		if (!client_hash->getShaBinary(full_path, treehash, client_hash->hasCbtFile()))
 		{
@@ -308,6 +319,8 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 	}
 	else
 	{
+		f.reset();
+
 		HashSha512 hash_512;
 		if (!client_hash->getShaBinary(full_path, hash_512, false))
 		{
