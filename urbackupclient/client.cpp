@@ -6538,7 +6538,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::string& symlink, const std::st
 
 #ifndef _WIN32
 	if(target=="/"
-		symlink.find("/.wine/dosdevices/z:")==symlink.size()-20
+		&& symlink.find("/.wine/dosdevices/z:")==symlink.size()-20
 		&& !FileExists(SYSCONFDIR "/urbackup/follow_wine_link") )
 	{
 		VSSLog("Not following \"" + symlink + "\" to new symlink backup target at \"" 
