@@ -1458,7 +1458,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
 
-	std::streampos outfile_size = 0;
+	std::streamoff outfile_size = 0;
 	{
 		std::fstream outfile(filelist_fn.c_str(), std::ios::out|std::ios::binary);
 
@@ -1761,7 +1761,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 			}
 		}
 
-		outfile_size = outfile.tellp();
+		outfile_size = static_cast<std::streamoff>(outfile.tellp());
 	}
 
 	commitModifyFilesBuffer();
@@ -1822,7 +1822,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 
 	IndexErrorInfo ret = IndexErrorInfo_Ok;
 
-	if (outfile_size.seekpos() == 0)
+	if (outfile_size == 0)
 	{
 		index_error = true;
 		ret = IndexErrorInfo_NoBackupPaths;
