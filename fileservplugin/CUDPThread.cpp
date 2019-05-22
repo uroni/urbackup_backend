@@ -36,6 +36,10 @@
 #include <ws2tcpip.h>
 #endif
 
+#ifndef IPV6_ADD_MEMBERSHIP
+#define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
+#endif
+
 namespace
 {
 	const char* multicast_group = "ff12::f894:d:dd00:ef91";
