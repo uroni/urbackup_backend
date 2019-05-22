@@ -412,7 +412,14 @@ private:
 		const std::vector<std::string>& exclude_dirs,
 		const std::vector<SIndexInclude>& include_dirs, std::string orig_path=std::string());
 
-	void indexDirs(bool full_backup, bool simultaneous_other);
+	enum IndexErrorInfo
+	{
+		IndexErrorInfo_Ok,
+		IndexErrorInfo_Error,
+		IndexErrorInfo_NoBackupPaths
+	};
+
+	IndexErrorInfo indexDirs(bool full_backup, bool simultaneous_other);
 
 	void updateDirs(void);
 
@@ -459,6 +466,7 @@ private:
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
 	std::string get_snapshot_script_location(const std::string& name);
 	bool get_volumes_mounted_locally();
+	bool getVssSettings() { return true; }
 #endif
 
 	bool deleteShadowcopy(SCDirs *dir);
@@ -687,6 +695,7 @@ private:
 	int64 last_tmp_update_time;
 
 	std::string index_root_path;
+
 	bool index_error;
 
 	std::vector<SVssLogItem> vsslog;

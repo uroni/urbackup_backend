@@ -632,7 +632,8 @@ void IndexThread::operator()(void)
 			//incr backup
 			bool has_dirs = readBackupDirs();
 			bool has_scripts = readBackupScripts(action == IndexThreadAction_StartFullFileBackup);
-			if( !has_dirs && !has_scripts )
+			bool has_vss_components = getVssSettings();
+			if( !has_dirs && !has_scripts && !has_vss_components)
 			{
 				addResult(curr_result_id, "no backup dirs");
 
@@ -706,7 +707,7 @@ void IndexThread::operator()(void)
 					last_index = "vfull";
 				}
 
-				indexDirs(false, running_jobs>1);
+				IndexErrorInfo error_info = indexDirs(false, running_jobs>1);
 
 				if ( (e_rc=execute_postindex_hook(true, starttoken, index_group))!=0 )
 				{
@@ -718,7 +719,10 @@ void IndexThread::operator()(void)
 				}
 				else if(index_error)
 				{
-					addResult(curr_result_id, "error - index error");
+					if(error_info==IndexErrorInfo_NoBackupPaths)
+						addResult(curr_result_id, "no backup dirs");
+					else
+						addResult(curr_result_id, "error - index error");
 				}
 				else
 				{
@@ -775,7 +779,8 @@ void IndexThread::operator()(void)
 
 			bool has_dirs = readBackupDirs();
 			bool has_scripts = readBackupScripts(true);
-			if(!has_dirs && !has_scripts)
+			bool has_vss_components = getVssSettings();
+			if(!has_dirs && !has_scripts && !has_vss_components)
 			{
 				addResult(curr_result_id, "no backup dirs");
 
@@ -803,7 +808,7 @@ void IndexThread::operator()(void)
 			{
 				last_index = "full";
 
-				indexDirs(true, running_jobs>1);
+				IndexErrorInfo error_info = indexDirs(true, running_jobs>1);
 
 				if ( (e_rc=execute_postindex_hook(false, starttoken, index_group))!=0 )
 				{
@@ -815,7 +820,10 @@ void IndexThread::operator()(void)
 				}
 				else if (index_error)
 				{
-					addResult(curr_result_id, "error - index error");
+					if(error_info==IndexErrorInfo_NoBackupPaths)
+						addResult(curr_result_id, "no backup dirs");
+					else
+						addResult(curr_result_id, "error - index error");
 				}
 				else
 				{
@@ -1318,7 +1326,7 @@ void IndexThread::operator()(void)
 	delete this;
 }
 
-void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
+IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 {
 	readPatterns(index_group, index_clientsubname,
 		index_exclude_dirs, index_include_dirs,
@@ -1332,8 +1340,6 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	token_cache.reset();
 
 #ifdef _WIN32
-	getVssSettings();
-
 	bool backup_with_vss_components = index_group==0 
 		&& (vss_select_all_components || !vss_select_components.empty());
 #else
@@ -1452,6 +1458,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 
 	std::string filelist_fn = "urbackup/data/filelist_new_" + convert(index_group) + ".ub";
 
+	std::streampos outfile_size = 0;
 	{
 		std::fstream outfile(filelist_fn.c_str(), std::ios::out|std::ios::binary);
 
@@ -1467,7 +1474,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				{
 					index_error = true;
 					VSSLog("Indexing Windows components failed", LL_ERROR);
-					return;
+					return IndexErrorInfo_Error;
 				}
 				else
 				{
@@ -1715,7 +1722,7 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 					VSSLog("Indexing interrupted by configuration change", LL_ERROR);
 				}
 
-				return;
+				return IndexErrorInfo_Error;
 			}
 
 			if(!backup_dirs[i].symlinked)
@@ -1753,6 +1760,8 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 				VSSLog("Error reopening filelist", LL_ERROR);
 			}
 		}
+
+		outfile_size = outfile.tellp();
 	}
 
 	commitModifyFilesBuffer();
@@ -1810,6 +1819,14 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	changed_dirs.clear();
 	
 #endif
+
+	IndexErrorInfo ret = IndexErrorInfo_Ok;
+
+	if (outfile_size.seekpos() == 0)
+	{
+		index_error = true;
+		ret = IndexErrorInfo_NoBackupPaths;
+	}
 
 	if (last_filelist_f!=NULL)
 	{
@@ -1870,6 +1887,14 @@ void IndexThread::indexDirs(bool full_backup, bool simultaneous_other)
 	}
 
 	changed_dirs.clear();
+
+	if (ret == IndexErrorInfo_Ok
+		&& index_error)
+	{
+		ret = IndexErrorInfo_Error;
+	}
+
+	return ret;
 }
 
 void IndexThread::resetFileEntries(void)

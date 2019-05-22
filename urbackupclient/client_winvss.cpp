@@ -1144,6 +1144,7 @@ bool IndexThread::getVssSettings()
 				&& comps["all"] != "0")
 			{
 				vss_select_all_components = true;
+				ret = true;
 			}
 
 			if (!comps["default"].empty()
