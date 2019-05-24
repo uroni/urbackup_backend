@@ -1811,9 +1811,9 @@ void ServerBackupDao::delImageMounted(int64 id)
 /**
 * @-SQLGenAccess
 * @func SMountedImage ServerBackupDao::getMountedImage
-* @return int id, int backupid, string path, int64 mounttime, int partition
+* @return int id, int backupid, string path, int64 mounttime, int partition, int clientid
 * @sql
-*       SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition
+*       SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition, clientid
 *		 FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id) 
 *			WHERE b.id=:backupid(int) AND m.partition=:partition(int)
 */
@@ -1821,13 +1821,13 @@ ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid, in
 {
 	if(q_getMountedImage==NULL)
 	{
-		q_getMountedImage=db->Prepare("SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id)  WHERE b.id=? AND m.partition=?", false);
+		q_getMountedImage=db->Prepare("SELECT b.id AS backupid, m.id AS id, path, m.mounttime AS mounttime, partition, clientid FROM (mounted_backup_images m INNER JOIN backup_images b ON m.backupid=b.id)  WHERE b.id=? AND m.partition=?", false);
 	}
 	q_getMountedImage->Bind(backupid);
 	q_getMountedImage->Bind(partition);
 	db_results res=q_getMountedImage->Read();
 	q_getMountedImage->Reset();
-	SMountedImage ret = { false, 0, 0, "", 0, 0 };
+	SMountedImage ret = { false, 0, 0, "", 0, 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
@@ -1836,6 +1836,7 @@ ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid, in
 		ret.path=res[0]["path"];
 		ret.mounttime=watoi64(res[0]["mounttime"]);
 		ret.partition=watoi(res[0]["partition"]);
+		ret.clientid=watoi(res[0]["clientid"]);
 	}
 	return ret;
 }
@@ -1845,7 +1846,7 @@ ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid, in
 * @func SMountedImage ServerBackupDao::getImageInfo
 * @return int id, int backupid, string path
 * @sql
-*       SELECT 0 AS id, id AS backupid, path
+*       SELECT 0 AS id, id AS backupid, path, clientid
 *		 FROM backup_images
 *			WHERE id=:backupid(int)
 */
@@ -1853,7 +1854,7 @@ ServerBackupDao::SMountedImage ServerBackupDao::getImageInfo(int backupid)
 {
 	if(q_getImageInfo==NULL)
 	{
-		q_getImageInfo=db->Prepare("SELECT 0 AS id, id AS backupid, path FROM backup_images WHERE id=?", false);
+		q_getImageInfo=db->Prepare("SELECT 0 AS id, id AS backupid, path, clientid FROM backup_images WHERE id=?", false);
 	}
 	q_getImageInfo->Bind(backupid);
 	db_results res=q_getImageInfo->Read();

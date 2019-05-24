@@ -15,7 +15,7 @@ public:
 	void operator()();
 
 	static bool mount_image(int backupid, int partition, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
-	static std::string get_mount_path(int backupid, int partition, bool do_mount, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
+	static std::string get_mount_path(int backupid, int clientid, int partition, bool do_mount, ScopedMountedImage& mounted_image, int64 timeoutms, bool& has_timeout, std::string& errmsg);
 
 	static bool unmount_images(int backupid);
 

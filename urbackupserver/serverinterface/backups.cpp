@@ -1086,7 +1086,7 @@ namespace backupaccess
 			ScopedMountedImage mounted_image;
 			bool has_mount_timeout;
 			std::string mount_errmsg;
-			std::string content_path = ImageMount::get_mount_path(backupid, partition,
+			std::string content_path = ImageMount::get_mount_path(backupid, t_clientid, partition,
 				!u_path.empty() && u_path!="/", mounted_image,
 				10000, has_mount_timeout, mount_errmsg);
 
@@ -1117,7 +1117,7 @@ namespace backupaccess
 				}
 				else
 				{
-					content_path = ImageMount::get_mount_path(backupid, partition, true,
+					content_path = ImageMount::get_mount_path(backupid, t_clientid, partition, true,
 						mounted_image, 10000, has_mount_timeout, mount_errmsg);
 					if (content_path.empty())
 					{
@@ -1731,11 +1731,12 @@ ACTION_IMPL(backups)
 						{
 							bool has_mount_timeout;
 							std::string mount_errmsg;
-							backuppath = ImageMount::get_mount_path(-1*backupid, 0, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
+							backuppath = ImageMount::get_mount_path(-1*backupid, t_clientid, 0, true, mounted_image, -1, has_mount_timeout, mount_errmsg);
 							path_info = backupaccess::get_image_path_info(u_path, clientname, backupfolder, backupid, backuppath);
 						}
 
-						if(token_authentication && !path_info.can_access_path)
+						if( (token_authentication && !path_info.can_access_path)
+							|| backuppath.empty())
 						{
 							JSON::Object err_ret;
 							err_ret.set("err", "access_denied");

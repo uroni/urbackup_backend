@@ -489,22 +489,30 @@ bool ImageMount::mount_image_int(int backupid, int partition, ScopedMountedImage
 	}
 }
 
-std::string ImageMount::get_mount_path(int backupid, int partition, bool do_mount, ScopedMountedImage& mounted_image,
+std::string ImageMount::get_mount_path(int backupid, int clientid, int partition, bool do_mount, ScopedMountedImage& mounted_image,
 	int64 timeoutms, bool& has_timeout, std::string& errmsg)
 {
 	has_timeout = false;
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	ServerBackupDao::SMountedImage image_inf = backup_dao.getImageInfo(backupid);
+
+	if (!image_inf.exists
+		|| image_inf.clientid != clientid)
+	{
+		return std::string();
+	}
 
 	ScopedLockImage lock_image(backupid, timeoutms);
 	if (!lock_image.has_lock())
 	{
 		has_timeout = true;
 		return std::string();
-	}
+	}		
 
-	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	ServerBackupDao backup_dao(db);
-
-	ServerBackupDao::SMountedImage image_inf = backup_dao.getMountedImage(backupid, partition);
+	image_inf = backup_dao.getMountedImage(backupid, partition);
 
 	bool has_mount_process = false;
 	{

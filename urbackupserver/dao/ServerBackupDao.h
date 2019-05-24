@@ -80,6 +80,7 @@ public:
 		std::string path;
 		int64 mounttime;
 		int partition;
+		int clientid;
 	};
 	struct SReportSettings
 	{
