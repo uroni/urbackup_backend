@@ -2129,14 +2129,14 @@ void restore_wizard(void)
 
 					if (fix_gpt)
 					{
-						system(("echo -e \"w\\nY\" | gdisk " + seldrive).c_str());
+						system(("echo -e \"w\\nY\\nY\" | gdisk " + seldrive).c_str());
 
 						bool t_gpt_style;
 						partitions = image_fak->readPartitions(mbrdata.mbr_data, mbrdata.gpt_header, mbrdata.gpt_table, t_gpt_style);
 					}
 					else
 					{
-						system(("echo -e \"w\\nY\" | gdisk " + seldrive + " > /dev/null 2>&1").c_str());
+						system(("echo -e \"w\\nY\\nY\" | gdisk " + seldrive + " > /dev/null 2>&1").c_str());
 					}
 				}
 
