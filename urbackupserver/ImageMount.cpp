@@ -741,6 +741,9 @@ void ImageMount::mount_image_thread(int backupid, int partition, std::string& er
 
 		if (vhdfile.get() != NULL)
 		{
+			if (!vhdfile->isOpen())
+				return;
+
 			bool gpt_style;
 			std::vector<IFSImageFactory::SPartition> partitions = image_fak->readPartitions(vhdfile.get(), 0, gpt_style);
 

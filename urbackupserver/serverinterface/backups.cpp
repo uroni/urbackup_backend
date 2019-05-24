@@ -1008,7 +1008,8 @@ namespace backupaccess
 				assert(false);
 			}
 
-			if (vhdfile.get() != NULL)
+			if (vhdfile.get() != NULL
+				&& vhdfile->isOpen())
 			{
 				ret.set("volume_size", vhdfile->getSize());
 
