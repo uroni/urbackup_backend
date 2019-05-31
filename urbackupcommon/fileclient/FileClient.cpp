@@ -592,7 +592,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 					addr_udp.sin_family = AF_INET;
 					addr_udp.sin_port = htons(UDP_PORT);
 #ifdef __FreeBSD__
-					addr_udp.sin_add = udpsocks[i].broadcast_addr;
+					addr_udp.sin_addr.s_addr = udpsocks[i].broadcast_addr;
 #else
 					addr_udp.sin_addr.s_addr = INADDR_BROADCAST;
 #endif
@@ -644,7 +644,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 
 						#if defined(__FreeBSD__)
 						int optval=0;
-						if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+						if(setsockopt(udpsocks[i].udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
 						{
 							Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
 						}
@@ -687,8 +687,8 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 #undef SETSOCK_CAST
 
 #if defined(__FreeBSD__)
-						optval = 1;
-						if (setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int)) == -1)
+						int optval = 1;
+						if (setsockopt(udpsocks[i].udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int)) == -1)
 						{
 							Server->Log(std::string("Error setting IP_ONESBCAST"), LL_ERROR);
 						}
