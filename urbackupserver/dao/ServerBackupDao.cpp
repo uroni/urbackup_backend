@@ -1844,7 +1844,7 @@ ServerBackupDao::SMountedImage ServerBackupDao::getMountedImage(int backupid, in
 /**
 * @-SQLGenAccess
 * @func SMountedImage ServerBackupDao::getImageInfo
-* @return int id, int backupid, string path
+* @return int id, int backupid, string path, int clientid
 * @sql
 *       SELECT 0 AS id, id AS backupid, path, clientid
 *		 FROM backup_images
@@ -1859,13 +1859,14 @@ ServerBackupDao::SMountedImage ServerBackupDao::getImageInfo(int backupid)
 	q_getImageInfo->Bind(backupid);
 	db_results res=q_getImageInfo->Read();
 	q_getImageInfo->Reset();
-	SMountedImage ret = { false, 0, 0, "" };
+	SMountedImage ret = { false, 0, 0, "", 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.id=watoi(res[0]["id"]);
 		ret.backupid=watoi(res[0]["backupid"]);
 		ret.path=res[0]["path"];
+		ret.clientid=watoi(res[0]["clientid"]);
 	}
 	return ret;
 }
