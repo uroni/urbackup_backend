@@ -365,7 +365,8 @@ namespace
 			changed_backupfolder = true;
 		}
 
-		if(val.find(os_file_sep())==val.size()-os_file_sep().size())
+		if(val.find_last_of(os_file_sep())==val.size()-os_file_sep().size()
+			&& val.size()>1)
 		{
 			return val.substr(0, val.size()-os_file_sep().size());
 		}
