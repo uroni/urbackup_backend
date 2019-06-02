@@ -147,7 +147,10 @@ std::string get_report_script()
 	std::string compiled_script = lua_interpreter->compileScript(script);
 
 	if (!compiled_script.empty())
+	{
+		script = compiled_script;
 		return compiled_script;
+	}
 
 	return script;
 }

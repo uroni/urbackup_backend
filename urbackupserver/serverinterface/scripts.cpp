@@ -139,6 +139,7 @@ ACTION_IMPL(scripts)
 			q->Write();
 			q->Reset();
 			ret.set("saved_ok", true);
+			reload_report_script();
 		}
 
 		ret.set("script", load_report_script());
