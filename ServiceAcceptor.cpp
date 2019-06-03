@@ -242,7 +242,7 @@ void CServiceAcceptor::operator()(void)
 			conn[2].events = POLLIN;
 		}
 
-		int rc = poll(conn, 2, 100*1000);
+		int rc = poll(conn, num_fds, 100*1000);
 #endif
 		if(rc>=0)
 		{
