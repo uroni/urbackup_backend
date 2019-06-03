@@ -206,7 +206,7 @@ void CServiceAcceptor::operator()(void)
 	if(has_error)
 		return;
 
-	while(do_exit==false)
+	while(!do_exit)
 	{
 #ifdef _WIN32
 		fd_set fdset;
@@ -222,6 +222,7 @@ void CServiceAcceptor::operator()(void)
 		lon.tv_usec=0;
 
 		_i32 rc=select((int)maxs, &fdset, 0, 0, &lon);
+		size_t num_fds = 2;
 #else
 		pollfd conn[3];
 		conn[0].fd= s !=SOCKET_ERROR ? s: s_v6;
@@ -246,7 +247,7 @@ void CServiceAcceptor::operator()(void)
 #endif
 		if(rc>=0)
 		{
-			for (size_t n = 0; n < 2; ++n)
+			for (size_t n = 0; n < num_fds; ++n)
 			{
 #ifdef _WIN32
 				SOCKET accept_socket = n == 0 ? s : s_v6;
@@ -255,6 +256,8 @@ void CServiceAcceptor::operator()(void)
 				if (!FD_ISSET(accept_socket, &fdset))
 					continue;
 #else
+				if (n == 1)
+					continue;
 				if (conn[n].revents == 0)
 					continue;
 				SOCKET accept_socket = conn[n].fd;
