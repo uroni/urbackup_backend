@@ -592,7 +592,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 					addr_udp.sin_family = AF_INET;
 					addr_udp.sin_port = htons(UDP_PORT);
 #ifdef __FreeBSD__
-					addr_udp.sin_addr.s_addr = udpsocks[i].broadcast_addr;
+					addr_udp.sin_addr.s_addr = udpsocks[i].broadcast_addr.sin_addr.s_addr;
 #else
 					addr_udp.sin_addr.s_addr = INADDR_BROADCAST;
 #endif
