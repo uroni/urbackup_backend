@@ -381,13 +381,13 @@ namespace
 
 				for(int64 block=0;block<numblocks;++block)
 				{
-					char* buf = input_fs[i]->readBlock(block);
+					IFilesystem::IFsBuffer* buf = input_fs[i]->readBlock(block);
 					if(buf!=NULL)
 					{
 						fs_buffer fsb(input_fs[i], buf);
 
 						vhdout.Seek(out_pos);
-						if(vhdout.Write(buf, static_cast<_u32>(blocksize))!=static_cast<_u32>(blocksize))
+						if(vhdout.Write(buf->getBuf(), static_cast<_u32>(blocksize))!=static_cast<_u32>(blocksize))
 						{
 							Server->Log("Error writing to VHD output file", LL_ERROR);
 							return false;
@@ -1395,7 +1395,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		for (int64 i = 0, blocks = n_blocks; i < blocks; ++i)
 		{
 			bool has_error = false;
-			char* buf = fs.readBlock(i, &has_error);
+			IFilesystem::IFsBuffer* buf = fs.readBlock(i, &has_error);
 
 			if (has_error)
 			{

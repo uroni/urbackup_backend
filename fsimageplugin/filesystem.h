@@ -29,10 +29,27 @@ enum ENextBlockState
 	ENextBlockState_Error
 };
 
-struct SNextBlock
+const size_t n_max_buffers=128;
+
+struct SNextBlock;
+
+class SBlockBuffer : public IFilesystem::IFsBuffer
 {
+public:
+	virtual char* getBuf()
+	{
+		return buffer;
+	}
+	
 	char* buffer;
+	SNextBlock* block;
 	ENextBlockState state;
+};
+
+struct SNextBlock
+{	
+	SBlockBuffer buffers[n_max_buffers];
+	size_t n_buffers;
 	Filesystem* fs;
 #ifdef _WIN32
 	OVERLAPPED ovl;
@@ -50,16 +67,17 @@ public:
 	virtual const unsigned char *getBitmap(void)=0;
 
 	virtual bool hasBlock(int64 pBlock);
-	virtual char* readBlock(int64 pBlock, bool* p_has_error=NULL);
+	
+	virtual IFsBuffer* readBlock(int64 pBlock, bool* p_has_error=NULL);
 	std::vector<int64> readBlocks(int64 pStartBlock, unsigned int n,
 		const std::vector<char*>& buffers, unsigned int buffer_offset);
 	bool hasError(void);
 	int64 calculateUsedSpace(void);
-	virtual void releaseBuffer(char* buf);
+	virtual void releaseBuffer(IFsBuffer* buf);
 
 	virtual void shutdownReadahead();
 
-	virtual char* readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error);
+	virtual IFsBuffer* readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error);
 
 	int64 nextBlockInt(int64 curr_block);
 
@@ -82,17 +100,29 @@ protected:
 	bool waitForCompletion(unsigned int wtimems);
 	size_t usedNextBlocks();
 	IFile *dev;
+	
+	void completionFreeBuffer(SBlockBuffer* block_buf);
 
-	SNextBlock* completionGetBlock(int64 pBlock, bool* p_has_error);
+	SBlockBuffer* completionGetBlock(int64 pBlock, bool* p_has_error);
 
 	bool has_error;
 	int64 errcode;
 
 	bool own_dev;
+	
+	class SSimpleBuffer : public IFsBuffer
+	{
+	public:
+		char* buf;
+		virtual char* getBuf()
+		{
+			return buf;
+		}
+	};
 
-	char* getBuffer();
+	IFsBuffer* getBuffer();
 
-	std::vector<char*> buffers;
+	std::vector<SSimpleBuffer*> buffers;
 	std::auto_ptr<IMutex> buffer_mutex;
 	std::auto_ptr<Filesystem_ReadaheadThread> readahead_thread;
 	THREADPOOL_TICKET readahead_thread_ticket;
@@ -100,9 +130,8 @@ protected:
 	size_t num_uncompleted_blocks;
 	int64 overlapped_next_block;
 	std::vector<SNextBlock> next_blocks;
-	std::map<int64, SNextBlock*> queued_next_blocks;
+	std::map<int64, SBlockBuffer*> queued_next_blocks;
 	std::stack<SNextBlock*> free_next_blocks;
-	std::map<char*, SNextBlock*> used_next_blocks;
 	IFsNextBlockCallback* next_block_callback;
 
 	IFSImageFactory::EReadaheadMode read_ahead_mode;

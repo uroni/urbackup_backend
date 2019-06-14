@@ -511,7 +511,7 @@ void ImageThread::removeShadowCopyThread(int save_id)
 bool ImageThread::sendIncrImageThread(void)
 {
 	char *zeroblockbuf=NULL;
-	std::vector<char*> blockbufs;
+	std::vector<IFilesystem::IFsBuffer*> blockbufs;
 
 	bool has_error=true;
 	bool with_checksum=image_inf->with_checksum;
@@ -887,10 +887,10 @@ bool ImageThread::sendIncrImageThread(void)
 						sha256_init(&shactx);
 						for (int64 j = i; j < blocks && j < i + blocks_per_vhdblock; ++j)
 						{
-							char* buf = fs->readBlock(j);
+							IFilesystem::IFsBuffer* buf = fs->readBlock(j);
 							if (buf != NULL)
 							{
-								sha256_update(&shactx, (unsigned char*)buf, blocksize);
+								sha256_update(&shactx, (unsigned char*)buf->getBuf(), blocksize);
 								blockbufs[j - i] = buf;
 							}
 							else
@@ -946,7 +946,7 @@ bool ImageThread::sendIncrImageThread(void)
 							{
 								char* cb=clientSend->getBuffer();
 								memcpy(cb, &j, sizeof(int64) );
-								memcpy(&cb[sizeof(int64)], blockbufs[j-i], blocksize);
+								memcpy(&cb[sizeof(int64)], blockbufs[j-i]->getBuf(), blocksize);
 								clientSend->sendBuffer(cb, sizeof(int64)+blocksize, false);
 								notify_cs=true;
 								lastsendtime=Server->getTimeMS();

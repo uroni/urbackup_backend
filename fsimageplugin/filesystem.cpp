@@ -35,7 +35,11 @@
 
 namespace
 {
+#ifdef _WIN32
+	const size_t readahead_num_blocks = 40;
+#else
 	const size_t readahead_num_blocks = 5120;
+#endif
 	const size_t max_idle_buffers = readahead_num_blocks;
 	const size_t readahead_low_level_blocks = readahead_num_blocks/2;
 	const size_t slow_read_warning_seconds = 5 * 60;
@@ -85,7 +89,7 @@ public:
 	}
 	~Filesystem_ReadaheadThread()
 	{
-		for (std::map<int64, char*>::iterator it = read_blocks.begin();
+		for (std::map<int64, IFilesystem::IFsBuffer*>::iterator it = read_blocks.begin();
 			it != read_blocks.end(); ++it)
 		{
 			fs.releaseBuffer(it->second);
@@ -128,7 +132,7 @@ public:
 
 			if (do_stop) break;
 
-			std::map<int64, char*>::iterator it;
+			std::map<int64, IFilesystem::IFsBuffer*>::iterator it;
 			do
 			{
 				it = read_blocks.find(current_block);
@@ -142,7 +146,7 @@ public:
 			{
 				int64 l_current_block = current_block;
 				lock.relock(NULL);
-				char* buf = fs.readBlockInt(l_current_block, false, NULL);
+				IFilesystem::IFsBuffer* buf = fs.readBlockInt(l_current_block, false, NULL);
 				lock.relock(mutex.get());
 
 				read_blocks[l_current_block] = buf;
@@ -158,16 +162,16 @@ public:
 		}
 	}
 
-	char* getBlock(int64 block)
+	IFilesystem::IFsBuffer* getBlock(int64 block)
 	{
 		IScopedLock lock(mutex.get());
 
 		clearUnusedReadahead(block);
 
-		char* ret = NULL;
+		IFilesystem::IFsBuffer* ret = NULL;
 		while (ret == NULL)
 		{
-			std::map<int64, char*>::iterator it = read_blocks.find(block);
+			std::map<int64, IFilesystem::IFsBuffer*>::iterator it = read_blocks.find(block);
 
 			if (it != read_blocks.end())
 			{
@@ -202,12 +206,12 @@ private:
 
 	void clearUnusedReadahead(int64 pBlock)
 	{
-		for (std::map<int64, char*>::iterator it = read_blocks.begin();
+		for (std::map<int64, IFilesystem::IFsBuffer*>::iterator it = read_blocks.begin();
 			it != read_blocks.end();)
 		{
 			if (it->first<pBlock)
 			{
-				std::map<int64, char*>::iterator todel = it;
+				std::map<int64, IFilesystem::IFsBuffer*>::iterator todel = it;
 				++it;
 				fs.releaseBuffer(todel->second);
 				read_blocks.erase(todel);
@@ -224,7 +228,7 @@ private:
 	std::auto_ptr<ICondition> read_block_cond;
 	Filesystem& fs;
 
-	std::map<int64, char*> read_blocks;
+	std::map<int64, IFilesystem::IFsBuffer*> read_blocks;
 
 	bool readahead_miss;
 
@@ -277,7 +281,8 @@ Filesystem::~Filesystem()
 	
 	for(size_t i=0;i<buffers.size();++i)
 	{
-		delete[] buffers[i];
+		delete[] buffers[i]->buf;
+		delete buffers[i];
 	}
 
 	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
@@ -285,9 +290,9 @@ Filesystem::~Filesystem()
 		for (size_t i = 0; i < next_blocks.size(); ++i)
 		{
 #ifdef _WIN32
-			VirtualFree(next_blocks[i].buffer, 0, MEM_RELEASE);
+			VirtualFree(next_blocks[i].buffers[0].buffer, 0, MEM_RELEASE);
 #else
-			delete[] next_blocks[i].buffer;
+			delete[] next_blocks[i].buffers[0]->buffer;
 #endif
 		}
 	}
@@ -308,12 +313,12 @@ bool Filesystem::hasBlock(int64 pBlock)
 	return has_bit;
 }
 
-char* Filesystem::readBlock(int64 pBlock, bool* p_has_error)
+IFilesystem::IFsBuffer* Filesystem::readBlock(int64 pBlock, bool* p_has_error)
 {
 	return readBlockInt(pBlock, readahead_thread.get()!=NULL, p_has_error);
 }
 
-char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error)
+IFilesystem::IFsBuffer* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_error)
 {
 	const unsigned char *bitmap=getBitmap();
 	int64 blocksize=getBlocksize();
@@ -330,11 +335,10 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_err
 	
 	if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 	{
-		SNextBlock* next_block = completionGetBlock(pBlock, p_has_error);
-		if (next_block == NULL)
+		SBlockBuffer* block_buf = completionGetBlock(pBlock, p_has_error);
+		if (block_buf == NULL)
 			return NULL;
-		used_next_blocks[next_block->buffer] = next_block;
-		return next_block->buffer;
+		return block_buf;
 	}
 	else if (read_ahead_mode == IFSImageFactory::EReadaheadMode_Thread)
 	{
@@ -349,8 +353,8 @@ char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead, bool* p_has_err
 			has_error=true;
 			return NULL;
 		}
-		char* buf = getBuffer();
-		if(!readFromDev(buf, (_u32)blocksize) )
+		IFsBuffer* buf = getBuffer();
+		if(!readFromDev(buf->getBuf(), (_u32)blocksize) )
 		{
 			Server->Log("Reading from device failed -1", LL_ERROR);
 			has_error=true;
@@ -376,17 +380,20 @@ void Filesystem::overlappedIoCompletion(SNextBlock * block, DWORD dwErrorCode, D
 		errcode = dwErrorCode;
 		Server->Log("Reading from device at position "+convert(offset)+" failed. System error code "+convert((int64)dwErrorCode), LL_ERROR);
 		has_error = true;
-		block->state = ENextBlockState_Error;
+		for(size_t i=0;i<block->n_buffers;++i)
+			block->buffers[i].state = ENextBlockState_Error;
 	}
 	else if (dwNumberOfBytesTransfered != getBlocksize())
 	{
 		Server->Log("Reading from device at position " + convert(offset) + " failed. OS returned only "+convert((int64)dwNumberOfBytesTransfered)+" bytes", LL_ERROR);
 		has_error = true;
-		block->state = ENextBlockState_Error;
+		for(size_t i=0;i<block->n_buffers;++i)
+			block->buffers[i].state = ENextBlockState_Error;
 	}
 	else
 	{
-		block->state = ENextBlockState_Ready;
+		for(size_t i=0;i<block->n_buffers;++i)
+			block->buffers[i].state = ENextBlockState_Ready;
 	}
 }
 #endif
@@ -436,14 +443,14 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 		{
 			if (hasBlock(i))
 			{
-				SNextBlock* next_block = completionGetBlock(i, NULL);
-				if (next_block != NULL)
+				SBlockBuffer* block_buf = completionGetBlock(i, NULL);
+				if (block_buf != NULL)
 				{
-					memcpy(buffers[currbuf] + buffer_offset, next_block->buffer, blocksize);
+					memcpy(buffers[currbuf] + buffer_offset, block_buf->buffer, blocksize);
 					++currbuf;
 					ret.push_back(i);
-
-					free_next_blocks.push(next_block);
+					
+					completionFreeBuffer(block_buf);
 				}
 				else if (has_error)
 				{
@@ -453,10 +460,10 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 		}
 		else
 		{
-			char* buf = readBlock(i);
+			IFsBuffer* buf = readBlock(i);
 			if (buf != NULL)
 			{
-				memcpy(buffers[currbuf] + buffer_offset, buf, blocksize);
+				memcpy(buffers[currbuf] + buffer_offset, buf->getBuf(), blocksize);
 				++currbuf;
 				ret.push_back(i);
 
@@ -546,16 +553,24 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 		for (size_t i = 0; i < next_blocks.size(); ++i)
 		{
 #ifdef _WIN32
-			next_blocks[i].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+			next_blocks[i].buffers[0].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize()*n_max_buffers, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 #else
-			next_blocks[i].buffer = new char[getBlocksize()];
+			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*n_max_buffers];
 #endif
-			if (next_blocks[i].buffer == NULL)
+			if (next_blocks[i].buffers[0].buffer == NULL)
 			{
 				has_error = true;
 			}
-			next_blocks[i].state = ENextBlockState_Queued;
+			next_blocks[i].buffers[0].state = ENextBlockState_Queued;
 			next_blocks[i].fs = this;
+			
+			for(size_t j=1;j<n_max_buffers;++j)
+			{
+				SBlockBuffer& block_buf = next_blocks[i].buffers[j];
+				block_buf.state = ENextBlockState_Queued;
+				block_buf.block = &next_blocks[i];
+				block_buf.buffer = next_blocks[i].buffers[0].buffer+j*getBlocksize();
+			}
 
 			free_next_blocks.push(&next_blocks[i]);
 		}
@@ -586,18 +601,37 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 		{
 			SNextBlock* block = free_next_blocks.top();
 			free_next_blocks.pop();
-			block->state = ENextBlockState_Queued;
+			
+			block->n_buffers=1;
+			int64 overlapped_start_block = overlapped_next_block;
+			int64 overlapped_last_block = overlapped_next_block;
+			
+			block->buffers[0].state = ENextBlockState_Queued;
+			queued_next_blocks[overlapped_next_block] = &block->buffers[0];
+			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
+			
+			while(block->n_buffers<n_max_buffers
+				&& overlapped_last_block==overlapped_next_block-1)
+			{
+				block->buffers[block->n_buffers].state = ENextBlockState_Queued;
+				queued_next_blocks[overlapped_next_block] = &block->buffers[block->n_buffers];
+				overlapped_last_block = overlapped_next_block;
+				overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
+				++block->n_buffers;
+			}
+			
 			++num_uncompleted_blocks;
-			queued_next_blocks[overlapped_next_block] = block;
 #ifdef _WIN32
 			memset(&block->ovl, 0, sizeof(block->ovl));
 			LARGE_INTEGER offset;
-			offset.QuadPart = overlapped_next_block*getBlocksize();
+			offset.QuadPart = overlapped_start_block*getBlocksize();
 			block->ovl.Offset = offset.LowPart;
 			block->ovl.OffsetHigh = offset.HighPart;
 			block->ovl.hEvent = block;
 
-			BOOL b = ReadFileEx(hVol, block->buffer, blocksize, &block->ovl, FileIOCompletionRoutine);
+			BOOL b = ReadFileEx(hVol, block->buffers[0].buffer, 
+				static_cast<DWORD>(block->n_buffers*blocksize), &block->ovl,
+				FileIOCompletionRoutine);
 			if (!b)
 			{
 				--num_uncompleted_blocks;
@@ -633,9 +667,9 @@ size_t Filesystem::usedNextBlocks()
 	return next_blocks.size() - free_next_blocks.size();
 }
 
-SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
+SBlockBuffer* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 {
-	std::map<int64, SNextBlock*>::iterator it = queued_next_blocks.find(pBlock);
+	std::map<int64, SBlockBuffer*>::iterator it = queued_next_blocks.find(pBlock);
 	if (it == queued_next_blocks.end())
 	{
 		do
@@ -655,7 +689,7 @@ SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 		queueOverlappedReads(false);
 	}
 
-	SNextBlock* next_block = it->second;
+	SBlockBuffer* next_block = it->second;
 	queued_next_blocks.erase(it);
 
 	size_t nwait = 0;
@@ -687,11 +721,20 @@ SNextBlock* Filesystem::completionGetBlock(int64 pBlock, bool* p_has_error)
 	if (next_block->state != ENextBlockState_Ready)
 	{
 		if (p_has_error != NULL) *p_has_error = true;
-		free_next_blocks.push(next_block);
+		completionFreeBuffer(next_block);
 		return NULL;
 	}
 
 	return next_block;
+}
+
+void Filesystem::completionFreeBuffer(SBlockBuffer* block_buf)
+{
+	--block_buf->block->n_buffers;
+	if(block_buf->block->n_buffers==0)
+	{
+		free_next_blocks.push(block_buf->block);
+	}
 }
 
 int64 Filesystem::calculateUsedSpace(void)
@@ -728,7 +771,7 @@ bool Filesystem::hasError(void)
 	return has_error;
 }
 
-char* Filesystem::getBuffer()
+IFilesystem::IFsBuffer* Filesystem::getBuffer()
 {
 	assert(read_ahead_mode != IFSImageFactory::EReadaheadMode_Overlapped);
 
@@ -737,29 +780,24 @@ char* Filesystem::getBuffer()
 
 		if(!buffers.empty())
 		{
-			char* ret = buffers[buffers.size()-1];
+			SSimpleBuffer* ret = buffers[buffers.size()-1];
 			buffers.erase(buffers.begin()+buffers.size()-1);
 			return ret;
 		}
 	}
 
-	return new char[getBlocksize()];
+	SSimpleBuffer* nb= new SSimpleBuffer;
+	nb->buf = new char[getBlocksize()];
+	return nb;
 }
 
-void Filesystem::releaseBuffer(char* buf)
+void Filesystem::releaseBuffer(IFsBuffer* buf)
 {
 	if(read_ahead_mode == IFSImageFactory::EReadaheadMode_Overlapped)
 	{
-		std::map<char*, SNextBlock*>::iterator it = used_next_blocks.find(buf);
-
-		if (it != used_next_blocks.end())
-		{
-			free_next_blocks.push(it->second);
-			used_next_blocks.erase(it);
-			return;
-		}
-
-		assert(false);
+		SBlockBuffer* block_buf = static_cast<SBlockBuffer*>(buf);
+		completionFreeBuffer(block_buf);
+		return;
 	}
 
 	{
@@ -767,12 +805,14 @@ void Filesystem::releaseBuffer(char* buf)
 		
 		if(buffers.size()<max_idle_buffers)
 		{
-			buffers.push_back(buf);
+			buffers.push_back(static_cast<SSimpleBuffer*>(buf));
 			return;
 		}
 	}
 
-	delete[] buf;
+	SSimpleBuffer* simple_buf = static_cast<SSimpleBuffer*>(buf);
+	delete[] simple_buf->buf;
+	delete simple_buf;
 }
 
 void Filesystem::shutdownReadahead()
