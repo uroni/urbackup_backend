@@ -49,6 +49,7 @@
 #include <sys/syscall.h>
 #include <linux/fs.h>
 #endif
+#include <stack>
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define lstat64 lstat
@@ -409,134 +410,148 @@ bool os_directory_exists(const std::string &path)
 	return isDirectory(path);
 }
 
-bool os_remove_nonempty_dir(const std::string &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
+bool os_remove_nonempty_dir(const std::string &root_path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
-    std::string upath=(path);
+	std::stack<std::pair<std::string, bool> > paths;
 
-	if(delete_root)
-	{
-		struct stat64 f_info;
-		int rc = lstat64(upath.c_str(), &f_info);
-		if(rc==0 && S_ISLNK(f_info.st_mode))
-		{
-			if(unlink(upath.c_str())!=0)
-			{
-				Log("Error deleting symlink \""+upath+"\"", LL_ERROR);
-			}
-			return true;
-		}
-	}
-
-	std::vector<SFile> tmp;
-	DIR *dp;
-    struct dirent *dirp;
-    if((dp  = opendir(upath.c_str())) == NULL)
-	{
-        Log("No permission to access \""+upath+"\"", LL_ERROR);
-        return false;
-    }
-
-	
+	paths.push(std::make_pair(root_path, false));
 	bool ok=true;
-	std::vector<std::string> subdirs;
-	while ((dirp = readdir(dp)) != NULL)
+
+	while(!paths.empty())
 	{
-		if( (std::string)dirp->d_name!="." && (std::string)dirp->d_name!=".." )
+		std::string upath=paths.top().first;
+		std::string path = upath;
+
+		if(paths.size()>1
+			|| delete_root)
 		{
-#ifndef sun
-			if(dirp->d_type==DT_UNKNOWN)
+			struct stat64 f_info;
+			int rc = lstat64(upath.c_str(), &f_info);
+			if(rc==0 && S_ISLNK(f_info.st_mode))
 			{
-#endif
-				struct stat64 f_info;
-				int rc=lstat64((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
-				if(rc==0)
+				if(unlink(upath.c_str())!=0)
 				{
-					if(S_ISLNK(f_info.st_mode))
+					Log("Error deleting symlink \""+upath+"\"", LL_ERROR);
+				}
+				paths.pop();
+				continue;
+			}
+		}
+
+		if(paths.top().second)
+		{
+			if(paths.size()>1
+				|| delete_root)
+			{
+				if(rmdir(upath.c_str())!=0)
+				{
+						Log("Error deleting directory \""+upath+"\"", LL_ERROR);
+				}
+			}
+			paths.pop();
+			continue;
+		}
+		
+		paths.top().second=true;
+
+		DIR *dp;
+		struct dirent *dirp;
+		if((dp  = opendir(upath.c_str())) == NULL)
+		{
+			Log("No permission to access \""+upath+"\"", LL_ERROR);
+			paths.pop();
+			ok=false;
+			continue;
+		}
+	
+		bool ok=true;
+		while ((dirp = readdir(dp)) != NULL)
+		{
+			if( (std::string)dirp->d_name!="." && (std::string)dirp->d_name!=".." )
+			{
+	#ifndef sun
+				if(dirp->d_type==DT_UNKNOWN)
+				{
+	#endif
+					struct stat64 f_info;
+					int rc=lstat64((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
+					if(rc==0)
 					{
-						if(symlink_callback!=NULL)
+						if(S_ISLNK(f_info.st_mode))
 						{
-                            symlink_callback((upath+"/"+(std::string)dirp->d_name), NULL, userdata);
+							if(symlink_callback!=NULL)
+							{
+								symlink_callback((upath+"/"+(std::string)dirp->d_name), NULL, userdata);
+							}
+							else
+							{
+								if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
+								{
+									Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+								}
+							}
+						}
+						else if(S_ISDIR(f_info.st_mode) )
+						{
+							paths.push(std::make_pair(std::string(dirp->d_name), false));
 						}
 						else
 						{
 							if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
 							{
-                                Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+								Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
 							}
 						}
 					}
-					else if(S_ISDIR(f_info.st_mode) )
+					else
 					{
-                        subdirs.push_back((dirp->d_name));
+						std::string e=convert(errno);
+						switch(errno)
+						{
+							case EACCES: e="EACCES"; break;
+							case EBADF: e="EBADF"; break;
+							case EFAULT: e="EFAULT"; break;
+							case ELOOP: e="ELOOP"; break;
+							case ENAMETOOLONG: e="ENAMETOOLONG"; break;
+							case ENOENT: e="ENOENT"; break;
+							case ENOMEM: e="ENOMEM"; break;
+							case ENOTDIR: e="ENOTDIR"; break;
+						}
+						Log("No permission to stat \""+upath+"/"+dirp->d_name+"\" error: "+e, LL_ERROR);
+					}
+	#ifndef sun
+				}
+				else if(dirp->d_type==DT_DIR )
+				{
+					paths.push(std::make_pair(std::string(dirp->d_name), false));
+				}
+				else if(dirp->d_type==DT_LNK )
+				{
+					if(symlink_callback!=NULL)
+					{
+						symlink_callback((upath+"/"+(std::string)dirp->d_name), NULL, userdata);
 					}
 					else
 					{
 						if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
 						{
-                            Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+							Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
 						}
 					}
 				}
 				else
 				{
-					std::string e=convert(errno);
-					switch(errno)
-					{
-					    case EACCES: e="EACCES"; break;
-					    case EBADF: e="EBADF"; break;
-					    case EFAULT: e="EFAULT"; break;
-					    case ELOOP: e="ELOOP"; break;
-					    case ENAMETOOLONG: e="ENAMETOOLONG"; break;
-					    case ENOENT: e="ENOENT"; break;
-					    case ENOMEM: e="ENOMEM"; break;
-					    case ENOTDIR: e="ENOTDIR"; break;
-					}
-                    Log("No permission to stat \""+upath+"/"+dirp->d_name+"\" error: "+e, LL_ERROR);
-				}
-#ifndef sun
-			}
-			else if(dirp->d_type==DT_DIR )
-			{
-                subdirs.push_back((dirp->d_name));
-			}
-			else if(dirp->d_type==DT_LNK )
-			{
-				if(symlink_callback!=NULL)
-				{
-                    symlink_callback((upath+"/"+(std::string)dirp->d_name), NULL, userdata);
-				}
-				else
-				{
 					if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
 					{
-                        Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+						Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
 					}
 				}
+	#endif
 			}
-			else
-			{
-				if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
-				{
-                    Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
-				}
-			}
-#endif
 		}
-    }
-    closedir(dp);
-    for(size_t i=0;i<subdirs.size();++i)
-    {
-		bool b=os_remove_nonempty_dir(path+"/"+subdirs[i], symlink_callback, userdata);
-		if(!b)
-		    ok=false;
-    }
-	if(delete_root)
-	{
-		if(rmdir(upath.c_str())!=0)
-		{
-        		Log("Error deleting directory \""+upath+"\"", LL_ERROR);
-		}
+		closedir(dp);
 	}
+
 	return ok;
 }
 

@@ -9,6 +9,8 @@
 #include <imdproxy.h>
 #include <imdisk.h>
 #include <string>
+#include <algorithm>
+#include <memory>
 
 namespace
 {

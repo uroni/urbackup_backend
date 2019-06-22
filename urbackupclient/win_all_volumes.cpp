@@ -21,6 +21,7 @@
 #include "../stringtools.h"
 #include <Windows.h>
 #include "../Interface/File.h"
+#include <memory>
 
 struct SVolumesCache
 {

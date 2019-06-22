@@ -32,6 +32,7 @@
 #include <time.h>
 #include <assert.h>
 #include <ws2tcpip.h>
+#include <stack>
 
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
@@ -596,7 +597,7 @@ namespace
 		} DUPLICATE_EXTENTS_DATA, *PDUPLICATE_EXTENTS_DATA;
 #pragma pack(pop)
 
-		DWORD FSCTL_DUPLICATE_EXTENTS_TO_FILE = 0x98344;
+		DWORD LOCAL_FSCTL_DUPLICATE_EXTENTS_TO_FILE = 0x98344;
 	}
 }
 
@@ -687,7 +688,7 @@ bool os_create_reflink(const std::string &linkname, const std::string &fname)
 		reflink_data.SourceFileOffset.QuadPart = reflinked;
 		reflink_data.TargetFileOffset.QuadPart = reflinked;
 
-		if (!DeviceIoControl(dest_handle, reflink::FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+		if (!DeviceIoControl(dest_handle, reflink::LOCAL_FSCTL_DUPLICATE_EXTENTS_TO_FILE,
 			&reflink_data, sizeof(reflink_data), NULL, 0, &ret_bytes, NULL))
 		{
 			has_error = true;
@@ -779,73 +780,94 @@ bool os_remove_symlink_dir_int(const std::wstring &path)
 	return RemoveDirectoryW(path.c_str())!=FALSE;
 }
 
-bool os_remove_nonempty_dir_int(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
+bool os_remove_nonempty_dir_int(const std::wstring &root_path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
-	WIN32_FIND_DATAW wfd; 
-	std::wstring tpath=path;
-	HANDLE hf=FindFirstFileW((tpath+L"\\*").c_str(), &wfd);
-	if(hf==INVALID_HANDLE_VALUE)
+	std::stack<std::pair<std::wstring, bool> > paths;
+
+	paths.push(std::make_pair(root_path, false));
+
+	while (!paths.empty())
 	{
-		if(tpath.find(L"\\\\?\\UNC")==0)
+		std::wstring path = paths.top().first;
+
+		if (paths.top().second)
 		{
-			tpath.erase(0, 7);
-			tpath=L"\\"+tpath;
-			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
-		}
-		else if(tpath.find(L"\\\\?\\")==0)
-		{
-			tpath.erase(0, 4);
-			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
-		}
-		if(hf==INVALID_HANDLE_VALUE)
-		{
-			return false;
-		}
-	}
-	BOOL b=true;
-	while( b )
-	{
-		if( (std::wstring)wfd.cFileName!=L"." && (std::wstring)wfd.cFileName!=L".." )
-		{
-			if( wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+			if (paths.size() == 1
+				&& !delete_root)
 			{
-				if(symlink_callback!=NULL
-					&& (wfd.dwReserved0==IO_REPARSE_TAG_MOUNT_POINT
-					|| wfd.dwReserved0==IO_REPARSE_TAG_SYMLINK) )
+				return true;
+			}
+
+			if (!RemoveDirectoryW(path.c_str()))
+			{
+				Log("Error deleting directory \"" + ConvertFromWchar(path) + "\"", LL_ERROR);
+			}
+
+			paths.pop();
+			continue;
+		}
+
+		paths.top().second = true;
+
+		std::wstring tpath = path;
+		WIN32_FIND_DATAW wfd;
+		HANDLE hf = FindFirstFileW((tpath + L"\\*").c_str(), &wfd);
+		if (hf == INVALID_HANDLE_VALUE)
+		{
+			if (tpath.find(L"\\\\?\\UNC") == 0)
+			{
+				tpath.erase(0, 7);
+				tpath = L"\\" + tpath;
+				hf = FindFirstFileW((tpath + L"\\*").c_str(), &wfd);
+			}
+			else if (tpath.find(L"\\\\?\\") == 0)
+			{
+				tpath.erase(0, 4);
+				hf = FindFirstFileW((tpath + L"\\*").c_str(), &wfd);
+			}
+			if (hf == INVALID_HANDLE_VALUE)
+			{
+				return false;
+			}
+		}
+		BOOL b = true;
+		while (b)
+		{
+			if ((std::wstring)wfd.cFileName != L"." && (std::wstring)wfd.cFileName != L"..")
+			{
+				if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 				{
-					bool isdir = (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) > 0;
-					symlink_callback(ConvertFromWchar(path+L"\\"+wfd.cFileName), &isdir, userdata);
+					if (symlink_callback != NULL
+						&& (wfd.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT
+							|| wfd.dwReserved0 == IO_REPARSE_TAG_SYMLINK))
+					{
+						bool isdir = (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) > 0;
+						symlink_callback(ConvertFromWchar(path + L"\\" + wfd.cFileName), &isdir, userdata);
+					}
+					else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+					{
+						os_remove_symlink_dir_int(path + L"\\" + wfd.cFileName);
+					}
+					else
+					{
+						DeleteFileW((path + L"\\" + wfd.cFileName).c_str());
+					}
 				}
-				else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				else if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
-					os_remove_symlink_dir_int(path+L"\\"+wfd.cFileName);
+					paths.push(std::make_pair(tpath + L"\\" + wfd.cFileName, false));
 				}
 				else
 				{
-					DeleteFileW((path+L"\\"+wfd.cFileName).c_str());
+					DeleteFileW((path + L"\\" + wfd.cFileName).c_str());
 				}
 			}
-			else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-			{
-				os_remove_nonempty_dir_int(tpath+L"\\"+wfd.cFileName, symlink_callback, userdata, true);
-			}
-			else
-			{
-				DeleteFileW((path+L"\\"+wfd.cFileName).c_str());
-			}
+			b = FindNextFileW(hf, &wfd);
 		}
-		b=FindNextFileW(hf,&wfd);			
+
+		FindClose(hf);
 	}
 
-	FindClose(hf);
-
-	if(delete_root)
-	{
-		if(!RemoveDirectoryW(path.c_str()))
-		{
-			Log("Error deleting directory \""+ConvertFromWchar(path)+"\"", LL_ERROR);
-		}
-	}
 	return true;
 }
 
