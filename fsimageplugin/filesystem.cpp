@@ -383,9 +383,10 @@ void Filesystem::overlappedIoCompletion(SNextBlock * block, DWORD dwErrorCode, D
 		for(size_t i=0;i<block->n_buffers;++i)
 			block->buffers[i].state = ENextBlockState_Error;
 	}
-	else if (dwNumberOfBytesTransfered != getBlocksize())
+	else if (dwNumberOfBytesTransfered != block->n_buffers*getBlocksize())
 	{
-		Server->Log("Reading from device at position " + convert(offset) + " failed. OS returned only "+convert((int64)dwNumberOfBytesTransfered)+" bytes", LL_ERROR);
+		Server->Log("Reading from device at position " + convert(offset) + " failed. OS returned only "+convert((int64)dwNumberOfBytesTransfered)+" bytes"
+			". Expected "+convert(block->n_buffers*getBlocksize())+" bytes", LL_ERROR);
 		has_error = true;
 		for(size_t i=0;i<block->n_buffers;++i)
 			block->buffers[i].state = ENextBlockState_Error;
@@ -563,6 +564,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 			}
 			next_blocks[i].buffers[0].state = ENextBlockState_Queued;
 			next_blocks[i].fs = this;
+			next_blocks[i].buffers[0].block = &next_blocks[i];
 			
 			for(size_t j=1;j<n_max_buffers;++j)
 			{
@@ -641,7 +643,6 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 			}
 #endif	
 			ret = true;
-			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 
 			if (Server->getTimeMS() - queue_starttime > 500)
 			{
