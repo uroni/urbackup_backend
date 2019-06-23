@@ -1036,6 +1036,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 		memcpy(&addr.addr_v6.sin6_addr, lookup_result.addr_v6, sizeof(addr.addr_v6.sin6_addr));
 		addr.addr_v6.sin6_port = htons(pPort);
 		addr.addr_v6.sin6_family = AF_INET6;
+		addr.addr_v6.sin6_scope_id = lookup_result.zone;
 	}
 	else
 	{

@@ -26,18 +26,13 @@
 
 bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
 {
+	dest.zone = 0;
 	const char* host = pServer.c_str();
 	unsigned int addr = inet_addr(host);
 	if (addr != INADDR_NONE)
 	{
 		dest.is_ipv6 = false;
 		dest.addr_v4 = addr;
-		return true;
-	}
-	int rc = inet_pton(AF_INET6, host, dest.addr_v6);
-	if (rc == 1)
-	{
-		dest.is_ipv6 = true;
 		return true;
 	}
 
@@ -66,6 +61,7 @@ bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
 				{
 					dest.is_ipv6 = true;
 					memcpy(dest.addr_v6, &reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_addr, 16);
+					dest.zone = reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_scope_id;
 					freeaddrinfo(orig_h);
 					return true;
 				}

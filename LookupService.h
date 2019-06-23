@@ -10,6 +10,7 @@ struct SLookupBlockingResult
 		unsigned int addr_v4;
 		char addr_v6[16];
 	};
+	unsigned int zone;
 };
 
 bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest);
