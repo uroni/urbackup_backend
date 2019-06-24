@@ -72,92 +72,40 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	if(rc == SOCKET_ERROR)	return;
 #endif
 
-	int type = SOCK_STREAM;
-#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-	type |= SOCK_CLOEXEC;
-#endif
-	s=socket(AF_INET,type,0);
-	if(s<1)
+	bool has_ipv4 = Server->getServerParameter("disable_ipv4").empty();
+	bool has_ipv6 = Server->getServerParameter("disable_ipv6").empty();
+	
+	if (!has_ipv4 && !has_ipv6)
 	{
-		Server->Log(name+": Creating SOCKET failed",LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	if (!prepareSocket(s))
-	{
+		Server->Log(name + ": IPv4 and IPv6 disabled", LL_ERROR);
 		has_error = true;
 		return;
 	}
 
-	sockaddr_in addr;
-
-	memset(&addr, 0, sizeof(sockaddr_in));
-	addr.sin_family=AF_INET;
-	addr.sin_port=htons(port);
-	switch(bindTarget)
+	if (has_ipv4)
 	{
-	case IServer::BindTarget_All:
-		addr.sin_addr.s_addr= htonl(INADDR_ANY);
-		break;
-	case IServer::BindTarget_Localhost:
-		addr.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
-		break;
+		if (!init_socket_v4(port, bindTarget))
+		{
+			if (Server->getServerParameter("ipv4_optional").empty()
+				|| !has_ipv6)
+			{
+				has_error = true;
+				return;
+			}
+		}
 	}
 
-	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
-	if(rc==SOCKET_ERROR)
+	if (has_ipv6)
 	{
-		Server->Log(name+": Failed binding socket to port "+convert(port)+". Another instance of this application may already be active and bound to this port.",LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	listen(s, 10000);
-
-	if (Server->getServerParameter("disable_ipv6").empty())
-	{
-		s_v6 = socket(AF_INET6, type, 0);
-		if (s_v6 < 1)
+		if (!init_socket_v6(port, bindTarget))
 		{
-			Server->Log(name + ": Creating v6 SOCKET failed", LL_ERROR);
-			has_error = true;
-			return;
+			if (!Server->getServerParameter("ipv6_required").empty()
+				|| !has_ipv4)
+			{
+				has_error = true;
+				return;
+			}
 		}
-
-		if (!prepareSocket(s_v6))
-		{
-			has_error = true;
-			return;
-		}
-
-		int optval = 1;
-		setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
-
-		sockaddr_in6 addr;
-
-		memset(&addr, 0, sizeof(addr));
-		addr.sin6_family = AF_INET6;
-		addr.sin6_port = htons(port);
-		switch (bindTarget)
-		{
-		case IServer::BindTarget_All:
-			addr.sin6_addr = in6addr_any;
-			break;
-		case IServer::BindTarget_Localhost:
-			addr.sin6_addr= in6addr_loopback;
-			break;
-		}
-
-		rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
-		if (rc == SOCKET_ERROR)
-		{
-			Server->Log(name + ": Failed binding ipv6 socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
-			has_error = true;
-			return;
-		}
-
-		listen(s_v6, 10000);
 	}
 
 	Server->Log(name+": Server started up successfully!",LL_INFO);
@@ -165,17 +113,21 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 CServiceAcceptor::~CServiceAcceptor()
 {
-	if(has_error)
-		return;
+	do_exit = true;
 
-	do_exit=true;
 #ifndef _WIN32
-	char ch=0;
+	char ch = 0;
 	write(xpipe[1], &ch, 1);
 #endif
-	closesocket(s);
+
+	if (s != SOCKET_ERROR)
+		closesocket(s);
 	if (s_v6 != SOCKET_ERROR)
 		closesocket(s_v6);
+
+	if(has_error)
+		return;
+	
 	for(size_t i=0;i<workers.size();++i)
 	{
 		workers[i]->stop();
@@ -333,4 +285,99 @@ void CServiceAcceptor::AddToWorker(SOCKET pSocket, const std::string& endpoint)
 	Server->createThread(nw, name+": worker");
 
 	nw->AddClient( pSocket, endpoint );
-}	
+}
+
+bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget bindTarget)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s = socket(AF_INET, type, 0);
+	if (s < 1)
+	{
+		Server->Log(name + ": Creating SOCKET failed", LL_ERROR);
+		return false;
+	}
+
+	if (!prepareSocket(s))
+	{
+		return false;
+	}
+
+	sockaddr_in addr;
+
+	memset(&addr, 0, sizeof(sockaddr_in));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	switch (bindTarget)
+	{
+	case IServer::BindTarget_All:
+		addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		break;
+	case IServer::BindTarget_Localhost:
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		break;
+	}
+
+	int rc = bind(s, (sockaddr*)& addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log(name + ": Failed binding socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
+		return false;
+	}
+
+	listen(s, 10000);
+
+	return true;
+}
+
+bool CServiceAcceptor::init_socket_v6(unsigned short port, IServer::BindTarget bindTarget)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+
+	s_v6 = socket(AF_INET6, type, 0);
+	if (s_v6 < 1)
+	{
+		Server->Log(name + ": Creating v6 SOCKET failed", LL_ERROR);
+		return false;
+	}
+
+	if (!prepareSocket(s_v6))
+	{
+		return false;
+	}
+
+	int optval = 1;
+	setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)& optval, sizeof(optval));
+
+	sockaddr_in6 addr;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = htons(port);
+	switch (bindTarget)
+	{
+	case IServer::BindTarget_All:
+		addr.sin6_addr = in6addr_any;
+		break;
+	case IServer::BindTarget_Localhost:
+		addr.sin6_addr = in6addr_loopback;
+		break;
+	}
+
+	int rc = bind(s_v6, (sockaddr*)& addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log(name + ": Failed binding ipv6 socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
+		return false;
+	}
+
+	listen(s_v6, 10000);
+
+	return true;
+}
+

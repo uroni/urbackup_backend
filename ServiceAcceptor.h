@@ -19,6 +19,10 @@ public:
 private:
 	void AddToWorker(SOCKET pSocket, const std::string& endpoint);
 
+	bool init_socket_v4(unsigned short port, IServer::BindTarget bindTarget);
+
+	bool init_socket_v6(unsigned short port, IServer::BindTarget bindTarget);
+
 	std::vector<CServiceWorker*> workers;
 	SOCKET s;
 	SOCKET s_v6;

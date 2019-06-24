@@ -169,66 +169,33 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 
 	if(tcpport!=0)
 	{
-		int type = SOCK_STREAM;
-#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-		type |= SOCK_CLOEXEC;
-#endif
-		mSocket=socket(AF_INET, type, 0);
-		if(mSocket<1) return false;
+		bool has_ipv4 = Server->getServerParameter("disable_ipv4").empty();
+		bool has_ipv6 = Server->getServerParameter("disable_ipv6").empty();
 
-		if (!setSocketSettings(mSocket))
-			return false;
-
-		sockaddr_in addr;
-
-		memset(&addr, 0, sizeof(sockaddr_in));
-		addr.sin_family=AF_INET;
-		addr.sin_port=htons(tcpport);
-		addr.sin_addr.s_addr=htonl(INADDR_ANY);
-
-		rc=bind(mSocket,(sockaddr*)&addr,sizeof(addr));
-		if(rc==SOCKET_ERROR)
+		if (!has_ipv4 && !has_ipv6)
 		{
-#ifdef LOG_SERVER
-			Server->Log("Binding tcp socket to port "+convert(tcpport)+" failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
-#else
-			Log("Failed. Binding tcp socket.", LL_ERROR);
-#endif
+			Log("IPv4 and IPv6 disabled", LL_ERROR);
 			return false;
 		}
 
-		listen(mSocket,60);
-
-		if (Server->getServerParameter("disable_ipv6").empty())
+		if (has_ipv4
+			&& !startIpv4(tcpport) )
 		{
-			mSocketv6 = socket(AF_INET6, type, 0);
-			if (mSocketv6<1) return false;
-
-			if (!setSocketSettings(mSocketv6))
-				return false;
-
-			int optval = 1;
-			setsockopt(mSocketv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
-
-			sockaddr_in6 addr;
-
-			memset(&addr, 0, sizeof(sockaddr_in6));
-			addr.sin6_family = AF_INET6;
-			addr.sin6_port = htons(tcpport);
-			addr.sin6_addr = in6addr_any;
-
-			rc = bind(mSocketv6, (sockaddr*)&addr, sizeof(addr));
-			if (rc == SOCKET_ERROR)
+			if (Server->getServerParameter("ipv4_optional").empty()
+				|| !has_ipv6)
 			{
-#ifdef LOG_SERVER
-				Server->Log("Binding tcp ipv6 socket to port " + convert(tcpport) + " failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
-#else
-				Log("Failed. Binding ipv6 tcp socket.", LL_ERROR);
-#endif
 				return false;
 			}
+		}
 
-			listen(mSocketv6, 60);
+		if (has_ipv6
+			&& !startIpv6(tcpport) )
+		{
+			if (!Server->getServerParameter("ipv6_required").empty()
+				|| !has_ipv4)
+			{
+				return false;
+			}
 		}
 	}
 	//start udpsock
@@ -383,6 +350,79 @@ void CTCPFileServ::DelClientThreads(void)
 		}
 	}
 	cs.Leave();
+}
+
+bool CTCPFileServ::startIpv4(_u16 tcpport)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	mSocket = socket(AF_INET, type, 0);
+	if (mSocket < 1) return false;
+
+	if (!setSocketSettings(mSocket))
+		return false;
+
+	sockaddr_in addr;
+
+	memset(&addr, 0, sizeof(sockaddr_in));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(tcpport);
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	int rc = bind(mSocket, (sockaddr*)& addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding tcp socket to port " + convert(tcpport) + " failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
+#else
+		Log("Failed. Binding tcp socket.", LL_ERROR);
+#endif
+		return false;
+	}
+
+	listen(mSocket, 60);
+
+	return true;
+}
+
+bool CTCPFileServ::startIpv6(_u16 tcpport)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	mSocketv6 = socket(AF_INET6, type, 0);
+	if (mSocketv6 < 1) return false;
+
+	if (!setSocketSettings(mSocketv6))
+		return false;
+
+	int optval = 1;
+	setsockopt(mSocketv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)& optval, sizeof(optval));
+
+	sockaddr_in6 addr;
+
+	memset(&addr, 0, sizeof(sockaddr_in6));
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = htons(tcpport);
+	addr.sin6_addr = in6addr_any;
+
+	int rc = bind(mSocketv6, (sockaddr*)& addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding tcp ipv6 socket to port " + convert(tcpport) + " failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
+#else
+		Log("Failed. Binding ipv6 tcp socket.", LL_ERROR);
+#endif
+		return false;
+	}
+
+	listen(mSocketv6, 60);
+
+	return true;
 }
 
 bool CTCPFileServ::getUseFQDN()

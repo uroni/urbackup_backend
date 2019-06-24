@@ -32,6 +32,10 @@ private:
 	bool TcpStep(void);
 	void DelClientThreads(void);
 
+	bool startIpv4(_u16 tcpport);
+
+	bool startIpv6(_u16 tcpport);
+
 	SOCKET mSocket;
 	SOCKET mSocketv6;
 

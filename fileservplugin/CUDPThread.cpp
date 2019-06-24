@@ -214,90 +214,36 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 	udpport_=udpport;
 	use_fqdn_=use_fqdn;
 
+	bool has_ipv4 = Server->getServerParameter("disable_ipv4").empty();
+	bool has_ipv6 = Server->getServerParameter("disable_ipv6").empty();
+
+	if (!has_ipv4 && !has_ipv6)
 	{
-		int type = SOCK_DGRAM;
-#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-		type |= SOCK_CLOEXEC;
-#endif
-		udpsock=socket(AF_INET, type, 0);
-
-		setSocketSettings(udpsock);
-
-		sockaddr_in addr_udp;
-		memset(&addr_udp, 0, sizeof(addr_udp));
-
-		addr_udp.sin_family=AF_INET;
-		addr_udp.sin_port=htons(udpport);
-		addr_udp.sin_addr.s_addr= htonl(INADDR_ANY);
-
-		Log("Binding UDP socket at port "+convert(udpport)+"...", LL_DEBUG);
-		int rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
-		if(rc==SOCKET_ERROR)
-		{
-#ifdef LOG_SERVER
-			Server->Log("Binding UDP socket to port "+convert(udpport)+" failed", LL_ERROR);
-#else
-			Log("Failed binding UDP socket.", LL_ERROR);
-#endif
-			has_error=true;
-			return;
-		}
-		Log("done.", LL_DEBUG);
-
-		disableNewWindowsBehaviour(udpsock);
+		Log("IPv4 and IPv6 disabled", LL_ERROR);
+		has_error = true;
+		return;
 	}
 
-	if (Server->getServerParameter("disable_ipv6").empty())
+	if (has_ipv4
+		&& !init_v4(udpport))
 	{
-		int type = SOCK_DGRAM;
-#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-		type |= SOCK_CLOEXEC;
-#endif
-		udpsockv6 = socket(AF_INET6, type, 0);
-
-		setSocketSettings(udpsockv6);
-
-		int optval = 1;
-		setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
-
-		sockaddr_in6 addr_udp;
-		memset(&addr_udp, 0, sizeof(addr_udp));
-
-		addr_udp.sin6_family = AF_INET6;
-		addr_udp.sin6_port = htons(udpport);
-		addr_udp.sin6_addr = in6addr_any;
-
-		Log("Binding ipv6 UDP socket at port " + convert(udpport) + "...", LL_DEBUG);
-
-		int rc = bind(udpsockv6, (sockaddr*)&addr_udp, sizeof(addr_udp));
-		if (rc == SOCKET_ERROR)
+		if (Server->getServerParameter("ipv4_optional").empty()
+			|| !has_ipv6)
 		{
-#ifdef LOG_SERVER
-			Server->Log("Binding ipv6 UDP socket to port " + convert(udpport) + " failed", LL_ERROR);
-#else
-			Log("Failed binding ipv6 UDP socket.", LL_ERROR);
-#endif
 			has_error = true;
 			return;
 		}
-		Log("done.", LL_DEBUG);
+	}
 
-		struct ipv6_mreq group;
-		group.ipv6mr_interface = 0;
-		inet_pton(AF_INET6, multicast_group, &group.ipv6mr_multiaddr);
-		rc = setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, reinterpret_cast<char*>(&group), sizeof(group));
-		if (rc == SOCKET_ERROR)
+	if (has_ipv6
+		&& !init_v6(udpport))
+	{
+		if (!Server->getServerParameter("ipv6_required").empty()
+			|| !has_ipv4)
 		{
-#ifdef LOG_SERVER
-			Server->Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
-#else
-			Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
-#endif
 			has_error = true;
 			return;
 		}
-
-		disableNewWindowsBehaviour(udpsockv6);
 	}
 
 	if( servername!="" )
@@ -306,6 +252,94 @@ void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
 		mServername=getSystemServerName(use_fqdn);
 
 	Log("Servername: -"+mServername+"-", LL_INFO);
+}
+
+bool CUDPThread::init_v4(_u16 udpport)
+{
+	int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	udpsock = socket(AF_INET, type, 0);
+
+	setSocketSettings(udpsock);
+
+	sockaddr_in addr_udp;
+	memset(&addr_udp, 0, sizeof(addr_udp));
+
+	addr_udp.sin_family = AF_INET;
+	addr_udp.sin_port = htons(udpport);
+	addr_udp.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	Log("Binding UDP socket at port " + convert(udpport) + "...", LL_DEBUG);
+	int rc = bind(udpsock, (sockaddr*)& addr_udp, sizeof(sockaddr_in));
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding UDP socket to port " + convert(udpport) + " failed", LL_ERROR);
+#else
+		Log("Failed binding UDP socket.", LL_ERROR);
+#endif
+		return false;
+	}
+	Log("done.", LL_DEBUG);
+
+	disableNewWindowsBehaviour(udpsock);
+
+	return true;
+}
+
+bool CUDPThread::init_v6(_u16 udpport)
+{
+	int type = SOCK_DGRAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	udpsockv6 = socket(AF_INET6, type, 0);
+
+	setSocketSettings(udpsockv6);
+
+	int optval = 1;
+	setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)& optval, sizeof(optval));
+
+	sockaddr_in6 addr_udp;
+	memset(&addr_udp, 0, sizeof(addr_udp));
+
+	addr_udp.sin6_family = AF_INET6;
+	addr_udp.sin6_port = htons(udpport);
+	addr_udp.sin6_addr = in6addr_any;
+
+	Log("Binding ipv6 UDP socket at port " + convert(udpport) + "...", LL_DEBUG);
+
+	int rc = bind(udpsockv6, (sockaddr*)& addr_udp, sizeof(addr_udp));
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding ipv6 UDP socket to port " + convert(udpport) + " failed", LL_ERROR);
+#else
+		Log("Failed binding ipv6 UDP socket.", LL_ERROR);
+#endif
+		return false;
+	}
+	Log("done.", LL_DEBUG);
+
+	struct ipv6_mreq group;
+	group.ipv6mr_interface = 0;
+	inet_pton(AF_INET6, multicast_group, &group.ipv6mr_multiaddr);
+	rc = setsockopt(udpsockv6, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, reinterpret_cast<char*>(&group), sizeof(group));
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
+#else
+		Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
+#endif
+		return false;
+	}
+
+	disableNewWindowsBehaviour(udpsockv6);
+
+	return true;
 }
 
 std::string CUDPThread::getServername()
