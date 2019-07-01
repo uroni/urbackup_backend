@@ -292,7 +292,7 @@ Filesystem::~Filesystem()
 #ifdef _WIN32
 			VirtualFree(next_blocks[i].buffers[0].buffer, 0, MEM_RELEASE);
 #else
-			delete[] next_blocks[i].buffers[0]->buffer;
+			delete[] next_blocks[i].buffers[0].buffer;
 #endif
 		}
 	}
