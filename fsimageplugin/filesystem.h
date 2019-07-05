@@ -29,7 +29,7 @@ enum ENextBlockState
 	ENextBlockState_Error
 };
 
-const size_t n_max_buffers=128;
+const size_t fs_readahead_n_max_buffers=64;
 
 struct SNextBlock;
 
@@ -48,7 +48,7 @@ public:
 
 struct SNextBlock
 {	
-	SBlockBuffer buffers[n_max_buffers];
+	SBlockBuffer buffers[fs_readahead_n_max_buffers];
 	size_t n_buffers;
 	Filesystem* fs;
 #ifdef _WIN32
