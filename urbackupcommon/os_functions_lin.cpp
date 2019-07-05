@@ -1300,13 +1300,30 @@ void os_reset_priority()
 
 #endif //__NR_ioprio_set
 
+#define BTRFS_IOC_SYNC _IO(BTRFS_IOCTL_MAGIC, 8)
+
 bool os_sync(const std::string & path)
 {
-#if defined(__linux__) && defined(HAVE_SYNCFS)
+#if defined(__linux__)
 	int fd = open(path.c_str(), O_RDONLY|O_CLOEXEC);
 	
 	if(fd!=-1)
 	{
+		if(ioctl(fd, BTRFS_IOC_SYNC, NULL)==-1)
+		{
+			if(errno!=ENOTTY && errno!=ENOSYS)
+			{
+				close(fd);
+				return false;
+			}
+		}
+		else
+		{
+			close(fd);
+			return true;
+		}
+
+#if defined(HAVE_SYNCFS)
 		if(syncfs(fd)!=0)
 		{
 			close(fd);
@@ -1322,6 +1339,11 @@ bool os_sync(const std::string & path)
 			close(fd);
 			return true;
 		}
+#else
+		close(fd);
+		sync();
+		return true;
+#endif
 	}
 	else
 	{
