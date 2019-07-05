@@ -1309,9 +1309,13 @@ bool os_sync(const std::string & path)
 	{
 		if(syncfs(fd)!=0)
 		{
-			sync();
 			close(fd);
-			return true;
+			if(errno==ENOSYS)
+			{
+				sync();
+				return true;
+			}
+			return false;
 		}
 		else
 		{

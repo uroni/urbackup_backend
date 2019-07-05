@@ -1530,7 +1530,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 									else
 									{
 										sync_f.reset(Server->openFile(os_file_prefix(imagefn + ".sync"), MODE_WRITE));
-									}
+
+										if (sync_f.get() != NULL
+											&& !sync_f->Sync())
+										{
+											ServerLogger::Log(logid, "Error syncing sync file to disk. " + os_last_error_str(), LL_ERROR);
+											vhdfile_err = true;
+										}
+									}									
 								}
 
 								db->BeginWriteTransaction();
