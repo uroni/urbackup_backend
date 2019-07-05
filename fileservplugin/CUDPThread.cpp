@@ -361,14 +361,14 @@ CUDPThread::~CUDPThread()
 
 void CUDPThread::operator()(void)
 {
-	Log("UDP Thread startet", LL_DEBUG);
+	Log("UDP Thread started", LL_DEBUG);
 #ifdef _WIN32
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
 	do 
 	{
-		while(UdpStep()==true && do_stop==false);
+		while(UdpStep() && !do_stop);
 
 
 		if(!do_stop && has_error)
@@ -378,6 +378,11 @@ void CUDPThread::operator()(void)
 			if(udpsock!=SOCKET_ERROR)
 			{
 				closesocket(udpsock);
+			}
+
+			if (udpsockv6 != SOCKET_ERROR)
+			{
+				closesocket(udpsockv6);
 			}
 
 			init(udpport_, mServername, use_fqdn_);
