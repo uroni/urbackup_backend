@@ -790,8 +790,9 @@ void InternetClientThread::operator()(void)
 		comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
 		comm_pipe = comp_pipe;
 	}
+	else
 #endif
-	else if( capa & IPC_COMPRESSED )
+	if( capa & IPC_COMPRESSED )
 	{
 		comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
 		comm_pipe=comp_pipe;
