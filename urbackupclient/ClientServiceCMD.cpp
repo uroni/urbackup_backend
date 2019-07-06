@@ -96,6 +96,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			}
 			else
 			{
+				Server->Log("Rejected server identity " + identity, LL_INFO);
 				if( !ServerIdentityMgr::hasOnlineServer() && ServerIdentityMgr::isNewIdentity(identity) )
 				{
 					IScopedLock lock(ident_mutex);
