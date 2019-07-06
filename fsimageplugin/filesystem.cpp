@@ -557,7 +557,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 #ifdef _WIN32
 			next_blocks[i].buffers[0].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize()*fs_readahead_n_max_buffers, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 #else
-			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*n_max_buffers];
+			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*fs_readahead_n_max_buffers];
 #endif
 			if (next_blocks[i].buffers[0].buffer == NULL)
 			{
