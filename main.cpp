@@ -55,6 +55,10 @@ using namespace nt;
 #	include <errno.h>
 #endif
 
+#ifdef __ANDROID__
+int getdtablesize() { return 1024; }
+#endif
+
 IServer *Server=NULL;
 
 using namespace std;

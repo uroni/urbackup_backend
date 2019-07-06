@@ -61,6 +61,10 @@
 #define fsblkcnt64_t fsblkcnt_t
 #endif
 
+#if defined(__ANDROID__)
+#define fsblkcnt64_t fsblkcnt_t
+#endif
+
 
 void getMousePos(int &x, int &y)
 {
@@ -1323,7 +1327,7 @@ bool os_sync(const std::string & path)
 			return true;
 		}
 
-#if defined(HAVE_SYNCFS)
+#if defined(HAVE_SYNCFS) && !defined(__ANDROID__)
 		if(syncfs(fd)!=0)
 		{
 			close(fd);

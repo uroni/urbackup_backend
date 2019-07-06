@@ -40,6 +40,12 @@
 #include <errno.h>
 #endif
 
+#ifdef __ANDROID__
+extern "C" {
+#include "ifaddrs.c"
+}
+#endif
+
 namespace
 {
 	const std::string str_tmpdir="C:\\Windows\\Temp";
