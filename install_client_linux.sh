@@ -92,12 +92,12 @@ TARGET=no
 
 arch=`uname -m`
 case "$arch" in
-    i?86) TARGET=i386-linux-eng ;;
+    i?86) TARGET=i686-linux-android ;;
     x86_64) TARGET=x86_64-linux-glibc ;;
-    armv6*) TARGET=armv6-linux-engeabihf ;;
-	armv7*) TARGET=armv6-linux-engeabihf ;;
-	armv8*) TARGET=aarch64-linux-eng ;;
-	aarch64) TARGET=aarch64-linux-eng ;;
+    armv6*) TARGET=arm-linux-androideabi ;;
+	armv7*) TARGET=arm-linux-androideabi ;;
+	armv8*) TARGET=aarch64-linux-android ;;
+	aarch64) TARGET=aarch64-linux-android ;;
 esac
 
 if [ $TARGET = no ]
@@ -117,13 +117,13 @@ if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "Glibc not installed or too old. Falling back to ellcc build..."
-		TARGET=x86_64-linux-eng
+		echo "Glibc not installed or too old. Falling back to Android NDK build..."
+		TARGET=x86_64-linux-android
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "Glibc not installed or too old. Falling back to ellcc build..."
-			TARGET=x86_64-linux-eng
+			echo "Glibc not installed or too old (2). Falling back to Android NDK..."
+			TARGET=x86_64-linux-android
 		fi
 	fi
 	

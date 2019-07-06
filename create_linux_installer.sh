@@ -1,12 +1,12 @@
 #!/bin/bash
 
-set -e
+set -ex
 
-#git reset --hard
-#cd client
-#git reset --hard
-#cd ..
-#python3 build/replace_versions.py
+git reset --hard
+cd client
+git reset --hard
+cd ..
+python3 build/replace_versions.py
 
 ./switch_build.sh client
 ./download_cryptopp.sh
@@ -57,6 +57,10 @@ export CC=$TOOLCHAIN/bin/$TARGET2-clang
 export CXX=$TOOLCHAIN/bin/$TARGET2-clang++
 export LD=$TOOLCHAIN/bin/$TARGET-ld
 export RANLIB=$TOOLCHAIN/bin/$TARGET-ranlib
+export STRIP_CMD=$TOOLCHAIN/bin/$TARGET-strip
+if [ ! -e $STRIP_CMD ]; then
+	export STRIP_CMD=$TOOLCHAIN/bin/$TARGET_FOLDER-strip
+fi
 if [ ! -e $RANLIB ]; then
         export RANLIB=$TOOLCHAIN/bin/$TARGET_FOLDER-ranlib
 fi
@@ -73,7 +77,7 @@ do
 	
 	if [ $arch = x86_64-linux-glibc ]
 	then
-		./configure --enable-headles --enable-clientupdate --enable-embedded-cryptopp CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto -DCRYPTOPP_DISABLE_SSSE3" LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os" AR=gcc-ar RANLIB=gcc-ranlib
+		./configure --enable-headless --enable-clientupdate --enable-embedded-cryptopp CFLAGS="-ggdb -Os" CPPFLAGS="-DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -flto -DCRYPTOPP_DISABLE_SSSE3" LDFLAGS="-Wl,--gc-sections -static-libstdc++ -flto" CXX="g++" CC="gcc" CXXFLAGS="-ggdb -Os" AR=gcc-ar RANLIB=gcc-ranlib
 		STRIP_CMD="strip"
 	else
 		build_ndk $arch
@@ -96,6 +100,7 @@ do
 	
 	if [ $arch = x86_64-linux-glibc ]
 	then
+		#Switching from embedded cryptopp
 		./switch_build.sh client
 	fi
 done
