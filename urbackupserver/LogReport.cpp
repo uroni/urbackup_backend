@@ -171,7 +171,7 @@ void reload_report_script()
 
 bool run_report_script(int incremental, bool resumed, int image,
 	int infos, int warnings, int errors, bool success, const std::string& report_mail, 
-	const std::string & data, const std::string& clientname)
+	const std::string & data, const std::string& clientname, int clientid, IDatabase* db)
 {
 	if (lua_interpreter == NULL)
 		return false;
@@ -201,6 +201,23 @@ bool run_report_script(int incremental, bool resumed, int image,
 	SStatus status = ServerStatus::getStatus(clientname);
 	param["clientos"] = status.os_version_string;
 	param["clientversion"] = status.client_version_string;
+	param["clientid"] = clientid;
+
+	if (clientid != 0 && db!=NULL)
+	{
+		ServerBackupDao backup_dao(db);
+		ServerBackupDao::CondInt groupid = backup_dao.getClientGroup(clientid);
+		if (groupid.exists)
+		{
+			param["groupid"] = groupid.value;
+
+			if (groupid.value != 0)
+			{
+				param["groupname"] = backup_dao.getGroupName(groupid.value).value;
+			}
+		}
+	}
+
 	ILuaInterpreter::Param::params_map& pdata = *param["data"].u.params;
 	
 	std::vector<std::string> msgs;
