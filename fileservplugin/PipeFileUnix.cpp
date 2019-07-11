@@ -26,9 +26,6 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include "../config.h"
-#ifdef __ANDROID__
-#undef HAVE_SPAWN_H
-#endif
 #if defined(HAVE_SPAWN_H)
 #include <spawn.h>
 #endif

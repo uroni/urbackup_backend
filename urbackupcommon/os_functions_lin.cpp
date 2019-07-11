@@ -1327,7 +1327,7 @@ bool os_sync(const std::string & path)
 			return true;
 		}
 
-#if defined(HAVE_SYNCFS) && !defined(__ANDROID__)
+#if defined(HAVE_SYNCFS)
 		if(syncfs(fd)!=0)
 		{
 			close(fd);

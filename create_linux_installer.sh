@@ -47,7 +47,7 @@ fi
 export NDK=/media/data2/android-ndk/android-ndk-r20
 export HOST_TAG=linux-x86_64
 export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/$HOST_TAG
-export TARGET2=${TARGET}22
+export TARGET2=${TARGET}29
 export AR=$TOOLCHAIN/bin/$TARGET-ar
 if ! [ -e $AR ]; then
         export AR=$TOOLCHAIN/bin/$TARGET_FOLDER-ar
