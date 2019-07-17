@@ -43,7 +43,6 @@
 #include "SessionMgr.h"
 #include "md5.h"
 #include "ServiceAcceptor.h"
-#include "LookupService.h"
 #include "FileSettingsReader.h"
 #include "DBSettingsReader.h"
 #include "StreamPipe.h"
@@ -1019,17 +1018,35 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
+	std::vector<SLookupBlockingResult> lookup_result = LookupBlocking(pServer);
+	if (lookup_result.empty())
+	{
+#ifdef _WIN32
+		Server->Log("No result when looking up hostname \"" + pServer + "\". Err: " + convert(WSAGetLastError()), LL_DEBUG);
+#else
+		Server->Log("No result when looking up hostname \"" + pServer + "\". Err: " + convert(errno), LL_DEBUG);
+#endif
+		return NULL;
+	}
+
+	for (size_t i = 0; i < lookup_result.size(); ++i)
+	{
+		IPipe* ret = ConnectStream(lookup_result[i], pPort, pTimeoutms);
+		if (ret != NULL)
+			return ret;
+	}
+
+	return NULL;
+}
+
+
+IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms)
+{
 	union
 	{
 		sockaddr_in addr_v4;
 		sockaddr_in6 addr_v6;
 	} addr = {};
-	
-	SLookupBlockingResult lookup_result;
-	if (!LookupBlocking(pServer, lookup_result))
-	{
-		return NULL;
-	}
 
 	if (lookup_result.is_ipv6)
 	{

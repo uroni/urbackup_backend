@@ -24,16 +24,19 @@
 #endif
 #include "LookupService.h"
 
-bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
+std::vector<SLookupBlockingResult> LookupBlocking(std::string pServer)
 {
-	dest.zone = 0;
 	const char* host = pServer.c_str();
 	unsigned int addr = inet_addr(host);
 	if (addr != INADDR_NONE)
 	{
-		dest.is_ipv6 = false;
-		dest.addr_v4 = addr;
-		return true;
+		SLookupBlockingResult res;
+		res.zone = 0;
+		res.is_ipv6 = false;
+		res.addr_v4 = addr;
+		std::vector<SLookupBlockingResult> ret;
+		ret.push_back(res);
+		return ret;
 	}
 
 	addrinfo hints;
@@ -42,6 +45,7 @@ bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	std::vector<SLookupBlockingResult> ret;
 	addrinfo* h;
 	if (getaddrinfo(pServer.c_str(), NULL, &hints, &h) == 0)
 	{
@@ -59,42 +63,33 @@ bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest)
 			{
 				if (h->ai_addrlen >= sizeof(sockaddr_in6))
 				{
+					SLookupBlockingResult dest;
 					dest.is_ipv6 = true;
 					memcpy(dest.addr_v6, &reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_addr, 16);
 					dest.zone = reinterpret_cast<sockaddr_in6*>(h->ai_addr)->sin6_scope_id;
-					freeaddrinfo(orig_h);
-					return true;
-				}
-				else
-				{
-					freeaddrinfo(orig_h);
-					return false;
+					ret.push_back(dest);
 				}
 			}
 			else
 			{
 				if (h->ai_addrlen >= sizeof(sockaddr_in))
 				{
+					SLookupBlockingResult dest;
+					dest.zone = 0;
 					dest.is_ipv6 = false;
 					dest.addr_v4 = reinterpret_cast<sockaddr_in*>(h->ai_addr)->sin_addr.s_addr;
-					freeaddrinfo(orig_h);
-					return true;
-				}
-				else
-				{
-					freeaddrinfo(orig_h);
-					return false;
+					ret.push_back(dest);
 				}
 			}
 
 			h = h->ai_next;
 		}
 		freeaddrinfo(orig_h);
-		return false;
+		return ret;
 	}
 	else
 	{
-		return false;
+		return ret;
 	}
 }
 
