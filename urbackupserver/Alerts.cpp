@@ -199,7 +199,7 @@ void Alerts::operator()()
 				ILuaInterpreter::Param params_raw;
 				ILuaInterpreter::Param::params_map& params = *params_raw.u.params;
 				params["clientid"] = clientid;
-				params["clientname"] = res[i]["name"];
+				params["clientname"] = res[i]["clientname"];
 				int update_freq_file_incr = server_settings.getUpdateFreqFileIncr();
 				int update_freq_file_full = server_settings.getUpdateFreqFileFull();
 				params["incr_file_interval"] = update_freq_file_incr;
