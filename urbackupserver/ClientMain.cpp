@@ -3074,9 +3074,10 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 void ClientMain::updateClientAddress(const std::string& address_data)
 {
 	IScopedLock lock(clientaddr_mutex);
-	memcpy(&clientaddr, address_data.data(), sizeof(sockaddr_in));
+	assert(address_data.size() == sizeof(clientaddr) + 1);
+	memcpy(&clientaddr, address_data.data(), sizeof(clientaddr));
 	bool prev_internet_connection = internet_connection;
-	internet_connection = (address_data[sizeof(sockaddr_in)] == 0) ? false : true;
+	internet_connection = (address_data[sizeof(clientaddr)] == 0) ? false : true;
 
 	if (prev_internet_connection != internet_connection)
 	{
