@@ -793,6 +793,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 										SAddrHint res;
 										res.is_ipv6 = true;
 										memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+										res.zone = sender_v6.sin6_scope_id;
 										servers.push_back(res);
 									}
 									else
@@ -812,6 +813,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 									SAddrHint res;
 									res.is_ipv6 = true;
 									memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+									res.zone = sender_v6.sin6_scope_id;
 									wvservers.push_back(res);
 								}
 								else
@@ -2513,7 +2515,16 @@ std::string FileClient::SAddrHint::toString() const
 	else
 	{
 		char str[INET6_ADDRSTRLEN];
-		inet_ntop(AF_INET6, (void*)addr_ipv6, str, INET6_ADDRSTRLEN);
+		sockaddr_in6 saddr = {};
+		saddr.sin6_family = AF_INET6;
+		saddr.sin6_port = htons(UDP_SOURCE_PORT);
+		memcpy(&saddr.sin6_addr, addr_ipv6, sizeof(addr_ipv6));
+		saddr.sin6_scope_id = zone;
+		if (getnameinfo(reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr), 
+			str, sizeof(str), NULL, 0, NI_NUMERICHOST) != 0)
+		{
+			return std::string();
+		}
 		return str;
 	}
 }

@@ -81,6 +81,7 @@ public:
 		struct SAddrHint
 		{
 			SAddrHint()
+				: zone(0)
 			{}
 
 			SAddrHint(const SLookupResult& lookup_res)
@@ -102,6 +103,7 @@ public:
 				char addr_ipv6[16];
 			};
 			bool is_ipv6;
+			unsigned int zone;
 
 			bool same(const SAddrHint& other) const
 			{
