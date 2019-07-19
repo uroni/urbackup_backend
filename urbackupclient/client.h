@@ -407,11 +407,6 @@ private:
 	int64 getChangeIndicator(const std::string& path);
 	int64 getChangeIndicator(const SFile& file);
 
-	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
-		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
-		const std::vector<std::string>& exclude_dirs,
-		const std::vector<SIndexInclude>& include_dirs, std::string orig_path=std::string());
-
 	enum IndexErrorInfo
 	{
 		IndexErrorInfo_Ok,
@@ -760,6 +755,58 @@ private:
 			}
 		}
 	};
+
+	struct SRecurRet
+	{
+		bool has_include;
+		SLastFileList backup;
+		std::streampos pos;
+		int64 file_id_backup;
+	};
+
+	struct SFirstInfo
+	{
+		std::string fn_filter;
+		size_t idx;
+	};
+
+	struct SRecurParams
+	{
+		SRecurParams(SFileAndHash file,	SFirstInfo* first_info,
+			bool curr_included,	std::string orig_dir,
+			std::string dir, std::string named_path,
+			size_t depth, size_t parent_idx)
+			: file(file), first_info(first_info), curr_included(curr_included),
+			orig_dir(orig_dir), dir(dir),
+			named_path(named_path), depth(depth), state(0),
+			parent_idx(parent_idx) {}
+
+		int state;
+		SFileAndHash file;
+		SFirstInfo* first_info;
+		bool curr_included;
+		std::string orig_dir;
+		std::string dir;
+		std::string named_path;
+		size_t depth;
+		SRecurRet recur_ret;
+		size_t parent_idx;
+	};
+
+	bool initialCheck(std::vector<SRecurParams>& params_stack, size_t stack_idx, const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
+		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
+
+	void initialCheckRecur1(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx, const std::string& volume, const std::string& vssvolume,
+		std::fstream &outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
+
+	void initialCheckRecur2(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx, const std::string& volume, const std::string& vssvolume,
+		std::fstream &outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
 
 	std::auto_ptr<SLastFileList> last_filelist;
 

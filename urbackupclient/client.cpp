@@ -1691,9 +1691,11 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				{
 					openCbtHdatFile(scd->ref, backup_dirs[i].tname, volume);
 
-					initialCheck(strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+					std::vector<SRecurParams> params_stack;
+					initialCheck(params_stack, std::string::npos,
+						strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0, true, true,
-						index_exclude_dirs, index_include_dirs);
+						index_exclude_dirs, index_include_dirs, std::string());
 				}
 
 				commitModifyFilesBuffer();
@@ -1924,11 +1926,11 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 	return false;
 }
 
-bool IndexThread::initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
+bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t stack_idx, 
+	const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
 	bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs, std::string orig_path)
+	const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
 {
-	bool has_include=false;
 	index_flags=flags;
 
 	if( IdleCheckerThread::getIdle()==false )
@@ -1945,7 +1947,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		return false;
 	}
 
-	std::string fn_filter;
+	SFirstInfo first_info;
 	bool close_dir=false;
 	std::string extra;
 	
@@ -2039,7 +2041,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 		if(filetype & EFileType_File)
 		{
-			fn_filter = ExtractFileName(dir, os_file_sep());
+			first_info.fn_filter = ExtractFileName(dir, os_file_sep());
 			orig_dir = ExtractFilePath(orig_dir, os_file_sep());
 			dir = ExtractFilePath(dir, os_file_sep());
 		}
@@ -2063,7 +2065,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	int64 target_generation;
-	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db,
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, first_info.fn_filter, use_db,
 		exclude_dirs, include_dirs, target_generation);
 
 	if(index_error)
@@ -2072,6 +2074,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	bool finish_phash_path = false;
+	bool has_include = false;
 	
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -2099,7 +2102,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			std::string listname = files[i].name;
 
-			if(first && !fn_filter.empty() && i==0)
+			if(first && !first_info.fn_filter.empty() && i==0)
 			{
 				listname = named_path;
 			}
@@ -2185,7 +2188,17 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		addToPhashQueue(wdata);
 	}
 
-	for(size_t i=0;dir_recurse && i<files.size();++i)
+	if (first)
+	{
+		assert(params_stack.empty());
+		SRecurParams curr_params(SFileAndHash(), NULL, false,
+			std::string(), std::string(), std::string(), depth, std::string::npos);
+		curr_params.state = 2;
+		params_stack.push_back(curr_params);
+		stack_idx = params_stack.size() - 1;
+	}
+
+	for(size_t i=files.size();dir_recurse && i-->0;)
 	{
 		if( files[i].isdir )
 		{
@@ -2194,6 +2207,16 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 			{
 				continue;
 			}
+
+			/* Skip symlinks if they are not included?
+			Problem is that we haven't scanned symlink contents yet and don't know if it has any included files...
+
+			if (files[i].issym && with_proper_symlinks
+				&& skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
+				exclude_dirs, include_dirs))
+			{
+				continue;
+			}*/
 
 			bool curr_included = false;
 			bool adding_worthless1, adding_worthless2;
@@ -2222,83 +2245,48 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
-				std::streampos pos=outfile.tellp();
-				int64 file_id_backup = file_id;
+				first_info.idx = i;
+				SRecurParams curr_params(files[i], first ? &first_info : NULL, curr_included,
+					orig_dir, dir, named_path, depth, stack_idx);
+				params_stack.push_back(curr_params);
+			}
+		}
+	}
 
-				SLastFileList backup;
-				if (index_follow_last)
+	if (first)
+	{
+		while (!params_stack.empty())
+		{
+			SRecurParams& params_back = params_stack.back();
+			size_t stack_idx = params_stack.size() - 1;
+
+			if (params_back.state == 0)
+			{
+				params_back.state = 1;
+				initialCheckRecur1(params_stack, params_back, stack_idx, volume, vssvolume, outfile, flags, use_db, dir_recurse,
+					include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+
+				if (index_error)
 				{
-					backup = *last_filelist.get();
+					return has_include;
 				}
+			}
+			else if(params_back.state == 1)
+			{
+				initialCheckRecur2(params_stack, params_back, stack_idx, volume, vssvolume, outfile, flags, use_db, dir_recurse,
+					include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+				params_stack.pop_back();
+			}
+			else if (params_back.state == 2)
+			{
+				if (params_back.recur_ret.has_include)
+					has_include = true;
 
-				if(files[i].issym && with_proper_symlinks)
-				{
-					extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
-				}
-
-				if(files[i].isspecialf && with_proper_symlinks)
-				{
-					extra+="&special=1";
-				}
-
-				extra += "&line=" + convert(file_id+1);
-
-				std::string listname = files[i].name;
-
-				if(first && !fn_filter.empty() && i==0)
-				{
-					listname = named_path;
-				}
-
-				addFromLastUpto(listname, true, depth, false, outfile);
-				writeDir(outfile, listname, with_orig_path, files[i].change_indicator, extra);
-				extra.clear();
-
-				bool b=true;
-
-				if(!files[i].issym || !with_proper_symlinks)
-				{
-					b = initialCheck(volume, vssvolume, orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
-							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1,
-						dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs);
-				}
-
-				addFromLastLiftDepth(depth, outfile);
-
-				if(!with_proper_symlinks)
-				{
-					outfile << "d\"..\"\n";
-				}
-				else
-				{
-					outfile << "u\n";
-				}
-
-				++file_id;
-				
-
-				if(!b)
-				{
-					if(!curr_included)
-					{
-						if (index_follow_last)
-						{
-							last_filelist->reset_to(backup);
-						}
-
-						outfile.seekp(pos);
-						file_id = file_id_backup;
-					}
-				}
-				else
-				{
-					has_include=true;
-				}
-
-				if(index_error)
-				{
-					return false;
-				}
+				params_stack.pop_back();
+			}
+			else
+			{
+				assert(false);
 			}
 		}
 	}
@@ -2319,6 +2307,95 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	return has_include;
+}
+
+void IndexThread::initialCheckRecur1(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx,
+	const std::string & volume, const std::string & vssvolume,
+	std::fstream & outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs, 
+	const std::vector<std::string>& exclude_dirs, const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
+{
+	params.recur_ret.pos = outfile.tellp();
+	params.recur_ret.file_id_backup = file_id;
+
+	SLastFileList backup;
+	if (index_follow_last)
+	{
+		backup = *last_filelist.get();
+	}
+	std::string extra;
+
+	if (params.file.issym && with_proper_symlinks)
+	{
+		extra += "&sym_target=" + EscapeParamString((params.file.output_symlink_target));
+	}
+
+	if (params.file.isspecialf && with_proper_symlinks)
+	{
+		extra += "&special=1";
+	}
+
+	extra += "&line=" + convert(file_id + 1);
+
+	std::string listname = params.file.name;
+
+	if (params.first_info!=NULL && !params.first_info->fn_filter.empty() && params.first_info->idx == 0)
+	{
+		listname = params.named_path;
+	}
+
+	addFromLastUpto(listname, true, params.depth, false, outfile);
+	writeDir(outfile, listname, with_orig_path, params.file.change_indicator, extra);
+	extra.clear();
+
+	params.recur_ret.has_include = true;
+
+	if (!params.file.issym || !with_proper_symlinks)
+	{
+		params_stack[stack_idx].recur_ret.has_include = initialCheck(params_stack, stack_idx, 
+			volume, vssvolume, params.orig_dir + os_file_sep() + params.file.name, params.dir + os_file_sep() + params.file.name,
+			params.named_path + os_file_sep() + params.file.name, outfile, false, flags, use_db, false, params.depth + 1,
+			dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+	}
+}
+
+void IndexThread::initialCheckRecur2(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx,
+	const std::string & volume, const std::string & vssvolume,
+	std::fstream & outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+	const std::vector<std::string>& exclude_dirs, const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
+{
+	addFromLastLiftDepth(params.depth, outfile);
+
+	if (!with_proper_symlinks)
+	{
+		outfile << "d\"..\"\n";
+	}
+	else
+	{
+		outfile << "u\n";
+	}
+
+	++file_id;
+
+	if (!params.recur_ret.has_include)
+	{
+		if (!params.curr_included)
+		{
+			if (index_follow_last)
+			{
+				last_filelist->reset_to(params.recur_ret.backup);
+			}
+
+			outfile.seekp(params.recur_ret.pos);
+			file_id = params.recur_ret.file_id_backup;
+		}
+	}
+	else
+	{
+		if (params.parent_idx != std::string::npos)
+		{
+			params_stack.at(params.parent_idx).recur_ret.has_include = true;
+		}
+	}
 }
 
 void IndexThread::addResult(unsigned int id, const std::string & res)

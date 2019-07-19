@@ -1931,11 +1931,18 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					continue;
 				}
 				
+				bool is_included = true;
 				if (!IndexThread::isIncluded(include_dirs, cpath, NULL)
 					&& !IndexThread::isIncluded(include_dirs, csharepath, NULL))
 				{
 					has_include_exclude = true;
-					continue;
+					is_included = false;
+
+					if (!files[j].isdir
+						|| files[j].issym)
+					{
+						continue;
+					}
 				}
 
 				if(files[j].isdir
@@ -1950,7 +1957,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					}
 					else if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude,
 										 tids, clientdao, cache)
-						&& !del_has_include_exclude)
+						&& !del_has_include_exclude && is_included)
 					{
 						log("Deleting directory \"" + restore_path + "\".", LL_DEBUG);
 						if (!os_remove_dir(os_file_prefix(cpath)))

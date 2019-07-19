@@ -389,7 +389,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	IndexThread *it=new IndexThread();
 	if(!do_leak_check)
 	{
-		Server->createThread(it, "file indexing", IServer::CreateThreadFlags_LargeStackSize);
+		Server->createThread(it, "file indexing");
 	}
 	else
 	{
