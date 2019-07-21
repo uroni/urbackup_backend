@@ -1314,11 +1314,13 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					{
 						flags |= EBackupDirFlag_Optional;
 					}
-					else if(flag=="follow_symlinks")
+					else if(flag=="follow_symlinks"
+						|| flag=="follow_symbolic_links")
 					{
 						flags |= EBackupDirFlag_FollowSymlinks;
 					}
-					else if(flag=="symlinks_optional")
+					else if(flag=="symlinks_optional"
+						|| flag=="symbolic_links_optional")
 					{
 						flags |= EBackupDirFlag_SymlinksOptional;
 					}
@@ -1341,6 +1343,12 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					else if (flag == "required" || flag == "require")
 					{
 						flags |= EBackupDirFlag_Required;
+					}
+					else if (flag == "include_dir_symlinks"
+						|| flag=="include_directory_symlinks"
+						|| flag=="include_directory_symbolic_links")
+					{
+						flags |= EBackupDirFlag_IncludeDirectorySymlinks;
 					}
 				}
 				name.resize(flags_off);

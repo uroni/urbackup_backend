@@ -796,6 +796,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_KeepFiles, "keep"));
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_ShareHashes, "share_hashes"));
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_Required, "required"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_IncludeDirectorySymlinks, "include_dir_symlinks"));
 			
 
 			std::string str_flags;

@@ -2209,14 +2209,14 @@ bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t s
 			}
 
 			/* Skip symlinks if they are not included?
-			Problem is that we haven't scanned symlink contents yet and don't know if it has any included files...
+			Problem is that we haven't scanned symlink contents yet and don't know if it has any included files...*/
 
-			if (files[i].issym && with_proper_symlinks
+			if (files[i].issym && with_proper_symlinks && !(flags & EBackupDirFlag_IncludeDirectorySymlinks)
 				&& skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
 				exclude_dirs, include_dirs))
 			{
 				continue;
-			}*/
+			}
 
 			bool curr_included = false;
 			bool adding_worthless1, adding_worthless2;

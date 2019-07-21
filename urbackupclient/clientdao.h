@@ -38,7 +38,8 @@ enum EBackupDirFlag
 	EBackupDirFlag_RequireSnapshot = 16,
 	EBackupDirFlag_ShareHashes = 32,
 	EBackupDirFlag_KeepFiles = 64,
-	EBackupDirFlag_Required = 128
+	EBackupDirFlag_Required = 128,
+	EBackupDirFlag_IncludeDirectorySymlinks = 256
 };
 
 struct SBackupDir
