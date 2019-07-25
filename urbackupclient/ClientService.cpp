@@ -1663,16 +1663,38 @@ void ClientConnector::updateSettings(const std::string &pData)
 			std::string new_key;
 			if(new_settings->getValue(key, &nv) )
 			{
-				new_settings_str+=key+"="+nv+"\n";
-				mod=true;
+				if (nv.empty()
+					&& reset_settings
+					&& key == "computername"
+					&& curr_settings->getValue(key, &v) )
+				{
+					new_settings_str += key + "=" + v + "\n";
+					mod = true;
+				}
+				else
+				{
+					new_settings_str += key + "=" + nv + "\n";
+					mod = true;
+				}
 			}
 			if(new_settings->getValue(key+"_def", &nv) )
 			{
-				new_settings_str+=key+"_def="+nv+"\n";
-				if(reset_settings 
-					|| nv!=def_v)
+				if (nv.empty()
+					&& reset_settings
+					&& key == "computername"
+					&& curr_settings->getValue(key + "_def", &v))
 				{
-					mod=true;
+					new_settings_str += key + "_def=" + v + "\n";
+					mod = true;
+				}
+				else
+				{
+					new_settings_str += key + "_def=" + nv + "\n";
+					if (reset_settings
+						|| nv != def_v)
+					{
+						mod = true;
+					}
 				}
 			}	
 		}
