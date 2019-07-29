@@ -9,11 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Ikeguchi Naoki <siketyan@sikeserver.com>, 2019
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2019-06-01 13:37+0000\n"
+"Last-Translator: Ikeguchi Naoki <siketyan@sikeserver.com>\n"
 "Language-Team: Japanese (http://www.transifex.com/uroni/urbackup/language/ja/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -22,852 +25,852 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "ログ"
 
 msgid "nav_item_1"
-msgstr ""
+msgstr "設定"
 
 msgid "ok"
-msgstr ""
+msgstr "OK"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "警告"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "エラー"
 
 msgid "tLogs"
-msgstr ""
+msgstr "ログ"
 
 msgid "tErrors"
-msgstr ""
+msgstr "エラー"
 
 msgid "tWarnings"
-msgstr ""
+msgstr "警告"
 
 msgid "tdays"
-msgstr ""
+msgstr "日"
 
 msgid "thours"
-msgstr ""
+msgstr "時間"
 
 msgid "tmin"
-msgstr ""
+msgstr "最小"
 
 msgid "tAbort"
-msgstr ""
+msgstr "中断"
 
 msgid "tInfos"
-msgstr ""
+msgstr "情報"
 
 msgid "tFile backups"
-msgstr ""
+msgstr "ファイルバックアップ"
 
 msgid "tImage backups"
-msgstr ""
+msgstr "イメージバックアップ"
 
 msgid "tClient"
-msgstr ""
+msgstr "クライアント"
 
 msgid "tInternet"
-msgstr ""
+msgstr "インターネット"
 
 msgid "hours"
-msgstr ""
+msgstr "時間"
 
 msgid "days"
-msgstr ""
+msgstr "日"
 
 msgid "action_1"
-msgstr ""
+msgstr "増分ファイルバックアップ"
 
 msgid "action_2"
-msgstr ""
+msgstr "完全ファイルバックアップ"
 
 msgid "action_3"
-msgstr ""
+msgstr "増分イメージバックアップ"
 
 msgid "action_4"
-msgstr ""
+msgstr "完全イメージバックアップ"
 
 msgid "action_1_d"
-msgstr ""
+msgstr "増分ファイルバックアップを削除中"
 
 msgid "action_2_d"
-msgstr ""
+msgstr "完全ファイルバックアップを削除中"
 
 msgid "action_3_d"
-msgstr ""
+msgstr "増分イメージバックアップを削除中"
 
 msgid "action_4_d"
-msgstr ""
+msgstr "完全イメージバックアップを削除中"
 
 msgid "nav_item_6"
-msgstr ""
+msgstr "状態"
 
 msgid "nav_item_5"
-msgstr ""
+msgstr "アクティビティ"
 
 msgid "nav_item_4"
-msgstr ""
+msgstr "バックアップ"
 
 msgid "nav_item_2"
-msgstr ""
+msgstr "統計"
 
 msgid "unknown"
-msgstr ""
+msgstr "不明"
 
 msgid "overview"
-msgstr ""
+msgstr "概要"
 
 msgid "no_recent_backup"
-msgstr ""
+msgstr "最近のバックアップはありません"
 
 msgid "backup_never"
-msgstr ""
+msgstr "しない"
 
 msgid "yes"
-msgstr ""
+msgstr "はい"
 
 msgid "no"
-msgstr ""
+msgstr "いいえ"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "バックアップの状態"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "コンピュータ名"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "最後のアクティブ"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "最後のファイルバックアップ"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "最後のイメージバックアップ"
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "ファイルバックアップの状態"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "イメージバックアップの状態"
 
 msgid "tShow details"
-msgstr ""
+msgstr "詳細の表示"
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "追加クライアント"
 
 msgid "tNo extra clients"
-msgstr ""
+msgstr "追加クライアントはありません"
 
 msgid "tActions"
-msgstr ""
+msgstr "操作"
 
 msgid "tOnline"
-msgstr ""
+msgstr "オンライン"
 
 msgid "tHostname/IP"
-msgstr ""
+msgstr "ホスト名またはIPアドレス"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "サーバの識別性"
 
 msgid "users"
-msgstr ""
+msgstr "ユーザ"
 
 msgid "general_settings"
-msgstr ""
+msgstr "一般"
 
 msgid "admin"
-msgstr ""
+msgstr "管理者"
 
 msgid "user"
-msgstr ""
+msgstr "ユーザ"
 
 msgid "username_empty"
-msgstr ""
+msgstr "ユーザ名を入力してください"
 
 msgid "password_empty"
-msgstr ""
+msgstr "パスワードを入力してください"
 
 msgid "password_differ"
-msgstr ""
+msgstr "パスワードが一致しません"
 
 msgid "user_n_exist"
-msgstr ""
+msgstr "ユーザが存在しません"
 
 msgid "password_wrong"
-msgstr ""
+msgstr "パスワードが違います"
 
 msgid "user_exists"
-msgstr ""
+msgstr "この名前のユーザは既に存在します"
 
 msgid "session_timeout"
-msgstr ""
+msgstr "長時間操作しなかったため，セッションが無効になりました． ログインし直してください．"
 
 msgid "really_del_user"
-msgstr ""
+msgstr "本当にこのユーザを削除しますか？"
 
 msgid "user_add_done"
-msgstr ""
+msgstr "新しいユーザを追加しました．"
 
 msgid "user_remove_done"
-msgstr ""
+msgstr "ユーザを削除しました．"
 
 msgid "user_update_right_done"
-msgstr ""
+msgstr "ユーザの権限を変更しました．"
 
 msgid "user_pw_change_ok"
-msgstr ""
+msgstr "ユーザのパスワードを変更しました．"
 
 msgid "right_all"
-msgstr ""
+msgstr "全ての権限"
 
 msgid "right_none"
-msgstr ""
+msgstr "権限なし"
 
 msgid "filter"
-msgstr ""
+msgstr "絞り込み"
 
 msgid "all"
-msgstr ""
+msgstr "全て"
 
 msgid "loglevel_0"
-msgstr ""
+msgstr "情報"
 
 msgid "starting"
-msgstr ""
+msgstr "開始中"
 
 msgid "ident_err"
-msgstr ""
+msgstr "サーバが拒否されました"
 
 msgid "enter_hostname"
-msgstr ""
+msgstr "ホスト名またはIPアドレスを入力してください"
 
 msgid "clients"
-msgstr ""
+msgstr "クライアント"
 
 msgid "validate_name_update_freq_incr"
-msgstr ""
+msgstr "増分ファイルバックアップの間隔"
 
 msgid "validate_name_update_freq_full"
-msgstr ""
+msgstr "完全ファイルバックアップの間隔"
 
 msgid "validate_name_update_freq_image_full"
-msgstr ""
+msgstr "増分イメージバックアップの間隔"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr ""
+msgstr "完全イメージバックアップの間隔"
 
 msgid "validate_name_max_file_incr"
-msgstr ""
+msgstr "増分ファイルバックアップの最大値"
 
 msgid "validate_name_startup_backup_delay"
-msgstr ""
+msgstr "システムの起動からバックアップまでの遅延"
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "コンピュータ名"
 
 msgid "too_many_clients_err"
-msgstr ""
+msgstr "クライアントが多すぎます"
 
 msgid "computername"
-msgstr ""
+msgstr "コンピュータ名"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "ストレージ使用状況"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "コンピュータ名"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "ストレージ使用状況"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "ストレージ使用状況"
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "日付"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
+msgstr "ストレージ使用状況"
 
 msgid "tFiles"
-msgstr ""
+msgstr "ファイル"
 
 msgid "tSum"
-msgstr ""
+msgstr "合計"
 
 msgid "tActivities"
-msgstr ""
+msgstr "アクティビティ"
 
 msgid "tProgress"
-msgstr ""
+msgstr "進捗"
 
 msgid "tStarting time"
-msgstr ""
+msgstr "開始時間"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "使用済みストレージ"
 
 msgid "tClients"
-msgstr ""
+msgstr "クライアント"
 
 msgid "tReports"
-msgstr ""
+msgstr "レポート"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "レポートを送る: "
 
 msgid "tSend"
-msgstr ""
+msgstr "送信"
 
 msgid "tBackup time"
-msgstr ""
+msgstr "バックアップ時間"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "ストレージ使用状況"
 
 msgid "tAll"
-msgstr ""
+msgstr "全て"
 
 msgid "tFilter"
-msgstr ""
+msgstr "絞り込み"
 
 msgid "tBack"
-msgstr ""
+msgstr "戻る"
 
 msgid "tAdd"
-msgstr ""
+msgstr "追加"
 
 msgid "tRemove"
-msgstr ""
+msgstr "削除"
 
 msgid "tSave"
-msgstr ""
+msgstr "保存"
 
 msgid "tMessage"
-msgstr ""
+msgstr "メッセージ"
 
 msgid "tLog"
-msgstr ""
+msgstr "ログ"
 
 msgid "tUsername"
-msgstr ""
+msgstr "ユーザ名"
 
 msgid "tPassword"
-msgstr ""
+msgstr "パスワード"
 
 msgid "tLogin"
-msgstr ""
+msgstr "ログイン"
 
 msgid "tServer"
-msgstr ""
+msgstr "サーバ"
 
 msgid "tPermissions"
-msgstr ""
+msgstr "権限"
 
 msgid "tSelect all"
-msgstr ""
+msgstr "全て選択"
 
 msgid "mins"
-msgstr ""
+msgstr "分"
 
 msgid "backup_in_progress"
-msgstr ""
+msgstr "バックアップを実行中…"
 
 msgid "queued_backup"
-msgstr ""
+msgstr "キュー内のバックアップ"
 
 msgid "tFile"
-msgstr ""
+msgstr "ファイル"
 
 msgid "tDomain"
-msgstr ""
+msgstr "ドメイン"
 
 msgid "tTranslation"
-msgstr ""
+msgstr "翻訳"
 
 msgid "tChange"
-msgstr ""
+msgstr "変更"
 
 msgid "tFailed"
-msgstr ""
+msgstr "失敗"
 
 msgid "tInfo"
-msgstr ""
+msgstr "情報"
 
 msgid "tError"
-msgstr ""
+msgstr "エラー"
 
 msgid "tWarning"
-msgstr ""
+msgstr "警告"
 
 msgid "tCurrent version"
-msgstr ""
+msgstr "現在のバージョン"
 
 msgid "tIncremental file backup"
-msgstr ""
+msgstr "増分ファイルバックアップ"
 
 msgid "tFull file backup"
-msgstr ""
+msgstr "フルファイルバックアップ"
 
 msgid "tIncremental image backup"
-msgstr ""
+msgstr "増分イメージバックアップ"
 
 msgid "tFull image backup"
-msgstr ""
+msgstr "完全イメージバックアップ"
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "UrBackup について"
 
 msgid "tShow"
-msgstr ""
+msgstr "表示"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "インデックス中…"
 
 msgid "tDelete"
-msgstr ""
+msgstr "削除"
 
 msgid "tDisable"
-msgstr ""
+msgstr "無効化"
 
 msgid "tMB"
-msgstr ""
+msgstr "MB"
 
 msgid "tNone"
-msgstr ""
+msgstr "なし"
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "サーバ管理者のメールアドレス"
 
 msgid "tDownload"
-msgstr ""
+msgstr "ダウンロード"
 
 msgid "tStatus"
-msgstr ""
+msgstr "状態"
 
 msgid "tIP"
-msgstr ""
+msgstr "IP"
 
 msgid "tClient version"
-msgstr ""
+msgstr "クライアントのバージョン"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "オペレーティングシステム"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "全てのクライアントを表示"
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "クライアントが削除されようとしています．"
 
 msgid "First"
-msgstr ""
+msgstr "最初"
 
 msgid "Last"
-msgstr ""
+msgstr "最後"
 
 msgid "Next"
-msgstr ""
+msgstr "次へ"
 
 msgid "Previous"
-msgstr ""
+msgstr "前へ"
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Processing..."
-msgstr ""
+msgstr "処理中…"
 
 msgid "Search:"
-msgstr ""
+msgstr "検索:"
 
 msgid "No matching records found"
-msgstr ""
+msgstr "一致するレコードは見つかりませんでした"
 
 msgid "Restore to default"
-msgstr ""
+msgstr "既定値に復元"
 
 msgid "Save"
-msgstr ""
+msgstr "保存"
 
 msgid "tAllow clients to quit the tray icon"
-msgstr ""
+msgstr "トレイアイコンの終了をクライアントに許可"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "列の表示と非表示"
 
 msgid "dir_error_text"
-msgstr ""
+msgstr "UrBackup がバックアップを保存しようとしているディレクトリにアクセスできません． 「設定」でフォルダを変更するか，このディレクトリへのアクセス権を UrBackup に与えてください．"
 
 msgid "tmpdir_error_text"
-msgstr ""
+msgstr "UrBackup が一時ファイルを保存しようとしているディレクトリにアクセスできません． 「設定」でフォルダを変更するか，このディレクトリへのアクセス権を UrBackup に与えてください．"
 
 msgid "validate_text_empty"
-msgstr ""
+msgstr "{name} に値を入力してください"
 
 msgid "validate_text_notint"
-msgstr ""
+msgstr "{name} に数値を入力してください"
 
 msgid "validate_name_min_file_incr"
-msgstr ""
+msgstr "増分ファイルバックアップの最小値"
 
 msgid "validate_name_max_file_full"
-msgstr ""
+msgstr "完全ファイルバックアップの最大値"
 
 msgid "validate_name_min_file_full"
-msgstr ""
+msgstr "完全ファイルバックアップの最小値"
 
 msgid "validate_name_min_image_incr"
-msgstr ""
+msgstr "増分イメージバックアップの最小値"
 
 msgid "validate_name_max_image_incr"
-msgstr ""
+msgstr "増分イメージバックアップの最大値"
 
 msgid "validate_name_min_image_full"
-msgstr ""
+msgstr "完全イメージバックアップの最小値"
 
 msgid "validate_name_max_image_full"
-msgstr ""
+msgstr "完全イメージバックアップの最大値"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr ""
+msgstr "バックアップウィンドウの書式が間違っています"
 
 msgid "validate_name_max_active_clients"
-msgstr ""
+msgstr "最近アクティブなクライアントの最大値"
 
 msgid "validate_name_max_sim_backups"
-msgstr ""
+msgstr "同時バックアップの最大値"
 
 msgid "validate_name_backupfolder"
-msgstr ""
+msgstr "バックアップのストレージパス"
 
 msgid "really_remove_client"
-msgstr ""
+msgstr "本当にこのクライアントを削除してよろしいですか？ これは全てのファイルとイメージのバックアップが削除されることを意味します！"
 
 msgid "tImages"
-msgstr ""
+msgstr "イメージ"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
+msgstr "クリーンアップウィンドウの書式が間違っています"
 
 msgid "mail_settings"
-msgstr ""
+msgstr "メール"
 
 msgid "upgrade_error_text"
-msgstr ""
+msgstr "UrBackup は内部データベースを更新しています． これには時間がかかることがあります． 更新中，サーバはアクセスできなくなり，いずれのバックアップも行いません．"
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup はファイルエントリのインデックスを作成しています． ファイルの数によって，時間がかかることがあります． 辛抱強くなってください．"
 
 msgid "tAction"
-msgstr ""
+msgstr "操作"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "キュー内のファイル"
 
 msgid "tLast activities"
-msgstr ""
+msgstr "最後のアクティビティ"
 
 msgid "tRequired time"
-msgstr ""
+msgstr "必要時間"
 
 msgid "tBackups with a log message of at least log level"
-msgstr ""
+msgstr "最低ログレベルのログメッセージ付きバックアップ"
 
 msgid "tStorage allocation"
-msgstr ""
+msgstr "ストレージ割り当て"
 
 msgid "tBackup storage path"
-msgstr ""
+msgstr "バックアップのストレージパス"
 
 msgid "tDo not do image backups"
-msgstr ""
+msgstr "イメージバックアップを実行しない"
 
 msgid "tDo not do file backups"
-msgstr ""
+msgstr "ファイルバックアップを実行しない"
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "自動的にサーバをシャットダウンする"
 
 msgid "tAutoupdate clients"
-msgstr ""
+msgstr "クライアントを自動更新する"
 
 msgid "tMax number of simultaneous backups"
-msgstr ""
+msgstr "同時バックアップの最大値"
 
 msgid "tMax number of recently active clients"
-msgstr ""
+msgstr "最近アクティブなクライアントの最大値"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "クリーンアップ時間ウィンドウ"
 
 msgid "tAutomatically backup UrBackup database"
-msgstr ""
+msgstr "UrBackup データベースを自動的にバックアップする"
 
 msgid "tInterval for incremental file backups"
-msgstr ""
+msgstr "増分ファイルバックアップの間隔"
 
 msgid "tInterval for full file backups"
-msgstr ""
+msgstr "完全ファイルバックアップの間隔"
 
 msgid "tInterval for incremental image backups"
-msgstr ""
+msgstr "増分イメージバックアップの間隔"
 
 msgid "tInterval for full image backups"
-msgstr ""
+msgstr "完全イメージバックアップの間隔"
 
 msgid "tMaximal number of incremental file backups"
-msgstr ""
+msgstr "増分ファイルバックアップの最大値"
 
 msgid "tMinimal number of incremental file backups"
-msgstr ""
+msgstr "増分ファイルバックアップの最小値"
 
 msgid "tMaximal number of full file backups"
-msgstr ""
+msgstr "完全ファイルバックアップの最大値"
 
 msgid "tMinimal number of full file backups"
-msgstr ""
+msgstr "完全ファイルバックアップの最小値"
 
 msgid "tMaximal number of incremental image backups"
-msgstr ""
+msgstr "増分イメージバックアップの最大値"
 
 msgid "tMinimal number of incremental image backups"
-msgstr ""
+msgstr "増分イメージバックアップの最小値"
 
 msgid "tMaximal number of full image backups"
-msgstr ""
+msgstr "完全イメージバックアップの最大値"
 
 msgid "tMinimal number of full image backups"
-msgstr ""
+msgstr "完全イメージバックアップの最小値"
 
 msgid "tDelay after system startup"
-msgstr ""
+msgstr "システムの起動からバックアップまでの遅延"
 
 msgid "tBackup window"
-msgstr ""
+msgstr "バックアップウィンドウ"
 
 msgid "tExcluded files (with wildcards)"
-msgstr ""
+msgstr "バックアップから除外 （ワイルドカード可）"
 
 msgid "tIncluded files (with wildcards)"
-msgstr ""
+msgstr "バックアップに含める （ワイルドカード可）"
 
 msgid "tDefault directories to backup"
-msgstr ""
+msgstr "既定のバックアップディレクトリ"
 
 msgid "tVolumes to backup"
-msgstr ""
+msgstr "バックアップするボリューム"
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr ""
+msgstr "クライアント側でのバックアップするディレクトリの変更を許可する"
 
 msgid "tAllow client-side starting of file backups"
-msgstr ""
+msgstr "クライアント側でのファイルバックアップの開始を許可する"
 
 msgid "tAllow client-side starting of image backups"
-msgstr ""
+msgstr "クライアント側でのイメージバックアップの開始を許可する"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr ""
+msgstr "クライアント側でのバックアップログの閲覧を許可する"
 
 msgid "tAllow client-side pausing of backups"
-msgstr ""
+msgstr "クライアント側でのバックアップの一時停止を許可する"
 
 msgid "tAllow client-side changing of settings"
-msgstr ""
+msgstr "クライアント側での設定の変更を許可する"
 
 msgid "tMail server name"
-msgstr ""
+msgstr "メールサーバ名"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "メールサーバのポート番号"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "メールサーバのユーザ名 （空の場合なし）"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "メールサーバのパスワード"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "送信元メールアドレス"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "SSL/TLSでのみメールを送信する"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "SSL/TLSの証明書を確認する"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr ""
+msgstr "設定の保存後，このメールアドレスへテストメールを送信する （空の場合送信しない）"
 
 msgid "tTest Mail sent successfully"
-msgstr ""
+msgstr "テストメールを送信しました"
 
 msgid "tSending test mail failed. Error:"
-msgstr ""
+msgstr "テストメールの送信に失敗． エラー:"
 
 msgid "tLevel"
-msgstr ""
+msgstr "レベル"
 
 msgid "tTime"
-msgstr ""
+msgstr "時間"
 
 msgid "tRights"
-msgstr ""
+msgstr "権限"
 
 msgid "tNo Users"
-msgstr ""
+msgstr "ユーザがいません"
 
 msgid "tCreate user"
-msgstr ""
+msgstr "ユーザの作成"
 
 msgid "tRepeat password"
-msgstr ""
+msgstr "パスワードの再入力"
 
 msgid "tRights for"
-msgstr ""
+msgstr "権限:"
 
 msgid "tCreate"
-msgstr ""
+msgstr "作成"
 
 msgid "tChange rights"
-msgstr ""
+msgstr "権限の変更"
 
 msgid "tChange password"
-msgstr ""
+msgstr "パスワードの変更"
 
 msgid "tSeparate settings for this client"
-msgstr ""
+msgstr "このクライアントの設定を分ける"
 
 msgid "tArchival"
-msgstr ""
+msgstr "アーカイブ"
 
 msgid "tPerform autoupdates silently"
-msgstr ""
+msgstr "静かに自動更新を行う"
 
 msgid "tMax backup speed for local network"
-msgstr ""
+msgstr "ローカルネットワークでの最大バックアップ速度"
 
 msgid "tNo activities"
-msgstr ""
+msgstr "アクティビティはありません"
 
 msgid "tSelect none"
-msgstr ""
+msgstr "選択を解除"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "選択済みを削除"
 
 msgid "tStart for selected"
-msgstr ""
+msgstr "選択済みを開始"
 
 msgid "tNo entries for this filter"
-msgstr ""
+msgstr "絞り込みに一致するエントリはありません"
 
 msgid "tTotal max backup speed for local network"
-msgstr ""
+msgstr "ローカルネットワークでの最大バックアップ速度の合計"
 
 msgid "tArchive every"
-msgstr ""
+msgstr "アーカイブの間隔:"
 
 msgid "tArchive for"
-msgstr ""
+msgstr "アーカイブ:"
 
 msgid "tArchive window"
-msgstr ""
+msgstr "アーカイブウィンドウ"
 
 msgid "tBackup type"
-msgstr ""
+msgstr "バックアップの種類"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr ""
+msgstr "インターネットモードを有効化 （サーバの再起動が必要）"
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "インターネットサーバ名またはIPアドレス"
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "インターネットサーバのポート番号"
 
 msgid "tDo image backups over internet"
-msgstr ""
+msgstr "インターネットを介してイメージバックアップを行う"
 
 msgid "tDo full file backups over internet"
-msgstr ""
+msgstr "インターネットを介して完全ファイルバックアップを行う"
 
 msgid "tMax backup speed for internet connection"
-msgstr ""
+msgstr "インターネット接続での最大バックアップ速度"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr ""
+msgstr "インターネット接続での最大バックアップ速度の合計"
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "暗号化して転送"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "圧縮して転送"
 
 msgid "file_backup"
-msgstr ""
+msgstr "ファイルバックアップ"
 
 msgid "weeks"
-msgstr ""
+msgstr "週"
 
 msgid "months"
-msgstr ""
+msgstr "ヶ月"
 
 msgid "year"
-msgstr ""
+msgstr "年"
 
 msgid "hour"
-msgstr ""
+msgstr "時間"
 
 msgid "day"
-msgstr ""
+msgstr "日"
 
 msgid "week"
-msgstr ""
+msgstr "週"
 
 msgid "month"
-msgstr ""
+msgstr "ヶ月"
 
 msgid "years"
-msgstr ""
+msgstr "年"
 
 msgid "min"
-msgstr ""
+msgstr "分"
 
 msgid "validate_name_archive_every"
-msgstr ""
+msgstr "アーカイブ間隔:"
 
 msgid "validate_name_archive_for"
-msgstr ""
+msgstr "アーカイブ:"
 
 msgid "forever"
-msgstr ""
+msgstr "永続"
 
 msgid "really_remove_clients"
-msgstr ""
+msgstr "本当にこれらのクライアントを削除してよろしいですか？ これは全てのファイルとイメージのバックアップが削除されることを意味します！"
 
 msgid "no_client_selected"
-msgstr ""
+msgstr "クライアントが選択されていません"
 
 msgid "starting_backup_failed"
-msgstr ""
+msgstr "バックアップの開始に失敗"
 
 msgid "trying_to_stop_backup"
-msgstr ""
+msgstr "バックアップの停止を試行中． これには時間がかかることがあります．"
 
 msgid "unarchived_in"
 msgstr ""
 
 msgid "validate_err_notregexp_archive_window"
-msgstr ""
+msgstr "アーカイブウィンドウの書式が間違っています"
 
 msgid "wait_for_archive_window"
 msgstr ""
@@ -894,7 +897,7 @@ msgid "internet_client_added"
 msgstr ""
 
 msgid "change_pw"
-msgstr ""
+msgstr "パスワードの変更"
 
 msgid "old_pw_wrong"
 msgstr ""
@@ -951,19 +954,19 @@ msgid "tNext archival"
 msgstr ""
 
 msgid "tweeks"
-msgstr ""
+msgstr "週"
 
 msgid "tmonth"
-msgstr ""
+msgstr "月"
 
 msgid "tyears"
-msgstr ""
+msgstr "年"
 
 msgid "tforever"
-msgstr ""
+msgstr "永続"
 
 msgid "tFile backup"
-msgstr ""
+msgstr "ファイルバックアップ"
 
 msgid "tEnable internet mode"
 msgstr ""
@@ -1225,7 +1228,7 @@ msgid "action_13"
 msgstr ""
 
 msgid "tAbout UrBackup"
-msgstr ""
+msgstr "UrBackup について"
 
 msgid "tAdd client"
 msgstr ""
@@ -1257,7 +1260,7 @@ msgid "tIP/hostname of client to be discovered"
 msgstr ""
 
 msgid "tCancel"
-msgstr ""
+msgstr "キャンセル"
 
 msgid "tAccess denied"
 msgstr ""
@@ -1543,7 +1546,7 @@ msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""
 
 msgid "admin_create"
-msgstr ""
+msgstr "管理者"
 
 msgid "image_backup"
 msgstr ""
@@ -1806,7 +1809,7 @@ msgid "tAdd parameter"
 msgstr ""
 
 msgid "tName:"
-msgstr ""
+msgstr "名前:"
 
 msgid "tLabel:"
 msgstr ""

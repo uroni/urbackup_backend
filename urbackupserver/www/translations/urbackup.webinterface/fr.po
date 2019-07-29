@@ -9,11 +9,13 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2014-2017
+# Translators:
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2014-2018
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-12 17:20+0000\n"
+"PO-Revision-Date: 2018-06-19 11:24+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -802,7 +804,7 @@ msgid "tDo full file backups over internet"
 msgstr "Activer les sauvegardes complètes par internet"
 
 msgid "tMax backup speed for internet connection"
-msgstr "Vitesse maximale du réseau internet"
+msgstr "Débit maximum pour les connexions WAN"
 
 msgid "tTotal max backup speed for internet connection"
 msgstr "Débit global maximum en mode réseau internet"
@@ -970,7 +972,7 @@ msgid "tEnable internet mode"
 msgstr "Activer le mode internet"
 
 msgid "tInternet auth key"
-msgstr "Clé d'authentification du serveur internet"
+msgstr "Clé d'authentification du client"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
@@ -1088,7 +1090,7 @@ msgid "tBackup window for full image backups"
 msgstr "Créneau pour les sauvegardes système complètes"
 
 msgid "tSoft client quota"
-msgstr "Quota par client"
+msgstr "Quota par client \"\""
 
 msgid "tCalculate file-hashes on the client"
 msgstr "Calcul du hachage de contrôle de fichier côté client"
@@ -1103,22 +1105,22 @@ msgid "tTemporary files as image backup buffer"
 msgstr "Fichiers temporaires comme tampon pour la sauvegarde système"
 
 msgid "tLocal full file backup transfer mode"
-msgstr "Mode local pour les sauvegardes complètes de fichiers"
+msgstr "Mode pour les sauvegardes complètes de fichiers LAN"
 
 msgid "tRaw"
-msgstr "Brut"
+msgstr "Raw - rapide"
 
 msgid "tHashed"
-msgstr "Hachage"
+msgstr "Hashage - transfert contrôlé"
 
 msgid "tInternet full file backup transfer mode"
-msgstr "Mode réseau internet pour la sauvegarde complète des fichiers"
+msgstr "Mode pour la sauvegarde complète des fichiers WAN"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr "Mode réseau local pour la sauvegarde complète des fichiers"
+msgstr "Mode pour la sauvegarde complète des fichiers LAN"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr "Mode réseau internet pour la sauvegarde incrémentielle des fichiers"
+msgstr "Mode pour la sauvegarde incrémentielle des fichiers WAN"
 
 msgid "tLocal image backup transfer mode"
 msgstr "Mode réseau local pour la sauvegarde système"
@@ -1127,7 +1129,7 @@ msgid "tInternet image backup transfer mode"
 msgstr "Mode réseau internet pour la sauvegarde système"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr "Utiliser des liens symboliques durant le sauvegarde incrémentielle de fichiers"
+msgstr "Utiliser des liens symboliques durant la sauvegarde incrémentielle de fichiers"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1157,7 +1159,7 @@ msgid "tYou need to create a user to be able to send reports"
 msgstr "Vous devez créer un utilisateur pour pouvoir envoyer un rapport"
 
 msgid "tShow when a new server version is available"
-msgstr "Indiquer quand un nouveau serveur est disponible"
+msgstr "Indiquer quand une nouvelle version d'UrBackup serveur est disponible"
 
 msgid "tVHD (Virtual HardDisk)"
 msgstr "VHD (Disque dur virtuel)"
@@ -1410,25 +1412,25 @@ msgid "tVirtual sub client names"
 msgstr "Noms des sous-clients virtuels"
 
 msgid "tLocal incremental image style"
-msgstr "Type d'image incrémentielle"
+msgstr "Image système incrémentielle LAN"
 
 msgid "tBased on last full image backup"
-msgstr "Basé sur une sauvegarde complète"
+msgstr "Basé sur la dernière sauvegarde complète"
 
 msgid "tBased on last image backup"
 msgstr "Basé sur la dernière sauvegarde"
 
 msgid "tInternet incremental image style"
-msgstr "Image incrémentielle par internet"
+msgstr "Image incrémentielle WAN"
 
 msgid "tLocal full image style"
-msgstr "Sauvegarde complète locale"
+msgstr "Sauvegarde complète LAN"
 
 msgid "tSynthetic full image backup"
-msgstr "Image complète synthétique"
+msgstr "Image complète consolidée"
 
 msgid "tInternet full image style"
-msgstr "Image complète via internet"
+msgstr "Image complète WAN"
 
 msgid "tDatabase cache size during batch processing"
 msgstr "Taille de la base de données en mémoire cache pendant le traitement par lots"
@@ -1442,7 +1444,7 @@ msgstr "Débogage : vérification de tous les fichiers de sauvegarde utilisant u
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr "Ajouter périodiquement la liste des fichiers de clients Internet à la base de données (désactivé uniquement si vous ne lancer par de sauvegardes complètes)"
+msgstr "Ré-ajouter périodiquement les hash de fichiers incrémentiels de clients Internet à la base de données \n(désactivé uniquement si vous ne lancer par de sauvegardes complètes)"
 
 msgid "tRun backups with background priority on the clients"
 msgstr "Lancer une sauvegarde sur le client avec une priorité d'arrière-plan"
@@ -1450,7 +1452,7 @@ msgstr "Lancer une sauvegarde sur le client avec une priorité d'arrière-plan"
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr "Créer des liens symboliques pour chaque utilisateur sur les clients après les sauvegardes de fichiers"
+msgstr "Dans l'interface web utilisateur, créer une vue combinée des fichiers sauvegardés"
 
 msgid "tMaximum number of simultaneous jobs per client"
 msgstr "Nombre de travaux simultanés par client"
@@ -1684,7 +1686,7 @@ msgid "tOk. Reset this error"
 msgstr "Ok acquitter cette erreur"
 
 msgid "tOk. Stop showing this error"
-msgstr "Ok. Arrêter de montrer cette erreur"
+msgstr "Ok, arrêter de montrer cette erreur."
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
@@ -1739,12 +1741,12 @@ msgstr "Sauvegardes d'image système"
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr "Ne pas démarrer de sauvegarde de fichiers si le quota mensuel est insuffisant"
+msgstr "Ne pas démarrer de sauvegarde de fichiers si l'estimation  dépasse l'autorisation mensuelle suivante :"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr "Ne pas démarrer de sauvegarde système si le quota mensuel est insuffisant"
+msgstr "Ne pas démarrer de sauvegarde système si l'estimation dépasse l'autorisation mensuelle suivante :"
 
 msgid "tUpdate data limit estimation database"
 msgstr "Estimation de la durée de mise à jour de la base"
@@ -1753,13 +1755,13 @@ msgid "tFull image backup #1"
 msgstr "Image système complète #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr "Cliché de volume dans le groupe pendant la sauvegarde système."
+msgstr "Grouper les volumes pendant la sauvegarde système."
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr "Cliché de volume dans le groupe pendant la sauvegarde de fichiers."
+msgstr "Grouper les volumes pendant la sauvegarde de fichiers."
 
 msgid "tWindows components backup configuration"
-msgstr "Configuration de la sauvegarde des composants windows"
+msgstr "Activer le choix des composants Windows à sauvegarder"
 
 msgid "tGroup name"
 msgstr "Nom du groupe"

@@ -9,17 +9,19 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Daniele Renda <daniele.renda@gmail.com>, 2016
 # Francesco Pellegrino <fra.pel@gmail.com>, 2016
 # Marco Longo <longo.marco@consul-net.it>, 2014
-# Mirco Boschi <tipolosko@gmail.com>, 2015,2017
+# Mirco Boschi <tipolosko@gmail.com>, 2015,2017-2018
 # paolo <inforossi@alice.it>, 2014
 # Samuele <samuele.facco@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2018-07-09 08:54+0000\n"
+"Last-Translator: Mirco Boschi <tipolosko@gmail.com>\n"
 "Language-Team: Italian (Italy) (http://www.transifex.com/uroni/urbackup/language/it_IT/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -568,7 +570,7 @@ msgid "upgrade_error_text"
 msgstr "UrBackup sta aggiornando il suo database interno. L'attività potrebbe richiedere un po' di tempo. Il server non sarà accessibile e non eseguirà alcun backup finchè l'attività non sarà completata."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "UrBackup sta creando l'indice dei files. In base al numero dei files, potrebbe volerci molto tempo."
 
 msgid "tAction"
 msgstr "Azione"
@@ -985,7 +987,7 @@ msgid "tArchived"
 msgstr "Archiviato"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "Lo spazio nella cartella di backup non è sufficiente. UrBackup sta cancellando i vecchi backup files e immagine per liberare spazio, entro i limiti definiti nelle impostazioni. Durante questo processo, la velocità dei backup in corso sarà ridotta e i nuovi backup saranno bloccati."
 
 msgid "nospc_fatal_text"
 msgstr "Non c'é abbastanza spazio libero nella cartella di backup. UrBackup ha provato a cancellare vecchi backup di immagini e file, ma ora non puó piú cancellare altro. Modificare le impostazioni per mantenere meno backup salvati, o aumentare lo spazio utilizzabile per permettere ad UrBackup di continuare con i backup."
@@ -1027,7 +1029,7 @@ msgid "really_recalculate"
 msgstr "Vuoi davvero ricalcolare tutte le statistiche? Potrebbe volerci molto tempo!"
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Errore durante il controllo del database interno di UrBackup. Questo indica che probabilmente il database è corrotto o lo spazio su disco è insufficiente. Se l'errore persiste, ripristina il database (costituito dai files backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db e backup_server_settings.db) da un backup. Consulta il file di log per i dettagli."
 
 msgid "tDownload folder as ZIP"
 msgstr "Scarica cartella come file ZIP"
@@ -1093,7 +1095,7 @@ msgid "tBackup window for full image backups"
 msgstr "Intervallo per backup immagine completo"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "Soft quota client"
 
 msgid "tCalculate file-hashes on the client"
 msgstr "Calcola il file-hash sul client"
@@ -1102,10 +1104,10 @@ msgid "tAdvanced"
 msgstr "Avanzate"
 
 msgid "tTemporary files as file backup buffer"
-msgstr ""
+msgstr "Files temporanei come buffer di backup file"
 
 msgid "tTemporary files as image backup buffer"
-msgstr ""
+msgstr "Files temporanei come buffer di backup immagini"
 
 msgid "tLocal full file backup transfer mode"
 msgstr "Trasferimento completo locale del file di backup"
@@ -1144,7 +1146,7 @@ msgid "tClient download"
 msgstr "Scarica Client"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr "Client rimosso durante la pulizia della finestra."
+msgstr "I client vengono rimossi durante la finestra di pulizia."
 
 msgid "tRecalculate statistics"
 msgstr "Ricalcola Statistiche"
@@ -1156,7 +1158,7 @@ msgid "Show _MENU_ entries"
 msgstr "Mostra _MENU_ voci"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr ""
+msgstr "Connetti al server di backup Internet se connesso al server di backup locale"
 
 msgid "tYou need to create a user to be able to send reports"
 msgstr "Hai bisogno di creare un utente per essere abilitato a inviare report"
@@ -1171,7 +1173,7 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "VHD Compresso (HardDisk Virtuale compresso non standard)"
 
 msgid "tBlock differences - hashed"
-msgstr ""
+msgstr "Differenze dei blocchi - Hashed"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
 msgstr "Visualizzazione da _START_ a _END_ di _TOTAL_ elementi"
@@ -1204,7 +1206,7 @@ msgid "creating_filesindex_text"
 msgstr "UrBackup sta creando il file di indicizzazione. Questo potrebbe richiedere un po' di tempo."
 
 msgid "about"
-msgstr ""
+msgstr "A proposito di"
 
 msgid "all_clients"
 msgstr "Tutti i client"
@@ -1225,7 +1227,7 @@ msgid "action_11"
 msgstr "Verifica integrità database"
 
 msgid "action_12"
-msgstr ""
+msgstr "Backup in corso del database"
 
 msgid "action_13"
 msgstr "Ricalcolo statistiche"
@@ -1251,16 +1253,16 @@ msgid ""
 msgstr "Se vuoi che il client usi più server di backup, l'identità di questo server è:"
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr ""
+msgstr "Aggiungi nuovo client Internet / client dietro NAT"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr ""
+msgstr "Nome del nuovo client Internet / client dietro NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr ""
+msgstr "Trova nuovo client tramite suggerimento IP/hostname"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr ""
+msgstr "IP/hostname del client da trovare"
 
 msgid "tCancel"
 msgstr "Annulla"
@@ -1271,10 +1273,10 @@ msgstr "Accesso negato"
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
 "access this file or folder."
-msgstr ""
+msgstr "Spiacente, qualcosa è andato storto o non hai i permessi per accedere a questa cartella o file."
 
 msgid "tLogin with username and password"
-msgstr ""
+msgstr "Login con username e password"
 
 msgid "tError while accessing backups"
 msgstr "Errore durante l'accesso ai backup"
@@ -1313,19 +1315,19 @@ msgid "tDefault authentication key:"
 msgstr "Chiave di autenticazione di default:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr ""
+msgstr "Scarica client pre-configurato per Windows"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr ""
+msgstr "Scarica client pre-configurato per OS X"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr ""
+msgstr "Installalo direttamente tramite terminale con:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr ""
+msgstr "Scarica client pre-configurato per Linux"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Altrimenti dopo che hai installato il client da:"
 
 msgid "tGo to the settings screen on the client"
 msgstr "Vai nella schermata delle impostazioni sul client"
@@ -1334,10 +1336,10 @@ msgid "tEnable the internet mode on the client"
 msgstr "Abilita Internet mode nel client"
 
 msgid "tSet the internet server to:"
-msgstr ""
+msgstr "Imposta il server internet a:"
 
 msgid "tSet the internet server port to:"
-msgstr ""
+msgstr "Imposta porta del server internet a:"
 
 msgid "tSet the computer name to:"
 msgstr "Imposta il nome computer a:"
@@ -1349,10 +1351,10 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Senza Firewall/NAT: Abilita modalità Solo Internet se prevedi di utilizzare il client soltanto via internet. Su linux cambia INTERNET_ONLY a true in /etc/default/urbackupclient o in /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
-msgstr ""
+msgstr "Con il comando:"
 
 msgid "tPercent finished"
 msgstr "Percentuale completata"
@@ -1364,7 +1366,7 @@ msgid "tAdd Email Address"
 msgstr "Aggiungi indirizzo email"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Fallito senza errore specifico a causa di timeout del client."
 
 msgid "tMinimum log level"
 msgstr "Livello log minimo"
@@ -1379,16 +1381,16 @@ msgid "tShow log"
 msgstr "Visualizza log"
 
 msgid "tETA"
-msgstr ""
+msgstr "ETA"
 
 msgid "tSpeed"
 msgstr "Velocità"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Backup files"
 
 msgid "tImage Backups"
-msgstr ""
+msgstr "Backup Immagini"
 
 msgid "tArchive"
 msgstr "Archivio"
@@ -1406,69 +1408,69 @@ msgid "tDays"
 msgstr "Giorni"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "File RAW copy-on-write"
 
 msgid "tMin"
 msgstr "Min"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Nomi sotto-client virtuali"
 
 msgid "tLocal incremental image style"
-msgstr ""
+msgstr "Tipo di immagine incrementale locale"
 
 msgid "tBased on last full image backup"
-msgstr ""
+msgstr "Basato sull'ultima immagine completa di backup"
 
 msgid "tBased on last image backup"
-msgstr ""
+msgstr "Basato sull'ultima immagine di backup"
 
 msgid "tInternet incremental image style"
-msgstr ""
+msgstr "Tipo di immagine incrementale via Interet"
 
 msgid "tLocal full image style"
-msgstr ""
+msgstr "Tipo di immagine completa locale"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "Backup immagine completo sintetico"
 
 msgid "tInternet full image style"
-msgstr ""
+msgstr "Tipo di immagine completa via Internet"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Dimensione cache database durante i processi batch"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Debug: Verifica end-to-end di tutti i files di backup"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Debug: Verifica i files di backup utilizzando gli hashes lato client"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Riaggiungi periodicamente i files dei client Internet al database (disabilita solo se non esegui i backup completi)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Esegui backup con bassa priorità sui client"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Crea viste con link simbolici per ogni utente nei clients dopo i backup file."
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "Numero massimo di lavori per client."
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Lista dei volumi per cui il change block tracking deve essere usato (se disponibile)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Lista dei volumi per cui il change block tracking deve persistere oltre il crash"
 
 msgid "tEnable logins via LDAP/AD"
 msgstr "Abilita login tramite LDAP/AD"
@@ -1477,28 +1479,28 @@ msgid "tLDAP/AD server name"
 msgstr "nome server LDAP/AD"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "Porta server LDAP/AD"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "Prefisso username LDAP/AD"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "Suffisso username LDAP/AD"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "Gruppo e classe query LDAP/AD"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "Nome gruppo chiave nella query LDAP/AD"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "Nome classe chiave nella query LDAP/AD"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "Mappa permessi gruppo LDAP/AD"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "Mappa permessi classe LDAP/AD"
 
 msgid "tTest login with this user"
 msgstr "Testa il login con questo utente"
@@ -1528,10 +1530,10 @@ msgid "tAdd new client"
 msgstr "Aggiungi nuovo client"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Clients suggeriti"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Aggiungi hostname/IP come suggerimento client"
 
 msgid "tBackup Statistics"
 msgstr "Statistiche dei backup"
@@ -1546,13 +1548,13 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Preparazione del ripristino. Attendere per favore..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Non considerare falliti i backup in caso di errori di lettura o mancata corrispondenza hash"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Amministratore"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Backup Immagine"
 
 msgid "action_14"
 msgstr "Pulizia notturna"
@@ -1561,132 +1563,132 @@ msgid "action_15"
 msgstr "Pulizia di emergenza"
 
 msgid "action_16"
-msgstr ""
+msgstr "Migrazione storage"
 
 msgid "default_group"
-msgstr ""
+msgstr "Default"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Gruppi"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Aggiungi nuovo gruppo"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Inserisci il nome del nuovo gruppo"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Gruppo già esistente"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Stai per rimuovere questo gruppo. Tutti i client nel gruppo saranno riassegnati al gruppo di default Procedere?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Rimozione del gruppo non riuscita"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "Il nome del server internet deve essere un hostname o un IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "L'URL del server deve iniziare per http:// o https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Recovery all'avvio"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Errore durante il contrassegno del backup per la rimozione:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Errore durante la cancellazione del backup:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Immagine di bakup in uso"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Un backup incrementale basato su questo backup è in uso"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Un backup incrementale basato su questo backup è in esecuzione"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Un backup immagine dipendente da questo backup è stato archiviato"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Controlla il log del server per i dettagli"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Controlla il log del server per i dettagli"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Il backup è schedulato per la cancellazione. Non cancellare"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Cancella subito"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Volume"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Nessun backup"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Ancora nessun backup per questo client"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Informazioni backup immagine"
 
 msgid "tId"
-msgstr ""
+msgstr "ID"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Dimensione Volume"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Stile Partizioni"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Numero Disco"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Numero Partizion"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Tipo filesystem"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Nome Volum"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Numero di serie"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Monta immagine"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup utilizzerà funzionalità del sistema operativo che non utilizzano sandbox, per montare l'immagine. Monta soltanto immagine di cui conosci la provenienza!"
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Errore durante il montaggio dell'immagine. Consulta il log del server per i dettagli"
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok, azzera questo errore"
 
 msgid "tOk. Stop showing this error"
 msgstr "Ok. Non mostrare più questo errore"
@@ -1694,167 +1696,167 @@ msgstr "Ok. Non mostrare più questo errore"
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Questo server ha trovato dei client che al momento non sono configurati per utilizzare questo server."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Clicca quì per informazioni su come questo può accadere."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Rimuovi questo suggerimento."
 
 msgid "tOk. Stop showing this."
 msgstr "Ok. Non mostrare più."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Volume: "
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Alla Versione:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Percorso:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Gruppo"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Appartenenza al gruppo"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Scegli il client dal gruppo corrente (doppio click per cambiare le proprietà):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Cancella gruppo"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Permetti ai client di avviare il ripristino files"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Permetti ai client di configurare i componenti di cui eseguire il bacup"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Permetti ai client di avviare il ripristino dei componenti"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Lettere dei volumi"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Backup Immagine"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Non avviare backup dei files se la stima di utilizzo mensile dei dati è minore di"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Non avviare backup immagine se la stima di utilizzo mensile dei dati è minore di"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Aggiorna database di stima utilizzo traffico dati"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Backup immagine completa #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Volume da considerare nei gruppi durante il backup immagine"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Volume da considerare nei gruppi durante il backup file"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Configurazione componenti backup di Windows "
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Nome gruppo"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "Con Selezionato"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "Nessun percorso di backup configurato"
 
 msgid "disabled"
-msgstr ""
+msgstr "Disabilitato"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "Inserisci il nome del nuovo script di alert"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "Sei sicuro di voler rimuovere questo script di alert?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Numero di volte (moltiplicatore) del tempo di backup file dopo il quale lo stato sarà impostato come Non OK"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Numero di volte (moltiplicatore) del tempo di backup immagine dopo il quale lo stato sarà impostato come Non OK"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "Destinatari e-mail (separati da ';') da notificare quando lo stato del backup file/immagine non è OK"
 
 msgid "alert_important"
-msgstr ""
+msgstr "Aggiungi il tag [Important] alle email di allerta"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Invia mail di OK dopo che lo stato, da errore, ritorna OK"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "Modifica script alert"
 
 msgid "tAlert script"
-msgstr ""
+msgstr "Script Alert"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Parametri Script Aler"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "Aggiungi parametro"
 
 msgid "tName:"
-msgstr ""
+msgstr "Nome:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Etichetta:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Valore di default:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Tipo:"
 
 msgid "tString"
-msgstr ""
+msgstr "Stringa"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "Numero con decimali"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Intero"
 
 msgid "tBoolean"
-msgstr ""
+msgstr "Booleano"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Con Docker (interfaccia web accessibile da client):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Con Docker (interfaccia web non accessibile da client):"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Modifica script report"
 
 msgid "tPaused"
-msgstr ""
+msgstr "In pausa"
 
 msgid "tReport script"
-msgstr ""
+msgstr "Script di report"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Avvisi"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "Modifica script"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Chiave di autenticazione ripristino Internet"

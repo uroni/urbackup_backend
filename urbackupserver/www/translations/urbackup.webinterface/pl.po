@@ -9,18 +9,20 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # BestiaPL <bestiapl@gmail.com>, 2017
 # Czeslaw Mruk <czmruk@gmail.com>, 2017
 # Jarosław Gorzelnik <jarek12@interia.pl>, 2015
 # Krzysztof Pałka <k.palka.pl@gmail.com>, 2015
-# Łukasz Milata <drupter@gmail.com>, 2015,2017
+# Łukasz Milata <drupter@gmail.com>, 2015,2017-2018
 # Maciej Dyczko <edyczkowski@gmail.com>, 2015
 # Thomas Pancherz <pancherz_news@arcor.de>, 2015
 # Wojciech Staszewski, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-12-05 21:26+0000\n"
+"PO-Revision-Date: 2018-08-23 14:08+0000\n"
 "Last-Translator: Łukasz Milata <drupter@gmail.com>\n"
 "Language-Team: Polish (http://www.transifex.com/uroni/urbackup/language/pl/)\n"
 "MIME-Version: 1.0\n"
@@ -941,7 +943,7 @@ msgid "tThis client is going to be removed."
 msgstr "Ten klient zostanie usunięty"
 
 msgid "tStop removing client"
-msgstr "Stop.  Usuwam klienta"
+msgstr "Nie usuwaj klienta"
 
 msgid "tSuccessfull"
 msgstr "Sukces"

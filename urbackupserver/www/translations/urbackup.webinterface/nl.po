@@ -9,13 +9,16 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
+# Erwin Bronkhorst <erwinbronkhorst@gmail.com>, 2019
 # buzzertnl <frank@aced-it.nl>, 2014,2016
 # Pimmetje <pimmetje@gmail.com>, 2014,2016
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2019-03-22 13:17+0000\n"
+"Last-Translator: Erwin Bronkhorst <erwinbronkhorst@gmail.com>\n"
 "Language-Team: Dutch (http://www.transifex.com/uroni/urbackup/language/nl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -63,10 +66,10 @@ msgid "tInfos"
 msgstr "Informatie"
 
 msgid "tFile backups"
-msgstr "Bestands back-ups "
+msgstr "Bestandsback-ups "
 
 msgid "tImage backups"
-msgstr "Image back-ups"
+msgstr "Imageback-ups"
 
 msgid "tClient"
 msgstr "Client"
@@ -81,34 +84,34 @@ msgid "days"
 msgstr "dagen"
 
 msgid "action_1"
-msgstr "Incrementele bestand back-up"
+msgstr "Incrementele bestandsback-up"
 
 msgid "action_2"
-msgstr "Volledige bestand back-up"
+msgstr "Volledige bestandsback-up"
 
 msgid "action_3"
-msgstr "Incrementele image back-up"
+msgstr "Incrementele imageback-up"
 
 msgid "action_4"
-msgstr "Volledige image back-up"
+msgstr "Volledige imageback-up"
 
 msgid "action_1_d"
 msgstr "Incrementele back-up verwijderen"
 
 msgid "action_2_d"
-msgstr "volledige back-up verwijderen"
+msgstr "Volledige back-up verwijderen"
 
 msgid "action_3_d"
-msgstr "Incrementele image back-up verwijderen"
+msgstr "Incrementele imageback-up verwijderen"
 
 msgid "action_4_d"
-msgstr "Volledige image back-up verwijderen"
+msgstr "Volledige imageback-up verwijderen"
 
 msgid "nav_item_6"
 msgstr "Status"
 
 msgid "nav_item_5"
-msgstr "Activiteit"
+msgstr "Activiteiten"
 
 msgid "nav_item_4"
 msgstr "Back-ups"
@@ -135,10 +138,10 @@ msgid "no"
 msgstr "Nee"
 
 msgid "tBackup status"
-msgstr "Backup-status"
+msgstr "Back-up-status"
 
 msgid "tComputer name"
-msgstr "Computer naam"
+msgstr "Computernaam"
 
 msgid "tLast seen"
 msgstr "Laatst gezien"
@@ -147,13 +150,13 @@ msgid "tLast file backup"
 msgstr "Laatste back-up"
 
 msgid "tLast image backup"
-msgstr "Laatste image back-up"
+msgstr "Laatste imageback-up"
 
 msgid "tFile backup status"
-msgstr "Bestand back-up status"
+msgstr "Bestandsback-up status"
 
 msgid "tImage backup status"
-msgstr "Image back-up status"
+msgstr "Imageback-up status"
 
 msgid "tShow details"
 msgstr "Details weergeven"
@@ -171,10 +174,10 @@ msgid "tOnline"
 msgstr "Online"
 
 msgid "tHostname/IP"
-msgstr "Computernaam/IP"
+msgstr "Hostnaam/IP"
 
 msgid "tServer identity"
-msgstr "Server identiteit"
+msgstr "Serveridentiteit"
 
 msgid "users"
 msgstr "Gebruikers"
@@ -183,37 +186,37 @@ msgid "general_settings"
 msgstr "Algemeen"
 
 msgid "admin"
-msgstr "Administrator"
+msgstr "Beheerder"
 
 msgid "user"
 msgstr "Gebruiker"
 
 msgid "username_empty"
-msgstr "Gebruikersnaam invoeren"
+msgstr "Vul een gebruikersnaam in"
 
 msgid "password_empty"
-msgstr "Wachtwoord invoeren"
+msgstr "Vul een wachtwoord in"
 
 msgid "password_differ"
-msgstr "Wachtwoorden komen niet overen"
+msgstr "De wachtwoorden komen niet overeen"
 
 msgid "user_n_exist"
 msgstr "Gebruiker bestaat niet"
 
 msgid "password_wrong"
-msgstr "Verkeerd wachtwoord"
+msgstr "Onjuist wachtwoord"
 
 msgid "user_exists"
 msgstr "Gebruikersnaam is al in gebruik"
 
 msgid "session_timeout"
-msgstr "Inactiviteit heeft de huidige sessie ongeldig gemaakt. Gelieve opnieuw in te loggen."
+msgstr "Inactiviteit heeft de huidige sessie ongeldig gemaakt. Log opnieuw in om door te gaan."
 
 msgid "really_del_user"
-msgstr "Gebruiker echt verwijderen?"
+msgstr "Deze gebruiker echt verwijderen?"
 
 msgid "user_add_done"
-msgstr "Gebruiker is met succes toegevoegd."
+msgstr "Nieuwe gebruiker succesvol toegevoegd."
 
 msgid "user_remove_done"
 msgstr "Gebruiker is met succes verwijderd."
@@ -222,7 +225,7 @@ msgid "user_update_right_done"
 msgstr "Gebruikersrechten zijn met succes aangepast."
 
 msgid "user_pw_change_ok"
-msgstr "Gebruikers wachtwoord is met succes veranderd."
+msgstr "Gebruikerswachtwoord is met succes veranderd."
 
 msgid "right_all"
 msgstr "Volledige rechten"
@@ -246,55 +249,55 @@ msgid "ident_err"
 msgstr "Server geweigerd"
 
 msgid "enter_hostname"
-msgstr " Gelieve computernaam of IP-adres op te geven"
+msgstr " Geef een hostnaam of IP-adres op"
 
 msgid "clients"
 msgstr "Clients"
 
 msgid "validate_name_update_freq_incr"
-msgstr "interval voor incrementele bestand back-ups"
+msgstr "Interval voor incrementele bestandsback-ups"
 
 msgid "validate_name_update_freq_full"
-msgstr "Interval voor volledige bestands back-ups"
+msgstr "Interval voor volledige bestandsback-ups"
 
 msgid "validate_name_update_freq_image_full"
-msgstr "Interval voor incrementele image back-ups"
+msgstr "Interval voor incrementele imageback-ups"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr "Interval voor volledige image back-ups"
+msgstr "Interval voor volledige imageback-ups"
 
 msgid "validate_name_max_file_incr"
-msgstr "Maximale aantal van incrementele bestands back-ups"
+msgstr "Maximaal aantal incrementele bestandsback-ups"
 
 msgid "validate_name_startup_backup_delay"
-msgstr "back-up uitstel na systeem start"
+msgstr "back-up vertragen na systeemstart"
 
 msgid "validate_name_computername"
 msgstr "computernaam"
 
 msgid "too_many_clients_err"
-msgstr "Teveel clients"
+msgstr "Te veel clients"
 
 msgid "computername"
-msgstr "Computer naam"
+msgstr "Computernaam"
 
 msgid "storage_usage_pie_graph_title"
-msgstr "Opslag verbruikt"
+msgstr "Opslag in gebruik"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr "Computer naam"
+msgstr "Computernaam"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr "Opslag verbruikt"
+msgstr "Opslag in gebruik"
 
 msgid "storage_usage_bar_graph_title"
-msgstr "Opslag verbruikt"
+msgstr "Opslag in gebruik"
 
 msgid "storage_usage_bar_graph_colname1"
 msgstr "Datum"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr "Opslag verbruikt"
+msgstr "Opslag in gebruik"
 
 msgid "tFiles"
 msgstr "Bestanden"
@@ -306,10 +309,10 @@ msgid "tActivities"
 msgstr "Activiteiten"
 
 msgid "tProgress"
-msgstr "Vooruitgang"
+msgstr "Voortgang"
 
 msgid "tStarting time"
-msgstr "Start tijd"
+msgstr "Starttijd"
 
 msgid "tUsed Storage"
 msgstr "Gebruikte opslag"
@@ -321,16 +324,16 @@ msgid "tReports"
 msgstr "Rapporten"
 
 msgid "tSend reports to"
-msgstr "Stuur rapporten naar"
+msgstr "Rapporten verzenden naar"
 
 msgid "tSend"
-msgstr "Versturen"
+msgstr "Verzenden"
 
 msgid "tBackup time"
-msgstr "Back-up tijd"
+msgstr "Back-uptijd"
 
 msgid "tStorage usage"
-msgstr "Opslag verbruikt"
+msgstr "Opslag in gebruik"
 
 msgid "tAll"
 msgstr "Alles"
@@ -381,7 +384,7 @@ msgid "backup_in_progress"
 msgstr "Back-up is bezig..."
 
 msgid "queued_backup"
-msgstr "Wachtende back-up"
+msgstr "Geplande back-up"
 
 msgid "tFile"
 msgstr "Bestand"
@@ -393,7 +396,7 @@ msgid "tTranslation"
 msgstr "Vertaling"
 
 msgid "tChange"
-msgstr "Verander"
+msgstr "Veranderen"
 
 msgid "tFailed"
 msgstr "Mislukt"
@@ -411,22 +414,22 @@ msgid "tCurrent version"
 msgstr "Huidige versie"
 
 msgid "tIncremental file backup"
-msgstr "Incrementele bestand back-up"
+msgstr "Incrementele bestandsback-up"
 
 msgid "tFull file backup"
-msgstr "Volledige bestand back-up"
+msgstr "Volledige bestandsback-up"
 
 msgid "tIncremental image backup"
-msgstr "Incrementele image back-up"
+msgstr "Incrementele imageback-up"
 
 msgid "tFull image backup"
-msgstr "Volledige image back-up"
+msgstr "Volledige imageback-up"
 
 msgid "about_urbackup"
 msgstr "Over UrBackup"
 
 msgid "tShow"
-msgstr "Toon"
+msgstr "Weergeven"
 
 msgid "tIndexing..."
 msgstr "Indexeren..."
@@ -444,10 +447,10 @@ msgid "tNone"
 msgstr "Geen"
 
 msgid "tServer admin mail address"
-msgstr "Server administrator email adres"
+msgstr "E-mailadres van serveradministrator"
 
 msgid "tDownload"
-msgstr "Download"
+msgstr "Downloaden"
 
 msgid "tStatus"
 msgstr "Status"
@@ -456,22 +459,22 @@ msgid "tIP"
 msgstr "IP"
 
 msgid "tClient version"
-msgstr "Client versie"
+msgstr "Client-versie"
 
 msgid "tOperating System"
 msgstr "Besturingsysteem"
 
 msgid "tShow all clients"
-msgstr "Laat alle clients zien"
+msgstr "Alle clients weergeven"
 
 msgid "tThis client is going to be removed. "
 msgstr "Deze client zal worden verwijderd."
 
 msgid "First"
-msgstr "Eerst"
+msgstr "Eerste"
 
 msgid "Last"
-msgstr "Laatst"
+msgstr "Laatste"
 
 msgid "Next"
 msgstr "Volgende"
@@ -492,22 +495,22 @@ msgid "No matching records found"
 msgstr "Geen overeenkomstige records gevonden"
 
 msgid "Restore to default"
-msgstr "Standaard instellingen herstellen"
+msgstr "Standaardinstellingen herstellen"
 
 msgid "Save"
 msgstr "Opslaan"
 
 msgid "tAllow clients to quit the tray icon"
-msgstr "Sta clients toe de tray applicatie te sluiten"
+msgstr "Clients toestaan de tray-applicatie te sluiten"
 
 msgid "Show/hide columns"
-msgstr "Zichtbaar maken / verbergen van kolommen"
+msgstr "Kolommen weergeven/verbergen"
 
 msgid "dir_error_text"
-msgstr "De directory waar UrBackup de back-ups in opslaat is niet toegankelijk. Verander de directory via 'Settings' of pas de rechten van de betreffende map aan."
+msgstr "De directory waar UrBackup de back-ups in opslaat is niet toegankelijk. Verander de directory via 'Instellingen' of pas de rechten van de betreffende map aan."
 
 msgid "tmpdir_error_text"
-msgstr "De directory waar UrBackup de tijdelijke bestanden in opslaat is niet toegankelijk. Verander de directory via 'Settings' of pas de rechten van de betreffende map aan."
+msgstr "De directory waar UrBackup de tijdelijke bestanden in opslaat is niet toegankelijk. Verander de directory via 'Instellingen' of pas de rechten van de betreffende map aan."
 
 msgid "validate_text_empty"
 msgstr "Gelieve een waarde op te geven voor {name}"
@@ -516,52 +519,52 @@ msgid "validate_text_notint"
 msgstr "Gelieve een numerieke waarde op te geven voor {name}"
 
 msgid "validate_name_min_file_incr"
-msgstr "Minimale aantal van incrementele bestands back-ups"
+msgstr "Minimaal aantal incrementele bestandsback-ups"
 
 msgid "validate_name_max_file_full"
-msgstr "Maximale aantal van volledige bestands back-ups"
+msgstr "Maximaal aantal volledige bestandsback-ups"
 
 msgid "validate_name_min_file_full"
-msgstr "Minimale aantal van volledige bestands back-ups"
+msgstr "Minimaal aantal volledige bestandsback-ups"
 
 msgid "validate_name_min_image_incr"
-msgstr "Minimale aantal van incrementele image back-ups"
+msgstr "Minimaal aantal incrementele imageback-ups"
 
 msgid "validate_name_max_image_incr"
-msgstr "Maximale aantal van incrementele image back-ups"
+msgstr "Maximaal aantal incrementele imageback-ups"
 
 msgid "validate_name_min_image_full"
-msgstr "Minimale aantal van volledige image back-ups"
+msgstr "Minimaal aantal volledige imageback-ups"
 
 msgid "validate_name_max_image_full"
-msgstr "Maximale aantal van volledige image back-ups"
+msgstr "Maximaal aantal volledige imageback-ups"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr "Formaat voor het backup schema is niet correct"
+msgstr "Formaat voor het back-upschema is niet correct"
 
 msgid "validate_name_max_active_clients"
 msgstr "Maximum aantal recent actieve clients"
 
 msgid "validate_name_max_sim_backups"
-msgstr "Maximale aantal gelijktijdige back-ups"
+msgstr "Maximaal aantal gelijktijdige back-ups"
 
 msgid "validate_name_backupfolder"
-msgstr "back-up opslag map"
+msgstr "back-up opslagmap"
 
 msgid "really_remove_client"
-msgstr "Weet u zeker dat u deze client wilt verwijderen? Dit betekend dat alle bestanden en image back-ups van deze client worden verwijderd!"
+msgstr "Weet u zeker dat u deze client wilt verwijderen? Dit betekent dat alle bestands- en imageback-ups van deze client worden verwijderd!"
 
 msgid "tImages"
-msgstr "Image"
+msgstr "Images"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr "Formaat voor opruim schema is incorrect"
+msgstr "Formaat voor het opruimschema is niet correct"
 
 msgid "mail_settings"
-msgstr "Email"
+msgstr "E-mail"
 
 msgid "upgrade_error_text"
-msgstr "UrBackup is de interne database aan het bijwerken. Dit kan enige tijd duren. De server is niet bereikbaar en zal geen back-ups uitvoeren gedurende de upgrade."
+msgstr "UrBackup is de interne database aan het bijwerken. Dit kan enige tijd duren. De server is niet bereikbaar en zal geen back-ups uitvoeren gedurende deze upgrade."
 
 msgid "creating_filescache_text"
 msgstr "UrBackup is een bestandsindex aan het genereren. Afhankelijk van het aantal bestanden kan dit even duren. Even geduld aub. "
@@ -579,19 +582,19 @@ msgid "tRequired time"
 msgstr "Benodigde tijd"
 
 msgid "tBackups with a log message of at least log level"
-msgstr "Back-ups met een logboek bericht van op zijn minst niveau"
+msgstr "Back-ups met een logbericht van minimaal niveau"
 
 msgid "tStorage allocation"
 msgstr "Opslag gereserveerd"
 
 msgid "tBackup storage path"
-msgstr "Back-up opslag locatie"
+msgstr "Back-up opslaglocatie"
 
 msgid "tDo not do image backups"
-msgstr "Maak geen image back-ups"
+msgstr "Maak geen imageback-ups"
 
 msgid "tDo not do file backups"
-msgstr "Maak geen bestand back-ups"
+msgstr "Maak geen bestandsback-ups"
 
 msgid "tAutomatically shut down server"
 msgstr "Server automatisch afsluiten"
@@ -600,58 +603,58 @@ msgid "tAutoupdate clients"
 msgstr "Clients automatisch updaten"
 
 msgid "tMax number of simultaneous backups"
-msgstr "Maximale aantal gelijktijdige back-ups"
+msgstr "Maximaal aantal gelijktijdige back-ups"
 
 msgid "tMax number of recently active clients"
-msgstr "Maximum aantal recent actieve clients"
+msgstr "Maximaal aantal recent actieve clients"
 
 msgid "tCleanup time window"
-msgstr "Opruim tijd schema"
+msgstr "Opruim tijdschema"
 
 msgid "tAutomatically backup UrBackup database"
 msgstr "Automatische back-up UrBackup database"
 
 msgid "tInterval for incremental file backups"
-msgstr "Interval voor incrementele bestands back-ups"
+msgstr "Interval voor incrementele bestandsback-ups"
 
 msgid "tInterval for full file backups"
-msgstr "Interval voor volledige bestands back-ups"
+msgstr "Interval voor volledige bestandsback-ups"
 
 msgid "tInterval for incremental image backups"
-msgstr "Interval voor incrementele image back-ups"
+msgstr "Interval voor incrementele imageback-ups"
 
 msgid "tInterval for full image backups"
-msgstr "Interval voor volledige image back-ups"
+msgstr "Interval voor volledige imageback-ups"
 
 msgid "tMaximal number of incremental file backups"
-msgstr "Maximale aantal van incrementele bestands back-ups"
+msgstr "Maximaal aantal incrementele bestandsback-ups"
 
 msgid "tMinimal number of incremental file backups"
-msgstr "Minimale aantal van incrementele bestands back-ups"
+msgstr "Minimaal aantal incrementele bestandsback-ups"
 
 msgid "tMaximal number of full file backups"
-msgstr "Maximale aantal van volledige bestands back-ups"
+msgstr "Maximaal aantal volledige bestandsback-ups"
 
 msgid "tMinimal number of full file backups"
-msgstr "Minimale aantal van volledige bestands back-ups"
+msgstr "Minimaal aantal volledige bestandsback-ups"
 
 msgid "tMaximal number of incremental image backups"
-msgstr "Maximale aantal van incrementele image back-ups"
+msgstr "Maximaal aantal incrementele imageback-ups"
 
 msgid "tMinimal number of incremental image backups"
-msgstr "Minimale aantal van incrementele image back-ups"
+msgstr "Minimaal aantal incrementele imageback-ups"
 
 msgid "tMaximal number of full image backups"
-msgstr "Maximale aantal van volledige image back-ups"
+msgstr "Maximaal aantal volledige imageback-ups"
 
 msgid "tMinimal number of full image backups"
-msgstr "Minimale aantal van volledige image back-ups"
+msgstr "Minimaal aantal volledige imageback-ups"
 
 msgid "tDelay after system startup"
-msgstr "Back-up uitstel na opstarten"
+msgstr "Back-up vertragen na opstarten"
 
 msgid "tBackup window"
-msgstr "Back-up tijd schema"
+msgstr "Back-up tijdschema"
 
 msgid "tExcluded files (with wildcards)"
 msgstr "Uitsluiten van back-up (met wildcards)"
@@ -660,60 +663,60 @@ msgid "tIncluded files (with wildcards)"
 msgstr "Toevoegen aan back-up (met wildcards)"
 
 msgid "tDefault directories to backup"
-msgstr "Standaard directory voor back-up"
+msgstr "Standaardmappen om te back-uppen"
 
 msgid "tVolumes to backup"
-msgstr "Volumes te back-upen"
+msgstr "Volumes om te back-uppen"
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr "Sta de client toe om de te back-uppen mappen aan te passen"
+msgstr "De client toestaan om de te back-uppen mappen aan te passen"
 
 msgid "tAllow client-side starting of file backups"
-msgstr "Sta de client toe om een file back-up te starten"
+msgstr "De client toestaan om een bestandsback-up te starten"
 
 msgid "tAllow client-side starting of image backups"
-msgstr "Sta de client toe om een image back-up te starten"
+msgstr "De client toestaan om een imageback-up te starten"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr "Sta de client toe om de log bestanden te bekijken"
+msgstr "De client toestaan om de logbestanden te bekijken"
 
 msgid "tAllow client-side pausing of backups"
-msgstr "Sta de client toe om het back-uppen te pauzeren"
+msgstr "De client toestaan om het back-uppen te pauzeren"
 
 msgid "tAllow client-side changing of settings"
-msgstr "Sta de client toe om instellingen aan te passen"
+msgstr "De client toestaan om instellingen aan te passen"
 
 msgid "tMail server name"
-msgstr "Mail server naam"
+msgstr "Mailserver naam"
 
 msgid "tMail server port"
-msgstr "Mail server poort"
+msgstr "Mailserver poort"
 
 msgid "tMail server username (empty for none)"
-msgstr "Mail server gebruikersnaam (leeg is geen)"
+msgstr "Mailserver gebruikersnaam (leeg is geen)"
 
 msgid "tMail server password"
-msgstr "Mail server wachtwoord"
+msgstr "Mailserver wachtwoord"
 
 msgid "tSender E-Mail Address"
-msgstr "E-Mail adres afzender"
+msgstr "E-mailadres afzender"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr "Verstuur mail alleen met SSL/TLS"
+msgstr "Mail alleen met SSL/TLS versturen"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr "Controleer het SSL/TLS certificaat"
+msgstr "Het SSL/TLS certificaat controleren"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr "Stuur een test email naar dit adres op het moment dat de instellingen worden opgeslagen (leeg laten om geen email te sturen)"
+msgstr "Een test-e-mail naar dit adres versturen op het moment dat de instellingen worden opgeslagen (leeg laten om geen e-mail te sturen)"
 
 msgid "tTest Mail sent successfully"
-msgstr "Test mail is met succes verzonden"
+msgstr "Test-e-mail is met succes verzonden"
 
 msgid "tSending test mail failed. Error:"
-msgstr "Versturen van test mail mislukt. Foutmelding:"
+msgstr "Versturen van test-e-mail mislukt. Foutmelding:"
 
 msgid "tLevel"
 msgstr "Niveau"
@@ -749,13 +752,13 @@ msgid "tSeparate settings for this client"
 msgstr "Aangepaste instellingen voor deze client"
 
 msgid "tArchival"
-msgstr "Archivaal"
+msgstr "Gearchiveerd"
 
 msgid "tPerform autoupdates silently"
-msgstr "Voer updates in de achtergrond uit"
+msgstr "Automatische updates in de achtergrond uitvoeren"
 
 msgid "tMax backup speed for local network"
-msgstr "Maximale back-up snelheid voor lokaal netwerk"
+msgstr "Maximale back-upsnelheid voor lokaal netwerk"
 
 msgid "tNo activities"
 msgstr "Geen activiteit"
@@ -764,58 +767,58 @@ msgid "tSelect none"
 msgstr "Niets selecteren"
 
 msgid "tRemove selected"
-msgstr "Verwijder geselecteerde"
+msgstr "Geselecteerde verwijderen"
 
 msgid "tStart for selected"
-msgstr "Begin met geselecteerde"
+msgstr "Geselecteerde starten"
 
 msgid "tNo entries for this filter"
 msgstr "Geen gegevens met deze filter"
 
 msgid "tTotal max backup speed for local network"
-msgstr "Totaal maximale back-up snelheid voor lokaal netwerk"
+msgstr "Totaal maximale back-upsnelheid voor lokaal netwerk"
 
 msgid "tArchive every"
 msgstr "Archiveren elke"
 
 msgid "tArchive for"
-msgstr "archiveren voor"
+msgstr "Archiveren voor"
 
 msgid "tArchive window"
 msgstr "Archiveren schema"
 
 msgid "tBackup type"
-msgstr "Back-up type"
+msgstr "Back-uptype"
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr "Activeer internet mode (vereist een server herstart)"
+msgstr "Internetmodus inschakelen (vereist een herstart van de server)"
 
 msgid "tInternet server name/IP"
-msgstr "Internet server naam/IP"
+msgstr "Internet servernaam/IP"
 
 msgid "tInternet server port"
-msgstr "Internet server poort"
+msgstr "Internet serverpoort"
 
 msgid "tDo image backups over internet"
-msgstr "Geen image back-up over internet"
+msgstr "Imageback-ups over internet maken"
 
 msgid "tDo full file backups over internet"
-msgstr "Maak volledige image back-ups over internet"
+msgstr "Volledige bestandsback-ups over internet maken"
 
 msgid "tMax backup speed for internet connection"
-msgstr "Maximale back-up snelheid voor internet verbinding"
+msgstr "Maximale back-upsnelheid voor internetverbinding"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr "Totaal maximale back-up snelheid voor internet verbinding"
+msgstr "Totaal maximale back-upsnelheid voor internet verbinding"
 
 msgid "tEncrypted transfer"
-msgstr "Beveiligde overdracht"
+msgstr "Versleutelde overdracht"
 
 msgid "tCompressed transfer"
 msgstr "Gecomprimeerde overdracht"
 
 msgid "file_backup"
-msgstr "Bestand back-up"
+msgstr "Bestandsback-up"
 
 msgid "weeks"
 msgstr "weken"
@@ -824,7 +827,7 @@ msgid "months"
 msgstr "maanden"
 
 msgid "year"
-msgstr "jaren"
+msgstr "jaar"
 
 msgid "hour"
 msgstr "uur"
@@ -839,7 +842,7 @@ msgid "month"
 msgstr "maand"
 
 msgid "years"
-msgstr "yaar"
+msgstr "jaar"
 
 msgid "min"
 msgstr "minuut"
@@ -854,7 +857,7 @@ msgid "forever"
 msgstr "oneindig"
 
 msgid "really_remove_clients"
-msgstr "Weet u zeker dat u deze client wilt verwijderen? Dit betekend dat alle bestanden en image back-ups van deze client worden verwijderd!"
+msgstr "Weet u zeker dat u deze client wilt verwijderen? Dit betekent dat alle bestands- en imageback-ups van deze client worden verwijderd!"
 
 msgid "no_client_selected"
 msgstr "Geen clients geselecteerd"
@@ -866,46 +869,46 @@ msgid "trying_to_stop_backup"
 msgstr "Aan het proberen om de back-up te stoppen. Dit kan enkele momenten duren."
 
 msgid "unarchived_in"
-msgstr "Wordt niet meer gearchieveerd in"
+msgstr "Wordt niet meer gearchiveerd gedurende"
 
 msgid "validate_err_notregexp_archive_window"
-msgstr "Formaat voor achieveer schema is incorrect"
+msgstr "Formaat voor achiveerschema is incorrect"
 
 msgid "wait_for_archive_window"
 msgstr "Wachten op schema/volgende uitvoering"
 
 msgid "validate_err_notregexp_image_letters"
-msgstr "Formaat van image letters incorrect"
+msgstr "Formaat van imageletters incorrect"
 
 msgid "validate_name_global_local_speed"
-msgstr "Totaal maximale back-up snelheid voor lokaal netwerk"
+msgstr "Totaal maximale back-upsnelheid voor lokaal netwerk"
 
 msgid "validate_name_global_internet_speed"
-msgstr "Totaal maximale back-up snelheid voor internet verbinding"
+msgstr "Totaal maximale back-upsnelheid voor internetverbinding"
 
 msgid "validate_name_local_speed"
-msgstr "Maximale back-up snelheid voor lokaal netwerk"
+msgstr "Maximale back-upsnelheid voor lokaal netwerk"
 
 msgid "validate_name_internet_speed"
-msgstr "Maximale back-up snelheid voor internet verbinding"
+msgstr "Maximale back-upsnelheid voor internetverbinding"
 
 msgid "enter_clientname"
-msgstr "Gelieve client naam op te geven"
+msgstr "Gelieve clientnaam op te geven"
 
 msgid "internet_client_added"
-msgstr "Client toegevoegd. U kunt de client authenticatie sleutel (of wachtwoord) terug vinden bij instellingen."
+msgstr "Nieuwe client toegevoegd. U kunt de authenticatiesleutel (of wachtwoord) van de client terug vinden bij instellingen."
 
 msgid "change_pw"
-msgstr "Verander wachtwoord"
+msgstr "Wachtwoord wijzigen"
 
 msgid "old_pw_wrong"
-msgstr "Oude wachtwoord is verkeerd"
+msgstr "Oude wachtwoord is onjuist"
 
 msgid "tID"
 msgstr "ID"
 
 msgid "tSize"
-msgstr "Groote"
+msgstr "Grootte"
 
 msgid "tIncremental"
 msgstr "Incrementeel"
@@ -914,28 +917,28 @@ msgid "tLoading"
 msgstr "Laden"
 
 msgid "tStorage usage of"
-msgstr "Opslag verbruik van"
+msgstr "Opslag in gebruik door"
 
 msgid "tDelete domain"
-msgstr "Verwijder domein"
+msgstr "Domein verwijderen"
 
 msgid "tChange rights for user"
-msgstr "Verander rechten van gebruiker"
+msgstr "Rechten van gebruiker wijzigen"
 
 msgid "tNew domain"
 msgstr "Nieuw domein"
 
 msgid "tChange password for user"
-msgstr "Verander wachtwoord van gebruiker"
+msgstr "Wachtwoord van gebruiker wijzigen"
 
 msgid "tSaved settings successfully"
-msgstr "Instelling met succes opgeslagen"
+msgstr "Instellingen met succes opgeslagen"
 
 msgid "tThis client is going to be removed."
-msgstr "Client zal worden verwijderd."
+msgstr "Deze client zal worden verwijderd."
 
 msgid "tStop removing client"
-msgstr "Onderbreek verwijdering van client"
+msgstr "Stoppen met verwijderen van client"
 
 msgid "tSuccessfull"
 msgstr "Succesvol"
@@ -947,10 +950,10 @@ msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings."
-msgstr "Waarschuwing: De instellingen geconfigureerd op de client zullen worden overschreven met deze instellingen. Indien u dit wilt voorkomen moet u de client geen toegang geven om instellingen te wijzigen."
+msgstr "Waarschuwing: De instellingen die op de client zijn geconfigureerd, zullen worden overschreven met deze instellingen. Indien u dit wilt voorkomen moet u de client geen toegang geven om instellingen te wijzigen."
 
 msgid "tNext archival"
-msgstr "Volgende achivaal"
+msgstr "Volgende archivering"
 
 msgid "tweeks"
 msgstr "weken"
@@ -965,68 +968,68 @@ msgid "tforever"
 msgstr "oneindig"
 
 msgid "tFile backup"
-msgstr "Bestand back-up"
+msgstr "Bestandsback-up"
 
 msgid "tEnable internet mode"
-msgstr "Activeer internet mode"
+msgstr "Internetmodus inschakelen"
 
 msgid "tInternet auth key"
-msgstr "Internet authenticatie sleutel"
+msgstr "Internet authenticatiesleutel"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
-msgstr "Clients worden verwijderd gedurende het opruim schema, als deze niet online zijn."
+msgstr "Clients worden verwijderd in het opruimschema, als deze niet online zijn."
 
 msgid "tArchived"
-msgstr "Geachieveerd "
+msgstr "Geachiveerd "
 
 msgid "nospc_stalled_text"
-msgstr "Er is momenteel niet voldoende ruimte in de back-up map. UrBackup verwijdert oude image- en bestandsback-ups tot het ingestelde maximum. Tijdens dit proces kunnen de prestaties minder zijn en back-up stoppen."
+msgstr "Er is momenteel niet voldoende ruimte in de back-upmap. UrBackup verwijdert oude image- en bestandsback-ups tot het ingestelde maximum. Tijdens dit proces kunnen de prestaties minder zijn en back-ups pauzeren."
 
 msgid "nospc_fatal_text"
-msgstr "Er is momenteel niet voldoende ruimte in de back-up map. UrBackup heeft geprobeerd oude images en bestand back-ups te verwijderen maar is niet bevoegd er nog meer te verwijderen. Pas de instellingen aan om minder back-ups te bewaren of maak extra ruimte beschikbaar zodat UrBackup verder kan gaan met back-uppen."
+msgstr "Er is momenteel niet voldoende ruimte in de back-upmap. UrBackup heeft geprobeerd oude image- en bestandsback-ups te verwijderen, maar is niet bevoegd er nog meer te verwijderen. Pas de instellingen aan om minder back-ups te bewaren of maak extra ruimte beschikbaar zodat UrBackup verder kan gaan met back-uppen."
 
 msgid "tNondefault temporary file directory"
-msgstr "Niet standaard tijdelijk bestandsdirectory"
+msgstr "Niet-standaard tijdelijke bestandsdirectory"
 
 msgid "loading"
 msgstr "Laden"
 
 msgid "tInternet clients"
-msgstr "Internet clients"
+msgstr "Internetclients"
 
 msgid "tAdd additional internet clients"
-msgstr "Internet clients toevoegen"
+msgstr "Internetclients toevoegen"
 
 msgid "tClient name"
-msgstr "Client naam"
+msgstr "Clientnaam"
 
 msgid "tNo data"
 msgstr "Geen gegevens"
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr "Clients worden verwijderd gedurende opruiming volgens het opruim schema."
+msgstr "Clients worden verwijderd tijdens het opruimen volgens het opruimschema."
 
 msgid "authentication_err"
-msgstr "Fout tijdens server authenticatie"
+msgstr "Fout tijdens serverauthenticatie"
 
 msgid "tInverval for incremental image backups"
-msgstr "Interval voor incrementele image back-ups"
+msgstr "Interval voor incrementele imageback-ups"
 
 msgid "action_5"
-msgstr "Hervat incrementele bestands-back-up"
+msgstr "Voorgezette incrementele bestandsback-up"
 
 msgid "action_6"
-msgstr "Hervat volledige bestands-back-up"
+msgstr "Voortgezette volledige bestandsback-up"
 
 msgid "really_recalculate"
-msgstr "Weet u zeker dat alle statistieken wilt herberekenen? Dit kan lange tijd duren!"
+msgstr "Weet u zeker dat u alle statistieken wilt herberekenen? Dit kan lang duren!"
 
 msgid "database_error_text"
-msgstr "Er is een fout opgetreden tijdens het opvragen of controleren van de interne UrBackup database. Dit betekend waarschijnlijk dat de database corrupt is of dat er niet voldoende schijfruimte vrij is. Herstel de database als dit probleem zich blijft voordoen (backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db en backup_server_settings.db) uit een back-up. Zie het logboek voor details. "
+msgstr "Er is een fout opgetreden tijdens het opvragen of controleren van de interne UrBackup database. Dit betekent waarschijnlijk dat de database corrupt is of dat er niet voldoende schijfruimte vrij is. Herstel de database als dit probleem zich blijft voordoen (backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db en backup_server_settings.db) uit een back-up. Zie het logbestand voor details. "
 
 msgid "tDownload folder as ZIP"
-msgstr "Download map als ZIP-bestand"
+msgstr "Map als ZIP-bestand downloaden"
 
 msgid "tOld password"
 msgstr "Oude wachtwoord"
@@ -1041,7 +1044,7 @@ msgid "tChanging password failed:"
 msgstr "Wachtwoord aanpassen is mislukt:"
 
 msgid "tChanged password successfully"
-msgstr "Wachtwoord wijziging succesvol"
+msgstr "Wachtwoord succesvol gewijzigd"
 
 msgid "tNumber of file entries processed"
 msgstr "Aantal bestanden verwerkt"
@@ -1056,94 +1059,94 @@ msgid "tThere is a new version of UrBackup server available"
 msgstr "Er is een nieuwe versie van UrBackup server beschikbaar"
 
 msgid "tDownload client from update server"
-msgstr "Download client van de update server"
+msgstr "Client van de updateserver downloaden"
 
 msgid "tGlobal soft filesystem quota"
-msgstr "Globaal softwarematige bestandsysteem limit"
+msgstr "Globaal soft quotum op bestandssysteem"
 
 msgid "tImage backup file format"
-msgstr "Image back-up bestandsformaat"
+msgstr "Imageback-up bestandsformaat"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr "Sta de client toe om een volledige bestand back-up te starten"
+msgstr "Toestaan dat volledige bestandsback-ups worden gestart vanaf de client"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr "Sta de client toe om een incrementele bestands back-up te starten"
+msgstr "Toestaan dat incrementele bestandsback-ups worden gestart vanaf de client"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr "Sta de client toe om een volledige image back-up te starten"
+msgstr "Toestaan dat volledige imageback-ups worden gestart vanaf de client"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr "Sta de client toe om een incrementele image back-up te starten"
+msgstr "Toestaan dat incrementele imageback-ups worden gestart vanaf de client"
 
 msgid "tBackup window for incremental file backups"
-msgstr "Interval voor incrementele bestand back-ups"
+msgstr "Interval voor incrementele bestandsback-ups"
 
 msgid "tBackup window for full file backups"
-msgstr "Back-up interval voor volledige bestand back-ups"
+msgstr "Back-upinterval voor volledige bestandsback-ups"
 
 msgid "tBackup window for incremental image backups"
-msgstr "Interval voor incrementele image back-ups"
+msgstr "Interval voor incrementele imageback-ups"
 
 msgid "tBackup window for full image backups"
-msgstr "Interval voor volledige image back-ups"
+msgstr "Interval voor volledige imageback-ups"
 
 msgid "tSoft client quota"
 msgstr "Soft client quotum"
 
 msgid "tCalculate file-hashes on the client"
-msgstr "Berekenen van bestand hashes op de client"
+msgstr "Bestandshashes op de client berekenen"
 
 msgid "tAdvanced"
-msgstr "Geavanceeerd "
+msgstr "Geavanceerd "
 
 msgid "tTemporary files as file backup buffer"
-msgstr "Tijdelijk bestand als bestand back-up buffer"
+msgstr "Tijdelijke bestanden als buffer voor bestandsback-up"
 
 msgid "tTemporary files as image backup buffer"
-msgstr "Tijdelijk bestand als image back-up buffer"
+msgstr "Tijdelijke bestanden als buffer voor imageback-up"
 
 msgid "tLocal full file backup transfer mode"
-msgstr "Lokaal volledige bestand back-up overdracht mode"
+msgstr "Overdrachtmodus voor lokale volledige bestandsback-up"
 
 msgid "tRaw"
 msgstr "Raw"
 
 msgid "tHashed"
-msgstr "gehashed"
+msgstr "Gehashed"
 
 msgid "tInternet full file backup transfer mode"
-msgstr "Internet volledige bestand back-up overdracht mode"
+msgstr "Overdrachtmodus voor volledige bestandsback-up over internet"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr "Lokaal incrementele bestand back-up overdracht mode"
+msgstr "Overdrachtmodus voor lokale incrementele bestandsback-up"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr "Internet incrementele bestand back-up overdracht mode"
+msgstr "Overdrachtmodus voor incrementele bestandsbackup over internet"
 
 msgid "tLocal image backup transfer mode"
-msgstr "Lokale image back-up overdracht mode"
+msgstr "Overdrachtmodus voor lokale imageback-up"
 
 msgid "tInternet image backup transfer mode"
-msgstr "Internet image back-up overdracht mode"
+msgstr "Overdrachtmodus voor imageback-up over internet"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr "Gebruik symlinks tijdens incrementele bestand back-ups"
+msgstr "Symlinks gebruiken tijdens incrementele bestandsback-ups"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings. "
-msgstr "Waarschuwing: De instellingen geconfigureerd op de client zullen worden overschreven met deze instellingen. Indien u dit wilt voorkomen moet u de client geen toegang geven om instellingen te wijzigen."
+msgstr "Waarschuwing: De instellingen die op de client zijn geconfigureerd, zullen worden overschreven met deze instellingen. Indien u dit wilt voorkomen moet u de client geen toegang geven om instellingen te wijzigen."
 
 msgid "tClient download"
 msgstr "Client download"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr "Clients worden verwijderd gedurende opruiming volgens het opruim schema."
+msgstr "Clients worden verwijderd tijdens het opruimen volgens het opruimschema."
 
 msgid "tRecalculate statistics"
-msgstr "Herberekening statistieken"
+msgstr "Statistieken herberekenen"
 
 msgid "No data available in table"
 msgstr "Geen data beschikbaar in deze tabel"
@@ -1152,13 +1155,13 @@ msgid "Show _MENU_ entries"
 msgstr "Laat _MENU_ records zien"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr "Verkies internet back-up server boven lokale back-up server"
+msgstr "Verbinding maken met internet back-upserver als er een verbinding is met de lokale back-upserver"
 
 msgid "tYou need to create a user to be able to send reports"
 msgstr "U moet eerst een gebruiker aanmaken voordat u rapporten kunt versturen"
 
 msgid "tShow when a new server version is available"
-msgstr "Geef een melding wanneer een nieuwe server versie beschikbaar is"
+msgstr "Geef een melding wanneer een nieuwe serverversie beschikbaar is"
 
 msgid "tVHD (Virtual HardDisk)"
 msgstr "VHD (Virtuele harddisk)"
@@ -1167,13 +1170,13 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "Gecomprimeerde VHD (Gecomprimeerde niet-standaard virtuele harddisk)"
 
 msgid "tBlock differences - hashed"
-msgstr "Blok verschillen - gehashed"
+msgstr "Blokverschillen - gehashed"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr "Zichtbaar van _START_ tot _END_ totaal _TOTAL_ records"
+msgstr "_START_ tot _END_ van _TOTAL_ records worden weergegeven"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr "Zichtbaar van 0 tot 0 totaal 0 records"
+msgstr "0 tot 0 van 0 records worden weergegeven"
 
 msgid "(filtered from _MAX_ total entries)"
 msgstr "(gefilterd van _MAX_ totaal aantal records)"
@@ -1188,16 +1191,16 @@ msgid "ldap_settings"
 msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr "Een client met deze naam bestaat reeds"
+msgstr "Er bestaat al een client met deze naam"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr "Geef de naam van de nieuwe Internet client/client achter NAT"
+msgstr "Geef de naam van de nieuwe internetclient/client achter NAT"
 
 msgid "validate_err_empty_hostname"
-msgstr "Geef het IP/computernaam van de client die gevonden moet worden"
+msgstr "Geef het IP/de hostnaam van de client die gevonden moet worden"
 
 msgid "creating_filesindex_text"
-msgstr "UrBackup is bezig met het maken van een bestandenindex. Dit kan enige tijd duren."
+msgstr "UrBackup is bezig met het maken van een bestandsindex. Dit kan enige tijd duren."
 
 msgid "about"
 msgstr "Over"
@@ -1206,7 +1209,7 @@ msgid "all_clients"
 msgstr "Alle clients"
 
 msgid "client_settings"
-msgstr "Client instellingen"
+msgstr "Clientinstellingen"
 
 msgid "action_8"
 msgstr "Bestand herstellen"
@@ -1218,10 +1221,10 @@ msgid "action_10"
 msgstr "Client updaten"
 
 msgid "action_11"
-msgstr "Database integriteit controleren"
+msgstr "Integriteit van database aan het controleren"
 
 msgid "action_12"
-msgstr "Database back-up aan het maken"
+msgstr "Back-up van database aan het maken"
 
 msgid "action_13"
 msgstr "Herberekenen van statistieken"
@@ -1236,27 +1239,27 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr "UrBackup vindt automatisch clients op het lokale netwerk. Als de client op het zelfde subnet zit zals de server kan die client geinstaleerd worden en wordt deze automatish gevonden. "
+msgstr "UrBackup vindt automatisch clients op het lokale netwerk. Als de client op hetzelfde subnet zit als de server kan die client geïnstalleerd worden en wordt deze automatisch gevonden. "
 
 msgid "tDownload the client from:"
-msgstr "Download de client van:"
+msgstr "De client downloaden van:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr "Als deze client meerdere servers wilt gebruiken, deze server's identiteit is: "
+msgstr "Als deze client meerdere servers wil gebruiken, de identiteit van deze server is: "
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr "Voeg een nieuwe internet cliënt of een cliënt achter NAT toe"
+msgstr "Een nieuwe internetclient/client achter NAT toevoegen"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr "Naam van de nieuwe internet of NAT cliënt"
+msgstr "Naam van de nieuwe internetclient/client achter NAT"
 
 msgid "tDiscover new client via IP/hostname hint"
-msgstr "Vindt nieuwe cliënt via IP/hostname hint"
+msgstr "Nieuwe clients vinden via IP/hostnaam hint"
 
 msgid "tIP/hostname of client to be discovered"
-msgstr "IP/hostname van de gezochte cliënt"
+msgstr "IP/hostnaam van de gezochte client"
 
 msgid "tCancel"
 msgstr "Annuleren"
@@ -1273,7 +1276,7 @@ msgid "tLogin with username and password"
 msgstr "Inloggen met gebruikersnaam en wachtwoord"
 
 msgid "tError while accessing backups"
-msgstr "Fout tijdens laden van backup's"
+msgstr "Fout tijdens laden van back-ups"
 
 msgid "tSorry, something went wrong:"
 msgstr "Sorry, er ging iets fout:"
@@ -1291,10 +1294,10 @@ msgid "tList"
 msgstr "Lijst"
 
 msgid "tRestore"
-msgstr "Hersteld"
+msgstr "Herstellen"
 
 msgid "tRestore folder to client"
-msgstr "Herstel map op cliient"
+msgstr "Map op client herstellen"
 
 msgid "tVersion"
 msgstr "Versie"
@@ -1303,67 +1306,67 @@ msgid "tClient added successfully"
 msgstr "Client met succes toegevoegd"
 
 msgid "tAdded new client with name:"
-msgstr "Een client toegevoegd met naam:"
+msgstr "Nieuwe client toegevoegd met naam:"
 
 msgid "tDefault authentication key:"
-msgstr "Standaard authenticatie sleutel:"
+msgstr "Standaard authenticatiesleutel:"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr "Download de voorgeconfigureerde client voor Windows"
+msgstr "Voorgeconfigureerde client voor Windows downloaden"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr "Download de voorgeconfigureerde client voor Mac OS X"
+msgstr "Voorgeconfigureerde client voor Mac OS X downloaden"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr "Installeer het direct via de terminal:"
+msgstr "Installeer direct in de terminal via:"
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr "Download voorgeconfigueerde client voor Linux"
+msgstr "Voorgeconfigueerde client voor Linux downloaden"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr ""
+msgstr "Of nadat je de client hebt geïnstalleerd vanaf:"
 
 msgid "tGo to the settings screen on the client"
-msgstr "Ga naar het instellingen menu op de cliënt"
+msgstr "Ga naar het instellingenmenu op de client"
 
 msgid "tEnable the internet mode on the client"
-msgstr "Schakel internet mode in op de cliënt"
+msgstr "Schakel de internetmodus in op de client"
 
 msgid "tSet the internet server to:"
-msgstr "Stel internet server in: "
+msgstr "Stel de internetserver in op:"
 
 msgid "tSet the internet server port to:"
-msgstr "Stel internet server poort in:"
+msgstr "Stel de internetserver poort in op:"
 
 msgid "tSet the computer name to:"
-msgstr "Stel de computer naam in:"
+msgstr "Stel de computernaam in op:"
 
 msgid "tSet the authentication key to:"
-msgstr "Stel de authenticatie sleutel in:"
+msgstr "Stel de authenticatiesleutel in op:"
 
 msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "Zonder firewall/NAT: Schakel de 'alleen internet'-modus in als je de client over het internet wilt gebruiken. Op Linux door INTERNET_ONLY op true te zetten in /etc/default/urbackupclient of /etc/sysconfig/urbackupclient"
 
 msgid "tWith the command line:"
 msgstr "Met de opdrachtregel:"
 
 msgid "tPercent finished"
-msgstr "Percentrage afgerond"
+msgstr "Percentage afgerond"
 
 msgid "tDetails"
 msgstr "Details"
 
 msgid "tAdd Email Address"
-msgstr "E-mail adres toevoegen"
+msgstr "E-mailadres toevoegen"
 
 msgid "tFailed without failures caused by client timeout"
-msgstr ""
+msgstr "Mislukt zonder fouten, veroorzaakt door een timeout van de client"
 
 msgid "tMinimum log level"
-msgstr "Minimaal log niveau"
+msgstr "Minimaal logniveau"
 
 msgid "tBackups interrupted"
 msgstr "Back-ups onderbroken"
@@ -1381,156 +1384,156 @@ msgid "tSpeed"
 msgstr "Snelheid"
 
 msgid "tFile Backups"
-msgstr "Bestands back-ups"
+msgstr "Bestandsback-ups"
 
 msgid "tImage Backups"
-msgstr "image back-ups"
+msgstr "Imageback-ups"
 
 msgid "tArchive"
 msgstr "Archiveren"
 
 msgid "tServer URL"
-msgstr "Server URL"
+msgstr "Server-URL"
 
 msgid "tMax simultaneous backups"
 msgstr "Maximaal gelijktijdige back-ups"
 
 msgid "tMax recently active clients"
-msgstr "Maximum recent actieve cliënts"
+msgstr "Maximaal recent actieve clients"
 
 msgid "tDays"
 msgstr "Dagen"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Raw copy-on-write bestand"
 
 msgid "tMin"
 msgstr "Minimaal"
 
 msgid "tVirtual sub client names"
-msgstr ""
+msgstr "Virtuele sub clientnamen"
 
 msgid "tLocal incremental image style"
-msgstr "Lokale incrementele image stijl"
+msgstr "Lokale incrementele imagestijl"
 
 msgid "tBased on last full image backup"
-msgstr "Gebaseerd op de laaste volledige image back-up"
+msgstr "Gebaseerd op de laaste volledige imageback-up"
 
 msgid "tBased on last image backup"
-msgstr "Gebaseerd op de laaste image back-up"
+msgstr "Gebaseerd op de laaste imageback-up"
 
 msgid "tInternet incremental image style"
-msgstr "Internet incrementele image stijl"
+msgstr "Internet incrementele imagestijl"
 
 msgid "tLocal full image style"
-msgstr "Lokale voledige image stijl"
+msgstr "Lokale volledige imagestijl"
 
 msgid "tSynthetic full image backup"
-msgstr "Synthetische volledige image back-up"
+msgstr "Synthetische volledige imageback-up"
 
 msgid "tInternet full image style"
-msgstr "Internet voledige image stijl"
+msgstr "Internet volledige imagestijl"
 
 msgid "tDatabase cache size during batch processing"
-msgstr ""
+msgstr "Grootte van de database-cache tijdens batch-verwerking"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr ""
+msgstr "Debugging: End-to-end verificatie van alle bestandsback-ups"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr ""
+msgstr "Debugging: Bestandsback-ups verifiëren met hashes vanaf de client"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "Bestandsrecords van internet-clients periodiek in de database inlezen (schakel dit alleen uit als u geen volledige back-ups draait)"
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "Back-ups met achtergrond-prioriteit uitvoeren op de clients"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "Symbolisch gelinkte weergaven aanmaken voor elke gebruiker op de clients na bestandsback-ups"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr "Maximaal aantal gelijktijdige back-ups per cliënt"
+msgstr "Maximaal aantal gelijktijdige back-ups per client"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "Lijst van volumes waarvoor Change Block Tracking moet worden gebruikt (indien beschikbaar)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "Lijst van volumes waarvoor Change Block Tracking bestand moet zijn tegen crashes."
 
 msgid "tEnable logins via LDAP/AD"
-msgstr ""
+msgstr "Inloggen via LDAP/AD inschakelen"
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "LDAP/AD servernaam"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "LDAP/AD serverpoort"
 
 msgid "tLDAP/AD user name prefix"
-msgstr ""
+msgstr "LDAP/AD gebruikersnaam prefix"
 
 msgid "tLDAP/AD user name suffix"
-msgstr ""
+msgstr "LDAP/AD gebruikersnaam suffix"
 
 msgid "tLDAP/AD group and class query"
-msgstr ""
+msgstr "LDAP/AD group en class query"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP/AD group key naam in query"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP/AD class key naam in query"
 
 msgid "tLDAP/AD group rights map"
-msgstr ""
+msgstr "LDAP/AD group rechten mapping"
 
 msgid "tLDAP/AD class rights map"
-msgstr ""
+msgstr "LDAP/AD class rechten mapping"
 
 msgid "tTest login with this user"
-msgstr ""
+msgstr "Login testen met deze gebruiker"
 
 msgid "tPassword for test user"
-msgstr ""
+msgstr "Wachtwoord voor de testgebruiker"
 
 msgid "tTest login succeeded. Rights of user:"
-msgstr ""
+msgstr "Test-login succesvol. Rechten van de gebruiker:"
 
 msgid "tTest login failed. Error:"
-msgstr "Test login mislukt. Fout: "
+msgstr "Test-login mislukt. Fout: "
 
 msgid "tDownload client for Windows"
-msgstr "Download cliënt voor Windows:"
+msgstr "Client voor Windows downloaden"
 
 msgid "tDownload client for Mac OS X"
-msgstr "Download cliënt voor Mac OS"
+msgstr "Client voor Mac OS X downloaden"
 
 msgid "tDownload client for Linux"
-msgstr "Download cliënt voor Linux"
+msgstr "Client voor Linux downloaden"
 
 msgid "tRemove client"
-msgstr "cliënt verwijderen"
+msgstr "Client verwijderen"
 
 msgid "tAdd new client"
-msgstr "Nieuwe cliënt toevoegen"
+msgstr "Nieuwe client toevoegen"
 
 msgid "tClient discovery hints"
-msgstr ""
+msgstr "Client ontdekkingshints"
 
 msgid "tAdd hostname/IP as client discovery hint"
-msgstr ""
+msgstr "Een hostnaam/IP als client ontdekkingshint toevoeven"
 
 msgid "tBackup Statistics"
-msgstr "Back-up statistieken"
+msgstr "Back-upstatistieken"
 
 msgid "completed_with_issues"
 msgstr "Voltooid met problemen"
@@ -1542,315 +1545,315 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Herstellen voorbereiden. Even wachten aub..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Laat back-ups niet falen in het geval van onjuiste hashes of leesfouten"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Beheerder"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Imageback-up"
 
 msgid "action_14"
-msgstr ""
+msgstr "Nachtelijke opruiming"
 
 msgid "action_15"
-msgstr ""
+msgstr "Opruiming in noodgevallen"
 
 msgid "action_16"
-msgstr ""
+msgstr "Opslagmigratie"
 
 msgid "default_group"
-msgstr ""
+msgstr "Standaard"
 
 msgid "filter_group"
-msgstr ""
+msgstr "Groepen"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Nieuwe groep toevoegen"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Vul de naam van de nieuwe groep in"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Groep bestaat al"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Deze groep wordt verwijderd. Alle clients in deze groep zullen worden gekoppeld aan de standaard-groep. Doorgaan?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Verwijderen van groep mislukt"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "De internet servernaam moet een hostnaam of IP zijn"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "De server-URL moet een URL zijn die begint met http:// of https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Opstartherstel"
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
-msgstr ""
+msgstr "Fout bij het markeren van back-up voor verwijdering:"
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Fout bij het verwijderen van back-up:"
 
 msgid "image_locked"
-msgstr ""
+msgstr "Imageback-up is momenteel in gebruik"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "Incrementele imageback-up gebaseerd op deze back-up is momenteel in gebruik"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "Incrementele imageback-up gebaseerd op deze back-up wordt momenteel uitgevoerd"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "Imageback-up afhankelijk van deze back-up is gearchiveerd"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Raadpleeg het server logbestand voor details"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Raadpleeg het server logbestand voor details"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Back-up is voor verwijdering gemarkeerd. Niet verwijderen"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Nu verwijderen"
 
 msgid "tVolume"
-msgstr ""
+msgstr "Volume"
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Geen back-ups"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Nog geen back-ups van deze client"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Informatie van imageback-up"
 
 msgid "tId"
-msgstr ""
+msgstr "Id"
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Volumegrootte"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Partitiestijl"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Schijfnummer"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Partitienummer"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Type bestandssysteem"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Volumenaam"
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Serienummer"
 
 msgid "tMount image"
-msgstr ""
+msgstr "Image mounten"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup zal niet-gesandboxte functionaliteit van het besturingssysteem gebruiken om de image te mouten. Mount de image alleen als je de bron vertrouwt."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Mounten van image mislukt. Raadpleeg het server logbestand voor details."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Deze fout resetten"
 
 msgid "tOk. Stop showing this error"
-msgstr ""
+msgstr "Ok. Deze fout niet meer weergeven"
 
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Deze server heeft clients ontdekt die momenteel niet geconfigureerd zijn om deze server te gebruiken."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Kijk hier voor details over hoe dit kan gebeuren."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Deze hint verbergen."
 
 msgid "tOk. Stop showing this."
-msgstr ""
+msgstr "Ok. Laat dit niet meer zien."
 
 msgid "tVolume:"
-msgstr ""
+msgstr "Volume:"
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Naar versie:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Pad:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Groep"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Groepslidmaatschap"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Selecteer een client van de huidige groep (dubbelklikken om instellingen te wijzigen):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Groep verwijderen"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Toestaan dat clients bestandsherstel starten"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Toestaan dat clients componenten configureren om te back-uppen"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Toestaan dat clients componentherstel starten"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Volumeletters"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Imageback-up"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Geen bestandsback-ups starten als de limiet van het geschatte resterende datagebruik per maand kleiner is dan"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Geen imageback-ups starten als de limiet van het geschatte resterende datagebruik per maand kleiner is dan"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Database met geschatte datalimiet updaten"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Volledige imageback-up #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Volumes naar snapshot in groepen tijdens imageback-ups"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Volumes naar snapshot in groepen tijdens bestandsback-ups"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Configuratie van back-up van Windows componenten"
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Groepnaam"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "Met geselecteerde"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "Geen paden naar back-up geconfigureerd"
 
 msgid "disabled"
-msgstr ""
+msgstr "Uitgeschakeld"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "Geef de naam van het nieuwe alarmscript"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "Weet u zeker dat u dit alarmscript wilt verwijderen?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Aantal keer het interval van bestandsback-up waarna de bestandsback-upstatus naar 'niet ok' wordt gezet"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Aantal keer het interval van imageback-up waarna de imageback-upstatus naar 'niet ok' wordt gezet"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "E-mailadressen (gescheiden door ';') die moeten worden ingelicht als de image-/bestandsback-upstatus niet ok is"
 
 msgid "alert_important"
-msgstr ""
+msgstr "[Belangrijk] toevoegen aan alarmmails"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Een ok mail versturen nadat de back-upstatus van niet ok naar ok is gegaan"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "Alarmscripts bewerken"
 
 msgid "tAlert script"
-msgstr ""
+msgstr "Alarmscript"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Parameters van alarmscript"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "Parameter toevoegen"
 
 msgid "tName:"
-msgstr ""
+msgstr "Naam:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Label:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Standaardwaarde:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Type:"
 
 msgid "tString"
-msgstr ""
+msgstr "String"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "Drijvendekommagetal"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Integer"
 
 msgid "tBoolean"
-msgstr ""
+msgstr "Boolean"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Met Docker (webinterface toegankelijk vanaf de client):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Met Docker (webinterface is niet toegankelijk vanaf de client):"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Rapportagescript bewerken"
 
 msgid "tPaused"
-msgstr ""
+msgstr "Gepauzeerd"
 
 msgid "tReport script"
-msgstr ""
+msgstr "Rapportagescript"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Alarmen"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "Scripts bewerken"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Authenticatiesleutel van herstel via internet"
