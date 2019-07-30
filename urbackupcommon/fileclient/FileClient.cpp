@@ -1363,6 +1363,7 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
+					Server->Log("Unknown packet id " + convert(PID), LL_ERROR);
 					return ERR_ERROR;
 				}
             }
