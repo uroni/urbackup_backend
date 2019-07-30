@@ -561,20 +561,25 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			
 		}
 
+		_u32 flush_rc = ERR_SUCCESS;
 		if(needs_flush)
 		{
-			Flush(getPipe());
+			flush_rc = Flush(getPipe());
 			needs_flush=false;
 		}
 
 		if(queue_only)
 		{
-			return ERR_SUCCESS;
+			return flush_rc;
 		}
 
 		size_t rc;
 		char* buf;
-		if(initial_read && !initial_bytes.empty())
+		if (flush_rc != ERR_SUCCESS)
+		{
+			rc = 0;
+		}
+		else if(initial_read && !initial_bytes.empty())
 		{
 			rc = initial_bytes.size();
 			buf = &initial_bytes[0];
@@ -590,7 +595,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 		
 		if(rc==0)
 		{
-			if(getPipe()->hasError())
+			if(flush_rc!=ERR_SUCCESS || getPipe()->hasError())
 			{
 				Server->Log("Pipe has error. Reconnecting...", LL_DEBUG);
 				if(!Reconnect(true))

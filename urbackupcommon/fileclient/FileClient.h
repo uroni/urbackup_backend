@@ -189,7 +189,7 @@ private:
 
 		void bindToNewInterfaces();
 
-		void fillQueue();
+		_u32 fillQueue();
 
 		void logProgress(const std::string& remotefn, _u64 filesize, _u64 received);
 
