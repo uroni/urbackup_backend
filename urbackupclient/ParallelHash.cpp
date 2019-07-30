@@ -270,7 +270,7 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	std::string full_path = curr_snapshot_dir + os_file_sep() + fn;
 
-	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
+	std::auto_ptr<IFsFile>  f(Server->openFile(os_file_prefix(full_path), MODE_READ_SEQUENTIAL_BACKUP));
 
 	SFileAndHash fandhash;
 	if (f.get() != NULL && f->Size() < link_file_min_size)
