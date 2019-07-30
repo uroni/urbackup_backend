@@ -1765,6 +1765,18 @@ bool IncrFileBackup::doFileBackup()
 	}
 	else
 	{
+		if (phash_load.get() != NULL)
+		{
+			std::auto_ptr<IFile> tf(Server->openTemporaryFile());
+			if (tf.get() != NULL)
+			{
+				if(copy_file(tmp_filelist, tf.get()))
+				{
+					ServerLogger::Log(logid, "Copied file list to "+tf->getFilename()+" for debugging.", LL_ERROR);
+				}				
+			}
+		}
+
 		ServerLogger::Log(logid, "Fatal error during backup. Backup not completed", LL_ERROR);
 		ClientMain::sendMailToAdmins("Fatal error occurred during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
 	}
