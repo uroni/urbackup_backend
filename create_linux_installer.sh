@@ -65,7 +65,7 @@ if [ ! -e $RANLIB ]; then
         export RANLIB=$TOOLCHAIN/bin/$TARGET_FOLDER-ranlib
 fi
 export STRIP=$TOOLCHAIN/bin/$TARGET-strip
-./configure --enable-headless LDFLAGS="-static -Wl,--gc-sections -flto -O2" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -Os" CFLAGS="-ggdb -Os -flto" CXXFLAGS="-ggdb -Os -flto"
+./configure --enable-headless --enable-c-ares LDFLAGS="-static -Wl,--gc-sections -flto -O2" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -Os" CFLAGS="-ggdb -Os -flto" CXXFLAGS="-ggdb -Os -flto"
 }
 
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
