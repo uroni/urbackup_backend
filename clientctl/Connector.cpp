@@ -282,6 +282,11 @@ std::string Connector::getStatusRaw()
 	return getResponse("STATUS", "", false);
 }
 
+std::string Connector::getStatusRawNoWait()
+{
+	return getResponse("FSTATUS", "", false);
+}
+
 SStatus Connector::getStatus(void)
 {
 	std::string d=getResponse("STATUS","",false);
