@@ -152,6 +152,7 @@ public:
 	static std::string getSharedPathsRaw();
 	static bool saveSharedPaths(const std::vector<SBackupDir> &res);
 	static std::string getStatusRaw();
+	static std::string getStatusRawNoWait();
 	static SStatus getStatus(void);
 	static int startBackup(const std::string& virtual_client, bool full);
 	static int startImage(const std::string& virtual_client, bool full);
