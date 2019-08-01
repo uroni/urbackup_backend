@@ -80,6 +80,7 @@ export STRIP=$TOOLCHAIN/bin/$TARGET-strip
 sed -i 's@adhoc.cpp@empty.cpp@' cryptoplugin/src/Makefile.am
 touch cryptoplugin/src/empty.cpp
 touch cryptoplugin/src/empty.cpp.proto
+sed -i 's@CRYPTOPP_INIT_PRIORITY 250@CRYPTOPP_INIT_PRIORITY 0@g' cryptoplugin/src/config.h
 ./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto $ARCH_CPPFLAGS" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/"
 }
 
