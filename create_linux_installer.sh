@@ -39,10 +39,12 @@ cp -R install-data/* install-data-dbg/
 build_ndk() {
 export TARGET_FOLDER=$1
 NDK_CPUFLAGS=""
+ARCH_CPPFLAGS=""
 if [[ $TARGET_FOLDER == "arm-linux-androideabi" ]]
 then
         export TARGET=armv7a-linux-androideabi
 		NDK_CPUFLAGS="-march=armv7-a -Wl,--fix-cortex-a8 -mfpu=vfp"
+		ARCH_CPPFLAGS="-DCRYPTOPP_DISABLE_ASM"
 else
         export TARGET=$TARGET_FOLDER
 fi
@@ -78,7 +80,7 @@ export STRIP=$TOOLCHAIN/bin/$TARGET-strip
 sed -i 's@adhoc.cpp@empty.cpp@' cryptoplugin/src/Makefile.am
 touch cryptoplugin/src/empty.cpp
 touch cryptoplugin/src/empty.cpp.proto
-./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/"
+./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto $ARCH_CPPFLAGS" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/"
 }
 
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
