@@ -398,7 +398,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		lock->relock(NULL);
 		Server->Log("Trying to connect to internet server \""+ selected_server_settings .hostname+"\" at port "+convert(selected_server_settings.port)
 			+ (selected_server_settings.proxy.empty() ? "" : (" via HTTP proxy "+ selected_server_settings.proxy)), LL_DEBUG);
-		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack);
+		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack(true));
 		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
 		if(cs!=NULL)
