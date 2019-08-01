@@ -16,3 +16,8 @@ struct SLookupBlockingResult
 
 std::vector<SLookupBlockingResult> LookupBlocking(std::string pServer);
 bool LookupHostname(const std::string& pIp, std::string& hostname);
+
+#ifdef ENABLE_C_ARES
+bool LookupInit();
+std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int timeoutms);
+#endif

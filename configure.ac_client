@@ -40,6 +40,10 @@ AC_ARG_WITH([embedded-sqlite3],
      AS_HELP_STRING([--without-embedded-sqlite3], [Disables the embedded sqlite3 and uses the system one. Not recommended.]))
 AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xno")
 
+AC_ARG_ENABLE([c-ares],
+     AS_HELP_STRING([--enable-c-ares], [Use c-ares for DNS resolution instead of your system libc.]))
+AM_CONDITIONAL(ENABLE_C_ARES, test "x$enable_c_ares" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -122,6 +126,17 @@ then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
 else
 	AC_CONFIG_SUBDIRS([cryptoplugin/src])
+fi
+
+if test "x$enable_c_ares" = "xyes"
+then
+	AC_CHECK_LIB(cares, ares_getaddrinfo, [HAVE_C_ARES=1])
+	AS_IF([test "x$HAVE_C_ARES" = "x"],
+	[
+		AC_MSG_ERROR([
+				C-Ares (address resolution) library not found or not recent enough.
+				])
+	])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")

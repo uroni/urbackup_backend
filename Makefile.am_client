@@ -57,6 +57,11 @@ else
 urbackupclientbackend_CXXFLAGS += -DNO_ZSTD_COMPRESSION
 endif
 
+if ENABLE_C_ARES
+urbackupclientbackend_LDADD += -lcares
+urbackupclientbackend_CPPFLAGS += -DENABLE_C_ARES
+endif
+
 if CLIENT_UPDATE
 urbackupclientbackend_CXXFLAGS += -DURB_WITH_CLIENTUPDATE
 endif

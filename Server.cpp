@@ -215,6 +215,10 @@ void CServer::setup(void)
 #ifdef _WIN32
 	SChannelPipe::init();
 #endif
+
+#ifdef ENABLE_C_ARES
+	LookupInit();
+#endif
 }
 
 void CServer::destroyAllDatabases(void)
@@ -1018,7 +1022,12 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
-	std::vector<SLookupBlockingResult> lookup_result = LookupBlocking(pServer);
+	std::vector<SLookupBlockingResult> lookup_result;
+#ifdef ENABLE_C_ARES
+	lookup_result = LookupWithTimeout(pServer, pTimeoutms);
+#else
+	lookup_result = LookupBlocking(pServer);
+#endif
 	if (lookup_result.empty())
 	{
 #ifdef _WIN32
