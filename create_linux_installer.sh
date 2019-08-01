@@ -67,7 +67,15 @@ if [ ! -e $RANLIB ]; then
         export RANLIB=$TOOLCHAIN/bin/$TARGET_FOLDER-ranlib
 fi
 export STRIP=$TOOLCHAIN/bin/$TARGET-strip
-./configure --enable-headless --enable-c-ares LDFLAGS="-static -Wl,--gc-sections -Os $NDK_CPUFLAGS" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -Os" CFLAGS="-ggdb -Os $NDK_CPUFLAGS" CXXFLAGS="-ggdb -Os $NDK_CPUFLAGS"
+#export CRYPTOPP_LIB="-force_load $TOOLCHAIN/sysroot/usr/lib/$TARGET_FOLDER/libcryptopp.a"
+#export CRYPTOPP_LIB=""
+#CRYPTOPP_LIBS='$(CRYPTOPP_LIBS)'
+#./switch_build.sh client
+#sed -i "s@$CRYPTOPP_LIBS@$CRYPTOPP_LIB@g" Makefile.am
+#CRYPTOPP_LDFLAGS='$(CRYPTOPP_LDFLAGS)'
+#CRYPTOPP_LDFLAG="-Wl,--whole-archive $TOOLCHAIN/sysroot/usr/lib/$TARGET_FOLDER/libcryptopp.a -Wl,--no-whole-archive"
+#sed -i "s@$CRYPTOPP_LDFLAGS@$CRYPTOPP_LDFLAG@g" Makefile.am
+./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/"
 }
 
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
@@ -100,11 +108,7 @@ do
 	cp urbackupclientctl install-data-dbg/$arch/
 	$STRIP_CMD install-data/$arch/urbackupclientctl
 	
-	if [ $arch = x86_64-linux-glibc ]
-	then
-		#Switching from embedded cryptopp
-		./switch_build.sh client
-	fi
+	./switch_build.sh client
 done
 
 rm -R linux-installer || true
