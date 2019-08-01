@@ -75,6 +75,8 @@ export STRIP=$TOOLCHAIN/bin/$TARGET-strip
 #CRYPTOPP_LDFLAGS='$(CRYPTOPP_LDFLAGS)'
 #CRYPTOPP_LDFLAG="-Wl,--whole-archive $TOOLCHAIN/sysroot/usr/lib/$TARGET_FOLDER/libcryptopp.a -Wl,--no-whole-archive"
 #sed -i "s@$CRYPTOPP_LDFLAGS@$CRYPTOPP_LDFLAG@g" Makefile.am
+sed -i 's@adhoc.cpp@empty.cpp@' cryptoplugin/src/Makefile.am
+touch cryptoplugin/src/empty.cpp
 ./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/"
 }
 
