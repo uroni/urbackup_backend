@@ -1024,7 +1024,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 {
 	std::vector<SLookupBlockingResult> lookup_result;
 #ifdef ENABLE_C_ARES
-	lookup_result = LookupWithTimeout(pServer, pTimeoutms);
+	lookup_result = LookupWithTimeout(pServer, pTimeoutms, pTimeoutms/2);
 #else
 	lookup_result = LookupBlocking(pServer);
 #endif

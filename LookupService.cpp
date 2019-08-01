@@ -24,6 +24,7 @@
 #endif
 #include "LookupService.h"
 #include <iostream>
+#include <algorithm>
 #ifdef ENABLE_C_ARES
 #include <ares.h>
 #include "Server.h"
@@ -161,7 +162,7 @@ bool LookupInit()
 	return true;
 }
 
-std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int timeoutms)
+std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int timeoutms, int stop_timeoutms)
 {
 	unsigned int addr = inet_addr(pServer.c_str());
 	if (addr != INADDR_NONE)
@@ -196,8 +197,8 @@ std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int ti
 	int nfds, count;
 	fd_set readers, writers;
 	timeval maxtv;
-	maxtv.tv_sec = timeoutms / 1000;
-	maxtv.tv_usec = (timeoutms % 1000) * 1000;
+	maxtv.tv_sec = (std::min)(stop_timeoutms, timeoutms) / 1000;
+	maxtv.tv_usec = ((std::min)(stop_timeoutms, timeoutms) % 1000) * 1000;
 
 	int64 starttime = Server->getTimeMS();
 	do
@@ -207,6 +208,7 @@ std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int ti
 		rc = ares_getsock(channel, socks, ARES_GETSOCK_MAXNUM);
 
 		pollfd conn[ARES_GETSOCK_MAXNUM];
+		bool has_fd = false;
 		for (int i = 0; i < ARES_GETSOCK_MAXNUM; ++i)
 		{
 			conn[i].fd = -1;
@@ -214,15 +216,20 @@ std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int ti
 			conn[i].revents = 0;
 			if (ARES_GETSOCK_READABLE(rc, i))
 			{
+				has_fd = true;
 				conn[i].fd = socks[i];
 				conn[i].events = POLLIN;
 			}
 			if (ARES_GETSOCK_WRITABLE(rc, i))
 			{
+				has_fd = true;
 				conn[i].fd = socks[i];
 				conn[i].events |= POLLOUT;
 			}
 		}
+
+		if (!has_fd)
+			break;
 
 		struct timeval tv;
 		ares_timeout(channel, &maxtv, &tv);
@@ -239,6 +246,13 @@ std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int ti
 					(conn[i].events & POLLOUT) ? conn[i].fd : ARES_SOCKET_BAD);
 			}
 		}
+
+		if (!ret.empty()
+			&& Server->getTimeMS() - starttime >= stop_timeoutms)
+		{
+			break;
+		}
+
 	} while (Server->getTimeMS() - starttime < timeoutms);
 
 	ares_destroy(channel);
