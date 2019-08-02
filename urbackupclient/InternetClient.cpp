@@ -985,7 +985,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 		else if (next(proxy, 0, "https://"))
 		{
 			ssl = true;
-			proxy = proxy.substr(7);
+			proxy = proxy.substr(8);
 		}
 		
 		std::string authorization;
