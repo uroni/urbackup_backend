@@ -1041,6 +1041,8 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 				break;
 			}
 
+			Server->Log("Proxy buf size " + convert(rc) + " content: " + buf, LL_DEBUG);
+
 			for (size_t i = 0; i < rc; ++i)
 			{
 				char ch = buf[i];
@@ -1098,7 +1100,12 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 					{
 						if (i + 1 < rc)
 						{
+							Server->Log("Remaining buf pos " + convert(i) + " is " + convert(rc - i - 1), LL_DEBUG);
 							tcpstack.AddData(&buf[i + 1], rc - i - 1);
+						}
+						else
+						{
+							Server->Log("No remaining buf", LL_DEBUG);
 						}
 						return cs;
 					}
