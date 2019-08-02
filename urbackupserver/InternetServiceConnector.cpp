@@ -107,9 +107,17 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	is_connected=false;
 	pinging=false;
 	free_connection=false;
-	state=ISS_AUTH;
+	if (pEndpointName == "127.0.0.1")
+	{
+		state = ISS_RECEIVE_ENDPOINT;
+		endpoint_remaining = 50;
+	}
+	else
+	{
+		endpoint_name = pEndpointName;
+		state = ISS_AUTH;
+	}
 	has_timeout=false;
-	endpoint_name=pEndpointName;
 	connection_done_cond=NULL;
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
@@ -204,6 +212,22 @@ bool InternetServiceConnector::Run(IRunOtherCallback* run_other)
 		return false;
 	}
 
+	if (state == ISS_RECEIVE_ENDPOINT)
+	{
+		if (Server->getTimeMS() - lastpingtime > ping_timeout)
+		{
+			Server->Log("ISS_RECEIVE_ENDPOINT timeout in InternetServiceConnector::Run", LL_DEBUG);
+			IScopedLock lock(mutex);
+			if (!connect_start)
+			{
+				has_timeout = true;
+				cleanup_pipes(true);
+				return false;
+			}
+		}
+		return true;
+	}
+
 	if(do_connect && !pinging && state==ISS_AUTHED )
 	{
 		CWData data;
@@ -247,6 +271,31 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 {
 	if(state==ISS_USED || has_timeout)
 	{
+		return;
+	}
+
+	if (state == ISS_RECEIVE_ENDPOINT)
+	{
+		char buf[51];
+		size_t rc = comm_pipe->Read(buf, endpoint_remaining);
+		if (rc == 0)
+		{
+			IScopedLock lock(mutex);
+			if (!connect_start)
+			{
+				has_timeout = true;
+				cleanup_pipes(true);
+			}
+			return;
+		}
+		buf[rc] = 0;
+		endpoint_remaining -= rc;
+		endpoint_name += buf;
+
+		if (endpoint_remaining == 0)
+		{
+			state = ISS_AUTH;
+		}
 		return;
 	}
 

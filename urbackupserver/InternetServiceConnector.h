@@ -20,6 +20,7 @@ class InternetService : public IService
 
 enum InternetServiceState
 {
+	ISS_RECEIVE_ENDPOINT,
 	ISS_AUTH,
 	ISS_AUTHED,
 	ISS_CAPA,
@@ -135,6 +136,7 @@ private:
 	bool token_auth;
 
 	std::string endpoint_name;
+	size_t endpoint_remaining;
 
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
