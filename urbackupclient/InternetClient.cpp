@@ -516,7 +516,10 @@ InternetClientThread::~InternetClientThread()
 char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms)
 {
 	int64 starttime=Server->getTimeMS();
-	char *buf;
+	char *buf = tcpstack->getPacket(&replysize);
+	if (buf != NULL)
+		return buf;
+
 	while(Server->getTimeMS()-starttime<timeoutms)
 	{
 		std::string ret;
