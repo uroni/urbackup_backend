@@ -1215,10 +1215,10 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 	int64 remaining_time = pTimeoutms - (Server->getTimeMS() - starttime);
 	if (remaining_time < 0) remaining_time = 0;
 
-#ifdef _WIN32
-	SChannelPipe* ssl_pipe = new SChannelPipe(bpipe);
-#else
+#ifdef WITH_OPENSSL
 	OpenSSLPipe* ssl_pipe = new OpenSSLPipe(bpipe);
+#else
+	SChannelPipe* ssl_pipe = new SChannelPipe(bpipe);
 #endif
 
 	if (!ssl_pipe->ssl_connect(pServer, static_cast<int>(remaining_time)))

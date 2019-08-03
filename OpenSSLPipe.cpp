@@ -5,6 +5,7 @@
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
+#include <openssl/bio.h>
 #include "Server.h"
 
 OpenSSLPipe::OpenSSLPipe(CStreamPipe * bpipe)
@@ -23,14 +24,6 @@ OpenSSLPipe::~OpenSSLPipe()
 		SSL_CTX_free(ctx);
 }
 
-void OpenSSLPipe::init()
-{
-	SSL_library_init();
-
-	SSL_load_error_strings();
-
-	OPENSSL_config(NULL);
-}
 
 namespace
 {
@@ -49,6 +42,119 @@ namespace
 	}
 
 	const char* const PREFERRED_CIPHERS = "HIGH:!aNULL:!kRSA:!SRP:!PSK:!CAMELLIA:!RC4:!MD5:!DSS";
+
+	//ALL that shit just to set MSG_NOSIGNAL :(
+	BIO_METHOD* meth_socket_nosigpipe;
+
+	int bio_read(BIO *b, char * buf, int len)
+	{
+		if (buf == NULL || len <= 0)
+			return 0;
+
+		BIO_clear_retry_flags(b);
+
+		int fd = BIO_get_fd(b, NULL);
+
+		int rc = recv(fd, buf, len, MSG_NOSIGNAL);
+		if (rc <= 0)
+		{
+#ifdef _WIN32
+			DWORD err = WSAGetLastError();
+			if (err == WSAEWOULDBLOCK || err == WSAEINTR)
+			{
+				BIO_set_retry_read(b);
+			}
+#else
+			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+			{
+				BIO_set_retry_read(b);
+			}
+#endif
+		}
+		return rc;
+	}
+
+	int bio_read_ex(BIO *b, char * buf, size_t len, size_t *readbytes)
+	{
+		int rc = bio_read(b, buf, static_cast<int>(len));
+		if (rc > 0)
+		{
+			*readbytes = rc;
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	int bio_write(BIO* b, const char* buf, int len)
+	{
+		if (buf == NULL || len <= 0)
+			return 0;
+
+		BIO_clear_retry_flags(b);
+
+		int fd = BIO_get_fd(b, NULL);
+
+		int rc = send(fd, buf, len, MSG_NOSIGNAL);
+		if(rc<0)
+		{
+#ifdef _WIN32
+			DWORD err = WSAGetLastError();
+			if (err == EINTR || err== WSAEWOULDBLOCK)
+			{
+				BIO_set_retry_write(b);
+			}
+#else
+			if (errno == EINTR || errno == EAGAIN || errno== EWOULDBLOCK)
+			{
+				BIO_set_retry_write(b);
+			}
+#endif
+			return rc;
+		}
+		return rc;
+	}
+
+	int bio_write_ex(BIO* b, const char* buf, size_t len, size_t *written)
+	{
+		int rc = bio_write(b, buf, static_cast<int>(len));
+		if (rc > 0)
+		{
+			*written = rc;
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+}
+
+void OpenSSLPipe::init()
+{
+	SSL_library_init();
+
+	SSL_load_error_strings();
+
+	OPENSSL_config(NULL);
+
+	const BIO_METHOD* smeth = BIO_s_socket();
+	int s_socket_nosignpipe = BIO_get_new_index();
+
+	meth_socket_nosigpipe = BIO_meth_new(s_socket_nosignpipe, "socket_nosigpipe");
+
+	BIO_meth_set_callback_ctrl(meth_socket_nosigpipe, BIO_meth_get_callback_ctrl(smeth));
+	BIO_meth_set_create(meth_socket_nosigpipe, BIO_meth_get_create(smeth));
+	BIO_meth_set_ctrl(meth_socket_nosigpipe, BIO_meth_get_ctrl(smeth));
+	BIO_meth_set_destroy(meth_socket_nosigpipe, BIO_meth_get_destroy(smeth));
+	BIO_meth_set_gets(meth_socket_nosigpipe, BIO_meth_get_gets(smeth));
+	BIO_meth_set_puts(meth_socket_nosigpipe, BIO_meth_get_puts(smeth));
+	BIO_meth_set_read(meth_socket_nosigpipe, bio_read);
+	BIO_meth_set_read_ex(meth_socket_nosigpipe, bio_read_ex);
+	BIO_meth_set_write(meth_socket_nosigpipe, bio_write);
+	BIO_meth_set_write_ex(meth_socket_nosigpipe, bio_write_ex);
 }
 
 bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
@@ -82,7 +188,7 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 		return false;
 	}
 
-	/*long res = SSL_CTX_load_verify_locations(ctx, "D:\\tmp\\cacert-2019-05-15.pem", NULL);
+	/*res = SSL_CTX_load_verify_locations(ctx, "D:\\tmp\\cacert-2019-05-15.pem", NULL);
 
 	if (res != 1)
 	{
@@ -98,13 +204,15 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 		return false;
 	}
 
-	BIO* sbio = BIO_new_socket(static_cast<int>(bpipe->getSocket()), BIO_NOCLOSE);
+	BIO* sbio = BIO_new(meth_socket_nosigpipe);
 
 	if (sbio == NULL)
 	{
 		log_ssl_err();
 		return false;
 	}
+
+	BIO_set_fd(sbio, static_cast<int>(bpipe->getSocket()), BIO_NOCLOSE);
 
 	BIO_push(bbio, sbio);
 
