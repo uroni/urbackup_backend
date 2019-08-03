@@ -1,4 +1,13 @@
 #pragma once
+
+#ifdef WITH_OPENSSL
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER < 0x10002000L
+#warning "OpenSSL version too old (<1.0.2). Not supported. Compiling without OpenSSL"
+#undef WITH_OPENSSL
+#endif
+#endif //WITH_OPENSSL
+
 #ifdef WITH_OPENSSL
 
 #include "Interface/Pipe.h"

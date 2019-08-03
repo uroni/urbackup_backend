@@ -208,29 +208,39 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 
 size_t OpenSSLPipe::Read(char * buffer, size_t bsize, int timeoutms)
 {
-	if (BIO_pending(bbio)<=0)
+	bool retry=false;
+	do
 	{
-		if (!bpipe->isReadable(timeoutms))
+		if (BIO_pending(bbio)<=0)
 		{
-			return 0;
+			if (!bpipe->isReadable(timeoutms))
+			{
+				return 0;
+			}
 		}
-	}
 
-	int rc = BIO_read(bbio, buffer, static_cast<int>(bsize));
+		int rc = BIO_read(bbio, buffer, static_cast<int>(bsize));
 
-	if (rc <= 0)
-	{
-		if (!BIO_should_retry(bbio))
+		if (rc <= 0)
 		{
-			has_error = true;
+			if (!BIO_should_retry(bbio))
+			{
+				has_error = true;
+				return 0;
+			}
+			else
+			{
+				retry=true;
+			}
 		}
-		return 0;
-	}
-	else
-	{
-		bpipe->doThrottle(rc, false, true);
-		return rc;
-	}
+		else
+		{
+			bpipe->doThrottle(rc, false, true);
+			return rc;
+		}
+	} while(retry);
+
+	return 0;
 }
 
 bool OpenSSLPipe::Write(const char * buffer, size_t bsize, int timeoutms, bool flush)

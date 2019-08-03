@@ -139,7 +139,7 @@ then
 	])
 fi
 
-AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false]
+AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
 AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
