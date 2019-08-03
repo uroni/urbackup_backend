@@ -59,6 +59,9 @@
 #ifdef _WIN32
 #include "SChannelPipe.h"
 #endif
+#ifdef WITH_OPENSSL
+#include "OpenSSLPipe.h"
+#endif
 
 #ifdef _WIN32
 #include <condition_variable>
@@ -214,6 +217,9 @@ void CServer::setup(void)
 
 #ifdef _WIN32
 	SChannelPipe::init();
+#endif
+#ifdef WITH_OPENSSL
+	OpenSSLPipe::init();
 #endif
 
 #ifdef ENABLE_C_ARES
@@ -1198,7 +1204,8 @@ IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsign
 
 IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(WITH_OPENSSL)
+
 	int64 starttime = Server->getTimeMS();
 	CStreamPipe* bpipe = static_cast<CStreamPipe*>(ConnectStream(pServer, pPort, pTimeoutms));
 
@@ -1208,7 +1215,11 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 	int64 remaining_time = pTimeoutms - (Server->getTimeMS() - starttime);
 	if (remaining_time < 0) remaining_time = 0;
 
+#ifdef _WIN32
 	SChannelPipe* ssl_pipe = new SChannelPipe(bpipe);
+#else
+	OpenSSLPipe* ssl_pipe = new OpenSSLPipe(bpipe);
+#endif
 
 	if (!ssl_pipe->ssl_connect(pServer, static_cast<int>(remaining_time)))
 	{

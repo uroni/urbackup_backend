@@ -17,6 +17,7 @@ public:
 
 	virtual bool isWritable(int timeoutms);
 	virtual bool isReadable(int timeoutms);
+	virtual bool isReadOrWritable(int timeoutms);
 
 	virtual bool hasError(void);
 
@@ -35,9 +36,10 @@ public:
 
 	virtual bool Flush( int timeoutms=-1 );
 
+	bool doThrottle(size_t new_bytes, bool outgoing, bool wait);
+
 private:
 	SOCKET s;
-	bool doThrottle(size_t new_bytes, bool outgoing, bool wait);
 
 	_i64 transfered_bytes;
 

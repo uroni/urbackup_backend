@@ -69,6 +69,33 @@ namespace
 		return rc;
 	}
 
+	int selectSocketReadWrite(SOCKET s, int timeoutms)
+	{
+#ifdef _WIN32
+		fd_set conn;
+		FD_ZERO(&conn);
+		FD_SET(s, &conn);
+
+		timeval *tv = NULL;
+		timeval to;
+		if (timeoutms >= 0)
+		{
+			to.tv_sec = (long)(timeoutms / 1000);
+			to.tv_usec = (long)(timeoutms % 1000) * 1000;
+			tv = &to;
+		}
+
+		int rc = select((int)s + 1, &conn, &conn, NULL, tv);
+#else
+		pollfd conn[1];
+		conn[0].fd = s;
+		conn[0].events = POLLIN|POLLOUT;
+		conn[0].revents = 0;
+		int rc = poll(conn, 1, timeoutms);
+#endif
+		return rc;
+	}
+
 	int selectSocketWrite(SOCKET s, int timeoutms)
 	{
 #ifdef _WIN32
@@ -249,6 +276,31 @@ bool CStreamPipe::isReadable(int timeoutms)
 		if(rc<0)
 		{
 			has_error=true;
+		}
+		return false;
+	}
+}
+
+bool CStreamPipe::isReadOrWritable(int timeoutms)
+{
+	if (!doThrottle(0, false, false))
+	{
+		return false;
+	}
+
+	if (!doThrottle(0, true, false))
+	{
+		return false;
+	}
+
+	int rc = selectSocketReadWrite(s, timeoutms);
+	if (rc>0)
+		return true;
+	else
+	{
+		if (rc<0)
+		{
+			has_error = true;
 		}
 		return false;
 	}
