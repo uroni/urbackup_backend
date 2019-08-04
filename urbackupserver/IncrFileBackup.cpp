@@ -1924,7 +1924,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									}
 								}
 							}
-							else if(!os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+							else if(!os_remove_nonempty_dir(os_file_prefix(curr_fn))
+								|| os_directory_exists(os_file_prefix(curr_fn)) )
 							{
 								ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
 
@@ -1968,7 +1969,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 								}
 							}
 							else if (ftype & EFileType_Directory
-								&& !os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+								&& (!os_remove_nonempty_dir(os_file_prefix(curr_fn))
+									|| os_directory_exists(os_file_prefix(curr_fn)) ) )
 							{
 								ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot (2) - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
 
