@@ -110,7 +110,7 @@ if WITH_SSE4_2
 blockalign_CXXFLAGS += -msse4.2
 endif
 if !WITH_ASSERTIONS
-blockalign_CXXFLAGS=-DNDEBUG
+blockalign_CXXFLAGS +=-DNDEBUG
 endif
 
 install-exec-local: defaults_client init.d_client init.d_client_rh
