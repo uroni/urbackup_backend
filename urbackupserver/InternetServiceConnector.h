@@ -5,6 +5,7 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "server_settings.h"
 #include <queue>
+#include <set>
 
 class IMutex;
 class ICondition;
@@ -144,6 +145,8 @@ private:
 	static std::vector<std::pair<IECDHKeyExchange*, int64> > ecdh_key_exchange_buffer;
 
 	static int64 last_token_remove;
+
+	static std::set<std::string> internet_expect_endpoint;
 
 	unsigned int client_ping_interval;
 };

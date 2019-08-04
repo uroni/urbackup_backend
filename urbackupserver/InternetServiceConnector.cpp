@@ -52,6 +52,7 @@ std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
 std::vector<std::pair<IECDHKeyExchange*, int64> > InternetServiceConnector::ecdh_key_exchange_buffer;
+std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
 
 
 extern ICryptoFactory *crypto_fak;
@@ -107,7 +108,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	is_connected=false;
 	pinging=false;
 	free_connection=false;
-	if (pEndpointName == "127.0.0.1")
+	if (internet_expect_endpoint.find(pEndpointName)!=internet_expect_endpoint.end())
 	{
 		state = ISS_RECEIVE_ENDPOINT;
 		endpoint_remaining = 50;
@@ -617,6 +618,21 @@ void InternetServiceConnector::init_mutex(void)
 {
 	mutex=Server->createMutex();
 	onetime_token_mutex=Server->createMutex();
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	if (db != NULL)
+	{
+		db_results res = db->Read("SELECT value FROM settings_db.settings WHERE key='internet_expect_endpoint' AND clientid=0");
+		if (!res.empty())
+		{
+			std::vector<std::string> toks;
+			Tokenize(res[0]["value"], toks, ",;|");
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				internet_expect_endpoint.insert(toks[i]);
+			}
+		}
+	}
 }
 
 void InternetServiceConnector::destroy_mutex(void)

@@ -186,6 +186,7 @@ std::vector<std::string> getGlobalSettingsList(void)
 	ret.push_back("server_url");
 	ret.push_back("use_incremental_symlinks");
 	ret.push_back("update_dataplan_db");
+	ret.push_back("internet_expect_endpoint");
 	return ret;
 }
 

@@ -3743,7 +3743,8 @@ g.general_settings_list=[
 "global_soft_fs_quota",
 "use_incremental_symlinks",
 "show_server_updates",
-"server_url"
+"server_url",
+"internet_expect_endpoint"
 ];
 g.mail_settings_list=[
 "mail_servername",
