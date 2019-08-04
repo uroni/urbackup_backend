@@ -31,6 +31,14 @@
 IMutex *ServerSettings::g_mutex=NULL;
 std::map<int, SSettings*> ServerSettings::g_settings_cache;
 
+#ifndef DEFAULT_BACKUP_FOLDER
+#ifdef _WIN32
+#define DEFAULT_BACKUP_FOLDER "C:\\urbackup"
+#else
+#define DEFAULT_BACKUP_FOLDER "/mnt/backups/urbackup"
+#endif
+#endif
+
 //#define CLEAR_SETTINGS_CACHE
 
 void ServerSettings::init_mutex(void)
@@ -341,7 +349,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->no_file_backups=(settings_global->getValue("no_file_backups", "false")=="true");
 	settings->overwrite=false;
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
-	settings->backupfolder=trim(settings_global->getValue("backupfolder", "C:\\urbackup"));
+	settings->backupfolder=trim(settings_global->getValue("backupfolder", DEFAULT_BACKUP_FOLDER));
 	settings->backupfolder_uncompr=trim(settings_global->getValue("backupfolder_uncompr", settings->backupfolder));
 	settings->autoshutdown=(settings_global->getValue("autoshutdown", "false")=="true");;
 	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
