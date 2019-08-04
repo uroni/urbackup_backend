@@ -178,6 +178,16 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("CAPATH", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--capath");
+				real_args.push_back(val);
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -259,6 +269,10 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<std::string> config_arg("c", "config",
 			"Read configuration parameters from config file",
 			false, "", "path", cmd);
+
+		TCLAP::ValueArg<std::string> capath_arg("b", "capath",
+			"Path to a certificate authority bundle file or directory",
+			false, "", "path", cmd);
 #endif
 
 		std::vector<std::string> restore_arg_vals;
@@ -331,6 +345,15 @@ int main(int argc, char* argv[])
 			real_args.push_back("--rotate-numfiles");
 			real_args.push_back(convert(rotate_num_files_arg.getValue()));
 		}
+
+#ifndef _WIN32
+		if (!capath_arg.getValue().empty()
+			&& std::find(real_args.begin(), real_args.end(), "--capath") == real_args.end())
+		{
+			real_args.push_back("--capath");
+			real_args.push_back(capath_arg.getValue());
+		}
+#endif
 		
 		return run_real_main(real_args);
 	}

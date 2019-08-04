@@ -7,6 +7,11 @@
 #include <openssl/x509v3.h>
 #include <openssl/bio.h>
 #include "Server.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 OpenSSLPipe::OpenSSLPipe(CStreamPipe * bpipe)
 	: bpipe(bpipe), bbio(NULL), ctx(NULL),
@@ -134,13 +139,20 @@ namespace
 
 void OpenSSLPipe::init()
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	SSL_library_init();
 
 	SSL_load_error_strings();
 
 	OPENSSL_config(NULL);
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	const BIO_METHOD* smeth = BIO_s_socket();
+#else
+	BIO_METHOD* smeth = (BIO_METHOD*)BIO_s_socket();
+#endif
+
 	int s_socket_nosignpipe = BIO_get_new_index();
 
 	meth_socket_nosigpipe = BIO_meth_new(s_socket_nosignpipe, "socket_nosigpipe");
@@ -156,6 +168,10 @@ void OpenSSLPipe::init()
 	BIO_meth_set_write(meth_socket_nosigpipe, bio_write);
 	BIO_meth_set_write_ex(meth_socket_nosigpipe, bio_write_ex);
 }
+
+#ifndef S_ISDIR
+#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
 
 bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 {
@@ -180,21 +196,92 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 	const long flags = SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
 	SSL_CTX_set_options(ctx, flags);
 
-	long res = SSL_CTX_set_default_verify_paths(ctx);
-
-	if (res != 1)
+	std::string capath = Server->getServerParameter("capath");
+	if (!capath.empty())
 	{
-		log_ssl_err();
-		return false;
+		struct stat sbuf;
+		if (stat(capath.c_str(), &sbuf)==0 &&
+			!S_ISDIR(sbuf.st_mode))
+		{
+			long res = SSL_CTX_load_verify_locations(ctx, capath.c_str(), NULL);
+
+			if (res != 1)
+			{
+				log_ssl_err();
+				return false;
+			}
+		}
+		else
+		{
+			long res = SSL_CTX_load_verify_locations(ctx, NULL, capath.c_str());
+
+			if (res != 1)
+			{
+				log_ssl_err();
+				return false;
+			}
+		}
 	}
-
-	/*res = SSL_CTX_load_verify_locations(ctx, "D:\\tmp\\cacert-2019-05-15.pem", NULL);
-
-	if (res != 1)
+	else
 	{
-		log_ssl_err();
-		return false;
-	}*/
+#ifndef OPENSSL_SEARCH_CA
+		long res = SSL_CTX_set_default_verify_paths(ctx);
+
+		if (res != 1)
+		{
+			log_ssl_err();
+			return false;
+		}
+#else
+		char* capaths[] = {
+			"/etc/pki/tls/certs/ca-bundle.crt",
+			"/etc/ssl/certs/ca-certificates.crt",			
+			"/var/lib/ca-certificates/ca-bundle.pem",
+			"/system/etc/security/cacerts",
+			"/etc/ssl/certs",
+			"/etc/pki/tls/certs",
+			"/etc/openssl/certs",
+			"/var/ssl/certs",
+			NULL
+		};
+
+		bool found_ca = false;
+
+		for (char* cafn = capaths[0]; cafn != NULL; ++cafn)
+		{
+			struct stat sbuf;
+			if (stat(cafn, &sbuf) == 0)
+			{
+				if (S_ISDIR(sbuf.st_mode))
+				{
+					long res = SSL_CTX_load_verify_locations(ctx, NULL, cafn);
+
+					if (res == 1)
+					{
+						found_ca = true;
+						break;
+					}
+				}
+				else
+				{
+					long res = SSL_CTX_load_verify_locations(ctx, cafn, NULL);
+
+					if (res == 1)
+					{
+						found_ca = true;
+						break;
+					}
+				}
+			}
+		}		
+
+		if (!found_ca)
+		{
+			Server->Log("No ca certificates found. Please specify certificate bundle path via capath parameter", LL_WARNING);
+			return false;
+		}
+#endif
+	}
 
 	bbio = BIO_new_ssl(ctx, 1);
 
@@ -226,7 +313,7 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 		return false;
 	}
 
-	res = SSL_set_cipher_list(ssl, PREFERRED_CIPHERS);
+	long res = SSL_set_cipher_list(ssl, PREFERRED_CIPHERS);
 	if (res!=1)
 	{
 		log_ssl_err();
