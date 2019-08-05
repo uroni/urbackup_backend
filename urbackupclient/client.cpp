@@ -2351,10 +2351,11 @@ void IndexThread::initialCheckRecur1(std::vector<SRecurParams>& params_stack, SR
 
 	if (!params.file.issym || !with_proper_symlinks)
 	{
-		params_stack[stack_idx].recur_ret.has_include = initialCheck(params_stack, stack_idx, 
+		bool b_has_include = initialCheck(params_stack, stack_idx, 
 			volume, vssvolume, params.orig_dir + os_file_sep() + params.file.name, params.dir + os_file_sep() + params.file.name,
 			params.named_path + os_file_sep() + params.file.name, outfile, false, flags, use_db, false, params.depth + 1,
 			dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+		params_stack[stack_idx].recur_ret.has_include = b_has_include;
 	}
 }
 
