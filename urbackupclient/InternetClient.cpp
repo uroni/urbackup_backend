@@ -1001,7 +1001,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			std::string password = getafter(":", proxy);
 			std::string adata = username + ":" + password;
 
-			authorization = "Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
+			authorization = "Proxy-Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
 		}
 
 		unsigned short port = ssl ? 443 : 80;
