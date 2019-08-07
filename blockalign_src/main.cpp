@@ -43,6 +43,7 @@
 #include <assert.h>
 #ifdef BLOCKALIGN_USE_CRYPTOPP
 #include "../cryptoplugin/cryptopp_inc.h"
+#include "crc32c-adler.cpp"
 #endif
 
 const unsigned int blocksize_min = 64;

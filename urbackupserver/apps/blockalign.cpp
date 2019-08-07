@@ -2,7 +2,6 @@
 #define BLOCKALIGN_NO_MAIN
 #ifndef _WIN32
 #define BLOCKALIGN_USE_CRYPTOPP
-#include "../../blockalign_src/crc32c-adler.cpp"
 #endif
 #include "../../blockalign_src/main.cpp"
 
