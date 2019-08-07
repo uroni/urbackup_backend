@@ -25,7 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clientctl", "clientctl\clientctl.vcxproj", "{DC9628DB-0FBF-4E1C-944C-6F877E185FA7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blockalign", "blockalign\blockalign.vcxproj", "{C2F8110F-6103-4669-9CA5-C332DC5FE228}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blockalign", "blockalign_src\blockalign.vcxproj", "{C2F8110F-6103-4669-9CA5-C332DC5FE228}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luaplugin", "luaplugin\luaplugin.vcxproj", "{249B45EB-BDD2-4F47-B2F8-3F4E3B805ACC}"
 EndProject

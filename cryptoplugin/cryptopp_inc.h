@@ -13,6 +13,7 @@
 #include <eccrypto.h>
 #include <oids.h>
 #include <dsa.h>
+#include <crc.h>
 #else
 #include "../config.h"
 #define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
@@ -29,6 +30,7 @@
 #define CRYPTOPP_INCLUDE_ECCRYPTO <CRYPTOPP_INCLUDE_PREFIX/eccrypto.h>
 #define CRYPTOPP_INCLUDE_OIDS <CRYPTOPP_INCLUDE_PREFIX/oids.h>
 #define CRYPTOPP_INCLUDE_DSA <CRYPTOPP_INCLUDE_PREFIX/dsa.h>
+#define CRYPTOPP_INCLUDE_CRC <CRYPTOPP_INCLUDE_PREFIX/crc.h>
 
 #include CRYPTOPP_INCLUDE_AES
 #include CRYPTOPP_INCLUDE_SHA
@@ -44,6 +46,7 @@
 #include CRYPTOPP_INCLUDE_ECCRYPTO
 #include CRYPTOPP_INCLUDE_OIDS
 #include CRYPTOPP_INCLUDE_DSA
+#include CRYPTOPP_INCLUDE_CRC
 #endif
 
 namespace CryptoPPCompat

@@ -15,15 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="..\blockalign_src\crc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="crc32c-adler.cpp">
+    <ClCompile Include="..\blockalign_src\crc32c-adler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\blockalign_src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="crc32c-adler.h">
+    <ClInclude Include="..\blockalign_src\crc32c-adler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\blockalign_src\crc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

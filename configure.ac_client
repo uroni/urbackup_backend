@@ -80,6 +80,10 @@ AC_CXX_HAVE_LONG_LONG
 
 AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
+
+AX_CHECK_COMPILE_FLAG(-msse4.1 -msse4.2, 
+	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xyes)],
+	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xno)])
 	
 AX_CHECK_LINK_FLAG([-Wl,-z,relro],
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])

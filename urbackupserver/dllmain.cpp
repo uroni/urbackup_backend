@@ -150,6 +150,7 @@ bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 int md5sum_check();
+int blockalign();
 
 std::string lang="en";
 std::string time_format_str="%Y-%m-%d %H:%M";
@@ -517,10 +518,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				Server->Log("Cannot open file to hash (hash_file) \"" + Server->getServerParameter("hash_file") + "\" for reading. " + os_last_error_str(), LL_ERROR);
 			}
 		}
+		else if (app == "blockalign")
+		{
+			rc = blockalign();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy, md5sum_check, hash");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy, md5sum_check, hash, blockalign");
 		}
 		exit(rc);
 	}
