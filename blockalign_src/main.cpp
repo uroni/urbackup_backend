@@ -22,8 +22,6 @@
 #include <stdint.h>
 #include <string>
 
-#include "crc32c-adler.h"
-#include "crc.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -44,6 +42,9 @@
 #ifdef BLOCKALIGN_USE_CRYPTOPP
 #include "../cryptoplugin/cryptopp_inc.h"
 #include "crc32c-adler.cpp"
+#else
+#include "crc32c-adler.h"
+#include "crc.h"
 #endif
 
 const unsigned int blocksize_min = 64;
