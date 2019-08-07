@@ -140,6 +140,8 @@ then
 	exit 2
 fi
 
+install -c "$TARGET/blockalign" "$PREFIX/bin"
+
 test -e "$PREFIX/var/urbackup/data" || install -c -m 744 -d "$PREFIX/var/urbackup/data"
 test -e "$PREFIX/share/urbackup/scripts" || install -c -m 744 -d "$PREFIX/share/urbackup/scripts"
 test -e "$PREFIX/etc/urbackup" || install -c -m 744 -d "$PREFIX/etc/urbackup"

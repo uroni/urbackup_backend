@@ -115,6 +115,9 @@ do
 	cp urbackupclientctl install-data/$arch/
 	cp urbackupclientctl install-data-dbg/$arch/
 	$STRIP_CMD install-data/$arch/urbackupclientctl
+	cp blockalign install-data/$arch/
+	cp blockalign install-data-dbg/$arch/
+	$STRIP_CMD install-data/$arch/blockalign
 	
 	./switch_build.sh client
 done
