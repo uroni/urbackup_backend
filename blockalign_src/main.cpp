@@ -43,7 +43,6 @@
 #include <assert.h>
 #ifdef BLOCKALIGN_USE_CRYPTOPP
 #include "../cryptoplugin/cryptopp_inc.h"
-#include "crc32c-adler.cpp"
 #endif
 
 const unsigned int blocksize_min = 64;
@@ -996,6 +995,8 @@ bool restore_stream(const std::string& in_fn, std::istream& in_stream, std::ostr
 
     delete[] buffer;
     assert(output_buffers.empty());
+
+	return true;
 }
 
 #ifndef BLOCKALIGN_NO_MAIN
