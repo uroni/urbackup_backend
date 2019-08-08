@@ -247,8 +247,9 @@ bool OpenSSLPipe::ssl_connect(const std::string & p_hostname, int timeoutms)
 
 		bool found_ca = false;
 
-		for (char* cafn = capaths[0]; cafn != NULL; ++cafn)
+		for (size_t i=0;capaths[i]!=NULL;++i)
 		{
+			char* cafn = capaths[i];
 			struct stat sbuf;
 			if (stat(cafn, &sbuf) == 0)
 			{
