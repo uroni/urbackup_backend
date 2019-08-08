@@ -263,7 +263,7 @@ namespace cryptopp_crc
 			}
 		}
 		// GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION
-		__except (EXCEPTION_EXECUTE_HANDLER)
+		__except (1)
 		{
 			return false;
 		}
