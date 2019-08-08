@@ -37,6 +37,12 @@
 #if !defined(CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE) && !defined(CRYPTOPP_DISABLE_ASM)
 # if defined(__ARM_FEATURE_CRC32) || defined(_M_ARM64)
 #  define CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE 1
+#if defined(_MSC_VER) 
+#include <intrin.h>
+#else
+# include <stdint.h>
+# include <arm_acle.h>
+#endif
 # endif
 #endif
 
