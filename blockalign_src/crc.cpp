@@ -354,13 +354,18 @@ namespace cryptopp_crc
 			DetectArmFeatures();
 		return g_hasCRC32;
 	}
+	static jmp_buf s_jmpNoCRC32;
+	static void SigIllHandlerCRC32(int)
+	{
+		longjmp(s_jmpNoCRC32, 1);
+	}
 	bool TryCRC32()
 	{
 # if defined(CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY)
 		volatile bool result = true;
 		__try
 		{
-			word32 w = 0, x = 1; word16 y = 2; byte z = 3;
+			unsigned int w = 0, x = 1; unsigned short y = 2; unsigned char z = 3;
 			w = __crc32cw(w, x);
 			w = __crc32ch(w, y);
 			w = __crc32cb(w, z);
@@ -389,7 +394,7 @@ namespace cryptopp_crc
 			result = false;
 		else
 		{
-			word32 w = 0, x = 1; word16 y = 2; byte z = 3;
+			unsigned int w = 0, x = 1; unsigned short y = 2; unsigned char z = 3;
 			w = __crc32cw(w, x);
 			w = __crc32ch(w, y);
 			w = __crc32cb(w, z);
