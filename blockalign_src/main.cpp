@@ -42,6 +42,9 @@
 #ifdef BLOCKALIGN_USE_CRYPTOPP
 #include "../cryptoplugin/cryptopp_inc.h"
 #include "crc32c-adler.cpp"
+#if (CRYPTOPP_VERSION < 564)
+#include "crc.cpp"
+#endif
 #else
 #include "crc32c-adler.h"
 #include "crc.h"
@@ -66,7 +69,7 @@ namespace
 		const char *input,
 		size_t length)
 	{
-#ifndef BLOCKALIGN_USE_CRYPTOPP
+#if !defined(BLOCKALIGN_USE_CRYPTOPP) || (CRYPTOPP_VERSION < 564)
 		uint32_t r2 = cryptopp_crc::crc32c_hw(crc, input, length);
 #ifndef NDEBUG
 		uint32_t r1 = crc32c_sw(input, length, crc);

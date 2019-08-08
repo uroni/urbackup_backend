@@ -46,7 +46,9 @@
 #include CRYPTOPP_INCLUDE_ECCRYPTO
 #include CRYPTOPP_INCLUDE_OIDS
 #include CRYPTOPP_INCLUDE_DSA
+#if (CRYPTOPP_VERSION >= 564)
 #include CRYPTOPP_INCLUDE_CRC
+#endif
 #endif
 
 namespace CryptoPPCompat
