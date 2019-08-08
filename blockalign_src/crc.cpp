@@ -218,6 +218,7 @@ namespace cryptopp_crc
 		return IsAlignedOn(ptr, GetAlignmentOf<T>());
 	}
 
+#if CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
 #if _MSC_VER >= 1400 && CRYPTOPP_BOOL_X64
 
 	bool CpuId(word32 input, word32 output[4])
@@ -317,7 +318,6 @@ namespace cryptopp_crc
 
 #endif
 
-#if CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
 	bool g_x86DetectionDone = false;
 	bool g_hasSSE4 = false;
 
@@ -339,7 +339,71 @@ namespace cryptopp_crc
 			DetectX86Features();
 		return g_hasSSE4;
 	}
-#endif
+#elif (CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE) //CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
+	bool g_ArmDetectionDone = false;
+	bool g_hasCRC32 = false;
+	inline bool HasCRC32()
+	{
+		if (!g_ArmDetectionDone)
+			DetectArmFeatures();
+		return g_hasCRC32;
+	}
+	bool TryCRC32()
+	{
+# if defined(CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY)
+		volatile bool result = true;
+		__try
+		{
+			word32 w = 0, x = 1; word16 y = 2; byte z = 3;
+			w = __crc32cw(w, x);
+			w = __crc32ch(w, y);
+			w = __crc32cb(w, z);
+
+			result = !!w;
+		}
+		__except (1)
+		{
+			return false;
+		}
+		return result;
+# else
+		// longjmp and clobber warnings. Volatile is required.
+		// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
+		volatile bool result = true;
+
+		volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCRC32);
+		if (oldHandler == SIG_ERR)
+			return false;
+
+		volatile sigset_t oldMask;
+		if (sigprocmask(0, NULL, (sigset_t*)&oldMask))
+			return false;
+
+		if (setjmp(s_jmpNoCRC32))
+			result = false;
+		else
+		{
+			word32 w = 0, x = 1; word16 y = 2; byte z = 3;
+			w = __crc32cw(w, x);
+			w = __crc32ch(w, y);
+			w = __crc32cb(w, z);
+
+			// Hack... GCC optimizes away the code and returns true
+			result = !!w;
+		}
+
+		sigprocmask(SIG_SETMASK, (sigset_t*)&oldMask, NULL);
+		signal(SIGILL, oldHandler);
+		return result;
+# endif
+	}
+	void DetectArmFeatures()
+	{
+		g_hasCRC32 = TryCRC32();
+		*((volatile bool*)&g_ArmDetectionDone) = true;
+	}
+
+#endif //CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE
 
 	// Castagnoli CRC32C (iSCSI)
 
