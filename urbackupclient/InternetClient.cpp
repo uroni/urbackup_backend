@@ -997,8 +997,8 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			std::string udata = getuntil("@", proxy);
 			proxy = getafter("@", proxy);
 
-			std::string username = getuntil(":", proxy);
-			std::string password = getafter(":", proxy);
+			std::string username = getuntil(":", udata);
+			std::string password = getafter(":", udata);
 			std::string adata = username + ":" + password;
 
 			authorization = "Proxy-Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
