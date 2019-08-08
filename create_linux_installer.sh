@@ -48,6 +48,10 @@ then
 else
         export TARGET=$TARGET_FOLDER
 fi
+if [[ $TARGET_FOLDER == "aarch64-linux-android" ]]
+then
+		NDK_CPUFLAGS="-march=armv8-a+crc"
+fi
 export NDK=/media/data2/android-ndk/android-ndk-r20
 export HOST_TAG=linux-x86_64
 export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/$HOST_TAG
