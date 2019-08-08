@@ -348,12 +348,6 @@ namespace cryptopp_crc
 #elif (CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE) //CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
 	bool g_ArmDetectionDone = false;
 	bool g_hasCRC32 = false;
-	inline bool HasCRC32()
-	{
-		if (!g_ArmDetectionDone)
-			DetectArmFeatures();
-		return g_hasCRC32;
-	}
 	static jmp_buf s_jmpNoCRC32;
 	static void SigIllHandlerCRC32(int)
 	{
@@ -382,7 +376,7 @@ namespace cryptopp_crc
 		// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
 		volatile bool result = true;
 
-		volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCRC32);
+		volatile sighandler_t oldHandler = signal(SIGILL, SigIllHandlerCRC32);
 		if (oldHandler == SIG_ERR)
 			return false;
 
@@ -413,7 +407,12 @@ namespace cryptopp_crc
 		g_hasCRC32 = TryCRC32();
 		*((volatile bool*)&g_ArmDetectionDone) = true;
 	}
-
+	inline bool HasCRC32()
+	{
+		if (!g_ArmDetectionDone)
+			DetectArmFeatures();
+		return g_hasCRC32;
+	}
 #endif //CRYPTOPP_BOOL_ARM_CRC32_INTRINSICS_AVAILABLE
 
 	// Castagnoli CRC32C (iSCSI)
