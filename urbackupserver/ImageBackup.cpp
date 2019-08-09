@@ -432,6 +432,17 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 			ScopedDeleteFile tmpf_del(tmpf);
 
+			bool has_err_file = true;
+			{
+				_u32 rc2 = fc.GetFile(loadfn + ".err", tmpf, true, false, 0, false, 0);
+				if (rc2 == ERR_CANNOT_OPEN_FILE)
+				{
+					has_err_file = false;
+				}
+			}
+
+			tmpf->Resize(0, false);
+			tmpf->Seek(0);
 			rc = ERR_CANNOT_OPEN_FILE;
 			int retry = 0;
 			while (Server->getTimeMS() - starttime < 60 * 60 * 1000
@@ -448,6 +459,22 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 					}
 					else
 					{
+						if (!has_err_file)
+						{
+							tmpf->Resize(0, false);
+							tmpf->Seek(0);
+							_u32 rc2 = fc.GetFile(loadfn + ".err", tmpf, true, false, 0, false, 0);
+
+							if (rc2 == ERR_SUCCESS)
+							{
+								if (tmpf->Size() < 100 * 1024)
+									ServerLogger::Log(logid, "Error loading ZIP file MBR (1): " + tmpf->Read(0LL, static_cast<_u32>(tmpf->Size())), LL_ERROR);
+								else
+									ServerLogger::Log(logid, "Error loading ZIP file MBR (1)(error too large)", LL_ERROR);
+								return false;
+							}
+						}
+
 						Server->wait(20000);
 					}
 					++retry;
@@ -460,10 +487,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 				tmpf->Seek(0);
 				_u32 rc2 = fc.GetFile(loadfn+".err", tmpf, true, false, 0, false, 0);
 
-				if (rc2 == ERR_SUCCESS
-					&& tmpf->Size()<100*1024*1024)
+				if (rc2 == ERR_SUCCESS)
 				{
-					ServerLogger::Log(logid, "Error loading ZIP file MBR: "+tmpf->Read(0LL, static_cast<_u32>(tmpf->Size()) ), LL_ERROR);
+					if(tmpf->Size()<100 * 1024)
+						ServerLogger::Log(logid, "Error loading ZIP file MBR: "+tmpf->Read(0LL, static_cast<_u32>(tmpf->Size()) ), LL_ERROR);
+					else
+						ServerLogger::Log(logid, "Error loading ZIP file MBR (error too large)", LL_ERROR);
 					return false;
 				}
 				else
