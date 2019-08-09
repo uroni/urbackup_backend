@@ -2927,7 +2927,7 @@ bool ClientMain::authenticatePubKey()
 			"&signature="+base64_encode_dash(signature)+
 			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
 			"&session_identity="+identity +
-			(clientsubname.empty() ? "" : "&clientsubname="+clientsubname), "ok", "Error sending server signature to client", 10000, 10, true);
+			(clientsubname.empty() ? "" : "&clientsubname="+ EscapeParamString(clientsubname)), "ok", "Error sending server signature to client", 10000, 10, true);
 
 		if(ret)
 		{
