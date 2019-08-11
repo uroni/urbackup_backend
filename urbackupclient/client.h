@@ -434,8 +434,8 @@ private:
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
-#ifdef _WIN32
 	void updateBackupDirsWithAll();
+#ifdef _WIN32
 	bool start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction);
 	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref, bool* has_active_transaction);
 	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);

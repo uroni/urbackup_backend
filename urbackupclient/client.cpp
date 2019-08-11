@@ -2066,7 +2066,7 @@ void IndexThread::updateBackupDirsWithAll()
 			else
 				cvol = os_get_final_path(cvol);
 #else
-			cvol = os_final_path(cvol);
+			cvol = os_get_final_path(cvol);
 #endif
 
 			volumes_norm.push_back(cvol);
@@ -2139,7 +2139,7 @@ void IndexThread::updateBackupDirsWithAll()
 				int new_flags = backup_dirs[ref_idx].flags;
 
 #ifndef _WIN32
-				flags |= EBackupDirFlag_OneFilesystem;
+				new_flags |= EBackupDirFlag_OneFilesystem;
 #endif
 
 				q_add->Bind(ClientConnector::removeIllegalCharsFromBackupName(name));
