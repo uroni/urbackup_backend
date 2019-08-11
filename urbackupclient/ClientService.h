@@ -227,6 +227,8 @@ public:
 
 	static void timeoutFilesrvConnections();
 
+	static std::string removeIllegalCharsFromBackupName(std::string in);
+
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);

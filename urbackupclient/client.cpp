@@ -380,6 +380,58 @@ namespace
 #endif //HAVE_MNTENT_H
 	}
 #endif //!_WIN32
+
+#ifndef _WIN32
+	std::vector<std::string> getAllMounts(const std::vector<std::string>& excl_fs, bool filter_usb)
+	{
+#ifndef HAVE_MNTENT_H
+		return std::vector<std::string>();
+#else
+		std::vector<std::string> usb_devs;
+
+		if (filter_usb)
+		{
+			std::vector<SFile> lnks = getFiles("/dev/disk/by-id");
+
+			for (size_t i = 0; i < lnks.size(); ++i)
+			{
+				if (lnks[i].issym
+					&& next(lnks[i].name, 0, "usb-"))
+				{
+					std::string symtarget;
+					if (os_get_symlink_target("/dev/disk/by-id/" + lnks[i].name, symtarget))
+					{
+						usb_devs.push_back(symtarget);
+					}
+				}
+			}
+
+			std::sort(usb_devs.begin(), usb_devs.end());
+		}
+
+		FILE *aFile;
+
+		aFile = setmntent("/proc/mounts", "r");
+		if (aFile == NULL) {
+			Server->Log("Opening /proc/mounts failed. " + os_last_error_str(), LL_WARNING);
+			return std::vector<std::string>();
+		}
+		struct mntent *ent;
+		std::vector<std::string> ret;
+		while (NULL != (ent = getmntent(aFile)))
+		{
+			if (!std::binary_search(excl_fs.begin(), excl_fs.end(), std::string(ent->mnt_type))
+				&& !std::binary_search(usb_devs.begin(), usb_devs.end(), std::string(ent->mnt_fsname)) )
+			{
+				ret.push_back(ent->mnt_dir);
+			}
+		}
+		endmntent(aFile);
+
+		return ret;
+#endif
+	}
+#endif
 }
 
 IMutex *IndexThread::filelist_mutex=NULL;
@@ -1349,6 +1401,10 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	index_follow_last = false;
 	index_keep_files = false;
 
+#ifdef _WIN32
+	updateBackupDirsWithAll();
+#endif
+
 	std::vector<std::string> selected_dirs;
 	std::vector<int> selected_dir_db_tgroup;
 	for(size_t i=0;i<backup_dirs.size();++i)
@@ -1357,6 +1413,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 			|| (backup_with_vss_components
 				&& backup_dirs[i].group== c_group_vss_components) )
 		{
+			if (isAllSpecialDir(backup_dirs[i]))
+				continue;
+
 			selected_dirs.push_back(removeDirectorySeparatorAtEnd(backup_dirs[i].path));
 #ifdef _WIN32
 			selected_dirs[selected_dirs.size()-1]=strlower(selected_dirs[selected_dirs.size()-1]);
@@ -1523,6 +1582,15 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 			
 			if(backup_dirs[i].symlinked &&
 			    !backup_dirs[i].symlinked_confirmed)
+			{
+				continue;
+			}
+
+			if (isAllSpecialDir(backup_dirs[i]))
+				continue;
+
+			if (isExcluded(index_exclude_dirs, backup_dirs[i].path)
+				&& isExcluded(index_exclude_dirs, backup_dirs[i].tname))
 			{
 				continue;
 			}
@@ -1897,6 +1965,249 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	}
 
 	return ret;
+}
+
+void IndexThread::updateBackupDirsWithAll()
+{
+	bool has_all = false;
+	bool has_all_nonusb = false;
+	size_t ref_idx;
+	std::vector<std::string> filter_add;
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL" && backup_dirs[i].tname == "ALL"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+			filter_add.push_back("tmpfs");
+		}
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_NONUSB" &&  backup_dirs[i].tname == "ALL_NONUSB"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all_nonusb = true;
+			filter_add.push_back("tmpfs");
+		}
+#ifndef _WIN32
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_NONET" &&  backup_dirs[i].tname == "ALL_NONET"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+			filter_add.push_back("nfs");
+			filter_add.push_back("smbfs");
+			filter_add.push_back("cifs");
+		}
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_WITH_TMPFS" &&  backup_dirs[i].tname == "ALL_WITH_TMPFS"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+		}
+#endif
+	}
+
+	std::vector<std::string> volumes;
+#ifdef _WIN32
+	if (has_all)
+	{
+		std::string vols = get_all_volumes_list(false, volumes_cache);
+		Tokenize(vols, volumes, ";,");
+	}
+	else if (has_all_nonusb)
+	{
+		std::string vols = get_all_volumes_list(true, volumes_cache);
+		Tokenize(vols, volumes, ";,");
+	}
+#else
+	if (has_all || has_all_nonusb)
+	{
+#ifndef HAVE_MNTENT_H
+		VSSLog("Error getting mounted file systems. Client not compiled with HAVE_MNTENT_H", LL_ERROR);
+#endif
+		filter_add.push_back("sysfs");
+		filter_add.push_back("proc");
+		filter_add.push_back("devtmpfs");
+		filter_add.push_back("devpts");
+		filter_add.push_back("securityfs");
+		filter_add.push_back("cgroup");
+		filter_add.push_back("pstore");
+		filter_add.push_back("autofs");
+		filter_add.push_back("debugfs");
+		filter_add.push_back("mqueue");
+		filter_add.push_back("hugetlbfs");
+		filter_add.push_back("configfs");
+		filter_add.push_back("cgroup2");
+		filter_add.push_back("fusectl");
+		std::sort(filter_add.begin(), filter_add.end());
+		volumes = getAllMounts(filter_add, has_all_nonusb);
+	}
+#endif
+
+	bool new_volumes = false;
+
+	if (!volumes.empty())
+	{
+		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert((int)EBackupDirServerDefault_AllSrc)+", ?, ?)", false);
+		IQuery *q_name = db->Prepare("SELECT id FROM backupdirs WHERE name=?", false);
+
+		std::vector<std::string> volumes_norm;
+		for (size_t i = 0; i < volumes.size(); ++i)
+		{
+			std::string cvol = trim(volumes[i]);
+#ifdef _WIN32
+			if (!normalizeVolume(cvol))
+				continue;
+			else
+				cvol = os_get_final_path(cvol);
+#else
+			cvol = os_final_path(cvol);
+#endif
+
+			volumes_norm.push_back(cvol);
+
+			bool found_watch = false;
+			bool found = false;
+			for (size_t j = 0; j < backup_dirs.size(); ++j)
+			{
+				std::string ovol = backup_dirs[j].path;
+#ifdef _WIN32
+				if (ovol.size() <= 3)
+					normalizeVolume(ovol);
+#endif
+
+				if (ovol == cvol)
+				{
+					found_watch = true;
+				}
+				if (ovol == cvol
+					&& backup_dirs[j].group == index_group)
+				{
+					found = true;
+				}
+			}
+
+#ifdef _WIN32
+			if (!found_watch)
+			{
+				std::string msg = "A" + os_get_final_path(cvol);
+				dwt->getPipe()->Write(msg);
+			}
+#endif
+
+			if(!found)
+			{
+				new_volumes = true;			
+
+				std::string name = volumes[i];
+
+#ifndef _WIN32
+				if (name.empty() || name == "/")
+					name = "rootfs";
+				else
+					name = ExtractFileName(name);
+#endif
+
+				q_name->Bind(name);
+				std::string orig_name = name;
+				if (q_name->Read().empty() == false
+					|| name == "urbackup")
+				{
+					for (int k = 0; k<100; ++k)
+					{
+						q_name->Reset();
+						q_name->Bind(name + "_" + convert(k));
+						if (q_name->Read().empty() == true)
+						{
+							name += "_" + convert(k);
+							break;
+						}
+					}
+
+					if (orig_name == name)
+					{
+						name += "_" + Server->secureRandomString(16);
+					}
+				}
+				q_name->Reset();
+
+				int new_flags = backup_dirs[ref_idx].flags;
+
+#ifndef _WIN32
+				flags |= EBackupDirFlag_OneFilesystem;
+#endif
+
+				q_add->Bind(ClientConnector::removeIllegalCharsFromBackupName(name));
+				q_add->Bind(cvol);
+				q_add->Bind(new_flags);
+				q_add->Bind(index_group);
+				q_add->Write();
+				q_add->Reset();
+			}
+		}
+
+		db->destroyQuery(q_add);
+		db->destroyQuery(q_name);
+
+		IQuery* q_del = db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
+		for (size_t i = 0; i < backup_dirs.size();)
+		{
+			if (backup_dirs[i].group == index_group
+				&& backup_dirs[i].server_default == EBackupDirServerDefault_AllSrc)
+			{
+				std::string ovol = backup_dirs[i].path;
+#ifdef _WIN32
+				if (ovol.size() <= 3)
+					normalizeVolume(ovol);
+#endif
+
+				if (std::find(volumes_norm.begin(), volumes_norm.end(), ovol)== volumes_norm.end())
+				{
+					std::string cpath = backup_dirs[i].path;
+					q_del->Bind(backup_dirs[i].id);
+					q_del->Write();
+					q_del->Reset();
+					backup_dirs.erase(backup_dirs.begin() + i);
+
+#ifdef _WIN32
+					bool found = false;
+					for (size_t j = 0; j < backup_dirs.size(); ++j)
+					{
+						if (backup_dirs[j].path == cpath)
+						{
+							found = true;
+							break;
+						}
+					}
+
+					if (!found)
+					{
+						std::string msg = "D" + os_get_final_path(cpath);
+						dwt->getPipe()->Write(msg);
+					}
+#endif
+
+					continue;
+				}				
+			}
+			++i;
+		}
+		db->destroyQuery(q_del);
+	}
+
+	if (new_volumes)
+	{
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+		readBackupDirs();
+	}
 }
 
 void IndexThread::resetFileEntries(void)
@@ -2445,6 +2756,15 @@ bool IndexThread::readBackupDirs(void)
 	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (isAllSpecialDir(backup_dirs[i]))
+		{
+			if (index_group != -1 && backup_dirs[i].group == index_group)
+			{
+				has_backup_dir = true;
+			}
+			continue;
+		}
+
 		backup_dirs[i].path=os_get_final_path(backup_dirs[i].path);
 		Server->Log("Final path: "+backup_dirs[i].path, LL_INFO);
 
@@ -6744,7 +7064,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& o
 
 	SBackupDir backup_dir;
 
-	cd->addBackupDir(name, target, index_server_default ? 1: 0, index_flags, index_group, 1);
+	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1);
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
@@ -7604,4 +7924,38 @@ bool IndexThread::commitPhashQueue()
 	}
 	phash_queue_buffer.clear();
 	return ret;
+}
+
+bool IndexThread::isAllSpecialDir(const SBackupDir& bdir)
+{
+	if (bdir.path == "ALL"
+		&& bdir.tname == "ALL"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+
+	if (bdir.path == "ALL_NONUSB"
+		&& bdir.tname == "ALL_NONUSB"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+#ifndef _WIN32
+	if (bdir.path == "ALL_NONET"
+		&& bdir.tname == "ALL_NONET"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+
+	if (bdir.path == "ALL_WITH_TMPFS"
+		&& bdir.tname == "ALL_WITH_TMPFS"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+#endif
+
+	return false;
 }

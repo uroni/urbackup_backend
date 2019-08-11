@@ -42,6 +42,13 @@ enum EBackupDirFlag
 	EBackupDirFlag_IncludeDirectorySymlinks = 256
 };
 
+enum EBackupDirServerDefault
+{
+	EBackupDirServerDefault_No = 0,
+	EBackupDirServerDefault_Default = 1,
+	EBackupDirServerDefault_AllSrc = 2
+};
+
 struct SBackupDir
 {
 	int id;
@@ -51,7 +58,7 @@ struct SBackupDir
 	int group;
 	bool symlinked;
 	bool symlinked_confirmed;
-	bool server_default;
+	EBackupDirServerDefault server_default;
 	bool reset_keep;
 };
 

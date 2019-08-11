@@ -377,7 +377,11 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.path=res[i]["path"];
 		dir.flags=watoi(res[i]["optional"]);
 		dir.group=watoi(res[i]["tgroup"]);
-		dir.server_default=(res[i]["server_default"] == "1");
+		int server_default = watoi(res[i]["server_default"]);
+		if (server_default < 0 || server_default>2)
+			dir.server_default = EBackupDirServerDefault_No;
+		else
+			dir.server_default = static_cast<EBackupDirServerDefault>(server_default);
 		dir.symlinked=(res[i]["symlinked"]=="1");
 		dir.symlinked_confirmed=false;
 		dir.reset_keep = (res[i]["reset_keep"] == "1");

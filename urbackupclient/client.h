@@ -435,6 +435,7 @@ private:
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32
+	void updateBackupDirsWithAll();
 	bool start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction);
 	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref, bool* has_active_transaction);
 	bool wait_for(IVssAsync *vsasync, const std::string& error_prefix);
@@ -598,6 +599,8 @@ private:
 
 	bool commitPhashQueue();
 
+	bool isAllSpecialDir(const SBackupDir& bdir);
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
@@ -674,7 +677,7 @@ private:
 	int index_group;
 	int index_flags;
 	std::string index_clientsubname;
-	bool index_server_default;
+	EBackupDirServerDefault index_server_default;
 	bool index_follow_last;
 	bool index_keep_files;
 

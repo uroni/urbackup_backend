@@ -1208,40 +1208,38 @@ bool ClientConnector::checkPassword(const std::string &pw, bool& change_pw)
 	return false;
 }
 
-namespace
+std::string ClientConnector::removeIllegalCharsFromBackupName(std::string in)
 {
-	std::string removeChars(std::string in)
+	char illegalchars[] = {'*', ':', '/' , '\\'};
+	std::string ret;
+	for(size_t i=0;i<in.size();++i)
 	{
-		char illegalchars[] = {'*', ':', '/' , '\\'};
-		std::string ret;
-		for(size_t i=0;i<in.size();++i)
+		bool found=false;
+		for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
 		{
-			bool found=false;
-			for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
+			if(illegalchars[j]==in[i])
 			{
-				if(illegalchars[j]==in[i])
-				{
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-			{
-				ret+=in[i];
+				found=true;
+				break;
 			}
 		}
-		return ret;
+		if(!found)
+		{
+			ret+=in[i];
+		}
 	}
+	return ret;
 }
-
 
 bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
-	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
+	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs");
+	bool all_virtual_clients = false;
 	if (args.find("all_virtual_clients") != args.end())
 	{
+		all_virtual_clients = true;
 		db->Write("DELETE FROM backupdirs WHERE symlinked=0");
 	}
 	else
@@ -1354,7 +1352,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				name.resize(flags_off);
 			}
 
-			name=removeChars(name);
+			name=removeIllegalCharsFromBackupName(name);
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
 			{
@@ -1365,13 +1363,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					dir="/";
 					if(name.empty())
 					{
-						name="root";
+						name="rootfs";
 					}
 				}
 #endif
 			}
 
 			q2->Bind(name);
+			std::string orig_name = name;
 			if(q2->Read().empty()==false
 				|| name=="urbackup")
 			{
@@ -1384,6 +1383,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 						name+="_"+convert(k);
 						break;
 					}
+				}
+
+				if (orig_name == name)
+				{
+					name += "_" + Server->secureRandomString(16);
 				}
 			}
 			q2->Reset();
@@ -1437,10 +1441,26 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
+	IQuery* q_other_has_path = NULL;
+	if (!all_virtual_clients)
+	{
+		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+	}
+
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
 		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
+			if (!all_virtual_clients)
+			{
+				q_other_has_path->Bind(backupdirs[i]["path"]);
+				db_results res = q_other_has_path->Read();
+				q_other_has_path->Reset();
+
+				if (!res.empty())
+					continue;
+			}
+
 			//Delete the watch
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
