@@ -2051,12 +2051,12 @@ void IndexThread::updateBackupDirsWithAll()
 
 	bool new_volumes = false;
 
+	std::vector<std::string> volumes_norm;
 	if (!volumes.empty())
 	{
-		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+convert((int)EBackupDirServerDefault_AllSrc)+", ?, ?)", false);
+		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?)", false);
 		IQuery *q_name = db->Prepare("SELECT id FROM backupdirs WHERE name=?", false);
 
-		std::vector<std::string> volumes_norm;
 		for (size_t i = 0; i < volumes.size(); ++i)
 		{
 			std::string cvol = trim(volumes[i]);
@@ -2100,9 +2100,9 @@ void IndexThread::updateBackupDirsWithAll()
 			}
 #endif
 
-			if(!found)
+			if (!found)
 			{
-				new_volumes = true;			
+				new_volumes = true;
 
 				std::string name = volumes[i];
 
@@ -2118,7 +2118,7 @@ void IndexThread::updateBackupDirsWithAll()
 				if (q_name->Read().empty() == false
 					|| name == "urbackup")
 				{
-					for (int k = 0; k<100; ++k)
+					for (int k = 0; k < 100; ++k)
 					{
 						q_name->Reset();
 						q_name->Bind(name + "_" + convert(k));
@@ -2153,52 +2153,55 @@ void IndexThread::updateBackupDirsWithAll()
 
 		db->destroyQuery(q_add);
 		db->destroyQuery(q_name);
-
-		IQuery* q_del = db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
-		for (size_t i = 0; i < backup_dirs.size();)
-		{
-			if (backup_dirs[i].group == index_group
-				&& backup_dirs[i].server_default == EBackupDirServerDefault_AllSrc)
-			{
-				std::string ovol = backup_dirs[i].path;
-#ifdef _WIN32
-				if (ovol.size() <= 3)
-					normalizeVolume(ovol);
-#endif
-
-				if (std::find(volumes_norm.begin(), volumes_norm.end(), ovol)== volumes_norm.end())
-				{
-					std::string cpath = backup_dirs[i].path;
-					q_del->Bind(backup_dirs[i].id);
-					q_del->Write();
-					q_del->Reset();
-					backup_dirs.erase(backup_dirs.begin() + i);
-
-#ifdef _WIN32
-					bool found = false;
-					for (size_t j = 0; j < backup_dirs.size(); ++j)
-					{
-						if (backup_dirs[j].path == cpath)
-						{
-							found = true;
-							break;
-						}
-					}
-
-					if (!found)
-					{
-						std::string msg = "D" + os_get_final_path(cpath);
-						dwt->getPipe()->Write(msg);
-					}
-#endif
-
-					continue;
-				}				
-			}
-			++i;
-		}
-		db->destroyQuery(q_del);
 	}
+
+	IQuery* q_del = NULL;
+	for (size_t i = 0; i < backup_dirs.size();)
+	{
+		if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_AllSrc)
+		{
+			std::string ovol = backup_dirs[i].path;
+#ifdef _WIN32
+			if (ovol.size() <= 3)
+				normalizeVolume(ovol);
+#endif
+
+			if (std::find(volumes_norm.begin(), volumes_norm.end(), ovol)== volumes_norm.end())
+			{
+				if(q_del==NULL)
+					q_del = db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
+
+				std::string cpath = backup_dirs[i].path;
+				q_del->Bind(backup_dirs[i].id);
+				q_del->Write();
+				q_del->Reset();
+				backup_dirs.erase(backup_dirs.begin() + i);
+
+#ifdef _WIN32
+				bool found = false;
+				for (size_t j = 0; j < backup_dirs.size(); ++j)
+				{
+					if (backup_dirs[j].path == cpath)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+				{
+					std::string msg = "D" + os_get_final_path(cpath);
+					dwt->getPipe()->Write(msg);
+				}
+#endif
+
+				continue;
+			}				
+		}
+		++i;
+	}
+	db->destroyQuery(q_del);
 
 	if (new_volumes)
 	{
