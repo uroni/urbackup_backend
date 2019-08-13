@@ -111,9 +111,11 @@
 #include <smmintrin.h>
 #endif
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
-#define sighandler_t __sighandler_t
-#endif
+#ifndef CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
+extern "C" {
+	typedef void(*SigHandler)(int);
+};
+#endif  // Not CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
 
 namespace cryptopp_crc
 {
@@ -289,7 +291,7 @@ namespace cryptopp_crc
 		// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
 		volatile bool result = true;
 
-		volatile sighandler_t oldHandler = signal(SIGILL, SigIllHandlerCPUID);
+		volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCPUID);
 		if (oldHandler == SIG_ERR)
 			return false;
 
@@ -380,7 +382,7 @@ namespace cryptopp_crc
 		// http://github.com/weidai11/cryptopp/issues/24 and http://stackoverflow.com/q/7721854
 		volatile bool result = true;
 
-		volatile sighandler_t oldHandler = signal(SIGILL, SigIllHandlerCRC32);
+		volatile SigHandler oldHandler = signal(SIGILL, SigIllHandlerCRC32);
 		if (oldHandler == SIG_ERR)
 			return false;
 
