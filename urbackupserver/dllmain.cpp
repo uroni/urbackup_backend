@@ -627,7 +627,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			{
 				Server->Log("Error optaining backup SYSTEM privileges. Restoring symlinks may not work.", LL_ERROR);
 			}
-			fileserv = fileserv_fak->createFileServNoBind(std::string(), false, false, false);
+			fileserv = fileserv_fak->createFileServNoBind(std::string(), false, false, true);
 		}
 	}
 
