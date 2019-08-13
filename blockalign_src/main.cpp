@@ -50,6 +50,12 @@
 #include "crc.h"
 #endif
 
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define lstat64 lstat
+#define stat64 stat
+#define open64 open
+#endif
+
 const unsigned int blocksize_min = 64;
 const unsigned int blocksize_max = 1024;
 const size_t c_buffer_reset = 20;

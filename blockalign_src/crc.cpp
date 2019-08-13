@@ -111,12 +111,6 @@
 #include <smmintrin.h>
 #endif
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
-#define lstat64 lstat
-#define stat64 stat
-#define open64 open
-#endif
-
 namespace cryptopp_crc
 {
 	typedef unsigned int word32;
