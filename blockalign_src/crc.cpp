@@ -111,6 +111,10 @@
 #include <smmintrin.h>
 #endif
 
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define sighandler_t __sighandler_t
+#endif
+
 namespace cryptopp_crc
 {
 	typedef unsigned int word32;
