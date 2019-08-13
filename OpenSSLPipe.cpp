@@ -164,9 +164,11 @@ void OpenSSLPipe::init()
 	BIO_meth_set_gets(meth_socket_nosigpipe, BIO_meth_get_gets(smeth));
 	BIO_meth_set_puts(meth_socket_nosigpipe, BIO_meth_get_puts(smeth));
 	BIO_meth_set_read(meth_socket_nosigpipe, bio_read);
-	BIO_meth_set_read_ex(meth_socket_nosigpipe, bio_read_ex);
 	BIO_meth_set_write(meth_socket_nosigpipe, bio_write);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	BIO_meth_set_read_ex(meth_socket_nosigpipe, bio_read_ex);
 	BIO_meth_set_write_ex(meth_socket_nosigpipe, bio_write_ex);
+#endif
 }
 
 #ifndef S_ISDIR
