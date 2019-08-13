@@ -1401,9 +1401,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	index_follow_last = false;
 	index_keep_files = false;
 
-#ifdef _WIN32
 	updateBackupDirsWithAll();
-#endif
 
 	std::vector<std::string> selected_dirs;
 	std::vector<int> selected_dir_db_tgroup;
@@ -2044,6 +2042,7 @@ void IndexThread::updateBackupDirsWithAll()
 		filter_add.push_back("configfs");
 		filter_add.push_back("cgroup2");
 		filter_add.push_back("fusectl");
+		filter_add.push_back("efivarfs");
 		std::sort(filter_add.begin(), filter_add.end());
 		volumes = getAllMounts(filter_add, has_all_nonusb);
 	}
