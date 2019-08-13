@@ -297,7 +297,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		servername=argv[1];
 #endif
 
+#ifdef _WIN32
 	optain_backup_privs();
+#endif
 
 #ifdef LOG_FILE
 #ifdef _WIN32
