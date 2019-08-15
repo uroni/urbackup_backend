@@ -56,10 +56,13 @@ namespace
 	};
 }
 
+class RestoreFiles;
+
 class RestoreDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
 {
 public:
-	RestoreDownloadThread(FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping);
+	RestoreDownloadThread(FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping,
+		RestoreFiles& restore_files);
 
 	void operator()();
 
@@ -97,6 +100,8 @@ public:
 
 private:
 
+	void log(const std::string& msg, int loglevel);
+
 	void sleepQueue(IScopedLock& lock);
 
 	FileClient& fc;
@@ -119,4 +124,5 @@ private:
 	std::vector<std::pair<std::string, std::string> > rename_queue;
 	str_map& metadata_path_mapping;
 	std::set<std::string> renamed_files;
+	RestoreFiles& restore_files;
 };

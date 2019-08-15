@@ -978,7 +978,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string share_path;
 	std::string server_path = "clientdl";
 
-	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping));
+	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping, *this));
     THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download.get(), "file restore download");
 
 	std::string curr_files_dir;
