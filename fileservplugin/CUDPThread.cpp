@@ -280,6 +280,8 @@ bool CUDPThread::init_v4(_u16 udpport)
 #else
 		Log("Failed binding UDP socket.", LL_ERROR);
 #endif
+		closesocket(udpsock);
+		udpsock = SOCKET_ERROR;
 		return false;
 	}
 	Log("done.", LL_DEBUG);
@@ -334,6 +336,8 @@ bool CUDPThread::init_v6(_u16 udpport)
 #else
 		Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
 #endif
+		closesocket(udpsockv6);
+		udpsockv6 = SOCKET_ERROR;
 		return false;
 	}
 
