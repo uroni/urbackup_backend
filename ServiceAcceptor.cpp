@@ -54,7 +54,7 @@ namespace
 }
 
 CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
-	: maxClientsPerThread(pMaxClientsPerThread), s_v6(SOCKET_ERROR)
+	: maxClientsPerThread(pMaxClientsPerThread), s(SOCKET_ERROR), s_v6(SOCKET_ERROR)
 {
 	name=pName;
 	service=pService;
