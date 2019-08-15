@@ -302,32 +302,49 @@ then
 else
 	echo "Installing System V init script..."
 	
-	install -c init.d /etc/init.d/urbackupclientbackend
-	
-	if [ $DEBIAN = yes ]
+	INSTALL_SYSV=yes
+	if [ $DEBIAN = yes ] && ! [ -e /lib/lsb/init-functions ]
 	then
-		update-rc.d urbackupclientbackend defaults
-	else
-		chkconfig --add urbackupclientbackend
-		chkconfig --level 345 urbackupclientbackend on
-	fi
-	
-	if [ $RESTART_SERVICE = no ]
+		echo "/lib/lsb/init-functions not found. lsb-base (>= 3.0-6) not installed? Not installing System V init script."
+		INSTALL_SYSV=no
+	elif ! [ -e /etc/rc.d/init.d/functions ]
 	then
-		echo "Starting UrBackup Client service..."
-		/etc/init.d/urbackupclientbackend start
-	else
-		echo "Restarting UrBackup Client service..."
-		/etc/init.d/urbackupclientbackend restart
-	fi
+		echo "/etc/rc.d/init.d/functions not found. Not installing System V init script."
+		INSTALL_SYSV=no
+	fi		
 	
-	
-	if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
-	then
-		echo "Successfully started client service. Installation complete."
+	if [ $INSTALL_SYSV = yes ]
+	then	
+		install -c init.d /etc/init.d/urbackupclientbackend
+		
+		if [ $DEBIAN = yes ]
+		then
+			update-rc.d urbackupclientbackend defaults
+		else
+			chkconfig --add urbackupclientbackend
+			chkconfig --level 345 urbackupclientbackend on
+		fi
+		
+		if [ $RESTART_SERVICE = no ]
+		then
+			echo "Starting UrBackup Client service..."
+			/etc/init.d/urbackupclientbackend start
+		else
+			echo "Restarting UrBackup Client service..."
+			/etc/init.d/urbackupclientbackend restart
+		fi
+		
+		
+		if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
+		then
+			echo "Successfully started client service. Installation complete."
+		else
+			echo "Starting client service failed (see previous messages). Starting urbackupclientbackend manually this time..."
+			urbackupclientbackend -d -c $CONFIG_FILE
+		fi
 	else
-		echo "Starting client service failed. Please investigate."
-		exit 1
+		echo "Starting urbackupclientbackend manually this time..."
+		urbackupclientbackend -d -c $CONFIG_FILE
 	fi
 fi
 
