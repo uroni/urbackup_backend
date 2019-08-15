@@ -307,7 +307,7 @@ else
 	then
 		echo "/lib/lsb/init-functions not found. lsb-base (>= 3.0-6) not installed? Not installing System V init script."
 		INSTALL_SYSV=no
-	elif ! [ -e /etc/rc.d/init.d/functions ]
+	elif [ $DEBIAN = no ] && ! [ -e /etc/rc.d/init.d/functions ]
 	then
 		echo "/etc/rc.d/init.d/functions not found. Not installing System V init script."
 		INSTALL_SYSV=no
