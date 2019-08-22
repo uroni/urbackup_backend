@@ -1414,6 +1414,35 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 		}
 
+		fs.readaheadSetMaxNBuffers(1);
+
+		Server->Log("Re-reading blocks with errors with smaller block size (4096 bytes)...");
+
+		size_t err_num = 0;
+		size_t total_errs = error_blocks.size();
+		for (size_t i = 0; i < error_blocks.size();)
+		{
+			int64 pos = error_blocks[i];
+			Server->Log("Error block position " +convert(pos)+" error "+ convert(err_num) + "/" + convert(total_errs));
+			
+			bool has_error = false;
+			IFilesystem::IFsBuffer* buf = fs.readBlock(pos, &has_error);
+
+			if (has_error)
+			{
+				Server->Log("Block " + convert(pos) + " has read error", LL_ERROR);
+				++i;
+			}
+			else
+			{
+				Server->Log("Block " + convert(pos) + " is ok", LL_ERROR);
+				error_blocks.erase(error_blocks.begin() + i);
+			}
+
+			if (buf != NULL)
+				fs.releaseBuffer(buf);
+		}
+
 		if (!error_blocks.empty())
 		{
 			Server->Log("Volume has "+convert(error_blocks.size())+" read errors", LL_INFO);

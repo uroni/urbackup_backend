@@ -163,6 +163,11 @@ public:
 		}
 	}
 
+	void setMaxReadaheadNBuffers(int64 n_max_buffers)
+	{
+		curr_fs_readahead_n_max_buffers = n_max_buffers;
+	}
+
 	IFilesystem::IFsBuffer* getBlock(int64 block)
 	{
 		IScopedLock lock(mutex.get());
@@ -238,11 +243,13 @@ private:
 	bool do_stop;
 
 	bool background_priority;
+
+	int64 curr_fs_readahead_n_max_buffers;
 };
 
 Filesystem::Filesystem(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, IFsNextBlockCallback* next_block_callback)
 	: buffer_mutex(Server->createMutex()), next_block_callback(next_block_callback), overlapped_next_block(-1),
-	num_uncompleted_blocks(0), errcode(0)
+	num_uncompleted_blocks(0), errcode(0), curr_fs_readahead_n_max_buffers(fs_readahead_n_max_buffers)
 {
 	has_error=false;
 
@@ -431,6 +438,11 @@ int64 Filesystem::getOsErrorCode()
 	return errcode;
 }
 
+void Filesystem::readaheadSetMaxNBuffers(int64 n_max_buffers)
+{
+	curr_fs_readahead_n_max_buffers = n_max_buffers;
+}
+
 std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 	const std::vector<char*>& buffers, unsigned int buffer_offset)
 {
@@ -613,7 +625,7 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 			queued_next_blocks[overlapped_next_block] = &block->buffers[0];
 			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 			
-			while(block->n_buffers<fs_readahead_n_max_buffers
+			while(block->n_buffers<curr_fs_readahead_n_max_buffers
 				&& overlapped_last_block==overlapped_next_block-1)
 			{
 				block->buffers[block->n_buffers].state = ENextBlockState_Queued;
