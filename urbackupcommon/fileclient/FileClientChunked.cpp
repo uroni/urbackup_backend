@@ -573,6 +573,26 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out, int64 
 			return flush_rc;
 		}
 
+		if (remote_filesize > 0 &&
+			!initial_read &&
+			next_chunk >= num_total_chunks
+			&& pending_chunks.empty()
+			&& state == CS_ID_FIRST)
+		{
+			_u32 err = ERR_SUCCESS;
+			if (curr_is_script)
+			{
+				err = freeFile();
+			}
+
+			if (err == ERR_SUCCESS)
+			{
+				Server->Log("Successful (2). Returning filesize " + convert(remote_filesize), LL_DEBUG);
+				filesize_out = remote_filesize;
+			}
+			return err;
+		}
+
 		size_t rc;
 		char* buf;
 		if (flush_rc != ERR_SUCCESS)
@@ -707,7 +727,8 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 			if ((remote_filesize != -1 &&
 				remote_filesize > 0 &&
 				next_chunk >= num_total_chunks
-				&& pending_chunks.empty())
+				&& pending_chunks.empty()
+				&& state==CS_ID_FIRST)
 				|| getfile_done)
 			{
 
