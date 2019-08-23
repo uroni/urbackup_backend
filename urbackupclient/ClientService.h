@@ -288,6 +288,7 @@ private:
 	void CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params);
 	void CMD_DID_BACKUP(const std::string &cmd);
 	void CMD_DID_BACKUP2(const std::string &cmd);
+	void CMD_BACKUP_FAILED(const std::string& cmd);
 	void CMD_STATUS(const std::string &cmd);
 	void CMD_STATUS_DETAIL(const std::string &cmd);
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);

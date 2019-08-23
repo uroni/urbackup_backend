@@ -902,6 +902,38 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	exit_backup_immediate(0);
 }
 
+void ClientConnector::CMD_BACKUP_FAILED(const std::string & cmd)
+{
+	std::string params_str = cmd.substr(14);
+	str_map params;
+	ParseParamStrHttp(params_str, &params);
+
+	tcpstack.Send(pipe, "OK");
+
+	std::string server_token = params["server_token"];
+	if (server_token.empty())
+	{
+		return;
+	}
+
+	{
+		IScopedLock lock(backup_mutex);
+		IScopedLock process_lock(process_mutex);
+
+		SRunningProcess* proc = getRunningFileBackupProcess(server_token, watoi64(params["status_id"]));
+
+		if (proc != NULL)
+		{
+			removeRunningProcess(proc->id, false);
+		}
+
+		lasttime = Server->getTimeMS();
+		status_updated = true;
+	}
+
+	exit_backup_immediate(1);
+}
+
 int64 ClientConnector::getLastBackupTime()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -2526,7 +2558,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
 		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
@@ -2542,7 +2574,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
 		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup);
 #endif
 }

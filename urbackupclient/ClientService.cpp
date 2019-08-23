@@ -1023,6 +1023,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_DID_BACKUP2(cmd); continue;
 			}
+			else if (next(cmd, 0, "BACKUP FAILED "))
+			{
+				CMD_BACKUP_FAILED(cmd); continue;
+			}
 			else if(next(cmd, 0, "SETTINGS ") )
 			{
 				CMD_UPDATE_SETTINGS(cmd); continue;
@@ -3128,6 +3132,11 @@ void ClientConnector::exit_backup_immediate(int rc)
 		&& (backup_imm == "incr-file"
 			|| backup_imm == "full-file"))
 	{
+		if (rc != 0)
+		{
+			Server->Log("File backup failed.", LL_ERROR);
+		}
+
 		exit(rc);
 	}
 }
