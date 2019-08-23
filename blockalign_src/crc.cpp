@@ -107,6 +107,13 @@
 #  define CRYPTOPP_CXX11_ALIGNOF 1
 #endif // alignof/alignas
 
+// uintptr_t and ptrdiff_t
+#if (__cplusplus < 201103L) && (!defined(_MSC_VER) || (_MSC_VER >= 1700))
+# include <stdint.h>
+#elif defined(_MSC_VER) && (_MSC_VER < 1700)
+# include <stddef.h>
+#endif
+
 #if CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
 #include <smmintrin.h>
 #endif
