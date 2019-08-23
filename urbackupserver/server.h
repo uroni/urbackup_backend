@@ -69,6 +69,8 @@ public:
 
 	static void setupUseTreeHashing();
 
+	void wakeupNewClient();
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);

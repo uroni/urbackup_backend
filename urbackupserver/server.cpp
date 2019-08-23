@@ -1392,6 +1392,11 @@ void BackupServer::runServerRecovery(IDatabase * db)
 	db->destroyAllQueries();
 }
 
+void BackupServer::wakeupNewClient()
+{
+	exitpipe->Write("nc");
+}
+
 std::string BackupServer::findFile(const std::string & path, const std::string & fn)
 {
 	std::vector<SFile> files = getFiles(path);

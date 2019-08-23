@@ -32,6 +32,7 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "serverinterface/login.h"
+#include "server.h"
 
 #include <memory.h>
 #include <algorithm>
@@ -58,9 +59,14 @@ std::set<std::string> InternetServiceConnector::internet_expect_endpoint;
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
 
+InternetService::InternetService(BackupServer * backup_server)
+	:backup_server(backup_server)
+{
+}
+
 ICustomClient* InternetService::createClient()
 {
-	return new InternetServiceConnector;
+	return new InternetServiceConnector(backup_server);
 }
 
 void InternetService::destroyClient( ICustomClient * pClient)
@@ -68,7 +74,8 @@ void InternetService::destroyClient( ICustomClient * pClient)
 	delete ((InternetServiceConnector*)pClient);
 }
 
-InternetServiceConnector::InternetServiceConnector(void)
+InternetServiceConnector::InternetServiceConnector(BackupServer * backup_server)
+	: backup_server(backup_server)
 {
 	local_mutex=Server->createMutex();
 	ecdh_key_exchange=NULL;
@@ -556,15 +563,23 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 
 							size_t spare_connections_num;
 
+							bool wakeup_new_client = false;
 							{
 								IScopedLock lock(mutex);
 								SClientData& curr_client_data = client_data[clientname];
+								if (curr_client_data.last_seen == -1
+									&& backup_server!=NULL)
+								{
+									wakeup_new_client = true;
+								}
 								curr_client_data.spare_connections.push_back(this);
 								curr_client_data.last_seen=Server->getTimeMS();
 								curr_client_data.endpoint_name = endpoint_name;
 
 								spare_connections_num = curr_client_data.spare_connections.size();
 							}
+							if (wakeup_new_client)
+								backup_server->wakeupNewClient();
 
 							if (token_auth)
 							{
