@@ -199,12 +199,12 @@ namespace cryptopp_crc
 		if (sizeof(T) < 16)
 			return 1;
 #endif
-#if defined(CRYPTOPP_CXX11_ALIGNOF)
+#if defined(__GNUC__) && !defined(__clang__)
+	return __alignof__(T);
+#elif defined(CRYPTOPP_CXX11_ALIGNOF)
 		return alignof(T);
 #elif (_MSC_VER >= 1300)
 		return __alignof(T);
-#elif defined(__GNUC__)
-		return __alignof__(T);
 #elif CRYPTOPP_BOOL_SLOW_WORD64
 		return UnsignedMin(4U, sizeof(T));
 #else
