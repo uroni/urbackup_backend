@@ -429,7 +429,9 @@ void ClientMain::operator ()(void)
 
 	bool skip_checking=false;
 
-	if( server_settings->getSettings()->startup_backup_delay>0 )
+	if( server_settings->getSettings()->startup_backup_delay>0
+		&& (!do_full_backup_now && !do_incr_backup_now
+			&& !do_incr_backup_now && !do_full_image_now) )
 	{
 		pipe->isReadable(server_settings->getSettings()->startup_backup_delay*1000);
 		skip_checking=true;
@@ -1673,6 +1675,20 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		if(it != params.end())
 		{
 			protocol_versions.update_capa_interval = (std::max)(60000, watoi(it->second));
+		}
+		it = params.find("BACKUP");
+		if (it != params.end())
+		{
+			if (it->second == "incr-file")
+				do_incr_backup_now = true;
+			else if (it->second == "full-file")
+				do_full_backup_now = true;
+			else if (it->second == "incr-image")
+				do_incr_image_now = true;
+			else if (it->second == "full-image")
+				do_full_image_now = true;
+			else
+				Server->Log("Unknown immediate backup type \"" + it->second + "\"", LL_WARNING);
 		}
 
 		bool update_settings = false;
