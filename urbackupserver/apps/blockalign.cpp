@@ -75,7 +75,7 @@ int blockalign()
 	}
 	else
 	{
-		in_stream.open(input_fn, std::ios::binary | std::ios::in);
+		in_stream.open(input_fn.c_str(), std::ios::binary | std::ios::in);
 		if (!in_stream.is_open())
 		{
 			std::cerr << "Cannot open input stream \"" << input_fn << "\"" << std::endl;
@@ -97,7 +97,7 @@ int blockalign()
 	}
 	else
 	{
-		out_stream.open(output_fn, std::ios::binary | std::ios::out);
+		out_stream.open(output_fn.c_str(), std::ios::binary | std::ios::out);
 		if (!out_stream.is_open())
 		{
 			std::cerr << "Cannot open output stream \"" << output_fn << "\"" << std::endl;
