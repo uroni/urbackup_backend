@@ -863,6 +863,8 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 	}
 			
 	IndexThread::execute_postbackup_hook("postfilebackup", 0, std::string());
+
+	exit_backup_immediate(0);
 }
 
 void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
@@ -896,6 +898,8 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	}
 
 	IndexThread::execute_postbackup_hook("postfilebackup", atoi(params["group"].c_str()), params["clientsubname"]);
+
+	exit_backup_immediate(0);
 }
 
 int64 ClientConnector::getLastBackupTime()
@@ -2485,6 +2489,12 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		clientuid = res[0]["tvalue"];
 	}
 
+	std::string imm_backup = Server->getServerParameter("backup_immediate");
+	if (!imm_backup.empty())
+	{
+		imm_backup = "&BACKUP=" + EscapeParamString(imm_backup);
+	}
+
 #ifdef _WIN32
 	std::string buf;
 	buf.resize(1024);
@@ -2517,7 +2527,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
 		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap);
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
 #ifdef __APPLE__
@@ -2533,7 +2543,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
 		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid));
+		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup);
 #endif
 }
 

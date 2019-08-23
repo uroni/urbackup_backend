@@ -158,6 +158,34 @@ namespace
 			}
 		}
 	};
+
+	class TimeoutBackupImmediate : public IThread
+	{
+		void operator()()
+		{
+			std::string backup_type_str = Server->getServerParameter("backup_immediate");
+
+			RunningAction ra;
+			if (backup_type_str == "incr-file")
+				ra = RUNNING_INCR_FILE;
+			else if (backup_type_str == "full-file")
+				ra = RUNNING_FULL_FILE;
+			else if (backup_type_str == "incr-image")
+				ra = RUNNING_INCR_IMAGE;
+			else
+				ra = RUNNING_FULL_IMAGE;
+
+			int64 start_timeout = watoi64(Server->getServerParameter("backup_immediate_start_timeout"))*1000;
+			int64 resume_timeout = watoi64(Server->getServerParameter("backup_immediate_timeout"))*1000;
+			bool has_backup = false;
+			int64 starttime = Server->getTimeMS();
+			while (true)
+			{
+				Server->wait(1000);
+				ClientConnector::timeoutBackupImmediate(start_timeout, resume_timeout, ra, has_backup, starttime);
+			}
+		}
+	};
 }
 
 void ClientConnector::init_mutex(void)
@@ -169,6 +197,11 @@ void ClientConnector::init_mutex(void)
 		process_mutex = Server->createMutex();
 
 		Server->createThread(new TimeoutFilesrvThread, "filesrv timeout");
+
+		if (!Server->getServerParameter("backup_immediate").empty())
+		{
+			Server->createThread(new TimeoutBackupImmediate, "backup timeout");
+		}			
 	}
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
@@ -3087,6 +3120,18 @@ bool ClientConnector::multipleChannelServers()
 	return false;
 }
 
+void ClientConnector::exit_backup_immediate(int rc)
+{
+	std::string backup_imm = Server->getServerParameter("backup_immediate");
+
+	if (!backup_imm.empty()
+		&& (backup_imm == "incr-file"
+			|| backup_imm == "full-file"))
+	{
+		exit(rc);
+	}
+}
+
 IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
 {
 	IScopedLock lock(backup_mutex);
@@ -3642,6 +3687,59 @@ void ClientConnector::timeoutFilesrvConnections()
 		else
 		{
 			++i;
+		}
+	}
+}
+
+void ClientConnector::timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool & has_backup, int64& starttime)
+{
+	IScopedLock lock(backup_mutex);
+
+	bool found = false;
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		if (Server->getTimeMS() - running_processes[i].last_pingtime > x_pingtimeout)
+		{
+			continue;
+		}
+
+		RunningAction cra = running_processes[i].action;
+		if ((ra == RUNNING_INCR_FILE || ra == RUNNING_FULL_FILE)
+			&& (cra == RUNNING_INCR_FILE || cra == RUNNING_FULL_FILE
+				|| cra == RUNNING_RESUME_INCR_FILE || cra == RUNNING_RESUME_FULL_FILE))
+		{
+			found = true;
+			break;
+		}
+		else if ((ra == RUNNING_INCR_IMAGE || ra == RUNNING_FULL_IMAGE)
+			&& (cra == RUNNING_INCR_IMAGE || cra == RUNNING_FULL_IMAGE))
+		{
+			found = true;
+			break;
+		}
+	}
+
+	lock.relock(NULL);
+
+	if (found)
+	{
+		has_backup = true;
+		starttime = Server->getTimeMS();
+	}
+	else if(has_backup)
+	{
+		if (Server->getTimeMS() - starttime > resume_timeout)
+		{
+			Server->Log("Backup timeout after connection has been lost for " + PrettyPrintTime(resume_timeout), LL_ERROR);
+			exit(11);
+		}
+	}
+	else
+	{
+		if (Server->getTimeMS() - starttime > start_timeout)
+		{
+			Server->Log("Backup timeout after backup failed to start for " + PrettyPrintTime(start_timeout), LL_ERROR);
+			exit(10);
 		}
 	}
 }

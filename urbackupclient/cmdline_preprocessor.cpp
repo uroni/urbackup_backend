@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
 			"Read configuration parameters from config file",
 			false, "", "path", cmd);
 
-		TCLAP::ValueArg<std::string> capath_arg("b", "capath",
+		TCLAP::ValueArg<std::string> capath_arg("", "capath",
 			"Path to a certificate authority bundle file or directory",
 			false, "", "path", cmd);
 #endif
@@ -284,6 +284,31 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<std::string> restore_arg("r", "restore",
 			"Specifies if restores are allowed and where they have to be confirmed",
 			false, "client-confirms", &restore_arg_constraint, cmd);
+
+
+		std::vector<std::string> backup_args_vals;
+		restore_arg_vals.push_back("incr-file");
+		restore_arg_vals.push_back("if");
+		restore_arg_vals.push_back("full-file");
+		restore_arg_vals.push_back("ff");
+#ifdef _WIN32
+		restore_arg_vals.push_back("incr-image");
+		restore_arg_vals.push_back("ii");
+		restore_arg_vals.push_back("full-image");
+		restore_arg_vals.push_back("fi");
+#endif
+		TCLAP::ValuesConstraint<std::string> backup_arg_constraint(restore_arg_vals);
+		TCLAP::ValueArg<std::string> backup_arg("b", "backup",
+			"Connects to server, runs backup, then exits",
+			false, "", &backup_arg_constraint, cmd);
+
+		TCLAP::ValueArg<int> backup_start_timeout("", "backup-start-timeout",
+			"Maximum amount of time to wait for a backup to start (when run with -b/--backup) before the backup is stopped with an error",
+			false, 5 * 60, "seconds", cmd);
+
+		TCLAP::ValueArg<int> backup_timeout("", "backup-timeout",
+			"Maximum amount of time to wait for a backup to continue after the connection has been lost (when run with -b/--backup) before the backup is stopped with an error",
+			false, 5 * 60, "seconds", cmd);
 
 		std::vector<std::string> real_args;
 		real_args.push_back(argv[0]);
@@ -354,6 +379,24 @@ int main(int argc, char* argv[])
 			real_args.push_back(capath_arg.getValue());
 		}
 #endif
+		if (!backup_arg.getValue().empty())
+		{
+			std::string bi = backup_arg.getValue();
+			if (bi == "ff")
+				bi = "full-file";
+			else if (bi == "if")
+				bi = "incr-file";
+			else if (bi == "ii")
+				bi = "incr-image";
+			else if (bi == "fi")
+				bi = "full-image";
+			real_args.push_back("--backup_immediate");
+			real_args.push_back(bi);
+		}
+		real_args.push_back("--backup_immediate_start_timeout");
+		real_args.push_back(convert(backup_start_timeout.getValue()));
+		real_args.push_back("--backup_immediate_timeout");
+		real_args.push_back(convert(backup_timeout.getValue()));
 		
 		return run_real_main(real_args);
 	}

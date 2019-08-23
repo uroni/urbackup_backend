@@ -227,6 +227,8 @@ public:
 
 	static void timeoutFilesrvConnections();
 
+	static void timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool& has_backup, int64& starttime);
+
 	static std::string removeIllegalCharsFromBackupName(std::string in);
 
 private:
@@ -334,6 +336,7 @@ private:
 
 	int getCapabilities(IDatabase* db);
 	bool multipleChannelServers();
+	void exit_backup_immediate(int rc);
 
 	void refreshSessionFromChannel(const std::string& endpoint_name);
 
