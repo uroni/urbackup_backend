@@ -1156,6 +1156,8 @@ void FileBackup::sendBackupOkay(bool b_okay)
 	}
 	else
 	{
+		notifyClientBackupFailed();
+
 		if(pingthread!=NULL)
 		{
 			pingthread->setStop(true);
@@ -1183,6 +1185,22 @@ void FileBackup::notifyClientBackupSuccessful(void)
 
 		client_main->sendClientMessageRetry("2DID BACKUP "+ params, "OK", "Sending status (2DID BACKUP) to client failed", 10000, 5);
 	}
+}
+
+void FileBackup::notifyClientBackupFailed()
+{
+	if (client_main->getProtocolVersions().cmd_version < 2)
+		return;
+
+	std::string params = "status_id=" + convert(status_id) + "&server_token=" + EscapeParamString(server_token)
+		+ "&group=" + convert(group);
+
+	if (!clientsubname.empty())
+	{
+		params += "&clientsubname=" + EscapeParamString(clientsubname);
+	}
+
+	client_main->sendClientMessageRetry("BACKUP FAILED " + params, "OK", "Sending status (BACKUP FAILED) to client failed", 10000, 2);
 }
 
 void FileBackup::waitForFileThreads(void)
