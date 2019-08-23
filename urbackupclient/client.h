@@ -353,6 +353,7 @@ public:
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
 	static bool isExcluded(const std::vector<std::string>& exclude_dirs, const std::string &path);
+	static std::vector<std::string> getRmExcludedByPatterns(std::vector<std::string>& exclude_dirs, const std::string &path);
 	static bool isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless);
 
 	static std::string mapScriptOutputName(const std::string& fn);

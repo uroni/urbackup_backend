@@ -1757,11 +1757,22 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				{
 					openCbtHdatFile(scd->ref, backup_dirs[i].tname, volume);
 
+					std::vector<std::string> rm_exclude_dirs = getRmExcludedByPatterns(index_exclude_dirs, backup_dirs[i].path);
+
+					for (size_t k = 0; k < rm_exclude_dirs.size(); ++k)
+					{
+						VSSLog("\"" + backup_dirs[i].tname + "\" at \"" + backup_dirs[i].path +
+							"\" would be completely excluded by pattern \"" + rm_exclude_dirs[k] +
+							"\". Not using this pattern while indexing this path", LL_DEBUG);
+					}
+					
 					std::vector<SRecurParams> params_stack;
 					initialCheck(params_stack, std::string::npos,
 						strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0, true, true,
 						index_exclude_dirs, index_include_dirs, std::string());
+
+					index_exclude_dirs.insert(index_exclude_dirs.end(), rm_exclude_dirs.begin(), rm_exclude_dirs.end());
 				}
 
 				commitModifyFilesBuffer();
@@ -4317,6 +4328,30 @@ bool IndexThread::isExcluded(const std::vector<std::string>& exclude_dirs, const
 		}
 	}
 	return false;
+}
+
+std::vector<std::string> IndexThread::getRmExcludedByPatterns(std::vector<std::string>& exclude_dirs, const std::string & path)
+{
+	std::string wpath = path;
+#ifdef _WIN32
+	strupper(&wpath);
+#endif
+	std::vector<std::string> ret;
+	for (size_t i = 0; i<exclude_dirs.size();)
+	{
+		if (!exclude_dirs[i].empty())
+		{
+			bool b = amatch(wpath.c_str(), exclude_dirs[i].c_str());
+			if (b)
+			{
+				ret.push_back(exclude_dirs[i]);
+				exclude_dirs.erase(exclude_dirs.begin() + i);
+				continue;
+			}
+		}
+		++i;
+	}
+	return ret;
 }
 
 bool IndexThread::isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless)
