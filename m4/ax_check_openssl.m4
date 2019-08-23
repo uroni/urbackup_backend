@@ -105,15 +105,30 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
     CPPFLAGS="$OPENSSL_INCLUDES $CPPFLAGS"
+	openssl_ok=false
     AC_LINK_IFELSE(
         [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [SSL_new(NULL)])],
         [
             AC_MSG_RESULT([yes])
-            $1
+			openssl_ok=true
         ], [
             AC_MSG_RESULT([no])
-            $2
+			$2
         ])
+		
+	
+	if $openssl_ok; then	
+		AC_MSG_CHECKING([whether function added in OpenSSL 1.1.0 works])
+		AC_LINK_IFELSE(
+			[AC_LANG_PROGRAM([#include <openssl/bio.h>], [BIO_get_new_index()])],
+			[
+				AC_MSG_RESULT([yes])
+				$1
+			], [
+				AC_MSG_RESULT([no])
+				$2
+			])
+	fi
     CPPFLAGS="$save_CPPFLAGS"
     LDFLAGS="$save_LDFLAGS"
     LIBS="$save_LIBS"
