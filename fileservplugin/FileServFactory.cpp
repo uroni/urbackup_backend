@@ -93,6 +93,19 @@ bool FileServFactory::backupSemanticsEnabled()
 	return backup_semantics_enabled;
 }
 
+#ifdef _WIN32
+bool optain_backup_privs();
+bool FileServFactory::optainBackupPrivileges()
+{
+	return optain_backup_privs();
+}
+#else
+bool FileServFactory::optainBackupPrivileges()
+{
+	return true;
+}
+#endif //_WIN32
+
 IPermissionCallback* FileServFactory::getPermissionCallback()
 {
 	return permission_callback;

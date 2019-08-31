@@ -9,14 +9,17 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # Artur Corumba <artur@corumba.net>, 2014,2017-2018
+# Kiosanin <kiosaninsl@gmail.com>, 2018
 # Marcelo Volgarini <contato@techload.com.br>, 2015
 # Kiosanin <kiosaninsl@gmail.com>, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2018-01-02 13:31+0000\n"
-"Last-Translator: Artur Corumba <artur@corumba.net>\n"
+"PO-Revision-Date: 2018-04-22 07:59+0000\n"
+"Last-Translator: Kiosanin <kiosaninsl@gmail.com>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/uroni/urbackup/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1782,19 +1785,19 @@ msgid "confirm_alert_script_remove"
 msgstr "Tem certeza que deseja remover esse script de alerta?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Número de vezes que o intervalo do backup de arquivos, após o qual o status de backup da imagem está definido como não concluído"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Número de vezes que o intervalo do backup de imagens, após o qual o status de backup da imagem está definido como não concluído"
 
 msgid "alert_emails"
 msgstr "Endereços de e-mail (separados por \" ; \") para notificar sobre status de backups que não foram realizados corretamente."
 
 msgid "alert_important"
-msgstr ""
+msgstr "Adicionar tag [Importante] para mensagens de alerta"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Enviar o email de OK após o status do backup passar de NÃO OK para OK"
 
 msgid "tEdit alert scripts"
 msgstr "Editar scripts de alerta"
@@ -1803,7 +1806,7 @@ msgid "tAlert script"
 msgstr "Script de Alerta"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Parâmetros do script de alerta"
 
 msgid "tAdd parameter"
 msgstr "Adicionar parâmetro"
@@ -1824,22 +1827,22 @@ msgid "tString"
 msgstr "String"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "Número de ponto flutuante"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Inteiro"
 
 msgid "tBoolean"
 msgstr "Booleano"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Com o Docker (interface web acessível a partir do cliente):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Com o Docker (interface web não acessível a partir do cliente):"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Editar script do relatório"
 
 msgid "tPaused"
 msgstr "Pausado"
@@ -1848,10 +1851,10 @@ msgid "tReport script"
 msgstr "Reportar script"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Alertas"
 
 msgid "tEdit scripts"
 msgstr "Editar scripts"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Chave de autenticação de restauração pela Internet"

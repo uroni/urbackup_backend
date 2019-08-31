@@ -140,6 +140,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		return;
 	}
 
+	std::string ssltest = Server->getServerParameter("ssltest");
+	if (!ssltest.empty())
+	{
+		IPipe* p = Server->ConnectSslStream("google.de", 443, 10000);
+
+		p->Write("GET / HTTP/1.0\r\n\r\n");
+
+		std::string ret;
+		while (p->Read(&ret) > 0)
+		{
+			Server->Log("SSL_OUT: " + ret);
+		}
+		return;
+	}
+
 #ifdef _WIN32
 	char t_lang[20];
 	GetLocaleInfoA(LOCALE_SYSTEM_DEFAULT,LOCALE_SISO639LANGNAME ,t_lang,sizeof(t_lang));
@@ -389,7 +404,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	IndexThread *it=new IndexThread();
 	if(!do_leak_check)
 	{
-		Server->createThread(it, "file indexing", IServer::CreateThreadFlags_LargeStackSize);
+		Server->createThread(it, "file indexing");
 	}
 	else
 	{

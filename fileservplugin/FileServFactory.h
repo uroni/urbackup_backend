@@ -5,6 +5,7 @@ class FileServFactory : public IFileServFactory
 public:
 	static bool backgroundBackupsEnabled();
 	static bool backupSemanticsEnabled();
+	bool optainBackupPrivileges();
 	IFileServ * createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name="", bool use_fqdn_default=false, bool enable_background_priority=true, bool enable_backup_semantics=true);
 	void destroyFileServ(IFileServ *filesrv);
 

@@ -2308,7 +2308,9 @@ bool IndexThread::addFiles(IVssWMFiledesc* wmFile, VSS_ID ssetid, const std::vec
 
 	openCbtHdatFile(scd->ref, named_prefix, vol);
 
-	initialCheck(vol, vssvolume, path, volpath, named_prefix, outfile, true, index_flags, use_db, false, 0,
+	std::vector<SRecurParams> params_stack;
+	initialCheck(params_stack, std::string::npos,
+		vol, vssvolume, path, volpath, named_prefix, outfile, true, index_flags, use_db, false, 0,
 		dir_recurse, false, exclude_files, include_files, orig_path);
 
 	return true;

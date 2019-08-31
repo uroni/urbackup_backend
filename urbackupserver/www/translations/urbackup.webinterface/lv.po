@@ -9,12 +9,14 @@
 # Translators:
 # Translators:
 # Translators:
-# sieks <sieks@inbox.lv>, 2015
+# Translators:
+# Translators:
+# sieks <sieks@inbox.lv>, 2015,2018
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2018-09-26 13:15+0000\n"
+"Last-Translator: sieks <sieks@inbox.lv>\n"
 "Language-Team: Latvian (http://www.transifex.com/uroni/urbackup/language/lv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -53,7 +55,7 @@ msgid "thours"
 msgstr "stundas"
 
 msgid "tmin"
-msgstr ""
+msgstr "min"
 
 msgid "tAbort"
 msgstr "Atcelt"
@@ -119,7 +121,7 @@ msgid "unknown"
 msgstr "Nezināms"
 
 msgid "overview"
-msgstr ""
+msgstr "Pārskats"
 
 msgid "no_recent_backup"
 msgstr ""
@@ -158,16 +160,16 @@ msgid "tShow details"
 msgstr ""
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "Papildus klienti"
 
 msgid "tNo extra clients"
-msgstr ""
+msgstr "Nav papildus klientu"
 
 msgid "tActions"
 msgstr "Darbības"
 
 msgid "tOnline"
-msgstr ""
+msgstr "Pieejams"
 
 msgid "tHostname/IP"
 msgstr "Datora nosaukums/IP"
@@ -179,7 +181,7 @@ msgid "users"
 msgstr "Lietotāji"
 
 msgid "general_settings"
-msgstr ""
+msgstr "Galvenā"
 
 msgid "admin"
 msgstr "Administrators"
@@ -203,25 +205,25 @@ msgid "password_wrong"
 msgstr "Nepareiza parole"
 
 msgid "user_exists"
-msgstr ""
+msgstr "Lietotājs ar šādu nosaukumu jau eksistē"
 
 msgid "session_timeout"
 msgstr ""
 
 msgid "really_del_user"
-msgstr ""
+msgstr "Tiešām dzēst šo lietotāju?"
 
 msgid "user_add_done"
 msgstr "Jauns lietotājs veiksmīgi pievienots."
 
 msgid "user_remove_done"
-msgstr ""
+msgstr "Lietotājs dzēsts."
 
 msgid "user_update_right_done"
-msgstr ""
+msgstr "Lietotāja tiesības mainītas."
 
 msgid "user_pw_change_ok"
-msgstr ""
+msgstr "Lietotāja parole nomainīta."
 
 msgid "right_all"
 msgstr "Visas tiesības"
@@ -239,7 +241,7 @@ msgid "loglevel_0"
 msgstr "Info"
 
 msgid "starting"
-msgstr ""
+msgstr "Uzsāk"
 
 msgid "ident_err"
 msgstr ""
@@ -278,22 +280,22 @@ msgid "computername"
 msgstr "Datora nosaukums"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "Krātuves izmanrošana"
 
 msgid "storage_usage_pie_graph_colname1"
 msgstr "Datora nosaukums"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "Krātuves izmanrošana"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Krātuves izmanrošana"
 
 msgid "storage_usage_bar_graph_colname1"
 msgstr "Datums"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
+msgstr "Krātuves izmanrošana"
 
 msgid "tFiles"
 msgstr "Faili"
@@ -308,10 +310,10 @@ msgid "tProgress"
 msgstr "Progress"
 
 msgid "tStarting time"
-msgstr ""
+msgstr "Sākšanas laiks"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "Izmantoā krātuve"
 
 msgid "tClients"
 msgstr "Klienti"
@@ -320,7 +322,7 @@ msgid "tReports"
 msgstr "Atskaites"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "Sūtīt atskaites"
 
 msgid "tSend"
 msgstr "Sūtīt"
@@ -329,7 +331,7 @@ msgid "tBackup time"
 msgstr "Rezerves kopijas laiks"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "Krātuves izmanrošana"
 
 msgid "tAll"
 msgstr "Viss"
@@ -362,7 +364,7 @@ msgid "tPassword"
 msgstr "Parole"
 
 msgid "tLogin"
-msgstr ""
+msgstr "Pieslēgties"
 
 msgid "tServer"
 msgstr "Serveris"
@@ -377,7 +379,7 @@ msgid "mins"
 msgstr "minūtes"
 
 msgid "backup_in_progress"
-msgstr ""
+msgstr "Dublēšana notiek ..."
 
 msgid "queued_backup"
 msgstr ""
@@ -389,13 +391,13 @@ msgid "tDomain"
 msgstr "Domēns"
 
 msgid "tTranslation"
-msgstr ""
+msgstr "Tulkojums"
 
 msgid "tChange"
 msgstr "Labot"
 
 msgid "tFailed"
-msgstr ""
+msgstr "Neizdevās"
 
 msgid "tInfo"
 msgstr "Info"
@@ -404,7 +406,7 @@ msgid "tError"
 msgstr "Kļūda"
 
 msgid "tWarning"
-msgstr ""
+msgstr "Brīdinājums"
 
 msgid "tCurrent version"
 msgstr "Pašreizējā versija"
@@ -422,7 +424,7 @@ msgid "tFull image backup"
 msgstr "Pilna klona rezerves kopija"
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "Par UrBackup"
 
 msgid "tShow"
 msgstr "Rādīt"
@@ -434,7 +436,7 @@ msgid "tDelete"
 msgstr "Dzēst"
 
 msgid "tDisable"
-msgstr ""
+msgstr "Atspējot"
 
 msgid "tMB"
 msgstr "MB"
@@ -458,7 +460,7 @@ msgid "tClient version"
 msgstr "Klienta versija"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Operētājsistēma"
 
 msgid "tShow all clients"
 msgstr "Rādīt visus klientus"
@@ -557,7 +559,7 @@ msgid "validate_err_notregexp_cleanup_window"
 msgstr ""
 
 msgid "mail_settings"
-msgstr ""
+msgstr "E-pasts"
 
 msgid "upgrade_error_text"
 msgstr ""
@@ -572,7 +574,7 @@ msgid "tFiles in queue"
 msgstr "Faili rindā"
 
 msgid "tLast activities"
-msgstr ""
+msgstr "Pēdējās aktivitātes"
 
 msgid "tRequired time"
 msgstr "Nepieciešamais laiks"
@@ -784,13 +786,13 @@ msgid "tArchive window"
 msgstr ""
 
 msgid "tBackup type"
-msgstr ""
+msgstr "Rezerves kopijas veids"
 
 msgid "tEnable internet mode (requires server restart)"
 msgstr ""
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "Interneta servera nosaukums/IP"
 
 msgid "tInternet server port"
 msgstr "Interneta servera ports"
@@ -889,7 +891,7 @@ msgid "validate_name_internet_speed"
 msgstr ""
 
 msgid "enter_clientname"
-msgstr ""
+msgstr "Lūdzu ievadiet klienta nosaukumu"
 
 msgid "internet_client_added"
 msgstr ""
@@ -1145,7 +1147,7 @@ msgid "tRecalculate statistics"
 msgstr ""
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Tabulā nav pieejami dati"
 
 msgid "Show _MENU_ entries"
 msgstr ""
@@ -1178,16 +1180,16 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
 msgid "Minimize"
-msgstr ""
+msgstr "Minimizēt"
 
 msgid "Maximize"
-msgstr ""
+msgstr "Maksimizēt"
 
 msgid "ldap_settings"
-msgstr ""
+msgstr "LDAP/AD"
 
 msgid "client_exists"
-msgstr ""
+msgstr "Klients ar šādu nosaukumu jau eksistē"
 
 msgid "validate_err_empty_internet_client_name"
 msgstr ""
@@ -1199,37 +1201,37 @@ msgid "creating_filesindex_text"
 msgstr ""
 
 msgid "about"
-msgstr ""
+msgstr "Par"
 
 msgid "all_clients"
-msgstr ""
+msgstr "Visi klienti"
 
 msgid "client_settings"
-msgstr ""
+msgstr "Klienta iestatījumi"
 
 msgid "action_8"
-msgstr ""
+msgstr "Faila atjaunošana"
 
 msgid "action_9"
 msgstr ""
 
 msgid "action_10"
-msgstr ""
+msgstr "Klienta atjauninājums"
 
 msgid "action_11"
 msgstr ""
 
 msgid "action_12"
-msgstr ""
+msgstr "Veido rezerves kopiju datubāzei"
 
 msgid "action_13"
 msgstr ""
 
 msgid "tAbout UrBackup"
-msgstr ""
+msgstr "Par UrBackup"
 
 msgid "tAdd client"
-msgstr ""
+msgstr "Pievienot klientu"
 
 msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
@@ -1238,7 +1240,7 @@ msgid ""
 msgstr ""
 
 msgid "tDownload the client from:"
-msgstr ""
+msgstr "Lejupielādēt klientu no:"
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
@@ -1258,10 +1260,10 @@ msgid "tIP/hostname of client to be discovered"
 msgstr ""
 
 msgid "tCancel"
-msgstr ""
+msgstr "Atcelt"
 
 msgid "tAccess denied"
-msgstr ""
+msgstr "Pieeja liegta"
 
 msgid ""
 "tSorry, something went wrong or you do not have the required rights to "
@@ -1278,7 +1280,7 @@ msgid "tSorry, something went wrong:"
 msgstr ""
 
 msgid "tCreated"
-msgstr ""
+msgstr "Izveidots"
 
 msgid "tLast modified"
 msgstr ""
@@ -1287,16 +1289,16 @@ msgid "tLast accessed"
 msgstr ""
 
 msgid "tList"
-msgstr ""
+msgstr "Saraksts"
 
 msgid "tRestore"
-msgstr ""
+msgstr "Atjaunot"
 
 msgid "tRestore folder to client"
 msgstr ""
 
 msgid "tVersion"
-msgstr ""
+msgstr "Versija"
 
 msgid "tClient added successfully"
 msgstr ""
@@ -1353,10 +1355,10 @@ msgid "tPercent finished"
 msgstr ""
 
 msgid "tDetails"
-msgstr ""
+msgstr "Detaļas"
 
 msgid "tAdd Email Address"
-msgstr ""
+msgstr "Pievienot e-pasta sdresi"
 
 msgid "tFailed without failures caused by client timeout"
 msgstr ""
@@ -1377,10 +1379,10 @@ msgid "tETA"
 msgstr ""
 
 msgid "tSpeed"
-msgstr ""
+msgstr "Ātrums"
 
 msgid "tFile Backups"
-msgstr ""
+msgstr "Faila rezerves kopija"
 
 msgid "tImage Backups"
 msgstr ""
@@ -1398,7 +1400,7 @@ msgid "tMax recently active clients"
 msgstr ""
 
 msgid "tDays"
-msgstr ""
+msgstr "Dienas"
 
 msgid "tRaw copy-on-write file"
 msgstr ""
@@ -1469,10 +1471,10 @@ msgid "tEnable logins via LDAP/AD"
 msgstr ""
 
 msgid "tLDAP/AD server name"
-msgstr ""
+msgstr "LDAP/AD servera nosaukums"
 
 msgid "tLDAP/AD server port"
-msgstr ""
+msgstr "LDAP/AD servera ports"
 
 msgid "tLDAP/AD user name prefix"
 msgstr ""
@@ -1520,7 +1522,7 @@ msgid "tRemove client"
 msgstr ""
 
 msgid "tAdd new client"
-msgstr ""
+msgstr "Pievienot jaunu klientu"
 
 msgid "tClient discovery hints"
 msgstr ""
@@ -1544,7 +1546,7 @@ msgid "tDo not fail backups in case of hash mismatches or read errors"
 msgstr ""
 
 msgid "admin_create"
-msgstr ""
+msgstr "Administrators"
 
 msgid "image_backup"
 msgstr ""
@@ -1562,16 +1564,16 @@ msgid "default_group"
 msgstr ""
 
 msgid "filter_group"
-msgstr ""
+msgstr "Grupas"
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Pievienot jaunu grupu"
 
 msgid "enter_group_name"
 msgstr ""
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Grupa jau eksistē"
 
 msgid "confirm_delete_settings_group"
 msgstr ""
@@ -1589,19 +1591,19 @@ msgid "action_17"
 msgstr ""
 
 msgid "bit/s"
-msgstr ""
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr ""
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr ""
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
-msgstr ""
+msgstr "Gbit/s"
 
 msgid "Tbit/s"
-msgstr ""
+msgstr "Tbit/s"
 
 msgid "delete_err"
 msgstr ""
@@ -1646,7 +1648,7 @@ msgid "tImage backup information"
 msgstr ""
 
 msgid "tId"
-msgstr ""
+msgstr "Id"
 
 msgid "tVolume size"
 msgstr ""
@@ -1655,7 +1657,7 @@ msgid "tPartition style"
 msgstr ""
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Diska numurs"
 
 msgid "tPartition number"
 msgstr ""
@@ -1667,7 +1669,7 @@ msgid "tVolume name"
 msgstr ""
 
 msgid "tSerial number"
-msgstr ""
+msgstr "Sērijas numurs"
 
 msgid "tMount image"
 msgstr ""
@@ -1710,7 +1712,7 @@ msgid "tPath:"
 msgstr ""
 
 msgid "tGroup"
-msgstr ""
+msgstr "Grupa"
 
 msgid "tGroup membership"
 msgstr ""
@@ -1719,10 +1721,10 @@ msgid "tSelect client from current group (double-click to change settings):"
 msgstr ""
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Dzēst grupu"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Atļaut klientiemn uzsākt failu atjaunošanu"
 
 msgid "tAllow clients to configure components to backup"
 msgstr ""
@@ -1807,16 +1809,16 @@ msgid "tAdd parameter"
 msgstr ""
 
 msgid "tName:"
-msgstr ""
+msgstr "Nosaukums:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Etiķete:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Noklusētā vērtība:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Veids:"
 
 msgid "tString"
 msgstr ""

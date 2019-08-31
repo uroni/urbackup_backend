@@ -3743,7 +3743,8 @@ g.general_settings_list=[
 "global_soft_fs_quota",
 "use_incremental_symlinks",
 "show_server_updates",
-"server_url"
+"server_url",
+"internet_expect_endpoint"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -3757,7 +3758,8 @@ g.mail_settings_list=[
 ];
 g.internet_settings_list=[
 "internet_server",
-"internet_server_port"
+"internet_server_port",
+"internet_server_proxy"
 ];
 g.ldap_settings_list=[
 "ldap_login_enabled",
@@ -3868,6 +3870,7 @@ function getInternetSettings()
 	if(I('internet_server_port').value.indexOf(";")==-1 
 		&& !validate_text_int(["internet_server_port"]) ) return null;
 	if(!validate_text_regex([{ id: "internet_server", regexp: /(((;|^)(([\w-]+(\.[\w-]*)*)|((?!0)(?!.*\.)((1?\d?\d|25[0-5]|2[0-4]\d)(\.)){4})))+$)|(^$)/i }])) return null;
+	if(!validate_text_regex([{ id: "internet_server_proxy", regexp: /(^(http|https):\/\/[\w-]+([\w-]*)+([\w.,@?^=%&amp;:\/~+#-]*[\w@?^=%&amp;\/~+#-])?$)|(^$)/i }])) return null;
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
@@ -5454,6 +5457,10 @@ function addNewClient3(data)
 	{
 		data.linux_url = downloadClientURL(data.new_clientid, data.new_authkey, "linux");
 		data.mac_url = downloadClientURL(data.new_clientid, data.new_authkey, "mac");
+		if(data.internet_server_proxy)
+		{
+			data.internet_proxy_settings = " -k internet_server_proxy -v \""+data.internet_server_proxy+"\"";
+		}
 		var ndata=dustRender("client_added", data);
 	
 		if(g.data_f!=ndata)

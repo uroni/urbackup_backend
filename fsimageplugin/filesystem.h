@@ -29,7 +29,7 @@ enum ENextBlockState
 	ENextBlockState_Error
 };
 
-const size_t n_max_buffers=128;
+const size_t fs_readahead_n_max_buffers=64;
 
 struct SNextBlock;
 
@@ -48,7 +48,7 @@ public:
 
 struct SNextBlock
 {	
-	SBlockBuffer buffers[n_max_buffers];
+	SBlockBuffer buffers[fs_readahead_n_max_buffers];
 	size_t n_buffers;
 	Filesystem* fs;
 #ifdef _WIN32
@@ -93,6 +93,8 @@ public:
 
 	virtual int64 getOsErrorCode();
 
+	void readaheadSetMaxNBuffers(int64 n_max_buffers);
+
 protected:
 	bool readFromDev(char *buf, _u32 bsize);
 	void initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool background_priority);
@@ -135,6 +137,8 @@ protected:
 	IFsNextBlockCallback* next_block_callback;
 
 	IFSImageFactory::EReadaheadMode read_ahead_mode;
+
+	int64 curr_fs_readahead_n_max_buffers;
 
 #ifdef _WIN32
 	HANDLE hVol;

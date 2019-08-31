@@ -89,79 +89,44 @@ void OutputCallback::operator() (const void* buf, size_t count)
 }
 
 CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort ) 
-	: error(false), s_v6(SOCKET_ERROR)
+	: error(false), s_v6(SOCKET_ERROR), s(SOCKET_ERROR)
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
-	int type = SOCK_STREAM;
-#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
-	type |= SOCK_CLOEXEC;
-#endif
-	s=socket(AF_INET, type, 0);
-	if(s<1)
-	{
-		Server->Log("Creating SOCKET failed. Port "+convert((int)uPort)+" may already be in use",LL_ERROR);
-		error=true;
-		return;
-	}
+	bool has_ipv4 = Server->getServerParameter("disable_ipv4").empty();
+	bool has_ipv6 = Server->getServerParameter("disable_ipv6").empty();
 
-	if (!prepareSocket(s))
+	if (!has_ipv4 && !has_ipv6)
 	{
+		Server->Log("CAcceptThread: IPv4 and IPv6 disabled", LL_ERROR);
 		error = true;
 		return;
 	}
 
-	sockaddr_in addr;
-
-	memset(&addr, 0, sizeof(sockaddr_in));
-	addr.sin_family=AF_INET;
-	addr.sin_port=htons(uPort);
-	addr.sin_addr.s_addr= htonl(INADDR_ANY);
-
-	int rc=bind(s,(sockaddr*)&addr,sizeof(addr));
-	if(rc==SOCKET_ERROR)
+	if (has_ipv4)
 	{
-		Server->Log("Failed binding SOCKET to Port "+convert(uPort),LL_ERROR);
-		error=true;
-		return;
+		if (!init_socket_v4(uPort))
+		{
+			if (Server->getServerParameter("ipv4_optional").empty()
+				|| !has_ipv6)
+			{
+				error = true;
+				return;
+			}
+		}
 	}
 
-	listen(s, 10000);
-
-	if (Server->getServerParameter("disable_ipv6").empty())
+	if (has_ipv6)
 	{
-		s_v6 = socket(AF_INET6, type, 0);
-
-		if (s_v6<1)
+		if (!init_socket_v6(uPort))
 		{
-			Server->Log("Creating ipv6 SOCKET failed. Port " + convert((int)uPort) + " may already be in use", LL_ERROR);
-			error = true;
-			return;
+			if (!Server->getServerParameter("ipv6_required").empty()
+				|| !has_ipv4)
+			{
+				error = true;
+				return;
+			}
 		}
-
-		if (!prepareSocket(s_v6))
-		{
-			error = true;
-			return;
-		}
-
-		int optval = 1;
-		setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
-
-		sockaddr_in6 addr = {};
-		addr.sin6_family = AF_INET6;
-		addr.sin6_port = htons(uPort);
-		addr.sin6_addr = in6addr_any;
-
-		int rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
-		if (rc == SOCKET_ERROR)
-		{
-			Server->Log("Failed binding ipv6 SOCKET to Port " + convert(uPort), LL_ERROR);
-			error = true;
-			return;
-		}
-
-		listen(s_v6, 10000);
 	}
 
 	Server->Log("Server started up successfully!",LL_INFO);
@@ -305,6 +270,89 @@ void CAcceptThread::AddToSelectThread(CClient *client)
 	SelectThreads.push_back( nt );
 
 	Server->createThread(nt, "fastcgi: accept");
+}
+
+bool CAcceptThread::init_socket_v4(unsigned short port)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s = socket(AF_INET, type, 0);
+	if (s < 1)
+	{
+		Server->Log("Creating SOCKET failed. Port " + convert((int)port) + " may already be in use", LL_ERROR);
+		return false;
+	}
+
+	if (!prepareSocket(s))
+	{
+		closesocket(s);
+		s = SOCKET_ERROR;
+		return false;
+	}
+
+	sockaddr_in addr;
+
+	memset(&addr, 0, sizeof(sockaddr_in));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	int rc = bind(s, (sockaddr*)&addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log("Failed binding SOCKET to Port " + convert(port), LL_ERROR);
+		closesocket(s);
+		s = SOCKET_ERROR;
+		return false;
+	}
+
+	listen(s, 10000);
+	return true;
+}
+
+bool CAcceptThread::init_socket_v6(unsigned short port)
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s_v6 = socket(AF_INET6, type, 0);
+
+	if (s_v6<1)
+	{
+		Server->Log("Creating ipv6 SOCKET failed. Port " + convert((int)port) + " may already be in use", LL_ERROR);
+		return false;
+	}
+
+	if (!prepareSocket(s_v6))
+	{
+		closesocket(s_v6);
+		s_v6 = SOCKET_ERROR;
+		return false;
+	}
+
+	int optval = 1;
+	setsockopt(s_v6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&optval, sizeof(optval));
+
+	sockaddr_in6 addr = {};
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = htons(port);
+	addr.sin6_addr = in6addr_any;
+
+	int rc = bind(s_v6, (sockaddr*)&addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log("Failed binding ipv6 SOCKET to Port " + convert(port), LL_ERROR);
+		closesocket(s_v6);
+		s_v6 = SOCKET_ERROR;
+		return false;
+	}
+
+	listen(s_v6, 10000);
+
+	return true;
 }
 
 bool CAcceptThread::has_error(void)

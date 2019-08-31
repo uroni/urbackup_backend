@@ -19,11 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="crc32c-adler.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\blockalign_src\crc.cpp" />
+    <ClCompile Include="..\blockalign_src\crc32c-adler.cpp" />
+    <ClCompile Include="..\blockalign_src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="crc32c-adler.h" />
+    <ClInclude Include="..\blockalign_src\crc.h" />
+    <ClInclude Include="..\blockalign_src\crc32c-adler.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C2F8110F-6103-4669-9CA5-C332DC5FE228}</ProjectGuid>

@@ -12,6 +12,7 @@
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
 #include "Interface/SharedMutex.h"
+#include "LookupService.h"
 #include <vector>
 #include <fstream>
 #include <memory>
@@ -222,6 +223,8 @@ private:
 	void UnloadDLLs2(void);
 
 	void rotateLogfile();
+
+	IPipe* ConnectStream(const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms);
 
 
 	int loglevel;

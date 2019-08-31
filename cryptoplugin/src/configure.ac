@@ -832,10 +832,6 @@ fi
 #############################################################################
 ## ARM A-32, including NEON, soft floats and hard floats
 
-if test "$IS_ARM32" -ne "0" && test "$IS_ANDROID_OS" -ne "0"; then
-   AC_MSG_ERROR(["Android is not ready. Ping noloader, gmail to move it along."])
-fi
-
 if test "$IS_ARM32" -ne "0" && test "$IS_ANDROID_OS" -eq "0"; then
 
    ## Most Linux are hard-float systems.

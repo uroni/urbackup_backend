@@ -378,6 +378,15 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipeZstd.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="apps\blockalign.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\blockalign_src\crc.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\blockalign_src\crc32c-adler.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

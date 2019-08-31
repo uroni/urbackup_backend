@@ -380,6 +380,58 @@ namespace
 #endif //HAVE_MNTENT_H
 	}
 #endif //!_WIN32
+
+#ifndef _WIN32
+	std::vector<std::string> getAllMounts(const std::vector<std::string>& excl_fs, bool filter_usb)
+	{
+#ifndef HAVE_MNTENT_H
+		return std::vector<std::string>();
+#else
+		std::vector<std::string> usb_devs;
+
+		if (filter_usb)
+		{
+			std::vector<SFile> lnks = getFiles("/dev/disk/by-id");
+
+			for (size_t i = 0; i < lnks.size(); ++i)
+			{
+				if (lnks[i].issym
+					&& next(lnks[i].name, 0, "usb-"))
+				{
+					std::string symtarget;
+					if (os_get_symlink_target("/dev/disk/by-id/" + lnks[i].name, symtarget))
+					{
+						usb_devs.push_back(symtarget);
+					}
+				}
+			}
+
+			std::sort(usb_devs.begin(), usb_devs.end());
+		}
+
+		FILE *aFile;
+
+		aFile = setmntent("/proc/mounts", "r");
+		if (aFile == NULL) {
+			Server->Log("Opening /proc/mounts failed. " + os_last_error_str(), LL_WARNING);
+			return std::vector<std::string>();
+		}
+		struct mntent *ent;
+		std::vector<std::string> ret;
+		while (NULL != (ent = getmntent(aFile)))
+		{
+			if (!std::binary_search(excl_fs.begin(), excl_fs.end(), std::string(ent->mnt_type))
+				&& !std::binary_search(usb_devs.begin(), usb_devs.end(), std::string(ent->mnt_fsname)) )
+			{
+				ret.push_back(ent->mnt_dir);
+			}
+		}
+		endmntent(aFile);
+
+		return ret;
+#endif
+	}
+#endif
 }
 
 IMutex *IndexThread::filelist_mutex=NULL;
@@ -1349,6 +1401,8 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	index_follow_last = false;
 	index_keep_files = false;
 
+	updateBackupDirsWithAll();
+
 	std::vector<std::string> selected_dirs;
 	std::vector<int> selected_dir_db_tgroup;
 	for(size_t i=0;i<backup_dirs.size();++i)
@@ -1357,6 +1411,9 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 			|| (backup_with_vss_components
 				&& backup_dirs[i].group== c_group_vss_components) )
 		{
+			if (isAllSpecialDir(backup_dirs[i]))
+				continue;
+
 			selected_dirs.push_back(removeDirectorySeparatorAtEnd(backup_dirs[i].path));
 #ifdef _WIN32
 			selected_dirs[selected_dirs.size()-1]=strlower(selected_dirs[selected_dirs.size()-1]);
@@ -1527,6 +1584,15 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				continue;
 			}
 
+			if (isAllSpecialDir(backup_dirs[i]))
+				continue;
+
+			if (isExcluded(index_exclude_dirs, backup_dirs[i].path)
+				&& isExcluded(index_exclude_dirs, backup_dirs[i].tname))
+			{
+				continue;
+			}
+
 			index_server_default = backup_dirs[i].server_default;
 
 			SCDirs *scd=getSCDir(backup_dirs[i].tname, index_clientsubname, false);
@@ -1691,9 +1757,22 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 				{
 					openCbtHdatFile(scd->ref, backup_dirs[i].tname, volume);
 
-					initialCheck(strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+					std::vector<std::string> rm_exclude_dirs = getRmExcludedByPatterns(index_exclude_dirs, backup_dirs[i].path);
+
+					for (size_t k = 0; k < rm_exclude_dirs.size(); ++k)
+					{
+						VSSLog("\"" + backup_dirs[i].tname + "\" at \"" + backup_dirs[i].path +
+							"\" would be completely excluded by pattern \"" + rm_exclude_dirs[k] +
+							"\". Not using this pattern while indexing this path", LL_DEBUG);
+					}
+					
+					std::vector<SRecurParams> params_stack;
+					initialCheck(params_stack, std::string::npos,
+						strlower(volume), vssvolume, backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 						backup_dirs[i].flags, !full_backup, backup_dirs[i].symlinked, 0, true, true,
-						index_exclude_dirs, index_include_dirs);
+						index_exclude_dirs, index_include_dirs, std::string());
+
+					index_exclude_dirs.insert(index_exclude_dirs.end(), rm_exclude_dirs.begin(), rm_exclude_dirs.end());
 				}
 
 				commitModifyFilesBuffer();
@@ -1897,6 +1976,253 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 	return ret;
 }
 
+void IndexThread::updateBackupDirsWithAll()
+{
+	bool has_all = false;
+	bool has_all_nonusb = false;
+	size_t ref_idx;
+	std::vector<std::string> filter_add;
+	for (size_t i = 0; i < backup_dirs.size(); ++i)
+	{
+		if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL" && backup_dirs[i].tname == "ALL"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+			filter_add.push_back("tmpfs");
+		}
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_NONUSB" &&  backup_dirs[i].tname == "ALL_NONUSB"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all_nonusb = true;
+			filter_add.push_back("tmpfs");
+		}
+#ifndef _WIN32
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_NONET" &&  backup_dirs[i].tname == "ALL_NONET"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+			filter_add.push_back("nfs");
+			filter_add.push_back("smbfs");
+			filter_add.push_back("cifs");
+		}
+		else if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].path == "ALL_WITH_TMPFS" &&  backup_dirs[i].tname == "ALL_WITH_TMPFS"
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_Default)
+		{
+			ref_idx = i;
+			has_all = true;
+		}
+#endif
+	}
+
+	std::vector<std::string> volumes;
+#ifdef _WIN32
+	if (has_all)
+	{
+		std::string vols = get_all_volumes_list(false, volumes_cache);
+		Tokenize(vols, volumes, ";,");
+	}
+	else if (has_all_nonusb)
+	{
+		std::string vols = get_all_volumes_list(true, volumes_cache);
+		Tokenize(vols, volumes, ";,");
+	}
+#else
+	if (has_all || has_all_nonusb)
+	{
+#ifndef HAVE_MNTENT_H
+		VSSLog("Error getting mounted file systems. Client not compiled with HAVE_MNTENT_H", LL_ERROR);
+#endif
+		filter_add.push_back("sysfs");
+		filter_add.push_back("proc");
+		filter_add.push_back("devtmpfs");
+		filter_add.push_back("devpts");
+		filter_add.push_back("securityfs");
+		filter_add.push_back("cgroup");
+		filter_add.push_back("pstore");
+		filter_add.push_back("autofs");
+		filter_add.push_back("debugfs");
+		filter_add.push_back("mqueue");
+		filter_add.push_back("hugetlbfs");
+		filter_add.push_back("configfs");
+		filter_add.push_back("cgroup2");
+		filter_add.push_back("fusectl");
+		filter_add.push_back("efivarfs");
+		std::sort(filter_add.begin(), filter_add.end());
+		volumes = getAllMounts(filter_add, has_all_nonusb);
+	}
+#endif
+
+	bool new_volumes = false;
+
+	std::vector<std::string> volumes_norm;
+	if (!volumes.empty())
+	{
+		IQuery *q_add = db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ," + convert((int)EBackupDirServerDefault_AllSrc) + ", ?, ?)", false);
+		IQuery *q_name = db->Prepare("SELECT id FROM backupdirs WHERE name=?", false);
+
+		for (size_t i = 0; i < volumes.size(); ++i)
+		{
+			std::string cvol = trim(volumes[i]);
+#ifdef _WIN32
+			if (!normalizeVolume(cvol))
+				continue;
+			else
+				cvol = os_get_final_path(cvol);
+#else
+			cvol = os_get_final_path(cvol);
+#endif
+
+			volumes_norm.push_back(cvol);
+
+			bool found_watch = false;
+			bool found = false;
+			for (size_t j = 0; j < backup_dirs.size(); ++j)
+			{
+				std::string ovol = backup_dirs[j].path;
+#ifdef _WIN32
+				if (ovol.size() <= 3)
+					normalizeVolume(ovol);
+#endif
+
+				if (ovol == cvol)
+				{
+					found_watch = true;
+				}
+				if (ovol == cvol
+					&& backup_dirs[j].group == index_group)
+				{
+					found = true;
+				}
+			}
+
+#ifdef _WIN32
+			if (!found_watch)
+			{
+				std::string msg = "A" + os_get_final_path(cvol);
+				dwt->getPipe()->Write(msg);
+			}
+#endif
+
+			if (!found)
+			{
+				new_volumes = true;
+
+				std::string name = volumes[i];
+
+#ifndef _WIN32
+				if (name.empty() || name == "/")
+					name = "rootfs";
+				else
+					name = ExtractFileName(name);
+#endif
+
+				q_name->Bind(name);
+				std::string orig_name = name;
+				if (q_name->Read().empty() == false
+					|| name == "urbackup")
+				{
+					for (int k = 0; k < 100; ++k)
+					{
+						q_name->Reset();
+						q_name->Bind(name + "_" + convert(k));
+						if (q_name->Read().empty() == true)
+						{
+							name += "_" + convert(k);
+							break;
+						}
+					}
+
+					if (orig_name == name)
+					{
+						name += "_" + Server->secureRandomString(16);
+					}
+				}
+				q_name->Reset();
+
+				int new_flags = backup_dirs[ref_idx].flags;
+
+#ifndef _WIN32
+				new_flags |= EBackupDirFlag_OneFilesystem;
+#endif
+
+				q_add->Bind(ClientConnector::removeIllegalCharsFromBackupName(name));
+				q_add->Bind(cvol);
+				q_add->Bind(new_flags);
+				q_add->Bind(index_group);
+				q_add->Write();
+				q_add->Reset();
+			}
+		}
+
+		db->destroyQuery(q_add);
+		db->destroyQuery(q_name);
+	}
+
+	IQuery* q_del = NULL;
+	for (size_t i = 0; i < backup_dirs.size();)
+	{
+		if (backup_dirs[i].group == index_group
+			&& backup_dirs[i].server_default == EBackupDirServerDefault_AllSrc)
+		{
+			std::string ovol = backup_dirs[i].path;
+#ifdef _WIN32
+			if (ovol.size() <= 3)
+				normalizeVolume(ovol);
+#endif
+
+			if (std::find(volumes_norm.begin(), volumes_norm.end(), ovol)== volumes_norm.end())
+			{
+				if(q_del==NULL)
+					q_del = db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
+
+				std::string cpath = backup_dirs[i].path;
+				q_del->Bind(backup_dirs[i].id);
+				q_del->Write();
+				q_del->Reset();
+				backup_dirs.erase(backup_dirs.begin() + i);
+
+#ifdef _WIN32
+				bool found = false;
+				for (size_t j = 0; j < backup_dirs.size(); ++j)
+				{
+					if (backup_dirs[j].path == cpath)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+				{
+					std::string msg = "D" + os_get_final_path(cpath);
+					dwt->getPipe()->Write(msg);
+				}
+#endif
+
+				continue;
+			}				
+		}
+		++i;
+	}
+	db->destroyQuery(q_del);
+
+	if (new_volumes)
+	{
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+		readBackupDirs();
+	}
+}
+
 void IndexThread::resetFileEntries(void)
 {
 	db->Write("DELETE FROM files WHERE tgroup=0 OR tgroup="+convert(index_group+1));
@@ -1924,11 +2250,11 @@ bool IndexThread::skipFile(const std::string& filepath, const std::string& named
 	return false;
 }
 
-bool IndexThread::initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
+bool IndexThread::initialCheck(std::vector<SRecurParams>& params_stack, size_t stack_idx, 
+	const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path, std::fstream &outfile,
 	bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs, const std::vector<std::string>& exclude_dirs,
-	const std::vector<SIndexInclude>& include_dirs, std::string orig_path)
+	const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
 {
-	bool has_include=false;
 	index_flags=flags;
 
 	if( IdleCheckerThread::getIdle()==false )
@@ -1945,7 +2271,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		return false;
 	}
 
-	std::string fn_filter;
+	SFirstInfo first_info;
 	bool close_dir=false;
 	std::string extra;
 	
@@ -2039,7 +2365,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 		if(filetype & EFileType_File)
 		{
-			fn_filter = ExtractFileName(dir, os_file_sep());
+			first_info.fn_filter = ExtractFileName(dir, os_file_sep());
 			orig_dir = ExtractFilePath(orig_dir, os_file_sep());
 			dir = ExtractFilePath(dir, os_file_sep());
 		}
@@ -2063,7 +2389,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	int64 target_generation;
-	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, fn_filter, use_db,
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db, first_info.fn_filter, use_db,
 		exclude_dirs, include_dirs, target_generation);
 
 	if(index_error)
@@ -2072,6 +2398,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	bool finish_phash_path = false;
+	bool has_include = false;
 	
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -2099,7 +2426,7 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			std::string listname = files[i].name;
 
-			if(first && !fn_filter.empty() && i==0)
+			if(first && !first_info.fn_filter.empty() && i==0)
 			{
 				listname = named_path;
 			}
@@ -2185,12 +2512,32 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 		addToPhashQueue(wdata);
 	}
 
-	for(size_t i=0;dir_recurse && i<files.size();++i)
+	if (first)
+	{
+		assert(params_stack.empty());
+		SRecurParams curr_params(SFileAndHash(), NULL, false,
+			std::string(), std::string(), std::string(), depth, std::string::npos);
+		curr_params.state = 2;
+		params_stack.push_back(curr_params);
+		stack_idx = params_stack.size() - 1;
+	}
+
+	for(size_t i=files.size();dir_recurse && i-->0;)
 	{
 		if( files[i].isdir )
 		{
 			if( (files[i].issym && !with_proper_symlinks && !(flags & EBackupDirFlag_FollowSymlinks) ) 
 				|| (files[i].isspecialf && !with_proper_symlinks) )
+			{
+				continue;
+			}
+
+			/* Skip symlinks if they are not included?
+			Problem is that we haven't scanned symlink contents yet and don't know if it has any included files...*/
+
+			if (files[i].issym && with_proper_symlinks && !(flags & EBackupDirFlag_IncludeDirectorySymlinks)
+				&& skipFile(orig_dir + os_file_sep() + files[i].name, named_path + os_file_sep() + files[i].name,
+				exclude_dirs, include_dirs))
 			{
 				continue;
 			}
@@ -2222,83 +2569,48 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
-				std::streampos pos=outfile.tellp();
-				int64 file_id_backup = file_id;
+				first_info.idx = i;
+				SRecurParams curr_params(files[i], first ? &first_info : NULL, curr_included,
+					orig_dir, dir, named_path, depth, stack_idx);
+				params_stack.push_back(curr_params);
+			}
+		}
+	}
 
-				SLastFileList backup;
-				if (index_follow_last)
+	if (first)
+	{
+		while (!params_stack.empty())
+		{
+			SRecurParams& params_back = params_stack.back();
+			size_t stack_idx = params_stack.size() - 1;
+
+			if (params_back.state == 0)
+			{
+				params_back.state = 1;
+				initialCheckRecur1(params_stack, params_back, stack_idx, volume, vssvolume, outfile, flags, use_db, dir_recurse,
+					include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+
+				if (index_error)
 				{
-					backup = *last_filelist.get();
+					return has_include;
 				}
+			}
+			else if(params_back.state == 1)
+			{
+				initialCheckRecur2(params_stack, params_back, stack_idx, volume, vssvolume, outfile, flags, use_db, dir_recurse,
+					include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+				params_stack.pop_back();
+			}
+			else if (params_back.state == 2)
+			{
+				if (params_back.recur_ret.has_include)
+					has_include = true;
 
-				if(files[i].issym && with_proper_symlinks)
-				{
-					extra+="&sym_target="+EscapeParamString((files[i].output_symlink_target));
-				}
-
-				if(files[i].isspecialf && with_proper_symlinks)
-				{
-					extra+="&special=1";
-				}
-
-				extra += "&line=" + convert(file_id+1);
-
-				std::string listname = files[i].name;
-
-				if(first && !fn_filter.empty() && i==0)
-				{
-					listname = named_path;
-				}
-
-				addFromLastUpto(listname, true, depth, false, outfile);
-				writeDir(outfile, listname, with_orig_path, files[i].change_indicator, extra);
-				extra.clear();
-
-				bool b=true;
-
-				if(!files[i].issym || !with_proper_symlinks)
-				{
-					b = initialCheck(volume, vssvolume, orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name,
-							named_path+os_file_sep()+files[i].name, outfile, false, flags, use_db, false, depth+1,
-						dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs);
-				}
-
-				addFromLastLiftDepth(depth, outfile);
-
-				if(!with_proper_symlinks)
-				{
-					outfile << "d\"..\"\n";
-				}
-				else
-				{
-					outfile << "u\n";
-				}
-
-				++file_id;
-				
-
-				if(!b)
-				{
-					if(!curr_included)
-					{
-						if (index_follow_last)
-						{
-							last_filelist->reset_to(backup);
-						}
-
-						outfile.seekp(pos);
-						file_id = file_id_backup;
-					}
-				}
-				else
-				{
-					has_include=true;
-				}
-
-				if(index_error)
-				{
-					return false;
-				}
+				params_stack.pop_back();
+			}
+			else
+			{
+				assert(false);
 			}
 		}
 	}
@@ -2319,6 +2631,96 @@ bool IndexThread::initialCheck(const std::string& volume, const std::string& vss
 	}
 
 	return has_include;
+}
+
+void IndexThread::initialCheckRecur1(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx,
+	const std::string & volume, const std::string & vssvolume,
+	std::fstream & outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs, 
+	const std::vector<std::string>& exclude_dirs, const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
+{
+	params.recur_ret.pos = outfile.tellp();
+	params.recur_ret.file_id_backup = file_id;
+
+	SLastFileList backup;
+	if (index_follow_last)
+	{
+		backup = *last_filelist.get();
+	}
+	std::string extra;
+
+	if (params.file.issym && with_proper_symlinks)
+	{
+		extra += "&sym_target=" + EscapeParamString((params.file.output_symlink_target));
+	}
+
+	if (params.file.isspecialf && with_proper_symlinks)
+	{
+		extra += "&special=1";
+	}
+
+	extra += "&line=" + convert(file_id + 1);
+
+	std::string listname = params.file.name;
+
+	if (params.first_info!=NULL && !params.first_info->fn_filter.empty() && params.first_info->idx == 0)
+	{
+		listname = params.named_path;
+	}
+
+	addFromLastUpto(listname, true, params.depth, false, outfile);
+	writeDir(outfile, listname, with_orig_path, params.file.change_indicator, extra);
+	extra.clear();
+
+	params.recur_ret.has_include = true;
+
+	if (!params.file.issym || !with_proper_symlinks)
+	{
+		bool b_has_include = initialCheck(params_stack, stack_idx, 
+			volume, vssvolume, params.orig_dir + os_file_sep() + params.file.name, params.dir + os_file_sep() + params.file.name,
+			params.named_path + os_file_sep() + params.file.name, outfile, false, flags, use_db, false, params.depth + 1,
+			dir_recurse, include_exclude_dirs, exclude_dirs, include_dirs, orig_path);
+		params_stack[stack_idx].recur_ret.has_include = b_has_include;
+	}
+}
+
+void IndexThread::initialCheckRecur2(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx,
+	const std::string & volume, const std::string & vssvolume,
+	std::fstream & outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+	const std::vector<std::string>& exclude_dirs, const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path)
+{
+	addFromLastLiftDepth(params.depth, outfile);
+
+	if (!with_proper_symlinks)
+	{
+		outfile << "d\"..\"\n";
+	}
+	else
+	{
+		outfile << "u\n";
+	}
+
+	++file_id;
+
+	if (!params.recur_ret.has_include)
+	{
+		if (!params.curr_included)
+		{
+			if (index_follow_last)
+			{
+				last_filelist->reset_to(params.recur_ret.backup);
+			}
+
+			outfile.seekp(params.recur_ret.pos);
+			file_id = params.recur_ret.file_id_backup;
+		}
+	}
+	else
+	{
+		if (params.parent_idx != std::string::npos)
+		{
+			params_stack.at(params.parent_idx).recur_ret.has_include = true;
+		}
+	}
 }
 
 void IndexThread::addResult(unsigned int id, const std::string & res)
@@ -2367,6 +2769,15 @@ bool IndexThread::readBackupDirs(void)
 	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if (isAllSpecialDir(backup_dirs[i]))
+		{
+			if (index_group != -1 && backup_dirs[i].group == index_group)
+			{
+				has_backup_dir = true;
+			}
+			continue;
+		}
+
 		backup_dirs[i].path=os_get_final_path(backup_dirs[i].path);
 		Server->Log("Final path: "+backup_dirs[i].path, LL_INFO);
 
@@ -3917,6 +4328,30 @@ bool IndexThread::isExcluded(const std::vector<std::string>& exclude_dirs, const
 		}
 	}
 	return false;
+}
+
+std::vector<std::string> IndexThread::getRmExcludedByPatterns(std::vector<std::string>& exclude_dirs, const std::string & path)
+{
+	std::string wpath = path;
+#ifdef _WIN32
+	strupper(&wpath);
+#endif
+	std::vector<std::string> ret;
+	for (size_t i = 0; i<exclude_dirs.size();)
+	{
+		if (!exclude_dirs[i].empty())
+		{
+			bool b = amatch(wpath.c_str(), exclude_dirs[i].c_str());
+			if (b)
+			{
+				ret.push_back(exclude_dirs[i]);
+				exclude_dirs.erase(exclude_dirs.begin() + i);
+				continue;
+			}
+		}
+		++i;
+	}
+	return ret;
 }
 
 bool IndexThread::isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless)
@@ -6666,7 +7101,7 @@ void IndexThread::addSymlinkBackupDir( const std::string& target, std::string& o
 
 	SBackupDir backup_dir;
 
-	cd->addBackupDir(name, target, index_server_default ? 1: 0, index_flags, index_group, 1);
+	cd->addBackupDir(name, target, index_server_default, index_flags, index_group, 1);
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
@@ -7526,4 +7961,38 @@ bool IndexThread::commitPhashQueue()
 	}
 	phash_queue_buffer.clear();
 	return ret;
+}
+
+bool IndexThread::isAllSpecialDir(const SBackupDir& bdir)
+{
+	if (bdir.path == "ALL"
+		&& bdir.tname == "ALL"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+
+	if (bdir.path == "ALL_NONUSB"
+		&& bdir.tname == "ALL_NONUSB"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+#ifndef _WIN32
+	if (bdir.path == "ALL_NONET"
+		&& bdir.tname == "ALL_NONET"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+
+	if (bdir.path == "ALL_WITH_TMPFS"
+		&& bdir.tname == "ALL_WITH_TMPFS"
+		&& bdir.server_default == EBackupDirServerDefault_Default)
+	{
+		return true;
+	}
+#endif
+
+	return false;
 }

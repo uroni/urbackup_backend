@@ -36,7 +36,8 @@
 namespace
 {
 #ifdef _WIN32
-	const size_t readahead_num_blocks = 40;
+	//Must be at least 64, otherwise it might get stuck
+	const size_t readahead_num_blocks = 80;
 #else
 	const size_t readahead_num_blocks = 5120;
 #endif
@@ -162,6 +163,11 @@ public:
 		}
 	}
 
+	void setMaxReadaheadNBuffers(int64 n_max_buffers)
+	{
+		curr_fs_readahead_n_max_buffers = n_max_buffers;
+	}
+
 	IFilesystem::IFsBuffer* getBlock(int64 block)
 	{
 		IScopedLock lock(mutex.get());
@@ -237,11 +243,13 @@ private:
 	bool do_stop;
 
 	bool background_priority;
+
+	int64 curr_fs_readahead_n_max_buffers;
 };
 
 Filesystem::Filesystem(const std::string &pDev, IFSImageFactory::EReadaheadMode read_ahead, IFsNextBlockCallback* next_block_callback)
 	: buffer_mutex(Server->createMutex()), next_block_callback(next_block_callback), overlapped_next_block(-1),
-	num_uncompleted_blocks(0), errcode(0)
+	num_uncompleted_blocks(0), errcode(0), curr_fs_readahead_n_max_buffers(fs_readahead_n_max_buffers)
 {
 	has_error=false;
 
@@ -292,7 +300,7 @@ Filesystem::~Filesystem()
 #ifdef _WIN32
 			VirtualFree(next_blocks[i].buffers[0].buffer, 0, MEM_RELEASE);
 #else
-			delete[] next_blocks[i].buffers[0]->buffer;
+			delete[] next_blocks[i].buffers[0].buffer;
 #endif
 		}
 	}
@@ -430,6 +438,11 @@ int64 Filesystem::getOsErrorCode()
 	return errcode;
 }
 
+void Filesystem::readaheadSetMaxNBuffers(int64 n_max_buffers)
+{
+	curr_fs_readahead_n_max_buffers = n_max_buffers;
+}
+
 std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
 	const std::vector<char*>& buffers, unsigned int buffer_offset)
 {
@@ -554,9 +567,9 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 		for (size_t i = 0; i < next_blocks.size(); ++i)
 		{
 #ifdef _WIN32
-			next_blocks[i].buffers[0].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize()*n_max_buffers, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+			next_blocks[i].buffers[0].buffer = reinterpret_cast<char*>(VirtualAlloc(NULL, getBlocksize()*fs_readahead_n_max_buffers, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 #else
-			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*n_max_buffers];
+			next_blocks[i].buffers[0].buffer = new char[getBlocksize()*fs_readahead_n_max_buffers];
 #endif
 			if (next_blocks[i].buffers[0].buffer == NULL)
 			{
@@ -566,7 +579,7 @@ void Filesystem::initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool 
 			next_blocks[i].fs = this;
 			next_blocks[i].buffers[0].block = &next_blocks[i];
 			
-			for(size_t j=1;j<n_max_buffers;++j)
+			for(size_t j=1;j<fs_readahead_n_max_buffers;++j)
 			{
 				SBlockBuffer& block_buf = next_blocks[i].buffers[j];
 				block_buf.state = ENextBlockState_Queued;
@@ -612,7 +625,7 @@ bool Filesystem::queueOverlappedReads(bool force_queue)
 			queued_next_blocks[overlapped_next_block] = &block->buffers[0];
 			overlapped_next_block = next_block_callback->nextBlock(overlapped_next_block);
 			
-			while(block->n_buffers<n_max_buffers
+			while(block->n_buffers<curr_fs_readahead_n_max_buffers
 				&& overlapped_last_block==overlapped_next_block-1)
 			{
 				block->buffers[block->n_buffers].state = ENextBlockState_Queued;

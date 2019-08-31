@@ -482,10 +482,10 @@ void BackupServer::startClients(FileClient &fc)
 					it->second.addr=curr_info.addr;
 					it->second.internet_connection=curr_info.internetclient;
 					std::string msg;
-					msg.resize(7+sizeof(sockaddr_in)+1);
-					msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
-					memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
-					msg[7+sizeof(sockaddr_in)]=(curr_info.internetclient?1:0);
+					msg.resize(7 + sizeof(FileClient::SAddrHint) + 1);
+					memcpy(&msg[0], "address", 7);
+					memcpy(&msg[7], &it->second.addr, sizeof(FileClient::SAddrHint));
+					msg[7+sizeof(FileClient::SAddrHint)]=(curr_info.internetclient?1:0);
 					it->second.pipe->Write(msg);
 
 					Server->Log("New client address: "+it->second.addr.toString(), LL_INFO);

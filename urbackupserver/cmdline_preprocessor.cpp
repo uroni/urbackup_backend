@@ -57,7 +57,7 @@ const std::string cmdline_version = PACKAGE_VERSION;
 void show_version()
 {
 	std::cout << "UrBackup Server v" << cmdline_version << std::endl;
-	std::cout << "Copyright (C) 2011-2018 Martin Raiber" << std::endl;
+	std::cout << "Copyright (C) 2011-2019 Martin Raiber" << std::endl;
 	std::cout << "This is free software; see the source for copying conditions. There is NO"<< std::endl;
 	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
 }
@@ -1007,6 +1007,108 @@ int action_internal(std::vector<std::string> args)
 	return run_real_main(args);
 }
 
+int action_blockalign(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Blockalign takes data from [input] and writes it to [output] " 
+		"and uses hashes in [hash file] to align blocks in [output] such "
+		"that subsequent runs have the same blocks at the same positions.\n"
+		"Using the -r flag [input file] is restored to [output], such that the output is identical to the original input again.", ' ', cmdline_version);
+
+	TCLAP::ValueArg<std::string> input_arg("i", "input",
+		"Input (file path or - for stdin)",
+		true, "", "path", cmd);
+
+	TCLAP::ValueArg<std::string> output_arg("o", "output",
+		"Output (file path or - for stdout)",
+		true, "", "path", cmd);
+
+	TCLAP::SwitchArg restore_arg("r", "restore",
+		"Restore block aligned file to its original layout", false);
+
+	TCLAP::ValueArg<std::string> hash_arg("j", "hash-output",
+		"Hash output file",
+		true, "", "path");
+
+	TCLAP::SwitchArg verbose_arg("v", "verbose",
+		"Print some information after block alignment", cmd, false);
+
+	cmd.xorAdd(restore_arg, hash_arg);
+
+	std::vector<std::string> real_args;
+	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
+	real_args.push_back("--no-server");
+	real_args.push_back("--loglevel");
+	real_args.push_back("debug");
+	real_args.push_back("--app");
+	real_args.push_back("blockalign");
+	real_args.push_back("--output");
+	real_args.push_back(output_arg.getValue());
+	if (restore_arg.getValue())
+	{
+		real_args.push_back("--restore");
+		real_args.push_back(input_arg.getValue());
+	}
+	else
+	{
+		real_args.push_back("--input");
+		real_args.push_back(input_arg.getValue());
+
+		if (verbose_arg.getValue())
+		{
+			real_args.push_back("--verbose");
+			real_args.push_back("1");
+		}
+
+		real_args.push_back("--hash_fn");
+		real_args.push_back(hash_arg.getValue());
+	}
+
+	return run_real_main(real_args);
+}
+
+int action_skiphash_copy(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Skiphash-copy copies a file [input] to [output] using hashes in file [hash file] to skip blocks that are unchanged. "
+		"A new hash file with updated hashes is created at [output path].hash. This file should be used as [hash file] input for the next skiphash-copy.", ' ', cmdline_version);
+
+	TCLAP::ValueArg<std::string> input_arg("i", "input",
+		"Input file",
+		true, "", "path", cmd);
+
+	TCLAP::ValueArg<std::string> output_arg("o", "output",
+		"Output file",
+		true, "", "path", cmd);
+
+	TCLAP::ValueArg<std::string> hash_arg("j", "hash-input",
+		"Hash input file",
+		false, "", "path", cmd);
+
+	std::vector<std::string> real_args;
+	real_args.push_back(args[0]);
+
+	cmd.parse(args);
+
+	real_args.push_back("--no-server");
+	real_args.push_back("--loglevel");
+	real_args.push_back("debug");
+	real_args.push_back("--app");
+	real_args.push_back("skiphash_copy");
+	real_args.push_back("--src");
+	real_args.push_back(input_arg.getValue());
+	real_args.push_back("--dst");
+	real_args.push_back(output_arg.getValue());
+	if (!hash_arg.getValue().empty())
+	{
+		real_args.push_back("--hashsrc");
+		real_args.push_back(hash_arg.getValue());
+	}
+
+	return run_real_main(real_args);
+}
+
 void action_help(std::string cmd)
 {
 	std::cout << std::endl;
@@ -1051,6 +1153,12 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " assemble" << std::endl;
 	std::cout << "\t\t" "Assemble VHD(Z) volumes into one disk VHD file" << std::endl;
 	std::cout << std::endl;
+	std::cout << "\t" << cmd << " blockalign" << std::endl;
+	std::cout << "\t\t" "Align file to block boundaries or reverse block boundary alignment" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " skiphash-copy" << std::endl;
+	std::cout << "\t\t" "Copy a file to another file, using a hashes to copy only changed content" << std::endl;
+	std::cout << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -1089,6 +1197,10 @@ int main(int argc, char* argv[])
 	action_funs.push_back(action_assemble);
 	actions.push_back("internal");
 	action_funs.push_back(action_internal);
+	actions.push_back("blockalign");
+	action_funs.push_back(action_blockalign);
+	actions.push_back("skiphash-copy");
+	action_funs.push_back(action_skiphash_copy);
 
 	bool has_help=false;
 	bool has_version=false;

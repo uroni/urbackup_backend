@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [2.4.2.0], [martin@urbackup.org])
+AC_INIT([urbackup-server], [2.4.7.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -160,6 +160,23 @@ fi
 if test "x$with_crypto" != "xno" && test "x$enable_embedded_cryptopp" != "xyes"
 then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
+	
+	SAVED_LDFLAGS="$LDFLAGS"
+	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS $CRYPTOPP_LIBS"
+	SAVED_CPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="$CPPFLAGS $CRYPTOPP_CPPFLAGS"
+	CRYPTOPP_INC="<$CRYPTOPP_INCLUDE_PREFIX/misc.h>"
+	AC_MSG_CHECKING([whether Crypto++ contains CryptoPP::AlignedAllocate function])
+	AC_LINK_IFELSE(
+	  [AC_LANG_PROGRAM([#include $CRYPTOPP_INC], 
+		[CryptoPP::AlignedAllocate(5);])],
+	  [AC_MSG_RESULT([yes])], 
+	  [
+		CRYPTOPP_CPPFLAGS="$CRYPTOPP_CPPFLAGS -DCRYPTOPP_DISABLE_ASM"
+		AC_MSG_RESULT([no])
+	  ])
+	LDFLAGS="$SAVED_LDFLAGS"
+	CPPFLAGS="$SAVED_CPPFLAGS"
 else
 	AC_CONFIG_SUBDIRS([cryptoplugin/src])
 fi

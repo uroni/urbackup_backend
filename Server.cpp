@@ -43,7 +43,6 @@
 #include "SessionMgr.h"
 #include "md5.h"
 #include "ServiceAcceptor.h"
-#include "LookupService.h"
 #include "FileSettingsReader.h"
 #include "DBSettingsReader.h"
 #include "StreamPipe.h"
@@ -59,6 +58,9 @@
 #include "Query.h"
 #ifdef _WIN32
 #include "SChannelPipe.h"
+#endif
+#ifdef WITH_OPENSSL
+#include "OpenSSLPipe.h"
 #endif
 
 #ifdef _WIN32
@@ -215,6 +217,13 @@ void CServer::setup(void)
 
 #ifdef _WIN32
 	SChannelPipe::init();
+#endif
+#ifdef WITH_OPENSSL
+	OpenSSLPipe::init();
+#endif
+
+#ifdef ENABLE_C_ARES
+	LookupInit();
 #endif
 }
 
@@ -1019,17 +1028,40 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
+	std::vector<SLookupBlockingResult> lookup_result;
+#ifdef ENABLE_C_ARES
+	lookup_result = LookupWithTimeout(pServer, pTimeoutms, pTimeoutms/2);
+#else
+	lookup_result = LookupBlocking(pServer);
+#endif
+	if (lookup_result.empty())
+	{
+#ifdef _WIN32
+		Server->Log("No result when looking up hostname \"" + pServer + "\". Err: " + convert(WSAGetLastError()), LL_DEBUG);
+#else
+		Server->Log("No result when looking up hostname \"" + pServer + "\". Err: " + convert(errno), LL_DEBUG);
+#endif
+		return NULL;
+	}
+
+	for (size_t i = 0; i < lookup_result.size(); ++i)
+	{
+		IPipe* ret = ConnectStream(lookup_result[i], pPort, pTimeoutms);
+		if (ret != NULL)
+			return ret;
+	}
+
+	return NULL;
+}
+
+
+IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsigned short pPort, unsigned int pTimeoutms)
+{
 	union
 	{
 		sockaddr_in addr_v4;
 		sockaddr_in6 addr_v6;
 	} addr = {};
-	
-	SLookupBlockingResult lookup_result;
-	if (!LookupBlocking(pServer, lookup_result))
-	{
-		return NULL;
-	}
 
 	if (lookup_result.is_ipv6)
 	{
@@ -1172,7 +1204,8 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 
 IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(WITH_OPENSSL)
+
 	int64 starttime = Server->getTimeMS();
 	CStreamPipe* bpipe = static_cast<CStreamPipe*>(ConnectStream(pServer, pPort, pTimeoutms));
 
@@ -1182,7 +1215,11 @@ IPipe * CServer::ConnectSslStream(const std::string & pServer, unsigned short pP
 	int64 remaining_time = pTimeoutms - (Server->getTimeMS() - starttime);
 	if (remaining_time < 0) remaining_time = 0;
 
+#ifdef WITH_OPENSSL
+	OpenSSLPipe* ssl_pipe = new OpenSSLPipe(bpipe);
+#else
 	SChannelPipe* ssl_pipe = new SChannelPipe(bpipe);
+#endif
 
 	if (!ssl_pipe->ssl_connect(pServer, static_cast<int>(remaining_time)))
 	{

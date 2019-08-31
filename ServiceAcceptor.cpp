@@ -54,7 +54,7 @@ namespace
 }
 
 CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
-	: maxClientsPerThread(pMaxClientsPerThread), s_v6(SOCKET_ERROR)
+	: maxClientsPerThread(pMaxClientsPerThread), s(SOCKET_ERROR), s_v6(SOCKET_ERROR)
 {
 	name=pName;
 	service=pService;
@@ -302,6 +302,8 @@ bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget b
 
 	if (!prepareSocket(s))
 	{
+		closesocket(s);
+		s = SOCKET_ERROR;
 		return false;
 	}
 
@@ -324,6 +326,8 @@ bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget b
 	if (rc == SOCKET_ERROR)
 	{
 		Server->Log(name + ": Failed binding socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
+		closesocket(s);
+		s = SOCKET_ERROR;
 		return false;
 	}
 
@@ -348,6 +352,8 @@ bool CServiceAcceptor::init_socket_v6(unsigned short port, IServer::BindTarget b
 
 	if (!prepareSocket(s_v6))
 	{
+		closesocket(s_v6);
+		s_v6 = SOCKET_ERROR;
 		return false;
 	}
 
@@ -373,6 +379,8 @@ bool CServiceAcceptor::init_socket_v6(unsigned short port, IServer::BindTarget b
 	if (rc == SOCKET_ERROR)
 	{
 		Server->Log(name + ": Failed binding ipv6 socket to port " + convert(port) + ". Another instance of this application may already be active and bound to this port.", LL_ERROR);
+		closesocket(s_v6);
+		s_v6 = SOCKET_ERROR;
 		return false;
 	}
 

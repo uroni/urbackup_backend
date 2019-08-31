@@ -57,12 +57,14 @@ void CLoadbalancerClient::operator ()(void)
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(lbport);
-	SLookupBlockingResult lookup_res;
-	if(!LookupBlocking(lb, lookup_res))
+	std::vector<SLookupBlockingResult> m_lookup_res = LookupBlocking(lb);
+	if(m_lookup_res.empty())
 	{
 		Server->Log("Cannot resolve \""+lb+"\"",LL_ERROR);
 		return;
 	}
+
+	SLookupBlockingResult& lookup_res = m_lookup_res[0];
 
 	if (lookup_res.is_ipv6)
 	{

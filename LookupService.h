@@ -1,6 +1,7 @@
 #pragma once
 #include "socket_header.h"
 #include <string>
+#include <vector>
 
 struct SLookupBlockingResult
 {
@@ -13,5 +14,10 @@ struct SLookupBlockingResult
 	unsigned int zone;
 };
 
-bool LookupBlocking(std::string pServer, SLookupBlockingResult& dest);
+std::vector<SLookupBlockingResult> LookupBlocking(std::string pServer);
 bool LookupHostname(const std::string& pIp, std::string& hostname);
+
+#ifdef ENABLE_C_ARES
+bool LookupInit();
+std::vector<SLookupBlockingResult> LookupWithTimeout(std::string pServer, int timeoutms, int stop_timeoutms);
+#endif

@@ -362,7 +362,11 @@ bool CTCPFileServ::startIpv4(_u16 tcpport)
 	if (mSocket < 1) return false;
 
 	if (!setSocketSettings(mSocket))
+	{
+		closesocket(mSocket);
+		mSocket = SOCKET_ERROR;
 		return false;
+	}
 
 	sockaddr_in addr;
 
@@ -379,6 +383,8 @@ bool CTCPFileServ::startIpv4(_u16 tcpport)
 #else
 		Log("Failed. Binding tcp socket.", LL_ERROR);
 #endif
+		closesocket(mSocket);
+		mSocket = SOCKET_ERROR;
 		return false;
 	}
 
@@ -397,7 +403,11 @@ bool CTCPFileServ::startIpv6(_u16 tcpport)
 	if (mSocketv6 < 1) return false;
 
 	if (!setSocketSettings(mSocketv6))
+	{
+		closesocket(mSocketv6);
+		mSocketv6 = SOCKET_ERROR;
 		return false;
+	}
 
 	int optval = 1;
 	setsockopt(mSocketv6, IPPROTO_IPV6, IPV6_V6ONLY, (char*)& optval, sizeof(optval));
@@ -417,6 +427,8 @@ bool CTCPFileServ::startIpv6(_u16 tcpport)
 #else
 		Log("Failed. Binding ipv6 tcp socket.", LL_ERROR);
 #endif
+		closesocket(mSocketv6);
+		mSocketv6 = SOCKET_ERROR;
 		return false;
 	}
 

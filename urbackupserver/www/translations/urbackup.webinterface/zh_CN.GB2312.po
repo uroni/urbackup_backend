@@ -9,13 +9,15 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Translators:
 # po erix <eirxpo@gmail.com>, 2017
-# po erix <eirxpo@gmail.com>, 2017
+# po erix <eirxpo@gmail.com>, 2017-2018
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2017-11-11 22:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2018-07-09 08:20+0000\n"
+"Last-Translator: po erix <eirxpo@gmail.com>\n"
 "Language-Team: Chinese (China) (GB2312) (http://www.transifex.com/uroni/urbackup/language/zh_CN.GB2312/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1345,7 +1347,7 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr ""
+msgstr "已暂停"
 
 msgid "tWith the command line:"
 msgstr "使用命令行："
@@ -1402,7 +1404,7 @@ msgid "tDays"
 msgstr "天"
 
 msgid "tRaw copy-on-write file"
-msgstr ""
+msgstr "Raw 写时拷贝文件"
 
 msgid "tMin"
 msgstr "分钟"
@@ -1426,7 +1428,7 @@ msgid "tLocal full image style"
 msgstr "本地全镜像格式"
 
 msgid "tSynthetic full image backup"
-msgstr ""
+msgstr "合成完整备份镜像"
 
 msgid "tInternet full image style"
 msgstr "互联网模式下全镜像格式"
@@ -1446,7 +1448,7 @@ msgid ""
 msgstr ""
 
 msgid "tRun backups with background priority on the clients"
-msgstr ""
+msgstr "在客户端使用后台优先级备份"
 
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
@@ -1772,7 +1774,7 @@ msgid "no_backup_paths"
 msgstr ""
 
 msgid "disabled"
-msgstr ""
+msgstr "已禁用"
 
 msgid "new_alert_script_name"
 msgstr ""
@@ -1790,46 +1792,46 @@ msgid "alert_emails"
 msgstr ""
 
 msgid "alert_important"
-msgstr ""
+msgstr "添加【重要】邮件标识"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "在备份不正常邮件后发送备份正常邮件"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "编辑报警脚本"
 
 msgid "tAlert script"
-msgstr ""
+msgstr "报警脚本"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "报警脚本参数"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "添加参数"
 
 msgid "tName:"
-msgstr ""
+msgstr "名称："
 
 msgid "tLabel:"
-msgstr ""
+msgstr "卷标:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "默认值："
 
 msgid "tType:"
-msgstr ""
+msgstr "类型："
 
 msgid "tString"
-msgstr ""
+msgstr "字符串"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "浮点数"
 
 msgid "tInteger"
-msgstr ""
+msgstr "整数"
 
 msgid "tBoolean"
-msgstr ""
+msgstr "布尔数"
 
 msgid "tWith Docker (web interface accessible from client):"
 msgstr ""
@@ -1838,19 +1840,19 @@ msgid "tWith Docker (web interface not accessible from client):"
 msgstr ""
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "修改报告脚本"
 
 msgid "tPaused"
-msgstr ""
+msgstr "已暂停"
 
 msgid "tReport script"
-msgstr ""
+msgstr "报告脚本"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "警告"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "修改脚本"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "广域网恢复认证密匙"

@@ -978,7 +978,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size, ScopedRestore
 	std::string share_path;
 	std::string server_path = "clientdl";
 
-	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping));
+	std::auto_ptr<RestoreDownloadThread> restore_download(new RestoreDownloadThread(fc, *fc_chunked, client_token, metadata_path_mapping, *this));
     THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download.get(), "file restore download");
 
 	std::string curr_files_dir;
@@ -1931,11 +1931,18 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					continue;
 				}
 				
+				bool is_included = true;
 				if (!IndexThread::isIncluded(include_dirs, cpath, NULL)
 					&& !IndexThread::isIncluded(include_dirs, csharepath, NULL))
 				{
 					has_include_exclude = true;
-					continue;
+					is_included = false;
+
+					if (!files[j].isdir
+						|| files[j].issym)
+					{
+						continue;
+					}
 				}
 
 				if(files[j].isdir
@@ -1950,7 +1957,7 @@ bool RestoreFiles::removeFiles( std::string restore_path, std::string share_path
 					}
 					else if( removeFiles(cpath, csharepath, restore_download, dummy_folder_files, deletion_queue, del_has_include_exclude,
 										 tids, clientdao, cache)
-						&& !del_has_include_exclude)
+						&& !del_has_include_exclude && is_included)
 					{
 						log("Deleting directory \"" + restore_path + "\".", LL_DEBUG);
 						if (!os_remove_dir(os_file_prefix(cpath)))

@@ -96,6 +96,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			}
 			else
 			{
+				Server->Log("Rejected server identity " + identity, LL_INFO);
 				if( !ServerIdentityMgr::hasOnlineServer() && ServerIdentityMgr::isNewIdentity(identity) )
 				{
 					IScopedLock lock(ident_mutex);
@@ -795,6 +796,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_KeepFiles, "keep"));
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_ShareHashes, "share_hashes"));
 			flag_mapping.push_back(std::make_pair(EBackupDirFlag_Required, "required"));
+			flag_mapping.push_back(std::make_pair(EBackupDirFlag_IncludeDirectorySymlinks, "include_dir_symlinks"));
 			
 
 			std::string str_flags;
@@ -861,6 +863,8 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 	}
 			
 	IndexThread::execute_postbackup_hook("postfilebackup", 0, std::string());
+
+	exit_backup_immediate(0);
 }
 
 void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
@@ -894,6 +898,40 @@ void ClientConnector::CMD_DID_BACKUP2(const std::string &cmd)
 	}
 
 	IndexThread::execute_postbackup_hook("postfilebackup", atoi(params["group"].c_str()), params["clientsubname"]);
+
+	exit_backup_immediate(0);
+}
+
+void ClientConnector::CMD_BACKUP_FAILED(const std::string & cmd)
+{
+	std::string params_str = cmd.substr(14);
+	str_map params;
+	ParseParamStrHttp(params_str, &params);
+
+	tcpstack.Send(pipe, "OK");
+
+	std::string server_token = params["server_token"];
+	if (server_token.empty())
+	{
+		return;
+	}
+
+	{
+		IScopedLock lock(backup_mutex);
+		IScopedLock process_lock(process_mutex);
+
+		SRunningProcess* proc = getRunningFileBackupProcess(server_token, watoi64(params["status_id"]));
+
+		if (proc != NULL)
+		{
+			removeRunningProcess(proc->id, false);
+		}
+
+		lasttime = Server->getTimeMS();
+		status_updated = true;
+	}
+
+	exit_backup_immediate(1);
 }
 
 int64 ClientConnector::getLastBackupTime()
@@ -2483,6 +2521,12 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		clientuid = res[0]["tvalue"];
 	}
 
+	std::string imm_backup = Server->getServerParameter("backup_immediate");
+	if (!imm_backup.empty())
+	{
+		imm_backup = "&BACKUP=" + EscapeParamString(imm_backup);
+	}
+
 #ifdef _WIN32
 	std::string buf;
 	buf.resize(1024);
@@ -2514,8 +2558,8 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
-		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap);
+		"&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE=windows"
+		"&clientuid="+EscapeParamString(clientuid)+conn_metered+ send_prev_cbitmap + imm_backup);
 #else
 
 #ifdef __APPLE__
@@ -2530,8 +2574,8 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=1&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid));
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup);
 #endif
 }
 
@@ -2799,7 +2843,7 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	}
 	else
 	{
-		Server->getThreadPool()->execute(local_restore_files, "file restore");
+		Server->createThread(local_restore_files, "file restore", IServer::CreateThreadFlags_LargeStackSize);
 	}
 
 	tcpstack.Send(pipe, "ok");
@@ -2819,7 +2863,7 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 		{
 			ret.set("process_id", restore_files->get_local_process_id());
 
-			Server->getThreadPool()->execute(restore_files, "file restore");
+			Server->createThread(restore_files, "file restore", IServer::CreateThreadFlags_LargeStackSize);
 			restore_files=NULL;
 		}
 	}
@@ -2830,7 +2874,7 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 		if (restore_files != NULL)
 		{
 			restore_files->set_restore_declined(true);
-			Server->getThreadPool()->execute(restore_files, "file restore");
+			Server->createThread(restore_files, "file restore", IServer::CreateThreadFlags_LargeStackSize);
 			restore_files = NULL;
 		}
 	}

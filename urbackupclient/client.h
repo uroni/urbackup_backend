@@ -353,6 +353,7 @@ public:
 	static std::vector<SIndexInclude> parseIncludePatterns(const std::string& val);
 
 	static bool isExcluded(const std::vector<std::string>& exclude_dirs, const std::string &path);
+	static std::vector<std::string> getRmExcludedByPatterns(std::vector<std::string>& exclude_dirs, const std::string &path);
 	static bool isIncluded(const std::vector<SIndexInclude>& include_dirs, const std::string &path, bool *adding_worthless);
 
 	static std::string mapScriptOutputName(const std::string& fn);
@@ -407,11 +408,6 @@ private:
 	int64 getChangeIndicator(const std::string& path);
 	int64 getChangeIndicator(const SFile& file);
 
-	bool initialCheck(const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
-		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
-		const std::vector<std::string>& exclude_dirs,
-		const std::vector<SIndexInclude>& include_dirs, std::string orig_path=std::string());
-
 	enum IndexErrorInfo
 	{
 		IndexErrorInfo_Ok,
@@ -439,6 +435,7 @@ private:
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
+	void updateBackupDirsWithAll();
 #ifdef _WIN32
 	bool start_shadowcopy_components(VSS_ID& ssetid, bool* has_active_transaction);
 	bool start_shadowcopy_win( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool with_components, bool * &onlyref, bool* has_active_transaction);
@@ -603,6 +600,8 @@ private:
 
 	bool commitPhashQueue();
 
+	bool isAllSpecialDir(const SBackupDir& bdir);
+
 	SVolumesCache* volumes_cache;
 
 	std::auto_ptr<ScopedBackgroundPrio> background_prio;
@@ -679,7 +678,7 @@ private:
 	int index_group;
 	int index_flags;
 	std::string index_clientsubname;
-	bool index_server_default;
+	EBackupDirServerDefault index_server_default;
 	bool index_follow_last;
 	bool index_keep_files;
 
@@ -760,6 +759,58 @@ private:
 			}
 		}
 	};
+
+	struct SRecurRet
+	{
+		bool has_include;
+		SLastFileList backup;
+		std::streampos pos;
+		int64 file_id_backup;
+	};
+
+	struct SFirstInfo
+	{
+		std::string fn_filter;
+		size_t idx;
+	};
+
+	struct SRecurParams
+	{
+		SRecurParams(SFileAndHash file,	SFirstInfo* first_info,
+			bool curr_included,	std::string orig_dir,
+			std::string dir, std::string named_path,
+			size_t depth, size_t parent_idx)
+			: file(file), first_info(first_info), curr_included(curr_included),
+			orig_dir(orig_dir), dir(dir),
+			named_path(named_path), depth(depth), state(0),
+			parent_idx(parent_idx) {}
+
+		int state;
+		SFileAndHash file;
+		SFirstInfo* first_info;
+		bool curr_included;
+		std::string orig_dir;
+		std::string dir;
+		std::string named_path;
+		size_t depth;
+		SRecurRet recur_ret;
+		size_t parent_idx;
+	};
+
+	bool initialCheck(std::vector<SRecurParams>& params_stack, size_t stack_idx, const std::string& volume, const std::string& vssvolume, std::string orig_dir, std::string dir, std::string named_path,
+		std::fstream &outfile, bool first, int flags, bool use_db, bool symlinked, size_t depth, bool dir_recurse, bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
+
+	void initialCheckRecur1(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx, const std::string& volume, const std::string& vssvolume,
+		std::fstream &outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
+
+	void initialCheckRecur2(std::vector<SRecurParams>& params_stack, SRecurParams& params, const size_t stack_idx, const std::string& volume, const std::string& vssvolume,
+		std::fstream &outfile, const int flags, const bool use_db, const bool dir_recurse, const bool include_exclude_dirs,
+		const std::vector<std::string>& exclude_dirs,
+		const std::vector<SIndexInclude>& include_dirs, const std::string& orig_path);
 
 	std::auto_ptr<SLastFileList> last_filelist;
 

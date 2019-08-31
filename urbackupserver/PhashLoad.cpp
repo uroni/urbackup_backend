@@ -165,9 +165,12 @@ bool PhashLoad::getHash(int64 file_id, std::string & hash)
 		}
 		else if (curr_file_id < file_id)
 		{
+			ServerLogger::Log(logid, "Skip phash for id " + convert(curr_file_id) + " " + base64_encode_dash(hash), LL_DEBUG);
 			hash.clear();
 			continue;
 		}
+
+		ServerLogger::Log(logid, "Phash for id " + convert(file_id) + " is " + base64_encode_dash(hash), LL_DEBUG);
 
 		return true;
 	}

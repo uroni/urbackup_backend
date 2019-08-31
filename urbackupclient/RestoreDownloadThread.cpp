@@ -20,6 +20,7 @@
 #include "../urbackupcommon/file_metadata.h"
 #include "../urbackupcommon/os_functions.h"
 #include "file_permissions.h"
+#include "RestoreFiles.h"
 
 
 namespace
@@ -29,10 +30,11 @@ namespace
 	const size_t queue_items_chunked = 4;
 }
 
-RestoreDownloadThread::RestoreDownloadThread( FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping)
+RestoreDownloadThread::RestoreDownloadThread( FileClient& fc, FileClientChunked& fc_chunked, const std::string& client_token, str_map& metadata_path_mapping,
+	RestoreFiles& restore_files)
 	: fc(fc), fc_chunked(fc_chunked), queue_size(0), all_downloads_ok(true),
 	mutex(Server->createMutex()), cond(Server->createCondition()), skipping(false), is_offline(false),
-	client_token(client_token), metadata_path_mapping(metadata_path_mapping)
+	client_token(client_token), metadata_path_mapping(metadata_path_mapping), restore_files(restore_files)
 {
 
 }
@@ -244,13 +246,13 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 #endif
 		if(dest_f.get()==NULL)
 		{
-			Server->Log("Cannot open \""+todl.destfn+"\" for writing. "+os_last_error_str(), LL_ERROR);
+			log("Cannot open \""+todl.destfn+"\" for writing. "+os_last_error_str(), LL_ERROR);
 			download_nok_ids.push_back(todl.id);
 			return false;
 		}
 		else if (!change_file_permissions_admin_only(os_file_prefix(todl.destfn)))
 		{
-			Server->Log("Cannot change file permissions of \"" + todl.destfn + "\" to admin only. " + os_last_error_str(), LL_ERROR);
+			log("Cannot change file permissions of \"" + todl.destfn + "\" to admin only. " + os_last_error_str(), LL_ERROR);
 			download_nok_ids.push_back(todl.id);
 			return false;
 		}
@@ -268,7 +270,7 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 
 	if(rc!=ERR_SUCCESS)
 	{
-		Server->Log("Error loading \""+todl.destfn+"\" "+FileClient::getErrorString(rc)+" (code: "+convert(rc)+")", LL_ERROR);
+		log("Error loading \""+todl.destfn+"\" "+FileClient::getErrorString(rc)+" (code: "+convert(rc)+")", LL_ERROR);
 		download_nok_ids.push_back(todl.id);
 		return false;
 	}
@@ -311,7 +313,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 						_u32 w = todl.patch_dl_files.orig_file->Write(zero_buf.data(), towrite);
 						if (w != towrite)
 						{
-							Server->Log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -2", LL_ERROR);
+							log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -2", LL_ERROR);
 							rc = ERR_ERROR;
 						}
 						written += w;
@@ -319,7 +321,7 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 				}
 				else
 				{
-					Server->Log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -1", LL_ERROR);
+					log("Error zeroing data in \"" + todl.patch_dl_files.orig_file->getFilename() + "\" after punching hole failed -1", LL_ERROR);
 					rc = ERR_ERROR;
 				}
 			}
@@ -333,12 +335,17 @@ bool RestoreDownloadThread::load_file_patch( SQueueItem todl )
 
 	if(rc==ERR_SUCCESS && fsize>todl.predicted_filesize)
 	{
-		os_file_truncate(os_file_prefix(todl.destfn), todl.predicted_filesize);
+		if (!os_file_truncate(os_file_prefix(todl.destfn), todl.predicted_filesize))
+		{
+			log("Error truncating file \"" + todl.destfn + "\" to size " + convert(todl.predicted_filesize)+". "+os_last_error_str(), LL_ERROR);
+			download_nok_ids.push_back(todl.id);
+			return false;
+		}
 	}
 
 	if(rc!=ERR_SUCCESS)
 	{
-		Server->Log("Error loading \""+todl.destfn+"\"  " + FileClient::getErrorString(rc) + " (code: " + convert(rc) + ")", LL_ERROR);
+		log("Error loading \""+todl.destfn+"\"  " + FileClient::getErrorString(rc) + " (code: " + convert(rc) + ")", LL_ERROR);
 		download_nok_ids.push_back(todl.id);
 		return false;
 	}
@@ -464,6 +471,11 @@ void RestoreDownloadThread::resetQueueChunked()
 bool RestoreDownloadThread::hasError()
 {
     return !download_nok_ids.empty();
+}
+
+void RestoreDownloadThread::log(const std::string & msg, int loglevel)
+{
+	restore_files.log(msg, loglevel);
 }
 
 void RestoreDownloadThread::sleepQueue(IScopedLock& lock)

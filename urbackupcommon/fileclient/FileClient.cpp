@@ -40,6 +40,12 @@
 #include <errno.h>
 #endif
 
+#ifdef __ANDROID__
+extern "C" {
+#include "ifaddrs.c"
+}
+#endif
+
 namespace
 {
 	const std::string str_tmpdir="C:\\Windows\\Temp";
@@ -787,6 +793,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 										SAddrHint res;
 										res.is_ipv6 = true;
 										memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+										res.zone = sender_v6.sin6_scope_id;
 										servers.push_back(res);
 									}
 									else
@@ -806,6 +813,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<SAddrHint> &addr_hints
 									SAddrHint res;
 									res.is_ipv6 = true;
 									memcpy(res.addr_ipv6, &sender_v6.sin6_addr, sizeof(sender_v6.sin6_addr));
+									res.zone = sender_v6.sin6_scope_id;
 									wvservers.push_back(res);
 								}
 								else
@@ -1071,11 +1079,13 @@ bool FileClient::Reconnect(void)
 
 	char* buf = dl_buf;
 
+	_u32 queue_err = ERR_SUCCESS;
+
 	while(true)
 	{        
 		if(!is_script)
 		{
-			fillQueue();
+			queue_err = fillQueue();
 		}
 		else
 		{
@@ -1087,7 +1097,12 @@ bool FileClient::Reconnect(void)
 		}
 
 		size_t rc;
-		if(tcpsock->isReadable() || dl_off==0 ||
+		if (queue_err != ERR_SUCCESS)
+		{
+			Server->Log("Queue err " + convert(queue_err), LL_DEBUG);
+			rc = 0;
+		}
+		else if(tcpsock->isReadable() || dl_off==0 ||
 			(firstpacket 
 				&& ( (dl_buf[0]==ID_FILESIZE && dl_off<1+sizeof(_u64))
 					|| (dl_buf[0] == ID_FILESIZE_AND_EXTENTS && dl_off<1 + 2*sizeof(_u64)) )
@@ -1355,6 +1370,7 @@ bool FileClient::Reconnect(void)
 						memmove(dl_buf, dl_buf+1, rc-1);
 						dl_off = rc-1;
 					}
+					Server->Log("Unknown packet id " + convert(PID), LL_ERROR);
 					return ERR_ERROR;
 				}
             }
@@ -1736,17 +1752,17 @@ void FileClient::setQueueCallback( QueueCallback* cb )
 	queue_callback = cb;
 }
 
-void FileClient::fillQueue()
+_u32 FileClient::fillQueue()
 {
 	if(queue_callback==NULL)
 	{
 		if(needs_flush)
 		{
 			needs_flush=false;
-			Flush();
+			return Flush();
 		}
 
-		return;
+		return ERR_SUCCESS;
 	}
 
 	if(queued.size()>queuedFilesLow)
@@ -1754,10 +1770,10 @@ void FileClient::fillQueue()
 		if (needs_flush)
 		{
 			needs_flush = false;
-			Flush();
+			return Flush();
 		}
 
-		return;
+		return ERR_SUCCESS;
 	}
 
 	bool needs_send_flush=false;
@@ -1773,10 +1789,10 @@ void FileClient::fillQueue()
 			if (needs_flush)
 			{
 				needs_flush = false;
-				Flush();
+				return Flush();
 			}
 
-			return;
+			return ERR_SUCCESS;
 		}
 
 		MetadataQueue metadata_queue = MetadataQueue_Data;
@@ -1791,10 +1807,10 @@ void FileClient::fillQueue()
 			{
 				needs_flush=false;
 				needs_send_flush=false;
-				Flush();
+				return Flush();
 			}
 
-			return;
+			return ERR_SUCCESS;
 		}
 
 		CWData data;
@@ -1838,15 +1854,15 @@ void FileClient::fillQueue()
 		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
 		{
 			Server->Log("Queueing file failed", LL_DEBUG);
-			queue_callback->unqueueFileFull(queue_fn, finish_script);
 
-			if (needs_flush)
+			for (size_t i = 0; i<queued_files.size(); ++i)
 			{
-				needs_flush = false;
-				Flush();
+				queue_callback->unqueueFileFull(queued_files[i].fn, queued_files[i].finish_script);
 			}
 
-			return;
+			queue_callback->unqueueFileFull(queue_fn, finish_script);
+
+			return ERR_TIMEOUT;
 		}
 
 		queued.push_back(SQueueItem(queue_fn, finish_script));
@@ -1857,7 +1873,7 @@ void FileClient::fillQueue()
 	if (needs_flush)
 	{
 		needs_flush = false;
-		Flush();
+		return Flush();
 	}
 	else if(needs_send_flush)
 	{
@@ -1868,8 +1884,11 @@ void FileClient::fillQueue()
 			{
 				queue_callback->unqueueFileFull(queued_files[i].fn, queued_files[i].finish_script);
 			}
+			return ERR_TIMEOUT;
 		}
 	}
+
+	return ERR_SUCCESS;
 }
 
 void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 received)
@@ -2507,7 +2526,16 @@ std::string FileClient::SAddrHint::toString() const
 	else
 	{
 		char str[INET6_ADDRSTRLEN];
-		inet_ntop(AF_INET6, (void*)addr_ipv6, str, INET6_ADDRSTRLEN);
+		sockaddr_in6 saddr = {};
+		saddr.sin6_family = AF_INET6;
+		saddr.sin6_port = htons(UDP_SOURCE_PORT);
+		memcpy(&saddr.sin6_addr, addr_ipv6, sizeof(addr_ipv6));
+		saddr.sin6_scope_id = zone;
+		if (getnameinfo(reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr), 
+			str, sizeof(str), NULL, 0, NI_NUMERICHOST) != 0)
+		{
+			return std::string();
+		}
 		return str;
 	}
 }

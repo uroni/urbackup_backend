@@ -92,12 +92,12 @@ TARGET=no
 
 arch=`uname -m`
 case "$arch" in
-    i?86) TARGET=i386-linux-eng ;;
+    i?86) TARGET=i686-linux-android ;;
     x86_64) TARGET=x86_64-linux-glibc ;;
-    armv6*) TARGET=armv6-linux-engeabihf ;;
-	armv7*) TARGET=armv6-linux-engeabihf ;;
-	armv8*) TARGET=aarch64-linux-eng ;;
-	aarch64) TARGET=aarch64-linux-eng ;;
+    armv6*) TARGET=arm-linux-androideabi ;;
+	armv7*) TARGET=arm-linux-androideabi ;;
+	armv8*) TARGET=aarch64-linux-android ;;
+	aarch64) TARGET=aarch64-linux-android ;;
 esac
 
 if [ $TARGET = no ]
@@ -117,13 +117,13 @@ if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "Glibc not installed or too old. Falling back to ellcc build..."
-		TARGET=x86_64-linux-eng
+		echo "Glibc not installed or too old. Falling back to Android NDK build..."
+		TARGET=x86_64-linux-android
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "Glibc not installed or too old. Falling back to ellcc build..."
-			TARGET=x86_64-linux-eng
+			echo "Glibc not installed or too old (2). Falling back to Android NDK..."
+			TARGET=x86_64-linux-android
 		fi
 	fi
 	
@@ -139,6 +139,8 @@ then
 	echo "Error running executable on this system ($arch). Stopping installation."
 	exit 2
 fi
+
+install -c "$TARGET/blockalign" "$PREFIX/bin"
 
 test -e "$PREFIX/var/urbackup/data" || install -c -m 744 -d "$PREFIX/var/urbackup/data"
 test -e "$PREFIX/share/urbackup/scripts" || install -c -m 744 -d "$PREFIX/share/urbackup/scripts"
@@ -300,32 +302,49 @@ then
 else
 	echo "Installing System V init script..."
 	
-	install -c init.d /etc/init.d/urbackupclientbackend
-	
-	if [ $DEBIAN = yes ]
+	INSTALL_SYSV=yes
+	if [ $DEBIAN = yes ] && ! [ -e /lib/lsb/init-functions ]
 	then
-		update-rc.d urbackupclientbackend defaults
-	else
-		chkconfig --add urbackupclientbackend
-		chkconfig --level 345 urbackupclientbackend on
-	fi
-	
-	if [ $RESTART_SERVICE = no ]
+		echo "/lib/lsb/init-functions not found. lsb-base (>= 3.0-6) not installed? Not installing System V init script."
+		INSTALL_SYSV=no
+	elif [ $DEBIAN = no ] && ! [ -e /etc/rc.d/init.d/functions ]
 	then
-		echo "Starting UrBackup Client service..."
-		/etc/init.d/urbackupclientbackend start
-	else
-		echo "Restarting UrBackup Client service..."
-		/etc/init.d/urbackupclientbackend restart
-	fi
+		echo "/etc/rc.d/init.d/functions not found. Not installing System V init script."
+		INSTALL_SYSV=no
+	fi		
 	
-	
-	if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
-	then
-		echo "Successfully started client service. Installation complete."
+	if [ $INSTALL_SYSV = yes ]
+	then	
+		install -c init.d /etc/init.d/urbackupclientbackend
+		
+		if [ $DEBIAN = yes ]
+		then
+			update-rc.d urbackupclientbackend defaults
+		else
+			chkconfig --add urbackupclientbackend
+			chkconfig --level 345 urbackupclientbackend on
+		fi
+		
+		if [ $RESTART_SERVICE = no ]
+		then
+			echo "Starting UrBackup Client service..."
+			/etc/init.d/urbackupclientbackend start
+		else
+			echo "Restarting UrBackup Client service..."
+			/etc/init.d/urbackupclientbackend restart
+		fi
+		
+		
+		if /etc/init.d/urbackupclientbackend status >/dev/null 2>&1
+		then
+			echo "Successfully started client service. Installation complete."
+		else
+			echo "Starting client service failed (see previous messages). Starting urbackupclientbackend manually this time..."
+			urbackupclientbackend -d -c $CONFIG_FILE
+		fi
 	else
-		echo "Starting client service failed. Please investigate."
-		exit 1
+		echo "Starting urbackupclientbackend manually this time..."
+		urbackupclientbackend -d -c $CONFIG_FILE
 	fi
 fi
 

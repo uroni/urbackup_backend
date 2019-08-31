@@ -30,6 +30,8 @@ void PipeFileExt::forceExitWait()
 {
 	file_ext->forceExit();
 	waitForExit();
+	int exit_code;
+	file_ext->getExitCode(exit_code);
 }
 
 void PipeFileExt::forceExit()

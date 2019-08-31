@@ -105,7 +105,7 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	local alert_repeat="."
 	if params.alert_nag_interval>0
 	then
-		alert_repeat = " and then repeated every "+pretty_time(params.alert_nag_interval/1000)+" while there is no successfull backup."
+		alert_repeat = " and then repeated every " .. pretty_time(params.alert_nag_interval/1000) .. " while there is no successfull backup."
 	end
 	
 	local msg = "No recent " .. btype .. " backup for client \"" .. params.clientname .. "\". ".. lastbackup .. ". This alert is sent if there is no recent backup in the last " .. pretty_time(alert_time) .. alert_repeat

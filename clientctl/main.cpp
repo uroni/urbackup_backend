@@ -103,7 +103,7 @@ const std::string cmdline_version = PACKAGE_VERSION;
 void show_version()
 {
 	std::cout << "UrBackup Client Controller v" << cmdline_version << std::endl;
-	std::cout << "Copyright (C) 2011-2018 Martin Raiber" << std::endl;
+	std::cout << "Copyright (C) 2011-2019 Martin Raiber" << std::endl;
 	std::cout << "This is free software; see the source for copying conditions. There is NO"<< std::endl;
 	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
 }
@@ -1455,7 +1455,7 @@ int action_wait_for_backend(std::vector<std::string> args)
 	do
 	{
 		int64 thistime = getTimeMS();
-		std::string d = Connector::getStatusRaw();
+		std::string d = Connector::getStatusRawNoWait();
 		if (!Connector::hasError()
 			&& !d.empty())
 		{

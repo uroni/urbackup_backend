@@ -398,7 +398,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		lock->relock(NULL);
 		Server->Log("Trying to connect to internet server \""+ selected_server_settings .hostname+"\" at port "+convert(selected_server_settings.port)
 			+ (selected_server_settings.proxy.empty() ? "" : (" via HTTP proxy "+ selected_server_settings.proxy)), LL_DEBUG);
-		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack);
+		std::auto_ptr<CTCPStack> tcpstack(new CTCPStack(true));
 		IPipe *cs = connect(selected_server_settings, *tcpstack);
 		lock->relock(mutex);
 		if(cs!=NULL)
@@ -516,7 +516,10 @@ InternetClientThread::~InternetClientThread()
 char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms)
 {
 	int64 starttime=Server->getTimeMS();
-	char *buf;
+	char *buf = tcpstack->getPacket(&replysize);
+	if (buf != NULL)
+		return buf;
+
 	while(Server->getTimeMS()-starttime<timeoutms)
 	{
 		std::string ret;
@@ -790,8 +793,9 @@ void InternetClientThread::operator()(void)
 		comp_pipe = new CompressedPipeZstd(comm_pipe, compression_level, -1);
 		comm_pipe = comp_pipe;
 	}
+	else
 #endif
-	else if( capa & IPC_COMPRESSED )
+	if( capa & IPC_COMPRESSED )
 	{
 		comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
 		comm_pipe=comp_pipe;
@@ -984,7 +988,7 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 		else if (next(proxy, 0, "https://"))
 		{
 			ssl = true;
-			proxy = proxy.substr(7);
+			proxy = proxy.substr(8);
 		}
 		
 		std::string authorization;
@@ -993,11 +997,11 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			std::string udata = getuntil("@", proxy);
 			proxy = getafter("@", proxy);
 
-			std::string username = getuntil(":", proxy);
-			std::string password = getafter(":", proxy);
+			std::string username = getuntil(":", udata);
+			std::string password = getafter(":", udata);
 			std::string adata = username + ":" + password;
 
-			authorization = "Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
+			authorization = "Proxy-Authorization: Basic " + base64_encode(reinterpret_cast<const unsigned char*>(adata.c_str()), adata.size())+"\r\n";
 		}
 
 		unsigned short port = ssl ? 443 : 80;
@@ -1039,6 +1043,8 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 			{
 				break;
 			}
+
+			Server->Log("Proxy buf size " + convert(rc) + " content: " + buf, LL_DEBUG);
 
 			for (size_t i = 0; i < rc; ++i)
 			{
@@ -1097,7 +1103,12 @@ IPipe * InternetClient::connect(const SServerConnectionSettings & selected_serve
 					{
 						if (i + 1 < rc)
 						{
+							Server->Log("Remaining buf pos " + convert(i) + " is " + convert(rc - i - 1), LL_DEBUG);
 							tcpstack.AddData(&buf[i + 1], rc - i - 1);
+						}
+						else
+						{
+							Server->Log("No remaining buf", LL_DEBUG);
 						}
 						return cs;
 					}

@@ -158,6 +158,34 @@ namespace
 			}
 		}
 	};
+
+	class TimeoutBackupImmediate : public IThread
+	{
+		void operator()()
+		{
+			std::string backup_type_str = Server->getServerParameter("backup_immediate");
+
+			RunningAction ra;
+			if (backup_type_str == "incr-file")
+				ra = RUNNING_INCR_FILE;
+			else if (backup_type_str == "full-file")
+				ra = RUNNING_FULL_FILE;
+			else if (backup_type_str == "incr-image")
+				ra = RUNNING_INCR_IMAGE;
+			else
+				ra = RUNNING_FULL_IMAGE;
+
+			int64 start_timeout = watoi64(Server->getServerParameter("backup_immediate_start_timeout"))*1000;
+			int64 resume_timeout = watoi64(Server->getServerParameter("backup_immediate_timeout"))*1000;
+			bool has_backup = false;
+			int64 starttime = Server->getTimeMS();
+			while (true)
+			{
+				Server->wait(1000);
+				ClientConnector::timeoutBackupImmediate(start_timeout, resume_timeout, ra, has_backup, starttime);
+			}
+		}
+	};
 }
 
 void ClientConnector::init_mutex(void)
@@ -169,6 +197,11 @@ void ClientConnector::init_mutex(void)
 		process_mutex = Server->createMutex();
 
 		Server->createThread(new TimeoutFilesrvThread, "filesrv timeout");
+
+		if (!Server->getServerParameter("backup_immediate").empty())
+		{
+			Server->createThread(new TimeoutBackupImmediate, "backup timeout");
+		}			
 	}
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
@@ -990,6 +1023,10 @@ void ClientConnector::ReceivePackets(IRunOtherCallback* p_run_other)
 			{
 				CMD_DID_BACKUP2(cmd); continue;
 			}
+			else if (next(cmd, 0, "BACKUP FAILED "))
+			{
+				CMD_BACKUP_FAILED(cmd); continue;
+			}
 			else if(next(cmd, 0, "SETTINGS ") )
 			{
 				CMD_UPDATE_SETTINGS(cmd); continue;
@@ -1208,40 +1245,38 @@ bool ClientConnector::checkPassword(const std::string &pw, bool& change_pw)
 	return false;
 }
 
-namespace
+std::string ClientConnector::removeIllegalCharsFromBackupName(std::string in)
 {
-	std::string removeChars(std::string in)
+	char illegalchars[] = {'*', ':', '/' , '\\'};
+	std::string ret;
+	for(size_t i=0;i<in.size();++i)
 	{
-		char illegalchars[] = {'*', ':', '/' , '\\'};
-		std::string ret;
-		for(size_t i=0;i<in.size();++i)
+		bool found=false;
+		for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
 		{
-			bool found=false;
-			for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
+			if(illegalchars[j]==in[i])
 			{
-				if(illegalchars[j]==in[i])
-				{
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-			{
-				ret+=in[i];
+				found=true;
+				break;
 			}
 		}
-		return ret;
+		if(!found)
+		{
+			ret+=in[i];
+		}
 	}
+	return ret;
 }
-
 
 bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
-	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
+	db_results backupdirs=db->Read("SELECT name, path FROM backupdirs");
+	bool all_virtual_clients = false;
 	if (args.find("all_virtual_clients") != args.end())
 	{
+		all_virtual_clients = true;
 		db->Write("DELETE FROM backupdirs WHERE symlinked=0");
 	}
 	else
@@ -1314,11 +1349,13 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					{
 						flags |= EBackupDirFlag_Optional;
 					}
-					else if(flag=="follow_symlinks")
+					else if(flag=="follow_symlinks"
+						|| flag=="follow_symbolic_links")
 					{
 						flags |= EBackupDirFlag_FollowSymlinks;
 					}
-					else if(flag=="symlinks_optional")
+					else if(flag=="symlinks_optional"
+						|| flag=="symbolic_links_optional")
 					{
 						flags |= EBackupDirFlag_SymlinksOptional;
 					}
@@ -1342,11 +1379,17 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					{
 						flags |= EBackupDirFlag_Required;
 					}
+					else if (flag == "include_dir_symlinks"
+						|| flag=="include_directory_symlinks"
+						|| flag=="include_directory_symbolic_links")
+					{
+						flags |= EBackupDirFlag_IncludeDirectorySymlinks;
+					}
 				}
 				name.resize(flags_off);
 			}
 
-			name=removeChars(name);
+			name=removeIllegalCharsFromBackupName(name);
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
 			{
@@ -1357,13 +1400,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					dir="/";
 					if(name.empty())
 					{
-						name="root";
+						name="rootfs";
 					}
 				}
 #endif
 			}
 
 			q2->Bind(name);
+			std::string orig_name = name;
 			if(q2->Read().empty()==false
 				|| name=="urbackup")
 			{
@@ -1376,6 +1420,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 						name+="_"+convert(k);
 						break;
 					}
+				}
+
+				if (orig_name == name)
+				{
+					name += "_" + Server->secureRandomString(16);
 				}
 			}
 			q2->Reset();
@@ -1429,10 +1478,26 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
+	IQuery* q_other_has_path = NULL;
+	if (!all_virtual_clients)
+	{
+		q_other_has_path = db->Prepare("SELECT id FROM backupdirs WHERE path=? AND tgroup NOT BETWEEN " + convert(group_offset) + " AND " + convert(group_offset + c_group_max));
+	}
+
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
 		if(backupdirs[i]["need"]!="1" && backupdirs[i]["path"]!="*")
 		{
+			if (!all_virtual_clients)
+			{
+				q_other_has_path->Bind(backupdirs[i]["path"]);
+				db_results res = q_other_has_path->Read();
+				q_other_has_path->Reset();
+
+				if (!res.empty())
+					continue;
+			}
+
 			//Delete the watch
 			CWData data;
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
@@ -1655,16 +1720,38 @@ void ClientConnector::updateSettings(const std::string &pData)
 			std::string new_key;
 			if(new_settings->getValue(key, &nv) )
 			{
-				new_settings_str+=key+"="+nv+"\n";
-				mod=true;
+				if (nv.empty()
+					&& reset_settings
+					&& key == "computername"
+					&& curr_settings->getValue(key, &v) )
+				{
+					new_settings_str += key + "=" + v + "\n";
+					mod = true;
+				}
+				else
+				{
+					new_settings_str += key + "=" + nv + "\n";
+					mod = true;
+				}
 			}
 			if(new_settings->getValue(key+"_def", &nv) )
 			{
-				new_settings_str+=key+"_def="+nv+"\n";
-				if(reset_settings 
-					|| nv!=def_v)
+				if (nv.empty()
+					&& reset_settings
+					&& key == "computername"
+					&& curr_settings->getValue(key + "_def", &v))
 				{
-					mod=true;
+					new_settings_str += key + "_def=" + v + "\n";
+					mod = true;
+				}
+				else
+				{
+					new_settings_str += key + "_def=" + nv + "\n";
+					if (reset_settings
+						|| nv != def_v)
+					{
+						mod = true;
+					}
 				}
 			}	
 		}
@@ -3037,6 +3124,23 @@ bool ClientConnector::multipleChannelServers()
 	return false;
 }
 
+void ClientConnector::exit_backup_immediate(int rc)
+{
+	std::string backup_imm = Server->getServerParameter("backup_immediate");
+
+	if (!backup_imm.empty()
+		&& (backup_imm == "incr-file"
+			|| backup_imm == "full-file"))
+	{
+		if (rc != 0)
+		{
+			Server->Log("File backup failed.", LL_ERROR);
+		}
+
+		exit(rc);
+	}
+}
+
 IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
 {
 	IScopedLock lock(backup_mutex);
@@ -3592,6 +3696,59 @@ void ClientConnector::timeoutFilesrvConnections()
 		else
 		{
 			++i;
+		}
+	}
+}
+
+void ClientConnector::timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool & has_backup, int64& starttime)
+{
+	IScopedLock lock(backup_mutex);
+
+	bool found = false;
+	for (size_t i = 0; i < running_processes.size(); ++i)
+	{
+		if (Server->getTimeMS() - running_processes[i].last_pingtime > x_pingtimeout)
+		{
+			continue;
+		}
+
+		RunningAction cra = running_processes[i].action;
+		if ((ra == RUNNING_INCR_FILE || ra == RUNNING_FULL_FILE)
+			&& (cra == RUNNING_INCR_FILE || cra == RUNNING_FULL_FILE
+				|| cra == RUNNING_RESUME_INCR_FILE || cra == RUNNING_RESUME_FULL_FILE))
+		{
+			found = true;
+			break;
+		}
+		else if ((ra == RUNNING_INCR_IMAGE || ra == RUNNING_FULL_IMAGE)
+			&& (cra == RUNNING_INCR_IMAGE || cra == RUNNING_FULL_IMAGE))
+		{
+			found = true;
+			break;
+		}
+	}
+
+	lock.relock(NULL);
+
+	if (found)
+	{
+		has_backup = true;
+		starttime = Server->getTimeMS();
+	}
+	else if(has_backup)
+	{
+		if (Server->getTimeMS() - starttime > resume_timeout)
+		{
+			Server->Log("Backup timeout after connection has been lost for " + PrettyPrintTime(resume_timeout), LL_ERROR);
+			exit(11);
+		}
+	}
+	else
+	{
+		if (Server->getTimeMS() - starttime > start_timeout)
+		{
+			Server->Log("Backup timeout after backup failed to start for " + PrettyPrintTime(start_timeout), LL_ERROR);
+			exit(10);
 		}
 	}
 }

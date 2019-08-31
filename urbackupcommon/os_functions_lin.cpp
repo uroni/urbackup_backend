@@ -61,6 +61,10 @@
 #define fsblkcnt64_t fsblkcnt_t
 #endif
 
+#if defined(__ANDROID__)
+#define fsblkcnt64_t fsblkcnt_t
+#endif
+
 
 void getMousePos(int &x, int &y)
 {
@@ -410,8 +414,23 @@ bool os_directory_exists(const std::string &path)
 	return isDirectory(path);
 }
 
+//TODO: fix returning error and check users
 bool os_remove_nonempty_dir(const std::string &root_path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
+	if(delete_root)
+	{
+		struct stat64 f_info;
+		int rc = lstat64(root_path.c_str(), &f_info);
+		if(rc==0 && S_ISLNK(f_info.st_mode))
+		{
+			if(unlink(root_path.c_str())!=0)
+			{
+				Log("Error deleting symlink \""+root_path+"\" (root)", LL_ERROR);
+			}
+			return true;
+		}
+	}
+
 	std::stack<std::pair<std::string, bool> > paths;
 
 	paths.push(std::make_pair(root_path, false));
@@ -421,22 +440,6 @@ bool os_remove_nonempty_dir(const std::string &root_path, os_symlink_callback_t 
 	{
 		std::string upath=paths.top().first;
 		std::string path = upath;
-
-		if(paths.size()>1
-			|| delete_root)
-		{
-			struct stat64 f_info;
-			int rc = lstat64(upath.c_str(), &f_info);
-			if(rc==0 && S_ISLNK(f_info.st_mode))
-			{
-				if(unlink(upath.c_str())!=0)
-				{
-					Log("Error deleting symlink \""+upath+"\"", LL_ERROR);
-				}
-				paths.pop();
-				continue;
-			}
-		}
 
 		if(paths.top().second)
 		{
@@ -493,7 +496,7 @@ bool os_remove_nonempty_dir(const std::string &root_path, os_symlink_callback_t 
 						}
 						else if(S_ISDIR(f_info.st_mode) )
 						{
-							paths.push(std::make_pair(std::string(dirp->d_name), false));
+							paths.push(std::make_pair(upath+"/"+std::string(dirp->d_name), false));
 						}
 						else
 						{
@@ -523,7 +526,7 @@ bool os_remove_nonempty_dir(const std::string &root_path, os_symlink_callback_t 
 				}
 				else if(dirp->d_type==DT_DIR )
 				{
-					paths.push(std::make_pair(std::string(dirp->d_name), false));
+					paths.push(std::make_pair(upath+"/"+std::string(dirp->d_name), false));
 				}
 				else if(dirp->d_type==DT_LNK )
 				{
@@ -1300,24 +1303,50 @@ void os_reset_priority()
 
 #endif //__NR_ioprio_set
 
+#define BTRFS_IOC_SYNC _IO(BTRFS_IOCTL_MAGIC, 8)
+
 bool os_sync(const std::string & path)
 {
-#if defined(__linux__) && defined(HAVE_SYNCFS)
+#if defined(__linux__)
 	int fd = open(path.c_str(), O_RDONLY|O_CLOEXEC);
 	
 	if(fd!=-1)
 	{
-		if(syncfs(fd)!=0)
+		if(ioctl(fd, BTRFS_IOC_SYNC, NULL)==-1)
 		{
-			sync();
-			close(fd);
-			return true;
+			if(errno!=ENOTTY && errno!=ENOSYS)
+			{
+				close(fd);
+				return false;
+			}
 		}
 		else
 		{
 			close(fd);
 			return true;
 		}
+
+#if defined(HAVE_SYNCFS)
+		if(syncfs(fd)!=0)
+		{
+			close(fd);
+			if(errno==ENOSYS)
+			{
+				sync();
+				return true;
+			}
+			return false;
+		}
+		else
+		{
+			close(fd);
+			return true;
+		}
+#else
+		close(fd);
+		sync();
+		return true;
+#endif
 	}
 	else
 	{

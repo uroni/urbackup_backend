@@ -280,6 +280,8 @@ bool CUDPThread::init_v4(_u16 udpport)
 #else
 		Log("Failed binding UDP socket.", LL_ERROR);
 #endif
+		closesocket(udpsock);
+		udpsock = SOCKET_ERROR;
 		return false;
 	}
 	Log("done.", LL_DEBUG);
@@ -334,6 +336,8 @@ bool CUDPThread::init_v6(_u16 udpport)
 #else
 		Log(std::string("Error joining ipv6 multicast group ") + multicast_group, LL_ERROR);
 #endif
+		closesocket(udpsockv6);
+		udpsockv6 = SOCKET_ERROR;
 		return false;
 	}
 
@@ -361,14 +365,14 @@ CUDPThread::~CUDPThread()
 
 void CUDPThread::operator()(void)
 {
-	Log("UDP Thread startet", LL_DEBUG);
+	Log("UDP Thread started", LL_DEBUG);
 #ifdef _WIN32
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
 	do 
 	{
-		while(UdpStep()==true && do_stop==false);
+		while(UdpStep() && !do_stop);
 
 
 		if(!do_stop && has_error)
@@ -378,6 +382,11 @@ void CUDPThread::operator()(void)
 			if(udpsock!=SOCKET_ERROR)
 			{
 				closesocket(udpsock);
+			}
+
+			if (udpsockv6 != SOCKET_ERROR)
+			{
+				closesocket(udpsockv6);
 			}
 
 			init(udpport_, mServername, use_fqdn_);

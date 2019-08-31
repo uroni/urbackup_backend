@@ -1625,12 +1625,25 @@ bool IncrFileBackup::doFileBackup()
 			if (!os_sync(backuppath)
 				|| !os_sync(backuppath_hashes))
 			{
-				ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), LL_DEBUG);
+				ServerLogger::Log(logid, "Syncing file system failed. Backup is not completely on disk. " + os_last_error_str(), LL_ERROR);
+				c_has_error = true;
 			}
 
-			std::auto_ptr<IFile> sync_f(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
+			std::auto_ptr<IFile> sync_f;
+			if (!c_has_error)
+			{
+				sync_f.reset(Server->openFile(os_file_prefix(backuppath_hashes + os_file_sep() + sync_fn), MODE_WRITE));
 
-			if (make_subvolume_readonly)
+				if (sync_f.get() != NULL
+					&& !sync_f->Sync())
+				{
+					ServerLogger::Log(logid, "Error syncing sync file to disk. " + os_last_error_str(), LL_ERROR);
+					c_has_error = true;
+				}
+			}
+
+			if (!c_has_error
+				&& make_subvolume_readonly)
 			{
 				if (!SnapshotHelper::makeReadonly(false, clientname, backuppath_single))
 				{
@@ -1646,7 +1659,7 @@ bool IncrFileBackup::doFileBackup()
 				backup_dao->setFileBackupDone(backupid);
 				backup_dao->setFileBackupSynced(backupid);
 			}
-			else
+			else if(!c_has_error)
 			{
 				ServerLogger::Log(logid, "Error creating sync file at " + backuppath_hashes + os_file_sep() + sync_fn+". Not setting backup to done.", LL_ERROR);
 				c_has_error = true;
@@ -1752,6 +1765,18 @@ bool IncrFileBackup::doFileBackup()
 	}
 	else
 	{
+		if (phash_load.get() != NULL)
+		{
+			std::auto_ptr<IFile> tf(Server->openTemporaryFile());
+			if (tf.get() != NULL)
+			{
+				if(copy_file(tmp_filelist, tf.get()))
+				{
+					ServerLogger::Log(logid, "Copied file list to "+tf->getFilename()+" for debugging.", LL_ERROR);
+				}				
+			}
+		}
+
 		ServerLogger::Log(logid, "Fatal error during backup. Backup not completed", LL_ERROR);
 		ClientMain::sendMailToAdmins("Fatal error occurred during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
 	}
@@ -1899,7 +1924,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									}
 								}
 							}
-							else if(!os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+							else if(!os_remove_nonempty_dir(os_file_prefix(curr_fn))
+								|| os_directory_exists(os_file_prefix(curr_fn)) )
 							{
 								ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
 
@@ -1943,7 +1969,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 								}
 							}
 							else if (ftype & EFileType_Directory
-								&& !os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
+								&& (!os_remove_nonempty_dir(os_file_prefix(curr_fn))
+									|| os_directory_exists(os_file_prefix(curr_fn)) ) )
 							{
 								ServerLogger::Log(logid, "Could not remove directory \"" + curr_fn + "\" in ::deleteFilesInSnapshot (2) - " + systemErrorInfo(), no_error ? LL_WARNING : LL_ERROR);
 

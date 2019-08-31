@@ -184,6 +184,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\blockalign_src\crc.cpp" />
+    <ClCompile Include="..\blockalign_src\crc32c-adler.cpp" />
     <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\common\miniz.c" />
@@ -211,6 +213,7 @@
     <ClCompile Include="..\urbackupcommon\TreeHash.cpp" />
     <ClCompile Include="..\urbackupcommon\WalCheckpointThread.cpp" />
     <ClCompile Include="Alerts.cpp" />
+    <ClCompile Include="apps\blockalign.cpp" />
     <ClCompile Include="apps\check_files_index.cpp" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />

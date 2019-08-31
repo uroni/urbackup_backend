@@ -12,6 +12,7 @@
 class IFileServFactory : public IPlugin
 {
 public:
+	virtual bool optainBackupPrivileges() = 0;
 	virtual IFileServ * createFileServ(unsigned short tcpport, unsigned short udpport, const std::string &name="", bool use_fqdn_default=false, bool enable_background_priority=true, bool enable_backup_semantics = true)=0;
 	virtual IFileServ * createFileServNoBind(const std::string &name="", bool use_fqdn_default=false, bool enable_background_priority = true, bool enable_backup_semantics = true)=0;
 	virtual void destroyFileServ(IFileServ *filesrv)=0;

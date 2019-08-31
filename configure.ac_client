@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-client], [2.4.1.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-client], [2.4.6.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CANONICAL_SYSTEM
@@ -40,6 +40,10 @@ AC_ARG_WITH([embedded-sqlite3],
      AS_HELP_STRING([--without-embedded-sqlite3], [Disables the embedded sqlite3 and uses the system one. Not recommended.]))
 AM_CONDITIONAL(WITH_EMBEDDED_SQLITE3, test "x$with_embedded_sqlite3" != "xno")
 
+AC_ARG_ENABLE([c-ares],
+     AS_HELP_STRING([--enable-c-ares], [Use c-ares for DNS resolution instead of your system libc.]))
+AM_CONDITIONAL(ENABLE_C_ARES, test "x$enable_c_ares" = xyes)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -76,6 +80,10 @@ AC_CXX_HAVE_LONG_LONG
 
 AX_CHECK_COMPILE_FLAG(-fstack-protector-strong --param=ssp-buffer-size=4 -Wformat -Werror=format-security -fPIE,
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
+
+AX_CHECK_COMPILE_FLAG(-msse4.1 -msse4.2, 
+	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xyes)],
+	[AM_CONDITIONAL(WITH_SSE4_2, test xyes = xno)])
 	
 AX_CHECK_LINK_FLAG([-Wl,-z,relro],
 	[], [AM_CONDITIONAL(WITH_FORTIFY, test xyes = xno)])
@@ -120,8 +128,44 @@ AM_CONDITIONAL(WITH_ZSTD, test "x$HAS_ZSTD_LIB" == "x1" && test "x$HAS_ZSTD_HEAD
 if test "x$enable_embedded_cryptopp" != "xyes"
 then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
+	
+	SAVED_LDFLAGS="$LDFLAGS"
+	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS $CRYPTOPP_LIBS"
+	SAVED_CPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="$CPPFLAGS $CRYPTOPP_CPPFLAGS"
+	CRYPTOPP_INC="<$CRYPTOPP_INCLUDE_PREFIX/misc.h>"
+	AC_MSG_CHECKING([whether Crypto++ contains CryptoPP::AlignedAllocate function])
+	AC_LINK_IFELSE(
+	  [AC_LANG_PROGRAM([#include $CRYPTOPP_INC], 
+		[CryptoPP::AlignedAllocate(5);])],
+	  [AC_MSG_RESULT([yes])], 
+	  [
+		CRYPTOPP_CPPFLAGS="$CRYPTOPP_CPPFLAGS -DCRYPTOPP_DISABLE_ASM"
+		AC_MSG_RESULT([no])
+	  ])
+	LDFLAGS="$SAVED_LDFLAGS"
+	CPPFLAGS="$SAVED_CPPFLAGS"
 else
 	AC_CONFIG_SUBDIRS([cryptoplugin/src])
+fi
+
+if test "x$enable_c_ares" = "xyes"
+then
+	AC_CHECK_LIB(cares, ares_getaddrinfo, [HAVE_C_ARES=1])
+	AS_IF([test "x$HAVE_C_ARES" = "x"],
+	[
+		AC_MSG_ERROR([
+				C-Ares (address resolution) library not found or not recent enough.
+				])
+	])
+fi
+
+AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
+AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
+
+if test "x$WITH_OPENSSL" != "x1"
+then
+        AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (https proxy support)])
 fi
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")

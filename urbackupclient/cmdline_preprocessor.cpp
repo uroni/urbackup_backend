@@ -36,7 +36,7 @@ const std::string cmdline_version = PACKAGE_VERSION;
 void show_version()
 {
 	std::cout << "UrBackup Client Backend v" << cmdline_version << std::endl;
-	std::cout << "Copyright (C) 2011-2018 Martin Raiber" << std::endl;
+	std::cout << "Copyright (C) 2011-2019 Martin Raiber" << std::endl;
 	std::cout << "This is free software; see the source for copying conditions. There is NO"<< std::endl;
 	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
 }
@@ -178,6 +178,16 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				real_args.push_back(strlower(val));
 			}
 		}
+		if (settings->getValue("CAPATH", &val))
+		{
+			val = trim(unquote_value(val));
+
+			if (!val.empty())
+			{
+				real_args.push_back("--capath");
+				real_args.push_back(val);
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -259,6 +269,10 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<std::string> config_arg("c", "config",
 			"Read configuration parameters from config file",
 			false, "", "path", cmd);
+
+		TCLAP::ValueArg<std::string> capath_arg("", "capath",
+			"Path to a certificate authority bundle file or directory",
+			false, "", "path", cmd);
 #endif
 
 		std::vector<std::string> restore_arg_vals;
@@ -270,6 +284,31 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<std::string> restore_arg("r", "restore",
 			"Specifies if restores are allowed and where they have to be confirmed",
 			false, "client-confirms", &restore_arg_constraint, cmd);
+
+
+		std::vector<std::string> backup_args_vals;
+		restore_arg_vals.push_back("incr-file");
+		restore_arg_vals.push_back("if");
+		restore_arg_vals.push_back("full-file");
+		restore_arg_vals.push_back("ff");
+#ifdef _WIN32
+		restore_arg_vals.push_back("incr-image");
+		restore_arg_vals.push_back("ii");
+		restore_arg_vals.push_back("full-image");
+		restore_arg_vals.push_back("fi");
+#endif
+		TCLAP::ValuesConstraint<std::string> backup_arg_constraint(restore_arg_vals);
+		TCLAP::ValueArg<std::string> backup_arg("b", "backup",
+			"Connects to server, runs backup, then exits",
+			false, "", &backup_arg_constraint, cmd);
+
+		TCLAP::ValueArg<int> backup_start_timeout("", "backup-start-timeout",
+			"Maximum amount of time to wait for a backup to start (when run with -b/--backup) before the backup is stopped with an error",
+			false, 5 * 60, "seconds", cmd);
+
+		TCLAP::ValueArg<int> backup_timeout("", "backup-timeout",
+			"Maximum amount of time to wait for a backup to continue after the connection has been lost (when run with -b/--backup) before the backup is stopped with an error",
+			false, 5 * 60, "seconds", cmd);
 
 		std::vector<std::string> real_args;
 		real_args.push_back(argv[0]);
@@ -331,6 +370,33 @@ int main(int argc, char* argv[])
 			real_args.push_back("--rotate-numfiles");
 			real_args.push_back(convert(rotate_num_files_arg.getValue()));
 		}
+
+#ifndef _WIN32
+		if (!capath_arg.getValue().empty()
+			&& std::find(real_args.begin(), real_args.end(), "--capath") == real_args.end())
+		{
+			real_args.push_back("--capath");
+			real_args.push_back(capath_arg.getValue());
+		}
+#endif
+		if (!backup_arg.getValue().empty())
+		{
+			std::string bi = backup_arg.getValue();
+			if (bi == "ff")
+				bi = "full-file";
+			else if (bi == "if")
+				bi = "incr-file";
+			else if (bi == "ii")
+				bi = "incr-image";
+			else if (bi == "fi")
+				bi = "full-image";
+			real_args.push_back("--backup_immediate");
+			real_args.push_back(bi);
+		}
+		real_args.push_back("--backup_immediate_start_timeout");
+		real_args.push_back(convert(backup_start_timeout.getValue()));
+		real_args.push_back("--backup_immediate_timeout");
+		real_args.push_back(convert(backup_timeout.getValue()));
 		
 		return run_real_main(real_args);
 	}

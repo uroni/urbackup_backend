@@ -20,6 +20,9 @@ public:
 private:
 	void AddToSelectThread(CClient *client);
 
+	bool init_socket_v4(unsigned short port);
+	bool init_socket_v6(unsigned short port);
+
 	std::vector<CSelectThread*> SelectThreads;
 
 	SOCKET s;

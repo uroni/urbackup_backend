@@ -190,6 +190,46 @@ HRESULT ModifyPrivilege(
 
     return hr;
 }
+
+bool optain_backup_privs()
+{
+#ifdef BACKUP_SEM
+	bool ret = true;
+	HRESULT hr = ModifyPrivilege(SE_BACKUP_NAME, TRUE);
+	if (!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges", LL_ERROR);
+		ret = false;
+	}
+	else
+	{
+		Log("Backup privileges set successfully", LL_DEBUG);
+	}
+	hr = ModifyPrivilege(SE_SECURITY_NAME, TRUE);
+	if (!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges (SE_SECURITY_NAME)", LL_ERROR);
+		ret = false;
+	}
+	else
+	{
+		Log("Backup privileges set successfully (SE_SECURITY_NAME)", LL_DEBUG);
+	}
+	hr = ModifyPrivilege(SE_RESTORE_NAME, TRUE);
+	if (!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges (SE_RESTORE_NAME)", LL_ERROR);
+		ret = false;
+	}
+	else
+	{
+		Log("Backup privileges set successfully (SE_RESTORE_NAME)", LL_DEBUG);
+	}
+	return ret;
+#else
+	return false;
+#endif
+}
 #endif //_WIN32
 
 #ifdef LINUX_DAEMON
@@ -257,36 +297,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		servername=argv[1];
 #endif
 
-#ifdef BACKUP_SEM
 #ifdef _WIN32
-	HRESULT hr=ModifyPrivilege(SE_BACKUP_NAME, TRUE);
-	if(!SUCCEEDED(hr))
-	{
-		Log("Failed to modify backup privileges", LL_ERROR);
-	}
-	else
-	{
-		Log("Backup privileges set successfully", LL_DEBUG);
-	}
-	hr=ModifyPrivilege(SE_SECURITY_NAME, TRUE);
-	if(!SUCCEEDED(hr))
-	{
-		Log("Failed to modify backup privileges (SE_SECURITY_NAME)", LL_ERROR);
-	}
-	else
-	{
-		Log("Backup privileges set successfully (SE_SECURITY_NAME)", LL_DEBUG);
-	}
-	hr=ModifyPrivilege(SE_RESTORE_NAME, TRUE);
-	if(!SUCCEEDED(hr))
-	{
-		Log("Failed to modify backup privileges (SE_RESTORE_NAME)", LL_ERROR);
-	}
-	else
-	{
-		Log("Backup privileges set successfully (SE_RESTORE_NAME)", LL_DEBUG);
-	}
-#endif
+	optain_backup_privs();
 #endif
 
 #ifdef LOG_FILE
