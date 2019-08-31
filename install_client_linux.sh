@@ -245,7 +245,7 @@ then
 	SYSTEMD_DIR=""
 	if command -v pkg-config >/dev/null 2>&1
 	then
-		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir`
+		SYSTEMD_DIR=`pkg-config systemd --variable=systemdsystemunitdir` || true
 	fi
 	
 	if [ "x$SYSTEMD_DIR" = x ]
