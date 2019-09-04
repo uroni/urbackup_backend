@@ -2052,6 +2052,20 @@ void FileBackup::saveUsersOnClient()
 		}
 	}
 
+	s_uids = urbackup_tokens->getValue("ids", "");
+	uids.clear();
+	Tokenize(s_uids, uids, ",");
+
+	for (size_t i = 0; i < uids.size(); ++i)
+	{
+		std::string accountname = (base64_decode_dash(urbackup_tokens->getValue(uids[i] + ".accountname", std::string())));
+		if (accountname == "root")
+		{
+			backup_dao->addUserToken(accountname, clientid, urbackup_tokens->getValue(uids[i] + ".token", std::string()));
+			break;
+		}
+	}
+
 	std::vector<std::string> keys = urbackup_tokens->getKeys();
 	for(size_t i=0;i<keys.size();++i)
 	{
