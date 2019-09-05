@@ -286,7 +286,7 @@ void Alerts::operator()()
 				std::string state = res[i]["alerts_state"];
 				int64 ret2;
 				int64 ret = lua_interpreter->runScript(it->second.code, params_raw, ret2, state, 
-					it->second.state_mem[clientid], it->second.global, it->second.global_mem, funcs);
+					it->second.state_mem[clientid], global_state, it->second.global_mem, funcs);
 				bool needs_update = false;
 				
 				if (ret>=0)

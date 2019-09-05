@@ -56,9 +56,9 @@ function fail_mail(image, passed_time, last_time, alert_time)
 	then
 		if image
 		then
-			global.last_image_fail_notify = time.unix_seconds()
+			state.last_image_fail_notify = time.unix_seconds()
 		else
-			global.last_file_fail_notify = time.unix_seconds()
+			state.last_file_fail_notify = time.unix_seconds()
 		end
 	end
 
@@ -153,10 +153,14 @@ then
 	if params.file_ok
 	then
 		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )		
-	elseif params.alert_nag_interval>0 and (global.last_file_fail_notify==nil or (time.unix_seconds()-global.last_file_fail_notify)*1000>params.alert_nag_interval)
+	elseif params.alert_nag_interval>0 and (state.last_file_fail_notify==nil or (time.unix_seconds()-state.last_file_fail_notify)*1000>params.alert_nag_interval)
 	then
 		fail_mail(false, params.passed_time_lastbackup_file, params.lastbackup_file, file_interval*params.alert_file_mult )		
-		next_check_ms = math.min(next_check_ms, (time.unix_seconds()-global.last_file_fail_notify+1)*1000)
+	end
+
+	if params.alert_nag_interval>0
+	then
+		next_check_ms = math.min(next_check_ms, params.alert_nag_interval)
 	end
 else
 	if not params.file_ok
@@ -178,10 +182,14 @@ then
 		if params.image_ok
 		then
 			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
-		elseif params.alert_nag_interval>0 and (global.last_image_fail_notify==nil or (time.unix_seconds()-global.last_image_fail_notify)*1000>params.alert_nag_interval)
+		elseif params.alert_nag_interval>0 and (state.last_image_fail_notify==nil or (time.unix_seconds()-state.last_image_fail_notify)*1000>params.alert_nag_interval)
 		then
 			fail_mail(true, params.passed_time_lastbackup_image, params.lastbackup_image, image_interval*params.alert_image_mult )
-			next_check_ms = math.min(next_check_ms, (time.unix_seconds()-global.last_image_fail_notify+1)*1000)
+		end
+
+		if params.alert_nag_interval>0
+		then
+			next_check_ms = math.min(next_check_ms, params.alert_nag_interval)
 		end
 	else
 		if not params.image_ok
@@ -198,9 +206,17 @@ end
 --Second parameter returns the number of milliseconds to wait till the next status check
 --If the interval is complex (not a single number, but different numbers depending on window) we cannot return this time reliably
 --The alert script is automatically run after a backup so no need to return the wait time if both image and file backup status is not ok
-if params.complex_interval or ret==3
+if params.complex_interval
 then
 	return ret
+elseif ret==3
+then
+	if params.alert_nag_interval>0
+	then
+		return ret, next_check_ms
+	else
+		return ret
+	end
 else
 	return ret, next_check_ms
 end
