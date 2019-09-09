@@ -131,6 +131,7 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 	{
 		Server->Log("Could not open db ["+pFile+"]");
 		sqlite3_close(db);
+		db = NULL;
 		return false;
 	}
 	else
