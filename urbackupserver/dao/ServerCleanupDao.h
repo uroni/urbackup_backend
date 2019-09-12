@@ -8,6 +8,8 @@ public:
 	ServerCleanupDao(IDatabase *db);
 	~ServerCleanupDao(void);
 
+	IDatabase* getDatabase();
+
 	//@-SQLGenFunctionsBegin
 	struct CondInt
 	{
