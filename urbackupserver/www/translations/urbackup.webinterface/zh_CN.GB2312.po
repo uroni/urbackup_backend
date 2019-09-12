@@ -11,13 +11,15 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # po erix <eirxpo@gmail.com>, 2017
+# Johnny Xing <1538765900@qq.com>, 2019
 # po erix <eirxpo@gmail.com>, 2017-2018
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2018-07-09 08:20+0000\n"
-"Last-Translator: po erix <eirxpo@gmail.com>\n"
+"PO-Revision-Date: 2019-09-01 10:48+0000\n"
+"Last-Translator: Johnny Xing <1538765900@qq.com>\n"
 "Language-Team: Chinese (China) (GB2312) (http://www.transifex.com/uroni/urbackup/language/zh_CN.GB2312/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -74,7 +76,7 @@ msgid "tClient"
 msgstr "客户端"
 
 msgid "tInternet"
-msgstr "互联网"
+msgstr "广域网"
 
 msgid "hours"
 msgstr "小时"
@@ -149,13 +151,13 @@ msgid "tLast file backup"
 msgstr "最近的文件备份"
 
 msgid "tLast image backup"
-msgstr "最近磁盘镜像备份"
+msgstr "最近的磁盘映像备份"
 
 msgid "tFile backup status"
 msgstr "文件备份状态"
 
 msgid "tImage backup status"
-msgstr "磁盘镜像备份状态"
+msgstr "磁盘映像备份状态"
 
 msgid "tShow details"
 msgstr "显示详细信息"
@@ -176,7 +178,7 @@ msgid "tHostname/IP"
 msgstr "主机名/IP"
 
 msgid "tServer identity"
-msgstr "服务器索引"
+msgstr "服务器ID"
 
 msgid "users"
 msgstr "用户"
@@ -440,7 +442,7 @@ msgid "tDisable"
 msgstr "禁止"
 
 msgid "tMB"
-msgstr " "
+msgstr "MB"
 
 msgid "tNone"
 msgstr "没有"
@@ -455,7 +457,7 @@ msgid "tStatus"
 msgstr "状态"
 
 msgid "tIP"
-msgstr " "
+msgstr "IP"
 
 msgid "tClient version"
 msgstr "客户端版本"
@@ -539,7 +541,7 @@ msgid "validate_name_max_image_full"
 msgstr "磁盘映像完全备份数上限"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr "备份窗口格式错误"
+msgstr "备份时间窗口格式错误"
 
 msgid "validate_name_max_active_clients"
 msgstr "近期活动客户端峰值"
@@ -554,10 +556,10 @@ msgid "really_remove_client"
 msgstr "确定删除此客户端吗？文件和磁盘映像备份将被全部删除！"
 
 msgid "tImages"
-msgstr "硬盘镜像"
+msgstr "磁盘映像"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr "清理窗口格式错误"
+msgstr "清理时间窗口格式错误"
 
 msgid "mail_settings"
 msgstr "邮件"
@@ -590,7 +592,7 @@ msgid "tBackup storage path"
 msgstr "备份路径"
 
 msgid "tDo not do image backups"
-msgstr "禁止全磁盘镜像备份"
+msgstr "禁止磁盘映像备份"
 
 msgid "tDo not do file backups"
 msgstr "禁止文件备份"
@@ -599,7 +601,7 @@ msgid "tAutomatically shut down server"
 msgstr "自动关闭服务器"
 
 msgid "tAutoupdate clients"
-msgstr "客户端自动更新"
+msgstr "自动更新客户端"
 
 msgid "tMax number of simultaneous backups"
 msgstr "同时备份峰值"
@@ -608,7 +610,7 @@ msgid "tMax number of recently active clients"
 msgstr "最近活动客户端峰值"
 
 msgid "tCleanup time window"
-msgstr "清理窗口"
+msgstr "清理的时间空当"
 
 msgid "tAutomatically backup UrBackup database"
 msgstr "自动备份UrBackup数据库"
@@ -653,19 +655,19 @@ msgid "tDelay after system startup"
 msgstr "系统启动后延迟"
 
 msgid "tBackup window"
-msgstr "备份窗口"
+msgstr "备份时间窗口"
 
 msgid "tExcluded files (with wildcards)"
-msgstr "从备份中排除（带通配符）："
+msgstr "从备份中排除(带通配符)"
 
 msgid "tIncluded files (with wildcards)"
-msgstr "包括在备份中（带通配符）："
+msgstr "包括在备份中(带通配符)"
 
 msgid "tDefault directories to backup"
 msgstr "默认备份目录"
 
 msgid "tVolumes to backup"
-msgstr "待备份的卷："
+msgstr "待备份的卷"
 
 msgid "tAllow client-side changing of the directories to backup"
 msgstr "允许客户端侧更改需备份目录"
@@ -674,10 +676,10 @@ msgid "tAllow client-side starting of file backups"
 msgstr "允许客户端侧启动文件备份"
 
 msgid "tAllow client-side starting of image backups"
-msgstr "允许客户端侧启动磁盘镜像备份"
+msgstr "允许客户端侧启动磁盘映像备份"
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr "逊于客户端侧查看备份日志"
+msgstr "允许客户端侧查看备份日志"
 
 msgid "tAllow client-side pausing of backups"
 msgstr "允许客户端侧暂停备份"
@@ -692,7 +694,7 @@ msgid "tMail server port"
 msgstr "邮件服务器端口"
 
 msgid "tMail server username (empty for none)"
-msgstr "邮件服务器用户名（空置为匿名）"
+msgstr "邮件服务器用户名(空置为匿名)"
 
 msgid "tMail server password"
 msgstr "邮件服务器密码"
@@ -701,7 +703,7 @@ msgid "tSender E-Mail Address"
 msgstr "发件人邮箱地址"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr "使用SSL/TLS发送邮件"
+msgstr "仅使用SSL/TLS发送邮件"
 
 msgid "tCheck SSL/TLS certificate"
 msgstr "检查SSL/TLS证书"
@@ -709,13 +711,13 @@ msgstr "检查SSL/TLS证书"
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr "保存配置后发送测试邮件到如下地址(置空则不发送测试邮件)"
+msgstr "保存配置后发送测试邮件到如下邮件地址(置空则不发送)"
 
 msgid "tTest Mail sent successfully"
-msgstr "测试邮件已发送"
+msgstr "测试邮件发送成功。"
 
 msgid "tSending test mail failed. Error:"
-msgstr "发送邮件失败，错误代码"
+msgstr "发送邮件失败，错误代码："
 
 msgid "tLevel"
 msgstr "等级"
@@ -757,7 +759,7 @@ msgid "tPerform autoupdates silently"
 msgstr "平台自动静默更新"
 
 msgid "tMax backup speed for local network"
-msgstr "本地备份速度上限"
+msgstr "局域网备份速度上限"
 
 msgid "tNo activities"
 msgstr "未激活"
@@ -775,7 +777,7 @@ msgid "tNo entries for this filter"
 msgstr "没有此过滤关键字"
 
 msgid "tTotal max backup speed for local network"
-msgstr "服务器总体网络传输速度上限"
+msgstr "局域网总体传输速度上限"
 
 msgid "tArchive every"
 msgstr "归档周期"
@@ -784,7 +786,7 @@ msgid "tArchive for"
 msgstr "归档"
 
 msgid "tArchive window"
-msgstr "归档窗口"
+msgstr "归档时间窗口"
 
 msgid "tBackup type"
 msgstr "备份类型"
@@ -799,22 +801,22 @@ msgid "tInternet server port"
 msgstr "广域网服务器端口号"
 
 msgid "tDo image backups over internet"
-msgstr "通过互联网进行磁盘映像备份："
+msgstr "通过广域网进行磁盘映像备份"
 
 msgid "tDo full file backups over internet"
-msgstr "通过互联网进行文件完全备份："
+msgstr "通过广域网进行完全文件备份"
 
 msgid "tMax backup speed for internet connection"
-msgstr "通过互联网备份时的传输速率上限："
+msgstr "广域网备份的传输速率上限"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr "通过互联网备份的总速率上限"
+msgstr "广域网备份的总体传输速率上限"
 
 msgid "tEncrypted transfer"
-msgstr "加密传输："
+msgstr "加密传输"
 
 msgid "tCompressed transfer"
-msgstr "压缩传输："
+msgstr "压缩传输"
 
 msgid "file_backup"
 msgstr "文件备份"
@@ -871,25 +873,25 @@ msgid "unarchived_in"
 msgstr "将终止归档于"
 
 msgid "validate_err_notregexp_archive_window"
-msgstr "归档窗口格式错误"
+msgstr "归档时间窗口格式错误"
 
 msgid "wait_for_archive_window"
-msgstr "正在等待窗口或下次运行"
+msgstr "正在等待时间窗口或下次运行"
 
 msgid "validate_err_notregexp_image_letters"
 msgstr "磁盘映像字母格式错误"
 
 msgid "validate_name_global_local_speed"
-msgstr "通过局域网备份的总速率上限"
+msgstr "局域网总体传输速度上限"
 
 msgid "validate_name_global_internet_speed"
-msgstr "通过互联网备份的总速率上限"
+msgstr "广域网备份的总体传输速率上限"
 
 msgid "validate_name_local_speed"
-msgstr "通过局域网备份的速率上限"
+msgstr "局域网备份速度上限"
 
 msgid "validate_name_internet_speed"
-msgstr "通过互联网备份的速率上限"
+msgstr "广域网备份的传输速率上限"
 
 msgid "enter_clientname"
 msgstr "请输入客户端名称"
@@ -904,7 +906,7 @@ msgid "old_pw_wrong"
 msgstr "旧密码错误"
 
 msgid "tID"
-msgstr " "
+msgstr "ID"
 
 msgid "tSize"
 msgstr "大小"
@@ -973,11 +975,11 @@ msgid "tEnable internet mode"
 msgstr "允许广域网模式"
 
 msgid "tInternet auth key"
-msgstr "互联网认证密匙"
+msgstr "广域网认证密匙"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
-msgstr "如果客户端离线，客户端将在清除时间窗口移除"
+msgstr "如果客户端离线，客户端将在清除时间被移除"
 
 msgid "tArchived"
 msgstr "已归档"
@@ -995,10 +997,10 @@ msgid "loading"
 msgstr "加载中"
 
 msgid "tInternet clients"
-msgstr "互联网客户端"
+msgstr "广域网客户端"
 
 msgid "tAdd additional internet clients"
-msgstr "添加互联网客户端"
+msgstr "添加广域网客户端"
 
 msgid "tClient name"
 msgstr "客户端名"
@@ -1019,7 +1021,7 @@ msgid "action_5"
 msgstr "恢复增量文件备份"
 
 msgid "action_6"
-msgstr "恢复全文件备份"
+msgstr "恢复完全文件备份"
 
 msgid "really_recalculate"
 msgstr "是否要重新计算全部统计？这个操作将花费很多时间"
@@ -1028,7 +1030,7 @@ msgid "database_error_text"
 msgstr "在访问或检查UrBackup内部数据库时发生错误。这表示内部数据库错误或者没有足够的可用空间。如果这个错误发生，请从备份中恢复数据库文件(backup_server.db, backup_server_files.db, backup_server_links.db, backup_server_link_journal.db and backup_server_settings.db)。详细数据请参阅日志文件。 "
 
 msgid "tDownload folder as ZIP"
-msgstr "下载ZIP格式备份文件夹"
+msgstr "以ZIP格式下载文件夹"
 
 msgid "tOld password"
 msgstr "旧密码"
@@ -1064,31 +1066,31 @@ msgid "tGlobal soft filesystem quota"
 msgstr "全局文件系统配额"
 
 msgid "tImage backup file format"
-msgstr "磁盘镜像格式"
+msgstr "磁盘映像文件格式"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr "允许客户端侧启动全文件备份"
+msgstr "允许客户端侧启动完全文件备份"
 
 msgid "tAllow client-side starting of incremental file backups"
 msgstr "允许客户端侧启动增量文件备份"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr "允许客户端侧启动磁盘镜像备份"
+msgstr "允许客户端侧启动磁盘映像完全备份"
 
 msgid "tAllow client-side starting of incremental image backups"
 msgstr "允许客户端侧启动增量文件备份"
 
 msgid "tBackup window for incremental file backups"
-msgstr "增量备份文件的时间窗口"
+msgstr "增量文件备份的时间窗口"
 
 msgid "tBackup window for full file backups"
-msgstr "全文件备份时间窗口"
+msgstr "完全文件备份的时间窗口"
 
 msgid "tBackup window for incremental image backups"
-msgstr "增量磁盘镜像备份时间窗口"
+msgstr "增量磁盘映像备份的时间窗口"
 
 msgid "tBackup window for full image backups"
-msgstr "全磁盘镜像备份时间窗口"
+msgstr "完全磁盘映像备份的时间窗口"
 
 msgid "tSoft client quota"
 msgstr "软客户端配额"
@@ -1103,31 +1105,31 @@ msgid "tTemporary files as file backup buffer"
 msgstr "使用临时文件作为文件备份缓冲区"
 
 msgid "tTemporary files as image backup buffer"
-msgstr "使用临时文件作为硬盘镜像备份缓冲区"
+msgstr "使用临时文件作为磁盘映像备份缓冲区"
 
 msgid "tLocal full file backup transfer mode"
-msgstr "本地全文件备份传输模式"
+msgstr "局域网模式下完全文件备份传输模式"
 
 msgid "tRaw"
 msgstr "未加工数据"
 
 msgid "tHashed"
-msgstr "已哈希计算过的数据"
+msgstr "哈希校验"
 
 msgid "tInternet full file backup transfer mode"
-msgstr "互联网模式下全文件备份传输模式"
+msgstr "广域网模式下完全文件备份传输模式"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr "本地增量文件备份传输模式"
+msgstr "局域网模式下增量文件备份传输模式"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr "互联网模式下增量文件备份传输模式"
+msgstr "广域网模式下增量文件备份传输模式"
 
 msgid "tLocal image backup transfer mode"
-msgstr "本地全硬盘镜像备份传输模式"
+msgstr "局域网模式下磁盘映像备份传输模式"
 
 msgid "tInternet image backup transfer mode"
-msgstr "互联网模式下全镜像备份传输模式"
+msgstr "广域网模式下磁盘映像备份传输模式"
 
 msgid "tUse symlinks during incremental file backups"
 msgstr "在增量备份中使用符号连接"
@@ -1151,10 +1153,10 @@ msgid "No data available in table"
 msgstr "表中无数据"
 
 msgid "Show _MENU_ entries"
-msgstr "显示_菜单_入口"
+msgstr "显示 _MENU_ 条"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
-msgstr "在已连接到本地服务器的情况下连接到互联网上的服务器"
+msgstr "在已连接到局域网服务器的情况下连接到广域网上的服务器"
 
 msgid "tYou need to create a user to be able to send reports"
 msgstr "你必须创建一个用户来发送报告"
@@ -1169,16 +1171,16 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "压缩VHD (已压缩非标准虚拟硬盘)"
 
 msgid "tBlock differences - hashed"
-msgstr "块校验-哈西校验"
+msgstr "块差异-哈希校验"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr "显示 _START_ 到 _END_ 总计 _TOTAL_"
+msgstr "显示 _START_ 到 _END_ 总计 _TOTAL_ 条"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr "显示 0 到0 总计 0."
+msgstr "显示 0 到 0 总计 0 条"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr "(关键字_MAX_总计 )"
+msgstr "(总计筛选出 _MAX_ 条)"
 
 msgid "Minimize"
 msgstr "最小化"
@@ -1187,13 +1189,13 @@ msgid "Maximize"
 msgstr "最大化"
 
 msgid "ldap_settings"
-msgstr "LDAP/ AD"
+msgstr "LDAP/AD"
 
 msgid "client_exists"
 msgstr "客户端已存在"
 
 msgid "validate_err_empty_internet_client_name"
-msgstr "请输入因特网客户端名/NAT后端的客户端名"
+msgstr "请输入广域网客户端名/NAT后端的客户端名"
 
 msgid "validate_err_empty_hostname"
 msgstr "请输入需发现的一个IP地址/主机名"
@@ -1214,7 +1216,7 @@ msgid "action_8"
 msgstr "文件恢复"
 
 msgid "action_9"
-msgstr "磁盘镜像恢复"
+msgstr "磁盘映像恢复"
 
 msgid "action_10"
 msgstr "升级客户端"
@@ -1238,21 +1240,21 @@ msgid ""
 "tUrBackup automatically discovers clients in your local network. If the "
 "server is in the same sub-network as the client just install the client and "
 "wait for it to be discovered."
-msgstr "UrBackup 会在本地网络中自动监测客户端。如果服务器和客户端在同一个子网，请直接安装客户端，服务器将自动发现此客户端。"
+msgstr "UrBackup 会在局域网中自动监测客户端。如果服务器和客户端在同一个子网，安装客户端等待片刻，服务器将自动发现此客户端。"
 
 msgid "tDownload the client from:"
-msgstr "从下载客户端："
+msgstr "下载客户端自："
 
 msgid ""
 "tIf you want a client to use multiple backup servers this server's identity "
 "is:"
-msgstr "如果你希望客户端使用多服务器，那么此服务器的身份认证是："
+msgstr "如果你希望客户端使用多服务器，那么此服务器的ID是："
 
 msgid "tAdd new Internet client/client behind NAT"
-msgstr "添加因特网客户端名/NAT后端的客户端名"
+msgstr "添加广域网客户端名/NAT后端的客户端名"
 
 msgid "tName of new Internet client/client behind NAT"
-msgstr "因特网客户端名/NAT后端的客户端名"
+msgstr "广域网客户端名/NAT后端的客户端名"
 
 msgid "tDiscover new client via IP/hostname hint"
 msgstr "使用IP/客户端名检测新客户端"
@@ -1311,19 +1313,19 @@ msgid "tDefault authentication key:"
 msgstr "默认认证密匙"
 
 msgid "tDownload preconfigured client installer for Windows"
-msgstr "下载预配置windows客户端安装文件"
+msgstr "下载预配置的Windows客户端安装文件"
 
 msgid "tDownload preconfigured client installer for Mac OS X"
-msgstr " 下载预配置MAC OS X 客户端安装文件"
+msgstr "下载预配置的MAC OS X客户端安装文件"
 
 msgid "tInstall it directly in the terminal via:"
-msgstr "从控制台直接安装客户端："
+msgstr "直接安装至终端，通过："
 
 msgid "tDownload preconfigured client installer for Linux"
-msgstr "下载预配置 客户端安装文件"
+msgstr "下载预配置的Linux客户端安装文件"
 
 msgid "tAlternatively after you installed the client from:"
-msgstr "在客户端安装完成后上迁移"
+msgstr "或者，安装完客户端后，从："
 
 msgid "tGo to the settings screen on the client"
 msgstr "在客户端打开配置页面"
@@ -1332,10 +1334,10 @@ msgid "tEnable the internet mode on the client"
 msgstr "在客户端上允许广域网模式"
 
 msgid "tSet the internet server to:"
-msgstr "配置互联网服务器："
+msgstr "配置广域网服务器："
 
 msgid "tSet the internet server port to:"
-msgstr "配置互联网服务器端口："
+msgstr "配置广域网服务器端口："
 
 msgid "tSet the computer name to:"
 msgstr "配置计算机名："
@@ -1347,7 +1349,7 @@ msgid ""
 "tWithout firewall/NAT: Enable internet only mode if you only plan to use the"
 " client via internet. On Linux by changing INTERNET_ONLY to true in "
 "/etc/default/urbackupclient or /etc/sysconfig/urbackupclient"
-msgstr "已暂停"
+msgstr "在没有防火网/NAT的情况下打算只使用广域网模式，Linux系统上，把/etc/default/urbackupclient 或者 /etc/sysconfig/urbackupclient 里的 INTERNET_ONLY 设置为ture"
 
 msgid "tWith the command line:"
 msgstr "使用命令行："
@@ -1404,7 +1406,7 @@ msgid "tDays"
 msgstr "天"
 
 msgid "tRaw copy-on-write file"
-msgstr "Raw 写时拷贝文件"
+msgstr "原始的 copy-on-write 文件"
 
 msgid "tMin"
 msgstr "分钟"
@@ -1413,31 +1415,31 @@ msgid "tVirtual sub client names"
 msgstr "虚拟客户端名"
 
 msgid "tLocal incremental image style"
-msgstr "本地增量镜像格式"
+msgstr "局域网磁盘映像增量备份方式"
 
 msgid "tBased on last full image backup"
-msgstr "基于上一次完全磁盘镜像备份"
+msgstr "基于上一次磁盘映像完全备份"
 
 msgid "tBased on last image backup"
-msgstr "基于上一次完全磁盘镜像备份"
+msgstr "基于上一次磁盘映像备份"
 
 msgid "tInternet incremental image style"
-msgstr "互联网模式下增量镜像格式"
+msgstr "广域网模式下增量磁盘映像备份方式"
 
 msgid "tLocal full image style"
-msgstr "本地全镜像格式"
+msgstr "局域网磁盘映像完全备份方式"
 
 msgid "tSynthetic full image backup"
-msgstr "合成完整备份镜像"
+msgstr "综合地完全备份磁盘映像"
 
 msgid "tInternet full image style"
-msgstr "互联网模式下全镜像格式"
+msgstr "广域网模式下完全磁盘映像备份方式"
 
 msgid "tDatabase cache size during batch processing"
 msgstr "批处理中数据库缓存大小"
 
 msgid "tDebugging: End-to-end verification of all file backups"
-msgstr "调试中：全文件备份中端对端认证"
+msgstr "调试中：端对端地核对所有文件备份"
 
 msgid "tDebugging: Verify file backups using client side hashes"
 msgstr "调试中：使用文件备份客户端侧哈西值"
@@ -1445,7 +1447,7 @@ msgstr "调试中：使用文件备份客户端侧哈西值"
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
 "only if you do not run fulls)"
-msgstr ""
+msgstr "周期性地添加广域网客户端的文件条目到数据库(只有在不使用完全文件备份的时候禁用)"
 
 msgid "tRun backups with background priority on the clients"
 msgstr "在客户端使用后台优先级备份"
@@ -1453,56 +1455,56 @@ msgstr "在客户端使用后台优先级备份"
 msgid ""
 "tCreate symbolically linked views for each user on the clients after file "
 "backups"
-msgstr ""
+msgstr "文件备份后在客户端上为每个用户创建符号链接视图"
 
 msgid "tMaximum number of simultaneous jobs per client"
-msgstr ""
+msgstr "每个客户端的最大并行工作数量"
 
 msgid ""
 "tList of volumes for which change block tracking should be used (if "
 "available)"
-msgstr ""
+msgstr "列出动块追踪技术要追踪的卷(如果可用)"
 
 msgid ""
 "tList of volumes for which the change block tracking should be crash "
 "persistent"
-msgstr ""
+msgstr "列出动块追踪技术要崩溃续追的卷"
 
 msgid "tEnable logins via LDAP/AD"
-msgstr "允许使用与账户登录"
+msgstr "允许使用LDAP/AD用户登录"
 
 msgid "tLDAP/AD server name"
-msgstr "域服务器名"
+msgstr "LDAP/AD服务器名"
 
 msgid "tLDAP/AD server port"
-msgstr "域服务器端口号"
+msgstr "LDAP/AD服务器端口"
 
 msgid "tLDAP/AD user name prefix"
-msgstr "域帐号前缀"
+msgstr "LDAP/AD用户前缀"
 
 msgid "tLDAP/AD user name suffix"
-msgstr "域帐号后缀"
+msgstr "LDAP/AD用户后缀"
 
 msgid "tLDAP/AD group and class query"
-msgstr "域帐号组"
+msgstr "LDAP/AD组查询和类查询"
 
 msgid "tLDAP/AD group key name in query"
-msgstr ""
+msgstr "LDAP/AD组在查询中的键名"
 
 msgid "tLDAP/AD class key name in query"
-msgstr ""
+msgstr "LDAP/AD类在查询中的键名"
 
 msgid "tLDAP/AD group rights map"
-msgstr "域帐号组权限图"
+msgstr "LDAP/AD组权限图"
 
 msgid "tLDAP/AD class rights map"
-msgstr "域帐号类权限图"
+msgstr "LDAP/AD类权限图"
 
 msgid "tTest login with this user"
 msgstr "使用此用户测试登录"
 
 msgid "tPassword for test user"
-msgstr "测试用户(test)密码"
+msgstr "测试用户密码"
 
 msgid "tTest login succeeded. Rights of user:"
 msgstr "登录测试成功。用户权限："
@@ -1511,13 +1513,13 @@ msgid "tTest login failed. Error:"
 msgstr "登录测试失败。错误："
 
 msgid "tDownload client for Windows"
-msgstr "下载windows客户端安装文件"
+msgstr "下载Windows客户端安装文件"
 
 msgid "tDownload client for Mac OS X"
-msgstr " 下载MAC OS X 客户端安装文件"
+msgstr " 下载MAC OS X客户端安装文件"
 
 msgid "tDownload client for Linux"
-msgstr "下载 客户端安装文件"
+msgstr "下载Linux客户端安装文件"
 
 msgid "tRemove client"
 msgstr "移除客户端"
@@ -1583,22 +1585,22 @@ msgid "group_delete_failed"
 msgstr "移除组失败"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr "因特网服务器名必须为域名或者 "
+msgstr "广域网服务器名必须为主机名或者IP "
 
 msgid "validate_err_notregexp_server_url"
-msgstr "服务器URL必须是以http:// or https://开始"
+msgstr "服务器URL必须是以http:// 或者 https://开始"
 
 msgid "action_17"
 msgstr "启动恢复"
 
 msgid "bit/s"
-msgstr "bit/ "
+msgstr "bit/s"
 
 msgid "Kbit/s"
-msgstr "Kbit/ "
+msgstr "Kbit/s"
 
 msgid "Mbit/s"
-msgstr "Mbit/ "
+msgstr "Mbit/s"
 
 msgid "Gbit/s"
 msgstr "Gbit/s"
@@ -1610,10 +1612,10 @@ msgid "delete_err"
 msgstr "错误，备份时发生缺失错误："
 
 msgid "delete_now_err"
-msgstr "删除备份失败"
+msgstr "错误，删除备份失败："
 
 msgid "image_locked"
-msgstr "磁盘镜像正在被使用"
+msgstr "磁盘映像备份正在被使用"
 
 msgid "locked_ref"
 msgstr "磁盘映像增量备份需使用的备份文件正在被使用"
@@ -1646,10 +1648,10 @@ msgid "tNo backups of this client yet"
 msgstr "这台客户无备份"
 
 msgid "tImage backup information"
-msgstr "磁盘镜像备份inxi"
+msgstr "磁盘映像信息"
 
 msgid "tId"
-msgstr " "
+msgstr "ID"
 
 msgid "tVolume size"
 msgstr "卷大小"
@@ -1673,15 +1675,15 @@ msgid "tSerial number"
 msgstr "系列号"
 
 msgid "tMount image"
-msgstr "加载镜像"
+msgstr "加载磁盘映像"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup会使用非沙箱操作系统的功能去加载磁盘映像。仅在你信任它的源的情况下加载磁盘映像。"
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr "加载镜像失败，详细信息请查看服务器日志"
+msgstr "加载磁盘映像失败，详细信息请查看服务器日志。"
 
 msgid "tOk. Reset this error"
 msgstr "OK,重置此错误"
@@ -1742,27 +1744,27 @@ msgstr "磁盘映像备份"
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "如果当前评估的每月数据使用量低于设置值，则不启动文件备份"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "如果当前评估的每月数据使用量低于设置值，则不启动磁盘映像备份"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "更新数据量评估数据库"
 
 msgid "tFull image backup #1"
 msgstr "完全备份磁盘映像#1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "磁盘映像备份中一块做快照的卷组"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "文件备份中一块做快照的卷组"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "配置Windows组件备份"
 
 msgid "tGroup name"
 msgstr "组名"
@@ -1771,28 +1773,28 @@ msgid "tWith Selected"
 msgstr "选择的"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "未配置备份路径"
 
 msgid "disabled"
 msgstr "已禁用"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "请输入新增的报警脚本的名字"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "确定要删除这个报警脚本吗？"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "经过几次文件备份后，设置文件备份状态为不OK"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "经过几次磁盘映像备份后，设置磁盘映像备份状态为不OK"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "磁盘映像/文件备份状态不ok时通知的电子邮件地址(使用';'隔离)"
 
 msgid "alert_important"
-msgstr "添加【重要】邮件标识"
+msgstr "添加[重要]邮件标识"
 
 msgid "alert_mail_ok"
 msgstr "在备份不正常邮件后发送备份正常邮件"
@@ -1834,10 +1836,10 @@ msgid "tBoolean"
 msgstr "布尔数"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "使用Docker (客户端访问Web界面可达):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "使用Docker (客户端访问Web界面不可达):"
 
 msgid "tEdit report script"
 msgstr "修改报告脚本"

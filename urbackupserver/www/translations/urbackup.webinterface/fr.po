@@ -11,11 +11,12 @@
 # Translators:
 # Translators:
 # Translators:
-# Charles Peltier <charles@cl-info.fr>, 2014-2018
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2014-2019
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2018-06-19 11:24+0000\n"
+"PO-Revision-Date: 2019-09-06 10:10+0000\n"
 "Last-Translator: Charles Peltier <charles@cl-info.fr>\n"
 "Language-Team: French (http://www.transifex.com/uroni/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -121,7 +122,7 @@ msgid "unknown"
 msgstr "inconnu"
 
 msgid "overview"
-msgstr "Résumé"
+msgstr "Synthèse"
 
 msgid "no_recent_backup"
 msgstr "Pas de sauvegarde récente"
@@ -463,7 +464,7 @@ msgid "tOperating System"
 msgstr "Système d'exploitation"
 
 msgid "tShow all clients"
-msgstr "Afficher tous les cliens"
+msgstr "Afficher tous les clients"
 
 msgid "tThis client is going to be removed. "
 msgstr "Client en cours de suppression"
@@ -1093,7 +1094,7 @@ msgid "tSoft client quota"
 msgstr "Quota par client \"\""
 
 msgid "tCalculate file-hashes on the client"
-msgstr "Calcul du hachage de contrôle de fichier côté client"
+msgstr "Calcul de l'empreinte de contrôle des fichiers côté client"
 
 msgid "tAdvanced"
 msgstr "Avancée"
@@ -1111,7 +1112,7 @@ msgid "tRaw"
 msgstr "Raw - rapide"
 
 msgid "tHashed"
-msgstr "Hashage - transfert contrôlé"
+msgstr "Empreinte prise"
 
 msgid "tInternet full file backup transfer mode"
 msgstr "Mode pour la sauvegarde complète des fichiers WAN"
@@ -1168,7 +1169,7 @@ msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "VHD compressé (disque dur virtuel compressé - format propriétaire)"
 
 msgid "tBlock differences - hashed"
-msgstr "Différence bloc à bloc, avec hachage de contrôle"
+msgstr "Différence bloc à bloc, avec empreinte de contrôle"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
 msgstr "Montrer _START_ to _END_ of _TOTAL_ enregistrements"
@@ -1439,7 +1440,7 @@ msgid "tDebugging: End-to-end verification of all file backups"
 msgstr "Débogage : vérification de toutes les sauvegardes de fichiers"
 
 msgid "tDebugging: Verify file backups using client side hashes"
-msgstr "Débogage : vérification de tous les fichiers de sauvegarde utilisant un \"hash\" coté client"
+msgstr "Débogage : vérification de tous les fichiers de sauvegarde en utilisant une empreinte coté client"
 
 msgid ""
 "tPeriodically readd file entries of internet clients to database (disable "
@@ -1543,7 +1544,7 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Préparation de la restauration. Soyez patient..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr "Ne pas arrêter les sauvegardes en cas de non-concordance de hachage ou d'erreurs de lecture"
+msgstr "Ne pas arrêter les sauvegardes en cas de non-concordance de l'empreinte ou d'erreurs de lecture"
 
 msgid "admin_create"
 msgstr "Administrateur"
