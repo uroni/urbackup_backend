@@ -471,6 +471,11 @@ IDatabaseCursor* CQuery::Cursor(int *timeoutms)
 	{
 		cursor=new DatabaseCursor(this, timeoutms);
 	}
+	else
+	{
+		if (!cursor->reset())
+			return nullptr;
+	}
 
 	return cursor;
 }

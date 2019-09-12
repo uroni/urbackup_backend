@@ -10,6 +10,8 @@ public:
 
 	virtual bool has_error()=0;
 
+	virtual bool reset() = 0;
+
 	virtual void shutdown() = 0;
 };
 

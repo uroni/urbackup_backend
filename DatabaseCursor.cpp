@@ -28,6 +28,9 @@
 DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms),
 	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
+#ifdef LOG_READ_QUERIES
+	, db(db)
+#endif
 {
 	query->setupStepping(timeoutms, true);
 
@@ -39,6 +42,22 @@ DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 DatabaseCursor::~DatabaseCursor(void)
 {
 	shutdown();
+}
+
+bool DatabaseCursor::reset()
+{
+	tries = 60;
+	lastErr = SQLITE_OK;
+	_has_error = false;
+	is_shutdown = false;
+	transaction_lock = false;
+
+	query->setupStepping(timeoutms, false);
+
+#ifdef LOG_READ_QUERIES
+	active_query = new ScopedAddActiveQuery(query, db, false);
+#endif
+	return true;
 }
 
 bool DatabaseCursor::next(db_single_result &res)
