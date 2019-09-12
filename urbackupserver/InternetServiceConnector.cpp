@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "InternetServiceConnector.h"
+#include "server.h"
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -32,7 +33,6 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "serverinterface/login.h"
-#include "server.h"
 
 #include <memory.h>
 #include <algorithm>
