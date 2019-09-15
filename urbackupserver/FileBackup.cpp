@@ -2223,8 +2223,10 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
+		local_hash2.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, backuppath, max_file_id));
+
 		metadata_apply_thread.reset(new server::FileMetadataDownloadThread::FileMetadataApplyThread(metadata_download_thread.get(),
-			backuppath_hashes, backuppath, client_main, local_hash.get(), filepath_corrections, max_file_id));
+			backuppath_hashes, backuppath, client_main, local_hash2.get(), filepath_corrections, max_file_id));
 
 		metadata_apply_thread_ticket = Server->getThreadPool()->execute(metadata_apply_thread.get(), "fb meta apply");
 	}	

@@ -1550,7 +1550,9 @@ int check_metadata()
 
 void FileMetadataDownloadThread::FileMetadataApplyThread::operator()()
 {
+	local_hash->setupDatabase();
 	has_success = fmdlt->applyMetadata(backup_metadata_dir, backup_dir, cb, local_hash, filepath_corrections, num_embedded_files, &max_file_id);
+	local_hash->deinitDatabase();
 }
 
 } //namespace server

@@ -271,6 +271,7 @@ protected:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	std::auto_ptr<BackupServerHash> local_hash;
+	std::auto_ptr<BackupServerHash> local_hash2;
 
 	std::string filelist_async_id;
 
