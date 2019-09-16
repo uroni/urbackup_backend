@@ -2223,7 +2223,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
-		local_hash2.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, backuppath, max_file_id));
+		local_hash2.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid, use_snapshots, max_file_id));
 
 		metadata_apply_thread.reset(new server::FileMetadataDownloadThread::FileMetadataApplyThread(metadata_download_thread.get(),
 			backuppath_hashes, backuppath, client_main, local_hash2.get(), filepath_corrections, max_file_id));
