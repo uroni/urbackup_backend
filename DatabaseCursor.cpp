@@ -55,7 +55,7 @@ bool DatabaseCursor::reset()
 	query->setupStepping(timeoutms, false);
 
 #ifdef LOG_READ_QUERIES
-	active_query = new ScopedAddActiveQuery(query, db, false);
+	active_query = new ScopedAddActiveQuery(query);
 #endif
 	return true;
 }
