@@ -1138,6 +1138,16 @@ function show_status_check2(data)
 				ext_text+="<br>MS-DOS 8.3 compatibility names are created on the backup storage. This can lead to problems. You can disable 8.3 name generation by runnning <br>"
 					+ "<code><pre>fsutil 8dot3name set "+data.dir_error_volume+" 1</pre></code><br>as administrator. UrBackup will stop showing this error after you run this command.";
 			}
+			else if(data.dir_error_hint=="err_file_system_case_insensitive")
+			{
+				ext_text+="<br>UrBackup Server is running on a operating system where file systems are usually case sensitive. Work-arounds for UrBackup to work with case insensitive backup storage are disabled."
+					+"The backup storage is case insensitive, however. This might cause issues.";
+			}
+			else if(data.dir_error_hint=="err_file_system_special_windows_files_disallowed")
+			{
+				ext_text+="<br>UrBackup Server has trouble storing files named 'CON' to backup storage. When running on Windows UrBackup Server has work-arounds to avoid storing such files. "
+					"Those work-arounds are disabled when not running on Windows, however. So if a client has files named like this, there might be issues with backups.";
+			}
 			else
 			{
 				ext_text+="<br>"+data.dir_error_hint;
@@ -1146,7 +1156,9 @@ function show_status_check2(data)
 		
 		if( data.dir_error_ext
 			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
-				|| data.dir_error_ext=="dos_names_created") )
+				|| data.dir_error_ext=="dos_names_created"
+				|| data.dir_error_ext=="err_file_system_case_insensitive"
+				|| data.dir_error_ext=="err_file_system_special_windows_files_disallowed") )
 		{
 			generic_text=false;
 		}
