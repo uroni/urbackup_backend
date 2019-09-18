@@ -182,11 +182,7 @@ std::string PipeFileTar::Read(_u32 tr, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	if (hash_pos == pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
-		hash_pos += ret.size();
-	}
+	hashReadData(pos, ret.data(), ret.size());
 	assert(pos + ret.size() <= hash_pos);
 
 	tar_file.pos += ret.size();
@@ -212,11 +208,7 @@ std::string PipeFileTar::Read(int64 spos, _u32 tr, bool * has_error)
 	std::string ret = pipe_file->pipe_file->Read(pf_offset, max_read, has_error);
 
 	lock.relock(mutex.get());
-	if (spos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(ret.data()), ret.size());
-		hash_pos += ret.size();
-	}
+	hashReadData(spos, ret.data(), ret.size());
 	assert(spos + ret.size() <= hash_pos);
 
 	return ret;
@@ -234,11 +226,7 @@ _u32 PipeFileTar::Read(char * buffer, _u32 bsize, bool * has_error)
 
 	lock.relock(mutex.get());
 
-	if (tar_file.pos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
-		hash_pos += ret;
-	}
+	hashReadData(tar_file.pos, buffer, ret);
 	assert(pos + ret <= hash_pos);
 	
 	tar_file.pos += ret;
@@ -263,11 +251,7 @@ _u32 PipeFileTar::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
 	_u32 ret = pipe_file->pipe_file->Read(pf_offset, buffer, bsize, has_error);
 
 	lock.relock(mutex.get());
-	if (spos == hash_pos)
-	{
-		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer), ret);
-		hash_pos += ret;
-	}
+	hashReadData(spos, buffer, ret);
 	assert(spos + ret <= hash_pos);
 
 	return ret;
@@ -313,6 +297,24 @@ _i64 PipeFileTar::Size()
 	IScopedLock lock(mutex.get());
 
 	return tar_file.size;
+}
+
+void PipeFileTar::hashReadData(int64 spos, const char * buffer, _u32 bsize)
+{
+	_u32 off = 0;
+	if (spos < hash_pos)
+	{
+		_u32 off = hash_pos - spos;
+		if (off >= bsize)
+		{
+			return;
+		}
+	}
+	if (spos+off == hash_pos)
+	{
+		sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(buffer+off), bsize-off);
+		hash_pos += bsize;
+	}
 }
 
 std::string PipeFileTar::buildCurrMetadata()

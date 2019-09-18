@@ -124,6 +124,8 @@ public:
 
 private:
 
+	void hashReadData(int64 spos, const char* buffer, _u32 bsize);
+
 	std::string buildCurrMetadata();
 
 	bool readHeader(bool* has_error, std::string & stderr_ret);
