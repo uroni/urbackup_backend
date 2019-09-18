@@ -37,6 +37,7 @@
 #include "InternetClient.h"
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/capa_bits.h"
+#include "../urbackupcommon/os_functions.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -139,7 +140,7 @@ namespace
 				CloseHandle(pi.hThread);
 			}
 #else
-			system("/bin/sh urbackup/UrBackupUpdate.sh -- silent");
+			os_system("/bin/sh urbackup/UrBackupUpdate.sh -- silent");
 #endif
 
 			delete this;
