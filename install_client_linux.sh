@@ -117,12 +117,12 @@ if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		echo "Glibc not installed or too old. Falling back to Android NDK build..."
+		echo "(Glibc not installed or too old. Falling back to Android NDK build...)"
 		TARGET=x86_64-linux-android
 	else
 		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
 		then
-			echo "Glibc not installed or too old (2). Falling back to Android NDK..."
+			echo "(Glibc not installed or too old (2). Falling back to Android NDK build...)"
 			TARGET=x86_64-linux-android
 		fi
 	fi
