@@ -246,7 +246,7 @@ namespace
 				os_remove_symlink_dir(os_file_prefix(linkfolderpath));
 			}
 
-#ifdef _WIN32
+#ifndef _WIN32
 			if (!server_settings->no_file_backups)
 			{
 				std::string test1_path = testfolderpath + os_file_sep() + "test1";
