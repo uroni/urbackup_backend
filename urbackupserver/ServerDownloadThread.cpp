@@ -1316,6 +1316,12 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( const SQueu
 	std::string cfn_short=todl.os_path+"/"+todl.short_fn;
 	if(cfn_short[0]=='/')
 		cfn_short.erase(0,1);
+#ifdef _WIN32
+	if(!cfn_short.empty()
+		&& cfn_short[0]==os_file_sep()[0])
+		cfn_short.erase(0, 1);
+#endif
+
 
 	std::string dstpath=backuppath+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 	std::string hashpath=backuppath_hashes+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
