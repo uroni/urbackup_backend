@@ -13,7 +13,7 @@ bool Mailer::queued_mail = false;
 extern IUrlFactory *url_fak;
 
 //Should be about 3 days
-const size_t max_mail_retry_count = 8500;
+const size_t max_mail_retry_count = 164;
 
 bool Mailer::sendMail(const std::string & send_to, const std::string & subject, const std::string & message)
 {
