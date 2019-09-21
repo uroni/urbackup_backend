@@ -12,6 +12,9 @@ bool Mailer::queue_limit = false;
 bool Mailer::queued_mail = false;
 extern IUrlFactory *url_fak;
 
+//Should be about 3 days
+const size_t max_mail_retry_count = 8500;
+
 bool Mailer::sendMail(const std::string & send_to, const std::string & subject, const std::string & message)
 {
 	IScopedLock lock(mutex);
@@ -129,13 +132,24 @@ void Mailer::operator()()
 					waittime = (unsigned int)30 * 60 * 1000;
 				}
 
-				Server->Log("Error sending mail to \"" + res[i]["send_to"] + "\". " + errmsg + ". Retrying in " + PrettyPrintTime(waittime), LL_WARNING);
+				if (n > max_mail_retry_count)
+				{
+					Server->Log("Error sending mail to \"" + res[i]["send_to"] + "\". " + errmsg + ". Deleting mail from queue. Not retrying again", LL_ERROR);
 
-				q_set_retry->Bind(Server->getTimeMS()+waittime);
-				q_set_retry->Bind(n + 1);
-				q_set_retry->Bind(res[i]["id"]);
-				q_set_retry->Write();
-				q_set_retry->Reset();
+					q_remove_mail->Bind(res[i]["id"]);
+					q_remove_mail->Write();
+					q_remove_mail->Reset();
+				}
+				else
+				{
+					Server->Log("Error sending mail to \"" + res[i]["send_to"] + "\". " + errmsg + ". Retrying in " + PrettyPrintTime(waittime), LL_WARNING);
+
+					q_set_retry->Bind(Server->getTimeMS() + waittime);
+					q_set_retry->Bind(n + 1);
+					q_set_retry->Bind(res[i]["id"]);
+					q_set_retry->Write();
+					q_set_retry->Reset();
+				}
 			}
 			else
 			{
