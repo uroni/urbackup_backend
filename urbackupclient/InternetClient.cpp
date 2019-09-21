@@ -37,6 +37,10 @@
 
 #include "../stringtools.h"
 
+#ifndef _WIN32
+#include "../config.h"
+#endif
+
 #include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
