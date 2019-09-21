@@ -14,6 +14,7 @@ public:
 
 private:
 	static bool queue_limit;
+	static bool has_mail_server;
 	static bool queued_mail;
 	static IMutex* mutex;
 	static ICondition* cond;

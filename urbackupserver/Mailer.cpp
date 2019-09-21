@@ -9,6 +9,7 @@
 IMutex* Mailer::mutex = NULL;
 ICondition* Mailer::cond = NULL;
 bool Mailer::queue_limit = false;
+bool Mailer::has_mail_server = false;
 bool Mailer::queued_mail = false;
 extern IUrlFactory *url_fak;
 
@@ -17,11 +18,30 @@ const size_t max_mail_retry_count = 164;
 
 bool Mailer::sendMail(const std::string & send_to, const std::string & subject, const std::string & message)
 {
-	IScopedLock lock(mutex);
-	if (queue_limit)
-		return false;
-
-	lock.relock(NULL);
+	{
+		IScopedLock lock(mutex);
+		if (queue_limit)
+		{
+			if (!has_mail_server)
+			{
+				MailServer mail_server = ClientMain::getMailServerSettings();
+				if (mail_server.servername.empty())
+				{
+					return false;
+				}
+				else
+				{
+					has_mail_server = true;
+				}
+			}
+			else
+			{
+				lock.relock(NULL);
+				Server->Log("Mail server queue limit: Dropping mail to \"" + send_to + " subject \"" + subject + "\"", LL_ERROR);
+				return false;
+			}
+		}
+	}
 
 	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedSynchronous db_synchronous(db);
@@ -33,7 +53,7 @@ bool Mailer::sendMail(const std::string & send_to, const std::string & subject, 
 
 	if (b)
 	{
-		lock.relock(mutex);
+		IScopedLock lock(mutex);
 		cond->notify_all();
 		queued_mail = true;
 	}
@@ -55,7 +75,6 @@ void Mailer::operator()()
 	if (url_fak == NULL)
 		return;
 
-	bool has_mail_server;
 	{
 		MailServer mail_server = ClientMain::getMailServerSettings();
 		has_mail_server = !mail_server.servername.empty();
@@ -88,7 +107,7 @@ void Mailer::operator()()
 		db_results res = q_get_mail->Read();
 		q_get_mail->Reset();
 
-		if (res.size() > 1000)
+		if (res.size() > 10000)
 		{
 			IScopedLock lock(mutex);
 			queue_limit = true;
@@ -109,11 +128,13 @@ void Mailer::operator()()
 
 		if (mail_server.servername.empty())
 		{
+			IScopedLock lock(mutex);
 			has_mail_server = false;
 			continue;
 		}
 		else
 		{
+			IScopedLock lock(mutex);
 			has_mail_server = true;
 		}
 
