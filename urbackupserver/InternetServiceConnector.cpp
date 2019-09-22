@@ -848,6 +848,10 @@ std::vector<std::pair<std::string, std::string> > InternetServiceConnector::getO
 			{
 				todel.push_back(it->first);
 			}
+			else if (ct - it->second.last_seen < 10000)
+			{
+				ret.push_back(std::make_pair(it->first, it->second.endpoint_name));
+			}
 		}
 	}
 
