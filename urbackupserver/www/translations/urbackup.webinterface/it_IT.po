@@ -13,6 +13,7 @@
 # Francesco Pellegrino <fra.pel@gmail.com>, 2016
 # Marco Longo <longo.marco@consul-net.it>, 2014
 # Mirco Boschi <tipolosko@gmail.com>, 2015,2017
+# Roberto Viola <cagnulein@gmail.com>, 2019
 # paolo <inforossi@alice.it>, 2014
 # Samuele <samuele.facco@gmail.com>, 2014
 msgid ""
@@ -804,7 +805,7 @@ msgid "tDo image backups over internet"
 msgstr "Esegui backup immagine attraverso Internet"
 
 msgid "tDo full file backups over internet"
-msgstr "Esegui backup file atraverso Internet"
+msgstr "Esegui backup file attraverso Internet"
 
 msgid "tMax backup speed for internet connection"
 msgstr "Velocità massima backup per la connessione ad internet"
@@ -1546,13 +1547,13 @@ msgid "tPreparing restore. Please be patient..."
 msgstr "Preparazione del ripristino. Attendere per favore..."
 
 msgid "tDo not fail backups in case of hash mismatches or read errors"
-msgstr ""
+msgstr "Non bloccare backup in caso di differenze di hash o errori di letura"
 
 msgid "admin_create"
-msgstr ""
+msgstr "Amministratore"
 
 msgid "image_backup"
-msgstr ""
+msgstr "Backup Immagine"
 
 msgid "action_14"
 msgstr "Pulizia notturna"
@@ -1561,7 +1562,7 @@ msgid "action_15"
 msgstr "Pulizia di emergenza"
 
 msgid "action_16"
-msgstr ""
+msgstr "Migrazione Archivi"
 
 msgid "default_group"
 msgstr ""
@@ -1570,28 +1571,28 @@ msgid "filter_group"
 msgstr ""
 
 msgid "add_new_group"
-msgstr ""
+msgstr "Aggiungi nuovo gruppo"
 
 msgid "enter_group_name"
-msgstr ""
+msgstr "Inserisci il nome del nuovo gruppo"
 
 msgid "group_already_exists"
-msgstr ""
+msgstr "Il gruppo esiste già"
 
 msgid "confirm_delete_settings_group"
-msgstr ""
+msgstr "Si sta per rimuovere questo gruppo. Tutto i client in questo gruppo verranno riassegnati al gruppo di default. Continuare?"
 
 msgid "group_delete_failed"
-msgstr ""
+msgstr "Rimozione del gruppo fallita"
 
 msgid "validate_err_notregexp_internet_server"
-msgstr ""
+msgstr "L'internet server deve essere un hostname o un IP"
 
 msgid "validate_err_notregexp_server_url"
-msgstr ""
+msgstr "L'URL del server deve essere una URL con prefisso http:// o https://"
 
 msgid "action_17"
-msgstr ""
+msgstr "Avviamento del ripristino"
 
 msgid "bit/s"
 msgstr ""
@@ -1609,84 +1610,84 @@ msgid "Tbit/s"
 msgstr ""
 
 msgid "delete_err"
-msgstr ""
+msgstr "Errore durante la segnalazione di cancellazione del backup: "
 
 msgid "delete_now_err"
-msgstr ""
+msgstr "Errore durante la cancellazione del backup: "
 
 msgid "image_locked"
-msgstr ""
+msgstr "L'immagine di backup è attualmente in uso"
 
 msgid "locked_ref"
-msgstr ""
+msgstr "L'immagine incrementale di backup basata su questo backup è attualmente in uso"
 
 msgid "incomplete_ref"
-msgstr ""
+msgstr "L'immagine incrementale di backup basata su questo backup sta funzionando"
 
 msgid "archived_ref"
-msgstr ""
+msgstr "L'immagine di backup dipendente da questo backup è archiviato"
 
 msgid "remove_image_failed"
-msgstr ""
+msgstr "Guarda il file di log per dettagli"
 
 msgid "delete_file_backup_failed"
-msgstr ""
+msgstr "Guarda il file di log per dettagli"
 
 msgid "tBackup is marked for deletion. Do not delete"
-msgstr ""
+msgstr "Il backup è stato selezionato per la cancellazione. Non cancellarlo"
 
 msgid "tDelete now"
-msgstr ""
+msgstr "Cancella ora"
 
 msgid "tVolume"
 msgstr ""
 
 msgid "tNo backups"
-msgstr ""
+msgstr "Nessun backups"
 
 msgid "tNo backups of this client yet"
-msgstr ""
+msgstr "Nessun backup per questo client ancora"
 
 msgid "tImage backup information"
-msgstr ""
+msgstr "Informazioni sull'immagine di backup"
 
 msgid "tId"
 msgstr ""
 
 msgid "tVolume size"
-msgstr ""
+msgstr "Dimensione volume"
 
 msgid "tPartition style"
-msgstr ""
+msgstr "Tipo di partizione"
 
 msgid "tDisk number"
-msgstr ""
+msgstr "Numero disco"
 
 msgid "tPartition number"
-msgstr ""
+msgstr "Numero partizione"
 
 msgid "tFile system type"
-msgstr ""
+msgstr "Tipo di File System"
 
 msgid "tVolume name"
-msgstr ""
+msgstr "Nome del volume"
 
 msgid "tSerial number"
 msgstr ""
 
 msgid "tMount image"
-msgstr ""
+msgstr "Immagine montata"
 
 msgid ""
 "tUrBackup will use non-sandboxed server operating system functionality to "
 "mount the image. Only mount the image if you trust its source."
-msgstr ""
+msgstr "UrBackup userà un server non sandboxato per montare l'immagine. Monta l'immagine solo se ne conosci l'origine."
 
 msgid "tMounting image failed. Please see server log file for details."
-msgstr ""
+msgstr "Montaggio dell'immagine fallito. Si prega di verificare il file di log del server per dettagli."
 
 msgid "tOk. Reset this error"
-msgstr ""
+msgstr "Ok. Resetta l'errore"
 
 msgid "tOk. Stop showing this error"
 msgstr "Ok. Non mostrare più questo errore"
@@ -1694,13 +1695,13 @@ msgstr "Ok. Non mostrare più questo errore"
 msgid ""
 "tThis server has discovered clients which are currently not configured to "
 "use this server."
-msgstr ""
+msgstr "Questo server ha scoperto clients che non sono attualmente configurati per usare questo server."
 
 msgid "tSee here for details on how this can happen."
-msgstr ""
+msgstr "Quarda qui per ulteriori dettagli per capire perchè questo può succedere."
 
 msgid "tOk. Dismiss this hint."
-msgstr ""
+msgstr "Ok. Ignora il consiglio."
 
 msgid "tOk. Stop showing this."
 msgstr "Ok. Non mostrare più."
@@ -1709,152 +1710,152 @@ msgid "tVolume:"
 msgstr ""
 
 msgid "tTo version:"
-msgstr ""
+msgstr "Alla versione:"
 
 msgid "tPath:"
-msgstr ""
+msgstr "Percorso:"
 
 msgid "tGroup"
-msgstr ""
+msgstr "Gruppo"
 
 msgid "tGroup membership"
-msgstr ""
+msgstr "Membro del gruppo"
 
 msgid "tSelect client from current group (double-click to change settings):"
-msgstr ""
+msgstr "Seleziona il client dal gruppo corrente (doppio click per cambiare la configurazione):"
 
 msgid "tDelete group"
-msgstr ""
+msgstr "Cancella il gruppo"
 
 msgid "tAllow clients to start file restores"
-msgstr ""
+msgstr "Abilita i clients per avviare il ripristino di file"
 
 msgid "tAllow clients to configure components to backup"
-msgstr ""
+msgstr "Abilita i clients per configurare i componenti da backuppare"
 
 msgid "tAllow clients to start component restores"
-msgstr ""
+msgstr "Abilita i clients per avviare il ripristino dei componenti"
 
 msgid "tVolume letters"
-msgstr ""
+msgstr "Lettere dei bolumi"
 
 msgid "tImage backup"
-msgstr ""
+msgstr "Immagini di backup"
 
 msgid ""
 "tDo not start file backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Non avviare il backup di file se la dimensione stimata di utilizzo per mese è più piccolo di"
 
 msgid ""
 "tDo not start image backups if current estimated data usage limit per month "
 "is smaller than"
-msgstr ""
+msgstr "Non avviare il backup di immagini se la dimensione stimata di utilizzo per mese è più piccolo di"
 
 msgid "tUpdate data limit estimation database"
-msgstr ""
+msgstr "Aggiorna il database della dimensione stimata di utilizzo"
 
 msgid "tFull image backup #1"
-msgstr ""
+msgstr "Immagine di Backup completo #1"
 
 msgid "tVolumes to snapshot in groups during image backups"
-msgstr ""
+msgstr "Volumi da fotografare nei gruppi durante il backup d'immagini"
 
 msgid "tVolumes to snapshot in groups during file backups"
-msgstr ""
+msgstr "Volumi da fotografare nei gruppi durante il backup di file"
 
 msgid "tWindows components backup configuration"
-msgstr ""
+msgstr "Configurazione dei componenti Windows da backuppare"
 
 msgid "tGroup name"
-msgstr ""
+msgstr "Nome del gruppo"
 
 msgid "tWith Selected"
-msgstr ""
+msgstr "Con i selezionati"
 
 msgid "no_backup_paths"
-msgstr ""
+msgstr "Nessun percorso configurato per i backup"
 
 msgid "disabled"
-msgstr ""
+msgstr "Disabilitato"
 
 msgid "new_alert_script_name"
-msgstr ""
+msgstr "Inserisci il nome del nuovo script d'avviso"
 
 msgid "confirm_alert_script_remove"
-msgstr ""
+msgstr "Sei sicuro di voler rimuovere questo script d'avviso?"
 
 msgid "alert_file_mult"
-msgstr ""
+msgstr "Numero di volte dopo cui lo stato del backup di file sarà settato KO"
 
 msgid "alert_image_mult"
-msgstr ""
+msgstr "Numero di volte dopo cui lo stato del backup d'immagini sarà settato KO"
 
 msgid "alert_emails"
-msgstr ""
+msgstr "Indirizzi e-mail (separati da ;) per notificare una sola volta che il backup d'immagine o di file è stato segnato come KO"
 
 msgid "alert_important"
-msgstr ""
+msgstr "Aggiungi il tag [Importante] alle e-mail di avviso"
 
 msgid "alert_mail_ok"
-msgstr ""
+msgstr "Invia e-mail di OK dopo che lo stato di backup ritorna OK da un KO"
 
 msgid "tEdit alert scripts"
-msgstr ""
+msgstr "Edita gli script di avviso"
 
 msgid "tAlert script"
-msgstr ""
+msgstr "Script d'avviso"
 
 msgid "tAlert script parameters"
-msgstr ""
+msgstr "Parametri dello script di avviso"
 
 msgid "tAdd parameter"
-msgstr ""
+msgstr "Aggiungi un parametro"
 
 msgid "tName:"
-msgstr ""
+msgstr "Nome:"
 
 msgid "tLabel:"
-msgstr ""
+msgstr "Etichetta:"
 
 msgid "tDefault value:"
-msgstr ""
+msgstr "Valore di default:"
 
 msgid "tType:"
-msgstr ""
+msgstr "Tipo:"
 
 msgid "tString"
-msgstr ""
+msgstr "Stringa"
 
 msgid "tFloating point number"
-msgstr ""
+msgstr "Numero Floating point"
 
 msgid "tInteger"
-msgstr ""
+msgstr "Intero"
 
 msgid "tBoolean"
-msgstr ""
+msgstr "Booleano"
 
 msgid "tWith Docker (web interface accessible from client):"
-msgstr ""
+msgstr "Con Docker (interfaccia web accessibile dal client):"
 
 msgid "tWith Docker (web interface not accessible from client):"
-msgstr ""
+msgstr "Con Docker (interfaccia web non accessibile dal client):"
 
 msgid "tEdit report script"
-msgstr ""
+msgstr "Edita script di report"
 
 msgid "tPaused"
-msgstr ""
+msgstr "In pausa"
 
 msgid "tReport script"
-msgstr ""
+msgstr "Script di report"
 
 msgid "tAlerts"
-msgstr ""
+msgstr "Avvisi"
 
 msgid "tEdit scripts"
-msgstr ""
+msgstr "Edita scripts"
 
 msgid "tInternet restore authentication key"
-msgstr ""
+msgstr "Chiave di autenticazione per il ripristino via Internet"
