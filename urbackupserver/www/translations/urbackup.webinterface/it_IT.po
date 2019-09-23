@@ -806,7 +806,7 @@ msgid "tDo image backups over internet"
 msgstr "Esegui backup immagine attraverso Internet"
 
 msgid "tDo full file backups over internet"
-msgstr "Esegui backup file atraverso Internet"
+msgstr "Esegui backup file attraverso Internet"
 
 msgid "tMax backup speed for internet connection"
 msgstr "Velocità massima backup per la connessione ad internet"
