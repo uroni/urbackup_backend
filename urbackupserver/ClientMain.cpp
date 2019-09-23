@@ -3495,12 +3495,16 @@ bool ClientMain::renameClient(const std::string & clientuid)
 		cleanup_dao.changeImagePath(new_path, images[i].id);
 	}
 
-	backup_dao->addClientMoved(old_name.name, clientname);
 
-	std::vector<std::string> moved_to = backup_dao->getClientMoved(old_name.name);
-	for (size_t i = 0; i < moved_to.size(); ++i)
+	if (backup_dao->hasFileBackups(rename_from) > 0)
 	{
-		backup_dao->addClientMoved(moved_to[i], clientname);
+		backup_dao->addClientMoved(old_name.name, clientname);
+
+		std::vector<std::string> moved_to = backup_dao->getClientMoved(old_name.name);
+		for (size_t i = 0; i < moved_to.size(); ++i)
+		{
+			backup_dao->addClientMoved(moved_to[i], clientname);
+		}
 	}
 
 	ServerBackupDao::CondString internet_authkey = backup_dao->getSetting(clientid, "internet_authkey");

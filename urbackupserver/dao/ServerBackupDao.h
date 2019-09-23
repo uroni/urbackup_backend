@@ -112,6 +112,7 @@ public:
 	std::vector<std::string> getClientMoved(const std::string& to_name);
 	std::vector<std::string> getClientMovedFrom(const std::string& from_name);
 	CondString getSetting(int clientid, const std::string& key);
+	int hasFileBackups(int clientid);
 	void insertSetting(const std::string& key, const std::string& value, int clientid);
 	void updateSetting(const std::string& value, const std::string& key, int clientid);
 	CondString getMiscValue(const std::string& tkey);
@@ -206,6 +207,7 @@ private:
 	IQuery* q_getClientMoved;
 	IQuery* q_getClientMovedFrom;
 	IQuery* q_getSetting;
+	IQuery* q_hasFileBackups;
 	IQuery* q_insertSetting;
 	IQuery* q_updateSetting;
 	IQuery* q_getMiscValue;

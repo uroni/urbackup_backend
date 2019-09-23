@@ -529,6 +529,26 @@ ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std:
 
 /**
 * @-SQLGenAccess
+* @func int ServerBackupDao::hasFileBackups
+* @return int_raw c
+* @sql
+*      SELECT COUNT(*) AS c FROM backups WHERE clientid=:clientid(int) AND done=1 LIMIT 1
+*/
+int ServerBackupDao::hasFileBackups(int clientid)
+{
+	if(q_hasFileBackups==NULL)
+	{
+		q_hasFileBackups=db->Prepare("SELECT COUNT(*) AS c FROM backups WHERE clientid=? AND done=1 LIMIT 1", false);
+	}
+	q_hasFileBackups->Bind(clientid);
+	db_results res=q_hasFileBackups->Read();
+	q_hasFileBackups->Reset();
+	assert(!res.empty());
+	return watoi(res[0]["c"]);
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerBackupDao::insertSetting
 * @sql
 *      INSERT INTO settings_db.settings (key, value, clientid) VALUES ( :key(string), :value(string), :clientid(int) )
@@ -1926,6 +1946,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_getClientMoved=NULL;
 	q_getClientMovedFrom=NULL;
 	q_getSetting=NULL;
+	q_hasFileBackups=NULL;
 	q_insertSetting=NULL;
 	q_updateSetting=NULL;
 	q_getMiscValue=NULL;
@@ -2013,6 +2034,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getClientMoved);
 	db->destroyQuery(q_getClientMovedFrom);
 	db->destroyQuery(q_getSetting);
+	db->destroyQuery(q_hasFileBackups);
 	db->destroyQuery(q_insertSetting);
 	db->destroyQuery(q_updateSetting);
 	db->destroyQuery(q_getMiscValue);
