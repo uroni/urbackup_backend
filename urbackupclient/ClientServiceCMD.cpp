@@ -965,10 +965,13 @@ int64 ClientConnector::getLastBackupTime()
 
 std::string ClientConnector::getCurrRunningJob(bool reset_done, int& pcdone)
 {
+	IScopedLock lock_process(process_mutex);
+
 	SRunningProcess* proc = getActiveProcess(x_pingtimeout);
 
 	if(proc==NULL )
 	{
+		lock_process.relock(NULL);
 		return getHasNoRecentBackup();
 	}
 	else

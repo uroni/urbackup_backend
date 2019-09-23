@@ -60,7 +60,8 @@ struct SRunningProcess
 		detail_pc(-1),
 		total_bytes(-1),
 		done_bytes(0),
-		speed_bpms(0)
+		speed_bpms(0),
+		refs(0)
 	{}
 
 	int64 id;
@@ -75,6 +76,7 @@ struct SRunningProcess
 	int64 total_bytes;
 	int64 done_bytes;
 	double speed_bpms;
+	size_t refs;
 };
 
 struct SFinishedProcess
@@ -223,7 +225,7 @@ public:
 
 	static int64 addNewProcess(SRunningProcess proc);
 	static bool updateRunningPc(int64 id, int pcdone);
-	static bool removeRunningProcess(int64 id, bool success);
+	static bool removeRunningProcess(int64 id, bool success, bool consider_refs=false);
 
 	static void timeoutFilesrvConnections();
 

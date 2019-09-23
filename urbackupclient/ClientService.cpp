@@ -2130,25 +2130,30 @@ bool ClientConnector::sendFullImage(void)
 
 	IScopedLock lock(backup_mutex);
 
-	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-	if (cproc != NULL
-		&& cproc->action == RUNNING_FULL_IMAGE)
 	{
-		local_backup_running_id = cproc->id;
-		cproc->last_pingtime = Server->getTimeMS();
-	}
-	else
-	{
-		SRunningProcess new_proc;
-		new_proc.action = RUNNING_FULL_IMAGE;
-		new_proc.server_token = server_token;
-		new_proc.pcdone = 0;
-		new_proc.details = image_inf.orig_image_letter;
-		new_proc.server_id = image_inf.server_status_id;
-		local_backup_running_id = addNewProcess(new_proc);
-	}
+		IScopedLock process_lock(process_mutex);
+		SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
+		if (cproc != NULL
+			&& cproc->action == RUNNING_FULL_IMAGE)
+		{
+			local_backup_running_id = cproc->id;
+			cproc->last_pingtime = Server->getTimeMS();
+			++cproc->refs;
+		}
+		else
+		{
+			SRunningProcess new_proc;
+			new_proc.action = RUNNING_FULL_IMAGE;
+			new_proc.server_token = server_token;
+			new_proc.pcdone = 0;
+			new_proc.details = image_inf.orig_image_letter;
+			new_proc.server_id = image_inf.server_status_id;
+			new_proc.refs = 1;
+			local_backup_running_id = addNewProcess(new_proc);
+		}
 
-	removeTimedOutProcesses(server_token, false);
+		removeTimedOutProcesses(server_token, false);
+	}
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
@@ -2165,26 +2170,30 @@ bool ClientConnector::sendIncrImage(void)
 
 	IScopedLock lock(backup_mutex);
 
-	SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
-	if (cproc != NULL
-		&& cproc->action == RUNNING_INCR_IMAGE )
 	{
-		local_backup_running_id = cproc->id;
-		cproc->last_pingtime = Server->getTimeMS();
-	}
-	else
-	{
-		SRunningProcess new_proc;
-		new_proc.action = RUNNING_INCR_IMAGE;
-		new_proc.server_token = server_token;
-		new_proc.pcdone = 0;
-		new_proc.details = image_inf.orig_image_letter;
-		new_proc.server_id = image_inf.server_status_id;
+		IScopedLock process_lock(process_mutex);
 
-		local_backup_running_id = addNewProcess(new_proc);
-	}
+		SRunningProcess* cproc = getRunningBackupProcess(server_token, image_inf.server_status_id);
+		if (cproc != NULL
+			&& cproc->action == RUNNING_INCR_IMAGE)
+		{
+			local_backup_running_id = cproc->id;
+			cproc->last_pingtime = Server->getTimeMS();
+		}
+		else
+		{
+			SRunningProcess new_proc;
+			new_proc.action = RUNNING_INCR_IMAGE;
+			new_proc.server_token = server_token;
+			new_proc.pcdone = 0;
+			new_proc.details = image_inf.orig_image_letter;
+			new_proc.server_id = image_inf.server_status_id;
 
-	removeTimedOutProcesses(server_token, false);
+			local_backup_running_id = addNewProcess(new_proc);
+		}
+
+		removeTimedOutProcesses(server_token, false);
+	}
 
 	status_updated = true;
 	image_inf.running_process_id = local_backup_running_id;
@@ -2897,6 +2906,7 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 		return;
 
 	IScopedLock lock(backup_mutex);
+	IScopedLock lock_process(process_mutex);
 	lasttime=Server->getTimeMS();
 	if (getActiveProcess(x_pingtimeout) != NULL)
 	{
@@ -2904,6 +2914,8 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type, const 
 	}
 	else
 	{
+		lock_process.relock(NULL);
+
 		size_t selidx = 0;
 		for (size_t i = 0; i < channel_pipes.size(); ++i)
 		{
@@ -3661,7 +3673,7 @@ SRunningProcess * ClientConnector::getActiveProcess(int64 timeout)
 	return NULL;
 }
 
-bool ClientConnector::removeRunningProcess(int64 id, bool success)
+bool ClientConnector::removeRunningProcess(int64 id, bool success, bool consider_refs)
 {
 	IScopedLock lock(process_mutex);
 
@@ -3670,13 +3682,24 @@ bool ClientConnector::removeRunningProcess(int64 id, bool success)
 		SRunningProcess& curr = running_processes[i];
 		if (curr.id == id)
 		{
-			finished_processes.push_back(SFinishedProcess(id, success));
-			while (finished_processes.size() > 20)
+			if (curr.refs > 0)
+				--curr.refs;
+
+			if (!consider_refs || curr.refs == 0)
 			{
-				finished_processes.erase(finished_processes.begin());
+				Server->Log("Removing running process (1) id " + convert(curr.id) + " server_id " + convert(curr.server_id) + " token " + curr.server_token + " action " + convert((int)curr.action), LL_DEBUG);
+				finished_processes.push_back(SFinishedProcess(id, success));
+				while (finished_processes.size() > 20)
+				{
+					finished_processes.erase(finished_processes.begin());
+				}
+				running_processes.erase(running_processes.begin() + i);
+				return true;
 			}
-			running_processes.erase(running_processes.begin() + i);
-			return true;
+			else
+			{
+				return false;
+			}
 		}
 	}
 
@@ -3812,6 +3835,7 @@ void ClientConnector::removeTimedOutProcesses(std::string server_token, bool fil
 			&& (curr.server_token == server_token || curr.server_token.empty() || server_token.empty())
 			&& ctime - curr.last_pingtime>x_pingtimeout )
 		{
+			Server->Log("Removing running process (timeout) id " + convert(curr.id) + " server_id "+convert(curr.server_id)+" token "+curr.server_token+" action " + convert((int)curr.action), LL_DEBUG);
 			running_processes.erase(running_processes.begin() + i);
 			continue;
 		}
