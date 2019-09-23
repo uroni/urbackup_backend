@@ -135,7 +135,8 @@ void ParallelHash::operator()()
 			CWData data;
 			data.addUShort(1);
 			data.addChar(0);
-			addToStdoutBuf(data.getDataPtr(), data.getDataSize());
+			if (!addToStdoutBuf(data.getDataPtr(), data.getDataSize()))
+				break;
 		}
 	}
 
@@ -343,21 +344,23 @@ bool ParallelHash::hashFile(CRData & data, ClientDAO& clientdao)
 
 	Server->Log("Parallel hash \"" + full_path + "\" id=" + convert(file_id) + " hash=" + base64_encode_dash(fandhash.hash), LL_DEBUG);
 
-	addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());
-
-	return true;
+	return addToStdoutBuf(wdata.getDataPtr(), wdata.getDataSize());
 }
 
-void ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
+bool ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
 {
 	IScopedLock lock(mutex.get());
 
-	while (stdout_buf_size + size > 32 * 1024)
+	while (stdout_buf_size + size > 32 * 1024
+		&& !do_quit)
 	{
 		lock.relock(NULL);
 		Server->wait(1000);
 		lock.relock(mutex.get());
 	}
+
+	if (do_quit)
+		return false;
 
 	if (stdout_buf_size + size > stdout_buf.size())
 	{
@@ -366,6 +369,8 @@ void ParallelHash::addToStdoutBuf(const char * ptr, size_t size)
 
 	memcpy(&stdout_buf[stdout_buf_size], ptr, size);
 	stdout_buf_size += size;
+
+	return true;
 }
 
 size_t ParallelHash::calcBufferSize(const std::string &path, const std::vector<SFileAndHash> &data)
