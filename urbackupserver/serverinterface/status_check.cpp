@@ -2,6 +2,10 @@
 #include "../server_settings.h"
 #include "../ClientMain.h"
 
+#ifndef NAME_MAX
+#define NAME_MAX _POSIX_NAME_MAX
+#endif
+
 namespace
 {
 	void access_dir_details(std::string folder, std::string& ret)
@@ -282,6 +286,36 @@ namespace
 				Server->deleteFile(test3_path);
 			}
 #endif
+
+			if (!server_settings->no_file_backups)
+			{			
+				std::string test1_path = testfolderpath + os_file_sep();
+				std::string max_path_str;
+#ifdef _WIN32
+				std::string unicode_name = "\xC3\x84";
+				for (size_t i = 0; i < 240; ++i)
+				{
+					test1_path += unicode_name;
+				}
+				max_path_str = "(255 UCS-2 code points/UTF-16 with max 2*255 bytes)";
+#else
+				std::string name_max_path(NAME_MAX - 1, 'a');
+				test1_path += name_max_path;
+				max_path_str = "(max " #NAME_MAX " bytes)";
+#endif
+
+				if (!os_create_dir(os_file_prefix(test1_path)))
+				{
+					ret.set("system_err", os_last_error_str());
+					ret.set("dir_error", true);
+					ret.set("dir_error_ext", "err_long_create_failed");
+					ret.set("dir_error_hint", "err_long_create_failed");
+					ret.set("max_path_str", max_path_str);
+					add_stop_show(db, ret, "err_long_create_failed");
+				}
+
+				os_remove_dir(os_file_prefix(test1_path));
+			}
 
 			if (!server_settings->no_file_backups)
 			{

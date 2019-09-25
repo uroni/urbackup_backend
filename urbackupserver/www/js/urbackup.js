@@ -1148,6 +1148,14 @@ function show_status_check2(data)
 				ext_text+="<br>UrBackup Server has trouble storing files named 'CON' to backup storage. When running on Windows UrBackup Server has work-arounds to avoid storing such files. "
 					"Those work-arounds are disabled when not running on Windows, however. So if a client has files named like this, there might be issues with backups.";
 			}
+			else if(data.dir_error_hint=="err_long_create_failed")
+			{
+				var max_path_str="";
+				if(data.max_path_str)
+					max_path_str = " "+ data.max_path_str;
+				ext_text+="<br>UrBackup Server has trouble storing files to backup storage with the maximum file name length it was compiled with"+max_path_str+
+					". There might be issues when backing up files/folders with long file name.";
+			}
 			else
 			{
 				ext_text+="<br>"+data.dir_error_hint;
@@ -1158,7 +1166,8 @@ function show_status_check2(data)
 			&& (data.dir_error_ext=="err_cannot_create_symbolic_links"
 				|| data.dir_error_ext=="dos_names_created"
 				|| data.dir_error_ext=="err_file_system_case_insensitive"
-				|| data.dir_error_ext=="err_file_system_special_windows_files_disallowed") )
+				|| data.dir_error_ext=="err_file_system_special_windows_files_disallowed"
+				|| data.dir_error_ext=="err_long_create_failed") )
 		{
 			generic_text=false;
 		}
