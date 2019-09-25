@@ -452,20 +452,20 @@ void ServerBackupDao::addClientMoved(const std::string& from_name, const std::st
 
 /**
 * @-SQLGenAccess
-* @func vector<string> ServerBackupDao::getClientMoved
+* @func vector<string> ServerBackupDao::getClientMovedLimit5
 * @return string from_name
 * @sql
-*	   SELECT from_name FROM moved_clients WHERE to_name=:to_name(string)
+*	   SELECT from_name FROM moved_clients WHERE to_name=:to_name(string) LIMIT 5
 */
-std::vector<std::string> ServerBackupDao::getClientMoved(const std::string& to_name)
+std::vector<std::string> ServerBackupDao::getClientMovedLimit5(const std::string& to_name)
 {
-	if(q_getClientMoved==NULL)
+	if(q_getClientMovedLimit5==NULL)
 	{
-		q_getClientMoved=db->Prepare("SELECT from_name FROM moved_clients WHERE to_name=?", false);
+		q_getClientMovedLimit5=db->Prepare("SELECT from_name FROM moved_clients WHERE to_name=? LIMIT 5", false);
 	}
-	q_getClientMoved->Bind(to_name);
-	db_results res=q_getClientMoved->Read();
-	q_getClientMoved->Reset();
+	q_getClientMovedLimit5->Bind(to_name);
+	db_results res=q_getClientMovedLimit5->Read();
+	q_getClientMovedLimit5->Reset();
 	std::vector<std::string> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
@@ -1943,7 +1943,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_changeClientName=NULL;
 	q_changeClientNameWithVirtualmain=NULL;
 	q_addClientMoved=NULL;
-	q_getClientMoved=NULL;
+	q_getClientMovedLimit5=NULL;
 	q_getClientMovedFrom=NULL;
 	q_getSetting=NULL;
 	q_hasFileBackups=NULL;
@@ -2031,7 +2031,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_changeClientName);
 	db->destroyQuery(q_changeClientNameWithVirtualmain);
 	db->destroyQuery(q_addClientMoved);
-	db->destroyQuery(q_getClientMoved);
+	db->destroyQuery(q_getClientMovedLimit5);
 	db->destroyQuery(q_getClientMovedFrom);
 	db->destroyQuery(q_getSetting);
 	db->destroyQuery(q_hasFileBackups);

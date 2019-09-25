@@ -3500,7 +3500,7 @@ bool ClientMain::renameClient(const std::string & clientuid)
 	{
 		backup_dao->addClientMoved(old_name.name, clientname);
 
-		std::vector<std::string> moved_to = backup_dao->getClientMoved(old_name.name);
+		std::vector<std::string> moved_to = backup_dao->getClientMovedLimit5(old_name.name);
 		for (size_t i = 0; i < moved_to.size(); ++i)
 		{
 			backup_dao->addClientMoved(moved_to[i], clientname);

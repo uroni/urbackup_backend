@@ -109,7 +109,7 @@ public:
 	void changeClientName(const std::string& name, int id);
 	void changeClientNameWithVirtualmain(const std::string& name, const std::string& virtualmain, int id);
 	void addClientMoved(const std::string& from_name, const std::string& to_name);
-	std::vector<std::string> getClientMoved(const std::string& to_name);
+	std::vector<std::string> getClientMovedLimit5(const std::string& to_name);
 	std::vector<std::string> getClientMovedFrom(const std::string& from_name);
 	CondString getSetting(int clientid, const std::string& key);
 	int hasFileBackups(int clientid);
@@ -204,7 +204,7 @@ private:
 	IQuery* q_changeClientName;
 	IQuery* q_changeClientNameWithVirtualmain;
 	IQuery* q_addClientMoved;
-	IQuery* q_getClientMoved;
+	IQuery* q_getClientMovedLimit5;
 	IQuery* q_getClientMovedFrom;
 	IQuery* q_getSetting;
 	IQuery* q_hasFileBackups;
