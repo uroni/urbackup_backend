@@ -1940,7 +1940,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		Server->Log("Restarting filesrv because of name change. Old name: " + IndexThread::getFileSrv()->getServerName() + " New name: " + ncname, LL_DEBUG);
 
 		CWData data;
-		data.addChar(7);
+		data.addChar(IndexThread::IndexThreadAction_RestartFilesrv);
 		data.addUInt(0);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}

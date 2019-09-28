@@ -85,9 +85,11 @@ const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
 const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
-const char IndexThread::IndexThreadAction_UpdateCbt = 7;
+const char IndexThread::IndexThreadAction_RestartFilesrv = 7;
+const char IndexThread::IndexThreadAction_Stop = 8;
 const char IndexThread::IndexThreadAction_SnapshotCbt = 12;
 const char IndexThread::IndexThreadAction_WriteTokens = 13;
+const char IndexThread::IndexThreadAction_UpdateCbt = 14;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -1286,14 +1288,14 @@ void IndexThread::operator()(void)
 			stop_index=false;
 		}
 #endif
-		else if(action==7) // restart filesrv
+		else if(action== IndexThreadAction_RestartFilesrv) // restart filesrv
 		{
 			IScopedLock lock(filesrv_mutex);
 			filesrv->stopServer();
 			start_filesrv();
 			readBackupDirs();
 		}
-		else if(action==8) //stop
+		else if(action==IndexThreadAction_Stop) //stop
 		{
 			break;
 		}
@@ -4534,7 +4536,7 @@ void IndexThread::unshare_dirs()
 void IndexThread::doStop(void)
 {
 	CWData wd;
-	wd.addUChar(8);
+	wd.addChar(IndexThreadAction_Stop);
 	wd.addUInt(0);
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
