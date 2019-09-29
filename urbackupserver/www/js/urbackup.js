@@ -1495,7 +1495,6 @@ function show_status2(data)
 		var client_download_data=build_client_download_select(data.client_downloads);
 		status_client_download_windows=dustRender("status_client_download", {download_clients: client_download_data, os: "windows", os_windows: true});
 		status_client_download_linux=dustRender("status_client_download", {download_clients: client_download_data, os: "linux", os_linux: true});
-		status_client_download_mac=dustRender("status_client_download", {download_clients: client_download_data, os: "mac", os_mac: true});
 		has_client_download=true;
 	}
 	
@@ -1507,7 +1506,7 @@ function show_status2(data)
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: data.added_new_client, new_authkey: data.new_authkey, new_clientname: data.new_clientname,
-		status_client_download_windows: status_client_download_windows, status_client_download_linux: status_client_download_linux, status_client_download_mac: status_client_download_mac,
+		status_client_download_windows: status_client_download_windows, status_client_download_linux: status_client_download_linux,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients,
 		has_client_download: has_client_download, allow_add_client:allow_add_client});
 	
