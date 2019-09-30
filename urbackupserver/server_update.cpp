@@ -29,7 +29,7 @@ extern IUrlFactory *url_fak;
 
 namespace
 {
-	std::string urbackup_update_url = "http://update6.urbackup.org/";
+	std::string urbackup_update_url = "http://update.urbackup.org/2.4.x/";
 	std::string urbackup_update_url_alt;
 
 	struct SUpdatePlatform
@@ -296,10 +296,13 @@ void ServerUpdate::read_update_location()
 		urbackup_update_url_alt = read_update_location;
 		urbackup_update_url = urbackup_update_url_alt;
 
-		if (!urbackup_update_url.empty()
-			&& urbackup_update_url[urbackup_update_url.size() - 1] != '/')
-			urbackup_update_url += "/";
+		if (read_update_location.find("cbt.urbackup.com") != std::string::npos)
+		{
+			if (!urbackup_update_url.empty()
+				&& urbackup_update_url[urbackup_update_url.size() - 1] != '/')
+				urbackup_update_url += "/";
 
-		urbackup_update_url += "2.3.x/";
+			urbackup_update_url += "2.4.x/";
+		}
 	}
 }
