@@ -301,7 +301,7 @@ namespace
 #else
 				std::string name_max_path(NAME_MAX - 1, 'a');
 				test1_path += name_max_path;
-				max_path_str = "(max " #NAME_MAX " bytes)";
+				max_path_str = std::string("(max ") +convert(NAME_MAX) " bytes)";
 #endif
 
 				if (!os_create_dir(os_file_prefix(test1_path)))
