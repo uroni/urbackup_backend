@@ -64,7 +64,6 @@ void ServerUpdate::update_client()
 	std::vector<SUpdatePlatform> update_files;
 
 	update_files.push_back(SUpdatePlatform("exe", "UrBackupUpdate", "version.txt"));
-	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateMac", "version_osx.txt"));
 	update_files.push_back(SUpdatePlatform("sh", "UrBackupUpdateLinux", "version_linux.txt"));
 
 	std::string curr_update_url = urbackup_update_url;
@@ -197,9 +196,12 @@ void ServerUpdate::update_client()
 				sig_file.reset();
 				Server->deleteFile(del_fn);
 
-				del_fn = update_file->getFilename();
-				update_file.reset();
-				Server->deleteFile(del_fn);
+				if (update_file.get() != NULL)
+				{
+					del_fn = update_file->getFilename();
+					update_file.reset();
+					Server->deleteFile(del_fn);
+				}
 			}
 		}
 	}
