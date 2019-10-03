@@ -208,11 +208,6 @@ void ClientMain::operator ()(void)
 
 	if (tooManyClients(db, clientname, server_settings.get()))
 	{
-		str_map extra;
-		extra["clientname_md5"] = Server->GenerateHexMD5(clientname);
-		addSystemEvent("too_many_clients", "Client not accepted because of client number limit",
-			"Client \"" + clientname + "\" wasn't accepted and will not be backed up, because there is a limit of max " + convert(server_settings->getSettings()->max_active_clients) +
-			" on this server", LL_ERROR, extra);
 		ServerStatus::setStatusError(clientname, se_too_many_clients);
 		Server->Log("client_main Thread for client " + clientname + " finished, because there were too many clients (1)", LL_INFO);
 
