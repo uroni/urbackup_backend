@@ -201,6 +201,30 @@ void ClientMain::unloadSQL(void)
 
 void ClientMain::operator ()(void)
 {
+	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	DBScopedFreeMemory free_db_memory(db);
+
+	std::auto_ptr<ServerSettings> server_settings(new ServerSettings(db));
+
+	if (tooManyClients(db, clientname, server_settings.get()))
+	{
+		str_map extra;
+		extra["clientname_md5"] = Server->GenerateHexMD5(clientname);
+		addSystemEvent("too_many_clients", "Client not accepted because of client number limit",
+			"Client \"" + clientname + "\" wasn't accepted and will not be backed up, because there is a limit of max " + convert(server_settings->getSettings()->max_active_clients) +
+			" on this server", LL_ERROR, extra);
+		ServerStatus::setStatusError(clientname, se_too_many_clients);
+		Server->Log("client_main Thread for client " + clientname + " finished, because there were too many clients (1)", LL_INFO);
+
+		Server->wait(10 * 60 * 1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
+		pipe->Write("ok");
+		ServerLogger::reset(logid);
+		delete this;
+		return;
+	}
+
 	if(!sendServerIdentity(true))
 	{
 		pipe->Write("ok");
@@ -248,29 +272,23 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	std::string identity = getIdentity();
-
-	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	DBScopedFreeMemory free_db_memory(db);
+	std::string identity = getIdentity();	
 
 	std::auto_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
 	backup_dao = local_server_backup_dao.get();
 
-	server_settings=new ServerSettings(db);
-
-	clientid=getClientID(db, clientname, server_settings, NULL);
+	clientid=getClientID(db, clientname, server_settings.get(), NULL);
 
 	if(clientid==-1)
 	{
 		ServerStatus::setStatusError(clientname, se_too_many_clients);
-		Server->Log("client_main Thread for client "+clientname+" finished, because there were too many clients", LL_INFO);
+		Server->Log("client_main Thread for client "+clientname+" finished, because there were too many clients (2)", LL_INFO);
 
 		Server->wait(10*60*1000); //10min
 
 		BackupServer::forceOfflineClient(clientname);
 		pipe->Write("ok");
 		ServerLogger::reset(logid);
-		delete server_settings;
 		delete this;
 		return;
 	}
@@ -281,8 +299,7 @@ void ClientMain::operator ()(void)
 
 	logid = ServerLogger::getLogId(clientid);
 
-	delete server_settings;
-	server_settings=new ServerSettings(db, clientid);
+	server_settings.reset(new ServerSettings(db, clientid));
 
 	if(!createDirectoryForClient())
 	{
@@ -304,7 +321,6 @@ void ClientMain::operator ()(void)
 		{
 			BackupServer::forceOfflineClient(clientname);
 			pipe->Write("ok");
-			delete server_settings;
 			delete this;
 			return;
 		}
@@ -341,7 +357,6 @@ void ClientMain::operator ()(void)
 
 		pipe->Write("ok");
 		BackupServer::forceOfflineClient(clientname);
-		delete server_settings;
 		delete this;
 		return;
 	}
@@ -1038,8 +1053,7 @@ void ClientMain::operator ()(void)
 	ServerLogger::reset(clientid);
 	
 	
-	delete server_settings;
-	server_settings=NULL;
+	server_settings.reset();
 	pipe->Write("ok");
 	Server->Log("client_main Thread for client "+clientname+" finished");
 
@@ -2274,6 +2288,38 @@ int ClientMain::getNumberOfRunningFileBackups(void)
 {
 	IScopedLock lock(running_backup_mutex);
 	return running_file_backups;
+}
+
+bool ClientMain::tooManyClients(IDatabase * db, const std::string & clientname, ServerSettings * server_settings)
+{
+	IQuery *q = db->Prepare("SELECT id FROM clients WHERE name=?", false);
+	if (q == NULL)
+		return false;
+
+	q->Bind(clientname);
+	db_results res = q->Read();
+	db->destroyQuery(q);
+
+	if(res.empty())
+	{
+		IQuery *q_get_num_clients = db->Prepare("SELECT count(*) AS c FROM clients WHERE lastseen > date('now', '-2 month')", false);
+		if (q_get_num_clients == NULL)
+			return false;
+		db_results res_r = q_get_num_clients->Read();
+		q_get_num_clients->Reset();
+		int c_clients = -1;
+		if (!res_r.empty()) c_clients = watoi(res_r[0]["c"]);
+
+		db->destroyQuery(q_get_num_clients);
+
+		if (server_settings!=NULL
+			&& c_clients >= server_settings->getSettings()->max_active_clients)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 IPipeThrottler *ClientMain::getThrottler(int speed_bps)
