@@ -2,6 +2,8 @@
 
 set -ex
 
+CDIR=$(pwd)
+
 git reset --hard
 cd client
 git reset --hard
@@ -52,9 +54,11 @@ if [[ $TARGET_FOLDER == "aarch64-linux-android" ]]
 then
 		NDK_CPUFLAGS="-march=armv8-a+crc"
 fi
+
+
 if [[ $TARGET_FOLDER == "x86_64-linux-android" ]] || [[ $TARGET_FOLDER == "i686-linux-android" ]]
 then
-        NDK_CPUFLAGS="-march=core2"
+        NDK_CPUFLAGS="-mno-sse4a -mno-sse4.1 -mno-sse4.2 -mno-popcnt"
 fi
 export NDK=/media/data2/android-ndk/android-ndk-r20
 export HOST_TAG=linux-x86_64
@@ -89,6 +93,11 @@ sed -i 's@adhoc.cpp@empty.cpp@' cryptoplugin/src/Makefile.am
 touch cryptoplugin/src/empty.cpp
 touch cryptoplugin/src/empty.cpp.proto
 sed -i 's@CRYPTOPP_INIT_PRIORITY 250@CRYPTOPP_INIT_PRIORITY 0@g' cryptoplugin/src/config.h
+if [[ $TARGET_FOLDER == "x86_64-linux-android" ]] || [[ $TARGET_FOLDER == "i686-linux-android" ]]
+then
+	echo "$CXX" > $CDIR/cxx_path
+	export CXX="$CDIR/linux_build_x86_64_cxx_wrapper"
+fi
 ./configure --enable-headless --enable-c-ares --enable-embedded-cryptopp LDFLAGS="-static -Wl,--gc-sections -O2 $NDK_CPUFLAGS -flto" --host $TARGET --with-zlib=$TOOLCHAIN/sysroot/usr --with-crypto-prefix=$TOOLCHAIN/sysroot/usr --with-openssl=$TOOLCHAIN/sysroot/usr CPPFLAGS="-DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections -ggdb -O2 -flto $ARCH_CPPFLAGS" CFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS" CXXFLAGS="-ggdb -O2 -flto $NDK_CPUFLAGS -I$NDK/sources/android/cpufeatures/ -DOPENSSL_SEARCH_CA" LIBS="-ldl"
 }
 
