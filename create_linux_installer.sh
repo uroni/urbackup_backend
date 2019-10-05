@@ -54,7 +54,7 @@ then
 fi
 if [[ $TARGET_FOLDER == "x86_64-linux-android" ]] || [[ $TARGET_FOLDER == "i686-linux-android" ]]
 then
-        NDK_CPUFLAGS="-mno-popcnt -mno-sse4.1 -mno-sse4.2 -mno-sse4a"
+        NDK_CPUFLAGS="-march=core2"
 fi
 export NDK=/media/data2/android-ndk/android-ndk-r20
 export HOST_TAG=linux-x86_64
