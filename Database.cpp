@@ -566,7 +566,7 @@ bool CDatabase::Import(const std::string &pFile)
 
 bool CDatabase::Dump(const std::string &pFile)
 {
-	callback_data cd;
+	ShellState cd;
 	cd.db=db;
 	cd.out=fopen(pFile.c_str(), "wb");
 	if(cd.out==0)
@@ -574,10 +574,26 @@ bool CDatabase::Dump(const std::string &pFile)
 		return false;
 	}
 
-	char *cmd=new char[6];
-	cmd[0]='.'; cmd[1]='d'; cmd[2]='u'; cmd[3]='m'; cmd[4]='p'; cmd[5]=0;
-	do_meta_command_r(cmd, &cd);
-	delete []cmd;
+	std::string cmd = ".dump";
+	do_meta_command_r(&cmd[0], &cd);
+
+	fclose(cd.out);
+
+	return true;
+}
+
+bool CDatabase::Recover(const std::string & pFile)
+{
+	ShellState cd;
+	cd.db = db;
+	cd.out = fopen(pFile.c_str(), "wb");
+	if (cd.out == 0)
+	{
+		return false;
+	}
+
+	std::string cmd = ".recover";
+	do_meta_command_r(&cmd[0], &cd);
 
 	fclose(cd.out);
 

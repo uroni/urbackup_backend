@@ -39,8 +39,8 @@ int repair_cmd(void)
 			return 1;
 		}
 
-		Server->Log("Exporting database with id " + convert(dbs[i])+"...", LL_INFO);
-		if (!db->Dump("urbackup/server_database_export_"+ convert(dbs[i])+".sql"))
+		Server->Log("Recovering contents of database with id " + convert(dbs[i])+"...", LL_INFO);
+		if (!db->Recover("urbackup/server_database_export_"+ convert(dbs[i])+".sql"))
 		{
 			Server->Log("Exporting database failed", LL_ERROR);
 			return 1;
