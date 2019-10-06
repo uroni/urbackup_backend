@@ -163,7 +163,7 @@ fi
 AX_CHECK_OPENSSL([with_openssl=true], [with_openssl=false])
 AM_CONDITIONAL([WITH_OPENSSL], [test x$with_openssl = xtrue])
 
-if test "x$WITH_OPENSSL" != "x1"
+if test "x$with_openssl" != "xtrue"
 then
         AC_MSG_WARN([OpenSSL library not present or not recent enough. Compiling without OpenSSL support (https proxy support)])
 fi
