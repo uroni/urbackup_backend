@@ -51,7 +51,9 @@ urbackupclientbackend_CPPFLAGS+=-DNDEBUG
 endif
 
 if WITH_ZSTD
+if !EMBEDDED_ZSTD
 urbackupclientbackend_LDADD += -lzstd
+endif
 urbackupclientbackend_CXXFLAGS += -DZSTD_STATIC_LINKING_ONLY
 else
 urbackupclientbackend_CXXFLAGS += -DNO_ZSTD_COMPRESSION

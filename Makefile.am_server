@@ -71,7 +71,9 @@ urbackupsrv_CXXFLAGS += -DNO_EMBEDDED_LUA $(LUA_INCLUDE)
 endif
 
 if WITH_ZSTD
+if !EMBEDDED_ZSTD
 urbackupsrv_LDADD += -lzstd
+endif
 urbackupsrv_CXXFLAGS += -DZSTD_STATIC_LINKING_ONLY
 else
 urbackupsrv_CXXFLAGS += -DNO_ZSTD_COMPRESSION
