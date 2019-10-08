@@ -17,7 +17,7 @@ then
 	./switch_build.sh server
 	./download_cryptopp.sh
 	autoreconf --install
-	./configure --enable-packaging --enable-install_initd --with-mountvhd --enable-embedded-cryptopp LDFLAGS="$LDFLAGS -flto" CPPFLAGS="-flto"
+	./configure --enable-packaging --enable-install_initd --with-mountvhd --enable-embedded-cryptopp --enable-embedded-zstd
 	touch build_server_debian_ok
 fi
 
