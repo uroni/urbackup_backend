@@ -117,7 +117,7 @@ then
 	fi
 	AM_CONDITIONAL(WITH_ZSTD, test "x$HAS_ZSTD_LIB" == "x1" && test "x$HAS_ZSTD_HEADER" == "x1")
 else
-	AM_CONDITIONAL(WITH_ZSTD, 1)
+	AM_CONDITIONAL(WITH_ZSTD, true)
 fi
 	
 P_SUBDIRS="snapshot_helper fsimageplugin httpserver urbackupserver"
