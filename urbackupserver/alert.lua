@@ -8,7 +8,7 @@ end
 
 local image_interval = params.incr_image_interval
 local full_image_interval = params.full_image_interval
-if full_image_interval>0 and full_image_interval<image_interval
+if full_image_interval>0 and (full_image_interval<image_interval or image_interval<0)
 then
 	image_interval = full_image_interval
 end
