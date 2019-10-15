@@ -2080,6 +2080,19 @@ bool upgrade58_59()
 	return b;
 }
 
+bool upgrade59_60()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE settings_db.settings ADD value_client TEXT");
+	b &= db->Write("ALTER TABLE settings_db.settings ADD use INTEGER");
+	b &= db->Write("UPDATE settings_db.settings SET use=0");
+
+	return b;
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2446,6 +2459,13 @@ void upgrade(void)
 				break;
 			case 58:
 				if (!upgrade58_59())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 59:
+				if (!upgrade59_60())
 				{
 					has_error = true;
 				}

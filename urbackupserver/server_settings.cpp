@@ -100,7 +100,9 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 			setting_global.get()!=NULL ? setting_global.get() : settings_default.get());
 		if (settings_client.get() != NULL)
 		{
-			readSettingsClient(settings_client.get());
+			IQuery* q_get_client_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+			readSettingsClient(settings_client.get(), q_get_client_setting);
+			db->destroyQuery(q_get_client_setting);
 		}
 
 		lock.relock(g_mutex);
@@ -277,7 +279,9 @@ void ServerSettings::update(bool force_update)
 			settings_global.get() != NULL ? settings_global.get() : settings_default.get());
 		if (settings_client.get() != NULL)
 		{
-			readSettingsClient(settings_client.get());
+			IQuery* q_get_client_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+			readSettingsClient(settings_client.get(), q_get_client_setting);
+			db->destroyQuery(q_get_client_setting);
 		}
 
 		lock.relock(g_mutex);
@@ -347,7 +351,6 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->max_image_full=settings_default->getValue("max_image_full", 5);
 	settings->no_images=(settings_global->getValue("no_images", "false")=="true");
 	settings->no_file_backups=(settings_global->getValue("no_file_backups", "false")=="true");
-	settings->overwrite=false;
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
 	settings->backupfolder=trim(settings_global->getValue("backupfolder", DEFAULT_BACKUP_FOLDER));
 	settings->backupfolder_uncompr=trim(settings_global->getValue("backupfolder_uncompr", settings->backupfolder));
@@ -436,7 +439,7 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->alert_params = settings_default->getValue("alert_params", "");
 }
 
-void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
+void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
 {	
 	SSettings* settings = local_settings;
 	std::string stmp=settings_client->getValue("internet_authkey", std::string());
@@ -451,90 +454,41 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 
 	settings->client_access_key = settings_client->getValue("client_access_key", std::string());
 
-	readBoolClientSetting(settings_client, "overwrite", &settings->overwrite);
+	readStringClientSetting(q_get_client_setting, "update_freq_incr", std::string(), &settings->update_freq_incr);
+	readStringClientSetting(q_get_client_setting, "update_freq_full", std::string(), &settings->update_freq_full);
+	readStringClientSetting(q_get_client_setting, "update_freq_image_incr", std::string(), &settings->update_freq_image_incr);
+	readStringClientSetting(q_get_client_setting, "update_freq_image_full", std::string(), &settings->update_freq_image_full);
 
-	if(settings->overwrite)
-	{
-		readBoolClientSetting(settings_client, "allow_overwrite", &settings->allow_overwrite);
-	}
+	readIntClientSetting(q_get_client_setting, "max_file_incr", &settings->max_file_incr);
+	readIntClientSetting(q_get_client_setting, "min_file_incr", &settings->min_file_incr);
+	readIntClientSetting(q_get_client_setting, "max_file_full", &settings->max_file_full);
+	readIntClientSetting(q_get_client_setting, "min_file_full", &settings->min_file_full);
+	readIntClientSetting(q_get_client_setting, "min_image_incr", &settings->min_image_incr);
+	readIntClientSetting(q_get_client_setting, "max_image_incr", &settings->max_image_incr);
+	readIntClientSetting(q_get_client_setting, "min_image_full", &settings->min_image_full);
+	readIntClientSetting(q_get_client_setting, "max_image_full", &settings->max_image_full);
 
-	if(!settings->overwrite && !settings->allow_overwrite)
-		return;
-
-	stmp=settings_client->getValue("update_freq_incr", std::string());
-	if(!stmp.empty())
-		settings->update_freq_incr=stmp;
-	stmp=settings_client->getValue("update_freq_full", std::string());
-	if(!stmp.empty())
-		settings->update_freq_full=stmp;
-	stmp=settings_client->getValue("update_freq_image_incr", std::string());
-	if(!stmp.empty())
-		settings->update_freq_image_incr=stmp;
-	stmp=settings_client->getValue("update_freq_image_full", std::string());
-	if(!stmp.empty())
-		settings->update_freq_image_full=stmp;
-	int tmp=settings_client->getValue("max_file_incr", -1);
-	if(tmp!=-1)
-		settings->max_file_incr=tmp;
-	tmp=settings_client->getValue("min_file_incr", -1);
-	if(tmp!=-1)
-		settings->min_file_incr=tmp;
-	tmp=settings_client->getValue("max_file_full", -1);
-	if(tmp!=-1)
-		settings->max_file_full=tmp;
-	tmp=settings_client->getValue("min_file_full", -1);
-	if(tmp!=-1)
-		settings->min_file_full=tmp;
-	tmp=settings_client->getValue("min_image_incr", -1);
-	if(tmp!=-1)
-		settings->min_image_incr=tmp;
-	tmp=settings_client->getValue("max_image_incr", -1);
-	if(tmp!=-1)
-		settings->max_image_incr=tmp;
-	tmp=settings_client->getValue("min_image_full", -1);
-	if(tmp!=-1)
-		settings->min_image_full=tmp;
-	tmp=settings_client->getValue("max_image_full", -1);
-	if(tmp!=-1)
-		settings->max_image_full=tmp;
-	tmp=settings_client->getValue("startup_backup_delay", -1);
-	if(tmp!=-1)
-		settings->startup_backup_delay=tmp;	
-	std::string swtmp=settings_client->getValue("computername", "");
-	if(!swtmp.empty())
-		settings->computername=swtmp;
-	if(settings_client->getValue("virtual_clients", &swtmp))
-		settings->virtual_clients=swtmp;
-	if(settings_client->getValue("exclude_files", &swtmp))
-		settings->exclude_files=swtmp;
-	if(settings_client->getValue("include_files", &swtmp))
-		settings->include_files=swtmp;
-	swtmp=settings_client->getValue("default_dirs", "");
-	if(!swtmp.empty())
-		settings->default_dirs=swtmp;
-	stmp=settings_client->getValue("image_letters", "");
-	if(!stmp.empty())
-		settings->image_letters=stmp;
-	stmp=settings_client->getValue("internet_speed", "");
-	if(!stmp.empty())
-		settings->internet_speed=stmp;
-	stmp=settings_client->getValue("local_speed", "");
-	if(!stmp.empty())
-		settings->local_speed=stmp;
+	readIntClientSetting(q_get_client_setting, "startup_backup_delay", &settings->startup_backup_delay);
+	readStringClientSetting(q_get_client_setting, "computername", std::string(), &settings->computername);
+	readStringClientSetting(q_get_client_setting, "virtual_clients", ";", &settings->virtual_clients);
+	readStringClientSetting(q_get_client_setting, "exclude_files", ";", &settings->exclude_files);
+	readStringClientSetting(q_get_client_setting, "include_files", ";", &settings->include_files);
+	readStringClientSetting(q_get_client_setting, "default_dirs", ";", &settings->default_dirs);
+	readStringClientSetting(q_get_client_setting, "image_letters", ";", &settings->image_letters);
+	readStringClientSetting(q_get_client_setting, "internet_speed", "", &settings->internet_speed);
+	readStringClientSetting(q_get_client_setting, "local_speed", "", &settings->local_speed);
 
 	readBoolClientSetting(settings_client, "backup_dirs_optional", &settings->backup_dirs_optional);
-	readBoolClientSetting(settings_client, "client_set_settings", &settings->client_set_settings);
-	readBoolClientSetting(settings_client, "internet_mode_enabled", &settings->internet_mode_enabled);
-	readBoolClientSetting(settings_client, "internet_full_file_backups", &settings->internet_full_file_backups);
-	readBoolClientSetting(settings_client, "internet_image_backups", &settings->internet_image_backups);
-	readBoolClientSetting(settings_client, "internet_compress", &settings->internet_compress);
-	readBoolClientSetting(settings_client, "internet_encrypt", &settings->internet_encrypt);
-	readBoolClientSetting(settings_client, "internet_connect_always", &settings->internet_connect_always);
+	readBoolClientSetting(q_get_client_setting, "internet_mode_enabled", &settings->internet_mode_enabled);
+	readBoolClientSetting(q_get_client_setting, "internet_full_file_backups", &settings->internet_full_file_backups);
+	readBoolClientSetting(q_get_client_setting, "internet_image_backups", &settings->internet_image_backups);
+	readBoolClientSetting(q_get_client_setting, "internet_compress", &settings->internet_compress);
+	readBoolClientSetting(q_get_client_setting, "internet_encrypt", &settings->internet_encrypt);
+	readBoolClientSetting(q_get_client_setting, "internet_connect_always", &settings->internet_connect_always);
 
-	readStringClientSetting(settings_client, "vss_select_components", &settings->vss_select_components);
+	readStringClientSetting(q_get_client_setting, "vss_select_components", "&", &settings->vss_select_components);
 
-	if (!settings->overwrite
-		&& settings->image_snapshot_groups.empty())
+	if (settings->image_snapshot_groups.empty())
 	{
 		readStringClientSetting(settings_client, "image_snapshot_groups_def", &settings->image_snapshot_groups);
 	}
@@ -543,9 +497,6 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	{
 		settings->virtual_clients_add = stmp;
 	}
-
-	if(!settings->overwrite)
-		return;
 
 	//Following settings are not configurable by the client
 
@@ -582,6 +533,7 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client)
 	readBoolClientSetting(settings_client, "internet_parallel_file_hashing", &settings->internet_parallel_file_hashing);	
 	readBoolClientSetting(settings_client, "silent_update", &settings->silent_update);
 
+	readBoolClientSetting(settings_client, "allow_overwrite", &settings->allow_overwrite);
 	readBoolClientSetting(settings_client, "allow_config_paths", &settings->allow_config_paths);
 	readBoolClientSetting(settings_client, "allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);
 	readBoolClientSetting(settings_client, "allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups);
@@ -665,6 +617,126 @@ void ServerSettings::readSizeClientSetting(ISettingsReader* settings_client, con
 	if(settings_client->getValue(name, &value) && !value.empty())
 	{
 		*output=static_cast<size_t>(os_atoi64(value));
+	}
+}
+
+void ServerSettings::readStringClientSetting(IQuery* q_get_client_setting, const std::string & name, const std::string & merge_sep, std::string * output)
+{
+	q_get_client_setting->Bind(clientid);
+	q_get_client_setting->Bind(name);
+
+	db_results res = q_get_client_setting->Read();
+
+	q_get_client_setting->Reset();
+
+	if (!res.empty())
+	{
+		int use = watoi(res[0]["use"]);
+
+		if (use == c_use_value)
+		{
+			if(!res[0]["value"].empty())
+				*output = res[0]["value"];
+		}
+		else if (use == c_use_value_client)
+		{
+			if(!res[0]["value_client"].empty())
+				*output = res[0]["value_client"];
+		}
+		else if(!merge_sep.empty()
+			&& !res[0]["value_client"].empty()
+			&& !res[0]["value"].empty())
+		{
+			std::vector<std::string> toks;
+			Tokenize(res[0]["value"], toks, merge_sep);
+			std::vector<std::string> toks2;
+			Tokenize(res[0]["value_client"], toks2, merge_sep);
+
+			for (size_t i = 0; i < toks.size(); ++i)
+			{
+				if (!output->empty())
+					*output += merge_sep;
+				*output += toks[i];
+			}
+
+			for (size_t i = 0; i < toks2.size(); ++i)
+			{
+				if (!output->empty())
+					*output += merge_sep;
+				*output += toks2[i];
+			}
+		}
+	}
+}
+
+std::string ServerSettings::readValClientSetting(IQuery * q_get_client_setting, const std::string & name)
+{
+	q_get_client_setting->Bind(clientid);
+	q_get_client_setting->Bind(name);
+
+	db_results res = q_get_client_setting->Read();
+
+	q_get_client_setting->Reset();
+
+	if (!res.empty())
+	{
+		int use = watoi(res[0]["use"]);
+
+		std::string val;
+		if (use == 0)
+		{
+			val = res[0]["value"];
+		}
+		else if (use == 1)
+		{
+			val = res[0]["value_client"];
+		}
+
+		return val;
+	}
+
+	return std::string();
+}
+
+void ServerSettings::readBoolClientSetting(IQuery * q_get_client_setting, const std::string & name, bool * output)
+{
+	std::string val = readValClientSetting(q_get_client_setting, name);
+
+	if (val == "true"
+		|| val == "1")
+		*output = true;
+	else if (val == "false"
+		|| val == "0")
+		*output = false;
+}
+
+void ServerSettings::readIntClientSetting(IQuery * q_get_client_setting, const std::string & name, int * output)
+{
+	std::string val = readValClientSetting(q_get_client_setting, name);
+
+	if (!val.empty())
+	{
+		*output = watoi(val);
+	}
+}
+
+void ServerSettings::readInt64ClientSetting(IQuery * q_get_client_setting, const std::string & name, int64 * output)
+{
+	std::string val = readValClientSetting(q_get_client_setting, name);
+
+	if (!val.empty())
+	{
+		*output = watoi64(val);
+	}
+}
+
+void ServerSettings::readSizeClientSetting(IQuery * q_get_client_setting, const std::string & name, size_t * output)
+{
+	std::string val = readValClientSetting(q_get_client_setting, name);
+
+	if (!val.empty())
+	{
+		*output = static_cast<size_t>(watoi64(val));
 	}
 }
 
