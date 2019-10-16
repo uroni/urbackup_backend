@@ -1341,12 +1341,14 @@ bool os_sync(const std::string & path)
 #if defined(HAVE_SYNCFS)
 		if(syncfs(fd)!=0)
 		{
-			close(fd);
-			if(errno==ENOSYS)
+			if(errno==ENOSYS
+				|| errno==EINVAL)
 			{
+				close(fd);
 				sync();
 				return true;
 			}
+			close(fd);
 			return false;
 		}
 		else
