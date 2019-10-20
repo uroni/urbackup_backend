@@ -20,3 +20,6 @@ margin-bottom: 0px;
 .panel-body blockquote {	
 	font-size: 14px !important;
 }
+.move_left {
+	margin-left: -10pt;
+}

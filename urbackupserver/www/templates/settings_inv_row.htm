@@ -14,7 +14,8 @@
 						<div class="input-group-addon">{thours}</div>
 					</div>
 				</div>
-				<div class="checkbox"><label><input type="checkbox" id="update_freq_incr_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label></div>
+				<div id="update_freq_incr_sw" style="display: inline"></div>
+				<div class="checkbox-inline" style="margin-left: 5pt"><label><input type="checkbox" id="update_freq_incr_disable" onchange="settingsCheckboxChange($(this).attr('id'))"/>{tDisable}</label></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="update_freq_full">{tInterval for full file backups}:</label>
@@ -24,64 +25,73 @@
 						<div class="input-group-addon">{tdays}</div>
 					</div>
 				</div>
-				<div class="checkbox"><label><input type="checkbox" id="update_freq_full_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label></div>
+				<div id="update_freq_full_sw" style="display: inline"></div>
+				<div class="checkbox-inline" style="margin-left: 5pt"><label><input type="checkbox" id="update_freq_full_disable" onchange="settingsCheckboxChange($(this).attr('id'))"/>{tDisable}</label></div>				
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="max_file_incr">{tMaximal number of incremental file backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_file_incr" value="{max_file_incr}"/>
 				</div>
+				<div id="max_file_incr_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="min_file_incr">{tMinimal number of incremental file backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="min_file_incr" value="{min_file_incr}"/>
 				</div>
+				<div id="min_file_incr_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="max_file_full">{tMaximal number of full file backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_file_full" value="{max_file_full}"/>
 				</div>
+				<div id="max_file_full_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="min_file_full">{tMinimal number of full file backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="min_file_full" value="{min_file_full}"/>
 				</div>
+				<div id="min_file_full_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="exclude_files">{tExcluded files (with wildcards)}:</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="exclude_files_div">
 					<div class="input-group">
 						<input type="text" class="form-control" id="exclude_files" value="{exclude_files|s}"/>
 						<div class="input-group-addon"><a href="help.htm#exclude_files" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="exclude_files_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="include_files">{tIncluded files (with wildcards)}:</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="include_files_div">
 					<div class="input-group">
 						<input type="text" class="form-control" id="include_files" value="{include_files|s}"/>
 						<div class="input-group-addon"><a href="help.htm#include_files" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="include_files_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="default_dirs">{tDefault directories to backup}:</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="default_dirs_div">
 					<div class="input-group">
 						<input type="text" class="form-control" id="default_dirs" value="{default_dirs|s}"/>
 						<div class="input-group-addon"><a href="help.htm#default_dirs" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="default_dirs_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="backup_dirs_optional">{tDirectories to backup are optional by default:}</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="backup_dirs_optional" {backup_dirs_optional}/></label>
 				</div>
+				<div id="backup_dirs_optional_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>
@@ -100,9 +110,8 @@
 						<div class="input-group-addon">{tdays}</div>
 					</div>
 				</div>
-				<div class="checkbox">
-					<label><input type="checkbox" id="update_freq_image_incr_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label>
-				</div>
+				<div id="update_freq_image_incr_sw" style="display: inline"></div>
+				<div class="checkbox-inline" style="margin-left: 5pt"><label><input type="checkbox" id="update_freq_image_incr_disable" onchange="settingsCheckboxChange($(this).attr('id'))"/>{tDisable}</label></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="update_freq_image_full">{tInterval for full image backups}:</label>
@@ -112,42 +121,46 @@
 						<div class="input-group-addon">{tDays}</div>
 					</div>
 				</div>
-				<div class="checkbox">
-					<label><input type="checkbox" id="update_freq_image_full_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label>
-				</div>
+				<div id="update_freq_image_full_sw" style="display: inline"></div>
+				<div class="checkbox-inline" style="margin-left: 5pt"><label><input type="checkbox" id="update_freq_image_full_disable" onchange="settingsCheckboxChange($(this).attr('id'))"/>{tDisable}</label></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="max_image_incr">{tMaximal number of incremental image backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_image_incr" value="{max_image_incr}"/>
 				</div>
+				<div id="max_image_incr_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="min_image_incr">{tMinimal number of incremental image backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="min_image_incr" value="{min_image_incr}"/>
 				</div>
+				<div id="min_image_incr_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="max_image_full">{tMaximal number of full image backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_image_full" value="{max_image_full}"/>
 				</div>
+				<div id="max_image_full_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="min_image_full">{tMinimal number of full image backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="min_image_full" value="{min_image_full}"/>
 				</div>
+				<div id="min_image_full_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="image_letters">{tVolumes to backup}:</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="image_letters_div">
 					<div class="input-group">
 						<input type="text" class="form-control" id="image_letters" value="{image_letters|s|h}"/>
 						<div class="input-group-addon"><a href="help.htm#image_letters" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="image_letters_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="image_file_format">{tImage backup file format}:</label>
@@ -160,6 +173,7 @@
 						{/cowraw_available}
 					</select>
 				</div>
+				<div id="image_file_format_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>
@@ -176,72 +190,84 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_config_paths" {allow_config_paths}/></label>
 				</div>
+				<div id="allow_config_paths_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_starting_full_file_backups">{tAllow client-side starting of full file backups}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_starting_full_file_backups" {allow_starting_full_file_backups}/></label>
 				</div>
+				<div id="allow_starting_full_file_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_starting_incr_file_backups">{tAllow client-side starting of incremental file backups}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_starting_incr_file_backups" {allow_starting_incr_file_backups}/></label>
 				</div>
+				<div id="allow_starting_incr_file_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_starting_full_image_backups">{tAllow client-side starting of full image backups}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="allow_starting_full_image_backups" {allow_starting_full_image_backups}/></label>
 				</div>
+				<div id="allow_starting_full_image_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_starting_incr_image_backups">{tAllow client-side starting of incremental image backups}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_starting_incr_image_backups" {allow_starting_incr_image_backups}/></label>
 				</div>
+				<div id="allow_starting_incr_image_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_log_view">{tAllow client-side viewing of backup logs}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_log_view" {allow_log_view}/></label>
 				</div>
+				<div id="allow_log_view_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_pause">{tAllow client-side pausing of backups}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_pause" {allow_pause}/></label>
 				</div>
+				<div id="allow_pause_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_verwrite">{tAllow client-side changing of settings}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_overwrite" {allow_overwrite}/></label>
 				</div>
+				<div id="allow_overwrite_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_tray_exit">{tAllow clients to quit the tray icon}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_tray_exit" {allow_tray_exit}/></label>
 				</div>
+				<div id="allow_tray_exit_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_file_restore">{tAllow clients to start file restores}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_file_restore" {allow_file_restore}/></label>
 				</div>
+				<div id="allow_file_restore_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_component_config">{tAllow clients to configure components to backup}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_component_config" {allow_component_config}/></label>
 				</div>
+				<div id="allow_component_config_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="allow_component_restore">{tAllow clients to start component restores}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="allow_component_restore" {allow_component_restore}/></label>
 				</div>
+				<div id="allow_component_restore_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>
@@ -262,6 +288,7 @@
 						<div class="input-group-addon">{tMin}</div>
 					</div>
 				</div>
+				<div id="startup_backup_delay_sw" style="display: inline"></div>
 			</div>
 			{/main_client}
 			<div class="form-group" id="backup_window_row">
@@ -272,6 +299,7 @@
 						<div class="input-group-addon"><a href="javascript: showBackupWindowDetails()">{tShow details}</a>&nbsp;&nbsp;<a href="help.htm#backup_window" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="backup_window_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group" id="backup_window_incr_file_row">
 				<label class="col-sm-4 control-label">{tBackup window for incremental file backups}</label>
@@ -281,6 +309,7 @@
 						<div class="input-group-addon"><a href="help.htm#backup_window" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="backup_window_incr_file_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group" id="backup_window_full_file_row">
 				<label class="col-sm-4 control-label" for="backup_window_full_file">{tBackup window for full file backups}</label>
@@ -290,6 +319,7 @@
 						<div class="input-group-addon"><a href="help.htm#backup_window" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="backup_window_full_file_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group" id="backup_window_incr_image_row">
 				<label class="col-sm-4 control-label" for="backup_window_incr_image">{tBackup window for incremental image backups}</label>
@@ -299,6 +329,7 @@
 						<div class="input-group-addon"><a href="help.htm#backup_window" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="backup_window_incr_image_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group" id="backup_window_full_image_row">
 				<label class="col-sm-4 control-label" for="backup_window_full_image">{tBackup window for full image backups}</label>
@@ -308,6 +339,7 @@
 						<div class="input-group-addon"><a href="help.htm#backup_window" target="_blank">?</a></div>
 					</div>
 				</div>
+				<div id="backup_window_full_image_sw" style="display: inline"></div>
 			</div>
 			{?main_client}
 			{no_compname_start|s}
@@ -316,6 +348,7 @@
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="computername" value="{computername}"/>
 				</div>
+				<div id="computername_sw" style="display: inline"></div>
 			</div>
 			{no_compname_end|s}
 			{/main_client}
@@ -327,6 +360,7 @@
 						<div class="input-group-addon">MBit/s</div>
 					</div>
 				</div>
+				<div id="local_speed_sw" style="display: inline"></div>
 			</div>
 			{?main_client}
 			<div class="form-group">
@@ -334,6 +368,7 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="silent_update" {silent_update}/></label>
 				</div>
+				<div id="silent_update_sw" style="display: inline"></div>
 			</div>
 			{/main_client}
 			<div class="form-group">
@@ -341,14 +376,16 @@
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="client_quota" value="{client_quota}"/>
 				</div>
+				<div id="client_quota_sw" style="display: inline"></div>
 			</div>
 			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="virtual_clients">{tVirtual sub client names}</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="virtual_clients_div">
 					<input type="text" class="form-control" id="virtual_clients" value="{virtual_clients}"/>
 				</div>
+				<div id="virtual_clients_sw" style="display: inline"></div>
 			</div>
 			{no_compname_end|s}
 			{/main_client}
@@ -478,6 +515,7 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
 				</div>
+				<div id="internet_mode_enabled_sw" style="display: inline"></div>
 			</div>
 			{/global_settings}
 			{?with_authkey}
@@ -494,12 +532,14 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_image_backups" value="false" {internet_image_backups}/></label>
 				</div>
+				<div id="internet_image_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_full_file_backups">{tDo full file backups over internet}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_full_file_backups" value="false" {internet_full_file_backups}/></label>
 				</div>
+				<div id="internet_full_file_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_speed">{tMax backup speed for internet connection}:</label>
@@ -509,6 +549,7 @@
 						<div class="input-group-addon">KBit/s</div>
 					</div>
 				</div>
+				<div id="internet_speed_sw" style="display: inline"></div>
 			</div>
 			{?global_settings}
 			<div class="form-group">
@@ -519,6 +560,7 @@
 						<div class="input-group-addon">KBit/s</div>
 					</div>
 				</div>
+				<div id="global_internet_speed_sw" style="display: inline"></div>
 			</div>
 			{/global_settings}
 			{?main_client}
@@ -527,12 +569,14 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_encrypt" value="false" {internet_encrypt}/></label>
 				</div>
+				<div id="internet_encrypt_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_compress">{tCompressed transfer}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_compress" value="false" {internet_compress}/></label>
 				</div>
+				<div id="internet_compress_sw" style="display: inline"></div>
 			</div>
 			{/main_client}
 			<div class="form-group">
@@ -540,12 +584,14 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></label>
 				</div>
+				<div id="internet_calculate_filehashes_on_client_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_parallel_file_hashing">Beta: Calculate file hashes on client in parallel:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_parallel_file_hashing" value="false" {internet_parallel_file_hashing}/></label>
 				</div>
+				<div id="internet_parallel_file_hashing_sw" style="display: inline"></div>
 			</div>
 			{?main_client}
 			<div class="form-group">
@@ -553,6 +599,7 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></label>
 				</div>
+				<div id="internet_connect_always_sw" style="display: inline"></div>
 			</div>
 			{/main_client}
 			<div class="form-group">
@@ -563,6 +610,7 @@
 						<div class="input-group-addon">{tMB}</div>
 					</div>
 				</div>
+				<div id="internet_file_dataplan_limit_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_image_dataplan_limit">{tDo not start image backups if current estimated data usage limit per month is smaller than}:</label>
@@ -572,6 +620,7 @@
 						<div class="input-group-addon">{tMB}</div>
 					</div>
 				</div>
+				<div id="internet_image_dataplan_limit_sw" style="display: inline"></div>
 			</div>
 			{?global_settings}
 			<div class="form-group">
@@ -617,60 +666,70 @@
 				<div class="col-sm-6">
 					<select class="form-control" id="local_full_file_transfer_mode"><option value="raw" {local_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_full_file_transfer_mode_1}>{tHashed}</option></select>
 				</div>
+				<div id="local_full_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_full_file_transfer_mode">{tInternet full file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_full_file_transfer_mode"><option value="raw" {internet_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_full_file_transfer_mode_1}>{tHashed}</option></select>
 				</div>
+				<div id="internet_full_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="local_incr_file_transfer_mode">{tLocal incremental file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_incr_file_transfer_mode"><option value="raw" {local_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {local_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
 				</div>
+				<div id="local_incr_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_incr_file_transfer_mode">{tInternet incremental file backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_incr_file_transfer_mode"><option value="raw" {internet_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {internet_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
 				</div>
+				<div id="internet_incr_file_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="local_image_transfer_mode">{tLocal image backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_image_transfer_mode"><option value="raw" {local_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
+				<div id="local_image_transfer_mode_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_image_transfer_mode">{tInternet image backup transfer mode}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
+				<div id="internet_image_transfer_mode_sw" style="display: inline"></div>
 			</div>			
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="local_incr_image_style">{tLocal incremental image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_incr_image_style"><option value="to-full" {local_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {local_incr_image_style_1}>{tBased on last image backup}</option></select>
 				</div>
+				<div id="local_incr_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_incr_image_style">{tInternet incremental image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_incr_image_style"><option value="to-full" {internet_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {internet_incr_image_style_1}>{tBased on last image backup}</option></select>
 				</div>
+				<div id="internet_incr_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="local_full_image_style">{tLocal full image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="local_full_image_style"><option value="full" {local_full_image_style_0}>{tFull image backup #1}</option><option value="synthetic" {local_full_image_style_1}>{tSynthetic full image backup}</option></select>
 				</div>
+				<div id="local_full_image_style_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_full_image_style">{tInternet full image style}:</label>
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_full_image_style"><option value="full" {internet_full_image_style_0}>{tFull image backup #1}</option><option value="synthetic" {internet_full_image_style_1}>{tSynthetic full image backup}</option></select>
 				</div>
+				<div id="internet_full_image_style_sw" style="display: inline"></div>
 			</div>
 			{global_settings_start|s}
 			<div class="form-group">
@@ -700,72 +759,84 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="end_to_end_file_backup_verification" value="false" {end_to_end_file_backup_verification}/></label>
 				</div>
+				<div id="end_to_end_file_backup_verification_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="verify_using_client_hashes">{tDebugging: Verify file backups using client side hashes}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="verify_using_client_hashes" value="false" {verify_using_client_hashes}/></label>
 				</div>
+				<div id="verify_using_client_hashes_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_readd_file_entries">{tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_readd_file_entries" value="true" {internet_readd_file_entries}/></label>
 				</div>
+				<div id="internet_readd_file_entries_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="background_backups">{tRun backups with background priority on the clients}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="background_backups" value="true" {background_backups}/></label>
 				</div>
+				<div id="background_backups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="create_linked_user_views">{tCreate symbolically linked views for each user on the clients after file backups}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="create_linked_user_views" value="true" {create_linked_user_views}/></label>
 				</div>
+				<div id="create_linked_user_views_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="max_running_jobs_per_client">{tMaximum number of simultaneous jobs per client}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="max_running_jobs_per_client" value="{max_running_jobs_per_client}"/></label>
 				</div>
+				<div id="max_running_jobs_per_client_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="cbt_volumes">{tList of volumes for which change block tracking should be used (if available)}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="cbt_volumes" value="{cbt_volumes}"/></label>
 				</div>
+				<div id="cbt_volumes_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="cbt_crash_persistent_volumes">{tList of volumes for which the change block tracking should be crash persistent}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="cbt_crash_persistent_volumes" value="{cbt_crash_persistent_volumes}"/></label>
 				</div>
+				<div id="cbt_crash_persistent_volumes_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="ignore_disk_errors">{tDo not fail backups in case of hash mismatches or read errors}</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="ignore_disk_errors" value="true" {ignore_disk_errors}/></label>
 				</div>
+				<div id="ignore_disk_errors_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="image_snapshot_groups">{tVolumes to snapshot in groups during image backups}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="image_snapshot_groups" value="{image_snapshot_groups}"/></label>
 				</div>
+				<div id="image_snapshot_groups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="file_snapshot_groups">{tVolumes to snapshot in groups during file backups}</label>
 				<div class="col-sm-6">
 					<label><input type="text" class="form-control" id="file_snapshot_groups" value="{file_snapshot_groups}"/></label>
 				</div>
+				<div id="file_snapshot_groups_sw" style="display: inline"></div>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="vss_select_components">{tWindows components backup configuration}</label>
-				<div class="col-sm-6">
+				<div class="col-sm-6" id="vss_select_components_div">
 					<label><input type="text" class="form-control" id="vss_select_components" value="{vss_select_components}"/></label>
 				</div>
+				<div id="vss_select_components_sw" style="display: inline"></div>
 			</div>
 		</form>
 	</div>

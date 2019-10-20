@@ -127,8 +127,8 @@ std::vector<std::string> getClientConfigurableSettingsList()
 	ret.push_back("exclude_files");
 	ret.push_back("include_files");
 	ret.push_back("default_dirs");
-	ret.push_back("image_letteinternet_speedrs");
-	ret.push_back("");
+	ret.push_back("image_letters");
+	ret.push_back("internet_speed");
 	ret.push_back("local_speed");
 	ret.push_back("internet_mode_enabled");
 	ret.push_back("internet_full_file_backups");

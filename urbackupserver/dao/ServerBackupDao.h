@@ -89,6 +89,13 @@ public:
 		int report_loglevel;
 		int report_sendonly;
 	};
+	struct SSetting
+	{
+		bool exists;
+		std::string value;
+		std::string value_client;
+		int use;
+	};
 
 
 	void addToOldBackupfolders(const std::string& backupfolder);
@@ -96,9 +103,8 @@ public:
 	std::vector<std::string> getDeletePendingClientNames(void);
 	CondString getGroupName(int groupid);
 	CondInt getClientGroup(int clientid);
+	SSetting getServerSetting(const std::string& key, int clientid);
 	SClientName getVirtualMainClientname(int clientid);
-	void insertIntoOrigClientSettings(int clientid, const std::string& data);
-	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
 	std::vector<SDuration> getLastFullDurations(int clientid);
 	CondString getClientSetting(const std::string& key, int clientid);
@@ -191,9 +197,8 @@ private:
 	IQuery* q_getDeletePendingClientNames;
 	IQuery* q_getGroupName;
 	IQuery* q_getClientGroup;
+	IQuery* q_getServerSetting;
 	IQuery* q_getVirtualMainClientname;
-	IQuery* q_insertIntoOrigClientSettings;
-	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;
 	IQuery* q_getLastFullDurations;
 	IQuery* q_getClientSetting;

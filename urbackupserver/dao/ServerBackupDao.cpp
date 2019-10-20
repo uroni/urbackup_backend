@@ -155,6 +155,34 @@ ServerBackupDao::CondInt ServerBackupDao::getClientGroup(int clientid)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func SSetting ServerBackupDao::getServerSetting
+* @return string value, string value_client, int use
+* @sql
+*		SELECT value, value_client, use FROM settings_db.settings WHERE key=:key(string) AND clientid=:clientid(int)
+*/
+ServerBackupDao::SSetting ServerBackupDao::getServerSetting(const std::string& key, int clientid)
+{
+	if(q_getServerSetting==NULL)
+	{
+		q_getServerSetting=db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE key=? AND clientid=?", false);
+	}
+	q_getServerSetting->Bind(key);
+	q_getServerSetting->Bind(clientid);
+	db_results res=q_getServerSetting->Read();
+	q_getServerSetting->Reset();
+	SSetting ret = { false, "", "", 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0]["value"];
+		ret.value_client=res[0]["value_client"];
+		ret.use=watoi(res[0]["use"]);
+	}
+	return ret;
+}
+
 
 /**
 * @-SQLGenAccess
@@ -182,49 +210,6 @@ ServerBackupDao::SClientName ServerBackupDao::getVirtualMainClientname(int clien
 	return ret;
 }
 
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::insertIntoOrigClientSettings
-* @sql
-*      INSERT OR REPLACE INTO orig_client_settings (clientid, data)
-*          VALUES (:clientid(int), :data(std::string))
-*/
-void ServerBackupDao::insertIntoOrigClientSettings(int clientid, const std::string& data)
-{
-	if(q_insertIntoOrigClientSettings==NULL)
-	{
-		q_insertIntoOrigClientSettings=db->Prepare("INSERT OR REPLACE INTO orig_client_settings (clientid, data) VALUES (?, ?)", false);
-	}
-	q_insertIntoOrigClientSettings->Bind(clientid);
-	q_insertIntoOrigClientSettings->Bind(data);
-	q_insertIntoOrigClientSettings->Write();
-	q_insertIntoOrigClientSettings->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func string ServerBackupDao::getOrigClientSettings
-* @return string data
-* @sql
-*      SELECT data FROM orig_client_settings WHERE clientid = :clientid(int)
-*/
-ServerBackupDao::CondString ServerBackupDao::getOrigClientSettings(int clientid)
-{
-	if(q_getOrigClientSettings==NULL)
-	{
-		q_getOrigClientSettings=db->Prepare("SELECT data FROM orig_client_settings WHERE clientid = ?", false);
-	}
-	q_getOrigClientSettings->Bind(clientid);
-	db_results res=q_getOrigClientSettings->Read();
-	q_getOrigClientSettings->Reset();
-	CondString ret = { false, "" };
-	if(!res.empty())
-	{
-		ret.exists=true;
-		ret.value=res[0]["data"];
-	}
-	return ret;
-}
 
 /**
 * @-SQLGenAccess
@@ -1930,9 +1915,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_getDeletePendingClientNames=NULL;
 	q_getGroupName=NULL;
 	q_getClientGroup=NULL;
+	q_getServerSetting=NULL;
 	q_getVirtualMainClientname=NULL;
-	q_insertIntoOrigClientSettings=NULL;
-	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
 	q_getLastFullDurations=NULL;
 	q_getClientSetting=NULL;
@@ -2018,9 +2002,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getDeletePendingClientNames);
 	db->destroyQuery(q_getGroupName);
 	db->destroyQuery(q_getClientGroup);
+	db->destroyQuery(q_getServerSetting);
 	db->destroyQuery(q_getVirtualMainClientname);
-	db->destroyQuery(q_insertIntoOrigClientSettings);
-	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);
 	db->destroyQuery(q_getLastFullDurations);
 	db->destroyQuery(q_getClientSetting);

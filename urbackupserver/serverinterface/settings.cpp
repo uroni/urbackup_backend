@@ -165,9 +165,15 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 		j_obj.set("value", func1(res[0]["value"])); \
 		if(t_clientid>0) {\
 			j_obj.set("value_client", func1(res[0]["value_client"])); \
-			j_obj.set("value_group", func2(settings_group.getSettings()->x)); \
+		} \
+		if(t_clientid!=0) {\
 			j_obj.set("use", watoi(res[0]["use"])); \
-		}\
+		} \
+	} else if(t_clientid!=0) { \
+		j_obj.set("use", c_use_group); \
+	} \
+	if(t_clientid!=0) { \
+		j_obj.set("value_group", func2(settings_group.getSettings()->x)); \
 	} \
 	ret.set(#x, j_obj); }
 
@@ -252,7 +258,6 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_INT64(internet_image_dataplan_limit);
 	SET_SETTING_STR(alert_script);
 	SET_SETTING_STR(alert_params);
-	SET_SETTING_BOOL(create_search_db);
 #undef SET_SETTING
 	return ret;
 }
@@ -351,11 +356,12 @@ void updateSetting(const std::string &key, const std::string &value, IQuery *q_g
 		q_insert->Write();
 		q_insert->Reset();
 	}
-	else if( r_get[0]["value"]!=value )
+	else if( r_get[0]["value"]!=value 
+		|| ( use!=NULL && *use!=watoi(r_get[0]["use"]) ) )
 	{
 		q_update->Bind(value);
 		if (use != NULL)
-			q_insert->Bind(*use);
+			q_update->Bind(*use);
 		q_update->Bind(key);
 		q_update->Write();
 		q_update->Reset();
@@ -477,7 +483,7 @@ void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
 
 void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_get=db->Prepare("SELECT value, use FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid="+convert(t_clientid));
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,"+convert(t_clientid)+", ?)");
 
@@ -503,7 +509,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 				use = c_use_value;
 			}
 
-			if (use == c_use_value_merge
+			if ( (use!=c_use_group && use!=c_use_value && use!=c_use_value_client)
 				&& !std::binary_search(sset_client_merge.begin(), sset_client_merge.end(), sset[i]))
 			{
 				use = c_use_value;
@@ -833,7 +839,7 @@ ACTION_IMPL(settings)
 
 			JSON::Array clients;
 
-			IQuery *q_has_overwrite = db->Prepare("SELECT 1 FROM settings_db.settings WHERE clientid=? AND key!='internet_authkey' AND key!='client_access_key' AND key!='computername' AND key!='group_id' AND key!='group_name' LIMIT 1");
+			IQuery *q_has_overwrite = db->Prepare("SELECT 1 FROM settings_db.settings WHERE clientid=? AND key!='internet_authkey' AND key!='client_access_key' AND key!='computername' AND key!='group_id' AND key!='group_name' AND use!=0 LIMIT 1");
 			
 			const std::string clients_tab = " (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON "
 				"c.groupid = cg.id) ";
@@ -1003,7 +1009,7 @@ ACTION_IMPL(settings)
 			}
 			if(r_ok)
 			{			
-				if(sa=="clientsettings_save")
+				if (sa == "clientsettings_save")
 				{
 					db->BeginWriteTransaction();
 					updateClientSettings(t_clientid, POST, db);
@@ -1012,8 +1018,8 @@ ACTION_IMPL(settings)
 						updateArchiveSettings(t_clientid, POST, db);
 					}
 					db->EndTransaction();
-					
-					if(POST["no_ok"]!="true")
+
+					if (POST["no_ok"] != "true")
 					{
 						ret.set("saved_ok", true);
 					}
@@ -1032,6 +1038,7 @@ ACTION_IMPL(settings)
 					}
 
 					updateOnlineClientSettings(db, t_clientid);
+				}
 				
 				ServerSettings settings(db, t_clientid);
 				
@@ -1250,6 +1257,7 @@ ACTION_IMPL(settings)
 				{
 					obj.set("can_edit_scripts", true);
 				}
+				ServerSettings serv_settings(db, 0);
 				getGeneralSettings(obj, db, serv_settings);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");

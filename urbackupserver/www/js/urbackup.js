@@ -491,18 +491,11 @@ function makeTimeSpanNegative(ts)
 	return ret;
 }
 
-function getPar(p)
+function getParValue(p, val)
 {
-	var obj=I(p);
-	if(!obj) return "";
-	if(obj.type=="checkbox" )
-	{
-		return "&"+p+"="+(obj.checked?"true":"false");
-	}
-	var val=obj.value;
-	if(p=="update_freq_incr"){ val=multiplyTimeSpan(val, 60.0*60.0); if(obj.disabled) val=makeTimeSpanNegative(val); }
+	if(p=="update_freq_incr"){ val=multiplyTimeSpan(val, 60.0*60.0); }
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
-		{ val=multiplyTimeSpan(val, 60.0*60.0*24.0); if(obj.disabled) val=makeTimeSpanNegative(val); }
+		{ val=multiplyTimeSpan(val, 60.0*60.0*24.0); }
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="local_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, (1024*1024)/8, true); }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, 1024/8, true); }
@@ -510,10 +503,22 @@ function getPar(p)
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=0; else val=multiplyTimeSpan(val, 1024/8, true); }
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
 	if(p=="internet_file_dataplan_limit" || p=="internet_image_dataplan_limit") val=Math.round(val*1024*1024);
-		
-	return "&"+p+"="+encodeURIComponent(val+"");
+
+	return val;
 }
 
+function getPar(p)
+{
+	var obj=I(p);
+	if(!obj) return "";
+	if(obj.type=="checkbox" )
+	{
+		return obj.checked?"true":"false";
+	}
+
+	var val = getParValue(p, val);		
+	return "&"+p+"="+encodeURIComponent(val+"");
+}
 
 function show_progress1(stop_backup)
 {
@@ -2662,6 +2667,385 @@ function show_settings1()
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+function getVal(val)
+{
+	if(typeof val.use=="undefined")
+	{
+		if(typeof val.value!="undefined")
+			return val.value;
+
+		if(typeof val!="object")
+			return val;
+		
+		return "";
+	}
+
+	if(val.use==1)
+	{
+		return val.value_group;
+	}
+	else if(val.use==2)
+	{
+		return val.value;
+	}
+	else if(val.use==4)
+	{
+		return val.value_group;
+	}
+	else
+	{
+		return val.value;
+	}
+}
+function getCurrentSettings(settings)
+{
+	var new_settings = {};
+	for (var key in settings) {
+		if (!settings.hasOwnProperty(key)) {
+			continue;
+		}
+
+		var val = getVal(settings[key]);
+
+		if(typeof val == "boolean")
+		{
+			val = getCheckboxValue(val);
+		}
+
+		new_settings[key]=val;
+	}
+	return new_settings;
+}
+function settingSwitch()
+{
+	var key = $(this).attr("id");
+
+	if(key.indexOf("_btn")==key.length-4)
+	{
+		key = key.substr(0, key.length-4);
+	}
+
+	if(key=="backup_window")
+		key="backup_window_incr_file";
+
+	var use = g.curr_settings[key].use;
+
+	if(use==1)
+		use=2;
+	else if(use==2)
+		use=4;
+	else if(use==4)
+		use=3;
+	else
+	{
+		if(typeof g.curr_settings[key].orig_html!="undefined")
+		{
+			I(key+"_div").innerHTML = g.curr_settings[key].orig_html;
+		}
+		use=1;
+	}
+
+	if($.inArray(key, g.client_settings_list)==-1
+		&& use>2)
+		use=1;
+	if($.inArray(key, g.mergable_settings_list)==-1
+		&& (use==3 || use>4))
+		use=1;
+
+	if(use==2
+		&& (typeof g.curr_settings[key].value == "undefined"
+			|| g.curr_settings[key].value.length==0))
+	{
+		g.curr_settings[key].value = getVal(g.curr_settings[key])
+	}
+
+	if(use==4
+		&& (typeof g.curr_settings[key].value_client == "undefined"
+			|| g.curr_settings[key].value_client.length==0))
+	{
+		g.curr_settings[key].value_client = getVal(g.curr_settings[key])
+	}
+
+	g.curr_settings[key].use=use;
+
+	renderSettingSwitch(key);
+
+	if(!I(key+"_home"))
+	{
+		var val = getVal(g.curr_settings[key]);
+
+		if(typeof val == "boolean")
+		{
+			I(key).checked = val;
+		}
+		else
+		{
+			I(key).value = renderSettingValue(key, val);
+
+			if(I(key+"_disable"))
+			{
+				I(key+"_disable").checked=false;
+				settingsCheckboxHandle(key);
+			}
+		}
+	}
+	else
+	{
+		I(key+"_home").value = g.curr_settings[key].value;
+		I(key+"_client").value = g.curr_settings[key].value_client;
+		I(key+"_group").value = g.curr_settings[key].value_group;
+	}
+}
+function renderSettingValue(key, val)
+{
+	if(key=="update_freq_incr") return multiplyTimeSpan(val, 1/(60.0*60.0));
+	if(key=="update_freq_full") return multiplyTimeSpan(val, 1/(60.0*60.0*24.0));
+	if(key=="update_freq_image_incr") return multiplyTimeSpan(val, 1/(60.0*60.0*24.0));
+	if(key=="update_freq_image_full") return multiplyTimeSpan(val, 1/(60.0*60.0*24.0));
+	if(key=="startup_backup_delay") return val/60;
+	if(key=="local_speed" || key=="internet_speed"
+		|| key=="global_local_speed" || key=="global_internet_speed")
+	{
+		if(val=="0" || val=="-1") return "-";
+		var mult;
+		if(key=="local_speed") mult=(1024*1024)/8;
+		if(key=="internet_speed") mult=(1024)/8;
+		if(key=="global_local_speed") mult=(1024*1024)/8;
+		if(key=="global_internet_speed") mult=(1024)/8;
+		return multiplyTimeSpan(val, 1/mult, true);
+	}
+
+	if(key=="file_hash_collect_cachesize") return val/1024;
+	if(key=="update_stats_cachesize") return val/1024;
+	if(key=="internet_file_dataplan_limit") return val/(1024*1024);
+	if(key=="internet_image_dataplan_limit") return val/(1024*1024);
+	
+	return val;
+}
+function settingChangeKey(key)
+{
+	if(key=="backup_window")
+		key="backup_window_incr_file";
+
+	var use = g.curr_settings[key].use;
+
+	if(use==1 || use==4)
+	{
+		use=2;
+		g.curr_settings[key].use = use;
+		renderSettingSwitch(key);
+	}
+
+	if(use==2)
+	{
+		g.curr_settings[key].value = getParValue(key, I(key).value);
+		if(I(key+"_disable")
+			&& I(key+"_disable").checked)
+		{
+			g.curr_settings[key].value = makeTimeSpanNegative(g.curr_settings[key].value);
+		}
+	}
+}
+function settingChange(p_key)
+{
+	key = $(this).attr("id");
+	
+	settingChangeKey(key);
+}
+function renderSettingSwitch(key)
+{
+	if(key=="backup_window")
+	{
+		key ="backup_window_incr_file";
+	}
+
+	var val = g.curr_settings[key];
+
+	if(typeof val.use=="undefined")
+	{
+		return;
+	}
+
+	if(val.use==1)
+	{
+		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting from group" id="'+key+"_btn"+'">'+
+					'<span class="glyphicon glyphicon-lock" aria-hidden="true"></span>&nbsp;'+
+					'</button>';
+	}
+	else if(val.use==2)
+	{
+		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured here" id="'+key+"_btn"+'">'+
+					'<span class="glyphicon glyphicon-home" aria-hidden="true"></span>&nbsp;'+
+					'</button>';
+	}
+	else if(val.use==4)
+	{
+		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using setting configured on client" id="'+key+"_btn"+'">'+
+					'<span class="glyphicon glyphicon-road" aria-hidden="true"></span>&nbsp;'+
+					'</button>';
+	}
+	else
+	{
+		I(key+"_sw").innerHTML = '<button type="button" class="btn btn-default" title="Using combination of setting sources" id="'+key+"_btn"+'">'+
+					'<span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span>&nbsp;'+
+					'</button>';
+		renderMergeSetting(key);
+	}
+
+	$("#"+key+"_btn").click(settingSwitch);
+	$("#"+key).change(settingChange);
+	$("#"+key).keyup(settingChange);
+}
+function mergeSettingSwitch()
+{
+	var key = $(this).attr("id");
+
+	var idx = key.indexOf("_check_");
+	key = key.substr(0, idx);
+	
+	if(!$(this).checked)
+	{
+		var ids = [key+"_check_group",
+					key+"_check_home",
+					key+"_check_client"];
+
+		var num_checked=0;
+
+		for(var i=0;i<ids.length;++i)
+		{
+			if(I(ids[i]).checked)
+				num_checked+=1;
+		}
+
+		if(num_checked==1)
+		{
+			for(var i=0;i<ids.length;++i)
+			{
+				if(!I(ids[i]).checked
+					&& ids[i]!=$(this).attr("id"))
+				{
+					$("#"+ids[i]).prop("checked", true).change();
+				}
+			}
+		}
+	}
+
+	mergeSettingUpdateUse(key);
+}
+function mergeSettingUpdateUse(key)
+{
+	var use=0;
+	if(I(key+"_check_group").checked)
+	{
+		use=use|1;
+	}
+	if(I(key+"_check_home").checked)
+	{
+		use=use|2;
+	}
+	if(I(key+"_check_client").checked)
+	{
+		use=use|4;
+	}
+	g.curr_settings[key].use=use;
+}
+function renderMergeSetting(key)
+{
+	var val = g.curr_settings[key];
+
+	var c='<div class="input-group">';
+	c+='<input type="text" class="form-control" id="'+key+'_group" value="'+escapeHTMLDoubleQuote(val.value_group)+'" disabled="disabled"/>';
+	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_group" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'move_left glyphicon glyphicon-lock\'></span> Group" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Group"></input></div>';
+	c+='</div>';
+
+	c+='<div class="input-group">';
+	c+='<input type="text" class="form-control" id="'+key+'_home" value="'+escapeHTMLDoubleQuote(val.value)+'"/>';
+	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-home move_left\'></span> Here" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Here"></input></div>';
+	c+='</div>';
+
+	c+='<div class="input-group">';
+	c+='<input type="text" class="form-control" id="'+key+'_client" value="'+escapeHTMLDoubleQuote(val.value_client)+'" disabled="disabled"/>';
+	c+='<div class="checkbox input-group-addon"><input class="input-group-addon" type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-size="mini" data-on="<span class=\'glyphicon glyphicon-road move_left\'></span> Client" data-off="<span class=\'glyphicon glyphicon-remove\'></span> Client"></input></div>';
+	c+='</div>';
+	/*
+	c+='<div class="input-group">';
+	c+='<input type="checkbox" id="'+key+'_check_home" checked data-toggle="toggle" data-on="<i class=\'glyphicon glyphicon-home\'></i> Here" data-off="<i class=\'glyphicon glyphicon-remove\'></i> Ignore"></input>';
+	c+='<input type="text" class="form-control" id="exclude_files" value="'+escapeHTMLDoubleQuote(val.value_group)+'"/>';
+	c+='</div>';
+
+	c+='<div class="input-group">';
+	c+='<input type="checkbox" id="'+key+'_check_client" checked data-toggle="toggle" data-on="<i class=\'glyphicon glyphicon-home\'></i> Client" data-off="<i class=\'glyphicon glyphicon-remove\'></i> Ignore"></input>';
+	c+='<input type="text" class="form-control" id="exclude_files" value="'+escapeHTMLDoubleQuote(val.value_group)+'" disabled="disabled"/>';
+	c+='</div>';*/
+
+	/*var c='<div class="col-sm-6">'+
+	'<div class="input-group">'+
+	'	<input type="text" class="form-control" id="exclude_files" value="{exclude_files|s}"/>'+
+	'	<div class="input-group-addon"><a href="help.htm#exclude_files" target="_blank">?</a></div>'+
+	'</div>'+
+	'</div>';*/
+
+	g.curr_settings[key].orig_html=I(key+"_div").innerHTML;
+	I(key+"_div").innerHTML=c;
+
+	renderMergeSettingSwitch(key);
+
+	$("#"+key+"_check_group").change(mergeSettingSwitch);
+	$("#"+key+"_check_home").change(mergeSettingSwitch);
+	$("#"+key+"_check_client").change(mergeSettingSwitch);
+
+	$("#"+key+"_check_group").bootstrapToggle();
+	$("#"+key+"_check_home").bootstrapToggle();
+	$("#"+key+"_check_client").bootstrapToggle();
+}
+function renderMergeSettingSwitch(key)
+{
+	var val = g.curr_settings[key];
+
+	var use = val.use;
+
+	if(use&1)
+	{
+		I(key+"_check_group").checked=true;
+	}
+	else
+	{
+		I(key+"_check_group").checked=false;
+	}
+
+	if(use&2)
+	{
+		I(key+"_check_group").checked=true;
+	}
+	else
+	{
+		I(key+"_check_group").checked=false;
+	}
+
+	if(use&4)
+	{
+		I(key+"_check_group").checked=true;
+	}
+	else
+	{
+		I(key+"_check_group").checked=false;
+	}
+}
+function renderSettingSwitchAll()
+{
+	for(var i=0;i<g.settings_list.length;++i)
+	{
+		if(I(g.settings_list[i]+"_sw"))
+		{
+			renderSettingSwitch(g.settings_list[i]);
+		}
+	}
+
+	if(I("backup_window_sw"))
+	{
+		renderSettingSwitch("backup_window");
+	}
+}
 function show_settings2(data)
 {
 	var go_to_change_pw=false;
@@ -2930,45 +3314,8 @@ function show_settings2(data)
 	{
 		if(data.sa=="general")
 		{
-			data.settings.no_images=getCheckboxValue(data.settings.no_images);
-			data.settings.no_file_backups=getCheckboxValue(data.settings.no_file_backups);
-			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
-			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
-			data.settings.download_client=getCheckboxValue(data.settings.download_client);
-			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
-			data.settings.show_server_updates=getCheckboxValue(data.settings.show_server_updates);
-			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
-			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
-			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
-			data.settings.use_incremental_symlinks=getCheckboxValue(data.settings.use_incremental_symlinks);
-			
-			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
-			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
-			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
-			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
-			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
-			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
-			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
-			data.settings.allow_file_restore=getCheckboxValue(data.settings.allow_file_restore);
-			data.settings.allow_component_restore=getCheckboxValue(data.settings.allow_component_restore);
-			data.settings.allow_component_config=getCheckboxValue(data.settings.allow_component_config);
-			
-			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
-			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
-			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
-			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
-			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
-			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
-			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
-			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
-			data.settings.internet_parallel_file_hashing=getCheckboxValue(data.settings.internet_parallel_file_hashing);			
-			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
-			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
-			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
-			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
-			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
-			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
+			g.curr_settings = data.settings;
+			data.settings = getCurrentSettings(data.settings);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -3017,8 +3364,7 @@ function show_settings2(data)
 			
 			data.settings.internet_file_dataplan_limit/=1024*1024;
 			data.settings.internet_image_dataplan_limit/=1024*1024;
-			data.settings.update_dataplan_db=getCheckboxValue(data.settings.update_dataplan_db);
-			
+		
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
 			
@@ -3069,50 +3415,10 @@ function show_settings2(data)
 		else if(data.sa=="clientsettings")
 		{
 			is_group = typeof data.settings.groupid === "undefined" ? false : true;
-			
-			if( is_group || (data.settings.allow_overwrite==true
-				&& data.settings.overwrite==true
-				&& data.settings.client_set_settings==true ) )
-			{
-				data.settings.overwrite_warning_start="";
-				data.settings.overwrite_warning_end="";
-			}
-			else
-			{
-				data.settings.overwrite_warning_start="<!--";
-				data.settings.overwrite_warning_end="-->";
-			}
-			
-			data.settings.overwrite=getCheckboxValue(is_group || data.settings.overwrite);
-			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
-			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
-			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
-			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
-			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
-			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
-			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
-			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
-			data.settings.allow_file_restore=getCheckboxValue(data.settings.allow_file_restore);
-			data.settings.allow_component_restore=getCheckboxValue(data.settings.allow_component_restore);
-			data.settings.allow_component_config=getCheckboxValue(data.settings.allow_component_config);
-			
-			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
-			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
-			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
-			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
-			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
-			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
-			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
-			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
-			data.settings.internet_parallel_file_hashing=getCheckboxValue(data.settings.internet_parallel_file_hashing);			
-			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
-			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
-			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
-			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
-			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
-			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
-			
+
+			g.curr_settings = data.settings;
+			data.settings = getCurrentSettings(data.settings);
+					
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
 			
@@ -3423,14 +3729,14 @@ function show_settings2(data)
 	
 	settingsCheckboxChange();
 	
-	if(data.sa && data.sa=="clientsettings"
-		&& typeof data.settings.groupid === "undefined")
-	{
-		updateUserOverwrite();
-	}
-	else if(data.sa && data.sa=="change_pw_int")
+	if(data.sa && data.sa=="change_pw_int")
 	{
 		changePW();
+	}
+
+	if(data.sa && data.sa=="clientsettings")
+	{
+		renderSettingSwitchAll();
 	}
 	
 	if(update_tabber && tabber_set_idx)
@@ -3657,8 +3963,16 @@ function settingsCheckboxHandle(cbid)
 		I(cbid+'_disable').checked=true;
 	}
 }
-function settingsCheckboxChange()
+function settingsCheckboxChange(key)
 {
+	if(typeof key!="undefined"
+		&& key.indexOf("_disable")!=-1)
+	{
+		key=key.substr(0, key.indexOf("_disable"));
+		
+		settingChangeKey(key);
+	}
+
 	settingsCheckboxHandle('update_freq_incr');
 	settingsCheckboxHandle('update_freq_full');
 	settingsCheckboxHandle('update_freq_image_incr');
@@ -3795,6 +4109,44 @@ g.ldap_settings_list=[
 "testusername",
 "testpassword"
 ];
+g.mergable_settings_list=[
+"virtual_clients",
+"exclude_files",
+"include_files",
+"default_dirs",
+"image_letters",
+"vss_select_components"
+];
+g.client_settings_list=[
+"update_freq_incr",
+"update_freq_full",
+"update_freq_image_incr",
+"update_freq_image_full",
+"max_file_incr",
+"min_file_incr",
+"max_file_full",
+"min_file_full",
+"min_image_incr",
+"max_image_incr",
+"min_image_full",
+"max_image_full",
+"startup_backup_delay",
+"computername",
+"virtual_clients",
+"exclude_files",
+"include_files",
+"default_dirs",
+"image_letters",
+"internet_speeds",
+"local_speed",
+"internet_mode_enabled",
+"internet_full_file_backups",
+"internet_image_backups",
+"internet_compress",
+"internet_encrypt",
+"internet_connect_always",
+"vss_select_components"
+];
 
 g.time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
 g.time_span_speed_regex = /^([\d.]*[%]?(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
@@ -3859,7 +4211,7 @@ function saveGeneralSettings()
 	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{
-		pars+=getPar(g.settings_list[i]);
+		pars+=g.settings_list[i]+"="+encodeURIComponent(g.curr_settings[g.settings_list[i]].value);
 	}
 	new getJSON("settings", "sa=general_save"+pars+internet_pars, show_settings2);
 }
@@ -3934,62 +4286,8 @@ function internetSettings()
 	g.settings_nav_pos=g.internet_nav_pos_offset;
 	new getJSON("settings", "sa=internet", show_settings2);
 }
-function updateUserOverwrite(clientid)
-{
-	var checked=I('overwrite').checked;
-	
-	for(var i=0;i<g.settings_list.length;++i)
-	{
-		if( I(g.settings_list[i]) )
-		{
-			if(!I(g.settings_list[i]).disabled)
-				I(g.settings_list[i]).disabled=!checked;
-		}
-	}
-	
-	I('user_submit').disabled=!checked;
-	
-	//Archive
-	I('archive_add').disabled=!checked;
-	I('archive_every').disabled=!checked;
-	I('archive_for').disabled=!checked;
-	I('archive_window').disabled=!checked;
-	I('archive_every_unit').disabled=!checked;
-	I('archive_for_unit').disabled=!checked;
-	I('archive_backup_type').disabled=!checked;
-	if(checked)
-	{
-		I('archive_letters').disabled=I('archive_backup_type').value.indexOf("image")==-1;
-	}
-	else
-	{
-		I('archive_letters').disabled=!checked;
-	}
-	
-	//Disable checkboxes
-	if(!I('update_freq_incr_disable').disabled)
-		I('update_freq_incr_disable').disabled=!checked;
-		
-	if(!I('update_freq_full_disable').disabled)
-		I('update_freq_full_disable').disabled=!checked;
-		
-	if(!I('update_freq_image_incr_disable').disabled)
-		I('update_freq_image_incr_disable').disabled=!checked;
-		
-	if(!I('update_freq_image_full_disable').disabled)
-		I('update_freq_image_full_disable').disabled=!checked;
-	
-	I('backup_window').disabled=!checked;
-	
-	if(clientid)
-	{
-		saveClientSettings(clientid, true);
-	}
-}
 function changeSettingsGroupMembership(clientid)
 {
-	if(I("overwrite").checked) return;
-	
 	saveClientSettings(clientid, true);
 }
 function saveClientSettings(clientid, skip)
@@ -4017,7 +4315,12 @@ function saveClientSettings(clientid, skip)
 		pars+=getArchivePars();
 		for(var i=0;i<g.settings_list.length;++i)
 		{
-			pars+=getPar(g.settings_list[i]);
+			if(typeof g.curr_settings[g.settings_list[i]]=="undefined"
+				|| typeof g.curr_settings[g.settings_list[i]].value == "undefined")
+				continue;
+
+			pars+="&"+g.settings_list[i]+"="+encodeURIComponent(g.curr_settings[g.settings_list[i]].value);
+			pars+="&"+g.settings_list[i]+"_use="+g.curr_settings[g.settings_list[i]].use;
 		}
 	}
 	else

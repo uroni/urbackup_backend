@@ -1058,9 +1058,9 @@ void ClientMain::operator ()(void)
 void ClientMain::prepareSQL(void)
 {
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
-	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
-	q_get_setting = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,?, ?)", false);
+	q_get_setting = db->Prepare("SELECT value, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -1742,96 +1742,83 @@ void ClientMain::sendSettings(void)
 
 	if(!clientsubname.empty())
 	{
-		s_settings+="clientsubname="+(clientsubname)+"\n";
+		s_settings+="clientsubname="+clientsubname+"\n";
 		s_settings+="filebackup_group_offset="+convert(filebackup_group_offset)+"\n";
 	}
 
 	std::vector<std::string> settings_names=getSettingsList();
 	std::vector<std::string> global_settings_names=getGlobalizedSettingsList();
-	std::vector<std::string> local_settings_names=getLocalizedSettingsList();
-	std::vector<std::string> only_server_settings_names=getOnlyServerClientSettingsList();
 
 	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
-	server_settings->createSettingsReaders(settings_default, settings_client, settings_global);
+	int settings_default_id;
+	server_settings->createSettingsReaders(settings_default, settings_client, settings_global, settings_default_id);
 
 	SSettings* settings = server_settings->getSettings();
 
-	bool overwrite = settings->overwrite;
 	bool allow_overwrite = settings->allow_overwrite;
 
-	ServerBackupDao::CondString origSettingsData = backup_dao->getOrigClientSettings(clientid);
-
-	std::auto_ptr<ISettingsReader> origSettings;
-	if(origSettingsData.exists)
+	for (size_t i = 0; i < settings_names.size(); ++i)
 	{
-		origSettings.reset(Server->createMemorySettingsReader((origSettingsData.value)));
-	}
-
-	for(size_t i=0;i<settings_names.size();++i)
-	{
-		std::string key=settings_names[i];
+		std::string& key = settings_names[i];
 		std::string value;
 
-		bool globalized=std::find(global_settings_names.begin(), global_settings_names.end(), key)!=global_settings_names.end();
-		bool localized=std::find(local_settings_names.begin(), local_settings_names.end(), key)!=local_settings_names.end();
+		bool globalized = std::find(global_settings_names.begin(), global_settings_names.end(), key) != global_settings_names.end();
 
-		if( globalized || (!overwrite && !allow_overwrite && !localized) || !settings_client->getValue(key, &value) )
+		if (globalized)
 		{
-			if (globalized && settings_global.get()!=NULL)
+			if (settings_global->getValue(key, &value))
 			{
-				if (!settings_global->getValue(key, &value))
-					key = "";
-			}
-			else
-			{
-				if (!settings_default->getValue(key, &value))
-					key = "";
+				s_settings += key + "=" + value + "\n";
 			}
 		}
-
-		if(!key.empty())
+		else
 		{
-			if(!allow_overwrite)
+			std::string value_default;
+			if (settings_default_id != 0)
 			{
-				s_settings+=(key)+"="+(value)+"\n";
-			}
-			else if(origSettings.get()!=NULL)
-			{
-				std::string orig_v;
-				if( (origSettings->getValue(key, &orig_v) ||
-					origSettings->getValue(key+"_def", &orig_v) ) && orig_v!=value)
+				ServerBackupDao::SSetting setting_group = backup_dao->getServerSetting(key, 0);
+				if (setting_group.exists)
 				{
-					s_settings += key + "_orig=" + orig_v + "\n";
+					value_default = setting_group.value;
 				}
 			}
 
-			if(!overwrite &&
-				std::find(only_server_settings_names.begin(), only_server_settings_names.end(), key)!=only_server_settings_names.end())
+			ServerBackupDao::SSetting setting_group = backup_dao->getServerSetting(key, settings_default_id);
+			if (setting_group.exists
+				&& (settings_default_id == 0 || setting_group.use == c_use_value))
 			{
-				if (globalized && settings_global.get() != NULL)
-				{
-					settings_global->getValue(key, &value);
-				}
-				else
-				{
-					settings_default->getValue(key, &value);
-				}
-				key+="_def";
-				s_settings += key + "="  + value + "\n";				
+				value_default = setting_group.value;
+			}
+
+			s_settings += key + "_group=" + value_default + "\n";
+
+			ServerBackupDao::SSetting setting = backup_dao->getServerSetting(key, clientid);
+
+			if (!setting.exists)
+			{
+				s_settings += key + "=" + value_default + "\n";
 			}
 			else
 			{
-				key+="_def";
+				s_settings += key + "_home=" + setting.value + "\n";
+				s_settings += key + "_client=" + setting.value_client + "\n";
+				s_settings += key + "_use=" + convert(setting.use) + "\n";
+
+				if (setting.use == c_use_group)
+					value = value_default;
+				else if (setting.use == c_use_value)
+					value = setting.value;
+				else if (setting.use == c_use_value_client)
+					value = setting.value_client;
+				else
+					value = setting.value;
+				
 				s_settings += key + "=" + value + "\n";
 			}
 		}
 	}
 	escapeClientMessage(s_settings);
-	if(sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
-	{
-		backup_dao->insertIntoOrigClientSettings(clientid, s_settings);
-	}
-	else
+	if(!sendClientMessage("SETTINGS "+s_settings, "OK", "Sending settings to client failed", 10000))
 	{
 		do_update_settings = true;
 	}
@@ -1890,36 +1877,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 	bool mod=false;
 
-	if(protocol_versions.set_settings_version>0)
-	{
-		std::string tmp_str;
-		if(!sr->getValue("client_set_settings", &tmp_str) || tmp_str!="true" )
-		{
-			return true;
-		}
-		else
-		{
-			bool b=updateClientSetting("client_set_settings", "true");
-			if(b)
-				mod=true;
-
-			std::string settings_update_time;
-			if(sr->getValue("client_set_settings_time", &settings_update_time))
-			{
-				b=updateClientSetting("client_set_settings_time", settings_update_time);
-				if(b)
-				{
-					backup_dao->insertIntoOrigClientSettings(clientid, settings_data);
-					mod=true;
-				}
-				else
-				{
-					return true;
-				}
-			}
-		}
-	}
-
 	std::vector<std::string> only_server_settings = getOnlyServerClientSettingsList();
 	
 	for(size_t i=0;i<setting_names.size();++i)
@@ -1933,17 +1890,24 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 			continue;
 		}
 
-		if(sr->getValue(key, &value) )
-		{
-			if(internet_connection && key=="computername" &&
-				value!=clientname)
-			{
-				continue;
-			}
+		int use = c_use_value;
 
-			bool b=updateClientSetting(key, value);
-			if(b)
-				mod=true;
+		if (sr->getValue(key + "_use", &value))
+		{
+			use = watoi(value);
+
+			if (use == c_use_value_client
+				&& sr->getValue(key + "_client", &value))
+			{
+				if (internet_connection && key == "computername")
+				{
+					continue;
+				}
+
+				bool b = updateClientSetting(key, value, use);
+				if (b)
+					mod = true;
+			}
 		}
 	}
 
@@ -1955,7 +1919,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	return true;
 }
 
-bool ClientMain::updateClientSetting(const std::string &key, const std::string &value)
+bool ClientMain::updateClientSetting(const std::string &key, const std::string &value, int use)
 {
 	q_get_setting->Bind(clientid);
 	q_get_setting->Bind(key);
@@ -1967,13 +1931,16 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		q_insert_setting->Bind(key);
 		q_insert_setting->Bind(value);
 		q_insert_setting->Bind(clientid);
+		q_insert_setting->Bind(use);
 		q_insert_setting->Write();
 		q_insert_setting->Reset();
 		return true;
 	}
-	else if(res[0]["value"]!=value)
+	else if(res[0]["value"]!=value
+			|| watoi(res[0]["use"])!=use)
 	{
 		q_update_setting->Bind(value);
+		q_update_setting->Bind(use);
 		q_update_setting->Bind(key);
 		q_update_setting->Bind(clientid);
 		q_update_setting->Write();
