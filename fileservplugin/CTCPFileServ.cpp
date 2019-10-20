@@ -388,7 +388,18 @@ bool CTCPFileServ::startIpv4(_u16 tcpport)
 		return false;
 	}
 
-	listen(mSocket, 60);
+	rc = listen(mSocket, 60);
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding tcp socket to port " + convert(tcpport) + " failed (listen). Another instance of this application may already be active and bound to this port.", LL_ERROR);
+#else
+		Log("Failed. Listen to tcp socket.", LL_ERROR);
+#endif
+		closesocket(mSocket);
+		mSocket = SOCKET_ERROR;
+		return false;
+	}
 
 	return true;
 }
@@ -432,7 +443,19 @@ bool CTCPFileServ::startIpv6(_u16 tcpport)
 		return false;
 	}
 
-	listen(mSocketv6, 60);
+	rc = listen(mSocketv6, 60);
+
+	if (rc == SOCKET_ERROR)
+	{
+#ifdef LOG_SERVER
+		Server->Log("Binding tcp ipv6 socket to port " + convert(tcpport) + " failed (listen). Another instance of this application may already be active and bound to this port.", LL_ERROR);
+#else
+		Log("Failed. Listen to ipv6 tcp socket.", LL_ERROR);
+#endif
+		closesocket(mSocketv6);
+		mSocketv6 = SOCKET_ERROR;
+		return false;
+	}
 
 	return true;
 }
