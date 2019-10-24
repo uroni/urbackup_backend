@@ -32,6 +32,7 @@
 #include "snapshot_helper.h"
 #include <stack>
 #include "PhashLoad.h"
+#include "server.h"
 
 extern std::string server_identity;
 
@@ -880,8 +881,10 @@ bool FullFileBackup::doFileBackup()
 		if ( !os_sync(backuppath)
 			|| !os_sync(backuppath_hashes) )
 		{
-			ServerLogger::Log(logid, "Syncing file system failed. Backup is not completely on disk. " + os_last_error_str(), LL_ERROR);
-			c_has_error = true;
+			ServerLogger::Log(logid, "Syncing file system failed. Backup may not be completely on disk. " + os_last_error_str(), BackupServer::canSyncFs() ? LL_ERROR : LL_DEBUG);
+
+			if(BackupServer::canSyncFs())
+				c_has_error = true;
 		}
 
 		std::auto_ptr<IFile> sync_f;
