@@ -123,139 +123,96 @@ JSON::Array getAlertScripts(IDatabase* db)
 	return ret;
 }
 
-template<typename T>
-T ret_identity(const T& str)
+JSON::Object getJSONClientSettings(ServerSettings &settings)
 {
-	return str;
-}
-
-bool conv_bool_setting(const std::string& str)
-{
-	if (str == "1" || str == "true")
-		return  true;
-	else
-		return false;
-}
-
-JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
-{
-	int group_id = 0;
-	if (t_clientid > 0)
-	{
-		db_results res = db->Read("SELECT value FROM settings_db.settings WHERE clientid=" + convert(t_clientid) + " AND key='group_id'");
-		if (!res.empty())
-		{
-			group_id = watoi(res[0]["value"])*-1;
-		}
-	}
-
-	ServerSettings settings_group(db, group_id);
-
-	IQuery* q_get_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE key=? AND  clientid=" + convert(t_clientid));
-
 	JSON::Object ret;
-
-#define SET_SETTING(x, func1, func2) {\
-	q_get_setting->Bind(#x); \
-	db_results res = q_get_setting->Read(); \
-	q_get_setting->Reset(); \
-	JSON::Object j_obj; \
-	if(!res.empty()) \
-	{ \
-		j_obj.set("value", func1(res[0]["value"])); \
-		if(t_clientid>0) {\
-			j_obj.set("value_client", func1(res[0]["value_client"])); \
-			j_obj.set("value_group", func2(settings_group.getSettings()->x)); \
-			j_obj.set("use", watoi(res[0]["use"])); \
-		}\
-	} \
-	ret.set(#x, j_obj); }
-
-#define SET_SETTING_STR(x) SET_SETTING(x, ret_identity, ret_identity)
-#define SET_SETTING_INT(x) SET_SETTING(x, watoi, ret_identity)
-#define SET_SETTING_INT64(x) SET_SETTING(x, watoi64, ret_identity)
-#define SET_SETTING_BOOL(x) SET_SETTING(x, conv_bool_setting, ret_identity)
-	SET_SETTING_STR(update_freq_incr);
-	SET_SETTING_STR(update_freq_full);
-	SET_SETTING_STR(update_freq_image_full);
-	SET_SETTING_STR(update_freq_image_incr);
-	SET_SETTING_INT(max_file_incr);
-	SET_SETTING_BOOL(backup_dirs_optional);
-	SET_SETTING_INT(min_file_incr);
-	SET_SETTING_INT(max_file_full);
-	SET_SETTING_INT(min_file_full);
-	SET_SETTING_INT(min_image_incr);
-	SET_SETTING_INT(max_image_incr);
-	SET_SETTING_INT(min_image_full);
-	SET_SETTING_INT(max_image_full);
-	SET_SETTING_BOOL(allow_overwrite);
-	SET_SETTING_INT(startup_backup_delay);
-	SET_SETTING_STR(backup_window_incr_file);
-	SET_SETTING_STR(backup_window_full_file);
-	SET_SETTING_STR(backup_window_incr_image);
-	SET_SETTING_STR(backup_window_full_image);
-	SET_SETTING_STR(computername);
-	SET_SETTING_STR(virtual_clients);
-	SET_SETTING_STR(exclude_files);
-	SET_SETTING_STR(include_files);
-	SET_SETTING_STR(default_dirs);
-	SET_SETTING_BOOL(allow_config_paths);
-	SET_SETTING_BOOL(allow_starting_full_file_backups);
-	SET_SETTING_BOOL(allow_starting_incr_file_backups);
-	SET_SETTING_BOOL(allow_starting_full_image_backups);
-	SET_SETTING_BOOL(allow_starting_incr_image_backups);
-	SET_SETTING_BOOL(allow_pause);
-	SET_SETTING_BOOL(allow_log_view);
-	SET_SETTING_BOOL(allow_tray_exit);
-	SET_SETTING_STR(image_letters);
-	SET_SETTING_STR(internet_authkey);
-	SET_SETTING_BOOL(client_set_settings);
-	SET_SETTING_STR(internet_speed);
-	SET_SETTING_STR(local_speed);
-	SET_SETTING_BOOL(internet_mode_enabled);
-	SET_SETTING_BOOL(internet_compress);
-	SET_SETTING_BOOL(internet_encrypt);
-	SET_SETTING_BOOL(internet_image_backups);
-	SET_SETTING_BOOL(internet_full_file_backups);
-	SET_SETTING_BOOL(silent_update);
-	SET_SETTING_STR(client_quota);
-	SET_SETTING_STR(local_full_file_transfer_mode);
-	SET_SETTING_STR(internet_full_file_transfer_mode);
-	SET_SETTING_STR(local_incr_file_transfer_mode);
-	SET_SETTING_STR(internet_incr_file_transfer_mode);
-	SET_SETTING_STR(local_image_transfer_mode);
-	SET_SETTING_STR(internet_image_transfer_mode);
-	SET_SETTING_BOOL(end_to_end_file_backup_verification);
-	SET_SETTING_BOOL(internet_calculate_filehashes_on_client);
-	SET_SETTING_BOOL(internet_parallel_file_hashing);
-	SET_SETTING(image_file_format, settings_group.getImageFileFormatInt, settings_group.getImageFileFormatInt);
-	SET_SETTING_BOOL(internet_connect_always);
-	SET_SETTING_BOOL(verify_using_client_hashes);
-	SET_SETTING_BOOL(internet_readd_file_entries);
-	SET_SETTING_STR(local_incr_image_style);
-	SET_SETTING_STR(local_full_image_style);
-	SET_SETTING_BOOL(background_backups);
-	SET_SETTING_STR(internet_incr_image_style);
-	SET_SETTING_STR(internet_full_image_style);
-	SET_SETTING_BOOL(create_linked_user_views);
-	SET_SETTING_INT(max_running_jobs_per_client);
-	SET_SETTING_STR(cbt_volumes);
-	SET_SETTING_STR(cbt_crash_persistent_volumes);
-	SET_SETTING_BOOL(ignore_disk_errors);
-	SET_SETTING_STR(vss_select_components);
-	SET_SETTING_BOOL(allow_component_config);
-	SET_SETTING_BOOL(allow_component_restore);
-	SET_SETTING_BOOL(allow_file_restore);
-	SET_SETTING_STR(file_snapshot_groups);
-	SET_SETTING_STR(image_snapshot_groups);
-	SET_SETTING_INT64(internet_file_dataplan_limit);
-	SET_SETTING_INT64(internet_image_dataplan_limit);
-	SET_SETTING_STR(alert_script);
-	SET_SETTING_STR(alert_params);
-	SET_SETTING_BOOL(create_search_db);
+#define SET_SETTING(x) ret.set(#x, settings.getSettings()->x);
+	SET_SETTING(update_freq_incr);
+	SET_SETTING(update_freq_full);
+	SET_SETTING(update_freq_image_full);
+	SET_SETTING(update_freq_image_incr);
+	SET_SETTING(max_file_incr);
+	SET_SETTING(min_file_incr);
+	SET_SETTING(max_file_full);
+	SET_SETTING(min_file_full);
+	SET_SETTING(min_image_incr);
+	SET_SETTING(max_image_incr);
+	SET_SETTING(min_image_full);
+	SET_SETTING(max_image_full);
+	SET_SETTING(allow_overwrite);
+	SET_SETTING(startup_backup_delay);
+	SET_SETTING(backup_window_incr_file);
+	SET_SETTING(backup_window_full_file);
+	SET_SETTING(backup_window_incr_image);
+	SET_SETTING(backup_window_full_image);
+	SET_SETTING(computername);
+	SET_SETTING(virtual_clients);
+	SET_SETTING(exclude_files);
+	SET_SETTING(include_files);
+	SET_SETTING(default_dirs);
+	SET_SETTING(backup_dirs_optional);
+	SET_SETTING(allow_config_paths);
+	SET_SETTING(allow_starting_full_file_backups);
+	SET_SETTING(allow_starting_incr_file_backups);
+	SET_SETTING(allow_starting_full_image_backups);
+	SET_SETTING(allow_starting_incr_image_backups);
+	SET_SETTING(allow_pause);
+	SET_SETTING(allow_log_view);
+	SET_SETTING(allow_tray_exit);
+	SET_SETTING(image_letters);
+	SET_SETTING(internet_authkey);
+	SET_SETTING(client_set_settings);
+	SET_SETTING(internet_speed);
+	SET_SETTING(local_speed);
+	SET_SETTING(internet_mode_enabled);
+	SET_SETTING(internet_compress);
+	SET_SETTING(internet_encrypt);
+	SET_SETTING(internet_image_backups);
+	SET_SETTING(internet_full_file_backups);
+	SET_SETTING(silent_update);
+	SET_SETTING(client_quota);
+	SET_SETTING(local_full_file_transfer_mode);
+	SET_SETTING(internet_full_file_transfer_mode);
+	SET_SETTING(local_incr_file_transfer_mode);
+	SET_SETTING(internet_incr_file_transfer_mode);
+	SET_SETTING(local_image_transfer_mode);
+	SET_SETTING(internet_image_transfer_mode);
+	SET_SETTING(end_to_end_file_backup_verification);
+	SET_SETTING(internet_calculate_filehashes_on_client);
+	SET_SETTING(internet_parallel_file_hashing);
+	ret.set("image_file_format", settings.getImageFileFormat());
+	SET_SETTING(internet_connect_always);
+	SET_SETTING(verify_using_client_hashes);
+	SET_SETTING(internet_readd_file_entries);
+	SET_SETTING(local_incr_image_style);
+	SET_SETTING(local_full_image_style);
+	SET_SETTING(background_backups);
+	SET_SETTING(internet_incr_image_style);
+	SET_SETTING(internet_full_image_style);
+	SET_SETTING(create_linked_user_views);
+	SET_SETTING(max_running_jobs_per_client);
+	SET_SETTING(cbt_volumes);
+	SET_SETTING(cbt_crash_persistent_volumes);
+	SET_SETTING(ignore_disk_errors);
+	SET_SETTING(vss_select_components);
+	SET_SETTING(allow_component_config);
+	SET_SETTING(allow_component_restore);
+	SET_SETTING(allow_file_restore);
+	SET_SETTING(file_snapshot_groups);
+	SET_SETTING(image_snapshot_groups);
+	SET_SETTING(internet_file_dataplan_limit);
+	SET_SETTING(internet_image_dataplan_limit);
+	SET_SETTING(alert_script);
+	SET_SETTING(alert_params);
 #undef SET_SETTING
 	return ret;
 }
+
+struct SClientSettings
+{
+	SClientSettings(void) : overwrite(false) {}
+	bool overwrite;
+};
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
 {
@@ -337,7 +294,24 @@ void getLdapSettings(JSON::Object &obj, IDatabase *db, ServerSettings &settings)
 #undef SET_SETTING
 }
 
-void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int* use=NULL)
+SClientSettings getClientSettings(IDatabase *db, int clientid)
+{
+	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=?");
+	q->Bind(clientid);
+	db_results res=q->Read();
+	q->Reset();
+	SClientSettings ret;
+	for(size_t i=0;i<res.size();++i)
+	{
+		std::string key=res[i]["key"];
+		std::string value=res[i]["value"];
+		if(key=="overwrite" && value=="true")
+			ret.overwrite=true;
+	}
+	return ret;
+}
+
+void updateSetting(const std::string &key, const std::string &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert)
 {
 	q_get->Bind(key);
 	db_results r_get=q_get->Read();
@@ -346,16 +320,12 @@ void updateSetting(const std::string &key, const std::string &value, IQuery *q_g
 	{
 		q_insert->Bind(key);
 		q_insert->Bind(value);
-		if (use != NULL)
-			q_insert->Bind(*use);
 		q_insert->Write();
 		q_insert->Reset();
 	}
 	else if( r_get[0]["value"]!=value )
 	{
 		q_update->Bind(value);
-		if (use != NULL)
-			q_insert->Bind(*use);
 		q_update->Bind(key);
 		q_update->Write();
 		q_update->Reset();
@@ -460,6 +430,15 @@ void updateSettingsWithList(str_map &POST, IDatabase *db, const std::vector<std:
 	}
 }
 
+void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
+{
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
+
+	updateSetting("overwrite", settings.overwrite?"true":"false", q_get, q_update, q_insert);
+}
+
 void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
 {
 	IQuery *q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=" + convert(t_clientid));
@@ -478,38 +457,74 @@ void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
 void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid="+convert(t_clientid));
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,"+convert(t_clientid)+", ?)");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(t_clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(t_clientid)+")");
 
-
-	std::vector<std::string> sset_client_merge = getClientMergableSettingsList();
-	std::sort(sset_client_merge.begin(), sset_client_merge.end());
-	std::vector<std::string> sset_client_use = getClientConfigurableSettingsList();
-	std::sort(sset_client_use.begin(), sset_client_use.end());
 	std::vector<std::string> sset=getSettingsList();
+	sset.push_back("allow_overwrite");
 	for(size_t i=0;i<sset.size();++i)
 	{
 		str_map::iterator it=POST.find(sset[i]);
-		str_map::iterator it_used = POST.find(sset[i] + "_use");
 		if(it!=POST.end())
 		{
-			int use = c_use_value;
-			if (it_used != POST.end())
-				use = watoi(it_used->second);
+			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
+		}
+	}
+}
 
-			if (use != c_use_value
-				&& !std::binary_search(sset_client_use.begin(), sset_client_use.end(), sset[i]))
+void propagateGlobalClientSettings(ServerBackupDao& backupdao, IDatabase *db, str_map &POST)
+{
+	std::vector<int> clientids = backupdao.getClientIds();
+
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)");
+
+	std::vector<std::string> sset=getSettingsList();
+	sset.push_back("allow_overwrite");
+
+	std::map<std::string, std::string> orig_settings;
+
+	{
+		ServerSettings server_settings(db);
+		JSON::Object settings_json = getJSONClientSettings(server_settings);
+
+		for(size_t i=0;i<sset.size();++i)
+		{
+			JSON::Value val = settings_json.get(sset[i]);
+			if(val.getType()!=JSON::null_type)
 			{
-				use = c_use_value;
+				orig_settings[sset[i]]=val.toString();
 			}
+		}
+	}	
 
-			if (use == c_use_value_merge
-				&& !std::binary_search(sset_client_merge.begin(), sset_client_merge.end(), sset[i]))
+	for(size_t i=0;i<clientids.size();++i)
+	{
+		int clientid = clientids[i];
+
+		ServerBackupDao::CondString server_overwrite = backupdao.getClientSetting("overwrite", clientid);
+
+		if(server_overwrite.exists &&
+			server_overwrite.value=="true")
+		{
+			continue;
+		}
+
+		for(size_t i=0;i<sset.size();++i)
+		{
+			ServerBackupDao::CondString client_val = backupdao.getClientSetting(sset[i], clientid);
+
+			str_map::iterator it;
+			str_map::iterator orig_val;
+			if(client_val.exists &&
+				(orig_val=orig_settings.find(sset[i]))!=orig_settings.end() &&
+				orig_val->second==client_val.value &&
+				(it=POST.find(sset[i]))!=POST.end() &&
+				it->second!=client_val.value)
 			{
-				use = c_use_value;
+				updateSetting(sset[i], it->second, q_get, q_update, q_insert, clientid);
 			}
-
-			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert, &use);
 		}
 	}
 }
@@ -832,8 +847,6 @@ ACTION_IMPL(settings)
 			}
 
 			JSON::Array clients;
-
-			IQuery *q_has_overwrite = db->Prepare("SELECT 1 FROM settings_db.settings WHERE clientid=? AND key!='internet_authkey' AND key!='client_access_key' AND key!='computername' AND key!='group_id' AND key!='group_name' LIMIT 1");
 			
 			const std::string clients_tab = " (clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON "
 				"c.groupid = cg.id) ";
@@ -841,7 +854,6 @@ ACTION_IMPL(settings)
 			{
 				IQuery *q=db->Prepare("SELECT c.id AS clientid, c.name AS clientname, groupid, cg.name AS groupname FROM " + clients_tab
 					 + "ORDER BY c.groupid, c.name");
-				
 				db_results res=q->Read();
 				q->Reset();
 				for(size_t i=0;i<res.size();++i)
@@ -855,12 +867,7 @@ ACTION_IMPL(settings)
 					u.set("name", res[i]["clientname"]);
 					u.set("group", watoi(res[i]["groupid"]));
 					u.set("groupname", res[i]["groupname"]);
-
-					q_has_overwrite->Bind(lclientid);
-					db_results res_overwrite = q_has_overwrite->Read();
-					q_has_overwrite->Reset();
-
-					u.set("override", !res_overwrite.empty());
+					u.set("override", client_settings.getSettings()->overwrite);
 					clients.add(u);
 				}
 			}
@@ -889,12 +896,7 @@ ACTION_IMPL(settings)
 					u.set("name", it->second["name"]);
 					u.set("group", it->first);
 					u.set("groupname", it->second["groupname"]);
-
-					q_has_overwrite->Bind(lclientid);
-					db_results res_overwrite = q_has_overwrite->Read();
-					q_has_overwrite->Reset();
-
-					u.set("override", !res_overwrite.empty());
+					u.set("override", client_settings.getSettings()->overwrite);
 					clients.add(u);
 				}
 			}
@@ -1002,17 +1004,26 @@ ACTION_IMPL(settings)
 				}
 			}
 			if(r_ok)
-			{			
+			{
+				SClientSettings s;
+				
 				if(sa=="clientsettings_save")
 				{
-					db->BeginWriteTransaction();
-					updateClientSettings(t_clientid, POST, db);
-					if (POST["no_ok"] != "true")
+					s.overwrite=(POST["overwrite"]=="true");
+					if(s.overwrite)
 					{
-						updateArchiveSettings(t_clientid, POST, db);
+						db->BeginWriteTransaction();
+						updateClientSettings(t_clientid, POST, db);
+						if (POST["no_ok"] != "true")
+						{
+							updateArchiveSettings(t_clientid, POST, db);
+						}
+						db->EndTransaction();
 					}
-					db->EndTransaction();
 					
+					db->BeginWriteTransaction();
+					saveClientSettings(s, db, t_clientid);
+					db->EndTransaction();
 					if(POST["no_ok"]!="true")
 					{
 						ret.set("saved_ok", true);
@@ -1032,10 +1043,12 @@ ACTION_IMPL(settings)
 					}
 
 					updateOnlineClientSettings(db, t_clientid);
+				}
 				
 				ServerSettings settings(db, t_clientid);
 				
-				JSON::Object obj=getJSONClientSettings(db, t_clientid);
+				JSON::Object obj=getJSONClientSettings(settings);
+				s=getClientSettings(db, t_clientid);				
 				obj.set("clientid", t_clientid);
 				obj.set("alert_scripts", getAlertScripts(db));
 				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
@@ -1054,6 +1067,7 @@ ACTION_IMPL(settings)
 					obj.set("main_client", client_name.virtualmain.empty());
 					obj.set("clientname", client_name.name);
 					obj.set("memberof", backupdao.getClientGroup(t_clientid).value);
+					obj.set("overwrite", s.overwrite);
 				}
 
 				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled()
@@ -1221,6 +1235,7 @@ ACTION_IMPL(settings)
 			{
 				ServerSettings serv_settings(db);
 				db->BeginWriteTransaction();
+				propagateGlobalClientSettings(backupdao, db, POST);
 				updateClientSettings(0, POST, db);
 				updateArchiveSettings(0, POST, db);
 				bool changed_backupfolder = false;
@@ -1244,7 +1259,8 @@ ACTION_IMPL(settings)
 				sa="general";
 				ret.set("sa", sa);
 
-				JSON::Object obj=getJSONClientSettings(db, 0);
+				ServerSettings serv_settings(db);
+				JSON::Object obj=getJSONClientSettings(serv_settings);
 				obj.set("alert_scripts", getAlertScripts(db));
 				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
 				{
