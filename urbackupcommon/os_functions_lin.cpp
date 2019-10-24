@@ -1326,7 +1326,8 @@ bool os_sync(const std::string & path)
 	{
 		if(ioctl(fd, BTRFS_IOC_SYNC, NULL)==-1)
 		{
-			if(errno!=ENOTTY && errno!=ENOSYS)
+			if(errno!=ENOTTY && errno!=ENOSYS 
+				&& errno!=EINVAL)
 			{
 				close(fd);
 				return false;
@@ -1341,8 +1342,7 @@ bool os_sync(const std::string & path)
 #if defined(HAVE_SYNCFS)
 		if(syncfs(fd)!=0)
 		{
-			if(errno==ENOSYS
-				|| errno==EINVAL)
+			if(errno==ENOSYS)
 			{
 				close(fd);
 				sync();
