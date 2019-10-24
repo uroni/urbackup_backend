@@ -204,7 +204,7 @@ void ClientMain::operator ()(void)
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedFreeMemory free_db_memory(db);
 
-	std::auto_ptr<ServerSettings> server_settings(new ServerSettings(db));
+	server_settings.reset(new ServerSettings(db));
 
 	if (tooManyClients(db, clientname, server_settings.get()))
 	{
@@ -1843,7 +1843,7 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	std::string identity = getIdentity();
 
 	FileClient fc(false, identity, protocol_versions.filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
-	_u32 rc=getClientFilesrvConnection(&fc, server_settings);
+	_u32 rc=getClientFilesrvConnection(&fc, server_settings.get());
 	if(rc!=ERR_CONNECTED)
 	{
 		ServerLogger::Log(logid, "Getting Client settings of "+clientname+" failed - CONNECT error", LL_ERROR);
@@ -2115,7 +2115,7 @@ void ClientMain::checkClientVersion(void)
 			size_t datasize=3*sizeof(_u32)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
 			CTCPStack tcpstack(internet_connection);
-			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings, 10000));
+			std::auto_ptr<IPipe> cc(getClientCommandConnection(server_settings.get(), 10000));
 			if(cc.get()==NULL)
 			{
 				ServerLogger::Log(logid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
@@ -2349,7 +2349,7 @@ void ClientMain::updateClientAccessKey()
 
 bool ClientMain::isDataplanOkay(bool file)
 {
-	return isDataplanOkay(server_settings, file);
+	return isDataplanOkay(server_settings.get(), file);
 }
 
 bool ClientMain::isOnline(ServerChannelThread& channel_thread)

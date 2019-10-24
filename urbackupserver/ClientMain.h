@@ -335,7 +335,7 @@ private:
 
 	int clientid;
 
-	ServerSettings *server_settings;
+	std::auto_ptr<ServerSettings> server_settings;
 
 	IQuery *q_update_lastseen;
 	IQuery *q_update_setting;
