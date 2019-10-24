@@ -50,7 +50,6 @@ public:
 
 	virtual bool Import(const std::string &pFile);
 	virtual bool Dump(const std::string &pFile);
-	virtual bool Recover(const std::string &pFile);
 	
 	virtual std::string getEngineName(void);
 
