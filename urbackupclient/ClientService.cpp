@@ -1593,6 +1593,17 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 		}
 	}	
 #endif
+
+	if (updateDefaultDirsSetting(db, all_virtual_clients, group_offset))
+	{
+		IScopedLock lock(backup_mutex);
+		for (size_t o = 0; o<channel_pipes.size(); ++o)
+		{
+			CTCPStack tmpstack(channel_pipes[o].internet_connection);
+			tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
+		}
+	}
+
 	db->destroyAllQueries();
 	return true;
 }
@@ -1648,7 +1659,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::string settings_fn="urbackup/data/settings.cfg";
-	std::string settings_server_fn="urbackup/data/settings_"+conv_filename(server_token)+".cfg";
 	std::string clientsubname;
 	std::string str_group_offset;
 	int group_offset=0;
@@ -1656,7 +1666,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
 	{
 		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
-		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+ conv_filename(server_token)+".cfg";
 		group_offset = atoi(str_group_offset.c_str());
 
 		db_results res_old_client = db->Read("SELECT virtual_client FROM virtual_client_group_offsets WHERE group_offset=" + convert(group_offset));
@@ -1674,197 +1683,96 @@ void ClientConnector::updateSettings(const std::string &pData)
 		db->destroyQuery(q);
 	}
 
-	bool reset_settings = false;
-	if (new_settings->getValue("reset_client_settings", "") == "1")
-	{
-		reset_settings = true;
-	}
-
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
-	std::vector<std::string> settings_names=getSettingsList();
-	settings_names.push_back("client_set_settings");
-	settings_names.push_back("client_set_settings_time");
-	std::string new_settings_str="";
-	bool mod=false;
-	std::string tmp_str;
-	bool client_set_settings=false;
-	if(curr_settings->getValue("client_set_settings", &tmp_str) && tmp_str=="true")
-	{
-		if( !new_settings->getValue("allow_overwrite", &tmp_str) )
-			new_settings->getValue("allow_overwrite_def", &tmp_str);
+	std::vector<std::string> critical_settings;
+	critical_settings.push_back("internet_mode_enabled");
+	critical_settings.push_back("internet_server");
+	critical_settings.push_back("internet_server_port");
+	critical_settings.push_back("internet_server_proxy");
+	critical_settings.push_back("internet_authkey");
+	critical_settings.push_back("computername");
 
-		if( tmp_str!="false" )
+	bool mod = false;
+
+	std::string settings_add="\n";
+	for (size_t i = 0; i < critical_settings.size(); ++i)
+	{
+		std::string curr_v;
+		std::string new_v;
+		if (curr_settings->getValue(critical_settings[i], &curr_v)
+			&& !new_settings->getValue(critical_settings[i], &new_v) )
 		{
-			client_set_settings=true;
+			settings_add += critical_settings[i] + "=" + curr_v + "\n";
+			mod = true;
+		}
+		else if (curr_v != new_v && new_v.empty()
+			&& critical_settings[i] != "internet_server_proxy")
+		{
+			settings_add += critical_settings[i] + "=" + curr_v + "\n";
+			mod = true;
 		}
 	}
 
-	std::vector<std::string> only_server_settings_names;
-	if (client_set_settings)
+
+	int default_dirs_use = new_settings->getValue("default_dirs.use", 0);
+	std::vector<std::string> default_dirs_toks;
+
+	if (default_dirs_use & c_use_group)
 	{
-		only_server_settings_names = getOnlyServerClientSettingsList();
+		std::string val;
+		Tokenize(new_settings->getValue("default_dirs.group", ""), default_dirs_toks, ";");
+	}
+	if (default_dirs_use & c_use_value)
+	{
+		std::string val;
+		std::vector<std::string> toks;
+		Tokenize(new_settings->getValue("default_dirs.home", ""), toks, ";");
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
+	}
+	if (default_dirs_use & c_use_value_client)
+	{
+		std::string val;
+		std::vector<std::string> toks;
+		Tokenize(new_settings->getValue("default_dirs.client", ""), toks, ";");
+		default_dirs_toks.insert(default_dirs_toks.end(), toks.begin(), toks.end());
 	}
 
-	for(size_t i=0;i<settings_names.size();++i)
+	if(!default_dirs_toks.empty())
 	{
-		std::string key=settings_names[i];
-
-		std::string v;
-		std::string def_v;
-		curr_settings->getValue(key+"_def", def_v);
-
-		if(reset_settings
-			|| !curr_settings->getValue(key, &v) )
+		str_map args;
+		for(size_t i=0;i<default_dirs_toks.size();++i)
 		{
-			std::string nv;
-			std::string new_key;
-			if(new_settings->getValue(key, &nv) )
+			std::string path = UnescapeParamString(trim(default_dirs_toks[i]));
+			std::string name;
+			int group = c_group_default;
+			if(path.find("|")!=std::string::npos)
 			{
-				if (nv.empty()
-					&& reset_settings
-					&& key == "computername"
-					&& curr_settings->getValue(key, &v) )
+				std::vector<std::string> toks;
+				Tokenize(path, toks, "|");
+				path = toks[0];
+				name = toks[1];
+				if(toks.size()>2)
 				{
-					new_settings_str += key + "=" + v + "\n";
-					mod = true;
-				}
-				else
-				{
-					new_settings_str += key + "=" + nv + "\n";
-					mod = true;
+					group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
 				}
 			}
-			if(new_settings->getValue(key+"_def", &nv) )
-			{
-				if (nv.empty()
-					&& reset_settings
-					&& key == "computername"
-					&& curr_settings->getValue(key + "_def", &v))
-				{
-					new_settings_str += key + "_def=" + v + "\n";
-					mod = true;
-				}
-				else
-				{
-					new_settings_str += key + "_def=" + nv + "\n";
-					if (reset_settings
-						|| nv != def_v)
-					{
-						mod = true;
-					}
-				}
-			}	
-		}
-		else
-		{
-			if(client_set_settings)
-			{
-				std::string orig_v;
-				std::string nv;
-				if( ( (new_settings->getValue(key+"_orig", &orig_v) &&
-					   orig_v==v )
-					   || std::find(only_server_settings_names.begin(), only_server_settings_names.end(),
-						            key) != only_server_settings_names.end() )
-					 && (new_settings->getValue(key, &nv) ||
-					  new_settings->getValue(key+"_def", &nv) ) 
-				   )
-				{
-					new_settings_str+=key+"="+nv+"\n";
-					if(nv!=v)
-					{
-						mod=true;
-					}
-				}
-				else
-				{
-					new_settings_str+=key+"="+v+"\n";
-				}
-			}
-			else
-			{
-				std::string nv;
-				if(new_settings->getValue(key, &nv) )
-				{
-					if( (key=="internet_server" || key=="internet_server_def") && nv.empty() && !v.empty()
-						|| (key=="computername" || key=="computername_def" ) && nv.empty() && !v.empty())
-					{
-						new_settings_str+=key+"="+v+"\n";
-					}
-					else
-					{
-						new_settings_str+=key+"="+nv+"\n";
-						if(v!=nv)
-						{
-							mod=true;
-						}
-					}
-				}
-				else if( (key == "internet_server" || key == "internet_server_def") && !v.empty()
-					|| (key == "computername" || key == "computername_def") && !v.empty())
-				{
-					new_settings_str+=key+"="+v+"\n";
-				}
+			args["dir_"+convert(i)]=path;
+			if(!name.empty())
+				args["dir_"+convert(i)+"_name"]=name;
 
-				if(new_settings->getValue(key+"_def", &nv) )
-				{
-					new_settings_str+=key+"_def="+nv+"\n";
-					if(nv!=def_v)
-					{
-						mod=true;
-					}
-				}
-			}
+			args["dir_"+convert(i)+"_group"]=convert(group);
 		}
+
+		saveBackupDirs(args, true, group_offset);
 	}
 
-	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0 AND tgroup=?", false);
-	q->Bind(group_offset);
-	db_results res=q->Read();
-	db->destroyQuery(q);
-	if(res.empty())
-	{
-		std::string default_dirs;
-		if(!new_settings->getValue("default_dirs", &default_dirs) )
-			new_settings->getValue("default_dirs_def", &default_dirs);
-
-		if(!default_dirs.empty())
-		{
-			std::vector<std::string> def_dirs_toks;
-			Tokenize(default_dirs, def_dirs_toks, ";");
-			str_map args;
-			for(size_t i=0;i<def_dirs_toks.size();++i)
-			{
-				std::string path=trim(def_dirs_toks[i]);
-				std::string name;
-				int group = c_group_default;
-				if(path.find("|")!=std::string::npos)
-				{
-					std::vector<std::string> toks;
-					Tokenize(path, toks, "|");
-					path = toks[0];
-					name = toks[1];
-					if(toks.size()>2)
-					{
-						group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
-					}
-				}
-				args["dir_"+convert(i)]=path;
-				if(!name.empty())
-					args["dir_"+convert(i)+"_name"]=name;
-
-				args["dir_"+convert(i)+"_group"]=convert(group);
-			}
-
-			saveBackupDirs(args, true, group_offset);
-		}
-	}
-
-	if(mod)
+	if(mod
+		|| getFile(settings_fn)!= pData)
 	{
 		std::auto_ptr<IFile> newf(Server->openFile(settings_fn + ".new", MODE_WRITE));
 		if (newf.get() != NULL
-			&& newf->Write(new_settings_str) == new_settings_str.size()
+			&& newf->Write(pData+ settings_add) == pData.size()+settings_add.size()
 			&& newf->Sync())
 		{
 			newf.reset();
@@ -1875,58 +1783,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 		CWData data;
 		data.addChar(IndexThread::IndexThreadAction_UpdateCbt);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-	}
-
-	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader(settings_server_fn));
-	std::vector<std::string> global_settings = getGlobalizedSettingsList();
-
-	std::string new_token_settings="";
-
-	bool mod_server_settings=false;
-	for(size_t i=0;i<global_settings.size();++i)
-	{
-		std::string key=global_settings[i];
-
-		std::string v;
-		bool curr_v=curr_server_settings->getValue(key, &v);
-		std::string nv;
-		bool new_v=new_settings->getValue(key, &nv);
-
-		if(reset_settings
-			|| (!curr_v && new_v) )
-		{
-			new_token_settings+=key+"="+nv;
-			mod_server_settings=true;
-		}
-		else if(curr_v)
-		{
-			if(new_v)
-			{
-				new_token_settings+=key+"="+nv;
-
-				if(nv!=v)
-				{
-					mod_server_settings=true;
-				}
-			}
-			else
-			{
-				new_token_settings+=key+"="+v;
-			}
-		}
-	}
-
-	if(mod_server_settings)
-	{
-		std::auto_ptr<IFile> newf(Server->openFile(settings_server_fn + ".new", MODE_WRITE));
-		if (newf.get() != NULL
-			&& newf->Write(new_token_settings)==new_token_settings.size()
-			&& newf->Sync() )
-		{
-			newf.reset();
-			os_rename_file(settings_server_fn + ".new",
-				settings_server_fn);
-		}
 	}
 }
 
@@ -1944,8 +1800,6 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		data.addUInt(0);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
-
-	bool keep_old_settings = (new_settings->getValue("keep_old_settings", "")=="true");
 
 	std::string settings_fn="urbackup/data/settings.cfg";
 	std::string clientsubname;
@@ -1996,11 +1850,6 @@ void ClientConnector::replaceSettings(const std::string &pData)
 
 		for(size_t i=0;i<new_keys.size();++i)
 		{
-			if(new_keys[i]=="client_set_settings" ||
-				new_keys[i]=="client_set_settings_time" ||
-				new_keys[i]=="keep_old_settings" )
-				continue;
-
 			std::string val;
 			if(new_settings->getValue(new_keys[i], &val))
 			{
@@ -2008,7 +1857,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 			}
 		}
 
-		if (keep_old_settings && old_settings.get() != NULL)
+		if (old_settings.get() != NULL)
 		{
 			std::vector<std::string> old_keys = old_settings->getKeys();
 
@@ -2026,9 +1875,6 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		}
 
 		InternetClient::updateSettings();
-
-		new_data+="client_set_settings=true\n";
-		new_data+="client_set_settings_time="+convert(Server->getTimeSeconds())+"\n";
 
 		writestring(new_data, settings_fn);
 
@@ -3573,6 +3419,148 @@ void ClientConnector::refreshSessionFromChannel(const std::string& endpoint_name
 			break;
 		}
 	}
+}
+
+bool ClientConnector::updateDefaultDirsSetting(IDatabase* db, bool all_virtual_clients, int group_offset)
+{
+	db_results res_virtual_clients;
+	if(all_virtual_clients)
+		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets");
+	else
+		db->Read("SELECT virtual_client, group_offset FROM virtual_client_group_offsets WHERE group_offset="+convert(group_offset));
+
+	if (all_virtual_clients || group_offset == 0)
+	{
+		db_single_result res_def_client;
+		res_def_client["group_offset"] = "0";
+		res_virtual_clients.push_back(res_def_client);
+	}
+
+
+	bool mod = false;
+	for (size_t i = 0; i < res_virtual_clients.size(); ++i)
+	{
+		db_single_result& res_virtual_client = res_virtual_clients[i];
+
+		int curr_group_offset = watoi(res_virtual_client["group_offset"]);
+
+		db_results res_paths = db->Read("SELECT path, name, optional, server_default FROM backupdirs WHERE symlinked=0 AND tgroup=" + convert(curr_group_offset));
+
+		int default_dirs_use = c_use_value_client;
+		std::string default_dirs;
+		for (size_t j = 0; j < res_paths.size(); ++j)
+		{
+			db_single_result& res_path = res_paths[j];
+
+			if (res_path["server_default"] != "0")
+			{
+				default_dirs_use |= c_use_group | c_use_value;
+				continue;
+			}
+			
+			int optional = watoi(res_path["optional"]);
+
+			std::vector<std::pair<int, std::string> > flag_mapping = getFlagStrMapping();
+
+			std::string str_flags;
+			std::string str_flags_default;
+			for (size_t j = 0; j < flag_mapping.size(); ++j)
+			{
+				if (optional & flag_mapping[j].first)
+				{
+					if (!str_flags.empty()) str_flags += ",";
+					str_flags += flag_mapping[j].second;
+				}
+
+				if (EBackupDirFlags_Default&flag_mapping[j].first)
+				{
+					if (!str_flags_default.empty()) str_flags_default += ",";
+					str_flags_default += flag_mapping[j].second;
+				}
+			}
+
+			if (!default_dirs.empty())
+				default_dirs += ";";
+
+			if (!str_flags.empty()
+				&& str_flags != str_flags_default)
+				str_flags = "/" + str_flags;
+			else if (str_flags == str_flags_default)
+				str_flags.clear();
+
+			default_dirs += EscapePathParamString(res_path["path"])+"|"+EscapePathParamString(res_path["name"]) + str_flags;
+		}
+
+		std::string settings_fn = "urbackup/data/settings.cfg";
+		if (curr_group_offset !=0)
+		{
+			settings_fn = "urbackup/data/settings_" + conv_filename(res_virtual_client["virtual_client"]) + ".cfg";
+		}
+
+		std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
+
+		if (curr_settings.get() != NULL)
+		{
+			str_map settings_repl;
+			if (curr_settings->getValue("default_dirs.use", 0) == 0)
+			{
+				settings_repl["default_dirs.use"] = convert(default_dirs_use);	
+				mod = true;
+			}
+
+			if (curr_settings->getValue("default_dirs.client", "") != default_dirs)
+			{
+				settings_repl["default_dirs.client"] = default_dirs;
+				mod = true;
+			}
+
+			if (!settings_repl.empty())
+			{
+				std::vector<std::string> keys = curr_settings->getKeys();
+
+				for (str_map::iterator it = settings_repl.begin(); it != settings_repl.end(); ++it)
+				{
+					if (std::find(keys.begin(), keys.end(), it->first) == keys.end())
+						keys.push_back(it->first);
+				}
+
+				std::string new_data;
+
+				for (size_t i = 0; i < keys.size(); ++i)
+				{
+					std::string val;
+					str_map::iterator it = settings_repl.find(keys[i]);
+					if (it != settings_repl.end())
+						val = it->second;
+					else
+						curr_settings->getValue(keys[i], &val);
+
+					new_data += keys[i] + "=" + val + "\n";
+				}
+
+				std::auto_ptr<IFile> settings_f(Server->openFile(settings_fn+".new_2", MODE_WRITE));
+
+				if (settings_f.get() != NULL)
+				{
+					if (settings_f->Write(new_data) == new_data.size()
+						&& settings_f->Sync())
+					{
+						settings_f.reset();
+						if (!os_rename_file(settings_fn + ".new_2", settings_fn))
+						{
+							Server->Log("Error renaming " + settings_fn + ".new_2 to " + settings_fn + ". " + os_last_error_str(), LL_ERROR);
+						}
+					}
+					else
+					{
+						Server->Log("Error writing new settings to " + settings_fn + ".new_2. " + os_last_error_str(), LL_ERROR);
+					}
+				}
+			}
+		}
+	}
+
+	return mod;
 }
 
 void ClientConnector::timeoutAsyncFileIndex()

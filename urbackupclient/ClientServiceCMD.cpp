@@ -747,7 +747,7 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,name,path,tgroup,optional FROM backupdirs WHERE symlinked=0");
+	IQuery *q=db->Prepare("SELECT id, name, path, tgroup, optional, server_default FROM backupdirs WHERE symlinked=0");
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
 
@@ -769,6 +769,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 			cdir.set("path", res[i]["path"]);
 			int tgroup = watoi(res[i]["tgroup"]);
 			cdir.set("group", tgroup%c_group_size);
+			cdir.set("server_default", watoi(res[i]["server_default"]));
 
 			if (tgroup < 0) continue;
 			
@@ -787,16 +788,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 			int flags = watoi(res[i]["optional"]);
 			
-			std::vector<std::pair<int, std::string> > flag_mapping;
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_Optional, "optional"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_FollowSymlinks, "follow_symlinks"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_SymlinksOptional, "symlinks_optional"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_OneFilesystem, "one_filesystem"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_RequireSnapshot, "require_snapshot"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_KeepFiles, "keep"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_ShareHashes, "share_hashes"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_Required, "required"));
-			flag_mapping.push_back(std::make_pair(EBackupDirFlag_IncludeDirectorySymlinks, "include_dir_symlinks"));
+			std::vector<std::pair<int, std::string> > flag_mapping = getFlagStrMapping();
 			
 
 			std::string str_flags;

@@ -686,6 +686,49 @@ std::string EscapeParamString(const std::string &pStr)
 	return ret;
 }
 
+std::string EscapePathParamString(const std::string & pStr)
+{
+	std::string ret;
+	ret.reserve(pStr.size());
+	for (size_t i = 0; i<pStr.size(); ++i)
+	{
+		switch (pStr[i])
+		{
+		case '%': ret += "%25"; break;
+		case '/': ret += "%2F"; break;
+		case '|': ret += "%7C"; break;
+		case ';': ret += "%3B"; break;
+		default: ret += pStr[i]; break;
+		}
+	}
+	return ret;
+}
+
+std::string UnescapeParamString(const std::string & str)
+{
+	char xc = '%';
+	std::string ret;
+	ret.reserve(str.size());
+	for (size_t i = 0; i<str.size(); i++)
+	{
+		if (str[i] == xc && i + 2<str.size())
+		{
+			std::string data; data.push_back(str[i + 1]); data.push_back(str[i + 2]);
+			unsigned char ch = (unsigned char)hexToULong(data);
+			if (ch != 0)
+			{
+				ret += ch;
+			}
+			i += 2;
+		}
+		else
+		{
+			ret += str[i];
+		}
+	}
+	return ret;
+}
+
 void EscapeCh(std::string &pStr, char ch)
 {
 	std::string ins;

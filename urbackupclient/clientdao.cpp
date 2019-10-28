@@ -970,3 +970,18 @@ void ClientDAO::resetAllHardlinks(void)
 	}
 	q_resetAllHardlinks->Write();
 }
+
+std::vector<std::pair<int, std::string>> getFlagStrMapping()
+{
+	std::vector<std::pair<int, std::string> > flag_mapping;
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_Optional, "optional"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_FollowSymlinks, "follow_symlinks"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_SymlinksOptional, "symlinks_optional"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_OneFilesystem, "one_filesystem"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_RequireSnapshot, "require_snapshot"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_KeepFiles, "keep"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_ShareHashes, "share_hashes"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_Required, "required"));
+	flag_mapping.push_back(std::make_pair(EBackupDirFlag_IncludeDirectorySymlinks, "include_dir_symlinks"));
+	return flag_mapping;
+}

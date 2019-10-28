@@ -80,6 +80,8 @@ std::string PrettyPrintBytes(_i64 bytes);
 std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(int64 ms);
 std::string EscapeParamString(const std::string &pStr);
+std::string EscapePathParamString(const std::string &pStr);
+std::string UnescapeParamString(const std::string& str);
 
 namespace
 {

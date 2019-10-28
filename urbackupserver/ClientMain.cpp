@@ -1058,9 +1058,9 @@ void ClientMain::operator ()(void)
 void ClientMain::prepareSQL(void)
 {
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=datetime(?, 'unixepoch') WHERE id=?", false);
-	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,?, ?)", false);
-	q_get_setting = db->Prepare("SELECT value, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value_client=?, use=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value_client, clientid, use) VALUES (?,?,?, ?)", false);
+	q_get_setting = db->Prepare("SELECT value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -1753,6 +1753,8 @@ void ClientMain::sendSettings(void)
 	int settings_default_id;
 	server_settings->createSettingsReaders(settings_default, settings_client, settings_global, settings_default_id);
 
+	ISettingsReader* settings_global_ptr = settings_global.get() != NULL ? settings_global.get() : settings_default.get();
+
 	SSettings* settings = server_settings->getSettings();
 
 	bool allow_overwrite = settings->allow_overwrite;
@@ -1766,7 +1768,7 @@ void ClientMain::sendSettings(void)
 
 		if (globalized)
 		{
-			if (settings_global->getValue(key, &value))
+			if (settings_global_ptr->getValue(key, &value))
 			{
 				s_settings += key + "=" + value + "\n";
 			}
@@ -1790,7 +1792,7 @@ void ClientMain::sendSettings(void)
 				value_default = setting_group.value;
 			}
 
-			s_settings += key + "_group=" + value_default + "\n";
+			s_settings += key + ".group=" + value_default + "\n";
 
 			ServerBackupDao::SSetting setting = backup_dao->getServerSetting(key, clientid);
 
@@ -1800,10 +1802,18 @@ void ClientMain::sendSettings(void)
 			}
 			else
 			{
-				s_settings += key + "_home=" + setting.value + "\n";
-				s_settings += key + "_client=" + setting.value_client + "\n";
-				s_settings += key + "_use=" + convert(setting.use) + "\n";
-
+				if (key == "computername"
+					|| key == "internet_authkey")
+				{
+					setting.use = c_use_value;
+				}
+				else
+				{
+					s_settings += key + ".home=" + setting.value + "\n";
+					s_settings += key + ".client=" + setting.value_client + "\n";
+					s_settings += key + ".use=" + convert(setting.use) + "\n";
+				}
+				
 				if (setting.use == c_use_group)
 					value = value_default;
 				else if (setting.use == c_use_value)
@@ -1892,12 +1902,12 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 		int use = c_use_value;
 
-		if (sr->getValue(key + "_use", &value))
+		if (sr->getValue(key + ".use", &value))
 		{
 			use = watoi(value);
 
-			if (use == c_use_value_client
-				&& sr->getValue(key + "_client", &value))
+			if ( (use & c_use_value_client)>0
+				&& sr->getValue(key + ".client", &value))
 			{
 				if (internet_connection && key == "computername")
 				{
@@ -1936,7 +1946,7 @@ bool ClientMain::updateClientSetting(const std::string &key, const std::string &
 		q_insert_setting->Reset();
 		return true;
 	}
-	else if(res[0]["value"]!=value
+	else if(res[0]["value_client"]!=value
 			|| watoi(res[0]["use"])!=use)
 	{
 		q_update_setting->Bind(value);

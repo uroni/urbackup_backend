@@ -42,6 +42,11 @@ enum EBackupDirFlag
 	EBackupDirFlag_IncludeDirectorySymlinks = 256
 };
 
+const int EBackupDirFlags_Default = static_cast<int>(EBackupDirFlag_FollowSymlinks) | static_cast<int>(EBackupDirFlag_SymlinksOptional) | static_cast<int>(EBackupDirFlag_ShareHashes);
+
+std::vector<std::pair<int, std::string> > getFlagStrMapping();
+
+
 enum EBackupDirServerDefault
 {
 	EBackupDirServerDefault_No = 0,

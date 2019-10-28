@@ -358,7 +358,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				data->getStr(&ident);
 				if(!FileServ::checkIdentity(ident))
 				{
-					Log("Identity check failed -2", LL_DEBUG);
+					Log("Identity check failed -2 ("+ ident+")", LL_DEBUG);
 					return false;
 				}
 #endif

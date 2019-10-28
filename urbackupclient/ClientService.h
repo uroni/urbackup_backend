@@ -50,6 +50,10 @@ enum RunningAction
 	RUNNING_RESTORE_IMAGE=9
 };
 
+const int c_use_group = 1;
+const int c_use_value = 2;
+const int c_use_value_client = 4;
+
 struct SRunningProcess
 {
 	SRunningProcess()
@@ -232,6 +236,8 @@ public:
 	static void timeoutBackupImmediate(int64 start_timeout, int64 resume_timeout, RunningAction ra, bool& has_backup, int64& starttime);
 
 	static std::string removeIllegalCharsFromBackupName(std::string in);
+
+	static bool updateDefaultDirsSetting(IDatabase *db, bool all_virtual_clients, int group_offset);
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);

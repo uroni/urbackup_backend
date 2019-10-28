@@ -496,7 +496,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 	for(size_t i=0;i<sset.size();++i)
 	{
 		str_map::iterator it=POST.find(sset[i]);
-		str_map::iterator it_used = POST.find(sset[i] + "_use");
+		str_map::iterator it_used = POST.find(sset[i] + ".use");
 		if(it!=POST.end())
 		{
 			int use = c_use_value;

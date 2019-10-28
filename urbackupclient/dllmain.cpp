@@ -636,6 +636,11 @@ void update_client26_27(IDatabase* db)
 	db->Write("ALTER TABLE files ADD generation INTEGER DEFAULT 0");
 }
 
+void update_client27_28(IDatabase* db)
+{
+	ClientConnector::updateDefaultDirsSetting(db, true, 0);
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -647,7 +652,7 @@ bool upgrade_client(void)
 		return false;
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v = 27;
+	int max_v = 28;
 
 	if (ver > max_v)
 	{
@@ -773,6 +778,10 @@ bool upgrade_client(void)
 				break;
 			case 26:
 				update_client26_27(db);
+				++ver;
+				break;
+			case 27:
+				update_client27_28(db);
 				++ver;
 				break;
 			default:
