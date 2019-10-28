@@ -2838,7 +2838,15 @@ function settingChangeKey(key)
 
 	if(use==2)
 	{
-		g.curr_settings[key].value = getParValue(key, I(key).value);
+		if($("#"+key).attr("type")=="checkbox")
+		{
+			g.curr_settings[key].value=I(key).checked ? "true" : "false";
+		}
+		else
+		{
+			g.curr_settings[key].value = getParValue(key, I(key).value);
+		}
+		
 		if(I(key+"_disable")
 			&& I(key+"_disable").checked)
 		{
@@ -4320,7 +4328,7 @@ function saveClientSettings(clientid, skip)
 				continue;
 
 			pars+="&"+g.settings_list[i]+"="+encodeURIComponent(g.curr_settings[g.settings_list[i]].value);
-			pars+="&"+g.settings_list[i]+"_use="+g.curr_settings[g.settings_list[i]].use;
+			pars+="&"+g.settings_list[i]+".use="+g.curr_settings[g.settings_list[i]].use;
 		}
 	}
 	else
