@@ -1751,7 +1751,7 @@ void ClientMain::sendSettings(void)
 
 	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int settings_default_id;
-	server_settings->createSettingsReaders(settings_default, settings_client, settings_global, settings_default_id);
+	server_settings->createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, settings_default_id);
 
 	ISettingsReader* settings_global_ptr = settings_global.get() != NULL ? settings_global.get() : settings_default.get();
 

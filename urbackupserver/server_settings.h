@@ -141,6 +141,7 @@ struct SSettings
 	int64 internet_image_dataplan_limit;
 	int alert_script;
 	std::string alert_params;
+	std::string archive;
 };
 
 struct SLDAPSettings
@@ -240,10 +241,12 @@ public:
 
 	std::string ldapMapToString(const std::map<std::string, std::string>& ldap_map);
 
-	void createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
+	static void createSettingsReaders(IDatabase* db, int clientid, std::auto_ptr<ISettingsReader>& settings_default,
 		std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global, int& settings_default_id);
 
 	std::string getImageFileFormatInt(const std::string& image_file_format);
+
+	static void readStringClientSetting(IDatabase* db, int clientid, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value = true);
 
 private:
 	void operator=(const ServerSettings& other){};
@@ -267,6 +270,7 @@ private:
 	void readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting);
 
 	void readStringClientSetting(IQuery* q_get_client_setting, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value=true);
+	static void readStringClientSetting(IQuery* q_get_client_setting, int clientid, const std::string &name, const std::string& merge_sep, std::string *output, bool allow_client_value = true);
 	std::string readValClientSetting(IQuery* q_get_client_setting, const std::string &name, bool allow_client_value);
 	void readBoolClientSetting(IQuery* q_get_client_setting, const std::string &name, bool *output, bool allow_client_value = true);
 	void readIntClientSetting(IQuery* q_get_client_setting, const std::string &name, int *output, bool allow_client_value = true);

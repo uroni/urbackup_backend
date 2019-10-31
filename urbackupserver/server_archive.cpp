@@ -102,52 +102,27 @@ void ServerAutomaticArchive::archiveTimeoutImageBackups()
 
 void ServerAutomaticArchive::archiveBackups(void)
 {
+	IQuery *q_get_setting = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
+	IQuery *q_get_archived = db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=?");
+	IQuery *q_get_letters = db->Prepare("SELECT DISTINCT letter FROM backup_images WHERE complete=1 AND archived=0 AND clientid=?");
+
 	db_results res_clients=db->Read("SELECT id FROM clients");
 	for(size_t i=0;i<res_clients.size();++i)
 	{
 		int clientid=watoi(res_clients[i]["id"]);
-		int r_clientid=clientid;
-		int group_id = 0;
-		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
-		q_get->Bind(clientid);
-		q_get->Bind("group_id");
-		db_results res = q_get->Read();
-		q_get->Reset();
-		if (!res.empty())
+		q_get_setting->Bind(clientid);
+		q_get_setting->Bind("archive_update");
+		db_results res= q_get_setting->Read();
+		q_get_setting->Reset();
+
+		if (!res.empty() && res[0]["value"] == "1")
 		{
-			group_id = watoi(res[0]["value"])*-1;
+			updateArchiveSettings(clientid);
 		}
-
-		q_get->Bind(clientid);
-		q_get->Bind("overwrite");
-		res=q_get->Read();
-		q_get->Reset();
-		if(res.empty() || res[0]["value"]!="true")
-			r_clientid= group_id;
-
-		q_get->Bind(clientid);
-		q_get->Bind("overwrite_archive_settings");
-		res=q_get->Read();
-		q_get->Reset();
-		if(res.empty() || res[0]["value"]!="true")
-			r_clientid= group_id;
-
-		bool archive_settings_copied=false;
-		q_get->Bind(clientid);
-		q_get->Bind("archive_settings_copied");
-		res=q_get->Read();
-		if(!res.empty() && res[0]["value"]=="true")
-			archive_settings_copied=true;
-
-		if(r_clientid<=0 && !archive_settings_copied)
-		{
-			copyArchiveSettings(r_clientid, clientid);
-		}
-
-		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=?");
+				
 		q_get_archived->Bind(clientid);
 		db_results res_archived=q_get_archived->Read();
-
+		q_get_archived->Reset();
 		
 		for(size_t j=0;j<res_archived.size();++j)
 		{
@@ -165,10 +140,10 @@ void ServerAutomaticArchive::archiveBackups(void)
 				{
 					std::string letter_str = res_archived[j]["letters"];
 					if (strlower(trim(letter_str)) == "all")
-					{
-						IQuery *q_get_letters = db->Prepare("SELECT DISTINCT letter FROM backup_images WHERE complete=1 AND archived=0 AND clientid=?");
+					{	
 						q_get_letters->Bind(clientid);
 						db_results res = q_get_letters->Read();
+						q_get_letters->Reset();
 						for (size_t k = 0; k < res.size(); ++k)
 						{
 							if (!res[k]["letter"].empty()
@@ -341,94 +316,131 @@ std::string ServerAutomaticArchive::getBackupType(int backup_types)
 	return "";
 }
 
-void ServerAutomaticArchive::copyArchiveSettings(int source_id, int clientid)
+namespace
 {
-	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid="+convert(source_id));
-
-
-	std::vector<std::string> next_archivals;
-	for(size_t i=0;i<res_all.size();++i)
+	bool nextArchiveIdx(str_map params, std::string& prefix, int& i, std::string& idx)
 	{
-		std::string &interval=res_all[i]["interval"];
-		std::string &length=res_all[i]["length"];
-		std::string &backup_types=res_all[i]["backup_types"];
-		std::string &id=res_all[i]["id"];
-		std::string &archive_window=res_all[i]["archive_window"];
-		std::string next_archival=res_all[i]["next_archival"];
-		std::string letters = res_all[i]["letters"];
-
-		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=? AND letters=?");
-		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid="+convert(source_id)+" AND interval=? AND length=? AND backup_types=? AND archive_window=? AND letters=? AND id<?");
-
-		q_num->Bind(interval);
-		q_num->Bind(length);
-		q_num->Bind(backup_types);
-		q_num->Bind(archive_window);
-		q_num->Bind(letters);
-		q_num->Bind(id);
-		db_results res_num=q_num->Read();
-		int num=watoi(res_num[0]["num"]);
-
-		q_next->Bind(clientid);
-		q_next->Bind(interval);
-		q_next->Bind(length);
-		q_next->Bind(backup_types);
-		q_next->Bind(archive_window);
-		q_next->Bind(letters);
-
-
-		db_results res_next=q_next->Read();
-		if((size_t)num<res_next.size())
+		if (params.find("every_" + prefix + convert(i)) == params.end())
 		{
-			next_archival=res_next[num]["next_archival"];
-			_i64 na=watoi64(next_archival);
-			if(na==0)
+			if (prefix == "d")
+				prefix = "g";
+			else if (prefix == "g")
+				prefix = "c";
+			else if (prefix == "c")
+				return false;
+
+			i = 0;
+
+			if (params.find("every_" + prefix + convert(i)) == params.end())
 			{
-				next_archival=convert(Server->getTimeSeconds());
+				idx = prefix + convert(i);
+				return true;
+			}
+			else
+			{
+				return nextArchiveIdx(params, prefix, i, idx);
 			}
 		}
 
-		next_archivals.push_back(next_archival);
+		idx = prefix + convert(i);
+
+		return true;
+	}
+}
+
+void ServerAutomaticArchive::updateArchiveSettings(int clientid)
+{
+	ServerSettings settings(db, clientid);
+
+	str_map params;
+	ParseParamStrHttp(settings.getSettings()->archive, &params);
+
+	IQuery *q_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
+
+	IQuery *q_insert_all = db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters)"
+		"VALUES (?,?,?,?,?,?,?,?,?)");
+
+	std::string prefix = "d";
+	std::string idx;
+
+	struct SArchival
+	{
+		int64 next;
+		int64 every;
+		int64 archive_for;
+		int backup_types;
+		std::string every_unit;
+		std::string for_unit;
+		std::string window;
+		std::string letters;
+		std::string uuid;
+	};
+
+	std::vector<SArchival> new_settings;
+
+	for (int i = 0; nextArchiveIdx(params, prefix, i, idx); ++i)
+	{
+		SArchival archive;
+		archive.every = watoi64(params["every_" + idx]);
+		archive.archive_for = watoi64(params["for_" + idx]);
+		std::string backup_type_str = params["backup_type_" + idx];
+		archive.backup_types = ServerAutomaticArchive::getBackupTypes(backup_type_str);
+		archive.window = params["window_" + idx];
+		archive.letters = params["window_" + idx];
+		archive.every_unit = params["every_unit_" + idx];
+		archive.for_unit = params["for_unit_" + idx];
+		archive.uuid = hexToBytes(params["uuid_" + idx]);
+
+		q_next->Bind(clientid);
+		q_next->Bind(archive.uuid);
+
+		db_results res_next = q_next->Read();
+
+		q_next->Reset();
+
+		archive.next = 0;
+		if (!res_next.empty())
+		{
+			archive.next = watoi64(res_next[0]["next_archival"]);
+		}
+
+		if (archive.next == 0)
+		{
+			archive.next = Server->getTimeSeconds();
+		}
+
+		new_settings.push_back(archive);
 	}
 
 
-	IQuery *q_del_all=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
-	IQuery *q_insert_all=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters)"
-									"VALUES (?,?,?,?,?,?,?,?,?)");
+	DBScopedWriteTransaction trans(db);
 
+	IQuery *q_del_all = db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
 	q_del_all->Bind(clientid);
 	q_del_all->Write();
 
-	for(size_t i=0;i<res_all.size();++i)
-	{
-		std::string &interval=res_all[i]["interval"];
-		std::string &length=res_all[i]["length"];
-		std::string &backup_types=res_all[i]["backup_types"];		
-		std::string &archive_window=res_all[i]["archive_window"];
-		std::string &letters = res_all[i]["letters"];
 
-		q_insert_all->Bind(next_archivals[i]);
-		q_insert_all->Bind(interval);
-		q_insert_all->Bind(res_all[i]["interval_unit"]);
-		q_insert_all->Bind(length);
-		q_insert_all->Bind(res_all[i]["length_unit"]);
-		q_insert_all->Bind(backup_types);
+	for (size_t i = 0; i < new_settings.size(); ++i)
+	{
+		SArchival& archive = new_settings[i];
+
+		q_insert_all->Bind(archive.next);
+		q_insert_all->Bind(archive.every);
+		q_insert_all->Bind(archive.every_unit);
+		q_insert_all->Bind(archive.archive_for);
+		q_insert_all->Bind(archive.for_unit);
+		q_insert_all->Bind(archive.backup_types);
 		q_insert_all->Bind(clientid);
-		q_insert_all->Bind(archive_window);	
-		q_insert_all->Bind(letters);
+		q_insert_all->Bind(archive.window);
+		q_insert_all->Bind(archive.letters);
 		q_insert_all->Write();
 		q_insert_all->Reset();
-	}	
+	}
 
-	IQuery *q_del_copied=db->Prepare("DELETE FROM settings_db.settings WHERE key='archive_settings_copied' AND clientid=?");
+	IQuery *q_del_copied=db->Prepare("DELETE FROM settings_db.settings WHERE key='archive_update' AND clientid=?");
 	q_del_copied->Bind(clientid);
 	q_del_copied->Write();
 	q_del_copied->Reset();
-
-	IQuery *q_insert_copied=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('archive_settings_copied','true',?)");
-	q_insert_copied->Bind(clientid);
-	q_insert_copied->Write();
-	q_insert_copied->Reset();
 }
 
 bool ServerAutomaticArchive::isInArchiveWindow(const std::string &window_def)

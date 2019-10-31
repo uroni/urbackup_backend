@@ -111,7 +111,7 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 	}	
 }
 
-void ServerSettings::createSettingsReaders(std::auto_ptr<ISettingsReader>& settings_default,
+void ServerSettings::createSettingsReaders(IDatabase* db, int clientid, std::auto_ptr<ISettingsReader>& settings_default,
 	std::auto_ptr<ISettingsReader>& settings_client, std::auto_ptr<ISettingsReader>& settings_global,
 	int& settings_default_id)
 {
@@ -560,6 +560,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	settings->alert_script = 1;
 	readIntClientSetting(q_get_client_setting, "alert_script", &settings->alert_script, false);
 	readStringClientSetting(q_get_client_setting, "alert_params", std::string(), &settings->alert_params, false);
+
+	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -673,9 +675,10 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 
 	readIntClientSetting(q_get_client_setting, "alert_script", &settings->alert_script);
 	readStringClientSetting(q_get_client_setting, "alert_params", std::string(), &settings->alert_params, false);
+	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
 }
 
-void ServerSettings::readStringClientSetting(IQuery* q_get_client_setting, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
+void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
 {
 	q_get_client_setting->Bind(clientid);
 	q_get_client_setting->Bind(name);
@@ -736,6 +739,11 @@ void ServerSettings::readStringClientSetting(IQuery* q_get_client_setting, const
 			*output = res[0]["value"];
 		}
 	}
+}
+
+void ServerSettings::readStringClientSetting(IQuery* q_get_client_setting, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
+{
+	readStringClientSetting(q_get_client_setting, clientid, name, merge_sep, output, allow_client_value);
 }
 
 std::string ServerSettings::readValClientSetting(IQuery * q_get_client_setting, const std::string & name, bool allow_client_value)
@@ -1004,6 +1012,29 @@ std::string ServerSettings::getImageFileFormatInt( const std::string& image_file
 	}
 }
 
+void ServerSettings::readStringClientSetting(IDatabase * db, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
+{
+	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
+	int setting_default_id;
+	createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, setting_default_id);
+
+	IQuery* q_get_client_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
+
+	if (setting_default_id != 0)
+	{
+		readStringClientSetting(q_get_client_setting, 0, name, merge_sep, output, allow_client_value);
+	}
+
+	readStringClientSetting(q_get_client_setting, setting_default_id, name, merge_sep, output, allow_client_value);
+	
+	if (settings_client.get() != NULL)
+	{
+		readStringClientSetting(q_get_client_setting, clientid, name, merge_sep, output, allow_client_value);
+	}
+
+	db->destroyQuery(q_get_client_setting);
+}
+
 
 std::vector<STimeSpan> ServerSettings::parseTimeSpan(std::string time_span)
 {
@@ -1179,7 +1210,7 @@ void ServerSettings::readSettings()
 	int settings_default_id;
 
 	IQuery* q_get_client_setting = db->Prepare("SELECT value, value_client, use FROM settings_db.settings WHERE clientid=? AND key=?", false);
-	createSettingsReaders(settings_default, settings_client, settings_global, settings_default_id);
+	createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, settings_default_id);
 	int clientid_backup = clientid;
 
 	ISettingsReader* settings_global_ptr = settings_global.get() != NULL ? settings_global.get() : settings_default.get();
@@ -1251,7 +1282,7 @@ SLDAPSettings ServerSettings::getLDAPSettings()
 {
 	std::auto_ptr<ISettingsReader> settings_client, settings_default, settings_global;
 	int setting_default_id;
-	createSettingsReaders(settings_default, settings_client, settings_global, setting_default_id);
+	createSettingsReaders(db, clientid, settings_default, settings_client, settings_global, setting_default_id);
 	SLDAPSettings ldap_settings;
 	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "false")=="true";
 	

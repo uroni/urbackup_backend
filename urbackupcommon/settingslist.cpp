@@ -103,6 +103,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("internet_image_dataplan_limit");
 	ret.push_back("alert_script");
 	ret.push_back("alert_params");
+	ret.push_back("archive");
 	return ret;
 }
 
@@ -149,6 +150,7 @@ std::vector<std::string> getClientMergableSettingsList()
 	ret.push_back("default_dirs");
 	ret.push_back("image_letters");
 	ret.push_back("vss_select_components");
+	ret.push_back("archive");
 	return ret;
 }
 
@@ -186,6 +188,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("internet_image_dataplan_limit");
 	ret.push_back("alert_script");
 	ret.push_back("alert_params");
+	ret.push_back("archive");
 	return ret;
 }
 

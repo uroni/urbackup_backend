@@ -2093,6 +2093,124 @@ bool upgrade59_60()
 	return b;
 }
 
+std::string archiveSettingsParamStr(IDatabase* db, int clientid, std::string prefix)
+{
+	db_results res = db->Read("SELECT id, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=" + convert(clientid));
+
+	IQuery* q_set_uuid = db->Prepare("UPDATE settings_db.automatic_archival SET uuid=? WHERE id=?");
+
+	std::string ret;
+	for (size_t i = 0; i < res.size(); ++i)
+	{
+		std::string uuid;
+		uuid.resize(16);
+		Server->secureRandomFill(&uuid[0], uuid.size());
+
+		std::string idx = "_" + prefix + convert(i);
+		if (!ret.empty()) ret += "&";
+		ret += "every"+ idx +"=" + res[i]["interval"];
+		ret += "&every_unit" + idx + "=" + res[i]["interval_unit"];
+		ret += "&for" + idx + "=" + res[i]["interval_unit"];
+		ret += "&for_unit" + idx + "=" + res[i]["interval_unit"];
+		ret += "&backup_types" + idx + "=" + ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"]));
+		ret += "&archive_window" + idx + "=" + res[i]["archive_window"];
+		ret += "&letters" + idx + "=" + res[i]["letters"];
+		ret += "&uuid"+idx+"=" + bytesToHex(uuid);
+
+		q_set_uuid->Bind(uuid);
+		q_set_uuid->Bind(res[i]["id"]);
+		q_set_uuid->Write();
+		q_set_uuid->Reset();
+	}
+
+	return ret;
+}
+
+bool upgrade60_61()
+{
+	IDatabase *db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if (!db->Write("ALTER TABLE settings_db.automatic_archival ADD uuid BLOB"))
+	{
+		return false;
+	}
+
+	IQuery* q_insert_setting = db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?, ?, ?, ?)");
+
+	db_results res_groups = db->Read("SELECT id FROM settings_db.si_client_groups");
+	db_single_result res_global;
+	res_global["id"] = "0";
+	res_groups.push_back(res_global);
+
+	for (size_t i = 0; i < res_groups.size(); ++i)
+	{
+		int group_id = watoi(res_groups[i]["id"]);
+
+		q_insert_setting->Bind("archive");
+		q_insert_setting->Bind(archiveSettingsParamStr(db, group_id*-1, group_id==0 ? "d" : "g"));
+		q_insert_setting->Bind(group_id*-1);
+		q_insert_setting->Bind(c_use_value);
+		q_insert_setting->Write();
+		q_insert_setting->Reset();
+	}
+
+	db_results res_clients = db->Read("SELECT id FROM clients");
+	for (size_t i = 0; i < res_clients.size(); ++i)
+	{
+		int clientid = watoi(res_clients[i]["id"]);
+		int r_clientid = clientid;
+		int group_id = 0;
+		IQuery *q_get = db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?");
+		q_get->Bind(clientid);
+		q_get->Bind("group_id");
+		db_results res = q_get->Read();
+		q_get->Reset();
+		if (!res.empty())
+		{
+			group_id = watoi(res[0]["value"])*-1;
+		}
+
+		q_get->Bind(clientid);
+		q_get->Bind("overwrite");
+		res = q_get->Read();
+		q_get->Reset();
+		if (res.empty() || res[0]["value"] != "true")
+			r_clientid = group_id;
+
+		q_get->Bind(clientid);
+		q_get->Bind("overwrite_archive_settings");
+		res = q_get->Read();
+		q_get->Reset();
+		if (res.empty() || res[0]["value"] != "true")
+			r_clientid = group_id;
+
+		std::string archive_params;
+		int archive_use = c_use_value;
+		if ( r_clientid <= 0 )
+		{
+			archive_use = c_use_group;
+		}
+		else
+		{
+			archive_params = archiveSettingsParamStr(db, clientid, "c");
+		}
+
+		q_insert_setting->Bind("archive");
+		q_insert_setting->Bind(archive_params);
+		q_insert_setting->Bind(clientid);
+		q_insert_setting->Bind(archive_use);
+		q_insert_setting->Write();
+		q_insert_setting->Reset();
+
+		q_insert_setting->Bind("archive_update");
+		q_insert_setting->Bind("1");
+		q_insert_setting->Bind(clientid);
+		q_insert_setting->Bind(0);
+		q_insert_setting->Write();
+		q_insert_setting->Reset();
+	}
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2114,7 +2232,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=60;
+	int max_v=61;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2466,6 +2584,13 @@ void upgrade(void)
 				break;
 			case 59:
 				if (!upgrade59_60())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;
+			case 60:
+				if (!upgrade60_61())
 				{
 					has_error = true;
 				}

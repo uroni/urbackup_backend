@@ -181,6 +181,7 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 #define SET_SETTING_INT(x) SET_SETTING(x, watoi, ret_identity)
 #define SET_SETTING_INT64(x) SET_SETTING(x, watoi64, ret_identity)
 #define SET_SETTING_BOOL(x) SET_SETTING(x, conv_bool_setting, ret_identity)
+
 	SET_SETTING_STR(update_freq_incr);
 	SET_SETTING_STR(update_freq_full);
 	SET_SETTING_STR(update_freq_image_full);
@@ -258,8 +259,45 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_INT64(internet_image_dataplan_limit);
 	SET_SETTING_STR(alert_script);
 	SET_SETTING_STR(alert_params);
+	SET_SETTING_STR(archive);
 #undef SET_SETTING
 	return ret;
+}
+
+void addNextArchival(IDatabase* db, int clientid, JSON::Object& obj)
+{
+	JSON::Value j_archive = obj.get("archive");
+
+	IQuery* get_next = db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND uuid=?");
+
+	if (j_archive.getType() == JSON::str_type)
+	{
+		str_map params;
+		std::string archive_str = j_archive.getString();
+		ParseParamStrHttp(archive_str, &params);
+
+		for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+		{
+			if (next(it->first, 0, "uuid_"))
+			{
+				std::string idx = getafter("uuid_", it->first);
+
+				get_next->Bind(clientid);
+				get_next->Bind(it->second);
+				db_results res = get_next->Read();
+				get_next->Reset();
+
+				if (!res.empty())
+				{
+					int64 next_archival = watoi64(res[0]["next_archival"]);
+					archive_str += "&next_archival_" + idx + "=" + res[0]["next_archival"];
+					archive_str += "&timeleft_" + idx + "=" + convert(next_archival - (_i64)Server->getTimeSeconds());
+				}
+			}
+		}
+
+		obj.set("archive", archive_str);
+	}
 }
 
 void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
@@ -481,8 +519,68 @@ void updateClientGroup(int t_clientid, int groupid, IDatabase *db)
 	q->Reset();
 }
 
+void archiveParamsSetUuid(str_map& POST)
+{
+	std::string archive = UnescapeSQLString(POST["archive"]);
+
+	str_map params;
+	ParseParamStrHttp(archive, &params);
+
+	bool mod = false;
+	std::vector<std::pair<std::string, std::string> > new_uuids;
+	for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+	{
+		if (next(it->first, 0, "uuid_"))
+		{
+			if (it->second.size() % 2 != 0
+				|| !IsHex(it->second))
+			{
+				std::string uuid;
+				uuid.resize(16);
+				Server->secureRandomFill(&uuid[0], uuid.size());
+				it->second = uuid;
+				mod = true;
+			}
+		}
+		else if (next(it->first, 0, "backup_type_"))
+		{
+			std::string idx = getafter("backup_type_", it->first);
+
+			if (params.find("uuid_" + idx) == params.end())
+			{
+				std::string uuid;
+				uuid.resize(16);
+				Server->secureRandomFill(&uuid[0], uuid.size());
+				new_uuids.push_back(std::make_pair("uuid_" + idx, uuid));
+				mod = true;
+			}
+		}
+	}
+
+	if (!mod)
+		return;
+
+	for (size_t i = 0; i < new_uuids.size(); ++i)
+	{
+		params[new_uuids[i].first] = bytesToHex(new_uuids[i].second);
+	}
+
+	archive = "";
+
+	for (str_map::iterator it = params.begin(); it != params.end(); ++it)
+	{
+		if (!archive.empty())
+			archive += "&";
+		archive += it->first + "=" + EscapeParamString(it->second);
+	}
+
+	POST["archive"] = EscapeSQLString(archive);
+}
+
 void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 {
+	archiveParamsSetUuid(POST);
+
 	IQuery *q_get=db->Prepare("SELECT value, use FROM settings_db.settings WHERE key=? AND clientid="+convert(t_clientid));
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=?, use=? WHERE key=? AND clientid="+convert(t_clientid));
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid, use) VALUES (?,?,"+convert(t_clientid)+", ?)");
@@ -520,152 +618,25 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 	}
 }
 
-void updateArchiveSettings(int clientid, str_map &POST, IDatabase *db)
+void updateArchiveSettings(int clientid, IDatabase *db)
 {
-	int i=0;
-	IQuery *q=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
-	q->Bind(clientid);
-	q->Write();
-	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window, letters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-	while(POST.find("archive_every_"+convert(i))!=POST.end())
+	IQuery* q = db->Prepare("INSERT INTO settings_db.settings(key, value, clientid) VALUES ('archive_update', '1', ?)");
+	if (clientid == 0)
 	{
-		_i64 archive_next=watoi64(POST["archive_next_"+convert(i)]);
-		int archive_every=watoi(POST["archive_every_"+convert(i)]);
-		int archive_for=watoi(POST["archive_for_"+convert(i)]);
-		std::string backup_type_str=POST["archive_backup_type_"+convert(i)];
-		int backup_types=ServerAutomaticArchive::getBackupTypes(backup_type_str);
+		db_results res_ids = db->Read("SELECT id FROM clients");
 
-
-		if(archive_next<0)
+		for (size_t i = 0; i < res_ids.size(); ++i)
 		{
-			if(clientid<=0)
-			{
-				q->Bind(0);
-			}
-			else
-			{
-				q->Bind(Server->getTimeSeconds());
-			}
+			q->Bind(res_ids[i]["id"]);
+			q->Write();
+			q->Reset();
 		}
-		else
-		{
-			q->Bind(archive_next);
-		}
-		q->Bind(archive_every);
-		q->Bind(POST["archive_every_unit_"+convert(i)]);
-		q->Bind(archive_for);
-		q->Bind(POST["archive_for_unit_"+convert(i)]);
-		q->Bind(backup_types);
-		q->Bind(clientid);
-		q->Bind(POST["archive_window_"+convert(i)]);
-		q->Bind(POST["archive_letters_" + convert(i)]);
-		q->Write();
-		q->Reset();
-
-		++i;
-	}
-
-	db_results res = db->Read("SELECT value FROM settings_db.settings WHERE clientid=" + convert(clientid) + " AND key='group_id'");
-	int group_id = 0;
-	if (!res.empty())
-	{
-		group_id = watoi(res[0]["value"])*-1;
-	}
-
-	if(clientid>0)
-	{		
-		std::string str_group_id = convert(group_id);
-
-		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
-		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+convert(clientid));
-		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+convert(clientid)+")");
-
-		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window, letters "
-			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=?)"
-			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window, letters");
-		q_identical_config->Bind(clientid);
-		q_identical_config->Bind(group_id);
-		db_results res = q_identical_config->Read();
-		q_identical_config->Reset();
-
-		std::string overwrite_archive_settings = "false";
-		for(size_t i=0;i<res.size();++i)
-		{
-			if(res[i]["min_clientid"]!=str_group_id ||
-				res[i]["max_clientid"]!=convert(clientid) ||
-				watoi(res[i]["c"])%2!=0)
-			{
-				overwrite_archive_settings="true";
-				break;
-			}
-		}
-
-		updateSetting("overwrite_archive_settings", overwrite_archive_settings, q_get, q_update, q_insert);
 	}
 	else
 	{
-		db->Write("DELETE FROM settings_db.settings WHERE key='archive_settings_copied'");
+		q->Bind(clientid);
+		q->Write();
 	}
-}
-
-void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
-{
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+convert(clientid)+" AND key=?");
-	q_get->Bind("group_id");
-	db_results res = q_get->Read();
-	q_get->Reset();
-	int group_id = 0;
-	if (!res.empty())
-	{
-		group_id = watoi(res[0]["value"])*-1;
-	}
-
-	if (clientid > 0)
-	{
-		q_get->Bind("overwrite");
-		res = q_get->Read();
-		q_get->Reset();
-		if (res.empty() || res[0]["value"] != "true")
-			clientid = group_id;
-
-		q_get->Bind("overwrite_archive_settings");
-		res = q_get->Read();
-		if (res.empty() || res[0]["value"] != "true")
-			clientid = group_id;
-	}
-
-	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window, letters FROM settings_db.automatic_archival WHERE clientid=?");
-	q->Bind(clientid);
-	res=q->Read();
-
-	JSON::Array arr;
-	for(size_t i=0;i<res.size();++i)
-	{
-		_i64 archive_next=watoi64(res[i]["next_archival"]);
-
-		JSON::Object ca;
-		ca.set("next_archival", res[i]["next_archival"]);
-		ca.set("archive_every", watoi(res[i]["interval"]));
-		ca.set("archive_every_unit", res[i]["interval_unit"]);
-		ca.set("archive_for", watoi(res[i]["length"]));
-		ca.set("archive_for_unit", res[i]["length_unit"]);
-		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i]["backup_types"])));
-		ca.set("archive_window", res[i]["archive_window"]);
-		ca.set("archive_letters", res[i]["letters"]);
-
-		if(archive_next>0 && clientid>0)
-		{
-			_i64 tl=archive_next-(_i64)Server->getTimeSeconds();
-			ca.set("archive_timeleft", tl);
-		}
-		else
-		{
-			ca.set("archive_timeleft", "-");
-		}
-
-		arr.add(ca);
-	}
-	obj.set("archive_settings", arr);
 }
 
 void updateOnlineClientSettings(IDatabase *db, int clientid)
@@ -1015,7 +986,7 @@ ACTION_IMPL(settings)
 					updateClientSettings(t_clientid, POST, db);
 					if (POST["no_ok"] != "true")
 					{
-						updateArchiveSettings(t_clientid, POST, db);
+						updateArchiveSettings(t_clientid, db);
 					}
 					db->EndTransaction();
 
@@ -1035,7 +1006,7 @@ ACTION_IMPL(settings)
 					else
 					{
 						ServerSettings::updateAll();
-					}
+					}				
 
 					updateOnlineClientSettings(db, t_clientid);
 				}
@@ -1043,6 +1014,7 @@ ACTION_IMPL(settings)
 				ServerSettings settings(db, t_clientid);
 				
 				JSON::Object obj=getJSONClientSettings(db, t_clientid);
+				addNextArchival(db, t_clientid, obj);
 				obj.set("clientid", t_clientid);
 				obj.set("alert_scripts", getAlertScripts(db));
 				if (helper.getRights(RIGHT_ALERT_SCRIPTS) == RIGHT_ALL)
@@ -1066,8 +1038,6 @@ ACTION_IMPL(settings)
 				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled()
 					|| BackupServer::canReflink() );
 				ret.set("settings",  obj);
-
-				getArchiveSettings(ret, db, t_clientid);
 				
 				sa="clientsettings";
 				ret.set("sa", sa);
@@ -1229,7 +1199,7 @@ ACTION_IMPL(settings)
 				ServerSettings serv_settings(db);
 				db->BeginWriteTransaction();
 				updateClientSettings(0, POST, db);
-				updateArchiveSettings(0, POST, db);
+				updateArchiveSettings(0, db);
 				bool changed_backupfolder = false;
 				saveGeneralSettings(POST, db, backupdao, serv_settings, changed_backupfolder);
 				db->EndTransaction();
@@ -1270,8 +1240,6 @@ ACTION_IMPL(settings)
 				ret.set("cowraw_available", BackupServer::isImageSnapshotsEnabled()
 					|| BackupServer::canReflink() );
 				ret.set("settings", obj);
-
-				getArchiveSettings(ret, db, t_clientid);
 			}
 		}
 		if(sa=="mail_save" && helper.getRights("mail_settings")=="all")

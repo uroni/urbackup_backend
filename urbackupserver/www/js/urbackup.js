@@ -513,10 +513,9 @@ function getPar(p)
 	if(!obj) return "";
 	if(obj.type=="checkbox" )
 	{
-		return obj.checked?"true":"false";
+		return "&"+p+"="+(obj.checked?"true":"false");
 	}
-
-	var val = getParValue(p, val);		
+	var val = getParValue(p, obj.value);
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
@@ -2620,7 +2619,8 @@ function update_alert_params()
 			}
 		}
 	}
-	I("alert_params").value = $.param(p);
+	g.alert_params = $.param(p);
+	settingChangeKey("alert_params");
 }
 function update_alert_unit(name)
 {
@@ -2700,9 +2700,17 @@ function getVal(val)
 function getCurrentSettings(settings)
 {
 	var new_settings = {};
-	for (var key in settings) {
-		if (!settings.hasOwnProperty(key)) {
+	for (var key in settings)
+	{
+		if (!settings.hasOwnProperty(key))
+		{
 			continue;
+		}
+
+		if(key=="alert_scripts")
+		{
+			new_settings[key]=settings[key];
+			continue;	
 		}
 
 		var val = getVal(settings[key]);
@@ -2715,6 +2723,26 @@ function getCurrentSettings(settings)
 		new_settings[key]=val;
 	}
 	return new_settings;
+}
+function unescapeCurrentSettings(settings)
+{
+	for (var key in settings) {
+		if (!settings.hasOwnProperty(key)) {
+			continue;
+		}
+
+		var setting = settings[key];
+
+		if(typeof setting!="object")
+			continue;
+
+		if(typeof setting.value == "string")
+			setting.value = unescapeHTML(setting.value);
+		if(typeof setting.value_client == "string")
+			setting.value_client = unescapeHTML(setting.value_client);
+		if(typeof setting.value_group == "string")
+			setting.value_group = unescapeHTML(setting.value_group);
+	}
 }
 function settingSwitch()
 {
@@ -2746,6 +2774,9 @@ function settingSwitch()
 	}
 
 	if($.inArray(key, g.client_settings_list)==-1
+		&& use==4 && $.inArray(key, g.mergable_settings_list)!=-1)
+		use=3;
+	else if($.inArray(key, g.client_settings_list)==-1
 		&& use>2)
 		use=1;
 	if($.inArray(key, g.mergable_settings_list)==-1
@@ -2780,7 +2811,19 @@ function settingSwitch()
 		}
 		else
 		{
-			I(key).value = renderSettingValue(key, val);
+			if(key=="archive")
+			{
+				renderArchiveSettings();
+			}
+			else
+			{
+				I(key).value = renderSettingValue(key, val);
+			}
+
+			if(key=="alert_script")
+			{
+				updateAlertScriptParams();
+			}
 
 			if(I(key+"_disable"))
 			{
@@ -2836,9 +2879,14 @@ function settingChangeKey(key)
 		renderSettingSwitch(key);
 	}
 
-	if(use==2)
+	if(typeof use=="undefined"
+		|| use==2)
 	{
-		if($("#"+key).attr("type")=="checkbox")
+		if(key=="alert_params")
+		{
+			g.curr_settings[key].value = g.alert_params;
+		}
+		else if($("#"+key).attr("type")=="checkbox")
 		{
 			g.curr_settings[key].value=I(key).checked ? "true" : "false";
 		}
@@ -2862,12 +2910,15 @@ function settingChange(p_key)
 }
 function renderSettingSwitch(key)
 {
+	var val;
 	if(key=="backup_window")
 	{
-		key ="backup_window_incr_file";
+		val = g.curr_settings["backup_window_incr_file"];
 	}
-
-	var val = g.curr_settings[key];
+	else
+	{
+		val = g.curr_settings[key];
+	}
 
 	if(typeof val.use=="undefined")
 	{
@@ -2959,6 +3010,9 @@ function mergeSettingUpdateUse(key)
 }
 function renderMergeSetting(key)
 {
+	if(key=="archive")
+		return;
+
 	var val = g.curr_settings[key];
 
 	var c='<div class="input-group">';
@@ -3382,6 +3436,7 @@ function show_settings2(data)
 			data.settings.main_client = true;
 			data.settings.global_settings=true;
 			data.settings.archive_global=true;
+			g.curr_settings_type = 0;
 			
 			data.settings.client_plural="s";
 			
@@ -3521,11 +3576,13 @@ function show_settings2(data)
 				g.settings_group_changes=[];
 				
 				data.settings.main_client = true;
+				g.curr_settings_type = 1;
 			}
 			else
 			{
 				data.settings.client_settings=true;
 				data.settings.groups = data.navitems.groups;
+				g.curr_settings_type = 2;
 			}
 			
 			g.last_alert_params = data.settings.alert_params;
@@ -3754,15 +3811,10 @@ function show_settings2(data)
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
 	{
+		unescapeCurrentSettings(g.curr_settings);
 		g.archive_item_id=0;
-		
-		for(var i=0;i<data.archive_settings.length;++i)
-		{
-			var obj=data.archive_settings[i];
-			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
-					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_letters, obj.archive_timeleft, 
-					data.sa=="general" || is_group);
-		}
+		g.curr_archive_items = [];
+		renderArchiveSettings(data.sa=="general" || is_group);
 	}
 	
 	$('#settings_tabber').bind('click', function (e) {
@@ -4063,7 +4115,8 @@ g.settings_list=[
 "internet_image_dataplan_limit",
 "update_dataplan_db",
 "alert_script",
-"alert_params"
+"alert_params",
+"archive"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -4123,7 +4176,8 @@ g.mergable_settings_list=[
 "include_files",
 "default_dirs",
 "image_letters",
-"vss_select_components"
+"vss_select_components",
+"archive"
 ];
 g.client_settings_list=[
 "update_freq_incr",
@@ -4179,21 +4233,20 @@ function validateCommonSettings()
 	if(!validate_alert_params()) return;
 	return true;
 }
-function getArchivePars()
+function getSettingSave(key)
 {
-	var pars="";
-	for(var i=0;i<g.archive_item_id;++i)
+	if( (key=="backup_window_incr_file"
+		|| key=="backup_window_full_file"
+		|| key=="backup_window_incr_image"
+		|| key=="backup_window_full_image" )
+		&& I("backup_window"))
 	{
-		pars+=getPar("archive_next_"+i);
-		pars+=getPar("archive_every_"+i);
-		pars+=getPar("archive_every_unit_"+i);
-		pars+=getPar("archive_for_"+i);
-		pars+=getPar("archive_for_unit_"+i);
-		pars+=getPar("archive_backup_type_"+i);
-		pars+=getPar("archive_window_"+i);
-		pars+=getPar("archive_letters_"+i);
+		return g.curr_settings["backup_window_incr_file"];
 	}
-	return pars;
+	else
+	{
+		return g.curr_settings[key];
+	}		
 }
 function saveGeneralSettings()
 {
@@ -4216,10 +4269,9 @@ function saveGeneralSettings()
 	{
 		pars+=getPar(g.general_settings_list[i]);
 	}
-	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{
-		pars+=g.settings_list[i]+"="+encodeURIComponent(g.curr_settings[g.settings_list[i]].value);
+		pars+="&"+g.settings_list[i]+"="+encodeURIComponent(getSettingSave(g.settings_list[i]).value);
 	}
 	new getJSON("settings", "sa=general_save"+pars+internet_pars, show_settings2);
 }
@@ -4320,15 +4372,14 @@ function saveClientSettings(clientid, skip)
 			stopLoading();
 			return;
 		}
-		pars+=getArchivePars();
 		for(var i=0;i<g.settings_list.length;++i)
 		{
 			if(typeof g.curr_settings[g.settings_list[i]]=="undefined"
 				|| typeof g.curr_settings[g.settings_list[i]].value == "undefined")
 				continue;
 
-			pars+="&"+g.settings_list[i]+"="+encodeURIComponent(g.curr_settings[g.settings_list[i]].value);
-			pars+="&"+g.settings_list[i]+".use="+g.curr_settings[g.settings_list[i]].use;
+			pars+="&"+g.settings_list[i]+"="+encodeURIComponent(getSettingSave(g.settings_list[i]).value);
+			pars+="&"+g.settings_list[i]+".use="+getSettingSave(g.settings_list[i]).use;
 		}
 	}
 	else
@@ -5365,7 +5416,16 @@ function addArchiveItem(global)
 		if(!validate_text_nonempty(["archive_for"])) return;
 	}
 	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, I('archive_letters').value, (global?"-":-1), global);
+
+	if(!g.curr_archive_item_id )
+		g.curr_archive_item_id=1;
+	else
+		g.curr_archive_item_id+=1;
+	
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, 
+		I('archive_backup_type').value, -1, I('archive_window').value, I('archive_letters').value, (global?"-":-1), g.curr_archive_item_id, global, 2);
+
+	updateArchiveParams();
 }
 function getTimelengthSeconds(tl, unit)
 {
@@ -5437,10 +5497,21 @@ function backupTypeStr(bt)
 }
 function getArchiveTable()
 {
-	archive_table=I('archive_table').childNodes[1];
+	var archive_table=I('archive_table').childNodes[1];
 	return archive_table;
 }
-function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_letters, archive_timeleft, global)
+function archiveTableClear()
+{
+	for(var i=0;i<g.curr_archive_items.length;++i)
+	{
+		var id = g.curr_archive_items[i].archive_uuid;
+		if(I("archive_item_"+id))
+		{
+			getArchiveTable().removeChild(I("archive_item_"+id));
+		}
+	}
+}
+function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_letters, archive_timeleft, archive_uuid, global, source)
 {
 	archive_every_i=getTimelengthSeconds(archive_every, archive_every_unit);
 	archive_for_i=getTimelengthSeconds(archive_for, archive_for_unit);
@@ -5452,7 +5523,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	archive_for=dectorateTimelength(archive_for, archive_for_unit);
 	
 	var new_item=document.createElement('tr');
-	new_item.id="archive_"+g.archive_item_id;
+	new_item.id = "archive_item_"+archive_uuid;
 	
 	var archive_letters_str = archive_letters;
 	if(archive_letters.length==0)
@@ -5464,11 +5535,18 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 		archive_letters_str = "-";
 		archive_letters="";
 	}
+
+	if(archive_timeleft==null)
+		archive_timeleft="-";
+
+	var source_group = !global && source==1;
+	var source_here = !global && source==2;
 	
-	var row_vals={ id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
+	var row_vals={ archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
 			archive_for_i: archive_for_i, archive_for: archive_for, archive_for_unit: archive_for_unit,
 			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window, archive_letters: archive_letters,
-			archive_letters_str: archive_letters_str, show_archive_timeleft: !global};
+			archive_letters_str: archive_letters_str, archive_uuid: archive_uuid, show_archive_timeleft: !global, source: source, archive_timeleft: archive_timeleft,
+			source_group: source_group, source_here: source_here};
 	
 	if(archive_timeleft!="-")
 	{
@@ -5489,50 +5567,38 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	var archive_table=getArchiveTable();
 	
 	archive_table.appendChild(new_item);
-	
-	++g.archive_item_id;
-}
-function replaceArchiveId(old_id, new_id)
-{
-	var archive_timeleft;
-	var show_archive_timeleft=false;
-	if(I('archive_timeleft_'+old_id))
-	{
-		archive_timeleft = I('archive_timeleft_'+old_id).value;
-		show_archive_timeleft=true;
-	}
-	var item=I('archive_'+old_id);
-	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
-			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
-			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
-			archive_timeleft: archive_timeleft, show_archive_timeleft: show_archive_timeleft, archive_letters: I('archive_letters_'+old_id).value, archive_letters_str: I('archive_letters_str_'+old_id).value } );
+
+	g.curr_archive_items.push(row_vals);
 }
 function deleteArchiveItem(id)
 {
-	var archive_table=getArchiveTable();
-	g.archive_item_id=0;
-	var rmobj;
-	var old_id=0;
-	for(var i=0;i<archive_table.childNodes.length;++i)
+	if(I("archive_item_"+id))
 	{
-		var obj=archive_table.childNodes[i];
-		if(obj.nodeName.toLowerCase()=='tr')
+		getArchiveTable().removeChild(I("archive_item_"+id));
+	}
+	
+	for(var i=0;i<g.curr_archive_items.length;++i)
+	{
+		var item=g.curr_archive_items[i];
+		if(item.archive_uuid==id)
 		{
-			if(obj.id=="archive_"+id)
+			if(item.source!=2
+				&& g.curr_settings["archive"].use & 1)
 			{
-				rmobj=obj;
-				++old_id;
+				for(var j=0;j<g.curr_archive_items.length;++j)
+				{
+					g.curr_archive_items[j].source=1;
+				}
+				g.curr_settings["archive"].use=2;
+				renderSettingSwitch("archive");
 			}
-			else if(obj.id.indexOf("archive_")==0)
-			{
-				replaceArchiveId(old_id, g.archive_item_id);
-				obj.id="archive_"+g.archive_item_id;
-				++g.archive_item_id;
-				++old_id;
-			}
+
+			g.curr_archive_items.splice(i, 1);
+			break;
 		}
 	}
-	archive_table.removeChild(rmobj);
+
+	updateArchiveParams();
 }
 function changeArchiveForUnit()
 {
@@ -6011,8 +6077,107 @@ function saveReportScript()
 function updateAlertScriptParams()
 {
 	var script_id = I("alert_script").value;
-	g.last_alert_params = I("alert_params").value;
-	aparams = build_alert_params(script_id);
+	settingChangeKey("alert_script");
+	var aparams = build_alert_params(script_id);
 	I("alert_script_params_container").innerHTML = aparams.params;
 	update_alert_params();
+}
+function updateArchiveParams()
+{
+	var setting = g.curr_settings["archive"];
+	var home_params = {};
+	var home_param_idx = 0;
+	setting.use = 0;
+	for(var i=0;i<g.curr_archive_items.length;++i)
+	{
+		var item = g.curr_archive_items[i];
+		setting.use = setting.use | item.source;
+
+		var prefix = "c";
+
+		if(g.curr_settings_type==0)
+			prefix = "d";
+		else if(g.curr_settings_type==1)
+			prefix = "g";
+
+		if(item.source==2)
+		{
+			home_params["every_"+prefix+home_param_idx] = item.archive_every_i;
+			home_params["every_unit_"+prefix+home_param_idx] = item.archive_every_unit;
+			home_params["for_"+prefix+home_param_idx] = item.archive_for_i;
+			home_params["for_unit_"+prefix+home_param_idx] = item.archive_for_unit;
+			home_params["backup_type_"+prefix+home_param_idx] = item.archive_backup_type;
+			home_params["window_"+prefix+home_param_idx] = item.archive_window;
+			home_params["letters_"+prefix+home_param_idx] = item.archive_letters;
+			if((item.archive_uuid+"").length>10)
+			{
+				home_params["uuid_c"+home_param_idx] = item.archive_uuid;
+			}
+			home_param_idx+=1;
+		}
+	}
+
+	setting.value = $.param(home_params);
+}
+function addArchiveItemParams(params, idx, global, source)
+{
+	var next_archival =  null;
+	var archive_every = params["every_"+idx];
+	var archive_every_unit = params["every_unit_"+idx];
+	var archive_for = params["for_"+idx];
+	var archive_for_unit = params["for_unit_"+idx];
+	var archive_backup_type = params["backup_type_"+idx];
+	var archive_window = params["window_"+idx];
+	var archive_letters = params["letters_"+idx];
+	var archive_uuid = params["uuid_"+idx];
+	var archive_timeleft = null;
+	if(params["timeleft_"+idx])
+		archive_timeleft = params["timeleft_"+idx];
+	if(params["next_archival_"+idx])
+		next_archival = params["next_archival_"+idx];
+
+	addArchiveItemInt(getTimelengthUnit(archive_every, archive_every_unit), archive_every_unit,
+		getTimelengthUnit(archive_for, archive_for_unit), archive_for_unit, archive_backup_type, next_archival, archive_window, archive_letters, archive_timeleft, 
+		archive_uuid, global, source);
+}
+function renderArchiveSettings(global)
+{
+	var setting = g.curr_settings["archive"];
+
+	archiveTableClear();
+	g.curr_archive_items = [];
+
+	if(setting.use & 1)
+	{
+		params = deparam(setting.value_group);
+
+		var idx=0;
+		while(typeof params["every_d"+idx] != "undefined")
+		{
+			addArchiveItemParams(params, "d"+idx, global, 1);
+			idx+=1;
+		}
+		idx=0;
+		while(typeof params["every_g"+idx] != "undefined")
+		{
+			addArchiveItemParams(params, "g"+idx, global, 1);
+			idx+=1;
+		}
+	}
+	if(typeof setting.use=="undefined" 
+		|| setting.use & 2)
+	{
+		params = deparam(setting.value);
+
+		var prefix="c";
+		if(typeof setting.use=="undefined" )
+			prefix="d";
+
+		var idx=0;
+		while(typeof params["every_"+prefix+idx] != "undefined")
+		{
+			addArchiveItemParams(params, prefix+idx, global, 2);
+			idx+=1;
+		}
+	}
 }
