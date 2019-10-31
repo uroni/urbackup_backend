@@ -172,9 +172,11 @@ then
 	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install (cryptopp-devel/libcrypto++-dev) or run configure with --enable-embedded-cryptopp."; exit 44;])
 	
 	SAVED_LDFLAGS="$LDFLAGS"
-	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS $CRYPTOPP_LIBS $PTHREAD_LIBS"
+	SAVED_LIBS="$LIBS"
 	SAVED_CPPFLAGS="$CPPFLAGS"
+	LDFLAGS="$LDFLAGS $CRYPTOPP_LDFLAGS"
 	CPPFLAGS="$CPPFLAGS $CRYPTOPP_CPPFLAGS $PTHREAD_CFLAGS"
+	LIBS="$LIBS $CRYPTOPP_LIBS $PTHREAD_LIBS"
 	CRYPTOPP_INC="<$CRYPTOPP_INCLUDE_PREFIX/misc.h>"
 	AC_MSG_CHECKING([whether Crypto++ contains CryptoPP::AlignedAllocate function])
 	AC_LINK_IFELSE(
@@ -187,6 +189,7 @@ then
 	  ])
 	LDFLAGS="$SAVED_LDFLAGS"
 	CPPFLAGS="$SAVED_CPPFLAGS"
+	LIBS="$SAVED_LIBS"
 else
 	AC_CONFIG_SUBDIRS([cryptoplugin/src])
 fi
