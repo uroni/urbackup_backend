@@ -601,7 +601,7 @@ void updateClientSettings(int t_clientid, str_map &POST, IDatabase *db)
 			if (it_used != POST.end())
 				use = watoi(it_used->second);
 
-			if (use != c_use_value
+			if ( use != c_use_value && use!=c_use_group && use != (c_use_value|c_use_group)
 				&& !std::binary_search(sset_client_use.begin(), sset_client_use.end(), sset[i]))
 			{
 				use = c_use_value;
