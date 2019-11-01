@@ -69,6 +69,9 @@ do
 	fi
 	if [[ $var == "-msse3" ]]; then
 		removeElement "-mno-sse3"
+	fi	
+	if [[ $var == "-mssse3" ]]; then
+		removeElement "-mno-sse3"
 	fi
 
 	if [[ $ADD == 1 ]]; then
