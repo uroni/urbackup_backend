@@ -50,7 +50,7 @@ do
 	fi
 	if [[ $var == "-mno-sse3" ]]; then
 		ADD=0
-		if ! containsElement "-msse3" "${args[@]}" && ! containsElement "-mssse3" "${args[@]}"; then
+		if ! containsElement "-msse3" "${args[@]}" && ! containsElement "-mssse3" "${args[@]}" && ! containsElement "-msse4a" "${args[@]}" && ! containsElement "-msse4.2" "${args[@]}" && ! containsElement "-msse4.1" "${args[@]}"; then
 			args+=("$var")
 		fi
 	fi
