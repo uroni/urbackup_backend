@@ -2813,7 +2813,7 @@ function settingSwitch()
 		{
 			if(key=="archive")
 			{
-				renderArchiveSettings();
+				renderArchiveSettings(g.curr_settings_type==0);
 			}
 			else
 			{
@@ -5577,6 +5577,8 @@ function deleteArchiveItem(id)
 		getArchiveTable().removeChild(I("archive_item_"+id));
 	}
 	
+	var rerender=false;
+
 	for(var i=0;i<g.curr_archive_items.length;++i)
 	{
 		var item=g.curr_archive_items[i];
@@ -5585,9 +5587,12 @@ function deleteArchiveItem(id)
 			if(item.source!=2
 				&& g.curr_settings["archive"].use & 1)
 			{
+				
 				for(var j=0;j<g.curr_archive_items.length;++j)
 				{
-					g.curr_archive_items[j].source=1;
+					if(g.curr_archive_items[j].source!=2)
+						rerender=true;
+					g.curr_archive_items[j].source=2;
 				}
 				g.curr_settings["archive"].use=2;
 				renderSettingSwitch("archive");
@@ -5599,6 +5604,11 @@ function deleteArchiveItem(id)
 	}
 
 	updateArchiveParams();
+
+	if(rerender)
+	{
+		renderArchiveSettings(g.curr_settings_type==0);
+	}
 }
 function changeArchiveForUnit()
 {
