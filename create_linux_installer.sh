@@ -63,6 +63,10 @@ then
 else
 	export NDK=/media/data2/android-ndk/android-ndk-r20-orig
 fi
+if [[ $TARGET_FOLDER == "i686-linux-android" ]]
+then
+	NDK_CPUFLAGS="$NDK_CPUFLAGS -mno-sse3"
+fi
 export HOST_TAG=linux-x86_64
 export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/$HOST_TAG
 export TARGET2=${TARGET}29
