@@ -6110,12 +6110,12 @@ bool IndexThread::prepareCbt(std::string volume)
 
 	if (!b)
 	{
-		unlock_cbt_mutex();
-
 		DWORD lasterr = GetLastError();
-
 		std::string errmsg;
 		int64 err = os_last_error(errmsg);
+
+		unlock_cbt_mutex();
+
 		int ll = (lasterr != ERROR_INVALID_FUNCTION 
 			&& lasterr!= ERROR_NOT_SUPPORTED ) ? LL_ERROR : LL_DEBUG;
 		VSSLog("Preparing change block tracking reset for volume " + volume + " failed: " + errmsg + " (code: " + convert(err) + ")", ll);
