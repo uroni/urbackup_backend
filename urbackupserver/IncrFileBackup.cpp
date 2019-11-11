@@ -1970,6 +1970,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 								ftype = os_get_file_type(os_file_prefix(curr_fn));
 
 								if (ftype & EFileType_File
+									&& !hash_dir
 									&& (deleted_inplace_ids == NULL || !hasChange(line, *deleted_inplace_ids) ) )
 								{
 									keep_inplace = true;
