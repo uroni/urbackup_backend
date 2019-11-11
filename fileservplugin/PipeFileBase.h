@@ -18,6 +18,7 @@ public:
 	virtual void removeUser() = 0;
 	virtual bool hasUser() = 0;
 	virtual int64 getPos() = 0;
+	virtual bool waitForStderr(int64 timeoutms) = 0;
 };
 
 class PipeFileBase : public IPipeFile, public IThread
@@ -57,6 +58,8 @@ public:
 	bool getHasError();
 
 	std::string getStdErr();
+
+	virtual bool waitForStderr(int64 timeoutms);
 
 	virtual bool PunchHole( _i64 spos, _i64 size );
 

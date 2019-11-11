@@ -523,6 +523,18 @@ std::string PipeFileBase::getStdErr()
 	return stderr_ret;
 }
 
+bool PipeFileBase::waitForStderr(int64 timeoutms)
+{
+	if (stderr_thread != ILLEGAL_THREADPOOL_TICKET)
+	{
+		return Server->getThreadPool()->waitFor(stderr_thread, timeoutms);
+	}
+	else
+	{
+		return false;
+	}
+}
+
 void PipeFileBase::waitForExit()
 {
 	{

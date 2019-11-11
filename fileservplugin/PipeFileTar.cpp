@@ -773,6 +773,7 @@ std::string PipeFileTar::getStdErr()
 
 bool PipeFileTar::getExitCode(int & exit_code)
 {
+	IScopedLock lock(mutex.get());
 	if (has_next)
 	{
 		exit_code = 0;
@@ -780,14 +781,17 @@ bool PipeFileTar::getExitCode(int & exit_code)
 	}
 	else
 	{
+		lock.relock(NULL);
 		return pipe_file->pipe_file->getExitCode(exit_code);
 	}
 }
 
 void PipeFileTar::forceExitWait()
 {
+	IScopedLock lock(mutex.get());
 	if (!has_next)
 	{
+		lock.relock(NULL);
 		pipe_file->pipe_file->forceExitWait();
 	}
 }
@@ -811,4 +815,17 @@ int64 PipeFileTar::getPos()
 {
 	IScopedLock lock(mutex.get());
 	return tar_file.pos;
+}
+
+bool PipeFileTar::waitForStderr(int64 timeoutms)
+{
+	IScopedLock lock(mutex.get());
+	if (has_next)
+	{
+		return true;
+	}
+	else
+	{
+		return pipe_file->pipe_file->waitForStderr(timeoutms);
+	}
 }

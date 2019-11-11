@@ -121,6 +121,7 @@ public:
 	virtual void removeUser();
 	virtual bool hasUser();
 	virtual int64 getPos();
+	virtual bool waitForStderr(int64 timeoutms);
 
 private:
 

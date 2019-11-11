@@ -292,6 +292,7 @@ SExitInformation PipeSessions::getExitInformation(const std::string& cmd)
 
 			lock.relock(NULL);
 
+			f->waitForStderr(10000);
 			std::string stderr_output = f->getStdErr();
 
 			lock.relock(mutex);
