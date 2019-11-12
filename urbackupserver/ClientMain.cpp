@@ -3204,8 +3204,8 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 		{
 			for (size_t k = 0; k < backup_queue.size(); ++k)
 			{
-				if (backup_queue[k].backup->isIncrementalBackup()
-					&& full)
+				if ( (!backup_queue[k].backup->isIncrementalBackup()) != full
+					|| backup_queue[k].backup->isFileBackup())
 				{
 					continue;
 				}
