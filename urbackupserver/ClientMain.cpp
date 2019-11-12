@@ -3221,6 +3221,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 		}
 
 		if (image_snapshot_groups=="all"
+			|| image_snapshot_groups == "all_nonusb"
 			|| std::find(vols.begin(), vols.end(), vol) != vols.end())
 		{
 			for (size_t k = 0; k < backup_queue.size(); ++k)
@@ -3232,6 +3233,7 @@ bool ClientMain::isImageGroupQueued(const std::string & letter, bool full)
 				}
 
 				if (image_snapshot_groups == "all"
+					|| image_snapshot_groups == "all_nonusb"
 					|| std::find(vols.begin(), vols.end(), normalizeVolumeUpper(backup_queue[k].letter))
 						!= vols.end())
 				{
