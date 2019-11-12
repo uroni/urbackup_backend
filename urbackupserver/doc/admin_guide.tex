@@ -14,7 +14,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 2.2.x}
+\title{Administration Manual for\\UrBackup Server 2.4.x}
 
 \maketitle
 
@@ -321,16 +321,23 @@ The server web interface is accessible via FastCGI (on port 55413 TCP). With thi
 \subsubsection{Apache configuration}
 \label{subsub_apache}
 
-Either add a symlink to the 'www' UrBackup directory or define it as an alias. For the symlink method you need to go to your SSL webroot and then do e.g.:
+Either add a symlink to the 'www' UrBackup directory or define it as an alias. 
+For the symlink method you need to go to your SSL webroot and then do e.g.:
 \begin{verbatim}
 ln -s /usr/share/urbackup/www urbackup
 \end{verbatim}
-Be sure you have set 'Option +FollowSymLinks' in the web server configuration on the directory you link into. From now on it is assumed that urbackup should be accessible via\\ https://hostname/urbackup.
-Download and install 'libapache2-mod-fastcgi' (this may have another name on other distributions and maybe in a ``non-free'' section). Add following line to the 'fastcgi.conf':
+Be sure you have set 'Option +FollowSymLinks' in the web server configuration on the directory you link into. 
+Afterwards enable the Apache $2$ plugin ``mod\_proxy\_fcgi''. For example on Debian/Ubuntu with
 \begin{verbatim}
-FastCgiExternalServer /var/www/urbackup/x -host 127.0.0.1:55413
+a2enmod proxy_fcgi
 \end{verbatim}
-The path depends of cause on where your web root is and where you want the web interface to be. UrBackup should now be accessible via apache.
+Then proxy the ``x'' file to the locally (or remotely) running UrBackup FastCGI server (default port 55413).
+E.g. by adding the following to your SSL virtual host configuration:
+\begin{verbatim}
+ProxyPass "/urbackup/x" "fcgi://127.0.0.1:55413"
+\end{verbatim}
+The path (``/urbackup/x'') depends on where your web root of UrBackup is (``index.htm" should be in the same directory)
+and where you want the web interface to be. UrBackup should now be accessible via apache.
 
 \subsubsection{Lighttp configuration}
 
