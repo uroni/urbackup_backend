@@ -113,6 +113,8 @@ test -e "$PREFIX/bin" || install -c -m 755 -d "$PREFIX/bin"
 install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
 install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 
+ORIG_TARGET=$TARGET
+
 if [ $TARGET = x86_64-linux-glibc ]
 then
 	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
@@ -126,12 +128,27 @@ then
 			TARGET=x86_64-linux-android
 		fi
 	fi
-	
-	if [ $TARGET != x86_64-linux-glibc ]
+fi
+
+if [ $TARGET = arm-linux-androideabi ]
+then
+	if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
 	then
-		install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
-		install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
+		echo "(Android NDK build not working. Falling back to ELLCC build...)"
+		TARGET=armv6-linux-engeabihf
+	else
+		if ! "$PREFIX/sbin/urbackupclientbackend" --version 2>&1 | grep "UrBackup Client Backend" > /dev/null 2>&1
+		then
+			echo "(Android NDK build not working. Falling back to ELLCC build...)"
+			TARGET=armv6-linux-engeabihf
+		fi
 	fi
+fi
+
+if [ $TARGET != $ORIG_TARGET ]
+then
+	install -c "$TARGET/urbackupclientbackend" "$PREFIX/sbin"
+	install -c "$TARGET/urbackupclientctl" "$PREFIX/bin"
 fi
 
 if ! "$PREFIX/bin/urbackupclientctl" --version 2>&1 | grep "UrBackup Client Controller" > /dev/null 2>&1
