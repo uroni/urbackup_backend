@@ -104,13 +104,17 @@ fi
 }
 
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
-for arch in x86_64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
+for arch in armv6-linux-engeabihf x86_64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
 do
 	
 
 	echo "Compiling for architecture $arch..."
 	
-	if [ $arch = x86_64-linux-glibc ]
+	if [ $arch = armv6-linux-engeabihf ]
+	then
+		./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc AR=/usr/local/ellcc/libecc/bin/ecc-ar RANLIB=/usr/local/ellcc/libecc/bin/ecc-ranlib
+		STRIP_CMD="ecc-strip"
+	elif [ $arch = x86_64-linux-glibc ]
 	then
 		sed -i 's@$(OPENSSL_LIBS)@/usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/x86_64-linux-gnu/libssl.a@g' Makefile.am
 		sed -i 's@-lzstd@/usr/lib/x86_64-linux-gnu/libzstd.a@g' Makefile.am
@@ -118,8 +122,6 @@ do
 		STRIP_CMD="strip"
 	else
 		build_ndk $arch
-		#./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc AR=/usr/local/ellcc/libecc/bin/ecc-ar RANLIB=/usr/local/ellcc/libecc/bin/ecc-ranlib
-		#STRIP_CMD="ecc-strip"
 	fi
 	
     make clean
