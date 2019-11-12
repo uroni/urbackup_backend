@@ -110,12 +110,12 @@ fi
 #ELLC: for arch in x86_64-linux-glibc i386-linux-eng x86_64-linux-eng armv6-linux-engeabihf aarch64-linux-eng
 for arch in armv6-linux-engeabihf x86_64-linux-glibc i686-linux-android  x86_64-linux-android aarch64-linux-android arm-linux-androideabi
 do
-	
-
+	ORIG_PATH="$PATH"
 	echo "Compiling for architecture $arch..."
 	
 	if [ $arch = armv6-linux-engeabihf ]
 	then
+		export PATH="$PATH:/usr/local/ellcc/bin"
 		./configure --enable-headless --enable-clientupdate CFLAGS="-target $arch -ggdb -Os" CPPFLAGS="-target $arch -DURB_THREAD_STACKSIZE64=8388608 -DURB_THREAD_STACKSIZE32=1048576 -DURB_WITH_CLIENTUPDATE -ffunction-sections -fdata-sections" LDFLAGS="-target $arch -Wl,--gc-sections" CXX="ecc++" CC="ecc" CXXFLAGS="-ggdb -Os" --with-crypto-prefix=/usr/local/ellcc/libecc --with-zlib=/usr/local/ellcc/libecc AR=/usr/local/ellcc/libecc/bin/ecc-ar RANLIB=/usr/local/ellcc/libecc/bin/ecc-ranlib
 		STRIP_CMD="ecc-strip"
 	elif [ $arch = x86_64-linux-glibc ]
@@ -144,6 +144,7 @@ do
 	cp blockalign install-data-dbg/$arch/
 	$STRIP_CMD install-data/$arch/blockalign
 	
+	export PATH="$ORIG_PATH"
 	./switch_build.sh client
 done
 
