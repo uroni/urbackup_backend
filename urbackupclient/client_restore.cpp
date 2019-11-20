@@ -1115,6 +1115,27 @@ void do_restore(void)
 		delete []buf;
 		exit(0);
 	}
+	else if (cmd == "login")
+	{
+		LoginData login_data;
+		login_data.has_login_data = true;
+		login_data.username = Server->getServerParameter("username");
+		login_data.password = Server->getServerParameter("password");
+
+		char* pw = getenv("LOGIN_PASSWORD");
+		if (pw != NULL)
+		{
+			login_data.password = pw;
+		}
+		if (do_login(login_data))
+		{
+			exit(0);
+		}
+		else
+		{
+			exit(1);
+		}
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -1126,6 +1147,7 @@ void do_restore(void)
 		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
+		Server->Log("login(username,password)", LL_INFO);
 		exit(0);
 	}
 	else if(cmd=="ping_server")
