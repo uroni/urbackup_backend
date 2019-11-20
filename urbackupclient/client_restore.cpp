@@ -42,6 +42,7 @@
 #include <memory>
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
+#include "../urbackupcommon/json.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -357,6 +358,8 @@ struct SImage
 	std::string letter;
 };
 
+std::vector<SImage> parse_backup_images_output(const std::string& data);
+
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 {
 	std::string pw=getFile(pw_file);
@@ -388,34 +391,7 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 		}
 		else
 		{
-			std::vector<std::string> toks;
-			std::string t=r.substr(1);
-			Tokenize(t, toks, "\n");
-			for(size_t i=0;i<toks.size();++i)
-			{
-				std::vector<std::string> t2;
-				Tokenize(toks[i], t2, "|");
-				if(t2.size()==3 || (t2.size()==4 && t2[0]!="#") )
-				{
-					SImage si;
-					si.id=atoi(t2[0].c_str());
-					si.time_s=os_atoi64(t2[1]);
-					si.time_str=t2[2];
-					if(t2.size()==4)
-					{
-						si.letter=t2[3];
-					}
-					ret.push_back(si);
-				}
-				else if(t2.size()==4 && t2[0]=="#" && !ret.empty())
-				{
-					SImage si;
-					si.id=atoi(t2[1].c_str());
-					si.time_s=os_atoi64(t2[2]);
-					si.time_str=t2[3];
-					ret[ret.size()-1].assoc.push_back(si);
-				}
-			}
+			ret = parse_backup_images_output(r.substr(1));
 		}
 	}
 	Server->destroy(c);
@@ -989,6 +965,75 @@ namespace
 	}
 }
 
+namespace
+{
+	std::vector<SImage> parse_backup_images_output(const std::string& data)
+	{
+		std::vector<SImage> ret;
+		std::vector<std::string> toks;
+		Tokenize(data, toks, "\n");
+		for (size_t i = 0; i < toks.size(); ++i)
+		{
+			std::vector<std::string> t2;
+			Tokenize(toks[i], t2, "|");
+			if (t2.size() == 3 || (t2.size() == 4 && t2[0] != "#"))
+			{
+				SImage si;
+				si.id = atoi(t2[0].c_str());
+				si.time_s = os_atoi64(t2[1]);
+				si.time_str = t2[2];
+				if (t2.size() == 4)
+				{
+					si.letter = t2[3];
+				}
+				ret.push_back(si);
+			}
+			else if (t2.size() == 4 && t2[0] == "#" && !ret.empty())
+			{
+				SImage si;
+				si.id = atoi(t2[1].c_str());
+				si.time_s = os_atoi64(t2[2]);
+				si.time_str = t2[3];
+				ret[ret.size() - 1].assoc.push_back(si);
+			}
+		}
+		return ret;
+	}
+
+	std::string backup_images_output_to_json(const std::string& data)
+	{
+		std::vector<SImage> images = parse_backup_images_output(data);
+
+		JSON::Array ret;
+		for (size_t i = 0; i < images.size(); ++i)
+		{
+			JSON::Object image;
+			image.set("id", images[i].id);
+			image.set("time_s", images[i].time_s);
+			image.set("time_str", images[i].time_str);
+			image.set("letter", images[i].letter);
+
+			if (!images[i].assoc.empty())
+			{
+				JSON::Array assoc;
+				for (size_t j = 0; j < images[i].assoc.size(); ++j)
+				{
+					JSON::Object image_assoc;
+					image_assoc.set("id", images[i].assoc[j].id);
+					image_assoc.set("time_s", images[i].assoc[j].time_s);
+					image_assoc.set("time_str", images[i].assoc[j].time_str);
+					image_assoc.set("letter", images[i].assoc[j].letter);
+					assoc.add(image_assoc);
+				}
+				image.set("assoc", assoc);
+			}
+			ret.add(image);
+		}
+
+		return ret.stringify(false);
+	}
+}
+
 void do_restore(void)
 {
 	std::string cmd=Server->getServerParameter("restore_cmd");
@@ -1144,6 +1189,7 @@ void do_restore(void)
 		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
 		Server->Log("get_clientnames", LL_INFO);
 		Server->Log("get_backupimages(restore_name)", LL_INFO);
+		Server->Log("get_backupimages_json(restore_name)", LL_INFO);
 		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
@@ -1191,7 +1237,8 @@ void do_restore(void)
 			}
 		}
 	}
-	else if(cmd=="get_backupimages" )
+	else if(cmd=="get_backupimages"
+		|| cmd == "get_backupimages_json")
 	{
 		tcpstack.Send(c, "GET BACKUPIMAGES "+Server->getServerParameter("restore_name")+"#pw="+pw);
 		std::string r=getResponse(c);
@@ -1209,7 +1256,14 @@ void do_restore(void)
 			}
 			else
 			{
-				std::cout << r.substr(1) ;
+				if (cmd == "get_backupimages_json")
+				{
+					std::cout << backup_images_output_to_json(r.substr(1));
+				}
+				else
+				{
+					std::cout << r.substr(1);
+				}
 				Server->destroy(c);exit(0);return;
 			}
 		}
