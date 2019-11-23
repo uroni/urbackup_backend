@@ -971,7 +971,7 @@ void ClientDAO::resetAllHardlinks(void)
 	q_resetAllHardlinks->Write();
 }
 
-std::vector<std::pair<int, std::string>> getFlagStrMapping()
+std::vector<std::pair<int, std::string> > getFlagStrMapping()
 {
 	std::vector<std::pair<int, std::string> > flag_mapping;
 	flag_mapping.push_back(std::make_pair(EBackupDirFlag_Optional, "optional"));
