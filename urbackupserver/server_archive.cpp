@@ -346,6 +346,19 @@ namespace
 
 		return true;
 	}
+
+	struct SArchival
+	{
+		int64 next;
+		int64 every;
+		int64 archive_for;
+		int backup_types;
+		std::string every_unit;
+		std::string for_unit;
+		std::string window;
+		std::string letters;
+		std::string uuid;
+	};
 }
 
 void ServerAutomaticArchive::updateArchiveSettings(int clientid)
@@ -362,19 +375,6 @@ void ServerAutomaticArchive::updateArchiveSettings(int clientid)
 
 	std::string prefix = "d";
 	std::string idx;
-
-	struct SArchival
-	{
-		int64 next;
-		int64 every;
-		int64 archive_for;
-		int backup_types;
-		std::string every_unit;
-		std::string for_unit;
-		std::string window;
-		std::string letters;
-		std::string uuid;
-	};
 
 	std::vector<SArchival> new_settings;
 
