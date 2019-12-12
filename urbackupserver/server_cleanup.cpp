@@ -1051,7 +1051,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			int clientid = res[i];
 
 			int imagebid;
-			if (cleanup_one_filebackup_client(clientid, minspace, imagebid))
+			if (cleanup_one_imagebackup_client(clientid, minspace, imagebid))
 			{
 				int r = hasEnoughFreeSpace(minspace, &settings);
 				if (r == -1 || r == 1)
