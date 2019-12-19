@@ -12626,7 +12626,7 @@ translations.zh_CN = {
 "tLast modified": "最新更改的",
 "tLast accessed": "最近访问的",
 "tList": "列表",
-"tRestore": "回复",
+"tRestore": "恢复",
 "tRestore folder to client": "将文件夹恢复至客户端",
 "tVersion": "版本",
 "tClient added successfully": "客户端添加成功",
