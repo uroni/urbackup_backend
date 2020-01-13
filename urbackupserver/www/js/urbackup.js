@@ -3612,6 +3612,8 @@ function show_settings2(data)
 			else data.settings.mail_ssl_only="";
 			if(data.settings.mail_check_certificate=="true") data.settings.mail_check_certificate="checked=\"checked\"";
 			else data.settings.mail_check_certificate="";
+			if(data.settings.mail_use_smtps=="true") data.settings.mail_use_smtps="checked=\"checked\"";
+			else data.settings.mail_use_smtps="";
 			
 			ndata+=dustRender("settings_mail", data.settings);
 			
@@ -4149,6 +4151,7 @@ g.mail_settings_list=[
 "mail_from",
 "mail_ssl_only",
 "mail_check_certificate",
+"mail_use_smtps",
 "mail_admin_addrs"
 ];
 g.internet_settings_list=[

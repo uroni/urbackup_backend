@@ -1997,8 +1997,9 @@ MailServer ClientMain::getMailServerSettings(void)
 	if(ms.mailfrom.empty())
 		ms.mailfrom="report@urbackup.example.com";
 
-	ms.ssl_only=(settings->getValue("mail_ssl_only", "false")=="true")?true:false;
-	ms.check_certificate=(settings->getValue("mail_check_certificate", "false")=="true")?true:false;
+	ms.ssl_only = settings->getValue("mail_ssl_only", "false")=="true";
+	ms.check_certificate = settings->getValue("mail_check_certificate", "false")=="true";
+	ms.use_smtps = settings->getValue("mail_use_smtps", "false") == "true";
 
 	Server->destroy(settings);
 	return ms;

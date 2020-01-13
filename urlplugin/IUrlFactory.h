@@ -19,6 +19,7 @@ struct MailServer
 	std::string mailfrom;
 	bool ssl_only;
 	bool check_certificate;
+	bool use_smtps;
 };
 
 class IUrlFactory : public IPlugin

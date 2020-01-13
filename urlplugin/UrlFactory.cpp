@@ -128,7 +128,8 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		mailfrom="<"+mailfrom+">";
 	}
 
-	curl_easy_setopt(curl, CURLOPT_URL, ("smtp://"+server.servername+":"+convert(server.port)).c_str());
+	curl_easy_setopt(curl, CURLOPT_URL, ( (server.use_smtps ? "smtps://" : "smtp://")
+		+server.servername+":"+convert(server.port)).c_str());
 	curl_easy_setopt(curl, CURLOPT_USE_SSL, server.ssl_only?CURLUSESSL_ALL:CURLUSESSL_TRY);
 	if(!server.check_certificate)
 	{

@@ -84,6 +84,7 @@ std::vector<std::string> getMailSettingsList(void)
 	tmp.push_back("mail_from");
 	tmp.push_back("mail_ssl_only");
 	tmp.push_back("mail_check_certificate");
+	tmp.push_back("mail_use_smtps");
 	tmp.push_back("mail_admin_addrs");
 	return tmp;
 }
