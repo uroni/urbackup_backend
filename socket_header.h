@@ -58,7 +58,7 @@ namespace {
 	int accept4_fb(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
 	{
 		int rc = accept4(sockfd, addr, addrlen, flags);
-		if (rc == -1 && errno = EINVAL)
+		if (rc == -1 && errno == EINVAL)
 		{
 			rc = accept(sockfd, addr, addrlen);
 			if (rc) fcntl(rc, F_SETFD, fcntl(rc, F_GETFD, 0) | FD_CLOEXEC);
