@@ -273,8 +273,7 @@ bool CUDPThread::init_v4(_u16 udpport)
 		if (udpsock == SOCKET_ERROR)
 		{
 			Log("Error creating udpsock in CUDPThread::init_v4", LL_ERROR);
-			has_error = true;
-			return;
+			return false;
 		}
 	}
 
