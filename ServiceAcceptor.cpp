@@ -299,7 +299,7 @@ bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget b
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 		if (errno == EINVAL)
 		{
-			type |= ~SOCK_CLOEXEC;
+			type &= ~SOCK_CLOEXEC;
 			s = socket(AF_INET, type, 0);
 		}
 #endif

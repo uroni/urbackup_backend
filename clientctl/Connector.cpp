@@ -123,7 +123,7 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 		if (errno == EINVAL)
 		{
-			type |= ~SOCK_CLOEXEC;
+			type &= ~SOCK_CLOEXEC;
 			p = socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
 		}
 #endif
