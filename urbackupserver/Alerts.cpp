@@ -389,7 +389,7 @@ void Alerts::operator()()
 					q_update_client->Bind(i_file_ok);
 					q_update_client->Bind(i_image_ok);
 					q_update_client->Bind(next_check);
-					q_update_client->Bind(state);
+					q_update_client->Bind(state.c_str(), state.size());
 					q_update_client->Bind(clientid);
 					q_update_client->Write();
 					q_update_client->Reset();
@@ -399,7 +399,7 @@ void Alerts::operator()()
 				{
 					it->second.global = global_state;
 
-					q_update_global_state->Bind(global_state);
+					q_update_global_state->Bind(global_state.c_str(), global_state.size());
 					q_update_global_state->Bind(script_id);
 					q_update_global_state->Write();
 					q_update_global_state->Reset();
