@@ -28,7 +28,7 @@
 #include "config.h"
 #endif
 #ifdef HAVE_ACCEPT4
-#define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4(sockfd, addr, addrlen, SOCK_CLOEXEC)
+#define ACCEPT_CLOEXEC(sockfd, addr, addrlen) accept4_fb(sockfd, addr, addrlen, SOCK_CLOEXEC)
 #else
 #define EMULATE_ACCEPT_CLOEXEC
 #endif
