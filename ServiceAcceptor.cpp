@@ -300,7 +300,7 @@ bool CServiceAcceptor::init_socket_v4(unsigned short port, IServer::BindTarget b
 		if (errno == EINVAL)
 		{
 			type |= ~SOCK_CLOEXEC;
-			s = socket(af, type, 0);
+			s = socket(AF_INET, type, 0);
 		}
 #endif
 		if (s == SOCKET_ERROR)
