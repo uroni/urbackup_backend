@@ -14,6 +14,7 @@
 #	include <netdb.h>
 #	include <unistd.h>
 #	include <fcntl.h>
+#	include <errno.h>
 #	define SOCKET_ERROR -1
 #	define closesocket close
 #	define SOCKET int
