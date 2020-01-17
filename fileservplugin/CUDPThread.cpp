@@ -261,6 +261,22 @@ bool CUDPThread::init_v4(_u16 udpport)
 	type |= SOCK_CLOEXEC;
 #endif
 	udpsock = socket(AF_INET, type, 0);
+	if (udpsock == SOCKET_ERROR)
+	{
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		if (errno == EINVAL)
+		{
+			type |= ~SOCK_CLOEXEC;
+			udpsock = socket(AF_INET, type, 0);
+		}
+#endif
+		if (udpsock == SOCKET_ERROR)
+		{
+			Log("Error creating udpsock in CUDPThread::init_v4", LL_ERROR);
+			has_error = true;
+			return;
+		}
+	}
 
 	setSocketSettings(udpsock);
 

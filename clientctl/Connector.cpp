@@ -118,6 +118,22 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 #endif
 	SOCKET p=socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
 
+	if (p == SOCKET_ERROR)
+	{
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		if (errno == EINVAL)
+		{
+			type |= ~SOCK_CLOEXEC;
+			p = socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
+		}
+#endif
+		if (p == SOCKET_ERROR)
+		{
+			std::cout << "Error creating socket for connection to backend" << std::endl;
+			return "";
+		}
+	}
+
 #if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
 	fcntl(p, F_SETFD, fcntl(p, F_GETFD, 0) | FD_CLOEXEC);
 #endif
