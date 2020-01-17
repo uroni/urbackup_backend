@@ -359,7 +359,20 @@ bool CTCPFileServ::startIpv4(_u16 tcpport)
 	type |= SOCK_CLOEXEC;
 #endif
 	mSocket = socket(AF_INET, type, 0);
-	if (mSocket < 1) return false;
+	if (mSocket == SOCKET_ERROR)
+	{
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+		if (errno == EINVAL)
+		{
+			type |= ~SOCK_CLOEXEC;
+			mSocket = socket(AF_INET, type, 0);
+		}
+#endif
+		if (mSocket == SOCKET_ERROR)
+		{
+			return false;
+		}
+	}
 
 	if (!setSocketSettings(mSocket))
 	{
