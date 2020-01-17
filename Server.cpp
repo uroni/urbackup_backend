@@ -1088,7 +1088,7 @@ IPipe* CServer::ConnectStream(const SLookupBlockingResult& lookup_result, unsign
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 		if (errno == EINVAL)
 		{
-			type |= ~SOCK_CLOEXEC;
+			type &= ~SOCK_CLOEXEC;
 			s = socket(lookup_result.is_ipv6 ? AF_INET6 : AF_INET, type, 0);
 		}
 #endif

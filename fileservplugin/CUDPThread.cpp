@@ -266,7 +266,7 @@ bool CUDPThread::init_v4(_u16 udpport)
 #if !defined(_WIN32) && defined(SOCK_CLOEXEC)
 		if (errno == EINVAL)
 		{
-			type |= ~SOCK_CLOEXEC;
+			type &= ~SOCK_CLOEXEC;
 			udpsock = socket(AF_INET, type, 0);
 		}
 #endif
