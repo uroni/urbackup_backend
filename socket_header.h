@@ -53,7 +53,8 @@ namespace {
 #endif //ACCEPT_CLOEXEC_DEFINED
 #endif //EMULATE_ACCEPT_CLOEXEC
 
-#if !defined(EMULATE_ACCEPT_CLOEXEC) && defined(SOCK_CLOEXEC) && defined(HAVE_ACCEPT4)
+#if !defined(EMULATE_ACCEPT_CLOEXEC) && defined(SOCK_CLOEXEC) && defined(HAVE_ACCEPT4) && !defined(ACCEPT_FB_DEFINED)
+#define ACCEPT_FB_DEFINED
 namespace {
 	int accept4_fb(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags)
 	{
