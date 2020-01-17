@@ -300,27 +300,27 @@ std::string find_zfs_cmd()
 		return zfs_cmd;
 	}
 	
-	if(exec_wait("zfs", false, "--version", NULL)==2)
+	if(exec_wait("zfs", false, "version", NULL)==0)
 	{
 		zfs_cmd="zfs";
 		return zfs_cmd;
 	}
-	else if(exec_wait("/sbin/zfs", false, "--version", NULL)==2)
+	else if(exec_wait("/sbin/zfs", false, "version", NULL)==0)
 	{
 		zfs_cmd="/sbin/zfs";
 		return zfs_cmd;
 	}
-	else if(exec_wait("/bin/zfs", false, "--version", NULL)==2)
+	else if(exec_wait("/bin/zfs", false, "version", NULL)==0)
 	{
 		zfs_cmd="/bin/zfs";
 		return zfs_cmd;
 	}
-	else if(exec_wait("/usr/sbin/zfs", false, "--version", NULL)==2)
+	else if(exec_wait("/usr/sbin/zfs", false, "version", NULL)==0)
 	{
 		zfs_cmd="/usr/sbin/zfs";
 		return zfs_cmd;
 	}
-	else if(exec_wait("/usr/bin/zfs", false, "--version", NULL)==2)
+	else if(exec_wait("/usr/bin/zfs", false, "version", NULL)==0)
 	{
 		zfs_cmd="/usr/bin/zfs";
 		return zfs_cmd;
