@@ -104,6 +104,7 @@ std::vector<std::string> getSettingsList(void)
 	ret.push_back("alert_script");
 	ret.push_back("alert_params");
 	ret.push_back("archive");
+	ret.push_back("client_settings_tray_access_pw");
 	return ret;
 }
 
@@ -189,6 +190,7 @@ std::vector<std::string> getOnlyServerClientSettingsList(void)
 	ret.push_back("alert_script");
 	ret.push_back("alert_params");
 	ret.push_back("archive");
+	ret.push_back("client_settings_tray_access_pw");
 	return ret;
 }
 

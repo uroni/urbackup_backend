@@ -4118,7 +4118,8 @@ g.settings_list=[
 "update_dataplan_db",
 "alert_script",
 "alert_params",
-"archive"
+"archive",
+"client_settings_tray_access_pw"
 ];
 g.general_settings_list=[
 "backupfolder",

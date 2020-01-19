@@ -142,6 +142,7 @@ struct SSettings
 	int alert_script;
 	std::string alert_params;
 	std::string archive;
+	std::string client_settings_tray_access_pw;
 };
 
 struct SLDAPSettings

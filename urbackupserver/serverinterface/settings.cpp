@@ -261,6 +261,7 @@ JSON::Object getJSONClientSettings(IDatabase *db, int t_clientid)
 	SET_SETTING_STR(alert_script);
 	SET_SETTING_STR(alert_params);
 	SET_SETTING_STR(archive);
+	SET_SETTING_STR(client_settings_tray_access_pw);
 #undef SET_SETTING
 	return ret;
 }

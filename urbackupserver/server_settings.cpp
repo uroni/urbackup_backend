@@ -562,6 +562,8 @@ void ServerSettings::readSettingsDefault(ISettingsReader* settings_default,
 	readStringClientSetting(q_get_client_setting, "alert_params", std::string(), &settings->alert_params, false);
 
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
+
+	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
 }
 
 void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery* q_get_client_setting)
@@ -676,6 +678,8 @@ void ServerSettings::readSettingsClient(ISettingsReader* settings_client, IQuery
 	readIntClientSetting(q_get_client_setting, "alert_script", &settings->alert_script);
 	readStringClientSetting(q_get_client_setting, "alert_params", std::string(), &settings->alert_params, false);
 	readStringClientSetting(q_get_client_setting, "archive", std::string("&"), &settings->archive, false);
+
+	readStringClientSetting(q_get_client_setting, "client_settings_tray_access_pw", std::string(), &settings->client_settings_tray_access_pw, false);
 }
 
 void ServerSettings::readStringClientSetting(IQuery * q_get_client_setting, int clientid, const std::string & name, const std::string & merge_sep, std::string * output, bool allow_client_value)
