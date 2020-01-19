@@ -2969,6 +2969,7 @@ function show_settings2(data)
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
 			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
+			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -3112,6 +3113,7 @@ function show_settings2(data)
 			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
 			data.settings.create_linked_user_views=getCheckboxValue(data.settings.create_linked_user_views);
 			data.settings.ignore_disk_errors=getCheckboxValue(data.settings.ignore_disk_errors);
+			data.settings.backup_dirs_optional=getCheckboxValue(data.settings.backup_dirs_optional);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -3688,6 +3690,7 @@ g.settings_list=[
 "exclude_files",
 "include_files",
 "default_dirs",
+"backup_dirs_optional",
 "allow_config_paths",
 "allow_starting_full_file_backups",
 "allow_starting_incr_file_backups",
