@@ -929,15 +929,32 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 			if( fs>0 && available_space<=fs )
 			{
-				if(space_logcnt==0)
+				if (extent_iterator != NULL)
 				{
-					ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					extent_iterator->reset();
+
+					IFsFile::SSparseExtent ext;
+					while ((ext = extent_iterator->nextExtent()).offset!=-1)
+					{
+						if(ext.size>0)
+							fs -= ext.size;
+					}
+
+					extent_iterator->reset();
 				}
-				else
+
+				if (fs > 0 && available_space <= fs)
 				{
-					ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					if (space_logcnt == 0)
+					{
+						ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					}
+					else
+					{
+						ServerLogger::Log(logid, "HT: No free space available deleting backups...", LL_WARNING);
+					}
+					free_ok = freeSpace(fs, os_file_prefix(tfn));
 				}
-				free_ok=freeSpace(fs, os_file_prefix(tfn));
 			}
 
 			if(!free_ok)
