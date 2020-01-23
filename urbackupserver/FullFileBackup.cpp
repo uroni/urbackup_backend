@@ -126,7 +126,7 @@ bool FullFileBackup::doFileBackup()
 	std::string identity = client_main->getIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:this);
-	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 60000);
 	if(rc!=ERR_CONNECTED)
 	{
 		ServerLogger::Log(logid, "Full Backup of "+clientname+" failed - CONNECT error", LL_ERROR);
