@@ -173,7 +173,7 @@ bool IncrFileBackup::doFileBackup()
 	std::auto_ptr<FileClientChunked> fc_chunked;
 	if(intra_file_diffs)
 	{
-		if(client_main->getClientChunkedFilesrvConnection(fc_chunked, server_settings.get(), this, 10000))
+		if(client_main->getClientChunkedFilesrvConnection(fc_chunked, server_settings.get(), this, 60000))
 		{
 			fc_chunked->setProgressLogCallback(this);
 			fc_chunked->setDestroyPipe(true);
@@ -193,7 +193,7 @@ bool IncrFileBackup::doFileBackup()
 			return false;
 		}
 	}
-	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 60000);
 	if(rc!=ERR_CONNECTED)
 	{
 		ServerLogger::Log(logid, "Incremental Backup of "+clientname+" failed - CONNECT error -2", LL_ERROR);
