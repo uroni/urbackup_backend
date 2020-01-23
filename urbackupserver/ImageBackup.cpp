@@ -410,7 +410,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::string &pParent
 
 			FileClient fc(false, client_main->getIdentity(), client_main->getProtocolVersions().filesrv_protocol_version,
 				client_main->isOnInternetConnection(), client_main);
-			_u32 rc = client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+			_u32 rc = client_main->getClientFilesrvConnection(&fc, server_settings.get(), 60000);
 			if (rc != ERR_CONNECTED)
 			{
 				ServerLogger::Log(logid, "Error getting MBR zip data - CONNECT error", LL_ERROR);
