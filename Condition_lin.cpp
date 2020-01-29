@@ -55,7 +55,12 @@ void CCondition::wait(IScopedLock *lock, int timems)
 		gettimeofday(&tp, NULL);
 		timespec t;
 		t.tv_sec=tp.tv_sec+timems/(int)1000;
-		t.tv_nsec=tp.tv_usec+(timems%1000)*1000000;
+		t.tv_nsec=(tp.tv_usec+1000*(timems%1000))*1000;
+		while(t.tv_nsec>1000*1000*1000)
+		{
+			++t.tv_sec;
+			t.tv_nsec-=1000*1000*1000;
+		}
 		pthread_cond_timedwait(&cond, ptmutex, &t); 
 	}
 }
