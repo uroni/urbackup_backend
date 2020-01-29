@@ -268,7 +268,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 		if(file.isdir)
 		{
 			rc = mz_zip_writer_add_mem_ex_v2(&zip_archive, (archivename + "/").c_str(), NULL, 0, NULL, 0,
-											MZ_DEFAULT_LEVEL|MZ_ZIP_FLAG_UTF8_FILENAME,
+											MZ_DEFAULT_LEVEL,
 											0, 0, last_modified, extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
 											extra_data_central.getDataPtr(), extra_data_central.getDataSize());
 
@@ -302,7 +302,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::string& archivefoldername, 
 			if (file != NULL)
 			{
 				rc = mz_zip_writer_add_cfile(&zip_archive, archivename.c_str(), file, fsize, last_modified, NULL, 0,
-					MZ_DEFAULT_LEVEL|MZ_ZIP_FLAG_UTF8_FILENAME,
+					MZ_DEFAULT_LEVEL,
 					extra_data_local.getDataPtr(), extra_data_local.getDataSize(),
 					extra_data_central.getDataPtr(), extra_data_central.getDataSize());
 
