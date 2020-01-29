@@ -46,6 +46,12 @@
 # endif
 #endif
 
+#if CRYPTOPP_BOOL_SSE4_INTRINSICS_AVAILABLE
+#if defined(_MSC_VER) 
+#include <intrin.h>
+#endif
+#endif
+
 #if defined(_MSC_VER) || defined(__BORLANDC__)
 # define CRYPTOPP_MS_STYLE_INLINE_ASSEMBLY
 #else
