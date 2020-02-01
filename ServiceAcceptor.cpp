@@ -461,7 +461,7 @@ bool CServiceAcceptor::init_socket_unix()
 	size_t max_size = (std::min)(sizeof(addr.sun_path) - 1, path.size());
 	memcpy(addr.sun_path, path.c_str(), max_size);
 
-	rc = bind(s, (sockaddr*)&addr, sizeof(addr));
+	int rc = bind(s, (sockaddr*)&addr, sizeof(addr));
 	if (rc == SOCKET_ERROR)
 	{
 		Server->Log(name + ": Failed binding unix socket to path " + path + ". Errno: " + convert(errno), LL_ERROR);
