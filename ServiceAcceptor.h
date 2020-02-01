@@ -27,6 +27,8 @@ private:
 
 	bool init_socket_v6(unsigned short port, IServer::BindTarget bindTarget);
 
+	bool init_socket_unix();
+
 	std::vector<CServiceWorker*> workers;
 	SOCKET s;
 	SOCKET s_v6;

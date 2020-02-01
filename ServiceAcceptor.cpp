@@ -74,6 +74,12 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 	bool has_ipv4 = Server->getServerParameter("disable_ipv4").empty();
 	bool has_ipv6 = Server->getServerParameter("disable_ipv6").empty();
+
+	if (bindTarget == IServer::BindTarget_UnixSocket)
+	{
+		has_ipv4 = true;
+		has_ipv6 = false;
+	}
 	
 	if (!has_ipv4 && !has_ipv6)
 	{
@@ -84,7 +90,15 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 	if (has_ipv4)
 	{
-		if (!init_socket_v4(port, bindTarget))
+		if (bindTarget == IServer::BindTarget_UnixSocket)
+		{
+			if (!init_socket_unix())
+			{
+				has_error = true;
+				return;
+			}
+		}
+		else if (!init_socket_v4(port, bindTarget))
 		{
 			if (Server->getServerParameter("ipv4_optional").empty()
 				|| !has_ipv6)
@@ -408,6 +422,63 @@ bool CServiceAcceptor::init_socket_v6(unsigned short port, IServer::BindTarget b
 	}
 
 	listen(s_v6, 10000);
+
+	return true;
+}
+
+bool CServiceAcceptor::init_socket_unix()
+{
+	int type = SOCK_STREAM;
+#if !defined(_WIN32) && defined(SOCK_CLOEXEC)
+	type |= SOCK_CLOEXEC;
+#endif
+	s = socket(AF_UNIX, type, 0);
+	if (s < 1)
+	{
+		Server->Log(name + ": Creating unix SOCKET failed", LL_ERROR);
+		return false;
+	}
+
+#if !defined(_WIN32) && !defined(SOCK_CLOEXEC)
+	fcntl(s, F_SETFD, fcntl(s, F_GETFD, 0) | FD_CLOEXEC);
+#endif
+#ifdef __APPLE__
+	{
+		int optval = 1;
+		setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void*)&optval, sizeof(optval));
+	}
+#endif
+
+	std::string path = name;
+	name = ExtractFileName(name);
+
+#ifndef _WIN32
+	struct sockaddr_un addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	size_t max_size = (std::min)(sizeof(addr.sun_path) - 1, path.size());
+	memcpy(addr.sun_path, path.c_str(), max_size);
+
+	rc = bind(s, (sockaddr*)&addr, sizeof(addr));
+	if (rc == SOCKET_ERROR)
+	{
+		Server->Log(name + ": Failed binding unix socket to path " + path + ". Errno: " + convert(errno), LL_ERROR);
+		closesocket(s);
+		s = SOCKET_ERROR;
+		return false;
+	}
+
+	rc = chmod(path.c_str(), 0700);
+	if (rc != 0)
+	{
+		Server->Log(name + ": Error chaning unix socket permissions at path " + path + ". Errno: " + convert(errno), LL_ERROR);
+		closesocket(s);
+		s = SOCKET_ERROR;
+		return false;
+	}
+#endif
+
+	listen(s, 10000);
 
 	return true;
 }
