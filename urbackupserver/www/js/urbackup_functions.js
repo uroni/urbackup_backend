@@ -392,7 +392,11 @@ function determine_date_format()
 {
 	//Create a known date string
 	var y = new Date(2013, 9, 25);
-	var lds = y.toLocaleDateString();
+	var lds;
+	if(navigator.languages && navigator.languages.length)
+		lds = y.toLocaleDateString(navigator.languages[0]);
+	else
+		lds = y.toLocaleDateString();
 
 	//search for the position of the year, day, and month
 	var yPosi = lds.search("2013");
