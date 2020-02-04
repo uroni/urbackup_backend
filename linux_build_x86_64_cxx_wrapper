@@ -48,6 +48,12 @@ do
 			args+=("$var")
 		fi
 	fi
+	if [[ $var == "-mno-sse3" ]]; then
+		ADD=0
+		if ! containsElement "-msse3" "${args[@]}" && ! containsElement "-mssse3" "${args[@]}" && ! containsElement "-msse4a" "${args[@]}" && ! containsElement "-msse4.2" "${args[@]}" && ! containsElement "-msse4.1" "${args[@]}"; then
+			args+=("$var")
+		fi
+	fi
 
 	if [[ $var == "-msse4.1" ]]; then
 		removeElement "-mno-sse4.1"
@@ -60,6 +66,12 @@ do
 	fi
 	if [[ $var == "-msse4a" ]]; then
 		removeElement "-mno-sse4a"
+	fi
+	if [[ $var == "-msse3" ]]; then
+		removeElement "-mno-sse3"
+	fi	
+	if [[ $var == "-mssse3" ]]; then
+		removeElement "-mno-sse3"
 	fi
 
 	if [[ $ADD == 1 ]]; then
