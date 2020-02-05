@@ -46,6 +46,8 @@ public:
 	virtual int64 getOsErrorCode() = 0;
 
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap) = 0;
+
+	virtual std::string getType() = 0;
 };
 
 class FsShutdownHelper

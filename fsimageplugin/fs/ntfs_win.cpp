@@ -437,6 +437,11 @@ int64 FSNTFSWIN::countSectors(int64 start, int64 count, char* fc_bitmap)
 	return ret;
 }
 
+std::string FSNTFSWIN::getType()
+{
+	return "ntfs_win";
+}
+
 bool FSNTFSWIN::excludeFile( const std::string& path )
 {
 	Server->Log("Trying to exclude contents of file "+path+" from backup...", LL_DEBUG);

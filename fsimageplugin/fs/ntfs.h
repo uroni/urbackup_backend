@@ -139,6 +139,8 @@ public:
 
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
 
+	virtual std::string getType();
+
 private:
 
 	void init(bool check_mft_mirror, bool fix);

@@ -13,6 +13,7 @@ public:
 
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
 
+	virtual std::string getType();
 private:
 	unsigned char *bitmap;
 	int64 drivesize;

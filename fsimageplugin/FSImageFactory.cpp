@@ -35,6 +35,7 @@
 #else
 #include <errno.h>
 #endif
+#include "partclone.h"
 #include "cowfile.h"
 #include "ClientBitmap.h"
 #include <stdlib.h>
@@ -200,7 +201,7 @@ namespace
 
 void PrintInfo(IFilesystem *fs)
 {
-	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace()), LL_DEBUG);
+	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace())+" type="+fs->getType(), LL_DEBUG);
 }
 
 IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
@@ -357,6 +358,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadahea
 		PrintInfo(fs);
 		return fs;
 	}
+#ifdef _WIN32
 	else
 	{
 		Server->Log("Unknown filesystem type", LL_DEBUG);
@@ -369,6 +371,24 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadahea
 		PrintInfo(fs);
 		return fs;
 	}
+#else
+	else
+	{
+		IFilesystem* fs = new Partclone(pDev, read_ahead, background_priority, next_block_callback);
+		if (fs->hasError())
+		{
+			delete fs;
+			fs = new FSUnknown(pDev, read_ahead, background_priority, next_block_callback);
+			if (fs->hasError())
+			{
+				delete fs;
+				return NULL;
+			}
+		}
+		PrintInfo(fs);
+		return fs;
+	}
+#endif
 }
 
 bool FSImageFactory::isNTFS(char *buffer)
