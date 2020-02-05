@@ -110,6 +110,7 @@ void do_restore(void);
 void restore_wizard(void);
 void upgrade(void);
 bool upgrade_client(void);
+void parse_devnum_test();
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -132,6 +133,10 @@ THREADPOOL_TICKET internetclient_ticket;
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
+
+#ifdef _DEBUG
+	parse_devnum_test();
+#endif
 	
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())

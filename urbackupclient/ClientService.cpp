@@ -2056,9 +2056,171 @@ bool ClientConnector::waitForThread(void)
 		return false;
 }
 
+namespace
+{
+	bool parseDevicePartNumber(const std::string& volfn, int& DeviceNumber, int& PartNumber)
+	{
+		std::string dl_devnum;
+		char* devnames[] = { "sd", "xvd", "hd", "loop", "nvme", "nbd", NULL };
+
+		for (char** devname = devnames; devname != NULL; ++devname)
+		{
+			if (next(volfn, 0, std::string("/dev/") + *devname))
+			{
+				dl_devnum = getafter(std::string("/dev/") + *devname, volfn);
+				break;
+			}
+		}
+
+		if (dl_devnum.empty())
+		{
+			DeviceNumber = -1;
+			PartNumber = -1;
+			return false;
+		}
+
+		Server->Log("dl_devnum=" + dl_devnum, LL_DEBUG);
+
+		int state = 0;
+		int devnum = -1;
+		std::string data;
+		std::vector<int> nums;
+		for (size_t i = 0; i <= volfn.size(); ++i)
+		{
+			char ch = 0;
+			if (i < dl_devnum.size())
+				ch = dl_devnum[i];
+
+			if (state == 0)
+			{
+				if (str_isnumber(ch))
+				{
+					state = 1;
+					data += ch;
+				}
+				else
+				{
+					state = 2;
+					if(ch!=0)
+						devnum = tolower(ch) - 'a';
+				}
+			}
+			else if (state == 1)
+			{
+				if (str_isnumber(ch))
+				{
+					data += ch;
+				}
+				else
+				{
+					if (ch != 'n')
+					{
+						nums.push_back(watoi(data));
+					}
+					data.clear();
+
+					if (ch == 'p')
+					{
+						state = 1;
+					}
+					else
+					{
+						state = 0;
+					}
+				}
+			}
+			else if (state == 2)
+			{
+				if (str_isnumber(ch))
+				{
+					data += ch;
+					state = 1;
+				}
+				else if (ch != 0)
+				{
+					devnum = (devnum+1) * ('z' - 'a') + tolower(ch) - 'a';
+				}
+			}
+		}
+
+		if (devnum != -1)
+		{
+			DeviceNumber = devnum;
+			PartNumber = -1;
+
+			if (!nums.empty())
+			{
+				PartNumber = nums[0];
+			}
+
+			if (nums.size() > 1)
+			{
+				return false;
+			}			
+		}
+		else
+		{
+			if (nums.empty())
+				return false;
+
+			DeviceNumber = nums[0];
+			PartNumber = -1;
+
+			if (nums.size() > 1)
+			{
+				PartNumber = nums[1];
+			}
+
+			if (nums.size() > 2)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
+
+void parse_devnum_test()
+{
+	int deviceNumber, partNumber;
+	assert(parseDevicePartNumber("/dev/sda1", deviceNumber, partNumber));
+	assert(deviceNumber == 0);
+	assert(partNumber == 1);
+	assert(parseDevicePartNumber("/dev/xvda1", deviceNumber, partNumber));
+	assert(deviceNumber == 0);
+	assert(partNumber == 1);
+	assert(parseDevicePartNumber("/dev/xvdc1", deviceNumber, partNumber));
+	assert(deviceNumber == 2);
+	assert(partNumber == 1);
+	assert(parseDevicePartNumber("/dev/xvdc3", deviceNumber, partNumber));
+	assert(deviceNumber == 2);
+	assert(partNumber == 3);
+	assert(parseDevicePartNumber("/dev/nvme0n1p1", deviceNumber, partNumber));
+	assert(deviceNumber == 1);
+	assert(partNumber == 1);
+	assert(parseDevicePartNumber("/dev/nvme0n5p8", deviceNumber, partNumber));
+	assert(deviceNumber == 5);
+	assert(partNumber == 8);
+	assert(parseDevicePartNumber("/dev/loop0", deviceNumber, partNumber));
+	assert(deviceNumber == 0);
+	assert(partNumber == -1);
+	assert(parseDevicePartNumber("/dev/sda", deviceNumber, partNumber));
+	assert(deviceNumber == 0);
+	assert(partNumber == -1);
+	assert(parseDevicePartNumber("/dev/sdc", deviceNumber, partNumber));
+	assert(deviceNumber == 2);
+	assert(partNumber == -1);
+	assert(parseDevicePartNumber("/dev/sdaa", deviceNumber, partNumber));
+	assert(deviceNumber == 25);
+	assert(partNumber == -1);
+	assert(parseDevicePartNumber("/dev/loop2p3", deviceNumber, partNumber));
+	assert(deviceNumber == 2);
+	assert(partNumber == 3);
+}
+
 bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 {
-#ifdef _WIN32
 #pragma pack(push)
 #pragma pack(1)
 	struct EfiHeader
@@ -2081,7 +2243,10 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 #pragma pack(pop)
 
 	const uint64 gpt_magic = 0x5452415020494645ULL;
+	bool gpt_style = false;
+	unsigned int logical_sector_size = 512;
 
+#ifdef _WIN32
 	std::string vpath=dl;
 	if(!vpath.empty() && vpath[0]!='\\')
 	{
@@ -2095,10 +2260,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		errmsg="CreateFile of volume '"+dl+"' failed. - sendMBR. Errorcode: "+convert((int)GetLastError());
 		Server->Log(errmsg, LL_ERROR);
 		return false;
-	}
-
-	bool gpt_style=false;
-	unsigned int logical_sector_size=512;
+	}	
 
 	STORAGE_DEVICE_NUMBER dev_num;
 	DWORD ret_bytes;
@@ -2269,15 +2431,53 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		return false;
 	}
 
+	std::string fi_serial = convert((_i64)voln_sern);
+	std::string volume_name = Server->ConvertFromWchar(voln);
+	std::string fi_name = Server->ConvertFromWchar(fsn);
+#else //_WIN32
+	IFile* dev = Server->openFile(dl, MODE_READ_DEVICE);
+	if (dev == NULL)
+	{
+		errmsg = "Error opening Device " + dl + ". " + os_last_error_str();
+		Server->Log(errmsg, LL_ERROR);
+		return false;
+	}
+
+	std::string gpt_header = dev->Read(512LL, 512, NULL);
+
+	if (next(gpt_header, 0, "EFI PART"))
+	{
+		Server->Log("gpt_style=true", LL_DEBUG);
+		gpt_style = true;
+	}
+
+	struct
+	{
+		int DeviceNumber;
+		int PartitionNumber;
+	} dev_num;
+
+	parseDevicePartNumber(dl, dev_num.DeviceNumber, dev_num.PartitionNumber);
+
+	std::string blkid;
+	os_popen("blkid \"" + dl + "\" -o export", blkid);
+	std::string fi_serial = trim(getbetween("UUID=", "\n", blkid));
+	std::string volume_name = dl;
+	std::string fi_name = trim(getbetween("PARTLABEL=", "\n", blkid));
+	if(fi_name.empty())
+		fi_name= trim(getbetween("TYPE=", "\n", blkid));
+#endif
+
 	CWData mbr;
 	mbr.addChar(1);
 	mbr.addChar(gpt_style?1:0);
 	mbr.addInt(dev_num.DeviceNumber);
 	mbr.addInt(dev_num.PartitionNumber);
-	mbr.addString(convert((_i64)voln_sern));
-	mbr.addString(Server->ConvertFromWchar(voln));
-	mbr.addString(Server->ConvertFromWchar(fsn));
+	mbr.addString(fi_serial);
+	mbr.addString(volume_name);
+	mbr.addString(fi_name);
 
+#ifdef _WIN32
 	IFile *dev=Server->openFile("\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ_DEVICE);
 
 	if(dev==NULL)
@@ -2286,7 +2486,9 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
+#endif
 
+	dev->Seek(0);
 	std::string mbr_bytes=dev->Read(512);
 
 	mbr.addString(mbr_bytes);
@@ -2431,9 +2633,6 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	tcpstack.Send(pipe, mbr);
 
 	return true;
-#else //_WIN32
-	return false;
-#endif
 }
 
 const int64 receive_timeouttime=60000;
