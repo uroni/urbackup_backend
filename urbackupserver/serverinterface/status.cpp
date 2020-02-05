@@ -343,7 +343,7 @@ ACTION_IMPL(status)
 			}
 		}
 		db_results res=db->Read("SELECT c.id AS id, delete_pending, c.name AS name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok FROM "
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image, last_filebackup_issues, os_simple, os_version_str, client_version_str, cg.name AS groupname, file_ok, image_ok, capa FROM "
 			" clients c LEFT OUTER JOIN settings_db.si_client_groups cg ON c.groupid = cg.id "+filter+" ORDER BY name");
 
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
@@ -382,6 +382,11 @@ ACTION_IMPL(status)
 			if (res[i]["image_ok"] == "-1")
 			{
 				stat.set("image_disabled", true);
+			}
+
+			if (watoi(res[i]["capa"]) & CAPA_NO_IMAGE_BACKUPS)
+			{
+				stat.set("image_not_supported", true);
 			}
 
 			std::string ip="-";
