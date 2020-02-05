@@ -151,7 +151,7 @@ public:
 	void updateClientLastImageBackup(int backupid, int clientid);
 	void updateClientNumIssues(int last_filebackup_issues, int clientid);
 	void updateClientLastFileBackup(int backupid, int last_filebackup_issues, int clientid);
-	void updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int clientid);
+	void updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int capa, int clientid);
 	void deleteAllUsersOnClient(int clientid);
 	void addUserOnClient(int clientid, const std::string& username);
 	void addClientToken(int clientid, const std::string& token);
@@ -180,6 +180,8 @@ public:
 	SMountedImage getMountedImage(int backupid, int partition);
 	SMountedImage getImageInfo(int backupid);
 	std::vector<SMountedImage> getOldMountedImages(int64 times);
+	void setCapa(int capa, int clientid);
+	CondInt getCapa(int clientid);
 	//@-SQLGenFunctionsEnd
 
 	void updateOrInsertSetting(int clientid, const std::string& key, const std::string& value);
@@ -274,6 +276,8 @@ private:
 	IQuery* q_getMountedImage;
 	IQuery* q_getImageInfo;
 	IQuery* q_getOldMountedImages;
+	IQuery* q_setCapa;
+	IQuery* q_getCapa;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

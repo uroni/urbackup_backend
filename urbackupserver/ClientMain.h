@@ -120,6 +120,11 @@ struct SShareCleanup
 	bool remove_callback;
 };
 
+namespace
+{
+	const int CAPA_NO_IMAGE_BACKUPS = 1;
+}
+
 class ClientMain : public IThread, public FileClientChunked::ReconnectionCallback,
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback,

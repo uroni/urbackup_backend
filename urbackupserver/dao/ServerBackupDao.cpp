@@ -1216,18 +1216,19 @@ void ServerBackupDao::updateClientLastFileBackup(int backupid, int last_fileback
 * @-SQLGenAccess
 * @func void ServerBackupDao::updateClientOsAndClientVersion
 * @sql
-*       UPDATE clients SET os_simple=:os_simple(string), os_version_str=:os_version(string), client_version_str=:client_version(string)
+*       UPDATE clients SET os_simple=:os_simple(string), os_version_str=:os_version(string), client_version_str=:client_version(string), capa=:capa(int)
 *		WHERE id=:clientid(int)
 */
-void ServerBackupDao::updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int clientid)
+void ServerBackupDao::updateClientOsAndClientVersion(const std::string& os_simple, const std::string& os_version, const std::string& client_version, int capa, int clientid)
 {
 	if(q_updateClientOsAndClientVersion==NULL)
 	{
-		q_updateClientOsAndClientVersion=db->Prepare("UPDATE clients SET os_simple=?, os_version_str=?, client_version_str=? WHERE id=?", false);
+		q_updateClientOsAndClientVersion=db->Prepare("UPDATE clients SET os_simple=?, os_version_str=?, client_version_str=?, capa=? WHERE id=?", false);
 	}
 	q_updateClientOsAndClientVersion->Bind(os_simple);
 	q_updateClientOsAndClientVersion->Bind(os_version);
 	q_updateClientOsAndClientVersion->Bind(client_version);
+	q_updateClientOsAndClientVersion->Bind(capa);
 	q_updateClientOsAndClientVersion->Bind(clientid);
 	q_updateClientOsAndClientVersion->Write();
 	q_updateClientOsAndClientVersion->Reset();
@@ -1907,6 +1908,50 @@ std::vector<ServerBackupDao::SMountedImage> ServerBackupDao::getOldMountedImages
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setCapa
+* @sql
+*       UPDATE clients SET capa=:capa(int) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::setCapa(int capa, int clientid)
+{
+	if(q_setCapa==NULL)
+	{
+		q_setCapa=db->Prepare("UPDATE clients SET capa=? WHERE id=?", false);
+	}
+	q_setCapa->Bind(capa);
+	q_setCapa->Bind(clientid);
+	q_setCapa->Write();
+	q_setCapa->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::getCapa
+* @return int capa
+* @sql
+*       SELECT capa FROM clients WHERE id=:clientid(int)
+*/
+ServerBackupDao::CondInt ServerBackupDao::getCapa(int clientid)
+{
+	if(q_getCapa==NULL)
+	{
+		q_getCapa=db->Prepare("SELECT capa FROM clients WHERE id=?", false);
+	}
+	q_getCapa->Bind(clientid);
+	db_results res=q_getCapa->Read();
+	q_getCapa->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0]["capa"]);
+	}
+	return ret;
+}
+
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -1992,6 +2037,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_getMountedImage=NULL;
 	q_getImageInfo=NULL;
 	q_getOldMountedImages=NULL;
+	q_setCapa=NULL;
+	q_getCapa=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2079,6 +2126,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getMountedImage);
 	db->destroyQuery(q_getImageInfo);
 	db->destroyQuery(q_getOldMountedImages);
+	db->destroyQuery(q_setCapa);
+	db->destroyQuery(q_getCapa);
 }
 
 

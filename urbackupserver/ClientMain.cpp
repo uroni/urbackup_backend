@@ -1517,11 +1517,13 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 	std::string cap=sendClientMessageRetry(capa_cmd, "Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
 	{
+		int new_capa = 0;
 		str_map params;
 		ParseParamStrHttp(cap, &params);
 		if(params["IMAGE"]!="1")
 		{
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
+			new_capa |= CAPA_NO_IMAGE_BACKUPS;
 			can_backup_images=false;
 		}
 		str_map::iterator it=params.find("FILESRV");
@@ -1726,7 +1728,7 @@ bool ClientMain::updateCapabilities(bool* needs_restart)
 		}
 
 		backup_dao->updateClientOsAndClientVersion(protocol_versions.os_simple,
-			os_version_str, client_version_str, clientid);
+			os_version_str, client_version_str, new_capa, clientid);
 
 		return true;
 	}

@@ -2211,6 +2211,13 @@ bool upgrade60_61()
 	}
 }
 
+bool upgrade61_62()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	bool b= db->Write("ALTER TABLE clients ADD capa INTEGER DEFAULT 0");
+	b &= db->Write("UPDATE clients SET capa=0 WHERE capa IS NULL");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -2232,7 +2239,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0]["tvalue"]);
 	int old_v;
-	int max_v=61;
+	int max_v=62;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -2596,6 +2603,13 @@ void upgrade(void)
 				}
 				++ver;
 				break;
+			case 61:
+				if (!upgrade61_62())
+				{
+					has_error = true;
+				}
+				++ver;
+				break;				
 			default:
 				break;
 		}
