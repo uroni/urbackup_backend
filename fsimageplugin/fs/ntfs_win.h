@@ -11,11 +11,6 @@ public:
 	virtual int64 getSize(void);
 	const unsigned char* getBitmap(void);
 
-	bool excludeFiles(const std::string& path, const std::string& fn_contains);
-	bool excludeFile(const std::string& path);
-	bool excludeSectors(int64 start, int64 count);
-	bool excludeBlock(int64 block);
-
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap);
 	virtual void logFileBlocks(std::string volpath, const std::vector<int64>& blocks);
 

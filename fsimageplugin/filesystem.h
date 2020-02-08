@@ -95,6 +95,11 @@ public:
 
 	void readaheadSetMaxNBuffers(int64 n_max_buffers);
 
+	bool excludeFiles(const std::string& path, const std::string& fn_contains);
+	bool excludeFile(const std::string& path);
+	bool excludeSectors(int64 start, int64 count);
+	bool excludeBlock(int64 block);
+
 protected:
 	bool readFromDev(char *buf, _u32 bsize);
 	void initReadahead(IFSImageFactory::EReadaheadMode read_ahead, bool background_priority);

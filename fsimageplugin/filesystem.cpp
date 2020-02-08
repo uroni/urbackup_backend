@@ -853,3 +853,185 @@ void Filesystem::shutdownReadahead()
 	}
 }
 
+bool Filesystem::excludeFile(const std::string& path)
+{
+	Server->Log("Trying to exclude contents of file " + path + " from backup...", LL_DEBUG);
+
+#ifdef _WIN32
+	HANDLE hFile = CreateFileW(Server->ConvertToWchar(path).c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		STARTING_VCN_INPUT_BUFFER start_vcn = {};
+		std::vector<char> ret_buf;
+		ret_buf.resize(32768);
+
+		while (true)
+		{
+			RETRIEVAL_POINTERS_BUFFER* ret_ptrs = reinterpret_cast<RETRIEVAL_POINTERS_BUFFER*>(ret_buf.data());
+
+			DWORD bytesRet = 0;
+
+			BOOL b = DeviceIoControl(hFile, FSCTL_GET_RETRIEVAL_POINTERS,
+				&start_vcn, sizeof(start_vcn), ret_ptrs, static_cast<DWORD>(ret_buf.size()), &bytesRet, NULL);
+
+			DWORD err = GetLastError();
+
+			if (b || err == ERROR_MORE_DATA)
+			{
+				LARGE_INTEGER last_vcn = ret_ptrs->StartingVcn;
+				for (DWORD i = 0; i < ret_ptrs->ExtentCount; ++i)
+				{
+					//Sparse entries have Lcn -1
+					if (ret_ptrs->Extents[i].Lcn.QuadPart != -1)
+					{
+						int64 count = ret_ptrs->Extents[i].NextVcn.QuadPart - last_vcn.QuadPart;
+
+						if (!excludeSectors(ret_ptrs->Extents[i].Lcn.QuadPart, count))
+						{
+							Server->Log("Error excluding sectors of file " + path, LL_WARNING);
+						}
+					}
+
+					last_vcn = ret_ptrs->Extents[i].NextVcn;
+				}
+			}
+
+			if (!b)
+			{
+				if (err == ERROR_MORE_DATA)
+				{
+					start_vcn.StartingVcn = ret_ptrs->Extents[ret_ptrs->ExtentCount - 1].NextVcn;
+				}
+				else
+				{
+					Server->Log("Error " + convert((int)GetLastError()) + " while accessing retrieval points", LL_WARNING);
+					CloseHandle(hFile);
+					break;
+				}
+			}
+			else
+			{
+				CloseHandle(hFile);
+				break;
+			}
+		}
+		return true;
+	}
+	else
+	{
+		Server->Log("Error opening file handle to " + path, LL_DEBUG);
+		return false;
+	}
+#else
+	std::auto_ptr<IFsFile> f(Server->openFile(path, MODE_READ));
+	if (f.get() == NULL)
+	{
+		Server->Log("Error opening file " + path + ". " + os_last_error_str(), LL_DEBUG);
+		return false;
+	}
+
+	bool has_more_extents = true;
+	int64 offset = 0;
+	int64 block_size = getBlocksize();
+	while (has_more_extents)
+	{
+		std::vector<IFsFile::SFileExtent> exts = f->getFileExtents(offset, block_size, has_more_extents);
+		for (size_t i = 0; i < exts.size(); ++i)
+		{
+			if (exts[i].volume_offset != -1)
+			{
+				if (!excludeSectors(exts[i].volume_offset, exts[i].size / block_size))
+				{
+					Server->Log("Error excluding sectors of file " + path, LL_WARNING);
+				}
+			}
+			offset = (std::max)(exts[i].offset + exts[i].size, offset);
+		}
+	}
+	return true;
+#endif
+}
+
+bool Filesystem::excludeFiles(const std::string& path, const std::string& fn_contains)
+{
+#ifdef _WIN32
+	HANDLE fHandle;
+	WIN32_FIND_DATAW wfd;
+	std::wstring tpath = Server->ConvertToWchar(path);
+	if (!tpath.empty() && tpath[tpath.size() - 1] == '\\') tpath.erase(path.size() - 1, 1);
+	fHandle = FindFirstFileW((tpath + L"\\*" + Server->ConvertToWchar(fn_contains) + L"*").c_str(), &wfd);
+
+	if (fHandle == INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Error opening find handle to " + path + " err: " + convert((int)GetLastError()), LL_DEBUG);
+		return false;
+	}
+
+	bool ret = true;
+	do
+	{
+		std::string name = Server->ConvertFromWchar(wfd.cFileName);
+		if (name == "." || name == "..")
+			continue;
+
+		if (!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			if (!excludeFile(Server->ConvertFromWchar(tpath + L"\\" + wfd.cFileName)))
+			{
+				ret = false;
+			}
+		}
+	} while (FindNextFileW(fHandle, &wfd));
+	FindClose(fHandle);
+
+	return ret;
+#else
+	std::vector<SFile> files = getFiles(path);
+	bool ret = true;
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		const SFile& f = files[i];
+		if (f.isdir)
+			continue;
+
+		if (f.name.find(fn_contains) != std::string::npos)
+		{
+			if (!excludeFile(path + os_file_sep() + f.name))
+			{
+				ret = false;
+			}
+		}
+	}
+	return ret;
+#endif
+}
+
+bool Filesystem::excludeSectors(int64 start, int64 count)
+{
+	for (int64 block = start; block < start + count; ++block)
+	{
+		if (!excludeBlock(block))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool Filesystem::excludeBlock(int64 block)
+{
+	size_t bitmap_byte = (size_t)(block / 8);
+	size_t bitmap_bit = block % 8;
+
+	unsigned char* bitmap = const_cast<unsigned char*>(getBitmap());
+	unsigned char b = bitmap[bitmap_byte];
+
+	b = b & (~(1 << bitmap_bit));
+
+	bitmap[bitmap_byte] = b;
+
+	return true;
+}
