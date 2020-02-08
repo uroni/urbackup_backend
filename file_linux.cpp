@@ -39,6 +39,7 @@
 #include <sys/ioctl.h>
 
 #ifdef __linux__
+#include <linux/fiemap.h>
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE    0x1
 #endif
@@ -468,8 +469,45 @@ IFsFile::SSparseExtent File::nextSparseExtent()
 
 std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, int64 block_size, bool& more_data)
 {
-	//TODO: Implement using FIEMAP?
+#ifdef __linux__
+	std::vector<char> buf;
+	buf.resize(4096 * 4);
+
+	struct fiemap* fiemap = reinterpret_cast<struct fiemap*>(buf.data());
+	fiemap->fm_extent_count = (buf.size() - sizeof(struct fiemap)) / sizeof(struct fiemap_extent);
+	fiemap->fm_start = starting_offset;
+	fiemap->fm_length = FIEMAP_MAX_OFFSET - starting_offset;
+	fiemap->fm_flags = 0;
+
+	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0)
+	{
+		return std::vector<SFileExtent>();
+	}
+
+	std::vector<SFileExtent> ret;
+	ret.resize(fiemap->fm_mapped_extents);
+	more_data = true;
+	for (_u32 i = 0; i < fiemap->fm_mapped_extents; ++i)
+	{
+		struct fiemap_extent& ext = fiemap->fm_extents[i];
+
+		if (i + 1 >= fiemap->fm_mapped_extents)
+		{
+			if (ext.fe_flags & FIEMAP_EXTENT_LAST)
+			{
+				more_data = false;
+			}
+		}
+
+		ret[i].offset = ext.fe_logical;
+		ret[i].size = ext.fe_length;
+		ret[i].volume_offset = ext.fe_physical;
+	}
+
+	return ret;
+#else
 	return std::vector<SFileExtent>();
+#endif
 }
 
 IFsFile::os_file_handle File::getOsHandle(bool release_handle)

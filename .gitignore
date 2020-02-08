@@ -261,3 +261,7 @@ urbackup/windows_components_config/*
 SQLGen/x64/*
 luaplugin/x64/*
 blockalign/x64/*
+/.vs/*
+/blockalign_src/Debug/*
+/blockalign_src/x64/*
+/build/__pycache__/*
