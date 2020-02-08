@@ -48,6 +48,11 @@ public:
 	virtual void logFileChanges(std::string volpath, int64 min_size, char* fc_bitmap) = 0;
 
 	virtual std::string getType() = 0;
+
+	virtual bool excludeFiles(const std::string& path, const std::string& fn_contains) = 0;
+	virtual bool excludeFile(const std::string& path) = 0;
+	virtual bool excludeSectors(int64 start, int64 count) = 0;
+	virtual bool excludeBlock(int64 block) = 0;
 };
 
 class FsShutdownHelper
