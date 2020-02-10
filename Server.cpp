@@ -2052,61 +2052,39 @@ unsigned int CServer::getSecureRandomNumber(void)
 {
 #ifdef _WIN32
 	unsigned int rnd;
-	errno_t err=rand_s(&rnd);
-	if(err!=0)
+	errno_t err = rand_s(&rnd);
+	if (err != 0)
 	{
 		Log("Error generating secure random number", LL_ERROR);
+		abort();
 		return getRandomNumber();
 	}
 	return rnd;
 #else
 	unsigned int rnd;
-	std::fstream rnd_in("/dev/urandom", std::ios::in | std::ios::binary );
-	if(!rnd_in.is_open())
-	{
-		Log("Error opening /dev/urandom for secure random number", LL_ERROR);
-		return getRandomNumber();
-	}
-	rnd_in.read((char*)&rnd, sizeof(unsigned int));
-	assert(rnd_in.gcount()==sizeof(unsigned int));
-	if(rnd_in.fail() || rnd_in.eof() )
-	{
-		Log("Error reading secure random number", LL_ERROR);
-		return getRandomNumber();
-	}
+	secureRandomFill(reinterpret_cast<char*>(&rnd), sizeof(rnd));
 	return rnd;
 #endif
 }
 
 std::vector<unsigned int> CServer::getSecureRandomNumbers(size_t n)
 {
-#ifndef _WIN32
-	std::fstream rnd_in("/dev/urandom", std::ios::in | std::ios::binary );
-	if(!rnd_in.is_open())
+	if (n == 0)
 	{
-		Log("Error opening /dev/urandom for secure random number", LL_ERROR);
-		return getRandomNumbers(n);
-	}
-#endif
-	std::vector<unsigned int> ret;
-	ret.resize(n);
-	for(size_t i=0;i<n;++i)
-	{
-#ifdef _WIN32
-		ret[i]=getSecureRandomNumber();
-#else
-		unsigned int rnd;
-		rnd_in.read((char*)&rnd, sizeof(unsigned int));
-		ret[i]=rnd;
-#endif		
+		return std::vector<unsigned int>();
 	}
 
-#ifndef _WIN32
-	if(rnd_in.fail() || rnd_in.eof() )
+	std::vector<unsigned int> ret;
+	ret.resize(n);
+#ifdef _WIN32
+	for (size_t i = 0; i < n; ++i)
 	{
-		Log("Error reading secure random numbers", LL_ERROR);
-		return getRandomNumbers(n);
+		ret[i] = getSecureRandomNumber();
 	}
+#else
+	char* buf = reinterpret_cast<char*>(&ret[0]);
+	size_t bsize = sizeof(unsigned int) * n;
+	secureRandomFill(buf, bsize);
 #endif
 	return ret;
 }
@@ -2117,34 +2095,46 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 	char *dptr=buf+blen;
 	while(buf<dptr)
 	{
-		if(dptr-buf>=sizeof(unsigned long))
+		const unsigned int rnd = getSecureRandomNumber();
+		const size_t to_write = (std::min)(sizeof(rnd), static_cast<size_t>(dptr - buf));
+		memcpy(buf, &rnd, to_write);
+		buf += to_write;
+	}
+#elif HAVE_GETRANDOM
+	while (blen > 0)
+	{
+		ssize_t rc = getrandom(buf, blen, 0);
+		if (rc == -1
+			&& errno == EINTR)
 		{
-			*((unsigned long*)buf)=getSecureRandomNumber();
-			buf+=sizeof(unsigned long);
+			rc = 0;
 		}
-		else
+		else if (rc == -1)
 		{
-			unsigned long rnd=getSecureRandomNumber();
-			memcpy(buf, &rnd, dptr-buf);
-			buf+=dptr-buf;
+			Server->Log("Error filling secure random buffer. Errno " + convert((int64)errno), LL_ERROR);
+			abort();
 		}
+		blen -= rc;
+		buf += rc;
 	}
 #else
-	std::fstream rnd_in("/dev/urandom", std::ios::in | std::ios::binary );
-	if(!rnd_in.is_open())
+	std::fstream rnd_in("/dev/urandom", std::ios::in | std::ios::binary);
+	if (!rnd_in.is_open())
 	{
-		Log("Error opening /dev/urandom for secure random number fill", LL_ERROR);
+		Log("Error opening /dev/urandom for secure random number fill. Errno " + convert((int64)errno), LL_ERROR);
 		randomFill(buf, blen);
 		return;
 	}
 
 	rnd_in.read(buf, blen);
 
-	assert(rnd_in.gcount()==blen);
+	assert(rnd_in.gcount() == blen);
 
-	if(rnd_in.fail() || rnd_in.eof() )
+	if (rnd_in.gcount() != blen
+		|| rnd_in.fail() || rnd_in.eof())
 	{
-		Log("Error reading secure random numbers fill", LL_ERROR);
+		Log("Error reading secure random numbers fill. Errno " + convert((int64)errno), LL_ERROR);
+		abort();
 		randomFill(buf, blen);
 		return;
 	}
