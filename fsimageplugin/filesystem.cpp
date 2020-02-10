@@ -942,7 +942,12 @@ bool Filesystem::excludeFile(const std::string& path)
 		{
 			if (exts[i].volume_offset != -1)
 			{
-				if (!excludeSectors(exts[i].volume_offset, exts[i].size / block_size))
+				int64 vol_block=exts[i].volume_offset/block_size;
+
+				if(exts[i].volume_offset%block_size!=0)
+					vol_block++;
+
+				if (!excludeSectors(vol_block, exts[i].size / block_size))
 				{
 					Server->Log("Error excluding sectors of file " + path, LL_WARNING);
 				}

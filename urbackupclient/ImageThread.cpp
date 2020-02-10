@@ -1327,7 +1327,7 @@ IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 
 	return Server->openFileFromHandle(hfile, volume + os_file_sep() + "System Volume Information\\urbhdat_img.dat");
 #else
-	return NULL;
+	return Server->openFile("urbackup/hdat_img_"+conv_filename(volume)+".dat", MODE_RW_CREATE);
 #endif
 }
 

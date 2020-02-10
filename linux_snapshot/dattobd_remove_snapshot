@@ -5,6 +5,7 @@ set -e
 SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_ORIG_PATH="$5"
+SNAP_ORIG_PATH_SAN=$(echo "$SNAP_ORIG_PATH" | sed 's@/@_@g')
 
 CDIR=`dirname $0`
 
@@ -83,10 +84,8 @@ dmsetup remove "wsnap-$SNAP_ID"
 
 remove_overlay
 
-echo "Destroying dattobd snapshot /dev/datto$NUM..."
+echo "Transitioning dattobd snapshot /dev/datto$NUM to incremental..."
 
-dbdctl destroy $NUM
-
-[ ! -e "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" ] || rm "$SNAP_ORIG_PATH/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID"
+dbdctl transition-to-incremental $NUM
 
 exit 0

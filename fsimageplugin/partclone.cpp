@@ -1,6 +1,9 @@
 #include "partclone.h"
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.h"
 #include <stdio.h>
+#include "../urbackupcommon/os_functions.h"
+#include "../stringtools.h"
 
 #ifndef _WIN32
 #define _popen popen
@@ -49,6 +52,8 @@ namespace
 {
 #define HEADER_ENDIAN_MAGIC 0xC0DE
 
+#pragma pack(push)
+#pragma pack(1)
 	struct partclone_header
 	{
 		char magic[16];
@@ -67,10 +72,11 @@ namespace
 		unsigned short checksum_mode;
 		unsigned short checksum_size;
 		unsigned int blocks_per_checksum;
-		unsigned short reseed_checksum;
-		unsigned short bitmap_mode;
+		unsigned char reseed_checksum;
+		unsigned char bitmap_mode;
 		unsigned int crc;
 	};
+#pragma pack(pop)
 
 	bool read_in(FILE* in, char* buf, size_t buf_size)
 	{
@@ -110,8 +116,27 @@ void Partclone::init()
 	if (has_error)
 		return;
 
-	std::string cmd = "partclone -o - -c -s \"" + dev->getFilename() + "\"";
+	std::string cmd = "blkid -o export \""+dev->getFilename()+"\"";
+	std::string blkid_out;
+	if(os_popen(cmd, blkid_out)!=0)
+	{
+		has_error = true;
+		return;
+	}
 
+	fstype = strlower(trim(getbetween("TYPE=", "\n", blkid_out)));
+
+	Server->Log("Detected fs type "+fstype);
+
+	if(fstype!="ext2" && fstype!="ext3"
+		&& fstype!="ext4" && fstype!="xfs")
+	{
+		Server->Log("Fs type not supported");
+		has_error = true;
+		return;
+	}
+
+	cmd = "partclone."+fstype+" -o - -c -s \"" + dev->getFilename() + "\"";
 	FILE* in;
 #ifdef __linux__
 	in = _popen(cmd.c_str(), "re");
@@ -135,9 +160,8 @@ void Partclone::init()
 		return;
 	}
 
-	header.magic[15] = 0;
-
-	unsigned int curr_crc = mz_crc32(mz_crc32(0, NULL, 0), reinterpret_cast<unsigned char*>(&header), sizeof(header) - sizeof(unsigned int));
+	unsigned int curr_crc = mz_crc32(0, reinterpret_cast<unsigned char*>(&header), sizeof(header) - sizeof(unsigned int));
+	curr_crc = ~curr_crc;
 
 	if (curr_crc != header.crc)
 	{
@@ -145,14 +169,16 @@ void Partclone::init()
 		return;
 	}
 
+	header.magic[15] = 0;
+
 	if (std::string(header.magic) != "partclone-image")
 	{
 		has_error = true;
 		return;
 	}
 
-	header.image_version[3] = 0;
-	if (atoi(header.image_version) != 0x0002)
+	std::string image_version(header.image_version, 4);
+	if (watoi(image_version) != 2)
 	{
 		has_error = true;
 		return;
@@ -188,6 +214,7 @@ void Partclone::init()
 	}
 
 	curr_crc = mz_crc32(mz_crc32(0, NULL, 0), bitmap, bitmap_bytes);
+	curr_crc = ~curr_crc;
 
 	if (curr_crc != bitmap_crc)
 	{
@@ -197,4 +224,21 @@ void Partclone::init()
 
 	block_size = header.block_size;
 	total_size = header.device_size;
+
+	unsigned int* bitmap_test = reinterpret_cast<unsigned int*>(bitmap);
+	const unsigned int bits_per = sizeof(unsigned int) * 8;
+
+	for (unsigned int nr = 0; nr < total_size/ block_size; ++nr)
+	{
+		unsigned int offset = nr / bits_per;
+		unsigned int bit = nr & (bits_per - 1);
+		bool has_bit = (bitmap_test[offset] >> bit) & 1;
+
+		assert(hasBlock(nr) == has_bit);
+	}
+}
+
+std::string Partclone::getType()
+{
+	return fstype;
 }

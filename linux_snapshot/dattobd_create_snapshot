@@ -9,6 +9,20 @@ CDIR=`dirname $0`
 SNAP_ID=$1
 SNAP_MOUNTPOINT="$2"
 SNAP_DEST=/mnt/urbackup_snaps/$SNAP_ID
+SNAP_MOUNTPOINT_SAN=$(echo "$SNAP_MOUNTPOINT" | sed 's@/@_@g')
+SNAP_NUM_PATH="/mnt/urbackup_snaps/cbt_info/$SNAP_MOUNTPOINT_SAN-snapdev"
+SNAP_COWFILE_PATH="/mnt/urbackup_snaps/cbt_info/$SNAP_MOUNTPOINT_SAN-cowfile"
+
+exists()
+{
+	[ -e $1 ]
+}
+
+has_num ()
+{
+	exists "/mnt/urbackup_snaps/cbt_info/*-snapdev" && grep "$1" "/mnt/urbackup_snaps/cbt_info/*-snapdev" > /dev/null
+}
+
 
 CDIR=`dirname $0`
 . $CDIR/filesystem_snapshot_common
@@ -41,7 +55,7 @@ echo "Snapshotting device $DEVICE via dattobd..."
 
 NUM=0
 
-while [ -e "/dev/datto$NUM" ]
+while [ -e "/dev/datto$NUM" ] && has_num $NUM
 do
         NUM=`expr $NUM + 1`
 done
@@ -52,11 +66,35 @@ then
 	exit 1
 fi
 
-echo "Using /dev/datto$NUM..."
-
 sync
 
-dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $NUM
+TRY_TRANS=0
+if [ -e "$SNAP_COWFILE_PATH" ] && [ -e "$SNAP_NUM_PATH" ]
+then
+	TRY_TRANS=1
+	TRANS_NUM=$(cat "$SNAP_NUM_PATH")
+	echo "Trying to transition /dev/datto$TRANS_NUM to snapshot..."
+	echo "dbdctl transition-to-snapshot '$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID' $TRANS_NUM"
+fi
+
+if [ $TRY_TRANS = 1 ] && dbdctl transition-to-snapshot "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $TRANS_NUM
+then
+	echo "Transitioned /dev/datto$TRANS_NUM to snapshot."
+	CBT_FILE=$(cat $SNAP_COWFILE_PATH)
+	echo "CBT_FILE=$CBT_FILE"
+	echo "CBT=datto=1"
+	NUM=$TRANS_NUM
+else
+	if [ $TRY_TRANS = 1 ]
+	then
+		rm "$SNAP_NUM_PATH"
+		rm "$SNAP_COWFILE_PATH"
+	fi
+
+	echo "Using /dev/datto$NUM..."
+
+	dbdctl setup-snapshot "$DEVICE" "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" $NUM
+fi
 
 echo $NUM > ${SNAP_DEST}-num
 
@@ -73,7 +111,6 @@ then
 	dbdctl destroy $NUM
     exit 1
 fi
-	
 
 losetup $LODEV $SNAP_MOUNTPOINT/.overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_$SNAP_ID
 
@@ -82,6 +119,7 @@ echo "0 $DEV_SIZE snapshot /dev/datto$NUM $LODEV N 8" | dmsetup create "wsnap-$S
 echo "Mounting /dev/mapper/wsnap-$SNAP_ID..."
 
 mkdir -p $SNAP_DEST
+mkdir -p /mnt/urbackup_snaps/cbt_info
 
 MOUNTOPTS="ro"
 
@@ -102,6 +140,9 @@ then
     exit 1
 fi
 
+echo "/dev/datto$NUM" > ${SNAP_DEST}-dev
+echo "$NUM" > $SNAP_NUM_PATH
+echo "$SNAP_MOUNTPOINT/.datto_3d41c58e-6724-4d47-8981-11c766a08a24_$SNAP_ID" > $SNAP_COWFILE_PATH
 echo "SNAPSHOT=$SNAP_DEST"
 
 exit 0

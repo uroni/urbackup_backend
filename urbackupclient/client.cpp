@@ -66,6 +66,13 @@
 #include "../urbackupcommon/glob.h"
 #include "TokenCallback.h"
 
+#ifndef _WIN32
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
@@ -382,6 +389,68 @@ namespace
 #endif //HAVE_MNTENT_H
 	}
 #endif //!_WIN32
+
+#ifndef _WIN32
+	std::string getMountDevice(const std::string& path)
+	{		
+#ifndef HAVE_MNTENT_H
+		return std::string();
+#else
+		if(path.find("/dev/")==0)
+		{
+			return path;
+		}
+
+		FILE *aFile;
+
+		aFile = setmntent("/proc/mounts", "r");
+		if (aFile == NULL) {
+			return std::string();
+		}
+		struct mntent *ent;
+		while (NULL != (ent = getmntent(aFile)))
+		{
+			if(std::string(ent->mnt_dir)==path)
+			{
+				endmntent(aFile);
+				return ent->mnt_fsname;
+			}
+		}
+		endmntent(aFile);
+
+		return std::string();
+#endif //HAVE_MNTENT_H
+	}
+#endif //!_WIN32
+
+#ifndef _WIN32
+	std::string getDeviceMount(const std::string& dev)
+	{		
+#ifndef HAVE_MNTENT_H
+		return std::string();
+#else
+		FILE *aFile;
+
+		aFile = setmntent("/proc/mounts", "r");
+		if (aFile == NULL) {
+			return std::string();
+		}
+		struct mntent *ent;
+		while (NULL != (ent = getmntent(aFile)))
+		{
+			if(std::string(ent->mnt_fsname)==dev)
+			{
+				endmntent(aFile);
+				return ent->mnt_dir;
+			}
+		}
+		endmntent(aFile);
+
+		return std::string();
+#endif //HAVE_MNTENT_H
+	}
+#endif //!_WIN32
+
 
 #ifndef _WIN32
 	std::vector<std::string> getAllMounts(const std::vector<std::string>& excl_fs, bool filter_usb)
@@ -968,7 +1037,7 @@ void IndexThread::operator()(void)
 								{
 									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target,
 										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath,
-										image_backup != 0);
+										image_backup != 0, sc_refs[k]->cbt_file);
 								}
 							}
 						}
@@ -1055,7 +1124,7 @@ void IndexThread::operator()(void)
 								{
 									sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, 
 										image_backup != 0 ? sc_refs[k]->save_id : -1, sc_refs[k]->volpath,
-										image_backup != 0);
+										image_backup != 0, sc_refs[k]->cbt_file);
 								}
 							}
 						}
@@ -1358,7 +1427,7 @@ void IndexThread::operator()(void)
 			data.getStr(&volume);
 
 			if (prepareCbt(volume)
-				&& finishCbt(volume, -1, std::string(), false))
+				&& finishCbt(volume, -1, std::string(), false, std::string()))
 			{
 				addResult(curr_result_id, "done");
 			}
@@ -1548,7 +1617,7 @@ IndexThread::IndexErrorInfo IndexThread::indexDirs(bool full_backup, bool simult
 						{
 							if (sc_refs[k]->cbt)
 							{
-								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false);
+								sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false, sc_refs[k]->cbt_file);
 							}
 							postSnapshotProcessing(sc_refs[k], full_backup);
 						}
@@ -3440,7 +3509,14 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 				}
 				dir->target=dir->ref->volpath+ (dir->target.empty()? "" : dir->target);
 #else
-				dir->target=dir->ref->volpath+os_file_sep()+dir->target;
+				if(for_imagebackup)
+				{
+					dir->target=dir->ref->volpath;
+				}
+				else
+				{
+					dir->target=dir->ref->volpath+os_file_sep()+dir->target;
+				}
 #endif
 				if(dir->fileserv
 					&& share_new)
@@ -3510,7 +3586,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 #else
 	std::string wpath = "/";
 
-	if (get_volumes_mounted_locally())
+	if (get_volumes_mounted_locally()
+		&& !for_imagebackup)
 	{
 		wpath = getFolderMount(dir->orig_target);
 		if (wpath.empty())
@@ -3520,7 +3597,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	}
 	else
 	{
-		dir->target = wpath;
+		wpath = getDeviceMount(dir->orig_target);
+		if(wpath.empty())
+		{
+			wpath = dir->orig_target;
+		}
 	}
 #endif
 
@@ -3611,7 +3692,7 @@ bool IndexThread::deleteShadowcopy(SCDirs *dir)
 		scriptname = "remove_device_snapshot";
 	}
 
-	std::string scriptlocation = get_snapshot_script_location(scriptname);
+	std::string scriptlocation = get_snapshot_script_location(scriptname, index_clientsubname);
 
 	if (scriptlocation.empty())
 	{
@@ -3758,7 +3839,7 @@ bool IndexThread::deleteSavedShadowCopy( SShadowCopy& scs, SShadowCopyContext& c
 		scriptname = "remove_device_snapshot";
 	}
 
-	std::string scriptlocation = get_snapshot_script_location(scriptname);
+	std::string scriptlocation = get_snapshot_script_location(scriptname, index_clientsubname);
 
 	if (scriptlocation.empty())
 	{
@@ -6177,7 +6258,43 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	return true;
 }
 
-bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup)
+namespace
+{
+#define DATTO_UUID_SIZE 16
+
+	struct dattobd_info
+	{
+		unsigned int minor;
+		unsigned long state;
+		int error;
+		unsigned long cache_size;
+		unsigned long long falloc_size;
+		unsigned long long seqid;
+		char uuid[DATTO_UUID_SIZE];
+		char cow[PATH_MAX];
+		char bdev[PATH_MAX];
+		unsigned long long version;
+		unsigned long long nr_changed_blocks;
+	};
+
+	struct dattobd_header
+	{
+		unsigned int magic;
+		unsigned int flags;
+		uint64 fpos;
+		uint64 fsize;
+		uint64 seqid;
+		char uuid[DATTO_UUID_SIZE];
+		uint64 version;
+		uint64 nr_changed_blocks;
+	};
+
+#define IOCTL_DATTOBD_INFO _IOR(DATTO_IOCTL_MAGIC, 8, struct dattobd_info)
+#define DATTO_MAGIC ((unsigned int)4776)
+#define DATTO_IOCTL_MAGIC 0x91
+}
+
+bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file)
 {
 #ifdef _WIN32
 	ScopedUnlockCbtMutex unlock_cbt_mutex;
@@ -6723,7 +6840,230 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 
 	return true;
 #else
-	return false;
+	std::string fs_dev = getMountDevice(volume);
+	if(fs_dev.empty())
+	{
+		VSSLog("Cannot get device of mount "+volume+". CBT disabled.", LL_INFO);
+		return false;
+	}
+	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(strlower(fs_dev)) + ".dat", MODE_RW_CREATE_DELETE));
+	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
+
+	if(hdat_img.get()==NULL && hdat_file.get()==NULL)
+	{
+		VSSLog("Error opening img and file backup hdat file", LL_ERROR);
+		return false;
+	}
+
+	std::string datto_dev = trim(getFile(snap_volume+"-dev"));
+
+	if(datto_dev.empty())
+	{
+		VSSLog("Error getting datto device from "+snap_volume+"-dev", LL_ERROR);
+		return false;
+	}
+
+	std::auto_ptr<IFile> volfile(Server->openFile(datto_dev, MODE_READ_DEVICE));
+
+	if(volfile.get()==NULL)
+	{
+		VSSLog("Error opening volume file "+datto_dev, LL_ERROR);
+		return false;
+	}
+
+
+	if(hdat_file.get()!=NULL)
+	{
+		hdat_file->Resize( ((volfile->Size()+c_checkpoint_dist-1)/c_checkpoint_dist)*(sizeof(_u16) + chunkhash_single_size));
+	}
+
+	if(hdat_img.get()!=NULL)
+	{
+		hdat_img->Resize(sizeof(shadow_id) + ((volfile->Size()+c_checkpoint_dist-1)/c_checkpoint_dist) * SHA256_DIGEST_SIZE);
+	}
+
+	int datto_num = watoi(getafter("/dev/datto", datto_dev));
+	
+	int fd = open("/dev/datto-ctl", O_RDONLY);
+	if(fd==-1)
+	{
+		VSSLog("Error opening /dev/datto-ctl", LL_ERROR);
+		return false;
+	}
+
+	dattobd_info dbd_info = {};
+	dbd_info.minor = datto_num;
+
+	int rc = ioctl(fd, IOCTL_DATTOBD_INFO, &dbd_info);
+
+	close(fd);
+
+	if(rc==-1)
+	{
+		VSSLog("Error running IOCTL_DATTOBD_INFO for datto dev "+convert(datto_num), LL_ERROR);
+		return false;
+	}
+	
+	std::auto_ptr<IFile> cowfile(Server->openFile(cbt_file, MODE_READ));
+
+	if(cowfile.get()==NULL)
+	{
+		VSSLog("Error opening datto cow file at "+cbt_file, LL_ERROR);
+		return false;
+	}
+	
+
+	char header_buf[4096];
+	if(cowfile->Read(header_buf, static_cast<_u32>(sizeof(header_buf)))!=sizeof(header_buf))
+	{
+		VSSLog("Error reading datto header from "+cbt_file, LL_ERROR);
+		return false;
+	}
+
+	
+	dattobd_header dbd_header;
+	memcpy(&dbd_header, header_buf, sizeof(dbd_header));
+	
+	if(dbd_header.magic != DATTO_MAGIC)
+	{
+		VSSLog("Datto magic wrong at "+cbt_file, LL_ERROR);
+		return false;
+	}
+
+	if(memcmp(dbd_header.uuid, dbd_info.uuid, DATTO_UUID_SIZE)!=0)
+	{
+		VSSLog("Snapshot and cbt file uuids differ (cbt_file="+cbt_file+" snapshot="+datto_dev+")", LL_ERROR);
+		return false;
+	}
+
+	if(dbd_header.seqid+1 != dbd_info.seqid )
+	{
+		VSSLog("Snapshot not at correct seqid expected "+convert(dbd_info.seqid)+" got "+convert(dbd_header.seqid+1), LL_ERROR);
+		return false;
+	}
+
+	if(hdat_img.get()!=NULL)
+	{
+		if (hdat_img->Write(0, reinterpret_cast<char*>(&shadow_id), sizeof(shadow_id)) != sizeof(shadow_id))
+                {
+                        VSSLog("Error writing shadow id", LL_ERROR);
+                        return false;
+                }
+
+                {
+                        IScopedLock lock(cbt_shadow_id_mutex);
+                        cbt_shadow_ids[strlower(volume)] = shadow_id;
+                }
+	}
+
+	if(hdat_file.get()!=NULL)
+	{
+                IScopedLock lock(cbt_shadow_id_mutex);
+                ++index_hdat_sequence_ids[strlower(volume)];
+	}
+
+	const int64 dbd_block_size = 4096;
+	char zero_sha[SHA256_DIGEST_SIZE] = {};
+	char zero_chunk[sizeof(_u16) + chunkhash_single_size] = {};
+	bool last_bit_set = false;
+        bool last_zeroed = false;
+	int64 num_blocks = (volfile->Size()+dbd_block_size-1)/dbd_block_size;
+
+	VSSLog("Zeroing file hash data of volume " + volume + "...", LL_DEBUG);
+	
+	for(int64 i=0;i<num_blocks;)
+	{
+		int64 toread_blocks = (std::min)(num_blocks-i, static_cast<int64>(sizeof(header_buf)/sizeof(int64)) );
+		_u32 toread_bytes = static_cast<_u32>(toread_blocks*sizeof(int64));
+		if(cowfile->Read(header_buf, toread_bytes)!=toread_bytes)
+		{
+			VSSLog("Error reading change block information from "+cbt_file, LL_ERROR);
+			return false;
+		}
+
+		int64 block_start=i;
+
+		for(;i<block_start+toread_blocks;++i)
+		{
+			uint64 block_map;
+			memcpy(&block_map, header_buf + (i-block_start)*sizeof(int64), sizeof(block_map));
+
+			int64 cbt_pos = (i*dbd_block_size)/c_checkpoint_dist;
+
+			if(block_map && hdat_img.get()!=NULL)
+			{
+				if (hdat_img->Write(sizeof(shadow_id) + cbt_pos*SHA256_DIGEST_SIZE, zero_sha, SHA256_DIGEST_SIZE) != SHA256_DIGEST_SIZE)
+                                {
+                                	std::string errmsg;
+                                        int64 err = os_last_error(errmsg);
+                                        VSSLog("Errro zeroing image hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+                                        return false;
+                                }
+			}
+
+			if(hdat_file.get()!=NULL)
+			{
+				bool has_bit = (block_map>0);
+                                if (has_bit
+                                       || last_bit_set)
+                                {
+                                	if (!last_bit_set
+                                        	&& !last_zeroed)
+                                        {
+                                        	int64 last_pos = cbt_pos;
+                                                if (last_pos > 0)
+                                                {
+                                                	--last_pos;
+                                                        if (hdat_file->Write(last_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+                                                        {
+                                                        	std::string errmsg;
+                                                                int64 err = os_last_error(errmsg);
+                                                                VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ") -2", LL_ERROR);
+                                                                return false;
+                                                        }
+                                                }
+                                        }
+
+                                        if (hdat_file->Write(cbt_pos * sizeof(zero_chunk), zero_chunk, sizeof(zero_chunk)) != sizeof(zero_chunk))
+                                        {
+                                        	std::string errmsg;
+                                                int64 err = os_last_error(errmsg);
+                                                VSSLog("Errro zeroing file hash data. " + errmsg + " (code: " + convert(err) + ")", LL_ERROR);
+                                                return false;
+                                        }
+                                     	last_zeroed = true;
+                                 }
+                                 else
+                                 {
+                                        last_zeroed = false;
+                                 }
+                                 last_bit_set = has_bit;
+			}
+		}
+	}
+
+	if(hdat_img.get()!=NULL)
+	{
+		if(!hdat_img->Sync())
+		{
+			VSSLog("Error syncing hdat_img file", LL_ERROR);
+			return false;
+		}
+	}
+
+	if(hdat_file.get()!=NULL)
+	{
+		if(!hdat_file->Sync())
+		{
+			VSSLog("Error syncing hdat_file file", LL_ERROR);
+			return false;
+		}
+	}
+
+	cowfile.reset();
+	Server->deleteFile(cbt_file);
+
+	return true;
 #endif
 }
 
@@ -6759,6 +7099,19 @@ bool IndexThread::disableCbt(std::string volume)
 	return !FileExists("urbackup\\hdat_file_" + conv_filename(volume) + ".dat")
 		&& !FileExists(ImageThread::hdatFn(volume));
 #else
+	Server->Log("Disabling CBT on volume \"" + volume + "\"", LL_DEBUG);
+
+	std::string mountfn = getMountDevice(volume);
+	if(!mountfn.empty())
+	{
+		Server->deleteFile("urbackup/hdat_file_"+conv_filename(mountfn)+".dat");
+		Server->deleteFile("urbackup/hdat_img_"+conv_filename(mountfn)+".dat");
+	}
+	else
+	{
+		Server->deleteFile("urbackup/hdat_file_"+conv_filename(volume)+".dat");
+		Server->deleteFile("urbackup/hdat_img_"+conv_filename(volume)+".dat");
+	}
 	return true;
 #endif
 }
@@ -7382,7 +7735,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 		scriptname="create_volume_snapshot";
 	}
 
-	std::string scriptlocation = get_snapshot_script_location(scriptname);
+	std::string scriptlocation = get_snapshot_script_location(scriptname, index_clientsubname);
 
 	if (scriptlocation.empty())
 	{
@@ -7410,11 +7763,21 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	std::vector<std::string> lines;
 	Tokenize(loglines, lines, "\n");
 	std::string snapshot_target;
+	std::string cbt_info;
+	std::string cbt_file;
 	for(size_t i=0;i<lines.size();++i)
 	{
 		std::string line = trim(lines[i]);
 
-		if(next(line, 0, "SNAPSHOT="))
+		if(next(line, 0, "CBT="))
+		{
+			cbt_info = line.substr(4);
+		}
+		else if(next(line, 0, "CBT_FILE="))
+		{
+			cbt_file = line.substr(9);
+		}
+		else if(next(line, 0, "SNAPSHOT="))
 		{
 			snapshot_target = line.substr(9);
 		}
@@ -7453,6 +7816,10 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	{
 		shareDir(starttoken, dir->dir, dir->target);
 	}
+	if(for_imagebackup)
+	{
+		dir->target=snapshot_target;
+	}
 
 	SShadowCopy tsc;
 	tsc.vssid=ssetid;
@@ -7475,6 +7842,18 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 
 	VSSLog("Shadowcopy path: "+tsc.path, LL_DEBUG);
 
+	if(!cbt_info.empty())
+	{
+		str_map cbt_params;
+		ParseParamStrHttp(cbt_info, &cbt_params);
+		if(cbt_params["datto"]=="1" && !cbt_file.empty())
+		{
+			VSSLog("Using datto change information from "+cbt_file, LL_INFO);
+			dir->ref->cbt=true;
+			dir->ref->cbt_file=cbt_file;
+		}
+	}
+
 	if(onlyref!=NULL)
 	{
 		*onlyref=false;
@@ -7482,7 +7861,7 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 	return true;
 }
 
-std::string IndexThread::get_snapshot_script_location(const std::string & name)
+std::string IndexThread::get_snapshot_script_location(const std::string & name, const std::string& index_clientsubname)
 {
 	std::string conffile = SYSCONFDIR "/urbackup/snapshot.cfg";
 	if (!FileExists(conffile))
@@ -7508,7 +7887,7 @@ std::string IndexThread::get_snapshot_script_location(const std::string & name)
 
 bool IndexThread::get_volumes_mounted_locally()
 {
-	std::string ret = strlower(get_snapshot_script_location("volumes_mounted_locally"));
+	std::string ret = strlower(get_snapshot_script_location("volumes_mounted_locally", index_clientsubname));
 
 	return ret != "0" && ret != "false" && ret != "no";
 }
@@ -7550,6 +7929,14 @@ int IndexThread::getShadowId(const std::string & volume, IFile* hdat_img)
 #ifndef _WIN32
 std::string IndexThread::lookup_shadowcopy(int sid)
 {
+	std::vector<SShadowCopy> scs = cd->getShadowcopies();
+	for (size_t i = 0; i < scs.size(); ++i)
+	{
+		if (scs[i].id == sid)
+		{
+			return scs[i].path;
+		}
+	}
 	return std::string();
 }
 
@@ -7574,9 +7961,17 @@ void IndexThread::openCbtHdatFile(SCRef* ref, const std::string& sharename, cons
 	if (ref!=NULL
 		&& ref->cbt)
 	{
+#ifdef _WIN32
 		std::string vol = volume;
 		normalizeVolume(vol);
 		vol = strlower(vol);
+#else
+		std::string vol = getMountDevice(volume);
+		if(vol.empty())
+		{
+			return;
+		}
+#endif
 
 		index_hdat_file.reset(Server->openFile("urbackup/hdat_file_" + conv_filename(vol) + ".dat", MODE_RW_CREATE_DELETE));
 		index_hdat_fs_block_size = -1;
@@ -7851,7 +8246,7 @@ void IndexThread::postSnapshotProcessing(SCDirs* scd, bool full_backup)
 			{
 				if (sc_refs[k]->cbt)
 				{
-					sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false);
+					sc_refs[k]->cbt = finishCbt(sc_refs[k]->target, -1, sc_refs[k]->volpath, false, sc_refs[k]->cbt_file);
 				}
 
 				postSnapshotProcessing(sc_refs[k], full_backup);

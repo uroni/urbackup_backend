@@ -15,10 +15,13 @@ public:
 	virtual int64 getSize(void);
 	virtual const unsigned char* getBitmap(void);
 
+	virtual std::string getType();
+
 private:
 	void init();
 
 	unsigned char* bitmap;
 	int64 block_size;
 	int64 total_size;
+	std::string fstype;
 };

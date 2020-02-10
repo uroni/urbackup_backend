@@ -1678,6 +1678,12 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 		std::string mpath;
 		dl=getEspVolumeCached(mpath);
 	}
+#ifndef _WIN32
+	else if(params.find("disk_path")!=params.end())
+	{
+		dl=params["disk_path"];
+	}
+#endif
 
 	bool b=false;
 	std::string errmsg;
@@ -2566,12 +2572,18 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string os_simple = "unknown";
 #endif
 
+	std::string image_args = "&IMAGE=0";
+	if(!trim(IndexThread::get_snapshot_script_location("create_volume_snapshot", clientsubname)).empty())
+	{
+		image_args = "&IMAGE=1&REQ_PREV_CBITMAP=1";
+	}
+
 
 	std::string os_version_str=get_lin_os_version();
-	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
+	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=2&ASYNC_INDEX=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
-		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup);
+		+"&ETA=1&CPD=0&EFI=1&FILE_META=1&SELECT_SHA=1&PHASH=1&RESTORE="+restore+"&CLIENT_BITMAP=1&CMD=2&SYMBIT=1&WTOKENS=1&OS_SIMPLE="+os_simple
+		+"&clientuid=" + EscapeParamString(clientuid) + imm_backup + image_args);
 #endif
 }
 

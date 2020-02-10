@@ -41,6 +41,14 @@
 #include <stdlib.h>
 #include "FileWrapper.h"
 
+#ifndef _WIN32
+#include "../config.h"
+#ifdef HAVE_MNTENT_H
+#include <mntent.h>
+#endif
+#endif
+
+
 #ifdef _WIN32
 namespace
 {
@@ -62,6 +70,106 @@ namespace
 	}
 }
 #endif
+
+namespace
+{
+#ifndef _WIN32
+        std::string getFolderMount(const std::string& path)
+        {
+#ifndef HAVE_MNTENT_H
+                return std::string();
+#else
+                FILE *aFile;
+
+                aFile = setmntent("/proc/mounts", "r");
+                if (aFile == NULL) {
+                        return std::string();
+                }
+                struct mntent *ent;
+                std::string maxmount;
+                while (NULL != (ent = getmntent(aFile)))
+                {
+                        if(path.find(ent->mnt_dir)==0 &&
+                                std::string(ent->mnt_dir).size()>maxmount.size())
+                        {
+                                maxmount = ent->mnt_dir;
+                        }
+                }
+                endmntent(aFile);
+
+                return maxmount;
+#endif //HAVE_MNTENT_H
+        }
+#endif //!_WIN32
+
+	std::string replaceMountPoint(std::string fn, std::string snap_mountpoint)
+	{
+#ifdef _WIN32
+		return snap_mountpoint + "/" + fn;
+#else
+		std::string mountpoint = getFolderMount(fn);
+		if(fn.size()>=mountpoint.size())
+		{
+			fn.erase(0, mountpoint.size());
+			return snap_mountpoint + "/" + fn;
+		}
+		else
+		{
+			return snap_mountpoint + "/" + fn;
+		}
+#endif
+	}
+
+
+
+	std::vector<std::string> getSwapFiles(std::string snap_mountpoint)
+	{
+		std::string swaps_str = getStreamFile("/proc/swaps");
+
+		std::vector<std::string> ret;
+		std::vector<std::string> lines;
+		Tokenize(swaps_str, lines, "\n");
+		for(size_t i=1;i<lines.size();++i)
+		{
+			std::vector<std::string> cols;
+			std::string line = lines[i];
+			std::string line_tr;
+			int tr_state=0;
+			for(size_t j=0;j<line.size();++j)
+			{
+				if(tr_state==0)
+				{
+					if(line[j]==' ' || line[j]=='\t')
+					{
+						line_tr+=' ';
+						tr_state=1;
+					}
+					else
+						line_tr+=line[j];
+				}
+				else
+				{
+					if(line[j]!=' ' && line[j]!='\t')
+					{
+						line_tr+=line[j];
+						tr_state=0;
+					}
+				}
+			}
+			Tokenize(line_tr, cols, " ");
+			if(cols.size()>4)
+			{
+				if(cols[1]=="file")
+				{
+					std::string fn = cols[0];
+					ret.push_back(replaceMountPoint(fn, snap_mountpoint));
+				}
+			}
+		}
+
+		return ret;
+	}
+}
 
 namespace
 {
@@ -204,9 +312,24 @@ void PrintInfo(IFilesystem *fs)
 	Server->Log("FSINFO: blocksize="+convert(fs->getBlocksize())+" size="+convert(fs->getSize())+" has_error="+convert(fs->hasError())+" used_space="+convert(fs->calculateUsedSpace())+" type="+fs->getType(), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadaheadMode read_ahead,
+IFilesystem *FSImageFactory::createFilesystem(const std::string &pDevOrig, EReadaheadMode read_ahead,
 	bool background_priority, std::string orig_letter, IFsNextBlockCallback* next_block_callback)
 {
+	std::string pDev = pDevOrig;
+#ifndef _WIN32
+	if(read_ahead==EReadaheadMode_Overlapped)
+	{
+		read_ahead = EReadaheadMode_None;
+	}
+
+	pDev = trim(getFile(pDevOrig+"-dev"));
+	if(pDev.empty())
+	{
+		Server->Log("Error reading device file name from "+pDevOrig+"-dev", LL_ERROR);
+		return NULL;
+	}
+#endif
+
 	IFile *dev = Server->openFile(pDev, MODE_READ_DEVICE);
 
 	if(dev==NULL)
@@ -386,6 +509,17 @@ IFilesystem *FSImageFactory::createFilesystem(const std::string &pDev, EReadahea
 			}
 		}
 		PrintInfo(fs);
+
+		std::vector<std::string> swap_files = getSwapFiles(pDevOrig);
+		for(size_t i=0;i<swap_files.size();++i)
+		{
+			fs->excludeFile(swap_files[i]);
+		}
+
+		fs->excludeFiles(pDevOrig, ".datto_3d41c58e-6724-4d47-8981-11c766a08a24_");
+		fs->excludeFiles(pDevOrig, ".overlay_2fefd007-3e48-4162-b2c6-45ccdda22f37_");
+		
+
 		return fs;
 	}
 #endif

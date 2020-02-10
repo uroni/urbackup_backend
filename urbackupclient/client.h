@@ -104,6 +104,7 @@ struct SCRef
 	bool cbt;
 	bool for_imagebackup;
 	bool with_writers;
+	std::string cbt_file;
 };
 
 struct SCDirs
@@ -383,6 +384,10 @@ public:
 	static bool unrefResult(unsigned int id);
 
 	static void removeResult(unsigned int id);
+
+#ifndef _WIN32
+	static std::string get_snapshot_script_location(const std::string& scriptname, const std::string& index_clientsubname);
+#endif
 	
 private:
 	static void addResult(unsigned int id, const std::string& res);
@@ -463,7 +468,6 @@ private:
 	void removeBackupcomReferences(IVssBackupComponents *backupcom);
 #else
 	bool start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool for_imagebackup, bool * &onlyref, bool* not_configured);
-	std::string get_snapshot_script_location(const std::string& name);
 	bool get_volumes_mounted_locally();
 	bool getVssSettings() { return true; }
 #endif
@@ -568,7 +572,7 @@ private:
 
 	bool prepareCbt(std::string volume);
 
-	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup);
+	bool finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file);
 
 	bool disableCbt(std::string volume);
 

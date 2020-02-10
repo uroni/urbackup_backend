@@ -188,8 +188,8 @@ install -c "btrfs_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "btrfs_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "lvm_create_filesystem_snapshot" "$PREFIX/share/urbackup"
 install -c "lvm_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
-install -c "dattobd_create_filesystem_snapshot" "$PREFIX/share/urbackup"
-install -c "dattobd_remove_filesystem_snapshot" "$PREFIX/share/urbackup"
+install -c "dattobd_create_snapshot" "$PREFIX/share/urbackup"
+install -c "dattobd_remove_snapshot" "$PREFIX/share/urbackup"
 install -c "filesystem_snapshot_common" "$PREFIX/share/urbackup"
 
 test -e "$PREFIX/etc/urbackup/mariadbdump.conf" || install -c "backup_scripts/mariadbdump.conf" "$PREFIX/etc/urbackup"
@@ -468,7 +468,7 @@ then
         echo "Please select the snapshot mechanism to be used for backups:"
         if [ $DATTO != no ]
         then
-            echo "1) dattobd volume snapshot kernel module from https://github.com/datto/dattobd"
+            echo "1) dattobd volume snapshot kernel module from https://github.com/datto/dattobd (supports image backups and changed block tracking)"
         fi
 
         if [ $LVM != no ]
@@ -510,6 +510,8 @@ then
 
 	CREATE_SNAPSHOT_SCRIPT=""
 	REMOVE_SNAPSHOT_SCRIPT=""
+	CREATE_VOLUME_SNAPSHOT=""
+	REMOVE_VOLUME_SNAPSHOT=""
     if [ $snapn = 3 ]
     then
 		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/btrfs_create_filesystem_snapshot"
@@ -543,8 +545,10 @@ then
 		
 		echo "Configured dattobd. Please install dattobd following the instructions at https://github.com/datto/dattobd"
 
-		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_create_filesystem_snapshot"
-		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_remove_filesystem_snapshot"
+		CREATE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_create_snapshot"
+		REMOVE_SNAPSHOT_SCRIPT="$PREFIX/share/urbackup/dattobd_remove_snapshot"
+		CREATE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dattobd_create_snapshot"
+		REMOVE_VOLUME_SNAPSHOT="$PREFIX/share/urbackup/dattobd_remove_snapshot"
     fi
 	
 	if [ $snapn = 4 ]
@@ -559,6 +563,11 @@ then
 		echo "" >> $PREFIX/etc/urbackup/snapshot.cfg
 		echo "create_filesystem_snapshot=$CREATE_SNAPSHOT_SCRIPT" >> $PREFIX/etc/urbackup/snapshot.cfg
 		echo "remove_filesystem_snapshot=$REMOVE_SNAPSHOT_SCRIPT" >> $PREFIX/etc/urbackup/snapshot.cfg
+		if [ "x$CREATE_VOLUME_SNAPSHOT" != "x" ]
+		then
+			echo "create_volume_snapshot=$CREATE_VOLUME_SNAPSHOT" >> $PREFIX/etc/urbackup/snapshot.cfg
+			echo "remove_volume_snapshot=$REMOVE_VOLUME_SNAPSHOT" >> $PREFIX/etc/urbackup/snapshot.cfg
+		fi
 		echo "Configured snapshot mechanism via $PREFIX/etc/urbackup/snapshot.cfg"
 	fi
 fi
