@@ -472,6 +472,10 @@ void InternetServiceConnector::ReceivePackets(IRunOtherCallback* run_other)
 											}
 										}
 									}
+									else
+									{
+										errmsg = "Empty authentication key";
+									}
 								}
 							}
 						}
