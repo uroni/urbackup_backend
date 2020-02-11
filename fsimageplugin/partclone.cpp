@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <fcntl.h>
+#include <errno.h>
 #define fsblkcnt64_t fsblkcnt_t
 #include "../urbackupcommon/android_popen.h"
 #endif
@@ -125,11 +126,11 @@ namespace
 	{
 		POFILE* in;
 	public:
-		AutoClose(POFILE* in)
+		AutoCloseAnd(POFILE* in)
 			: in(in)
 		{}
 
-		~AutoClose() {
+		~AutoCloseAnd() {
 			and_pclose(in);
 		}
 	};
