@@ -6258,6 +6258,7 @@ bool IndexThread::normalizeVolume(std::string & volume)
 	return true;
 }
 
+#ifndef _WIN32
 namespace
 {
 #define DATTO_UUID_SIZE 16
@@ -6293,6 +6294,7 @@ namespace
 #define DATTO_MAGIC ((unsigned int)4776)
 #define DATTO_IOCTL_MAGIC 0x91
 }
+#endif
 
 bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_volume, bool for_image_backup, std::string cbt_file)
 {
