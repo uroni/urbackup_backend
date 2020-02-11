@@ -197,8 +197,10 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 }
 #endif
 
+#ifndef _WIN32
+int restoreclient_main(int argc, char* argv[]);
+#endif
 
-#ifndef RESTORE_CLIENT
 int main(int argc, char* argv[])
 {
 	if(argc==0)
@@ -206,6 +208,13 @@ int main(int argc, char* argv[])
 		std::cout << "Not enough arguments (zero arguments) -- no program name" << std::endl;
 		return 1;
 	}
+
+#ifndef _WIN32
+	if (ExtractFileName(argv[0]) == "urbackuprestoreclient")
+	{
+		return restoreclient_main(argc, argv);
+	}
+#endif
 
 	for(size_t i=1;i<argc;++i)
 	{
@@ -406,10 +415,9 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 }
-#endif
 
-#ifdef RESTORE_CLIENT
-int main(int argc, char* argv[])
+#ifndef _WIN32
+int restoreclient_main(int argc, char* argv[])
 {
 	if (argc == 0)
 	{
