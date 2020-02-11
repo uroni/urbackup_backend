@@ -3,6 +3,7 @@
 #include "sha2/sha2.h"
 #include "../md5.h"
 #include "../Interface/Types.h"
+#include "../Interface/Object.h"
 
 class IHashFunc : public IObject
 {
