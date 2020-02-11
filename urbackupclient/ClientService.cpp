@@ -2061,7 +2061,7 @@ namespace
 	bool parseDevicePartNumber(const std::string& volfn, int& DeviceNumber, int& PartNumber)
 	{
 		std::string dl_devnum;
-		const char* const devnames[] = { "sd", "xvd", "hd", "loop", "nvme", "nbd", NULL };
+		const char* const devnames[] = { "sd", "xvd", "vd", "hd", "loop", "nvme", "nbd", NULL };
 
 		for (const char* const * devname = devnames; devname != NULL; ++devname)
 		{
