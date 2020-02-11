@@ -11,6 +11,11 @@
 #endif
 
 #if defined(__ANDROID__)
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <fcntl.h>
 #define fsblkcnt64_t fsblkcnt_t
 #include "../urbackupcommon/android_popen.h"
 #endif
