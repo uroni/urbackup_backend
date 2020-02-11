@@ -94,6 +94,10 @@
 #include <mach/mach.h>
 #endif
 
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
+#endif
+
 
 const size_t SEND_BLOCKSIZE=8192;
 const size_t MAX_THREAD_ID=std::string::npos;
@@ -2100,7 +2104,7 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 		memcpy(buf, &rnd, to_write);
 		buf += to_write;
 	}
-#elif HAVE_GETRANDOM
+#elif defined(HAVE_GETRANDOM) && defined(HAVE_SYS_RANDOM_H)
 	while (blen > 0)
 	{
 		ssize_t rc = getrandom(buf, blen, 0);
