@@ -39,7 +39,35 @@
 #include <sys/ioctl.h>
 
 #ifdef __linux__
+#ifdef HAVE_LINUX_FIEMAP_H
 #include <linux/fiemap.h>
+#else
+namespace
+{
+	struct fiemap_extent
+	{
+		uint64 fe_logical;
+		uint64 fe_physical;
+		uint64 fe_length;
+		uint64 fe_reserved64[2];
+		unsigned int fe_flags;
+		unsigned int fe_reserved[3];
+	};
+
+	struct fiemap
+	{
+		uint64 fm_start;
+		uint64 fm_length;
+		unsigned int fm_flags;
+		unsigned int fm_mapped_extents;
+		unsigned int fm_extent_count;
+		unsigned int fm_reserved;
+		struct fiemap_extent fm_extents[0];
+	};
+#define FIEMAP_MAX_OFFSET       (~0ULL)
+#define FS_IOC_FIEMAP _IOWR('f', 11, struct fiemap)
+}
+#endif
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE    0x1
 #endif
