@@ -533,6 +533,12 @@ std::vector<IFsFile::SFileExtent> File::getFileExtents(int64 starting_offset, in
 		ret[i].volume_offset = ext.fe_physical;
 	}
 
+	if (starting_offset == 0
+		&& fiemap->fm_mapped_extents == 0)
+	{
+		more_data = false;
+	}
+
 	return ret;
 #else
 	return std::vector<SFileExtent>();
