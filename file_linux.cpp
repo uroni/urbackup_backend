@@ -64,7 +64,8 @@ namespace
 		unsigned int fm_reserved;
 		struct fiemap_extent fm_extents[0];
 	};
-#define FIEMAP_MAX_OFFSET       (~0ULL)
+#define FIEMAP_MAX_OFFSET (~0ULL)
+#define FIEMAP_EXTENT_LAST 0x00000001
 #define FS_IOC_FIEMAP _IOWR('f', 11, struct fiemap)
 }
 #endif
