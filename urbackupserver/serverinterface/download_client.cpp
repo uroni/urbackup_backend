@@ -20,8 +20,6 @@
 #include <algorithm>
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_settings.h"
-#include "../dao/ServerBackupDao.h"
-#include "../server_channel.h"
 
 extern ICryptoFactory *crypto_fak;
 extern std::string server_token;
@@ -70,49 +68,18 @@ namespace
 		return ret;
 	}
 
-	class RemoveRestoreToken : public IObject
-	{
-		std::string token;
-	public:
-		RemoveRestoreToken(std::string token)
-			: token(token)
-		{}
+	
 
-		~RemoveRestoreToken()
-		{
-			ServerChannelThread::remove_restore_token(token);
-		}
-	};
-
-	std::string constructImageRestoreSettings(Helper& helper, int backupid)
+	std::string constructImageRestoreSettings(Helper& helper, int backupid, const std::string& restore_authkey, const std::string& token)
 	{
 		ServerSettings settings(helper.getDatabase());
 		SSettings* settingsptr = settings.getSettings();
-
-		db_results restore_authkey = helper.getDatabase()->Read("SELECT value FROM settings_db.settings WHERE key='restore_authkey' AND clientid=0");
-		
-		if (restore_authkey.size() != 1)
-		{
-			return std::string();
-		}
-
-		std::string token = ServerSettings::generateRandomAuthKey();
-
-		ServerChannelThread::add_restore_token(token, backupid);
-
-		IObject* curr = helper.getSession()->getCustomPtr("rm_restore_token");
-		if (curr != NULL)
-		{
-			curr->Remove();
-		}
-
-		helper.getSession()->mCustom["rm_restore_token"] = new RemoveRestoreToken(token);
 
 		std::string ret = "RESTORE_IMAGE=1\n";
 		ret += "SERVER_NAME=\"" + settingsptr->internet_server + "\"\n";
 		ret += "SERVER_PORT=\"" + convert(settingsptr->internet_server_port) + "\"\n";
 		ret += "SERVER_PROXY=\"" + settingsptr->internet_server_proxy + "\"\n";
-		ret += "RESTORE_AUTHKEY=\"" + restore_authkey[0]["value"] + "\"\n";
+		ret += "RESTORE_AUTHKEY=\"" + restore_authkey+ "\"\n";
 		ret += "RESTORE_TOKEN=\"" + token + "\"\n";
 
 		return ret;
@@ -226,27 +193,10 @@ ACTION_IMPL(download_client)
 		|| (session!=NULL && (all_client_rights || !clientids.empty()) ) )
 	{
 		std::string restore_vals = "RESTORE_IMAGE=0\n";
-		if (GET["restore_image"] == "1")
+		if (GET.find("restore_image")!=GET.end())
 		{
-			ServerBackupDao dao(helper.getDatabase());
-
 			int backupid = watoi(GET["backupid"]);
-			ServerBackupDao::CondInt clientid = dao.getClientidByImageid(backupid);
-
-			if (!clientid.exists)
-			{
-				return;
-			}
-			
-			if (all_browse_backups
-				|| std::find(browse_backups_rights.begin(), browse_backups_rights.end(), clientid.value)!=browse_backups_rights.end())
-			{
-				restore_vals = constructImageRestoreSettings(helper, backupid);
-			}
-			else
-			{
-				errstr = "No permission to browse client";
-			}
+			restore_vals = constructImageRestoreSettings(helper, backupid, GET["authkey"], GET["token"]);
 		}
 
 		helper.releaseAll();

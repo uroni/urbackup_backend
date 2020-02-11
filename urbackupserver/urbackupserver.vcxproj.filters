@@ -387,6 +387,9 @@
     <ClCompile Include="..\blockalign_src\crc32c-adler.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\restore_image.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

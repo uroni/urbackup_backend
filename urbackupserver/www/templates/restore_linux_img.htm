@@ -1,0 +1,15 @@
+<div class="panel panel-default">
+	<div class="panel-heading">{tRestore Linux image}</div>
+	<div class="panel-body">
+		<p>
+			{tTo restore your Linux disk please enter following in a terminal:}
+            <blockquote>
+                <p>
+                    <code>
+                        TF=`mktemp` && wget "{linux_restore_url}" -O $TF && sudo sh $TF; rm -f $TF
+                    </code>
+                </p>
+            </blockquote>
+		</p>
+	</div>
+</div>

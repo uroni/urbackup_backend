@@ -820,6 +820,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(restore_prepare_wait);
 	ADD_ACTION(scripts);
 	ADD_ACTION(status_check);
+	ADD_ACTION(restore_image);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{

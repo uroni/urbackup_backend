@@ -28,6 +28,10 @@
 					<div style="float:left; margin-right: 40px"><strong>{tVolume name}: </strong>{volume_name}</div>
 					<div style="float:left; margin-right: 40px"><strong>{tSerial number}: </strong>{serial_number}</div>
 				</div>
+				{?linux_image_restore}
+				<br>
+				<a class="btn btn-default" href="#" onClick="tabMouseClickLinuxImageRestore({clientid}, {backupid}*-1); return false">{tRestore Linux image}</a>
+				{/linux_image_restore}
 			</div>
 		</div>
 		{/image_backup_info}

@@ -2368,6 +2368,11 @@ function tabMouseClickFiles(clientid, backupid, path, mount)
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F")+(mount?"&mount=1":""), show_backups2);
 }
+function tabMouseClickLinuxImageRestore(clientid, backupid)
+{
+	if(!startLoading()) return;
+	new getJSON("restore_image", "backupid="+backupid, linux_image_restore1);
+}
 function tabMouseClickFilesDL(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=filesdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
@@ -6194,5 +6199,32 @@ function renderArchiveSettings(global)
 			addArchiveItemParams(params, prefix+idx, global, 2);
 			idx+=1;
 		}
+	}
+}
+
+function linux_image_restore1(data)
+{
+	stopLoading();
+
+	if(!data.ok)
+	{
+		alert("Error getting linux image restore information");
+	}
+
+	var site_url = location.protocol+'//'+location.host+location.pathname;
+	
+	if(site_url.substr(site_url.length-1)!="/")
+	{
+		site_url+="/";
+	}
+
+	data.linux_restore_url = site_url+getURL("download_client", "restore_image=1&authkey="+encodeURIComponent(data.authkey)+"&token="+encodeURIComponent(data.token));
+	
+	var ndata=dustRender("restore_linux_img", data);
+	if(g.data_f!=ndata)
+	{
+		$("#data_f").empty();
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
 	}
 }

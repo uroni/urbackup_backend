@@ -23,4 +23,5 @@ namespace Actions
 	ACTION(restore_prepare_wait);
 	ACTION(scripts);
 	ACTION(status_check);
+	ACTION(restore_image);
 }

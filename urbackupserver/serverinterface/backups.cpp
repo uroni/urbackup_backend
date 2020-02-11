@@ -984,6 +984,10 @@ namespace backupaccess
 							ret.set("volume_name", mbr.volume_name);
 							ret.set("fs_type", mbr.fsn);
 							ret.set("serial_number", mbr.serial_number);
+							if (mbr.volume_name.find("LINUX:") == 0)
+							{
+								ret.set("linux_image_restore", true);
+							}
 						}
 					}
 				}

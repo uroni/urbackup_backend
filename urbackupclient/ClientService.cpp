@@ -2462,7 +2462,7 @@ bool ClientConnector::sendMBR(std::string dl, std::string &errmsg)
 	std::string blkid;
 	os_popen("blkid \"" + dl + "\" -o export", blkid);
 	std::string fi_serial = trim(getbetween("UUID=", "\n", blkid));
-	std::string volume_name = dl;
+	std::string volume_name = "LINUX:"+dl;
 	std::string fi_name = trim(getbetween("PARTLABEL=", "\n", blkid));
 	if(fi_name.empty())
 		fi_name= trim(getbetween("TYPE=", "\n", blkid));
