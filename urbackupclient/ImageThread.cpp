@@ -1303,12 +1303,11 @@ std::string ImageThread::hdatFn(std::string volume)
 
 IFsFile* ImageThread::openHdatF(std::string volume, bool share)
 {
+#ifdef _WIN32
 	if (!IndexThread::normalizeVolume(volume))
 	{
 		return NULL;
 	}
-
-#ifdef _WIN32
 
 	DWORD share_mode = FILE_SHARE_READ;
 

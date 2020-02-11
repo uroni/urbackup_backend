@@ -6846,7 +6846,14 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 		VSSLog("Cannot get device of mount "+volume+". CBT disabled.", LL_INFO);
 		return false;
 	}
-	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(strlower(fs_dev)) + ".dat", MODE_RW_CREATE_DELETE));
+
+	if (cbt_file.empty())
+	{
+		Server->deleteFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat");
+		Server->deleteFile("urbackup/hdat_img_" + conv_filename(fs_dev) + ".dat");
+	}
+
+	std::auto_ptr<IFsFile> hdat_file(Server->openFile("urbackup/hdat_file_" + conv_filename(fs_dev) + ".dat", MODE_RW_CREATE_DELETE));
 	std::auto_ptr<IFsFile> hdat_img(ImageThread::openHdatF(fs_dev, false));
 
 	if(hdat_img.get()==NULL && hdat_file.get()==NULL)
@@ -6880,6 +6887,29 @@ bool IndexThread::finishCbt(std::string volume, int shadow_id, std::string snap_
 	if(hdat_img.get()!=NULL)
 	{
 		hdat_img->Resize(sizeof(shadow_id) + ((volfile->Size()+c_checkpoint_dist-1)/c_checkpoint_dist) * SHA256_DIGEST_SIZE);
+	}
+
+	if (cbt_file.empty())
+	{
+		if (hdat_img.get() != NULL)
+		{
+			if (!hdat_img->Sync())
+			{
+				VSSLog("Error syncing hdat_img file -1", LL_ERROR);
+				return false;
+			}
+		}
+
+		if (hdat_file.get() != NULL)
+		{
+			if (!hdat_file->Sync())
+			{
+				VSSLog("Error syncing hdat_file file -1", LL_ERROR);
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	int datto_num = watoi(getafter("/dev/datto", datto_dev));
@@ -7851,6 +7881,13 @@ bool IndexThread::start_shadowcopy_lin( SCDirs * dir, std::string &wpath, bool f
 			VSSLog("Using datto change information from "+cbt_file, LL_INFO);
 			dir->ref->cbt=true;
 			dir->ref->cbt_file=cbt_file;
+		}
+		else if (cbt_params["datto"] == "1"
+			&& cbt_params["reset"] == "1")
+		{
+			VSSLog("Resetting CBT information", LL_INFO);
+			dir->ref->cbt = true;
+			dir->ref->cbt_file.empty();
 		}
 	}
 
